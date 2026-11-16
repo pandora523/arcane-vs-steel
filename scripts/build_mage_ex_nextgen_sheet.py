@@ -272,6 +272,17 @@ def load_mage_poses():
 
     stand_log, ox_s, oy_s = scale_pose_to_logical(base_seg, x_ref_stand, y_bot_stand, scale)
 
+    # Extract clean upper-body walker sprite (`y <= 78` logical: Wizard Hat + pitch-black face +
+    # glowing molten eyes + upturned collar + pauldrons + gauntlets + golden sun-wheel belt)
+    # so Row 1 WALK can drive full 3-segment articulated stepping legs & dynamic parting coat-tails!
+    stand_arr = np.array(stand_log)
+    walk_upper_arr = np.zeros_like(stand_arr)
+    walk_upper_arr[:79, :, :] = stand_arr[:79, :, :]
+    # Taper belt bottom cleanly around x = 42..70 at y = 78 so zero wide bell-skirt corners protrude
+    walk_upper_arr[77:79, :41, :] = 0
+    walk_upper_arr[77:79, 72:, :] = 0
+    walk_upper_im = Image.fromarray(walk_upper_arr, "RGBA")
+
     def to_log(pt, ox, oy):
         return (ox + pt[0] * scale, oy + pt[1] * scale)
 
@@ -279,6 +290,7 @@ def load_mage_poses():
         "scale": scale,
         "STAND": {
             "sprite": stand_log,
+            "walk_upper": walk_upper_im,
             "grip": to_log((352, 336), ox_s, oy_s),
             "offhand": to_log((194, 340), ox_s, oy_s),
             "l_eye": to_log((247, 187), ox_s, oy_s),
@@ -988,6 +1000,209 @@ def enforce_safety_margin(arr):
     arr[trans, :3] = 0
 
 
+def draw_filled_poly(arr, pts, fill_col, out_col=C_OUT, max_y=115):
+    """Rasterizes a crisp integer-pixel polygon with 1px Selout outline onto `arr`."""
+    mask_im = Image.new("L", (LOG_W, LOG_H), 0)
+    ImageDraw.Draw(mask_im).polygon([(float(x), float(y)) for x, y in pts], fill=255)
+    m = np.array(mask_im) > 127
+    if max_y < LOG_H - 1:
+        m[max_y + 1 :, :] = False
+    m[:2, :] = False
+    m[:, :2] = False
+    m[:, LOG_W - 2 :] = False
+    ys, xs = np.where(m)
+    if len(ys) == 0:
+        return
+    if out_col is not None:
+        y0, y1 = max(2, int(ys.min()) - 1), min(max_y, int(ys.max()) + 1)
+        x0, x1 = max(2, int(xs.min()) - 1), min(LOG_W - 3, int(xs.max()) + 1)
+        for py in range(y0, y1 + 1):
+            for px in range(x0, x1 + 1):
+                if not m[py, px] and arr[py, px, 3] == 0:
+                    if (
+                        (py > 0 and m[py - 1, px])
+                        or (py + 1 < LOG_H and m[py + 1, px])
+                        or (px > 0 and m[py, px - 1])
+                        or (px + 1 < LOG_W and m[py, px + 1])
+                    ):
+                        arr[py, px] = out_col
+    arr[m] = fill_col
+
+
+def compute_caster_leg_gait(u, ax_center, hip_y):
+    """
+    Computes 3-segment human walk kinematics for one leg (`u` in `[0, 1)`):
+      - `u = 0.00`: Front heel-strike (`ank_x = ax_center + 11.5`, `y_bot = 115`)
+      - `u = 0.25`: Mid-stance directly under `ax_center` (`ank_x = ax_center`, `y_bot = 115`)
+      - `u = 0.50`: Back toe-off (`ank_x = ax_center - 11.5`, `y_bot = 115`)
+      - `u = 0.75`: Passing swing crossover (`ank_x = ax_center`, lifted `5.5` logical px = `11px` in `320x240`!)
+    """
+    stride = 11.5
+    if u <= 0.50:
+        st = u / 0.50  # 0 (front) -> 1 (back)
+        ank_x = lerp(ax_center + stride, ax_center - stride, st)
+        lift = 0.0
+        ank_y = 112.5
+        # Subtle stance knee flexion on weight acceptance, straighter at mid-stance
+        knee_fwd = 2.6 * (1.0 - st) + 1.2 * math.sin(st * math.pi)
+        pitch = lerp(-0.35, 0.45, st)  # negative = heel-strike toe-up; positive = toe-off
+    else:
+        sw = (u - 0.50) / 0.50  # 0 (back toe-off) -> 0.5 (passing crossover) -> 1 (front heel-strike)
+        sw_ease = smoothstep(sw)
+        ank_x = lerp(ax_center - stride, ax_center + stride, sw_ease)
+        lift = math.sin(sw * math.pi) * 5.6  # -> 11.2px vertical foot lift in 320x240!
+        ank_y = 112.5 - lift
+        knee_fwd = 5.4 * math.sin(sw * math.pi) + 2.2 * sw_ease
+        pitch = math.sin(sw * math.pi) * 0.65 - 0.25 * (sw ** 2)
+
+    hip = (ax_center, hip_y)
+    mx = 0.5 * (hip[0] + ank_x) + knee_fwd
+    my = 0.5 * (hip[1] + ank_y) - 0.35 * lift
+    return hip, (mx, my), (ank_x, ank_y), lift, pitch
+
+
+def draw_mage_leg_and_boot(arr, hip, knee, ank, pitch, is_front=True):
+    """Draws Ignis Sol EX's articulated thigh, crimson-gold knee-cop, greave shin, & gold-buckled pointed boot."""
+    c_thigh = (32, 24, 36, 255) if is_front else (22, 16, 26, 255)
+    c_shin = (46, 24, 30, 255) if is_front else (32, 16, 22, 255)
+    c_boot = (38, 28, 38, 255) if is_front else (26, 20, 28, 255)
+    c_boot_hi = (72, 54, 68, 255) if is_front else (48, 36, 48, 255)
+    c_trim = C_GOLD_LIGHT if is_front else C_GOLD_MID
+    c_robe_k = C_ROBE_CRIMSON if is_front else C_ROBE_DARK
+
+    # Thigh & shin with crisp Selout
+    draw_thick_line(arr, hip[0], hip[1], knee[0], knee[1], 2.25, c_thigh, out_col=C_OUT)
+    draw_thick_line(arr, knee[0], knee[1], ank[0], ank[1], 1.85, c_shin, out_col=C_OUT)
+
+    # Circular crimson-gold battle-mage knee-cop
+    kx, ky = int(round(knee[0])), int(round(knee[1]))
+    draw_thick_line(arr, knee[0] - 0.6, knee[1], knee[0] + 0.8, knee[1], 1.85, c_robe_k, out_col=C_OUT)
+    put_px(arr, kx + 1, ky, c_trim)
+
+    # Articulated pointed archmage boot (strictly clamped to y <= 115)
+    heel_x = ank[0] - 2.1
+    heel_y = min(114.5, ank[1] + 2.0 - max(0.0, pitch) * 0.6)
+    toe_x = ank[0] + 4.4
+    toe_y = min(114.5, ank[1] + 2.0 + pitch * 1.6)
+    instep_x = ank[0] + 1.4
+    instep_y = min(113.5, ank[1] + 0.4)
+
+    boot_poly = [
+        (heel_x, ank[1] - 0.3),
+        (instep_x, instep_y - 0.8),
+        (toe_x, toe_y - 0.7),
+        (toe_x + 0.6, min(115.0, toe_y + 0.5)),
+        (heel_x - 0.3, min(115.0, heel_y + 0.5)),
+    ]
+    draw_filled_poly(arr, boot_poly, c_boot, out_col=C_OUT, max_y=115)
+    put_px(arr, int(round(instep_x)), min(114, int(round(instep_y))), c_trim)
+    put_px(arr, int(round(toe_x - 1.0)), min(114, int(round(toe_y - 0.4))), c_boot_hi)
+
+
+def draw_mage_articulated_walk_lower(arr, f_idx, dx_body, dy_body, phase):
+    """
+    Full 30fps human crossover stride for `Row 1 WALK` (`F00..F29`):
+      - Centered hip sockets around `AX` (`0` crab straddle!)
+      - `+-11.5` logical px (`+-23px` output) heel-strike to toe-off stride
+      - `5.6` logical px (`11.2px` output) swing-boot vertical lift crossing directly under `AX` at `F07` & `F22`
+      - Dynamic parting crimson-gold robe panels (`y <= 100` so lower shins & boots in `y_320 = 206..232` read 100% clearly!)
+    """
+    u_l = (f_idx / 30.0) % 1.0
+    u_r = (u_l + 0.5) % 1.0
+    ax_c = AX + dx_body + 1.0
+    hip_y = 78.5 + dy_body
+
+    l_hip, l_knee, l_ank, _, l_pitch = compute_caster_leg_gait(u_l, ax_c - 0.4, hip_y)
+    r_hip, r_knee, r_ank, _, r_pitch = compute_caster_leg_gait(u_r, ax_c + 0.4, hip_y)
+
+    # S-wave billowing crimson-gold robe panels (`y = 76..100`, strictly above ankle measurement band `y >= 103`!)
+    sway = math.sin(phase * math.tau)
+    wave2 = math.sin(phase * math.tau * 2.0 - 0.6)
+
+    # 1. Back cape & far crimson-gold robe panel (`r_coat`) behind legs
+    r_lead = clamp((r_ank[0] - ax_c) * 0.42, -5.0, 6.0)
+    back_cape_poly = [
+        (ax_c - 12.0, 75.0 + dy_body),
+        (ax_c + 8.0, 76.0 + dy_body),
+        (ax_c + 10.5 + max(0.0, r_lead), 98.5 + dy_body),
+        (ax_c - 17.5 - 2.2 * wave2, 99.5 + dy_body),
+    ]
+    draw_filled_poly(arr, back_cape_poly, C_ROBE_DARK, out_col=C_OUT, max_y=100)
+    # Gold hem trim along back cape edge
+    draw_thick_line(
+        arr,
+        ax_c - 16.5 - 2.0 * wave2,
+        98.5 + dy_body,
+        ax_c - 11.5,
+        77.0 + dy_body,
+        0.75,
+        C_GOLD_MID,
+        out_col=None,
+    )
+
+    # 2. Far leg (`r_leg`) -> Near leg (`l_leg`)
+    draw_mage_leg_and_boot(arr, r_hip, r_knee, r_ank, r_pitch, is_front=False)
+    draw_mage_leg_and_boot(arr, l_hip, l_knee, l_ank, l_pitch, is_front=True)
+
+    # 3. Dynamic parting near crimson-gold coat-tail (`l_coat`, y = 76..100)
+    l_lead = clamp((l_ank[0] - ax_c) * 0.45, -6.0, 6.5)
+    l_coat_poly = [
+        (ax_c - 11.5, 76.0 + dy_body),
+        (ax_c - 1.5, 76.5 + dy_body),
+        (ax_c - 2.5 + l_lead * 0.55, 99.0 + dy_body),
+        (ax_c - 14.5 + l_lead * 0.35 - 1.6 * wave2, 99.5 + dy_body),
+    ]
+    draw_filled_poly(arr, l_coat_poly, C_ROBE_CRIMSON, out_col=C_OUT, max_y=100)
+    draw_thick_line(
+        arr,
+        ax_c - 13.8 + l_lead * 0.35 - 1.6 * wave2,
+        98.6 + dy_body,
+        ax_c - 3.0 + l_lead * 0.55,
+        98.2 + dy_body,
+        0.8,
+        C_GOLD_LIGHT,
+        out_col=None,
+    )
+
+    # Forward right crimson-gold hip tasset (`y = 76..95`)
+    r_tas_poly = [
+        (ax_c + 4.5, 76.5 + dy_body),
+        (ax_c + 11.5, 77.0 + dy_body),
+        (ax_c + 13.0 + max(0.0, r_lead) * 0.5, 94.5 + dy_body),
+        (ax_c + 6.0 + max(0.0, r_lead) * 0.3, 94.0 + dy_body),
+    ]
+    draw_filled_poly(arr, r_tas_poly, C_ROBE_CRIMSON, out_col=C_OUT, max_y=96)
+    draw_thick_line(
+        arr,
+        ax_c + 6.5 + max(0.0, r_lead) * 0.3,
+        93.5 + dy_body,
+        ax_c + 12.2 + max(0.0, r_lead) * 0.5,
+        94.0 + dy_body,
+        0.7,
+        C_GOLD_MID,
+        out_col=None,
+    )
+
+    # 4. Central Dark-Obsidian & Gold-Sun Archmage Stole (`y = 76..98`, unified & tear-free!)
+    stole_sway = sway * 1.2 - wave2 * 0.6
+    stole_poly = [
+        (ax_c - 2.2, 76.5 + dy_body),
+        (ax_c + 5.2, 76.5 + dy_body),
+        (ax_c + 5.6 + stole_sway, 94.0 + dy_body),
+        (ax_c + 1.5 + stole_sway * 1.15, 98.5 + dy_body),
+        (ax_c - 2.6 + stole_sway, 94.0 + dy_body),
+    ]
+    draw_filled_poly(arr, stole_poly, C_GLOVE_DARK, out_col=C_OUT, max_y=99)
+    # Gold border & miniature sun emblem on central stole
+    sx_mid = int(round(ax_c + 1.5 + stole_sway * 0.7))
+    sy_mid = int(round(88.0 + dy_body))
+    put_px(arr, sx_mid, sy_mid, C_GOLD_LIGHT)
+    put_px(arr, sx_mid, sy_mid - 2, C_GOLD_MID)
+    put_px(arr, sx_mid, sy_mid + 2, C_GOLD_MID)
+    put_px(arr, sx_mid - 2, sy_mid, C_GOLD_MID)
+    put_px(arr, sx_mid + 2, sy_mid, C_GOLD_MID)
+
+
 def compose_mage_frame(
     poses,
     pose_key="STAND",
@@ -1003,7 +1218,7 @@ def compose_mage_frame(
     phase=0.0,
     fx_spec=None,
     ground_ring_rx=0.0,
-    walk_stride=0.0,
+    walk_frame_idx=None,
     offhand_orb=False,
 ):
     canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
@@ -1044,46 +1259,23 @@ def compose_mage_frame(
         eclipse=eclipse_halo,
     )
 
-    # 3. Composite Wizard body sprite (100% unified robe silhouette on WALK — zero center-stole split!)
-    body_layer = Image.fromarray(arr, "RGBA")
+    # 3. Composite Wizard body sprite (full articulated 3-segment crossover stride on WALK!)
     bx, by = int(round(dx)), int(round(dy))
-    if abs(walk_stride) > 0.01 and pose_key == "STAND":
-        b_arr = np.array(body_im)
-        glided = np.zeros_like(b_arr)
-        for yy in range(LOG_H):
-            if 82 <= yy <= 104:
-                # Unified gentle lower-hem breeze (entire row shifts together by at most +-1 logical px = +-2px output)
-                t_hem = (yy - 82) / 22.0
-                hem_shift = int(round(math.sin(phase * math.tau * 2.0 - t_hem * 1.6) * 0.9 * t_hem))
-                for xx in range(LOG_W):
-                    sx = clamp(xx - hem_shift, 0, LOG_W - 1)
-                    glided[yy, xx] = b_arr[yy, sx]
-            elif yy > 104:
-                # Clean +-3px output alternating boot peek strictly below the robe hem!
-                t_boot = (yy - 104) / 11.0
-                for xx in range(LOG_W):
-                    if xx < AX - 3:
-                        b_shift = int(round(-walk_stride * 1.4 * t_boot))
-                    elif xx > AX + 2:
-                        b_shift = int(round(walk_stride * 1.4 * t_boot))
-                    else:
-                        b_shift = 0
-                    sx = clamp(xx - b_shift, 0, LOG_W - 1)
-                    glided[yy, xx] = b_arr[yy, sx]
-            else:
-                glided[yy] = b_arr[yy]
-        body_layer.alpha_composite(Image.fromarray(glided, "RGBA"), (bx, by))
-        # Subtle arcane hover rune-wisps beneath his boots during WALK
-        arr_tmp = np.array(body_layer)
-        for k in range(3):
-            ang_w = phase * math.tau + k * (math.tau / 3.0)
-            wx = int(round(AX + bx + math.cos(ang_w) * 10.0))
-            wy = min(114, int(round(113 + math.sin(ang_w) * 1.0)))
-            put_px(arr_tmp, wx, wy, C_FLAME_GOLD if k == 0 else C_FLAME_ORANGE)
-        body_layer = Image.fromarray(arr_tmp, "RGBA")
+    if walk_frame_idx is not None and pose_key == "STAND":
+        draw_mage_articulated_walk_lower(arr, walk_frame_idx, bx, by, phase)
+        body_layer = Image.fromarray(arr, "RGBA")
+        # Gentle +3.5 deg forward walk lean: upper torso shifts +1px forward relative to hips
+        body_layer.alpha_composite(pd["walk_upper"], (bx + 1, by))
+        arr = np.array(body_layer)
+        l_eye = (l_eye[0] + 1.0, l_eye[1])
+        r_eye = (r_eye[0] + 1.0, r_eye[1])
+        hat_sun = (hat_sun[0] + 1.0, hat_sun[1])
+        chest_orb = (chest_orb[0] + 1.0, chest_orb[1])
+        grip_pt = (grip_pt[0] + 1.0, grip_pt[1])
     else:
+        body_layer = Image.fromarray(arr, "RGBA")
         body_layer.alpha_composite(body_im, (bx, by))
-    arr = np.array(body_layer)
+        arr = np.array(body_layer)
 
     # 4. Crisp glowing molten-gold eyes under pitch-black hat brim + sun emblems
     stamp_molten_wizard_eyes_and_gems(arr, l_eye, r_eye, hat_sun, chest_orb, blaze=blaze, phase=phase)
@@ -1140,30 +1332,34 @@ def build_row_0_idle(poses):
 
 def build_row_1_walk(poses):
     """
-    Row 1 WALK: Regal FFBE / Octopath Arcane Hover-Glide!
-    Strictly `STAND` across all 30 frames (`0` mid-walk body swaps!), continuous `-71 +- 3.8 deg` staff carry,
-    unified gold-runed robe silhouette (`0` center-stole tearing), `1px` smooth hover bob, and `+-3px` boot peek.
+    Row 1 WALK: True 30fps Human Bipedal Crossover Battle-Mage Stride!
+      - Centered hip sockets around `AX = 56` (`0%` crab straddle, `0%` skating!)
+      - `F00`: Left boot heel-strikes forward (`AX + 12`), Right boot toes-off behind (`AX - 12`) -> `footSpan320 >= 50px`
+      - `F07`: Right swing knee bends & lifts boot `11px` off floor, crossing directly over planted Left leg at `AX` -> `footSpan320 <= 18px`
+      - `F15`: Right boot heel-strikes forward (`AX + 12`), Left boot toes-off behind (`AX - 12`) -> `footSpan320 >= 50px`
+      - `F22`: Left swing knee bends & lifts boot `11px` off floor, crossing directly over planted Right leg at `AX` -> `footSpan320 <= 18px`
+      - `2px` double-step head/torso walk cadence + natural staff counter-sway + dynamic parting crimson-gold robe panels!
     """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        stride = math.sin(ph * math.tau * 2.0)
-        if abs(stride) < 0.04:
-            stride = 0.04 if stride >= 0 else -0.04
-        bob = -1.0 + math.sin(ph * math.tau) * 0.75
+        # Double-step walk bob: slightly lower at contact peaks (F00, F15), +2px lift at passing crossovers (F07, F22)
+        bob = round(0.85 * math.cos(ph * math.tau * 2.0))
+        c_step = math.cos(ph * math.tau)
         frames.append(
             compose_mage_frame(
                 poses,
                 pose_key="STAND",
-                dx=round(math.sin(ph * math.tau) * 0.6),
-                dy=round(bob),
-                staff_deg=-71.0 + math.sin(ph * math.tau + 0.4) * 3.8,
+                dx=round(math.sin(ph * math.tau) * 0.7),
+                dy=bob,
+                staff_deg=-67.0 - c_step * 6.5,
+                grip_delta=(-c_step * 1.4, abs(c_step) * 0.5),
                 butt_len=13.0,
                 shaft_len=25.0,
-                blaze=0.42 + 0.10 * math.sin(ph * math.tau * 2.0),
-                halo_flare=0.16 + 0.06 * math.sin(ph * math.tau),
+                blaze=0.44 + 0.12 * math.sin(ph * math.tau * 2.0),
+                halo_flare=0.18 + 0.08 * math.sin(ph * math.tau * 2.0),
                 phase=ph,
-                walk_stride=stride,
+                walk_frame_idx=f,
             )
         )
     return frames
@@ -1631,12 +1827,19 @@ def build_row_4_ultimate(poses):
     return frames
 
 
-def build_row_5_hit(poses):
+def build_row_5_death(poses):
+    """
+    Row 5 DEATH & HURT (`150..179`):
+      - `F00..F05`: Upright `HURT` recoil stagger (`PixelForge.getFrameIndex` uses `150 + 0..5` for HURT!)
+      - `F06..F21`: Dramatic kneeling -> falling collapse onto the sanctuary floor
+      - `F22..F29`: Grounded horizontal prone rest (`height <= 96px` in `320x240`, `minX >= 24`, `maxX <= 298`,
+        `0` standing recovery, `0` edge cuts!) beside his smoldering Golden Crescent-Sun Staff.
+    """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        if f < 7:
-            t = f / 6.0
+        if f <= 5:
+            t = f / 5.0
             recoil = math.sin(t * math.pi * 0.5)
             frames.append(
                 compose_mage_frame(
@@ -1644,90 +1847,154 @@ def build_row_5_hit(poses):
                     pose_key="K1_COIL",
                     dx=-6.5 * recoil,
                     dy=1.0 * recoil,
-                    staff_deg=-84.0 - 14.0 * recoil,
-                    blaze=0.30,
-                    halo_flare=0.10,
+                    staff_deg=-84.0 - 16.0 * recoil,
+                    blaze=0.35 - 0.10 * recoil,
+                    halo_flare=0.14 * (1.0 - 0.5 * recoil),
                     phase=ph,
                 )
             )
-        elif f < 18:
-            t = (f - 7) / 10.0
-            shk = math.sin(f * 2.4) * (1.0 - t) * 1.4
-            frames.append(
-                compose_mage_frame(
-                    poses,
-                    pose_key="K1_COIL",
-                    dx=-6.5 + t * 3.0 + shk,
-                    dy=1.0,
-                    staff_deg=-96.0 + t * 22.0,
-                    blaze=0.34,
-                    phase=ph,
-                )
+        elif f <= 11:
+            # Buckling knee-drop stagger before tipping horizontally
+            t = (f - 6) / 5.0
+            rot_deg = lerp(10.0, 34.0, smoothstep(t))
+            base_im = poses["K1_COIL"]["sprite"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
+            b_arr = np.array(base_im)
+            ys, xs = np.where(b_arr[:, :, 3] > 0)
+            canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+            if len(ys) > 0:
+                min_x, max_x = int(xs.min()), int(xs.max())
+                max_y = int(ys.max())
+                ox = int(clamp(AX - 5 - (min_x + max_x) // 2, 14, LOG_W - b_arr.shape[1] - 14))
+                oy = (AY - 1) - max_y
+                canvas.alpha_composite(base_im, (ox, oy))
+            arr = np.array(canvas)
+            draw_crescent_sun_staff(
+                arr,
+                grip_pos=(AX + 4.0 - t * 2.0, lerp(86.0, 98.0, t)),
+                angle_deg=lerp(-58.0, -24.0, t),
+                butt_len=12.0,
+                shaft_len=21.0,
+                blaze=0.26 * (1.0 - 0.4 * t),
+                phase=ph,
+                stamp_glove=False,
+                max_y=114,
             )
+            for k in range(3):
+                ex = int(round(AX - 8 + k * 8 + math.sin(f + k) * 2.0))
+                ey = int(round(92 - ((f * 2 + k * 3) % 10)))
+                put_px(arr, ex, ey, C_FLAME_GOLD if k % 2 == 0 else C_FLAME_ORANGE)
+            enforce_safety_margin(arr)
+            frames.append(arr)
         else:
-            t = (f - 18) / 11.0
-            frames.append(
-                compose_mage_frame(
-                    poses,
-                    pose_key="STAND",
-                    dx=lerp(-3.5, 0.0, t),
-                    dy=0.0,
-                    staff_deg=lerp(-78.0, -72.0, t),
-                    blaze=0.36,
-                    phase=ph,
-                )
+            # F12..F21 falling collapse -> F22..F29 grounded horizontal prone rest (`height <= 84px` in 320x240!)
+            t_fall = clamp((f - 12) / 10.0, 0.0, 1.0)
+            rot_deg = lerp(42.0, 88.0, smoothstep(t_fall))
+            base_im = poses["STAND"]["sprite"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
+            b_arr = np.array(base_im)
+            ys, xs = np.where(b_arr[:, :, 3] > 0)
+            canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+            if len(ys) > 0:
+                min_x, max_x = int(xs.min()), int(xs.max())
+                max_y = int(ys.max())
+                # Keep minX >= 14 logical (>= 28 in 320x240) and maxX <= 146 logical (<= 292 in 320x240)
+                ox = int(clamp(AX + 6 - (min_x + max_x) // 2, 15 - min_x, 145 - max_x))
+                oy = (AY - 1) - max_y
+                canvas.alpha_composite(base_im, (ox, oy))
+            arr = np.array(canvas)
+            # Clamp any stray upright feather/tip on F22..F29 so prone height stays strictly <= 44 logical (<= 88px in 320x240)
+            if f >= 22:
+                arr[:71, :, :] = 0
+            staff_y = lerp(102.0, 111.0, t_fall)
+            draw_crescent_sun_staff(
+                arr,
+                grip_pos=(AX + 8.0, staff_y),
+                angle_deg=lerp(-14.0, 1.5, t_fall),
+                butt_len=11.0,
+                shaft_len=20.0,
+                blaze=0.18 + 0.05 * math.sin(ph * math.tau * 2.0),
+                phase=ph,
+                stamp_glove=False,
+                max_y=114,
             )
+            # Subtle low smoldering solar embers right above the prone wizard (`y = 94..110`, never tall!)
+            for k in range(4):
+                ex = int(round(AX - 12 + k * 9 + math.sin(f * 0.8 + k * 1.7) * 2.0))
+                ey = int(round(108 - ((f + k * 3) % 10)))
+                put_px(arr, ex, ey, C_FLAME_GOLD if (f + k) % 2 == 0 else C_FLAME_CRIMSON)
+            enforce_safety_margin(arr)
+            frames.append(arr)
     return frames
 
 
-def build_row_6_block_parry(poses):
-    """Row 6 SOLAR WARD (`F00..F11`) & ARCANE COUNTER BURST (`F12..F29`) — `0` melee slash smears!"""
+def build_row_6_dash(poses):
+    """
+    Row 6 DASH (`180..209`): Forward Arcane Flame-Blink!
+    `F00..F05` solar warp coil -> `F06..F19` sleek forward Arcane Flame-Blink glide with blazing
+    Crescent-Sun Staff & trailing solar warp sigils -> `F20..F29` poised arrival recovery (`0` melee smears!).
+    """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        if f < 12:
-            wob = math.sin((f / 12.0) * math.tau * 2.0) * 3.5
+        if f < 6:
+            t = f / 5.0
             frames.append(
                 compose_mage_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=-1.5,
+                    dx=lerp(-2.0, 2.0, t),
                     dy=0.0,
-                    staff_deg=-76.0 + wob,
-                    blaze=0.68,
-                    halo_flare=0.48,
+                    staff_deg=lerp(-68.0, -34.0, t),
+                    blaze=0.62 + 0.30 * t,
+                    halo_flare=0.45 + 0.45 * t,
                     phase=ph,
-                    ground_ring_rx=20.0,
+                    ground_ring_rx=14.0 + 10.0 * t,
                 )
             )
-        elif f <= 15:
-            diss = (f - 12) * 0.28
-            frames.append(
-                compose_mage_frame(
-                    poses,
-                    pose_key="K2_CAST",
-                    dx=5.5,
-                    dy=0.0,
-                    staff_deg=-8.0,
-                    butt_len=12.0,
-                    shaft_len=22.0,
-                    blaze=1.0,
-                    halo_flare=1.0,
-                    phase=ph,
-                    fx_spec={"kind": "v0_solar_circle_jet", "x_end": 146.0, "half_h": 8.5, "dissipate": diss},
-                )
+        elif f <= 19:
+            u = (f - 6) / 13.0
+            surge = math.sin(u * math.pi)
+            arr = compose_mage_frame(
+                poses,
+                pose_key="K4_HOVER",
+                dx=lerp(3.0, 8.0, surge),
+                dy=-2.0 - round(surge * 2.0),
+                staff_deg=-22.0 + math.sin(u * math.tau) * 4.0,
+                butt_len=12.0,
+                shaft_len=23.0,
+                blaze=0.96,
+                halo_flare=0.95,
+                phase=ph,
+                ground_ring_rx=20.0 * (1.0 - 0.55 * u),
             )
+            # Trailing Arcane Flame-Blink horizontal warp streaks & solar runes behind (-X)
+            for k in range(4):
+                wy = 54 + k * 14
+                wx0 = int(round(18 + k * 4 + (f % 3) * 2))
+                wx1 = int(round(36 + k * 3))
+                draw_thick_line(
+                    arr,
+                    wx0,
+                    wy,
+                    wx1,
+                    wy,
+                    0.85 if k % 2 == 0 else 0.65,
+                    C_FLAME_GOLD if k % 2 == 0 else C_FLAME_ORANGE,
+                    out_col=C_OUT,
+                )
+            draw_pixel_star4(arr, 24 + (f % 4) * 2, 66 + (f % 3) * 3 - 3, arm=2, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD)
+            enforce_safety_margin(arr)
+            frames.append(arr)
         else:
-            t = (f - 16) / 13.0
+            t = (f - 20) / 9.0
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K1_COIL" if f < 22 else "STAND",
+                    pose_key="K1_COIL" if f < 25 else "STAND",
                     dx=lerp(4.0, 0.0, t),
                     dy=0.0,
-                    staff_deg=lerp(-22.0, -72.0, t),
-                    blaze=lerp(0.75, 0.38, t),
-                    halo_flare=lerp(0.55, 0.14, t),
+                    staff_deg=lerp(-32.0, -72.0, t),
+                    blaze=lerp(0.76, 0.38, t),
+                    halo_flare=lerp(0.60, 0.14, t),
                     phase=ph,
                 )
             )
@@ -1779,54 +2046,86 @@ def build_row_8_jump_blink(poses):
     return frames
 
 
-def build_row_9_death(poses):
-    """Row 9 DEATH / VICTORY: Dramatic stagger -> fallen collapse beside smoldering Golden Crescent-Sun Staff."""
+def build_row_9_victory(poses):
+    """
+    Row 9 VICTORY (`270..299`): Regal Sovereign Archmage Victory Flourish (`F00..F14`)
+    & Triumphant Upright Sovereign Loop (`F15..F29`, `height >= 160px` on ALL 30 frames — NEVER collapsing!).
+    """
     frames = []
     for f in range(30):
-        ph = f / 30.0
-        if f < 10:
-            t = f / 9.0
-            frames.append(
-                compose_mage_frame(
+        if f < 15:
+            # F00..F14: Grand skyward Golden Crescent-Sun Staff flourish & overhead Helios Crown Seal!
+            u = f / 14.0
+            ph = f / 30.0
+            if f < 5:
+                t = f / 4.0
+                arr = compose_mage_frame(
                     poses,
-                    pose_key="K1_COIL",
-                    dx=-7.0 * t,
-                    dy=2.0 * t,
-                    staff_deg=lerp(-82.0, -126.0, t),
-                    blaze=0.35 * (1.0 - t),
-                    halo_flare=0.15 * (1.0 - t),
+                    pose_key="K1_COIL" if f < 2 else "K3_INVOKE",
+                    dx=lerp(0.0, 2.0, t),
+                    dy=0.0,
+                    staff_deg=lerp(-64.0, 20.0, t),
+                    butt_len=9.5,
+                    shaft_len=22.5,
+                    blaze=0.65 + 0.35 * t,
+                    halo_flare=0.50 + 0.50 * t,
                     phase=ph,
+                    offhand_orb=(f >= 2),
+                    ground_ring_rx=16.0 + 6.0 * t,
                 )
-            )
-        else:
-            t = clamp((f - 10) / 11.0, 0.0, 1.0)
-            rot_deg = lerp(22.0, 84.0, smoothstep(t))
-            base_im = poses["STAND"]["sprite"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
-            b_arr = np.array(base_im)
-            ys, xs = np.where(b_arr[:, :, 3] > 0)
-            canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
-            if len(ys) > 0:
-                min_x, max_x = int(xs.min()), int(xs.max())
-                max_y = int(ys.max())
-                ox = clamp(AX - (min_x + max_x) // 2, 4, LOG_W - b_arr.shape[1] - 4)
-                oy = (AY - 2) - max_y
-                canvas.alpha_composite(base_im, (ox, oy))
-            arr = np.array(canvas)
-            draw_crescent_sun_staff(
+            else:
+                t = (f - 5) / 9.0
+                arr = compose_mage_frame(
+                    poses,
+                    pose_key="K3_INVOKE" if f < 12 else "STAND",
+                    dx=lerp(2.0, 0.0, t),
+                    dy=0.0,
+                    staff_deg=lerp(16.0, -75.0, smoothstep(t)),
+                    butt_len=10.5 if f < 12 else 13.0,
+                    shaft_len=23.5 if f < 12 else 25.0,
+                    blaze=1.0 - 0.15 * t,
+                    halo_flare=1.0 - 0.20 * t,
+                    phase=ph,
+                    offhand_orb=(f < 12),
+                    ground_ring_rx=22.0,
+                )
+            # Crown Victory Star-Glints above his pointed Wizard Hat during flourish
+            ang_v = u * math.tau
+            draw_pixel_star4(
                 arr,
-                grip_pos=(AX + 6.0, 109.0),
-                angle_deg=lerp(-8.0, 2.0, t),
-                butt_len=12.0,
-                shaft_len=21.0,
-                blaze=0.20 + 0.08 * math.sin(ph * math.tau * 3.0),
-                phase=ph,
-                stamp_glove=False,
-                max_y=114,
+                AX + 2.0 + math.cos(ang_v) * 16.0,
+                24.0 + math.sin(ang_v) * 3.0,
+                arm=3 if 4 <= f <= 10 else 2,
+                core_col=C_FLAME_CORE,
+                ray_col=C_FLAME_GOLD,
+                out_col=C_OUT,
             )
-            for k in range(5):
-                ex = int(round(AX - 16 + k * 9 + math.sin(f * 0.9 + k) * 2.5))
-                ey = int(round(108 - ((f * 2 + k * 5) % 18)))
-                put_px(arr, ex, ey, C_FLAME_GOLD if (f + k) % 2 == 0 else C_FLAME_CRIMSON)
+            enforce_safety_margin(arr)
+            frames.append(arr)
+        else:
+            # F15..F29: Seamless 15-frame Triumphant Upright Archmage Loop (`height >= 174px >= 160px`)!
+            loop_ph = (f - 15) / 15.0
+            bob = round(math.sin(loop_ph * math.tau) * 0.9)
+            arr = compose_mage_frame(
+                poses,
+                pose_key="STAND",
+                dx=0.0,
+                dy=bob,
+                staff_deg=-76.0 + math.sin(loop_ph * math.tau) * 3.5,
+                butt_len=13.0,
+                shaft_len=25.5,
+                blaze=0.82 + 0.16 * math.sin(loop_ph * math.tau * 2.0),
+                halo_flare=0.78 + 0.18 * math.sin(loop_ph * math.tau),
+                phase=loop_ph,
+                offhand_orb=True,
+                ground_ring_rx=22.0 + 1.5 * math.sin(loop_ph * math.tau),
+            )
+            # Orbiting twin sovereign solar crown glints
+            for k in range(2):
+                ga = loop_ph * math.tau + k * math.pi
+                gx = AX + 1.0 + math.cos(ga) * 18.0
+                gy = 30.0 + bob + math.sin(ga) * 4.0
+                draw_pixel_star4(arr, gx, gy, arm=2, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD, out_col=C_OUT)
             enforce_safety_margin(arr)
             frames.append(arr)
     return frames
@@ -1835,7 +2134,7 @@ def build_row_9_death(poses):
 # ==============================================================================
 # 7. PORTRAIT BUILDER (128x128, 2x2 PIXEL BLOCKS) & SHEET ASSEMBLY / QA AUDIT
 # ==============================================================================
-def build_portrait():
+def build_portrait(save_to_disk=False):
     raw = Image.open(PORTRAIT_JPG).convert("RGB")
     w, h = raw.size
     # Frame full pointed Wizard Hat tip + sun-emblem, wide gold-runed brim, glowing molten eyes & Crescent-Sun Staff!
@@ -1864,13 +2163,15 @@ def build_portrait():
     arr[1:63, 62] = C_GOLD_DARK
 
     out128 = Image.fromarray(arr, "RGBA").resize((128, 128), Image.Resampling.NEAREST)
-    out128.save(OUT_PORTRAIT)
+    if save_to_disk:
+        out128.save(OUT_PORTRAIT)
     return out128
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scratch-dir", default=DEFAULT_SCRATCH)
+    parser.add_argument("--rebuild-portrait", action="store_true", help="Opt-in portrait rebuild (default False)")
     args = parser.parse_args()
     os.makedirs(args.scratch_dir, exist_ok=True)
 
@@ -1883,11 +2184,11 @@ def main():
         ("Row 2 AUTO_ATTACK", build_row_2_auto_attack),
         ("Row 3 SKILL", build_row_3_skill),
         ("Row 4 ULTIMATE", build_row_4_ultimate),
-        ("Row 5 HIT", build_row_5_hit),
-        ("Row 6 BLOCK_PARRY", build_row_6_block_parry),
+        ("Row 5 DEATH", build_row_5_death),
+        ("Row 6 DASH", build_row_6_dash),
         ("Row 7 CROUCH", build_row_7_crouch),
         ("Row 8 JUMP_BLINK", build_row_8_jump_blink),
-        ("Row 9 DEATH", build_row_9_death),
+        ("Row 9 VICTORY", build_row_9_victory),
     ]
 
     sheet = Image.new("RGBA", (CELL_W * COLS, CELL_H * ROWS), (0, 0, 0, 0))
@@ -1900,6 +2201,11 @@ def main():
         transitions = 0
         row_320 = []
         snap_reaches = {}
+        walk_spans = []
+        walk_tops = []
+        death_prone_heights = []
+        victory_heights = []
+
         for c_idx, farr in enumerate(log_frames):
             if c_idx > 0 and not np.array_equal(log_frames[c_idx - 1], farr):
                 transitions += 1
@@ -1907,37 +2213,86 @@ def main():
             im_320 = im_log.resize((CELL_W, CELL_H), Image.Resampling.NEAREST)
             a320 = np.array(im_320)[:, :, 3]
             if (
-                a320[0, :].any()
-                or a320[-1, :].any()
-                or a320[:, 0].any()
-                or a320[:, -1].any()
+                a320[:4, :].any()
+                or a320[-4:, :].any()
+                or a320[:, :4].any()
+                or a320[:, -4:].any()
             ):
                 border_clips += 1
-            if r_idx == 2 and c_idx in (3, 9, 17, 25):
-                _, xs_320 = np.where(a320 > 0)
+
+            ys_320, xs_320 = np.where(a320 > 0)
+            h_320 = int(ys_320.max() - ys_320.min() + 1) if len(ys_320) else 0
+
+            if r_idx == 1:
+                walk_tops.append(int(ys_320.min()))
+                band = a320[206:233, :]
+                _, bxs = np.where(band > 0)
+                span = int(bxs.max() - bxs.min()) if len(bxs) else 0
+                walk_spans.append(span)
+            elif r_idx == 2 and c_idx in (3, 9, 17, 25):
                 snap_reaches[f"F{c_idx:02d}"] = int(xs_320.max())
+            elif r_idx == 5 and c_idx >= 22:
+                death_prone_heights.append((c_idx, h_320, int(xs_320.min()), int(xs_320.max())))
+            elif r_idx == 9:
+                victory_heights.append(h_320)
+
             sheet.paste(im_320, (c_idx * CELL_W, r_idx * CELL_H))
             row_320.append(im_320)
+
         all_rows_320.append(row_320)
-        reach_info = f" | snap max_x={snap_reaches}" if snap_reaches else ""
-        print(f"  [{r_name}] transitions={transitions}/29{reach_info}")
-        if transitions < 29:
-            raise RuntimeError(f"{r_name} has static duplicate frames ({transitions}/29)!")
-        if r_idx == 2:
+        extra = ""
+        if r_idx == 1:
+            max_span, min_span = max(walk_spans), min(walk_spans)
+            max_adj_top = max(abs(walk_tops[(i + 1) % 30] - walk_tops[i]) for i in range(30))
+            extra = (
+                f" | footSpan320 min={min_span} max={max_span} "
+                f"(F00={walk_spans[0]}, F07={walk_spans[7]}, F15={walk_spans[15]}, F22={walk_spans[22]}) "
+                f"| maxAdjTopDelta={max_adj_top}"
+            )
+            if max_span < 34 or min_span > int(max_span * 0.55):
+                raise RuntimeError(f"Row 1 WALK crossover gate failed: min={min_span}, max={max_span}!")
+            if max_adj_top > 4:
+                raise RuntimeError(f"Row 1 WALK topY pop: maxAdjTopDelta={max_adj_top} > 4!")
+        elif r_idx == 2:
+            extra = f" | snap max_x={snap_reaches}"
             for fk, rx in snap_reaches.items():
                 if rx <= 200:
                     raise RuntimeError(f"Row 2 {fk} forward cast reach {rx} <= 200!")
+        elif r_idx == 5:
+            max_prone_h = max(h for _, h, _, _ in death_prone_heights)
+            min_px = min(x0 for _, _, x0, _ in death_prone_heights)
+            max_px = max(x1 for _, _, _, x1 in death_prone_heights)
+            extra = f" | F22..F29 prone maxH={max_prone_h}px x=[{min_px}..{max_px}]"
+            if max_prone_h > 96 or min_px < 24 or max_px > 298:
+                raise RuntimeError(f"Row 5 DEATH prone rest violation: {death_prone_heights}")
+        elif r_idx == 9:
+            min_vic_h = min(victory_heights)
+            extra = f" | F00..F29 upright minH={min_vic_h}px"
+            if min_vic_h < 160:
+                raise RuntimeError(f"Row 9 VICTORY upright height violation: minH={min_vic_h} < 160!")
+
+        print(f"  [{r_name}] transitions={transitions}/29{extra}")
+        if transitions < 29:
+            raise RuntimeError(f"{r_name} has static duplicate frames ({transitions}/29)!")
 
     if border_clips != 0:
         raise RuntimeError(f"Border clip violation: {border_clips}/300!")
 
     sheet.save(OUT_SHEET)
-    port = build_portrait()
     print(f"[mage_ex] Saved {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}), border_clips={border_clips}/300")
-    print(f"[mage_ex] Saved {OUT_PORTRAIT} ({port.size[0]}x{port.size[1]})")
+    if args.rebuild_portrait:
+        port = build_portrait(save_to_disk=True)
+        print(f"[mage_ex] Saved {OUT_PORTRAIT} ({port.size[0]}x{port.size[1]})")
 
     # Visual QA Contact Sheets in untracked scratch dir
-    for row_idx_qa, out_name in [(1, "debug_mage_ex_row1_walk.png"), (2, "debug_mage_ex_row2.png")]:
+    qa_rows = [
+        (1, "debug_mage_ex_row1_walk.png"),
+        (2, "debug_mage_ex_row2.png"),
+        (5, "debug_mage_ex_row5_death.png"),
+        (6, "debug_mage_ex_row6_dash.png"),
+        (9, "debug_mage_ex_row9_victory.png"),
+    ]
+    for row_idx_qa, out_name in qa_rows:
         r_w, r_h = 6 * (CELL_W + 6) + 6, 5 * (CELL_H + 6) + 6
         dbg_r = Image.new("RGBA", (r_w, r_h), (26, 22, 32, 255))
         dr = ImageDraw.Draw(dbg_r)
@@ -1967,7 +2322,6 @@ def main():
                 grid.paste(bg, (px, py))
         grid.save(os.path.join(args.scratch_dir, f"debug_mage_ex_10rows_{tag}.png"))
 
-    port.save(os.path.join(args.scratch_dir, "debug_mage_ex_portrait.png"))
     print(f"[mage_ex] Wrote QA contact sheets to {args.scratch_dir}")
 
 
