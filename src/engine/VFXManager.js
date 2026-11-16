@@ -1223,6 +1223,24 @@ export class VFXManager {
         pushLight(f.x, f.y - 118, isAnyUlt ? 395 : 305, 'crimson', isAnyUlt ? 1.95 : 1.72, 88, fGy, f, false);
         pushLight(f.x + f.facing * 34, f.y - 84, 245, 'gold', 1.48, 76, fGy, f, false);
       }
+      if (f.trueUltMeteor && f.trueUltMeteor.active) {
+        if (Number.isFinite(f.trueUltMeteor.x) && Number.isFinite(f.trueUltMeteor.y)) {
+          pushLight(
+            f.trueUltMeteor.x,
+            Math.max(fGy - 260, f.trueUltMeteor.y),
+            450,
+            'orange',
+            2.15,
+            110,
+            fGy,
+            f,
+            false
+          );
+        }
+        if (Number.isFinite(f.trueUltMeteor.targetX)) {
+          pushLight(f.trueUltMeteor.targetX, fGy - 20, 320, 'gold', 1.65, 48, fGy, f, false);
+        }
+      }
       // Harvest up to 6 active lights from f.fx.active (ArcaneShaderFX) & f.activeVfxAnims!
       let harvestedCount = 0;
       if (Array.isArray(f.fx?.active) && f.fx.active.length > 0) {
@@ -1945,7 +1963,7 @@ export class VFXManager {
             const ang = Math.atan2(s.vy, s.vx || 0.01);
             ctx.rotate(ang);
           }
-          const arrSz = 148;
+          const arrSz = isExStrike ? 160 : 148;
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1954,8 +1972,8 @@ export class VFXManager {
             208,
             208,
             208,
-            Math.round(-arrSz * (isExStrike ? 0.5 : 0.78)),
-            Math.round(-arrSz * 0.5),
+            Math.round(-arrSz * (isExStrike ? 0.56 : 0.78)),
+            Math.round(-arrSz * (isExStrike ? 0.80 : 0.5)),
             arrSz,
             arrSz,
             '#10b981',
