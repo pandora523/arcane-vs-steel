@@ -164,6 +164,30 @@
       </section>
     </header>
 
+    <!-- Dedicated Adventure Mode Colossal Boss Raid HP Bar (Visible ONLY during Boss Warning / Boss Fight) -->
+    <section id="adv-boss-raid-hud" class="adv-boss-raid-hud hidden" aria-label="Boss Health Gauge">
+      <div class="adv-boss-raid-portrait-frame">
+        <canvas id="adv-boss-raid-portrait" width="44" height="44"></canvas>
+      </div>
+      <div class="adv-boss-raid-body">
+        <div class="adv-boss-raid-head">
+          <h2 class="adv-boss-raid-name" id="adv-boss-raid-name">BEHEMOTH MALPHAS</h2>
+          <span class="adv-boss-raid-hp" id="adv-boss-raid-hp">11,800 / 11,800</span>
+        </div>
+        <div class="adv-boss-raid-track">
+          <div class="adv-boss-raid-ghost" id="adv-boss-raid-ghost" style="width: 100%"></div>
+          <div class="adv-boss-raid-fill" id="adv-boss-raid-bar" style="width: 100%"></div>
+          <div class="adv-boss-raid-segments" aria-hidden="true"></div>
+          <span class="adv-boss-phase-notch adv-boss-notch-p3" style="left: 33.3%" aria-hidden="true"></span>
+          <span class="adv-boss-phase-notch adv-boss-notch-p2" style="left: 66.6%" aria-hidden="true"></span>
+        </div>
+        <div class="adv-boss-raid-foot">
+          <span class="adv-boss-raid-tag">COLOSSUS RAID</span>
+          <span class="adv-boss-raid-phase" id="adv-boss-raid-phase">PHASE I • ABYSSAL SOVEREIGN</span>
+        </div>
+      </div>
+    </section>
+
     <!-- Adventure Mode Mobile Action-RPG HUD: Left Touch Joystick + Right Skill Icon & Cooldown Cluster -->
     <section id="adventure-controls" class="adventure-controls hidden" aria-label="Adventure Touch &amp; Arcade Controls">
       <!-- Bottom-Left Touch-Screen Virtual Analog Joystick -->

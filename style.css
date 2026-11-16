@@ -90,9 +90,232 @@ html, body {
 #app.is-landing-open .hud-top,
 #app.is-landing-open .hud-bottom,
 #app.is-landing-open #btn-game-pause,
-#app.is-landing-open .hud-pause-btn {
+#app.is-landing-open .hud-pause-btn,
+#app.is-landing-open .adv-boss-raid-hud {
   opacity: 0;
   pointer-events: none !important;
+}
+
+/* Strictly hide VS right-side enemy HUD in Adventure Mode (Versus 1v1 & Tag VS untouched) */
+#app.is-adventure-active #hud-right {
+  display: none !important;
+}
+
+.adv-boss-raid-hud.hidden,
+#app.is-landing-open .adv-boss-raid-hud,
+#app:not(.is-adventure-active) .adv-boss-raid-hud {
+  display: none !important;
+}
+
+/* =========================================================================
+   ADVENTURE MODE DEDICATED COLOSSAL BOSS RAID HP BAR (#adv-boss-raid-hud)
+   Darkforge Obsidian-Brass Raid Plaque (Desktop Top-Right / Portrait Below Strip)
+   ========================================================================= */
+.adv-boss-raid-hud {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(18px, calc(50% - 568px));
+  width: clamp(230px, 34vw, 430px);
+  z-index: 12;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  background: linear-gradient(180deg, rgba(16, 12, 28, 0.94) 0%, rgba(7, 6, 15, 0.96) 100%);
+  border: 2px solid var(--bronze-lit);
+  outline: 1px solid #000;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.28),
+    inset 0 0 14px rgba(127, 29, 29, 0.36),
+    0 6px 18px rgba(0, 0, 0, 0.88);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.adv-boss-raid-hud.is-phase-2 {
+  border-color: #fb923c;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.32),
+    inset 0 0 16px rgba(234, 88, 12, 0.42),
+    0 6px 20px rgba(0, 0, 0, 0.9);
+}
+
+.adv-boss-raid-hud.is-phase-3 {
+  border-color: #c084fc;
+  box-shadow:
+    inset 0 1px 0 rgba(240, 184, 255, 0.36),
+    inset 0 0 18px rgba(147, 51, 234, 0.48),
+    0 0 14px rgba(239, 68, 68, 0.42),
+    0 6px 20px rgba(0, 0, 0, 0.92);
+}
+
+.adv-boss-raid-hud.is-core-exposed {
+  border-color: #67e8f9;
+  box-shadow:
+    inset 0 1px 0 rgba(224, 242, 254, 0.45),
+    0 0 16px rgba(56, 189, 248, 0.62),
+    0 6px 20px rgba(0, 0, 0, 0.92);
+}
+
+.adv-boss-raid-portrait-frame {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: #06040d;
+  border: 2px solid var(--bronze-lit);
+  outline: 1px solid #000;
+  box-shadow: inset 0 0 0 1px #000, 0 3px 10px rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.adv-boss-raid-portrait-frame canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.adv-boss-raid-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adv-boss-raid-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.adv-boss-raid-name {
+  font-family: var(--font-pixel);
+  font-size: clamp(0.40rem, 1.05vw, 0.56rem);
+  font-weight: normal;
+  letter-spacing: 0.04em;
+  color: #fef3c7;
+  text-shadow: 0 2px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adv-boss-raid-hp {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.32rem, 0.85vw, 0.44rem);
+  color: #fde047;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+}
+
+.adv-boss-raid-track {
+  position: relative;
+  height: 13px;
+  background: #05040b;
+  border: 1.5px solid var(--bronze-dim);
+  outline: 1px solid #000;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.92);
+  overflow: hidden;
+}
+
+.adv-boss-raid-ghost {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(180deg, #fef08a 0%, #f59e0b 55%, #b45309 100%);
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.adv-boss-raid-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(180deg, #fda4af 0%, #ef4444 38%, #b91c1c 76%, #7f1d1d 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  transition: width 0.09s linear;
+}
+
+.adv-boss-raid-hud.is-phase-2 .adv-boss-raid-fill {
+  background: linear-gradient(180deg, #fde047 0%, #fb923c 36%, #dc2626 78%, #7f1d1d 100%);
+}
+
+.adv-boss-raid-hud.is-phase-3 .adv-boss-raid-fill {
+  background: linear-gradient(180deg, #f5d0fe 0%, #c084fc 35%, #dc2626 75%, #581c87 100%);
+}
+
+.adv-boss-raid-hud.is-core-exposed .adv-boss-raid-fill {
+  background: linear-gradient(180deg, #ecfeff 0%, #67e8f9 45%, #0284c7 100%);
+}
+
+.adv-boss-raid-segments {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent calc(10% - 1px),
+    rgba(5, 4, 12, 0.55) calc(10% - 1px),
+    rgba(5, 4, 12, 0.55) 10%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.adv-boss-phase-notch {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  transform: translateX(-1px);
+  background: linear-gradient(180deg, #fef08a 0%, #d4af37 50%, #785c28 100%);
+  box-shadow: 0 0 0 1px #000;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.adv-boss-raid-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.adv-boss-raid-tag {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.25rem;
+  padding: 1px 4px;
+  background: rgba(127, 29, 29, 0.85);
+  border: 1px solid rgba(251, 146, 60, 0.72);
+  color: #fef08a;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+}
+
+.adv-boss-raid-phase {
+  font-family: var(--font-pixel);
+  font-size: clamp(0.26rem, 0.72vw, 0.34rem);
+  color: #fca5a5;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adv-boss-raid-hud.is-boss-warning .adv-boss-raid-phase {
+  color: #fef08a;
+}
+
+.adv-boss-raid-hud.is-core-exposed .adv-boss-raid-phase {
+  color: #67e8f9;
 }
 
 .fighter-plate {
@@ -4986,6 +5209,108 @@ html.is-mobile-landscape .pause-resume-btn {
 
 html.is-mobile-landscape .pause-adv-hint {
   display: none;
+}
+
+/* Dedicated Boss Raid Plaque Responsive Placement:
+   - Mobile Landscape / Short Viewports: Compact Top-Right Wing above Zone Strip & Skill Cluster
+   - Mobile Portrait: Centered cleanly below .hud-top & Zone/Spirit Strip (`env(safe-area-inset-top)` aware) */
+@media (max-height: 560px) and (min-width: 561px) {
+  .adv-boss-raid-hud {
+    top: max(4px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    width: clamp(195px, 35vw, 316px);
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .adv-boss-raid-portrait-frame {
+    width: 34px;
+    height: 34px;
+    border-width: 1.5px;
+  }
+  .adv-boss-raid-name {
+    font-size: 0.34rem;
+  }
+  .adv-boss-raid-hp {
+    font-size: 0.29rem;
+  }
+  .adv-boss-raid-track {
+    height: 9px;
+  }
+  .adv-boss-raid-tag {
+    display: none;
+  }
+  .adv-boss-raid-phase {
+    font-size: 0.25rem;
+  }
+}
+
+html.is-mobile-landscape .adv-boss-raid-hud {
+  top: max(4px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  left: auto;
+  transform: none;
+  width: clamp(195px, 35vw, 316px);
+  padding: 4px 6px;
+  gap: 6px;
+}
+
+html.is-mobile-landscape .adv-boss-raid-portrait-frame {
+  width: 34px;
+  height: 34px;
+  border-width: 1.5px;
+}
+
+html.is-mobile-landscape .adv-boss-raid-name {
+  font-size: 0.34rem;
+}
+
+html.is-mobile-landscape .adv-boss-raid-hp {
+  font-size: 0.29rem;
+}
+
+html.is-mobile-landscape .adv-boss-raid-track {
+  height: 9px;
+}
+
+html.is-mobile-landscape .adv-boss-raid-tag {
+  display: none;
+}
+
+html.is-mobile-landscape .adv-boss-raid-phase {
+  font-size: 0.25rem;
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  html:not(.is-mobile-landscape) .adv-boss-raid-hud {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    top: var(--adv-boss-portrait-top, calc(max(4px, env(safe-area-inset-top)) + 116px));
+    width: min(calc(100vw - 18px), 392px);
+    padding: 5px 8px;
+    gap: 7px;
+  }
+  html:not(.is-mobile-landscape) .adv-boss-raid-portrait-frame {
+    width: 38px;
+    height: 38px;
+    border-width: 1.5px;
+  }
+  html:not(.is-mobile-landscape) .adv-boss-raid-name {
+    font-size: 0.38rem;
+  }
+  html:not(.is-mobile-landscape) .adv-boss-raid-hp {
+    font-size: 0.32rem;
+  }
+  html:not(.is-mobile-landscape) .adv-boss-raid-track {
+    height: 11px;
+  }
+  html:not(.is-mobile-landscape) .adv-boss-raid-tag {
+    font-size: 0.22rem;
+    padding: 1px 3px;
+  }
+  html:not(.is-mobile-landscape) .adv-boss-raid-phase {
+    font-size: 0.26rem;
+  }
 }
 
 /* Thermal & Compositor Optimization: pause infinite @keyframes animations on hidden overlays & inactive panels */
