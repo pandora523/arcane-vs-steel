@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps119';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps119';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps119';
+import { Fighter } from '../entities/Fighter.js?v=30fps120';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps120';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps120';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps119';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps119';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps119';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps119';
+} from './AdventureProgression.js?v=30fps120';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps120';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps120';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps120';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -980,6 +980,7 @@ export class AdventureManager {
     this.clearHeldInputs();
     if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
       document.getElementById('victory-overlay')?.classList?.remove('is-defeat-plaque');
+      document.getElementById('hud-right')?.classList?.remove?.('hidden');
     }
 
     this.zoneIndex = 0;
@@ -1105,6 +1106,7 @@ export class AdventureManager {
     this.clearHeldInputs();
     if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
       document.getElementById('victory-overlay')?.classList?.remove('is-defeat-plaque');
+      document.getElementById('hud-right')?.classList?.remove?.('hidden');
     }
 
     const renderer = this.game.renderer;
@@ -1840,11 +1842,12 @@ export class AdventureManager {
       if (rightEls.partnerWing && !rightEls.partnerWing.classList?.contains?.('hidden')) {
         rightEls.partnerWing.classList?.add?.('hidden');
       }
-      if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
-        const rightHudEl = document.getElementById('hud-right');
-        rightHudEl?.classList?.add?.('hidden');
-      }
     }
+
+    // Keep top-left HUD portrait synced to the active Adventure hero across character switches
+    const leftHeroId = g.leftFighter?.heroId || g.slot1Hero || 'mage';
+    const leftCol = g.leftFighter?.primaryColor || '#fb923c';
+    PixelForge.setHUDPortraits(leftHeroId, leftCol, 'archfiend', '#ef4444');
 
     if (g.hudEls?.crestVs) {
       const nextCrest = this.zoneIndex === 3 ? 'BOSS' : `Z${this.zoneIndex + 1}`;

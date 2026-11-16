@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps119';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps119';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps119';
+import { Fighter } from './Fighter.js?v=30fps120';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps120';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps120';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps119';
+} from '../engine/shaders/sylvanShaders.js?v=30fps120';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -257,11 +257,11 @@ export class ArcherEx extends Fighter {
     if (!assets) return null;
     if (!assets.archer_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/archer_ex_sheet.png?v=30fps119';
+      sheet.src = 'assets/sprites/archer_ex_sheet.png?v=30fps120';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/archer_ex_vfx.png?v=30fps119';
+      vfx.src = 'assets/sprites/archer_ex_vfx.png?v=30fps120';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/archer_ex_portrait.png?v=30fps119';
+      portrait.src = 'assets/sprites/archer_ex_portrait.png?v=30fps120';
       assets.archer_ex = {
         sheet,
         vfx,
@@ -274,8 +274,8 @@ export class ArcherEx extends Fighter {
     } else if (assets.archer_ex.vfx) {
       const vfxImg = assets.archer_ex.vfx;
       const curSrc = vfxImg._deferredSrc || vfxImg._origSrc || vfxImg.src || '';
-      if (typeof curSrc === 'string' && !curSrc.includes('?v=30fps119')) {
-        const freshVfxSrc = 'assets/sprites/archer_ex_vfx.png?v=30fps119';
+      if (typeof curSrc === 'string' && !curSrc.includes('?v=30fps120')) {
+        const freshVfxSrc = 'assets/sprites/archer_ex_vfx.png?v=30fps120';
         vfxImg._origSrc = freshVfxSrc;
         if (vfxImg._deferredSrc) {
           vfxImg._deferredSrc = freshVfxSrc;
