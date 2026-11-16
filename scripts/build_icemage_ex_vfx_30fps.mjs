@@ -314,57 +314,57 @@ function drawBorealisSerratedArc(pen, opts) {
 // ============================================================================
 
 /**
- * Row 0: Serrated Borealis Cryo-Crescent Glaive Wave (`cryo_shard` / slash wave)
+ * Row 0: Supersonic Borealis Diamond-Snowflake Comet (`cryo_shard` long-range projectile!)
  */
 function renderRow0CryoWave(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
-  const pulse = Math.sin(ph);
   const rng = new DeterministicRng(301 + f * 17);
 
-  for (let k = 0; k < 5; k++) {
-    const wy = -22 + k * 11 + Math.sin(ph + k * 1.2) * 1.5;
-    const xEnd = 10 + (k % 2) * 5;
-    const xStart = -34 + ((f * 3 + k * 9) % 18);
-    pen.line(xStart, wy, xEnd, wy, k % 2 === 0 ? C_CRYO_BRIGHT : C_AURORA_ORCHID, 0.9);
-    pen.line(xStart + 4, wy - 1, xEnd, wy - 1, C_SEL_DARK, 0.85);
+  // Twin spiraling Borealis frost & aurora-orchid wake ribbons (-38 .. +22)
+  for (let x = -38; x <= 22; x++) {
+    const u = (x + 38) / 60;
+    const amp = (1 - u * 0.62) * 9.5;
+    const y1 = Math.sin(u * Math.PI * 3.0 - ph * 2.0) * amp;
+    const y2 = -Math.sin(u * Math.PI * 3.0 - ph * 2.0) * amp;
+    pen.stipple(x, y1, C_CRYO_BRIGHT, 0.95);
+    pen.stipple(x, y1 + 1, C_SEL_DARK, 0.9);
+    pen.stipple(x, y2, C_AURORA_ORCHID, 0.95);
+    pen.stipple(x, y2 - 1, C_SEL_DARK, 0.9);
   }
 
-  drawBorealisSerratedArc(pen, {
-    cx: -6 + pulse * 1.2,
-    cy: 0,
-    rx: 34,
-    ry: 39,
-    rotRad: 0,
-    aStart: -1.28,
-    aEnd: 1.28,
-    maxWidth: 16.5 + pulse * 1.0,
-    teethCount: 7,
-    toothDepth: 0.48,
-    auroraDominant: false,
-    alpha: 1.0,
-    phase: f * 0.35
-  });
+  // Foreshortened 6-point Snowflake Mach shock-ring at x = 6
+  const ringX = 6 + Math.sin(ph) * 2;
+  for (let i = 0; i < 36; i++) {
+    const a = (i / 36) * Math.PI * 2 + ph;
+    const spk = i % 6 === 0 ? 1.25 : 1.0;
+    const rx = ringX + Math.cos(a) * 4.2 * spk;
+    const ry = Math.sin(a) * 15.5 * spk;
+    pen.stipple(rx, ry, i % 6 === 0 ? C_WHITE : i % 2 === 0 ? C_CRYO_PALE : C_AURORA_ORCHID, 1.0);
+    pen.stipple(rx - 1, ry, C_SEL_DARK, 0.85);
+  }
 
-  drawBorealisSerratedArc(pen, {
-    cx: -10,
-    cy: 0,
-    rx: 23,
-    ry: 28,
-    rotRad: 0,
-    aStart: -0.95,
-    aEnd: 0.95,
-    maxWidth: 7.2,
-    teethCount: 5,
-    toothDepth: 0.38,
-    auroraDominant: true,
-    alpha: 0.95,
-    phase: -f * 0.3
-  });
+  // Central Prismatic Diamond-Comet Lance Core (-28 .. +38)
+  drawRazorSlashScar(pen, -28, 0, 38, 0, 3.8, C_CRYO_BRIGHT, C_AURORA_VIOLET, 1.0);
+  // Faceted Diamond Comet Head (+14 .. +39)
+  for (let dx = -12; dx <= 15; dx++) {
+    const u = dx < 0 ? 1 + dx / 12 : 1 - dx / 15;
+    const hw = Math.max(0.5, u * 8.2);
+    const lim = Math.ceil(hw + 1);
+    for (let dy = -lim; dy <= lim; dy++) {
+      const ady = Math.abs(dy);
+      if (ady > hw + 0.6) continue;
+      let col;
+      if (ady >= hw - 0.25) col = C_SEL_DARK;
+      else if (ady <= hw * 0.34) col = C_WHITE;
+      else col = dy < 0 ? C_CRYO_PALE : (dx > 2 ? C_CRYO_BRIGHT : C_AURORA_ORCHID);
+      pen.stipple(23 + dx, dy, col, 1.0);
+    }
+  }
 
-  drawStarSpark(pen, 28 + pulse, 0, 5 + (f % 2), C_CRYO_PALE, C_AURORA_ORCHID, 1.0);
+  drawStarSpark(pen, 37, 0, 4 + (f % 2), C_WHITE, C_CRYO_BRIGHT, 1.0);
   for (let s = 0; s < 6; s++) {
-    const sx = rng.between(-32, 22);
-    const sy = rng.between(-32, 32);
+    const sx = rng.between(-36, 16);
+    const sy = rng.between(-20, 20);
     pen.stipple(sx, sy, s % 2 === 0 ? C_CRYO_PALE : C_AURORA_ORCHID, 0.95);
     pen.stipple(sx - 1, sy, C_SEL_DARK, 0.85);
   }

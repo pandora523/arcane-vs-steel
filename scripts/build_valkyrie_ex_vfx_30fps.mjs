@@ -92,50 +92,107 @@ function putPx104(rgba, x, y, r, g, b, a = 255) {
 }
 
 /**
- * Adds bespoke Next-Gen serrated crimson-gold Valkyrie accents to Row 0 (`dragon_lance` wave)
- * and Row 4 (Valhalla Dragonfire Crescent Hit-Scar).
+ * Adds bespoke Next-Gen Crimson-Gold Gungnir Javelin, Valhalla Target-Rune, & Bifrost accents!
  */
 function addNextGenValkyrieAccents104(rgba, row, col) {
   const u = col / 29;
+  const ph = (col / 30) * Math.PI * 2;
   if (row === 0) {
-    // Blazing serrated Gungnir Mach-head & crimson-gold Valkyrie feather trails
-    const tipX = 76 + Math.sin(u * Math.PI * 2) * 3;
+    // Supersonic Winged Gungnir Lightning-Javelin Spearhead + Valhalla Mach Ring + Stepped Lightning Helix
+    const tipX = 88 + Math.sin(ph) * 2;
     const cy = 52;
-    for (let i = 0; i < 36; i++) {
-      const t = i / 35;
-      const x = tipX - t * 44;
-      const spread = 1.5 + Math.pow(t, 0.8) * 12.5;
-      const saw = Math.abs(((t * 7 + u * 4) % 1) * 2 - 1) * 2.5 * t;
-      putPx104(rgba, x, cy - spread - saw, 254, 240, 138);
-      putPx104(rgba, x, cy + spread + saw, 254, 240, 138);
-      putPx104(rgba, x - 1, cy - spread - saw + 1, 251, 113, 133);
-      putPx104(rgba, x - 1, cy + spread + saw - 1, 251, 113, 133);
-      if (t < 0.55) {
-        putPx104(rgba, x, cy, 255, 255, 255);
+    // Foreshortened Valhalla Mach shock-ring
+    const ringX = 54 + Math.sin(ph) * 3;
+    for (let k = 0; k < 32; k++) {
+      const a = (k / 32) * Math.PI * 2 + ph;
+      putPx104(
+        rgba,
+        ringX + Math.cos(a) * 4,
+        cy + Math.sin(a) * 15,
+        k % 2 === 0 ? 255 : 254,
+        k % 2 === 0 ? 255 : 240,
+        k % 2 === 0 ? 255 : 138
+      );
+    }
+    // Central Gungnir Javelin shaft + stepped golden lightning helix
+    for (let x = 14; x <= tipX; x++) {
+      const t = (x - 14) / Math.max(1, tipX - 14);
+      putPx104(rgba, x, cy, 255, 255, 255);
+      putPx104(rgba, x, cy - 1, 254, 240, 138);
+      putPx104(rgba, x, cy + 1, 251, 113, 133);
+      const zig = (((Math.floor(x / 4) + col) % 2) === 0 ? 1 : -1) * (1 - t * 0.55) * 8;
+      putPx104(rgba, x, cy + zig, 254, 240, 138);
+      putPx104(rgba, x, cy - zig * 0.7, 251, 113, 133);
+    }
+    // Winged Gungnir Spearhead at tipX
+    for (let dx = 0; dx <= 14; dx++) {
+      const hw = Math.round((dx / 14) * 6);
+      for (let dy = -hw; dy <= hw; dy++) {
+        const isCore = Math.abs(dy) <= 1;
+        putPx104(
+          rgba,
+          tipX - dx,
+          cy + dy,
+          isCore ? 255 : 254,
+          isCore ? 255 : (Math.abs(dy) === hw ? 113 : 204),
+          isCore ? 255 : (Math.abs(dy) === hw ? 133 : 21)
+        );
       }
     }
-  } else if (row === 4 && col <= 22) {
-    // Next-Gen crimson-gold serrated Valkyrie hit-scar cross
-    const k = 1 - col / 23;
-    const span = Math.round(28 * k);
-    for (let d = -span; d <= span; d++) {
-      const core = Math.abs(d) <= Math.round(9 * k);
-      putPx104(
-        rgba,
-        52 + d,
-        52 - Math.round(d * 0.48),
-        core ? 255 : 254,
-        core ? 255 : 240,
-        core ? 255 : 138
-      );
-      putPx104(
-        rgba,
-        52 + Math.round(d * 0.42),
-        52 + d,
-        core ? 255 : 251,
-        core ? 240 : 113,
-        core ? 138 : 133
-      );
+  } else if (row === 4) {
+    // Clear melee crescent & paint crisp 8-Point Valhalla Odin Target-Rune & Stepped Lightning Starburst!
+    rgba.fill(0);
+    const fade = Math.max(0, 1 - u * 0.92);
+    if (fade > 0.08) {
+      const rRing = Math.round((12 + u * 24) * 1.0);
+      for (let i = 0; i < 64; i++) {
+        const a = (i / 64) * Math.PI * 2 + u * 1.8;
+        if (u > 0.65 && i % 2 === 1) continue;
+        putPx104(
+          rgba,
+          52 + Math.cos(a) * rRing,
+          52 + Math.sin(a) * rRing,
+          i % 4 === 0 ? 255 : 254,
+          i % 4 === 0 ? 255 : 204,
+          i % 4 === 0 ? 255 : 21
+        );
+      }
+      for (let k = 0; k < 8; k++) {
+        const ang = (k * Math.PI) / 4 + 0.2;
+        const len = Math.round((k % 2 === 0 ? 38 : 26) * Math.min(1, u * 4.5 + 0.35) * fade);
+        for (let r = 2; r <= len; r++) {
+          const px = 52 + Math.cos(ang) * r;
+          const py = 52 + Math.sin(ang) * r;
+          const core = r < len * 0.55;
+          putPx104(rgba, px, py, core ? 255 : 251, core ? 240 : 113, core ? 138 : 133);
+          if (k % 2 === 0 && r < len * 0.75) {
+            putPx104(rgba, px + Math.sin(ang), py - Math.cos(ang), 190, 18, 60);
+          }
+        }
+      }
+      for (let d = -4; d <= 4; d++) {
+        putPx104(rgba, 52 + d, 52, 255, 255, 255);
+        putPx104(rgba, 52, 52 + d, 255, 255, 255);
+      }
+    }
+  } else if (row === 5) {
+    // Prismatic Bifrost multi-band pixel rim nodes on Einherjar Seal
+    const bifrostCols = [
+      [103, 232, 249],
+      [250, 204, 21],
+      [251, 113, 133],
+      [192, 132, 252]
+    ];
+    for (let k = 0; k < 8; k++) {
+      const a = ph + (k * Math.PI) / 4;
+      const c = bifrostCols[k % 4];
+      const nx = 52 + Math.cos(a) * 38;
+      const ny = 52 + Math.sin(a) * 16;
+      putPx104(rgba, nx, ny, 255, 255, 255);
+      putPx104(rgba, nx + 1, ny, c[0], c[1], c[2]);
+      putPx104(rgba, nx - 1, ny, c[0], c[1], c[2]);
+      putPx104(rgba, nx, ny + 1, c[0], c[1], c[2]);
+      putPx104(rgba, nx, ny - 1, c[0], c[1], c[2]);
     }
   }
 }

@@ -287,63 +287,94 @@ function renderRow3(f) {
   return buf;
 }
 
-// Row 4: 4-Band Serrated Emerald-Gold Bow-Glaive Slash Wave (VFXManager slashes cropY=832)
+// Row 4: Twelve-Star Lance-Arrow & Zodiac Constellation Starburst (0 melee glaive crescent!)
 function renderRow4(f) {
   const buf = makeBuf();
   const u = f / (COLS - 1);
-  const cx = 36;
+  const cx = 52;
   const cy = 52;
-  const rOut = 43;
-  const fade = Math.max(0.18, 1 - u * 0.82);
+  const fade = Math.max(0.16, 1 - u * 0.84);
+  const expand = Math.min(1, u * 3.8 + 0.32);
 
-  for (let y = 6; y < 98; y++) {
-    const dy = y - cy;
-    for (let x = 10; x < 98; x++) {
-      const dx = x - cx;
-      const r = Math.hypot(dx, dy);
-      if (r > rOut || r < 14) continue;
-      const ang = Math.atan2(dy, dx);
-      const a0 = -1.22 + u * 0.42;
-      const a1 = 1.22 - u * 0.15;
-      if (ang < a0 || ang > a1) continue;
-      const au = (ang - a0) / Math.max(0.1, a1 - a0);
-      const env = Math.sin(au * Math.PI) ** 0.55;
-      const saw = Math.abs((((au * 8) % 1) * 2) - 1) * 4.8 * fade;
-      const rIn = 18 + (rOut - 18) * (1 - env * fade) + saw;
-      if (r < rIn) continue;
-      const v = (r - rIn) / Math.max(1.5, rOut - rIn);
-      let col = PAL.forestDeep;
-      if (v > 0.76) col = PAL.white;
-      else if (v > 0.50) col = PAL.goldLight;
-      else if (v > 0.24) col = PAL.emeraldBright;
-      setPx(buf, x, y, col);
+  // Foreshortened Emerald-Gold Zodiac Ring
+  const rRing = 14 + expand * 24;
+  for (let i = 0; i < 72; i++) {
+    if (u > 0.65 && i % 2 === 1) continue;
+    const a = (i / 72) * Math.PI * 2 + u * 1.6;
+    setPx(
+      buf,
+      cx + Math.cos(a) * rRing,
+      cy + Math.sin(a) * (rRing * 0.45),
+      i % 6 === 0 ? PAL.white : i % 2 === 0 ? PAL.goldLight : PAL.emeraldBright
+    );
+  }
+
+  // Descending Starlight Lance-Arrow shaft (early frames) + 8-Point Constellation Starburst
+  if (u < 0.55) {
+    const topY = 10 + u * 26;
+    drawLine(buf, cx, topY, cx, cy + 12, PAL.emeraldBright, 1.8);
+    drawLine(buf, cx, topY + 4, cx, cy + 12, PAL.white, 0.8);
+    drawLine(buf, cx - 6, cy + 2, cx, cy + 14, PAL.goldLight, 1.1);
+    drawLine(buf, cx + 6, cy + 2, cx, cy + 14, PAL.goldLight, 1.1);
+  }
+
+  for (let k = 0; k < 8; k++) {
+    const ang = (k * Math.PI) / 4 + 0.18;
+    const len = (k % 2 === 0 ? 38 : 25) * expand * fade;
+    drawLine(
+      buf,
+      cx + Math.cos(ang) * 3,
+      cy + Math.sin(ang) * 3,
+      cx + Math.cos(ang) * len,
+      cy + Math.sin(ang) * len,
+      k % 2 === 0 ? PAL.goldLight : PAL.emeraldBright,
+      k % 2 === 0 ? 1.3 : 0.8
+    );
+    if (k % 2 === 0) {
+      drawLine(
+        buf,
+        cx + Math.cos(ang) * 2,
+        cy + Math.sin(ang) * 2,
+        cx + Math.cos(ang) * (len * 0.65),
+        cy + Math.sin(ang) * (len * 0.65),
+        PAL.white,
+        0.5
+      );
     }
   }
+  drawDisc(buf, cx, cy, Math.max(1.5, 4.5 * fade), PAL.white);
   applySelout104(buf);
   return buf;
 }
 
-// Row 5: Yggdrasil World-Tree Runic Ground Seal
+// Row 5: 2.5D Zodiac Target Astrolabe & Yggdrasil World-Tree Runic Ground Seal
 function renderRow5(f) {
   const buf = makeBuf();
   const ph = (f / COLS) * Math.PI * 2;
   const cx = 52;
   const cy = 56;
-  const rx = 38;
+  const rx = 40;
   const ry = 17;
 
   for (let i = 0; i < 120; i++) {
     const a = (i / 120) * Math.PI * 2;
     setPx(buf, cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, PAL.emeraldBright);
     setPx(buf, cx + Math.cos(a) * (rx - 3), cy + Math.sin(a) * (ry - 1.5), PAL.goldLight);
+    setPx(buf, cx + Math.cos(a) * (rx * 0.56), cy + Math.sin(a) * (ry * 0.56), i % 2 === 0 ? PAL.mintLight : PAL.emeraldMid);
   }
-  for (let k = 0; k < 6; k++) {
-    const a = ph + (k * Math.PI * 2) / 6;
-    const dx = cx + Math.cos(a) * (rx * 0.76);
-    const dy = cy + Math.sin(a) * (ry * 0.76);
-    drawDisc(buf, dx, dy, 2.8, k % 2 === 0 ? PAL.goldBright : PAL.emeraldBright);
-    setPx(buf, dx, dy, PAL.white);
-    drawLine(buf, cx, cy, dx, dy, PAL.forestDeep, 0);
+  // 12 Rotating Zodiac Constellation Star Nodes + 6 World-Tree Root Spokes
+  for (let k = 0; k < 12; k++) {
+    const a = ph + (k * Math.PI * 2) / 12;
+    const dx = cx + Math.cos(a) * (rx * 0.82);
+    const dy = cy + Math.sin(a) * (ry * 0.82);
+    if (k % 2 === 0) {
+      drawLine(buf, cx, cy, dx, dy, PAL.emeraldMid, 0);
+      drawDisc(buf, dx, dy, 2.4, PAL.goldBright);
+      setPx(buf, dx, dy, PAL.white);
+    } else {
+      setPx(buf, dx, dy, PAL.mintLight);
+      setPx(buf, dx + 1, dy, PAL.emeraldBright);
+    }
   }
   drawDisc(buf, cx, cy, 4.0, PAL.goldLight);
   drawDisc(buf, cx, cy, 2.0, PAL.white);
