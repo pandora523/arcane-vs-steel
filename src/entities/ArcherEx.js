@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps120';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps120';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps120';
+import { Fighter } from './Fighter.js?v=30fps121';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps121';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps121';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps120';
+} from '../engine/shaders/sylvanShaders.js?v=30fps121';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -232,6 +232,7 @@ export class ArcherEx extends Fighter {
     this._drewBowVortex = false;
     this._skillLockSpawned = false;
     this._deathBurstTriggered = false;
+    this._arrowStarParticles = [];
   }
 
   getAiStyleProfile() {
@@ -257,11 +258,11 @@ export class ArcherEx extends Fighter {
     if (!assets) return null;
     if (!assets.archer_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/archer_ex_sheet.png?v=30fps120';
+      sheet.src = 'assets/sprites/archer_ex_sheet.png?v=30fps121';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/archer_ex_vfx.png?v=30fps120';
+      vfx.src = 'assets/sprites/archer_ex_vfx.png?v=30fps121';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/archer_ex_portrait.png?v=30fps120';
+      portrait.src = 'assets/sprites/archer_ex_portrait.png?v=30fps121';
       assets.archer_ex = {
         sheet,
         vfx,
@@ -274,8 +275,8 @@ export class ArcherEx extends Fighter {
     } else if (assets.archer_ex.vfx) {
       const vfxImg = assets.archer_ex.vfx;
       const curSrc = vfxImg._deferredSrc || vfxImg._origSrc || vfxImg.src || '';
-      if (typeof curSrc === 'string' && !curSrc.includes('?v=30fps120')) {
-        const freshVfxSrc = 'assets/sprites/archer_ex_vfx.png?v=30fps120';
+      if (typeof curSrc === 'string' && !curSrc.includes('?v=30fps121')) {
+        const freshVfxSrc = 'assets/sprites/archer_ex_vfx.png?v=30fps121';
         vfxImg._origSrc = freshVfxSrc;
         if (vfxImg._deferredSrc) {
           vfxImg._deferredSrc = freshVfxSrc;
@@ -412,6 +413,7 @@ export class ArcherEx extends Fighter {
       this._arrowEndX = this.x;
       this._trueUltPierced = false;
       this._phaseThroughEnemy = false;
+      this._arrowStarParticles = [];
       this.isFlipVault = false;
       this.trueUltFrameOverride = 120;
       this._overrideFrameIdx = 120;
@@ -438,6 +440,7 @@ export class ArcherEx extends Fighter {
       this.fx?.clear();
       this.constellationSeekers = [];
       this.starRainLances = [];
+      this._arrowStarParticles = [];
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
     }
@@ -535,6 +538,37 @@ export class ArcherEx extends Fighter {
       hex,
       age: 0,
       maxLife
+    });
+  }
+
+  spawnArrowStarParticle(
+    x,
+    y,
+    vx = 0,
+    vy = 0,
+    maxLife = 0.34,
+    kind = 'spark',
+    colorHex = '#6ee7b7',
+    size = 4,
+    glowHex = '#10b981',
+    attractX = null,
+    attractY = null
+  ) {
+    if (this._arrowStarParticles.length >= 96) this._arrowStarParticles.shift();
+    this._arrowStarParticles.push({
+      x,
+      y,
+      vx,
+      vy,
+      age: 0,
+      maxLife,
+      kind,
+      colorHex,
+      glowHex,
+      size,
+      phase: this._arrowStarParticles.length * 0.7,
+      attractX,
+      attractY
     });
   }
 
@@ -1012,6 +1046,24 @@ export class ArcherEx extends Fighter {
       this.starlightGlints[i].age += dt;
       if (this.starlightGlints[i].age >= this.starlightGlints[i].maxLife) {
         this.starlightGlints.splice(i, 1);
+      }
+    }
+    for (let i = this._arrowStarParticles.length - 1; i >= 0; i--) {
+      const p = this._arrowStarParticles[i];
+      p.age += dt;
+      if (p.attractX !== null && p.attractY !== null) {
+        p.vx += (p.attractX - p.x) * 20 * dt;
+        p.vy += (p.attractY - p.y) * 20 * dt;
+      } else {
+        const damp = 1 - Math.min(0.85, 2.0 * dt);
+        p.vx *= damp;
+        p.vy *= damp;
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.phase += dt * 11;
+      if (p.age >= p.maxLife) {
+        this._arrowStarParticles.splice(i, 1);
       }
     }
 
@@ -2008,6 +2060,21 @@ export class ArcherEx extends Fighter {
 
     this.spawnLeafRuneBurst(impX, impYBase, 18, 225, true);
     this.spawnStarGlint(impX, impYBase, 16, '#ffffff', 0.34);
+    for (let k = 0; k < 24; k++) {
+      const ang = (k / 24) * Math.PI * 2 + 0.18;
+      const spd = 140 + (k % 4) * 75;
+      this.spawnArrowStarParticle(
+        impX + this.facing * ((k % 3) * 14 - 12),
+        impYBase + ((k % 5) - 2) * 10,
+        Math.cos(ang) * spd + this.facing * 90,
+        Math.sin(ang) * spd * 0.72,
+        0.34 + (k % 3) * 0.08,
+        k % 3 === 0 ? 'star' : 'spark',
+        k % 2 === 0 ? '#fef08a' : '#6ee7b7',
+        k % 3 === 0 ? 6 : 4,
+        k % 2 === 0 ? '#fde047' : '#10b981'
+      );
+    }
 
     const hitSet = new Set();
     const allCandidates = [
@@ -2023,11 +2090,7 @@ export class ArcherEx extends Fighter {
         tFoe.stunTimer = 0;
         tFoe.takeDamage(700, this, true, 210, -210);
         const impY = (tFoe.groundY || this.groundY) - 96;
-        this.spawnVfxAnim(3, tFoe.x, impY, 216, 216, 0.44, {
-          flipX: this.facing < 0,
-          inFront: true
-        });
-        this.spawnVfxAnim(4, tFoe.x, impY, 224, 224, 0.42, {
+        this.spawnVfxAnim(4, tFoe.x, impY, 220, 220, 0.42, {
           flipX: false,
           inFront: true
         });
@@ -2147,14 +2210,6 @@ export class ArcherEx extends Fighter {
           light: 1.22,
           extra: { radius: 26, height: 45 }
         });
-        this.spawnVfxAnim(2, lockX, lockY - 82, 232, 232, 1.72, {
-          flipX: false,
-          inFront: false
-        });
-        this.spawnVfxAnim(5, lockX, lockY - 72, 340, 220, 1.72, {
-          flipX: false,
-          inFront: false
-        });
       }
 
       if (targets.length === 0) {
@@ -2197,18 +2252,18 @@ export class ArcherEx extends Fighter {
       }
     }
 
-    // Phase 1 (`0.00..0.18s`): Ground Coil & World-Tree Root Bind (`Row 4 F00..F02`)
-    if (t < 0.18) {
+    // Phase 1 (`0.00..0.16s`): Ground Coil & World-Tree Root Bind (`Row 4 F00..F02`)
+    if (t < 0.16) {
       this.y = this.groundY;
       this.cameraAirLift = 0;
-      const fIdx = 120 + Math.min(2, Math.floor((t / 0.18) * 3));
+      const fIdx = 120 + Math.min(2, Math.floor((t / 0.16) * 3));
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
       return;
     }
 
-    // Phase 2 (`0.18..0.96s`): Fast Aerial Backflip Somersault (`123..134, 137..141`) -> Far Edge!
-    if (t < 0.96) {
+    // Phase 2 (`0.16..0.84s`): Clean Aerial Backflip Somersault (`123..134`) -> Far Edge (`0` circular clutter!)
+    if (t < 0.84) {
       if (this._trueUltStep < 2) {
         this._trueUltStep = 2;
         this._trueUltJumpStartX = this.x;
@@ -2224,29 +2279,20 @@ export class ArcherEx extends Fighter {
           offsetY: -124,
           flip: this.facing < 0,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 1.30,
+          maxDuration: 1.32,
           light: 1.28,
           extra: { wingSpan: 34 }
-        });
-        this.fx.spawn('sylvanBowDrawVortex', this._safeFxX(this.x + this.facing * 26, game), this._safeFxY(this.y - 96), {
-          follow: this,
-          offsetX: 26,
-          offsetY: -96,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 1.30,
-          light: 1.26,
-          extra: { radius: 28 }
         });
         if (game?.vfx) {
           game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'FAR-HORIZON VAULT!', '#fef08a');
         }
       }
 
-      const jumpU = Math.min(1, Math.max(0, (t - 0.18) / 0.78));
+      const jumpU = Math.min(1, Math.max(0, (t - 0.16) / 0.68));
       const easeX = 0.5 - 0.5 * Math.cos(Math.PI * jumpU);
       const settleBlend = 0.5 - 0.5 * Math.cos(Math.PI * jumpU);
       const arcPeak = 176 * Math.pow(Math.sin(Math.PI * jumpU), 1.35) * (1 - 0.18 * jumpU);
-      const lift = 86 * settleBlend + arcPeak;
+      const lift = 84 * settleBlend + arcPeak;
 
       this.x = this._trueUltJumpStartX + (this._trueUltFarEdgeX - this._trueUltJumpStartX) * easeX;
       this.y = this.groundY - lift;
@@ -2256,13 +2302,12 @@ export class ArcherEx extends Fighter {
       const targetDir = this._trueUltTargetX >= this._trueUltFarEdgeX ? 1 : -1;
       this.facing = jumpU >= 0.46 ? targetDir : jumpDir;
 
-      const flipHoverSeq = [123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 137, 138, 139, 140, 141];
-      const seqIdx = Math.min(flipHoverSeq.length - 1, Math.floor(jumpU * flipHoverSeq.length));
-      const fIdx = flipHoverSeq[seqIdx];
+      const flipSeqIdx = Math.min(11, Math.floor(jumpU * 12));
+      const fIdx = 123 + flipSeqIdx;
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
 
-      if (t >= 0.50 && !this._trueUltCanopyBloomed) {
+      if (t >= 0.48 && !this._trueUltCanopyBloomed) {
         this._trueUltCanopyBloomed = true;
         if (game?.audio) game.audio.play('archer_ult', this.x);
         if (game?.vfx) {
@@ -2279,48 +2324,42 @@ export class ArcherEx extends Fighter {
       }
 
       this._trueUltMoteTimer += dt;
-      if (this._trueUltMoteTimer >= 0.045) {
+      if (this._trueUltMoteTimer >= 0.042) {
         this._trueUltMoteTimer = 0;
-        const blendU = Math.min(1, Math.max(0, (t - 0.18) / 0.78));
+        const blendU = jumpU;
         const muzzleX = this.x + this.facing * (12 + 12 * blendU);
         const muzzleY = this.y - (78 + 44 * blendU);
         const spAng = t * 11.5;
-        const spRad = 54 * (1 - 0.35 * blendU);
-        this.spawnStarGlint(
+        const spRad = 48 * (1 - 0.35 * blendU);
+        this.spawnArrowStarParticle(
           muzzleX + Math.cos(spAng) * spRad,
           muzzleY + Math.sin(spAng) * spRad,
-          5 + Math.round(blendU * 3),
+          -this.facing * 24,
+          -26,
+          0.32,
+          'star',
           blendU > 0.5 ? '#fde047' : '#a7f3d0',
-          0.22
+          5,
+          '#10b981'
         );
-        this.pixelLeafRunes.push({
-          x: muzzleX - Math.cos(spAng) * spRad,
-          y: muzzleY - Math.sin(spAng) * spRad,
-          vx: Math.cos(spAng) * 110 - Math.sin(spAng) * 48,
-          vy: Math.sin(spAng) * 110 + Math.cos(spAng) * 48,
-          phase: spAng,
-          isGold: Math.floor(t * 16) % 2 === 0,
-          age: 0,
-          maxLife: 0.34
-        });
       }
 
       this._afterimageTimer += dt;
-      if (this._afterimageTimer >= 0.065 && fIdx <= 134) {
+      if (this._afterimageTimer >= 0.065) {
         this._afterimageTimer = 0;
         this.spawnAfterimage(this.x, this.y, this.facing, 4, fIdx - 120, 0.22);
       }
       return;
     }
 
-    // Phase 3 (`0.96..1.48s`): Winged Mid-Air Hover Overdraw (`140..144`, `y = groundY - 86`) + Imploding Starlight!
-    if (t < 1.48) {
+    // Phase 3 (`0.84..1.52s`): Clear 10-Frame Winged Bow-Pull Animation (`frames 135..144`) + Converging Starlight!
+    if (t < 1.52) {
       if (this._trueUltStep < 3) {
         this._trueUltStep = 3;
         this.x = this._trueUltFarEdgeX;
-        this.y = this.groundY - 86;
+        this.y = this.groundY - 84;
         this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
-        this.spawnLeafRuneBurst(this.x, this.y - 118, 12, 165, true);
+        this.spawnLeafRuneBurst(this.x, this.y - 114, 10, 155, true);
         if (game?.vfx) {
           game.vfx.spawnDamageText(
             this.x,
@@ -2333,56 +2372,66 @@ export class ArcherEx extends Fighter {
         }
       }
 
-      this.x = this._trueUltFarEdgeX;
+      const drawU = Math.min(1, Math.max(0, (t - 0.84) / 0.68));
+      const drawLift = 84 + 6 * Math.sin(drawU * Math.PI);
+      this.x = this._trueUltFarEdgeX - this.facing * (4 * drawU);
       this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
-      this.y = this.groundY - 86;
-      this.cameraAirLift = 86 * 0.72;
+      this.y = this.groundY - drawLift;
+      this.cameraAirLift = drawLift * 0.72;
 
-      const drawU = Math.min(1, Math.max(0, (t - 0.96) / 0.52));
-      const fIdx = 140 + Math.min(4, Math.floor(drawU * 5));
+      const fIdx = 135 + Math.min(9, Math.floor(drawU * 10));
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
 
-      // Imploding starlight & leaf-runes pulled inward into Sylvara's transforming core
+      // Converging emerald-gold starlight & sparkles drawn smoothly into the nocked arrow tip (0 circles blocking her!)
       this._trueUltMoteTimer += dt;
-      if (this._trueUltMoteTimer >= 0.045) {
+      if (this._trueUltMoteTimer >= 0.026) {
         this._trueUltMoteTimer = 0;
-        const muzzleX = this.x + this.facing * 20;
-        const muzzleY = this.y - 116;
-        const spAng = t * 13.5;
-        const spRad = 66 * (1 - 0.65 * drawU);
-        this.spawnStarGlint(
-          muzzleX + Math.cos(spAng) * spRad,
-          muzzleY + Math.sin(spAng) * spRad,
-          6 + Math.round(drawU * 5),
-          drawU > 0.55 ? '#ffffff' : '#fde047',
-          0.20
-        );
-        if (this.pixelLeafRunes.length < 44) {
+        const tipX = this.x + this.facing * (48 - 14 * drawU);
+        const tipY = this.y - 110;
+        for (let k = 0; k < 3; k++) {
+          const spAng = t * 14.0 + k * 2.094;
+          const spRad = (48 + k * 14) * (1 - 0.52 * drawU) + 12;
+          const px = tipX + Math.cos(spAng) * spRad;
+          const py = tipY + Math.sin(spAng) * (spRad * 0.68);
+          this.spawnArrowStarParticle(
+            px,
+            py,
+            (tipX - px) * 3.8,
+            (tipY - py) * 3.8,
+            0.24,
+            k === 0 ? 'star' : 'spark',
+            k === 0 ? '#ffffff' : drawU > 0.55 ? '#fef08a' : '#6ee7b7',
+            k === 0 ? 5 : 4,
+            drawU > 0.55 ? '#fde047' : '#10b981',
+            tipX,
+            tipY
+          );
+        }
+        if (this.pixelLeafRunes.length < 48) {
           this.pixelLeafRunes.push({
-            x: muzzleX - Math.cos(spAng) * spRad,
-            y: muzzleY - Math.sin(spAng) * spRad,
-            vx: Math.cos(spAng) * 165,
-            vy: Math.sin(spAng) * 165,
-            phase: spAng,
+            x: tipX + (Math.cos(t * 9) * 34),
+            y: tipY + (Math.sin(t * 11) * 26),
+            vx: (tipX - (tipX + Math.cos(t * 9) * 34)) * 2.2,
+            vy: -24,
+            phase: t * 12,
             isGold: Math.floor(t * 20) % 2 === 0,
             age: 0,
-            maxLife: 0.24
+            maxLife: 0.28
           });
         }
       }
       return;
     }
 
-    // Phase 4 (`1.48..2.20s`): SYLVARA BECOMES THE COLOSSAL GLOWING GREAT-ARROW & SHOOTS THROUGH ENEMY!
+    // Phase 4 (`1.52..2.20s`): SYLVARA BECOMES THE SLENDER RADIANT CELESTIAL GREAT-ARROW & PIERCES ENEMY!
     if (t < 2.20) {
       if (this._trueUltStep < 4) {
         this._trueUltStep = 4;
-        this.fx?.stopByKey('sylvanBowDrawVortex');
         this.fx?.stopByKey('astralWingPlume');
         this._isTransformedArrow = true;
         this._phaseThroughEnemy = true;
-        this._trueUltBeamTimer = 0.86;
+        this._trueUltBeamTimer = 0.84;
         if (Number.isFinite(this._trueUltFarEdgeX)) {
           this.x = this._trueUltFarEdgeX;
         }
@@ -2407,58 +2456,104 @@ export class ArcherEx extends Fighter {
           game.audio.play('solar_beam', this.x);
         }
         this.heal(Math.round(this.maxHp * 0.14), 'WORLD-TREE GRACE');
-        this.spawnLeafRuneBurst(this._arrowStartX, this.groundY - 184, 12, 180, true);
-        this.spawnStarGlint(this._arrowStartX, this.groundY - 184, 14, '#ffffff', 0.28);
-        this.fx.spawn('sonicBowReleaseWave', this._safeFxX(this._arrowStartX, game), this._safeFxY(this.groundY - 184), {
-          flip: false,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          light: 1.28,
-          extra: { aimAngle: this.facing >= 0 ? 0 : Math.PI, radius: 32, twin: true }
-        });
+        const launchY = this.groundY - 184;
+        this.spawnLeafRuneBurst(this._arrowStartX, launchY, 14, 185, true);
+        this.spawnStarGlint(this._arrowStartX, launchY, 14, '#ffffff', 0.28);
+        for (let k = 0; k < 20; k++) {
+          const ang = ((k / 20) - 0.5) * 1.45;
+          const spd = 110 + (k % 5) * 42;
+          this.spawnArrowStarParticle(
+            this._arrowStartX + this.facing * ((k % 4) * 18 - 18),
+            launchY + ((k % 5) - 2) * 8,
+            -this.facing * Math.cos(ang) * spd,
+            Math.sin(ang) * spd,
+            0.34 + (k % 3) * 0.08,
+            k % 3 === 0 ? 'star' : 'spark',
+            k % 2 === 0 ? '#ffffff' : k % 3 === 1 ? '#fef08a' : '#6ee7b7',
+            k % 3 === 0 ? 6 : 4,
+            k % 2 === 0 ? '#fde047' : '#10b981'
+          );
+        }
       }
 
-      const uFly = Math.min(1, Math.max(0, (t - 1.48) / 0.58));
-      const easeFly = 1 - Math.pow(1 - uFly, 2.4);
+      const uFly = Math.min(1, Math.max(0, (t - 1.52) / 0.54));
+      const easeFly = 1 - Math.pow(1 - uFly, 2.35);
       this.x = t < 2.06 ? this._arrowStartX + (this._arrowEndX - this._arrowStartX) * easeFly : this._arrowEndX;
       this.y = this.groundY - 92;
       this.cameraAirLift = 66;
 
-      // Dense trailing pixelLeafRunes & starlightGlints behind the flying Sovereign Great-Arrow
+      // Dense radiant particle shower streaming off the slender Great-Arrow tip, pinions & comet wake!
       this._trueUltMoteTimer += dt;
-      if (this._trueUltMoteTimer >= 0.028) {
+      if (this._trueUltMoteTimer >= 0.016) {
         this._trueUltMoteTimer = 0;
-        const trailX = this.x - this.facing * 72;
-        const trailY = this.y - 92;
-        const wave = Math.sin(t * 28) * 32;
-        if (this.pixelLeafRunes.length < 44) {
+        const centerY = this.y - 92;
+        const wave = Math.sin(t * 32) * 18;
+        const tipSpX = this.x + this.facing * 168;
+        const pinionSpX = this.x + this.facing * 14;
+        const tailSpX = this.x - this.facing * 136;
+
+        // 1. White-gold tip sparklers shedding along flight wake
+        this.spawnArrowStarParticle(
+          tipSpX,
+          centerY + (Math.cos(t * 28) * 6),
+          -this.facing * 195,
+          wave * 1.5,
+          0.46,
+          'star',
+          '#ffffff',
+          6,
+          '#fde047'
+        );
+        // 2. Twin swept light-pinion wingtip sparkles
+        for (const side of [-1, 1]) {
+          this.spawnArrowStarParticle(
+            pinionSpX,
+            centerY + side * (20 + Math.sin(t * 24 + side) * 6),
+            -this.facing * 165,
+            side * 28,
+            0.52,
+            Math.floor(t * 30) % 2 === 0 ? 'spark' : 'star',
+            side > 0 ? '#6ee7b7' : '#fef08a',
+            4,
+            '#10b981'
+          );
+        }
+        // 3. Shimmering comet tail stardust & golden-emerald embers
+        this.spawnArrowStarParticle(
+          tailSpX,
+          centerY + wave * 0.85,
+          -this.facing * 235,
+          wave * 1.1,
+          0.58,
+          'spark',
+          '#34d399',
+          4,
+          '#059669'
+        );
+        this.spawnArrowStarParticle(
+          tailSpX - this.facing * 36,
+          centerY - wave * 0.75,
+          -this.facing * 210,
+          -wave * 0.9,
+          0.54,
+          'star',
+          '#fde047',
+          5,
+          '#10b981'
+        );
+
+        if (this.pixelLeafRunes.length < 64) {
           this.pixelLeafRunes.push({
-            x: trailX,
-            y: trailY + wave,
-            vx: -this.facing * 145,
-            vy: wave * 1.4,
+            x: tailSpX + this.facing * 22,
+            y: centerY + wave * 0.9,
+            vx: -this.facing * 155,
+            vy: wave * 1.2,
             phase: t * 14,
             isGold: Math.floor(t * 30) % 2 === 0,
             age: 0,
             maxLife: 0.36
           });
-          this.pixelLeafRunes.push({
-            x: trailX - this.facing * 28,
-            y: trailY - wave * 0.85,
-            vx: -this.facing * 175,
-            vy: -wave * 1.2,
-            phase: t * 14 + 1.5,
-            isGold: Math.floor(t * 30) % 2 === 1,
-            age: 0,
-            maxLife: 0.32
-          });
         }
-        this.spawnStarGlint(
-          trailX + this.facing * 18,
-          trailY + (Math.cos(t * 24) * 26),
-          uFly < 1 ? 8 : 6,
-          Math.floor(t * 24) % 2 === 0 ? '#fde047' : '#ffffff',
-          0.20
-        );
       }
 
       if (!this._trueUltPierced && (uFly >= 0.42 || Math.abs(this.x - this._trueUltTargetX) <= 68)) {
@@ -2481,12 +2576,24 @@ export class ArcherEx extends Fighter {
       this.x = this._arrowEndX;
       this.y = this.groundY - 92;
       this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
-      this.spawnLeafRuneBurst(this.x, this.y - 92, 16, 185, true);
-      this.spawnStarGlint(this.x, this.y - 92, 14, '#ffffff', 0.30);
-      this.spawnVfxAnim(2, this.x, this.y - 92, 224, 224, 0.38, {
-        flipX: this.facing < 0,
-        inFront: true
-      });
+      const rematY = this.y - 92;
+      this.spawnLeafRuneBurst(this.x, rematY, 16, 185, true);
+      this.spawnStarGlint(this.x, rematY, 14, '#ffffff', 0.30);
+      for (let k = 0; k < 16; k++) {
+        const ang = (k / 16) * Math.PI * 2;
+        const spd = 95 + (k % 3) * 45;
+        this.spawnArrowStarParticle(
+          this.x,
+          rematY,
+          Math.cos(ang) * spd,
+          Math.sin(ang) * spd * 0.75 - 18,
+          0.38,
+          k % 2 === 0 ? 'star' : 'spark',
+          k % 2 === 0 ? '#a7f3d0' : '#fef08a',
+          k % 2 === 0 ? 5 : 4,
+          '#10b981'
+        );
+      }
       if (game?.audio) game.audio.play('zephyr_flip', this.x);
     }
 
@@ -2499,7 +2606,7 @@ export class ArcherEx extends Fighter {
       descU < 0.22 ? 92 : 92 * Math.cos(((descU - 0.22) / 0.78) * (Math.PI * 0.5));
     this.y = this.groundY - remLift;
     this.cameraAirLift = remLift * 0.72;
-    const relIdx = 144 + Math.min(5, Math.floor(descU * 6));
+    const relIdx = 145 + Math.min(4, Math.floor(descU * 5));
     this.trueUltFrameOverride = relIdx;
     this._overrideFrameIdx = relIdx;
 
@@ -2522,7 +2629,7 @@ export class ArcherEx extends Fighter {
   }
 
   /**
-   * Renders a luminous pixel-art World-Tree Canopy behind Sylvara EX + Zodiac Target Astrolabe over `_trueUltTargetX`!
+   * Renders clean floor sanctuary glow & floating starlight motes during `TRUE_ULTIMATE` (0 circle/polygon rings!).
    */
   drawWorldTreeAndZodiacAstrolabe(ctx) {
     const inTrueUlt = this.state === 'TRUE_ULTIMATE';
@@ -2538,67 +2645,23 @@ export class ArcherEx extends Fighter {
 
     const tx = Math.round((this._trueUltFarEdgeX ?? this.x) / 4) * 4;
     const gy = Math.round(this.groundY / 4) * 4;
+    const zx = Math.round(this._trueUltTargetX / 2) * 2;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. 4x4 Bayer-dithered Emerald-Gold World-Tree Floor Sanctuary Halo
-    drawBayerSylvanHalo(ctx, tx, gy - 2, 164, 24, '#10b981', 0.17 * fade, 4);
-    drawBayerSylvanHalo(ctx, tx, gy - 2, 98, 14, '#fde047', 0.15 * fade, 4);
+    // 4x4 Bayer-dithered Emerald-Gold Floor Sanctuary Glow (no rings or circles!)
+    drawBayerSylvanHalo(ctx, tx, gy - 2, 148, 20, '#10b981', 0.17 * fade, 4);
+    drawBayerSylvanHalo(ctx, tx, gy - 2, 84, 12, '#fde047', 0.15 * fade, 4);
+    drawBayerSylvanHalo(ctx, zx, gy - 2, 120, 18, '#34d399', 0.16 * fade, 4);
 
-    // 2. Luminous Row 5 Yggdrasil World-Tree & Sagittarius Constellation Canopy Seal (zero boxy fillRect slabs!)
-    const sprites = this.getExSprites();
-    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
-    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      const canopyCol = Math.floor(t * 24) % 30;
-      const sx = canopyCol * 208;
-      const sy = 5 * 208;
-      ctx.save();
-      ctx.translate(tx, gy - 152);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(0.92, fade * 0.88);
-      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -168, -168, 336, 336);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.32, fade * 0.28);
-      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -168, -168, 336, 336);
-      ctx.restore();
+    // Subtle ascending 4-point starlight motes above Sylvara's perch & target anchor
+    for (let k = 0; k < 6; k++) {
+      const floatUp = ((t * 48 + k * 24) % 120);
+      const sx = tx + (k - 2.5) * 32 + Math.round(Math.sin(t * 4 + k) * 8);
+      const sy = gy - 44 - floatUp;
+      drawStarlightGlint(ctx, sx, sy, k % 2 === 0 ? 5 : 4, k % 2 === 0 ? '#fde047' : '#a7f3d0', fade * 0.72);
     }
-
-    // 8 Twinkling Star-Fruits orbiting the World-Tree Canopy
-    for (let k = 0; k < 8; k++) {
-      const sx = tx + ((k - 3.5) * 34);
-      const sy = gy - 236 - (k % 3) * 18;
-      drawStarlightGlint(ctx, sx, sy, 4 + (k % 2) * 2, k % 2 === 0 ? '#fde047' : '#a7f3d0', fade * 0.85);
-    }
-
-    // 3. Rotating 12-Node Pixel Zodiac Target Astrolabe over `_trueUltTargetX`!
-    const zx = Math.round(this._trueUltTargetX / 2) * 2;
-    const zy = Math.round((this.groundY - 96) / 2) * 2;
-    drawBayerSylvanHalo(ctx, zx, this.groundY - 2, 136, 20, '#34d399', 0.16 * fade, 4);
-
-    let prevNx = null;
-    let prevNy = null;
-    let firstNx = null;
-    let firstNy = null;
-    for (let k = 0; k < 12; k++) {
-      const ang = t * 1.8 + (k * Math.PI) / 6;
-      const r = k % 2 === 0 ? 86 : 62;
-      const nx = zx + Math.cos(ang) * r;
-      const ny = zy + Math.sin(ang) * (r * 0.78);
-      if (prevNx !== null) {
-        drawPixelConstellationThread(ctx, prevNx, prevNy, nx, ny, '#6ee7b7', fade * 0.68);
-      } else {
-        firstNx = nx;
-        firstNy = ny;
-      }
-      prevNx = nx;
-      prevNy = ny;
-      drawStarlightGlint(ctx, nx, ny, k % 3 === 0 ? 6 : 4, k % 2 === 0 ? '#fde047' : '#34d399', fade * 0.92);
-    }
-    if (prevNx !== null && firstNx !== null) {
-      drawPixelConstellationThread(ctx, prevNx, prevNy, firstNx, firstNy, '#6ee7b7', fade * 0.68);
-    }
-    drawStarlightGlint(ctx, zx, zy, 10, '#ffffff', fade * 0.95);
 
     ctx.restore();
   }
@@ -2712,7 +2775,7 @@ export class ArcherEx extends Fighter {
       drawStarlightGlint(ctx, ln.x, ln.y, ln.isZenith ? 10 : 6, '#fde047', 0.96);
     }
 
-    // Drifting Pixel Leaf-Runes & 4-Point Star-Glints!
+    // Drifting Pixel Leaf-Runes, 4-Point Star-Glints & Additive Celestial Arrow Particles!
     for (const l of this.pixelLeafRunes) {
       const fade = 1 - l.age / l.maxLife;
       drawPixelLeafRune(ctx, l.x, l.y, l.phase, l.isGold, fade * 0.94);
@@ -2721,11 +2784,42 @@ export class ArcherEx extends Fighter {
       const fade = 1 - g.age / g.maxLife;
       drawStarlightGlint(ctx, g.x, g.y, g.arm, g.hex, fade * 0.96);
     }
+    if (this._arrowStarParticles.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalCompositeOperation = 'lighter';
+      for (const p of this._arrowStarParticles) {
+        const u = Math.min(1, Math.max(0, p.age / Math.max(0.05, p.maxLife)));
+        const fade = u < 0.14 ? u / 0.14 : (1 - u);
+        if (fade <= 0.03) continue;
+        const px = Math.round(p.x / 2) * 2;
+        const py = Math.round(p.y / 2) * 2;
+        const sz = Math.max(2, Math.round((p.size || 4) / 2) * 2);
+
+        // Soft additive pixel halo + incandescent core
+        ctx.fillStyle = p.glowHex || '#10b981';
+        ctx.globalAlpha = fade * 0.24;
+        ctx.fillRect(px - 4, py - 4, sz + 8, sz + 8);
+
+        ctx.fillStyle = p.colorHex || '#6ee7b7';
+        ctx.globalAlpha = fade * 0.56;
+        ctx.fillRect(px - 2, py - 2, sz + 4, sz + 4);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = fade * 0.92;
+        ctx.fillRect(px, py, Math.max(2, sz - 2), Math.max(2, sz - 2));
+
+        if (p.kind === 'star') {
+          drawStarlightGlint(ctx, px, py, sz, p.colorHex || '#fde047', fade * 0.94);
+        }
+      }
+      ctx.restore();
+    }
   }
 
   drawTransformedGreatArrow(ctx, vfxSheet, isReflection = false) {
     const t = this.state === 'TRUE_ULTIMATE' ? this.stateTimer : 1.85;
-    const reflScale = isReflection ? 0.38 : 1.0;
+    const reflScale = isReflection ? 0.36 : 1.0;
     const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth);
 
     const startX = Number.isFinite(this._arrowStartX) ? this._arrowStartX : this.x - this.facing * 240;
@@ -2747,23 +2841,19 @@ export class ArcherEx extends Fighter {
 
     const animCol = Math.floor(t * 36) % 30;
     const sx = animCol * 208;
-    const sy0 = 0;
-    const sy3 = 3 * 208;
     const sy7 = 7 * 208;
     const coreSliceX = sx + 44;
     const coreSliceW = 112;
-    const tipSliceX = sx + 156;
-    const tipSliceW = 52;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(arrowX, arrowY);
     ctx.scale(dir, 1);
 
-    // 1. Tapering Emerald-Gold Comet Wake from `_arrowStartX` to `this.x` using Row 7 core slices (`coreSliceW = 112`)
-    if (wakeDist > 24) {
-      const wakeCount = Math.min(14, Math.ceil(wakeDist / coreSliceW));
+    // 1. Sleek Tapering `'lighter'` Starlight Comet Wake + Twin Intertwining Helix Ribbons (`0` fat slabs!)
+    if (wakeDist > 20) {
       if (hasVfx) {
+        const wakeCount = Math.min(10, Math.ceil(wakeDist / coreSliceW));
         for (let i = 0; i < wakeCount; i++) {
           const segStartDist = i * coreSliceW;
           const remDist = wakeDist - segStartDist;
@@ -2771,41 +2861,67 @@ export class ArcherEx extends Fighter {
           const segW = Math.min(coreSliceW, Math.round(remDist / 2) * 2);
           if (segW < 4) break;
           const uSeg = i / Math.max(1, wakeCount);
-          const taper = Math.max(0.18, 1.0 - uSeg * 0.82);
-          const segH = Math.max(28, Math.round((192 * taper) / 2) * 2);
+          const taper = Math.max(0.20, 1.0 - uSeg * 0.80);
+          const segH = Math.max(12, Math.round((36 * taper) / 2) * 2);
           const segLeft = -segStartDist - segW;
           const halfH = Math.round(segH * 0.5);
           const srcW = Math.max(4, Math.round((coreSliceW * segW) / coreSliceW));
 
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = Math.max(0, Math.min(1, (1 - uSeg * 0.62) * 0.90 * env * reflScale));
-          ctx.drawImage(vfxSheet, coreSliceX, sy7, srcW, 208, segLeft, -halfH, segW, segH);
-
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = Math.max(0, Math.min(0.42, (1 - uSeg * 0.55) * 0.36 * env * reflScale));
+          ctx.globalAlpha = Math.max(0, Math.min(0.32, (1 - uSeg * 0.65) * 0.30 * env * reflScale));
           ctx.drawImage(vfxSheet, coreSliceX, sy7, srcW, 208, segLeft, -halfH, segW, segH);
         }
       }
 
-      const spineSegs = Math.min(24, Math.max(4, Math.round(wakeDist / 28)));
+      const spineSegs = Math.min(28, Math.max(6, Math.round(wakeDist / 22)));
       for (let s = 0; s < spineSegs; s++) {
         const u0 = s / spineSegs;
         const u1 = (s + 1) / spineSegs;
         const xLeft = -Math.round((wakeDist * u1) / 2) * 2;
         const xRight = -Math.round((wakeDist * u0) / 2) * 2;
         const spanW = Math.max(2, xRight - xLeft);
-        const coreHalf = Math.max(2, Math.round((16 * (1 - u0 * 0.88)) / 2) * 2);
-        const rimHalf = Math.max(2, coreHalf + 4);
+        const auraHalf = Math.max(2, Math.round((12 * (1 - u0 * 0.85)) / 2) * 2);
+        const midHalf = Math.max(2, Math.round((7 * (1 - u0 * 0.88)) / 2) * 2);
+        const coreHalf = Math.max(1, Math.round(3 * (1 - u0 * 0.82)));
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.max(0, Math.min(0.28, (1 - u0 * 0.72) * 0.28 * env * reflScale));
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(xLeft, -auraHalf, spanW, auraHalf * 2);
+
+        ctx.globalAlpha = Math.max(0, Math.min(0.46, (1 - u0 * 0.68) * 0.44 * env * reflScale));
+        ctx.fillStyle = '#34d399';
+        ctx.fillRect(xLeft, -midHalf, spanW, midHalf * 2);
 
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = Math.max(0, Math.min(1, (1 - u0 * 0.70) * 0.84 * env * reflScale));
-        ctx.fillStyle = '#34d399';
-        ctx.fillRect(xLeft, -rimHalf, spanW, rimHalf * 2);
+        ctx.globalAlpha = Math.max(0, Math.min(0.92, (1 - u0 * 0.72) * 0.90 * env * reflScale));
         ctx.fillStyle = '#fde047';
         ctx.fillRect(xLeft, -coreHalf, spanW, coreHalf * 2);
         ctx.fillStyle = '#ffffff';
-        const innerH = Math.max(2, Math.round((coreHalf * 0.55) / 2) * 2);
-        ctx.fillRect(xLeft, -innerH, spanW, innerH * 2);
+        ctx.fillRect(xLeft, -1, spanW, 2);
+      }
+
+      // Twin intertwining pixel-stepped starlight wind-helix filaments along comet tail
+      const ribbonLen = Math.min(wakeDist, 440);
+      ctx.globalCompositeOperation = 'lighter';
+      for (let rx = -ribbonLen; rx <= -12; rx += 6) {
+        const uWake = Math.abs(rx) / Math.max(1, ribbonLen);
+        const amp = 15 * (1 - uWake * 0.65);
+        const phase = t * 24 + rx * 0.042;
+        const ryA = Math.round((Math.sin(phase) * amp) / 2) * 2;
+        const ryB = Math.round((Math.sin(phase + Math.PI) * amp * 0.88) / 2) * 2;
+        const rAlpha = Math.max(0.06, (1 - uWake * 0.82) * 0.76 * env * reflScale);
+
+        ctx.globalAlpha = rAlpha * 0.35;
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(rx - 2, ryA - 2, 6, 6);
+        ctx.fillRect(rx - 2, ryB - 2, 6, 6);
+
+        ctx.globalAlpha = rAlpha;
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(rx, ryA, 4, 2);
+        ctx.fillStyle = '#6ee7b7';
+        ctx.fillRect(rx, ryB, 4, 2);
       }
     }
 
@@ -2814,179 +2930,147 @@ export class ArcherEx extends Fighter {
       return;
     }
 
-    // 2. Layered Row 3 Vortex + Row 7 Supernova Head + Row 0 Radiant Arrow Sprites
-    if (hasVfx) {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.84 * env * reflScale;
-      ctx.drawImage(vfxSheet, sx, sy3, 208, 208, -118, -138, 276, 276);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.34 * env * reflScale;
-      ctx.drawImage(vfxSheet, sx, sy3, 208, 208, -118, -138, 276, 276);
-
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.92 * env * reflScale;
-      ctx.drawImage(vfxSheet, coreSliceX, sy7, coreSliceW, 208, -96, -110, 180, 220);
-      ctx.drawImage(vfxSheet, tipSliceX, sy7, tipSliceW, 208, 84, -110, 96, 220);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.40 * env * reflScale;
-      ctx.drawImage(vfxSheet, coreSliceX, sy7, coreSliceW, 208, -96, -110, 180, 220);
-      ctx.drawImage(vfxSheet, tipSliceX, sy7, tipSliceW, 208, 84, -110, 96, 220);
-
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.78 * env * reflScale;
-      ctx.drawImage(vfxSheet, sx, sy0, 208, 208, -156, -112, 328, 224);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.44 * env * reflScale;
-      ctx.drawImage(vfxSheet, sx, sy0, 208, 208, -156, -112, 328, 224);
-    }
-
-    // 3. 4x4 Bayer Shimmer Envelope Around the 312x136 Colossal Great-Arrow
-    const pulseTick = Math.floor(t * 24);
+    // 2. Soft Smooth `4x4` Bayer Shimmer Corona + Multi-Layer `'lighter'` Bloom Envelope (`372x56` slender profile!)
+    const pulseTick = Math.floor(t * 28);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(0.22, 0.20 * env * reflScale);
-    for (let gx = -160; gx <= 160; gx += 4) {
-      const uNose = gx > 32 ? (164 - gx) / 132 : 1.0;
-      const envH = gx > 32 ? Math.max(8, 54 * uNose) : gx >= -68 ? 68 : 60;
-      for (let gy = -68; gy <= 64; gy += 4) {
-        const distNorm = Math.abs(gy + 2) / envH;
+    ctx.globalAlpha = Math.min(0.24, 0.22 * env * reflScale);
+    for (let gx = -188; gx <= 184; gx += 4) {
+      const uNorm = (gx + 188) / 372;
+      const envH =
+        gx > 40
+          ? Math.max(6, Math.round(30 * Math.pow(Math.max(0, 1 - (gx - 40) / 146), 1.25)))
+          : Math.max(12, Math.round(14 + 16 * Math.sin(Math.min(1, uNorm / 0.62) * Math.PI * 0.5)));
+      for (let gy = -32; gy <= 32; gy += 4) {
+        const distNorm = Math.abs(gy) / envH;
         if (distNorm > 1.0) continue;
         const falloff = 1.0 - distNorm;
         const bx = (((gx >> 2) + pulseTick) & 3 + 4) & 3;
         const by = ((gy >> 2) & 3 + 4) & 3;
         if (falloff * 14.0 > BAYER_4X4[by][bx]) {
-          ctx.fillStyle = (bx + by) % 2 === 0 ? '#34d399' : '#fde047';
+          ctx.fillStyle = (bx + by) % 2 === 0 ? '#34d399' : '#fef08a';
           ctx.fillRect(gx, gy, 4, 4);
         }
       }
     }
 
-    // 4. Crisp 2px Integer fillRect Colossal Yggdrasil Sovereign Great-Arrow (`312x136`)
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(1, env * reflScale);
+    // Soft additive spine bloom bands around the slender lance
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.22 * env * reflScale;
+    ctx.fillStyle = '#059669';
+    ctx.fillRect(-178, -14, 344, 28);
+    ctx.globalAlpha = 0.34 * env * reflScale;
+    ctx.fillStyle = '#34d399';
+    ctx.fillRect(-174, -8, 346, 16);
+    ctx.globalAlpha = 0.46 * env * reflScale;
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(-170, -4, 348, 8);
 
-    // 4A. World-Tree Fletching Vanes (`x = -156 .. -76`)
-    for (const side of [-1, 1]) {
-      for (let fx = -156; fx <= -76; fx += 2) {
-        const p = (fx + 156) / 80;
-        const outerY = Math.round((56 - p * 42) / 2) * 2;
-        const innerY = Math.max(12, Math.round((34 - p * 24) / 2) * 2);
-        const span = Math.max(4, outerY - innerY);
-        const topY = side < 0 ? -outerY : innerY;
+    // 3. Sleek, Needle-Sharp Luminous Celestial Lance-Arrow Silhouette (0 dark cartoon box outlines!)
+    const drawArrowLayer = (passComposite, alphaScale) => {
+      ctx.globalCompositeOperation = passComposite;
+      ctx.globalAlpha = Math.max(0, Math.min(1, alphaScale * env * reflScale));
 
-        ctx.fillStyle = '#052e16';
-        ctx.fillRect(fx, topY - 2, 2, span + 4);
-        ctx.fillStyle = '#34d399';
-        ctx.fillRect(fx, topY, 2, span);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(fx, side < 0 ? topY + span - 4 : topY, 2, 4);
-        if (p < 0.35) {
-          ctx.fillStyle = '#a7f3d0';
+      // 3A. Delicate Swept Astral Tail Fletching (`x = -184 .. -108`, slender `16px` reach)
+      for (const side of [-1, 1]) {
+        for (let fx = -184; fx <= -108; fx += 2) {
+          const p = (fx + 184) / 76;
+          const outerY = Math.round((16 - p * 12) / 2) * 2;
+          const innerY = Math.max(2, outerY - 4);
+          const span = Math.max(2, outerY - innerY);
+          const topY = side < 0 ? -outerY : innerY;
+
+          ctx.fillStyle = '#34d399';
+          ctx.fillRect(fx, topY, 2, span);
+          ctx.fillStyle = '#ffffff';
           ctx.fillRect(fx, side < 0 ? topY : topY + span - 2, 2, 2);
         }
       }
-      for (let mx = -118; mx <= -60; mx += 2) {
-        const pm = (mx + 118) / 58;
-        const mOuter = Math.round((40 - pm * 26) / 2) * 2;
-        const mInner = Math.max(12, Math.round((24 - pm * 12) / 2) * 2);
-        const mSpan = Math.max(4, mOuter - mInner);
-        const mTop = side < 0 ? -mOuter : mInner;
-        ctx.fillStyle = '#052e16';
-        ctx.fillRect(mx, mTop - 2, 2, mSpan + 4);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(mx, mTop, 2, mSpan);
-      }
-    }
 
-    // Tail nock prongs (`x = -156 .. -126`)
-    ctx.fillStyle = '#052e16';
-    ctx.fillRect(-156, -14, 30, 28);
-    ctx.fillStyle = '#34d399';
-    ctx.fillRect(-156, -12, 28, 24);
-    ctx.fillStyle = '#fde047';
-    ctx.fillRect(-152, -8, 24, 16);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-146, -4, 18, 8);
-
-    // 4B. Sovereign Shaft (`x = -132 .. +60`)
-    ctx.fillStyle = '#052e16';
-    ctx.fillRect(-132, -14, 192, 28);
-    ctx.fillStyle = '#34d399';
-    ctx.fillRect(-130, -12, 190, 24);
-    ctx.fillStyle = '#fde047';
-    ctx.fillRect(-128, -8, 188, 16);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-124, -4, 184, 8);
-
-    for (const collarX of [-84, -36, 12]) {
-      ctx.fillStyle = '#052e16';
-      ctx.fillRect(collarX - 2, -20, 10, 40);
+      // 3B. Razor-Sleek Illuminated Core Shaft (`x = -172 .. +60`, max `10px` height -> `2px` white spine)
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(-172, -4, 232, 8);
       ctx.fillStyle = '#fde047';
-      ctx.fillRect(collarX, -18, 6, 36);
+      ctx.fillRect(-168, -2, 228, 4);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(collarX + 2, -12, 2, 24);
-    }
+      ctx.fillRect(-164, -1, 224, 2);
 
-    // 4C. Swept Emerald-Gold Sovereign Wing-Barbs (`x = -62 .. +44`, `y = -68 .. +68` = `136px` tall)
-    for (const side of [-1, 1]) {
-      for (let wx = -62; wx <= 44; wx += 2) {
-        const pw = (44 - wx) / 106;
-        const wingOuter = Math.min(66, Math.round((14 + Math.pow(pw, 0.84) * 52) / 2) * 2);
-        const wingInner = Math.max(12, Math.round((8 + pw * 34) / 2) * 2);
-        const wSpan = Math.max(4, wingOuter - wingInner);
-        const wTop = side < 0 ? -wingOuter : wingInner;
-
-        ctx.fillStyle = '#052e16';
-        ctx.fillRect(wx, wTop - 2, 2, wSpan + 4);
-        ctx.fillStyle = '#34d399';
-        ctx.fillRect(wx, wTop, 2, wSpan);
-        const goldStrip = Math.min(wSpan, 10);
-        const leadStrip = Math.min(wSpan, 4);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(wx, side < 0 ? wTop + wSpan - goldStrip : wTop, 2, goldStrip);
+      // Subtle diamond light nodes along shaft (no clunky vertical blocks)
+      for (const nodeX of [-92, -32]) {
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(wx, side < 0 ? wTop : wTop + wSpan - leadStrip, 2, leadStrip);
+        ctx.fillRect(nodeX - 4, -2, 8, 4);
+        ctx.fillStyle = '#a7f3d0';
+        ctx.fillRect(nodeX - 2, -6, 4, 12);
       }
-    }
 
-    // 4D. Diamond-White & Solar-Gold Sovereign Broadhead (`x = +32 .. +156`)
-    for (let hx = 32; hx <= 154; hx += 2) {
-      const uh = (hx - 32) / 124;
-      const halfH = Math.max(2, Math.round(((1 - uh) * 44) / 2) * 2);
-      const notchCut = hx < 68 ? Math.round(((68 - hx) / 36) * 18 / 2) * 2 : 0;
+      // 3C. Graceful Swept Elven Light-Pinions (`2` sleek curved pairs, `<= 48px` total wingspan)
+      for (const side of [-1, 1]) {
+        // Primary front light-pinions (`x = -46 .. +58`, sweeping back sharply at `~14 deg`)
+        for (let wx = -46; wx <= 58; wx += 2) {
+          const pw = (58 - wx) / 104;
+          const outerY = Math.min(24, Math.round((4 + Math.pow(pw, 1.28) * 20) / 2) * 2);
+          const bladeSpan = wx > 34 ? 4 : 6;
+          const wTop = side < 0 ? -outerY : Math.max(2, outerY - bladeSpan);
 
-      if (notchCut > 0) {
-        for (const side of [-1, 1]) {
-          const bTop = side < 0 ? -halfH : notchCut;
-          const bSpan = Math.max(2, halfH - notchCut);
-          ctx.fillStyle = '#052e16';
-          ctx.fillRect(hx, bTop - 2, 2, bSpan + 4);
           ctx.fillStyle = '#34d399';
-          ctx.fillRect(hx, bTop, 2, bSpan);
-          const gH = Math.max(2, Math.round((bSpan * 0.66) / 2) * 2);
+          ctx.fillRect(wx, wTop, 2, bladeSpan);
           ctx.fillStyle = '#fde047';
-          ctx.fillRect(hx, side < 0 ? bTop + (bSpan - gH) : bTop, 2, gH);
-          const wH = Math.max(2, Math.round((bSpan * 0.30) / 2) * 2);
+          ctx.fillRect(wx, side < 0 ? wTop + 2 : wTop, 2, Math.max(2, bladeSpan - 2));
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(hx, side < 0 ? bTop + (bSpan - wH) : bTop, 2, wH);
+          ctx.fillRect(wx, side < 0 ? wTop : wTop + bladeSpan - 2, 2, 2);
         }
-      } else {
-        ctx.fillStyle = '#052e16';
-        ctx.fillRect(hx, -halfH - 2, 2, halfH * 2 + 4);
-        ctx.fillStyle = '#34d399';
-        ctx.fillRect(hx, -halfH, 2, halfH * 2);
-        const goldHalf = Math.max(2, Math.round((halfH * 0.72) / 2) * 2);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(hx, -goldHalf, 2, goldHalf * 2);
-        const whiteHalf = Math.max(2, Math.round((halfH * 0.44) / 2) * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(hx, -whiteHalf, 2, whiteHalf * 2);
+        // Gossamer secondary starlight feather-streaks (`x = -96 .. -26`)
+        for (let wx = -96; wx <= -26; wx += 2) {
+          const pw = (-26 - wx) / 70;
+          const outerY = Math.min(16, Math.round((3 + Math.pow(pw, 1.15) * 13) / 2) * 2);
+          const wTop = side < 0 ? -outerY : Math.max(2, outerY - 2);
+          ctx.fillStyle = '#a7f3d0';
+          ctx.fillRect(wx, wTop, 2, 2);
+        }
       }
-    }
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(154, -2, 2, 4);
 
-    drawStarlightGlint(ctx, 152, 0, 12, '#fde047', 0.98 * env * reflScale);
-    drawStarlightGlint(ctx, 44, 0, 8, '#a7f3d0', 0.92 * env * reflScale);
+      // 3D. Elongated `128px` Crystalline Needle-Lance Broadhead (`x = +56 .. +184`, sleek `28px -> 2px` taper)
+      for (let hx = 56; hx <= 182; hx += 2) {
+        const uh = (hx - 56) / 128;
+        const halfH = Math.max(1, Math.round(14 * Math.pow(1 - uh, 1.38)));
+        const hollowCut = hx < 80 ? Math.round(((80 - hx) / 24) * 5) : 0;
+
+        if (hollowCut >= 2 && halfH > hollowCut + 2) {
+          for (const side of [-1, 1]) {
+            const bTop = side < 0 ? -halfH : hollowCut;
+            const bSpan = Math.max(2, halfH - hollowCut);
+            ctx.fillStyle = '#34d399';
+            ctx.fillRect(hx, bTop, 2, bSpan);
+            const gSpan = Math.max(2, Math.round(bSpan * 0.65));
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(hx, side < 0 ? bTop + (bSpan - gSpan) : bTop, 2, gSpan);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(hx, side < 0 ? bTop : bTop + bSpan - 2, 2, 2);
+          }
+        } else {
+          ctx.fillStyle = '#34d399';
+          ctx.fillRect(hx, -halfH, 2, halfH * 2);
+          const goldHalf = Math.max(1, Math.round(halfH * 0.68));
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(hx, -goldHalf, 2, goldHalf * 2);
+          const whiteHalf = Math.max(1, Math.round(halfH * 0.36));
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(hx, -whiteHalf, 2, whiteHalf * 2);
+        }
+      }
+      // Razor incandescent needle tip (`+182 .. +186`)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(182, -1, 4, 2);
+    };
+
+    drawArrowLayer('source-over', 0.94);
+    drawArrowLayer('lighter', 0.42);
+
+    // 4. Twinkling Starlight Flares at Tip, Heart & Nock!
+    drawStarlightGlint(ctx, 180, 0, 14, '#6ee7b7', 0.88 * env * reflScale);
+    drawStarlightGlint(ctx, 178, 0, 10, '#fde047', 0.96 * env * reflScale);
+    drawStarlightGlint(ctx, 178, 0, 6, '#ffffff', 0.98 * env * reflScale);
+    drawStarlightGlint(ctx, 56, 0, 9, '#a7f3d0', 0.90 * env * reflScale);
+    drawStarlightGlint(ctx, -168, 0, 6, '#fde047', 0.84 * env * reflScale);
 
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
@@ -3114,36 +3198,6 @@ export class ArcherEx extends Fighter {
         ctx.drawImage(vfxSheet, sx, sy, 208, 208, -64, -64, 128, 128);
         ctx.restore();
       }
-    }
-
-    // Supreme Ultimate (`0.18s .. 1.48s`): Colossal Drawn Celestial Greatbow (`Row 6`, 168x168 -> 280x280)
-    // growing & charging right in her hands during the fast somersault and winged mid-air hover!
-    if (
-      this.state === 'TRUE_ULTIMATE' &&
-      !this._isTransformedArrow &&
-      this.stateTimer >= 0.18 &&
-      this.stateTimer < 1.48
-    ) {
-      const chargeU = Math.min(1, Math.max(0, (this.stateTimer - 0.18) / (1.48 - 0.18)));
-      const blendU = Math.min(1, Math.max(0, (this.stateTimer - 0.18) / 0.78));
-      const col = Math.min(29, Math.floor(chargeU * 30));
-      const sx = col * 208;
-      const sy = 6 * 208;
-      const bowSize = Math.round((168 + (280 - 168) * Math.min(1, chargeU * 1.08)) / 2) * 2;
-      const halfBow = Math.round(bowSize * 0.5);
-      const bowX = Math.round(this.x + this.facing * (12 + 12 * blendU));
-      const bowY = Math.round(this.y - (78 + 44 * blendU));
-
-      ctx.save();
-      ctx.translate(bowX, bowY);
-      ctx.scale(this.facing, 1);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = (0.78 + 0.18 * chargeU) * reflScale;
-      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -halfBow, -halfBow, bowSize, bowSize);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = (0.24 + 0.14 * chargeU) * reflScale;
-      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -halfBow, -halfBow, bowSize, bowSize);
-      ctx.restore();
     }
 
     ctx.globalCompositeOperation = 'source-over';

@@ -40,58 +40,58 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps120';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps120';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps120';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps120';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps120';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps120';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps120';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps120';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps120';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps120';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps120';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps120';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps120';
-import { Archer } from '../../src/entities/Archer.js?v=30fps120';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps120';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps120';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps120';
-import { Titan } from '../../src/entities/Titan.js?v=30fps120';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps120';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps120';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps120';
-import { Android } from '../../src/entities/Android.js?v=30fps120';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps120';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps120';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps120';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps121';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps121';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps121';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps121';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps121';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps121';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps121';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps121';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps121';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps121';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps121';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps121';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps121';
+import { Archer } from '../../src/entities/Archer.js?v=30fps121';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps121';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps121';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps121';
+import { Titan } from '../../src/entities/Titan.js?v=30fps121';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps121';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps121';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps121';
+import { Android } from '../../src/entities/Android.js?v=30fps121';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps121';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps121';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps121';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps120';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps120';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps120';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps120';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps120';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps120';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps121';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps121';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps121';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps121';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps121';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps121';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps120';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps120';
+} from '../../src/adventure/AdventureManager.js?v=30fps121';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps121';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps120';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps120';
+} from '../../src/adventure/AdventureProgression.js?v=30fps121';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps121';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps120';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps121';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -681,7 +681,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps120');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps121');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11169,8 +11169,8 @@ for (const [name, Cls] of CLASSES) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps120');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps120');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps121');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps121');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -11969,7 +11969,7 @@ for (const [name, Cls] of CLASSES) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps120'
+        src: 'assets/sprites/arena_bg.png?v=30fps121'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12011,13 +12011,13 @@ for (const [name, Cls] of CLASSES) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps120`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps121`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps120'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps121'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -13426,7 +13426,7 @@ for (const [name, Cls] of CLASSES) {
       }
       sylUlt.fx?.dispose?.();
 
-      // A.2: TRUE_ULTIMATE Row 6 Celestial Greatbow draws while airborne flipping during t = 0.24..1.00s
+      // A.2: TRUE_ULTIMATE clean airborne somersault during t = 0.24..0.82s (`0` Row 6 circle-bow overlay!)
       const trueGame = createMockGame();
       const sylTrue = new ArcherEx({ x: 300, groundY: 560, facing: 1, team: 'left' });
       const trueFoe = new Warrior({ x: 760, groundY: 560, facing: -1, name: 'BowFlipFoe', team: 'right' });
@@ -13440,39 +13440,34 @@ for (const [name, Cls] of CLASSES) {
       trueGame.getTargetFor = (f) => (f === sylTrue ? trueFoe : sylTrue);
 
       const archAudit37 = createAuditCtx36();
-      let sawAirFlipRow6 = false;
+      const flipFramesSeen = new Set();
       let minYInFlipWindow = sylTrue.groundY;
       sylTrue.finisherGauge = sylTrue.maxFinisherGauge || 100;
       sylTrue.setState('TRUE_ULTIMATE');
 
-      for (let step = 0; step < 36; step++) {
+      for (let step = 0; step < 30; step++) {
         sylTrue.update(1 / 30, trueFoe, trueGame);
         trueGame.vfx.update(1 / 30, 560, trueGame.renderer, trueGame.audio);
         const t = sylTrue.stateTimer;
-        if (t >= 0.24 && t <= 1.00) {
+        if (t >= 0.24 && t <= 0.84) {
           if (sylTrue.y < minYInFlipWindow) minYInFlipWindow = sylTrue.y;
-          const prevSize = archAudit37.stats.vfxSyDrawn.size;
-          const hadRow6Before = archAudit37.stats.vfxSyDrawn.has(6 * 208);
+          if (sylTrue.trueUltFrameOverride >= 123 && sylTrue.trueUltFrameOverride <= 134) {
+            flipFramesSeen.add(sylTrue.trueUltFrameOverride);
+          }
           sylTrue.drawForegroundOverlay(archAudit37.ctx, trueGame.renderer);
           sylTrue.draw(archAudit37.ctx, false, trueGame.renderer);
           sylTrue.drawUltimateForeground(archAudit37.ctx, trueGame.renderer);
-          if (
-            sylTrue.y <= sylTrue.groundY - 90 &&
-            (archAudit37.stats.vfxSyDrawn.has(6 * 208) ||
-              (hadRow6Before && archAudit37.stats.vfxSyDrawn.size >= prevSize))
-          ) {
-            sawAirFlipRow6 = true;
-          }
         }
       }
       if (
-        !sawAirFlipRow6 ||
+        flipFramesSeen.size < 6 ||
+        archAudit37.stats.vfxSyDrawn.has(6 * 208) ||
         minYInFlipWindow > sylTrue.groundY - 90 ||
         archAudit37.stats.vectorCalls !== 0 ||
         archAudit37.stats.rotateCalls !== 0
       ) {
         throw new Error(
-          `[Suite 36.7 SylvaraEX] TRUE_ULTIMATE Row 6 airborne flip check failed: sawAirFlipRow6=${sawAirFlipRow6}, minY=${minYInFlipWindow.toFixed(1)}, sy=[${[...archAudit37.stats.vfxSyDrawn].join(',')}], vec=${archAudit37.stats.vectorCalls}, rot=${archAudit37.stats.rotateCalls}`
+          `[Suite 36.7 SylvaraEX] TRUE_ULTIMATE clean airborne flip check failed: flips=${flipFramesSeen.size}, minY=${minYInFlipWindow.toFixed(1)}, sy=[${[...archAudit37.stats.vfxSyDrawn].join(',')}], vec=${archAudit37.stats.vectorCalls}, rot=${archAudit37.stats.rotateCalls}`
         );
       }
       sylTrue.fx?.dispose?.();
@@ -13596,7 +13591,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.8: Batch ?v=30fps120 Parity:
+  // 36.8: Batch ?v=30fps121 Parity:
   //   (A) Chronos EX Zero Dark Flood Disks + Sol EX >= 580px Meteor & Stationary Single Overdrive Sun
   //   (B) Kaze-Maru EX Smear/Circle Purge + Freyja EX Non-Squared War-Spear VFX & Spinning Pass-Through Glide + Sylvara EX Fast Ult
   //   (C) VEX-09 EX Fast Backflip + Tactical Charge + Triple-Column Buster & Malakor EX Back-of-Enemy Shadow Emerge
@@ -13947,7 +13942,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.9: Batch ?v=30fps120 Parity:
+  // 36.9: Batch ?v=30fps121 Parity:
   //   (A) Lyra EX (`icemage_ex`) Non-Creepy Natural `Row 1 WALK`
   //   (B) Freyja EX (`valkyrie_ex`) `+56 deg` Diagonal `TRUE_ULTIMATE` Raining Spears (`0` Straight 90 deg)
   //   (C) Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Glowing Great-Arrow Transformation (`0` Humanoid Draws)
@@ -14189,6 +14184,119 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 36.10: Batch ?v=30fps121 Parity:
+  //   Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Refinement:
+  //     - Full 10-frame Bow-Pull Progression (`frames 135..144`, `>= 8` unique frames hit)
+  //     - `0` Slash-Like Circle Effects (`sylvanBowDrawVortex`, `sonicBowReleaseWave`, `Row 3/5/6`)
+  //     - Slender Radiant Great-Arrow + `>= 24` `_arrowStarParticles` + `>= 480px` `'emerald'` Dynamic Light
+  // --------------------------------------------------------------------------
+  {
+    const archRep121 = pngAuditResults36.get('archer_ex');
+    if (
+      !archRep121 ||
+      archRep121.sheet4pxClips !== 0 ||
+      archRep121.archRow4MaxX < 0 ||
+      archRep121.archRow4MaxX > 260
+    ) {
+      throw new Error(
+        `[Suite 36.10 SylvaraPNG] Expected 0/300 border clips & Row 4 maxX <= 260, got clips=${archRep121?.sheet4pxClips}, maxX=${archRep121?.archRow4MaxX}`
+      );
+    }
+
+    const sG = createMockGame();
+    const syl = new ArcherEx({ x: 320, groundY: 560, facing: 1, team: 'left' });
+    const foe = new Warrior({ x: 760, groundY: 560, facing: -1, name: 'SylvaraRefineDummy', team: 'right' });
+    foe.maxHp = 99999;
+    foe.hp = 99999;
+    foe.stunTimer = 999;
+    syl.game = sG;
+    foe.game = sG;
+    sG.fighters = [syl, foe];
+    sG.getEnemiesOf = (f) => (f === syl ? [foe] : [syl]);
+    sG.getTargetFor = (f) => (f === syl ? foe : syl);
+
+    const audit121 = createAuditCtx36();
+    const bowPullFramesSeen = new Set();
+    let forbiddenFxCount = 0;
+    let maxStarParticles = 0;
+    let maxEmeraldLightR = 0;
+    let sheetDrawsWhileArrow = 0;
+    let sawTransformedArrow = false;
+    const origDrawSheet121 = PixelForge.drawSheetFrame;
+
+    syl.finisherGauge = syl.maxFinisherGauge || 100;
+    syl.setState('TRUE_ULTIMATE');
+
+    try {
+      PixelForge.drawSheetFrame = function (...args) {
+        if (args[2] === syl && syl._isTransformedArrow) {
+          sheetDrawsWhileArrow++;
+        }
+        return origDrawSheet121.apply(this, args);
+      };
+
+      for (let s = 0; s < 110; s++) {
+        syl.update(1 / 30, foe, sG);
+        sG.vfx.update(1 / 30, 560, sG.renderer, sG.audio);
+        syl.drawForegroundOverlay(audit121.ctx, sG.renderer);
+        syl.draw(audit121.ctx, false, sG.renderer);
+        syl.drawUltimateForeground(audit121.ctx, sG.renderer);
+
+        const t = syl.stateTimer;
+        if (syl.state === 'TRUE_ULTIMATE' && t >= 0.84 && t < 1.52) {
+          const fi = syl.trueUltFrameOverride;
+          if (fi >= 135 && fi <= 144) bowPullFramesSeen.add(fi);
+        }
+        if (syl.state === 'TRUE_ULTIMATE') {
+          for (const inst of syl.fx?.active || []) {
+            if (inst.key === 'sylvanBowDrawVortex' || inst.key === 'sonicBowReleaseWave') {
+              forbiddenFxCount++;
+            }
+          }
+        }
+        if (syl._isTransformedArrow) {
+          sawTransformedArrow = true;
+          const lights = sG.vfx.getActiveLights([syl, foe], 560);
+          for (const L of lights) {
+            if (L.owner === syl && L.colorType === 'emerald' && L.radius > maxEmeraldLightR) {
+              maxEmeraldLightR = L.radius;
+            }
+          }
+        }
+        if ((syl._arrowStarParticles?.length || 0) > maxStarParticles) {
+          maxStarParticles = syl._arrowStarParticles.length;
+        }
+        if (syl.state !== 'TRUE_ULTIMATE') break;
+      }
+    } finally {
+      PixelForge.drawSheetFrame = origDrawSheet121;
+    }
+
+    const forbiddenCircleRowsDrawn = [3 * 208, 5 * 208, 6 * 208].filter((sy) =>
+      audit121.stats.vfxSyDrawn.has(sy)
+    );
+    const dmgDealt = 99999 - foe.hp;
+    if (
+      bowPullFramesSeen.size < 8 ||
+      forbiddenFxCount !== 0 ||
+      forbiddenCircleRowsDrawn.length !== 0 ||
+      !sawTransformedArrow ||
+      maxStarParticles < 24 ||
+      maxEmeraldLightR < 480 ||
+      sheetDrawsWhileArrow !== 0 ||
+      dmgDealt < 650 ||
+      syl.state !== 'IDLE' ||
+      audit121.stats.vectorCalls !== 0 ||
+      audit121.stats.rotateCalls !== 0
+    ) {
+      throw new Error(
+        `[Suite 36.10 SylvaraUltRefine] Failed verification: bowFrames=${bowPullFramesSeen.size} (${[...bowPullFramesSeen].join(',')}), forbiddenFx=${forbiddenFxCount}, badRows=[${forbiddenCircleRowsDrawn.join(',')}], arrow=${sawTransformedArrow}, particles=${maxStarParticles}, emLightR=${maxEmeraldLightR}, sheetDraws=${sheetDrawsWhileArrow}, dmg=${dmgDealt}, endState=${syl.state}, vec=${audit121.stats.vectorCalls}, rot=${audit121.stats.rotateCalls}`
+      );
+    }
+    syl.fx?.dispose?.();
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -14197,7 +14305,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-11 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8) & Batch v120 Lyra Walk / Freyja Backflip+Angled Spears / Sylvara Arrow Transform / Adventure Icon+HUD Fix (36.9) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-11 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9) & Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Radiant Particle Great-Arrow (36.10) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

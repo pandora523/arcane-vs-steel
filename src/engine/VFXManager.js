@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps120';
-import { PixelForge } from './PixelForge.js?v=30fps120';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps120';
+import { PixelFont } from './PixelFont.js?v=30fps121';
+import { PixelForge } from './PixelForge.js?v=30fps121';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps121';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -1259,6 +1259,20 @@ export class VFXManager {
         if (f._trueUltBusterTimer > 0 && Number.isFinite(f._trueUltTargetX)) {
           pushLight(f._trueUltTargetX, fGy - 48, 560, 'cyan', 1.35, 118, fGy, f, false);
         }
+      }
+      if (f.heroId === 'archer_ex' && (f.state === 'TRUE_ULTIMATE' || f._trueUltBeamTimer > 0)) {
+        const isArrowFlight = Boolean(f._isTransformedArrow || f._trueUltBeamTimer > 0);
+        const chargeU = isArrowFlight
+          ? 1
+          : Math.min(1, Math.max(0, ((f.stateTimer || 0) - 0.16) / 1.36));
+        const emRadius = isArrowFlight ? 540 : Math.round(260 + 180 * chargeU);
+        const goldRadius = isArrowFlight ? 340 : Math.round(180 + 120 * chargeU);
+        const emInt = isArrowFlight ? 1.75 : 1.25 + 0.40 * chargeU;
+        const goldInt = isArrowFlight ? 1.45 : 1.15 + 0.30 * chargeU;
+        const lx = isArrowFlight ? f.x : f.x + f.facing * 24;
+        const ly = f.y - 94;
+        pushLight(lx, ly, emRadius, 'emerald', emInt, 98, fGy, f, false);
+        pushLight(lx + f.facing * (isArrowFlight ? 64 : 18), ly, goldRadius, 'gold', goldInt, 98, fGy, f, false);
       }
       // Harvest up to 6 active lights from f.fx.active (ArcaneShaderFX) & f.activeVfxAnims!
       let harvestedCount = 0;

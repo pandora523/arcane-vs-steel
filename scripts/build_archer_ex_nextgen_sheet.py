@@ -478,25 +478,28 @@ def draw_elven_bracer_arm_160(
     ty: float,
     is_front: bool = True,
     bend_sign: float = 1.0,
+    highlight_draw: bool = False,
 ):
     l1, l2 = 10.0, 10.5
     ex, ey = solve_ik_2bone(sx, sy, tx, ty, l1, l2, bend_sign=bend_sign)
-    c_sleeve = C_EMERALD_MID if is_front else C_FOREST_DARK
-    c_trim = C_GOLD_BRIGHT if is_front else C_GOLD_MID
+    c_sleeve = C_MINT_LIGHT if highlight_draw else (C_EMERALD_MID if is_front else C_FOREST_DARK)
+    c_trim = C_WHITE if highlight_draw else (C_GOLD_BRIGHT if is_front else C_GOLD_MID)
 
     draw_line_px(buf, sx, sy, ex, ey, C_OUTLINE, r=2)
     draw_line_px(buf, ex, ey, tx, ty, C_OUTLINE, r=2)
-    draw_line_px(buf, sx, sy, ex, ey, C_FOREST_DARK, r=1)
+    draw_line_px(buf, sx, sy, ex, ey, C_EMERALD_MID if highlight_draw else C_FOREST_DARK, r=1)
     draw_line_px(buf, sx, sy - 0.6, ex, ey - 0.6, c_sleeve, r=0)
-    draw_line_px(buf, ex, ey, tx, ty, c_sleeve, r=1)
+    draw_line_px(buf, ex, ey, tx, ty, C_GOLD_BRIGHT if highlight_draw else c_sleeve, r=1)
     draw_line_px(buf, ex, ey - 0.7, tx, ty - 0.7, c_trim, r=0)
 
     gx, gy = int(round(tx)), int(round(ty))
     for oy in range(-1, 2):
         for ox in range(-1, 2):
             set_px(buf, gx + ox, gy + oy, C_OUTLINE)
-    set_px(buf, gx, gy, C_GOLD_LIGHT)
-    set_px(buf, gx + 1, gy, C_EMERALD_BRIGHT)
+    set_px(buf, gx, gy, C_WHITE if highlight_draw else C_GOLD_LIGHT)
+    set_px(buf, gx + 1, gy, C_GOLD_LIGHT if highlight_draw else C_EMERALD_BRIGHT)
+    if highlight_draw:
+        set_px(buf, gx, gy - 1, C_GOLD_LIGHT)
 
 
 def draw_quiver_160(buf: np.ndarray, qx: float, qy: float, tilt_deg: float = -36.0):
@@ -611,6 +614,7 @@ def draw_yggdrasil_greatbow_160(
     charge_star: float = 0.0,
     star_phase: float = 0.0,
     max_star_x: int = 151,
+    fixed_arrow_len: float | None = None,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """
     Renders Sylvara EX's luminous Yggdrasil Astral Recurve Greatbow / Twin-Arc Bow-Glaive:
@@ -626,11 +630,12 @@ def draw_yggdrasil_greatbow_160(
     # Sample symmetrical recurve limbs: s in [-1..+1]
     limb_pts = []
     n_samples = 36
+    limb_flex_k = 3.1 if fixed_arrow_len is not None else 2.2
     for i in range(n_samples + 1):
         s = -1.0 + 2.0 * (i / n_samples)
         ab = abs(s)
         # Recurve S-profile: sweeps back (-ux) then hooks forward (+ux) at bladed tips!
-        back_sweep = -7.5 * (ab ** 1.25) + 4.2 * (ab ** 3.2) - draw_pull * 2.2 * (ab ** 1.6)
+        back_sweep = -7.5 * (ab ** 1.25) + 4.2 * (ab ** 3.2) - draw_pull * limb_flex_k * (ab ** 1.6)
         lx = riser_x + nx * (s * bow_half_h) + ux * back_sweep
         ly = riser_y + ny * (s * bow_half_h) + uy * back_sweep
         limb_pts.append((lx, ly, s, ab))
@@ -674,7 +679,7 @@ def draw_yggdrasil_greatbow_160(
     tip_pts = []
     if arrow_count > 0:
         spreads = [0.0] if arrow_count == 1 else ([-5.5, 5.5] if arrow_count == 2 else [-9.0, 0.0, 9.0])
-        arr_len = 25.0 + draw_pull * 7.0
+        arr_len = fixed_arrow_len if fixed_arrow_len is not None else (25.0 + draw_pull * 7.0)
         for sp_deg in spreads:
             ar = math.radians(aim_deg + sp_deg)
             aux, auy = math.cos(ar), math.sin(ar)
@@ -1020,9 +1025,17 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
         charge_star=cfg.get("charge_star", 0.0),
         star_phase=cfg.get("phase", 0.0),
         max_star_x=cfg.get("max_star_x", 151),
+        fixed_arrow_len=cfg.get("fixed_arrow_len", None),
     )
-    draw_elven_bracer_arm_160(fg_buf, l_sh[0], l_sh[1], str_grip[0], str_grip[1], is_front=False, bend_sign=1.0)
-    draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0)
+    if cfg.get("archer_draw_mode", False):
+        # 3/4 Power-Draw pose: far arm braces the Greatbow forward; near arm clearly draws string back to cheek with high elbow!
+        far_sh = (hip_x + 7.0 + tx_off, hip_y - 15.5 + ty_off)
+        near_sh = (hip_x - 3.5 + tx_off, hip_y - 14.0 + ty_off)
+        draw_elven_bracer_arm_160(fg_buf, far_sh[0], far_sh[1], riser_grip[0], riser_grip[1], is_front=False, bend_sign=1.0)
+        draw_elven_bracer_arm_160(fg_buf, near_sh[0], near_sh[1], str_grip[0], str_grip[1], is_front=True, bend_sign=-1.0, highlight_draw=True)
+    else:
+        draw_elven_bracer_arm_160(fg_buf, l_sh[0], l_sh[1], str_grip[0], str_grip[1], is_front=False, bend_sign=1.0)
+        draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0)
 
     # Drifting Yggdrasil starlight motes on active/victory frames
     if cfg.get("motes", False):
@@ -1744,98 +1757,72 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
                 set_px(fg, mx, my, C_GOLD_LIGHT if (k + idx) % 2 == 0 else C_EMERALD_BRIGHT)
             cell.alpha_composite(Image.fromarray(fg, "RGBA"))
             frames.append(cell)
-        elif f in (15, 16):
-            # Smooth airborne / touchdown transition (`wings = 0.78..0.88`)
-            p = f - 15
-            frames.append(render_stand_rig_frame(rigs, {
-                "hover_mode": True,
-                "dx": 1.0 - 1.0 * p,
-                "dy": -2.0 - 3.5 * p,
-                "wings": 0.78 + 0.10 * p,
-                "phase": ph,
-                "torso_lean": 7.0 - 2.5 * p,
-                "head_nod": 1.0 * (1.0 - p),
-                "hair_wave": 12.0 + 1.5 * p,
-                "skirt_wave": 11.0 + 1.5 * p,
-                "l_hip_dx": -1.5,
-                "l_thigh_tgt": 20.0,
-                "l_shin_tgt": 30.0 - 2.0 * p,
-                "r_hip_dx": 2.0,
-                "r_hip_dy": -1.0,
-                "r_thigh_tgt": -52.0 - 10.0 * p,
-                "r_shin_tgt": 8.0 + 6.0 * p,
-                "bow_dx": 17.5 + 1.5 * p,
-                "bow_dy": -12.5 - 1.0 * p,
-                "aim_deg": 8.0 - 6.0 * p,
-                "bow_h": 22.0 + 1.5 * p,
-                "draw_pull": 0.40 + 0.20 * p,
-                "arrows": 1,
-                "charge": 1.10 + 0.08 * p,
-                "charge_star": 0.90 + 0.10 * p,
-                "max_star_x": 128,
-                "motes": True,
-            }))
         elif f <= 24:
-            # F17..F24: Airborne Sovereign Overdraw (`wings = 0.95..1.08`, graceful hovering legs, flowing hair & skirt!)
-            u = (f - 17) / 7.0
-            sway = math.sin(u * math.pi)
+            # F15..F24 (`10` frames): Unmistakable Winged Sovereign Power-Draw progression!
+            # Reaches forward to nock the luminous arrow -> smoothly pulls string back past her cheek with high elbow!
+            u = (f - 15) / 9.0
+            ease = u * u * (3.0 - 2.0 * u)
+            hover_bob = math.sin(u * math.pi * 0.85)
             frames.append(render_stand_rig_frame(rigs, {
                 "hover_mode": True,
-                "dx": -2.0 * u,
-                "dy": -7.5 - 2.0 * sway,
-                "wings": 0.95 + 0.13 * u,
+                "archer_draw_mode": True,
+                "fixed_arrow_len": 34.0,
+                "dx": 2.0 - 5.2 * ease,
+                "dy": -4.0 - 4.0 * hover_bob,
+                "wings": 0.80 + 0.30 * ease,
                 "phase": ph,
-                "torso_lean": 4.0 - 3.0 * u,
-                "head_nod": -0.5 + 0.8 * u,
-                "hair_wave": 14.0 + 3.5 * math.sin(u * math.pi * 2.0),
-                "skirt_wave": 13.0 + 3.0 * math.cos(u * math.pi * 1.5),
+                "torso_lean": 11.0 - 19.5 * ease,
+                "head_nod": 2.0 - 2.5 * ease,
+                "hair_wave": 11.0 + 8.5 * ease,
+                "skirt_wave": 10.0 + 7.5 * ease,
                 "l_hip_dx": -2.0,
-                "l_thigh_tgt": 21.0 + 3.0 * sway,
-                "l_shin_tgt": 29.0 + 4.0 * sway,
+                "l_thigh_tgt": 16.0 + 11.0 * ease,
+                "l_shin_tgt": 26.0 + 8.0 * ease,
                 "r_hip_dx": 2.5,
                 "r_hip_dy": -1.5,
-                "r_thigh_tgt": -66.0 - 4.0 * u,
-                "r_shin_tgt": 14.0 + 4.0 * u,
-                "bow_dx": 19.5 - 1.5 * u,
-                "bow_dy": -13.5,
-                "aim_deg": 0.0,
-                "bow_h": 24.0,
-                "draw_pull": 0.65 + 0.55 * u,
+                "r_thigh_tgt": -52.0 - 18.0 * ease,
+                "r_shin_tgt": 8.0 + 12.0 * ease,
+                "bow_dx": 15.0 + 5.0 * min(1.0, u * 1.35),
+                "bow_dy": -13.5 - 3.0 * ease,
+                "aim_deg": 6.0 * (1.0 - min(1.0, u * 1.4)),
+                "bow_h": 21.5 + 2.5 * ease,
+                "draw_pull": 0.06 + 1.44 * ease,
                 "arrows": 1,
-                "charge": 1.20 + 0.25 * u,
-                "charge_star": 1.00 + 0.35 * u,
-                "max_star_x": 128,
+                "charge": 0.95 + 0.55 * ease,
+                "charge_star": 0.35 + 1.05 * ease,
+                "max_star_x": 126,
                 "motes": True,
             }))
         elif f in (25, 26):
-            # F25..F26: Airborne Sovereign Overdraw Release (0 smears, poised hover recoil!)
+            # F25..F26: Airborne Sovereign Overdraw Release (0 smears, crisp bowstring snap recoil!)
             p = f - 25
             frames.append(render_stand_rig_frame(rigs, {
                 "hover_mode": True,
-                "dx": -4.0 + 1.2 * p,
-                "dy": -8.0 + 1.5 * p,
+                "archer_draw_mode": True,
+                "dx": -3.8 + 1.4 * p,
+                "dy": -7.5 + 1.6 * p,
                 "wings": 1.08 - 0.06 * p,
                 "phase": ph,
-                "torso_lean": -4.5 + 2.0 * p,
+                "torso_lean": -8.5 + 3.5 * p,
                 "head_nod": 0.5,
-                "hair_wave": 16.5 - 2.0 * p,
-                "skirt_wave": 14.5 - 1.5 * p,
+                "hair_wave": 17.0 - 2.5 * p,
+                "skirt_wave": 15.0 - 2.0 * p,
                 "l_hip_dx": -2.0,
-                "l_thigh_tgt": 23.0 - 2.0 * p,
-                "l_shin_tgt": 31.0 - 2.0 * p,
+                "l_thigh_tgt": 24.0 - 2.5 * p,
+                "l_shin_tgt": 32.0 - 2.5 * p,
                 "r_hip_dx": 2.5,
                 "r_hip_dy": -1.5,
-                "r_thigh_tgt": -68.0 + 5.0 * p,
-                "r_shin_tgt": 17.0 - 3.0 * p,
-                "bow_dx": 21.0,
-                "bow_dy": -13.5,
+                "r_thigh_tgt": -68.0 + 6.0 * p,
+                "r_shin_tgt": 18.0 - 3.5 * p,
+                "bow_dx": 20.5,
+                "bow_dy": -16.0 + 1.0 * p,
                 "aim_deg": 0.0,
                 "bow_h": 24.0,
-                "draw_pull": -0.22 + 0.16 * p,
+                "draw_pull": -0.24 + 0.18 * p,
                 "arrows": 0,
-                "charge": 1.40 - 0.25 * p,
-                "charge_star": 1.15 - 0.45 * p,
-                "max_star_x": 128,
+                "charge": 1.35 - 0.30 * p,
+                "charge_star": 0.85 - 0.45 * p,
+                "max_star_x": 126,
                 "motes": True,
             }))
         else:

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps120';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps120';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps120';
+import { Fighter } from './Fighter.js?v=30fps121';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps121';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps121';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps120';
+} from '../engine/shaders/cyberShaders.js?v=30fps121';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -281,11 +281,11 @@ export class AndroidEx extends Fighter {
     if (!assets) return null;
     if (!assets.android_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/android_ex_sheet.png?v=30fps120';
+      sheet.src = 'assets/sprites/android_ex_sheet.png?v=30fps121';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps120';
+      vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps121';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/android_ex_portrait.png?v=30fps120';
+      portrait.src = 'assets/sprites/android_ex_portrait.png?v=30fps121';
       assets.android_ex = {
         sheet,
         vfx,
@@ -295,8 +295,8 @@ export class AndroidEx extends Fighter {
         anchorX: 112,
         anchorY: 230
       };
-    } else if (assets.android_ex.vfx?.src && !assets.android_ex.vfx.src.includes('v=30fps120')) {
-      assets.android_ex.vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps120';
+    } else if (assets.android_ex.vfx?.src && !assets.android_ex.vfx.src.includes('v=30fps121')) {
+      assets.android_ex.vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps121';
     }
     return assets.android_ex;
   }
