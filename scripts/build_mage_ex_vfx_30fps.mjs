@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * IGNIS SOL EX (`mage_ex` / `FireMageEx.js`) — Next-Gen 30fps VFX Sprite Sheet Builder.
+ * IGNIS SOL EX (`mage_ex` / `FireMageEx.js`) — Newly Born Next-Gen 30fps VFX Sprite Sheet Builder (`?v=30fps115`).
  *
  * Outputs:
  *   1. `assets/sprites/mage_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208)
@@ -10,8 +10,8 @@
  *   - 100% `2x2` integer pixel blocks (authored/resolved at `104x104` logical -> upscaled `2x NEAREST` to `208x208`)
  *   - Binary alpha (`0` or `255`), `4px` output safety margin (`0/240` border clips)
  *   - `29/29` active transitions per row across all 8 rows
- *   - Preserves iconic `CATACLYSM: LAYWASTE OF INFERNO` rows (`Row 5` Sky Breach, `Row 6` Dreadnought Meteor, `Row 7` Comet Wake)
- *     while adding Next-Gen 4-band serrated solar-flame crescents & razor Helios hit-scars on `Row 4`!
+ *   - 0 melee slash crescents! Row 4 is a pure 30fps Golden Solar Rune Magic Circle & Starburst Invocation,
+ *     supporting `SOLAR TRINITY CATACLYSM`, `BLACK-SUN ECLIPSE SINGULARITY`, & `CATACLYSM: GRAND HELIOS APOCALYPSE`!
  */
 
 import fs from 'node:fs';
@@ -25,13 +25,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps114';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps115';
 
 import {
   SOLAR_CORONA_PALETTE,
   ECLIPSE_ABYSS_PALETTE,
   SOLAR_EFFECT_REGISTRY
-} from '../src/engine/shaders/solarShaders.js?v=30fps114';
+} from '../src/engine/shaders/solarShaders.js?v=30fps115';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -98,7 +98,7 @@ function encodeRgbaPng(width, height, rgba) {
 }
 
 function putPx104(rgba, x, y, r, g, b, a = 255) {
-  if (x < 2 || y < 2 || x >= 102 || y >= 102) return;
+  if (x < 3 || y < 3 || x >= 101 || y >= 101) return;
   const o = (y * 104 + x) * 4;
   rgba[o] = r;
   rgba[o + 1] = g;
@@ -106,77 +106,116 @@ function putPx104(rgba, x, y, r, g, b, a = 255) {
   rgba[o + 3] = a;
 }
 
-function drawRazorSolarHitScar104(rgba, cx, cy, angleDeg, len, width, progress) {
-  const rad = (angleDeg * Math.PI) / 180;
-  const ux = Math.cos(rad);
-  const uy = Math.sin(rad);
-  const nx = -uy;
-  const ny = ux;
-  const fade = Math.max(0, 1 - progress);
-  const halfLen = len * (0.42 + 0.58 * Math.min(1, progress * 2.8));
-  const halfW = Math.max(0.8, width * fade);
+function putOut104(rgba, x, y, r, g, b) {
+  if (x < 3 || y < 3 || x >= 101 || y >= 101) return;
+  const o = (y * 104 + x) * 4;
+  if (rgba[o + 3] === 0) {
+    rgba[o] = r;
+    rgba[o + 1] = g;
+    rgba[o + 2] = b;
+    rgba[o + 3] = 255;
+  }
+}
 
-  const steps = Math.max(8, Math.ceil(halfLen * 2.6));
-  for (let i = -steps; i <= steps; i++) {
-    const u = i / steps;
-    const prof = Math.cos(u * Math.PI * 0.5);
-    const lw = halfW * prof;
-    const bx = cx + ux * halfLen * u;
-    const by = cy + uy * halfLen * u;
-    const span = Math.ceil(lw + 1.2);
-    for (let s = -span; s <= span; s++) {
-      const af = Math.abs(s) / Math.max(0.5, lw);
-      if (af > 1.22) continue;
-      const px = Math.round(bx + nx * s);
-      const py = Math.round(by + ny * s);
-      if (px < 2 || py < 2 || px >= 102 || py >= 102) continue;
-      if (af > 0.96) {
-        const o = (py * 104 + px) * 4;
-        if (rgba[o + 3] === 0) putPx104(rgba, px, py, 28, 8, 10, 255);
-      } else if (af < 0.34) {
-        putPx104(rgba, px, py, 255, 255, 255, 255);
-      } else if (af < 0.64) {
-        putPx104(rgba, px, py, 254, 240, 138, 255);
-      } else if (af < 0.85) {
-        putPx104(rgba, px, py, 251, 146, 60, 255);
-      } else {
+function drawStarGlint104(rgba, cx, cy, arm, coreR = 255, coreG = 255, coreB = 255, rayR = 254, rayG = 240, rayB = 138) {
+  const icx = Math.round(cx);
+  const icy = Math.round(cy);
+  for (let d = -arm - 1; d <= arm + 1; d++) {
+    putOut104(rgba, icx + d, icy, 24, 8, 10);
+    putOut104(rgba, icx, icy + d, 24, 8, 10);
+  }
+  for (let d = -arm; d <= arm; d++) {
+    putPx104(rgba, icx + d, icy, rayR, rayG, rayB, 255);
+    putPx104(rgba, icx, icy + d, rayR, rayG, rayB, 255);
+  }
+  putPx104(rgba, icx - 1, icy - 1, 251, 146, 60, 255);
+  putPx104(rgba, icx + 1, icy - 1, 251, 146, 60, 255);
+  putPx104(rgba, icx - 1, icy + 1, 251, 146, 60, 255);
+  putPx104(rgba, icx + 1, icy + 1, 251, 146, 60, 255);
+  putPx104(rgba, icx, icy, coreR, coreG, coreB, 255);
+}
+
+/**
+ * Pure High-Sorcery Row 4: 30fps Rotating Golden Solar Astrolabe Magic Circle & 8-Point Starburst Seal!
+ * Zero melee slash crescents!
+ */
+function drawSolarAstrolabeMagicCircle104(rgba, cx, cy, frameIdx, totalFrames) {
+  const phase = frameIdx / totalFrames;
+  const prog = frameIdx / Math.max(1, totalFrames - 1);
+  const rot = phase * Math.PI * 2;
+  const expand = prog < 0.2 ? 0.65 + (prog / 0.2) * 0.35 : 1.0;
+  const rOuter = 40 * expand;
+  const rInner = 27 * expand;
+  const dissipate = prog > 0.72 ? (prog - 0.72) / 0.28 : 0;
+
+  //Bayer-stippled inner solar corona aura
+  for (let py = 6; py < 98; py++) {
+    for (let px = 6; px < 98; px++) {
+      const dx = px - cx;
+      const dy = py - cy;
+      const d = Math.hypot(dx, dy);
+      if (d > rOuter - 2 || d < 6) continue;
+      const bayer = BAYER4[py & 3][px & 3] / 16.0;
+      const wave = 0.5 + 0.5 * Math.sin(Math.atan2(dy, dx) * 8 + rot * 2);
+      if (bayer < 0.24 * (1 - dissipate) * wave) {
         putPx104(rgba, px, py, 220, 38, 38, 255);
       }
     }
   }
-}
 
-function drawSerratedSolarCrescent104(rgba, cx, cy, deg0, deg1, rOuter, thick, progress) {
-  const a0 = (Math.min(deg0, deg1) * Math.PI) / 180;
-  const a1 = (Math.max(deg0, deg1) * Math.PI) / 180;
-  const span = Math.max(0.1, a1 - a0);
-  const fade = Math.max(0.15, 1 - progress * 0.85);
-  const effThick = thick * fade;
+  // Concentric Solar Rune Rings
+  for (const [rad, isOuter] of [
+    [rOuter, true],
+    [rInner, false]
+  ]) {
+    const steps = 112;
+    for (let i = 0; i < steps; i++) {
+      const ang = (i / steps) * Math.PI * 2 + (isOuter ? rot : -rot);
+      const px = Math.round(cx + Math.cos(ang) * rad);
+      const py = Math.round(cy + Math.sin(ang) * rad);
+      if (dissipate > 0 && BAYER4[py & 3][px & 3] / 16.0 < dissipate) continue;
+      putOut104(rgba, px + 1, py, 24, 8, 10);
+      putOut104(rgba, px - 1, py, 24, 8, 10);
+      putOut104(rgba, px, py + 1, 24, 8, 10);
+      putOut104(rgba, px, py - 1, 24, 8, 10);
+      if (i % 7 === 0) {
+        putPx104(rgba, px, py, 255, 255, 255, 255);
+      } else if (isOuter) {
+        putPx104(rgba, px, py, 254, 240, 138, 255);
+      } else {
+        putPx104(rgba, px, py, 251, 146, 60, 255);
+      }
+    }
+  }
 
-  for (let py = 3; py < 101; py++) {
-    for (let px = 3; px < 101; px++) {
-      const dx = px - cx;
-      const dy = py - cy;
-      const r = Math.hypot(dx, dy);
-      if (r > rOuter || r < rOuter - effThick - 4) continue;
-      let ang = Math.atan2(dy, dx);
-      while (ang < a0 - Math.PI) ang += Math.PI * 2;
-      while (ang > a0 + Math.PI) ang -= Math.PI * 2;
-      if (ang < a0 || ang > a1) continue;
-      const u = (ang - a0) / span;
-      const taper = Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u))), 0.6);
-      const saw = Math.sin(u * 42 + progress * 12) * 0.6 + Math.cos(u * 89) * 0.4;
-      const lt = effThick * (0.25 + 0.85 * taper) + (saw > 0.3 ? 2.2 : 0);
-      if (r < rOuter - lt) continue;
-      const v = (rOuter - r) / Math.max(1, lt);
-      const bayer = BAYER4[py & 3][px & 3] / 16.0;
-      if (u < 0.22 && bayer > (u / 0.22) * 1.1) continue;
-      if (progress > 0.55 && bayer > (1.05 - progress) * 2.0) continue;
+  // Inscribed 8-Point Octagram Star Lines
+  const pts = [];
+  for (let k = 0; k < 8; k++) {
+    const a = rot + (k * Math.PI) / 4;
+    pts.push([cx + Math.cos(a) * (rOuter - 2), cy + Math.sin(a) * (rOuter - 2)]);
+  }
+  for (let k = 0; k < 8; k++) {
+    const [x0, y0] = pts[k];
+    const [x1, y1] = pts[(k + 3) % 8];
+    const segs = 44;
+    for (let s = 0; s <= segs; s++) {
+      const t = s / segs;
+      const px = Math.round(x0 + (x1 - x0) * t);
+      const py = Math.round(y0 + (y1 - y0) * t);
+      if (dissipate > 0 && BAYER4[py & 3][px & 3] / 16.0 < dissipate + 0.1) continue;
+      putOut104(rgba, px + 1, py, 24, 8, 10);
+      putOut104(rgba, px, py + 1, 24, 8, 10);
+      if (s % 3 === 0) putPx104(rgba, px, py, 254, 240, 138, 255);
+      else putPx104(rgba, px, py, 251, 146, 60, 255);
+    }
+  }
 
-      if (v < 0.28) putPx104(rgba, px, py, 255, 255, 255, 255);
-      else if (v < 0.56) putPx104(rgba, px, py, 254, 240, 138, 255);
-      else if (v < 0.82) putPx104(rgba, px, py, 251, 146, 60, 255);
-      else putPx104(rgba, px, py, 220, 38, 38, 255);
+  // Central blazing miniature sun + 4 cardinal star-glints
+  if (dissipate < 0.65) {
+    drawStarGlint104(rgba, cx, cy, 6);
+    for (let k = 0; k < 4; k++) {
+      const ga = rot + (k * Math.PI) / 2;
+      drawStarGlint104(rgba, cx + Math.cos(ga) * rOuter, cy + Math.sin(ga) * rOuter, 3);
     }
   }
 }
@@ -232,7 +271,7 @@ function downsample208To104(src208, dst104) {
       let cnt = 0;
       for (let dy = 0; dy < 2; dy++) {
         for (let dx = 0; dx < 2; dx++) {
-          const so = (((y * 2 + dy) * 208) + (x * 2 + dx)) * 4;
+          const so = ((y * 2 + dy) * 208 + (x * 2 + dx)) * 4;
           const sa = src208[so + 3];
           if (sa > aMax) aMax = sa;
           if (sa >= 28) {
@@ -329,47 +368,49 @@ function bakeVfxSheet() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: Blazing Helios Solar Fireball & Prominence Wave',
+      name: 'Row 0: Blazing Helios Solar Comet & Star-Glint Muzzle Burst',
       windowSec: 1.0,
+      addStarGlints: true,
       layers: [{ def: SOLAR_EFFECT_REGISTRY.solarFireballOrbCell, warmup: 0.1, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
-      name: 'Row 1: Molten Hellfire Solar Pillar',
+      name: 'Row 1: Braided Heliacal Corona Pillar',
       windowSec: 1.0,
       layers: [{ def: SOLAR_EFFECT_REGISTRY.hellfireMagmaPillarCell, warmup: 0, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
-      name: 'Row 2: Black-Sun Solar Eclipse Supernova Sphere',
+      name: 'Row 2: Black-Sun Eclipse Singularity Ring',
       windowSec: 1.0,
+      addStarGlints: true,
       layers: [{ def: SOLAR_EFFECT_REGISTRY.blackSunEclipseSphereCell, warmup: 0, cfg: { x: 52, y: 52, palette: ECLIPSE_ABYSS_PALETTE } }]
     },
     {
-      name: 'Row 3: Helios Solar Astrolabe & Cataclysm Magma Core',
+      name: 'Row 3: Grand Helios Astrolabe & Cataclysm Solar Core',
       windowSec: 1.0,
       layers: [{ def: SOLAR_EFFECT_REGISTRY.cataclysmSolarMeteorCell, warmup: 0.1, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
-      name: 'Row 4: Next-Gen Serrated Helios Flame Crescent & Razor Hit-Scar',
+      name: 'Row 4: Pure 30fps Golden Solar Astrolabe Magic Circle & Octagram Seal',
       windowSec: 1.0,
-      customSlashRow: true,
-      layers: [{ def: SOLAR_EFFECT_REGISTRY.heliosSunCrestSlashCell, warmup: 0, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
+      pureMagicCircleRow: true,
+      layers: []
     },
     {
-      name: 'Row 5: Dimensional Heavensfall Sky Breach Portal (2x2 pixel-pure)',
+      name: 'Row 5: Jagged Celestial Heavensfall Sky Breach (2x2 pixel-pure)',
       windowSec: 1.0,
       native208: true,
       circular: true,
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralSkyBreachPortalCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: ECLIPSE_ABYSS_PALETTE } }]
     },
     {
-      name: 'Row 6: Colossal Dreadnought Voronoi Star-Meteor (2x2 pixel-pure)',
+      name: 'Row 6: Colossal Dreadnought Voronoi Sun-Meteor (2x2 pixel-pure)',
       windowSec: 1.0,
       native208: true,
       circular: true,
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralMeteorColossusCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
-      name: 'Row 7: Enclosed Diagonal Comet Wake Plume & Mach Ring (2x2 pixel-pure)',
+      name: 'Row 7: Enclosed Diagonal Solar Comet Wake Plume & Mach Ring (2x2 pixel-pure)',
       windowSec: 1.0,
       native208: true,
       circular: true,
@@ -401,8 +442,10 @@ function bakeVfxSheet() {
     let transitions = 0;
 
     for (let c = 0; c < COLS; c++) {
-      const prog = c / (COLS - 1);
-      if (is208) {
+      cell104.fill(0);
+      if (spec.pureMagicCircleRow) {
+        drawSolarAstrolabeMagicCircle104(cell104, 52, 52, c, COLS);
+      } else if (is208) {
         clearPixelSurface(surf208);
         for (const inst of instances) inst.render(pen208, 'back');
         for (const inst of instances) inst.render(pen208, 'front');
@@ -415,16 +458,12 @@ function bakeVfxSheet() {
         resolveSurfaceToRGBA(surf104, cell104, 1.14);
       }
 
-      if (spec.customSlashRow) {
-        // Supercharge Row 4 with crisp Next-Gen 4-band serrated solar crescent + cross-razor hit-scar!
-        drawSerratedSolarCrescent104(cell104, 48, 52, -78 + c * 1.4, 76 + c * 1.1, 44, 15, prog);
-        drawRazorSolarHitScar104(cell104, 54, 52, -32 + c * 0.6, 44, 5.2, prog * 0.85);
-        if (c < 18) {
-          drawRazorSolarHitScar104(cell104, 54, 52, 42 - c * 0.5, 28, 3.2, c / 18.0);
-        }
+      if (spec.addStarGlints) {
+        const ga = (c / COLS) * Math.PI * 2;
+        drawStarGlint104(cell104, 52 + Math.cos(ga) * 28, 52 + Math.sin(ga) * 28, 2);
+        drawStarGlint104(cell104, 52 - Math.cos(ga) * 28, 52 - Math.sin(ga) * 28, 2);
       }
 
-      // Orbiting frame-unique solar spark motes guarantee 29/29 active transitions cleanly
       const sparkAng = (c / COLS) * Math.PI * 2 + r * 0.7;
       const sx = Math.round(52 + Math.cos(sparkAng) * 34);
       const sy = Math.round(52 + Math.sin(sparkAng) * 34);
@@ -439,7 +478,6 @@ function bakeVfxSheet() {
 
       blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
 
-      // Verify 0 border clips on 208x208 output cell
       const ox = c * CELL;
       const oy = r * CELL;
       let clipped = false;
