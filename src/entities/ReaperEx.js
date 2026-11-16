@@ -171,6 +171,8 @@ export class ReaperEx extends Fighter {
     this.phaseStartX = this.x;
     this.phaseTargetX = this.x;
     this.cameraAirLift = 0;
+    this._phaseThroughEnemy = false;
+    this._burrowLockedEnemyFacing = this.facing;
 
     this.fx = new ArcaneShaderFX(ABYSSAL_EFFECT_REGISTRY, {
       pixelScale: 3,
@@ -241,6 +243,44 @@ export class ReaperEx extends Fighter {
     return ww * 0.5;
   }
 
+  _resolveBurrowBackTargetX(enemy, game, offsetDist = 106, fallbackFacing = null) {
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const minB =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
+        ? game.adventure.lockMinX
+        : advBounds
+          ? advBounds.minX + 44
+          : 92;
+    const rawMaxB =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
+        ? game.adventure.lockMaxX
+        : advBounds
+          ? advBounds.maxX - 44
+          : ww - 92;
+    const maxB = enemy?.isColossalBoss ? Math.min(rawMaxB, enemy.x - 84) : rawMaxB;
+    const refFacing =
+      enemy?.facing || fallbackFacing || this._burrowLockedEnemyFacing || -this.submergeDir;
+    const backDir = -refFacing;
+    let desiredX = enemy.x + backDir * offsetDist;
+    if (desiredX < minB || desiredX > maxB) {
+      desiredX = enemy.x - backDir * offsetDist;
+    }
+    return {
+      desiredX: Math.max(minB, Math.min(maxB, desiredX)),
+      minB,
+      maxB
+    };
+  }
+
+  getTargetTorsoAngle() {
+    if (this.state === 'IDLE' || this.state === 'WALK') return 0;
+    return super.getTargetTorsoAngle();
+  }
+
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
@@ -257,9 +297,13 @@ export class ReaperEx extends Fighter {
     if (newState !== 'CROUCH') {
       this.isFullyBurrowed = false;
       this.isSubmerged = false;
+      this._phaseThroughEnemy = false;
       this.submergeDepth = 0;
       this.isCrouching = false;
       this.wraithAlpha = newState === 'JUMP' ? this.wraithAlpha : 1.0;
+      if (newState !== 'DODGE') {
+        this._phaseThroughEnemy = false;
+      }
     }
 
     if (newState === 'TRUE_ULTIMATE') {
@@ -316,6 +360,7 @@ export class ReaperEx extends Fighter {
       this.isInvulnerable = false;
       this.isFullyBurrowed = false;
       this.isSubmerged = false;
+      this._phaseThroughEnemy = false;
       this.submergeDepth = 0;
       this.graveWardTimer = 0;
       this._trueUltSlashFlash = 0;
@@ -1429,6 +1474,7 @@ export class ReaperEx extends Fighter {
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isSubmerged = true;
+    this._phaseThroughEnemy = true;
     this.isFullyBurrowed = false;
     this.submergeDepth = 0;
     this.burrowShaderTimer = 0;
@@ -1436,6 +1482,7 @@ export class ReaperEx extends Fighter {
     this.burrowTrailNodes = [];
     this.didActionFrame = false;
     this.submergeDir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
+    this._burrowLockedEnemyFacing = enemy ? (enemy.facing || -this.submergeDir) : -this.submergeDir;
     this.facing = this.submergeDir;
     this.vx = 0;
     this.vy = 0;
@@ -1489,6 +1536,7 @@ export class ReaperEx extends Fighter {
     if (forceJump || (nearWall && dist < 265)) {
       this.isFlipVault = true;
       this.isWraithPhase = false;
+      this._phaseThroughEnemy = false;
       this.isSubmerged = false;
       this.isFullyBurrowed = false;
       this.submergeDepth = 0;
@@ -1537,16 +1585,14 @@ export class ReaperEx extends Fighter {
       this.isSubmerged = false;
       this.isFullyBurrowed = false;
       this.submergeDepth = 0;
+      this._phaseThroughEnemy = true;
       this.wraithAlpha = 0.42;
       this.dashDuration = 0.32;
       this.isDeflecting = true;
       this.phaseStartX = this.x;
       const passDir = Math.sign(enemy.x - this.x) || this.facing;
-      let flankX = enemy.x - passDir * 136;
-      if (flankX < 105 || flankX > ww - 105) {
-        flankX = enemy.x + passDir * 146;
-      }
-      this.phaseTargetX = Math.max(95, Math.min(ww - 95, flankX));
+      const { desiredX } = this._resolveBurrowBackTargetX(enemy, game, 118, -passDir);
+      this.phaseTargetX = desiredX;
       this.dashDir = Math.sign(this.phaseTargetX - this.phaseStartX) || -passDir;
       this.vx = 0;
       this.gainSoulStack(1);
@@ -1568,6 +1614,7 @@ export class ReaperEx extends Fighter {
 
     this.isFlipVault = false;
     this.isWraithPhase = false;
+    this._phaseThroughEnemy = false;
     this.isSubmerged = false;
     this.isFullyBurrowed = false;
     this.submergeDepth = 0;
@@ -1683,6 +1730,7 @@ export class ReaperEx extends Fighter {
 
       if (t >= this.dashDuration) {
         this.isWraithPhase = false;
+        this._phaseThroughEnemy = false;
         this.isSubmerged = false;
         this.isFullyBurrowed = false;
         this.submergeDepth = 0;
@@ -1771,21 +1819,17 @@ export class ReaperEx extends Fighter {
       }
 
       if (enemy && !enemy.isDead) {
-        let desiredX = enemy.x - this.submergeDir * 98;
-        if (desiredX < 96 || desiredX > ww - 96) {
-          desiredX = enemy.x + this.submergeDir * 98;
-        }
-        desiredX = Math.max(92, Math.min(ww - 92, desiredX));
+        const { desiredX, minB, maxB } = this._resolveBurrowBackTargetX(enemy, game, 106);
         const delta = desiredX - this.x;
         if (Math.abs(delta) > 4) {
-          const slideSpeed = Math.min(355, Math.max(165, Math.abs(delta) * 3.4));
+          const slideSpeed = Math.min(580, Math.max(260, Math.abs(delta) * 4.8));
           this.x += Math.sign(delta) * Math.min(Math.abs(delta), slideSpeed * dt);
         }
+        this.x = Math.max(minB, Math.min(maxB, this.x));
         this.facing = enemy.x >= this.x ? 1 : -1;
       } else {
-        this.x += this.submergeDir * 255 * dt;
+        this.x = Math.max(90, Math.min(ww - 90, this.x + this.submergeDir * 255 * dt));
       }
-      this.x = Math.max(90, Math.min(ww - 90, this.x));
 
       const isWarning = t >= 1.08;
       if (isWarning && !this.burrowWarned) {
@@ -1823,10 +1867,13 @@ export class ReaperEx extends Fighter {
       this.didActionFrame = true;
       this.isFullyBurrowed = false;
       this.isSubmerged = false;
+      this._phaseThroughEnemy = false;
       this.isInvulnerable = false;
       this.submergeDepth = 0;
 
       if (enemy && !enemy.isDead) {
+        const { desiredX } = this._resolveBurrowBackTargetX(enemy, game, 106);
+        this.x = desiredX;
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
       if (game?.audio) {
@@ -1884,6 +1931,7 @@ export class ReaperEx extends Fighter {
       this.isCrouching = false;
       this.isFullyBurrowed = false;
       this.isSubmerged = false;
+      this._phaseThroughEnemy = false;
       this.submergeDepth = 0;
       this.isInvulnerable = false;
       this.isDeflecting = false;
@@ -3062,6 +3110,8 @@ export class ReaperEx extends Fighter {
     if ((this.state === 'IDLE' || this.state === 'WALK') && !this._advPureDodge) {
       this._overrideFrameIdx = null;
       this.trueUltFrameOverride = null;
+      this.torsoAngle = 0;
+      this.torsoVel = 0;
     }
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);

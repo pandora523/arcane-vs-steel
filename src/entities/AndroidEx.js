@@ -178,7 +178,7 @@ export class AndroidEx extends Fighter {
       secondaryColor: '#ec4899',
       hasTrueUltimate: true,
       trueUltName: 'PROJECT GUNG-09: ORBITAL SINGULARITY BUSTER',
-      trueUltDuration: 4.45
+      trueUltDuration: 3.55
     });
 
     this.heroId = 'android_ex';
@@ -203,7 +203,7 @@ export class AndroidEx extends Fighter {
 
     this.trueUltName = 'PROJECT GUNG-09: ORBITAL SINGULARITY BUSTER';
     this.trueUltSub = 'HEX-MATRIX CAGE - ORBITAL RELAY COLUMN';
-    this.trueUltDuration = 4.45;
+    this.trueUltDuration = 3.55;
 
     this.dodgeMaxCooldown = 3.4;
     this.dashMaxCooldown = 3.3;
@@ -413,6 +413,9 @@ export class AndroidEx extends Fighter {
       this._trueUltStartX = this.x;
       this._trueUltRetreatX = this.x;
       this._busterMoteAccum = 0;
+      this._trueUltAfterAccum = 0;
+      this._trueUltAfterStep = 0;
+      this._trueUltBusterTimer = 0;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
     } else if (prevState === 'TRUE_ULTIMATE') {
@@ -426,6 +429,7 @@ export class AndroidEx extends Fighter {
       this.diamondFunnelGrid = null;
       this.hudTargetMatrix = null;
       this.orbitalStrikeFunnels = [];
+      this._trueUltBusterTimer = 0;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
     }
@@ -525,7 +529,7 @@ export class AndroidEx extends Fighter {
   }
 
   spawnAfterimage(x, y, facing, row = 2, col = 3, maxLife = 0.22, isMagenta = false) {
-    if (this.afterimages.length >= 12) this.afterimages.shift();
+    if (this.afterimages.length >= 18) this.afterimages.shift();
     this.afterimages.push({
       x,
       y,
@@ -1733,11 +1737,43 @@ export class AndroidEx extends Fighter {
   }
 
   /**
-   * NEWLY BORN SUPREME FINISHER (`4.45s`):
+   * Computes the 6 flanking V-Wing Tactical Fin-Funnel Drone Pod positions
+   * behind/above VEX-09 EX's shoulders for Phase 2 charge lock & Phase 3 barrage.
+   */
+  _getTrueUltVWingBattery(t) {
+    const snapU = Math.min(1, Math.max(0, (t - 0.48) / 0.22));
+    const easeSnap = 1 - Math.pow(1 - snapU, 3);
+    const recoil = t >= 1.68 && t < 2.25 ? Math.sin(((t - 1.68) / 0.57) * Math.PI) * 14 : 0;
+    const offsets = [
+      { ox: -52, oy: -162, row: 1, size: 108 },
+      { ox: -86, oy: -186, row: 6, size: 112 },
+      { ox: -122, oy: -210, row: 1, size: 116 },
+      { ox: -58, oy: -108, row: 6, size: 104 },
+      { ox: -96, oy: -120, row: 1, size: 108 },
+      { ox: -134, oy: -134, row: 6, size: 112 }
+    ];
+    return offsets.map((o, idx) => {
+      const hover = Math.sin(t * 7.5 + idx * 1.1) * 4;
+      const sx = this.x + this.facing * (-22 + (o.ox + 22) * easeSnap - recoil);
+      const sy = this.groundY - 110 + (o.oy + 110) * easeSnap + hover;
+      return {
+        x: Math.round(sx / 2) * 2,
+        y: Math.round(sy / 2) * 2,
+        row: o.row,
+        size: o.size,
+        isMagenta: idx % 2 === 1
+      };
+    });
+  }
+
+  /**
+   * NEWLY BORN SUPREME FINISHER (`3.55s`):
    * `PROJECT GUNG-09: ORBITAL SINGULARITY BUSTER`
-   * Locks target inside an 8-Drone Hexagonal Cyber-Matrix Cage, opens a stratified
-   * upper-atmosphere Orbital Relay Gate, and fires a seamless vertical `android_ex_vfx.png`
-   * Singularity Buster Column (`705` Crit, `0` stage override) with rising pixel data-hex motes & shock-rings!
+   * Phase 1 (`0.00..0.48s`): Fast 360-deg Tactical Backflip Vault with cyan/magenta afterimages.
+   * Phase 2 (`0.48..1.68s`): Crouched Spec-Ops Charge (Bayer aura, Singularity Sphere, Telemetry Bars,
+   *                          6 V-Wing Fin-Funnel Lock Battery, 8-Drone Cage & 5-Tier Sky Gate).
+   * Phase 3 (`1.68..3.55s`): Cataclysmic Multi-Vector Bombardment (488px Center + Flanking 184px
+   *                          Satellite Rail Columns, 380x260 Reactor Dome, 360x120 Ground Seal, `705` Crit).
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1753,7 +1789,7 @@ export class AndroidEx extends Fighter {
 
     const targets = this.getEnemyTargets(enemy, game);
 
-    if (t <= 2.75) {
+    if (t <= 1.66) {
       const rawTgtX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 240;
       this._trueUltTargetX = advBounds
         ? enemy?.isColossalBoss
@@ -1765,18 +1801,19 @@ export class AndroidEx extends Fighter {
       }
     }
 
-    // Phase 1 (`0.00..1.15s`): Wing-Pylon Ascension & Cyber-Matrix Target-Lock
-    if (t < 1.15) {
-      const uAsc = Math.min(1, t / 1.15);
-      const ease = 1 - Math.pow(1 - uAsc, 2.4);
-      this.y = this.groundY - 72 * ease;
-      this.trueUltFrameOverride = 120 + Math.min(8, Math.floor(uAsc * 9));
+    // Phase 1 (`0.00..0.48s`): Fast Tactical Cyber-Valkyrie 360-Deg Backflip Vault!
+    if (t < 0.48) {
+      const uFlip = Math.min(1, t / 0.48);
+      const retreatEase = 1 - Math.pow(1 - uFlip, 1.35);
+      this.y = this.groundY - Math.sin(uFlip * Math.PI) * 156;
+      const flipCol = Math.min(9, Math.floor(uFlip * 10));
+      this.trueUltFrameOverride = 120 + flipCol;
       this._overrideFrameIdx = this.trueUltFrameOverride;
 
-      if (t >= 0.04 && this._trueUltStep < 1) {
+      if (this._trueUltStep < 1) {
         this._trueUltStep = 1;
         this._trueUltStartX = this.x;
-        this._trueUltRetreatX = this._clampArenaX(this.x - this.facing * 165, game);
+        this._trueUltRetreatX = this._clampArenaX(this.x - this.facing * 188, game);
         game?.audio?.play?.('ult_cast', this.x);
         game?.audio?.play?.('emp_blast', this.x);
         game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#22d3ee');
@@ -1794,7 +1831,7 @@ export class AndroidEx extends Fighter {
           offsetY: -146,
           flip: this.facing < 0,
           palette: CYBER_NEON_PALETTE,
-          maxDuration: 3.15,
+          maxDuration: 2.86,
           light: 1.08,
           extra: { length: 22, tilt: -0.58 }
         });
@@ -1804,20 +1841,28 @@ export class AndroidEx extends Fighter {
           extra: { boxW: 26, boxH: 66 }
         });
       }
-      if (this._trueUltStep >= 1) {
-        this.x = this._trueUltStartX + (this._trueUltRetreatX - this._trueUltStartX) * ease;
+
+      this._trueUltAfterAccum = (this._trueUltAfterAccum || 0) + dt;
+      if (this._trueUltAfterAccum >= 0.035) {
+        this._trueUltAfterAccum -= 0.035;
+        const mag = ((this._trueUltAfterStep || 0) % 2) === 1;
+        this._trueUltAfterStep = (this._trueUltAfterStep || 0) + 1;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, flipCol, 0.24, mag);
       }
+
+      this.x = this._trueUltStartX + (this._trueUltRetreatX - this._trueUltStartX) * retreatEase;
       return;
     }
 
-    // Phase 2 (`1.15..3.05s`): 8-Drone Hexagonal Cyber-Matrix Cage & Stratified Orbital Relay Gate
-    if (t < 3.05) {
-      this.y = this.groundY - 72 + Math.sin((t - 1.15) * 6.0) * 4;
-      const uLock = Math.min(1, (t - 1.15) / 1.90);
-      this.trueUltFrameOverride = 128 + Math.min(5, Math.floor(uLock * 6));
+    // Phase 2 (`0.48..1.68s`): 1.20s Braced Tactical Spec-Ops Rail-Charge & Multi-Tier Orbital Lock!
+    if (t < 1.68) {
+      this.x = this._trueUltRetreatX;
+      this.y = this.groundY;
+      const uCharge = Math.min(1, (t - 0.48) / 1.20);
+      this.trueUltFrameOverride = 130 + Math.min(7, Math.floor(uCharge * 8));
       this._overrideFrameIdx = this.trueUltFrameOverride;
 
-      if (t >= 1.15 && this._trueUltStep < 2) {
+      if (this._trueUltStep < 2) {
         this._trueUltStep = 2;
         game?.audio?.play?.('cyber_beam', this._trueUltTargetX);
         game?.audio?.play?.('blink', this.x);
@@ -1845,10 +1890,10 @@ export class AndroidEx extends Fighter {
         );
       }
 
-      if (t <= 3.00) {
+      if (t <= 1.66) {
         for (const foe of targets) {
           if (!foe.isDead && !foe.isColossalBoss) {
-            foe.x += (this._trueUltTargetX - foe.x) * Math.min(1, dt * 7);
+            foe.x += (this._trueUltTargetX - foe.x) * Math.min(1, dt * 8);
             foe.vx *= 0.2;
           }
         }
@@ -1856,13 +1901,16 @@ export class AndroidEx extends Fighter {
       return;
     }
 
-    // Phase 3 (`t >= 3.05s`): Seamless Vertical Orbital Singularity Buster Column (`705` Crit, `0` stage override)!
-    if (t >= 3.05 && this._trueUltStep < 3) {
+    // Phase 3 (`t >= 1.68s`): Cataclysmic Multi-Vector Orbital Singularity Bombardment (`705` Crit)!
+    this.x = this._trueUltRetreatX;
+    this.y = this.groundY;
+
+    if (t >= 1.68 && this._trueUltStep < 3) {
       this._trueUltStep = 3;
-      this._trueUltBusterTimer = 1.02;
+      this._trueUltBusterTimer = 1.18;
 
       const visorX = this.x + this.facing * 20;
-      const visorY = this.y - 134;
+      const visorY = this.groundY - 124;
       const beamDx = Math.max(-200, Math.min(200, (this._trueUltTargetX - visorX) / 3));
       const beamDy = Math.max(-60, Math.min(52, (this.groundY - 104 - visorY) / 3));
       this.fx?.spawn('visorHyperLaserBeam', this._safeFxX(visorX, game), this._safeFxY(visorY), {
@@ -1877,6 +1925,24 @@ export class AndroidEx extends Fighter {
         }
       });
 
+      this.spawnPlasmaBeam(visorX, visorY, this._trueUltTargetX, this.groundY - 102, 0.78, false, 12, 4);
+      const battery = this._getTrueUltVWingBattery(t);
+      for (let i = 0; i < battery.length; i++) {
+        const pod = battery[i];
+        const impactOffX = (i - 2.5) * 28;
+        const impactOffY = ((i % 3) - 1) * 26;
+        this.spawnPlasmaBeam(
+          pod.x,
+          pod.y,
+          this._trueUltTargetX + impactOffX,
+          this.groundY - 96 + impactOffY,
+          0.74,
+          pod.isMagenta,
+          8,
+          3
+        );
+      }
+
       game?.renderer?.triggerImpactFrame?.(this._trueUltTargetX, this.groundY - 110, 0.11, 'cyber');
       game?.renderer?.triggerShake?.(28, 0.75);
       game?.renderer?.triggerAberration?.(12);
@@ -1887,10 +1953,10 @@ export class AndroidEx extends Fighter {
         y1: visorY,
         x2: this._trueUltTargetX,
         y2: this.groundY - 104,
-        width: 28,
+        width: 30,
         color: '#22d3ee',
         coreColor: '#ffffff',
-        maxLife: 0.42,
+        maxLife: 0.46,
         owner: this
       });
       game?.vfx?.spawnBeam?.({
@@ -1898,14 +1964,14 @@ export class AndroidEx extends Fighter {
         y1: this.groundY - 620,
         x2: this._trueUltTargetX,
         y2: this.groundY,
-        width: 64,
+        width: 72,
         color: '#22d3ee',
         coreColor: '#ec4899',
-        maxLife: 0.88,
+        maxLife: 0.96,
         owner: this
       });
-      game?.vfx?.spawnDecal?.(this._trueUltTargetX, this.groundY, 'scorch', 152);
-      game?.vfx?.spawnShockwave?.(this._trueUltTargetX, this.groundY - 2, '#ec4899', 216, 0.46);
+      game?.vfx?.spawnDecal?.(this._trueUltTargetX, this.groundY, 'scorch', 176);
+      game?.vfx?.spawnShockwave?.(this._trueUltTargetX, this.groundY - 2, '#ec4899', 260, 0.52);
 
       game?.audio?.play?.('ult_cast', this._trueUltTargetX);
       game?.audio?.play?.('cyber_beam', this._trueUltTargetX);
@@ -1928,10 +1994,26 @@ export class AndroidEx extends Fighter {
         light: 1.16,
         extra: { radius: 56, fringe: '#22d3ee' }
       });
-      this.spawnVfxAnim(3, this._trueUltTargetX, this.groundY - 96, 240, 240, 0.48, {
+      this.spawnVfxAnim(3, this._trueUltTargetX, this.groundY - 96, 260, 260, 0.52, {
         foreground: true
       });
-      this.spawnCyberHexBurst(this._trueUltTargetX, this.groundY - 48, 16, false);
+      this.spawnCyberHexBurst(this._trueUltTargetX, this.groundY - 56, 20, false);
+
+      // Spawn 32 rising `hex`/`star4` neon singularity motes across the bombardment footprint
+      for (let p = 0; p < 32; p++) {
+        const px = this._trueUltTargetX + (Math.random() - 0.5) * 440;
+        const py = this.groundY - 6 - Math.random() * 140;
+        this.spawnCyberParticle(
+          p % 2 === 0 ? 'hex' : 'star4',
+          px,
+          py,
+          (Math.random() - 0.5) * 52,
+          -180 - Math.random() * 190,
+          0.62 + Math.random() * 0.28,
+          p % 3 === 1,
+          p % 3 === 0 ? 4 : 3
+        );
+      }
 
       for (const foe of targets) {
         if (!foe.isDead) {
@@ -1948,33 +2030,33 @@ export class AndroidEx extends Fighter {
       }
     }
 
-    // Rising pixel data-hex motes while the Orbital Singularity Buster Column roars!
+    // Rising pixel hex/star4 motes while the Orbital Singularity Buster Column roars!
     if (this._trueUltBusterTimer > 0) {
       this._busterMoteAccum += dt;
-      if (this._busterMoteAccum >= 0.04) {
+      if (this._busterMoteAccum >= 0.032) {
         this._busterMoteAccum = 0;
-        const mx = this._trueUltTargetX + (Math.random() - 0.5) * 210;
-        const my = this.groundY - 12 - Math.random() * 60;
+        const mx = this._trueUltTargetX + (Math.random() - 0.5) * 340;
+        const my = this.groundY - 12 - Math.random() * 88;
         this.spawnCyberParticle(
-          Math.random() < 0.5 ? 'hex' : 'data',
+          Math.random() < 0.5 ? 'hex' : 'star4',
           mx,
           my,
-          (Math.random() - 0.5) * 24,
-          -190 - Math.random() * 120,
-          0.56,
+          (Math.random() - 0.5) * 32,
+          -200 - Math.random() * 140,
+          0.58,
           Math.random() < 0.5,
           3
         );
       }
     }
 
-    const uDesc = Math.min(1, Math.max(0, (t - 3.05) / (this.trueUltDuration - 3.05)));
-    const easeDesc = uDesc * uDesc * (3 - 2 * uDesc);
-    this.y = this.groundY - 72 * (1 - easeDesc);
-    this.trueUltFrameOverride =
-      t < 3.70
-        ? 135 + Math.min(9, Math.floor(((t - 3.05) / 0.65) * 10))
-        : 145 + Math.min(4, Math.floor(((t - 3.70) / 0.75) * 5));
+    if (t < 2.86) {
+      const uFire = Math.min(1, Math.max(0, (t - 1.68) / 1.18));
+      this.trueUltFrameOverride = 138 + Math.min(7, Math.floor(uFire * 8));
+    } else {
+      const uRec = Math.min(1, Math.max(0, (t - 2.86) / (this.trueUltDuration - 2.86)));
+      this.trueUltFrameOverride = 146 + Math.min(3, Math.floor(uRec * 4));
+    }
     this._overrideFrameIdx = this.trueUltFrameOverride;
 
     if (t >= this.trueUltDuration) {
@@ -2162,7 +2244,7 @@ export class AndroidEx extends Fighter {
 
   drawOrbitingFunnelPods(ctx, vfxSheet, inFront = false, alphaScale = 1.0) {
     if (this.isDead || !vfxSheet?.complete || !vfxSheet.naturalWidth || !Array.isArray(this.funnelDrones)) return;
-    if (this.state === 'ULTIMATE' || (this.state === 'TRUE_ULTIMATE' && (this.stateTimer || 0) >= 1.15)) return;
+    if (this.state === 'ULTIMATE' || (this.state === 'TRUE_ULTIMATE' && (this.stateTimer || 0) >= 0.48)) return;
     for (let i = 0; i < this.funnelDrones.length; i++) {
       const d = this.funnelDrones[i];
       const depth = Math.sin(d.angle);
@@ -2302,15 +2384,16 @@ export class AndroidEx extends Fighter {
 
     const t = this.stateTimer || 0;
     const col = Math.floor(t * 30) % 30;
-    const fadeIn = Math.min(1, t / 0.22);
+    const revCol = ((29 - (Math.floor(t * 36) % 30)) + 30) % 30;
+    const fadeIn = Math.min(1, t / 0.18);
     const fadeOut =
-      this.state === 'TRUE_ULTIMATE' && t > 3.25
-        ? Math.max(0, 1 - (t - 3.25) / 0.85)
+      this.state === 'TRUE_ULTIMATE' && t > 2.90
+        ? Math.max(0, 1 - (t - 2.90) / 0.65)
         : 1.0;
-    const alpha = fadeIn * fadeOut * 0.94;
+    const alpha = fadeIn * fadeOut * 0.95;
     if (alpha <= 0.02) return;
 
-    // Ground Hex-Matrix Lock Seal
+    // 1. Target Ground Hex-Matrix Lock Seal (`Row 5`)
     this.drawBloomedVfxCell(
       ctx,
       vfxSheet,
@@ -2318,37 +2401,80 @@ export class AndroidEx extends Fighter {
       col,
       this._trueUltTargetX,
       this.groundY - 6,
-      308,
-      224,
+      320,
+      230,
       alpha,
       false,
       renderer
     );
 
-    // Stratified 3-Tier Upper-Atmosphere Orbital Relay Gate!
-    if (t >= 0.85) {
-      const gatePop = Math.min(1, (t - 0.85) / 0.35);
+    // 2. Phase 2 Spec-Ops Charge Aura beneath VEX-09's boots + Rising Telemetry Scan-Bars
+    if (this.state === 'TRUE_ULTIMATE' && t >= 0.48 && t < 1.68) {
+      const uCharge = Math.min(1, (t - 0.48) / 1.20);
+      drawCyberBayerHalo(ctx, this.x, this.groundY - 2, 74 + 58 * uCharge, 18 + 12 * uCharge, '#0891b2', '#ec4899', 0.14);
+      drawCyberBayerHalo(ctx, this.x, this.groundY - 2, 52 + 40 * uCharge, 13 + 9 * uCharge, '#ec4899', '#22d3ee', 0.13);
+      drawCyberBayerHalo(ctx, this.x, this.groundY - 2, 28 + 24 * uCharge, 8 + 6 * uCharge, '#22d3ee', '#ffffff', 0.12);
+
+      // Rising pixel telemetry scan-bars flanking VEX-09 (`fillRect`)
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (let i = 0; i < 10; i++) {
+        const side = i % 2 === 0 ? -1 : 1;
+        const lane = (i >> 1);
+        const rise = ((t * 2.1 + i * 0.23) % 1);
+        const bx = Math.round((this.x + side * (40 + lane * 12)) / 2) * 2;
+        const by = Math.round((this.groundY - 10 - rise * (146 + uCharge * 42)) / 2) * 2;
+        const bh = 8 + (lane % 3) * 4;
+        ctx.globalAlpha = (1 - rise) * (0.45 + 0.45 * uCharge);
+        ctx.fillStyle = i % 3 === 0 ? '#ffffff' : (i % 2 === 0 ? '#22d3ee' : '#ec4899');
+        ctx.fillRect(bx - 1, by - bh, 2, bh);
+        ctx.fillRect(bx - 4, by - 2, 8, 2);
+      }
+      ctx.restore();
+    }
+
+    // 3. 5-Tier Stratified Upper-Atmosphere Orbital Relay Gate (`dy=-250..-510`, `w=220..440`)
+    if (t >= 0.42 || this._trueUltBusterTimer > 0) {
+      const gatePop = this.state === 'TRUE_ULTIMATE' ? Math.min(1, Math.max(0, (t - 0.42) / 0.24)) : 1.0;
       const tiers = [
-        { dy: -310, w: 236, h: 92 },
-        { dy: -380, w: 288, h: 108 },
-        { dy: -450, w: 344, h: 124 }
+        { dy: -250, w: 220, h: 88, row: 5, cIdx: col, flip: false },
+        { dy: -315, w: 274, h: 102, row: 3, cIdx: revCol, flip: true },
+        { dy: -380, w: 330, h: 116, row: 5, cIdx: (col + 7) % 30, flip: false },
+        { dy: -445, w: 386, h: 130, row: 3, cIdx: (revCol + 11) % 30, flip: true },
+        { dy: -510, w: 440, h: 146, row: 5, cIdx: (col + 15) % 30, flip: false }
       ];
       for (let k = 0; k < tiers.length; k++) {
         const tr = tiers[k];
         this.drawBloomedVfxCell(
           ctx,
           vfxSheet,
-          5,
-          (col + k * 7) % 30,
+          tr.row,
+          tr.cIdx,
           this._trueUltTargetX,
           this.groundY + tr.dy,
           tr.w * gatePop,
           tr.h * gatePop,
-          alpha * 0.86,
-          k % 2 === 1,
+          alpha * (0.84 + k * 0.025),
+          tr.flip,
           renderer
         );
       }
+
+      // Vertical satellite lock-on guide threads (`fillRect` from sky gate to ground seal)
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      const guideOffsets = [-210, -148, -74, 0, 74, 148, 210];
+      const cx = Math.round(this._trueUltTargetX / 2) * 2;
+      const topY = Math.round(this.groundY - 520);
+      const colH = Math.max(120, Math.round(512 * gatePop));
+      for (let i = 0; i < guideOffsets.length; i++) {
+        const gx = cx + guideOffsets[i];
+        const pulse = 0.5 + 0.5 * Math.sin(t * 14 + i * 1.3);
+        ctx.globalAlpha = alpha * (0.28 + 0.34 * pulse);
+        ctx.fillStyle = i === 3 ? '#ffffff' : (i % 2 === 0 ? '#22d3ee' : '#ec4899');
+        ctx.fillRect(gx - 1, topY, 2, colH);
+      }
+      ctx.restore();
     }
   }
 
@@ -2425,6 +2551,32 @@ export class AndroidEx extends Fighter {
     this.drawFunnelBeamsAndCyberParticles(ctx, vfxSheet);
   }
 
+  _drawOrbitalRailColumn(ctx, vfxSheet, colFrame, centerX, colW, baseBotY, baseH, stepH, alpha) {
+    const sx = (colFrame % 30) * 208;
+    const halfW = Math.round(colW * 0.5);
+    const rx = Math.round(centerX - halfW);
+    const trunkBotY = baseBotY - baseH;
+    const coreSliceY = 7 * 208 + 32;
+    const coreSliceH = 144;
+    const baseSliceH = 176;
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.min(1, alpha * 0.96);
+    ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, rx, trunkBotY, colW, baseH);
+    for (let seg = 0; seg < 4; seg++) {
+      const yTop = trunkBotY - (seg + 1) * stepH;
+      ctx.drawImage(vfxSheet, sx, coreSliceY, 208, coreSliceH, rx, yTop, colW, stepH);
+    }
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(0.13, alpha * 0.13);
+    ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, rx, trunkBotY, colW, baseH);
+    for (let seg = 0; seg < 4; seg++) {
+      const yTop = trunkBotY - (seg + 1) * stepH;
+      ctx.drawImage(vfxSheet, sx, coreSliceY, 208, coreSliceH, rx, yTop, colW, stepH);
+    }
+  }
+
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = this.getExSprites();
     if (!sprites) return;
@@ -2440,10 +2592,35 @@ export class AndroidEx extends Fighter {
         this.drawBloomedVfxCell(ctx, vfxSheet, 3, col, m.x, m.y, 184, 184, fade * 0.36, false, renderer);
       }
       if (this.state === 'TRUE_ULTIMATE' || this._trueUltBusterTimer > 0) {
-        const col = Math.floor(((this.stateTimer || 0) * 30) % 30);
-        this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, this._trueUltTargetX, this.groundY - 6, 288, 208, 0.38, false, renderer);
+        const t = this.stateTimer || 0;
+        const col = Math.floor((t * 30) % 30);
+        const cx = this._trueUltTargetX;
+        this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, cx, this.groundY - 6, 320, 230, 0.40, false, renderer);
+        if (this.state === 'TRUE_ULTIMATE' && t >= 0.48 && t < 2.86) {
+          const battery = this._getTrueUltVWingBattery(t);
+          for (let i = 0; i < battery.length; i++) {
+            const pod = battery[i];
+            this.drawBloomedVfxCell(
+              ctx,
+              vfxSheet,
+              pod.row,
+              (col + i * 4) % 30,
+              pod.x,
+              pod.y,
+              pod.size,
+              pod.size,
+              0.38,
+              this.facing < 0,
+              renderer
+            );
+          }
+        }
         if (this._trueUltBusterTimer > 0) {
-          this.drawBloomedVfxCell(ctx, vfxSheet, 7, col, this._trueUltTargetX, this.groundY - 128, 288, 296, 0.40, false, renderer);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 3, col, cx, this.groundY - 12, 360, 120, 0.42, false, renderer);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 5, (col + 4) % 30, cx, this.groundY - 96, 380, 260, 0.44, false, renderer);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 7, (col + 6) % 30, cx - 148, this.groundY - 118, 184, 240, 0.36, false, renderer);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 7, (col + 12) % 30, cx + 148, this.groundY - 118, 184, 240, 0.36, true, renderer);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 7, col, cx, this.groundY - 150, 488, 340, 0.46, false, renderer);
         }
       }
     }
@@ -2472,28 +2649,135 @@ export class AndroidEx extends Fighter {
     if (isReflection) return;
     if (!vfxSheet?.complete || !vfxSheet.naturalWidth) return;
 
-    // Supreme Ultimate Phase 2 (`1.15..3.05s`): 8-Drone Hexagonal/Octagonal Cyber-Matrix Cage!
-    if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 1.15 && this.stateTimer < 3.05) {
+    const t = this.stateTimer || 0;
+    const baseCol = Math.floor(t * 30) % 30;
+    const revCol = ((29 - (Math.floor(t * 36) % 30)) + 30) % 30;
+
+    // 6 Flanking Fin-Funnel Drone Pods in synchronized V-wing battery during Phase 2 charge & Phase 3 fire!
+    if (this.state === 'TRUE_ULTIMATE' && t >= 0.48 && t < 2.86) {
+      const battery = this._getTrueUltVWingBattery(t);
+      const isCharging = t < 1.68;
+      const aimX = this._trueUltTargetX;
+      const aimY = this.groundY - 98;
+      const visorX = this.x + this.facing * 20;
+      const visorY = this.groundY - 122;
+
+      if (isCharging) {
+        const uCharge = Math.min(1, (t - 0.48) / 1.20);
+        // Thin 2px pixel laser sightlines converging from all 6 V-Wing Fin-Funnels & visor onto target!
+        for (let i = 0; i < battery.length; i++) {
+          const pod = battery[i];
+          drawTwoPassCyberBeam(
+            ctx,
+            pod.x,
+            pod.y,
+            aimX + (i - 2.5) * 14,
+            aimY + ((i % 3) - 1) * 18,
+            pod.isMagenta ? '#ec4899' : '#22d3ee',
+            '#ffffff',
+            0.38 + 0.42 * uCharge,
+            2,
+            1
+          );
+        }
+        drawTwoPassCyberBeam(
+          ctx,
+          visorX,
+          visorY,
+          aimX,
+          aimY,
+          '#22d3ee',
+          '#ffffff',
+          0.48 + 0.46 * uCharge,
+          2,
+          1
+        );
+
+        // Growing Row 5 Cyber Singularity Reactor Sphere (92->228) + Counter-Stepping Row 3 Hex Reticle (108->244)
+        const chargeX = this.x + this.facing * 26;
+        const chargeY = this.groundY - 114;
+        const sphereSize = Math.round(92 + (228 - 92) * uCharge);
+        const reticleSize = Math.round(108 + (244 - 108) * uCharge);
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          5,
+          baseCol,
+          chargeX,
+          chargeY,
+          sphereSize,
+          sphereSize,
+          0.74 + 0.22 * uCharge,
+          false,
+          renderer
+        );
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          3,
+          revCol,
+          chargeX,
+          chargeY,
+          reticleSize,
+          reticleSize,
+          0.72 + 0.22 * uCharge,
+          true,
+          renderer
+        );
+
+        // Crisp pixel visor HUD cross-glint (`fillRect`)
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        const vx = Math.round(visorX / 2) * 2;
+        const vy = Math.round(visorY / 2) * 2;
+        const arm = Math.round(10 + 18 * uCharge);
+        ctx.globalAlpha = 0.72 + 0.24 * uCharge;
+        ctx.fillStyle = (Math.floor(t * 16) % 2 === 0) ? '#22d3ee' : '#ec4899';
+        ctx.fillRect(vx - arm, vy - 1, arm * 2, 2);
+        ctx.fillRect(vx - 1, vy - Math.round(arm * 0.65), 2, Math.round(arm * 1.3));
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(vx - 3, vy - 3, 6, 6);
+        ctx.restore();
+      }
+
+      for (let i = 0; i < battery.length; i++) {
+        const pod = battery[i];
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          pod.row,
+          (baseCol + i * 4) % 30,
+          pod.x,
+          pod.y,
+          pod.size,
+          pod.size,
+          0.95,
+          this.facing < 0,
+          renderer
+        );
+      }
+    }
+
+    // Supreme Ultimate Phase 2 (`0.48..1.68s`): 8-Drone Octagonal Containment Cage on `_trueUltTargetX`
+    if (this.state === 'TRUE_ULTIMATE' && t >= 0.48 && t < 1.68) {
       const cx = this._trueUltTargetX;
       const cy = this.groundY - 110;
-      const baseCol = Math.floor(this.stateTimer * 30) % 30;
-      const ringProgress = Math.min(1, (this.stateTimer - 1.15) / 0.25);
+      const ringProgress = Math.min(1, (t - 0.48) / 0.22);
 
       const cagePts = [];
       for (let i = 0; i < 8; i++) {
-        const ang = i * (Math.PI * 0.25) + this.stateTimer * 2.4;
+        const ang = i * (Math.PI * 0.25) + t * 2.8;
         cagePts.push([
-          cx + Math.cos(ang) * (168 * ringProgress),
-          cy + Math.sin(ang) * (114 * ringProgress)
+          cx + Math.cos(ang) * (172 * ringProgress),
+          cy + Math.sin(ang) * (116 * ringProgress)
         ]);
       }
 
-      // Crisp 2-pass Cage Perimeter & Vertical Containment Bars (`<= 0.14` bloom, zero chevrons!)
       for (let i = 0; i < 8; i++) {
         const [dx, dy] = cagePts[i];
         const [nx, ny] = cagePts[(i + 1) % 8];
-        drawTwoPassCyberBeam(ctx, dx, dy, nx, ny, i % 2 === 0 ? '#22d3ee' : '#ec4899', '#ffffff', 0.55 * ringProgress, 3, 1);
-        drawTwoPassCyberBeam(ctx, dx, dy, cx, cy, i % 2 === 0 ? '#22d3ee' : '#ec4899', '#ffffff', 0.34 * ringProgress, 3, 1);
+        drawTwoPassCyberBeam(ctx, dx, dy, nx, ny, i % 2 === 0 ? '#22d3ee' : '#ec4899', '#ffffff', 0.58 * ringProgress, 3, 1);
+        drawTwoPassCyberBeam(ctx, dx, dy, cx, cy, i % 2 === 0 ? '#22d3ee' : '#ec4899', '#ffffff', 0.36 * ringProgress, 3, 1);
       }
 
       for (let i = 0; i < 8; i++) {
@@ -2507,53 +2791,61 @@ export class AndroidEx extends Fighter {
           dy,
           138,
           138,
-          0.92 * ringProgress,
+          0.94 * ringProgress,
           dx < cx,
           renderer
         );
       }
     }
 
-    // Supreme Ultimate Phase 3 (`_trueUltBusterTimer > 0`): Seamless vertical Row 7 Orbital Buster Column (`<= 0.14` bloom, zero blurry glow!)
+    // Supreme Ultimate Phase 3 (`_trueUltBusterTimer > 0`): Colossal 488px Center + Twin 184px Aux Rail Columns + Dome + Glitch Tears!
     if (this._trueUltBusterTimer > 0) {
-      const busterProg = 1.0 - Math.max(0, Math.min(1, this._trueUltBusterTimer / 1.02));
+      const busterProg = 1.0 - Math.max(0, Math.min(1, this._trueUltBusterTimer / 1.18));
       const col = Math.min(29, Math.floor(busterProg * 30));
       const alpha = this._trueUltBusterTimer < 0.28 ? this._trueUltBusterTimer / 0.28 : 0.98;
-      const sx = col * 208;
-      const sy = 7 * 208;
       const cx = Math.round(this._trueUltTargetX);
-      const colW = 340;
-      const halfW = Math.round(colW * 0.5);
-      const coreSliceY = sy + 32;
-      const coreSliceH = 144;
-      const baseSliceH = 176;
-      const stepH = 180;
-      const baseH = 220;
-      const baseBotY = Math.round(this.groundY + 24);
-      const trunkBotY = baseBotY - baseH;
+      const baseBotY = Math.round(this.groundY + 26);
 
-      drawCyberBayerHalo(ctx, cx, this.groundY - 2, 188, 34, '#0891b2', '#ec4899', alpha * 0.14);
+      drawCyberBayerHalo(ctx, cx, this.groundY - 2, 260, 44, '#0891b2', '#ec4899', alpha * 0.14);
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
+      // TWO flanking 184px-wide Auxiliary Row 7 Satellite Rail Columns (`cx +- 148`)
+      this._drawOrbitalRailColumn(ctx, vfxSheet, col + 6, cx - 148, 184, baseBotY - 6, 176, 168, alpha * 0.86);
+      this._drawOrbitalRailColumn(ctx, vfxSheet, col + 12, cx + 148, 184, baseBotY - 6, 176, 168, alpha * 0.86);
+      // Colossal 488px-wide Center Row 7 Orbital Singularity Buster Column
+      this._drawOrbitalRailColumn(ctx, vfxSheet, col, cx, 488, baseBotY, 240, 196, alpha);
 
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha * 0.97);
-      ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, cx - halfW, trunkBotY, colW, baseH);
-      for (let seg = 0; seg < 4; seg++) {
-        const yTop = trunkBotY - (seg + 1) * stepH;
-        ctx.drawImage(vfxSheet, sx, coreSliceY, 208, coreSliceH, cx - halfW, yTop, colW, stepH);
+      // Stepped pixel plasma shockwave curtains + vertical RGB pixel glitch-tear columns (`fillRect`)
+      const curtainSpread = Math.round(90 + busterProg * 280);
+      for (let s = 0; s < 6; s++) {
+        const off = Math.round(curtainSpread * ((s + 1) / 6));
+        const hBar = Math.max(6, Math.round(28 - s * 3));
+        const colWave = s % 2 === 0 ? '#22d3ee' : '#ec4899';
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = Math.max(0.18, (1 - busterProg * 0.65) * 0.72 * alpha);
+        ctx.fillStyle = colWave;
+        ctx.fillRect(cx - off - 12, Math.round(this.groundY - hBar), 18, hBar);
+        ctx.fillRect(cx + off - 6, Math.round(this.groundY - hBar), 18, hBar);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(cx - off - 8, Math.round(this.groundY - hBar * 0.5), 10, 4);
+        ctx.fillRect(cx + off - 2, Math.round(this.groundY - hBar * 0.5), 10, 4);
       }
 
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.13, alpha * 0.13);
-      ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, cx - halfW, trunkBotY, colW, baseH);
-      for (let seg = 0; seg < 4; seg++) {
-        const yTop = trunkBotY - (seg + 1) * stepH;
-        ctx.drawImage(vfxSheet, sx, coreSliceY, 208, coreSliceH, cx - halfW, yTop, colW, stepH);
+      const rgbCols = ['#22d3ee', '#ec4899', '#a85cf6', '#ffffff'];
+      for (let g = 0; g < 12; g++) {
+        const gx = cx + Math.round(((g - 5.5) * 44) + Math.sin(busterProg * 24 + g * 1.9) * 14);
+        const gh = 68 + ((g * 37) % 160);
+        const gy = Math.round(this.groundY - gh - ((g * 53 + col * 19) % 240));
+        ctx.globalAlpha = alpha * (0.42 + 0.35 * ((col + g) % 2));
+        ctx.fillStyle = rgbCols[g % rgbCols.length];
+        ctx.fillRect(gx, gy, g % 3 === 0 ? 6 : 4, gh);
       }
-
       ctx.restore();
+
+      // Blazing Row 3 Ground Shock-Seal (360x120) + Row 5 Reactor Impact Dome (380x260)
+      this.drawBloomedVfxCell(ctx, vfxSheet, 3, revCol, cx, this.groundY - 12, 360, 120, alpha * 0.94, false, renderer);
+      this.drawBloomedVfxCell(ctx, vfxSheet, 5, (col + 4) % 30, cx, this.groundY - 96, 380, 260, alpha * 0.96, false, renderer);
     }
   }
 }
