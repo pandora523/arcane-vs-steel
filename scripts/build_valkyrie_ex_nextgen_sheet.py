@@ -50,6 +50,8 @@ CELL_W, CELL_H = 320, 240
 AX, AY = 56, 115  # 2x -> anchorX = 112, anchorY = 230
 COLS = 30
 ROWS = 10
+SHEET_W = CELL_W * COLS
+SHEET_H = CELL_H * ROWS
 
 OUTLINE = (10, 6, 16, 255)
 
@@ -491,16 +493,23 @@ def draw_valkyrie_wings(
     sovereign: bool = False,
 ):
     """
-    Majestic 6-Pinion Crimson-Gold Feathered Dragon/Valkyrie Wings behind Freyja EX's torso!
-      - `poised` (`sovereign=False`): Swept-back 6-pinion crimson-gold Valkyrie battle-wings framing her mane
-      - `sovereign` (`sovereign=True`): Grand twin-wing spread (both `-X` & `+X` 6-pinion wings blazing!)
+    Majestic Symmetrical Twin 6-Pinion Crimson-Gold Feathered Dragon/Valkyrie Wings behind Freyja EX's torso!
+      - Always draws BOTH `-X` (rear) and `+X` (foreshortened front-right) 6-pinion wings on EVERY row.
+      - `poised` (`sovereign=False`): 3/4-depth symmetrical battle-wings clearly flanking both shoulders.
+      - `sovereign` (`sovereign=True`): Grand full-span twin-wing spread (`Row 4`, `Row 2 V3`, `Row 3`, `Row 9`).
     """
     layer = np.zeros((LH, LW, 4), dtype=np.uint8)
 
-    sides = (-1, 1) if sovereign else (-1,)
-    for side in sides:
-        arch_len = 24.5 if sovereign else 19.5
-        arch_ang = math.radians((-136.0 - flap_deg * 0.7) if side < 0 else (-44.0 + flap_deg * 0.7))
+    for side in (-1, 1):
+        if sovereign:
+            arch_len = 24.5
+            arch_ang = math.radians((-136.0 - flap_deg * 0.7) if side < 0 else (-44.0 + flap_deg * 0.7))
+            pinion_scale = 1.0
+        else:
+            arch_len = 19.5 if side < 0 else 17.5
+            arch_ang = math.radians((-138.0 - flap_deg * 0.7) if side < 0 else (-38.0 + flap_deg * 0.7))
+            pinion_scale = 1.0 if side < 0 else 0.86
+
         kx = wx + math.cos(arch_ang) * arch_len
         ky = (wy - 3.0) + math.sin(arch_ang) * arch_len
         draw_thick_line(layer, wx, wy - 2.0, kx, ky, 1.65, GOLD_BRIGHT)
@@ -509,12 +518,12 @@ def draw_valkyrie_wings(
 
         # 6 Bold Feathered Pinions radiating from the golden Valkyrie wing-arch
         pinion_specs = [
-            (1.00, 27.5 if sovereign else 22.0, -14.0),
-            (0.86, 25.0 if sovereign else 20.0, 0.0),
-            (0.72, 22.5 if sovereign else 18.0, 14.0),
-            (0.58, 19.5 if sovereign else 15.5, 28.0),
-            (0.44, 16.5 if sovereign else 13.0, 42.0),
-            (0.30, 13.5 if sovereign else 10.5, 56.0),
+            (1.00, (27.5 if sovereign else 22.0) * pinion_scale, -14.0),
+            (0.86, (25.0 if sovereign else 20.0) * pinion_scale, 0.0),
+            (0.72, (22.5 if sovereign else 18.0) * pinion_scale, 14.0),
+            (0.58, (19.5 if sovereign else 15.5) * pinion_scale, 28.0),
+            (0.44, (16.5 if sovereign else 13.0) * pinion_scale, 42.0),
+            (0.30, (13.5 if sovereign else 10.5) * pinion_scale, 56.0),
         ]
         for t_arch, plen, rel_deg in pinion_specs:
             bx = wx + (kx - wx) * t_arch
@@ -762,10 +771,10 @@ def draw_gungnir_lightning_javelin_cone(
     draw_spearhead: bool = True,
 ):
     """
-    Supersonic Crimson-Gold Gungnir Lightning-Javelin Cone (`x_320 = 190..308`):
-      - Piercing white-gold Gungnir javelin core with winged spearhead at `(x1, y1)`
-      - Flared supersonic crimson-gold Mach shock-cone & shock-rings
-      - Crisp stepped Valkyrie lightning helixes crackling down the javelin wake!
+    Sleek Needle-Sharp Aerodynamic Gungnir Lightning-Javelin Smear (`x_320 = 190..308`):
+      - Solid-core white-gold -> crimson-rose tapered energy lance leading into a razor spearhead at `(x1, y1)`
+      - Twin swept-back aerodynamic flame/lightning streamers tapering cleanly to 1px needle tails (zero jagged lobster teeth!)
+      - Tight hugging stepped lightning filament + compact foreshortened Mach shock-crescent
     """
     layer = np.zeros((LH, LW, 4), dtype=np.uint8)
     dx, dy = x1 - x0, y1 - y0
@@ -773,87 +782,99 @@ def draw_gungnir_lightning_javelin_cone(
     ux, uy = dx / length, dy / length
     nx, ny = -uy, ux
 
-    # 1. Supersonic Mach shock-cone wake
-    steps = max(24, int(length * 1.8))
+    max_r = max(2.1, min(4.2, cone_half_h * 0.34)) * (0.65 + 0.35 * intensity)
+
+    def _lance_hw(u_val: float) -> float:
+        if u_val >= 0.72:
+            t_tip = max(0.0, (1.0 - u_val) / 0.28)
+            return 0.45 + max_r * (t_tip ** 0.72)
+        t_tail = max(0.0, u_val / 0.72)
+        return max_r * (0.14 + 0.86 * (t_tail ** 0.85))
+
+    # 1. Solid-core needle-tapered aerodynamic energy lance body (`0 -> 1`)
+    steps = max(28, int(length * 2.2))
     for i in range(steps + 1):
-        u = i / steps  # 0 at launch seal -> 1 at spear tip
-        rev = 1.0 - u
+        u = i / steps
         px = x0 + dx * u
         py = y0 + dy * u
-        half_w = (1.2 + (rev ** 0.78) * cone_half_h) * (0.55 + 0.45 * intensity)
-        saw = abs(((rev * 6.0 + phase * 0.2) % 1.0) * 2.0 - 1.0) * 2.0 * rev
-        for side in (-1, 1):
-            ex = px + nx * side * (half_w + saw)
-            ey = py + ny * side * (half_w + saw)
-            edge_col = GOLD_SPEC if u > 0.58 else (CRIMSON_ROSE if u > 0.22 else CRIMSON_MID)
-            put_px(layer, int(round(ex)), int(round(ey)), edge_col)
-            if intensity >= 0.75:
-                put_px(layer, int(round(ex - nx * side * 0.9)), int(round(ey - ny * side * 0.9)), CRIMSON_MID)
+        hw = _lance_hw(u)
+        n_samples = max(5, int(math.ceil(hw * 3.5)))
+        for s in np.linspace(-hw, hw, n_samples):
+            ad = abs(s) / max(0.25, hw)
+            if (ad < 0.34 and u > 0.20) or u > 0.84:
+                col = PURE_WHITE if intensity >= 0.72 else GOLD_SPEC
+            elif ad < 0.68 or u > 0.64:
+                col = GOLD_SPEC if u > 0.42 else GOLD_BRIGHT
+            else:
+                col = CRIMSON_ROSE if u > 0.28 else CRIMSON_MID
+            put_px(layer, int(round(px + nx * s)), int(round(py + ny * s)), col)
 
-        # Central javelin beam shaft
-        if u > 0.08:
-            shaft_r = 1.35 if (intensity >= 0.85 and u > 0.45) else 0.85
-            core_col = PURE_WHITE if (u > 0.42 and intensity >= 0.75) else GOLD_BRIGHT
-            draw_thick_line(layer, px, py, px - ux * 0.8, py - uy * 0.8, shaft_r, CRIMSON_ROSE)
-            put_px(layer, int(round(px)), int(round(py)), core_col)
+    # 2. Twin swept-back aerodynamic flame/lightning streamers tapering to razor needle tails
+    streamer_reach = max(3.2, min(8.2, cone_half_h * 0.62)) * (0.68 + 0.32 * intensity)
+    s_steps = max(22, int(length * 1.4))
+    for side in (-1, 1):
+        for i in range(s_steps + 1):
+            t = i / s_steps  # 0 at spearhead collar -> 1 at trailing needle tip
+            u = 0.78 - 0.74 * t
+            env = math.sin(min(1.0, t * 1.15) * math.pi * 0.62) * (1.0 - 0.58 * (t ** 1.1))
+            ripple = math.sin(t * 7.5 + phase + side * 1.1) * 0.55 * (1.0 - t)
+            lat = side * (_lance_hw(u) * 0.85 + streamer_reach * env + ripple)
+            px = x0 + dx * u + nx * lat
+            py = y0 + dy * u + ny * lat
+            sw = max(0.35, 1.25 * (1.0 - (t ** 0.85)))
+            col = (
+                PURE_WHITE
+                if t < 0.14
+                else (GOLD_SPEC if t < 0.40 else (CRIMSON_ROSE if t < 0.75 else CRIMSON_MID))
+            )
+            draw_thick_line(layer, px, py, px - ux * 0.7, py - uy * 0.7, sw, col)
 
-    # 2. Foreshortened supersonic Mach shock-ring mid-flight
-    if intensity >= 0.65:
-        mx, my = x0 + dx * 0.46, y0 + dy * 0.46
-        for k in range(24):
-            ang = (k / 24.0) * math.tau
-            rx_p = mx + ux * (math.cos(ang) * 2.6) + nx * (math.sin(ang) * (cone_half_h * 0.78))
-            ry_p = my + uy * (math.cos(ang) * 2.6) + ny * (math.sin(ang) * (cone_half_h * 0.78))
-            put_px(layer, int(round(rx_p)), int(round(ry_p)), PURE_WHITE if k % 3 == 0 else GOLD_SPEC)
+    # 3. Compact foreshortened Mach shock-crescent hugging the lance mid-flight
+    if intensity >= 0.70:
+        mx, my = x0 + dx * 0.54, y0 + dy * 0.54
+        ring_ry = max(3.2, min(6.6, cone_half_h * 0.54))
+        for k in range(20):
+            ang = math.radians(-78.0 + (k / 19.0) * 156.0)
+            rx_p = mx + ux * (math.cos(ang) * 2.2) + nx * (math.sin(ang) * ring_ry)
+            ry_p = my + uy * (math.cos(ang) * 2.2) + ny * (math.sin(ang) * ring_ry)
+            put_px(layer, int(round(rx_p)), int(round(ry_p)), PURE_WHITE if abs(ang) < 0.5 else GOLD_SPEC)
 
-    # 3. Stepped Valkyrie lightning helixes along javelin trajectory
-    draw_stepped_valkyrie_lightning(layer, x0 + ux * 3.0, y0 + uy * 3.0, x1 - ux * 3.0, y1 - uy * 3.0, amp=cone_half_h * 0.52, phase=phase, bright=(intensity >= 0.75))
-    if intensity >= 0.8:
-        draw_stepped_valkyrie_lightning(layer, x0 + ux * 5.0, y0 + uy * 5.0, x1 - ux * 5.0, y1 - uy * 5.0, amp=-cone_half_h * 0.40, phase=phase + 1.3, bright=False)
+    # 4. Tight hugging stepped Valkyrie lightning filament along the core
+    draw_stepped_valkyrie_lightning(
+        layer,
+        x0 + ux * 4.0,
+        y0 + uy * 4.0,
+        x1 - ux * 6.0,
+        y1 - uy * 6.0,
+        amp=min(3.0, cone_half_h * 0.28),
+        phase=phase,
+        bright=(intensity >= 0.72),
+    )
 
-    # 4. Blazing Winged Gungnir Javelin Spearhead at `(x1, y1)`
+    # 5. Swept-back Winged Gungnir Javelin Spearhead at `(x1, y1)`
     if draw_spearhead:
-        collar_x, collar_y = x1 - ux * 11.0, y1 - uy * 11.0
+        collar_x, collar_y = x1 - ux * 10.5, y1 - uy * 10.5
+        wing_span = max(3.4, min(5.0, max_r + 1.8))
         for s in (-1, 1):
-            wx = collar_x - ux * 2.5 + nx * (s * 4.8)
-            wy = collar_y - uy * 2.5 + ny * (s * 4.8)
-            draw_thick_line(layer, collar_x, collar_y, wx, wy, 1.0, GOLD_BRIGHT)
+            wx = collar_x - ux * 3.8 + nx * (s * wing_span)
+            wy = collar_y - uy * 3.8 + ny * (s * wing_span)
+            draw_thick_line(layer, collar_x + ux * 1.0, collar_y + uy * 1.0, wx, wy, 0.9, GOLD_BRIGHT)
             put_px(layer, int(round(wx)), int(round(wy)), GOLD_SPEC)
-        for j in range(16):
-            v = j / 15.0
-            bx = collar_x + ux * (v * 11.5)
-            by = collar_y + uy * (v * 11.5)
-            hw = 2.8 * (1.0 - 0.82 * (v ** 1.7))
-            draw_thick_line(layer, bx - nx * hw, by - ny * hw, bx + nx * hw, by + ny * hw, 0.7, GOLD_SPEC if v < 0.6 else PURE_WHITE)
+        for j in range(18):
+            v = j / 17.0
+            bx = collar_x + ux * (v * 11.0)
+            by = collar_y + uy * (v * 11.0)
+            hw = 2.6 * (1.0 - 0.85 * (v ** 1.5))
+            draw_thick_line(
+                layer,
+                bx - nx * hw,
+                by - ny * hw,
+                bx + nx * hw,
+                by + ny * hw,
+                0.65,
+                GOLD_SPEC if v < 0.45 else PURE_WHITE,
+            )
         put_px(layer, int(round(x1)), int(round(y1)), PURE_WHITE)
-
-    layer = outline_layer(layer, OUTLINE)
-    composite_np(canvas, layer)
-
-
-def draw_gungnir_mach_thrust_smear(canvas: np.ndarray, tip_x: float, tip_y: float):
-    """Supersonic Multi-Thrust Gungnir Mach-Cone + 3 Piercing Spear Streaks (`Row 2 V2 F17`)."""
-    layer = np.zeros((LH, LW, 4), dtype=np.uint8)
-    # Central blazing Mach cone
-    cone_len = 56.0
-    for i in range(95):
-        u = i / 94.0
-        x = tip_x - u * cone_len
-        half_h = 1.0 + (u ** 0.78) * 16.5
-        saw = abs(((u * 8.0) % 1.0) * 2.0 - 1.0) * 3.0 * u
-        # Upper & lower Mach shock edges + central white-gold beam
-        for edge_sign in (-1, 1):
-            ey = tip_y + edge_sign * (half_h + saw)
-            draw_thick_line(layer, x, ey, x, ey - edge_sign * 2.2, 0.9, GOLD_SPEC if u < 0.45 else CRIMSON_ROSE)
-            put_px(layer, int(round(x)), int(round(ey - edge_sign * 3.0)), CRIMSON_MID)
-        if u < 0.88:
-            core_h = max(0.8, 3.2 * (1.0 - u * 0.75))
-            draw_thick_line(layer, x, tip_y - core_h, x, tip_y + core_h, 0.6, PURE_WHITE if u < 0.55 else GOLD_BRIGHT)
-
-    # Secondary upper & lower multi-thrust phantom spear needles
-    for oy, ln in ((-10.0, 42.0), (10.0, 42.0)):
-        draw_thick_line(layer, tip_x - 8.0 - ln, tip_y + oy, tip_x - 6.0, tip_y + oy * 0.55, 1.15, CRIMSON_ROSE)
-        draw_thick_line(layer, tip_x - 22.0, tip_y + oy * 0.7, tip_x - 5.0, tip_y + oy * 0.52, 0.75, PURE_WHITE)
 
     layer = outline_layer(layer, OUTLINE)
     composite_np(canvas, layer)
@@ -874,27 +895,6 @@ def draw_valkyrie_vortex_smear(canvas: np.ndarray, cx: float, cy: float, rx: flo
             py = int(round(cy + sa * (ry + saw * 0.28) * frac))
             col = PURE_WHITE if b_idx >= 7 else (GOLD_SPEC if b_idx >= 5 else (CRIMSON_ROSE if b_idx >= 2 else CRIMSON_MID))
             put_px(layer, px, py, col)
-    layer = outline_layer(layer, OUTLINE)
-    composite_np(canvas, layer)
-
-
-def draw_dragonfire_ground_spire(canvas: np.ndarray, gx: float, gy: float, height: float, intensity: float = 1.0):
-    """Vertical Crimson-Gold Dragonfire Lance-Spire on heavy plunging impact (`Row 2 F25`, `Row 4 F25`)."""
-    layer = np.zeros((LH, LW, 4), dtype=np.uint8)
-    h = int(round(height * intensity))
-    w_base = max(2, int(round(6.8 * intensity)))
-    for dy in range(h):
-        u = dy / max(1, h)
-        y = int(round(gy - dy))
-        hw = max(1, int(round(w_base * (1.0 - 0.78 * (u ** 0.85)))))
-        for dx in range(-hw, hw + 1):
-            ad = abs(dx) / max(1.0, hw)
-            col = PURE_WHITE if ad < 0.34 else (GOLD_SPEC if ad < 0.62 else CRIMSON_ROSE)
-            put_px(layer, int(round(gx + dx)), y, col)
-    span = int(round(15 * intensity))
-    for dx in range(-span, span + 1):
-        put_px(layer, int(round(gx + dx)), int(round(gy)), PURE_WHITE if abs(dx) < 5 else GOLD_BRIGHT)
-        put_px(layer, int(round(gx + dx)), int(round(gy + 1)), CRIMSON_MID)
     layer = outline_layer(layer, OUTLINE)
     composite_np(canvas, layer)
 
@@ -1185,13 +1185,13 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=f * 0.45,
                 hair_billow=1.15,
                 wing_flap=-8.0 + u * 10.0,
-                lance_hand_offset=(4.0 - u * 6.0, -10.0 - u * 3.0),
-                lance_angle=-6.0 + u * 4.0,
+                lance_hand_offset=(8.0 - u * 2.0, 5.5 - u * 0.5),
+                lance_angle=3.0 + u * 2.0,
                 lance_fore=44.0,
-                lance_back=15.0,
+                lance_back=13.0,
             )
             if f == 2:
-                draw_valhalla_target_rune_seal(c, cx=96.0, cy=62.0, rx=5.5, ry=15.0, rot_deg=15.0, intensity=0.65)
+                draw_valhalla_target_rune_seal(c, cx=96.0, cy=65.0, rx=5.5, ry=15.0, rot_deg=15.0, intensity=0.65)
             return c
         if f == 3:
             c = compose_keypose(
@@ -1202,13 +1202,13 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=1.8,
                 hair_billow=1.55,
                 wing_flap=16.0,
-                lance_hand_offset=(20.0, -2.0),
-                lance_angle=-1.0,
+                lance_hand_offset=(20.0, 4.0),
+                lance_angle=2.0,
                 lance_fore=34.0,
                 lance_back=10.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=97.0, cy=63.0, rx=8.0, ry=22.0, rot_deg=0.0, intensity=1.0)
-            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=63.0, x1=147.0, y1=62.0, cone_half_h=12.5, intensity=1.0, phase=0.4)
+            draw_valhalla_target_rune_seal(c, cx=97.0, cy=66.0, rx=8.0, ry=22.0, rot_deg=0.0, intensity=1.0)
+            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=66.0, x1=151.0, y1=65.0, cone_half_h=11.0, intensity=1.0, phase=0.4)
             return c
         if f == 4:
             c = compose_keypose(
@@ -1219,13 +1219,13 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=2.3,
                 hair_billow=1.35,
                 wing_flap=12.0,
-                lance_hand_offset=(19.0, 0.0),
-                lance_angle=3.0,
+                lance_hand_offset=(19.0, 5.0),
+                lance_angle=4.0,
                 lance_fore=38.0,
                 lance_back=12.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=99.0, cy=63.0, rx=7.0, ry=19.0, rot_deg=22.0, intensity=0.72)
-            draw_gungnir_lightning_javelin_cone(c, x0=106.0, y0=63.0, x1=154.0, y1=62.0, cone_half_h=9.0, intensity=0.68, phase=1.2)
+            draw_valhalla_target_rune_seal(c, cx=99.0, cy=66.0, rx=7.0, ry=19.0, rot_deg=22.0, intensity=0.72)
+            draw_gungnir_lightning_javelin_cone(c, x0=106.0, y0=66.0, x1=155.0, y1=65.0, cone_half_h=8.5, intensity=0.68, phase=1.2)
             return c
         if f <= 7:
             u = (f - 4) / 3.0
@@ -1237,12 +1237,12 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=2.6 + u * 1.2,
                 hair_billow=1.1 - 0.25 * u,
                 wing_flap=8.0 * (1.0 - u),
-                lance_hand_offset=(17.0 - u * 3.0, 2.0 + u * 2.0),
+                lance_hand_offset=(17.0 - u * 3.0, 4.5 + u * 1.5),
                 lance_angle=8.0 + u * 6.0,
                 lance_fore=42.0 + u * 3.0,
             )
             if f == 5:
-                draw_valhalla_target_rune_seal(c, cx=100.0, cy=63.0, rx=5.0, ry=13.0, rot_deg=40.0, intensity=0.5)
+                draw_valhalla_target_rune_seal(c, cx=100.0, cy=66.0, rx=5.0, ry=13.0, rot_deg=40.0, intensity=0.5)
             return c
 
         # === V1: F08..F14 (Twin Angled Valkyrie Lightning-Javelin Volley) ===
@@ -1255,12 +1255,12 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=3.9,
                 hair_billow=1.2,
                 wing_flap=-10.0,
-                lance_hand_offset=(2.0, -12.0),
-                lance_angle=-14.0,
+                lance_hand_offset=(8.0, 5.0),
+                lance_angle=-3.0,
                 lance_fore=43.0,
-                lance_back=14.0,
+                lance_back=13.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=95.0, cy=58.0, rx=6.0, ry=16.0, rot_deg=12.0, intensity=0.7)
+            draw_valhalla_target_rune_seal(c, cx=95.0, cy=62.0, rx=6.0, ry=16.0, rot_deg=12.0, intensity=0.7)
             return c
         if f == 9:
             c = compose_keypose(
@@ -1271,14 +1271,14 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=4.4,
                 hair_billow=1.55,
                 wing_flap=18.0,
-                lance_hand_offset=(19.0, -6.0),
-                lance_angle=-8.0,
+                lance_hand_offset=(19.0, 2.0),
+                lance_angle=-3.0,
                 lance_fore=35.0,
                 lance_back=11.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=96.0, cy=58.0, rx=8.5, ry=23.0, rot_deg=22.5, intensity=1.0)
-            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=54.0, x1=152.0, y1=42.0, cone_half_h=9.0, intensity=1.0, phase=0.8)
-            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=63.0, x1=151.0, y1=75.0, cone_half_h=9.0, intensity=0.95, phase=2.1)
+            draw_valhalla_target_rune_seal(c, cx=96.0, cy=61.0, rx=8.5, ry=23.0, rot_deg=22.5, intensity=1.0)
+            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=56.0, x1=153.0, y1=43.0, cone_half_h=8.5, intensity=1.0, phase=0.8)
+            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=66.0, x1=152.0, y1=78.0, cone_half_h=8.5, intensity=0.95, phase=2.1)
             return c
         if f == 10:
             c = compose_keypose(
@@ -1289,13 +1289,13 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=4.9,
                 hair_billow=1.35,
                 wing_flap=14.0,
-                lance_hand_offset=(18.0, -5.0),
-                lance_angle=-6.0,
+                lance_hand_offset=(18.0, 2.5),
+                lance_angle=-2.0,
                 lance_fore=40.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=98.0, cy=58.0, rx=6.8, ry=18.0, rot_deg=40.0, intensity=0.7)
-            draw_gungnir_lightning_javelin_cone(c, x0=110.0, y0=50.0, x1=153.0, y1=40.0, cone_half_h=6.5, intensity=0.65, phase=1.6)
-            draw_gungnir_lightning_javelin_cone(c, x0=110.0, y0=66.0, x1=152.0, y1=77.0, cone_half_h=6.5, intensity=0.65, phase=2.9)
+            draw_valhalla_target_rune_seal(c, cx=98.0, cy=61.0, rx=6.8, ry=18.0, rot_deg=40.0, intensity=0.7)
+            draw_gungnir_lightning_javelin_cone(c, x0=110.0, y0=52.0, x1=154.0, y1=41.0, cone_half_h=6.5, intensity=0.65, phase=1.6)
+            draw_gungnir_lightning_javelin_cone(c, x0=110.0, y0=69.0, x1=153.0, y1=80.0, cone_half_h=6.5, intensity=0.65, phase=2.9)
             return c
         if f <= 14:
             u = (f - 10) / 4.0
@@ -1307,8 +1307,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=5.2 + u * 1.4,
                 hair_billow=1.1 - 0.3 * u,
                 wing_flap=10.0 * (1.0 - u),
-                lance_hand_offset=(17.0 - u * 2.5, -4.0 + u * 8.0),
-                lance_angle=-4.0 + u * 18.0,
+                lance_hand_offset=(17.0 - u * 2.5, 3.0 + u * 2.5),
+                lance_angle=2.0 + u * 12.0,
             )
 
         # === V2: F15..F22 (Coaxial Double Valhalla Target-Seals + Supersonic Mach-Cone Lance) ===
@@ -1322,12 +1322,12 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=6.8 + u * 0.5,
                 hair_billow=1.25,
                 wing_flap=-12.0,
-                lance_hand_offset=(-8.0, -2.0),
-                lance_angle=0.0,
+                lance_hand_offset=(-4.0, 4.5),
+                lance_angle=4.0,
                 lance_fore=42.0,
                 lance_back=12.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=96.0 + u * 3.0, cy=68.0, rx=6.5 + u * 1.5, ry=17.0 + u * 3.0, rot_deg=u * 20.0, intensity=0.7 + 0.15 * u)
+            draw_valhalla_target_rune_seal(c, cx=96.0 + u * 3.0, cy=69.0, rx=6.5 + u * 1.5, ry=17.0 + u * 3.0, rot_deg=u * 20.0, intensity=0.7 + 0.15 * u)
             return c
         if f == 17:
             c = compose_keypose(
@@ -1338,13 +1338,13 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=7.8,
                 hair_billow=1.6,
                 wing_flap=18.0,
-                lance_hand_offset=(21.0, 0.0),
-                lance_angle=0.0,
+                lance_hand_offset=(21.0, 5.0),
+                lance_angle=2.0,
                 lance_fore=38.0,
             )
             draw_valhalla_target_rune_seal(c, cx=98.0, cy=68.0, rx=8.5, ry=23.0, rot_deg=0.0, intensity=1.0)
             draw_valhalla_target_rune_seal(c, cx=122.0, cy=68.0, rx=6.5, ry=17.5, rot_deg=22.5, intensity=0.95)
-            draw_gungnir_lightning_javelin_cone(c, x0=95.0, y0=68.0, x1=147.0, y1=68.0, cone_half_h=14.0, intensity=1.0, phase=1.1)
+            draw_gungnir_lightning_javelin_cone(c, x0=95.0, y0=68.0, x1=152.0, y1=68.0, cone_half_h=11.0, intensity=1.0, phase=1.1)
             return c
         if f == 18:
             c = compose_keypose(
@@ -1355,13 +1355,13 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=8.5,
                 hair_billow=1.5,
                 wing_flap=15.0,
-                lance_hand_offset=(19.0, -1.0),
-                lance_angle=-3.0,
+                lance_hand_offset=(19.0, 4.5),
+                lance_angle=0.0,
                 lance_fore=43.0,
             )
             draw_valhalla_target_rune_seal(c, cx=102.0, cy=68.0, rx=7.0, ry=19.0, rot_deg=30.0, intensity=0.75)
             draw_valhalla_target_rune_seal(c, cx=126.0, cy=68.0, rx=5.5, ry=14.5, rot_deg=48.0, intensity=0.70)
-            draw_gungnir_lightning_javelin_cone(c, x0=112.0, y0=68.0, x1=147.0, y1=68.0, cone_half_h=9.5, intensity=0.68, phase=2.4)
+            draw_gungnir_lightning_javelin_cone(c, x0=112.0, y0=68.0, x1=151.0, y1=68.0, cone_half_h=8.0, intensity=0.68, phase=2.4)
             return c
         if f <= 22:
             u = (f - 18) / 4.0
@@ -1373,8 +1373,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_phase=9.0 + u * 1.4,
                 hair_billow=1.2 - 0.4 * u,
                 wing_flap=10.0 * (1.0 - u),
-                lance_hand_offset=(16.0, 2.0 + u * 2.0),
-                lance_angle=6.0 + u * 10.0,
+                lance_hand_offset=(16.0, 5.0 + u * 1.5),
+                lance_angle=8.0 + u * 8.0,
             )
 
         # === V3: F23..F29 (6-Winged Backstep-Vault -> Sky-Gate Triple Javelin Rain) ===
@@ -1388,8 +1388,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.3,
                 wing_flap=12.0,
                 sovereign_wings=True,
-                lance_hand_offset=(4.0, -11.0),
-                lance_angle=-24.0,
+                lance_hand_offset=(8.0, 1.0),
+                lance_angle=-12.0,
                 lance_fore=42.0,
                 lance_back=13.0,
             )
@@ -1404,8 +1404,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.6,
                 wing_flap=18.0,
                 sovereign_wings=True,
-                lance_hand_offset=(6.0, -12.0),
-                lance_angle=-18.0,
+                lance_hand_offset=(10.0, -2.0),
+                lance_angle=-14.0,
                 lance_fore=43.0,
                 lance_back=13.0,
             )
@@ -1421,7 +1421,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.65,
                 wing_flap=21.0,
                 sovereign_wings=True,
-                lance_hand_offset=(18.0, 2.0),
+                lance_hand_offset=(18.0, 4.0),
                 lance_angle=20.0,
                 lance_fore=38.0,
             )
@@ -1429,7 +1429,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             draw_valhalla_target_rune_seal(c, cx=123.0, cy=22.0, rx=22.0, ry=6.5, rot_deg=0.0, intensity=1.0)
             draw_valhalla_target_rune_seal(c, cx=125.0, cy=108.0, rx=20.0, ry=5.0, rot_deg=22.5, intensity=0.95)
             draw_gungnir_lightning_javelin_cone(c, x0=106.0, y0=24.0, x1=114.0, y1=107.0, cone_half_h=6.5, intensity=0.92, phase=0.5)
-            draw_gungnir_lightning_javelin_cone(c, x0=123.0, y0=22.0, x1=130.0, y1=108.0, cone_half_h=8.0, intensity=1.0, phase=1.7)
+            draw_gungnir_lightning_javelin_cone(c, x0=123.0, y0=22.0, x1=130.0, y1=108.0, cone_half_h=7.8, intensity=1.0, phase=1.7)
             draw_gungnir_lightning_javelin_cone(c, x0=138.0, y0=24.0, x1=145.0, y1=107.0, cone_half_h=6.2, intensity=0.92, phase=2.8)
             return c
         if f == 26:
@@ -1442,7 +1442,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.45,
                 wing_flap=14.0,
                 sovereign_wings=True,
-                lance_hand_offset=(17.0, 4.0),
+                lance_hand_offset=(17.0, 5.0),
                 lance_angle=18.0,
             )
             draw_valhalla_target_rune_seal(c, cx=124.0, cy=23.0, rx=19.0, ry=5.0, rot_deg=25.0, intensity=0.68)
@@ -1478,14 +1478,15 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.4,
                 wing_flap=16.0 * u,
                 sovereign_wings=(f >= 4),
-                lance_hand_offset=(-4.0 + u * 10.0, -8.0 - u * 3.0),
+                lance_hand_offset=(-4.0 + u * 10.0, -4.0 - u * 2.0),
                 lance_angle=-135.0 + u * 95.0,
                 lance_fore=42.0,
-                lance_back=13.0,
+                lance_back=12.0,
+                lance_in_front=False,
             )
         if f <= 17:
             u = (f - 9) / 8.0
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K4_LEAP",
                 dx=6.0,
@@ -1494,15 +1495,11 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.55,
                 wing_flap=18.0 - u * 8.0,
                 sovereign_wings=(f <= 14),
-                lance_hand_offset=(19.0, 2.0 + u * 4.0),
+                lance_hand_offset=(19.0, 9.0 + u * 2.5),
                 lance_angle=32.0 + u * 8.0,
                 lance_fore=47.0,
+                lance_back=12.0,
             )
-            if f in (9, 10):
-                draw_valhalla_target_rune_seal(c, cx=94.0, cy=58.0, rx=8.0, ry=20.0, rot_deg=f * 18.0, intensity=1.0 if f == 9 else 0.7)
-                draw_gungnir_lightning_javelin_cone(c, x0=92.0, y0=54.0, x1=151.0, y1=72.0, cone_half_h=8.0, intensity=1.0 if f == 9 else 0.65, phase=0.6)
-                draw_gungnir_lightning_javelin_cone(c, x0=92.0, y0=60.0, x1=149.0, y1=88.0, cone_half_h=7.0, intensity=0.9 if f == 9 else 0.6, phase=1.9)
-            return c
         u = (f - 18) / 11.0
         return compose_stand_rig(
             stand_parts,
@@ -1521,9 +1518,9 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
     #   `F00..F03`: Grounded Cast + Sovereign Wings Unfold
     #   `F04..F08`: Piercing Bahamut / Gungnir Lance Glide
     #   `F09..F12`: Vertical `410px` Sky-Ascent (Sovereign Twin Wings Blazing)
-    #   `F13..F18`: Apex Command — Gungnir Aimed Downward (`+58 deg`)
+    #   `F13..F18`: Apex Command — Gungnir Aimed Downward (`+44 deg`)
     #   `F19..F20`: Overhead Convergence Charge
-    #   `F21..F24`: Steep `+38 deg` Diagonal Falcon Spear-Dive (`K4_LEAP` + Mach Cone!)
+    #   `F21..F24`: Steep `+32 deg` Diagonal Falcon Spear-Dive (`K4_LEAP`)
     #   `F25..F29`: Ragnarok Judgment Landing & Sovereign Wing Flare
     # --------------------------------------------------------------------------
     if row == 4:
@@ -1538,13 +1535,14 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.35,
                 wing_flap=12.0 * u,
                 sovereign_wings=True,
-                lance_hand_offset=(14.0, -8.0 - u * 3.0),
-                lance_angle=-42.0 - u * 16.0,
+                lance_hand_offset=(17.0, -1.0 - u * 2.0),
+                lance_angle=-42.0 - u * 14.0,
                 lance_fore=43.0,
+                lance_back=12.0,
             )
         if f <= 8:
             u = (f - 4) / 4.0
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K2_LUNGE",
                 dx=12.0,
@@ -1553,13 +1551,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.6,
                 wing_flap=16.0,
                 sovereign_wings=True,
-                lance_hand_offset=(22.0, 0.0),
-                lance_angle=0.0,
-                lance_fore=49.0,
+                lance_hand_offset=(17.5, 6.5),
+                lance_angle=10.0 - u * 4.0,
+                lance_fore=45.0,
             )
-            if f in (5, 6):
-                draw_gungnir_mach_thrust_smear(c, tip_x=150.0, tip_y=69.0)
-            return c
         if f <= 12:
             u = (f - 9) / 3.0
             return compose_keypose(
@@ -1571,10 +1566,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.6,
                 wing_flap=20.0,
                 sovereign_wings=True,
-                lance_hand_offset=(12.0, -11.0),
-                lance_angle=-52.0,
-                lance_fore=42.0,
-                lance_back=13.0,
+                lance_hand_offset=(18.5, -2.0),
+                lance_angle=-54.0,
+                lance_fore=44.0,
+                lance_back=12.0,
             )
         if f <= 18:
             u = (f - 13) / 5.0
@@ -1587,9 +1582,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.55,
                 wing_flap=16.0 + math.sin(u * math.tau) * 5.0,
                 sovereign_wings=True,
-                lance_hand_offset=(18.0, 6.0),
-                lance_angle=38.0,
+                lance_hand_offset=(19.0, 9.0),
+                lance_angle=44.0,
                 lance_fore=45.0,
+                lance_back=11.0,
             )
         if f <= 20:
             u = f - 19
@@ -1602,33 +1598,32 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.6,
                 wing_flap=22.0,
                 sovereign_wings=True,
-                lance_hand_offset=(-4.0, -9.0),
-                lance_angle=-136.0 + u * 20.0,
+                lance_hand_offset=(-2.0, -8.0),
+                lance_angle=-134.0 + u * 18.0,
                 lance_fore=42.0,
-                lance_back=13.0,
+                lance_back=12.0,
+                lance_in_front=False,
             )
         if f <= 24:
             # Steep diagonal Falcon Spear-Dive (`141..144`)!
-            c = compose_keypose(
+            u = (f - 21) / 3.0
+            return compose_keypose(
                 keyposes,
                 "K4_LEAP",
                 dx=10.0,
-                dy=-6.0,
+                dy=-6.0 + u * 1.2,
                 rot_deg=18.0,
                 hair_phase=tau_f * 3.0,
                 hair_billow=1.7,
-                wing_flap=-8.0,
+                wing_flap=-8.0 - u * 4.0,
                 sovereign_wings=True,
-                lance_hand_offset=(21.0, 9.0),
-                lance_angle=32.0,
+                lance_hand_offset=(24.0, 12.0),
+                lance_angle=32.0 + u * 2.0,
                 lance_fore=48.0,
+                lance_back=12.0,
             )
-            # Blazing crimson-gold Mach spear-cone around the diving tip
-            draw_thick_line(c, 88.0, 62.0, 146.0, 98.0, 2.2, GOLD_SPEC)
-            draw_thick_line(c, 92.0, 65.0, 148.0, 99.0, 1.1, PURE_WHITE)
-            return c
         u = (f - 25) / 4.0
-        c = compose_keypose(
+        return compose_keypose(
             keyposes,
             "K2_LUNGE" if f <= 27 else "K3_RISE",
             dx=11.0 * (1.0 - u * 0.7),
@@ -1637,12 +1632,9 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             hair_billow=1.5 - 0.5 * u,
             wing_flap=18.0 - 8.0 * u,
             sovereign_wings=True,
-            lance_hand_offset=(20.0 - u * 4.0, 6.0 - u * 2.0),
+            lance_hand_offset=(20.0 - u * 4.0, 7.5 - u * 1.5),
             lance_angle=22.0 - u * 6.0,
         )
-        if f in (25, 26):
-            draw_dragonfire_ground_spire(c, gx=134.0, gy=112.0, height=48.0 if f == 25 else 28.0, intensity=1.0 if f == 25 else 0.7)
-        return c
 
     # --------------------------------------------------------------------------
     # ROW 5: DEATH & HURT (`F00..F05` upright HURT recoil; `F06..F29` collapse -> horizontal prone `F22..F29`)
@@ -1808,13 +1800,14 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hair_billow=1.5,
                 wing_flap=16.0 * math.sin(u * math.pi),
                 sovereign_wings=(7 <= f <= 14),
-                lance_hand_offset=(15.0, -6.0 + u * 8.0),
-                lance_angle=-36.0 + u * 48.0,
+                lance_hand_offset=(16.5, 1.5 + u * 5.0),
+                lance_angle=-28.0 + u * 42.0,
                 lance_fore=44.0,
+                lance_back=12.0,
             )
         if f <= 24:
             u = (f - 18) / 6.0
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K4_LEAP" if f <= 21 else "K2_LUNGE",
                 dx=8.0,
@@ -1826,10 +1819,6 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=28.0,
                 lance_fore=47.0,
             )
-            if f == 19:
-                draw_valhalla_target_rune_seal(c, cx=96.0, cy=66.0, rx=7.5, ry=19.0, rot_deg=15.0, intensity=0.95)
-                draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=66.0, x1=150.0, y1=88.0, cone_half_h=8.5, intensity=0.95, phase=1.1)
-            return c
         u = (f - 25) / 4.0
         return compose_stand_rig(
             stand_parts,
@@ -1856,12 +1845,13 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             hair_billow=1.3,
             wing_flap=16.0 * math.sin(u * math.pi),
             sovereign_wings=True,
-            lance_hand_offset=(14.0, -10.0),
+            lance_hand_offset=(17.0, -2.0),
             lance_angle=-46.0 + u * 20.0,
             lance_fore=43.0,
+            lance_back=12.0,
         )
     u = (f - 11) / 18.0
-    c = compose_stand_rig(
+    return compose_stand_rig(
         stand_parts,
         stand_meta,
         body_dy=math.sin(u * math.tau) * 0.8,
@@ -1870,15 +1860,12 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         hair_billow=1.0,
         wing_flap=14.0 + math.sin(u * math.tau) * 4.0,
         sovereign_wings=True,
-        # Gungnir War-Lance planted vertically downward (`+90 deg`) into arena stone!
-        lance_hand_offset=(18.0, -14.0),
+        # Gungnir War-Lance planted vertically downward (`+90 deg`) cleanly beside her!
+        lance_hand_offset=(21.0, -6.0),
         lance_angle=90.0,
-        lance_fore=42.0,
-        lance_back=13.0,
+        lance_fore=62.0,
+        lance_back=15.0,
     )
-    if f in (11, 12):
-        draw_dragonfire_ground_spire(c, gx=76.0, gy=112.0, height=22.0 if f == 11 else 14.0, intensity=0.65)
-    return c
 
 
 # ==============================================================================
@@ -1939,8 +1926,14 @@ def main():
     sheet = Image.new("RGBA", (CELL_W * COLS, CELL_H * ROWS), (0, 0, 0, 0))
     border_clips = 0
     row_transitions = []
+    row0_frames_320 = []
     row1_frames_320 = []
     row2_frames_320 = []
+    row3_frames_320 = []
+    row4_frames_320 = []
+    row5_frames_320 = []
+    row8_frames_320 = []
+    row9_frames_320 = []
 
     sample_cols = [0, 3, 9, 17, 24, 25]
     ten_rows_dbg = Image.new("RGBA", (len(sample_cols) * CELL_W, ROWS * CELL_H), (16, 10, 22, 255))
@@ -1967,10 +1960,22 @@ def main():
             prev_320 = arr_320
 
             sheet.paste(im_320, (c * CELL_W, r * CELL_H))
-            if r == 1:
+            if r == 0:
+                row0_frames_320.append(im_320)
+            elif r == 1:
                 row1_frames_320.append(im_320)
-            if r == 2:
+            elif r == 2:
                 row2_frames_320.append(im_320)
+            elif r == 3:
+                row3_frames_320.append(im_320)
+            elif r == 4:
+                row4_frames_320.append(im_320)
+            elif r == 5:
+                row5_frames_320.append(im_320)
+            elif r == 8:
+                row8_frames_320.append(im_320)
+            elif r == 9:
+                row9_frames_320.append(im_320)
             if c in sample_cols:
                 s_idx = sample_cols.index(c)
                 ten_rows_dbg.alpha_composite(im_320, (s_idx * CELL_W, r * CELL_H))
@@ -1991,29 +1996,25 @@ def main():
     )
     ten_rows_dbg.save(SCRATCH_DIR / "debug_valkyrie_ex_10rows.png")
 
-    r1_dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (18, 10, 24, 255))
-    dr1 = ImageDraw.Draw(r1_dbg)
-    for idx, im_320 in enumerate(row1_frames_320):
-        gx = (idx % 6) * CELL_W
-        gy = (idx // 6) * CELL_H
-        r1_dbg.alpha_composite(im_320, (gx, gy))
-        dr1.rectangle([gx, gy, gx + CELL_W - 1, gy + CELL_H - 1], outline=(95, 45, 65, 255), width=1)
-        dr1.line([(gx, gy + 230), (gx + CELL_W - 1, gy + 230)], fill=(250, 204, 21, 90), width=1)
-        dr1.line([(gx + 112, gy), (gx + 112, gy + CELL_H - 1)], fill=(251, 113, 133, 90), width=1)
-        dr1.text((gx + 8, gy + 6), f"R1 F{idx:02d}", fill=(250, 204, 21, 255))
-    r1_dbg.save(SCRATCH_DIR / "debug_valkyrie_ex_row1_walk.png")
+    def _save_row_grid(frames_320, tag_prefix: str, out_name: str):
+        dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (18, 10, 24, 255))
+        dr_ = ImageDraw.Draw(dbg)
+        for idx, im_320 in enumerate(frames_320):
+            gx = (idx % 6) * CELL_W
+            gy = (idx // 6) * CELL_H
+            dbg.alpha_composite(im_320, (gx, gy))
+            dr_.rectangle([gx, gy, gx + CELL_W - 1, gy + CELL_H - 1], outline=(95, 45, 65, 255), width=1)
+            dr_.line([(gx, gy + 230), (gx + CELL_W - 1, gy + 230)], fill=(250, 204, 21, 90), width=1)
+            dr_.line([(gx + 112, gy), (gx + 112, gy + CELL_H - 1)], fill=(251, 113, 133, 90), width=1)
+            dr_.text((gx + 8, gy + 6), f"{tag_prefix} F{idx:02d}", fill=(250, 204, 21, 255))
+        dbg.save(SCRATCH_DIR / out_name)
 
-    r2_dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (18, 10, 24, 255))
-    dr = ImageDraw.Draw(r2_dbg)
-    for idx, im_320 in enumerate(row2_frames_320):
-        gx = (idx % 6) * CELL_W
-        gy = (idx // 6) * CELL_H
-        r2_dbg.alpha_composite(im_320, (gx, gy))
-        dr.rectangle([gx, gy, gx + CELL_W - 1, gy + CELL_H - 1], outline=(95, 45, 65, 255), width=1)
-        dr.line([(gx, gy + 230), (gx + CELL_W - 1, gy + 230)], fill=(250, 204, 21, 90), width=1)
-        dr.line([(gx + 112, gy), (gx + 112, gy + CELL_H - 1)], fill=(251, 113, 133, 90), width=1)
-        dr.text((gx + 8, gy + 6), f"R2 F{idx:02d}", fill=(250, 204, 21, 255))
-    r2_dbg.save(SCRATCH_DIR / "debug_valkyrie_ex_row2.png")
+    _save_row_grid(row1_frames_320, "R1", "debug_valkyrie_ex_row1_walk.png")
+    _save_row_grid(row2_frames_320, "R2", "debug_valkyrie_ex_row2.png")
+    _save_row_grid(row3_frames_320, "R3", "debug_valkyrie_ex_row3.png")
+    _save_row_grid(row4_frames_320, "R4", "debug_valkyrie_ex_row4.png")
+    _save_row_grid(row8_frames_320, "R8", "debug_valkyrie_ex_row8.png")
+    _save_row_grid(row9_frames_320, "R9", "debug_valkyrie_ex_row9.png")
 
     if "--rebuild-portrait" in sys.argv or not OUT_PORTRAIT.exists():
         p128 = build_portrait_128()
@@ -2029,8 +2030,25 @@ def main():
         snap_reach[f"F{sf:02d}"] = int(xs.max()) if len(xs) else 0
         snap_front_px[f"F{sf:02d}"] = int(np.sum(a[:, 201:]))
 
-    # Quantitative Row 1 Walk Crossover Gate (#124)
+    # Symmetrical Twin Upper-Wing Check (`y in [56..118]` has pixels at both `x < 96` and `x > 132` across all 30 frames of Row 0 & Row 1)
+    for r_idx, frames_320 in ((0, row0_frames_320), (1, row1_frames_320)):
+        min_r_max_x = 320
+        for f_idx, im_f in enumerate(frames_320):
+            band = np.array(im_f)[56:119, :, 3] > 0
+            left_wing_ok = bool(band[:, :96].any())
+            right_wing_ok = bool(band[:, 133:].any())
+            right_xs = np.where(band)[1]
+            r_max_x = int(right_xs.max()) if len(right_xs) else 0
+            min_r_max_x = min(min_r_max_x, r_max_x)
+            assert left_wing_ok and right_wing_ok, (
+                f"Row {r_idx} F{f_idx:02d} missing symmetrical upper wing in y[56..118]: left={left_wing_ok}, right={right_wing_ok}"
+            )
+            assert r_max_x > 136, f"Row {r_idx} F{f_idx:02d} right wing maxX={r_max_x} <= 136"
+        print(f"[valkyrie_ex] Row {r_idx} symmetrical twin upper wings OK across all 30 frames (minRightWingMaxX={min_r_max_x} > 136)")
+
+    # Quantitative Row 1 Walk Crossover Gate (#124 + Suite 36.2 boot_band)
     foot_spans = []
+    boot_spans = []
     top_ys = []
     for f_idx, im_w in enumerate(row1_frames_320):
         a_w = np.array(im_w)[:, :, 3] > 0
@@ -2038,15 +2056,40 @@ def main():
         top_ys.append(int(ys_w.min()))
         _, xs_b = np.where(a_w[206:233, :])
         foot_spans.append(int(xs_b.max() - xs_b.min()) if len(xs_b) else 0)
+        _, xs_boot = np.where(a_w[218:234, :])
+        boot_spans.append(int(xs_boot.max() - xs_boot.min() + 1) if len(xs_boot) else 0)
     max_fspan = max(foot_spans)
     min_fspan = min(foot_spans)
+    max_bspan = max(boot_spans)
+    min_bspan = min(boot_spans)
     max_adj_top = max(abs(top_ys[i] - top_ys[(i + 1) % 30]) for i in range(30))
     print(f"[valkyrie_ex] Row 1 footSpan320: F00={foot_spans[0]} F07={foot_spans[7]} F15={foot_spans[15]} F22={foot_spans[22]} | min={min_fspan} max={max_fspan} ratio={min_fspan/max(1,max_fspan):.2f} | maxAdjTopDelta={max_adj_top}")
+    print(f"[valkyrie_ex] Row 1 bootBand218..233: min={min_bspan} max={max_bspan} ratio={min_bspan/max(1,max_bspan):.3f}")
     assert foot_spans[0] >= 34 and foot_spans[15] >= 34, f"Walk stride too narrow: F00={foot_spans[0]}, F15={foot_spans[15]}"
     assert foot_spans[7] <= max_fspan * 0.55 and foot_spans[22] <= max_fspan * 0.55, (
         f"Walk crossover failed: F07={foot_spans[7]}, F22={foot_spans[22]}, max={max_fspan}"
     )
+    assert max_bspan >= 56 and min_bspan <= max_bspan * 0.55, (
+        f"Suite 36.2 boot_band failed: min={min_bspan}, max={max_bspan}"
+    )
     assert max_adj_top <= 4, f"Walk head bob > 4px: {max_adj_top}"
+
+    # Row 5 DEATH & Row 9 VICTORY bounds (Suite 36.3)
+    max_death_h = 0
+    min_death_x = 320
+    max_death_x = 0
+    min_vic_h = 999
+    for c in range(26, 30):
+        ad = np.array(row5_frames_320[c])[:, :, 3] > 0
+        yd, xd = np.where(ad)
+        max_death_h = max(max_death_h, int(yd.max() - yd.min() + 1))
+        min_death_x = min(min_death_x, int(xd.min()))
+        max_death_x = max(max_death_x, int(xd.max()))
+        av = np.array(row9_frames_320[c])[:, :, 3] > 0
+        yv, _ = np.where(av)
+        min_vic_h = min(min_vic_h, int(yv.max() - yv.min() + 1))
+    print(f"[valkyrie_ex] Row 5 DEATH F26..29: maxH={max_death_h} x=[{min_death_x}..{max_death_x}] | Row 9 VICTORY minH={min_vic_h}")
+    assert max_death_h <= 104 and min_death_x >= 18 and max_death_x <= 302 and min_vic_h >= 150
 
     print(f"[valkyrie_ex] Wrote {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}) | portrait={OUT_PORTRAIT} ({p128.size[0]}x{p128.size[1]})")
     print(f"[valkyrie_ex] border_clips={border_clips}/300 | row_transitions={row_transitions}")

@@ -282,8 +282,13 @@ export class ValkyrieEx extends Fighter {
         anchorX: 112,
         anchorY: 230
       };
-    } else if (assets.valkyrie_ex.vfx?.src && !assets.valkyrie_ex.vfx.src.includes('v=30fps116')) {
-      assets.valkyrie_ex.vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps116';
+    } else {
+      if (assets.valkyrie_ex.sheet?.src && !assets.valkyrie_ex.sheet.src.includes('v=30fps116')) {
+        assets.valkyrie_ex.sheet.src = 'assets/sprites/valkyrie_ex_sheet.png?v=30fps116';
+      }
+      if (assets.valkyrie_ex.vfx?.src && !assets.valkyrie_ex.vfx.src.includes('v=30fps116')) {
+        assets.valkyrie_ex.vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps116';
+      }
     }
     return assets.valkyrie_ex;
   }
