@@ -244,6 +244,20 @@ export class WarriorEx extends Fighter {
     return Math.max(minX, Math.min(maxX, xv));
   }
 
+  _safeFxX(xv, game = this.game) {
+    const g = game || this.game;
+    const ww = g?.renderer ? g.renderer.worldWidth : 1200;
+    return Math.max(48, Math.min(ww - 48, xv));
+  }
+
+  _resolveShaderCenterX(renderer) {
+    const ww = renderer?.worldWidth || 1200;
+    if (ww > 2400) {
+      return Number.isFinite(renderer?.camX) ? renderer.camX : this.x;
+    }
+    return ww * 0.5;
+  }
+
   _beginComboBeat(beatIdx, game) {
     const v = ((beatIdx % 4) + 4) % 4;
     this._autoVariant = v;
@@ -1147,11 +1161,17 @@ export class WarriorEx extends Fighter {
         age: 0,
         maxLife: 0.96
       };
+      this.spawnVfxAnim(3, this.x, this.groundY - 12, 224, 128, 0.72, {
+        flipX: false,
+        glowColor: 'gold',
+        foreground: false
+      });
       this.spawnVfxAnim(1, this.x, this.groundY - 46, 204, 204, 0.52, {
         flipX: this.facing < 0,
         glowColor: 'gold',
         foreground: false
       });
+      game?.vfx?.spawnShockwave?.(this.x, this.groundY - 2, '#38bdf8', 96, 0.28);
       this.spawnPixelShockRing(this.x, this.groundY - 2, 86, true, 0.30);
       game?.vfx?.spawnDamageText?.(this.x, this.y - 154, 0, false, 'DAWN SWORD-SEAL!', '#fde047');
     }
@@ -1202,6 +1222,21 @@ export class WarriorEx extends Fighter {
         flipX: this.facing < 0,
         glowColor: 'cyan',
         foreground: false
+      });
+      game?.vfx?.spawnCrystalSpike?.({
+        x: p1X,
+        groundY: this.groundY,
+        height: 82,
+        width: 26,
+        tilt: this.facing * 0.14,
+        color: '#38bdf8',
+        coreColor: '#ffffff',
+        owner: this,
+        target: null,
+        damage: 0,
+        delay: 0.01,
+        maxLife: 0.34,
+        isUltimate: false
       });
       this.spawnPixelShockRing(p1X, this.groundY - 2, 68, false, 0.24);
       this._applyExviusStrike(enemy, game, {
@@ -1271,14 +1306,46 @@ export class WarriorEx extends Fighter {
 
     if ((this._skillSlashMask & 8) === 0 && t >= 0.68) {
       this._skillSlashMask |= 8;
-      const pillarX = this.x + this.facing * 88;
-      game?.renderer?.triggerShake?.(14, 0.28);
+      const pillarX = this._safeFxX(this.x + this.facing * 88, game);
+      game?.renderer?.triggerShake?.(15, 0.28);
+      game?.renderer?.triggerImpactFrame?.(pillarX, this.groundY - 96, 0.06, 'exvius');
       if (game?.audio) game.audio.play('thunder_slam', pillarX);
 
       this.fx?.spawn('skyJudgmentPillar', pillarX, this.groundY - 2, {
         flip: this.facing < 0,
-        light: 1.32
+        light: 1.34
       });
+      game?.vfx?.spawnSkyStrike?.({
+        x: pillarX,
+        groundY: this.groundY,
+        owner: this,
+        target: null,
+        damage: 0,
+        delay: 0.01,
+        flightDuration: 0.13,
+        impactDuration: 0.36,
+        type: 'runeblade',
+        color: '#fde047',
+        scale: 1.18,
+        isUltimate: false
+      });
+      game?.vfx?.spawnCrystalSpike?.({
+        x: pillarX,
+        groundY: this.groundY,
+        height: 118,
+        width: 34,
+        tilt: this.facing * 0.08,
+        color: '#fde047',
+        coreColor: '#ffffff',
+        owner: this,
+        target: null,
+        damage: 0,
+        delay: 0.02,
+        maxLife: 0.42,
+        isUltimate: false
+      });
+      game?.vfx?.spawnDecal?.(pillarX, this.groundY, 'crater', 84);
+      game?.vfx?.spawnShockwave?.(pillarX, this.groundY - 2, '#fde047', 128, 0.32);
       this.spawnCathedralBeam(pillarX, this.groundY, 54, 0.36);
       this.spawnVfxAnim(2, pillarX, this.groundY - 88, 244, 244, 0.44, {
         flipX: this.facing < 0,
@@ -1481,8 +1548,43 @@ export class WarriorEx extends Fighter {
         const impactX = this._clampArenaX(tx, game);
         if (game?.audio) game.audio.play('thunder_slam', impactX);
         game?.renderer?.triggerShake?.(18, 0.36);
+        game?.renderer?.triggerImpactFrame?.(impactX, this.groundY - 108, 0.09, 'exvius');
+        game?.renderer?.triggerHitStop?.(0.065);
 
-        // Towering Runic Monolith Greatsword (`Row 6`) plunging straight into the Pentagram heart!
+        // Towering Runic Monolith Greatsword (`Row 6`) + SkyStrike Runeblade plunging straight into the Pentagram heart!
+        game?.vfx?.spawnSkyStrike?.({
+          x: impactX,
+          groundY: this.groundY,
+          owner: this,
+          target: null,
+          damage: 0,
+          delay: 0.01,
+          flightDuration: 0.12,
+          impactDuration: 0.44,
+          type: 'runeblade',
+          color: '#fde047',
+          scale: 1.42,
+          isUltimate: true
+        });
+        for (const side of [-1, 1]) {
+          game?.vfx?.spawnCrystalSpike?.({
+            x: this._safeFxX(impactX + side * 74, game),
+            groundY: this.groundY,
+            height: 112,
+            width: 32,
+            tilt: side * 0.16,
+            color: side < 0 ? '#38bdf8' : '#fde047',
+            coreColor: '#ffffff',
+            owner: this,
+            target: null,
+            damage: 0,
+            delay: 0.03,
+            maxLife: 0.46,
+            isUltimate: true
+          });
+        }
+        game?.vfx?.spawnDecal?.(impactX, this.groundY, 'crater', 118);
+        game?.vfx?.spawnShockwave?.(impactX, this.groundY - 2, '#fde047', 164, 0.38);
         this.spawnVfxAnim(6, impactX, this.groundY - 118, 296, 296, 0.48, {
           flipX: false,
           glowColor: 'gold',
@@ -1641,6 +1743,35 @@ export class WarriorEx extends Fighter {
           isGold: s.gold,
           erupted: false
         });
+        game?.vfx?.spawnSkyStrike?.({
+          x: swordX,
+          groundY: this.groundY,
+          owner: this,
+          target: null,
+          damage: 0,
+          delay: 0.01,
+          flightDuration: 0.14,
+          impactDuration: 0.38,
+          type: 'runeblade',
+          color: s.gold ? '#fde047' : '#38bdf8',
+          scale: 1.15,
+          isUltimate: true
+        });
+        game?.vfx?.spawnCrystalSpike?.({
+          x: swordX,
+          groundY: this.groundY,
+          height: 104,
+          width: 30,
+          tilt: s.swordOff < 0 ? -0.14 : 0.14,
+          color: s.gold ? '#fde047' : '#38bdf8',
+          coreColor: '#ffffff',
+          owner: this,
+          target: null,
+          damage: 0,
+          delay: 0.05,
+          maxLife: 0.52,
+          isUltimate: true
+        });
         this.spawnAstralThread(prevX, prevY, swordX, this.groundY - 92, 0.72, s.gold);
         this.spawnPixelShockRing(swordX, this.groundY - 2, 68, s.gold, 0.28);
         this.spawnExParticles(swordX, this.groundY - 42, 7, {
@@ -1718,12 +1849,52 @@ export class WarriorEx extends Fighter {
       const beamX = this._clampArenaX(tx, game);
       if (game?.audio) game.audio.play('thunder_slam', beamX);
       game?.renderer?.triggerShake?.(24, 0.48);
+      game?.renderer?.triggerImpactFrame?.(beamX, this.groundY - 118, 0.12, 'exvius');
+      game?.renderer?.triggerHitStop?.(0.085);
 
       // 7th Colossal Sovereign Dawn-Pillar + all 6 flanking Greatswords erupting skyward!
+      game?.vfx?.spawnSkyStrike?.({
+        x: beamX,
+        groundY: this.groundY,
+        owner: this,
+        target: null,
+        damage: 0,
+        delay: 0.01,
+        flightDuration: 0.12,
+        impactDuration: 0.56,
+        type: 'runeblade',
+        color: '#fde047',
+        scale: 1.65,
+        isUltimate: true
+      });
+      game?.vfx?.spawnBeam?.({
+        x1: beamX,
+        y1: this.groundY - 560,
+        x2: beamX,
+        y2: this.groundY,
+        width: 52,
+        color: '#38bdf8',
+        coreColor: '#fde047',
+        maxLife: 0.52,
+        owner: this
+      });
+      game?.vfx?.spawnDecal?.(beamX, this.groundY, 'crater', 156);
+      game?.vfx?.spawnShockwave?.(beamX, this.groundY - 2, '#fde047', 216, 0.46);
       this.spawnCathedralBeam(beamX, this.groundY, 128, 0.72);
       for (const sw of this.pinnedCelestialSwords) {
         sw.erupted = true;
         this.spawnCathedralBeam(sw.x, sw.groundY, 34, 0.56);
+        game?.vfx?.spawnBeam?.({
+          x1: sw.x,
+          y1: sw.groundY - 420,
+          x2: sw.x,
+          y2: sw.groundY,
+          width: 24,
+          color: sw.isGold ? '#fde047' : '#38bdf8',
+          coreColor: '#ffffff',
+          maxLife: 0.42,
+          owner: this
+        });
       }
       this.spawnExviusFeathers(game, 32);
       this.spawnPixelShockRing(beamX, this.groundY - 2, 198, true, 0.46);
@@ -1894,7 +2065,12 @@ export class WarriorEx extends Fighter {
   }
 
   update(dt, enemy, game) {
+    this.game = game || this.game;
     this._currentEnemy = enemy;
+    if ((this.state === 'IDLE' || this.state === 'WALK') && !this._advPureDodge) {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
+    }
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
     this.vaultCooldown = Math.max(0, this.vaultCooldown - dt);
     this.updateCustomVfx(dt);
@@ -2040,7 +2216,7 @@ export class WarriorEx extends Fighter {
     ctx.restore();
   }
 
-  drawArchangelExviusWings(ctx) {
+  drawArchangelExviusWings(ctx, alphaScale = 1.0) {
     const sprites = this.getExSprites();
     const wingsImg = PixelForge.ensureImage(sprites?.wings);
     if (!wingsImg || !wingsImg.complete || !wingsImg.naturalWidth) return;
@@ -2057,7 +2233,7 @@ export class WarriorEx extends Fighter {
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(this.x), Math.round(this.y - 98));
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 0.92 * alphaScale;
     ctx.drawImage(
       wingsImg,
       flapCol * cellW,
@@ -2070,7 +2246,7 @@ export class WarriorEx extends Fighter {
       drawH
     );
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.16;
+    ctx.globalAlpha = 0.22 * alphaScale;
     ctx.drawImage(
       wingsImg,
       flapCol * cellW,
@@ -2086,7 +2262,7 @@ export class WarriorEx extends Fighter {
   }
 
   /**
-   * Crisp pixel-pure VFX sheet blit with Bayer pixel floor/rim halo (`<= 0.14` highlight).
+   * Crisp pixel-pure VFX sheet blit with glowing HD-2D luminescence.
    */
   drawBloomedVfxCell(
     ctx,
@@ -2100,11 +2276,29 @@ export class WarriorEx extends Fighter {
     alpha = 1.0,
     flipX = false
   ) {
-    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth || alpha <= 0.01) return;
     const rows = Math.max(1, Math.round(vfxSheet.naturalHeight / 208));
     const cell = 208;
-    const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
-    const sy = Math.max(0, Math.min(rows - 1, Math.floor(row))) * cell;
+    const clampedRow = Math.max(0, Math.min(rows - 1, Math.floor(row)));
+    const clampedCol = Math.max(0, Math.min(29, Math.floor(col)));
+    if (this.game?.vfx?.drawBloomedSprite) {
+      this.game.vfx.drawBloomedSprite(
+        ctx,
+        vfxSheet,
+        clampedCol * cell,
+        clampedRow * cell,
+        cell,
+        cell,
+        Math.round(x),
+        Math.round(y),
+        w,
+        h,
+        { alpha, bloomAlpha: Math.min(0.28, alpha * 0.24), bloomScale: 1.04, flipX }
+      );
+      return;
+    }
+    const sx = clampedCol * cell;
+    const sy = clampedRow * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -2116,7 +2310,7 @@ export class WarriorEx extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(0.14, alpha * 0.14);
+    ctx.globalAlpha = Math.min(0.24, alpha * 0.22);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();
@@ -2210,45 +2404,41 @@ export class WarriorEx extends Fighter {
       }
     }
 
-    // 3. Full-Stage Stained-Glass Runic Cathedral Sanctuary (`TRUE_ULTIMATE`)
+    // 3. Full-Stage Stained-Glass Runic Cathedral Sanctuary (`TRUE_ULTIMATE` — sculpted shader cells, 0 solid fillRect columns!)
     if (this._sanctuaryTimer > 0) {
       const fade = Math.min(1, this._sanctuaryTimer / 0.65);
       const cx = Math.round(this._sanctuaryCenterX);
       const gy = Math.round(this.groundY);
+      const sanctAge = Math.max(0, 4.35 - this._sanctuaryTimer);
 
       this.drawBayerPixelHalo(ctx, cx, gy - 2, 260, 32, '#0284c7', '#facc15', 0.18 * fade);
 
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      // 5 Stained-Glass Gothic Lancet Columns in deep background (stippled pixel-pure arches)
-      const offsets = [-240, -120, 0, 120, 240];
-      for (let idx = 0; idx < offsets.length; idx++) {
-        const ax = cx + offsets[idx];
-        const archH = idx === 2 ? 268 : Math.abs(offsets[idx]) === 120 ? 228 : 192;
-        const archW = idx === 2 ? 42 : 30;
-        const topY = gy - archH;
-
-        ctx.globalAlpha = 0.20 * fade;
-        ctx.fillStyle = idx % 2 === 0 ? '#0284c7' : '#d97706';
-        ctx.fillRect(ax - archW + 4, topY + 18, (archW - 4) * 2, archH - 22);
-
-        ctx.globalAlpha = 0.52 * fade;
-        ctx.fillStyle = '#080d1a';
-        ctx.fillRect(ax - archW, topY + 16, 4, archH - 16);
-        ctx.fillRect(ax + archW - 4, topY + 16, 4, archH - 16);
-        ctx.fillStyle = idx % 2 === 0 ? '#38bdf8' : '#facc15';
-        ctx.fillRect(ax - archW + 2, topY + 16, 2, archH - 16);
-        ctx.fillRect(ax + archW - 4, topY + 16, 2, archH - 16);
-        // Pointed gothic lancet capstone
-        ctx.fillRect(ax - Math.round(archW * 0.6), topY + 8, Math.round(archW * 1.2), 4);
-        ctx.fillRect(ax - 4, topY, 8, 8);
-      }
-      ctx.restore();
-
-      // Rotating Stained-Glass Rose-Window (`Row 5`) high in the sanctuary vault
       if (hasVfx) {
-        const roseCol = Math.floor(((4.35 - this._sanctuaryTimer) * 18) % 30);
-        this.drawBloomedVfxCell(ctx, vfxSheet, 5, roseCol, cx, gy - 216, 232, 232, 0.84 * fade, false);
+        const sealCol = Math.floor((sanctAge * 24) % 30);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 3, sealCol, cx, gy - 10, 336, 152, 0.88 * fade, false);
+
+        const offsets = [-210, -105, 0, 105, 210];
+        for (let idx = 0; idx < offsets.length; idx++) {
+          const ax = cx + offsets[idx];
+          const pilH = idx === 2 ? 268 : Math.abs(offsets[idx]) === 105 ? 232 : 198;
+          const pilW = idx === 2 ? 184 : 148;
+          const pilCol = Math.floor((sanctAge * 22 + idx * 5) % 30);
+          this.drawBloomedVfxCell(
+            ctx,
+            vfxSheet,
+            6,
+            pilCol,
+            ax,
+            gy - Math.round(pilH * 0.46),
+            pilW,
+            pilH,
+            0.62 * fade,
+            idx % 2 === 1
+          );
+        }
+
+        const roseCol = Math.floor((sanctAge * 18) % 30);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 5, roseCol, cx, gy - 216, 244, 244, 0.88 * fade, false);
       }
     }
 
@@ -2284,32 +2474,20 @@ export class WarriorEx extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Colossal Cathedral Dawn-Breaker Beam-Cleave Pillars
-    for (let i = 0; i < this.cathedralBeams.length; i++) {
-      const b = this.cathedralBeams[i];
-      const u = Math.min(1, b.age / b.maxLife);
-      const env = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88);
-      const halfW = Math.max(4, Math.round(b.width * 0.5 * env));
-      const topY = Math.round(b.groundY - 620);
-      const beamH = Math.round(b.groundY - topY);
-
-      ctx.globalAlpha = Math.min(1, env * 0.92);
-      ctx.fillStyle = '#080d1a';
-      ctx.fillRect(b.x - halfW - 4, topY, (halfW + 4) * 2, beamH);
-      ctx.fillStyle = '#0284c7';
-      ctx.fillRect(b.x - halfW, topY, halfW * 2, beamH);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(b.x - Math.round(halfW * 0.72), topY, Math.round(halfW * 1.44), beamH);
-      ctx.fillStyle = '#fde047';
-      ctx.fillRect(b.x - Math.round(halfW * 0.42), topY, Math.round(halfW * 0.84), beamH);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(b.x - Math.max(2, Math.round(halfW * 0.20)), topY, Math.max(4, Math.round(halfW * 0.40)), beamH);
-
-      const barW = Math.round(halfW * 2.4);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(b.x - barW, b.groundY - 6, barW * 2, 4);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(b.x - Math.round(barW * 0.65), b.groundY - 5, Math.round(barW * 1.3), 2);
+    // 1. Sculpted Cathedral Dawn-Breaker Light-Pillars (`Row 6` + `Row 2` shader cells — 0 blocky fillRect beams!)
+    if (hasVfx) {
+      for (let i = 0; i < this.cathedralBeams.length; i++) {
+        const b = this.cathedralBeams[i];
+        const u = Math.min(1, b.age / Math.max(0.04, b.maxLife));
+        const env = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88);
+        if (env <= 0.02) continue;
+        const col = Math.min(29, Math.floor(u * 30));
+        const pilW = Math.max(156, Math.round(b.width * 2.45));
+        const pilH = Math.max(256, Math.round(b.width * 3.35));
+        this.drawBayerPixelHalo(ctx, b.x, b.groundY - 2, Math.round(pilW * 0.42), 14, '#0284c7', '#fde047', 0.17 * env);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 6, col, b.x, b.groundY - Math.round(pilH * 0.45), pilW, pilH, env * 0.94, i % 2 === 1);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 2, (col + 6) % 30, b.x, b.groundY - Math.round(pilH * 0.86), Math.round(pilW * 0.84), Math.round(pilH * 0.78), env * 0.78, false);
+      }
     }
 
     // 2. Hairline 3-Pass `2px` Astral Light-Threads (Pentagram & 7-Sword Chords — 0 chevrons!)
@@ -2470,7 +2648,7 @@ export class WarriorEx extends Fighter {
       this.drawStainedGlassSanctuary(ctx, vfxSheet);
     }
 
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
     }
@@ -2529,7 +2707,7 @@ export class WarriorEx extends Fighter {
       }
     }
 
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
@@ -2549,6 +2727,27 @@ export class WarriorEx extends Fighter {
     const sprites = this.getExSprites();
     if (!sprites) return;
 
+    if (isReflection && !this.isDead) {
+      const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
+      const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+      if (this.justiceWingsActive) {
+        this.drawArchangelExviusWings(ctx, 0.42);
+      }
+      if (hasVfx) {
+        if (this._sanctuaryTimer > 0) {
+          const fade = Math.min(1, this._sanctuaryTimer / 0.65);
+          const col = Math.floor(((4.35 - this._sanctuaryTimer) * 20) % 30);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, this._sanctuaryCenterX, this.groundY - 120, 212, 212, 0.34 * fade, false);
+        }
+        for (const sw of this.pinnedCelestialSwords) {
+          const u = Math.min(1, sw.age / sw.maxLife);
+          const fade = u > 0.82 ? (1 - u) / 0.18 : 1.0;
+          const col = 12 + (Math.floor(sw.age * 20) % 10);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 6, col, sw.x, sw.groundY - 78, 196, 196, 0.38 * fade, sw.isGold);
+        }
+      }
+    }
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
@@ -2559,6 +2758,13 @@ export class WarriorEx extends Fighter {
     ctx.scale(this.facing, 1);
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
+
+    if (this.hitFlash > 0 && !isReflection) {
+      const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.48;
+      PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
+    }
 
     ctx.restore();
   }
