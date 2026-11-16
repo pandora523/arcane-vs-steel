@@ -2,6 +2,7 @@ import { Fighter } from './Fighter.js?v=30fps115';
 import { PixelForge } from '../engine/PixelForge.js?v=30fps115';
 import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps115';
 import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps115';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps115';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -12,13 +13,6 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.38, 0.36, 0.40, 0.52];
 const INTRA_COMBO_LINK = 0.015;
-
-const BAYER_4X4 = [
-  [0, 8, 2, 10],
-  [12, 4, 14, 6],
-  [3, 11, 1, 9],
-  [15, 7, 13, 5]
-];
 
 /**
  * Ignis Sol EX (`mage_ex`) — Solar Archmage (Neo-Vision Awakening).
@@ -132,15 +126,14 @@ export class FireMageEx extends Fighter {
     this.solarEchoes = [];
     this.afterimageAccum = 0;
     this.activeVfxAnims = [];
-    this.exParticles = [];
-    this.hitStarbursts = [];
     this.remoteSeals = [];
     this.stepDustTimer = 0;
+    this._exParticles = new ExParticleSystem('mage_ex', '#fb923c');
 
     this.fx = new ArcaneShaderFX(SOLAR_EFFECT_REGISTRY, {
       pixelScale: 3,
-      viewW: 480,
-      viewH: 340
+      viewW: 540,
+      viewH: 360
     });
 
     if (typeof Image !== 'undefined') {
@@ -195,10 +188,27 @@ export class FireMageEx extends Fighter {
     return Math.max(minX, Math.min(maxX, xv));
   }
 
+  _safeFxX(xv, game = this.game) {
+    const ww = game?.renderer?.worldWidth || 1200;
+    return Math.max(48, Math.min(ww - 48, Number.isFinite(xv) ? xv : this.x));
+  }
+
+  _resolveShaderCenterX(renderer) {
+    const ww = renderer?.worldWidth || 1200;
+    if (ww <= 1600) return ww * 0.5;
+    const camCenter = Number.isFinite(renderer?.cameraX) ? renderer.cameraX + 640 : this.x;
+    return Math.max(810, Math.min(ww - 810, camCenter));
+  }
+
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
     this._drewPalmFocus = false;
+
+    if (newState === 'WALK' || newState === 'IDLE') {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
+    }
 
     if (newState === 'AUTO_ATTACK') {
       if (this._comboPersistTimer <= 0 && prevState !== 'AUTO_ATTACK') {
@@ -258,14 +268,22 @@ export class FireMageEx extends Fighter {
       this.cameraAirLift = 0;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
-      this.exParticles.length = 0;
-      this.hitStarbursts.length = 0;
+      this._exParticles?.clear();
       this.remoteSeals.length = 0;
       if (this._eclipseVisual) this._eclipseVisual.active = false;
       if (this.trueUltMeteor) {
         this.trueUltMeteor.active = false;
         this.trueUltMeteor.phase = 'none';
       }
+    } else if (
+      newState === 'SKILL' ||
+      newState === 'ULTIMATE' ||
+      newState === 'TRUE_ULTIMATE' ||
+      newState === 'DASH' ||
+      newState === 'DODGE' ||
+      newState === 'JUMP'
+    ) {
+      this._exParticles?.emitStateFlourish(this, newState);
     }
   }
 
@@ -323,64 +341,62 @@ export class FireMageEx extends Fighter {
   }
 
   // ============================================================================
-  // PIXEL-PURE NEXT-GEN PARTICLE, STAR-GLINT & BAYER HALO ENGINE (`alpha <= 0.20`)
+  // PIXEL-PURE NEXT-GEN PARTICLE, STAR-GLINT & BAYER HALO ENGINE
   // ============================================================================
   spawnExParticle(opts) {
     if (!opts || !Number.isFinite(opts.x) || !Number.isFinite(opts.y)) return;
-    if (this.exParticles.length >= 96) this.exParticles.shift();
-    this.exParticles.push({
+    if (opts.shape === 'ring') {
+      this._exParticles?.spawnRing(
+        opts.x,
+        opts.y,
+        opts.size || 56,
+        opts.color || '#fb923c',
+        opts.coreColor || '#fef08a',
+        false,
+        opts.maxLife || 0.24
+      );
+      return;
+    }
+    this._exParticles?.spawn({
+      shape: opts.shape || 'ember',
       x: opts.x,
       y: opts.y,
       vx: opts.vx || 0,
       vy: opts.vy || 0,
       gravity: opts.gravity ?? -28,
-      drag: opts.drag ?? 0.96,
-      shape: opts.shape || 'star4', // 'star4' | 'diamond' | 'ember' | 'rune' | 'ring'
-      size: opts.size || 4,
+      swayAmp: opts.shape === 'ember' ? 14 : 6,
+      swayFreq: 5.2,
+      size: opts.size || 3,
       color: opts.color || '#fb923c',
-      coreColor: opts.coreColor || '#fef08a',
-      age: 0,
-      maxLife: opts.maxLife || 0.38
+      accent: '#fde047',
+      core: opts.coreColor || '#fef08a',
+      maxLife: opts.maxLife || 0.36,
+      layer: opts.layer || 'front'
     });
   }
 
   spawnSolarStarCluster(x, y, count = 6, speed = 135, isEclipse = false) {
-    const shapes = ['star4', 'ember', 'diamond', 'rune'];
-    for (let i = 0; i < count; i++) {
-      const ang = (i / Math.max(1, count)) * Math.PI * 2 + ((i * 1.37) % 0.6);
-      const spd = speed * (0.45 + ((i * 37) % 10) * 0.065);
-      this.spawnExParticle({
-        x: x + Math.cos(ang) * 8,
-        y: y + Math.sin(ang) * 8,
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd - 36,
-        gravity: i % 2 === 0 ? -34 : 65,
-        shape: shapes[i % shapes.length],
-        size: i % 3 === 0 ? 6 : 4,
-        color: isEclipse ? (i % 2 === 0 ? '#c026d3' : '#fb923c') : i % 2 === 0 ? '#fb923c' : '#dc2626',
-        coreColor: '#fef08a',
-        maxLife: 0.28 + (i % 3) * 0.08
-      });
-    }
+    this._exParticles?.burst(x, y, {
+      count,
+      shapes: ['star4', 'ember', 'diamond', 'rune'],
+      speedMin: Math.max(40, speed * 0.44),
+      speedMax: speed,
+      upBias: 38,
+      color: isEclipse ? '#c026d3' : '#fb923c',
+      accent: '#fde047',
+      core: '#fef08a',
+      layer: 'front'
+    });
   }
 
-  spawnHitStarburst(x, y, primaryHex = '#fb923c', accentHex = '#fef08a', scale = 1.0) {
-    if (this.hitStarbursts.length >= 14) this.hitStarbursts.shift();
-    this.hitStarbursts.push({
-      x: Math.round(x),
-      y: Math.round(y),
-      primaryHex,
-      accentHex,
-      scale,
-      age: 0,
-      maxLife: 0.18
-    });
+  spawnHitStarburst(x, y, primaryHex = '#fb923c', accentHex = '#fef08a', _scale = 1.0) {
+    this._exParticles?.spawnHitStarburst(Math.round(x), Math.round(y), primaryHex, accentHex, 0.18);
   }
 
   spawnRemoteSeal(x, groundY, radius = 64, maxLife = 0.56, isEclipse = false) {
     if (this.remoteSeals.length >= 12) this.remoteSeals.shift();
     this.remoteSeals.push({
-      x: Math.round(x),
+      x: Math.round(this._safeFxX(x)),
       groundY: Math.round(groundY),
       radius,
       age: 0,
@@ -399,7 +415,7 @@ export class FireMageEx extends Fighter {
     const isPrimed = (((this.comboStep || 0) % 4) + 4) % 4 === 3;
     let slot = this.fx.active.find((s) => s.key === 'heliosOrbitingSuns');
     if (!slot) {
-      slot = this.fx.spawn('heliosOrbitingSuns', this.x, this.y - 98, {
+      slot = this.fx.spawn('heliosOrbitingSuns', this._safeFxX(this.x), this.y - 98, {
         follow: this,
         offsetX: 0,
         offsetY: -98,
@@ -416,7 +432,7 @@ export class FireMageEx extends Fighter {
   ensureSolarGlideTrail() {
     if (!this.fx) return;
     if (!this.fx.active.some((s) => s.key === 'solarGlideTrail')) {
-      this.fx.spawn('solarGlideTrail', this.x - this.facing * 12, this.y - 88, {
+      this.fx.spawn('solarGlideTrail', this._safeFxX(this.x - this.facing * 12), this.y - 88, {
         follow: this,
         offsetX: -12,
         offsetY: -88,
@@ -1327,29 +1343,27 @@ export class FireMageEx extends Fighter {
     this.vx = 0;
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const baseTargetX = enemy
-      ? Math.max(135, Math.min(ww - 135, enemy.x))
-      : Math.max(135, Math.min(ww - 135, this.x + this.facing * 360));
+    const rawBase = enemy ? enemy.x : this.x + this.facing * 360;
+    const baseTargetX = this._safeFxX(Math.max(135, Math.min(ww - 135, rawBase)), game);
 
     if (!this.didSkillAura) {
       this.didSkillAura = true;
       this.heal(16, 'HELIOS AEGIS');
       game?.vfx?.spawnSpecialCastAura(this, this.skillName, 'SOLAR ARCHMAGE', 'arcane', false);
-      this.fx?.spawn('heliosPalmFocus', this.x + this.facing * 28, this.y - 108, {
+      this.fx?.spawn('heliosPalmFocus', this._safeFxX(this.x + this.facing * 28, game), this.y - 108, {
         follow: this,
         offsetX: 28,
         offsetY: -108,
         flip: this.facing < 0,
-        light: 1.22
+        light: 1.24
       });
-      // Pre-inscribe the 3 Heliacal Rune Seals cleanly on the arena floor
       this._skillTrinitySeals = [
-        Math.max(95, Math.min(ww - 95, baseTargetX - 96)),
+        this._safeFxX(Math.max(95, Math.min(ww - 95, baseTargetX - 96)), game),
         baseTargetX,
-        Math.max(95, Math.min(ww - 95, baseTargetX + 96))
+        this._safeFxX(Math.max(95, Math.min(ww - 95, baseTargetX + 96)), game)
       ];
       for (let i = 0; i < this._skillTrinitySeals.length; i++) {
-        this.spawnRemoteSeal(this._skillTrinitySeals[i], this.groundY, i === 1 ? 78 : 60, 0.88, false);
+        this.spawnRemoteSeal(this._skillTrinitySeals[i], this.groundY, i === 1 ? 82 : 64, 0.90, false);
       }
     }
 
@@ -1360,26 +1374,26 @@ export class FireMageEx extends Fighter {
       game?.renderer?.triggerShake?.(10, 0.22);
 
       const delays = [0.16, 0.04, 0.16];
-      const widths = [0.84, 1.18, 0.84];
+      const widths = [0.86, 1.22, 0.86];
       for (let i = 0; i < this._skillTrinitySeals.length; i++) {
         const px = this._skillTrinitySeals[i];
         game?.vfx?.spawnFlamePillar(px, this.groundY, this, enemy, {
           theme: 'arcane',
           delay: delays[i],
-          maxLife: i === 1 ? 1.42 : 1.22,
+          maxLife: i === 1 ? 1.44 : 1.24,
           scaleWidth: widths[i]
         });
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
-          light: i === 1 ? 1.32 : 1.18,
+          light: i === 1 ? 1.34 : 1.20,
           extra: { scaleWidth: widths[i] }
         });
-        this.spawnVfxAnim(1, px, this.groundY - 96, i === 1 ? 204 : 168, i === 1 ? 204 : 168, 0.42, {
+        this.spawnVfxAnim(1, px, this.groundY - 98, i === 1 ? 212 : 174, i === 1 ? 216 : 176, 0.44, {
           flipX: i === 0,
           inFront: true
         });
         this.spawnSolarStarCluster(px, this.groundY - 76, i === 1 ? 9 : 6, 150, false);
       }
-      this.spawnVfxAnim(4, centerSealX, this.groundY - 124, 188, 188, 0.38, {
+      this.spawnVfxAnim(4, centerSealX, this.groundY - 124, 196, 196, 0.40, {
         flipX: false,
         inFront: true
       });
@@ -1387,9 +1401,9 @@ export class FireMageEx extends Fighter {
       this.didSecondaryAction = true;
       if (game?.audio) game.audio.play('fireball', this.x);
 
-      const sx = this.x + this.facing * 64;
+      const sx = this._safeFxX(this.x + this.facing * 64, game);
       const sy = this.y - 102;
-      this.spawnVfxAnim(4, sx, sy, 164, 164, 0.28, {
+      this.spawnVfxAnim(4, sx, sy, 168, 168, 0.28, {
         flipX: this.facing < 0,
         inFront: true
       });
@@ -1423,8 +1437,9 @@ export class FireMageEx extends Fighter {
 
   /**
    * NEWLY BORN OVERDRIVE (`BLACK-SUN ECLIPSE SINGULARITY`, Row 4 `120..149`):
-   * Conjures a pixel-dithered Black-Sun Eclipse Ring high above the target, raining
-   * 7 diagonal Solar Lances into a cascading 4x4 Bayer Supernova Shock-Ring!
+   * Conjures a Black-Sun Eclipse Singularity (`spawnEclipseSupernova`) high above the target,
+   * pulling enemies inward with gravitational force while raining 7 Meteoric Solar Bombardments
+   * and collapsing into a Supernova Judgment Beam!
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1435,8 +1450,8 @@ export class FireMageEx extends Fighter {
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const rawTarget = enemy ? enemy.x : this.x + this.facing * 360;
-    const targetX = Math.max(180, Math.min(ww - 180, rawTarget));
-    const eclipseX = Math.max(180, Math.min(ww - 180, this.x * 0.25 + targetX * 0.75));
+    const targetX = this._safeFxX(Math.max(180, Math.min(ww - 180, rawTarget)), game);
+    const eclipseX = this._safeFxX(Math.max(180, Math.min(ww - 180, this.x * 0.25 + targetX * 0.75)), game);
     const eclipseY = this.groundY - 372;
 
     if (!this.spawnedEclipse) {
@@ -1445,6 +1460,16 @@ export class FireMageEx extends Fighter {
       this.heal(18, 'ECLIPSE CORONA');
       if (game?.audio) game.audio.play('eclipse_charge', eclipseX);
       game?.vfx?.spawnSpecialCastAura(this, this.ultName, 'NEO-VISION OVERDRIVE', 'arcane', true);
+
+      game?.vfx?.spawnEclipseSupernova({
+        x: eclipseX,
+        y: eclipseY,
+        groundY: this.groundY,
+        maxRadius: 128,
+        color: '#fb923c',
+        coreColor: '#fef08a',
+        maxLife: 1.48
+      });
 
       this._eclipseVisual = {
         active: true,
@@ -1456,13 +1481,13 @@ export class FireMageEx extends Fighter {
       };
 
       this.fx?.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
-        light: 1.32
+        light: 1.34
       });
-      this.fx?.spawn('arcaneBlinkRift', this.x, this.groundY, {
-        light: 1.22,
+      this.fx?.spawn('arcaneBlinkRift', this._safeFxX(this.x, game), this.groundY, {
+        light: 1.24,
         extra: { isArrival: false }
       });
-      this.spawnRemoteSeal(targetX, this.groundY, 132, 1.45, true);
+      this.spawnRemoteSeal(targetX, this.groundY, 136, 1.45, true);
       this.spawnSolarStarCluster(eclipseX, eclipseY, 10, 160, true);
     }
 
@@ -1473,21 +1498,26 @@ export class FireMageEx extends Fighter {
     }
 
     // Gravitational Singularity Pull during Eclipse Rain (`0.00..0.92s`)
-    if (t < 0.92 && enemy && !enemy.isDead && !enemy.isColossalBoss) {
-      const pullDir = Math.sign(targetX - enemy.x);
-      enemy.x += pullDir * 112 * dt;
+    const foes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+    if (t < 0.92) {
+      for (const foe of foes) {
+        if (foe && !foe.isDead && !foe.isBenched && !foe.isColossalBoss) {
+          const pullDir = Math.sign(targetX - foe.x);
+          foe.x += pullDir * 124 * dt;
+        }
+      }
     }
 
-    // Rain 7 Diagonal Solar Lances from the Black-Sun Eclipse Ring!
+    // Rain 7 Meteoric Bombardment Lances & Solar Meteors from the Black-Sun Eclipse Ring!
     const lanceOffsets = [-156, -104, -52, 0, 52, 104, 156];
     const lanceTimes = [0.22, 0.30, 0.38, 0.46, 0.54, 0.62, 0.70];
     while (this._ultLanceStep < lanceTimes.length && t >= lanceTimes[this._ultLanceStep]) {
       const idx = this._ultLanceStep;
       this._ultLanceStep++;
-      const destX = Math.max(95, Math.min(ww - 95, targetX + lanceOffsets[idx]));
+      const destX = this._safeFxX(Math.max(95, Math.min(ww - 95, targetX + lanceOffsets[idx])), game);
       const dirX = destX - eclipseX;
       if (game?.audio && idx % 2 === 0) game.audio.play('fireball', destX);
-      this.spawnRemoteSeal(destX, this.groundY, 44, 0.36, idx % 2 === 0);
+      this.spawnRemoteSeal(destX, this.groundY, 46, 0.36, idx % 2 === 0);
       game?.vfx?.spawnSkyStrike({
         x: eclipseX + lanceOffsets[idx] * 0.25,
         y: eclipseY + 18,
@@ -1503,9 +1533,28 @@ export class FireMageEx extends Fighter {
         damage: idx === 3 ? 44 : 26,
         isUltimate: true
       });
+      if (idx % 3 === 0) {
+        const mDx = destX - eclipseX;
+        const mDy = (this.groundY - 56) - eclipseY;
+        const mLen = Math.hypot(mDx, mDy) || 1;
+        game?.vfx?.spawnProjectile({
+          x: eclipseX,
+          y: eclipseY + 12,
+          vx: (mDx / mLen) * 820,
+          vy: (mDy / mLen) * 820,
+          radius: 17,
+          maxRange: 640,
+          color: '#ea580c',
+          coreColor: '#fef08a',
+          owner: this,
+          damage: 18,
+          type: 'meteor',
+          isMeteor: true
+        });
+      }
     }
 
-    // Supernova Shock-Ring Collapse (`t >= 0.96s`)
+    // Supernova Singularity Collapse & Solar Beam (`t >= 0.96s`)
     if (t >= 0.96 && !this.didActionFrame) {
       this.didActionFrame = true;
       if (game?.audio) {
@@ -1516,28 +1565,39 @@ export class FireMageEx extends Fighter {
       game?.renderer?.triggerAberration?.(12);
       game?.renderer?.triggerHitStop?.(0.08);
 
+      game?.vfx?.spawnBeam({
+        x1: eclipseX,
+        y1: eclipseY,
+        x2: targetX,
+        y2: this.groundY - 10,
+        width: 78,
+        color: '#fb923c',
+        coreColor: '#fef08a',
+        maxLife: 0.56
+      });
+
       this.fx?.spawn('solarMeteorImpactBurst', targetX, this.groundY - 78, {
-        light: 1.36,
+        light: 1.38,
         extra: { isMeteor: true }
       });
-      this.spawnVfxAnim(2, targetX, this.groundY - 102, 232, 232, 0.46, {
+      this.spawnVfxAnim(2, targetX, this.groundY - 104, 240, 240, 0.48, {
         flipX: false,
         inFront: true
       });
       this.spawnSolarStarCluster(targetX, this.groundY - 92, 14, 195, true);
 
       [-118, 0, 118].forEach((off, idx) => {
-        const px = Math.max(95, Math.min(ww - 95, targetX + off));
+        const px = this._safeFxX(Math.max(95, Math.min(ww - 95, targetX + off)), game);
         game?.vfx?.spawnFlamePillar(px, this.groundY, this, enemy, {
           theme: 'arcane',
           delay: idx === 1 ? 0.02 : 0.10,
-          maxLife: 1.05,
-          scaleWidth: idx === 1 ? 1.12 : 0.78,
+          maxLife: 1.08,
+          scaleWidth: idx === 1 ? 1.14 : 0.80,
           isUltimate: true
         });
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
-          light: idx === 1 ? 1.34 : 1.20,
-          extra: { scaleWidth: idx === 1 ? 1.12 : 0.78 }
+          light: idx === 1 ? 1.36 : 1.22,
+          extra: { scaleWidth: idx === 1 ? 1.14 : 0.80 }
         });
       });
 
@@ -1570,8 +1630,8 @@ export class FireMageEx extends Fighter {
   /**
    * NEWLY BORN SUPREME FINISHER (`CATACLYSM: GRAND HELIOS APOCALYPSE`, `5.20s`):
    * - Phase 1 (`0.00..1.55s`): Full-stage Golden Astrolabe Seal + Jagged Celestial Rift (`Row 5`)
-   * - Phase 2 (`1.55..3.22s`): Colossal Dreadnought Sun-Meteor (`Row 6`) + 7 Comet Wake Plumes (`Row 7`)
-   * - Phase 3 (`t >= 3.22s..5.20s`): Multi-stage pixel shockwaves + triggers `triggerInfernoStage()` strictly at `t >= 3.22s`!
+   * - Phase 2 (`1.55..3.22s`): Colossal Heavensfall Meteor (`meteor_cataclysm.png` + `Row 6`) + 7 Comet Wake Plumes (`Row 7`)
+   * - Phase 3 (`t >= 3.22s..5.20s`): Whiteout Deletion + triggers `triggerInfernoStage()` strictly at `t >= 3.22s`!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1590,13 +1650,13 @@ export class FireMageEx extends Fighter {
       this._trueUltTick = 0;
 
       const rawTargetX = enemy ? enemy.x : this.x + this.facing * 360;
-      const targetX = Math.max(250, Math.min(ww - 250, rawTargetX));
+      const targetX = this._safeFxX(Math.max(250, Math.min(ww - 250, rawTargetX)), game);
 
       let meteorDir = targetX >= this.x ? 1 : -1;
       if (targetX - meteorDir * 310 < 150) meteorDir = -1;
       else if (targetX - meteorDir * 310 > ww - 150) meteorDir = 1;
 
-      const startX = Math.max(145, Math.min(ww - 145, targetX - meteorDir * 315));
+      const startX = this._safeFxX(Math.max(145, Math.min(ww - 145, targetX - meteorDir * 315)), game);
       const startY = this.groundY - 680;
 
       this.trueUltMeteor = {
@@ -1620,16 +1680,16 @@ export class FireMageEx extends Fighter {
       game?.renderer?.triggerShake?.(14, 0.55);
       game?.renderer?.triggerAberration?.(10);
 
-      this.fx?.spawn('astralBlackMageLeyLines', this.x, this.groundY, {
+      this.fx?.spawn('astralBlackMageLeyLines', this._safeFxX(this.x, game), this.groundY, {
         light: 1.44
       });
-      this.fx?.spawn('solarFlameWard', this.x, this.groundY - 92, {
+      this.fx?.spawn('solarFlameWard', this._safeFxX(this.x, game), this.groundY - 92, {
         follow: this,
         offsetX: 0,
         offsetY: -92,
         light: 1.34
       });
-      this.fx?.spawn('heliosPalmFocus', this.x + this.facing * 26, this.groundY - 126, {
+      this.fx?.spawn('heliosPalmFocus', this._safeFxX(this.x + this.facing * 26, game), this.groundY - 126, {
         follow: this,
         offsetX: 26,
         offsetY: -126,
@@ -1652,7 +1712,7 @@ export class FireMageEx extends Fighter {
     }
 
     const m = this.trueUltMeteor;
-    const targetX = m ? m.targetX : enemy ? enemy.x : ww * 0.5;
+    const targetX = this._safeFxX(m ? m.targetX : enemy ? enemy.x : ww * 0.5, game);
 
     if (t < 1.55) {
       const u = Math.min(1, t / 1.55);
@@ -1685,14 +1745,14 @@ export class FireMageEx extends Fighter {
         this._trueUltStage = 1;
         if (game?.audio) game.audio.play('solar_beam', targetX);
         game?.renderer?.triggerShake?.(16, 0.42);
-        const breachX = m ? m.startX : targetX;
+        const breachX = this._safeFxX(m ? m.startX : targetX, game);
         const breachY = m ? m.startY - 18 : this.groundY - 698;
-        game?.vfx?.spawnLightning(breachX - 88, breachY + 14, this.groundY, '#fef08a', '#fb923c');
-        game?.vfx?.spawnLightning(breachX + 88, breachY + 14, this.groundY, '#ffffff', '#ea580c');
+        game?.vfx?.spawnLightning(this._safeFxX(breachX - 88, game), breachY + 14, this.groundY, '#fef08a', '#fb923c');
+        game?.vfx?.spawnLightning(this._safeFxX(breachX + 88, game), breachY + 14, this.groundY, '#ffffff', '#ea580c');
         this.fx?.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
           light: 1.48
         });
-        this.fx?.spawn('magmaFissureCrack', this.x, this.groundY, {
+        this.fx?.spawn('magmaFissureCrack', this._safeFxX(this.x, game), this.groundY, {
           light: 1.32,
           extra: { spanX: targetX - this.x }
         });
@@ -1750,8 +1810,8 @@ export class FireMageEx extends Fighter {
           });
           if (m.trailNodes.length > 8) m.trailNodes.shift();
 
-          if (m.y > this.groundY - 680) {
-            this.fx?.spawn('astralMeteorSlipstreamWake', m.x - m.dir * 18, m.y - 36, {
+          if (m.y > this.groundY - 620) {
+            this.fx?.spawn('astralMeteorSlipstreamWake', this._safeFxX(m.x - m.dir * 18, game), m.y - 36, {
               light: 1.38,
               extra: { scale: 0.88 + u * 0.52 }
             });
@@ -1828,7 +1888,7 @@ export class FireMageEx extends Fighter {
         });
 
         [-190, 0, 190].forEach((off, idx) => {
-          const bx = Math.max(120, Math.min(ww - 120, targetX + off));
+          const bx = this._safeFxX(Math.max(120, Math.min(ww - 120, targetX + off)), game);
           this.fx?.spawn('solarMeteorImpactBurst', bx, this.groundY - 78, {
             light: idx === 1 ? 1.52 : 1.32,
             extra: { isMeteor: true }
@@ -1837,7 +1897,7 @@ export class FireMageEx extends Fighter {
         });
 
         [-360, -240, -120, 0, 120, 240, 360].forEach((off, idx) => {
-          const px = Math.max(95, Math.min(ww - 95, targetX + off));
+          const px = this._safeFxX(Math.max(95, Math.min(ww - 95, targetX + off)), game);
           const isCenter = idx === 3;
           game?.vfx?.spawnFlamePillar(px, this.groundY, this, enemy, {
             theme: 'arcane',
@@ -1852,7 +1912,7 @@ export class FireMageEx extends Fighter {
           });
         });
 
-        this.fx?.spawn('magmaFissureCrack', 140, this.groundY, {
+        this.fx?.spawn('magmaFissureCrack', this._safeFxX(140, game), this.groundY, {
           light: 1.38,
           extra: { spanX: ww - 280 }
         });
@@ -1924,34 +1984,15 @@ export class FireMageEx extends Fighter {
       }
     }
 
-    for (let i = this.exParticles.length - 1; i >= 0; i--) {
-      const p = this.exParticles[i];
-      p.age += dt;
-      if (p.age >= p.maxLife) {
-        this.exParticles.splice(i, 1);
-        continue;
-      }
-      if (p.shape !== 'ring') {
-        p.vx *= p.drag;
-        p.vy = p.vy * p.drag + p.gravity * dt;
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-      }
-    }
-
-    for (let i = this.hitStarbursts.length - 1; i >= 0; i--) {
-      this.hitStarbursts[i].age += dt;
-      if (this.hitStarbursts[i].age >= this.hitStarbursts[i].maxLife) {
-        this.hitStarbursts.splice(i, 1);
-      }
-    }
-
     for (let i = this.remoteSeals.length - 1; i >= 0; i--) {
       this.remoteSeals[i].age += dt;
       if (this.remoteSeals[i].age >= this.remoteSeals[i].maxLife) {
         this.remoteSeals.splice(i, 1);
       }
     }
+
+    this._exParticles?.emitAmbient(dt, this);
+    this._exParticles?.update(dt);
   }
 
   update(dt, enemy, game) {
@@ -1960,6 +2001,11 @@ export class FireMageEx extends Fighter {
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.updateCustomVfx(dt);
+
+    if (this.state === 'WALK' || this.state === 'IDLE') {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
+    }
 
     if (this.fx) {
       this.ensureOrbitingSuns();
@@ -1977,10 +2023,11 @@ export class FireMageEx extends Fighter {
           vy: -28,
           gravity: -16,
           shape: 'ember',
-          size: 4,
+          size: 3,
           color: '#fb923c',
           coreColor: '#fef08a',
-          maxLife: 0.24
+          maxLife: 0.24,
+          layer: 'back'
         });
       }
     }
@@ -2009,6 +2056,11 @@ export class FireMageEx extends Fighter {
     }
 
     super.update(dt, enemy, game);
+
+    if (this.state === 'WALK' || this.state === 'IDLE') {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
+    }
   }
 
   getExSprites() {
@@ -2024,190 +2076,114 @@ export class FireMageEx extends Fighter {
       assets.mage_ex = {
         sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps115'),
         vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps115'),
+        meteor: assets.mage?.meteor || mkImg('assets/sprites/meteor_cataclysm.png?v=30fps115'),
         portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps115'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
         anchorY: 230
       };
+    } else if (!assets.mage_ex.meteor && assets.mage?.meteor) {
+      assets.mage_ex.meteor = assets.mage.meteor;
     }
     return assets.mage_ex;
   }
 
   // ============================================================================
-  // PIXEL-PURE RENDERING (4x4 BAYER HALOS `alpha <= 0.20`, OCTAGRAM SEALS & PARTICLES)
+  // NEXT-GEN HD-2D BLOOMED PIXEL VFX, SOLAR ASTROLABES & METEOR CATACLYSM
   // ============================================================================
-  drawBayerPixelHalo(ctx, cx, cy, rx, ry, outerHex = '#fb923c', coreHex = '#fef08a', alpha = 0.18) {
-    if (rx < 6 || ry < 4 || alpha <= 0.01) return;
-    const cappedAlpha = Math.min(0.20, alpha);
-    const step = 4;
-    const x0 = Math.floor((cx - rx) / step) * step;
-    const x1 = Math.ceil((cx + rx) / step) * step;
-    const y0 = Math.floor((cy - ry) / step) * step;
-    const y1 = Math.ceil((cy + ry) / step) * step;
-
-    ctx.save();
-    ctx.globalAlpha = cappedAlpha;
-    for (let py = y0; py <= y1; py += step) {
-      const dy = (py - cy) / ry;
-      if (Math.abs(dy) > 1) continue;
-      const by = (py >>> 2) & 3;
-      for (let px = x0; px <= x1; px += step) {
-        const dx = (px - cx) / rx;
-        const d2 = dx * dx + dy * dy;
-        if (d2 > 1) continue;
-        const falloff = 1 - Math.sqrt(d2);
-        const thresh = BAYER_4X4[by][(px >>> 2) & 3] / 16.0;
-        if (falloff * 1.15 > thresh) {
-          ctx.fillStyle = falloff > 0.58 ? coreHex : outerHex;
-          ctx.fillRect(px, py, step, step);
-        }
-      }
+  _drawBloomedVfxCell(
+    ctx,
+    renderer,
+    vfxSheet,
+    col,
+    row,
+    dx,
+    dy,
+    dw,
+    dh,
+    glowCol = '#fb923c',
+    alpha = 1.0,
+    isReflection = false
+  ) {
+    PixelForge.ensureImage?.(vfxSheet);
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth || alpha <= 0.01) return;
+    const sx = (((col % 30) + 30) % 30) * 208;
+    const sy = row * 208;
+    const vfxMgr = this.game?.vfx;
+    if (vfxMgr?.drawBloomedSprite) {
+      const safeRenderer =
+        renderer && typeof renderer.getGlowForColor === 'function' && renderer.getGlowForColor(glowCol)
+          ? renderer
+          : null;
+      vfxMgr.drawBloomedSprite(
+        ctx,
+        safeRenderer,
+        vfxSheet,
+        sx,
+        sy,
+        208,
+        208,
+        dx,
+        dy,
+        dw,
+        dh,
+        glowCol,
+        alpha,
+        isReflection
+      );
+      return;
     }
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = isReflection ? 'lighter' : 'source-over';
+    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.28 : 0.96));
+    ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.14 : 0.30));
+    ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     ctx.restore();
   }
 
-  drawPixelOctagramRing(ctx, cx, cy, rx, ry, stepPx, color, alpha, rotRad = 0) {
-    if (rx < 6 || ry < 3 || alpha <= 0.01) return;
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, alpha);
-    ctx.fillStyle = color;
-    const s = Math.max(2, stepPx | 0);
-    const pts = [];
-    for (let i = 0; i < 8; i++) {
-      const a = rotRad + (i * Math.PI) / 4;
-      pts.push([Math.cos(a) * rx, Math.sin(a) * ry]);
-    }
-    for (let i = 0; i < 8; i++) {
-      const [x0, y0] = pts[i];
-      const [x1, y1] = pts[(i + 1) % 8];
-      const segs = Math.max(3, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (s * 1.4)));
-      for (let j = 0; j < segs; j++) {
-        const u = j / segs;
-        const px = Math.round((cx + x0 + (x1 - x0) * u) / s) * s;
-        const py = Math.round((cy + y0 + (y1 - y0) * u) / s) * s;
-        ctx.fillRect(px, py, s, s);
-      }
-    }
-    // Inscribed star spokes
-    for (let i = 0; i < 8; i += 2) {
-      const [x0, y0] = pts[i];
-      const [x1, y1] = pts[(i + 3) % 8];
-      const segs = Math.max(3, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (s * 2.0)));
-      for (let j = 0; j <= segs; j++) {
-        const u = j / segs;
-        const px = Math.round((cx + x0 + (x1 - x0) * u) / s) * s;
-        const py = Math.round((cy + y0 + (y1 - y0) * u) / s) * s;
-        ctx.fillRect(px, py, s, s);
-      }
-    }
-    ctx.restore();
-  }
-
-  drawRemoteSeals(ctx) {
+  drawRemoteSeals(ctx, renderer = null) {
     if (!this.remoteSeals.length) return;
+    const sprites = this.getExSprites();
+    const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
+    const baseCol = Math.floor(this.runeOrbit * 9.5) % 30;
+
     for (let i = 0; i < this.remoteSeals.length; i++) {
       const s = this.remoteSeals[i];
       const u = Math.min(1, s.age / Math.max(0.01, s.maxLife));
       const fade = Math.sin(u * Math.PI);
-      const rx = s.radius * (0.72 + 0.34 * u);
-      const ry = Math.max(8, rx * 0.24);
+      if (fade <= 0.02) continue;
+      const w = Math.round(s.radius * 2.4 * (0.74 + 0.30 * u));
+      const h = Math.max(24, Math.round(w * 0.30));
+      const cx = Math.round(s.x);
+      const cy = Math.round(s.groundY - 4);
       const outer = s.isEclipse ? '#c026d3' : '#fb923c';
-      const core = '#fef08a';
-      this.drawBayerPixelHalo(ctx, s.x, s.groundY - 4, rx, ry * 1.35, outer, core, 0.16 * fade);
-      this.drawPixelOctagramRing(
-        ctx,
-        s.x,
-        s.groundY - 4,
-        rx,
-        ry,
-        2,
-        s.isEclipse ? '#e879f9' : '#fef08a',
-        0.88 * fade,
-        this.runeOrbit
-      );
+      drawExBayerHalo(ctx, cx, cy, Math.min(76, w * 0.42), Math.min(26, h * 0.55), outer, '#fef08a', 0.16 * fade);
+
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        const col = (baseCol + i * 5) % 30;
+        this._drawBloomedVfxCell(
+          ctx,
+          renderer,
+          vfxSheet,
+          col,
+          s.isEclipse ? 2 : 4,
+          Math.round(cx - w * 0.5),
+          Math.round(cy - h * 0.5),
+          w,
+          h,
+          outer,
+          0.90 * fade,
+          false
+        );
+      }
     }
   }
 
-  drawExParticlesAndStarbursts(ctx) {
-    if (!this.exParticles.length && !this.hitStarbursts.length) return;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-
-    for (let i = 0; i < this.exParticles.length; i++) {
-      const p = this.exParticles[i];
-      const u = Math.min(1, p.age / Math.max(0.01, p.maxLife));
-      const fade = 1 - u;
-      const px = Math.round(p.x / 2) * 2;
-      const py = Math.round(p.y / 2) * 2;
-      ctx.globalAlpha = Math.min(1, fade * 0.94);
-
-      if (p.shape === 'ring') {
-        const rx = p.size * (0.45 + 0.75 * u);
-        this.drawPixelOctagramRing(ctx, px, py, rx, rx * 0.65, 2, p.coreColor, fade * 0.78, u * 2.0);
-        continue;
-      }
-
-      if (p.shape === 'star4') {
-        const arm = Math.max(2, Math.round((p.size * (1 - u * 0.35)) / 2) * 2);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(px - arm - 2, py - 1, (arm + 2) * 2, 2);
-        ctx.fillRect(px - 1, py - arm - 2, 2, (arm + 2) * 2);
-        ctx.fillStyle = p.coreColor;
-        ctx.fillRect(px - arm, py - 1, arm * 2, 2);
-        ctx.fillRect(px - 1, py - arm, 2, arm * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px - 1, py - 1, 2, 2);
-      } else if (p.shape === 'diamond') {
-        ctx.fillStyle = p.color;
-        ctx.fillRect(px - 4, py - 2, 8, 4);
-        ctx.fillRect(px - 2, py - 4, 4, 8);
-        ctx.fillStyle = p.coreColor;
-        ctx.fillRect(px - 2, py - 2, 4, 4);
-      } else if (p.shape === 'rune') {
-        ctx.fillStyle = p.coreColor;
-        ctx.fillRect(px - 3, py - 3, 6, 2);
-        ctx.fillRect(px - 3, py + 1, 6, 2);
-        ctx.fillRect(px - 1, py - 3, 2, 6);
-      } else {
-        // Tapered rising solar ember
-        ctx.fillStyle = p.color;
-        ctx.fillRect(px - 2, py, 4, 4);
-        ctx.fillStyle = p.coreColor;
-        ctx.fillRect(px - 1, py - 2, 2, 4);
-      }
-    }
-
-    // Crisp 4-frame asymmetric anime pixel hit-starbursts (0 overlapping-square chevrons!)
-    for (let i = 0; i < this.hitStarbursts.length; i++) {
-      const h = this.hitStarbursts[i];
-      const u = Math.min(1, h.age / Math.max(0.01, h.maxLife));
-      const fade = 1 - u;
-      const reach = Math.round(28 * h.scale * (0.55 + 0.65 * u));
-      const diag = Math.round(reach * 0.58);
-      ctx.globalAlpha = Math.min(1, fade * 0.95);
-
-      // Pass 1: outer accent rays
-      ctx.fillStyle = h.primaryHex;
-      ctx.fillRect(h.x - reach, h.y - 2, reach * 2, 4);
-      ctx.fillRect(h.x - 2, h.y - reach, 4, reach * 2);
-      for (let d = -diag; d <= diag; d += 4) {
-        ctx.fillRect(h.x + d - 1, h.y + d - 1, 2, 2);
-        ctx.fillRect(h.x + d - 1, h.y - d - 1, 2, 2);
-      }
-      // Pass 2: inner bright star-core
-      const inner = Math.max(4, Math.round(reach * 0.62));
-      ctx.fillStyle = h.accentHex;
-      ctx.fillRect(h.x - inner, h.y - 1, inner * 2, 2);
-      ctx.fillRect(h.x - 1, h.y - inner, 2, inner * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(h.x - 3, h.y - 3, 6, 6);
-    }
-
-    ctx.restore();
-  }
-
-  drawBlackSunEclipseOverlay(ctx) {
+  drawBlackSunEclipseOverlay(ctx, renderer = null) {
     const e = this._eclipseVisual;
     if (!e || !e.active) return;
     const u = Math.min(1, e.age / Math.max(0.01, e.maxLife));
@@ -2217,19 +2193,43 @@ export class FireMageEx extends Fighter {
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
     const col = Math.floor(e.age * 30) % 30;
+    const revCol = (30 - col) % 30;
     const cx = Math.round(e.x);
     const cy = Math.round(e.y);
 
-    this.drawBayerPixelHalo(ctx, cx, cy, 126 * fade, 118 * fade, '#c026d3', '#fb923c', 0.18 * fade);
-    this.drawPixelOctagramRing(ctx, cx, cy, 98 * fade, 92 * fade, 2, '#fef08a', 0.82 * fade, e.age * 2.2);
+    drawExBayerHalo(ctx, cx, cy, 80 * fade, 68 * fade, '#c026d3', '#fb923c', 0.18 * fade);
 
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      const sz = Math.round(212 * (0.85 + 0.15 * fade));
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = Math.min(1, fade * 0.96);
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, Math.round(cx - sz * 0.5), Math.round(cy - sz * 0.5), sz, sz);
-      ctx.restore();
+      const outerSz = Math.round(258 * (0.86 + 0.14 * fade));
+      const innerSz = Math.round(224 * (0.86 + 0.14 * fade));
+      this._drawBloomedVfxCell(
+        ctx,
+        renderer,
+        vfxSheet,
+        revCol,
+        4,
+        Math.round(cx - outerSz * 0.5),
+        Math.round(cy - outerSz * 0.5),
+        outerSz,
+        outerSz,
+        '#fb923c',
+        0.72 * fade,
+        false
+      );
+      this._drawBloomedVfxCell(
+        ctx,
+        renderer,
+        vfxSheet,
+        col,
+        2,
+        Math.round(cx - innerSz * 0.5),
+        Math.round(cy - innerSz * 0.5),
+        innerSz,
+        innerSz,
+        '#c026d3',
+        0.96 * fade,
+        false
+      );
     }
   }
 
@@ -2252,7 +2252,7 @@ export class FireMageEx extends Fighter {
     }
   }
 
-  drawBlinkPortals(ctx) {
+  drawBlinkPortals(ctx, renderer = null) {
     if (this.blinkPortalTimer <= 0) return;
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
@@ -2263,27 +2263,33 @@ export class FireMageEx extends Fighter {
       portals.push(this.blinkTargetX);
     }
 
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
     for (let idx = 0; idx < portals.length; idx++) {
       const px = Math.round(portals[idx]);
       const py = Math.round(this.groundY - 96);
-      const size = Math.round(158 * (0.84 + 0.16 * fade));
-      const half = Math.round(-size * 0.5);
+      const size = Math.round(164 * (0.84 + 0.16 * fade));
+      const half = Math.round(size * 0.5);
 
-      this.drawBayerPixelHalo(ctx, px, py, size * 0.48, size * 0.48, '#fb923c', '#fef08a', 0.16 * fade);
+      drawExBayerHalo(ctx, px, py, size * 0.48, size * 0.48, '#fb923c', '#fef08a', 0.16 * fade);
       if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.globalAlpha = fade * 0.92;
-        ctx.drawImage(vfxSheet, col * 208, 832, 208, 208, half, half, size, size);
-        ctx.restore();
+        this._drawBloomedVfxCell(
+          ctx,
+          renderer,
+          vfxSheet,
+          (col + idx * 7) % 30,
+          4,
+          px - half,
+          py - half,
+          size,
+          size,
+          '#fb923c',
+          fade * 0.92,
+          false
+        );
       }
     }
-    ctx.restore();
   }
 
-  drawMageExVfxAnims(ctx, inFront = true) {
+  drawMageExVfxAnims(ctx, inFront = true, renderer = null) {
     if (!this.activeVfxAnims.length) return;
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
@@ -2303,12 +2309,24 @@ export class FireMageEx extends Fighter {
       const halfW = Math.round(v.w * 0.5);
       const halfH = Math.round(v.h * 0.5);
 
-      this.drawBayerPixelHalo(ctx, px, py, halfW * 0.86, halfH * 0.86, '#fb923c', '#fef08a', 0.15 * fade);
+      drawExBayerHalo(ctx, px, py, halfW * 0.84, halfH * 0.84, '#fb923c', '#fef08a', 0.15 * fade);
       ctx.save();
       ctx.translate(px, py);
       ctx.scale(v.flipX ? -1 : 1, 1);
-      ctx.globalAlpha = Math.min(1, 0.34 + fade * 0.66);
-      ctx.drawImage(vfxSheet, col * 208, v.row * 208, 208, 208, -halfW, -halfH, v.w, v.h);
+      this._drawBloomedVfxCell(
+        ctx,
+        renderer,
+        vfxSheet,
+        col,
+        v.row,
+        -halfW,
+        -halfH,
+        v.w,
+        v.h,
+        v.row === 2 ? '#c026d3' : '#fb923c',
+        Math.min(1, 0.36 + fade * 0.64),
+        false
+      );
       ctx.restore();
     }
     ctx.restore();
@@ -2317,104 +2335,104 @@ export class FireMageEx extends Fighter {
   /**
    * Renders `CATACLYSM: GRAND HELIOS APOCALYPSE`:
    * Full-stage Golden Astrolabe Seal + Jagged Celestial Rift (`Row 5`) + 7 Comet Wake Plumes (`Row 7`) +
-   * Colossal Dreadnought Sun-Meteor (`Row 6`) using pixel-pure Bayer halos (`alpha <= 0.20`, zero canvas rotation!).
+   * Colossal Heavensfall Meteor (`meteor_cataclysm.png` layered with 30fps `Row 6` Dreadnought Sun-Meteor,
+   * zero `ctx.rotate`!).
    */
-  drawTrueUltimateMeteor(ctx) {
+  drawTrueUltimateMeteor(ctx, renderer = null) {
     const m = this.trueUltMeteor;
     if (!m || !m.active) return;
 
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
+    const meteorImg = PixelForge.ensureImage(sprites?.meteor);
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
-    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) * 0.001;
-    const baseCol = Math.floor(now * 30) % 30;
+    const baseCol = Math.floor((this.stateTimer || 0) * 30) % 30;
     const revCol = (30 - baseCol) % 30;
     const meteorDir = m.dir || 1;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Full-Stage Golden Astrolabe Target Seal on the Sanctuary Floor
+    // 1. Full-Stage Golden Solar Astrolabe Target Seal on the Sanctuary Floor
     const gx = Math.round(m.targetX);
     const gy = Math.round(this.groundY - 6);
     const ringScale = m.phase === 'descent' ? 0.94 + 0.36 * m.progress : Math.max(0.25, m.riftScale);
     const sealW = Math.round(480 * ringScale);
     const sealH = Math.round(136 * ringScale);
-
-    this.drawBayerPixelHalo(ctx, gx, gy, sealW * 0.56, sealH * 0.58, '#ea580c', '#fef08a', 0.18 * Math.min(1, ringScale));
-    this.drawPixelOctagramRing(ctx, gx, gy, sealW * 0.54, sealH * 0.44, 4, '#fef08a', 0.85 * Math.min(1, ringScale), this.runeOrbit * 0.4);
-
-    ctx.save();
-    ctx.translate(gx, gy);
-    ctx.globalAlpha = 0.94 * Math.min(1, ringScale * 1.15);
-    ctx.drawImage(
-      vfxSheet,
-      baseCol * 208,
-      1040,
-      208,
-      208,
-      Math.round(-sealW * 0.5),
-      Math.round(-sealH * 0.5),
-      sealW,
-      sealH
-    );
     const innerW = Math.round(sealW * 0.72);
     const innerH = Math.round(sealH * 0.72);
-    ctx.globalAlpha = 0.88 * Math.min(1, ringScale * 1.15);
-    ctx.drawImage(
-      vfxSheet,
-      ((baseCol + 9) % 30) * 208,
-      832,
-      208,
-      208,
-      Math.round(-innerW * 0.5),
-      Math.round(-innerH * 0.5),
-      innerW,
-      innerH
-    );
-    ctx.restore();
 
-    // 2. Jagged High-Cosmos Celestial Rift Breach
+    drawExBayerHalo(ctx, gx, gy, 88 * Math.min(1, ringScale), 26 * Math.min(1, ringScale), '#ea580c', '#fef08a', 0.18 * Math.min(1, ringScale));
+    this._drawBloomedVfxCell(
+      ctx,
+      renderer,
+      vfxSheet,
+      baseCol,
+      4,
+      Math.round(gx - sealW * 0.5),
+      Math.round(gy - sealH * 0.5),
+      sealW,
+      sealH,
+      '#fb923c',
+      0.94 * Math.min(1, ringScale * 1.15),
+      false
+    );
+    this._drawBloomedVfxCell(
+      ctx,
+      renderer,
+      vfxSheet,
+      (baseCol + 11) % 30,
+      3,
+      Math.round(gx - innerW * 0.5),
+      Math.round(gy - innerH * 0.5),
+      innerW,
+      innerH,
+      '#fef08a',
+      0.86 * Math.min(1, ringScale * 1.15),
+      false
+    );
+
+    // 2. Jagged High-Cosmos Celestial Rift Breach (`Row 5` + `Row 2` Black-Sun Core)
     const rx = Math.round(m.startX);
     const ry = Math.round(m.startY - 18);
     const riftScale = Math.max(0.24, m.riftScale);
     const breachW = Math.round(620 * riftScale);
     const breachH = Math.round(256 * riftScale);
-
-    this.drawBayerPixelHalo(ctx, rx, ry, breachW * 0.48, breachH * 0.48, '#c026d3', '#fb923c', 0.18 * riftScale);
-
-    ctx.save();
-    ctx.translate(rx, ry);
-    ctx.globalAlpha = Math.min(1, riftScale * 1.15);
-    ctx.drawImage(
-      vfxSheet,
-      baseCol * 208,
-      1040,
-      208,
-      208,
-      Math.round(-breachW * 0.5),
-      Math.round(-breachH * 0.5),
-      breachW,
-      breachH
-    );
     const coreW = Math.round(330 * riftScale);
     const coreH = Math.round(182 * riftScale);
-    ctx.globalAlpha = 0.88 * riftScale;
-    ctx.drawImage(
-      vfxSheet,
-      revCol * 208,
-      416,
-      208,
-      208,
-      Math.round(-coreW * 0.5),
-      Math.round(-coreH * 0.5),
-      coreW,
-      coreH
-    );
-    ctx.restore();
 
-    // 3. 7 Enclosed Diagonal Comet Wake Plumes + Colossal Dreadnought Sun-Meteor
+    drawExBayerHalo(ctx, rx, ry, 84 * riftScale, 36 * riftScale, '#c026d3', '#fb923c', 0.18 * riftScale);
+    this._drawBloomedVfxCell(
+      ctx,
+      renderer,
+      vfxSheet,
+      baseCol,
+      5,
+      Math.round(rx - breachW * 0.5),
+      Math.round(ry - breachH * 0.5),
+      breachW,
+      breachH,
+      '#c026d3',
+      Math.min(1, riftScale * 1.15),
+      false
+    );
+    this._drawBloomedVfxCell(
+      ctx,
+      renderer,
+      vfxSheet,
+      revCol,
+      2,
+      Math.round(rx - coreW * 0.5),
+      Math.round(ry - coreH * 0.5),
+      coreW,
+      coreH,
+      '#fb923c',
+      0.88 * riftScale,
+      false
+    );
+
+    // 3. 7 Enclosed Diagonal Solar Comet Wake Plumes (`Row 7`) + Colossal Heavensfall Meteor (`meteor_cataclysm.png` + `Row 6`)
     const mx = Math.round(m.x);
     const my = Math.round(m.y);
 
@@ -2426,15 +2444,26 @@ export class FireMageEx extends Fighter {
         const wy = Math.round(my + (ry - my) * uNode);
         const wSize = Math.round((384 - uNode * 146) * (0.88 + 0.3 * m.progress));
         const wCol = (baseCol + i * 4) % 30;
-        const wOffX = Math.round(-wSize * ((104 + 24) / 208));
-        const wOffY = Math.round(-wSize * ((104 + 48) / 208));
+        const wOffX = Math.round(-wSize * ((104 + 6) / 208));
+        const wOffY = Math.round(-wSize * ((104 + 12) / 208));
 
         ctx.save();
         ctx.translate(wx, wy);
         ctx.scale(meteorDir, 1);
-        ctx.imageSmoothingEnabled = false;
-        ctx.globalAlpha = (1 - uNode * 0.62) * 0.92;
-        ctx.drawImage(vfxSheet, wCol * 208, 1456, 208, 208, wOffX, wOffY, wSize, wSize);
+        this._drawBloomedVfxCell(
+          ctx,
+          renderer,
+          vfxSheet,
+          wCol,
+          7,
+          wOffX,
+          wOffY,
+          wSize,
+          wSize,
+          '#fb923c',
+          (1 - uNode * 0.62) * 0.92,
+          false
+        );
         ctx.restore();
       }
     }
@@ -2442,26 +2471,46 @@ export class FireMageEx extends Fighter {
     const meteorScale =
       m.phase === 'rift' ? 0.82 + 0.66 * m.riftScale : 1.54 + 0.72 * m.progress;
     const meteorSize = Math.round(208 * meteorScale);
+    const meteorAlpha = m.phase === 'rift' ? Math.min(1, m.riftScale * 1.25) : 1.0;
+
+    drawExBayerHalo(ctx, mx, my, Math.min(84, meteorSize * 0.36), Math.min(72, meteorSize * 0.36), '#ea580c', '#fef08a', 0.20 * meteorAlpha);
+
+    // Layer A: `meteor_cataclysm.png` Colossal Heavensfall Meteor (natively faces bottom-left `-X`, so `-meteorDir` aligns it with `meteorDir` without rotation!)
+    if (meteorImg && meteorImg.complete && meteorImg.naturalWidth > 0) {
+      const catSize = Math.round(meteorSize * 1.06);
+      const halfCat = Math.round(catSize * 0.5);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(mx, my);
+      ctx.scale(-meteorDir, 1);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = meteorAlpha * 0.94;
+      ctx.drawImage(meteorImg, -halfCat, -halfCat, catSize, catSize);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = meteorAlpha * 0.34;
+      ctx.drawImage(meteorImg, -halfCat, -halfCat, catSize, catSize);
+      ctx.restore();
+    }
+
+    // Layer B: 30fps Animated Voronoi Sun-Meteor Core (`mage_ex_vfx.png` Row 6) via `drawBloomedSprite`
     const drawOffX = Math.round(-meteorSize * ((104 + 18) / 208));
-    const drawOffY = Math.round(-meteorSize * ((104 + 27) / 208));
-
-    this.drawBayerPixelHalo(ctx, mx, my, meteorSize * 0.44, meteorSize * 0.44, '#ea580c', '#fef08a', 0.20);
-
+    const drawOffY = Math.round(-meteorSize * ((104 + 22) / 208));
     ctx.save();
     ctx.translate(mx, my);
     ctx.scale(meteorDir, 1);
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = m.phase === 'rift' ? Math.min(1, m.riftScale * 1.25) : 1.0;
-    ctx.drawImage(
+    this._drawBloomedVfxCell(
+      ctx,
+      renderer,
       vfxSheet,
-      baseCol * 208,
-      1248,
-      208,
-      208,
+      baseCol,
+      6,
       drawOffX,
       drawOffY,
       meteorSize,
-      meteorSize
+      meteorSize,
+      '#fb923c',
+      meteorAlpha * 0.92,
+      false
     );
     ctx.restore();
 
@@ -2469,28 +2518,29 @@ export class FireMageEx extends Fighter {
   }
 
   drawForegroundOverlay(ctx, renderer = null) {
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     if (!this.isDead) {
-      this.drawBayerPixelHalo(ctx, Math.round(this.x), Math.round(this.groundY - 4), 46, 14, '#fb923c', '#fef08a', 0.14);
+      drawExBayerHalo(ctx, Math.round(this.x), Math.round(this.groundY - 4), 48, 14, '#fb923c', '#fef08a', 0.15);
     }
-    this.drawRemoteSeals(ctx);
+    this.drawRemoteSeals(ctx, renderer);
+    this._exParticles?.renderBack(ctx);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
     }
-    this.drawBlinkPortals(ctx);
+    this.drawBlinkPortals(ctx, renderer);
     this.drawSolarEchoes(ctx);
-    this.drawMageExVfxAnims(ctx, false);
+    this.drawMageExVfxAnims(ctx, false, renderer);
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
-    this.drawBlackSunEclipseOverlay(ctx);
-    this.drawMageExVfxAnims(ctx, true);
-    this.drawExParticlesAndStarbursts(ctx);
-    this.drawTrueUltimateMeteor(ctx);
+    this.drawBlackSunEclipseOverlay(ctx, renderer);
+    this.drawMageExVfxAnims(ctx, true, renderer);
+    this._exParticles?.renderFront(ctx);
+    this.drawTrueUltimateMeteor(ctx, renderer);
   }
 
   draw(ctx, isReflection = false, renderer = null) {
@@ -2505,6 +2555,33 @@ export class FireMageEx extends Fighter {
     const groundPlantOffset = 4;
     ctx.translate(Math.round(this.x), Math.round(this.y + groundPlantOffset));
     ctx.scale(this.facing, 1);
+
+    if (isReflection && !this.isDead) {
+      const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
+      if (
+        vfxSheet &&
+        vfxSheet.complete &&
+        vfxSheet.naturalWidth &&
+        (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE')
+      ) {
+        const col = Math.floor(this.runeOrbit * 9.5) % 30;
+        const reflRow = this.state === 'ULTIMATE' ? 2 : 4;
+        this._drawBloomedVfxCell(
+          ctx,
+          renderer,
+          vfxSheet,
+          col,
+          reflRow,
+          -92,
+          -48,
+          184,
+          64,
+          '#fb923c',
+          0.58,
+          true
+        );
+      }
+    }
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.runeOrbit, isReflection, renderer);
 

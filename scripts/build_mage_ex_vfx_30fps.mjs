@@ -8,7 +8,7 @@
  *
  * Invariants:
  *   - 100% `2x2` integer pixel blocks (authored/resolved at `104x104` logical -> upscaled `2x NEAREST` to `208x208`)
- *   - Binary alpha (`0` or `255`), `4px` output safety margin (`0/240` border clips)
+ *   - Smooth radial/elliptical distance falloff + soft `enforceSafeCellMargin104` (`0` binary square borders, `0` flat box cuts, `0/240` border clips)
  *   - `29/29` active transitions per row across all 8 rows
  *   - 0 melee slash crescents! Row 4 is a pure 30fps Golden Solar Rune Magic Circle & Starburst Invocation,
  *     supporting `SOLAR TRINITY CATACLYSM`, `BLACK-SUN ECLIPSE SINGULARITY`, & `CATACLYSM: GRAND HELIOS APOCALYPSE`!
@@ -148,17 +148,27 @@ function drawSolarAstrolabeMagicCircle104(rgba, cx, cy, frameIdx, totalFrames) {
   const rInner = 27 * expand;
   const dissipate = prog > 0.72 ? (prog - 0.72) / 0.28 : 0;
 
-  //Bayer-stippled inner solar corona aura
-  for (let py = 6; py < 98; py++) {
-    for (let px = 6; px < 98; px++) {
+  // Soft golden-crimson solar emissive halo + Bayer-stippled corona aura (0 square borders!)
+  for (let py = 5; py < 99; py++) {
+    for (let px = 5; px < 99; px++) {
       const dx = px - cx;
       const dy = py - cy;
       const d = Math.hypot(dx, dy);
+      if (d > rOuter + 5) continue;
+      const haloK = Math.max(0, 1 - d / (rOuter + 5));
+      const haloA = Math.round(135 * haloK * haloK * (1 - 0.75 * dissipate));
+      if (haloA > 4) {
+        const o = (py * 104 + px) * 4;
+        rgba[o] = 239;
+        rgba[o + 1] = Math.round(68 + 110 * haloK);
+        rgba[o + 2] = Math.round(24 + 40 * haloK);
+        rgba[o + 3] = Math.max(rgba[o + 3], haloA);
+      }
       if (d > rOuter - 2 || d < 6) continue;
       const bayer = BAYER4[py & 3][px & 3] / 16.0;
       const wave = 0.5 + 0.5 * Math.sin(Math.atan2(dy, dx) * 8 + rot * 2);
-      if (bayer < 0.24 * (1 - dissipate) * wave) {
-        putPx104(rgba, px, py, 220, 38, 38, 255);
+      if (bayer < 0.28 * (1 - dissipate) * wave) {
+        putPx104(rgba, px, py, 249, 115, 22, Math.round(230 * (1 - 0.5 * dissipate)));
       }
     }
   }
@@ -220,41 +230,97 @@ function drawSolarAstrolabeMagicCircle104(rgba, cx, cy, frameIdx, totalFrames) {
   }
 }
 
-function enforceBinaryAndSafeMargin104(rgba, circular = false, frameIdx = 0) {
-  const cx = 51.5;
-  const cy = 51.5;
+function smoothstep01(t) {
+  const c = t < 0 ? 0 : t > 1 ? 1 : t;
+  return c * c * (3 - 2 * c);
+}
+
+function applyEllipticalFalloff(rgba, w, h, cx, cy, rx, ry, innerRatio = 0.76, phase = 0, diamondK = 0) {
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4;
+      const a = rgba[o + 3];
+      if (!a) continue;
+      const dx = (x - cx) / rx;
+      const dy = (y - cy) / ry;
+      const ang = Math.atan2(dy, dx);
+      const ripple =
+        1 +
+        (diamondK > 0 ? 0.08 * Math.sin(ang * 7 + phase * Math.PI * 2) : 0.045 * Math.sin(ang * 5 + phase * Math.PI * 2)) +
+        0.03 * Math.cos(ang * 3 - phase * Math.PI * 2);
+      const l2 = Math.hypot(dx, dy);
+      const l1 = Math.abs(dx) + Math.abs(dy);
+      const metric = (1 - diamondK) * l2 + diamondK * l1;
+      const nr = metric / ripple;
+      if (nr >= 1.0) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else if (nr > innerRatio) {
+        const k = smoothstep01((1.0 - nr) / (1.0 - innerRatio));
+        const na = Math.round(a * k);
+        rgba[o + 3] = na;
+        if (na === 0) {
+          rgba[o] = 0;
+          rgba[o + 1] = 0;
+          rgba[o + 2] = 0;
+        }
+      }
+    }
+  }
+}
+
+function applyPillarOrganicFalloff104(rgba, phase = 0) {
   for (let y = 0; y < 104; y++) {
     for (let x = 0; x < 104; x++) {
       const o = (y * 104 + x) * 4;
-      const distEdge = Math.min(x, y, 103 - x, 103 - y);
+      const a = rgba[o + 3];
+      if (!a) continue;
+      const dx = Math.abs(x - 51.5);
+      const archCurve = dx * dx * 0.018;
+      const waveTop = Math.sin(x * 0.35 + phase * Math.PI * 2) * 2.5 + archCurve * 0.5;
+      const waveBot = Math.cos(x * 0.42 - phase * Math.PI * 2) * 2.0 - archCurve;
+      let k = 1.0;
+      if (y < 23 + waveTop) {
+        k *= smoothstep01((y - (14 + waveTop)) / 9.0);
+      } else if (y > 84 + waveBot) {
+        k *= smoothstep01((96 + waveBot - y) / 12.0);
+      }
+      const maxDx = 27.5 + 1.8 * Math.sin(y * 0.28 + phase * Math.PI * 2);
+      if (dx > 18.5) {
+        k *= smoothstep01((maxDx - dx) / Math.max(1.0, maxDx - 18.5));
+      }
+      const na = Math.round(a * k);
+      rgba[o + 3] = na;
+      if (na === 0) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+      }
+    }
+  }
+}
+
+function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      const o = (y * w + x) * 4;
       if (distEdge < 2) {
         rgba[o] = 0;
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
-        continue;
-      }
-      let a = rgba[o + 3];
-      if (circular) {
-        const r = Math.hypot(x - cx, y - cy);
-        if (r >= 49.5) {
-          a = 0;
-        } else if (r > 44.0 && a > 0) {
-          const bayer = BAYER4[(y + frameIdx) & 3][(x + frameIdx) & 3] / 16.0;
-          const k = (49.5 - r) / 5.5;
-          if (k * (a / 255.0) < bayer * 0.85 + 0.12) a = 0;
+      } else if (distEdge < 7 && rgba[o + 3] > 0) {
+        const k = smoothstep01((distEdge - 1.5) / 5.5);
+        const na = Math.round(rgba[o + 3] * k);
+        rgba[o + 3] = na;
+        if (na === 0) {
+          rgba[o] = 0;
+          rgba[o + 1] = 0;
+          rgba[o + 2] = 0;
         }
-      } else if (distEdge < 6 && a > 0) {
-        const bayer = BAYER4[(y + frameIdx) & 3][(x + frameIdx) & 3] / 16.0;
-        const k = (distEdge - 1.5) / 4.5;
-        if (k * (a / 255.0) < bayer * 0.8 + 0.15) a = 0;
-      }
-      const bin = a >= 34 ? 255 : 0;
-      rgba[o + 3] = bin;
-      if (bin === 0) {
-        rgba[o] = 0;
-        rgba[o + 1] = 0;
-        rgba[o + 2] = 0;
       }
     }
   }
@@ -264,35 +330,11 @@ function downsample208To104(src208, dst104) {
   for (let y = 0; y < 104; y++) {
     for (let x = 0; x < 104; x++) {
       const o = (y * 104 + x) * 4;
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let aMax = 0;
-      let cnt = 0;
-      for (let dy = 0; dy < 2; dy++) {
-        for (let dx = 0; dx < 2; dx++) {
-          const so = ((y * 2 + dy) * 208 + (x * 2 + dx)) * 4;
-          const sa = src208[so + 3];
-          if (sa > aMax) aMax = sa;
-          if (sa >= 28) {
-            r += src208[so];
-            g += src208[so + 1];
-            b += src208[so + 2];
-            cnt++;
-          }
-        }
-      }
-      if (cnt > 0) {
-        dst104[o] = Math.round(r / cnt);
-        dst104[o + 1] = Math.round(g / cnt);
-        dst104[o + 2] = Math.round(b / cnt);
-        dst104[o + 3] = aMax;
-      } else {
-        dst104[o] = 0;
-        dst104[o + 1] = 0;
-        dst104[o + 2] = 0;
-        dst104[o + 3] = 0;
-      }
+      const so = (y * 2 * 208 + x * 2) * 4;
+      dst104[o] = src208[so];
+      dst104[o + 1] = src208[so + 1];
+      dst104[o + 2] = src208[so + 2];
+      dst104[o + 3] = src208[so + 3];
     }
   }
 }
@@ -325,17 +367,45 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
   for (let sy = 0; sy < srcH; sy++) {
     for (let sx = 0; sx < srcW; sx++) {
       const so = (sy * srcW + sx) * 4;
-      const sa = srcRgba[so + 3];
-      if (!sa) continue;
+      const sa = srcRgba[so + 3] / 255;
+      if (sa <= 0) continue;
       const tx = dstX + sx;
       const ty = dstY + sy;
       const to = (ty * dstW + tx) * 4;
-      dstRgba[to] = srcRgba[so];
-      dstRgba[to + 1] = srcRgba[so + 1];
-      dstRgba[to + 2] = srcRgba[so + 2];
-      dstRgba[to + 3] = 255;
+      const da = dstRgba[to + 3] / 255;
+      const outA = sa + da * (1 - sa);
+      if (outA <= 0) continue;
+      dstRgba[to] = Math.round((srcRgba[so] * sa + dstRgba[to] * da * (1 - sa)) / outA);
+      dstRgba[to + 1] = Math.round((srcRgba[so + 1] * sa + dstRgba[to + 1] * da * (1 - sa)) / outA);
+      dstRgba[to + 2] = Math.round((srcRgba[so + 2] * sa + dstRgba[to + 2] * da * (1 - sa)) / outA);
+      dstRgba[to + 3] = Math.round(outA * 255);
     }
   }
+}
+
+function auditStraightWall104(rgba, alphaMin = 20) {
+  let minX = 104, maxX = -1, minY = 104, maxY = -1;
+  for (let y = 0; y < 104; y++) {
+    for (let x = 0; x < 104; x++) {
+      if (rgba[(y * 104 + x) * 4 + 3] >= alphaMin) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX) return 0;
+  let top = 0, bot = 0, left = 0, right = 0;
+  for (let x = minX; x <= maxX; x++) {
+    if (rgba[(minY * 104 + x) * 4 + 3] >= alphaMin) top++;
+    if (rgba[(maxY * 104 + x) * 4 + 3] >= alphaMin) bot++;
+  }
+  for (let y = minY; y <= maxY; y++) {
+    if (rgba[(y * 104 + minX) * 4 + 3] >= alphaMin) left++;
+    if (rgba[(y * 104 + maxX) * 4 + 3] >= alphaMin) right++;
+  }
+  return Math.max(top, bot, left, right);
 }
 
 function arraysEqual(a, b) {
@@ -371,49 +441,54 @@ function bakeVfxSheet() {
       name: 'Row 0: Blazing Helios Solar Comet & Star-Glint Muzzle Burst',
       windowSec: 1.0,
       addStarGlints: true,
+      falloff104: { cx: 49, cy: 52, rx: 38, ry: 22 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.solarFireballOrbCell, warmup: 0.1, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
       name: 'Row 1: Braided Heliacal Corona Pillar',
       windowSec: 1.0,
+      pillarFalloff: true,
       layers: [{ def: SOLAR_EFFECT_REGISTRY.hellfireMagmaPillarCell, warmup: 0, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
       name: 'Row 2: Black-Sun Eclipse Singularity Ring',
       windowSec: 1.0,
       addStarGlints: true,
+      falloff104: { cx: 51.5, cy: 51.5, rx: 43, ry: 36 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.blackSunEclipseSphereCell, warmup: 0, cfg: { x: 52, y: 52, palette: ECLIPSE_ABYSS_PALETTE } }]
     },
     {
       name: 'Row 3: Grand Helios Astrolabe & Cataclysm Solar Core',
       windowSec: 1.0,
+      falloff104: { cx: 50.5, cy: 51.5, rx: 42, ry: 30 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.cataclysmSolarMeteorCell, warmup: 0.1, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
       name: 'Row 4: Pure 30fps Golden Solar Astrolabe Magic Circle & Octagram Seal',
       windowSec: 1.0,
       pureMagicCircleRow: true,
+      falloff104: { cx: 52, cy: 52, rx: 46, ry: 46 },
       layers: []
     },
     {
-      name: 'Row 5: Jagged Celestial Heavensfall Sky Breach (2x2 pixel-pure)',
+      name: 'Row 5: Jagged Celestial Heavensfall Sky Breach (2x2 pixel-pure, 0 box cut)',
       windowSec: 1.0,
       native208: true,
-      circular: true,
+      falloff208: { cx: 104, cy: 103.5, rx: 74, ry: 25, diamondK: 0.88 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralSkyBreachPortalCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: ECLIPSE_ABYSS_PALETTE } }]
     },
     {
-      name: 'Row 6: Colossal Dreadnought Voronoi Sun-Meteor (2x2 pixel-pure)',
+      name: 'Row 6: Colossal Dreadnought Voronoi Sun-Meteor (2x2 pixel-pure, 0 box cut)',
       windowSec: 1.0,
       native208: true,
-      circular: true,
+      falloff208: { cx: 122, cy: 126, rx: 52, ry: 48, diamondK: 0.24 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralMeteorColossusCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
-      name: 'Row 7: Enclosed Diagonal Solar Comet Wake Plume & Mach Ring (2x2 pixel-pure)',
+      name: 'Row 7: Enclosed Diagonal Solar Comet Wake Plume & Mach Ring (2x2 pixel-pure, 0 box cut)',
       windowSec: 1.0,
       native208: true,
-      circular: true,
+      falloff208: { cx: 110, cy: 116, rx: 44, ry: 52, diamondK: 0.24 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralCataclysmWakeCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: SOLAR_CORONA_PALETTE } }]
     }
   ];
@@ -423,10 +498,11 @@ function bakeVfxSheet() {
   const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
 
   const surf208 = createPixelSurface(CELL, CELL);
-  const pen208 = new ShaderPen(surf208);
+  const pen208 = new ShaderPen(CELL ? surf208 : surf104);
   const cell208 = new Uint8Array(CELL * CELL * 4);
 
   let borderClips = 0;
+  let maxWallOverall = 0;
 
   for (let r = 0; r < ROWS; r++) {
     const spec = rowSpecs[r];
@@ -440,8 +516,10 @@ function bakeVfxSheet() {
 
     let prevCell = null;
     let transitions = 0;
+    let rowMaxWall = 0;
 
     for (let c = 0; c < COLS; c++) {
+      const phase = c / COLS;
       cell104.fill(0);
       if (spec.pureMagicCircleRow) {
         drawSolarAstrolabeMagicCircle104(cell104, 52, 52, c, COLS);
@@ -450,6 +528,20 @@ function bakeVfxSheet() {
         for (const inst of instances) inst.render(pen208, 'back');
         for (const inst of instances) inst.render(pen208, 'front');
         resolveSurfaceToRGBA(surf208, cell208, 1.14);
+        if (spec.falloff208) {
+          applyEllipticalFalloff(
+            cell208,
+            CELL,
+            CELL,
+            spec.falloff208.cx,
+            spec.falloff208.cy,
+            spec.falloff208.rx,
+            spec.falloff208.ry,
+            0.70,
+            phase,
+            spec.falloff208.diamondK || 0
+          );
+        }
         downsample208To104(cell208, cell104);
       } else {
         clearPixelSurface(surf104);
@@ -458,18 +550,39 @@ function bakeVfxSheet() {
         resolveSurfaceToRGBA(surf104, cell104, 1.14);
       }
 
-      if (spec.addStarGlints) {
-        const ga = (c / COLS) * Math.PI * 2;
-        drawStarGlint104(cell104, 52 + Math.cos(ga) * 28, 52 + Math.sin(ga) * 28, 2);
-        drawStarGlint104(cell104, 52 - Math.cos(ga) * 28, 52 - Math.sin(ga) * 28, 2);
+      if (spec.falloff104) {
+        applyEllipticalFalloff(
+          cell104,
+          LOGICAL,
+          LOGICAL,
+          spec.falloff104.cx,
+          spec.falloff104.cy,
+          spec.falloff104.rx,
+          spec.falloff104.ry,
+          0.74,
+          phase
+        );
+      }
+      if (spec.pillarFalloff) {
+        applyPillarOrganicFalloff104(cell104, phase);
       }
 
-      const sparkAng = (c / COLS) * Math.PI * 2 + r * 0.7;
-      const sx = Math.round(52 + Math.cos(sparkAng) * 34);
-      const sy = Math.round(52 + Math.sin(sparkAng) * 34);
-      putPx104(cell104, sx, sy, 254, 240, 138, 255);
+      if (spec.addStarGlints) {
+        const ga = phase * Math.PI * 2;
+        drawStarGlint104(cell104, 52 + Math.cos(ga) * 24, 52 + Math.sin(ga) * 20, 2);
+        drawStarGlint104(cell104, 52 - Math.cos(ga) * 24, 52 - Math.sin(ga) * 20, 2);
+      }
 
-      enforceBinaryAndSafeMargin104(cell104, Boolean(spec.circular), c);
+      const sparkAng = phase * Math.PI * 2 + r * 0.7;
+      const sx = Math.round(52 + Math.cos(sparkAng) * 26);
+      const sy = Math.round(52 + Math.sin(sparkAng) * 14);
+      putPx104(cell104, sx, sy, 254, 240, 138, 220);
+
+      enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
+
+      const wall = auditStraightWall104(cell104, 20);
+      if (wall > rowMaxWall) rowMaxWall = wall;
+      if (wall > maxWallOverall) maxWallOverall = wall;
 
       if (prevCell && !arraysEqual(prevCell, cell104)) {
         transitions++;
@@ -481,15 +594,17 @@ function bakeVfxSheet() {
       const ox = c * CELL;
       const oy = r * CELL;
       let clipped = false;
-      for (let i = 0; i < CELL; i++) {
-        if (
-          sheetRgba[(oy * sheetW + (ox + i)) * 4 + 3] > 0 ||
-          sheetRgba[((oy + CELL - 1) * sheetW + (ox + i)) * 4 + 3] > 0 ||
-          sheetRgba[((oy + i) * sheetW + ox) * 4 + 3] > 0 ||
-          sheetRgba[((oy + i) * sheetW + (ox + CELL - 1)) * 4 + 3] > 0
-        ) {
-          clipped = true;
-          break;
+      for (let m = 0; m < 4 && !clipped; m++) {
+        for (let i = 0; i < CELL; i++) {
+          if (
+            sheetRgba[((oy + m) * sheetW + (ox + i)) * 4 + 3] > 0 ||
+            sheetRgba[((oy + CELL - 1 - m) * sheetW + (ox + i)) * 4 + 3] > 0 ||
+            sheetRgba[((oy + i) * sheetW + (ox + m)) * 4 + 3] > 0 ||
+            sheetRgba[((oy + i) * sheetW + (ox + CELL - 1 - m)) * 4 + 3] > 0
+          ) {
+            clipped = true;
+            break;
+          }
         }
       }
       if (clipped) borderClips++;
@@ -511,9 +626,12 @@ function bakeVfxSheet() {
       for (const inst of instances) inst.step(dt);
     }
 
-    console.log(`[mage_ex_vfx] ${spec.name} -> transitions=${transitions}/29`);
+    console.log(`[mage_ex_vfx] ${spec.name} -> transitions=${transitions}/29 | maxWall104=${rowMaxWall}`);
     if (transitions < 29) {
       throw new Error(`Static duplicate frames in ${spec.name}: ${transitions}/29`);
+    }
+    if (rowMaxWall > 16) {
+      throw new Error(`Flat box cut wall detected in ${spec.name}: maxWall104=${rowMaxWall} (>16)`);
     }
   }
 
@@ -523,7 +641,7 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'mage_ex_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[mage_ex_vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240`);
+  console.log(`[mage_ex_vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240, maxWall104=${maxWallOverall}`);
 
   fs.mkdirSync(SCRATCH_DIR, { recursive: true });
   const outDbgPath = path.join(SCRATCH_DIR, 'debug_mage_ex_vfx.png');

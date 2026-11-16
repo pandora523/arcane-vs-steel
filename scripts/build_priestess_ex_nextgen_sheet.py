@@ -176,7 +176,7 @@ def segment_ivory_safe_white_bg(im_rgb, pocket_seeds=()):
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
     rgba[:, :, :3] = arr.astype(np.uint8)
     rgba[:, :, 3] = np.where(fg, 255, 0)
-    return Image.fromarray(rgba, "RGBA")
+    return Image.fromarray(rgba)
 
 
 def polygon_mask(size_wh, poly):
@@ -192,7 +192,7 @@ def apply_selout_and_quantize(rgba_im, palette_colors=44):
         return rgba_im
 
     rgb = arr[:, :, :3].copy()
-    fg_im = Image.fromarray(rgb, "RGB").quantize(
+    fg_im = Image.fromarray(rgb).quantize(
         colors=palette_colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
     ).convert("RGB")
     q_rgb = np.array(fg_im, dtype=np.float32)
@@ -213,7 +213,7 @@ def apply_selout_and_quantize(rgba_im, palette_colors=44):
     out = np.zeros((h, w, 4), dtype=np.uint8)
     out[:, :, :3] = np.clip(q_rgb, 0, 255).astype(np.uint8)
     out[:, :, 3] = np.where(a, 255, 0)
-    return Image.fromarray(out, "RGBA")
+    return Image.fromarray(out)
 
 
 def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
@@ -244,7 +244,7 @@ def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
     clean = np.zeros_like(arr)
     clean[:, :, :3] = arr[:, :, :3]
     clean[:, :, 3] = np.where(fg, 255, 0)
-    quant = apply_selout_and_quantize(Image.fromarray(clean, "RGBA"), palette_colors=44)
+    quant = apply_selout_and_quantize(Image.fromarray(clean), palette_colors=44)
 
     canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
     ox = int(round(AX - x_ref_512 * scale))
@@ -256,6 +256,155 @@ def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
 # ==============================================================================
 # 2. LOAD BASE + 4 ACTION KEYPOSES
 # ==============================================================================
+def extract_part_512(src_arr, mask_bool, darken_rgb=1.0):
+    ys, xs = np.where(mask_bool)
+    if len(ys) == 0:
+        return (Image.new("RGBA", (2, 2), (0, 0, 0, 0)), 0, 0)
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    crop = np.zeros((y1 - y0, x1 - x0, 4), dtype=np.uint8)
+    sub = mask_bool[y0:y1, x0:x1]
+    rgb = src_arr[y0:y1, x0:x1, :3].astype(np.float32) * darken_rgb
+    crop[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    crop[:, :, 3] = np.where(sub, 255, 0)
+    return (Image.fromarray(crop), x0, y0)
+
+
+def paste_rotated_part_512(
+    canvas,
+    part_tuple,
+    src_piv,
+    dst_piv,
+    deg=0.0,
+    squash_x=1.0,
+    squash_y=1.0,
+    wave_phase=None,
+    wave_amp=0.0,
+):
+    crop_im, x0, y0 = part_tuple
+    px, py = src_piv[0] - x0, src_piv[1] - y0
+
+    if wave_phase is not None and abs(wave_amp) > 0.05:
+        arr = np.array(crop_im)
+        h, w = arr.shape[:2]
+        pad = int(abs(wave_amp)) + 4
+        out = np.zeros((h + pad * 2, w + pad * 2, 4), dtype=np.uint8)
+        for y in range(h):
+            vt = y / max(1.0, float(h - 1))
+            dx_w = int(round(math.sin(wave_phase - vt * 3.0) * wave_amp * (vt ** 1.15)))
+            out[pad + y, pad + dx_w : pad + dx_w + w] = arr[y]
+        crop_im = Image.fromarray(out)
+        px += pad
+        py += pad
+
+    if abs(squash_x - 1.0) > 0.01 or abs(squash_y - 1.0) > 0.01:
+        w0, h0 = crop_im.size
+        nw = max(2, int(round(w0 * squash_x)))
+        nh = max(2, int(round(h0 * squash_y)))
+        crop_im = crop_im.resize((nw, nh), Image.Resampling.BILINEAR)
+        px *= squash_x
+        py *= squash_y
+
+    w, h = crop_im.size
+    max_r = int(math.hypot(max(px, w - px), max(py, h - py))) + 6
+    pad_s = max_r * 2
+    pad_im = Image.new("RGBA", (pad_s, pad_s), (0, 0, 0, 0))
+    pad_im.paste(crop_im, (max_r - int(round(px)), max_r - int(round(py))))
+    rot_im = (
+        pad_im.rotate(-deg, resample=Image.Resampling.BILINEAR, expand=False)
+        if abs(deg) > 0.05
+        else pad_im
+    )
+    canvas.alpha_composite(rot_im, (int(round(dst_piv[0])) - max_r, int(round(dst_piv[1])) - max_r))
+
+
+def build_priestess_walk_rig_512(armless_512):
+    alpha = armless_512[:, :, 3] > 128
+    rgb = armless_512[:, :, :3].astype(np.float32)
+    luma = 0.299 * rgb[:, :, 0] + 0.587 * rgb[:, :, 1] + 0.114 * rgb[:, :, 2]
+
+    torso_m = alpha & polygon_mask(
+        (512, 512),
+        [(0, 0), (511, 0), (511, 236), (326, 304), (278, 250), (250, 262), (222, 248), (172, 304), (0, 236)],
+    )
+
+    l_coat_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(218, 246), (172, 298), (102, 358), (102, 454), (132, 454), (154, 382), (190, 320), (224, 262)],
+        )
+    )
+
+    r_coat_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(280, 248), (326, 298), (404, 358), (404, 454), (368, 454), (350, 382), (310, 320), (274, 264)],
+        )
+    )
+
+    tabard_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(220, 248), (280, 250), (272, 346), (258, 412), (226, 435), (195, 404), (214, 332)],
+        )
+    )
+
+    r_thigh_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(262, 274), (296, 296), (322, 352), (308, 368), (288, 362), (262, 304)],
+        )
+    )
+    r_shin_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(288, 344), (322, 344), (356, 438), (332, 444)],
+        )
+    )
+    l_foot_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(168, 426), (198, 432), (198, 478), (144, 478), (144, 454)],
+        )
+    )
+    lf_im, lf_x0, lf_y0 = extract_part_512(armless_512, l_foot_m, darken_rgb=1.0)
+    lf_dark_im, _, _ = extract_part_512(armless_512, l_foot_m, darken_rgb=0.72)
+    boot_near_im = lf_im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    boot_far_im = lf_dark_im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    boot_ank_piv = (lf_im.width - 1.0 - (182.0 - lf_x0), 435.0 - lf_y0)
+
+    return {
+        "torso_upper": extract_part_512(armless_512, torso_m, 1.0),
+        "l_coat": extract_part_512(armless_512, l_coat_m, 0.95),
+        "r_coat": extract_part_512(armless_512, r_coat_m, 1.0),
+        "tabard": extract_part_512(armless_512, tabard_m, 1.0),
+        "thigh_near": extract_part_512(armless_512, r_thigh_m, 1.0),
+        "shin_near": extract_part_512(armless_512, r_shin_m, 1.0),
+        "boot_near": (boot_near_im, 0, 0),
+        "thigh_far": extract_part_512(armless_512, r_thigh_m, 0.72),
+        "shin_far": extract_part_512(armless_512, r_shin_m, 0.72),
+        "boot_far": (boot_far_im, 0, 0),
+        "pivots": {
+            "pelvis": (255.0, 260.0),
+            "l_coat": (212.0, 262.0),
+            "r_coat": (288.0, 262.0),
+            "tabard": (250.0, 254.0),
+            "thigh_hip": (274.0, 286.0),
+            "thigh_knee": (305.0, 354.0),
+            "shin_ank": (342.0, 438.0),
+            "boot_ank": boot_ank_piv,
+            "thigh_rest_deg": math.degrees(math.atan2(305.0 - 274.0, 354.0 - 286.0)),
+            "shin_rest_deg": math.degrees(math.atan2(342.0 - 305.0, 438.0 - 354.0)),
+        },
+    }
+
+
 def load_priestess_poses():
     base_raw = Image.open(BASE_JPG).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
     base_pockets = [(256, 56), (244, 58), (270, 58), (168, 127), (161, 208), (183, 207)]
@@ -277,8 +426,16 @@ def load_priestess_poses():
 
     stand_full_log, ox_s, oy_s = scale_pose_to_logical(base_seg, x_ref_stand, y_bot_stand, scale)
     stand_armless_log, _, _ = scale_pose_to_logical(
-        Image.fromarray(armless_512, "RGBA"), x_ref_stand, y_bot_stand, scale
+        Image.fromarray(armless_512), x_ref_stand, y_bot_stand, scale
     )
+
+    walk_upper_arr = np.array(stand_armless_log).copy()
+    walk_upper_arr[80:, :, :] = 0
+    walk_upper_im = Image.fromarray(walk_upper_arr)
+    walk_rig_512 = build_priestess_walk_rig_512(armless_512)
+    walk_rig_512["x_ref"] = x_ref_stand
+    walk_rig_512["y_bot"] = y_bot_stand
+    walk_rig_512["scale"] = scale
 
     def to_log(pt):
         return (ox_s + pt[0] * scale, oy_s + pt[1] * scale)
@@ -362,7 +519,7 @@ def load_priestess_poses():
         true_y_bot = int(k_ys.max()) if len(k_ys) else spec["y_bot"]
 
         kp_log, kox, koy = scale_pose_to_logical(
-            Image.fromarray(t_arr, "RGBA"), spec["x_ref"], true_y_bot, scale
+            Image.fromarray(t_arr), spec["x_ref"], true_y_bot, scale
         )
         keyposes[kname] = {
             "armless": kp_log,
@@ -375,6 +532,8 @@ def load_priestess_poses():
         "scale": scale,
         "stand_full": stand_full_log,
         "stand_armless": stand_armless_log,
+        "walk_upper": walk_upper_im,
+        "walk_rig_512": walk_rig_512,
         "stand_joints": stand_joints,
         "keyposes": keyposes,
     }
@@ -870,6 +1029,297 @@ def enforce_safety_margin(arr):
     arr[trans, :3] = 0
 
 
+def compute_priestess_leg_gait(u, hip_x, hip_y=78.5, stride_px=12.0, lift_px=5.6):
+    """
+    Full 3-segment articulated High-Priestess leg gait (`u` in [0, 1)):
+      - u in [0.0, 0.5): Stance phase (planted cathedral boot sweeps from +stride_px back to -stride_px)
+      - u in [0.5, 1.0): Swing phase (heel lifts, knee bends forward +X, boot crosses directly under AX)
+    """
+    u = u % 1.0
+    if u < 0.5:
+        st = u / 0.5
+        ankle_x = lerp(hip_x + stride_px, hip_x - stride_px - 1.0, st)
+        swing_lift = 0.0
+        ankle_y = 112.0
+        foot_pitch = lerp(-0.2, 0.3, st)
+    else:
+        sw = (u - 0.5) / 0.5
+        s_ease = sw * sw * (3.0 - 2.0 * sw)
+        ankle_x = lerp(hip_x - stride_px - 1.0, hip_x + stride_px, s_ease)
+        swing_lift = math.sin(sw * math.pi)
+        ankle_y = 112.0 - lift_px * swing_lift
+        foot_pitch = math.sin(sw * math.pi) * 1.4 - 0.25 * math.cos(sw * math.pi)
+
+    knee, ankle = solve_2bone_ik((hip_x, hip_y), (ankle_x, ankle_y), l1=17.2, l2=17.8, bend_sign=-1.0)
+    heel = (ankle[0] - 2.2, min(114.5, ankle[1] + 2.4 - max(0.0, foot_pitch * 0.35)))
+    toe = (ankle[0] + 4.4, min(114.5, ankle[1] + 2.5 + foot_pitch * 0.55))
+    return {
+        "hip": (hip_x, hip_y),
+        "knee": knee,
+        "ankle": ankle,
+        "heel": heel,
+        "toe": toe,
+        "swing_lift": swing_lift,
+    }
+
+
+def draw_priestess_leg_and_boot(arr, leg, is_front=True, max_y=115):
+    hip = leg["hip"]
+    knee = leg["knee"]
+    ankle = leg["ankle"]
+    heel = leg["heel"]
+    toe = leg["toe"]
+
+    # Exact palette matched to Seraphina EX's painted base sprite (`priestess_ex_base.jpg` y=90..112):
+    # twilight charcoal-navy greaves & boots + warm antique champagne-bronze trim
+    hose_col = (64, 68, 92, 255) if is_front else (44, 40, 56, 255)
+    greave_col = (76, 80, 106, 255) if is_front else (50, 48, 64, 255)
+    greave_hi = (148, 136, 128, 255) if is_front else (88, 82, 92, 255)
+    bronze_trim = (204, 176, 140, 255) if is_front else (148, 118, 94, 255)
+    sole_col = (158, 128, 96, 255) if is_front else (103, 80, 71, 255)
+
+    draw_thick_line(arr, hip[0], hip[1], knee[0], knee[1], 2.25, hose_col, out_col=C_OUT, max_y=max_y)
+    draw_thick_line(arr, knee[0], knee[1], ankle[0], ankle[1], 1.95, greave_col, out_col=C_OUT, max_y=max_y)
+    draw_thick_line(
+        arr,
+        lerp(knee[0], ankle[0], 0.25),
+        lerp(knee[1], ankle[1], 0.25),
+        lerp(knee[0], ankle[0], 0.82),
+        lerp(knee[1], ankle[1], 0.82),
+        0.75,
+        greave_hi,
+        out_col=None,
+        max_y=max_y,
+    )
+
+    # Antique bronze knee-cop
+    draw_thick_line(arr, knee[0] - 0.5, knee[1] - 0.4, knee[0] + 0.9, knee[1] + 0.3, 1.45, bronze_trim, out_col=C_OUT, max_y=max_y)
+
+    # Heeled twilight-navy & bronze cathedral boot (`heel -> toe`)
+    draw_thick_line(arr, ankle[0] - 0.7, ankle[1] + 0.5, heel[0], heel[1], 1.55, hose_col, out_col=C_OUT, max_y=max_y)
+    draw_thick_line(arr, heel[0], heel[1], toe[0], toe[1], 1.65, greave_col, out_col=C_OUT, max_y=max_y)
+    draw_thick_line(arr, ankle[0] - 0.8, ankle[1] - 0.7, ankle[0] + 1.1, ankle[1] - 0.5, 0.90, bronze_trim, out_col=None, max_y=max_y)
+    ihx, itx = int(round(heel[0])), int(round(toe[0]))
+    isy = min(max_y, int(round(max(heel[1], toe[1]))))
+    for sx in range(min(ihx, itx), max(ihx, itx) + 1):
+        put_px(arr, sx, isy, sole_col)
+        if isy + 1 <= max_y:
+            put_px_outline_bg(arr, sx, isy + 1, C_OUT, max_y=max_y)
+
+
+def solve_leg_gait_512(u, hip_x, hip_y=286.0, stride_512=66.0, lift_512=30.0):
+    u = u % 1.0
+    if u <= 0.5:
+        st = u / 0.5
+        ank_x = lerp(hip_x + stride_512, hip_x - stride_512, st)
+        swing_lift = 0.0
+        ank_y = 445.0
+        boot_fwd_deg = lerp(9.0, -15.0, st)
+    else:
+        sw = (u - 0.5) / 0.5
+        sw_ease = smoothstep(sw)
+        ank_x = lerp(hip_x - stride_512, hip_x + stride_512, sw_ease)
+        swing_lift = math.sin(sw * math.pi)
+        ank_y = 445.0 - lift_512 * swing_lift
+        boot_fwd_deg = -20.0 * swing_lift + 9.0 * (sw ** 2)
+
+    knee, ank = solve_2bone_ik((hip_x, hip_y), (ank_x, ank_y), l1=76.0, l2=90.0, bend_sign=-1.0)
+    th_fwd_deg = math.degrees(math.atan2(knee[0] - hip_x, knee[1] - hip_y))
+    sh_fwd_deg = math.degrees(math.atan2(ank[0] - knee[0], ank[1] - knee[1]))
+    return {
+        "hip": (hip_x, hip_y),
+        "knee": knee,
+        "ank": ank,
+        "th_fwd_deg": th_fwd_deg,
+        "sh_fwd_deg": sh_fwd_deg,
+        "boot_fwd_deg": boot_fwd_deg,
+        "swing_lift": swing_lift,
+    }
+
+
+def draw_armored_greave_leg_512(win_512, rig, leg, is_front=True):
+    """
+    Renders Seraphina EX's REAL painted 512x512 thigh, knee-cop, shin-greave, & heeled cathedral boot
+    reinforced with full-volume (`27..30px` @ 512 = `5.0..5.7` logical px wide) 3-tone twilight-navy
+    plate, flared antique-bronze knee-cop, & bronze boot cuff so walk legs match `STAND` 1:1!
+    """
+    d = ImageDraw.Draw(win_512)
+    piv = rig["pivots"]
+    hip = leg["hip"]
+    knee = leg["knee"]
+    ank = leg["ank"]
+
+    c_shade = (26, 28, 46, 255) if is_front else (20, 20, 34, 255)
+    c_mid = (52, 62, 94, 255) if is_front else (36, 40, 62, 255)
+    c_hi = (92, 106, 146, 255) if is_front else (58, 66, 92, 255)
+    c_gold = (226, 186, 118, 255) if is_front else (156, 124, 82, 255)
+    c_gold_dk = (146, 102, 52, 255) if is_front else (104, 74, 44, 255)
+
+    # Full-thickness sculpted under-cylinder bridges (`26..28px` wide in 512 = `5.0..5.4` logical px)
+    d.line([hip, knee], fill=c_shade, width=28)
+    d.line([hip, knee], fill=c_mid, width=20)
+    d.line([(hip[0] + 4, hip[1]), (knee[0] + 4, knee[1])], fill=c_hi, width=7)
+
+    d.line([knee, ank], fill=c_shade, width=25)
+    d.line([knee, ank], fill=c_mid, width=18)
+    d.line([(knee[0] + 3, knee[1]), (ank[0] + 3, ank[1])], fill=c_hi, width=6)
+
+    # Paste REAL painted 512x512 thigh, shin, and `+X` heeled cathedral boot!
+    th_part = rig["thigh_near"] if is_front else rig["thigh_far"]
+    sh_part = rig["shin_near"] if is_front else rig["shin_far"]
+    bt_part = rig["boot_near"] if is_front else rig["boot_far"]
+
+    paste_rotated_part_512(
+        win_512,
+        th_part,
+        piv["thigh_hip"],
+        hip,
+        deg=(piv["thigh_rest_deg"] - leg["th_fwd_deg"]),
+        squash_x=1.06,
+        squash_y=1.02,
+    )
+    paste_rotated_part_512(
+        win_512,
+        sh_part,
+        piv["thigh_knee"],
+        knee,
+        deg=(piv["shin_rest_deg"] - leg["sh_fwd_deg"]),
+        squash_x=1.08,
+        squash_y=1.02,
+    )
+    paste_rotated_part_512(
+        win_512,
+        bt_part,
+        piv["boot_ank"],
+        ank,
+        deg=(-leg["boot_fwd_deg"]),
+        squash_x=1.06,
+        squash_y=1.04,
+    )
+
+    # Flared antique-bronze circular knee-cop & boot ankle cuff
+    kx, ky = int(round(knee[0])), int(round(knee[1]))
+    d.ellipse([kx - 14, ky - 13, kx + 15, ky + 13], outline=c_gold_dk, fill=c_mid, width=3)
+    d.arc([kx - 13, ky - 12, kx + 14, ky + 12], start=250, end=80, fill=c_gold, width=4)
+
+    ax_i, ay_i = int(round(ank[0])), int(round(ank[1]))
+    d.line([(ax_i - 11, ay_i - 3), (ax_i + 12, ay_i - 1)], fill=c_gold, width=5)
+
+
+def render_priestess_walk_body_log(poses, f_idx, dx=0.0, eff_dy=0):
+    """
+    Composes Seraphina EX's `Row 1 WALK` (`F00..F29`) in 512x512 from her REAL painted parts:
+      - Flowing diagonal side-gown panels (`l_coat` / `r_coat` tapering to `y_log ~ 108..111` on outer flanks)
+      - High arched central inverted-V opening (`0` flat horizontal skirt chop!)
+      - Full-volume (`5.0..5.8` logical px wide) armored greave-legs, flared bronze knee-cops, & heeled boots!
+    """
+    rig = poses["walk_rig_512"]
+    piv = rig["pivots"]
+    scale = rig["scale"]
+    ph = f_idx / 30.0
+
+    win_512 = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+    d512 = ImageDraw.Draw(win_512)
+
+    bob_512 = eff_dy / scale
+    u_r = ph
+    u_l = (ph + 0.5) % 1.0
+    leg_r = solve_leg_gait_512(u_r, 261.0, hip_y=286.0 + bob_512, stride_512=66.0, lift_512=30.0)
+    leg_l = solve_leg_gait_512(u_l, 255.0, hip_y=286.0 + bob_512, stride_512=66.0, lift_512=30.0)
+
+    stride_open = abs(math.cos(ph * math.tau))
+    sway = math.sin(ph * math.tau)
+    s_wave = math.sin(ph * math.tau * 2.0 - 0.5) * 1.8
+
+    # 1. Arched dark purple inner cathedral gown lining behind the thighs (high central gothic arch, 0 flat cut!)
+    arch_pts = []
+    for i in range(13):
+        ut = i / 12.0
+        ax_p = lerp(206.0 - 16.0 * stride_open, 306.0 + 16.0 * stride_open, ut)
+        arch_lift = math.sin(ut * math.pi)
+        ay_p = lerp(388.0 + bob_512, 326.0 + bob_512, arch_lift ** 1.15)
+        arch_pts.append((ax_p, ay_p))
+    lining_poly = [(214.0, 256.0 + bob_512), (298.0, 256.0 + bob_512)] + list(reversed(arch_pts))
+    d512.polygon(lining_poly, fill=(45, 39, 52, 255), outline=(26, 16, 38, 255))
+
+    # 2. Flowing diagonal left side-gown wing (`l_coat` -> tapers to y_log ~ 108..111 on outer left flank!)
+    l_coat_deg = lerp(-33.0, 3.2, stride_open) + s_wave * 0.7
+    paste_rotated_part_512(
+        win_512,
+        rig["l_coat"],
+        piv["l_coat"],
+        (214.0, 262.0 + bob_512),
+        deg=l_coat_deg,
+        squash_y=0.95,
+        wave_phase=ph * math.tau * 2.0,
+        wave_amp=3.6,
+    )
+
+    # 3. Full-volume armored greave-legs (far leg darkened behind near leg so crossover reads 100% clearly)
+    if leg_l["swing_lift"] > leg_r["swing_lift"] + 0.05:
+        draw_armored_greave_leg_512(win_512, rig, leg_r, is_front=False)
+        draw_armored_greave_leg_512(win_512, rig, leg_l, is_front=True)
+    else:
+        draw_armored_greave_leg_512(win_512, rig, leg_l, is_front=False)
+        draw_armored_greave_leg_512(win_512, rig, leg_r, is_front=True)
+
+    # 4. Flowing diagonal right side-gown wing (`r_coat` -> tapers to y_log ~ 108..111 on outer right flank!)
+    r_coat_deg = lerp(34.0, -3.2, stride_open) - s_wave * 0.7
+    paste_rotated_part_512(
+        win_512,
+        rig["r_coat"],
+        piv["r_coat"],
+        (288.0, 262.0 + bob_512),
+        deg=r_coat_deg,
+        squash_y=0.95,
+        wave_phase=ph * math.tau * 2.0 + 1.1,
+        wave_amp=3.6,
+    )
+
+    # 5. Real painted central champagne-gold tabard swaying with diamond tip intact (`0` horizontal cut!)
+    tab_deg = -4.5 + sway * 5.0
+    paste_rotated_part_512(
+        win_512,
+        rig["tabard"],
+        piv["tabard"],
+        (252.0, 255.0 + bob_512),
+        deg=tab_deg,
+        squash_y=0.87,
+        wave_phase=ph * math.tau * 2.0 + 0.6,
+        wave_amp=3.2,
+    )
+
+    # 6. Upper torso, bodice, crown & hip peplums with +3.5 deg forward walk lean
+    paste_rotated_part_512(
+        win_512,
+        rig["torso_upper"],
+        piv["pelvis"],
+        (256.0, 260.0 + bob_512),
+        deg=3.5 + math.sin(ph * math.tau * 2.0) * 0.5,
+        wave_phase=ph * math.tau * 2.0,
+        wave_amp=2.2,
+    )
+
+    # Scale 512x512 -> 160x120 logical with crisp Selout & exact palette quantization
+    body_log, _, _ = scale_pose_to_logical(
+        win_512,
+        rig["x_ref"] - dx / scale,
+        rig["y_bot"],
+        scale,
+    )
+    b_arr = np.array(body_log)
+    ys_b, _ = np.where(b_arr[:, :, 3] > 128)
+    shift_y = (AY - int(ys_b.max())) if len(ys_b) else 0
+    if shift_y != 0:
+        shifted = np.zeros_like(b_arr)
+        for yy in range(LOG_H):
+            ny = yy + shift_y
+            if 2 <= ny < LOG_H - 2:
+                shifted[ny] = b_arr[yy]
+        b_arr = shifted
+    return Image.fromarray(b_arr)
+
+
 def compose_priestess_frame(
     poses,
     pose_key="STAND",
@@ -885,7 +1335,7 @@ def compose_priestess_frame(
     phase=0.0,
     fx_spec=None,
     ground_seal_rx=0.0,
-    walk_stride=0.0,
+    walk_frame_idx=None,
 ):
     if lock_grounded:
         assert pose_key != "K4_LEAP", "K4_LEAP is forbidden when lock_grounded=True!"
@@ -906,14 +1356,19 @@ def compose_priestess_frame(
         sh_b_base = kp["sh_back"]
         gem_base = kp["gem"]
 
-    b_alpha = np.array(body_im)[:, :, 3] > 0
-    bys, _ = np.where(b_alpha)
-    cur_bot = int(bys.max()) if len(bys) else AY
-    eff_dy = (AY - cur_bot) if lock_grounded else int(round(dy))
+    if walk_frame_idx is not None:
+        eff_dy = int(round(dy))
+        lean_dx = 1.2
+    else:
+        b_alpha = np.array(body_im)[:, :, 3] > 0
+        bys, _ = np.where(b_alpha)
+        cur_bot = int(bys.max()) if len(bys) else AY
+        eff_dy = (AY - cur_bot) if lock_grounded else int(round(dy))
+        lean_dx = 0.0
 
-    sh_f = (sh_f_base[0] + dx, sh_f_base[1] + eff_dy)
-    sh_b = (sh_b_base[0] + dx, sh_b_base[1] + eff_dy)
-    gem = (gem_base[0] + dx, gem_base[1] + eff_dy)
+    sh_f = (sh_f_base[0] + dx + lean_dx, sh_f_base[1] + eff_dy)
+    sh_b = (sh_b_base[0] + dx + lean_dx, sh_b_base[1] + eff_dy)
+    gem = (gem_base[0] + dx + lean_dx, gem_base[1] + eff_dy)
 
     max_fx_y = 114 if lock_grounded else 116
 
@@ -944,61 +1399,39 @@ def compose_priestess_frame(
 
     weapon_behind = (-175.0 <= aim_deg <= -118.0)
     if weapon_behind:
-        draw_sunburst_cathedral_scepter(arr, grip_main, aim_deg, radiance=radiance, max_y=max_fx_y)
+        draw_sunburst_cathedral_scepter(
+            arr,
+            grip_main,
+            aim_deg,
+            radiance=radiance,
+            max_y=max_fx_y,
+        )
 
-    body_layer = Image.fromarray(arr, "RGBA")
-    bx = int(round(dx))
-    if abs(walk_stride) > 0.01 and pose_key == "STAND":
-        # Sanctum Procession Glide: keep central white-gold tabard (46 <= xx <= 63) 100% unified & intact!
-        b_arr = np.array(body_im)
-        glided = np.zeros_like(b_arr)
-        for yy in range(LOG_H):
-            if 84 <= yy <= 102:
-                # Subtle outer gown-wing breeze only on outer edges (xx <= 43 or xx >= 68)
-                t_hem = (yy - 84) / 18.0
-                wing_w = int(round(math.sin(phase * math.tau * 2.0 - t_hem * 1.5) * 1.0 * t_hem))
-                for xx in range(LOG_W):
-                    if xx <= 43 or xx >= 68:
-                        sx = clamp(xx - wing_w, 0, LOG_W - 1)
-                        glided[yy, xx] = b_arr[yy, sx]
-                    else:
-                        glided[yy, xx] = b_arr[yy, xx]
-            elif yy > 102:
-                # Clean +-3px output alternating boot glide strictly on outer boots (central tabard 46..63 untouched!)
-                t_boot = (yy - 102) / 13.0
-                for xx in range(LOG_W):
-                    if xx < 46:
-                        b_shift = int(round(-walk_stride * 1.4 * t_boot))
-                    elif xx > 63:
-                        b_shift = int(round(walk_stride * 1.4 * t_boot))
-                    else:
-                        b_shift = 0
-                    sx = clamp(xx - b_shift, 0, LOG_W - 1)
-                    glided[yy, xx] = b_arr[yy, sx]
-            else:
-                glided[yy] = b_arr[yy]
-        body_layer.alpha_composite(Image.fromarray(glided, "RGBA"), (bx, eff_dy))
-        arr_tmp = np.array(body_layer)
-        for k in range(2):
-            ang_w = phase * math.tau + k * math.pi
-            wx = int(round(AX + bx + math.cos(ang_w) * 11.0))
-            wy = min(114, int(round(113 + math.sin(ang_w) * 1.0)))
-            put_px(arr_tmp, wx, wy, C_LIGHT_SUNGOLD if k == 0 else C_LIGHT_ROSE)
-        body_layer = Image.fromarray(arr_tmp, "RGBA")
+    if walk_frame_idx is not None and pose_key == "STAND":
+        walk_body_im = render_priestess_walk_body_log(poses, walk_frame_idx, dx=dx, eff_dy=eff_dy)
+        body_layer = Image.fromarray(arr)
+        body_layer.alpha_composite(walk_body_im, (0, 0))
     else:
-        body_layer.alpha_composite(body_im, (bx, eff_dy))
+        body_layer = Image.fromarray(arr)
+        body_layer.alpha_composite(body_im, (int(round(dx)), eff_dy))
     arr = np.array(body_layer)
 
     gx_i, gy_i = int(round(gem[0])), int(round(gem[1]))
     put_px(arr, gx_i, gy_i, C_LIGHT_CORE if (int(phase * 30) % 3 == 0) else C_SAPPHIRE)
     for k in range(2):
         ang = phase * math.tau + k * math.pi
-        mx = int(round(AX + dx + math.cos(ang) * 9.0))
-        my = int(round(32 + eff_dy + math.sin(ang) * 2.0))
+        mx = int(round(AX + dx + lean_dx + math.cos(ang) * 9.0))
+        my = int(round(34 + eff_dy + math.sin(ang) * 1.5))
         put_px(arr, mx, my, C_LIGHT_SUNGOLD if k == 0 else C_LIGHT_ROSE)
 
     if not weapon_behind:
-        draw_sunburst_cathedral_scepter(arr, grip_main, aim_deg, radiance=radiance, max_y=max_fx_y)
+        draw_sunburst_cathedral_scepter(
+            arr,
+            grip_main,
+            aim_deg,
+            radiance=radiance,
+            max_y=max_fx_y,
+        )
     draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=max_fx_y)
 
     draw_priestess_cast_fx(arr, fx_spec, phase=phase, max_y=max_fx_y)
@@ -1033,29 +1466,29 @@ def build_row_0_idle(poses):
 
 def build_row_1_walk(poses):
     """
-    Row 1 WALK: Regal Sanctum Procession Glide!
-    Strictly `STAND` across all 30 frames (`0` mid-walk K2_LUNGE body swaps!), continuous `-50 +- 3.5 deg` scepter carry,
-    unified white-gold tabard & gown silhouette (`0` center-skirt scissoring), `1px` smooth glide bob, and `+-3px` boot glide.
+    Row 1 WALK: Genuine 3-segment articulated crossover High-Priestess stride!
+    Parting ivory-gold cathedral gown skirts (y <= 99 logical), 180 deg out-of-phase stepping boots & knees,
+    2px double-step cadence, +3.5 deg forward walk lean, and contralateral Sunburst Scepter carry.
     """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        stride = math.sin(ph * math.tau * 2.0)
-        if abs(stride) < 0.04:
-            stride = 0.04 if stride >= 0 else -0.04
-        bob = -0.5 + math.sin(ph * math.tau) * 0.55
+        bob = round(-0.5 + 0.85 * math.cos(ph * math.tau * 2.0))
+        sway = math.sin(ph * math.tau)
         frames.append(
             compose_priestess_frame(
                 poses,
                 pose_key="STAND",
-                dx=round(math.sin(ph * math.tau) * 0.5),
-                dy=round(bob),
-                aim_deg=-50.0 + math.sin(ph * math.tau + 0.4) * 3.5,
-                grip_offset=(4.5, -1.5 + 0.4 * math.sin(ph * math.tau)),
+                dx=round(sway * 0.6),
+                dy=bob,
+                aim_deg=-52.0 - sway * 5.0,
+                grip_offset=(4.8 - sway * 1.1, -1.8 + 0.5 * math.cos(ph * math.tau * 2.0)),
+                two_handed=False,
+                offhand_target=(AX - 8.5 + sway * 1.8, 63.5 - sway * 1.0 + bob),
                 radiance=0.40 + 0.10 * math.sin(ph * math.tau * 2.0),
                 halo_flare=0.16 + 0.06 * math.sin(ph * math.tau),
                 phase=ph,
-                walk_stride=stride,
+                walk_frame_idx=f,
             )
         )
     return frames
@@ -1500,106 +1933,163 @@ def build_row_4_ultimate(poses):
     return frames
 
 
-def build_row_5_hit(poses):
+def build_row_5_death(poses):
+    """
+    Row 5 DEATH & HURT (`150..179`):
+      - F00..F05: Upright HURT recoil stagger (`K1_COIL`, grounded)
+      - F06..F21: Dramatic kneeling -> falling collapse onto sanctuary floor
+      - F22..F29: Grounded horizontal prone rest (`height <= 96px` in 320x240, `minX >= 24`, `maxX <= 298`, `0` standing recovery!)
+    """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        if f < 7:
-            t = f / 6.0
+        if f <= 5:
+            t = f / 5.0
             recoil = math.sin(t * math.pi * 0.5)
+            shk = (1.0 if f % 2 == 1 else -1.0) * (1.0 - 0.5 * t) * 0.8
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=-6.5 * recoil,
+                    dx=-6.0 * recoil + shk,
                     lock_grounded=True,
-                    aim_deg=-106.0 - 16.0 * recoil,
-                    grip_offset=(-1.5, -3.0),
-                    radiance=0.30,
+                    aim_deg=-102.0 - 20.0 * recoil,
+                    grip_offset=(-1.5, -2.5),
+                    radiance=0.32,
+                    halo_flare=0.12,
                     phase=ph,
                 )
             )
-        elif f < 18:
-            t = (f - 7) / 10.0
-            shk = math.sin(f * 2.4) * (1.0 - t) * 1.4
+        elif f <= 9:
+            t = (f - 6) / 3.0
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=-6.5 + t * 3.0 + shk,
-                    lock_grounded=True,
-                    aim_deg=-118.0 + t * 28.0,
-                    grip_offset=(-1.0, -2.5),
-                    radiance=0.35,
+                    dx=lerp(-6.0, -7.5, t),
+                    dy=lerp(2.0, 8.0, t),
+                    aim_deg=lerp(-122.0, -148.0, t),
+                    grip_offset=(-1.5, lerp(-1.0, 2.5, t)),
+                    radiance=lerp(0.28, 0.16, t),
+                    halo_flare=0.08 * (1.0 - t),
                     phase=ph,
                 )
             )
         else:
-            t = (f - 18) / 11.0
-            frames.append(
-                compose_priestess_frame(
-                    poses,
-                    pose_key="STAND",
-                    dx=lerp(-3.5, 0.0, t),
-                    lock_grounded=True,
-                    aim_deg=lerp(-88.0, -50.0, t),
-                    grip_offset=(4.5, -1.5),
-                    radiance=0.35,
-                    phase=ph,
-                )
+            t = clamp((f - 10) / 11.0, 0.0, 1.0)
+            st = smoothstep(t)
+            rot_deg = lerp(24.0, 87.0, st)
+            rot_im = poses["stand_armless"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
+            # Gravity drapes the wide cathedral gown smoothly toward the floor as she lands prone
+            v_drape = lerp(1.0, 0.72, st)
+            rw, rh = rot_im.size
+            dh = max(8, int(round(rh * v_drape)))
+            draped_im = rot_im.resize((rw, dh), Image.Resampling.NEAREST)
+            b_arr = np.array(draped_im)
+            ys, xs = np.where(b_arr[:, :, 3] > 0)
+            canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+            if len(ys) > 0:
+                min_x, max_x = int(xs.min()), int(xs.max())
+                max_y = int(ys.max())
+                ox = int(clamp(AX + 4 - (min_x + max_x) // 2, 16, LOG_W - b_arr.shape[1] - 16))
+                oy = (AY - 1) - max_y
+                canvas.alpha_composite(draped_im, (ox, oy))
+            arr = np.array(canvas)
+
+            # Re-ensure crisp dark selout outline around draped prone silhouette
+            fg_m = arr[:, :, 3] > 0
+            for py in range(3, LOG_H - 3):
+                for px in range(3, LOG_W - 3):
+                    if not fg_m[py, px]:
+                        if fg_m[py + 1, px] or fg_m[py - 1, px] or fg_m[py, px + 1] or fg_m[py, px - 1]:
+                            if py <= 114:
+                                arr[py, px] = C_OUT
+
+            # Fallen Sunburst Cathedral Scepter resting beside her on the sanctuary floor
+            scepter_y = lerp(104.0, 111.0, st)
+            draw_sunburst_cathedral_scepter(
+                arr,
+                (AX + 6.0, scepter_y),
+                angle_deg=lerp(-14.0, 1.5, st),
+                length_scale=0.90,
+                radiance=0.22 if f < 22 else (0.16 + 0.05 * math.sin(ph * math.tau * 3.0)),
+                max_y=114,
             )
+            # Gentle fading stained-glass sanctuary motes (keeps all 29/29 transitions alive while prone <= 92px!)
+            for k in range(4):
+                ex = int(round(AX - 12 + k * 9 + math.sin(f * 0.85 + k) * 2.0))
+                ey = int(round(108 - ((f + k * 3) % 10)))
+                put_px(arr, ex, ey, C_LIGHT_SUNGOLD if (f + k) % 2 == 0 else C_LIGHT_ROSE)
+            enforce_safety_margin(arr)
+            frames.append(arr)
     return frames
 
 
-def build_row_6_block_parry(poses):
-    """Row 6 BENEDICTION WARD & SANCTUM RAY COUNTER (`0` melee slash smears!)."""
+def build_row_6_dash(poses):
+    """
+    Row 6 DASH (`180..209`): Forward Consecrated Radiant Glide-Step (`0` melee slash smears!).
+    """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        if f < 12:
-            wob = math.sin((f / 12.0) * math.tau * 2.0) * 3.5
+        if f < 4:
+            t = f / 3.0
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="STAND",
-                    dx=-1.5,
+                    pose_key="K1_COIL",
+                    dx=lerp(-2.0, 1.5, t),
                     lock_grounded=True,
-                    aim_deg=-80.0 + wob,
-                    grip_offset=(8.0, -3.5),
-                    radiance=0.65,
-                    halo_flare=0.45,
+                    aim_deg=lerp(-52.0, -34.0, t),
+                    grip_offset=(5.0, -2.5),
+                    radiance=0.55 + 0.25 * t,
+                    halo_flare=0.35 + 0.35 * t,
                     phase=ph,
-                    ground_seal_rx=20.0,
+                    ground_seal_rx=16.0 + 5.0 * t,
                 )
             )
-        elif f <= 15:
-            diss = (f - 12) * 0.28
-            frames.append(
-                compose_priestess_frame(
-                    poses,
-                    pose_key="K2_LUNGE",
-                    dx=6.5,
-                    lock_grounded=True,
-                    aim_deg=-6.0,
-                    grip_offset=(8.5, -1.5),
-                    radiance=1.0,
-                    halo_flare=1.0,
-                    phase=ph,
-                    fx_spec={"kind": "v0_rose_window_ray", "x_end": 146.0, "half_h": 7.5, "dissipate": diss},
-                )
+        elif f <= 18:
+            t = (f - 4) / 14.0
+            surge = math.sin(t * math.pi)
+            use_leap = 7 <= f <= 14
+            arr = compose_priestess_frame(
+                poses,
+                pose_key="K4_LEAP" if use_leap else "K2_LUNGE",
+                dx=lerp(3.0, 9.5, math.sin(min(1.0, t * 1.15) * math.pi * 0.5)) if f <= 13 else lerp(9.5, 6.0, (f - 13) / 5.0),
+                dy=-3.5 * surge if use_leap else 0.0,
+                lock_grounded=not use_leap,
+                aim_deg=-26.0 + 4.0 * math.sin(t * math.pi),
+                grip_offset=(7.2, -2.5),
+                two_handed=False,
+                offhand_target=(AX - 9.0 + 4.0 * surge, 60.0 - 3.0 * surge),
+                radiance=0.88 + 0.12 * surge,
+                halo_flare=0.85,
+                phase=ph,
+                ground_seal_rx=20.0 * (1.0 - 0.5 * surge) if not use_leap else 0.0,
             )
+            # Trailing consecrated stained-glass speed-feathers & light-motes behind her (-X)
+            for k in range(4):
+                wy = 54 + k * 12
+                wx1 = int(round(AX - 6 - k * 2 + surge * 3.0))
+                wx0 = max(6, wx1 - int(round(8 + 6 * surge)) - ((f + k) % 3))
+                r_col = C_LIGHT_SUNGOLD if k % 2 == 0 else C_LIGHT_ROSE
+                draw_thick_line(arr, wx0, wy, wx1, wy, 0.75, r_col, out_col=C_OUT, max_y=112)
+                if (f + k) % 2 == 0:
+                    draw_pixel_star4(arr, wx0 + 2, wy, arm=1, core_col=C_LIGHT_CORE, ray_col=r_col, max_y=112)
+            enforce_safety_margin(arr)
+            frames.append(arr)
         else:
-            t = (f - 16) / 13.0
+            t = (f - 19) / 10.0
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f < 21 else "STAND",
-                    dx=lerp(5.5, 0.0, t),
+                    pose_key="K2_LUNGE" if f < 22 else "STAND",
+                    dx=lerp(5.0, 0.0, t),
                     lock_grounded=True,
-                    aim_deg=lerp(-12.0, -50.0, t),
-                    grip_offset=(lerp(8.0, 4.5, t), -1.5),
-                    radiance=lerp(0.85, 0.35, t),
-                    halo_flare=lerp(0.65, 0.15, t),
+                    aim_deg=lerp(-30.0, -50.0, t),
+                    grip_offset=(lerp(6.5, 4.5, t), -1.5),
+                    radiance=lerp(0.75, 0.35, t),
+                    halo_flare=lerp(0.60, 0.15, t),
                     phase=ph,
                 )
             )
@@ -1649,51 +2139,75 @@ def build_row_8_jump_vault(poses):
     return frames
 
 
-def build_row_9_death(poses):
+def build_row_9_victory(poses):
+    """
+    Row 9 VICTORY (`270..299`):
+      - F00..F14: Regal Sovereign Stained-Glass Scepter Flourish (`K3_RISE`, skyward benediction + Rose-Window seal)
+      - F15..F29: Triumphant upright Sovereign High-Priestess loop (`height >= 160px`, NEVER collapsing!)
+    """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        if f < 10:
-            t = f / 9.0
-            frames.append(
-                compose_priestess_frame(
-                    poses,
-                    pose_key="K1_COIL",
-                    dx=-7.0 * t,
-                    dy=3.0 * t,
-                    aim_deg=lerp(-96.0, -142.0, t),
-                    grip_offset=(-1.5, 1.0),
-                    radiance=0.35 * (1.0 - t),
-                    halo_flare=0.15 * (1.0 - t),
-                    phase=ph,
+        if f < 15:
+            t = f / 14.0
+            flourish = math.sin(t * math.pi)
+            arr = compose_priestess_frame(
+                poses,
+                pose_key="K3_RISE" if 2 <= f <= 12 else "STAND",
+                dx=1.5 * flourish,
+                lock_grounded=True,
+                aim_deg=lerp(-52.0, -84.0, flourish),
+                grip_offset=(4.8, lerp(-2.0, -8.0, flourish)),
+                two_handed=False,
+                offhand_target=(AX - 10.5, lerp(62.0, 50.0, flourish)),
+                radiance=0.60 + 0.40 * flourish,
+                halo_flare=0.45 + 0.55 * flourish,
+                phase=ph,
+                ground_seal_rx=18.0 + 7.0 * flourish,
+            )
+            if flourish > 0.35:
+                draw_pixel_star4(
+                    arr,
+                    AX + 12.0,
+                    22.0 - 4.0 * flourish,
+                    arm=3 if flourish > 0.7 else 2,
+                    core_col=C_LIGHT_CORE,
+                    ray_col=C_LIGHT_SUNGOLD,
+                    max_y=112,
                 )
-            )
+            enforce_safety_margin(arr)
+            frames.append(arr)
         else:
-            t = clamp((f - 10) / 11.0, 0.0, 1.0)
-            rot_deg = lerp(22.0, 84.0, smoothstep(t))
-            base_im = poses["stand_full"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
-            b_arr = np.array(base_im)
-            ys, xs = np.where(b_arr[:, :, 3] > 0)
-            canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
-            if len(ys) > 0:
-                min_x, max_x = int(xs.min()), int(xs.max())
-                max_y = int(ys.max())
-                ox = clamp(AX - (min_x + max_x) // 2, 4, LOG_W - b_arr.shape[1] - 4)
-                oy = (AY - 2) - max_y
-                canvas.alpha_composite(base_im, (ox, oy))
-            arr = np.array(canvas)
-            draw_sunburst_cathedral_scepter(
-                arr,
-                (AX + 6.0, 109.0),
-                angle_deg=lerp(-8.0, 2.0, t),
-                length_scale=0.92,
-                radiance=0.22 + 0.08 * math.sin(ph * math.tau * 3.0),
-                max_y=114,
+            u = (f - 15) / 15.0
+            breathe = math.sin(u * math.tau)
+            arr = compose_priestess_frame(
+                poses,
+                pose_key="STAND",
+                dx=0.0,
+                dy=0.0,
+                lock_grounded=True,
+                aim_deg=-66.0 + 3.5 * breathe,
+                grip_offset=(4.8, -3.2 + 0.6 * breathe),
+                two_handed=False,
+                offhand_target=(AX - 9.5, 57.5 + 1.2 * math.cos(u * math.tau)),
+                radiance=0.78 + 0.14 * math.sin(u * math.tau * 2.0),
+                halo_flare=0.62 + 0.18 * breathe,
+                phase=ph,
+                ground_seal_rx=20.0 + 2.0 * breathe,
             )
-            for k in range(5):
-                ex = int(round(AX - 16 + k * 9 + math.sin(f * 0.9 + k) * 2.5))
-                ey = int(round(108 - ((f * 2 + k * 5) % 18)))
-                put_px(arr, ex, ey, C_LIGHT_SUNGOLD if (f + k) % 2 == 0 else C_LIGHT_ROSE)
+            for k in range(3):
+                ang = u * math.tau + k * (math.tau / 3.0)
+                sx = AX + math.cos(ang) * 15.0
+                sy = 34.0 + math.sin(ang) * 5.0
+                draw_pixel_star4(
+                    arr,
+                    sx,
+                    sy,
+                    arm=2 if k == 0 else 1,
+                    core_col=C_LIGHT_CORE,
+                    ray_col=C_LIGHT_SUNGOLD if k % 2 == 0 else C_LIGHT_ROSE,
+                    max_y=112,
+                )
             enforce_safety_margin(arr)
             frames.append(arr)
     return frames
@@ -1702,7 +2216,7 @@ def build_row_9_death(poses):
 # ==============================================================================
 # 7. PORTRAIT BUILDER (`0` SPEAR-TIP!) & SHEET ASSEMBLY / GROUNDED QA AUDIT
 # ==============================================================================
-def build_portrait():
+def build_portrait(save_to_disk=False):
     raw = Image.open(PORTRAIT_JPG).convert("RGB")
     w, h = raw.size
     # Cleanly remove ONLY the spear-blade triangle rising above the Sunburst Cross in the top-right (`x=812..948, y=58..236`),
@@ -1712,7 +2226,7 @@ def build_portrait():
     # Sample dark cathedral column color from (805, 110)
     bg_col = raw_arr[110, 805].copy()
     raw_arr[spear_poly] = bg_col
-    raw_clean = Image.fromarray(raw_arr, "RGB")
+    raw_clean = Image.fromarray(raw_arr)
 
     s = int(min(w, h) * 0.88)
     x0 = (w - s) // 2
@@ -1735,14 +2249,16 @@ def build_portrait():
     arr[62, 1:63] = C_GOLD_MID
     arr[1:63, 1] = C_GOLD_MID
     arr[1:63, 62] = C_GOLD_MID
-    out128 = Image.fromarray(arr, "RGBA").resize((128, 128), Image.Resampling.NEAREST)
-    out128.save(OUT_PORTRAIT)
+    out128 = Image.fromarray(arr).resize((128, 128), Image.Resampling.NEAREST)
+    if save_to_disk:
+        out128.save(OUT_PORTRAIT)
     return out128
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scratch-dir", default=DEFAULT_SCRATCH)
+    parser.add_argument("--rebuild-portrait", action="store_true", default=False)
     args = parser.parse_args()
     os.makedirs(args.scratch_dir, exist_ok=True)
 
@@ -1755,11 +2271,11 @@ def main():
         ("Row 2 AUTO_ATTACK", build_row_2_auto_attack),
         ("Row 3 SKILL", build_row_3_skill),
         ("Row 4 ULTIMATE", build_row_4_ultimate),
-        ("Row 5 HIT", build_row_5_hit),
-        ("Row 6 BLOCK_PARRY", build_row_6_block_parry),
+        ("Row 5 DEATH", build_row_5_death),
+        ("Row 6 DASH", build_row_6_dash),
         ("Row 7 CROUCH", build_row_7_crouch),
         ("Row 8 JUMP_VAULT", build_row_8_jump_vault),
-        ("Row 9 DEATH", build_row_9_death),
+        ("Row 9 VICTORY", build_row_9_victory),
     ]
 
     sheet = Image.new("RGBA", (CELL_W * COLS, CELL_H * ROWS), (0, 0, 0, 0))
@@ -1773,33 +2289,76 @@ def main():
         row_320 = []
         r2_bot_ys = []
         snap_reaches = {}
+        walk_spans = []
+        walk_tops = []
+        r5_prone_hs = []
+        r5_prone_xmins = []
+        r5_prone_xmaxs = []
+        r9_hs = []
+
         for c_idx, farr in enumerate(log_frames):
             if c_idx > 0 and not np.array_equal(log_frames[c_idx - 1], farr):
                 transitions += 1
             if r_idx == 2:
                 ys_f, _ = np.where(farr[:, :, 3] > 0)
                 r2_bot_ys.append(int(ys_f.max()))
-            im_log = Image.fromarray(farr, "RGBA")
+            im_log = Image.fromarray(farr)
             im_320 = im_log.resize((CELL_W, CELL_H), Image.Resampling.NEAREST)
             a320 = np.array(im_320)[:, :, 3]
             if (
-                a320[0, :].any()
-                or a320[-1, :].any()
-                or a320[:, 0].any()
-                or a320[:, -1].any()
+                a320[:4, :].any()
+                or a320[-4:, :].any()
+                or a320[:, :4].any()
+                or a320[:, -4:].any()
             ):
                 border_clips += 1
+
+            ys_320, xs_320 = np.where(a320 > 0)
+            h_320 = int(ys_320.max() - ys_320.min() + 1) if len(ys_320) else 0
+
+            if r_idx == 1:
+                walk_tops.append(int(ys_320.min()))
+                foot_band = a320[206:233, :] > 0
+                _, fxs = np.where(foot_band)
+                span_320 = int(fxs.max() - fxs.min()) if len(fxs) else 0
+                walk_spans.append(span_320)
             if r_idx == 2 and c_idx in (3, 9, 17, 25):
-                _, xs_320 = np.where(a320 > 0)
                 snap_reaches[f"F{c_idx:02d}"] = int(xs_320.max())
+            if r_idx == 5 and c_idx >= 22:
+                r5_prone_hs.append(h_320)
+                r5_prone_xmins.append(int(xs_320.min()))
+                r5_prone_xmaxs.append(int(xs_320.max()))
+            if r_idx == 9:
+                r9_hs.append(h_320)
+
             sheet.paste(im_320, (c_idx * CELL_W, r_idx * CELL_H))
             row_320.append(im_320)
         all_rows_320.append(row_320)
-        extra = (
-            f" | grounded bot_y_log min={min(r2_bot_ys)} max={max(r2_bot_ys)} | snap max_x={snap_reaches}"
-            if r_idx == 2
-            else ""
-        )
+
+        extra = ""
+        if r_idx == 1:
+            max_top_delta = max(abs(walk_tops[i] - walk_tops[(i + 1) % 30]) for i in range(30))
+            min_sp, max_sp = min(walk_spans), max(walk_spans)
+            extra = (
+                f" | footSpan320 min={min_sp} max={max_sp} "
+                f"(F00={walk_spans[0]}, F07={walk_spans[7]}, F15={walk_spans[15]}, F22={walk_spans[22]}) "
+                f"| maxAdjTopDelta={max_top_delta}"
+            )
+            if max_sp < 34 or min_sp > max_sp * 0.50:
+                raise RuntimeError(f"Row 1 WALK footSpan320 crossover violation: min={min_sp}, max={max_sp}")
+            if max_top_delta > 4:
+                raise RuntimeError(f"Row 1 WALK maxAdjTopDelta {max_top_delta} > 4!")
+        elif r_idx == 2:
+            extra = f" | grounded bot_y_log min={min(r2_bot_ys)} max={max(r2_bot_ys)} | snap max_x={snap_reaches}"
+        elif r_idx == 5:
+            extra = f" | F22..F29 prone maxH={max(r5_prone_hs)}px x=[{min(r5_prone_xmins)}..{max(r5_prone_xmaxs)}]"
+            if max(r5_prone_hs) > 96 or min(r5_prone_xmins) < 24 or max(r5_prone_xmaxs) > 298:
+                raise RuntimeError(f"Row 5 DEATH prone bounds violation: {extra}")
+        elif r_idx == 9:
+            extra = f" | F00..F29 upright minH={min(r9_hs)}px"
+            if min(r9_hs) < 160:
+                raise RuntimeError(f"Row 9 VICTORY height violation: minH={min(r9_hs)} < 160!")
+
         print(f"  [{r_name}] transitions={transitions}/29{extra}")
         if transitions < 29:
             raise RuntimeError(f"{r_name} has static duplicate frames ({transitions}/29)!")
@@ -1814,12 +2373,18 @@ def main():
         raise RuntimeError(f"Border clip violation: {border_clips}/300!")
 
     sheet.save(OUT_SHEET)
-    port = build_portrait()
     print(f"[priestess_ex] Saved {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}), border_clips={border_clips}/300")
-    print(f"[priestess_ex] Saved {OUT_PORTRAIT} ({port.size[0]}x{port.size[1]})")
+    if args.rebuild_portrait:
+        port = build_portrait(save_to_disk=True)
+        print(f"[priestess_ex] Saved {OUT_PORTRAIT} ({port.size[0]}x{port.size[1]})")
 
     # Visual QA Contact Sheets in scratch dir
-    for row_idx_qa, out_name in [(1, "debug_priestess_ex_row1_walk.png"), (2, "debug_priestess_ex_row2.png")]:
+    for row_idx_qa, out_name in [
+        (1, "debug_priestess_ex_row1_walk.png"),
+        (2, "debug_priestess_ex_row2.png"),
+        (5, "debug_priestess_ex_row5_death.png"),
+        (9, "debug_priestess_ex_row9_victory.png"),
+    ]:
         r_w, r_h = 6 * (CELL_W + 6) + 6, 5 * (CELL_H + 6) + 6
         dbg_r = Image.new("RGBA", (r_w, r_h), (24, 22, 36, 255))
         dr = ImageDraw.Draw(dbg_r)
@@ -1849,7 +2414,6 @@ def main():
                 grid.paste(bg, (px, py))
         grid.save(os.path.join(args.scratch_dir, f"debug_priestess_ex_10rows_{tag}.png"))
 
-    port.save(os.path.join(args.scratch_dir, "debug_priestess_ex_portrait.png"))
     print(f"[priestess_ex] Wrote QA contact sheets to {args.scratch_dir}")
 
 
