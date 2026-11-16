@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 /**
- * Next-Gen 30fps VFX Sprite Sheet Builder for VEX-09 EX (`android_ex` / `AndroidEx.js`).
- * Powered natively by `src/engine/ArcaneShaderFX.js` with custom Muramasa-09 HF-Plasma Odachi
- * serrated waves, Cyber-Disc Chakrams, Hex-Matrix Aegis crests, EMP Scanline spires, Holo-Target
- * Lock reticles, Razor Cyber-Glitch hit scars, Orbital Satellite Hex Seals, Articulated Fin-Funnel
- * Drone Nodes, and Seamless `PROJECT GUNG-09` Orbital Singularity Buster Columns.
+ * Newly-Born Next-Gen 30fps VFX Sprite Sheet Builder for VEX-09 EX (`android_ex` / `AndroidEx.js`).
+ * Powered natively by `src/engine/ArcaneShaderFX.js` with Neo-Vision Singularity Valkyrie pixel art:
+ *   Row 0: Muramasa-09 HF-Plasma Odachi Crescent & Cyber-Disc Chakram
+ *   Row 1: Diamond/Hex Cyber-Matrix Aegis Prism & Deflect Flash
+ *   Row 2: Singularity EMP Odachi Cross-Cut Plasma Spire
+ *   Row 3: Valkyrie Pixel HUD Target-Matrix Reticle (0 ellipses!)
+ *   Row 4: Asymmetric 4-Point Cyber-Prism Hit-Starburst & Hex Sparks (0 chevrons!)
+ *   Row 5: Stratified Orbital Relay Gate & Hex-Matrix Floor Lock Seal
+ *   Row 6: Articulated Autonomous Cyber Fin-Funnel Wing-Drone Node
+ *   Row 7: Seamless Vertical `PROJECT GUNG-09` Orbital Singularity Buster Column
  *
  * Invariants:
  *   - Output: `assets/sprites/android_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208)
  *   - 100% 2x2 integer pixel blocks (authored on 104x104 logical grid -> 2x NEAREST)
- *   - Strict 2px logical (4px output) transparent safety margin on all 240 cells (0/240 clips)
+ *   - Strict 3px logical (6px output) transparent safety margin on all 240 cells (0/240 clips)
  *   - Binary alpha (0 or 255), crisp #0a0c1c / #161a34 Selout, 0 Unicode emojis anywhere
  */
 
@@ -33,18 +38,16 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SCRATCH_DIR =
-  '/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch';
+  '/Users/rei/.gemini/antigravity/brain/3134f27a-cc2a-4935-88e2-e05d540e5f89/scratch';
 
 // Locked Singularity Valkyrie Palette (matches `android_ex_sheet.png` 1:1)
 const C_SEL_DARK = packHexColor('#0a0c1c');
-const C_SEL_MID = packHexColor('#161a34');
 const C_GUNMETAL = packHexColor('#384060');
 const C_TITANIUM = packHexColor('#d6e0f6');
 const C_CYAN_DEEP = packHexColor('#0891b2');
 const C_CYAN_NEON = packHexColor('#22d3ee');
 const C_CYAN_CREST = packHexColor('#67e8f9');
 const C_PLUM_DEEP = packHexColor('#311042');
-const C_MAG_DARK = packHexColor('#9d174d');
 const C_MAG_HOT = packHexColor('#ec4899');
 const C_MAG_PINK = packHexColor('#f9a8d4');
 const C_WHITE = PURE_WHITE;
@@ -145,26 +148,6 @@ function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, ds
   }
 }
 
-function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
-  for (let sy = 0; sy < srcH; sy++) {
-    for (let sx = 0; sx < srcW; sx++) {
-      const so = (sy * srcW + sx) * 4;
-      const sa = srcRgba[so + 3] / 255;
-      if (sa <= 0) continue;
-      const tx = dstX + sx;
-      const ty = dstY + sy;
-      const to = (ty * dstW + tx) * 4;
-      const da = dstRgba[to + 3] / 255;
-      const outA = sa + da * (1 - sa);
-      if (outA <= 0) continue;
-      dstRgba[to] = Math.round((srcRgba[so] * sa + dstRgba[to] * da * (1 - sa)) / outA);
-      dstRgba[to + 1] = Math.round((srcRgba[so + 1] * sa + dstRgba[to + 1] * da * (1 - sa)) / outA);
-      dstRgba[to + 2] = Math.round((srcRgba[so + 2] * sa + dstRgba[to + 2] * da * (1 - sa)) / outA);
-      dstRgba[to + 3] = Math.round(outA * 255);
-    }
-  }
-}
-
 function has4pxBorderClip208(cellRgba, cell = 208, margin = 4) {
   for (let y = 0; y < cell; y++) {
     for (let x = 0; x < cell; x++) {
@@ -195,7 +178,16 @@ function drawStarSpark(pen, cx, cy, armLen, coreCol, tipCol, alpha = 1) {
   }
 }
 
-function drawRazorSlashScar(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, alpha = 1) {
+function drawHollowHex(pen, cx, cy, r, col, alpha = 1) {
+  for (let k = 0; k < 6; k++) {
+    const a0 = (k * Math.PI) / 3;
+    const a1 = ((k + 1) * Math.PI) / 3;
+    pen.line(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r, cx + Math.cos(a1) * r, cy + Math.sin(a1) * r, col, alpha);
+  }
+}
+
+// Strict 2-pass tapered plasma lance (Pass 1 outer bevels, Pass 2 white core -- 0 chevrons!)
+function drawTwoPassPlasmaLance(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, alpha = 1) {
   if (alpha <= 0.04) return;
   const dx = x1 - x0;
   const dy = y1 - y0;
@@ -221,7 +213,7 @@ function drawRazorSlashScar(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, 
       const py = by + ny * q;
       if (aq >= hw - 0.15) {
         pen.stipple(px, py, C_SEL_DARK, alpha * 0.95);
-      } else if (aq >= hw * 0.46) {
+      } else if (aq >= hw * 0.42) {
         pen.stipple(px, py, q > 0 ? bevelCol : accentCol, alpha);
       }
     }
@@ -229,7 +221,7 @@ function drawRazorSlashScar(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, 
   for (let i = 1; i < steps; i++) {
     const s = i / steps;
     const env = Math.sin(s * Math.PI);
-    const hw = maxHalfW * 0.44 * env;
+    const hw = maxHalfW * 0.42 * env;
     const bx = x0 + ux * (s * len);
     const by = y0 + uy * (s * len);
     for (let q = -hw; q <= hw; q += 0.45) {
@@ -306,13 +298,7 @@ function drawPlasmaSerratedArc(pen, opts) {
   }
 }
 
-// ============================================================================
-// ROW RENDERERS (f = 0..29 on 104x104 logical surface centered at (52, 52))
-// ============================================================================
-
-/**
- * Row 0: Muramasa-09 HF-Plasma Odachi Wave & Spinning Cyber-Disc Chakram
- */
+// Row 0: Muramasa-09 HF-Plasma Odachi Wave & Spinning Cyber-Disc Chakram
 function renderRow0PlasmaWave(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
   const pulse = Math.sin(ph);
@@ -359,16 +345,14 @@ function renderRow0PlasmaWave(pen, f) {
   });
 
   drawStarSpark(pen, 28 + pulse, 0, 5 + (f % 2), C_CYAN_CREST, C_MAG_HOT, 1.0);
-  for (let s = 0; s < 6; s++) {
-    const sx = rng.between(-32, 22);
-    const sy = rng.between(-32, 32);
-    pen.stipple(sx, sy, s % 2 === 0 ? C_CYAN_CREST : C_MAG_HOT, 0.95);
+  for (let s = 0; s < 5; s++) {
+    const sx = rng.between(-30, 20);
+    const sy = rng.between(-28, 28);
+    drawHollowHex(pen, sx, sy, 3, s % 2 === 0 ? C_CYAN_CREST : C_MAG_HOT, 0.9);
   }
 }
 
-/**
- * Row 1: Hex-Matrix Aegis Shield Boss & Counter-Deflect Flash
- */
+// Row 1: Diamond/Hex Cyber-Matrix Aegis Shield & Deflect Prism
 function renderRow1HexAegis(pen, f) {
   const u = f / 29;
   const pop = u < 0.16 ? smoothStep(0, 0.16, u) : 1.0;
@@ -378,18 +362,18 @@ function renderRow1HexAegis(pen, f) {
   for (let k = 0; k < 6; k++) {
     const a0 = (k * Math.PI) / 3 + u * 0.8;
     const a1 = ((k + 1) * Math.PI) / 3 + u * 0.8;
-    drawRazorSlashScar(
+    drawTwoPassPlasmaLance(
       pen,
       Math.cos(a0) * rHex,
       Math.sin(a0) * rHex,
       Math.cos(a1) * rHex,
       Math.sin(a1) * rHex,
-      2.6 * fade,
+      2.5 * fade,
       k % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT,
       C_PLUM_DEEP,
       fade
     );
-    drawRazorSlashScar(
+    drawTwoPassPlasmaLance(
       pen,
       Math.cos(a0) * (rHex * 0.56),
       Math.sin(a0) * (rHex * 0.56),
@@ -401,27 +385,24 @@ function renderRow1HexAegis(pen, f) {
       fade
     );
   }
-  drawRazorSlashScar(pen, -32 * pop, 22 * pop, 32 * pop, -22 * pop, 2.8 * fade, C_CYAN_CREST, C_MAG_HOT, fade);
-  drawStarSpark(pen, 0, 0, Math.round(6 * fade), C_CYAN_CREST, C_MAG_HOT, fade);
+  drawStarSpark(pen, 0, 0, Math.round(7 * fade), C_CYAN_CREST, C_MAG_HOT, fade);
 }
 
-/**
- * Row 2: Singularity Plasma Pillar & EMP Scanline Spire
- */
+// Row 2: Singularity EMP Odachi Cross-Cut Plasma Spire
 function renderRow2SingularityPillar(pen, f) {
   const u = f / 29;
   const erupt = u < 0.16 ? smoothStep(0, 0.16, u) : 1.0;
   const fade = u > 0.70 ? 1 - (u - 0.70) / 0.30 : 1.0;
-  const baseY = 35;
+  const baseY = 36;
   const pillarH = 74 * erupt;
-  const halfW = (12.0 - u * 4.5) * erupt;
+  const halfW = (13.0 - u * 4.5) * erupt;
 
   if (halfW >= 1.2 && fade > 0.05) {
     const topY = baseY - pillarH;
     for (let y = Math.floor(topY); y <= baseY; y++) {
       const hFrac = clamp01((baseY - y) / Math.max(1, pillarH));
-      const scanNotch = (y + f * 2) % 6 === 0 ? 0.82 : 1.0;
-      const w = halfW * (1 - hFrac * 0.25) * scanNotch;
+      const scanNotch = (y + f * 2) % 5 === 0 ? 0.80 : 1.0;
+      const w = halfW * (1 - hFrac * 0.24) * scanNotch;
       const iw = Math.ceil(w + 1);
       for (let x = -iw; x <= iw; x++) {
         const ax = Math.abs(x);
@@ -435,94 +416,77 @@ function renderRow2SingularityPillar(pen, f) {
       }
     }
   }
-  drawRazorSlashScar(pen, -28 * erupt, baseY, 28 * erupt, baseY, 2.8 * fade, C_CYAN_NEON, C_MAG_HOT, fade);
+  // EMP Odachi Cross-Cut X-beams at spire core
+  drawTwoPassPlasmaLance(pen, -28 * erupt, baseY - 12, 28 * erupt, baseY - 38, 2.2 * fade, C_CYAN_NEON, C_MAG_HOT, fade);
+  drawTwoPassPlasmaLance(pen, -28 * erupt, baseY - 38, 28 * erupt, baseY - 12, 2.2 * fade, C_MAG_HOT, C_CYAN_NEON, fade);
+  drawTwoPassPlasmaLance(pen, -30 * erupt, baseY, 30 * erupt, baseY, 2.6 * fade, C_CYAN_CREST, C_MAG_HOT, fade);
 }
 
-/**
- * Row 3: Holo-Target Lock Reticle & Overdrive Ring
- */
+// Row 3: Valkyrie Pixel HUD Target-Matrix Reticle (Octagonal/Square Telemetry HUD, 0 ellipses!)
 function renderRow3HoloReticle(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
-  const rOut = 36;
-  for (let i = 0; i < 84; i++) {
-    if (i % 7 === 0) continue; // Segmented cyber HUD ring!
-    const a = (i / 84) * Math.PI * 2 + ph;
-    pen.stipple(Math.cos(a) * rOut, Math.sin(a) * rOut, i % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT, 1.0);
+  const rOct = 35;
+
+  // Segmented Octagonal Pixel HUD Ring
+  for (let k = 0; k < 8; k++) {
+    const a0 = ph * 0.5 + (k * Math.PI) / 4;
+    const a1 = ph * 0.5 + ((k + 1) * Math.PI) / 4;
+    const mx0 = Math.cos(a0) * rOct;
+    const my0 = Math.sin(a0) * rOct;
+    const mx1 = Math.cos(a1) * rOct;
+    const my1 = Math.sin(a1) * rOct;
+    pen.line(mx0, my0, mx0 + (mx1 - mx0) * 0.72, my0 + (my1 - my0) * 0.72, k % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT, 1.0);
   }
-  // 4 Corner Lock Brackets
+
+  // 4 Crisp Corner Lock Brackets + Rangefinder Telemetry Bars
   for (const sx of [-1, 1]) {
     for (const sy of [-1, 1]) {
-      const bx = sx * 24;
-      const by = sy * 24;
-      pen.line(bx, by, bx - sx * 9, by, C_CYAN_CREST, 1.0);
-      pen.line(bx, by, bx, by - sy * 9, C_CYAN_CREST, 1.0);
+      const bx = sx * 25;
+      const by = sy * 25;
+      pen.line(bx, by, bx - sx * 10, by, C_CYAN_CREST, 1.0);
+      pen.line(bx, by, bx, by - sy * 10, C_CYAN_CREST, 1.0);
+      pen.line(bx - sx * 1, by - sy * 1, bx - sx * 7, by - sy * 1, C_WHITE, 1.0);
+    }
+    // Side telemetry tick bars
+    for (let t = -2; t <= 2; t++) {
+      const barW = (Math.abs(t + f) % 3) + 2;
+      pen.line(sx * 31, t * 5, sx * (31 - barW), t * 5, t === 0 ? C_WHITE : C_MAG_HOT, 0.95);
     }
   }
-  drawStarSpark(pen, 0, 0, 4 + (f % 2), C_MAG_HOT, C_CYAN_NEON, 1.0);
+  // Central Diamond Crosshair
+  drawHollowHex(pen, 0, 0, 9, C_CYAN_NEON, 0.95);
+  drawStarSpark(pen, 0, 0, 5 + (f % 2), C_MAG_HOT, C_CYAN_NEON, 1.0);
 }
 
-/**
- * Row 4: Razor HF-Plasma Hit-Slash Cross-Scar & Cyber-Glitch Spark Burst
- */
+// Row 4: Asymmetric 4-Point Cyber-Prism Hit-Starburst & Hex Sparks (0 fat chevron bars!)
 function renderRow4CyberHitScar(pen, f) {
   const u = f / 29;
-  const snapA = u < 0.08 ? u / 0.08 : 1.0;
-  const fadeA = clamp01(1.18 - u * 1.25);
-  const snapB = u < 0.14 ? 0 : u < 0.24 ? (u - 0.14) / 0.10 : 1.0;
-  const fadeB = u < 0.14 ? 0 : clamp01(1.25 - (u - 0.14) * 1.32);
+  const fade = clamp01(1.18 - u * 1.22);
+  const snap = u < 0.10 ? u / 0.10 : 1.0;
   const rng = new DeterministicRng(609 + f * 13);
 
-  if (fadeA > 0.04) {
-    const L1 = 41 * snapA;
-    const ang1 = -0.48;
-    drawRazorSlashScar(
-      pen,
-      -Math.cos(ang1) * L1,
-      -Math.sin(ang1) * L1,
-      Math.cos(ang1) * L1,
-      Math.sin(ang1) * L1,
-      3.1 * fadeA,
-      C_CYAN_NEON,
-      C_PLUM_DEEP,
-      fadeA
-    );
-  }
+  if (fade > 0.04) {
+    // Asymmetric long/short optical prism needles (2-pass -> crisp white core!)
+    const L1 = 38 * snap * (1 - u * 0.35);
+    const L2 = 25 * snap * (1 - u * 0.35);
+    drawTwoPassPlasmaLance(pen, -L1, -L1 * 0.28, L1, L1 * 0.28, 2.4 * fade, C_CYAN_NEON, C_PLUM_DEEP, fade);
+    drawTwoPassPlasmaLance(pen, L2 * 0.28, -L2, -L2 * 0.28, L2, 2.1 * fade, C_MAG_HOT, C_CYAN_DEEP, fade);
+    drawStarSpark(pen, 0, 0, Math.max(2, Math.round(8 * fade)), C_CYAN_CREST, C_MAG_HOT, fade);
 
-  if (fadeB > 0.04) {
-    const L2 = 37 * snapB;
-    const ang2 = 0.68;
-    drawRazorSlashScar(
-      pen,
-      -Math.cos(ang2) * L2,
-      -Math.sin(ang2) * L2,
-      Math.cos(ang2) * L2,
-      Math.sin(ang2) * L2,
-      2.9 * fadeB,
-      C_MAG_HOT,
-      C_CYAN_DEEP,
-      fadeB
-    );
-  }
-
-  const sparkFade = Math.max(fadeA, fadeB);
-  if (sparkFade > 0.12) {
-    drawStarSpark(pen, 0, 0, Math.max(2, Math.round(6 * sparkFade)), C_CYAN_CREST, C_MAG_HOT, sparkFade);
-    for (let i = 0; i < 10; i++) {
-      const a = (i % 2 === 0 ? -0.48 : 0.68) + (i < 5 ? 0 : Math.PI) + rng.between(-0.25, 0.25);
-      const dist = (8 + u * 34) * rng.between(0.7, 1.04);
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3 + u * 0.9 + rng.between(-0.15, 0.15);
+      const dist = 10 + u * 28;
       const sx = Math.cos(a) * dist;
       const sy = Math.sin(a) * dist;
-      if (Math.abs(sx) < 43 && Math.abs(sy) < 43) {
-        pen.line(sx, sy, sx - Math.cos(a) * 4, sy - Math.sin(a) * 4, i % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT, sparkFade);
-        pen.stipple(sx, sy, C_WHITE, sparkFade);
+      if (Math.abs(sx) < 39 && Math.abs(sy) < 39) {
+        drawHollowHex(pen, sx, sy, 3, i % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT, fade);
+        pen.stipple(sx, sy, C_WHITE, fade);
       }
     }
   }
 }
 
-/**
- * Row 5: Foreshortened 2.5D Orbital Satellite Target-Lock Hex Reticle (`TRUE_ULTIMATE` floor lock)
- */
+// Row 5: Stratified Orbital Relay Gate & Hex-Matrix Floor Lock Seal
 function renderRow5OrbitalHexSeal(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
   const rx = 41;
@@ -531,7 +495,7 @@ function renderRow5OrbitalHexSeal(pen, f) {
   for (let k = 0; k < 6; k++) {
     const a0 = ph + (k * Math.PI) / 3;
     const a1 = ph + ((k + 1) * Math.PI) / 3;
-    drawRazorSlashScar(
+    drawTwoPassPlasmaLance(
       pen,
       Math.cos(a0) * rx,
       Math.sin(a0) * ry,
@@ -542,32 +506,36 @@ function renderRow5OrbitalHexSeal(pen, f) {
       C_PLUM_DEEP,
       1.0
     );
+    drawTwoPassPlasmaLance(
+      pen,
+      Math.cos(-a0) * (rx * 0.62),
+      Math.sin(-a0) * (ry * 0.62),
+      Math.cos(-a1) * (rx * 0.62),
+      Math.sin(-a1) * (ry * 0.62),
+      1.6,
+      C_MAG_HOT,
+      C_CYAN_DEEP,
+      0.95
+    );
   }
-  for (let i = 0; i < 72; i++) {
-    const a = -(i / 72) * Math.PI * 2 + ph * 1.5;
-    pen.stipple(Math.cos(a) * (rx * 0.64), Math.sin(a) * (ry * 0.64), i % 3 === 0 ? C_WHITE : C_CYAN_CREST, 0.95);
-  }
-  drawStarSpark(pen, 0, 0, 4, C_MAG_HOT, C_CYAN_NEON, 1.0);
+  drawStarSpark(pen, 0, 0, 5, C_MAG_HOT, C_CYAN_NEON, 1.0);
 }
 
-/**
- * Row 6: Articulated Autonomous Cyber Fin-Funnel Drone Node (`TRUE_ULTIMATE` 8-Drone Ring & Pincer)
- */
+// Row 6: Articulated Autonomous Cyber Fin-Funnel Wing-Drone Node
 function renderRow6FinFunnelNode(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
   const bob = Math.sin(ph) * 2.0;
 
-  // Twin V-Wing Titanium/Gunmetal Funnel Blades + Central Singularity Emitter Core
   for (const side of [-1, 1]) {
-    drawRazorSlashScar(pen, side * 4, bob - 2, side * 26, bob - 18, 3.6, C_TITANIUM, C_GUNMETAL, 1.0);
-    drawRazorSlashScar(pen, side * 4, bob + 3, side * 22, bob + 16, 3.0, C_CYAN_NEON, C_MAG_HOT, 1.0);
+    drawTwoPassPlasmaLance(pen, side * 4, bob - 2, side * 27, bob - 19, 3.4, C_TITANIUM, C_GUNMETAL, 1.0);
+    drawTwoPassPlasmaLance(pen, side * 4, bob + 3, side * 23, bob + 17, 2.8, C_CYAN_NEON, C_MAG_HOT, 1.0);
   }
-  // Glowing Octagonal Emitter Core
-  for (let dy = -6; dy <= 6; dy++) {
-    for (let dx = -6; dx <= 6; dx++) {
+  drawHollowHex(pen, 0, bob, 8, C_CYAN_CREST, 1.0);
+  for (let dy = -5; dy <= 5; dy++) {
+    for (let dx = -5; dx <= 5; dx++) {
       const d = Math.hypot(dx, dy);
-      if (d <= 6.2) {
-        const col = d > 5.0 ? C_SEL_DARK : d > 3.2 ? C_MAG_HOT : d > 1.6 ? C_CYAN_CREST : C_WHITE;
+      if (d <= 5.4) {
+        const col = d > 4.4 ? C_SEL_DARK : d > 2.8 ? C_MAG_HOT : d > 1.4 ? C_CYAN_CREST : C_WHITE;
         pen.stipple(dx, bob + dy, col, 1.0);
       }
     }
@@ -575,11 +543,7 @@ function renderRow6FinFunnelNode(pen, f) {
   drawStarSpark(pen, 0, bob, 5 + (f % 2), C_CYAN_CREST, C_MAG_HOT, 1.0);
 }
 
-/**
- * Row 7: Seamless Vertical `PROJECT GUNG-09` Orbital Singularity Buster Column
- * Exact 3-ring vertical period inside `ly = -36..+36` (`sy + 32 .. sy + 176` in 208x208)
- * while staying strictly inside `[-44..+44]` so `0/240` border clips pass!
- */
+// Row 7: Seamless Vertical `PROJECT GUNG-09` Orbital Singularity Buster Column
 function renderRow7OrbitalBusterColumn(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
   const halfW = 24;
@@ -603,9 +567,8 @@ function renderRow7OrbitalBusterColumn(pen, f) {
     }
   }
 
-  // 3 Helical Plasma Compression Rings spaced every 24 logical px (`-24, 0, +24`) inside `[-36..+36]`!
-  for (const ry0 of [-24, 0, 24]) {
-    const ry = ry0 + (((f * 2) % 24) - 12) * 0.0; // locked periodic ring anchors + animated phase shimmer
+  // 3 Helical Hex-Plasma Compression Rings spaced every 24 logical px (`-24, 0, +24`) inside `[-36..+36]`!
+  for (const ry of [-24, 0, 24]) {
     for (let i = 0; i < 56; i++) {
       const a = (i / 56) * Math.PI * 2 + ph * 2;
       const rx = Math.cos(a) * 33;
@@ -627,15 +590,15 @@ function bakeVfxSheet() {
   const sheetH = ROWS * CELL;
   const sheetRgba = new Uint8Array(sheetW * sheetH * 4);
 
-  const dbgPad = 3;
-  const dbgW = COLS * (LOGICAL + dbgPad) + dbgPad;
-  const dbgH = ROWS * (LOGICAL + dbgPad) + dbgPad;
-  const dbgRgba = new Uint8Array(dbgW * dbgH * 4);
-  for (let i = 0; i < dbgW * dbgH; i++) {
-    dbgRgba[i * 4] = 8;
-    dbgRgba[i * 4 + 1] = 12;
-    dbgRgba[i * 4 + 2] = 26;
-    dbgRgba[i * 4 + 3] = 255;
+  const sampleCols = [0, 3, 7, 12, 17, 22, 27];
+  const qaW = sampleCols.length * CELL;
+  const qaH = ROWS * CELL;
+  const qaRgba = new Uint8Array(qaW * qaH * 4);
+  for (let i = 0; i < qaW * qaH; i++) {
+    qaRgba[i * 4] = 8;
+    qaRgba[i * 4 + 1] = 12;
+    qaRgba[i * 4 + 2] = 26;
+    qaRgba[i * 4 + 3] = 255;
   }
 
   const surface104 = createPixelSurface(LOGICAL, LOGICAL);
@@ -672,9 +635,10 @@ function bakeVfxSheet() {
       }
 
       blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
-      const dx = dbgPad + c * (LOGICAL + dbgPad);
-      const dy = dbgPad + r * (LOGICAL + dbgPad);
-      alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+      const sIdx = sampleCols.indexOf(c);
+      if (sIdx >= 0) {
+        blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, qaRgba, qaW, sIdx * CELL, r * CELL);
+      }
     }
   }
 
@@ -684,10 +648,10 @@ function bakeVfxSheet() {
 
   fs.mkdirSync(SCRATCH_DIR, { recursive: true });
   const outDbgPath = path.join(SCRATCH_DIR, 'debug_android_ex_vfx_30fps.png');
-  fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
+  fs.writeFileSync(outDbgPath, encodeRgbaPng(qaW, qaH, qaRgba));
 
   console.log(
-    `[build_android_ex_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}) and ${outDbgPath} (${dbgW}x${dbgH}) | borderClips=${borderClips}/240`
+    `[build_android_ex_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}) and ${outDbgPath} (${qaW}x${qaH}) | borderClips=${borderClips}/240`
   );
   if (borderClips > 0) {
     process.exitCode = 1;

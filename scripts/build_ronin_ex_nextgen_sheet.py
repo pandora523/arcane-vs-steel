@@ -1136,6 +1136,15 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
         draw_samurai_kote_arm_160(fg_buf, r_sh[0], r_sh[1] + 5, fg_grip[0], fg_grip[1], is_front=True, bend_sign=cfg.get("bend_f", 1.0))
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    if cfg.get("clamp_ground", False):
+        arr_c = np.array(canvas, dtype=np.uint8)
+        if ANCHOR_Y_120 + 1 < LOG_H:
+            over = arr_c[ANCHOR_Y_120 + 1, :, 3] > 128
+            arr_c[ANCHOR_Y_120 + 1:, :, :] = 0
+            for x_i in np.where(over)[0]:
+                if arr_c[ANCHOR_Y_120, x_i, 3] > 128:
+                    arr_c[ANCHOR_Y_120, x_i] = C_OUTLINE
+        canvas = Image.fromarray(arr_c, "RGBA")
     return canvas
 
 
@@ -1281,6 +1290,15 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             )
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    if cfg.get("clamp_ground", False):
+        arr_c = np.array(canvas, dtype=np.uint8)
+        if ANCHOR_Y_120 + 1 < LOG_H:
+            over = arr_c[ANCHOR_Y_120 + 1, :, 3] > 128
+            arr_c[ANCHOR_Y_120 + 1:, :, :] = 0
+            for x_i in np.where(over)[0]:
+                if arr_c[ANCHOR_Y_120, x_i, 3] > 128:
+                    arr_c[ANCHOR_Y_120, x_i] = C_OUTLINE
+        canvas = Image.fromarray(arr_c, "RGBA")
     return canvas
 
 
@@ -1313,34 +1331,36 @@ def build_row0_idle(rigs: dict) -> list[Image.Image]:
 
 
 def build_row1_walk(rigs: dict) -> list[Image.Image]:
-    """Row 1: Grounded Samurai Suriashi Gliding Stride Cycle."""
+    """Row 1: Grounded Samurai Suriashi Gliding Stride Cycle (continuous Seigan carry with Row 0)."""
     frames = []
     for f in range(30):
         ph = (f / 30.0) * 2.0 * math.pi
         s = math.sin(ph)
-        bob = abs(math.cos(ph)) * 1.6
+        c = math.cos(ph)
+        bob = -abs(c) * 0.85
         frames.append(render_stand_rig_frame(rigs, {
             "phase": ph,
             "sink": bob,
-            "torso_lean": 6.5 + 1.4 * math.sin(ph * 2.0),
-            "head_nod": -1.5,
-            "stride_x": s * 5.8,
-            "l_hip": -s * 18.0,
-            "l_knee": max(0.0, s) * 14.0,
-            "r_hip": s * 18.0,
-            "r_knee": max(0.0, -s) * 14.0,
-            "l_lift": -max(0.0, -s) * 1.8,
-            "r_lift": -max(0.0, s) * 1.8,
-            "hair_wave": 6.5 + 3.5 * math.sin(ph - 0.5),
-            "tassel_lag": 22.0 + 8.0 * math.sin(ph * 2.0),
-            "drum_charge": 0.38,
+            "torso_lean": 2.2 + 0.65 * math.sin(ph * 2.0),
+            "head_nod": -0.3 + 0.35 * math.sin(ph * 2.0),
+            "stride_x": s * 2.3,
+            "l_hip": -s * 8.5,
+            "l_knee": max(0.0, s) * 5.5,
+            "r_hip": s * 8.5,
+            "r_knee": max(0.0, -s) * 5.5,
+            "l_lift": -max(0.0, -s) * 1.1,
+            "r_lift": -max(0.0, s) * 1.1,
+            "hair_wave": 2.8 + 1.8 * math.sin(ph - 0.5),
+            "tassel_lag": 10.0 + 4.5 * math.sin(ph - 0.6),
+            "drum_charge": 0.34 + 0.10 * (0.5 + 0.5 * math.sin(ph * 2.0)),
             "sheathed": False,
             "two_handed": False,
-            "sword_hx": 11.5 - s * 2.0,
-            "sword_hy": -4.0 + bob * 0.5,
-            "sword_deg": 18.0 + s * 6.0,
-            "sori_sign": 1.0,
-            "storm_charge": 0.35,
+            "sword_hx": 13.2 - s * 1.1,
+            "sword_hy": -5.2 - bob * 0.4,
+            "sword_deg": -22.5 + s * 3.8,
+            "sori_sign": -1.0,
+            "storm_charge": 0.32 + 0.12 * (0.5 + 0.5 * c),
+            "clamp_ground": True,
         }))
     return frames
 
@@ -2454,6 +2474,21 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
     assert all(t == 29 for t in row_transitions), f"Transition failure: {row_transitions}"
     assert all(rx > 260 for rx in snap_reaches.values()), f"Smear reach < 260: {snap_reaches}"
 
+    # Emit Row 1 WALK 30-frame contact sheet (`6x5` @ `320x240`)
+    r1_im = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (22, 26, 40, 255))
+    draw_r1 = ImageDraw.Draw(r1_im)
+    for f in range(30):
+        cx = (f % 6) * CELL_W
+        cy = (f // 6) * CELL_H
+        draw_r1.rectangle([cx, cy, cx + CELL_W - 1, cy + CELL_H - 1], outline=(52, 64, 96, 255), width=1)
+        draw_r1.line([(cx + 8, cy + 230), (cx + CELL_W - 8, cy + 230)], fill=(90, 110, 150, 255), width=1)
+        draw_r1.line([(cx + 112, cy), (cx + 112, cy + CELL_H)], fill=(65, 75, 105, 255), width=1)
+        r1_im.alpha_composite(all_rows_320[1][f], (cx, cy))
+        draw_r1.rectangle([cx + 4, cy + 4, cx + 68, cy + 20], fill=(0, 0, 0, 200))
+        draw_r1.text((cx + 8, cy + 6), f"R1 F{f:02d}", fill=(125, 211, 252, 255))
+    r1_path = QA_DIR / "debug_ronin_ex_row1_walk.png"
+    r1_im.save(r1_path)
+
     # Emit Row 2 30-frame contact sheet on neutral slate + white split check
     r2_cols = 6
     r2_rows = 5
@@ -2493,9 +2528,9 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
 
 
 def main():
-    print("=== Building KAZE-MARU EX (ronin_ex) Next-Gen 9600x2400 Sheet & Portrait ===")
+    print("=== Building KAZE-MARU EX (ronin_ex) Next-Gen 9600x2400 Sheet ===")
     rigs = load_rigs()
-    portrait_128 = build_portrait_128()
+    portrait_128 = Image.open(OUT_PORTRAIT).convert("RGBA") if OUT_PORTRAIT.exists() else build_portrait_128()
 
     builders = [
         build_row0_idle,

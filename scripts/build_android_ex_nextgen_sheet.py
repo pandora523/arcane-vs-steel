@@ -1275,6 +1275,8 @@ def render_stand_rig_frame_160(
     bend_l=1.0,
     bend_r=1.0,
     lock_lowest_to_ground=False,
+    clamp_ground_only=False,
+    leg_bridge_scale=1.0,
     pre_fn=None,
     post_fn=None,
 ):
@@ -1333,8 +1335,10 @@ def render_stand_rig_frame_160(
     )
     paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
-    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=8)
-    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=6)
+    br_hip = max(2, int(round(8 * leg_bridge_scale)))
+    br_knee = max(2, int(round(6 * leg_bridge_scale)))
+    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=br_hip)
+    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=br_knee)
     paste_rotated_part(win_hi, parts["l_thigh"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
     paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
     paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
@@ -1343,8 +1347,8 @@ def render_stand_rig_frame_160(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
         deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
     )
-    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=8)
-    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=6)
+    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=br_hip)
+    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=br_knee)
     paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
     paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
     paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
@@ -1359,7 +1363,14 @@ def render_stand_rig_frame_160(
     ys_b, _ = np.where(body_160[:, :, 3] > 128)
     if len(ys_b) > 0:
         cur_bot = int(ys_b.max())
-        if lock_lowest_to_ground or cur_bot > ANCHOR_Y_120:
+        if clamp_ground_only:
+            if cur_bot > ANCHOR_Y_120 and ANCHOR_Y_120 + 1 < LOGICAL_H:
+                over = body_160[ANCHOR_Y_120 + 1, :, 3] > 128
+                body_160[ANCHOR_Y_120 + 1:, :, :] = 0
+                for x_i in np.where(over)[0]:
+                    if body_160[ANCHOR_Y_120, x_i, 3] > 128:
+                        body_160[ANCHOR_Y_120, x_i] = C_OUT_DARK
+        elif lock_lowest_to_ground or cur_bot > ANCHOR_Y_120:
             shift_y_160 = ANCHOR_Y_120 - cur_bot
             if shift_y_160 != 0:
                 shifted = np.zeros_like(body_160)
@@ -1432,39 +1443,46 @@ def build_row0_idle(parts, sj):
 
 
 def build_row1_walk(parts, sj):
-    """Row 1: Athletic Cyber-Duelist Crossover Stride (2 Cycles across 30 Frames)."""
+    """Row 1: Grounded Cyber-Samurai Stride (inward-biased stride, continuous Chudan Odachi carry with Row 0)."""
     frames = []
     for f in range(30):
-        ph = (f / 15.0) * 2.0 * math.pi
+        ph = (f / 30.0) * 2.0 * math.pi
         s1 = math.sin(ph)
-        s2 = math.sin(ph + math.pi)
-        bob_y = -abs(math.cos(ph)) * 2.5 + 1.1
+        bob_y = -abs(math.cos(ph)) * 0.85
+        torso_deg = 2.0 + math.sin(ph * 2.0) * 0.7
+        # Asymmetrically bias leg swing INWARD toward centerline so wide A-stance never splays into an over-wide split!
+        l_th = -4.2 - s1 * 6.5
+        r_th = 4.2 + s1 * 6.5
+        l_sh = max(0.0, -s1) * 5.8 + 1.2
+        r_sh = max(0.0, s1) * 5.8 + 1.2
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=4.2 + math.sin(ph * 2.0) * 0.8,
+            pelvis_dx=0.4 + s1 * 0.55,
             pelvis_dy=bob_y,
-            torso_deg=10.5 + math.sin(ph * 2.0) * 1.8,
-            head_deg=-6.0,
-            mane_deg=-6.0 + s1 * 2.5,
-            l_coat_deg=12.0 + math.sin(ph - 0.6) * 6.0,
-            r_coat_deg=7.0 + math.cos(ph) * 4.5,
+            torso_deg=torso_deg,
+            head_deg=-torso_deg * 0.45,
+            mane_deg=-1.0 + math.sin(ph - 0.6) * 1.6,
+            l_coat_deg=2.4 + math.sin(ph - 0.5) * 1.8,
+            r_coat_deg=-1.4 + math.cos(ph) * 1.5,
             coat_wave_ph=ph,
-            coat_wave_amp=6.5,
-            l_thigh_deg=-s1 * 22.0,
-            l_shin_deg=max(0.0, -s1) * 22.0 + 4.0,
-            l_foot_deg=s1 * 10.0,
-            r_thigh_deg=-s2 * 22.0,
-            r_shin_deg=max(0.0, -s2) * 22.0 + 4.0,
-            r_foot_deg=s2 * 10.0,
-            grip_rel_sh=(-3.5, 9.0 + math.sin(ph * 2.0) * 1.0),
-            weapon_deg=155.0 + s1 * 3.5,
-            blade_len=46.0,
-            sori_sign=1.0,
-            weapon_layer="behind",
-            funnel_spread=1.02,
-            rune_phase=(f / 30.0) * 4.0 * math.pi,
-            lock_lowest_to_ground=True,
+            coat_wave_amp=1.8,
+            l_thigh_deg=l_th,
+            l_shin_deg=l_sh,
+            l_foot_deg=s1 * 3.8 + 1.5,
+            r_thigh_deg=r_th,
+            r_shin_deg=r_sh,
+            r_foot_deg=-s1 * 3.8 - 1.5,
+            grip_rel_sh=(11.2 - s1 * 0.85, 8.6 + abs(math.cos(ph)) * 0.45),
+            weapon_deg=-21.5 + s1 * 3.4,
+            blade_len=48.0,
+            sori_sign=-1.0,
+            weapon_layer="front",
+            funnel_spread=1.02 + 0.02 * math.sin(ph * 2.0),
+            rune_phase=ph * 2.0,
+            lock_lowest_to_ground=False,
+            clamp_ground_only=True,
+            leg_bridge_scale=0.50,
         ))
     return frames
 
@@ -2224,6 +2242,24 @@ def assemble_and_verify_sheet(all_rows_160):
 def write_debug_contact_sheets(sheet):
     os.makedirs(SCRATCH_DIR, exist_ok=True)
 
+    r1_cols, r1_rows = 6, 5
+    r1_im = Image.new("RGBA", (r1_cols * CELL_W, r1_rows * CELL_H), (18, 22, 36, 255))
+    r1_draw = ImageDraw.Draw(r1_im)
+    for f in range(30):
+        gc = f % r1_cols
+        gr = f // r1_cols
+        ox, oy = gc * CELL_W, gr * CELL_H
+        cell = sheet.crop((f * CELL_W, 1 * CELL_H, (f + 1) * CELL_W, 2 * CELL_H))
+        r1_draw.rectangle([ox, oy, ox + CELL_W - 1, oy + CELL_H - 1], outline=(46, 56, 84, 255), width=1)
+        r1_draw.line([(ox + 8, oy + ANCHOR_Y_320), (ox + CELL_W - 8, oy + ANCHOR_Y_320)], fill=(58, 72, 108, 255), width=1)
+        r1_draw.line([(ox + ANCHOR_X_320, oy + ANCHOR_Y_320 - 10), (ox + ANCHOR_X_320, oy + ANCHOR_Y_320 + 6)], fill=(236, 72, 153, 255), width=1)
+        r1_im.alpha_composite(cell, (ox, oy))
+        r1_draw.text((ox + 8, oy + 6), f"R1 F{f:02d} (#{30 + f})", fill=(103, 232, 249, 255))
+
+    p_r1 = os.path.join(SCRATCH_DIR, "debug_android_ex_row1_walk.png")
+    r1_im.save(p_r1)
+    print(f"[Debug] Saved {p_r1}")
+
     r2_cols, r2_rows = 6, 5
     r2_im = Image.new("RGBA", (r2_cols * CELL_W, r2_rows * CELL_H), (18, 22, 36, 255))
     r2_draw = ImageDraw.Draw(r2_im)
@@ -2264,8 +2300,9 @@ def write_debug_contact_sheets(sheet):
 
 def main():
     t0 = time.time()
-    print("=== Building VEX-09 EX (android_ex) Next-Gen Wide-Canvas Assets ===")
-    build_portrait_128()
+    print("=== Building VEX-09 EX (android_ex) Next-Gen Wide-Canvas Sheet ===")
+    if not os.path.exists(OUT_PORTRAIT_PNG):
+        build_portrait_128()
     parts, stand_joints, keyposes = load_rig_and_keyposes()
 
     all_rows_160 = [
