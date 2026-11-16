@@ -60,9 +60,9 @@ const BEAT_DURATIONS = [0.36, 0.34, 0.38, 0.52];
 const INTRA_COMBO_LINK = 0.015;
 
 /**
- * Crisp 4x4 Bayer-stippled pixel floor/rim halo (alpha <= 0.18, zero blurry radial blobs, zero ellipse primitives!).
+ * Crisp 4x4 Bayer-stippled pixel floor/rim halo (`lighter`, luminous colors, alpha <= 0.13, zero blurry radial blobs, zero ellipse primitives!).
  */
-function drawChronoBayerHalo(ctx, cx, cy, rx, ry, outerHex, coreHex, alpha = 0.15) {
+function drawChronoBayerHalo(ctx, cx, cy, rx, ry, outerHex, coreHex, alpha = 0.13) {
   if (alpha <= 0.01 || rx < 4 || ry < 3) return;
   const step = 4;
   const x0 = Math.floor((cx - rx) / step) * step;
@@ -71,8 +71,8 @@ function drawChronoBayerHalo(ctx, cx, cy, rx, ry, outerHex, coreHex, alpha = 0.1
   const y1 = Math.ceil((cy + ry) / step) * step;
 
   ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = Math.min(0.18, alpha);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = Math.min(0.13, alpha);
   for (let py = y0; py <= y1; py += step) {
     const ny = (py - cy) / ry;
     const ny2 = ny * ny;
@@ -2573,12 +2573,12 @@ export class ChronomancerEx extends Fighter {
     const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
     const sy = Math.max(0, Math.min(7, Math.floor(row))) * cell;
     const outerHex =
-      glowColor === 'gold' ? '#b45309' : glowColor === 'violet' ? '#86198f' : '#0f766e';
+      glowColor === 'gold' ? '#fde047' : glowColor === 'violet' ? '#c084fc' : '#2dd4bf';
     const coreHex =
-      glowColor === 'gold' ? '#fde047' : glowColor === 'violet' ? '#e879f9' : '#2dd4bf';
+      glowColor === 'gold' ? '#fde047' : glowColor === 'violet' ? '#c084fc' : '#2dd4bf';
 
     if (row !== 0 && !isReflection) {
-      drawChronoBayerHalo(ctx, x, y, w * 0.34, h * 0.22, outerHex, coreHex, Math.min(0.14, alpha * 0.14));
+      drawChronoBayerHalo(ctx, x, y, w * 0.34, h * 0.22, outerHex, coreHex, Math.min(0.13, alpha * 0.13));
     }
 
     ctx.save();
@@ -3041,7 +3041,7 @@ export class ChronomancerEx extends Fighter {
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
 
     if (!this.isDead) {
-      drawChronoBayerHalo(ctx, this.x, this.groundY - 2, 54, 14, '#0f766e', '#2dd4bf', 0.14);
+      drawChronoBayerHalo(ctx, this.x, this.groundY - 2, 54, 14, '#2dd4bf', '#2dd4bf', 0.12);
     }
 
     if (this.eternalZeroDome) {
@@ -3059,7 +3059,7 @@ export class ChronomancerEx extends Fighter {
 
     // Roman-Numeral XII Floor Dial (`CHRONO-SCHISM: HOURGLASS SCHISM` Rewind Anchor)
     if (this.anchorActive && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      drawChronoBayerHalo(ctx, this.anchorX, this.anchorY - 4, 88, 22, '#b45309', '#facc15', 0.16);
+      drawChronoBayerHalo(ctx, this.anchorX, this.anchorY - 4, 88, 22, '#fde047', '#fde047', 0.13);
       const col = Math.floor(this.chronoPhase * 14) % 30;
       this.drawBloomedVfxCell(
         ctx,
@@ -3092,7 +3092,7 @@ export class ChronomancerEx extends Fighter {
         col = 22 + Math.min(7, Math.floor(su * 8));
       }
       const fade = u > 0.90 ? Math.max(0, (1 - u) / 0.10) : 1;
-      drawChronoBayerHalo(ctx, sf.x, sf.y - 4, 142, 26, '#0f766e', '#2dd4bf', fade * 0.15);
+      drawChronoBayerHalo(ctx, sf.x, sf.y - 4, 142, 26, '#2dd4bf', '#2dd4bf', Math.min(0.13, fade * 0.13));
       this.drawBloomedVfxCell(
         ctx,
         vfxSheet,

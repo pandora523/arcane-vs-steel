@@ -1090,7 +1090,7 @@ export class VFXManager {
     const rgbForType = (type) => {
       if (type === 'cyan') return LIGHT_RGB_CYAN;
       if (type === 'emerald') return LIGHT_RGB_EMERALD;
-      if (type === 'violet') return LIGHT_RGB_VIOLET;
+      if (type === 'violet' || type === 'purple') return LIGHT_RGB_VIOLET;
       if (type === 'indigo') return LIGHT_RGB_INDIGO;
       if (type === 'crimson') return LIGHT_RGB_CRIMSON;
       if (type === 'teal') return LIGHT_RGB_TEAL;
@@ -1228,17 +1228,17 @@ export class VFXManager {
           pushLight(
             f.trueUltMeteor.x,
             Math.max(fGy - 260, f.trueUltMeteor.y),
-            450,
+            580,
             'orange',
             2.15,
-            110,
+            124,
             fGy,
             f,
             false
           );
         }
         if (Number.isFinite(f.trueUltMeteor.targetX)) {
-          pushLight(f.trueUltMeteor.targetX, fGy - 20, 320, 'gold', 1.65, 48, fGy, f, false);
+          pushLight(f.trueUltMeteor.targetX, fGy - 20, 410, 'gold', 1.65, 48, fGy, f, false);
         }
       }
       if (f.heroId === 'icemage_ex' && f.state === 'TRUE_ULTIMATE') {
@@ -1247,6 +1247,18 @@ export class VFXManager {
         const castIntensity = 1.45 + 1.00 * uCast;
         pushLight(f.x, f.y - 96, castRadius, 'cyan', castIntensity, 98, fGy, f, false);
         pushLight(f.x, f.y - 72, castRadius, 'indigo', castIntensity, 98, fGy, f, false);
+      }
+      if (f.heroId === 'android_ex' && (f.state === 'TRUE_ULTIMATE' || f._trueUltBusterTimer > 0)) {
+        const chargeSpan = Math.max(1.2, (f.trueUltDuration || 3.55) * 0.48);
+        const uCharge =
+          f._trueUltBusterTimer > 0 ? 1 : Math.min(1, Math.max(0, (f.stateTimer || 0) / chargeSpan));
+        const chargeRadius = Math.round(260 + 240 * uCharge);
+        const chargeIntensity = 1.25 + 0.45 * uCharge;
+        pushLight(f.x, f.y - 96, chargeRadius, 'cyan', chargeIntensity, 96, fGy, f, false);
+        pushLight(f.x, f.y - 72, chargeRadius, 'violet', chargeIntensity, 96, fGy, f, false);
+        if (f._trueUltBusterTimer > 0 && Number.isFinite(f._trueUltTargetX)) {
+          pushLight(f._trueUltTargetX, fGy - 48, 560, 'cyan', 1.35, 118, fGy, f, false);
+        }
       }
       // Harvest up to 6 active lights from f.fx.active (ArcaneShaderFX) & f.activeVfxAnims!
       let harvestedCount = 0;

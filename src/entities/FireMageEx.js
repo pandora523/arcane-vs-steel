@@ -128,6 +128,8 @@ export class FireMageEx extends Fighter {
     this.spawnedEclipse = false;
     this.didSupernovaFinisher = false;
     this._ultLanceStep = 0;
+    this._ultLockedTargetX = null;
+    this._ultLockedEclipseX = null;
     this._eclipseVisual = { active: false, x: 0, y: 156, groundY: 580, age: 0, maxLife: 1.66 };
     this._orbitSlot = null;
     this._trueUltInit = false;
@@ -258,9 +260,15 @@ export class FireMageEx extends Fighter {
       this.spawnedEclipse = false;
       this.didSupernovaFinisher = false;
       this._ultLanceStep = 0;
+      this._ultLockedTargetX = null;
+      this._ultLockedEclipseX = null;
       this.isInvulnerable = true;
-    } else if (this._eclipseVisual) {
-      this._eclipseVisual.active = false;
+    } else {
+      this._ultLockedTargetX = null;
+      this._ultLockedEclipseX = null;
+      if (this._eclipseVisual) {
+        this._eclipseVisual.active = false;
+      }
     }
 
     if (newState === 'TRUE_ULTIMATE') {
@@ -1478,46 +1486,44 @@ export class FireMageEx extends Fighter {
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const rawTarget = enemy ? enemy.x : this.x + this.facing * 360;
-    const targetX = this._safeFxX(Math.max(180, Math.min(ww - 180, rawTarget)), game);
-    const eclipseX = this._safeFxX(Math.max(180, Math.min(ww - 180, this.x * 0.25 + targetX * 0.75)), game);
+    const initTargetX = this._safeFxX(Math.max(180, Math.min(ww - 180, rawTarget)), game);
+    const initEclipseX = this._safeFxX(
+      Math.max(180, Math.min(ww - 180, this.x * 0.25 + initTargetX * 0.75)),
+      game
+    );
     const eclipseY = this.groundY - 372;
 
     if (!this.spawnedEclipse) {
       this.spawnedEclipse = true;
       this._ultLanceStep = 0;
+      this._ultLockedTargetX = initTargetX;
+      this._ultLockedEclipseX = initEclipseX;
       this.heal(18, 'ECLIPSE CORONA');
-      if (game?.audio) game.audio.play('eclipse_charge', eclipseX);
+      if (game?.audio) game.audio.play('eclipse_charge', initEclipseX);
       game?.vfx?.spawnSpecialCastAura(this, this.ultName, 'NEO-VISION OVERDRIVE', 'arcane', true);
-
-      game?.vfx?.spawnEclipseSupernova({
-        x: eclipseX,
-        y: eclipseY,
-        groundY: this.groundY,
-        maxRadius: 128,
-        color: '#fb923c',
-        coreColor: '#fef08a',
-        maxLife: 1.48
-      });
 
       this._eclipseVisual = {
         active: true,
-        x: eclipseX,
+        x: initEclipseX,
         y: eclipseY,
         groundY: this.groundY,
         age: 0,
         maxLife: this.ultDuration
       };
 
-      this.fx?.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
+      this.fx?.spawn('eclipseSupernovaDomain', initTargetX, this.groundY, {
         light: 1.34
       });
       this.fx?.spawn('arcaneBlinkRift', this._safeFxX(this.x, game), this.groundY, {
         light: 1.24,
         extra: { isArrival: false }
       });
-      this.spawnRemoteSeal(targetX, this.groundY, 136, 1.45, true);
-      this.spawnSolarStarCluster(eclipseX, eclipseY, 10, 160, true);
+      this.spawnRemoteSeal(initTargetX, this.groundY, 136, 1.45, true);
+      this.spawnSolarStarCluster(initEclipseX, eclipseY, 10, 160, true);
     }
+
+    const targetX = this._ultLockedTargetX ?? initTargetX;
+    const eclipseX = this._ultLockedEclipseX ?? initEclipseX;
 
     if (this._eclipseVisual?.active) {
       this._eclipseVisual.age = t;
@@ -1530,8 +1536,9 @@ export class FireMageEx extends Fighter {
     if (t < 0.92) {
       for (const foe of foes) {
         if (foe && !foe.isDead && !foe.isBenched && !foe.isColossalBoss) {
-          const pullDir = Math.sign(targetX - foe.x);
-          foe.x += pullDir * 124 * dt;
+          if (Math.abs(targetX - foe.x) > 8) {
+            foe.x += Math.sign(targetX - foe.x) * 124 * dt;
+          }
         }
       }
     }
@@ -1650,6 +1657,8 @@ export class FireMageEx extends Fighter {
     if (t >= this.ultDuration) {
       this.y = this.groundY;
       this.isInvulnerable = false;
+      this._ultLockedTargetX = null;
+      this._ultLockedEclipseX = null;
       if (this._eclipseVisual) this._eclipseVisual.active = false;
       this.setState('IDLE');
     }
@@ -2418,15 +2427,15 @@ export class FireMageEx extends Fighter {
     const gx = Math.round(m.targetX);
     const gy = Math.round(this.groundY - 6);
     const ringScale = m.phase === 'descent' ? 0.94 + 0.36 * m.progress : Math.max(0.25, m.riftScale);
-    const sealW = Math.round(480 * ringScale);
-    const sealH = Math.round(140 * ringScale);
+    const sealW = Math.round(580 * ringScale);
+    const sealH = Math.round(168 * ringScale);
 
     drawExBayerHalo(
       ctx,
       gx,
       gy,
-      Math.min(96, sealW * 0.42),
-      Math.min(34, sealH * 0.58),
+      Math.min(116, sealW * 0.42),
+      Math.min(42, sealH * 0.58),
       '#ea580c',
       '#fef08a',
       0.19 * Math.min(1, ringScale)
@@ -2469,8 +2478,8 @@ export class FireMageEx extends Fighter {
 
     // Stepped Pixel-Art Catastrophe Lock-On Flare rising from the Target Seal (Row 1 `y = 208`)
     const pillarCol = (baseCol + 4) % 30;
-    const pillarW = Math.round(104 * ringScale);
-    const pillarH = Math.round(164 * ringScale);
+    const pillarW = Math.round(126 * ringScale);
+    const pillarH = Math.round(196 * ringScale);
     ctx.drawImage(
       vfxSheet,
       pillarCol * 208,
@@ -2490,8 +2499,8 @@ export class FireMageEx extends Fighter {
     const rx = Math.round(m.startX);
     const ry = Math.round(m.startY - 18);
     const riftScale = Math.max(0.24, m.riftScale);
-    const breachW = Math.round(620 * riftScale);
-    const breachH = Math.round(256 * riftScale);
+    const breachW = Math.round(780 * riftScale);
+    const breachH = Math.round(320 * riftScale);
 
     // 9 Scrolling Pixel Starfall Lock-On Motes pulsing along `(rx, ry) -> (gx, gy)`
     const guideFade =
@@ -2520,8 +2529,8 @@ export class FireMageEx extends Fighter {
       ctx,
       rx,
       ry,
-      Math.min(96, breachW * 0.42),
-      Math.min(44, breachH * 0.48),
+      Math.min(128, breachW * 0.42),
+      Math.min(58, breachH * 0.48),
       '#c026d3',
       '#fb923c',
       0.18 * Math.min(1, riftScale)
@@ -2546,8 +2555,8 @@ export class FireMageEx extends Fighter {
     );
 
     // Counter-Rotating Black-Sun Eclipse Singularity Core inside the Breach (Row 2 `y = 416`)
-    const coreW = Math.round(340 * riftScale);
-    const coreH = Math.round(188 * riftScale);
+    const coreW = Math.round(440 * riftScale);
+    const coreH = Math.round(240 * riftScale);
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.88 * riftScale;
     ctx.drawImage(
@@ -2575,7 +2584,7 @@ export class FireMageEx extends Fighter {
         const uNode = (i + 0.65) / (wakeNodes + 0.6);
         const wx = Math.round(mx + (rx - mx) * uNode);
         const wy = Math.round(my + (ry - my) * uNode);
-        const wSize = Math.round((384 - uNode * 146) * (0.88 + 0.3 * m.progress));
+        const wSize = Math.round((520 - uNode * 190) * (0.92 + 0.34 * m.progress));
         const wCol = (baseCol + i * 4) % 30;
         const wOffX = Math.round(-wSize * ((104 + 24) / 208));
         const wOffY = Math.round(-wSize * ((104 + 48) / 208));
@@ -2595,18 +2604,18 @@ export class FireMageEx extends Fighter {
     // 4. COLOSSAL NATIVE `208x208` 30FPS 3D-TUMBLING OBSIDIAN-MAGMA DREADNOUGHT METEOR (`Row 6`, `y = 1248`)
     // =========================================================================
     const meteorScale =
-      m.phase === 'rift' ? 0.82 + 0.66 * m.riftScale : 1.54 + 0.72 * m.progress;
-    const meteorSize = Math.round(208 * meteorScale);
-    const drawOffX = Math.round(-meteorSize * ((104 + 18) / 208));
-    const drawOffY = Math.round(-meteorSize * ((104 + 27) / 208));
+      m.phase === 'rift' ? 1.28 + 0.96 * m.riftScale : 2.26 + 1.16 * m.progress;
+    const meteorSize = Math.round((208 * meteorScale) / 2) * 2;
+    const drawOffX = Math.round((-meteorSize * ((104 + 18) / 208)) / 2) * 2;
+    const drawOffY = Math.round((-meteorSize * ((104 + 27) / 208)) / 2) * 2;
     const meteorAlpha = m.phase === 'rift' ? Math.min(1, m.riftScale * 1.25) : 1.0;
 
     drawExBayerHalo(
       ctx,
       mx,
       my,
-      Math.min(84, meteorSize * 0.36),
-      Math.min(72, meteorSize * 0.36),
+      Math.min(132, meteorSize * 0.36),
+      Math.min(112, meteorSize * 0.36),
       '#ea580c',
       '#fef08a',
       0.20 * meteorAlpha
@@ -2630,6 +2639,63 @@ export class FireMageEx extends Fighter {
       meteorSize
     );
     ctx.restore();
+
+    if (m.phase === 'descent') {
+      const dxFlight = gx - rx;
+      const dyFlight = gy - ry;
+      const flightLen = Math.hypot(dxFlight, dyFlight) || 1;
+      const ux = dxFlight / flightLen;
+      const uy = dyFlight / flightLen;
+      const nx = -uy;
+      const ny = ux;
+      const snap2 = (v) => Math.round(v * 0.5) * 2;
+      const noseDist = meteorSize * 0.10;
+      const noseX = mx + ux * noseDist;
+      const noseY = my + uy * noseDist;
+      const bowRadius = meteorSize * 0.24;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      const sparkCount = 18;
+      for (let s = 0; s < sparkCount; s++) {
+        const frac = (s / (sparkCount - 1)) * 2 - 1;
+        const shimmer = (animTime * 9.5 + s * 0.37) % 1;
+        const lead = (1 - frac * frac * 0.72) * (14 + shimmer * 16) + 4;
+        const sweep = frac * frac * 18;
+        const sx = snap2(noseX + nx * frac * bowRadius + ux * (lead - sweep));
+        const sy = snap2(noseY + ny * frac * bowRadius + uy * (lead - sweep));
+        const env = Math.max(0.25, (1 - shimmer * 0.65) * (1 - Math.abs(frac) * 0.45));
+        ctx.globalAlpha = Math.min(0.96, env);
+        ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? '#fef08a' : '#fb923c';
+        const sz = s % 4 === 0 ? 4 : 2;
+        ctx.fillRect(sx - (sz >> 1), sy - (sz >> 1), sz, sz);
+        if (s % 3 === 0) {
+          ctx.fillStyle = '#fb923c';
+          ctx.fillRect(snap2(sx - ux * 6), snap2(sy - uy * 6), 2, 2);
+        }
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+      const debrisCount = 10;
+      for (let d = 0; d < debrisCount; d++) {
+        const phase = animTime * (2.6 + (d % 3) * 0.8) + d * 1.47;
+        const side = (d % 2 === 0 ? 1 : -1) * (0.28 + ((d * 3) % 7) * 0.14);
+        const ahead = 18 + ((d * 17) % 52) + Math.sin(phase) * 8;
+        const orbitPerp = side * meteorSize * 0.25 + Math.cos(phase * 1.3) * 10;
+        const cxD = snap2(noseX + ux * ahead + nx * orbitPerp);
+        const cyD = snap2(noseY + uy * ahead + ny * orbitPerp);
+        ctx.globalAlpha = 0.94;
+        ctx.fillStyle = '#fb923c';
+        ctx.fillRect(cxD - 2, cyD - 2, 4, 4);
+        ctx.fillStyle = d % 2 === 0 ? '#fef08a' : '#ffffff';
+        ctx.fillRect(cxD, cyD - 2, 2, 2);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(snap2(cxD - ux * 4), snap2(cyD - uy * 4), 2, 2);
+      }
+
+      ctx.restore();
+    }
 
     ctx.restore();
   }
@@ -2704,8 +2770,8 @@ export class FireMageEx extends Fighter {
         const baseCol = Math.floor((this.stateTimer || 0) * 30) % 30;
         const ringScale = m.phase === 'descent' ? 0.94 + 0.36 * m.progress : Math.max(0.25, m.riftScale);
         const sealRelX = Math.round((m.targetX - this.x) * this.facing);
-        const sealW = Math.round(346 * ringScale);
-        const sealH = Math.round(100 * ringScale);
+        const sealW = Math.round(418 * ringScale);
+        const sealH = Math.round(120 * ringScale);
 
         ctx.save();
         ctx.imageSmoothingEnabled = false;
@@ -2724,10 +2790,10 @@ export class FireMageEx extends Fighter {
         );
 
         if (m.phase === 'descent') {
-          const meteorScale = 1.54 + 0.72 * m.progress;
-          const meteorSize = Math.round(208 * meteorScale);
-          const drawOffX = Math.round(-meteorSize * ((104 + 18) / 208));
-          const drawOffY = Math.round(-meteorSize * ((104 + 27) / 208));
+          const meteorScale = 2.26 + 1.16 * m.progress;
+          const meteorSize = Math.round((208 * meteorScale) / 2) * 2;
+          const drawOffX = Math.round((-meteorSize * ((104 + 18) / 208)) / 2) * 2;
+          const drawOffY = Math.round((-meteorSize * ((104 + 27) / 208)) / 2) * 2;
           const meteorRelX = Math.round((m.x - this.x) * this.facing);
           const meteorRelY = Math.round(m.y - this.y - groundPlantOffset);
           ctx.save();

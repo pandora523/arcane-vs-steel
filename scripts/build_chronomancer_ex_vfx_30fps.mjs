@@ -209,6 +209,17 @@ function addCircularChronoAccents104(rgba, row, col) {
         blendPx104(rgba, cx + d, cy + Math.round(d * 0.56), 255, 255, 255, fall);
       }
     }
+    const pulseD = Math.round(-span + (col / 25) * (span * 2));
+    drawStar4Px104(
+      rgba,
+      cx + pulseD,
+      cy + Math.round(pulseD * 0.56),
+      2,
+      254,
+      240,
+      138,
+      0.88 * Math.max(0.35, k)
+    );
   } else if (row === 7 && col <= 24) {
     // Circular 12-Ray Twelfth-Bell Golden Sunburst & Resonance Ring (0 boxy rectangles!)
     const fade = 1 - col / 25;
@@ -418,6 +429,8 @@ function bakeChronomancerExVfx() {
     const inst = instantiateShaderEffect(spec.def, spec.cfg);
 
     for (let c = 0; c < COLS; c++) {
+      surface104.albedo.fill(0);
+      surface104.emissive.fill(0);
       clearPixelSurface(surface104);
       inst.render(pen104, 'back');
       inst.render(pen104, 'front');

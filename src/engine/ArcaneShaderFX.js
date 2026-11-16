@@ -209,8 +209,10 @@ export function clearPixelSurface(surface) {
   if (typeof surface.dirtyMinY === 'number' && typeof surface.dirtyMaxY === 'number') {
     if (surface.dirtyMaxY >= surface.dirtyMinY) {
       const w = surface.width;
-      const start = Math.max(0, surface.dirtyMinY) * w;
-      const end = Math.min(surface.height, surface.dirtyMaxY + 1) * w;
+      const minRow = Math.max(0, surface.dirtyMinY - 4);
+      const maxRow = Math.min(surface.height - 1, surface.dirtyMaxY + 4);
+      const start = minRow * w;
+      const end = (maxRow + 1) * w;
       surface.albedo.fill(0, start, end);
       surface.emissive.fill(0, start, end);
     }
