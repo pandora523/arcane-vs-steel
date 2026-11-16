@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SERAPHINA EX (`priestess_ex` / `PriestessEx.js`) — Next-Gen 30fps VFX Sprite Sheet Builder.
+ * SERAPHINA EX (`priestess_ex` / `PriestessEx.js`) — Newly Born Next-Gen 30fps VFX Sprite Sheet Builder (`?v=30fps115`).
  *
  * Outputs:
  *   1. `assets/sprites/priestess_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208)
@@ -10,9 +10,8 @@
  *   - 100% `2x2` integer pixel blocks (authored at `104x104` logical -> upscaled `2x NEAREST` to `208x208`)
  *   - Binary alpha (`0` or `255`), `4px` output safety margin (`0/240` border clips)
  *   - `29/29` active transitions per row across all 8 rows
- *   - Preserves iconic `DIVINE SANCTUARY`, `SERAPHIC CATHEDRAL` Rose Mandala (`Row 3`), and
- *     `FINAL GRACE` (`Row 5` Charge Sphere, `Row 6` Prism Muzzle, `Row 7` Horizontal Beam Segment)
- *     while adding Next-Gen 4-band stained-glass serrated light-crescents & razor hit-scars on `Row 4`!
+ *   - 0 melee slash crescents! Row 4 is a pure 30fps Stained-Glass Rose-Window Magic Circle & Starburst Seal,
+ *     supporting `STAINED-GLASS BENEDICTION`, `SERAPHIC ORGAN OF LIGHT`, & `FINAL GRACE: GENESIS LUMEN`!
  */
 
 import fs from 'node:fs';
@@ -26,12 +25,12 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps114';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps115';
 
 import {
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_EFFECT_REGISTRY
-} from '../src/engine/shaders/seraphicShaders.js?v=30fps114';
+} from '../src/engine/shaders/seraphicShaders.js?v=30fps115';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -98,7 +97,7 @@ function encodeRgbaPng(width, height, rgba) {
 }
 
 function putPx104(rgba, x, y, r, g, b, a = 255) {
-  if (x < 2 || y < 2 || x >= 102 || y >= 102) return;
+  if (x < 3 || y < 3 || x >= 101 || y >= 101) return;
   const o = (y * 104 + x) * 4;
   rgba[o] = r;
   rgba[o + 1] = g;
@@ -106,77 +105,106 @@ function putPx104(rgba, x, y, r, g, b, a = 255) {
   rgba[o + 3] = a;
 }
 
-function drawRazorSanctumHitScar104(rgba, cx, cy, angleDeg, len, width, progress) {
-  const rad = (angleDeg * Math.PI) / 180;
-  const ux = Math.cos(rad);
-  const uy = Math.sin(rad);
-  const nx = -uy;
-  const ny = ux;
-  const fade = Math.max(0, 1 - progress);
-  const halfLen = len * (0.42 + 0.58 * Math.min(1, progress * 2.8));
-  const halfW = Math.max(0.8, width * fade);
-
-  const steps = Math.max(8, Math.ceil(halfLen * 2.6));
-  for (let i = -steps; i <= steps; i++) {
-    const u = i / steps;
-    const prof = Math.cos(u * Math.PI * 0.5);
-    const lw = halfW * prof;
-    const bx = cx + ux * halfLen * u;
-    const by = cy + uy * halfLen * u;
-    const span = Math.ceil(lw + 1.2);
-    for (let s = -span; s <= span; s++) {
-      const af = Math.abs(s) / Math.max(0.5, lw);
-      if (af > 1.22) continue;
-      const px = Math.round(bx + nx * s);
-      const py = Math.round(by + ny * s);
-      if (px < 2 || py < 2 || px >= 102 || py >= 102) continue;
-      if (af > 0.96) {
-        const o = (py * 104 + px) * 4;
-        if (rgba[o + 3] === 0) putPx104(rgba, px, py, 28, 16, 40, 255);
-      } else if (af < 0.34) {
-        putPx104(rgba, px, py, 255, 255, 255, 255);
-      } else if (af < 0.64) {
-        putPx104(rgba, px, py, 254, 240, 138, 255);
-      } else if (af < 0.85) {
-        putPx104(rgba, px, py, 251, 191, 36, 255);
-      } else {
-        putPx104(rgba, px, py, 251, 113, 133, 255);
-      }
-    }
+function putOut104(rgba, x, y, r, g, b) {
+  if (x < 3 || y < 3 || x >= 101 || y >= 101) return;
+  const o = (y * 104 + x) * 4;
+  if (rgba[o + 3] === 0) {
+    rgba[o] = r;
+    rgba[o + 1] = g;
+    rgba[o + 2] = b;
+    rgba[o + 3] = 255;
   }
 }
 
-function drawStainedGlassCrescent104(rgba, cx, cy, deg0, deg1, rOuter, thick, progress) {
-  const a0 = (Math.min(deg0, deg1) * Math.PI) / 180;
-  const a1 = (Math.max(deg0, deg1) * Math.PI) / 180;
-  const span = Math.max(0.1, a1 - a0);
-  const fade = Math.max(0.15, 1 - progress * 0.85);
-  const effThick = thick * fade;
+function drawSanctumStar4(rgba, cx, cy, arm) {
+  const icx = Math.round(cx);
+  const icy = Math.round(cy);
+  for (let d = -arm - 1; d <= arm + 1; d++) {
+    putOut104(rgba, icx + d, icy, 26, 16, 38);
+    putOut104(rgba, icx, icy + d, 26, 16, 38);
+  }
+  for (let d = -arm; d <= arm; d++) {
+    putPx104(rgba, icx + d, icy, 254, 240, 138, 255);
+    putPx104(rgba, icx, icy + d, 254, 240, 138, 255);
+  }
+  putPx104(rgba, icx - 1, icy - 1, 251, 113, 133, 255);
+  putPx104(rgba, icx + 1, icy - 1, 56, 189, 248, 255);
+  putPx104(rgba, icx - 1, icy + 1, 56, 189, 248, 255);
+  putPx104(rgba, icx + 1, icy + 1, 251, 113, 133, 255);
+  putPx104(rgba, icx, icy, 255, 255, 255, 255);
+}
 
-  for (let py = 3; py < 101; py++) {
-    for (let px = 3; px < 101; px++) {
+/**
+ * Pure High-Priestess Row 4: 30fps Stained-Glass Rose-Window Magic Circle & Prismatic Starburst Seal!
+ * Zero melee slash crescents!
+ */
+function drawRoseWindowMagicCircle104(rgba, cx, cy, frameIdx, totalFrames) {
+  const phase = frameIdx / totalFrames;
+  const prog = frameIdx / Math.max(1, totalFrames - 1);
+  const rot = phase * Math.PI * 2;
+  const expand = prog < 0.2 ? 0.68 + (prog / 0.2) * 0.32 : 1.0;
+  const rOuter = 40 * expand;
+  const rMid = 26 * expand;
+  const dissipate = prog > 0.72 ? (prog - 0.72) / 0.28 : 0;
+
+  // Stained-glass Bayer-dithered rose/sapphire/gold mosaic petals
+  for (let py = 6; py < 98; py++) {
+    for (let px = 6; px < 98; px++) {
       const dx = px - cx;
       const dy = py - cy;
-      const r = Math.hypot(dx, dy);
-      if (r > rOuter || r < rOuter - effThick - 4) continue;
-      let ang = Math.atan2(dy, dx);
-      while (ang < a0 - Math.PI) ang += Math.PI * 2;
-      while (ang > a0 + Math.PI) ang -= Math.PI * 2;
-      if (ang < a0 || ang > a1) continue;
-      const u = (ang - a0) / span;
-      const taper = Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u))), 0.6);
-      const saw = Math.sin(u * 40 + progress * 10) * 0.6 + Math.cos(u * 83) * 0.4;
-      const lt = effThick * (0.25 + 0.85 * taper) + (saw > 0.3 ? 2.1 : 0);
-      if (r < rOuter - lt) continue;
-      const v = (rOuter - r) / Math.max(1, lt);
+      const d = Math.hypot(dx, dy);
+      if (d > rOuter - 2 || d < 5) continue;
       const bayer = BAYER4[py & 3][px & 3] / 16.0;
-      if (u < 0.22 && bayer > (u / 0.22) * 1.1) continue;
-      if (progress > 0.55 && bayer > (1.05 - progress) * 2.0) continue;
+      if (bayer > 0.42 * (1 - dissipate)) continue;
+      let ang = Math.atan2(dy, dx) + rot;
+      while (ang < 0) ang += Math.PI * 2;
+      const sector = Math.floor((ang / (Math.PI * 2)) * 12) % 3;
+      if (sector === 0) putPx104(rgba, px, py, 251, 113, 133, 255);
+      else if (sector === 1) putPx104(rgba, px, py, 56, 189, 248, 255);
+      else putPx104(rgba, px, py, 254, 240, 138, 255);
+    }
+  }
 
-      if (v < 0.30) putPx104(rgba, px, py, 255, 255, 255, 255);
-      else if (v < 0.58) putPx104(rgba, px, py, 254, 240, 138, 255);
-      else if (v < 0.82) putPx104(rgba, px, py, 251, 191, 36, 255);
-      else putPx104(rgba, px, py, 251, 113, 133, 255);
+  // Concentric Gothic Gold Tracery Rings
+  for (const [rad, isOuter] of [
+    [rOuter, true],
+    [rMid, false]
+  ]) {
+    const steps = 112;
+    for (let i = 0; i < steps; i++) {
+      const ang = (i / steps) * Math.PI * 2 + (isOuter ? rot : -rot);
+      const petal = isOuter ? Math.cos(ang * 8) * 1.4 : 0;
+      const px = Math.round(cx + Math.cos(ang) * (rad + petal));
+      const py = Math.round(cy + Math.sin(ang) * (rad + petal));
+      if (dissipate > 0 && BAYER4[py & 3][px & 3] / 16.0 < dissipate) continue;
+      putOut104(rgba, px + 1, py, 26, 16, 38);
+      putOut104(rgba, px - 1, py, 26, 16, 38);
+      putOut104(rgba, px, py + 1, 26, 16, 38);
+      putOut104(rgba, px, py - 1, 26, 16, 38);
+      if (i % 7 === 0) putPx104(rgba, px, py, 255, 255, 255, 255);
+      else putPx104(rgba, px, py, 252, 214, 78, 255);
+    }
+  }
+
+  // 8 Gothic Rose Mullions
+  for (let k = 0; k < 8; k++) {
+    const a = rot + (k * Math.PI) / 4;
+    const x1 = cx + Math.cos(a) * rOuter;
+    const y1 = cy + Math.sin(a) * rOuter;
+    for (let s = 0; s <= 36; s++) {
+      const t = s / 36;
+      const px = Math.round(cx + (x1 - cx) * t);
+      const py = Math.round(cy + (y1 - cy) * t);
+      if (dissipate > 0 && BAYER4[py & 3][px & 3] / 16.0 < dissipate + 0.1) continue;
+      putPx104(rgba, px, py, 254, 240, 138, 255);
+    }
+  }
+
+  if (dissipate < 0.65) {
+    drawSanctumStar4(rgba, cx, cy, 6);
+    for (let k = 0; k < 4; k++) {
+      const ga = rot + (k * Math.PI) / 2;
+      drawSanctumStar4(rgba, cx + Math.cos(ga) * rOuter, cy + Math.sin(ga) * rOuter, 3);
     }
   }
 }
@@ -281,44 +309,47 @@ function bakeVfxSheet() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: Sacred Star-Cross Chakram Bolt',
+      name: 'Row 0: Sanctum Diamond Star-Cross Ray Orb',
       windowSec: 1.0,
+      addStarGlints: true,
       layers: [{ def: SERAPHIC_EFFECT_REGISTRY.sacredStarOrbCell, warmup: 0, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
     },
     {
-      name: 'Row 1: Descending Holy Valkyrie Spear & Cathedral Star Geyser',
+      name: 'Row 1: Purifying Judgment Sky-Ray & Cathedral Star Geyser',
       windowSec: 1.0,
       layers: [{ def: SERAPHIC_EFFECT_REGISTRY.holyValkyrieSpearCell, warmup: 0, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
     },
     {
-      name: 'Row 2: 7-Spire Gothic Stained-Glass Cathedral Sanctum Pillar',
+      name: 'Row 2: Golden Cathedral Organ-of-Light Column',
       windowSec: 1.0,
       layers: [{ def: SERAPHIC_EFFECT_REGISTRY.cathedralLightPillarCell, warmup: 0.02, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
     },
     {
       name: 'Row 3: Grand Stained-Glass Cathedral Rose Window Mandala',
       windowSec: 1.0,
+      addStarGlints: true,
       layers: [{ def: SERAPHIC_EFFECT_REGISTRY.stainedGlassRoseMandalaCell, warmup: 0, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
     },
     {
-      name: 'Row 4: Next-Gen Stained-Glass Serrated Light-Crescent & Razor Hit-Scar',
+      name: 'Row 4: Pure 30fps Stained-Glass Rose-Window Magic Circle & Starburst Seal',
       windowSec: 1.0,
-      customSlashRow: true,
-      layers: [{ def: SERAPHIC_EFFECT_REGISTRY.sacredStarCrescentCell, warmup: 0.02, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
+      pureMagicCircleRow: true,
+      layers: []
     },
     {
-      name: 'Row 5: Final Grace Prismatic Sunburst Scepter Charge Core',
+      name: 'Row 5: Final Grace Genesis Lumen Celestial Dome Charge Core',
       windowSec: 1.0,
       layers: [{ def: SERAPHIC_EFFECT_REGISTRY.finalGraceChargeSphereCell, warmup: 0, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
     },
     {
-      name: 'Row 6: Final Grace Prismatic Focusing Cannon Muzzle',
+      name: 'Row 6: Final Grace Genesis Lumen Prismatic Scepter Muzzle',
       windowSec: 1.0,
       layers: [{ def: SERAPHIC_EFFECT_REGISTRY.finalGraceMuzzlePrismCell, warmup: 0.02, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
     },
     {
-      name: 'Row 7: Final Grace Straight Horizontal Purifying Beam Segment',
+      name: 'Row 7: Final Grace Genesis Lumen Prismatic Horizon Purification Beam',
       windowSec: 1.0,
+      prismaticBeamAccent: true,
       layers: [{ def: SERAPHIC_EFFECT_REGISTRY.finalGraceHorizonBeamCell, warmup: 0.02, cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE } }]
     }
   ];
@@ -341,21 +372,31 @@ function bakeVfxSheet() {
     let transitions = 0;
 
     for (let c = 0; c < COLS; c++) {
-      const prog = c / (COLS - 1);
-      clearPixelSurface(surface);
-      for (const inst of instances) inst.render(pen, 'back');
-      for (const inst of instances) inst.render(pen, 'front');
-      resolveSurfaceToRGBA(surface, cell104, 1.12);
+      cell104.fill(0);
+      if (spec.pureMagicCircleRow) {
+        drawRoseWindowMagicCircle104(cell104, 52, 52, c, COLS);
+      } else {
+        clearPixelSurface(surface);
+        for (const inst of instances) inst.render(pen, 'back');
+        for (const inst of instances) inst.render(pen, 'front');
+        resolveSurfaceToRGBA(surface, cell104, 1.12);
+      }
 
-      if (spec.customSlashRow) {
-        drawStainedGlassCrescent104(cell104, 48, 52, -76 + c * 1.3, 76 + c * 1.1, 44, 15, prog);
-        drawRazorSanctumHitScar104(cell104, 54, 52, -28 + c * 0.5, 44, 5.0, prog * 0.85);
-        if (c < 18) {
-          drawRazorSanctumHitScar104(cell104, 54, 52, 46 - c * 0.5, 28, 3.2, c / 18.0);
+      if (spec.prismaticBeamAccent) {
+        // Add delicate sapphire & celestial-rose stained-glass prism bands along outer beam edge
+        for (let x = 8; x < 96; x++) {
+          const wave = Math.round(Math.sin((x / 16) * Math.PI * 2 - (c / COLS) * Math.PI * 4) * 1.5);
+          putPx104(cell104, x, 34 + wave, 56, 189, 248, 255);
+          putPx104(cell104, x, 70 - wave, 251, 113, 133, 255);
         }
       }
 
-      // Orbiting sanctum star mote ensures 29/29 active transitions cleanly
+      if (spec.addStarGlints) {
+        const ga = (c / COLS) * Math.PI * 2;
+        drawSanctumStar4(cell104, 52 + Math.cos(ga) * 28, 52 + Math.sin(ga) * 28, 2);
+        drawSanctumStar4(cell104, 52 - Math.cos(ga) * 28, 52 - Math.sin(ga) * 28, 2);
+      }
+
       const sparkAng = (c / COLS) * Math.PI * 2 + r * 0.8;
       const sx = Math.round(52 + Math.cos(sparkAng) * 34);
       const sy = Math.round(52 + Math.sin(sparkAng) * 34);

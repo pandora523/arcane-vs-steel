@@ -1,22 +1,30 @@
-import { Fighter } from './Fighter.js?v=30fps114';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps114';
-import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps114';
+import { Fighter } from './Fighter.js?v=30fps115';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps115';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps115';
+import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps115';
 
 const AUTO_SLICES_EX = [
-  [60, 8], // Beat 1 (V0, 0.36s): Grounded Wide Sanctum Sweep + Holy Light Bolt -> snaps at F03 (63)
-  [68, 7], // Beat 2 (V1, 0.34s): Grounded Reverse Rising Benediction Arc + Twin Holy Bolts -> snaps at F09 (69)
-  [75, 8], // Beat 3 (V2, 0.38s): Grounded 2.5D Cathedral Rose-Halo Vortex (2-Hit + Holy Spear) -> snaps at F17/F18 (77/78)
-  [83, 7]  // Beat 4 (V3, 0.52s): Grounded Radiant Star-Pillar Finisher (3-Hit + Dawn Grace + Holy Bolt) -> snaps at F25 (85)
+  [60, 8], // Beat 1 (V0, 0.38s): Grounded Rose-Window Magic Circle + Sanctum Light-Ray -> snaps at F03 (63)
+  [68, 7], // Beat 2 (V1, 0.36s): Grounded Twin Benediction Halos + Twin Converging Holy Light Spears -> snaps at F09 (69)
+  [75, 8], // Beat 3 (V2, 0.40s): Grounded Choir Invocation -> Remote Rose-Cathedral Sanctum Pillar (2-Hit) -> snaps at F17 (77)
+  [83, 7]  // Beat 4 (V3, 0.52s): -38px Grounded Sanctum Backstep Kite -> Purifying Star-Pillar + Holy Bolt + Dawn Grace (3-Hit) -> snaps at F25 (85)
 ];
 
-const BEAT_DURATIONS = [0.36, 0.34, 0.38, 0.52];
+const BEAT_DURATIONS = [0.38, 0.36, 0.40, 0.52];
 const INTRA_COMBO_LINK = 0.015;
 
+const BAYER_4X4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5]
+];
+
 /**
- * Seraphina EX (`priestess_ex`) — Neo-Vision Seraphic Sovereign.
- * Next-Gen Wide-Canvas (`320x240`, `anchorX=112, anchorY=230`, right-facing `+X` native)
- * FFBE / Last Cloudia Sunburst Cathedral Scepter-Lance + Sacred Artillery Champion.
+ * Seraphina EX (`priestess_ex`) — Neo-Vision High Priestess & Sanctuary Sovereign.
+ * Ornate Sunburst Cathedral Scepter / Holy Crozier + Pure Stained-Glass Sacred Artillery
+ * (`320x240`, `anchorX=112, anchorY=230`, native `+X` right-facing, `512px` Long-Range Sorcery,
+ * strictly grounded `0px` float across `Row 2`).
  * Coexists 100% independently alongside Legacy Seraphina (`priestess`).
  */
 export class PriestessEx extends Fighter {
@@ -26,14 +34,14 @@ export class PriestessEx extends Fighter {
       ...opts,
       name: opts.name || 'Seraphina EX',
       maxHp: 3720,
-      attackRange: 228,
-      moveSpeed: 180,
+      attackRange: 512,
+      moveSpeed: 164,
       autoInterval: 1.02,
       lightColor: 'rgba(253, 224, 71, 1)',
       primaryColor: '#fde047',
       secondaryColor: '#ffffff',
       hasTrueUltimate: true,
-      trueUltName: 'FINAL GRACE',
+      trueUltName: 'FINAL GRACE: GENESIS LUMEN',
       trueUltDuration: 4.25
     });
 
@@ -45,18 +53,18 @@ export class PriestessEx extends Fighter {
     this.autoDuration = BEAT_DURATIONS[0];
     this._postFlurryInterval = 1.50;
 
-    this.skillName = 'DIVINE SANCTUARY';
+    this.skillName = 'STAINED-GLASS BENEDICTION';
     this.skillMaxCooldown = 4.80;
     this.skillCooldown = 1.20;
-    this.skillDuration = 0.98;
-    this.skillTriggerRange = 460;
+    this.skillDuration = 1.02;
+    this.skillTriggerRange = 512;
 
-    this.ultName = 'SERAPHIC CATHEDRAL';
-    this.ultSub = 'ARCHANGEL ASCENT & SANCTUM SPIRES';
-    this.ultDuration = 1.56;
+    this.ultName = 'SERAPHIC ORGAN OF LIGHT';
+    this.ultSub = 'FIVE-PILLAR CATHEDRAL & DESCENDING HALO';
+    this.ultDuration = 1.62;
 
-    this.trueUltName = 'FINAL GRACE';
-    this.trueUltSub = 'SUPREME FINISHER - PURIFYING HORIZON BEAM';
+    this.trueUltName = 'FINAL GRACE: GENESIS LUMEN';
+    this.trueUltSub = 'SUPREME FINISHER - PRISMATIC HORIZON BEAM';
     this.trueUltDuration = 4.25;
 
     // Mobility, Seraphic Wing Vault & Benediction Ward State
@@ -76,7 +84,7 @@ export class PriestessEx extends Fighter {
     this.ascentTargetX = this.x;
     this.wingSpearCount = 0;
 
-    // 4-Beat Strictly Grounded Scepter-Lance Combo State (`0px` float across V0..V3!)
+    // 4-Beat Strictly Grounded (`0px` float) Sacred Sorcery Combo State
     this.comboStep = 0;
     this._autoVariant = 0;
     this._comboPersistTimer = 0;
@@ -86,13 +94,16 @@ export class PriestessEx extends Fighter {
     this._beatStartX = this.x;
     this._beatTargetX = this.x;
     this._bootsPlanted = false;
-    this._dragSparkAcc = 0;
     this._drewScepterFocus = false;
+    this._v2RemoteX = this.x + 320;
+    this._v3RemoteX = this.x + 340;
 
-    // Skill / Overdrive / Final Grace State
+    // Newly Born Skill / Overdrive / Genesis Lumen State
     this.didSanctuaryHeal = false;
+    this._skillJudgmentRays = [];
     this.didUltMiracle = false;
-    this.ultChakramStep = 0;
+    this.ultOrganStep = 0;
+    this._organVisual = { active: false, centerX: 0, groundY: 580, age: 0, maxLife: 1.62 };
     this._spawnedBenedictionWard = false;
 
     this.finalGraceBeamActive = false;
@@ -106,12 +117,14 @@ export class PriestessEx extends Fighter {
     this._finalGracePulseAccum = 0;
     this._finalGraceMoteAccum = 0;
 
-    // Pixel-pure visual layers (zero canvas rotation, zero smooth ellipses)
+    // Pixel-pure visual layers (zero canvas rotation, zero smooth ellipses, zero blurry glow blobs)
     this._overrideFrameIdx = null;
     this.afterimages = [];
     this.afterimageAccum = 0;
     this.activeVfxAnims = [];
-    this.razorScars = [];
+    this.exParticles = [];
+    this.hitStarbursts = [];
+    this.prismSeals = [];
     this.stepDustTimer = 0;
 
     this.fx = new ArcaneShaderFX(SERAPHIC_EFFECT_REGISTRY, {
@@ -125,31 +138,33 @@ export class PriestessEx extends Fighter {
     }
   }
 
+  isHackAndSlashMelee() {
+    return false;
+  }
+
   isHackAndSlashCaster() {
-    return true;
+    return false;
   }
 
   hasHackAndSlashCombo() {
-    return true;
-  }
-
-  getHackAndSlashLockRange() {
-    return 510;
+    return false;
   }
 
   getAiStyleProfile() {
     return {
-      archetype: 'SERAPHIC_SOVEREIGN',
-      preferredDist: 208,
-      minSafeDist: 108,
-      aggression: 0.80,
-      dodgeRate: 0.74,
-      skillBias: 0.88
+      comboGoal: 4,
+      sweetMin: 315,
+      sweetMax: 445,
+      counterCrouchBias: 0.56,
+      midLeapMin: 0,
+      midLeapMax: 0,
+      midLeapChance: 0,
+      postStyle: 'sanctuary'
     };
   }
 
   takeDamage(amount, attacker, isCrit = false, knockX = 0, knockY = 0) {
-    // Unbreakable Final Grace Charge: absorbs incoming strikes into tankedDamage without losing HP
+    // Unbreakable Genesis Lumen Dome: absorbs incoming strikes into tankedDamage without losing HP
     if (this.state === 'TRUE_ULTIMATE' && !this.finalGraceDidFire) {
       const absorbed = Math.max(0, Math.round(amount || 0));
       this.tankedDamage = (this.tankedDamage || 0) + absorbed;
@@ -159,7 +174,7 @@ export class PriestessEx extends Fighter {
   }
 
   _clampArenaX(xv, game) {
-    const margin = 80;
+    const margin = 84;
     const minX =
       game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
         ? game.adventure.lockMinX
@@ -175,7 +190,7 @@ export class PriestessEx extends Fighter {
         game.adventure.bossEntity.isColossalBoss
     );
     const maxX = bossAlive
-      ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 92)
+      ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 96)
       : rawMaxX;
     return Math.max(minX, Math.min(maxX, xv));
   }
@@ -226,12 +241,15 @@ export class PriestessEx extends Fighter {
       this.didSanctuaryHeal = false;
       this.isAngelicAscent = false;
       this.y = this.groundY;
+      this._skillJudgmentRays.length = 0;
     }
 
     if (newState === 'ULTIMATE') {
       this.didUltMiracle = false;
-      this.ultChakramStep = 0;
+      this.ultOrganStep = 0;
       this.isInvulnerable = true;
+    } else if (this._organVisual) {
+      this._organVisual.active = false;
     }
 
     if (newState === 'TRUE_ULTIMATE') {
@@ -271,12 +289,19 @@ export class PriestessEx extends Fighter {
       this.finalGraceBeamActive = false;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
-      this.razorScars.length = 0;
+      this.exParticles.length = 0;
+      this.hitStarbursts.length = 0;
+      this.prismSeals.length = 0;
+      if (this._organVisual) this._organVisual.active = false;
     }
   }
 
   /**
-   * Initializes one strictly grounded beat (`0..3`) of Seraphina EX's 4-beat Sunburst Cathedral Scepter-Lance combo.
+   * Initializes one strictly grounded beat (`0..3`) of Seraphina EX's 4-beat Long-Range Sacred Sorcery combo:
+   * - `0px` float (`y = groundY, vy = 0`) across `V0..V3`!
+   * - `-26px` retreat step when `horizDist < 215`.
+   * - Poised `10..14px` cast-step at range on `V0..V2`.
+   * - `-38px` grounded Sanctum Backstep Kite on `V3`!
    */
   _beginComboBeat(beatIdx, game) {
     const v = ((beatIdx % 4) + 4) % 4;
@@ -289,9 +314,8 @@ export class PriestessEx extends Fighter {
     this.didActionFrame = false;
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
-    this._dragSparkAcc = 0;
     this._drewScepterFocus = false;
-    this._comboPersistTimer = 0.76;
+    this._comboPersistTimer = 0.80;
     this.unstoppablePoise = v >= 2;
     this.isAngelicAscent = false;
     this.y = this.groundY;
@@ -307,28 +331,93 @@ export class PriestessEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    let desiredX = this.x + this.facing * (v === 0 ? 20 : v === 2 ? 18 : 12);
+    let stepDelta = v === 3 ? -38 : v === 0 ? 12 : v === 1 ? 10 : 14;
 
     if (enemy && !enemy.isDead) {
       const horizDist = Math.abs(enemy.x - this.x);
-      if (horizDist <= 280) {
-        const sweetDist = v === 2 ? 110 : 116;
-        const idealStandX = enemy.x - this.facing * sweetDist;
-        const rawDelta = (idealStandX - this.x) * this.facing;
-        const maxForward = v === 0 ? 108 : v === 2 ? 46 : 32;
-        const clampedForward = Math.max(0, Math.min(maxForward, rawDelta));
-        desiredX = this.x + this.facing * clampedForward;
+      if (v === 3) {
+        stepDelta = -38;
+      } else if (horizDist < 215) {
+        stepDelta = -26;
       } else {
-        const flashStep = v === 0 ? 26 : v === 2 ? 22 : 14;
-        desiredX = this.x + this.facing * flashStep;
+        stepDelta = v === 0 ? 12 : v === 1 ? 10 : 14;
       }
     }
 
+    const desiredX = this.x + this.facing * stepDelta;
     this._beatTargetX = this._clampArenaX(desiredX, game);
   }
 
   queueNextComboBeat() {
     this._queuedNextBeat = true;
+  }
+
+  // ============================================================================
+  // PIXEL-PURE NEXT-GEN PARTICLE, FEATHER, ROSE PRISM & BAYER HALO ENGINE (`<= 0.20`)
+  // ============================================================================
+  spawnExParticle(opts) {
+    if (!opts || !Number.isFinite(opts.x) || !Number.isFinite(opts.y)) return;
+    if (this.exParticles.length >= 104) this.exParticles.shift();
+    this.exParticles.push({
+      x: opts.x,
+      y: opts.y,
+      vx: opts.vx || 0,
+      vy: opts.vy || 0,
+      gravity: opts.gravity ?? -24,
+      drag: opts.drag ?? 0.96,
+      shape: opts.shape || 'star4', // 'star4' | 'feather' | 'diamond' | 'rune' | 'ring'
+      size: opts.size || 4,
+      color: opts.color || '#fde047',
+      coreColor: opts.coreColor || '#ffffff',
+      age: 0,
+      maxLife: opts.maxLife || 0.42
+    });
+  }
+
+  spawnSanctumCluster(x, y, count = 6, speed = 130, withFeathers = false) {
+    const palette = ['#fde047', '#fb7185', '#38bdf8', '#fef08a'];
+    for (let i = 0; i < count; i++) {
+      const ang = (i / Math.max(1, count)) * Math.PI * 2 + ((i * 1.19) % 0.6);
+      const spd = speed * (0.45 + ((i * 29) % 10) * 0.065);
+      const shape =
+        withFeathers && i % 2 === 0 ? 'feather' : i % 3 === 0 ? 'star4' : i % 3 === 1 ? 'diamond' : 'rune';
+      this.spawnExParticle({
+        x: x + Math.cos(ang) * 8,
+        y: y + Math.sin(ang) * 8,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - (shape === 'feather' ? 18 : 34),
+        gravity: shape === 'feather' ? 26 : -22,
+        shape,
+        size: i % 3 === 0 ? 5 : 4,
+        color: palette[i % palette.length],
+        coreColor: '#ffffff',
+        maxLife: shape === 'feather' ? 0.56 : 0.32 + (i % 3) * 0.07
+      });
+    }
+  }
+
+  spawnHitStarburst(x, y, primaryHex = '#fde047', accentHex = '#fb7185', scale = 1.0) {
+    if (this.hitStarbursts.length >= 14) this.hitStarbursts.shift();
+    this.hitStarbursts.push({
+      x: Math.round(x),
+      y: Math.round(y),
+      primaryHex,
+      accentHex,
+      scale,
+      age: 0,
+      maxLife: 0.18
+    });
+  }
+
+  spawnPrismSeal(x, groundY, radius = 64, maxLife = 0.58) {
+    if (this.prismSeals.length >= 12) this.prismSeals.shift();
+    this.prismSeals.push({
+      x: Math.round(x),
+      groundY: Math.round(groundY),
+      radius,
+      age: 0,
+      maxLife
+    });
   }
 
   ensureSlipstream() {
@@ -339,7 +428,7 @@ export class PriestessEx extends Fighter {
         offsetX: -8,
         offsetY: -114,
         flip: this.facing < 0,
-        light: 1.15
+        light: 1.12
       });
     }
   }
@@ -353,7 +442,7 @@ export class PriestessEx extends Fighter {
         offsetY: 0,
         useGroundY: true,
         flip: false,
-        light: isUltimate ? 1.32 : 1.18,
+        light: isUltimate ? 1.24 : 1.14,
         extra: { isUltimate }
       });
     }
@@ -367,13 +456,13 @@ export class PriestessEx extends Fighter {
         offsetX: 0,
         offsetY: -118,
         flip: this.facing < 0,
-        light: 1.34
+        light: 1.24
       });
     }
   }
 
   spawnAfterimage(x, y, facing, row = 2, col = 4, maxLife = 0.22) {
-    if (this.afterimages.length >= 12) this.afterimages.shift();
+    if (this.afterimages.length >= 10) this.afterimages.shift();
     this.afterimages.push({
       x,
       y,
@@ -384,7 +473,7 @@ export class PriestessEx extends Fighter {
     });
   }
 
-  spawnVfxAnim(row, x, y, w = 184, h = 184, maxLife = 0.30, opts = {}) {
+  spawnVfxAnim(row, x, y, w = 180, h = 180, maxLife = 0.30, opts = {}) {
     if (this.activeVfxAnims.length >= 22) this.activeVfxAnims.shift();
     this.activeVfxAnims.push({
       row,
@@ -406,64 +495,14 @@ export class PriestessEx extends Fighter {
     });
   }
 
-  spawnRazorScar(cx, cy, dx, dy, maxLife = 0.22, isRose = false) {
-    if (this.razorScars.length >= 18) this.razorScars.shift();
-    this.razorScars.push({
-      x0: Math.round(cx - dx * 0.5),
-      y0: Math.round(cy - dy * 0.5),
-      x1: Math.round(cx + dx * 0.5),
-      y1: Math.round(cy + dy * 0.5),
-      age: 0,
-      maxLife,
-      isRose
-    });
-  }
-
-  _gatherMeleeTargets(primaryEnemy, game, reachFront = 216, reachBack = 42) {
-    const targets = [];
-    const seen = new Set();
-    const isAdv = Boolean(game?.isAdventureMode?.() && game?.adventure?.active);
-    const myGy = this.groundY || this.y;
-
-    const consider = (foe) => {
-      if (!foe || foe === this || foe.isDead || foe.isBenched || seen.has(foe)) return;
-      const relX = (foe.x - this.x) * this.facing;
-      const hitPad = foe.isColossalBoss ? 82 : 0;
-      if (relX < -reachBack - hitPad || relX > reachFront + hitPad) return;
-      if (isAdv && !foe.isColossalBoss) {
-        const foeGy = foe.groundY || foe.y;
-        if (Math.abs(foeGy - myGy) > 66) return;
-      }
-      seen.add(foe);
-      targets.push(foe);
-    };
-
-    consider(primaryEnemy);
-    if (game?.getEnemiesOf) {
-      const list = game.getEnemiesOf(this);
-      if (Array.isArray(list)) {
-        for (let i = 0; i < list.length; i++) consider(list[i]);
-      }
-    }
-    if (isAdv && Array.isArray(game.adventure.enemies)) {
-      for (let i = 0; i < game.adventure.enemies.length; i++) {
-        consider(game.adventure.enemies[i]);
-      }
-    }
-    if (isAdv && game.adventure.bossEntity) {
-      consider(game.adventure.bossEntity);
-    }
-    return targets;
-  }
-
-  _resolveRangedTarget(primaryEnemy, game) {
+  _resolveRangedTarget(primaryEnemy, game, maxDist = 620) {
     if (
       primaryEnemy &&
       !primaryEnemy.isDead &&
       !primaryEnemy.isBenched &&
       !primaryEnemy.isDummyFocal &&
-      (primaryEnemy.x - this.x) * this.facing >= -32 &&
-      Math.abs(primaryEnemy.x - this.x) <= 580
+      (primaryEnemy.x - this.x) * this.facing >= -40 &&
+      Math.abs(primaryEnemy.x - this.x) <= maxDist
     ) {
       return primaryEnemy;
     }
@@ -476,138 +515,141 @@ export class PriestessEx extends Fighter {
         if (!f || f.isDead || f.isBenched || f.isDestructibleProp) continue;
         const rel = (f.x - this.x) * this.facing;
         const d = Math.abs(f.x - this.x);
-        if (rel >= -28 && d <= 580 && d < bestDist) {
+        if (rel >= -36 && d <= maxDist && d < bestDist) {
           bestDist = d;
           best = f;
         }
       }
     }
+    if (
+      !best &&
+      game?.isAdventureMode?.() &&
+      game?.adventure?.bossEntity &&
+      !game.adventure.bossEntity.isDead
+    ) {
+      const boss = game.adventure.bossEntity;
+      if (Math.abs(boss.x - this.x) <= maxDist + 140) return boss;
+    }
     return best;
   }
 
-  _applyCathedralLanceStrike(primaryEnemy, game, cfg) {
+  _applyRemoteSanctumJudgment(centerX, radius, damage, game, primaryEnemy, opts = {}) {
     const {
-      damage = 22,
-      reachFront = 216,
-      reachBack = 38,
-      hitStop = 0.042,
-      shakeDur = 0.054,
-      knockX = 24,
-      knockY = 0,
       isCrit = false,
-      scarDx = 104,
-      scarDy = 78,
-      isRose = false,
-      sfx = 'slash'
-    } = cfg;
+      knockX = 24,
+      knockY = -34,
+      hitStop = 0.040,
+      shakeDur = 0.052
+    } = opts;
 
-    if (game?.audio) game.audio.play(sfx, this.x + this.facing * 72);
-    this.didActionFrame = true;
+    const isAdv = Boolean(game?.isAdventureMode?.() && game?.adventure?.active);
+    const myGy = this.groundY || this.y;
+    const seen = new Set();
+    const cands = [];
 
-    const targets = this._gatherMeleeTargets(primaryEnemy, game, reachFront, reachBack);
-    let landedAny = false;
+    const pushCand = (f) => {
+      if (!f || f === this || f.isDead || f.isBenched || seen.has(f)) return;
+      seen.add(f);
+      cands.push(f);
+    };
 
-    for (let i = 0; i < targets.length; i++) {
-      const foe = targets[i];
-      const dmg = i === 0 ? damage : Math.max(10, Math.round(damage * 0.85));
+    pushCand(primaryEnemy);
+    if (game?.getEnemiesOf) {
+      const list = game.getEnemiesOf(this);
+      if (Array.isArray(list)) {
+        for (let i = 0; i < list.length; i++) pushCand(list[i]);
+      }
+    }
+    if (isAdv && Array.isArray(game.adventure.enemies)) {
+      for (let i = 0; i < game.adventure.enemies.length; i++) pushCand(game.adventure.enemies[i]);
+    }
+    if (isAdv && game.adventure.bossEntity) pushCand(game.adventure.bossEntity);
+
+    let landed = false;
+    for (let i = 0; i < cands.length; i++) {
+      const foe = cands[i];
+      const pad = foe.isColossalBoss ? 92 : 0;
+      if (Math.abs(foe.x - centerX) > radius + pad) continue;
+      if (isAdv && !foe.isColossalBoss) {
+        const foeGy = foe.groundY || foe.y;
+        if (Math.abs(foeGy - myGy) > 76) continue;
+      }
+      const dmg = i === 0 ? damage : Math.max(12, Math.round(damage * 0.85));
       foe.takeDamage(dmg, this, isCrit, knockX, knockY);
       if (!foe.isDead && !foe.isColossalBoss) {
         foe._hitStopTimer = Math.max(foe._hitStopTimer || 0, hitStop);
         foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, shakeDur);
-      } else if (!foe.isDead && foe.isColossalBoss) {
-        foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, shakeDur * 0.75);
       }
-
-      const hitX = foe.x;
       const hitY = foe.y - (foe.isColossalBoss ? 128 : 92);
-      this.spawnRazorScar(hitX, hitY, this.facing * scarDx, scarDy, 0.22, isRose);
-      this.spawnVfxAnim(4, hitX, hitY, 184, 184, 0.24, {
-        flipX: this.facing < 0,
-        inFront: true
-      });
-      this.fx?.burst(hitX, hitY, {
-        count: isCrit ? 10 : 7,
-        speedMin: 48,
-        speedMax: 168,
-        lifeMin: 0.12,
-        lifeMax: 0.26,
-        gravity: 38,
-        colors: ['#ffffff', '#fef08a', '#fde047', '#f472b6', '#38bdf8']
-      });
-      landedAny = true;
+      this.spawnHitStarburst(foe.x, hitY, '#fde047', '#fb7185', isCrit ? 1.25 : 1.0);
+      this.spawnSanctumCluster(foe.x, hitY, isCrit ? 7 : 5, 130, true);
+      landed = true;
     }
 
-    if (hitStop > 0) {
-      const selfStop = landedAny ? hitStop : Math.max(0.042, hitStop);
-      this._hitStopTimer = Math.max(this._hitStopTimer || 0, selfStop);
-      if (landedAny) {
-        game?.renderer?.triggerHitStop?.(hitStop * 0.65);
-      }
+    if (landed && hitStop > 0) {
+      this._hitStopTimer = Math.max(this._hitStopTimer || 0, Math.min(0.036, hitStop));
     }
-
-    return landedAny;
+    return landed;
   }
 
   onProjectileTrail(p) {
-    if (!this.fx || !p || p.type !== 'holy_light') return;
+    if (!p || p.type !== 'holy_light') return;
     p.ringTimer = (p.ringTimer || 0) + 0.016;
-    if (p.ringTimer >= 0.05) {
+    if (p.ringTimer >= 0.048) {
       p.ringTimer = 0;
-      this.fx.burst(p.x - Math.sign(p.vx || 1) * 16, p.y, {
-        count: 3,
-        speedMin: 22,
-        speedMax: 68,
-        lifeMin: 0.16,
-        lifeMax: 0.28,
-        gravity: -18,
-        spread: 1.15,
-        angle: Math.atan2(-(p.vy || 0), -(p.vx || 1)),
-        colors: ['#ffffff', '#fef08a', '#facc15', '#f472b6', '#38bdf8']
+      this.spawnExParticle({
+        x: p.x - Math.sign(p.vx || 1) * 14,
+        y: p.y + (((p.age * 60) | 0) % 2 === 0 ? -3 : 3),
+        vx: -Math.sign(p.vx || 1) * 34,
+        vy: -16,
+        gravity: -20,
+        shape: ((p.age * 30) | 0) % 2 === 0 ? 'star4' : 'diamond',
+        size: 4,
+        color: '#fb7185',
+        coreColor: '#fef08a',
+        maxLife: 0.22
       });
     }
   }
 
   onProjectileHit(p, _hitTarget, isCrit, game) {
-    if (!this.fx) return false;
-    this.fx.spawn('holyStarImpactBurst', p.x, p.y, {
+    this.fx?.spawn('holyStarImpactBurst', p.x, p.y, {
       flip: false,
-      light: isCrit ? 1.34 : 1.18,
+      light: isCrit ? 1.26 : 1.14,
       extra: { isCrit }
     });
-    this.fx.burst(p.x, p.y, {
-      count: isCrit ? 18 : 12,
-      speedMin: 58,
-      speedMax: isCrit ? 220 : 172,
-      lifeMin: 0.2,
-      lifeMax: 0.4,
-      gravity: 78,
-      colors: ['#ffffff', '#fef08a', '#facc15', '#f472b6', '#38bdf8']
+    this.spawnHitStarburst(p.x, p.y, '#fde047', '#38bdf8', isCrit ? 1.22 : 1.0);
+    this.spawnSanctumCluster(p.x, p.y, isCrit ? 8 : 6, 145, isCrit);
+    this.spawnExParticle({
+      x: p.x,
+      y: p.y,
+      shape: 'ring',
+      size: isCrit ? 38 : 28,
+      color: '#fde047',
+      coreColor: '#ffffff',
+      maxLife: 0.22
     });
-    if (game?.vfx) {
-      game.vfx.spawnGlyphBurst(p.x, p.y, 5, 'radiant');
+    if (game?.vfx && isCrit) {
+      game.vfx.spawnGlyphBurst(p.x, p.y, 4, 'radiant');
     }
     return true;
   }
 
   /**
-   * Grounded Radiant Flash-Step Dash & Winged Seraphic Vault (`JUMP` / `DODGE`).
+   * Grounded Radiant Flash-Step Dash (maintains `340..365px` High-Priestess spacing, NEVER rushes into melee!)
+   * & Winged Seraphic Vault (`JUMP` / `DODGE`).
    */
-  onStartDash(enemy, game, dir) {
+  onStartDash(_enemy, game, dir) {
     this.dashDuration = 0.36;
     this.dashDir = dir || this.facing;
     this.isAngelicAscent = false;
     this.isFlipVault = false;
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
     this.ensureSlipstream();
-    game?.vfx?.spawnShockwave(this.x, this.groundY - 4, 62, '#fde047', 0.22, false, true);
-    if (enemy && !enemy.isDead) {
-      this._dashStopX = this._clampArenaX(enemy.x - this.dashDir * 114, game);
-    } else {
-      this._dashStopX = null;
-    }
+    this.spawnPrismSeal(this.x, this.groundY, 52, 0.30);
   }
 
-  updateDash(dt, enemy, game) {
+  updateDash(dt, enemy, _game) {
     const t = this.stateTimer;
     const dur = this.dashDuration || 0.36;
     const dir = this.dashDir || this.facing;
@@ -617,15 +659,15 @@ export class PriestessEx extends Fighter {
 
     if (t < dur * 0.78) {
       const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * dir : 999;
-      if (distToEnemy <= 116 && distToEnemy >= 72) {
+      if (distToEnemy <= 345 && distToEnemy >= 0) {
         this.vx = 0;
       } else {
-        this.vx = dir * 610;
+        this.vx = dir * 485;
       }
-      this._dragSparkAcc += dt;
-      if (this._dragSparkAcc >= 0.038) {
-        this._dragSparkAcc = 0;
-        this.spawnAfterimage(this.x, this.groundY, this.facing, 6, Math.min(24, Math.floor((t / dur) * 30)), 0.18);
+      this.afterimageAccum += dt;
+      if (this.afterimageAccum >= 0.048) {
+        this.afterimageAccum = 0;
+        this.spawnAfterimage(this.x, this.groundY, this.facing, 1, Math.min(28, Math.floor((t / dur) * 30)), 0.18);
       }
     } else {
       this.vx = 0;
@@ -648,17 +690,17 @@ export class PriestessEx extends Fighter {
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     let dir = customDir !== null ? customDir : -this.facing;
-    if (this.x < 180) dir = 1;
-    else if (this.x > ww - 180) dir = -1;
+    if (this.x < 185) dir = 1;
+    else if (this.x > ww - 185) dir = -1;
 
     this.ascentStartX = this.x;
     this.wingSpearCount = 0;
     this.dashDuration = 0.60;
 
     let target = this.x + dir * 320;
-    if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 235) {
+    if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 245) {
       const openDir = enemy.x < ww * 0.5 ? 1 : -1;
-      target = enemy.x + openDir * 330;
+      target = enemy.x + openDir * 355;
     }
     this.ascentTargetX = this._clampArenaX(target, game);
     this.dashDir = Math.sign(this.ascentTargetX - this.ascentStartX) || dir;
@@ -669,14 +711,7 @@ export class PriestessEx extends Fighter {
     this.heal(8, 'WINGS OF GRACE');
     this.ensureSlipstream();
     this.ensureSanctuarySeal(false);
-    this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
-      follow: this,
-      offsetX: 0,
-      offsetY: 0,
-      useGroundY: true,
-      light: 1.2
-    });
-    game?.vfx?.spawnGlyphBurst(this.x, this.y - 100, 8, 'radiant');
+    this.spawnSanctumCluster(this.x, this.y - 96, 8, 130, true);
     game?.vfx?.spawnDamageText(this.x, this.y - 142, 0, false, 'SERAPHIC WING VAULT!', '#fef08a');
   }
 
@@ -692,9 +727,13 @@ export class PriestessEx extends Fighter {
     this.wingSpearCount = 0;
     this.dashDuration = 0.58;
 
-    let target = this.x + retreatDir * 310;
-    if (target < 140 || target > ww - 140) {
-      target = this.x - retreatDir * 310;
+    let target = this.x + retreatDir * 315;
+    if (enemy && !enemy.isDead && (this.x < 285 || this.x > ww - 285 || Math.abs(enemy.x - this.x) < 240)) {
+      const openDir = enemy.x < ww * 0.5 ? 1 : -1;
+      target = enemy.x + openDir * 355;
+      if (Math.abs(target - this.x) < 230) {
+        target = enemy.x + (this.x < enemy.x ? 1 : -1) * 345;
+      }
     }
     this.ascentTargetX = this._clampArenaX(target, game);
     this.dashDir = Math.sign(this.ascentTargetX - this.ascentStartX) || retreatDir;
@@ -703,17 +742,17 @@ export class PriestessEx extends Fighter {
     if (game?.audio) game.audio.play('holy_heal', this.x);
     this.ensureSlipstream();
     this.ensureSanctuarySeal(false);
-    game?.vfx?.spawnGlyphBurst(this.x, this.y - 96, 6, 'radiant');
+    this.spawnSanctumCluster(this.x, this.y - 96, 7, 125, true);
   }
 
-  updateJump(dt, enemy, game) {
+  updateJump(_dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.dashDuration || 0.60;
     const u = Math.min(1, Math.max(0, t / dur));
 
     this.isAngelicAscent = true;
     this.x = this.ascentStartX + (this.ascentTargetX - this.ascentStartX) * (1 - Math.pow(1 - u, 1.85));
-    this.y = this.groundY - Math.sin(u * Math.PI) * 118;
+    this.y = this.groundY - Math.sin(u * Math.PI) * 112;
     this.isInvulnerable = u < 0.68;
 
     if (this.wingSpearCount === 0 && u >= 0.48) {
@@ -725,26 +764,26 @@ export class PriestessEx extends Fighter {
       const sy = this.y - 84;
       if (game?.audio) game.audio.play('holy_bolt', sx);
       const aimFoe = this._resolveRangedTarget(enemy, game);
-      const tx = aimFoe ? aimFoe.x : sx + this.facing * 380;
-      const ty = aimFoe ? aimFoe.y - 94 : this.groundY - 84;
+      const tx = aimFoe ? aimFoe.x : sx + this.facing * 420;
+      const ty = aimFoe ? aimFoe.y - 94 : this.groundY - 88;
       const dx = tx - sx;
       const dy = ty - sy;
       const len = Math.hypot(dx, dy) || 1;
-      this.fx?.spawn('scepterStarburstCone', sx, sy, {
-        flip: this.facing < 0,
-        light: 1.24,
-        extra: { aimAngle: Math.atan2(dy, Math.abs(dx)) }
+      this.spawnVfxAnim(4, sx, sy, 148, 148, 0.24, {
+        flipX: this.facing < 0,
+        inFront: true
       });
       game?.vfx?.spawnProjectile({
         x: sx,
         y: sy,
-        vx: (dx / len) * 685,
-        vy: (dy / len) * 685,
+        vx: (dx / len) * 725,
+        vy: (dy / len) * 725,
         radius: 15,
+        maxRange: 640,
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 38,
+        damage: 42,
         type: 'holy_light',
         isMeteor: false
       });
@@ -790,18 +829,11 @@ export class PriestessEx extends Fighter {
       offsetY: 0,
       useGroundY: true,
       flip: this.facing < 0,
-      light: 1.24
-    });
-    this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
-      follow: this,
-      offsetX: 0,
-      offsetY: 0,
-      useGroundY: true,
-      light: 1.16
+      light: 1.18
     });
     if (game?.audio) game.audio.play('holy_heal', this.x);
     this.heal(10, 'BENEDICTION');
-    game?.vfx?.spawnGlyphBurst(this.x, this.y - 88, 6, 'radiant');
+    this.spawnPrismSeal(this.x, this.groundY, 68, 0.65);
   }
 
   updateCrouch(_dt, enemy, game) {
@@ -828,6 +860,7 @@ export class PriestessEx extends Fighter {
           if (game?.audio) game.audio.play('clang', proj.x);
           this.gainMana(14);
           this.gainFinisher(8);
+          this.spawnHitStarburst(proj.x, proj.y, '#fde047', '#38bdf8', 1.1);
         }
       }
     }
@@ -835,24 +868,23 @@ export class PriestessEx extends Fighter {
     if (t >= 0.46 && !this.didActionFrame) {
       this.didActionFrame = true;
       this.shotCombo++;
-      const spawnX = this.x + this.facing * 64;
-      const spawnY = this.y - 94;
+      const spawnX = this.x + this.facing * 68;
+      const spawnY = this.y - 96;
       if (game?.audio) game.audio.play('holy_bolt', spawnX);
 
-      this._applyCathedralLanceStrike(enemy, game, {
-        damage: 34,
-        reachFront: 218,
-        hitStop: 0.044,
-        shakeDur: 0.056,
-        knockX: 84,
-        knockY: -50,
-        isCrit: true,
-        scarDx: 112,
-        scarDy: -60,
-        isRose: true,
-        sfx: 'heavy_cleave'
-      });
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 175) {
+        this._applyRemoteSanctumJudgment(this.x + this.facing * 62, 122, 32, game, enemy, {
+          isCrit: true,
+          knockX: 112,
+          knockY: -42,
+          hitStop: 0.036
+        });
+      }
 
+      this.spawnVfxAnim(4, spawnX, spawnY, 152, 152, 0.26, {
+        flipX: this.facing < 0,
+        inFront: true
+      });
       const aimFoe = this._resolveRangedTarget(enemy, game);
       const tx = aimFoe ? aimFoe.x : spawnX + this.facing * 460;
       const ty = aimFoe ? aimFoe.y - 96 : spawnY;
@@ -861,19 +893,20 @@ export class PriestessEx extends Fighter {
       const dist = Math.hypot(dx, dy) || 1;
       this.fx?.spawn('scepterStarburstCone', spawnX, spawnY, {
         flip: this.facing < 0,
-        light: 1.26,
+        light: 1.20,
         extra: { aimAngle: Math.atan2(dy, Math.abs(dx)) }
       });
       game?.vfx?.spawnProjectile({
         x: spawnX,
         y: spawnY,
-        vx: (dx / dist) * 705,
-        vy: (dy / dist) * 705,
+        vx: (dx / dist) * 735,
+        vy: (dy / dist) * 735,
         radius: 15,
+        maxRange: 640,
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 52,
+        damage: 50,
         type: 'holy_light',
         isMeteor: false
       });
@@ -889,17 +922,17 @@ export class PriestessEx extends Fighter {
   /**
    * Row 2 `AUTO_ATTACK` (`[[60,8],[68,7],[75,8],[83,7]]`):
    * STRICTLY GROUNDED (`this.y = this.groundY`, `0px` float across `V0..V3`, `isAngelicAscent = false`!)
-   * Graceful Flash-Step Sunburst Cathedral Scepter-Lance Martial Sweeps + 4-Band Stained-Glass Light-Crescent Smears:
-   * - `V0 (F03)`: Wide sanctum sweep + `'holy_light'` bolt (`42ms` hit-stop)
-   * - `V1 (F09)`: Rising benediction arc + twin `'holy_light'` resonance bolts (`44ms` hit-stop)
-   * - `V2 (F17)`: 2.5D cathedral rose-halo vortex (`2-hit` + `'holy_spear'` sky-strike)
-   * - `V3 (F25)`: Grounded radiant star-pillar (`3-hit` + `+16 HP` Dawn Grace + `'holy_light'` bolt, `55ms` hit-stop)
+   * Pure Long-Range High-Priestess Sacred Artillery (`attackRange: 512`):
+   * - `V0 (F03)`: Rose-Window Magic Circle + fast `'holy_light'` Sanctum Ray (`speed: 735, maxRange: 640`)
+   * - `V1 (F09)`: Twin Golden Benediction Halos + twin converging `'holy_light'` Spears
+   * - `V2 (F17)`: Remote Rose-Cathedral Sanctum Pillar erupting at `enemy.x` (`2-hit` up to `560px`)
+   * - `V3 (F25)`: `-38px` grounded Sanctum Backstep Kite -> Purifying Star-Pillar Judgment at `enemy.x` + `'holy_light'` bolt + Dawn Grace micro-heal (`3-hit`)
    */
   updateAutoAttack(dt, enemy, game) {
     this._currentEnemy = enemy;
-    this._comboPersistTimer = 0.76;
+    this._comboPersistTimer = 0.80;
 
-    // Enforce 100% grounded footwork (`0px` float) on every tick of Row 2 AUTO_ATTACK!
+    // Hard grounded lock (`0px` float) on every tick of Row 2 AUTO_ATTACK!
     this.y = this.groundY;
     this.vy = 0;
     this.isAngelicAscent = false;
@@ -910,7 +943,7 @@ export class PriestessEx extends Fighter {
       if (this._intraLinkTimer <= 0) {
         this._beginComboBeat(this.comboStep, game);
         this._aiComboCount = (this._aiComboCount || 0) + 1;
-        this._aiComboChainTimer = 0.94;
+        this._aiComboChainTimer = 0.96;
       }
       return;
     }
@@ -919,67 +952,51 @@ export class PriestessEx extends Fighter {
     const dur = this.autoDuration || BEAT_DURATIONS[v];
     const t = this.stateTimer;
     const [sliceStart, sliceLen] = AUTO_SLICES_EX[v];
-    const snapT = v === 0 ? 0.10 : v === 1 ? 0.06 : v === 2 ? 0.08 : 0.16;
+    const snapT = v === 0 ? 0.10 : v === 1 ? 0.07 : v === 2 ? 0.09 : 0.15;
 
     let localStep = 0;
     if (v === 0) {
       if (t < 0.10) localStep = Math.min(2, Math.floor((t / 0.10) * 3));
-      else if (t < 0.15) localStep = 3;
-      else if (t < 0.25) localStep = 4 + Math.min(1, Math.floor(((t - 0.15) / 0.10) * 2));
-      else localStep = 6 + Math.min(1, Math.floor(((t - 0.25) / 0.11) * 2));
+      else if (t < 0.16) localStep = 3;
+      else if (t < 0.26) localStep = 4 + Math.min(1, Math.floor(((t - 0.16) / 0.10) * 2));
+      else localStep = 6 + Math.min(1, Math.floor(((t - 0.26) / 0.12) * 2));
     } else if (v === 1) {
-      if (t < 0.06) localStep = 0;
-      else if (t < 0.115) localStep = 1;
-      else if (t < 0.21) localStep = 2 + Math.min(1, Math.floor(((t - 0.115) / 0.095) * 2));
-      else localStep = 4 + Math.min(2, Math.floor(((t - 0.21) / 0.13) * 3));
+      if (t < 0.07) localStep = 0;
+      else if (t < 0.13) localStep = 1;
+      else if (t < 0.23) localStep = 2 + Math.min(1, Math.floor(((t - 0.13) / 0.10) * 2));
+      else localStep = 4 + Math.min(2, Math.floor(((t - 0.23) / 0.13) * 3));
     } else if (v === 2) {
-      if (t < 0.08) localStep = Math.min(1, Math.floor((t / 0.08) * 2));
-      else if (t < 0.14) localStep = 2;
-      else if (t < 0.195) localStep = 3;
-      else localStep = 4 + Math.min(3, Math.floor(((t - 0.195) / 0.185) * 4));
+      if (t < 0.09) localStep = Math.min(1, Math.floor((t / 0.09) * 2));
+      else if (t < 0.16) localStep = 2;
+      else if (t < 0.26) localStep = 3 + Math.min(1, Math.floor(((t - 0.16) / 0.10) * 2));
+      else localStep = 5 + Math.min(2, Math.floor(((t - 0.26) / 0.14) * 3));
     } else {
-      if (t < 0.16) localStep = Math.min(1, Math.floor((t / 0.16) * 2));
-      else if (t < 0.24) localStep = 2;
-      else localStep = 3 + Math.min(3, Math.floor(((t - 0.24) / 0.28) * 4));
+      if (t < 0.15) localStep = Math.min(1, Math.floor((t / 0.15) * 2));
+      else if (t < 0.23) localStep = 2;
+      else if (t < 0.36) localStep = 3 + Math.min(1, Math.floor(((t - 0.23) / 0.13) * 2));
+      else localStep = 5 + Math.min(1, Math.floor(((t - 0.36) / 0.16) * 2));
     }
 
     const frameIdx = sliceStart + Math.min(sliceLen - 1, Math.max(0, localStep));
     this.trueUltFrameOverride = frameIdx;
     this._overrideFrameIdx = frameIdx;
 
-    // 1. Grounded Flash-Step Glide -> Hard-Locked Boots (`vx = 0`) right on the 1-frame smear snap!
+    // 1. Grounded Cast-Step / Retreat / V3 -38px Sanctum Backstep Kite -> Planted Boots (`vx = 0`)
     this.vx = 0;
     if (t < snapT) {
-      const lungeU = Math.min(1, Math.max(0, t / snapT));
-      const eased = 1 - Math.pow(1 - lungeU, 2.2);
+      const u = Math.min(1, Math.max(0, t / snapT));
+      const eased = 1 - Math.pow(1 - u, 2.1);
       this.x = this._beatStartX + (this._beatTargetX - this._beatStartX) * eased;
 
       if (!this._drewScepterFocus) {
         this._drewScepterFocus = true;
-        this.fx?.spawn('scepterStarFocus', this.x + this.facing * 32, this.groundY - 108, {
+        this.fx?.spawn('scepterStarFocus', this.x + this.facing * 34, this.groundY - 108, {
           follow: this,
-          offsetX: 32,
+          offsetX: 34,
           offsetY: -108,
           flip: this.facing < 0,
-          light: v === 3 ? 1.28 : 1.18
+          light: v === 3 ? 1.22 : 1.14
         });
-      }
-
-      if (v === 0 && Math.abs(this._beatTargetX - this._beatStartX) > 24) {
-        this._dragSparkAcc += dt;
-        if (this._dragSparkAcc >= 0.034) {
-          this._dragSparkAcc = 0;
-          this.spawnAfterimage(this.x, this.groundY, this.facing, 2, localStep, 0.16);
-          this.fx?.burst(this.x - this.facing * 30, this.groundY - 2, {
-            count: 4,
-            speedMin: 30,
-            speedMax: 88,
-            lifeMin: 0.10,
-            lifeMax: 0.22,
-            gravity: 65,
-            colors: ['#ffffff', '#fef08a', '#fde047', '#f472b6']
-          });
-        }
       }
     } else if (!this._bootsPlanted) {
       this._bootsPlanted = true;
@@ -987,197 +1004,161 @@ export class PriestessEx extends Fighter {
       this.vx = 0;
     }
 
-    const spawnX = this.x + this.facing * 68;
+    const spawnX = this.x + this.facing * 70;
     const spawnY = this.groundY - 96;
-    const aimFoe = this._resolveRangedTarget(enemy, game);
-    const targetY = aimFoe ? aimFoe.y - 96 : spawnY;
-    const dx = aimFoe ? aimFoe.x - spawnX : this.facing * 460;
+    const aimFoe = this._resolveRangedTarget(enemy, game, 620);
+    const targetY = aimFoe ? aimFoe.y - (aimFoe.isColossalBoss ? 128 : 94) : spawnY;
+    const dx = aimFoe ? aimFoe.x - spawnX : this.facing * 470;
     const dy = targetY - spawnY;
     const dist = Math.hypot(dx, dy) || 1;
     const aimAng = Math.atan2(dy, Math.abs(dx));
 
-    // 2. Beat-Specific Stained-Glass Light-Crescent Smear Impacts & Sacred Artillery
+    // 2. Beat-Specific Pure Long-Range Sacred Casts
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
         this._beatHitMask |= 1;
         this.shotCombo++;
+        this.didActionFrame = true;
         if (game?.audio) game.audio.play('holy_bolt', spawnX);
-        game?.vfx?.spawnShockwave(this.x + this.facing * 44, this.groundY - 4, 58, '#fde047', 0.20, false, true);
-        this.spawnVfxAnim(4, spawnX, spawnY, 178, 178, 0.24, {
+        this.spawnVfxAnim(4, spawnX, spawnY, 152, 152, 0.26, {
           flipX: this.facing < 0,
           inFront: true
         });
         this.fx?.spawn('scepterStarburstCone', spawnX, spawnY, {
           flip: this.facing < 0,
-          light: 1.22,
+          light: 1.18,
           extra: { aimAngle: aimAng }
         });
-        this._applyCathedralLanceStrike(enemy, game, {
-          damage: 22,
-          reachFront: 218,
-          hitStop: 0.042,
-          shakeDur: 0.054,
-          knockX: 22,
-          knockY: 0,
-          scarDx: 112,
-          scarDy: 82,
-          isRose: false,
-          sfx: 'slash'
-        });
+        this.spawnSanctumCluster(spawnX, spawnY, 5, 115, false);
         game?.vfx?.spawnProjectile({
           x: spawnX,
           y: spawnY,
-          vx: (dx / dist) * 690,
-          vy: (dy / dist) * 690,
+          vx: (dx / dist) * 735,
+          vy: (dy / dist) * 735,
           radius: 15,
+          maxRange: 640,
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: 34,
+          damage: 44,
           type: 'holy_light',
           isMeteor: false
         });
       }
     } else if (v === 1) {
-      if ((this._beatHitMask & 1) === 0 && t >= 0.06) {
+      if ((this._beatHitMask & 1) === 0 && t >= 0.07) {
         this._beatHitMask |= 1;
         this.shotCombo++;
+        this.didActionFrame = true;
         if (game?.audio) game.audio.play('holy_bolt', spawnX);
-        game?.vfx?.spawnShockwave(spawnX, this.groundY - 8, 66, '#fef08a', 0.22, false, true);
-        this.spawnVfxAnim(4, spawnX, spawnY - 8, 182, 182, 0.24, {
-          flipX: this.facing > 0,
+        this.spawnVfxAnim(4, spawnX, spawnY - 10, 140, 140, 0.24, {
+          flipX: this.facing < 0,
           inFront: true
         });
         this.fx?.spawn('scepterStarburstCone', spawnX, spawnY, {
           flip: this.facing < 0,
-          light: 1.25,
+          light: 1.20,
           extra: { aimAngle: aimAng, isGrace: true }
         });
-        this._applyCathedralLanceStrike(enemy, game, {
-          damage: 24,
-          reachFront: 220,
-          hitStop: 0.044,
-          shakeDur: 0.056,
-          knockX: 18,
-          knockY: -118,
-          scarDx: 108,
-          scarDy: -90,
-          isRose: true,
-          sfx: 'slash'
-        });
+        this.spawnSanctumCluster(spawnX, spawnY, 6, 120, true);
         if (game?.vfx) {
-          const speed = 675;
+          const speed = 715;
           game.vfx.spawnProjectile({
             x: spawnX,
-            y: spawnY - 10,
+            y: spawnY - 14,
             vx: (dx / dist) * speed,
-            vy: (dy / dist) * speed - 22,
+            vy: (dy / dist) * speed - 20,
             radius: 14,
+            maxRange: 640,
             color: '#fde047',
             coreColor: '#ffffff',
             owner: this,
-            damage: 20,
+            damage: 26,
             type: 'holy_light',
             isMeteor: false
           });
           game.vfx.spawnProjectile({
-            x: spawnX - this.facing * 14,
-            y: spawnY + 10,
+            x: spawnX - this.facing * 10,
+            y: spawnY + 14,
             vx: (dx / dist) * speed,
-            vy: (dy / dist) * speed + 22,
-            radius: 13,
-            color: '#facc15',
+            vy: (dy / dist) * speed + 20,
+            radius: 14,
+            maxRange: 640,
+            color: '#fb7185',
             coreColor: '#fef9c3',
             owner: this,
-            damage: 18,
+            damage: 24,
             type: 'holy_light',
             isMeteor: false
           });
         }
       }
     } else if (v === 2) {
-      // Beat 3 (V2): Grounded 2.5D Cathedral Rose-Halo Vortex (`2-hit` + Holy Spear Sky-Strike)
-      if ((this._beatHitMask & 1) === 0 && t >= 0.08) {
+      // Beat 3 (V2): Remote Rose-Cathedral Sanctum Pillar erupting at enemy.x (2-hit up to 560px away!)
+      if ((this._beatHitMask & 1) === 0 && t >= 0.09) {
         this._beatHitMask |= 1;
-        this.spawnVfxAnim(3, this.x + this.facing * 38, this.groundY - 88, 184, 184, 0.28, {
-          flipX: this.facing < 0,
+        this.didActionFrame = true;
+        const rawRemoteX = aimFoe
+          ? Math.abs(aimFoe.x - this.x) <= 560
+            ? aimFoe.x
+            : this.x + this.facing * 515
+          : this.x + this.facing * 355;
+        this._v2RemoteX = this._clampArenaX(rawRemoteX, game);
+        if (game?.audio) game.audio.play('holy_bolt', this._v2RemoteX);
+        this.spawnPrismSeal(this._v2RemoteX, this.groundY, 72, 0.44);
+        this.spawnVfxAnim(3, this._v2RemoteX, this.groundY - 104, 168, 168, 0.30, {
+          flipX: false,
           inFront: false
         });
-        this._applyCathedralLanceStrike(enemy, game, {
-          damage: 17,
-          reachFront: 220,
-          reachBack: 64,
-          hitStop: 0.042,
-          shakeDur: 0.048,
-          knockX: 14,
-          knockY: -18,
-          scarDx: 118,
-          scarDy: 30,
-          isRose: true,
-          sfx: 'slash'
+        this._applyRemoteSanctumJudgment(this._v2RemoteX, 86, 22, game, aimFoe || enemy, {
+          knockX: 16,
+          knockY: -20,
+          hitStop: 0.032
         });
       }
-      if ((this._beatHitMask & 2) === 0 && t >= 0.14) {
+      if ((this._beatHitMask & 2) === 0 && t >= 0.16) {
         this._beatHitMask |= 2;
         this.shotCombo++;
-        if (game?.audio) game.audio.play('holy_bolt', spawnX);
-        this._applyCathedralLanceStrike(enemy, game, {
-          damage: 19,
-          reachFront: 222,
-          reachBack: 64,
-          hitStop: 0.044,
-          shakeDur: 0.052,
-          knockX: 18,
-          knockY: -32,
-          scarDx: 118,
-          scarDy: -34,
-          isRose: false,
-          sfx: 'clang'
+        const px = this._v2RemoteX;
+        if (game?.audio) game.audio.play('holy_bolt', px);
+        game?.renderer?.triggerShake?.(8, 0.18);
+        game?.vfx?.spawnFlamePillar(px, this.groundY, this, null, {
+          theme: 'radiant',
+          delay: 0.02,
+          maxLife: 0.80,
+          scaleWidth: 0.90
         });
-        if (game?.vfx) {
-          game.vfx.spawnProjectile({
-            x: spawnX,
-            y: spawnY,
-            vx: (dx / dist) * 670,
-            vy: (dy / dist) * 670,
-            radius: 14,
-            color: '#fde047',
-            coreColor: '#ffffff',
-            owner: this,
-            damage: 22,
-            type: 'holy_light',
-            isMeteor: false
-          });
-          const strikeX = aimFoe ? aimFoe.x - this.facing * 16 : this.x + this.facing * 270;
-          this.fx?.spawn('holySpearReticle', strikeX, this.groundY, {
-            light: 1.24
-          });
-          game.vfx.spawnSkyStrike({
-            x: strikeX,
-            y: -150,
-            groundY: this.groundY,
-            vx: this.facing * 50,
-            vy: 1220,
-            type: 'holy_spear',
-            color: '#fde047',
-            coreColor: '#ffffff',
-            owner: this,
-            target: aimFoe,
-            damage: 30,
-            isUltimate: false
-          });
-        }
+        this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
+          light: 1.24,
+          extra: { scaleWidth: 0.90 }
+        });
+        this.spawnVfxAnim(2, px, this.groundY - 94, 188, 188, 0.34, {
+          flipX: this.facing < 0,
+          inFront: true
+        });
+        this._applyRemoteSanctumJudgment(px, 92, 28, game, aimFoe || enemy, {
+          isCrit: true,
+          knockX: 26,
+          knockY: -48,
+          hitStop: 0.038
+        });
       }
     } else {
-      // Beat 4 (V3): Strictly Grounded Radiant Star-Pillar (`3-hit` + Dawn Grace Heal + `'holy_light'` Bolt, `55ms` Hit-Stop)
-      if ((this._beatHitMask & 1) === 0 && t >= 0.16) {
+      // Beat 4 (V3): -38px Grounded Sanctum Backstep Kite -> Purifying Star-Pillar at enemy.x + holy_light bolt + Dawn Grace micro-heal (3-hit!)
+      if ((this._beatHitMask & 1) === 0 && t >= 0.15) {
         this._beatHitMask |= 1;
         this.shotCombo++;
-        this.y = this.groundY;
-        this.vx = 0;
-        const pillarX = this.x + this.facing * 86;
+        this.didActionFrame = true;
+        this.spawnAfterimage(this.x + this.facing * 24, this.groundY, this.facing, 2, 25, 0.22);
+        const rawRemoteX = aimFoe
+          ? Math.abs(aimFoe.x - this.x) <= 580
+            ? aimFoe.x
+            : this.x + this.facing * 520
+          : this.x + this.facing * 375;
+        this._v3RemoteX = this._clampArenaX(rawRemoteX, game);
+
         if (game?.audio) {
-          game.audio.play('holy_bolt', pillarX);
+          game.audio.play('holy_bolt', spawnX);
           game.audio.play('holy_heal', this.x);
         }
         this.heal(16, 'DAWN GRACE');
@@ -1186,83 +1167,60 @@ export class PriestessEx extends Fighter {
           offsetX: 0,
           offsetY: 0,
           useGroundY: true,
-          light: 1.26
+          light: 1.20
         });
-        game?.renderer?.triggerShake?.(12, 0.24);
-        game?.vfx?.spawnShockwave(pillarX, this.groundY - 4, 96, '#fde047', 0.26, false, true);
-        game?.vfx?.spawnFlamePillar(pillarX, this.groundY, this, null, {
-          theme: 'radiant',
-          delay: 0.02,
-          maxLife: 0.82,
-          scaleWidth: 0.94
-        });
-        this.fx?.spawn('cathedralSanctumPillar', pillarX, this.groundY, {
-          light: 1.34,
-          extra: { scaleWidth: 0.94 }
-        });
-        this.spawnVfxAnim(2, pillarX, this.groundY - 86, 198, 198, 0.34, {
+        this.spawnPrismSeal(this.x, this.groundY, 58, 0.38);
+        this.spawnVfxAnim(4, spawnX + this.facing * 8, spawnY, 168, 168, 0.28, {
           flipX: this.facing < 0,
           inFront: true
         });
-        this._applyCathedralLanceStrike(enemy, game, {
-          damage: 20,
-          reachFront: 226,
-          hitStop: 0.055,
-          shakeDur: 0.078,
-          knockX: 32,
-          knockY: -42,
-          isCrit: true,
-          scarDx: 26,
-          scarDy: 138,
-          isRose: true,
-          sfx: 'heavy_cleave'
+        this.spawnSanctumCluster(spawnX, spawnY, 8, 140, true);
+
+        game?.vfx?.spawnProjectile({
+          x: spawnX + this.facing * 10,
+          y: spawnY,
+          vx: (dx / dist) * 740,
+          vy: (dy / dist) * 740,
+          radius: 16,
+          maxRange: 650,
+          color: '#fde047',
+          coreColor: '#ffffff',
+          owner: this,
+          damage: 34,
+          type: 'holy_light',
+          isMeteor: false
         });
-        if (game?.vfx) {
-          game.vfx.spawnProjectile({
-            x: pillarX,
-            y: this.groundY - 88,
-            vx: (dx / dist) * 680,
-            vy: (dy / dist) * 680,
-            radius: 16,
-            color: '#fde047',
-            coreColor: '#ffffff',
-            owner: this,
-            damage: 36,
-            type: 'holy_light',
-            isMeteor: false
-          });
-          game.vfx.spawnGlyphBurst(pillarX, this.groundY - 82, 6, 'radiant');
-        }
+
+        this.spawnPrismSeal(this._v3RemoteX, this.groundY, 82, 0.44);
+        this._applyRemoteSanctumJudgment(this._v3RemoteX, 90, 22, game, aimFoe || enemy, {
+          knockX: 20,
+          knockY: -28,
+          hitStop: 0.034
+        });
       }
-      if ((this._beatHitMask & 2) === 0 && t >= 0.21) {
+      if ((this._beatHitMask & 2) === 0 && t >= 0.24) {
         this._beatHitMask |= 2;
-        this._applyCathedralLanceStrike(enemy, game, {
-          damage: 14,
-          reachFront: 228,
-          hitStop: 0,
-          shakeDur: 0.045,
-          knockX: 24,
-          knockY: -30,
-          scarDx: 94,
-          scarDy: 78,
-          isRose: false,
-          sfx: 'clang'
+        const px = this._v3RemoteX;
+        game?.renderer?.triggerShake?.(9, 0.20);
+        game?.vfx?.spawnFlamePillar(px, this.groundY, this, null, {
+          theme: 'radiant',
+          delay: 0.02,
+          maxLife: 0.84,
+          scaleWidth: 0.96
         });
-      }
-      if ((this._beatHitMask & 4) === 0 && t >= 0.26) {
-        this._beatHitMask |= 4;
-        this._applyCathedralLanceStrike(enemy, game, {
-          damage: 18,
-          reachFront: 230,
-          hitStop: 0,
-          shakeDur: 0.052,
-          knockX: 84,
-          knockY: -78,
+        this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
+          light: 1.28,
+          extra: { scaleWidth: 0.96 }
+        });
+        this.spawnVfxAnim(2, px, this.groundY - 96, 198, 198, 0.34, {
+          flipX: false,
+          inFront: true
+        });
+        this._applyRemoteSanctumJudgment(px, 96, 26, game, aimFoe || enemy, {
           isCrit: true,
-          scarDx: 98,
-          scarDy: -82,
-          isRose: true,
-          sfx: 'slash'
+          knockX: 62,
+          knockY: -56,
+          hitStop: 0.044
         });
       }
     }
@@ -1289,7 +1247,7 @@ export class PriestessEx extends Fighter {
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= 480;
+        Math.abs(enemy.x - this.x) <= 560;
 
       if (v < 3 && (aiWantsChain || advHoldingAttack)) {
         if (game?.adventure?.queuedAction === 'attack') {
@@ -1302,8 +1260,6 @@ export class PriestessEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = 0.22;
-        this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer
           ? 0.06
           : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
@@ -1319,133 +1275,126 @@ export class PriestessEx extends Fighter {
   }
 
   /**
-   * SPECIAL SKILL (`DIVINE SANCTUARY`, Row 3 `90..119`):
-   * Sanctuary Cathedral Seal + `+40 HP` Heal + Converging Sanctum Spires & Holy Spears!
+   * NEWLY BORN SPECIAL SKILL (`STAINED-GLASS BENEDICTION`, Row 3 `90..119`):
+   * Consecrates a Stained-Glass Rose-Cathedral floor prism healing `+42 HP` while
+   * erupting 3 Purifying Judgment Rays (`targetX - 54`, `targetX`, `targetX + 54`) at `enemy.x`!
    */
   updateSkill(_dt, enemy, game) {
     const t = this.stateTimer;
     this.y = this.groundY;
     this.vy = 0;
+    this.vx = 0;
     this.isAngelicAscent = false;
     this.ensureSanctuarySeal(false);
 
-    if (t < 0.18) {
-      this.didSanctuaryHeal = false;
-    } else if (t >= 0.20 && !this.didSanctuaryHeal) {
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const targetX = enemy
+      ? Math.max(115, Math.min(ww - 115, enemy.x))
+      : Math.max(115, Math.min(ww - 115, this.x + this.facing * 355));
+
+    if (t >= 0.16 && !this.didSanctuaryHeal) {
       this.didSanctuaryHeal = true;
       if (game?.audio) game.audio.play('holy_heal', this.x);
-      this.heal(40, 'SANCTUARY');
+      game?.vfx?.spawnSpecialCastAura(this, this.skillName, 'SERAPHIC SOVEREIGN', 'radiant', false);
+      this.heal(42, 'SANCTUARY');
       this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
         follow: this,
         offsetX: 0,
         offsetY: 0,
         useGroundY: true,
-        light: 1.32
+        light: 1.24
       });
-      game?.vfx?.spawnGlyphBurst(this.x, this.y - 110, 10, 'heal');
+      this.spawnPrismSeal(this.x, this.groundY, 84, 0.72);
+      this.spawnPrismSeal(targetX, this.groundY, 96, 0.80);
+      this.spawnSanctumCluster(this.x, this.y - 104, 8, 130, true);
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 215) {
         const pushDir = Math.sign(enemy.x - this.x) || this.facing;
-        enemy.vx += pushDir * 175;
+        enemy.vx += pushDir * 180;
       }
     }
 
-    if (t >= 0.46 && !this.didActionFrame) {
+    if (t >= 0.44 && !this.didActionFrame) {
       this.didActionFrame = true;
-      this.vx = 0;
-      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-      const targetX = enemy
-        ? Math.max(90, Math.min(ww - 90, enemy.x))
-        : Math.max(90, Math.min(ww - 90, this.x + this.facing * 320));
       if (game?.audio) game.audio.play('holy_bolt', targetX);
+      game?.renderer?.triggerShake?.(10, 0.22);
 
-      const sx = this.x + this.facing * 56;
-      const sy = this.y - 114;
-      const dx = targetX - sx;
-      const dy = (enemy ? enemy.y - 104 : this.groundY - 104) - sy;
-      const dist = Math.hypot(dx, dy) || 1;
+      const rayXs = [
+        Math.max(85, Math.min(ww - 85, targetX - 54)),
+        targetX,
+        Math.max(85, Math.min(ww - 85, targetX + 54))
+      ];
+      this._skillJudgmentRays = rayXs.map((rx, idx) => ({
+        x: rx,
+        groundY: this.groundY,
+        age: 0,
+        maxLife: 0.48,
+        isCenter: idx === 1
+      }));
 
-      this.fx?.spawn('scepterStarburstCone', sx, sy, {
-        flip: this.facing < 0,
-        light: 1.32,
-        extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGrace: true }
-      });
-
-      game?.vfx?.spawnBeam({
-        x1: targetX - 135,
-        y1: -120,
-        x2: targetX + 25,
-        y2: this.groundY - 8,
-        width: 38,
-        color: '#fde047',
-        coreColor: '#ffffff',
-        maxLife: 0.44
-      });
-      game?.vfx?.spawnBeam({
-        x1: targetX + 135,
-        y1: -120,
-        x2: targetX - 25,
-        y2: this.groundY - 8,
-        width: 38,
-        color: '#facc15',
-        coreColor: '#ffffff',
-        maxLife: 0.44
-      });
-
-      game?.vfx?.spawnFlamePillar(targetX, this.groundY, this, null, {
-        theme: 'radiant',
-        delay: 0.02,
-        maxLife: 0.76,
-        scaleWidth: 0.94
-      });
-      this.fx?.spawn('cathedralSanctumPillar', targetX, this.groundY, {
-        light: 1.36,
-        extra: { scaleWidth: 1.0 }
-      });
-
-      if (enemy && !enemy.isDead) {
-        const horizDist = Math.abs(enemy.x - this.x);
-        const beamDmg = horizDist >= 260 ? 84 : 74;
-        enemy.takeDamage(beamDmg, this, false, 60, -45);
-      }
-
-      for (const side of [-1, 1]) {
-        const spX = Math.max(80, Math.min(ww - 80, targetX + side * 44));
-        this.fx?.spawn('holySpearReticle', spX, this.groundY, {
-          light: 1.24
+      for (let i = 0; i < rayXs.length; i++) {
+        const rx = rayXs[i];
+        this.fx?.spawn('holySpearReticle', rx, this.groundY, {
+          light: 1.18
         });
         game?.vfx?.spawnSkyStrike({
-          x: spX,
+          x: rx,
           y: -160,
           groundY: this.groundY,
-          vx: -side * 90,
-          vy: 1220,
+          vx: 0,
+          vy: 1320,
           type: 'holy_spear',
-          color: '#fde047',
+          color: i === 1 ? '#fde047' : '#fb7185',
           coreColor: '#ffffff',
           owner: this,
           target: enemy,
-          damage: 26,
-          delay: side < 0 ? 0 : 0.06,
+          damage: i === 1 ? 34 : 22,
+          delay: i === 1 ? 0 : 0.05,
           isUltimate: false
         });
       }
 
+      game?.vfx?.spawnFlamePillar(targetX, this.groundY, this, null, {
+        theme: 'radiant',
+        delay: 0.02,
+        maxLife: 0.78,
+        scaleWidth: 0.96
+      });
+      this.fx?.spawn('cathedralSanctumPillar', targetX, this.groundY, {
+        light: 1.28,
+        extra: { scaleWidth: 0.96 }
+      });
+      this.spawnVfxAnim(3, targetX, this.groundY - 98, 184, 184, 0.38, {
+        flipX: false,
+        inFront: false
+      });
+
+      this._applyRemoteSanctumJudgment(targetX, 118, 72, game, enemy, {
+        isCrit: true,
+        knockX: 60,
+        knockY: -48,
+        hitStop: 0.042
+      });
+
+      const sx = this.x + this.facing * 64;
+      const sy = this.y - 108;
+      const dx = targetX - sx;
+      const dy = (enemy ? enemy.y - 98 : this.groundY - 98) - sy;
+      const dist = Math.hypot(dx, dy) || 1;
       game?.vfx?.spawnProjectile({
         x: sx,
         y: sy,
-        vx: (dx / dist) * 655,
-        vy: (dy / dist) * 655,
-        radius: 16,
+        vx: (dx / dist) * 710,
+        vy: (dy / dist) * 710,
+        radius: 15,
+        maxRange: 650,
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 50,
+        damage: 46,
         type: 'holy_light',
         isMeteor: false
       });
-
-      game?.vfx?.spawnGlyphBurst(targetX, this.groundY - 95, 11, 'radiant');
     } else if (t >= this.skillDuration) {
       this.y = this.groundY;
       this.vx = 0;
@@ -1454,13 +1403,16 @@ export class PriestessEx extends Fighter {
   }
 
   /**
-   * OVERDRIVE (`SERAPHIC CATHEDRAL`, Row 4 `120..149`):
-   * Winged Seraphic Ascent (`seraphim_wings.png` + Stained-Glass Rose Mandala) + Miracle Heal + Cross-Cathedral Beams!
+   * NEWLY BORN OVERDRIVE (`SERAPHIC ORGAN OF LIGHT`, Row 4 `120..149`):
+   * Unfurls `seraphim_wings.png` + `+48 HP` Miracle Heal + Descending Golden Cathedral Halo +
+   * 5-Pillar Golden Cathedral Organ-of-Light (`[-160, -80, 0, 80, 160]` graduated organ columns)!
    */
   updateUltimate(_dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const targetX = enemy ? enemy.x : ww * 0.5;
+    const rawTarget = enemy ? enemy.x : this.x + this.facing * 360;
+    const targetX = Math.max(190, Math.min(ww - 190, rawTarget));
+
     this.isFlipVault = false;
     this.isBlinkTeleport = false;
     this.isAngelicAscent = false;
@@ -1474,179 +1426,137 @@ export class PriestessEx extends Fighter {
 
     let lift = 0;
     if (t < 0.38) {
-      lift = Math.sin((t / 0.38) * (Math.PI * 0.5)) * 122;
-    } else if (t < 1.18) {
-      lift = 122 + Math.sin((t - 0.38) * 8.0) * 7;
+      lift = Math.sin((t / 0.38) * (Math.PI * 0.5)) * 116;
+    } else if (t < 1.22) {
+      lift = 116 + Math.sin((t - 0.38) * 8.0) * 6;
     } else {
-      lift = Math.max(0, Math.cos(((t - 1.18) / 0.38) * (Math.PI * 0.5)) * 122);
+      lift = Math.max(0, Math.cos(((t - 1.22) / 0.40) * (Math.PI * 0.5)) * 116);
     }
     this.y = this.groundY - lift;
 
-    if (t >= 0.16 && !this.didUltMiracle) {
+    if (t >= 0.14 && !this.didUltMiracle) {
       this.didUltMiracle = true;
+      this.ultOrganStep = 0;
       if (game?.audio) game.audio.play('holy_heal', this.x);
+      game?.vfx?.spawnSpecialCastAura(this, this.ultName, 'NEO-VISION OVERDRIVE', 'radiant', true);
       this.heal(48, 'MIRACLE');
       this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
         follow: this,
         offsetX: 0,
         offsetY: 0,
         useGroundY: true,
-        light: 1.36
-      });
-      game?.vfx?.spawnGlyphBurst(this.x, this.y - 115, 14, 'heal');
-    }
-
-    const volleyTimes = [0.44, 0.56, 0.68, 0.80];
-    if (
-      this.ultChakramStep < volleyTimes.length &&
-      t >= volleyTimes[this.ultChakramStep] &&
-      enemy &&
-      !enemy.isDead
-    ) {
-      const step = this.ultChakramStep;
-      this.ultChakramStep++;
-      if (game?.audio) game.audio.play('holy_bolt', this.x);
-
-      const haloX = this.x + Math.cos(step * 1.57) * 72;
-      const haloY = this.y - 122 + Math.sin(step * 1.57) * 42;
-      const aimX = Math.max(75, Math.min(ww - 75, enemy.x + (step - 1.5) * 44));
-      const aimY = this.groundY - 12;
-
-      game?.vfx?.spawnBeam({
-        x1: haloX,
-        y1: haloY,
-        x2: aimX,
-        y2: aimY,
-        width: 30,
-        color: '#fde047',
-        coreColor: '#ffffff',
-        maxLife: 0.42
-      });
-
-      this.fx?.spawn('holySpearReticle', aimX, this.groundY, {
         light: 1.28
       });
-
-      game?.vfx?.spawnSkyStrike({
-        x: aimX,
-        y: -160,
+      this._organVisual = {
+        active: true,
+        centerX: targetX,
         groundY: this.groundY,
-        vx: 0,
-        vy: 1260,
-        type: 'holy_spear',
-        color: '#fde047',
-        coreColor: '#ffffff',
-        owner: this,
-        target: enemy,
-        damage: 18,
-        isUltimate: true
-      });
-
-      game?.vfx?.spawnGlyphBurst(aimX, this.groundY - 45, 5, 'radiant');
-      enemy.takeDamage(28, this, false, 28, 0);
+        age: 0,
+        maxLife: this.ultDuration
+      };
+      this.spawnPrismSeal(targetX, this.groundY, 168, 1.48);
+      this.spawnSanctumCluster(this.x, this.y - 108, 12, 155, true);
     }
 
-    if (t >= 0.94 && !this.didActionFrame) {
+    if (this._organVisual?.active) {
+      this._organVisual.age = t;
+      this._organVisual.centerX = targetX;
+      this._organVisual.groundY = this.groundY;
+    }
+
+    // Sequentially ignite the 5 Golden Cathedral Organ-of-Light Pipes!
+    const pipeOffsets = [-160, 160, -80, 80, 0];
+    const pipeTimes = [0.36, 0.46, 0.56, 0.66, 0.78];
+    while (this.ultOrganStep < pipeTimes.length && t >= pipeTimes[this.ultOrganStep]) {
+      const idx = this.ultOrganStep;
+      this.ultOrganStep++;
+      const px = Math.max(85, Math.min(ww - 85, targetX + pipeOffsets[idx]));
+      const isCenter = pipeOffsets[idx] === 0;
+      if (game?.audio) game.audio.play('holy_bolt', px);
+      this.spawnVfxAnim(2, px, this.groundY - (isCenter ? 112 : 94), isCenter ? 224 : 182, isCenter ? 236 : 192, 0.52, {
+        flipX: pipeOffsets[idx] < 0,
+        inFront: true
+      });
+      game?.vfx?.spawnFlamePillar(px, this.groundY, this, null, {
+        theme: 'radiant',
+        delay: 0.01,
+        maxLife: isCenter ? 0.92 : 0.76,
+        scaleWidth: isCenter ? 1.18 : 0.84,
+        isUltimate: isCenter
+      });
+      this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
+        light: isCenter ? 1.34 : 1.20,
+        extra: { scaleWidth: isCenter ? 1.18 : 0.84 }
+      });
+      this.spawnSanctumCluster(px, this.groundY - 92, isCenter ? 10 : 6, 150, true);
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - px) <= 135) {
+        enemy.takeDamage(26, this, false, 24, 0);
+      }
+    }
+
+    // Grand Descending Halo Climax (`t >= 0.96s`)
+    if (t >= 0.96 && !this.didActionFrame) {
       this.didActionFrame = true;
       if (game?.audio) game.audio.play('priestess_ult', targetX);
+      game?.renderer?.triggerShake?.(22, 0.54);
+      game?.renderer?.triggerAberration?.(12);
+      game?.renderer?.triggerHitStop?.(0.08);
 
-      game?.renderer?.triggerShake?.(24, 0.58);
-      game?.renderer?.triggerAberration?.(14);
-      game?.renderer?.triggerHitStop?.(0.085);
+      this.spawnVfxAnim(3, targetX, this.groundY - 118, 244, 244, 0.54, {
+        flipX: false,
+        inFront: true
+      });
+      this.spawnSanctumCluster(targetX, this.groundY - 118, 16, 195, true);
 
-      game?.vfx?.spawnBeam({
-        x1: targetX - 240,
-        y1: -140,
-        x2: targetX + 65,
-        y2: this.groundY - 8,
-        width: 74,
-        color: '#fde047',
-        coreColor: '#ffffff',
-        maxLife: 0.78
-      });
-      game?.vfx?.spawnBeam({
-        x1: targetX + 240,
-        y1: -140,
-        x2: targetX - 65,
-        y2: this.groundY - 8,
-        width: 74,
-        color: '#facc15',
-        coreColor: '#ffffff',
-        maxLife: 0.78
-      });
-      game?.vfx?.spawnBeam({
-        x1: this.x + this.facing * 52,
-        y1: this.y - 118,
-        x2: targetX,
-        y2: this.groundY - 95,
-        width: 48,
-        color: '#fef08a',
-        coreColor: '#ffffff',
-        maxLife: 0.68
+      this._applyRemoteSanctumJudgment(targetX, 195, 162, game, enemy, {
+        isCrit: true,
+        knockX: 145,
+        knockY: -195,
+        hitStop: 0.06
       });
 
-      const pillarOffsets = [0, -135, 135];
-      pillarOffsets.forEach((off, idx) => {
-        const px = Math.max(75, Math.min(ww - 75, targetX + off));
-        game?.vfx?.spawnFlamePillar(px, this.groundY, this, null, {
-          theme: 'radiant',
-          delay: idx === 0 ? 0.01 : 0.06,
-          maxLife: idx === 0 ? 0.86 : 0.72,
-          scaleWidth: idx === 0 ? 1.18 : 0.86,
-          isUltimate: idx === 0
-        });
-        this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
-          light: idx === 0 ? 1.42 : 1.28,
-          extra: { scaleWidth: idx === 0 ? 1.18 : 0.86 }
-        });
-      });
+      game?.vfx?.spawnDamageText(
+        targetX,
+        this.groundY - 186,
+        0,
+        true,
+        'SERAPHIC ORGAN OF LIGHT!',
+        '#fde047'
+      );
+    }
 
-      this.fx?.spawn('holyStarImpactBurst', targetX, this.groundY - 92, {
-        light: 1.4,
-        extra: { isCrit: true }
-      });
-
-      game?.vfx?.spawnGlyphBurst(targetX, this.groundY - 90, 14, 'radiant');
-      game?.vfx?.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
-
-      if (enemy && !enemy.isDead) {
-        enemy.takeDamage(168, this, true, 150, -210);
-      }
-    } else if (t >= this.ultDuration) {
+    if (t >= this.ultDuration) {
       this.y = this.groundY;
       this.isInvulnerable = false;
+      if (this._organVisual) this._organVisual.active = false;
       this.setState('IDLE');
     }
   }
 
   /**
-   * SUPREME FINISHER (`FINAL GRACE`, `4.25s`):
-   * - Phase 1 (`0.00..3.03s`): Invulnerable Winged Flight + `+30%` Max HP Heal + Whole-Screen Celestial Bloom Charge
-   * - Phase 2 (`t >= 3.03s..3.92s`): Welded `208x208` Horizontal Purifying Beam (`>= 740` stored counter damage!)
-   * - Phase 3 (`3.92..4.25s`): Graceful Seraphic Descent (NEVER replaces arena background!)
+   * NEWLY BORN SUPREME FINISHER (`FINAL GRACE: GENESIS LUMEN`, `4.25s`):
+   * - Phase 1 (`0.00..3.03s`): Stained-Glass Celestial Dome + `+30%` MaxHP Miracle + unbreakable absorption
+   * - Phase 2 (`t >= 3.03s`): Multi-Band Prismatic Pixel Horizon Purification Beam (`>= 740` dmg) + pixel light-feathers!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    this.vx = 0;
+    this.vy = 0;
     this.isInvulnerable = true;
     this.unstoppablePoise = true;
-    this.hurtTimer = 0;
+    this.isCrouching = false;
+    this.isDeflecting = false;
     this.isFlipVault = false;
     this.isBlinkTeleport = false;
     this.isAngelicAscent = false;
-    this.vx = 0;
-    this.vy = 0;
 
     const foes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
     let focusEnemy = enemy && !enemy.isDead && !enemy.isBenched ? enemy : null;
-    if (!focusEnemy && foes.length > 0) {
-      let bestDist = Infinity;
+    if (!focusEnemy) {
       for (const f of foes) {
         if (f && !f.isDead && !f.isBenched) {
-          const d = Math.abs(f.x - this.x);
-          if (d < bestDist) {
-            bestDist = d;
-            focusEnemy = f;
-          }
+          focusEnemy = f;
+          break;
         }
       }
     }
@@ -1664,7 +1574,6 @@ export class PriestessEx extends Fighter {
     }
 
     if (t < 3.03) {
-      // Phase 1 (0.00..3.03s): Winged Hover + +30% Max HP Heal + Expanding Celestial Bloom Charge
       const ascU = Math.min(1, t / 0.55);
       const ascEase = 1 - Math.pow(1 - ascU, 2.4);
       const hoverBob = t >= 0.55 ? Math.sin(t * 4.2) * 4 : 0;
@@ -1686,24 +1595,15 @@ export class PriestessEx extends Fighter {
         this.finalGraceDidHeal = true;
         const healAmt = Math.round(this.maxHp * 0.30);
         if (game?.audio) game.audio.play('holy_heal', this.x);
-        this.heal(healAmt, 'FINAL GRACE');
+        this.heal(healAmt, 'GENESIS LUMEN');
         this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
           follow: this,
           offsetX: 0,
           offsetY: 0,
           useGroundY: true,
-          light: 1.45
+          light: 1.32
         });
-        this.fx?.burst(this.x, this.y - 98, {
-          count: 24,
-          speedMin: 48,
-          speedMax: 185,
-          lifeMin: 0.28,
-          lifeMax: 0.56,
-          gravity: -42,
-          colors: ['#ffffff', '#fef08a', '#fde047', '#34d399', '#6ee7b7']
-        });
-        game?.vfx?.spawnGlyphBurst(this.x, this.y - 104, 14, 'heal');
+        this.spawnSanctumCluster(this.x, this.y - 98, 16, 165, true);
       }
 
       const muzzleX = this.x + this.facing * 56;
@@ -1720,28 +1620,20 @@ export class PriestessEx extends Fighter {
           offsetX: 0,
           offsetY: -98,
           flip: this.facing < 0,
-          light: 1.25 + 0.35 * this.finalGraceChargeProgress,
+          light: 1.18 + 0.24 * this.finalGraceChargeProgress,
           extra: { chargeU: this.finalGraceChargeProgress }
         });
       }
 
       this._finalGraceMoteAccum += dt;
-      if (this._finalGraceMoteAccum >= 0.09) {
+      if (this._finalGraceMoteAccum >= 0.11) {
         this._finalGraceMoteAccum = 0;
-        this.fx?.burst(muzzleX, beamY, {
-          count: 3 + Math.floor(this.finalGraceChargeProgress * 4),
-          speedMin: 26,
-          speedMax: 92 + this.finalGraceChargeProgress * 65,
-          lifeMin: 0.2,
-          lifeMax: 0.38,
-          gravity: -36,
-          colors: ['#ffffff', '#fef08a', '#fde047', '#f472b6', '#38bdf8']
-        });
+        this.spawnSanctumCluster(muzzleX, beamY, 3, 95, true);
       }
       return;
     }
 
-    // Phase 2 (t >= 3.03s): Single Instant Purifying Horizontal Beam (`>= 740` damage!)
+    // Phase 2 (STRICTLY at t >= 3.03s): Multi-Band Prismatic Horizon Purification Beam (`>= 740` dmg!)
     if (!this.finalGraceDidFire) {
       this.finalGraceDidFire = true;
       this.finalGraceBeamActive = true;
@@ -1763,6 +1655,11 @@ export class PriestessEx extends Fighter {
       game?.renderer?.triggerAberration?.(9);
       game?.renderer?.triggerHitStop?.(0.10);
 
+      // Shower of pixel light-feathers & star-glints along the horizon beam!
+      for (let step = 1; step <= 7; step++) {
+        this.spawnSanctumCluster(muzzleX + this.facing * step * 145, beamY, 4, 145, true);
+      }
+
       let hitAny = false;
       for (const foe of foes) {
         if (!foe || foe.isDead || foe.isBenched) continue;
@@ -1773,19 +1670,11 @@ export class PriestessEx extends Fighter {
           foe.takeDamage(counterDmg, this, true, 255, -185);
           this.fx?.spawn('sanctuaryNovaBurst', foe.x, beamY, {
             flip: this.facing < 0,
-            light: 1.48
+            light: 1.36
           });
-          this.fx?.burst(foe.x, beamY, {
-            count: 26,
-            speedMin: 80,
-            speedMax: 285,
-            lifeMin: 0.24,
-            lifeMax: 0.52,
-            gravity: 40,
-            colors: ['#ffffff', '#fef08a', '#fde047', '#f472b6', '#38bdf8']
-          });
+          this.spawnHitStarburst(foe.x, beamY, '#fde047', '#fb7185', 1.45);
+          this.spawnSanctumCluster(foe.x, beamY, 14, 210, true);
           if (game?.vfx) {
-            game.vfx.spawnGlyphBurst(foe.x, beamY, 14, 'radiant');
             game.vfx.spawnDamageText(
               foe.x,
               foe.y - 156,
@@ -1802,7 +1691,7 @@ export class PriestessEx extends Fighter {
         const missX = this.x + this.facing * 240;
         this.fx?.spawn('sanctuaryNovaBurst', missX, beamY, {
           flip: this.facing < 0,
-          light: 1.36
+          light: 1.28
         });
         game.vfx.spawnDamageText(
           missX,
@@ -1820,7 +1709,7 @@ export class PriestessEx extends Fighter {
       this.finalGraceMuzzleX = this.x + this.facing * 56;
       this.finalGraceBeamY = this.y - 104;
       this.finalGraceBeamTimer = t - 3.03;
-      const fIdx = 134 + (Math.floor((t - 3.03) * 24) % 6);
+      const fIdx = 137 + (Math.floor((t - 3.03) * 24) % 7);
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
     } else if (t < this.trueUltDuration) {
@@ -1828,7 +1717,7 @@ export class PriestessEx extends Fighter {
       const descU = Math.min(1, Math.max(0, (t - 3.92) / 0.33));
       const smoothDesc = descU * descU * (3 - 2 * descU);
       this.y = this.groundY - 66 * (1 - smoothDesc);
-      const fIdx = 144 + Math.min(5, Math.floor(descU * 6));
+      const fIdx = 145 + Math.min(4, Math.floor(descU * 5));
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
     } else {
@@ -1872,10 +1761,43 @@ export class PriestessEx extends Fighter {
       }
     }
 
-    for (let i = this.razorScars.length - 1; i >= 0; i--) {
-      this.razorScars[i].age += dt;
-      if (this.razorScars[i].age >= this.razorScars[i].maxLife) {
-        this.razorScars.splice(i, 1);
+    for (let i = this.exParticles.length - 1; i >= 0; i--) {
+      const p = this.exParticles[i];
+      p.age += dt;
+      if (p.age >= p.maxLife) {
+        this.exParticles.splice(i, 1);
+        continue;
+      }
+      if (p.shape !== 'ring') {
+        p.vx *= p.drag;
+        p.vy = p.vy * p.drag + p.gravity * dt;
+        if (p.shape === 'feather') {
+          p.x += (p.vx + Math.sin(p.age * 11) * 28) * dt;
+        } else {
+          p.x += p.vx * dt;
+        }
+        p.y += p.vy * dt;
+      }
+    }
+
+    for (let i = this.hitStarbursts.length - 1; i >= 0; i--) {
+      this.hitStarbursts[i].age += dt;
+      if (this.hitStarbursts[i].age >= this.hitStarbursts[i].maxLife) {
+        this.hitStarbursts.splice(i, 1);
+      }
+    }
+
+    for (let i = this.prismSeals.length - 1; i >= 0; i--) {
+      this.prismSeals[i].age += dt;
+      if (this.prismSeals[i].age >= this.prismSeals[i].maxLife) {
+        this.prismSeals.splice(i, 1);
+      }
+    }
+
+    for (let i = this._skillJudgmentRays.length - 1; i >= 0; i--) {
+      this._skillJudgmentRays[i].age += dt;
+      if (this._skillJudgmentRays[i].age >= this._skillJudgmentRays[i].maxLife) {
+        this._skillJudgmentRays.splice(i, 1);
       }
     }
   }
@@ -1895,15 +1817,17 @@ export class PriestessEx extends Fighter {
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.30) {
         this.stepDustTimer = 0;
-        if (game?.audio) game.audio.play('footstep_steel', this.x);
-        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
-          count: 4,
-          speedMin: 24,
-          speedMax: 68,
-          lifeMin: 0.12,
-          lifeMax: 0.24,
-          gravity: 28,
-          colors: ['#ffffff', '#fef08a', '#fde047', '#f472b6']
+        this.spawnExParticle({
+          x: this.x - this.facing * 12,
+          y: this.groundY - 4,
+          vx: -this.facing * 20,
+          vy: -24,
+          gravity: -14,
+          shape: 'star4',
+          size: 3,
+          color: '#fde047',
+          coreColor: '#ffffff',
+          maxLife: 0.24
         });
       }
     }
@@ -1921,7 +1845,7 @@ export class PriestessEx extends Fighter {
         for (const proj of game.vfx.projectiles) {
           if (
             proj.owner !== this &&
-            Math.abs(proj.x - this.x) < 230 &&
+            Math.abs(proj.x - this.x) < 235 &&
             Math.sign(proj.vx) === Math.sign(this.x - proj.x)
           ) {
             this.startCrouch(enemy, game);
@@ -1952,10 +1876,10 @@ export class PriestessEx extends Fighter {
         return img;
       };
       assets.priestess_ex = {
-        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps114'),
-        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps114'),
-        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps114'),
-        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps114'),
+        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps115'),
+        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps115'),
+        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps115'),
+        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps115'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -1967,8 +1891,41 @@ export class PriestessEx extends Fighter {
     return assets.priestess_ex;
   }
 
+  // ============================================================================
+  // PIXEL-PURE RENDERING (4x4 BAYER HALOS `alpha <= 0.20`, STAINED-GLASS & ORGAN)
+  // ============================================================================
+  drawBayerPixelHalo(ctx, cx, cy, rx, ry, outerHex = '#fde047', coreHex = '#ffffff', alpha = 0.16) {
+    if (rx < 6 || ry < 4 || alpha <= 0.01) return;
+    const cappedAlpha = Math.min(0.20, alpha);
+    const step = 4;
+    const x0 = Math.floor((cx - rx) / step) * step;
+    const x1 = Math.ceil((cx + rx) / step) * step;
+    const y0 = Math.floor((cy - ry) / step) * step;
+    const y1 = Math.ceil((cy + ry) / step) * step;
+
+    ctx.save();
+    ctx.globalAlpha = cappedAlpha;
+    for (let py = y0; py <= y1; py += step) {
+      const dy = (py - cy) / ry;
+      if (Math.abs(dy) > 1) continue;
+      const by = (py >>> 2) & 3;
+      for (let px = x0; px <= x1; px += step) {
+        const dx = (px - cx) / rx;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > 1) continue;
+        const falloff = 1 - Math.sqrt(d2);
+        const thresh = BAYER_4X4[by][(px >>> 2) & 3] / 16.0;
+        if (falloff * 1.15 > thresh) {
+          ctx.fillStyle = falloff > 0.58 ? coreHex : outerHex;
+          ctx.fillRect(px, py, step, step);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
   drawPixelOctagonRing(ctx, cx, cy, rx, ry, stepPx, color, alpha) {
-    if (rx < 8 || ry < 8 || alpha <= 0.01) return;
+    if (rx < 8 || ry < 5 || alpha <= 0.01) return;
     ctx.save();
     ctx.globalAlpha = Math.min(1, alpha);
     ctx.fillStyle = color;
@@ -1998,44 +1955,165 @@ export class PriestessEx extends Fighter {
     ctx.restore();
   }
 
-  drawPixelRazorScars(ctx) {
-    if (!this.razorScars.length) return;
+  drawPrismSealsAndSkillRays(ctx) {
+    for (let i = 0; i < this.prismSeals.length; i++) {
+      const s = this.prismSeals[i];
+      const u = Math.min(1, s.age / Math.max(0.01, s.maxLife));
+      const fade = Math.sin(u * Math.PI);
+      const rx = s.radius * (0.76 + 0.28 * u);
+      const ry = Math.max(8, rx * 0.23);
+      this.drawBayerPixelHalo(ctx, s.x, s.groundY - 4, rx, ry * 1.35, '#fb7185', '#fde047', 0.16 * fade);
+      this.drawPixelOctagonRing(ctx, s.x, s.groundY - 4, rx, ry, 2, '#fde047', 0.88 * fade);
+      this.drawPixelOctagonRing(ctx, s.x, s.groundY - 4, rx * 0.64, ry * 0.64, 2, '#38bdf8', 0.76 * fade);
+    }
+
+    if (!this._skillJudgmentRays.length) return;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    for (let i = 0; i < this.razorScars.length; i++) {
-      const s = this.razorScars[i];
-      const u = Math.min(1, s.age / s.maxLife);
-      const fade = u < 0.15 ? 1.0 : Math.max(0, 1 - (u - 0.15) / 0.85);
-      if (fade <= 0.02) continue;
+    for (let i = 0; i < this._skillJudgmentRays.length; i++) {
+      const r = this._skillJudgmentRays[i];
+      const u = Math.min(1, r.age / Math.max(0.01, r.maxLife));
+      const fade = Math.sin(u * Math.PI);
+      const hw = Math.round((r.isCenter ? 22 : 14) * (0.65 + 0.45 * fade));
+      const x = Math.round(r.x);
+      const yTop = Math.round(r.groundY - 420);
+      const h = Math.round(r.groundY - yTop);
 
-      const dx = s.x1 - s.x0;
-      const dy = s.y1 - s.y0;
-      const steps = Math.max(12, Math.round(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
+      ctx.globalAlpha = Math.min(1, fade * 0.48);
+      ctx.fillStyle = r.isCenter ? '#fb7185' : '#38bdf8';
+      ctx.fillRect(x - hw, yTop, hw * 2, h);
+
+      const midW = Math.max(4, Math.round(hw * 0.62));
+      ctx.globalAlpha = Math.min(1, fade * 0.78);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(x - midW, yTop, midW * 2, h);
+
+      const coreW = Math.max(2, Math.round(hw * 0.30));
       ctx.globalAlpha = Math.min(1, fade * 0.96);
-
-      for (let k = 0; k <= steps; k++) {
-        const su = k / steps;
-        const taper = Math.sin(su * Math.PI);
-        if (taper <= 0.08) continue;
-        const px = Math.round((s.x0 + dx * su) / 2) * 2;
-        const py = Math.round((s.y0 + dy * su) / 2) * 2;
-        const rad = Math.max(2, Math.round(taper * 6) * 2);
-
-        ctx.fillStyle = s.isRose ? '#db2777' : '#d97706';
-        ctx.fillRect(px - rad, py - rad, rad * 2, rad * 2);
-        const mid = Math.max(2, rad - 2);
-        ctx.fillStyle = s.isRose ? '#f9a8d4' : '#fde047';
-        ctx.fillRect(px - mid, py - mid, mid * 2, mid * 2);
-        if (taper > 0.35) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(px - 2, py - 2, 4, 4);
-        }
-      }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x - coreW, yTop, coreW * 2, h);
     }
     ctx.restore();
   }
 
-  drawSeraphimVFX(ctx, sprites, isReflection, renderer = null) {
+  drawOrganOfLightOverlay(ctx) {
+    const o = this._organVisual;
+    if (!o || !o.active) return;
+    const u = Math.min(1, o.age / Math.max(0.01, o.maxLife));
+    const fade = u < 0.14 ? u / 0.14 : u > 0.82 ? (1 - u) / 0.18 : 1.0;
+    if (fade <= 0.02) return;
+
+    const cx = Math.round(o.centerX);
+    const gy = Math.round(o.groundY);
+    const pipeSpecs = [
+      { off: -160, h: 250, w: 18, tint: '#38bdf8' },
+      { off: -80, h: 330, w: 22, tint: '#fb7185' },
+      { off: 0, h: 420, w: 30, tint: '#fde047' },
+      { off: 80, h: 330, w: 22, tint: '#fb7185' },
+      { off: 160, h: 250, w: 18, tint: '#38bdf8' }
+    ];
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    // Descending Golden Cathedral Halo Crown
+    const haloY = Math.round(gy - 365 + Math.min(1, u * 1.25) * 145);
+    this.drawBayerPixelHalo(ctx, cx, haloY, 175 * fade, 34 * fade, '#fde047', '#ffffff', 0.18 * fade);
+    this.drawPixelOctagonRing(ctx, cx, haloY, 172 * fade, 28 * fade, 4, '#fde047', 0.92 * fade);
+    this.drawPixelOctagonRing(ctx, cx, haloY, 132 * fade, 20 * fade, 2, '#ffffff', 0.84 * fade);
+
+    // 5 Graduated Golden Cathedral Organ-of-Light Pipes
+    for (let i = 0; i < pipeSpecs.length; i++) {
+      const p = pipeSpecs[i];
+      const px = cx + p.off;
+      const pipeH = Math.round(p.h * Math.min(1, u * 2.4));
+      const py = gy - pipeH;
+      ctx.globalAlpha = 0.42 * fade;
+      ctx.fillStyle = p.tint;
+      ctx.fillRect(px - p.w, py, p.w * 2, pipeH);
+      ctx.globalAlpha = 0.72 * fade;
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(px - Math.round(p.w * 0.58), py, Math.round(p.w * 1.16), pipeH);
+      ctx.globalAlpha = 0.94 * fade;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - Math.round(p.w * 0.25), py, Math.round(p.w * 0.5), pipeH);
+    }
+    ctx.restore();
+  }
+
+  drawExParticlesAndStarbursts(ctx) {
+    if (!this.exParticles.length && !this.hitStarbursts.length) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    for (let i = 0; i < this.exParticles.length; i++) {
+      const p = this.exParticles[i];
+      const u = Math.min(1, p.age / Math.max(0.01, p.maxLife));
+      const fade = 1 - u;
+      const px = Math.round(p.x / 2) * 2;
+      const py = Math.round(p.y / 2) * 2;
+      ctx.globalAlpha = Math.min(1, fade * 0.94);
+
+      if (p.shape === 'ring') {
+        const rx = p.size * (0.45 + 0.75 * u);
+        this.drawPixelOctagonRing(ctx, px, py, rx, rx * 0.65, 2, p.color, fade * 0.78);
+        continue;
+      }
+
+      if (p.shape === 'feather') {
+        // Stepped pixel Seraph Light-Feather (zero canvas rotation!)
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(px - 4, py - 2, 6, 2);
+        ctx.fillRect(px - 2, py, 6, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 2, py - 2, 4, 2);
+      } else if (p.shape === 'star4') {
+        const arm = Math.max(2, Math.round((p.size * (1 - u * 0.35)) / 2) * 2);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(px - arm - 2, py - 1, (arm + 2) * 2, 2);
+        ctx.fillRect(px - 1, py - arm - 2, 2, (arm + 2) * 2);
+        ctx.fillStyle = p.coreColor;
+        ctx.fillRect(px - arm, py - 1, arm * 2, 2);
+        ctx.fillRect(px - 1, py - arm, 2, arm * 2);
+      } else if (p.shape === 'diamond') {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(px - 4, py - 2, 8, 4);
+        ctx.fillRect(px - 2, py - 4, 4, 8);
+        ctx.fillStyle = p.coreColor;
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(px - 3, py - 1, 6, 2);
+        ctx.fillRect(px - 1, py - 3, 2, 6);
+      }
+    }
+
+    for (let i = 0; i < this.hitStarbursts.length; i++) {
+      const h = this.hitStarbursts[i];
+      const u = Math.min(1, h.age / Math.max(0.01, h.maxLife));
+      const fade = 1 - u;
+      const reach = Math.round(28 * h.scale * (0.55 + 0.65 * u));
+      const diag = Math.round(reach * 0.56);
+      ctx.globalAlpha = Math.min(1, fade * 0.95);
+
+      ctx.fillStyle = h.accentHex;
+      ctx.fillRect(h.x - reach, h.y - 2, reach * 2, 4);
+      ctx.fillRect(h.x - 2, h.y - reach, 4, reach * 2);
+      for (let d = -diag; d <= diag; d += 4) {
+        ctx.fillRect(h.x + d - 1, h.y + d - 1, 2, 2);
+        ctx.fillRect(h.x + d - 1, h.y - d - 1, 2, 2);
+      }
+      const inner = Math.max(4, Math.round(reach * 0.62));
+      ctx.fillStyle = h.primaryHex;
+      ctx.fillRect(h.x - inner, h.y - 1, inner * 2, 2);
+      ctx.fillRect(h.x - 1, h.y - inner, 2, inner * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(h.x - 3, h.y - 3, 6, 6);
+    }
+
+    ctx.restore();
+  }
+
+  drawSeraphimVFX(ctx, sprites, isReflection) {
     if (isReflection || this.state === 'AUTO_ATTACK') return;
     const isDeathFade = this.isDead && (this.deathTimer || 0) < 0.46;
     const showWings =
@@ -2056,7 +2134,7 @@ export class PriestessEx extends Fighter {
       const fadeOut = t > dur - 0.28 ? Math.max(0, (dur - t) / 0.28) : 1.0;
       env = fadeIn * fadeOut;
     } else if (this.state === 'ULTIMATE') {
-      const dur = this.ultDuration || 1.56;
+      const dur = this.ultDuration || 1.62;
       const u = Math.min(1, this.stateTimer / dur);
       env = Math.min(1, Math.sin(u * Math.PI) * 1.85);
     } else if (this.isAngelicAscent) {
@@ -2068,56 +2146,26 @@ export class PriestessEx extends Fighter {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    const isFullArchangel =
-      this.isAngelicAscent || this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE';
     const cx = -6;
     const cy = -124;
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
 
-    if (renderer?.glowGold) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const bigR =
-        (this.state === 'TRUE_ULTIMATE' ? 310 : isFullArchangel ? 255 : 205) *
-        (0.85 + 0.15 * env);
-      ctx.globalAlpha = (this.state === 'TRUE_ULTIMATE' ? 0.44 : isFullArchangel ? 0.36 : 0.28) * env;
-      ctx.drawImage(renderer.glowGold, cx - bigR, cy - bigR, bigR * 2, bigR * 2);
-      if (renderer.glowEmerald) {
-        const graceR = (isFullArchangel ? 195 : 145) * (0.85 + 0.15 * env);
-        ctx.globalAlpha = 0.22 * env;
-        ctx.drawImage(renderer.glowEmerald, cx - graceR, cy - graceR, graceR * 2, graceR * 2);
-      }
-      ctx.restore();
-    }
+    // Subtle 4x4 Bayer pixel halo behind wings (`alpha <= 0.18`, zero radial whiteout!)
+    this.drawBayerPixelHalo(ctx, cx, cy, 138 * env, 96 * env, '#fde047', '#ffffff', 0.18 * env);
 
     const col = Math.floor(this.stateTimer * 30) % 30;
-
     if (
       (this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE') &&
       vfxSheet &&
       vfxSheet.complete &&
       vfxSheet.naturalWidth > 0
     ) {
-      const baseHalo = this.state === 'TRUE_ULTIMATE' ? 276 : 256;
+      const baseHalo = this.state === 'TRUE_ULTIMATE' ? 272 : 252;
       const haloSize = Math.round(baseHalo * (0.86 + 0.14 * env));
       const gateBob = Math.round(Math.sin(this.haloPhase * 2.4) * 4);
       ctx.save();
       ctx.translate(cx, cy + gateBob);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, env * 0.32);
-      ctx.drawImage(
-        vfxSheet,
-        col * 208,
-        624,
-        208,
-        208,
-        -haloSize * 0.54,
-        -haloSize * 0.54,
-        haloSize * 1.08,
-        haloSize * 1.08
-      );
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, env * 0.94);
+      ctx.globalAlpha = Math.min(1, env * 0.92);
       ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, -haloSize * 0.5, -haloSize * 0.5, haloSize, haloSize);
       ctx.restore();
     }
@@ -2142,10 +2190,6 @@ export class PriestessEx extends Fighter {
       const dx = Math.round(shoulderX - drawW * 0.5);
       const dy = Math.round(shoulderY - drawH * (88 / 232));
 
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.20 * env;
-      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx - 2, dy - 2, drawW + 4, drawH + 4);
-      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = Math.min(1, 0.98 * env);
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, drawW, drawH);
     }
@@ -2153,7 +2197,7 @@ export class PriestessEx extends Fighter {
     ctx.restore();
   }
 
-  drawPriestessExVfxAnims(ctx, inFront = true, renderer = null) {
+  drawPriestessExVfxAnims(ctx, inFront = true) {
     if (!this.activeVfxAnims.length) return;
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
@@ -2173,16 +2217,11 @@ export class PriestessEx extends Fighter {
       const halfW = Math.round(v.w * 0.5);
       const halfH = Math.round(v.h * 0.5);
 
+      this.drawBayerPixelHalo(ctx, px, py, halfW * 0.85, halfH * 0.85, '#fde047', '#ffffff', 0.14 * fade);
       ctx.save();
       ctx.translate(px, py);
       ctx.scale(v.flipX ? -1 : 1, 1);
-      if (renderer?.glowGold) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, fade * 0.34);
-        ctx.drawImage(renderer.glowGold, -halfW, -halfH, v.w, v.h);
-      }
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, 0.32 + fade * 0.68);
+      ctx.globalAlpha = Math.min(1, 0.34 + fade * 0.66);
       ctx.drawImage(vfxSheet, col * 208, v.row * 208, 208, 208, -halfW, -halfH, v.w, v.h);
       ctx.restore();
     }
@@ -2193,66 +2232,51 @@ export class PriestessEx extends Fighter {
     const ww = renderer?.worldWidth || 1280;
     const arenaCenterX = ww * 0.5;
 
+    if (!this.isDead) {
+      this.drawBayerPixelHalo(ctx, Math.round(this.x), Math.round(this.groundY - 4), 46, 14, '#fde047', '#ffffff', 0.14);
+    }
+
+    // Stained-Glass Celestial Dome during `FINAL GRACE: GENESIS LUMEN` charge (`0` screen-bleaching whiteout!)
     if (this.state === 'TRUE_ULTIMATE' && !this.finalGraceDidFire) {
       const chargeP = Math.max(0, Math.min(1, this.finalGraceChargeProgress || this.stateTimer / 3.03));
       const focusX = Math.round(this.x);
       const focusY = Math.round(this.y - 104);
+      const domeRx = 180 + chargeP * 240;
+      const domeRy = 140 + chargeP * 160;
 
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalCompositeOperation = 'lighter';
+      this.drawBayerPixelHalo(ctx, focusX, Math.round(this.groundY - 6), domeRx * 0.95, 36, '#fb7185', '#fde047', 0.18);
 
-      if (renderer?.glowGold) {
-        const outerR = Math.round(240 + chargeP * ww * 0.82);
-        ctx.globalAlpha = 0.12 + chargeP * 0.30;
-        ctx.drawImage(renderer.glowGold, focusX - outerR, focusY - outerR, outerR * 2, outerR * 2);
-      }
-      if (renderer?.glowEmerald) {
-        const emR = Math.round(180 + chargeP * ww * 0.56);
-        ctx.globalAlpha = 0.08 + chargeP * 0.20;
-        ctx.drawImage(renderer.glowEmerald, focusX - emR, focusY - emR, emR * 2, emR * 2);
-      }
-      if (renderer?.glowWhite) {
-        const whR = Math.round(130 + Math.pow(chargeP, 1.7) * ww * 0.65);
-        ctx.globalAlpha = 0.10 + Math.pow(chargeP, 1.8) * 0.34;
-        ctx.drawImage(renderer.glowWhite, focusX - whR, focusY - whR, whR * 2, whR * 2);
-      }
-
-      const washAlpha = 0.03 + Math.pow(chargeP, 2.2) * 0.22;
-      ctx.fillStyle = `rgba(254, 240, 138, ${washAlpha.toFixed(3)})`;
-      ctx.fillRect(-4000, -3000, ww + 8000, 6000);
-
-      const ringCols = ['#fde047', '#f9a8d4', '#ffffff'];
+      const ringCols = ['#fde047', '#fb7185', '#38bdf8'];
       for (let rIdx = 0; rIdx < 3; rIdx++) {
         const phase = (((this.stateTimer * 0.68 + rIdx / 3) % 1) + 1) % 1;
-        const ringR = 72 + phase * (280 + chargeP * (ww * 0.62));
-        const ringAlpha = Math.sin(phase * Math.PI) * (0.28 + chargeP * 0.44);
+        const ringR = 68 + phase * domeRx;
+        const ringAlpha = Math.sin(phase * Math.PI) * (0.28 + chargeP * 0.42);
         this.drawPixelOctagonRing(
           ctx,
           focusX,
           focusY,
           ringR,
-          ringR * 0.68,
+          Math.min(domeRy, ringR * 0.68),
           4,
           ringCols[rIdx],
           ringAlpha
         );
       }
-
-      ctx.restore();
     }
+
+    this.drawPrismSealsAndSkillRays(ctx);
 
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
     }
-    this.drawPriestessExVfxAnims(ctx, false, renderer);
+    this.drawPriestessExVfxAnims(ctx, false);
 
     const sprites = this.getExSprites();
     const sheet = PixelForge.ensureImage(sprites?.sheet);
     if (this.afterimages.length > 0 && sheet && sheet.complete && sheet.naturalWidth) {
       for (let i = 0; i < this.afterimages.length; i++) {
         const img = this.afterimages[i];
-        const alpha = Math.max(0, (1 - img.life / img.maxLife) * 0.56);
+        const alpha = Math.max(0, (1 - img.life / img.maxLife) * 0.52);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 2) * 2, Math.round((img.y + 4) / 2) * 2);
@@ -2269,7 +2293,7 @@ export class PriestessEx extends Fighter {
       ctx.imageSmoothingEnabled = false;
       ctx.translate(Math.round(this.x), Math.round(this.y + groundPlantOffset));
       ctx.scale(this.facing, 1);
-      this.drawSeraphimVFX(ctx, sprites, false, renderer);
+      this.drawSeraphimVFX(ctx, sprites, false);
       ctx.restore();
     }
   }
@@ -2281,8 +2305,9 @@ export class PriestessEx extends Fighter {
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
-    this.drawPriestessExVfxAnims(ctx, true, renderer);
-    this.drawPixelRazorScars(ctx);
+    this.drawOrganOfLightOverlay(ctx);
+    this.drawPriestessExVfxAnims(ctx, true);
+    this.drawExParticlesAndStarbursts(ctx);
 
     if (this.state !== 'TRUE_ULTIMATE') return;
 
@@ -2304,9 +2329,10 @@ export class PriestessEx extends Fighter {
       ctx.scale(this.facing, 1);
 
       ctx.globalAlpha = sightAlpha * 0.55;
-      ctx.fillStyle = '#422006';
-      ctx.fillRect(16, -4, sightLen, 2);
-      ctx.fillRect(16, 2, sightLen, 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(16, -5, sightLen, 2);
+      ctx.fillStyle = '#fb7185';
+      ctx.fillRect(16, 3, sightLen, 2);
 
       const dashPeriod = 28;
       const dashShift = Math.round(this.stateTimer * 240) % dashPeriod;
@@ -2321,35 +2347,18 @@ export class PriestessEx extends Fighter {
       }
       ctx.restore();
 
-      if (renderer?.glowGold) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        const orbGlowR = Math.round(95 + chargeP * 145);
-        ctx.globalAlpha = 0.34 + chargeP * 0.42;
-        ctx.drawImage(renderer.glowGold, muzzleX - orbGlowR, beamY - orbGlowR, orbGlowR * 2, orbGlowR * 2);
-        ctx.restore();
-      }
+      this.drawBayerPixelHalo(ctx, muzzleX, beamY, 64 + chargeP * 54, 64 + chargeP * 54, '#fde047', '#ffffff', 0.20);
+
       if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
         const col = Math.floor(this.stateTimer * 30) % 30;
-        const orbSize = Math.round(208 * (0.64 + 0.72 * chargeP));
+        const orbSize = Math.round(208 * (0.64 + 0.68 * chargeP));
         const halfOrb = Math.round(orbSize * 0.5);
         ctx.save();
         ctx.translate(muzzleX, beamY);
         ctx.scale(this.facing, 1);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.28 + chargeP * 0.34;
-        ctx.drawImage(vfxSheet, col * 208, 1040, 208, 208, -halfOrb - 4, -halfOrb - 4, orbSize + 8, orbSize + 8);
-        ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = Math.min(1, 0.88 + chargeP * 0.12);
         ctx.drawImage(vfxSheet, col * 208, 1040, 208, 208, -halfOrb, -halfOrb, orbSize, orbSize);
         ctx.restore();
-      }
-
-      if (chargeP > 0.88) {
-        const preU = (chargeP - 0.88) / 0.12;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = `rgba(255, 251, 235, ${(preU * preU * 0.36).toFixed(3)})`;
-        ctx.fillRect(-4000, -3000, ww + 8000, 6000);
       }
 
       ctx.restore();
@@ -2370,27 +2379,6 @@ export class PriestessEx extends Fighter {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
 
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      if (beamT < 0.32) {
-        const flashA = Math.pow(1 - beamT / 0.32, 1.6) * 0.46;
-        ctx.fillStyle = `rgba(255, 251, 235, ${flashA.toFixed(3)})`;
-        ctx.fillRect(-4000, -3000, ww + 8000, 6000);
-      }
-      if (renderer?.glowGold) {
-        ctx.globalAlpha = 0.34 * env;
-        for (let gx = 0; gx <= 1350; gx += 270) {
-          const wx = muzzleX + this.facing * gx;
-          ctx.drawImage(renderer.glowGold, wx - 240, beamY - 155, 480, 310);
-        }
-      }
-      if (renderer?.glowWhite) {
-        const mR = Math.round(210 * env);
-        ctx.globalAlpha = 0.48 * env;
-        ctx.drawImage(renderer.glowWhite, muzzleX - mR, beamY - mR, mR * 2, mR * 2);
-      }
-      ctx.restore();
-
       let col = 10;
       if (beamT < 0.08) {
         col = Math.min(2, Math.floor((beamT / 0.08) * 3));
@@ -2400,29 +2388,28 @@ export class PriestessEx extends Fighter {
         col = 22 + Math.min(7, Math.floor(((beamT - 0.65) / 0.24) * 8));
       }
 
-      const beamH = Math.max(32, Math.round(208 * (1.06 + 0.20 * env)));
+      const beamH = Math.max(32, Math.round(208 * (1.04 + 0.18 * env)));
       const halfH = Math.round(beamH * 0.5);
+
+      this.drawBayerPixelHalo(ctx, muzzleX, beamY, 96 * env, 96 * env, '#fde047', '#ffffff', 0.20 * env);
 
       if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
         ctx.save();
         ctx.translate(muzzleX, beamY);
         ctx.scale(this.facing, 1);
 
+        // Crisp multi-band prismatic stained-glass outer rails (`#38bdf8` sapphire & `#fb7185` celestial rose)
+        const totalBeamLen = 74 + 11 * 148;
+        ctx.globalAlpha = 0.72 * env;
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(40, -halfH * 0.52, totalBeamLen, 4);
+        ctx.fillStyle = '#fb7185';
+        ctx.fillRect(40, halfH * 0.52 - 4, totalBeamLen, 4);
+
         const sliceX = col * 208 + 30;
         const sliceW = 148;
         const muzzleSliceW = 178;
-        const bloomH = beamH + 14;
-        const halfBloomH = Math.round(bloomH * 0.5);
 
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.32 * env;
-        for (let seg = 0; seg < 11; seg++) {
-          const segLeftX = 74 + seg * sliceW;
-          ctx.drawImage(vfxSheet, sliceX, 1456, sliceW, 208, segLeftX, -halfBloomH, sliceW, bloomH);
-        }
-        ctx.drawImage(vfxSheet, col * 208, 1248, muzzleSliceW, 208, -104, -halfBloomH, muzzleSliceW, bloomH);
-
-        ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1.0;
         for (let seg = 0; seg < 11; seg++) {
           const segLeftX = 74 + seg * sliceW;

@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """
 SERAPHINA EX (`priestess_ex`) — Next-Gen Wide-Canvas (`320x240` cell, `9600x2400` 30x10 sheet)
-FFBE / Last Cloudia Multi-Keypose + 4-Band Stained-Glass Serrated Light-Crescent Smear Pipeline.
+Pure High-Priestess Cathedral Scepter / Holy Crozier + Stained-Glass Sorcery Pipeline.
 
 Outputs:
   - `assets/sprites/priestess_ex_sheet.png`    (9600x2400, 30 cols x 10 rows @ 320x240, 2x2 pixel blocks)
-  - `assets/sprites/priestess_ex_portrait.png` (128x128, 2x2 pixel blocks)
+  - `assets/sprites/priestess_ex_portrait.png` (128x128, 2x2 pixel blocks, Seraphic portrait with 0 spear-tip!)
   - Untracked QA contact sheets in scratch directory (`--scratch-dir`)
 
 Invariants enforced:
-  - 100% 2x2 integer pixel blocks (authored at 160x120 logical, upscaled 2x NEAREST -> 320x240)
-  - Anchor `(56, 115)` logical -> `(112, 230)` output (`208px` forward canvas reach!)
+  - Ornate Sunburst Cathedral Scepter / Holy Crozier (`0` melee spear point anywhere!)
   - STRICTLY GROUNDED Row 2 AUTO_ATTACK (`foot_y = 115 -> y_320 = 230`, `0px` float across `V0..V3`!)
-  - Binary alpha (`0` or `255`), `4px` output safety margin (`0/300` border clips)
-  - `29/29` active transitions on all 10 rows
+  - Pure Stained-Glass High-Priestess Casting `Row 2` (`0` melee scythe/halberd slash crescents!):
+      * `V0 (F03)`: Radiant Stained-Glass Rose-Window Magic Circle + Sanctum Light-Ray Burst (`x = 185..300`)
+      * `V1 (F09)`: Twin Golden Benediction Halos & Twin Converging Sacred Light-Prisms (`x = 186..298`)
+      * `V2 (F17)`: Choir Light-Prism Seals & Consecrated Rose-Cathedral Pillar (`x = 188..304`)
+      * `V3 (F25)`: Purifying Star-Sanctuary Array & Triple Sanctum Prism Orbs (`x = 190..305`)
+      * Progressive `4x4` Bayer dissipation on `F04..F05`, `F10..F11`, `F18..F19`, `F26..F27`
+  - 100% 2x2 integer pixel blocks, binary alpha (`0` or `255`), `4px` margin (`0/300` border clips), `29/29` transitions
 """
 
 import argparse
@@ -64,11 +68,11 @@ C_GOLD_DARK = (152, 98, 28, 255)
 C_GOLD_MID = (218, 158, 42, 255)
 C_GOLD_LIGHT = (252, 214, 78, 255)
 C_SAPPHIRE = (56, 189, 248, 255)
+C_EMERALD_GLASS = (52, 211, 153, 255)
 C_SKIN_SHADOW = (204, 152, 128, 255)
 C_SKIN_LIGHT = (246, 204, 178, 255)
 
-# 4-Band Stained-Glass Serrated Light-Crescent Smear Palette
-# (#ffffff -> #fef08a -> #fde68a / #fbbf24 -> #fb7185 celestial-rose)
+# Stained-Glass Sacred Sorcery Palette
 C_LIGHT_CORE = (255, 255, 255, 255)
 C_LIGHT_SUNGOLD = (254, 240, 138, 255)
 C_LIGHT_CHAMPAGNE = (251, 191, 36, 255)
@@ -121,10 +125,6 @@ def keep_largest_component(mask):
 
 
 def segment_ivory_safe_white_bg(im_rgb, pocket_seeds=()):
-    """
-    Pure #FFFFFF background has sat <= 0.045 & luma >= 244, whereas Seraphina EX's
-    champagne hair & ivory-gold armor have warm cream tint (sat >= 0.07).
-    """
     arr = np.array(im_rgb.convert("RGB"), dtype=np.float32)
     h, w, _ = arr.shape
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
@@ -268,7 +268,6 @@ def load_priestess_poses():
     scale = TARGET_STAND_H / float(stand_h_512)
     x_ref_stand = 260
 
-    # Strip open front arm & rear hand cleanly while preserving flowing blonde hair
     front_arm_poly = polygon_mask((512, 512), [(304, 142), (426, 136), (426, 210), (304, 206)])
     back_hand_poly = polygon_mask((512, 512), [(134, 200), (192, 204), (198, 234), (134, 234)])
     armless_512 = base_arr.copy()
@@ -359,7 +358,6 @@ def load_priestess_poses():
         t_fg = keep_largest_component(t_arr[:, :, 3] > 0)
         t_arr[:, :, 3] = np.where(t_fg, 255, 0)
 
-        # Measure true bottom-most foreground pixel after stripping so grounded alignment is 0px exact!
         k_ys, _ = np.where(t_fg)
         true_y_bot = int(k_ys.max()) if len(k_ys) else spec["y_bot"]
 
@@ -383,14 +381,19 @@ def load_priestess_poses():
 
 
 # ==============================================================================
-# 3. CATHEDRAL STOLE RIBBONS, SUNBURST SCEPTER-LANCE & 2-BONE IK ARMS
+# 3. CATHEDRAL STOLE RIBBONS, PURE SUNBURST CATHEDRAL SCEPTER (`0` SPEAR!) & IK
 # ==============================================================================
 def put_px(arr, x, y, col):
     if 2 <= x < LOG_W - 2 and 2 <= y < LOG_H - 2:
         arr[y, x] = col
 
 
-def draw_thick_line(arr, x0, y0, x1, y1, r, col, out_col=None):
+def put_px_outline_bg(arr, x, y, col, max_y=117):
+    if 2 <= x < LOG_W - 2 and 2 <= y <= min(LOG_H - 3, max_y) and arr[y, x, 3] == 0:
+        arr[y, x] = col
+
+
+def draw_thick_line(arr, x0, y0, x1, y1, r, col, out_col=None, max_y=117):
     steps = max(2, int(math.hypot(x1 - x0, y1 - y0) * 2.2) + 1)
     if out_col is not None:
         ro = r + 1.0
@@ -403,9 +406,7 @@ def draw_thick_line(arr, x0, y0, x1, y1, r, col, out_col=None):
             for dy in range(-ir_o, ir_o + 1):
                 for dx in range(-ir_o, ir_o + 1):
                     if dx * dx + dy * dy <= ro * ro + 0.25:
-                        px, py = icx + dx, icy + dy
-                        if 2 <= px < LOG_W - 2 and 2 <= py < LOG_H - 2 and arr[py, px, 3] == 0:
-                            arr[py, px] = out_col
+                        put_px_outline_bg(arr, icx + dx, icy + dy, out_col, max_y=max_y)
     ir = int(math.ceil(r))
     for i in range(steps + 1):
         t = i / float(steps)
@@ -414,8 +415,25 @@ def draw_thick_line(arr, x0, y0, x1, y1, r, col, out_col=None):
         icx, icy = int(round(cx)), int(round(cy))
         for dy in range(-ir, ir + 1):
             for dx in range(-ir, ir + 1):
-                if dx * dx + dy * dy <= r * r + 0.2:
+                if dx * dx + dy * dy <= r * r + 0.2 and icy + dy <= max_y:
                     put_px(arr, icx + dx, icy + dy, col)
+
+
+def draw_pixel_star4(arr, cx, cy, arm=3, core_col=C_LIGHT_CORE, ray_col=C_LIGHT_SUNGOLD, max_y=115):
+    icx, icy = int(round(cx)), int(round(cy))
+    for d in range(-arm - 1, arm + 2):
+        put_px_outline_bg(arr, icx + d, icy, C_OUT, max_y=max_y)
+        put_px_outline_bg(arr, icx, icy + d, C_OUT, max_y=max_y)
+    for d in range(-arm, arm + 1):
+        if icy <= max_y:
+            put_px(arr, icx + d, icy, ray_col)
+        if icy + d <= max_y:
+            put_px(arr, icx, icy + d, ray_col)
+    for ox, oy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        if icy + oy <= max_y:
+            put_px(arr, icx + ox, icy + oy, ray_col)
+    if icy <= max_y:
+        put_px(arr, icx, icy, core_col)
 
 
 def solve_2bone_ik(sh, target, l1=8.2, l2=8.2, bend_sign=1.0):
@@ -436,26 +454,24 @@ def solve_2bone_ik(sh, target, l1=8.2, l2=8.2, bend_sign=1.0):
     return el, target
 
 
-def draw_priestess_arm(arr, sh, grip, is_front=True, bend_sign=1.0):
+def draw_priestess_arm(arr, sh, grip, is_front=True, bend_sign=1.0, max_y=114):
     el, hand = solve_2bone_ik(sh, grip, l1=8.3, l2=8.3, bend_sign=bend_sign)
     sleeve_upper = C_NAVY_MID if is_front else C_NAVY_DARK
     bracer = C_IVORY_LIGHT if is_front else C_IVORY_MID
     cuff = C_GOLD_LIGHT if is_front else C_GOLD_MID
     skin = C_SKIN_LIGHT if is_front else C_SKIN_SHADOW
 
-    draw_thick_line(arr, sh[0] - 0.8, sh[1] - 0.6, sh[0] + 1.0, sh[1] + 0.5, 2.0, bracer, out_col=C_OUT)
+    draw_thick_line(arr, sh[0] - 0.8, sh[1] - 0.6, sh[0] + 1.0, sh[1] + 0.5, 2.0, bracer, out_col=C_OUT, max_y=max_y)
     put_px(arr, int(round(sh[0])), int(round(sh[1] - 1)), cuff)
-    draw_thick_line(arr, sh[0], sh[1], el[0], el[1], 1.65, sleeve_upper, out_col=C_OUT)
-    draw_thick_line(arr, el[0], el[1], hand[0], hand[1], 1.55, bracer, out_col=C_OUT)
+    draw_thick_line(arr, sh[0], sh[1], el[0], el[1], 1.65, sleeve_upper, out_col=C_OUT, max_y=max_y)
+    draw_thick_line(arr, el[0], el[1], hand[0], hand[1], 1.55, bracer, out_col=C_OUT, max_y=max_y)
     mx, my = lerp(el[0], hand[0], 0.58), lerp(el[1], hand[1], 0.58)
-    draw_thick_line(arr, mx - 0.4, my - 0.4, mx + 0.4, my + 0.4, 1.35, cuff, out_col=None)
-    draw_thick_line(arr, hand[0] - 0.4, hand[1] - 0.3, hand[0] + 0.5, hand[1] + 0.3, 1.4, skin, out_col=C_OUT)
+    draw_thick_line(arr, mx - 0.4, my - 0.4, mx + 0.4, my + 0.4, 1.35, cuff, out_col=None, max_y=max_y)
+    draw_thick_line(arr, hand[0] - 0.4, hand[1] - 0.3, hand[0] + 0.5, hand[1] + 0.3, 1.4, skin, out_col=C_OUT, max_y=max_y)
     return hand
 
 
-def draw_sanctum_stole_and_halo(arr, cx, cy, phase, flare=0.0):
-    """Flowing ivory-gold & celestial-rose sanctum stole ribbons + rotating sunburst back-ring."""
-    # Subtle rotating cathedral rose-sunburst ring behind shoulders
+def draw_sanctum_stole_and_halo(arr, cx, cy, phase, flare=0.0, max_y=114):
     rx = 13.5 * (0.9 + 0.12 * flare)
     ry = 14.5 * (0.9 + 0.12 * flare)
     for k in range(8):
@@ -473,289 +489,372 @@ def draw_sanctum_stole_and_halo(arr, cx, cy, phase, flare=0.0):
             0.85 if k % 2 == 0 else 0.6,
             C_LIGHT_SUNGOLD if k % 2 == 0 else C_LIGHT_ROSE,
             out_col=C_OUT,
+            max_y=max_y,
         )
 
-    # Flowing ivory-gold sanctum ribbon trailing left
     pts = []
     for i in range(6):
         t = i / 5.0
         rx_p = cx - 8.0 - t * 17.0
-        ry_p = cy + 6.0 + t * 14.0 + math.sin(phase * math.tau - t * 3.2) * (1.8 + 1.5 * t)
+        ry_p = min(float(max_y - 2), cy + 6.0 + t * 14.0 + math.sin(phase * math.tau - t * 3.2) * (1.8 + 1.5 * t))
         pts.append((rx_p, ry_p))
     for i in range(len(pts) - 1):
         col = C_IVORY_LIGHT if i < 3 else C_LIGHT_ROSE
-        draw_thick_line(arr, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], 1.25 - i * 0.12, col, out_col=C_OUT)
+        draw_thick_line(arr, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], 1.25 - i * 0.12, col, out_col=C_OUT, max_y=max_y)
     put_px(arr, int(round(pts[-1][0])), int(round(pts[-1][1])), C_GOLD_LIGHT)
 
 
-def draw_sunburst_scepter_lance(arr, grip_pos, angle_deg, length_scale=1.0, radiance=0.35, max_y=113):
+def draw_sunburst_cathedral_scepter(arr, grip_pos, angle_deg, length_scale=1.0, radiance=0.35, max_y=113):
     """
-    Ornate Sunburst Cathedral Scepter-Lance (`55` logical px = `110px` output reach!):
+    Pure Ornate Sunburst Cathedral Scepter / Holy Crozier (`0` melee spear point!):
       - Ivory-gold cathedral shaft + royal pommel
-      - Winged Sunburst Cathedral Crossguard + Sapphire/Rose Core
-      - Gleaming White-Diamond & Sun-Gold Spear-Lance Blade
+      - Winged Stained-Glass Sunburst Halo-Wreath cradling a 4-arm Sapphire & Rose Cathedral Cross
+      - Crowned with a compact rounded royal finial orb (zero spearhead!)
     """
     rad = math.radians(angle_deg)
     ux, uy = math.cos(rad), math.sin(rad)
     nx, ny = -uy, ux
 
-    butt_len = 15.0 * length_scale
-    neck_dist = 28.0 * length_scale
-    tip_dist = 55.0 * length_scale
+    butt_len = 14.0 * length_scale
+    neck_dist = 24.0 * length_scale
 
     bx, by = grip_pos[0] - ux * butt_len, grip_pos[1] - uy * butt_len
-    nx_p, ny_p = grip_pos[0] + ux * neck_dist, grip_pos[1] + uy * neck_dist
-    tx, ty = grip_pos[0] + ux * tip_dist, grip_pos[1] + uy * tip_dist
-
-    # Clamp butt/tip slightly above floor if steep so scepter never clips below ground plane
     if by > max_y:
         scale_b = max(0.2, (max_y - grip_pos[1]) / max(1.0, by - grip_pos[1]))
         bx = grip_pos[0] + (bx - grip_pos[0]) * scale_b
         by = max_y
+    if by < 5:
+        scale_b = max(0.2, (grip_pos[1] - 5.0) / max(1.0, grip_pos[1] - by))
+        bx = grip_pos[0] + (bx - grip_pos[0]) * scale_b
+        by = 5.0
+
+    nx_p = clamp(grip_pos[0] + ux * neck_dist, 8.0, float(LOG_W - 12))
+    ny_p = clamp(grip_pos[1] + uy * neck_dist, 9.0, float(max_y - 7))
 
     # 1. Ivory-gold shaft & royal sunburst pommel
-    draw_thick_line(arr, bx, by, nx_p, ny_p, 1.2, C_GOLD_DARK, out_col=C_OUT)
-    draw_thick_line(arr, bx + ux * 2.0, by + uy * 2.0, nx_p - ux * 2.0, ny_p - uy * 2.0, 0.75, C_IVORY_LIGHT, out_col=None)
-    draw_thick_line(arr, bx - ux * 1.2, by - uy * 1.2, bx + ux * 1.0, by + uy * 1.0, 1.8, C_GOLD_LIGHT, out_col=C_OUT)
+    draw_thick_line(arr, bx, by, nx_p, ny_p, 1.15, C_GOLD_DARK, out_col=C_OUT, max_y=max_y)
+    draw_thick_line(arr, bx + ux * 2.0, by + uy * 2.0, nx_p - ux * 1.5, ny_p - uy * 1.5, 0.70, C_IVORY_LIGHT, out_col=None, max_y=max_y)
+    draw_thick_line(arr, bx - ux * 0.8, by - uy * 0.8, bx + ux * 0.8, by + uy * 0.8, 1.65, C_GOLD_LIGHT, out_col=C_OUT, max_y=max_y)
 
-    # 2. Ornate Winged Sunburst Cathedral Crossguard + Sapphire Gem
-    wing_span = 6.6 * length_scale
+    # 2. Ornate Winged Side-Scrolls flanking the Crozier neck
+    wing_span = 5.6 * length_scale
     for sign in (-1.0, 1.0):
-        wx0 = nx_p - ux * 1.5 + nx * sign * 2.0
-        wy0 = ny_p - uy * 1.5 + ny * sign * 2.0
-        wx1 = nx_p + ux * 3.0 + nx * sign * wing_span
-        wy1 = ny_p + uy * 3.0 + ny * sign * wing_span
-        wx2 = nx_p + ux * 7.5 + nx * sign * (wing_span * 0.48)
-        wy2 = ny_p + uy * 7.5 + ny * sign * (wing_span * 0.48)
-        draw_thick_line(arr, wx0, wy0, wx1, wy1, 1.25, C_GOLD_MID, out_col=C_OUT)
-        draw_thick_line(arr, wx1, wy1, wx2, wy2, 1.05, C_LIGHT_SUNGOLD, out_col=C_OUT)
-    cx_orb, cy_orb = nx_p + ux * 2.2, ny_p + uy * 2.2
-    draw_thick_line(arr, cx_orb - 0.5, cy_orb, cx_orb + 0.5, cy_orb, 2.3, C_LIGHT_ROSE, out_col=C_OUT)
-    put_px(arr, int(round(cx_orb)), int(round(cy_orb)), C_SAPPHIRE)
-    put_px(arr, int(round(cx_orb + ux)), int(round(cy_orb + uy)), C_LIGHT_CORE)
+        wx0 = nx_p - ux * 1.0 + nx * sign * 1.8
+        wy0 = ny_p - uy * 1.0 + ny * sign * 1.8
+        wx1 = nx_p + ux * 2.5 + nx * sign * wing_span
+        wy1 = ny_p + uy * 2.5 + ny * sign * wing_span
+        draw_thick_line(arr, wx0, wy0, wx1, wy1, 1.15, C_GOLD_MID, out_col=C_OUT, max_y=max_y)
+        put_px(arr, int(round(wx1)), min(max_y, int(round(wy1))), C_LIGHT_SUNGOLD)
 
-    # 3. Gleaming Sunburst Cathedral Spear-Lance Head (`27` logical px = `54px` output!)
-    blade_start_x = nx_p + ux * 3.5
-    blade_start_y = ny_p + uy * 3.5
-    b_len = max(6.0, tip_dist - neck_dist - 3.5)
-    steps = max(14, int(b_len * 2.4))
+    # 3. Circular Stained-Glass Sunburst Halo-Wreath + 4-Arm Cathedral Cross (`0` spear blade!)
+    head_r = 5.0 * length_scale
+    hcx = clamp(nx_p + ux * (head_r + 0.8), 8.0, float(LOG_W - 9))
+    hcy = clamp(ny_p + uy * (head_r + 0.8), 8.0, float(max_y - 6))
 
-    for i in range(steps + 1):
-        t = i / float(steps)
-        cx = blade_start_x + ux * b_len * t
-        cy = blade_start_y + uy * b_len * t
-        if cy > max_y:
-            continue
-        half_w = (3.1 + 0.8 * radiance) * math.sin(math.pi * clamp(t * 0.78 + 0.16, 0.0, 1.0)) * (1.0 - 0.62 * (t**1.5))
-        hw_out = max(0.8, half_w) + 1.0
-        span = int(math.ceil(hw_out)) + 1
-        for s in range(-span, span + 1):
-            if abs(s) <= hw_out:
-                px = int(round(cx + nx * s))
-                py = int(round(cy + ny * s))
-                if 2 <= px < LOG_W - 2 and 2 <= py <= max_y and arr[py, px, 3] == 0:
-                    arr[py, px] = C_OUT
-
-    for i in range(steps + 1):
-        t = i / float(steps)
-        cx = blade_start_x + ux * b_len * t
-        cy = blade_start_y + uy * b_len * t
-        if cy > max_y:
-            continue
-        half_w = max(0.65, (3.0 + 0.8 * radiance) * math.sin(math.pi * clamp(t * 0.78 + 0.16, 0.0, 1.0)) * (1.0 - 0.62 * (t**1.5)))
-        span = int(math.ceil(half_w)) + 1
-        for s in range(-span, span + 1):
-            af = abs(s) / max(0.55, half_w)
-            if af > 1.0:
+    # Stained-glass rose/sapphire quadrants inside wreath
+    ir = int(math.ceil(head_r + 1.2))
+    ihcx, ihcy = int(round(hcx)), int(round(hcy))
+    for dy in range(-ir, ir + 1):
+        for dx in range(-ir, ir + 1):
+            py = ihcy + dy
+            px = ihcx + dx
+            if py > max_y or py < 3 or px < 3 or px >= LOG_W - 3:
                 continue
-            px = int(round(cx + nx * s))
-            py = int(round(cy + ny * s))
-            if py > max_y:
-                continue
-            if af < 0.34 or t > 0.86:
-                col = C_LIGHT_CORE
-            elif af < 0.66:
-                col = C_LIGHT_SUNGOLD
-            elif s < 0:
-                col = C_LIGHT_CHAMPAGNE
-            else:
-                col = C_LIGHT_ROSE
-            put_px(arr, px, py, col)
-
-    return (tx, ty)
-
-
-# ==============================================================================
-# 4. 4-BAND STAINED-GLASS SERRATED LIGHT-CRESCENT, VORTEX & STAR-PILLAR SMEARS
-# ==============================================================================
-def draw_stained_glass_smear(arr, center, deg_start, deg_end, r_outer, thickness, sparks=14, max_y=115):
-    cx, cy = center
-    a0 = math.radians(deg_start)
-    a1 = math.radians(deg_end)
-    if a1 < a0:
-        a0, a1 = a1, a0
-        reverse_dir = True
-    else:
-        reverse_dir = False
-    span = max(0.05, a1 - a0)
-
-    x0 = max(2, int(cx - r_outer - 5))
-    x1 = min(LOG_W - 3, int(cx + r_outer + 5))
-    y0 = max(2, int(cy - r_outer - 5))
-    y1 = min(min(LOG_H - 3, max_y), int(cy + r_outer + 5))
-
-    smear_mask = np.zeros((LOG_H, LOG_W), dtype=bool)
-    smear_col = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
-
-    for py in range(y0, y1 + 1):
-        dy = py - cy
-        for px in range(x0, x1 + 1):
-            dx = px - cx
-            r = math.hypot(dx, dy)
-            if r > r_outer + 1.5 or r < max(3.0, r_outer - thickness - 7.0):
-                continue
-            ang = math.atan2(dy, dx)
-            while ang < a0 - math.pi:
-                ang += math.tau
-            while ang > a0 + math.tau:
-                ang -= math.tau
-            if ang < a0 or ang > a1:
-                continue
-
-            u_raw = (ang - a0) / span
-            u = (1.0 - u_raw) if reverse_dir else u_raw
-
-            taper = math.sin(math.pi * clamp(u ** 0.72, 0.0, 1.0)) ** 0.56
-            saw = (
-                0.55 * math.sin(u * 38.0)
-                + 0.35 * math.sin(u * 79.0 + 0.9)
-                + 0.25 * math.cos(u * 121.0)
-            )
-            local_thick = thickness * (0.28 + 0.84 * taper) + (2.5 if saw > 0.34 else 0.0) * (1.0 - u * 0.5)
-            r_in = r_outer - local_thick
-            if r < r_in or r > r_outer:
-                continue
-
-            v = (r_outer - r) / max(1.0, local_thick)
-            bayer = BAYER4[py & 3, px & 3]
-            if u < 0.22 and bayer > (u / 0.22) * 1.18:
-                continue
-            if 0.30 < v < 0.68 and u < 0.72 and math.sin(u * 54.0 + r * 0.44) > 0.74:
-                continue
-
-            smear_mask[py, px] = True
-            if v < 0.30 and u > 0.16:
-                smear_col[py, px] = C_LIGHT_CORE
-            elif v < 0.58 and u > 0.08:
-                smear_col[py, px] = C_LIGHT_SUNGOLD
-            elif v < 0.82:
-                smear_col[py, px] = C_LIGHT_CHAMPAGNE
-            else:
-                smear_col[py, px] = C_LIGHT_ROSE
-
-    for py in range(max(2, y0 - 1), min(min(LOG_H - 2, max_y + 1), y1 + 2)):
-        for px in range(max(2, x0 - 1), min(LOG_W - 2, x1 + 2)):
-            if smear_mask[py, px]:
-                arr[py, px] = smear_col[py, px]
-            else:
+            d = math.hypot(dx, dy)
+            if head_r - 0.85 <= d <= head_r + 0.85:
                 for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    nxp, nyp = px + ox, py + oy
-                    if 0 <= nxp < LOG_W and 0 <= nyp < LOG_H and smear_mask[nyp, nxp]:
-                        if arr[py, px, 3] == 0 and py <= max_y:
-                            arr[py, px] = C_OUT
-                        break
+                    put_px_outline_bg(arr, px + ox, py + oy, C_OUT, max_y=max_y)
+                put_px(arr, px, py, C_GOLD_LIGHT if (dx + dy) % 2 == 0 else C_GOLD_MID)
+            elif d < head_r - 0.85 and radiance > 0.45:
+                if (dx * dy) != 0 and (abs(dx) + abs(dy)) <= 4:
+                    put_px(arr, px, py, C_LIGHT_ROSE if (dx * dy > 0) else C_SAPPHIRE)
 
-    for i in range(sparks):
-        su = 0.16 + 0.80 * (i / max(1, sparks - 1))
-        ang = a0 + span * ((1.0 - su) if reverse_dir else su)
-        rr = r_outer + 2.2 + (i % 3) * 2.0
-        sx = int(round(cx + math.cos(ang) * rr))
-        sy = int(round(cy + math.sin(ang) * rr))
-        if sy <= max_y:
-            put_px(arr, sx, sy, C_LIGHT_CORE if i % 2 == 0 else C_LIGHT_SUNGOLD)
-            if sy - 1 >= 2:
-                put_px(arr, sx, sy - 1, C_LIGHT_ROSE if i % 3 == 0 else C_LIGHT_SUNGOLD)
+    # 4-arm Golden Cathedral Cross inside wreath + compact rounded finial bead on top
+    cross_arm = head_r + 1.4
+    draw_thick_line(
+        arr,
+        hcx - ux * cross_arm,
+        hcy - uy * cross_arm,
+        hcx + ux * (cross_arm + 0.8),
+        hcy + uy * (cross_arm + 0.8),
+        1.05,
+        C_LIGHT_SUNGOLD,
+        out_col=C_OUT,
+        max_y=max_y,
+    )
+    draw_thick_line(
+        arr,
+        hcx - nx * cross_arm,
+        hcy - ny * cross_arm,
+        hcx + nx * cross_arm,
+        hcy + ny * cross_arm,
+        1.05,
+        C_LIGHT_SUNGOLD,
+        out_col=C_OUT,
+        max_y=max_y,
+    )
+    # Center sapphire + white diamond star
+    put_px(arr, ihcx, min(max_y, ihcy), C_LIGHT_CORE)
+    for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        if ihcy + oy <= max_y:
+            put_px(arr, ihcx + ox, ihcy + oy, C_SAPPHIRE if radiance < 0.75 else C_LIGHT_SUNGOLD)
+
+    return (hcx, hcy)
 
 
-def draw_cathedral_vortex_ring(arr, center, rx, ry, thickness=9.5, half="front"):
-    cx, cy = center
-    y0 = max(2, int(cy - ry - thickness - 3))
-    y1 = min(115, int(cy + ry + thickness + 3))
-    x0 = max(2, int(cx - rx - thickness - 3))
-    x1 = min(LOG_W - 3, int(cx + rx + thickness + 3))
+# ==============================================================================
+# 4. PURE STAINED-GLASS HIGH-PRIESTESS SPELLCASTING FX (`0` MELEE SLASH SMEARS!)
+# ==============================================================================
+def draw_rose_window_magic_circle(arr, cx, cy, rx, ry, phase=0.0, dissipate=0.0, max_y=114):
+    """Foreshortened Stained-Glass Cathedral Rose-Window Magic Circle."""
+    # Stained-glass petal interior (Bayer dithered so it shimmers translucently like cathedral glass!)
+    ix0 = max(4, int(round(cx - rx - 2)))
+    ix1 = min(LOG_W - 5, int(round(cx + rx + 2)))
+    iy0 = max(4, int(round(cy - ry - 2)))
+    iy1 = min(max_y, int(round(cy + ry + 2)))
 
+    for py in range(iy0, iy1 + 1):
+        dy = (py - cy) / max(1.0, ry)
+        for px in range(ix0, ix1 + 1):
+            dx = (px - cx) / max(1.0, rx)
+            nr = math.hypot(dx, dy)
+            if nr > 0.92:
+                continue
+            bayer = BAYER4[py & 3, px & 3]
+            if bayer > (0.48 - 0.35 * dissipate):
+                continue
+            ang = math.atan2(dy, dx) + phase * math.tau
+            sector = int(((ang % math.tau) / math.tau) * 8.0)
+            if nr < 0.32:
+                put_px(arr, px, py, C_LIGHT_CORE)
+            elif sector % 3 == 0:
+                put_px(arr, px, py, C_LIGHT_ROSE)
+            elif sector % 3 == 1:
+                put_px(arr, px, py, C_SAPPHIRE)
+            else:
+                put_px(arr, px, py, C_LIGHT_SUNGOLD)
+
+    # Concentric gold gothic tracery rings
+    for ring_idx, scale_r in enumerate((1.0, 0.62)):
+        rrx = max(2.0, rx * scale_r)
+        rry = max(2.0, ry * scale_r)
+        steps = max(36, int((rrx + rry) * 2.6))
+        for i in range(steps):
+            ang = (i / float(steps)) * math.tau
+            px = int(round(cx + math.cos(ang) * rrx))
+            py = int(round(cy + math.sin(ang) * rry))
+            if px < 4 or px >= LOG_W - 4 or py < 4 or py > max_y:
+                continue
+            if dissipate > 0.0 and BAYER4[py & 3, px & 3] < dissipate:
+                continue
+            for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                put_px_outline_bg(arr, px + ox, py + oy, C_OUT, max_y=max_y)
+            arr[py, px] = C_LIGHT_CORE if ((i + int(phase * 24)) % 5 == 0 and ring_idx == 0) else C_LIGHT_SUNGOLD
+
+    # 8-spoke cathedral rose mullions
+    for k in range(8):
+        ang = phase * math.tau + k * (math.tau / 8.0)
+        x1 = cx + math.cos(ang) * rx
+        y1 = cy + math.sin(ang) * ry
+        steps_s = max(3, int(max(rx, ry) * 0.9))
+        for s in range(steps_s + 1):
+            t = s / float(steps_s)
+            px = int(round(lerp(cx, x1, t)))
+            py = int(round(lerp(cy, y1, t)))
+            if 4 <= px < LOG_W - 4 and 4 <= py <= max_y:
+                if dissipate > 0.0 and BAYER4[py & 3, px & 3] < dissipate + 0.1:
+                    continue
+                put_px(arr, px, py, C_GOLD_LIGHT)
+
+    if dissipate < 0.45:
+        for ang_c in (0.0, math.pi * 0.5, math.pi, math.pi * 1.5):
+            draw_pixel_star4(
+                arr,
+                cx + math.cos(ang_c) * rx,
+                cy + math.sin(ang_c) * ry,
+                arm=2,
+                core_col=C_LIGHT_CORE,
+                ray_col=C_LIGHT_SUNGOLD,
+                max_y=max_y,
+            )
+
+
+def draw_sanctum_light_ray(arr, x_start, y_center, x_end, half_h=7.5, slope_y=0.0, dissipate=0.0, max_y=114):
+    """Purifying Stained-Glass Cathedral Light-Ray & Star-Prism Lance (`0` melee sword arcs!)."""
+    ix0 = max(4, int(round(x_start)))
+    ix1 = min(LOG_W - 5, int(round(x_end)))
+    if ix1 <= ix0 + 2:
+        return
+    span = float(ix1 - ix0)
     mask = np.zeros((LOG_H, LOG_W), dtype=bool)
     col = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
 
-    for py in range(y0, y1 + 1):
-        dy = py - cy
-        if half == "back" and dy > 1:
-            continue
-        if half == "front" and dy < -1:
-            continue
-        for px in range(x0, x1 + 1):
-            dx = px - cx
-            nr = math.hypot(dx / max(1.0, rx), dy / max(1.0, ry))
-            ang = math.atan2(dy, dx)
-            petal = 0.07 * math.cos(ang * 12.0)
-            if nr > 1.06 + petal or nr < 1.0 - (thickness / max(12.0, rx)) * 1.65:
+    for px in range(ix0, ix1 + 1):
+        u = (px - ix0) / span
+        cy_loc = y_center + slope_y * u
+        diamond_head = 1.35 * max(0.0, 1.0 - abs(u - 0.82) / 0.18)
+        beam_prof = math.sin(math.pi * clamp(u * 0.95 + 0.05, 0.0, 1.0)) * 0.66
+        hh = max(1.0, half_h * max(beam_prof, diamond_head))
+        ihh = int(math.ceil(hh)) + 1
+        for dy in range(-ihh, ihh + 1):
+            py = int(round(cy_loc + dy))
+            if py < 4 or py > max_y:
                 continue
-            v = (1.06 + petal - nr) / max(0.08, (thickness / max(12.0, rx)) * 1.65 + 0.06)
+            v = abs(dy) / max(0.8, hh)
+            if v > 1.0:
+                continue
             bayer = BAYER4[py & 3, px & 3]
-            if v > 0.86 and bayer > 0.55:
+            if dissipate > 0.0 and bayer < dissipate * (0.75 + 0.45 * v):
                 continue
             mask[py, px] = True
-            if v < 0.30:
+            if v < 0.34:
                 col[py, px] = C_LIGHT_CORE
-            elif v < 0.58:
+            elif v < 0.64:
                 col[py, px] = C_LIGHT_SUNGOLD
-            elif v < 0.82:
-                col[py, px] = C_LIGHT_CHAMPAGNE
+            elif dy < 0:
+                col[py, px] = C_SAPPHIRE if (px % 3 == 0) else C_LIGHT_CHAMPAGNE
             else:
                 col[py, px] = C_LIGHT_ROSE
 
-    for py in range(y0, y1 + 1):
-        for px in range(x0, x1 + 1):
+    for py in range(3, min(LOG_H - 3, max_y + 1)):
+        for px in range(max(3, ix0 - 1), min(LOG_W - 3, ix1 + 2)):
             if mask[py, px]:
                 arr[py, px] = col[py, px]
             elif arr[py, px, 3] == 0:
                 for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    if 0 <= px + ox < LOG_W and 0 <= py + oy < LOG_H and mask[py + oy, px + ox]:
+                    if py + oy < LOG_H and mask[py + oy, px + ox]:
+                        arr[py, px] = C_OUT
+                        break
+
+    if dissipate < 0.40:
+        hx = lerp(ix0, ix1, 0.84)
+        hy = y_center + slope_y * 0.84
+        draw_pixel_star4(arr, hx, hy, arm=4, core_col=C_LIGHT_CORE, ray_col=C_LIGHT_SUNGOLD, max_y=max_y)
+
+
+def draw_radiant_star_pillar(arr, x_center, y_top=12, y_floor=114, width=13.0, dissipate=0.0):
+    """Vertical Stained-Glass Cathedral Sanctum Pillar (`V2 F17`, `V3 F25`, `SKILL`)."""
+    icx = int(round(x_center))
+    mask = np.zeros((LOG_H, LOG_W), dtype=bool)
+    col = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
+    span_y = max(1.0, float(y_floor - y_top))
+
+    for py in range(max(4, int(y_top)), min(LOG_H - 3, int(y_floor) + 1)):
+        h_frac = (y_floor - py) / span_y
+        flare_base = 1.28 if h_frac < 0.10 else (1.0 - 0.24 * h_frac)
+        local_hw = max(2.0, width * flare_base + 0.9 * math.cos(py * 0.45))
+        ihw = int(math.ceil(local_hw)) + 1
+        for dx in range(-ihw, ihw + 1):
+            px = icx + dx
+            if px < 4 or px >= LOG_W - 4:
+                continue
+            af = abs(dx) / max(1.0, local_hw)
+            if af > 1.0:
+                continue
+            bayer = BAYER4[py & 3, px & 3]
+            if dissipate > 0.0 and bayer < dissipate * (0.74 + 0.42 * af):
+                continue
+            if h_frac > 0.85 and bayer > (1.0 - h_frac) * 5.8:
+                continue
+            mask[py, px] = True
+            if af < 0.32:
+                col[py, px] = C_LIGHT_CORE
+            elif af < 0.60:
+                col[py, px] = C_LIGHT_SUNGOLD
+            elif af < 0.82:
+                col[py, px] = C_SAPPHIRE if ((py // 3) % 2 == 0 and dx < 0) else C_LIGHT_CHAMPAGNE
+            else:
+                col[py, px] = C_LIGHT_ROSE
+
+    for py in range(3, min(LOG_H - 3, int(y_floor) + 1)):
+        for px in range(max(3, icx - 22), min(LOG_W - 3, icx + 23)):
+            if mask[py, px]:
+                arr[py, px] = col[py, px]
+            elif arr[py, px, 3] == 0:
+                for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    if py + oy < LOG_H and mask[py + oy, px + ox]:
                         arr[py, px] = C_OUT
                         break
 
 
-def draw_radiant_star_pillar(arr, x_center, y_floor=115, width=13.5, intensity=1.0):
-    """Vertical Cathedral Sanctum Star-Pillar (`V3 F25` & `DIVINE SANCTUARY`)."""
-    icx = int(round(x_center))
-    hw = max(3, int(round(width * intensity)))
-    y_top = max(4, int(round(8 + (1.0 - intensity) * 42)))
-    for py in range(y_top, min(LOG_H - 3, y_floor + 1)):
-        h_frac = (y_floor - py) / max(1.0, float(y_floor - y_top))
-        flare_base = 1.32 if py > y_floor - 8 else (1.0 - 0.22 * h_frac)
-        local_hw = max(2.0, hw * flare_base + 1.0 * math.cos(py * 0.45))
-        ihw = int(math.ceil(local_hw)) + 1
-        for dx in range(-ihw, ihw + 1):
-            px = icx + dx
-            if px < 3 or px >= LOG_W - 3:
+def draw_sanctum_prism_orbs(arr, orbs, dissipate=0.0, max_y=114):
+    """Faceted Stained-Glass Star-Prism Orbs (`V3 F25` Star-Sanctuary Array)."""
+    for cx, cy, rad in orbs:
+        icx, icy = int(round(cx)), int(round(cy))
+        ir = int(math.ceil(rad + 1.5))
+        for dy in range(-ir, ir + 1):
+            py = icy + dy
+            if py < 4 or py > max_y:
                 continue
-            af = abs(dx) / max(1.0, local_hw)
-            if af > 1.08:
-                continue
-            if af > 0.94:
-                if arr[py, px, 3] == 0:
-                    arr[py, px] = C_OUT
-                continue
-            if h_frac > 0.85 and BAYER4[py & 3, px & 3] > (1.0 - h_frac) * 5.8:
-                continue
-            if af < 0.30:
-                arr[py, px] = C_LIGHT_CORE
-            elif af < 0.58:
-                arr[py, px] = C_LIGHT_SUNGOLD
-            elif af < 0.82:
-                arr[py, px] = C_LIGHT_CHAMPAGNE
-            else:
-                arr[py, px] = C_LIGHT_ROSE
+            for dx in range(-ir, ir + 1):
+                px = icx + dx
+                if px < 4 or px >= LOG_W - 4:
+                    continue
+                # Diamond L1 + circular L2 hybrid facet
+                d = 0.65 * (abs(dx) + abs(dy)) + 0.35 * math.hypot(dx, dy)
+                if d > rad + 1.0:
+                    continue
+                if dissipate > 0.0 and BAYER4[py & 3, px & 3] < dissipate * 0.85:
+                    continue
+                if d > rad:
+                    put_px_outline_bg(arr, px, py, C_OUT, max_y=max_y)
+                elif d < rad * 0.36:
+                    put_px(arr, px, py, C_LIGHT_CORE)
+                elif d < rad * 0.68:
+                    put_px(arr, px, py, C_LIGHT_SUNGOLD)
+                else:
+                    put_px(arr, px, py, C_SAPPHIRE if (dx + dy) % 2 == 0 else C_LIGHT_ROSE)
+        if dissipate < 0.38:
+            draw_pixel_star4(arr, icx, icy, arm=int(rad) + 1, core_col=C_LIGHT_CORE, ray_col=C_LIGHT_SUNGOLD, max_y=max_y)
+
+
+def draw_priestess_cast_fx(arr, fx_spec, phase=0.0, max_y=114):
+    if fx_spec is None:
+        return
+    kind = fx_spec["kind"]
+    diss = fx_spec.get("dissipate", 0.0)
+
+    if kind == "v0_rose_window_ray":
+        draw_rose_window_magic_circle(arr, cx=102.0, cy=64.0, rx=9.5, ry=26.0, phase=phase, dissipate=diss, max_y=max_y)
+        draw_sanctum_light_ray(
+            arr,
+            x_start=102.0,
+            y_center=64.0,
+            x_end=fx_spec.get("x_end", 149.0),
+            half_h=fx_spec.get("half_h", 8.0),
+            slope_y=0.0,
+            dissipate=diss,
+            max_y=max_y,
+        )
+
+    elif kind == "v1_twin_benediction_halos":
+        x_end = fx_spec.get("x_end", 149.0)
+        draw_rose_window_magic_circle(arr, cx=100.0, cy=46.0, rx=7.5, ry=16.5, phase=phase, dissipate=diss, max_y=max_y)
+        draw_rose_window_magic_circle(arr, cx=105.0, cy=82.0, rx=7.5, ry=16.5, phase=-phase, dissipate=diss, max_y=max_y)
+        draw_sanctum_light_ray(arr, x_start=101.0, y_center=46.0, x_end=x_end, half_h=5.8, slope_y=9.0, dissipate=diss, max_y=max_y)
+        draw_sanctum_light_ray(arr, x_start=106.0, y_center=82.0, x_end=x_end - 2.0, half_h=5.8, slope_y=-9.0, dissipate=diss, max_y=max_y)
+
+    elif kind == "v2_choir_prism_pillar":
+        draw_rose_window_magic_circle(arr, cx=108.0, cy=42.0, rx=12.5, ry=12.5, phase=phase, dissipate=diss, max_y=max_y)
+        draw_rose_window_magic_circle(arr, cx=135.0, cy=max_y - 4.0, rx=18.0, ry=4.2, phase=-phase, dissipate=diss * 0.8, max_y=max_y)
+        draw_radiant_star_pillar(
+            arr,
+            x_center=fx_spec.get("col_x", 135.0),
+            y_top=fx_spec.get("y_top", 12),
+            y_floor=max_y,
+            width=fx_spec.get("width", 13.0),
+            dissipate=diss,
+        )
+
+    elif kind == "v3_star_sanctuary_array":
+        draw_rose_window_magic_circle(arr, cx=108.0, cy=62.0, rx=11.5, ry=34.0, phase=phase, dissipate=diss, max_y=max_y)
+        shift = fx_spec.get("orb_shift", 0.0)
+        orbs = [
+            (min(150.0, 134.0 + shift), 36.0, 5.2),
+            (min(152.0, 146.0 + shift), 62.0, 6.2),
+            (min(150.0, 134.0 + shift), 88.0, 5.2),
+        ]
+        draw_sanctum_prism_orbs(arr, orbs, dissipate=diss, max_y=max_y)
 
 
 # ==============================================================================
@@ -777,20 +876,18 @@ def compose_priestess_frame(
     dx=0.0,
     dy=0.0,
     lock_grounded=False,
-    aim_deg=-32.0,
+    aim_deg=-36.0,
     grip_offset=(4.5, -1.5),
     two_handed=True,
     offhand_target=None,
     radiance=0.35,
     halo_flare=0.0,
     phase=0.0,
-    smear_spec=None,
-    vortex_spec=None,
-    pillar_spec=None,
+    fx_spec=None,
+    ground_seal_rx=0.0,
     walk_stride=0.0,
 ):
     if lock_grounded:
-        # Enforce 0px float! Never allow K4_LEAP or vertical float when lock_grounded=True!
         assert pose_key != "K4_LEAP", "K4_LEAP is forbidden when lock_grounded=True!"
         dy = 0.0
 
@@ -809,7 +906,6 @@ def compose_priestess_frame(
         sh_b_base = kp["sh_back"]
         gem_base = kp["gem"]
 
-    # Verify exact boot sole alignment at AY=115 when lock_grounded=True
     b_alpha = np.array(body_im)[:, :, 3] > 0
     bys, _ = np.where(b_alpha)
     cur_bot = int(bys.max()) if len(bys) else AY
@@ -819,17 +915,20 @@ def compose_priestess_frame(
     sh_b = (sh_b_base[0] + dx, sh_b_base[1] + eff_dy)
     gem = (gem_base[0] + dx, gem_base[1] + eff_dy)
 
-    if vortex_spec is not None:
-        draw_cathedral_vortex_ring(
+    max_fx_y = 114 if lock_grounded else 116
+
+    if ground_seal_rx > 1.0:
+        draw_rose_window_magic_circle(
             arr,
-            vortex_spec["center"],
-            vortex_spec["rx"],
-            vortex_spec["ry"],
-            thickness=vortex_spec.get("thickness", 9.5),
-            half="back",
+            cx=AX + dx + 2.0,
+            cy=min(float(max_fx_y - 3), 108.0 + max(0.0, eff_dy)),
+            rx=ground_seal_rx,
+            ry=4.5,
+            phase=phase,
+            max_y=max_fx_y,
         )
 
-    draw_sanctum_stole_and_halo(arr, cx=gem[0] - 4.0, cy=gem[1] + 2.0, phase=phase, flare=halo_flare)
+    draw_sanctum_stole_and_halo(arr, cx=gem[0] - 4.0, cy=gem[1] + 2.0, phase=phase, flare=halo_flare, max_y=max_fx_y)
 
     grip_main = (sh_f[0] + grip_offset[0], sh_f[1] + grip_offset[1])
     rad = math.radians(aim_deg)
@@ -837,38 +936,59 @@ def compose_priestess_frame(
     grip_rear = (grip_main[0] - ux * 7.5, grip_main[1] - uy * 7.5)
 
     if two_handed:
-        draw_priestess_arm(arr, sh_b, grip_rear, is_front=False, bend_sign=1.0)
+        draw_priestess_arm(arr, sh_b, grip_rear, is_front=False, bend_sign=1.0, max_y=max_fx_y)
     elif offhand_target is not None:
-        oh = draw_priestess_arm(arr, sh_b, offhand_target, is_front=False, bend_sign=1.0)
+        oh = draw_priestess_arm(arr, sh_b, offhand_target, is_front=False, bend_sign=1.0, max_y=max_fx_y)
         if radiance > 0.45:
-            draw_thick_line(arr, oh[0] - 0.5, oh[1], oh[0] + 0.5, oh[1], 2.0, C_LIGHT_SUNGOLD, out_col=C_OUT)
-            put_px(arr, int(round(oh[0])), int(round(oh[1])), C_LIGHT_CORE)
+            draw_pixel_star4(arr, oh[0], oh[1] - 1.5, arm=2, core_col=C_LIGHT_CORE, ray_col=C_LIGHT_SUNGOLD, max_y=max_fx_y)
 
-    max_weapon_y = 114 if lock_grounded else 117
     weapon_behind = (-175.0 <= aim_deg <= -118.0)
     if weapon_behind:
-        draw_sunburst_scepter_lance(arr, grip_main, aim_deg, radiance=radiance, max_y=max_weapon_y)
+        draw_sunburst_cathedral_scepter(arr, grip_main, aim_deg, radiance=radiance, max_y=max_fx_y)
 
     body_layer = Image.fromarray(arr, "RGBA")
     bx = int(round(dx))
-    if abs(walk_stride) > 0.05 and pose_key == "STAND":
+    if abs(walk_stride) > 0.01 and pose_key == "STAND":
+        # Sanctum Procession Glide: keep central white-gold tabard (46 <= xx <= 63) 100% unified & intact!
         b_arr = np.array(body_im)
-        sheared = np.zeros_like(b_arr)
+        glided = np.zeros_like(b_arr)
         for yy in range(LOG_H):
-            if yy >= 78:
-                t_leg = (yy - 78) / 37.0
+            if 84 <= yy <= 102:
+                # Subtle outer gown-wing breeze only on outer edges (xx <= 43 or xx >= 68)
+                t_hem = (yy - 84) / 18.0
+                wing_w = int(round(math.sin(phase * math.tau * 2.0 - t_hem * 1.5) * 1.0 * t_hem))
                 for xx in range(LOG_W):
-                    side = 1.0 if xx >= AX else -1.0
-                    sx = clamp(int(round(xx - side * walk_stride * t_leg * 3.0)), 0, LOG_W - 1)
-                    sheared[yy, xx] = b_arr[yy, sx]
+                    if xx <= 43 or xx >= 68:
+                        sx = clamp(xx - wing_w, 0, LOG_W - 1)
+                        glided[yy, xx] = b_arr[yy, sx]
+                    else:
+                        glided[yy, xx] = b_arr[yy, xx]
+            elif yy > 102:
+                # Clean +-3px output alternating boot glide strictly on outer boots (central tabard 46..63 untouched!)
+                t_boot = (yy - 102) / 13.0
+                for xx in range(LOG_W):
+                    if xx < 46:
+                        b_shift = int(round(-walk_stride * 1.4 * t_boot))
+                    elif xx > 63:
+                        b_shift = int(round(walk_stride * 1.4 * t_boot))
+                    else:
+                        b_shift = 0
+                    sx = clamp(xx - b_shift, 0, LOG_W - 1)
+                    glided[yy, xx] = b_arr[yy, sx]
             else:
-                sheared[yy] = b_arr[yy]
-        body_layer.alpha_composite(Image.fromarray(sheared, "RGBA"), (bx, eff_dy))
+                glided[yy] = b_arr[yy]
+        body_layer.alpha_composite(Image.fromarray(glided, "RGBA"), (bx, eff_dy))
+        arr_tmp = np.array(body_layer)
+        for k in range(2):
+            ang_w = phase * math.tau + k * math.pi
+            wx = int(round(AX + bx + math.cos(ang_w) * 11.0))
+            wy = min(114, int(round(113 + math.sin(ang_w) * 1.0)))
+            put_px(arr_tmp, wx, wy, C_LIGHT_SUNGOLD if k == 0 else C_LIGHT_ROSE)
+        body_layer = Image.fromarray(arr_tmp, "RGBA")
     else:
         body_layer.alpha_composite(body_im, (bx, eff_dy))
     arr = np.array(body_layer)
 
-    # Shimmering sapphire collar gem & floating crown star motes
     gx_i, gy_i = int(round(gem[0])), int(round(gem[1]))
     put_px(arr, gx_i, gy_i, C_LIGHT_CORE if (int(phase * 30) % 3 == 0) else C_SAPPHIRE)
     for k in range(2):
@@ -878,37 +998,10 @@ def compose_priestess_frame(
         put_px(arr, mx, my, C_LIGHT_SUNGOLD if k == 0 else C_LIGHT_ROSE)
 
     if not weapon_behind:
-        draw_sunburst_scepter_lance(arr, grip_main, aim_deg, radiance=radiance, max_y=max_weapon_y)
-    draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0)
+        draw_sunburst_cathedral_scepter(arr, grip_main, aim_deg, radiance=radiance, max_y=max_fx_y)
+    draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=max_fx_y)
 
-    if pillar_spec is not None:
-        draw_radiant_star_pillar(
-            arr,
-            x_center=pillar_spec["x"],
-            y_floor=pillar_spec.get("y_floor", 115),
-            width=pillar_spec.get("width", 13.5),
-            intensity=pillar_spec.get("intensity", 1.0),
-        )
-    if vortex_spec is not None:
-        draw_cathedral_vortex_ring(
-            arr,
-            vortex_spec["center"],
-            vortex_spec["rx"],
-            vortex_spec["ry"],
-            thickness=vortex_spec.get("thickness", 9.5),
-            half="front",
-        )
-    if smear_spec is not None:
-        draw_stained_glass_smear(
-            arr,
-            center=smear_spec["center"],
-            deg_start=smear_spec["deg_start"],
-            deg_end=smear_spec["deg_end"],
-            r_outer=smear_spec["r_outer"],
-            thickness=smear_spec["thickness"],
-            sparks=smear_spec.get("sparks", 14),
-            max_y=115 if lock_grounded else 117,
-        )
+    draw_priestess_cast_fx(arr, fx_spec, phase=phase, max_y=max_fx_y)
 
     enforce_safety_margin(arr)
     return arr
@@ -928,7 +1021,7 @@ def build_row_0_idle(poses):
                 pose_key="STAND",
                 dx=0.0,
                 dy=round(bob * 0.8),
-                aim_deg=-46.0 + math.sin(ph * math.tau + 0.4) * 3.0,
+                aim_deg=-52.0 + math.sin(ph * math.tau + 0.4) * 3.0,
                 grip_offset=(4.5, -1.5 + 0.5 * bob),
                 radiance=0.35 + 0.12 * math.sin(ph * math.tau * 2.0),
                 halo_flare=0.14 + 0.08 * math.sin(ph * math.tau),
@@ -939,21 +1032,28 @@ def build_row_0_idle(poses):
 
 
 def build_row_1_walk(poses):
+    """
+    Row 1 WALK: Regal Sanctum Procession Glide!
+    Strictly `STAND` across all 30 frames (`0` mid-walk K2_LUNGE body swaps!), continuous `-50 +- 3.5 deg` scepter carry,
+    unified white-gold tabard & gown silhouette (`0` center-skirt scissoring), `1px` smooth glide bob, and `+-3px` boot glide.
+    """
     frames = []
     for f in range(30):
         ph = f / 30.0
         stride = math.sin(ph * math.tau * 2.0)
-        bob = -abs(math.cos(ph * math.tau * 2.0)) * 1.4
+        if abs(stride) < 0.04:
+            stride = 0.04 if stride >= 0 else -0.04
+        bob = -0.5 + math.sin(ph * math.tau) * 0.55
         frames.append(
             compose_priestess_frame(
                 poses,
-                pose_key="K2_LUNGE" if abs(stride) > 0.84 else "STAND",
-                dx=1.5 + stride * 1.4,
+                pose_key="STAND",
+                dx=round(math.sin(ph * math.tau) * 0.5),
                 dy=round(bob),
-                aim_deg=-28.0 + stride * 8.0,
-                grip_offset=(5.0, -1.0),
-                radiance=0.40,
-                halo_flare=0.18,
+                aim_deg=-50.0 + math.sin(ph * math.tau + 0.4) * 3.5,
+                grip_offset=(4.5, -1.5 + 0.4 * math.sin(ph * math.tau)),
+                radiance=0.40 + 0.10 * math.sin(ph * math.tau * 2.0),
+                halo_flare=0.16 + 0.06 * math.sin(ph * math.tau),
                 phase=ph,
                 walk_stride=stride,
             )
@@ -963,26 +1063,26 @@ def build_row_1_walk(poses):
 
 def build_row_2_auto_attack(poses):
     """
-    STRICTLY GROUNDED Row 2 AUTO_ATTACK (`lock_grounded=True`, `foot_y = 115 -> y_320 = 230`, `0px` float!):
-      - V0 (F00..F07): Grounded Flash-Step coil -> F03 wide sanctum sweep stained-glass smear!
-      - V1 (F08..F14): Grounded low guard -> F09 rising benediction arc stained-glass smear!
-      - V2 (F15..F22): Grounded spin torque -> F17 2.5D cathedral rose-halo vortex smear!
-      - V3 (F23..F29): Grounded deep split-lunge -> F25 radiant star-pillar + sanctum judgment smear!
+    STRICTLY GROUNDED Row 2 AUTO_ATTACK (`lock_grounded=True`, `foot_y = 115 -> y_320 = 230`, `0px` float, `0` melee smears!):
+      - V0 (F03): Radiant Stained-Glass Rose-Window Magic Circle + Sanctum Light-Ray Burst!
+      - V1 (F09): Twin Golden Benediction Halos & Twin Converging Sacred Light-Prisms!
+      - V2 (F17): Choir Light-Prism Seals & Consecrated Rose-Cathedral Pillar!
+      - V3 (F25): Purifying Star-Sanctuary Array & Triple Sanctum Prism Orbs!
     """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        # --- V0 (F00..F07): Grounded Wide Sanctum Sweep ---
+        # --- V0 (F00..F07): Rose-Window Magic Circle + Sanctum Light-Ray ---
         if f in (0, 1, 2):
             t = f / 2.0
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=lerp(-2.0, -4.5, t),
+                    dx=lerp(-1.5, -3.5, t),
                     lock_grounded=True,
-                    aim_deg=lerp(-108.0, -144.0, t),
-                    grip_offset=(-1.5, -5.5),
+                    aim_deg=lerp(-62.0, -42.0, t),
+                    grip_offset=(3.5, -3.5),
                     radiance=0.55 + 0.35 * t,
                     halo_flare=0.35 + 0.35 * t,
                     phase=ph,
@@ -993,71 +1093,63 @@ def build_row_2_auto_attack(poses):
                 compose_priestess_frame(
                     poses,
                     pose_key="K2_LUNGE",
-                    dx=12.0,
+                    dx=6.5,
                     lock_grounded=True,
-                    aim_deg=44.0,
-                    grip_offset=(8.5, 1.5),
+                    aim_deg=-6.0,
+                    grip_offset=(8.5, -1.5),
                     radiance=1.0,
                     halo_flare=0.95,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 26.0, 66.0),
-                        "deg_start": -132.0,
-                        "deg_end": 58.0,
-                        "r_outer": 62.0,
-                        "thickness": 21.0,
-                        "sparks": 16,
-                    },
+                    fx_spec={"kind": "v0_rose_window_ray", "x_end": 149.0, "half_h": 8.0, "dissipate": 0.0},
                 )
             )
-        elif f == 4:
+        elif f in (4, 5):
+            diss = 0.28 if f == 4 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K2_LUNGE",
-                    dx=13.0,
+                    dx=6.5 if f == 4 else 5.0,
                     lock_grounded=True,
-                    aim_deg=52.0,
-                    grip_offset=(8.5, 2.0),
-                    radiance=0.85,
-                    halo_flare=0.65,
+                    aim_deg=-4.0 if f == 4 else -12.0,
+                    grip_offset=(8.5, -1.5),
+                    radiance=0.86 if f == 4 else 0.68,
+                    halo_flare=0.70 if f == 4 else 0.45,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 26.0, 66.0),
-                        "deg_start": -16.0,
-                        "deg_end": 62.0,
-                        "r_outer": 58.0,
-                        "thickness": 10.5,
-                        "sparks": 8,
+                    fx_spec={
+                        "kind": "v0_rose_window_ray",
+                        "x_end": 146.0 if f == 4 else 140.0,
+                        "half_h": 6.5 if f == 4 else 5.0,
+                        "dissipate": diss,
                     },
                 )
             )
-        elif f in (5, 6, 7):
-            t = (f - 5) / 2.0
+        elif f in (6, 7):
+            t = f - 6
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=lerp(11.0, 7.0, t),
+                    pose_key="K1_COIL",
+                    dx=lerp(3.5, 1.0, t),
                     lock_grounded=True,
-                    aim_deg=lerp(54.0, 64.0, t),
-                    grip_offset=(7.5, 2.5),
+                    aim_deg=lerp(-24.0, -44.0, t),
+                    grip_offset=(5.5, -2.5),
                     radiance=0.55,
                     halo_flare=0.35,
                     phase=ph,
                 )
             )
 
-        # --- V1 (F08..F14): Grounded Rising Benediction Arc ---
+        # --- V1 (F08..F14): Twin Golden Benediction Halos & Sacred Light-Prisms ---
         elif f == 8:
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=5.5,
+                    pose_key="K1_COIL",
+                    dx=-1.0,
                     lock_grounded=True,
-                    aim_deg=68.0,
-                    grip_offset=(6.5, 3.0),
+                    aim_deg=-52.0,
+                    grip_offset=(4.5, -3.5),
                     radiance=0.80,
                     halo_flare=0.55,
                     phase=ph,
@@ -1068,72 +1160,69 @@ def build_row_2_auto_attack(poses):
                 compose_priestess_frame(
                     poses,
                     pose_key="K3_RISE",
-                    dx=10.0,
+                    dx=5.5,
                     lock_grounded=True,
-                    aim_deg=-84.0,
-                    grip_offset=(7.0, -8.5),
+                    aim_deg=-14.0,
+                    grip_offset=(7.5, -3.0),
+                    two_handed=False,
+                    offhand_target=(AX - 8.0, 56.0),
                     radiance=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 24.0, 64.0),
-                        "deg_start": 68.0,
-                        "deg_end": -98.0,
-                        "r_outer": 60.0,
-                        "thickness": 21.0,
-                        "sparks": 16,
-                    },
+                    fx_spec={"kind": "v1_twin_benediction_halos", "x_end": 149.0, "dissipate": 0.0},
                 )
             )
-        elif f == 10:
+        elif f in (10, 11):
+            diss = 0.28 if f == 10 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K3_RISE",
-                    dx=10.5,
+                    dx=5.5 if f == 10 else 4.0,
                     lock_grounded=True,
-                    aim_deg=-94.0,
-                    grip_offset=(6.5, -9.5),
-                    radiance=0.85,
-                    halo_flare=0.70,
+                    aim_deg=-18.0 if f == 10 else -28.0,
+                    grip_offset=(7.0, -3.5),
+                    two_handed=False,
+                    offhand_target=(AX - 8.0, 58.0),
+                    radiance=0.85 if f == 10 else 0.65,
+                    halo_flare=0.72 if f == 10 else 0.45,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 24.0, 62.0),
-                        "deg_start": -18.0,
-                        "deg_end": -104.0,
-                        "r_outer": 56.0,
-                        "thickness": 10.0,
-                        "sparks": 8,
+                    fx_spec={
+                        "kind": "v1_twin_benediction_halos",
+                        "x_end": 146.0 if f == 10 else 139.0,
+                        "dissipate": diss,
                     },
                 )
             )
-        elif f in (11, 12, 13, 14):
-            t = (f - 11) / 3.0
+        elif f in (12, 13, 14):
+            t = (f - 12) / 2.0
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K3_RISE" if f <= 12 else "K1_COIL",
-                    dx=lerp(9.0, -3.0, t),
+                    pose_key="K1_COIL",
+                    dx=lerp(2.5, -1.5, t),
                     lock_grounded=True,
-                    aim_deg=lerp(-96.0, -154.0, t),
-                    grip_offset=(lerp(5.5, -2.5, t), lerp(-8.5, -4.0, t)),
+                    aim_deg=lerp(-36.0, -58.0, t),
+                    grip_offset=(5.0, -3.0),
                     radiance=0.55 + 0.20 * t,
                     halo_flare=0.40 + 0.25 * t,
                     phase=ph,
                 )
             )
 
-        # --- V2 (F15..F22): Grounded 2.5D Cathedral Rose-Halo Vortex ---
+        # --- V2 (F15..F22): Choir Light-Prism Seals & Consecrated Rose-Cathedral Pillar ---
         elif f in (15, 16):
             t = f - 15
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K1_COIL",
-                    dx=-4.5 - t * 1.5,
+                    pose_key="K1_COIL" if f == 15 else "K3_RISE",
+                    dx=-1.0 + t * 2.5,
                     lock_grounded=True,
-                    aim_deg=-160.0 - t * 8.0,
-                    grip_offset=(-3.0, -3.0),
+                    aim_deg=-64.0 - t * 14.0,
+                    grip_offset=(5.0, -5.0 - t * 2.0),
+                    two_handed=(f == 15),
+                    offhand_target=(AX - 10.0, 54.0),
                     radiance=0.80 + 0.15 * t,
                     halo_flare=0.75,
                     phase=ph,
@@ -1143,72 +1232,76 @@ def build_row_2_auto_attack(poses):
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=11.0,
+                    pose_key="K3_RISE",
+                    dx=4.5,
                     lock_grounded=True,
-                    aim_deg=4.0,
-                    grip_offset=(9.5, -1.0),
+                    aim_deg=-72.0,
+                    grip_offset=(6.0, -7.5),
+                    two_handed=False,
+                    offhand_target=(AX - 10.0, 52.0),
                     radiance=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    vortex_spec={
-                        "center": (AX + 22.0, 74.0),
-                        "rx": 64.0,
-                        "ry": 18.0,
-                        "thickness": 12.5,
-                    },
+                    fx_spec={"kind": "v2_choir_prism_pillar", "col_x": 135.0, "y_top": 12, "width": 13.5, "dissipate": 0.0},
                 )
             )
-        elif f == 18:
+        elif f in (18, 19):
+            diss = 0.28 if f == 18 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=12.0,
+                    pose_key="K3_RISE",
+                    dx=4.5 if f == 18 else 3.0,
                     lock_grounded=True,
-                    aim_deg=16.0,
-                    grip_offset=(9.0, 0.0),
-                    radiance=0.85,
-                    halo_flare=0.70,
+                    aim_deg=-68.0 if f == 18 else -58.0,
+                    grip_offset=(6.0, -6.5),
+                    two_handed=False,
+                    offhand_target=(AX - 9.0, 55.0),
+                    radiance=0.86 if f == 18 else 0.68,
+                    halo_flare=0.75 if f == 18 else 0.50,
                     phase=ph,
-                    vortex_spec={
-                        "center": (AX + 24.0, 74.0),
-                        "rx": 60.0,
-                        "ry": 15.0,
-                        "thickness": 7.0,
+                    fx_spec={
+                        "kind": "v2_choir_prism_pillar",
+                        "col_x": 135.0,
+                        "y_top": 16 if f == 18 else 24,
+                        "width": 11.5 if f == 18 else 9.0,
+                        "dissipate": diss,
                     },
                 )
             )
-        elif f in (19, 20, 21, 22):
-            t = (f - 19) / 3.0
+        elif f in (20, 21, 22):
+            t = (f - 20) / 2.0
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f <= 20 else "K3_RISE",
-                    dx=lerp(10.0, 2.0, t),
+                    pose_key="K1_COIL",
+                    dx=lerp(2.0, -2.0, t),
                     lock_grounded=True,
-                    aim_deg=lerp(20.0, -112.0, t),
-                    grip_offset=(lerp(8.0, 1.0, t), lerp(0.5, -7.5, t)),
-                    radiance=0.60 + 0.30 * t,
+                    aim_deg=lerp(-46.0, -62.0, t),
+                    grip_offset=(4.5, -3.5),
+                    radiance=0.62 + 0.28 * t,
                     halo_flare=0.45 + 0.40 * t,
                     phase=ph,
                 )
             )
 
-        # --- V3 (F23..F29): Grounded Flash-Step Invocation -> Radiant Star-Pillar Judgment ---
+        # --- V3 (F23..F29): Grounded Purifying Star-Sanctuary Array & Triple Sanctum Prism Orbs ---
         elif f in (23, 24):
             t = f - 23
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K3_RISE",
-                    dx=3.0 + t * 2.5,
+                    dx=-1.5 - t * 1.0,
                     lock_grounded=True,
-                    aim_deg=-124.0 - t * 14.0,
-                    grip_offset=(0.5, -9.0),
-                    radiance=1.0,
-                    halo_flare=1.0,
+                    aim_deg=-66.0 + t * 18.0,
+                    grip_offset=(5.5, -5.0 + t * 1.5),
+                    two_handed=False,
+                    offhand_target=(AX - 10.0, 54.0),
+                    radiance=0.95,
+                    halo_flare=0.95,
                     phase=ph,
+                    ground_seal_rx=18.0 + t * 4.0,
                 )
             )
         elif f == 25:
@@ -1216,51 +1309,50 @@ def build_row_2_auto_attack(poses):
                 compose_priestess_frame(
                     poses,
                     pose_key="K2_LUNGE",
-                    dx=14.0,
+                    dx=-2.0,
                     lock_grounded=True,
-                    aim_deg=26.0,
-                    grip_offset=(9.5, 1.0),
+                    aim_deg=-4.0,
+                    grip_offset=(9.0, -2.0),
                     radiance=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    pillar_spec={"x": AX + 68.0, "y_floor": 115, "width": 14.5, "intensity": 1.0},
-                    smear_spec={
-                        "center": (AX + 28.0, 64.0),
-                        "deg_start": -138.0,
-                        "deg_end": 42.0,
-                        "r_outer": 64.0,
-                        "thickness": 23.0,
-                        "sparks": 18,
-                    },
+                    ground_seal_rx=24.0,
+                    fx_spec={"kind": "v3_star_sanctuary_array", "orb_shift": 0.0, "dissipate": 0.0},
                 )
             )
-        elif f == 26:
+        elif f in (26, 27):
+            diss = 0.28 if f == 26 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K2_LUNGE",
-                    dx=14.0,
+                    dx=-2.0 if f == 26 else -1.0,
                     lock_grounded=True,
-                    aim_deg=32.0,
-                    grip_offset=(9.0, 1.5),
-                    radiance=0.90,
-                    halo_flare=0.80,
+                    aim_deg=-8.0 if f == 26 else -18.0,
+                    grip_offset=(8.5, -2.0),
+                    radiance=0.88 if f == 26 else 0.70,
+                    halo_flare=0.80 if f == 26 else 0.55,
                     phase=ph,
-                    pillar_spec={"x": AX + 68.0, "y_floor": 115, "width": 11.5, "intensity": 0.72},
+                    ground_seal_rx=20.0 if f == 26 else 14.0,
+                    fx_spec={
+                        "kind": "v3_star_sanctuary_array",
+                        "orb_shift": 2.0 if f == 26 else 4.0,
+                        "dissipate": diss,
+                    },
                 )
             )
         else:
-            t = (f - 27) / 2.0
+            t = f - 28
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f == 27 else "STAND",
-                    dx=lerp(11.0, 1.5, t),
+                    pose_key="K1_COIL" if f == 28 else "STAND",
+                    dx=lerp(-0.5, 0.0, t),
                     lock_grounded=True,
-                    aim_deg=lerp(28.0, -40.0, t),
-                    grip_offset=(lerp(8.0, 4.5, t), lerp(1.0, -1.5, t)),
-                    radiance=lerp(0.75, 0.35, t),
-                    halo_flare=lerp(0.55, 0.15, t),
+                    aim_deg=lerp(-34.0, -50.0, t),
+                    grip_offset=(4.5, -1.5),
+                    radiance=lerp(0.55, 0.35, t),
+                    halo_flare=lerp(0.35, 0.15, t),
                     phase=ph,
                 )
             )
@@ -1268,7 +1360,7 @@ def build_row_2_auto_attack(poses):
 
 
 def build_row_3_skill(poses):
-    """Row 3 SKILL (`DIVINE SANCTUARY`): Grounded K3_RISE invocation -> sanctum spire benediction."""
+    """Row 3 SKILL (`STAINED-GLASS BENEDICTION`): Grounded K3_RISE invocation -> Rose-Cathedral Pillar."""
     frames = []
     for f in range(30):
         ph = f / 30.0
@@ -1280,61 +1372,51 @@ def build_row_3_skill(poses):
                     pose_key="K1_COIL" if f < 3 else "K3_RISE",
                     dx=lerp(0.0, 2.5, t),
                     lock_grounded=True,
-                    aim_deg=lerp(-52.0, -90.0, t),
-                    grip_offset=(4.5, lerp(-2.0, -9.5, t)),
+                    aim_deg=lerp(-52.0, -82.0, t),
+                    grip_offset=(4.5, lerp(-2.0, -8.0, t)),
                     two_handed=False,
                     offhand_target=(AX - 12.0, lerp(72.0, 54.0, t)),
                     radiance=0.55 + 0.45 * t,
                     halo_flare=0.40 + 0.60 * t,
                     phase=ph,
+                    ground_seal_rx=14.0 + 10.0 * t,
                 )
             )
-        elif f == 8:
+        elif f <= 15:
+            diss = max(0.0, (f - 9) / 7.5)
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K3_RISE",
-                    dx=4.0,
+                    dx=3.5,
                     lock_grounded=True,
-                    aim_deg=-88.0,
-                    grip_offset=(5.0, -10.0),
-                    radiance=1.0,
-                    halo_flare=1.0,
+                    aim_deg=-80.0,
+                    grip_offset=(5.0, -8.5),
+                    two_handed=False,
+                    offhand_target=(AX - 11.0, 54.0),
+                    radiance=1.0 - 0.22 * diss,
+                    halo_flare=1.0 - 0.25 * diss,
                     phase=ph,
-                    pillar_spec={"x": AX + 58.0, "y_floor": 115, "width": 13.5, "intensity": 1.0},
-                    vortex_spec={"center": (AX + 4.0, 110.0), "rx": 34.0, "ry": 7.0, "thickness": 6.5},
-                )
-            )
-        elif f < 21:
-            t = (f - 9) / 11.0
-            frames.append(
-                compose_priestess_frame(
-                    poses,
-                    pose_key="K3_RISE",
-                    dx=4.0 - t * 2.0,
-                    lock_grounded=True,
-                    aim_deg=-88.0 + math.sin(t * math.pi * 2.0) * 4.0,
-                    grip_offset=(5.0, -9.5),
-                    radiance=0.95 - 0.25 * t,
-                    halo_flare=0.85 - 0.30 * t,
-                    phase=ph,
-                    pillar_spec=(
-                        {"x": AX + 58.0, "y_floor": 115, "width": 11.0, "intensity": 1.0 - t * 0.75}
-                        if f <= 15
-                        else None
-                    ),
+                    ground_seal_rx=25.0 * (1.0 - 0.45 * diss),
+                    fx_spec={
+                        "kind": "v2_choir_prism_pillar",
+                        "col_x": 132.0,
+                        "y_top": 12 + int(diss * 18),
+                        "width": 13.0 * (1.0 - 0.35 * diss),
+                        "dissipate": diss,
+                    },
                 )
             )
         else:
-            t = (f - 21) / 8.0
+            t = (f - 16) / 13.0
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="STAND",
-                    dx=lerp(2.0, 0.0, t),
+                    dx=lerp(2.5, 0.0, t),
                     lock_grounded=True,
-                    aim_deg=lerp(-84.0, -44.0, t),
-                    grip_offset=(4.5, lerp(-8.0, -1.5, t)),
+                    aim_deg=lerp(-74.0, -50.0, t),
+                    grip_offset=(4.5, lerp(-6.0, -1.5, t)),
                     radiance=lerp(0.65, 0.35, t),
                     halo_flare=lerp(0.50, 0.15, t),
                     phase=ph,
@@ -1345,8 +1427,8 @@ def build_row_3_skill(poses):
 
 def build_row_4_ultimate(poses):
     """
-    Row 4 ULTIMATE (`SERAPHIC CATHEDRAL` & `FINAL GRACE` horizontal beam stance):
-    Ascends via `K4_LEAP` (`F04..F16`), then aims Scepter-Lance straight forward (`0 deg`) for `FINAL GRACE`!
+    Row 4 ULTIMATE (`SERAPHIC ORGAN OF LIGHT` & `FINAL GRACE: GENESIS LUMEN` horizontal beam stance):
+    Ascends via `K4_LEAP` (`F05..F16`), then aims Cathedral Scepter straight forward (`0 deg`) with Rose-Window Seal!
     """
     frames = []
     for f in range(30):
@@ -1359,8 +1441,8 @@ def build_row_4_ultimate(poses):
                     pose_key="K3_RISE",
                     dx=lerp(0.0, 2.0, t),
                     dy=lerp(0.0, -4.0, t),
-                    aim_deg=lerp(-50.0, -88.0, t),
-                    grip_offset=(4.5, lerp(-2.5, -10.0, t)),
+                    aim_deg=lerp(-50.0, -84.0, t),
+                    grip_offset=(4.5, lerp(-2.5, -8.5, t)),
                     radiance=0.65 + 0.35 * t,
                     halo_flare=0.50 + 0.50 * t,
                     phase=ph,
@@ -1375,8 +1457,8 @@ def build_row_4_ultimate(poses):
                     pose_key="K4_LEAP",
                     dx=2.0,
                     dy=hover,
-                    aim_deg=-86.0 + t * 24.0,
-                    grip_offset=(4.5, -8.5),
+                    aim_deg=-82.0 + t * 24.0,
+                    grip_offset=(4.5, -7.5),
                     two_handed=False,
                     offhand_target=(AX - 10.0, 62.0 + hover),
                     radiance=1.0,
@@ -1384,43 +1466,20 @@ def build_row_4_ultimate(poses):
                     phase=ph,
                 )
             )
-        elif f == 17:
-            # Horizontal Scepter-Lance purifying beam command snap!
+        elif f <= 24:
+            diss = min(0.7, max(0.0, (f - 18) * 0.12))
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K2_LUNGE",
-                    dx=12.0,
+                    dx=9.0,
                     dy=0.0,
                     aim_deg=0.0,
-                    grip_offset=(10.0, -2.0),
+                    grip_offset=(9.5, -2.0),
                     radiance=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 26.0, 64.0),
-                        "deg_start": -108.0,
-                        "deg_end": 28.0,
-                        "r_outer": 63.0,
-                        "thickness": 22.0,
-                        "sparks": 18,
-                    },
-                )
-            )
-        elif f < 25:
-            # Sustained horizontal `0 deg` Final Grace beam posture!
-            t = (f - 18) / 6.0
-            frames.append(
-                compose_priestess_frame(
-                    poses,
-                    pose_key="K2_LUNGE",
-                    dx=12.0,
-                    dy=0.0,
-                    aim_deg=0.0 + math.sin(t * math.tau) * 1.5,
-                    grip_offset=(10.0, -2.0),
-                    radiance=1.0,
-                    halo_flare=0.95,
-                    phase=ph,
+                    fx_spec={"kind": "v0_rose_window_ray", "x_end": 150.0, "half_h": 9.0, "dissipate": diss} if f <= 20 else None,
                 )
             )
         else:
@@ -1429,10 +1488,10 @@ def build_row_4_ultimate(poses):
                 compose_priestess_frame(
                     poses,
                     pose_key="STAND",
-                    dx=lerp(10.0, 0.0, t),
+                    dx=lerp(8.0, 0.0, t),
                     dy=0.0,
-                    aim_deg=lerp(0.0, -44.0, t),
-                    grip_offset=(lerp(9.0, 4.5, t), -1.5),
+                    aim_deg=lerp(0.0, -50.0, t),
+                    grip_offset=(lerp(8.5, 4.5, t), -1.5),
                     radiance=lerp(0.85, 0.35, t),
                     halo_flare=lerp(0.75, 0.15, t),
                     phase=ph,
@@ -1454,7 +1513,7 @@ def build_row_5_hit(poses):
                     pose_key="K1_COIL",
                     dx=-6.5 * recoil,
                     lock_grounded=True,
-                    aim_deg=-114.0 - 16.0 * recoil,
+                    aim_deg=-106.0 - 16.0 * recoil,
                     grip_offset=(-1.5, -3.0),
                     radiance=0.30,
                     phase=ph,
@@ -1469,7 +1528,7 @@ def build_row_5_hit(poses):
                     pose_key="K1_COIL",
                     dx=-6.5 + t * 3.0 + shk,
                     lock_grounded=True,
-                    aim_deg=-126.0 + t * 30.0,
+                    aim_deg=-118.0 + t * 28.0,
                     grip_offset=(-1.0, -2.5),
                     radiance=0.35,
                     phase=ph,
@@ -1483,7 +1542,7 @@ def build_row_5_hit(poses):
                     pose_key="STAND",
                     dx=lerp(-3.5, 0.0, t),
                     lock_grounded=True,
-                    aim_deg=lerp(-92.0, -44.0, t),
+                    aim_deg=lerp(-88.0, -50.0, t),
                     grip_offset=(4.5, -1.5),
                     radiance=0.35,
                     phase=ph,
@@ -1493,6 +1552,7 @@ def build_row_5_hit(poses):
 
 
 def build_row_6_block_parry(poses):
+    """Row 6 BENEDICTION WARD & SANCTUM RAY COUNTER (`0` melee slash smears!)."""
     frames = []
     for f in range(30):
         ph = f / 30.0
@@ -1509,40 +1569,35 @@ def build_row_6_block_parry(poses):
                     radiance=0.65,
                     halo_flare=0.45,
                     phase=ph,
+                    ground_seal_rx=20.0,
                 )
             )
-        elif f == 12:
+        elif f <= 15:
+            diss = (f - 12) * 0.28
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K2_LUNGE",
-                    dx=11.0,
+                    dx=6.5,
                     lock_grounded=True,
-                    aim_deg=22.0,
-                    grip_offset=(9.0, 0.5),
+                    aim_deg=-6.0,
+                    grip_offset=(8.5, -1.5),
                     radiance=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 24.0, 66.0),
-                        "deg_start": -108.0,
-                        "deg_end": 44.0,
-                        "r_outer": 60.0,
-                        "thickness": 20.0,
-                        "sparks": 14,
-                    },
+                    fx_spec={"kind": "v0_rose_window_ray", "x_end": 146.0, "half_h": 7.5, "dissipate": diss},
                 )
             )
         else:
-            t = (f - 13) / 16.0
+            t = (f - 16) / 13.0
             frames.append(
                 compose_priestess_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f < 20 else "STAND",
-                    dx=lerp(11.0, 0.0, t),
+                    pose_key="K2_LUNGE" if f < 21 else "STAND",
+                    dx=lerp(5.5, 0.0, t),
                     lock_grounded=True,
-                    aim_deg=lerp(26.0, -44.0, t),
-                    grip_offset=(lerp(8.5, 4.5, t), -1.5),
+                    aim_deg=lerp(-12.0, -50.0, t),
+                    grip_offset=(lerp(8.0, 4.5, t), -1.5),
                     radiance=lerp(0.85, 0.35, t),
                     halo_flare=lerp(0.65, 0.15, t),
                     phase=ph,
@@ -1561,17 +1616,12 @@ def build_row_7_crouch(poses):
                 pose_key="K2_LUNGE",
                 dx=2.0,
                 lock_grounded=True,
-                aim_deg=-20.0 + math.sin(ph * math.tau) * 4.5,
-                grip_offset=(6.5, 0.5),
+                aim_deg=-24.0 + math.sin(ph * math.tau) * 4.5,
+                grip_offset=(6.5, -0.5),
                 radiance=0.55 + 0.15 * math.sin(ph * math.tau * 2.0),
                 halo_flare=0.35,
                 phase=ph,
-                vortex_spec={
-                    "center": (AX + 4.0, 98.0),
-                    "rx": 24.0 + math.sin(ph * math.tau) * 2.0,
-                    "ry": 5.5,
-                    "thickness": 4.0,
-                },
+                ground_seal_rx=22.0 + math.sin(ph * math.tau) * 2.0,
             )
         )
     return frames
@@ -1589,8 +1639,8 @@ def build_row_8_jump_vault(poses):
                 pose_key="K4_LEAP" if 3 <= f <= 25 else "STAND",
                 dx=arc * 3.5,
                 dy=-arc * 12.0,
-                aim_deg=-52.0 - arc * 34.0 + math.sin(ph * math.tau) * 5.0,
-                grip_offset=(4.5, -3.0 - arc * 3.0),
+                aim_deg=-52.0 - arc * 28.0 + math.sin(ph * math.tau) * 5.0,
+                grip_offset=(4.5, -3.0 - arc * 2.5),
                 radiance=0.60 + 0.30 * arc,
                 halo_flare=0.45 + 0.45 * arc,
                 phase=ph,
@@ -1611,7 +1661,7 @@ def build_row_9_death(poses):
                     pose_key="K1_COIL",
                     dx=-7.0 * t,
                     dy=3.0 * t,
-                    aim_deg=lerp(-106.0, -152.0, t),
+                    aim_deg=lerp(-96.0, -142.0, t),
                     grip_offset=(-1.5, 1.0),
                     radiance=0.35 * (1.0 - t),
                     halo_flare=0.15 * (1.0 - t),
@@ -1632,12 +1682,12 @@ def build_row_9_death(poses):
                 oy = (AY - 2) - max_y
                 canvas.alpha_composite(base_im, (ox, oy))
             arr = np.array(canvas)
-            draw_sunburst_scepter_lance(
+            draw_sunburst_cathedral_scepter(
                 arr,
-                (AX + 8.0, 110.0),
-                angle_deg=lerp(-10.0, 3.0, t),
+                (AX + 6.0, 109.0),
+                angle_deg=lerp(-8.0, 2.0, t),
                 length_scale=0.92,
-                radiance=0.20 + 0.08 * math.sin(ph * math.tau * 3.0),
+                radiance=0.22 + 0.08 * math.sin(ph * math.tau * 3.0),
                 max_y=114,
             )
             for k in range(5):
@@ -1650,17 +1700,33 @@ def build_row_9_death(poses):
 
 
 # ==============================================================================
-# 7. PORTRAIT BUILDER & SHEET ASSEMBLY / GROUNDED QA AUDIT
+# 7. PORTRAIT BUILDER (`0` SPEAR-TIP!) & SHEET ASSEMBLY / GROUNDED QA AUDIT
 # ==============================================================================
 def build_portrait():
     raw = Image.open(PORTRAIT_JPG).convert("RGB")
     w, h = raw.size
+    # Cleanly remove ONLY the spear-blade triangle rising above the Sunburst Cross in the top-right (`x=812..948, y=58..236`),
+    # replacing it with cathedral sanctuary dark shadow + a rounded royal cathedral finial orb!
+    raw_arr = np.array(raw)
+    spear_poly = polygon_mask((w, h), [(812, 236), (885, 52), (955, 62), (945, 224), (888, 240)])
+    # Sample dark cathedral column color from (805, 110)
+    bg_col = raw_arr[110, 805].copy()
+    raw_arr[spear_poly] = bg_col
+    raw_clean = Image.fromarray(raw_arr, "RGB")
+
     s = int(min(w, h) * 0.88)
     x0 = (w - s) // 2
     y0 = max(0, int((h - s) * 0.26))
-    crop = raw.crop((x0, y0, x0 + s, y0 + s)).resize((64, 64), Image.Resampling.BILINEAR)
+    crop = raw_clean.crop((x0, y0, x0 + s, y0 + s)).resize((64, 64), Image.Resampling.BILINEAR)
     q64 = crop.quantize(colors=42, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGBA")
     arr = np.array(q64)
+
+    # Stamp a tiny royal golden cathedral finial bead right atop the Sunburst Cross (`x_64=56, y_64=14`)
+    arr[14, 56] = C_LIGHT_CORE
+    arr[13, 56] = C_GOLD_MID
+    arr[14, 55] = C_GOLD_MID
+    arr[14, 57] = C_GOLD_MID
+
     arr[0, :] = C_OUT
     arr[63, :] = C_OUT
     arr[:, 0] = C_OUT
@@ -1706,11 +1772,11 @@ def main():
         transitions = 0
         row_320 = []
         r2_bot_ys = []
+        snap_reaches = {}
         for c_idx, farr in enumerate(log_frames):
             if c_idx > 0 and not np.array_equal(log_frames[c_idx - 1], farr):
                 transitions += 1
             if r_idx == 2:
-                # Verify grounded foot_y = 115 -> y_320 = 230..231!
                 ys_f, _ = np.where(farr[:, :, 3] > 0)
                 r2_bot_ys.append(int(ys_f.max()))
             im_log = Image.fromarray(farr, "RGBA")
@@ -1723,15 +1789,26 @@ def main():
                 or a320[:, -1].any()
             ):
                 border_clips += 1
+            if r_idx == 2 and c_idx in (3, 9, 17, 25):
+                _, xs_320 = np.where(a320 > 0)
+                snap_reaches[f"F{c_idx:02d}"] = int(xs_320.max())
             sheet.paste(im_320, (c_idx * CELL_W, r_idx * CELL_H))
             row_320.append(im_320)
         all_rows_320.append(row_320)
-        extra = f" | grounded bot_y_log min={min(r2_bot_ys)} max={max(r2_bot_ys)}" if r_idx == 2 else ""
+        extra = (
+            f" | grounded bot_y_log min={min(r2_bot_ys)} max={max(r2_bot_ys)} | snap max_x={snap_reaches}"
+            if r_idx == 2
+            else ""
+        )
         print(f"  [{r_name}] transitions={transitions}/29{extra}")
         if transitions < 29:
             raise RuntimeError(f"{r_name} has static duplicate frames ({transitions}/29)!")
         if r_idx == 2 and (min(r2_bot_ys) != 115 or max(r2_bot_ys) != 115):
             raise RuntimeError(f"Row 2 grounded foot_y violation: {r2_bot_ys}")
+        if r_idx == 2:
+            for fk, rx in snap_reaches.items():
+                if rx <= 200:
+                    raise RuntimeError(f"Row 2 {fk} forward cast reach {rx} <= 200!")
 
     if border_clips != 0:
         raise RuntimeError(f"Border clip violation: {border_clips}/300!")
@@ -1742,20 +1819,21 @@ def main():
     print(f"[priestess_ex] Saved {OUT_PORTRAIT} ({port.size[0]}x{port.size[1]})")
 
     # Visual QA Contact Sheets in scratch dir
-    r2_w, r2_h = 6 * (CELL_W + 6) + 6, 5 * (CELL_H + 6) + 6
-    dbg_r2 = Image.new("RGBA", (r2_w, r2_h), (24, 22, 36, 255))
-    dr = ImageDraw.Draw(dbg_r2)
-    for idx, im320 in enumerate(all_rows_320[2]):
-        gx = (idx % 6) * (CELL_W + 6) + 6
-        gy = (idx // 6) * (CELL_H + 6) + 6
-        bg = Image.new("RGBA", (CELL_W, CELL_H), (34, 32, 48, 255))
-        bg_d = ImageDraw.Draw(bg)
-        bg_d.line([(0, 230), (319, 230)], fill=(120, 96, 52, 255), width=1)
-        bg_d.line([(112, 0), (112, 239)], fill=(70, 86, 120, 255), width=1)
-        bg.alpha_composite(im320, (0, 0))
-        dbg_r2.paste(bg, (gx, gy))
-        dr.text((gx + 6, gy + 4), f"F{idx:02d}", fill=(255, 235, 160, 255))
-    dbg_r2.save(os.path.join(args.scratch_dir, "debug_priestess_ex_row2.png"))
+    for row_idx_qa, out_name in [(1, "debug_priestess_ex_row1_walk.png"), (2, "debug_priestess_ex_row2.png")]:
+        r_w, r_h = 6 * (CELL_W + 6) + 6, 5 * (CELL_H + 6) + 6
+        dbg_r = Image.new("RGBA", (r_w, r_h), (24, 22, 36, 255))
+        dr = ImageDraw.Draw(dbg_r)
+        for idx, im320 in enumerate(all_rows_320[row_idx_qa]):
+            gx = (idx % 6) * (CELL_W + 6) + 6
+            gy = (idx // 6) * (CELL_H + 6) + 6
+            bg = Image.new("RGBA", (CELL_W, CELL_H), (34, 32, 48, 255))
+            bg_d = ImageDraw.Draw(bg)
+            bg_d.line([(0, 230), (319, 230)], fill=(120, 96, 52, 255), width=1)
+            bg_d.line([(112, 0), (112, 239)], fill=(70, 86, 120, 255), width=1)
+            bg.alpha_composite(im320, (0, 0))
+            dbg_r.paste(bg, (gx, gy))
+            dr.text((gx + 6, gy + 4), f"F{idx:02d}", fill=(255, 235, 160, 255))
+        dbg_r.save(os.path.join(args.scratch_dir, out_name))
 
     for c0, c1, tag in [(0, 15, "left_F00_F14"), (15, 30, "right_F15_F29")]:
         gw = 15 * (LOG_W + 3) + 3

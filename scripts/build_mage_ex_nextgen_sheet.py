@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 IGNIS SOL EX (`mage_ex`) — Next-Gen Wide-Canvas (`320x240` cell, `9600x2400` 30x10 sheet)
-FFBE / Last Cloudia Multi-Keypose + 4-Band Serrated Solar-Flame Smear Pipeline.
+Classic Black-Mage / Solar Wizard Neo-Vision Overhaul + Pure High-Sorcery Spellcasting Pipeline.
 
 Outputs:
   - `assets/sprites/mage_ex_sheet.png`    (9600x2400, 30 cols x 10 rows @ 320x240, 2x2 pixel blocks)
@@ -9,6 +9,15 @@ Outputs:
   - Untracked QA contact sheets in scratch directory (`--scratch-dir` or default brain scratch)
 
 Invariants enforced:
+  - Iconic Classic-Wizard look upgraded to Neo-Vision: pointed wide-brimmed crimson-gold Wizard Hat
+    with blazing Sun Crest, pitch-black shadowed face, glowing molten-gold eyes, gold-runed Archmage
+    stoles/robes, floating back Solar Astrolabe Halo, and Golden Crescent-Sun Archmage Staff (`0` spear blades!).
+  - Pure Mage Spellcasting `Row 2` (`[[60,8],[68,7],[75,8],[83,7]]`, `0` melee sword/halberd slash crescents!):
+      * `V0 (F03)`: `K2` forward staff-projection -> 3D foreshortened Golden Solar Rune Magic Circle + Solar Fireball muzzle flare (`x = 185..298`)
+      * `V1 (F09)`: Sweeping Arcane Invocation -> twin concentric Helios Sun-Sigils + twin Solar Corona Bolt bursts (`x = 185..296`)
+      * `V2 (F17)`: `K3` grand two-arm raised invocation -> radiant Astrolabe Eclipse Glyph & ground-to-sky Solar Prominence Column (`x = 190..304`)
+      * `V3 (F25)`: `K4` levitating arcane-hover cast -> Colossal Blazing Sun-Crest Seal & Triple Meteoric Fire-Orb Array (`x = 192..308`)
+      * Progressive `4x4` Bayer rune/ember dissipation on `F04..F05`, `F10..F11`, `F18..F19`, `F26..F27`
   - 100% 2x2 integer pixel blocks (authored at 160x120 logical, upscaled 2x NEAREST -> 320x240)
   - Anchor `(56, 115)` logical -> `(112, 230)` output (`208px` forward canvas reach!)
   - Binary alpha (`0` or `255`), `4px` output safety margin (`0/300` border clips)
@@ -37,7 +46,7 @@ LOG_W, LOG_H = 160, 120
 CELL_W, CELL_H = 320, 240
 COLS, ROWS = 30, 10
 AX, AY = 56, 115  # -> (112, 230) in 320x240 output
-TARGET_STAND_H = 87
+TARGET_STAND_H = 88
 
 BAYER4 = (
     np.array(
@@ -52,26 +61,29 @@ BAYER4 = (
     / 16.0
 )
 
-# Helios Spell-Blade Armor, Flame-Crown, and Solar Astrolabe Palette
-C_OUT = (20, 8, 10, 255)
-C_COAT_DARK = (38, 14, 18, 255)
-C_COAT_MID = (68, 20, 26, 255)
-C_COAT_CRIMSON = (136, 28, 30, 255)
-C_COAT_BRIGHT = (185, 38, 34, 255)
+# Classic Solar Wizard / Neo-Vision Archmage Palette
+C_OUT = (18, 7, 10, 255)
+C_VOID_FACE = (6, 4, 8, 255)
+C_SHAFT_DARK = (54, 20, 18, 255)
+C_SHAFT_WOOD = (92, 34, 24, 255)
+C_ROBE_DARK = (42, 14, 18, 255)
+C_ROBE_CRIMSON = (142, 28, 30, 255)
+C_GLOVE_DARK = (26, 24, 32, 255)
 C_GOLD_DARK = (146, 78, 18, 255)
 C_GOLD_MID = (217, 138, 28, 255)
 C_GOLD_LIGHT = (250, 204, 56, 255)
 C_GOLD_SPEC = (255, 247, 194, 255)
-C_SKIN_SHADOW = (188, 126, 94, 255)
-C_SKIN_LIGHT = (238, 182, 142, 255)
 
-# 4-Band Solar-Flame Serrated Smear & Blade Palette (#ffffff -> #fef08a -> #fb923c -> #dc2626)
+# Solar Sorcery & Molten Eye Palette
 C_FLAME_CORE = (255, 255, 255, 255)
 C_FLAME_GOLD = (254, 240, 138, 255)
+C_FLAME_AMBER = (251, 191, 36, 255)
 C_FLAME_ORANGE = (251, 146, 60, 255)
 C_FLAME_CRIMSON = (220, 38, 38, 255)
 C_FLAME_DEEP = (127, 29, 29, 255)
-C_ECLIPSE_VIOLET = (88, 28, 135, 255)
+C_OBSIDIAN_CRUST = (34, 14, 18, 255)
+C_ECLIPSE_VOID = (18, 8, 28, 255)
+C_ECLIPSE_VIOLET = (107, 33, 168, 255)
 C_ECLIPSE_MAGENTA = (192, 38, 211, 255)
 
 
@@ -130,7 +142,7 @@ def segment_white_bg(im_rgb, pocket_seeds=()):
     cmin = np.minimum(np.minimum(r, g), b)
     sat = np.where(cmax > 1.0, (cmax - cmin) / np.maximum(cmax, 1.0), 0.0)
 
-    bg_cand = ((luma >= 236.0) & (sat <= 0.10)) | (luma >= 249.0)
+    bg_cand = ((luma >= 235.0) & (sat <= 0.11)) | (luma >= 248.0)
 
     bg = np.zeros((h, w), dtype=bool)
     q = deque()
@@ -146,9 +158,12 @@ def segment_white_bg(im_rgb, pocket_seeds=()):
                 q.append((x, y))
 
     for sx, sy in pocket_seeds:
-        if 0 <= sx < w and 0 <= sy < h and bg_cand[sy, sx] and not bg[sy, sx]:
-            bg[sy, sx] = True
-            q.append((sx, sy))
+        for oy in range(-4, 5):
+            for ox in range(-4, 5):
+                nx, ny = sx + ox, sy + oy
+                if 0 <= nx < w and 0 <= ny < h and bg_cand[ny, nx] and not bg[ny, nx]:
+                    bg[ny, nx] = True
+                    q.append((nx, ny))
 
     while q:
         cx, cy = q.popleft()
@@ -159,12 +174,11 @@ def segment_white_bg(im_rgb, pocket_seeds=()):
                 q.append((nx, ny))
 
     fg = ~bg
-    # Defringe 1px bright neutral border halos
     border_touch = np.zeros((h, w), dtype=bool)
     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         shifted = np.roll(np.roll(bg, dy, axis=0), dx, axis=1)
         border_touch |= fg & shifted
-    fringe = border_touch & (luma >= 224.0) & (sat <= 0.14)
+    fringe = border_touch & (luma >= 220.0) & (sat <= 0.16)
     fg = fg & (~fringe)
     fg = keep_largest_component(fg)
 
@@ -174,13 +188,7 @@ def segment_white_bg(im_rgb, pocket_seeds=()):
     return Image.fromarray(rgba, "RGBA")
 
 
-def polygon_mask(size_wh, poly):
-    m = Image.new("L", size_wh, 0)
-    ImageDraw.Draw(m).polygon(poly, fill=255)
-    return np.array(m) > 127
-
-
-def apply_selout_and_quantize(rgba_im, palette_colors=44):
+def apply_selout_and_quantize(rgba_im, palette_colors=48):
     arr = np.array(rgba_im)
     a = arr[:, :, 3] > 128
     if not a.any():
@@ -202,8 +210,8 @@ def apply_selout_and_quantize(rgba_im, palette_colors=44):
         edge |= a & (~nb)
 
     luma = 0.299 * q_rgb[:, :, 0] + 0.587 * q_rgb[:, :, 1] + 0.114 * q_rgb[:, :, 2]
-    soft_edge = edge & (luma > 96.0)
-    q_rgb[soft_edge] = q_rgb[soft_edge] * 0.36 + np.array([22.0, 8.0, 10.0]) * 0.64
+    soft_edge = edge & (luma > 92.0)
+    q_rgb[soft_edge] = q_rgb[soft_edge] * 0.34 + np.array([18.0, 7.0, 10.0]) * 0.66
 
     out = np.zeros((h, w, 4), dtype=np.uint8)
     out[:, :, :3] = np.clip(q_rgb, 0, 255).astype(np.uint8)
@@ -234,12 +242,12 @@ def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
         y0, y1 = max(0, dy), min(h, h + dy)
         nb[y0:y1, x0:x1] = fg[y0 - dy : y1 - dy, x0 - dx : x1 - dx]
         edge |= fg & (~nb)
-    fg = fg & ~(edge & (luma >= 218.0) & (sat <= 0.16))
+    fg = fg & ~(edge & (luma >= 214.0) & (sat <= 0.18))
 
     clean = np.zeros_like(arr)
     clean[:, :, :3] = arr[:, :, :3]
     clean[:, :, 3] = np.where(fg, 255, 0)
-    quant = apply_selout_and_quantize(Image.fromarray(clean, "RGBA"), palette_colors=44)
+    quant = apply_selout_and_quantize(Image.fromarray(clean, "RGBA"), palette_colors=48)
 
     canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
     ox = int(round(AX - x_ref_512 * scale))
@@ -249,7 +257,7 @@ def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
 
 
 # ==============================================================================
-# 2. LOAD BASE + 4 ACTION KEYPOSES & ANATOMICAL RIG
+# 2. LOAD CLASSIC-WIZARD NEO-VISION BASE + 4 SPELLCASTING KEYPOSES
 # ==============================================================================
 def load_mage_poses():
     base_raw = Image.open(BASE_JPG).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
@@ -262,125 +270,115 @@ def load_mage_poses():
     scale = TARGET_STAND_H / float(stand_h_512)
     x_ref_stand = 256
 
-    # Strip both empty arms from standing base so IK gauntlets clasp the 2H Sun-Glaive cleanly
-    front_arm_poly = polygon_mask((512, 512), [(306, 186), (414, 186), (414, 274), (308, 270), (302, 224)])
-    back_arm_poly = polygon_mask((512, 512), [(148, 192), (214, 192), (222, 236), (216, 272), (148, 272)])
-    armless_512 = base_arr.copy()
-    armless_512[front_arm_poly | back_arm_poly, 3] = 0
-    fg_armless = keep_largest_component(armless_512[:, :, 3] > 0)
-    armless_512[:, :, 3] = np.where(fg_armless, 255, 0)
+    stand_log, ox_s, oy_s = scale_pose_to_logical(base_seg, x_ref_stand, y_bot_stand, scale)
 
-    stand_full_log, ox_s, oy_s = scale_pose_to_logical(base_seg, x_ref_stand, y_bot_stand, scale)
-    stand_armless_log, _, _ = scale_pose_to_logical(
-        Image.fromarray(armless_512, "RGBA"), x_ref_stand, y_bot_stand, scale
-    )
+    def to_log(pt, ox, oy):
+        return (ox + pt[0] * scale, oy + pt[1] * scale)
 
-    def to_log(pt):
-        return (ox_s + pt[0] * scale, oy_s + pt[1] * scale)
-
-    stand_joints = {
-        "sh_front": to_log((302, 194)),
-        "sh_back": to_log((218, 192)),
-        "head": to_log((266, 118)),
-        "chest_orb": to_log((268, 208)),
-        "waist": to_log((266, 278)),
-        "hip_front": to_log((292, 304)),
-        "hip_back": to_log((238, 304)),
+    poses = {
+        "scale": scale,
+        "STAND": {
+            "sprite": stand_log,
+            "grip": to_log((352, 336), ox_s, oy_s),
+            "offhand": to_log((194, 340), ox_s, oy_s),
+            "l_eye": to_log((247, 187), ox_s, oy_s),
+            "r_eye": to_log((299, 191), ox_s, oy_s),
+            "hat_sun": to_log((286, 123), ox_s, oy_s),
+            "chest_orb": to_log((282, 252), ox_s, oy_s),
+            "halo_anchor": to_log((256, 224), ox_s, oy_s),
+        },
     }
 
     kp_sheet = Image.open(KEYPOSES_JPG).convert("RGB")
     kw, kh = kp_sheet.size
     hw, hh = kw // 2, kh // 2
-    quad_Specs = {
+
+    quad_specs = {
         "K1_COIL": {
             "crop": (0, 0, hw, hh),
-            "pockets": [(286, 357)],
-            "strip_polys": [
-                [(140, 112), (226, 112), (232, 206), (140, 206)],
-                [(312, 200), (420, 200), (420, 278), (312, 278)],
-            ],
-            "x_ref": 264,
-            "y_bot": 496,
-            "sh_front": (306, 208),
-            "sh_back": (232, 184),
-            "chest_orb": (278, 224),
+            "pockets": [],
+            "x_ref": 258,
+            "y_bot_override": None,
+            "grip": (374, 252),
+            "offhand": (272, 258),
+            "l_eye": (259, 185),
+            "r_eye": (299, 179),
+            "hat_sun": (281, 121),
+            "chest_orb": (275, 245),
+            "halo_anchor": (256, 222),
         },
-        "K2_LUNGE": {
+        "K2_CAST": {
             "crop": (hw, 0, kw, hh),
             "pockets": [],
-            "strip_polys": [
-                [(134, 210), (222, 210), (226, 294), (134, 294)],
-                [(312, 224), (478, 224), (478, 296), (312, 296)],
-            ],
-            "x_ref": 250,
-            "y_bot": 511,
-            "sh_front": (308, 246),
-            "sh_back": (224, 228),
-            "chest_orb": (274, 260),
-        },
-        "K3_RISE": {
-            "crop": (0, hh, hw, kh),
-            "pockets": [],
-            "strip_polys": [
-                [(126, 188), (206, 188), (210, 278), (126, 278)],
-                [(342, 48), (440, 48), (440, 206), (316, 206), (316, 152), (342, 132)],
-            ],
             "x_ref": 258,
-            "y_bot": 501,
-            "sh_front": (312, 186),
-            "sh_back": (214, 194),
-            "chest_orb": (272, 206),
+            "y_bot_override": None,
+            "grip": (428, 214),
+            "offhand": (218, 280),
+            "l_eye": (260, 181),
+            "r_eye": (294, 179),
+            "hat_sun": (280, 124),
+            "chest_orb": (276, 256),
+            "halo_anchor": (254, 226),
         },
-        "K4_LEAP": {
+        "K3_INVOKE": {
+            "crop": (0, hh, hw, kh),
+            "pockets": [(325, 148), (191, 150)],
+            "x_ref": 262,
+            "y_bot_override": None,
+            "grip": (400, 112),
+            "offhand": (126, 102),
+            "l_eye": (246, 198),
+            "r_eye": (286, 202),
+            "hat_sun": (276, 132),
+            "chest_orb": (276, 266),
+            "halo_anchor": (260, 224),
+        },
+        "K4_HOVER": {
             "crop": (hw, hh, kw, kh),
-            "pockets": [(297, 315), (221, 188)],
-            "strip_polys": [
-                [(152, 162), (228, 162), (232, 248), (152, 248)],
-                [(318, 186), (390, 186), (390, 260), (318, 260)],
-            ],
-            "x_ref": 264,
-            "y_bot": 465,
-            "sh_front": (312, 190),
-            "sh_back": (228, 174),
-            "chest_orb": (284, 202),
+            "pockets": [],
+            "x_ref": 266,
+            "y_bot_override": 486,
+            "grip": (368, 310),
+            "offhand": (200, 306),
+            "l_eye": (252, 188),
+            "r_eye": (292, 196),
+            "hat_sun": (284, 126),
+            "chest_orb": (288, 254),
+            "halo_anchor": (264, 226),
         },
     }
 
-    keyposes = {}
-    for kname, spec in quad_Specs.items():
+    for kname, spec in quad_specs.items():
         tile = kp_sheet.crop(spec["crop"]).resize((512, 512), Image.Resampling.LANCZOS)
         seg = segment_white_bg(tile, pocket_seeds=spec["pockets"])
-        t_arr = np.array(seg)
-        for poly in spec["strip_polys"]:
-            pm = polygon_mask((512, 512), poly)
-            t_arr[pm, 3] = 0
-        t_fg = keep_largest_component(t_arr[:, :, 3] > 0)
-        t_arr[:, :, 3] = np.where(t_fg, 255, 0)
-
-        kp_log, kox, koy = scale_pose_to_logical(
-            Image.fromarray(t_arr, "RGBA"), spec["x_ref"], spec["y_bot"], scale
-        )
-        keyposes[kname] = {
-            "armless": kp_log,
-            "sh_front": (kox + spec["sh_front"][0] * scale, koy + spec["sh_front"][1] * scale),
-            "sh_back": (kox + spec["sh_back"][0] * scale, koy + spec["sh_back"][1] * scale),
-            "chest_orb": (kox + spec["chest_orb"][0] * scale, koy + spec["chest_orb"][1] * scale),
+        s_arr = np.array(seg)
+        k_ys, _ = np.where(s_arr[:, :, 3] > 0)
+        y_bot = spec["y_bot_override"] if spec["y_bot_override"] is not None else int(k_ys.max())
+        kp_log, kox, koy = scale_pose_to_logical(seg, spec["x_ref"], y_bot, scale)
+        poses[kname] = {
+            "sprite": kp_log,
+            "grip": to_log(spec["grip"], kox, koy),
+            "offhand": to_log(spec["offhand"], kox, koy),
+            "l_eye": to_log(spec["l_eye"], kox, koy),
+            "r_eye": to_log(spec["r_eye"], kox, koy),
+            "hat_sun": to_log(spec["hat_sun"], kox, koy),
+            "chest_orb": to_log(spec["chest_orb"], kox, koy),
+            "halo_anchor": to_log(spec["halo_anchor"], kox, koy),
         }
 
-    return {
-        "scale": scale,
-        "stand_full": stand_full_log,
-        "stand_armless": stand_armless_log,
-        "stand_joints": stand_joints,
-        "keyposes": keyposes,
-    }
+    return poses
 
 
 # ==============================================================================
-# 3. PIXEL-ART PRIMITIVES, SOLAR ASTROLABE HALO, 2H SUN-GLAIVE & 2-BONE IK
+# 3. PIXEL PRIMITIVES, SOLAR ASTROLABE HALO & GOLDEN CRESCENT-SUN ARCHMAGE STAFF
 # ==============================================================================
 def put_px(arr, x, y, col):
     if 2 <= x < LOG_W - 2 and 2 <= y < LOG_H - 2:
+        arr[y, x] = col
+
+
+def put_px_outline_bg(arr, x, y, col):
+    if 2 <= x < LOG_W - 2 and 2 <= y < LOG_H - 2 and arr[y, x, 3] == 0:
         arr[y, x] = col
 
 
@@ -397,9 +395,7 @@ def draw_thick_line(arr, x0, y0, x1, y1, r, col, out_col=None):
             for dy in range(-ir_o, ir_o + 1):
                 for dx in range(-ir_o, ir_o + 1):
                     if dx * dx + dy * dy <= ro * ro + 0.25:
-                        px, py = icx + dx, icy + dy
-                        if 2 <= px < LOG_W - 2 and 2 <= py < LOG_H - 2 and arr[py, px, 3] == 0:
-                            arr[py, px] = out_col
+                        put_px_outline_bg(arr, icx + dx, icy + dy, out_col)
     ir = int(math.ceil(r))
     for i in range(steps + 1):
         t = i / float(steps)
@@ -412,52 +408,31 @@ def draw_thick_line(arr, x0, y0, x1, y1, r, col, out_col=None):
                     put_px(arr, icx + dx, icy + dy, col)
 
 
-def solve_2bone_ik(sh, target, l1=8.5, l2=8.5, bend_sign=1.0):
-    dx = target[0] - sh[0]
-    dy = target[1] - sh[1]
-    d = math.hypot(dx, dy)
-    max_reach = l1 + l2 - 0.35
-    if d > max_reach and d > 1e-4:
-        dx *= max_reach / d
-        dy *= max_reach / d
-        target = (sh[0] + dx, sh[1] + dy)
-        d = max_reach
-    d = max(1.2, d)
-    cos_a = clamp((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0)
-    ang_base = math.atan2(dy, dx)
-    ang_off = math.acos(cos_a) * bend_sign
-    el = (sh[0] + math.cos(ang_base + ang_off) * l1, sh[1] + math.sin(ang_base + ang_off) * l1)
-    return el, target
+def draw_pixel_star4(arr, cx, cy, arm=3, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD, out_col=C_OUT):
+    icx, icy = int(round(cx)), int(round(cy))
+    if out_col is not None:
+        for d in range(-arm - 1, arm + 2):
+            put_px_outline_bg(arr, icx + d, icy, out_col)
+            put_px_outline_bg(arr, icx, icy + d, out_col)
+        for ox, oy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            put_px_outline_bg(arr, icx + ox * 2, icy + oy, out_col)
+            put_px_outline_bg(arr, icx + ox, icy + oy * 2, out_col)
+    for d in range(-arm, arm + 1):
+        put_px(arr, icx + d, icy, ray_col)
+        put_px(arr, icx, icy + d, ray_col)
+    for ox, oy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        put_px(arr, icx + ox, icy + oy, ray_col)
+    put_px(arr, icx, icy, core_col)
 
 
-def draw_mage_arm(arr, sh, grip, is_front=True, bend_sign=1.0):
-    el, hand = solve_2bone_ik(sh, grip, l1=8.6, l2=8.6, bend_sign=bend_sign)
-    sleeve = C_COAT_MID if is_front else C_COAT_DARK
-    cuff = C_GOLD_LIGHT if is_front else C_GOLD_MID
-    glove = C_SKIN_LIGHT if is_front else C_SKIN_SHADOW
-    # Pauldron cap
-    draw_thick_line(arr, sh[0] - 1.0, sh[1] - 0.8, sh[0] + 1.4, sh[1] + 0.6, 2.2, C_COAT_CRIMSON, out_col=C_OUT)
-    put_px(arr, int(round(sh[0])), int(round(sh[1] - 1)), cuff)
-    # Upper sleeve + armored forearm bracer
-    draw_thick_line(arr, sh[0], sh[1], el[0], el[1], 1.9, sleeve, out_col=C_OUT)
-    draw_thick_line(arr, el[0], el[1], hand[0], hand[1], 1.65, C_COAT_CRIMSON if is_front else sleeve, out_col=C_OUT)
-    # Gold rune cuff
-    mx, my = lerp(el[0], hand[0], 0.58), lerp(el[1], hand[1], 0.58)
-    draw_thick_line(arr, mx - 0.5, my - 0.5, mx + 0.5, my + 0.5, 1.45, cuff, out_col=None)
-    # Clenched spell-blade grip hand
-    draw_thick_line(arr, hand[0] - 0.5, hand[1] - 0.3, hand[0] + 0.6, hand[1] + 0.3, 1.5, glove, out_col=C_OUT)
-    return hand
-
-
-def draw_solar_astrolabe_halo(arr, cx, cy, phase, radius=16.5, flare=0.0, eclipse=False):
+def draw_solar_astrolabe_halo(arr, cx, cy, phase, radius=15.0, flare=0.0, eclipse=False):
     """Floating back Solar Astrolabe Halo behind Ignis Sol EX's shoulders."""
     ring_col = C_ECLIPSE_MAGENTA if eclipse else C_GOLD_MID
     spike_col = C_FLAME_GOLD if not eclipse else C_FLAME_CORE
     ember_col = C_ECLIPSE_VIOLET if eclipse else C_FLAME_CRIMSON
 
-    # Crisp pixel-art astrolabe ring (foreshortened slightly in X for 3/4 right-facing depth)
-    rx = radius * (0.86 + 0.12 * flare)
-    ry = radius * (1.0 + 0.10 * flare)
+    rx = radius * (0.86 + 0.10 * flare)
+    ry = radius * (1.0 + 0.08 * flare)
     steps = 56
     for i in range(steps):
         ang = (i / float(steps)) * math.tau
@@ -465,17 +440,15 @@ def draw_solar_astrolabe_halo(arr, cx, cy, phase, radius=16.5, flare=0.0, eclips
         py = int(round(cy + math.sin(ang) * ry))
         if 3 <= px < LOG_W - 3 and 3 <= py < LOG_H - 4:
             for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                if arr[py + oy, px + ox, 3] == 0:
-                    arr[py + oy, px + ox] = C_OUT
+                put_px_outline_bg(arr, px + ox, py + oy, C_OUT)
             arr[py, px] = C_GOLD_LIGHT if ((i + int(phase * 16)) % 5 == 0) else ring_col
 
-    # 8 rotating solar compass needles
     rot = phase * math.tau
     for k in range(8):
         ang = rot + k * (math.tau / 8.0)
-        is_major = (k % 2 == 0)
+        is_major = k % 2 == 0
         r0 = 0.88
-        r1 = (1.30 + 0.16 * flare) if is_major else (1.14 + 0.08 * flare)
+        r1 = (1.26 + 0.14 * flare) if is_major else (1.12 + 0.06 * flare)
         x0 = cx + math.cos(ang) * rx * r0
         y0 = cy + math.sin(ang) * ry * r0
         x1 = cx + math.cos(ang) * rx * r1
@@ -486,327 +459,522 @@ def draw_solar_astrolabe_halo(arr, cx, cy, phase, radius=16.5, flare=0.0, eclips
             y0,
             x1,
             y1,
-            0.95 if is_major else 0.65,
+            0.90 if is_major else 0.60,
             spike_col if is_major else ember_col,
             out_col=C_OUT,
         )
-        if is_major and flare > 0.25:
+        if is_major and flare > 0.28:
             put_px(arr, int(round(x1)), int(round(y1)), C_FLAME_CORE)
 
 
-def draw_helios_sunglaive(arr, grip_pos, angle_deg, length_scale=1.0, blaze=0.35, phase=0.0):
+def draw_crescent_sun_staff(
+    arr,
+    grip_pos,
+    angle_deg,
+    butt_len=14.0,
+    shaft_len=24.0,
+    blaze=0.35,
+    phase=0.0,
+    stamp_glove=True,
+    max_y=114,
+):
     """
-    2H Helios Sun-Glaive Staff:
-      - Ornate obsidian-crimson & gold rune shaft
-      - Golden Solar Astrolabe Crescent Head + blazing Solar Core
-      - White-gold/solar-crimson Flame-Blade spearhead (`54..58` logical px total reach!)
+    Ornate Golden Crescent-Sun Archmage Staff (0 spear/halberd blades!):
+      - Polished crimson-mahogany shaft with gold rune ferrules & solar pommel
+      - Curved Golden Crescent-Moon Filigree Head cradling a blazing miniature Sun Orb
+    Returns `(orb_cx, orb_cy)` for spell-circle registration.
     """
     rad = math.radians(angle_deg)
     ux, uy = math.cos(rad), math.sin(rad)
     nx, ny = -uy, ux
 
-    butt_len = 15.0 * length_scale
-    neck_dist = 27.0 * length_scale
-    tip_dist = 53.0 * length_scale
+    bx = grip_pos[0] - ux * butt_len
+    by = grip_pos[1] - uy * butt_len
+    if by > max_y:
+        scale_b = max(0.15, (max_y - grip_pos[1]) / max(1.0, by - grip_pos[1]))
+        bx = grip_pos[0] + (bx - grip_pos[0]) * scale_b
+        by = max_y
+    if by < 5:
+        scale_b = max(0.15, (grip_pos[1] - 5.0) / max(1.0, grip_pos[1] - by))
+        bx = grip_pos[0] + (bx - grip_pos[0]) * scale_b
+        by = 5.0
 
-    bx, by = grip_pos[0] - ux * butt_len, grip_pos[1] - uy * butt_len
-    nx_p, ny_p = grip_pos[0] + ux * neck_dist, grip_pos[1] + uy * neck_dist
-    tx, ty = grip_pos[0] + ux * tip_dist, grip_pos[1] + uy * tip_dist
+    nx_p = grip_pos[0] + ux * shaft_len
+    ny_p = clamp(grip_pos[1] + uy * shaft_len, 9.0, float(max_y - 6))
 
-    # 1. Counterweight solar pommel & rune shaft
-    draw_thick_line(arr, bx, by, nx_p, ny_p, 1.25, C_COAT_DARK, out_col=C_OUT)
-    for frac in (0.25, 0.55, 0.82):
-        rx = lerp(bx, nx_p, frac)
-        ry = lerp(by, ny_p, frac)
+    # 1. Polished mahogany-gold shaft + royal sun pommel
+    draw_thick_line(arr, bx, by, nx_p, ny_p, 1.15, C_SHAFT_DARK, out_col=C_OUT)
+    draw_thick_line(arr, bx + ux * 1.5, by + uy * 1.5, nx_p - ux * 1.5, ny_p - uy * 1.5, 0.65, C_SHAFT_WOOD, out_col=None)
+    for frac in (0.28, 0.58, 0.86):
+        rx, ry = lerp(bx, nx_p, frac), lerp(by, ny_p, frac)
         put_px(arr, int(round(rx)), int(round(ry)), C_GOLD_LIGHT)
-    draw_thick_line(arr, bx - ux * 1.6, by - uy * 1.6, bx + ux * 1.0, by + uy * 1.0, 1.8, C_GOLD_MID, out_col=C_OUT)
+    draw_thick_line(arr, bx - ux * 0.8, by - uy * 0.8, bx + ux * 0.8, by + uy * 0.8, 1.55, C_GOLD_MID, out_col=C_OUT)
     put_px(arr, int(round(bx)), int(round(by)), C_FLAME_GOLD)
 
-    # 2. Ornate Golden Solar Astrolabe Head at shaft neck
-    wing_span = 6.2 * length_scale
-    for sign in (-1.0, 1.0):
-        wx0 = nx_p - ux * 2.0 + nx * sign * 2.2
-        wy0 = ny_p - uy * 2.0 + ny * sign * 2.2
-        wx1 = nx_p + ux * 3.5 + nx * sign * wing_span
-        wy1 = ny_p + uy * 3.5 + ny * sign * wing_span
-        wx2 = nx_p + ux * 8.0 + nx * sign * (wing_span * 0.55)
-        wy2 = ny_p + uy * 8.0 + ny * sign * (wing_span * 0.55)
-        draw_thick_line(arr, wx0, wy0, wx1, wy1, 1.2, C_GOLD_MID, out_col=C_OUT)
-        draw_thick_line(arr, wx1, wy1, wx2, wy2, 1.0, C_GOLD_LIGHT, out_col=C_OUT)
-    # Astrolabe center sun-orb
-    cx_orb, cy_orb = nx_p + ux * 2.5, ny_p + uy * 2.5
-    draw_thick_line(arr, cx_orb - 0.5, cy_orb, cx_orb + 0.5, cy_orb, 2.4, C_FLAME_CRIMSON, out_col=C_OUT)
-    draw_thick_line(arr, cx_orb - 0.3, cy_orb, cx_orb + 0.3, cy_orb, 1.4, C_FLAME_GOLD, out_col=None)
-    put_px(arr, int(round(cx_orb)), int(round(cy_orb)), C_FLAME_CORE)
+    # Re-stamp gloved hand clasp over shaft at grip_pos so fingers cleanly wrap the staff
+    if stamp_glove:
+        draw_thick_line(
+            arr,
+            grip_pos[0] - nx * 0.9,
+            grip_pos[1] - ny * 0.9,
+            grip_pos[0] + nx * 0.9,
+            grip_pos[1] + ny * 0.9,
+            1.5,
+            C_GLOVE_DARK,
+            out_col=C_OUT,
+        )
+        put_px(arr, int(round(grip_pos[0] - ux * 1.2)), int(round(grip_pos[1] - uy * 1.2)), C_GOLD_MID)
 
-    # 3. Blazing Helios Solar Flame-Blade (`nx_p -> tx`, 26 logical px = 52px output!)
-    blade_start_x = nx_p + ux * 3.5
-    blade_start_y = ny_p + uy * 3.5
-    b_len = max(6.0, tip_dist - neck_dist - 3.5)
-    steps = max(14, int(b_len * 2.4))
+    # 2. Ornate Collar Lotus Ferrule at shaft neck
+    draw_thick_line(
+        arr,
+        nx_p - nx * 2.2,
+        ny_p - ny * 2.2,
+        nx_p + nx * 2.2,
+        ny_p + ny * 2.2,
+        1.25,
+        C_GOLD_MID,
+        out_col=C_OUT,
+    )
+    put_px(arr, int(round(nx_p)), int(round(ny_p)), C_GOLD_SPEC)
 
-    # Selout pass
-    for i in range(steps + 1):
-        t = i / float(steps)
-        cx = blade_start_x + ux * b_len * t
-        cy = blade_start_y + uy * b_len * t
-        half_w = (3.4 + 1.1 * blaze) * math.sin(math.pi * clamp(t * 0.82 + 0.14, 0.0, 1.0)) * (1.0 - 0.58 * (t**1.6))
-        half_w = max(0.8, half_w)
-        # Serrated flame ripple along outer edge
-        rip = 0.7 * math.sin(t * 16.0 - phase * math.tau * 2.0) * (1.0 - t)
-        hw_out = half_w + 1.0 + max(0.0, rip)
-        span = int(math.ceil(hw_out)) + 1
-        for s in range(-span, span + 1):
-            if abs(s) <= hw_out:
-                px = int(round(cx + nx * s))
-                py = int(round(cy + ny * s))
-                if 2 <= px < LOG_W - 2 and 2 <= py < LOG_H - 2 and arr[py, px, 3] == 0:
-                    arr[py, px] = C_OUT
+    # 3. Curved Golden Crescent-Moon Head (C-shaped cradle opening forward/upward, ZERO spear point!)
+    cres_r = 5.4
+    cres_cx = clamp(nx_p + ux * (cres_r + 1.1), 8.0, float(LOG_W - 9))
+    cres_cy = clamp(ny_p + uy * (cres_r + 1.1), 8.0, float(max_y - 6))
 
-    # Multi-band solar plasma blade fill
-    for i in range(steps + 1):
-        t = i / float(steps)
-        cx = blade_start_x + ux * b_len * t
-        cy = blade_start_y + uy * b_len * t
-        rip = 0.65 * math.sin(t * 16.0 - phase * math.tau * 2.0) * (1.0 - t)
-        half_w = max(0.65, (3.3 + 1.0 * blaze) * math.sin(math.pi * clamp(t * 0.82 + 0.14, 0.0, 1.0)) * (1.0 - 0.60 * (t**1.6)) + rip * 0.5)
-        span = int(math.ceil(half_w)) + 1
-        for s in range(-span, span + 1):
-            af = abs(s) / max(0.55, half_w)
-            if af > 1.0:
-                continue
-            px = int(round(cx + nx * s))
-            py = int(round(cy + ny * s))
-            if af < 0.30 or t > 0.88:
-                col = C_FLAME_CORE
-            elif af < 0.62:
-                col = C_FLAME_GOLD
-            elif af < 0.86:
-                col = C_FLAME_ORANGE
-            else:
-                col = C_FLAME_CRIMSON
-            put_px(arr, px, py, col)
+    arc_samples = 34
+    # Crescent spans 245 degrees around the back/sides, leaving a 115-degree open cradle at the front (+ux,+uy / +nx)
+    open_ang = math.atan2(uy + ny * 0.32, ux + nx * 0.32)
+    a_start = open_ang + math.radians(58.0)
+    a_end = open_ang + math.radians(302.0)
 
-    # Trailing flame embers off the Sun-Glaive blade
-    if blaze > 0.15:
-        for k in range(4):
-            ft = 0.25 + 0.20 * k
-            ang_e = phase * math.tau + k * 1.9
-            ex = int(round(blade_start_x + ux * b_len * ft + nx * (4.2 * math.sin(ang_e))))
-            ey = int(round(blade_start_y + uy * b_len * ft - 1.8 - abs(math.cos(ang_e)) * 2.2))
-            put_px(arr, ex, ey, C_FLAME_GOLD if k % 2 == 0 else C_FLAME_ORANGE)
+    # Selout pass for crescent
+    for i in range(arc_samples + 1):
+        u = i / float(arc_samples)
+        ang = lerp(a_start, a_end, u)
+        taper = math.sin(u * math.pi)
+        thick = 0.75 + 1.05 * taper
+        # Offset outer vs inner curve slightly for classic crescent silhouette
+        px_f = cres_cx + math.cos(ang) * cres_r - math.cos(open_ang) * (0.55 * taper)
+        py_f = cres_cy + math.sin(ang) * cres_r - math.sin(open_ang) * (0.55 * taper)
+        ro = thick + 1.0
+        ir = int(math.ceil(ro))
+        icx, icy = int(round(px_f)), int(round(py_f))
+        for dy in range(-ir, ir + 1):
+            for dx in range(-ir, ir + 1):
+                if dx * dx + dy * dy <= ro * ro + 0.2:
+                    put_px_outline_bg(arr, icx + dx, icy + dy, C_OUT)
 
-    return (tx, ty)
+    # Gold fill pass for crescent
+    for i in range(arc_samples + 1):
+        u = i / float(arc_samples)
+        ang = lerp(a_start, a_end, u)
+        taper = math.sin(u * math.pi)
+        thick = 0.65 + 0.95 * taper
+        px_f = cres_cx + math.cos(ang) * cres_r - math.cos(open_ang) * (0.55 * taper)
+        py_f = cres_cy + math.sin(ang) * cres_r - math.sin(open_ang) * (0.55 * taper)
+        ir = int(math.ceil(thick))
+        icx, icy = int(round(px_f)), int(round(py_f))
+        for dy in range(-ir, ir + 1):
+            for dx in range(-ir, ir + 1):
+                d2 = dx * dx + dy * dy
+                if d2 <= thick * thick + 0.2:
+                    col = C_GOLD_SPEC if (d2 < 0.45 and 0.22 < u < 0.78) else (C_GOLD_LIGHT if dy <= 0 else C_GOLD_MID)
+                    put_px(arr, icx + dx, icy + dy, col)
+
+    # 4. Blazing Miniature Sun Orb cradled inside the Golden Crescent!
+    orb_r = 2.3 + 0.85 * blaze
+    ir_s = int(math.ceil(orb_r + 1.2))
+    iocx, iocy = int(round(cres_cx + math.cos(open_ang) * 0.4)), int(round(cres_cy + math.sin(open_ang) * 0.4))
+    for dy in range(-ir_s, ir_s + 1):
+        for dx in range(-ir_s, ir_s + 1):
+            d = math.hypot(dx, dy)
+            if d <= orb_r + 0.95:
+                if d > orb_r + 0.15:
+                    put_px_outline_bg(arr, iocx + dx, iocy + dy, C_OUT)
+                elif d < orb_r * 0.42:
+                    put_px(arr, iocx + dx, iocy + dy, C_FLAME_CORE)
+                elif d < orb_r * 0.76:
+                    put_px(arr, iocx + dx, iocy + dy, C_FLAME_GOLD)
+                else:
+                    put_px(arr, iocx + dx, iocy + dy, C_FLAME_ORANGE if (dx + dy + int(phase * 12)) % 2 == 0 else C_FLAME_CRIMSON)
+
+    # 4 miniature solar prominence flickers around the sun orb
+    for k in range(4):
+        ang_p = phase * math.tau + k * (math.pi * 0.5) + 0.4
+        pr = orb_r + 1.1 + (0.7 if blaze > 0.6 else 0.0)
+        sx = int(round(iocx + math.cos(ang_p) * pr))
+        sy = int(round(iocy + math.sin(ang_p) * pr))
+        put_px(arr, sx, sy, C_FLAME_GOLD if k % 2 == 0 else C_FLAME_ORANGE)
+
+    return (float(iocx), float(iocy))
+
+
+def stamp_molten_wizard_eyes_and_gems(arr, l_eye, r_eye, hat_sun, chest_orb, blaze=0.35, phase=0.0):
+    """
+    Guarantees Ignis Sol EX's pitch-black shadowed face + glowing molten-gold eyes,
+    Wizard-Hat Sun Crest, and Collar Sun Gem stay razor-sharp in 160x120 logical space!
+    """
+    lx, ly = int(round(l_eye[0])), int(round(l_eye[1]))
+    rx, ry = int(round(r_eye[0])), int(round(r_eye[1]))
+
+    # Deepen pitch-black shadow directly around both eyes under the hat brim
+    for ex_c, ey_c in ((lx, ly), (rx, ry)):
+        for oy in range(-2, 3):
+            for ox in range(-2, 3):
+                px, py = ex_c + ox, ey_c + oy
+                if 2 <= px < LOG_W - 2 and 2 <= py < LOG_H - 2 and arr[py, px, 3] > 0:
+                    rgb = arr[py, px, :3]
+                    luma = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+                    if luma < 72.0:
+                        arr[py, px] = C_VOID_FACE
+
+    # Stamp crisp glowing molten-gold eyes (left eye 2px, right/forward eye 3px angled upward-fierce)
+    core_eye = C_FLAME_CORE if blaze >= 0.80 else C_FLAME_GOLD
+    put_px(arr, lx, ly, core_eye)
+    put_px(arr, lx - 1, ly, C_FLAME_AMBER)
+
+    put_px(arr, rx, ry, core_eye)
+    put_px(arr, rx + 1, ry, C_FLAME_GOLD)
+    put_px(arr, rx, ry + 1, C_FLAME_ORANGE)
+
+    # Wizard Hat Sun Emblem glint
+    hx, hy = int(round(hat_sun[0])), int(round(hat_sun[1]))
+    put_px(arr, hx, hy, C_FLAME_CORE if blaze > 0.65 else C_FLAME_GOLD)
+    put_px(arr, hx + 1, hy, C_GOLD_LIGHT)
+    put_px(arr, hx, hy - 1, C_FLAME_ORANGE)
+
+    # Collar Sun Brooch pulse
+    cx_o, cy_o = int(round(chest_orb[0])), int(round(chest_orb[1]))
+    put_px(arr, cx_o, cy_o, C_FLAME_CORE if (blaze > 0.5 or int(phase * 30) % 2 == 0) else C_FLAME_GOLD)
+    put_px(arr, cx_o + 1, cy_o, C_FLAME_ORANGE)
 
 
 # ==============================================================================
-# 4. 4-BAND SERRATED SOLAR-FLAME CRESCENT, VORTEX & METEOR PILLAR SMEARS
+# 4. PURE HIGH-SORCERY SPELLCASTING FX (`0` MELEE SWORD / HALBERD SLASH CRESCENTS!)
 # ==============================================================================
-def draw_serrated_solar_smear(
+def draw_foreshortened_magic_circle(
     arr,
-    center,
-    deg_start,
-    deg_end,
-    r_outer,
-    thickness,
+    cx,
+    cy,
+    rx,
+    ry,
+    phase=0.0,
+    dissipate=0.0,
     eclipse=False,
-    sparks=12,
+    inscribed_points=8,
 ):
-    cx, cy = center
+    """
+    Crisp 16-bit FFBE / Octopath 3D-foreshortened vertical or ground Solar Rune Magic Circle.
+    Uses `4x4` Bayer ordered dithering when `dissipate > 0` (`F04..F05`, etc.).
+    """
     c_core = C_FLAME_CORE
-    c_mid1 = C_FLAME_GOLD if not eclipse else (245, 208, 254, 255)
-    c_mid2 = C_FLAME_ORANGE if not eclipse else C_ECLIPSE_MAGENTA
-    c_tail = C_FLAME_CRIMSON if not eclipse else C_ECLIPSE_VIOLET
+    c_ring1 = C_FLAME_GOLD if not eclipse else (245, 208, 254, 255)
+    c_ring2 = C_FLAME_ORANGE if not eclipse else C_ECLIPSE_MAGENTA
+    c_rune = C_FLAME_CRIMSON if not eclipse else C_ECLIPSE_VIOLET
 
-    a0 = math.radians(deg_start)
-    a1 = math.radians(deg_end)
-    if a1 < a0:
-        a0, a1 = a1, a0
-        reverse_dir = True
-    else:
-        reverse_dir = False
-    span = max(0.05, a1 - a0)
-
-    x0 = max(2, int(cx - r_outer - 5))
-    x1 = min(LOG_W - 3, int(cx + r_outer + 5))
-    y0 = max(2, int(cy - r_outer - 5))
-    y1 = min(LOG_H - 3, int(cy + r_outer + 5))
-
-    smear_mask = np.zeros((LOG_H, LOG_W), dtype=bool)
-    smear_col = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
-
-    for py in range(y0, y1 + 1):
-        dy = py - cy
-        for px in range(x0, x1 + 1):
-            dx = px - cx
-            r = math.hypot(dx, dy)
-            if r > r_outer + 1.5 or r < max(3.0, r_outer - thickness - 7.0):
+    # Outer & inner concentric ellipses
+    for ring_idx, scale_r in enumerate((1.0, 0.68)):
+        rrx = max(2.0, rx * scale_r)
+        rry = max(2.0, ry * scale_r)
+        steps = max(36, int((rrx + rry) * 2.6))
+        for i in range(steps):
+            ang = (i / float(steps)) * math.tau
+            px = int(round(cx + math.cos(ang) * rrx))
+            py = int(round(cy + math.sin(ang) * rry))
+            if px < 3 or px >= LOG_W - 3 or py < 3 or py >= LOG_H - 3:
                 continue
-            ang = math.atan2(dy, dx)
-            while ang < a0 - math.pi:
-                ang += math.tau
-            while ang > a0 + math.tau:
-                ang -= math.tau
-            if ang < a0 or ang > a1:
+            if dissipate > 0.0 and BAYER4[py & 3, px & 3] < dissipate:
                 continue
+            for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                put_px_outline_bg(arr, px + ox, py + oy, C_OUT)
+            is_rune_tick = (i + int(phase * 24)) % 4 == 0
+            arr[py, px] = c_core if (ring_idx == 0 and is_rune_tick) else (c_ring1 if ring_idx == 0 else c_ring2)
 
-            u_raw = (ang - a0) / span
-            u = (1.0 - u_raw) if reverse_dir else u_raw
+    # Inscribed star-polygon geometry inside the magic circle
+    verts = []
+    rot = phase * math.tau
+    for k in range(inscribed_points):
+        ang = rot + k * (math.tau / float(inscribed_points))
+        verts.append((cx + math.cos(ang) * rx * 0.92, cy + math.sin(ang) * ry * 0.92))
+    step_skip = 3 if inscribed_points >= 8 else 2
+    for k in range(inscribed_points):
+        v0 = verts[k]
+        v1 = verts[(k + step_skip) % inscribed_points]
+        steps_l = max(4, int(math.hypot(v1[0] - v0[0], v1[1] - v0[1]) * 1.5))
+        for s in range(steps_l + 1):
+            t = s / float(steps_l)
+            px = int(round(lerp(v0[0], v1[0], t)))
+            py = int(round(lerp(v0[1], v1[1], t)))
+            if 3 <= px < LOG_W - 3 and 3 <= py < LOG_H - 3:
+                if dissipate > 0.0 and BAYER4[py & 3, px & 3] < dissipate + 0.12:
+                    continue
+                put_px(arr, px, py, c_ring2 if s % 2 == 0 else c_rune)
 
-            taper = math.sin(math.pi * clamp(u ** 0.72, 0.0, 1.0)) ** 0.56
-            saw = (
-                0.55 * math.sin(u * 40.0)
-                + 0.35 * math.sin(u * 83.0 + 1.1)
-                + 0.25 * math.cos(u * 129.0)
-            )
-            local_thick = thickness * (0.28 + 0.84 * taper) + (2.6 if saw > 0.34 else 0.0) * (1.0 - u * 0.5)
-            r_in = r_outer - local_thick
-            if r < r_in or r > r_outer:
-                continue
-
-            v = (r_outer - r) / max(1.0, local_thick)
-            bayer = BAYER4[py & 3, px & 3]
-            if u < 0.22 and bayer > (u / 0.22) * 1.18:
-                continue
-
-            # Carve blazing inner flame-rip streaks
-            if 0.28 < v < 0.70 and u < 0.74 and math.sin(u * 58.0 + r * 0.48) > 0.72:
-                continue
-
-            smear_mask[py, px] = True
-            if v < 0.28 and u > 0.18:
-                smear_col[py, px] = c_core
-            elif v < 0.56 and u > 0.10:
-                smear_col[py, px] = c_mid1
-            elif v < 0.82:
-                smear_col[py, px] = c_mid2
-            else:
-                smear_col[py, px] = c_tail
-
-    for py in range(max(2, y0 - 1), min(LOG_H - 2, y1 + 2)):
-        for px in range(max(2, x0 - 1), min(LOG_W - 2, x1 + 2)):
-            if smear_mask[py, px]:
-                arr[py, px] = smear_col[py, px]
-            else:
-                for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    nxp, nyp = px + ox, py + oy
-                    if 0 <= nxp < LOG_W and 0 <= nyp < LOG_H and smear_mask[nyp, nxp]:
-                        if arr[py, px, 3] == 0:
-                            arr[py, px] = C_OUT
-                        break
-
-    for i in range(sparks):
-        su = 0.14 + 0.82 * (i / max(1, sparks - 1))
-        ang = a0 + span * ((1.0 - su) if reverse_dir else su)
-        rr = r_outer + 2.0 + (i % 3) * 2.2
-        sx = int(round(cx + math.cos(ang) * rr))
-        sy = int(round(cy + math.sin(ang) * rr))
-        put_px(arr, sx, sy, c_core if i % 2 == 0 else c_mid1)
-        put_px(arr, sx - 1, sy, c_mid2)
+    # Cardinal 4-point star glints on the circle rim
+    if dissipate < 0.45:
+        for ang_c in (0.0, math.pi * 0.5, math.pi, math.pi * 1.5):
+            gx = cx + math.cos(ang_c + rot * 0.5) * rx
+            gy = cy + math.sin(ang_c + rot * 0.5) * ry
+            draw_pixel_star4(arr, gx, gy, arm=2, core_col=c_core, ray_col=c_ring1, out_col=C_OUT)
 
 
-def draw_solar_vortex_ring(arr, center, rx, ry, thickness=9.5, half="front"):
-    cx, cy = center
-    y0 = max(2, int(cy - ry - thickness - 3))
-    y1 = min(LOG_H - 3, int(cy + ry + thickness + 3))
-    x0 = max(2, int(cx - rx - thickness - 3))
-    x1 = min(LOG_W - 3, int(cx + rx + thickness + 3))
+def draw_solar_fireball_jet(arr, x_start, y_center, x_end, half_h=9.0, slope_y=0.0, dissipate=0.0, phase=0.0):
+    """
+    Horizontal erupting Solar Fireball / Corona Bolt burst (`x_320 = 185..298` -> `x_log = 92..149`).
+    Pure high-sorcery projectile cone + blazing comet star-head (ZERO sword slash!).
+    """
+    ix0 = max(4, int(round(x_start)))
+    ix1 = min(LOG_W - 5, int(round(x_end)))
+    if ix1 <= ix0 + 2:
+        return
 
+    span = float(ix1 - ix0)
     mask = np.zeros((LOG_H, LOG_W), dtype=bool)
     col = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
 
-    for py in range(y0, y1 + 1):
-        dy = py - cy
-        if half == "back" and dy > 1:
-            continue
-        if half == "front" and dy < -1:
-            continue
-        for px in range(x0, x1 + 1):
-            dx = px - cx
-            nr = math.hypot(dx / max(1.0, rx), dy / max(1.0, ry))
-            ang = math.atan2(dy, dx)
-            rip = 0.08 * math.sin(ang * 14.0)
-            if nr > 1.06 + rip or nr < 1.0 - (thickness / max(12.0, rx)) * 1.65:
+    for px in range(ix0, ix1 + 1):
+        u = (px - ix0) / span
+        cy_loc = y_center + slope_y * u
+        # Bulges into a round blazing fireball head near u = 0.78..0.96, tapered tail at circle
+        head_bulge = 1.32 * math.exp(-((u - 0.80) ** 2) / 0.035)
+        wake_prof = math.sin(math.pi * clamp(u * 0.92 + 0.08, 0.0, 1.0)) * 0.72
+        flame_tongue = 0.18 * math.sin(u * 26.0 - phase * math.tau * 3.0)
+        hh = max(1.2, half_h * max(wake_prof + flame_tongue, head_bulge))
+        ihh = int(math.ceil(hh)) + 1
+        for dy in range(-ihh, ihh + 1):
+            py = int(round(cy_loc + dy))
+            if py < 4 or py >= LOG_H - 4:
                 continue
-            v = (1.06 + rip - nr) / max(0.08, (thickness / max(12.0, rx)) * 1.65 + 0.06)
+            v = abs(dy) / max(0.8, hh)
+            if v > 1.0:
+                continue
             bayer = BAYER4[py & 3, px & 3]
-            if v > 0.86 and bayer > 0.55:
+            if dissipate > 0.0 and bayer < dissipate * (0.75 + 0.45 * v):
+                continue
+            if u < 0.16 and bayer > (u / 0.16) * 1.15:
                 continue
             mask[py, px] = True
-            if v < 0.28:
+            if v < 0.30 or (0.72 <= u <= 0.90 and v < 0.46):
                 col[py, px] = C_FLAME_CORE
-            elif v < 0.56:
+            elif v < 0.58:
                 col[py, px] = C_FLAME_GOLD
-            elif v < 0.82:
+            elif v < 0.84:
                 col[py, px] = C_FLAME_ORANGE
             else:
                 col[py, px] = C_FLAME_CRIMSON
 
-    for py in range(y0, y1 + 1):
-        for px in range(x0, x1 + 1):
+    for py in range(3, LOG_H - 3):
+        for px in range(max(3, ix0 - 1), min(LOG_W - 3, ix1 + 2)):
             if mask[py, px]:
                 arr[py, px] = col[py, px]
             elif arr[py, px, 3] == 0:
                 for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    if 0 <= px + ox < LOG_W and 0 <= py + oy < LOG_H and mask[py + oy, px + ox]:
+                    if mask[py + oy, px + ox]:
+                        arr[py, px] = C_OUT
+                        break
+
+    if dissipate < 0.40:
+        hx = lerp(ix0, ix1, 0.84)
+        hy = y_center + slope_y * 0.84
+        draw_pixel_star4(arr, hx, hy, arm=4, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD, out_col=C_OUT)
+
+
+def draw_solar_prominence_column(arr, x_center, y_top=12, y_floor=114, half_w=13.5, dissipate=0.0, phase=0.0):
+    """Ground-to-sky braided Solar Prominence Column + ground Helios Sanctum Seal (`V2 F17` & `SKILL`)."""
+    # Foreshortened ground rune seal at column base
+    draw_foreshortened_magic_circle(
+        arr,
+        cx=x_center,
+        cy=y_floor - 3.0,
+        rx=min(22.0, float(LOG_W - 6 - x_center)),
+        ry=4.5,
+        phase=phase,
+        dissipate=dissipate * 0.8,
+        inscribed_points=6,
+    )
+
+    icx = int(round(x_center))
+    mask = np.zeros((LOG_H, LOG_W), dtype=bool)
+    col = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
+    span_y = max(1.0, float(y_floor - y_top))
+
+    for py in range(max(4, int(y_top)), min(LOG_H - 3, int(y_floor) + 1)):
+        h_frac = (y_floor - py) / span_y
+        base_flare = 1.30 if h_frac < 0.12 else (1.0 - 0.30 * h_frac)
+        braid = 1.8 * math.sin(h_frac * 15.0 - phase * math.tau * 2.0)
+        lw = max(2.0, half_w * base_flare + abs(braid) * 0.65)
+        ilw = int(math.ceil(lw)) + 2
+        for dx in range(-ilw, ilw + 1):
+            px = icx + int(round(dx + braid * 0.35))
+            if px < 4 or px >= LOG_W - 4:
+                continue
+            af = abs(dx) / max(0.9, lw)
+            if af > 1.0:
+                continue
+            bayer = BAYER4[py & 3, px & 3]
+            if dissipate > 0.0 and bayer < dissipate * (0.72 + 0.45 * af):
+                continue
+            if h_frac > 0.84 and bayer > (1.0 - h_frac) * 6.0:
+                continue
+            mask[py, px] = True
+            if af < 0.28:
+                col[py, px] = C_FLAME_CORE
+            elif af < 0.56:
+                col[py, px] = C_FLAME_GOLD
+            elif af < 0.82:
+                col[py, px] = C_FLAME_ORANGE
+            else:
+                col[py, px] = C_FLAME_CRIMSON
+
+    for py in range(3, LOG_H - 3):
+        for px in range(max(3, icx - 24), min(LOG_W - 3, icx + 25)):
+            if mask[py, px]:
+                arr[py, px] = col[py, px]
+            elif arr[py, px, 3] == 0:
+                for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    if mask[py + oy, px + ox]:
                         arr[py, px] = C_OUT
                         break
 
 
-def draw_solar_pillar_eruption(arr, x_center, y_floor=115, width=14.0, intensity=1.0):
-    """Vertical Helios Solar Pillar erupting at impact point (`V3 F25` & `SKILL`)."""
-    icx = int(round(x_center))
-    hw = max(3, int(round(width * intensity)))
-    y_top = max(4, int(round(10 + (1.0 - intensity) * 44)))
-    for py in range(y_top, min(LOG_H - 3, y_floor + 1)):
-        h_frac = (y_floor - py) / max(1.0, float(y_floor - y_top))
-        flare_base = 1.35 if py > y_floor - 9 else (1.0 - 0.28 * h_frac)
-        local_hw = max(2.0, hw * flare_base + 1.4 * math.sin(py * 0.52))
-        ihw = int(math.ceil(local_hw)) + 1
-        for dx in range(-ihw, ihw + 1):
-            px = icx + dx
-            if px < 3 or px >= LOG_W - 3:
+def draw_meteoric_fire_orb_array(arr, centers_and_radii, dissipate=0.0, phase=0.0):
+    """Sculpts crisp 16-bit molten-crust Meteoric Fire-Orbs (`V3 F25` & `ULTIMATE`)."""
+    for idx, (cx, cy, rad) in enumerate(centers_and_radii):
+        icx, icy = int(round(cx)), int(round(cy))
+        ir = int(math.ceil(rad + 2.5))
+        # Trailing flame tail to the left (-X)
+        tail_len = int(round(rad * 2.4))
+        for tx in range(1, tail_len + 1):
+            u = tx / float(tail_len)
+            th = max(1.0, rad * (1.0 - u * 0.82))
+            ith = int(math.ceil(th))
+            px = icx - tx
+            if px < 4 or px >= LOG_W - 4:
                 continue
-            af = abs(dx) / max(1.0, local_hw)
-            if af > 1.08:
-                continue
-            if af > 0.94:
-                if arr[py, px, 3] == 0:
-                    arr[py, px] = C_OUT
-                continue
-            if h_frac > 0.84 and BAYER4[py & 3, px & 3] > (1.0 - h_frac) * 5.8:
-                continue
-            if af < 0.28:
-                arr[py, px] = C_FLAME_CORE
-            elif af < 0.56:
-                arr[py, px] = C_FLAME_GOLD
-            elif af < 0.80:
-                arr[py, px] = C_FLAME_ORANGE
-            else:
-                arr[py, px] = C_FLAME_CRIMSON
+            for dy in range(-ith, ith + 1):
+                py = icy + dy
+                if py < 4 or py >= LOG_H - 4:
+                    continue
+                bayer = BAYER4[py & 3, px & 3]
+                if bayer < dissipate + u * 0.55:
+                    continue
+                af = abs(dy) / max(0.8, th)
+                put_px(arr, px, py, C_FLAME_GOLD if af < 0.35 else (C_FLAME_ORANGE if af < 0.72 else C_FLAME_CRIMSON))
+
+        # Spherical Voronoi-cracked meteor core
+        for dy in range(-ir, ir + 1):
+            for dx in range(-ir, ir + 1):
+                px, py = icx + dx, icy + dy
+                if px < 4 or px >= LOG_W - 4 or py < 4 or py >= LOG_H - 4:
+                    continue
+                d = math.hypot(dx, dy)
+                if d > rad + 1.0:
+                    continue
+                if dissipate > 0.0 and BAYER4[py & 3, px & 3] < dissipate * 0.85:
+                    continue
+                if d > rad:
+                    put_px_outline_bg(arr, px, py, C_OUT)
+                elif d < rad * 0.38:
+                    put_px(arr, px, py, C_FLAME_CORE)
+                elif d < rad * 0.68:
+                    put_px(arr, px, py, C_FLAME_GOLD)
+                else:
+                    is_crust = ((dx * 3 + dy * 5 + idx * 2) % 7) == 0
+                    put_px(arr, px, py, C_OBSIDIAN_CRUST if is_crust else C_FLAME_CRIMSON)
+
+        if dissipate < 0.35:
+            draw_pixel_star4(arr, icx + rad * 0.35, icy - rad * 0.25, arm=2, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD)
+
+
+def draw_spell_cast_fx(arr, fx_spec, phase=0.0):
+    """Dispatches pure high-sorcery casting FX onto `arr` (`0` melee sword crescents!)."""
+    if fx_spec is None:
+        return
+    kind = fx_spec["kind"]
+    diss = fx_spec.get("dissipate", 0.0)
+
+    if kind == "v0_solar_circle_jet":
+        # V0: 3D foreshortened vertical Golden Solar Rune Magic Circle + erupting Solar Fireball muzzle flare (x_320 = 185..298 -> x_log = 93..149)
+        draw_foreshortened_magic_circle(
+            arr, cx=102.0, cy=66.0, rx=9.5, ry=27.0, phase=phase, dissipate=diss, inscribed_points=8
+        )
+        draw_solar_fireball_jet(
+            arr,
+            x_start=102.0,
+            y_center=66.0,
+            x_end=fx_spec.get("x_end", 149.0),
+            half_h=fx_spec.get("half_h", 9.5),
+            slope_y=0.0,
+            dissipate=diss,
+            phase=phase,
+        )
+
+    elif kind == "v1_twin_helios_sigils":
+        # V1: Twin concentric Helios Sun-Sigils + twin Solar Corona Bolt bursts (x_320 = 185..296 -> x_log = 93..148)
+        x_end = fx_spec.get("x_end", 148.0)
+        draw_foreshortened_magic_circle(
+            arr, cx=100.0, cy=48.0, rx=7.5, ry=17.0, phase=phase, dissipate=diss, inscribed_points=6
+        )
+        draw_foreshortened_magic_circle(
+            arr, cx=105.0, cy=82.0, rx=7.5, ry=17.0, phase=-phase, dissipate=diss, inscribed_points=6
+        )
+        draw_solar_fireball_jet(
+            arr, x_start=101.0, y_center=48.0, x_end=x_end, half_h=6.5, slope_y=8.0, dissipate=diss, phase=phase
+        )
+        draw_solar_fireball_jet(
+            arr, x_start=106.0, y_center=82.0, x_end=x_end - 2.0, half_h=6.5, slope_y=-8.0, dissipate=diss, phase=phase + 0.3
+        )
+
+    elif kind == "v2_eclipse_prominence":
+        # V2: Radiant Astrolabe Eclipse Glyph + ground-to-sky Solar Prominence Column (x_320 = 190..304 -> x_log = 95..152)
+        draw_foreshortened_magic_circle(
+            arr, cx=108.0, cy=42.0, rx=13.0, ry=13.0, phase=phase, dissipate=diss, eclipse=True, inscribed_points=8
+        )
+        # Black-sun core inside overhead Eclipse Glyph
+        if diss < 0.55:
+            for dy in range(-4, 5):
+                for dx in range(-4, 5):
+                    if dx * dx + dy * dy <= 18:
+                        put_px(arr, 108 + dx, 42 + dy, C_ECLIPSE_VOID if dx * dx + dy * dy <= 10 else C_FLAME_GOLD)
+        draw_solar_prominence_column(
+            arr,
+            x_center=fx_spec.get("col_x", 136.0),
+            y_top=fx_spec.get("y_top", 12),
+            y_floor=114,
+            half_w=fx_spec.get("half_w", 14.0),
+            dissipate=diss,
+            phase=phase,
+        )
+
+    elif kind == "v3_suncrest_meteor_array":
+        # V3: Colossal Blazing Sun-Crest Seal & Triple Meteoric Fire-Orb Array (x_320 = 192..308 -> x_log = 96..154)
+        draw_foreshortened_magic_circle(
+            arr, cx=108.0, cy=62.0, rx=12.0, ry=35.0, phase=phase, dissipate=diss, inscribed_points=8
+        )
+        shift = fx_spec.get("orb_shift", 0.0)
+        orbs = [
+            (min(151.0, 134.0 + shift), 36.0, 6.2),
+            (min(153.0, 146.0 + shift), 63.0, 7.2),
+            (min(150.0, 132.0 + shift), 90.0, 6.0),
+        ]
+        draw_meteoric_fire_orb_array(arr, orbs, dissipate=diss, phase=phase)
 
 
 # ==============================================================================
-# 5. DYNAMIC POSE COMPOSITOR + COAT / CROWN EMBER SECONDARY MOTION
+# 5. DYNAMIC WIZARD COMPOSITOR + CAPE / HAT EMBER SECONDARY MOTION
 # ==============================================================================
-def add_coat_and_crown_motion(arr, dx_body, dy_body, phase, blaze=0.25):
-    """Adds subtle 30fps living flame sparks above crown & dynamic coat-hem ripple."""
-    # Rising solar crown embers
+def add_wizard_robe_and_ember_motion(arr, dx_body, dy_body, phase, blaze=0.35):
+    """Adds subtle 30fps living solar rune motes & cape-hem breeze."""
     for k in range(3):
         ang = phase * math.tau + k * 2.1
-        ex = int(round(AX + dx_body - 2 + math.sin(ang) * 7.0 + k * 2.5))
-        ey = int(round(30 + dy_body - ((phase * 14.0 + k * 4.5) % 9.0)))
-        if 3 <= ex < LOG_W - 3 and 3 <= ey < LOG_H - 4:
-            put_px(arr, ex, ey, C_FLAME_CORE if (k == 0 and blaze > 0.5) else C_FLAME_GOLD)
-            if blaze > 0.45:
+        ex = int(round(AX + dx_body - 6 + math.sin(ang) * 11.0 + k * 4.0))
+        ey = int(round(36 + dy_body - ((phase * 14.0 + k * 4.5) % 10.0)))
+        if 4 <= ex < LOG_W - 4 and 4 <= ey < LOG_H - 4:
+            put_px(arr, ex, ey, C_FLAME_CORE if (k == 0 and blaze > 0.55) else C_FLAME_GOLD)
+            if blaze > 0.50:
                 put_px(arr, ex, ey + 1, C_FLAME_ORANGE)
-
-    # Dynamic obsidian-crimson battle-coat tail flutter on screen-left (`x = 22..50, y = 78..108`)
-    wave = math.sin(phase * math.tau)
-    tip_x = int(round(AX + dx_body - 28 + wave * 2.0))
-    tip_y = int(round(98 + dy_body + math.cos(phase * math.tau) * 1.5))
-    draw_thick_line(arr, tip_x + 4, tip_y - 4, tip_x, tip_y, 1.3, C_COAT_CRIMSON, out_col=C_OUT)
-    put_px(arr, tip_x + 1, tip_y - 1, C_GOLD_LIGHT)
 
 
 def enforce_safety_margin(arr):
@@ -825,159 +993,121 @@ def compose_mage_frame(
     pose_key="STAND",
     dx=0.0,
     dy=0.0,
-    aim_deg=-32.0,
-    grip_offset=(4.0, -2.0),
-    two_handed=True,
-    offhand_target=None,
+    staff_deg=-72.0,
+    grip_delta=(0.0, 0.0),
+    butt_len=14.0,
+    shaft_len=24.0,
     blaze=0.35,
     halo_flare=0.0,
     eclipse_halo=False,
     phase=0.0,
-    smear_spec=None,
-    vortex_spec=None,
-    pillar_spec=None,
-    blink_rings=0.0,
+    fx_spec=None,
+    ground_ring_rx=0.0,
     walk_stride=0.0,
+    offhand_orb=False,
 ):
     canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
     arr = np.array(canvas)
 
-    if pose_key == "STAND":
-        body_im = poses["stand_armless"]
-        sh_f_base = poses["stand_joints"]["sh_front"]
-        sh_b_base = poses["stand_joints"]["sh_back"]
-        orb_base = poses["stand_joints"]["chest_orb"]
-    else:
-        kp = poses["keyposes"][pose_key]
-        body_im = kp["armless"]
-        sh_f_base = kp["sh_front"]
-        sh_b_base = kp["sh_back"]
-        orb_base = kp["chest_orb"]
+    pd = poses[pose_key]
+    body_im = pd["sprite"]
 
-    sh_f = (sh_f_base[0] + dx, sh_f_base[1] + dy)
-    sh_b = (sh_b_base[0] + dx, sh_b_base[1] + dy)
-    orb = (orb_base[0] + dx, orb_base[1] + dy)
+    halo_pt = (pd["halo_anchor"][0] + dx, pd["halo_anchor"][1] + dy)
+    grip_pt = (pd["grip"][0] + dx + grip_delta[0], pd["grip"][1] + dy + grip_delta[1])
+    off_pt = (pd["offhand"][0] + dx, pd["offhand"][1] + dy)
+    l_eye = (pd["l_eye"][0] + dx, pd["l_eye"][1] + dy)
+    r_eye = (pd["r_eye"][0] + dx, pd["r_eye"][1] + dy)
+    hat_sun = (pd["hat_sun"][0] + dx, pd["hat_sun"][1] + dy)
+    chest_orb = (pd["chest_orb"][0] + dx, pd["chest_orb"][1] + dy)
 
-    # 1. Back half of 2.5D vortex ring if active
-    if vortex_spec is not None:
-        draw_solar_vortex_ring(
+    # 1. Optional ground arcane ward ring (back half)
+    if ground_ring_rx > 1.0:
+        draw_foreshortened_magic_circle(
             arr,
-            vortex_spec["center"],
-            vortex_spec["rx"],
-            vortex_spec["ry"],
-            thickness=vortex_spec.get("thickness", 9.5),
-            half="back",
+            cx=AX + dx + 2.0,
+            cy=min(113.0, 108.0 + max(0.0, dy)),
+            rx=ground_ring_rx,
+            ry=4.8,
+            phase=phase,
+            eclipse=eclipse_halo,
+            inscribed_points=6,
         )
 
     # 2. Floating Back Solar Astrolabe Halo behind Ignis Sol EX's shoulders
     draw_solar_astrolabe_halo(
         arr,
-        cx=orb[0] - 4.0,
-        cy=orb[1] - 4.0,
+        cx=halo_pt[0] - 3.0,
+        cy=halo_pt[1] - 2.0,
         phase=phase,
-        radius=15.5,
+        radius=15.0,
         flare=halo_flare,
         eclipse=eclipse_halo,
     )
 
-    # 3. Compute 2H Sun-Glaive grip positions
-    grip_main = (sh_f[0] + grip_offset[0], sh_f[1] + grip_offset[1])
-    rad = math.radians(aim_deg)
-    ux, uy = math.cos(rad), math.sin(rad)
-    grip_rear = (grip_main[0] - ux * 7.5, grip_main[1] - uy * 7.5)
-
-    # Rear IK arm behind torso
-    if two_handed:
-        draw_mage_arm(arr, sh_b, grip_rear, is_front=False, bend_sign=1.0)
-    elif offhand_target is not None:
-        oh = draw_mage_arm(arr, sh_b, offhand_target, is_front=False, bend_sign=1.0)
-        # Small spell-orb in offhand when casting one-handed
-        if blaze > 0.45:
-            draw_thick_line(arr, oh[0] - 0.5, oh[1], oh[0] + 0.5, oh[1], 2.2, C_FLAME_ORANGE, out_col=C_OUT)
-            put_px(arr, int(round(oh[0])), int(round(oh[1])), C_FLAME_CORE)
-
-    # If weapon aims steeply behind body, render weapon behind body
-    weapon_behind = (-175.0 <= aim_deg <= -118.0)
-    if weapon_behind:
-        draw_helios_sunglaive(arr, grip_main, aim_deg, blaze=blaze, phase=phase)
-
-    # 4. Composite body sprite (with subtle walk leg-shear if walking)
+    # 3. Composite Wizard body sprite (100% unified robe silhouette on WALK — zero center-stole split!)
     body_layer = Image.fromarray(arr, "RGBA")
-    bx = int(round(dx))
-    by = int(round(dy))
-    if abs(walk_stride) > 0.05 and pose_key == "STAND":
-        # Subtle lower-body stride shear below waist y=78 so 30fps walk has crisp boot alternation
+    bx, by = int(round(dx)), int(round(dy))
+    if abs(walk_stride) > 0.01 and pose_key == "STAND":
         b_arr = np.array(body_im)
-        sheared = np.zeros_like(b_arr)
+        glided = np.zeros_like(b_arr)
         for yy in range(LOG_H):
-            shift = 0
-            if yy >= 78:
-                t_leg = (yy - 78) / 37.0
-                # Left half vs right half of legs oppose slightly
+            if 82 <= yy <= 104:
+                # Unified gentle lower-hem breeze (entire row shifts together by at most +-1 logical px = +-2px output)
+                t_hem = (yy - 82) / 22.0
+                hem_shift = int(round(math.sin(phase * math.tau * 2.0 - t_hem * 1.6) * 0.9 * t_hem))
                 for xx in range(LOG_W):
-                    side = 1.0 if xx >= AX else -1.0
-                    sx = clamp(int(round(xx - side * walk_stride * t_leg * 3.2)), 0, LOG_W - 1)
-                    sheared[yy, xx] = b_arr[yy, sx]
+                    sx = clamp(xx - hem_shift, 0, LOG_W - 1)
+                    glided[yy, xx] = b_arr[yy, sx]
+            elif yy > 104:
+                # Clean +-3px output alternating boot peek strictly below the robe hem!
+                t_boot = (yy - 104) / 11.0
+                for xx in range(LOG_W):
+                    if xx < AX - 3:
+                        b_shift = int(round(-walk_stride * 1.4 * t_boot))
+                    elif xx > AX + 2:
+                        b_shift = int(round(walk_stride * 1.4 * t_boot))
+                    else:
+                        b_shift = 0
+                    sx = clamp(xx - b_shift, 0, LOG_W - 1)
+                    glided[yy, xx] = b_arr[yy, sx]
             else:
-                sheared[yy] = b_arr[yy]
-        body_layer.alpha_composite(Image.fromarray(sheared, "RGBA"), (bx, by))
+                glided[yy] = b_arr[yy]
+        body_layer.alpha_composite(Image.fromarray(glided, "RGBA"), (bx, by))
+        # Subtle arcane hover rune-wisps beneath his boots during WALK
+        arr_tmp = np.array(body_layer)
+        for k in range(3):
+            ang_w = phase * math.tau + k * (math.tau / 3.0)
+            wx = int(round(AX + bx + math.cos(ang_w) * 10.0))
+            wy = min(114, int(round(113 + math.sin(ang_w) * 1.0)))
+            put_px(arr_tmp, wx, wy, C_FLAME_GOLD if k == 0 else C_FLAME_ORANGE)
+        body_layer = Image.fromarray(arr_tmp, "RGBA")
     else:
         body_layer.alpha_composite(body_im, (bx, by))
     arr = np.array(body_layer)
 
-    # Pulse the chest Solar Core orb at 30fps
-    ox_i, oy_i = int(round(orb[0])), int(round(orb[1]))
-    put_px(arr, ox_i, oy_i, C_FLAME_CORE)
-    if blaze > 0.4 or (int(phase * 30) % 2 == 0):
-        put_px(arr, ox_i + 1, oy_i, C_FLAME_GOLD)
-        put_px(arr, ox_i, oy_i - 1, C_FLAME_GOLD)
+    # 4. Crisp glowing molten-gold eyes under pitch-black hat brim + sun emblems
+    stamp_molten_wizard_eyes_and_gems(arr, l_eye, r_eye, hat_sun, chest_orb, blaze=blaze, phase=phase)
+    add_wizard_robe_and_ember_motion(arr, dx, dy, phase, blaze=blaze)
 
-    add_coat_and_crown_motion(arr, dx, dy, phase, blaze=blaze)
+    # Optional offhand arcane sun-mote during grand two-hand invocations
+    if offhand_orb:
+        draw_pixel_star4(arr, off_pt[0], off_pt[1] - 3.0, arm=3, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD, out_col=C_OUT)
 
-    # 5. Weapon in front of body (standard) + front IK arm clasping shaft
-    if not weapon_behind:
-        draw_helios_sunglaive(arr, grip_main, aim_deg, blaze=blaze, phase=phase)
-    draw_mage_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0)
+    # 5. Ornate Golden Crescent-Sun Archmage Staff (`0` spear/halberd blades!)
+    draw_crescent_sun_staff(
+        arr,
+        grip_pos=grip_pt,
+        angle_deg=staff_deg,
+        butt_len=butt_len,
+        shaft_len=shaft_len,
+        blaze=blaze,
+        phase=phase,
+        stamp_glove=True,
+        max_y=114,
+    )
 
-    # 6. Front smears / pillars / Arcane Blink rings
-    if pillar_spec is not None:
-        draw_solar_pillar_eruption(
-            arr,
-            x_center=pillar_spec["x"],
-            y_floor=pillar_spec.get("y_floor", 115),
-            width=pillar_spec.get("width", 14.0),
-            intensity=pillar_spec.get("intensity", 1.0),
-        )
-    if vortex_spec is not None:
-        draw_solar_vortex_ring(
-            arr,
-            vortex_spec["center"],
-            vortex_spec["rx"],
-            vortex_spec["ry"],
-            thickness=vortex_spec.get("thickness", 9.5),
-            half="front",
-        )
-    if smear_spec is not None:
-        draw_serrated_solar_smear(
-            arr,
-            center=smear_spec["center"],
-            deg_start=smear_spec["deg_start"],
-            deg_end=smear_spec["deg_end"],
-            r_outer=smear_spec["r_outer"],
-            thickness=smear_spec["thickness"],
-            eclipse=smear_spec.get("eclipse", False),
-            sparks=smear_spec.get("sparks", 12),
-        )
-    if blink_rings > 0.05:
-        for ry_off in (-26, -12, 2):
-            draw_solar_vortex_ring(
-                arr,
-                (AX + dx, 84 + dy + ry_off),
-                rx=18.0 * blink_rings,
-                ry=4.2 * blink_rings,
-                thickness=3.5,
-                half="front",
-            )
+    # 6. Pure High-Sorcery Spellcasting FX in front space (`x_320 = 185..308`)
+    draw_spell_cast_fx(arr, fx_spec, phase=phase)
 
     enforce_safety_margin(arr)
     return arr
@@ -991,17 +1121,16 @@ def build_row_0_idle(poses):
     for f in range(30):
         ph = f / 30.0
         bob = math.sin(ph * math.tau)
-        dy = round(bob * 1.0)
-        aim = -42.0 + math.sin(ph * math.tau + 0.5) * 3.5
         frames.append(
             compose_mage_frame(
                 poses,
                 pose_key="STAND",
                 dx=0.0,
-                dy=dy,
-                aim_deg=aim,
-                grip_offset=(4.5, -1.5 + 0.6 * bob),
-                blaze=0.35 + 0.12 * math.sin(ph * math.tau * 2.0),
+                dy=round(bob * 0.9),
+                staff_deg=-73.0 + math.sin(ph * math.tau + 0.5) * 3.2,
+                butt_len=13.0,
+                shaft_len=25.0,
+                blaze=0.38 + 0.14 * math.sin(ph * math.tau * 2.0),
                 halo_flare=0.12 + 0.08 * math.sin(ph * math.tau),
                 phase=ph,
             )
@@ -1010,22 +1139,29 @@ def build_row_0_idle(poses):
 
 
 def build_row_1_walk(poses):
+    """
+    Row 1 WALK: Regal FFBE / Octopath Arcane Hover-Glide!
+    Strictly `STAND` across all 30 frames (`0` mid-walk body swaps!), continuous `-71 +- 3.8 deg` staff carry,
+    unified gold-runed robe silhouette (`0` center-stole tearing), `1px` smooth hover bob, and `+-3px` boot peek.
+    """
     frames = []
     for f in range(30):
         ph = f / 30.0
         stride = math.sin(ph * math.tau * 2.0)
-        bob = -abs(math.cos(ph * math.tau * 2.0)) * 1.6
-        use_lunge = abs(stride) > 0.82
+        if abs(stride) < 0.04:
+            stride = 0.04 if stride >= 0 else -0.04
+        bob = -1.0 + math.sin(ph * math.tau) * 0.75
         frames.append(
             compose_mage_frame(
                 poses,
-                pose_key="K2_LUNGE" if use_lunge else "STAND",
-                dx=2.0 + stride * 1.5,
+                pose_key="STAND",
+                dx=round(math.sin(ph * math.tau) * 0.6),
                 dy=round(bob),
-                aim_deg=-26.0 + stride * 9.0,
-                grip_offset=(5.0, -1.0),
-                blaze=0.40,
-                halo_flare=0.18,
+                staff_deg=-71.0 + math.sin(ph * math.tau + 0.4) * 3.8,
+                butt_len=13.0,
+                shaft_len=25.0,
+                blaze=0.42 + 0.10 * math.sin(ph * math.tau * 2.0),
+                halo_flare=0.16 + 0.06 * math.sin(ph * math.tau),
                 phase=ph,
                 walk_stride=stride,
             )
@@ -1035,312 +1171,308 @@ def build_row_1_walk(poses):
 
 def build_row_2_auto_attack(poses):
     """
-    Row 2 AUTO_ATTACK (`[[60,8],[68,7],[75,8],[83,7]]`):
-      - V0 (F00..F07): High Helios coil -> F03 1-frame snap downward solar-flame serrated crescent smear!
-      - V1 (F08..F14): Low guard -> F09 instant reverse rising Phoenix uppercut flame-smear!
-      - V2 (F15..F22): Horizontal torque -> F17 2.5D foreshortened 360 solar-ring vortex smear!
-      - V3 (F23..F29): K4_LEAP airborne Helios hop-slam (F23..F24) -> F25 meteoric flame-pillar slam smear!
+    PURE MAGE SPELLCASTING Row 2 (`[[60,8],[68,7],[75,8],[83,7]]`, `0` melee slash crescents!):
+      - V0 (F00..F07): K1 coil -> F03 K2 forward staff-projection conjuring 3D Golden Solar Rune Magic Circle + Solar Fireball flare!
+      - V1 (F08..F14): Sweeping Arcane Invocation -> F09 twin concentric Helios Sun-Sigils + twin Solar Corona Bolt bursts!
+      - V2 (F15..F22): K3 grand two-arm raised invocation -> F17 Astrolabe Eclipse Glyph & ground-to-sky Solar Prominence Column!
+      - V3 (F23..F29): K4 levitating arcane-hover cast -> F25 Colossal Blazing Sun-Crest Seal & Triple Meteoric Fire-Orb Array!
     """
     frames = []
     for f in range(30):
         ph = f / 30.0
-        # --- V0 (F00..F07): Downward Helios Solar-Flame Slash + Fireball Launch ---
+        # --- V0 (F00..F07): Solar Rune Magic Circle + Solar Fireball Muzzle Flare ---
         if f in (0, 1, 2):
             t = f / 2.0
             frames.append(
                 compose_mage_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=lerp(-2.0, -5.0, t),
-                    dy=lerp(0.0, -1.0, t),
-                    aim_deg=lerp(-112.0, -148.0, t),
-                    grip_offset=(-2.0, -6.5),
+                    dx=lerp(-1.0, -3.5, t),
+                    dy=0.0,
+                    staff_deg=lerp(-66.0, -48.0, t),
+                    butt_len=13.0,
+                    shaft_len=24.0,
                     blaze=0.55 + 0.35 * t,
                     halo_flare=0.35 + 0.35 * t,
                     phase=ph,
                 )
             )
         elif f == 3:
-            # 1-FRAME SNAP! Massive 210-deg downward solar-flame serrated crescent smear
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=12.0,
+                    pose_key="K2_CAST",
+                    dx=6.0,
                     dy=0.0,
-                    aim_deg=52.0,
-                    grip_offset=(8.5, 2.0),
+                    staff_deg=-6.0,
+                    butt_len=12.0,
+                    shaft_len=22.0,
                     blaze=1.0,
                     halo_flare=0.95,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 26.0, 68.0),
-                        "deg_start": -132.0,
-                        "deg_end": 68.0,
-                        "r_outer": 62.0,
-                        "thickness": 22.0,
-                        "sparks": 16,
-                    },
+                    fx_spec={"kind": "v0_solar_circle_jet", "x_end": 149.0, "half_h": 9.5, "dissipate": 0.0},
                 )
             )
-        elif f == 4:
+        elif f in (4, 5):
+            diss = 0.28 if f == 4 else 0.58
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=13.0,
+                    pose_key="K2_CAST",
+                    dx=6.5 if f == 4 else 5.0,
                     dy=0.0,
-                    aim_deg=64.0,
-                    grip_offset=(8.5, 3.0),
-                    blaze=0.85,
-                    halo_flare=0.65,
+                    staff_deg=-4.0 if f == 4 else -10.0,
+                    butt_len=12.0,
+                    shaft_len=22.0,
+                    blaze=0.88 if f == 4 else 0.70,
+                    halo_flare=0.70 if f == 4 else 0.45,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 26.0, 69.0),
-                        "deg_start": -18.0,
-                        "deg_end": 72.0,
-                        "r_outer": 58.0,
-                        "thickness": 11.0,
-                        "sparks": 8,
+                    fx_spec={
+                        "kind": "v0_solar_circle_jet",
+                        "x_end": 146.0 if f == 4 else 140.0,
+                        "half_h": 7.5 if f == 4 else 5.5,
+                        "dissipate": diss,
                     },
                 )
             )
-        elif f in (5, 6, 7):
-            # Hold low follow-through directly into V1 reverse Phoenix coil (ZERO idle reset!)
-            t = (f - 5) / 2.0
+        elif f in (6, 7):
+            t = f - 6
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=lerp(11.0, 7.0, t),
-                    dy=lerp(0.0, 1.0, t),
-                    aim_deg=lerp(66.0, 76.0, t),
-                    grip_offset=(7.5, 3.5),
+                    pose_key="K1_COIL",
+                    dx=lerp(3.0, 0.5, t),
+                    dy=0.0,
+                    staff_deg=lerp(-28.0, -44.0, t),
+                    butt_len=13.0,
+                    shaft_len=23.5,
                     blaze=0.55,
                     halo_flare=0.35,
                     phase=ph,
                 )
             )
 
-        # --- V1 (F08..F14): Instant Reverse Rising Phoenix Uppercut Flame-Smear ---
+        # --- V1 (F08..F14): Twin Concentric Helios Sun-Sigils + Twin Solar Corona Bolts ---
         elif f == 8:
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=5.0,
-                    dy=2.0,
-                    aim_deg=82.0,
-                    grip_offset=(6.0, 5.0),
+                    pose_key="K1_COIL",
+                    dx=-1.5,
+                    dy=0.0,
+                    staff_deg=-52.0,
+                    butt_len=13.0,
+                    shaft_len=24.0,
                     blaze=0.80,
-                    halo_flare=0.55,
+                    halo_flare=0.60,
                     phase=ph,
                 )
             )
         elif f == 9:
-            # 1-FRAME RISING PHOENIX SNAP!
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K3_RISE",
-                    dx=10.0,
-                    dy=-1.0,
-                    aim_deg=-84.0,
-                    grip_offset=(7.0, -9.0),
+                    pose_key="K2_CAST",
+                    dx=5.5,
+                    dy=0.0,
+                    staff_deg=-12.0,
+                    butt_len=12.0,
+                    shaft_len=22.0,
                     blaze=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 24.0, 66.0),
-                        "deg_start": 82.0,
-                        "deg_end": -96.0,
-                        "r_outer": 60.0,
-                        "thickness": 21.0,
-                        "sparks": 16,
-                    },
+                    fx_spec={"kind": "v1_twin_helios_sigils", "x_end": 148.0, "dissipate": 0.0},
                 )
             )
-        elif f == 10:
+        elif f in (10, 11):
+            diss = 0.28 if f == 10 else 0.58
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K3_RISE",
-                    dx=11.0,
-                    dy=-1.0,
-                    aim_deg=-94.0,
-                    grip_offset=(6.5, -10.0),
-                    blaze=0.85,
-                    halo_flare=0.70,
-                    phase=ph,
-                    smear_spec={
-                        "center": (AX + 24.0, 64.0),
-                        "deg_start": -18.0,
-                        "deg_end": -102.0,
-                        "r_outer": 56.0,
-                        "thickness": 10.0,
-                        "sparks": 8,
-                    },
-                )
-            )
-        elif f in (11, 12, 13, 14):
-            # Transition high Phoenix lock into horizontal K1_COIL vortex torque
-            t = (f - 11) / 3.0
-            frames.append(
-                compose_mage_frame(
-                    poses,
-                    pose_key="K3_RISE" if f <= 12 else "K1_COIL",
-                    dx=lerp(9.0, -3.0, t),
+                    pose_key="K2_CAST",
+                    dx=5.5 if f == 10 else 4.0,
                     dy=0.0,
-                    aim_deg=lerp(-98.0, -156.0, t),
-                    grip_offset=(lerp(5.0, -2.5, t), lerp(-9.0, -4.0, t)),
+                    staff_deg=-15.0 if f == 10 else -24.0,
+                    butt_len=12.0,
+                    shaft_len=22.0,
+                    blaze=0.85 if f == 10 else 0.65,
+                    halo_flare=0.72 if f == 10 else 0.45,
+                    phase=ph,
+                    fx_spec={"kind": "v1_twin_helios_sigils", "x_end": 145.0 if f == 10 else 138.0, "dissipate": diss},
+                )
+            )
+        elif f in (12, 13, 14):
+            t = (f - 12) / 2.0
+            frames.append(
+                compose_mage_frame(
+                    poses,
+                    pose_key="K1_COIL",
+                    dx=lerp(2.5, -2.0, t),
+                    dy=0.0,
+                    staff_deg=lerp(-34.0, -58.0, t),
+                    butt_len=13.0,
+                    shaft_len=24.0,
                     blaze=0.55 + 0.20 * t,
                     halo_flare=0.40 + 0.25 * t,
                     phase=ph,
                 )
             )
 
-        # --- V2 (F15..F22): 2.5D Foreshortened 360 Solar-Ring Vortex Smear ---
+        # --- V2 (F15..F22): K3 Grand Two-Arm Invocation -> Astrolabe Eclipse Glyph & Solar Prominence Column ---
         elif f in (15, 16):
             t = f - 15
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K1_COIL",
-                    dx=-5.0 - t * 1.5,
+                    pose_key="K1_COIL" if f == 15 else "K3_INVOKE",
+                    dx=-1.0 + t * 2.0,
                     dy=0.0,
-                    aim_deg=-162.0 - t * 8.0,
-                    grip_offset=(-3.5, -3.0),
-                    blaze=0.80 + 0.15 * t,
-                    halo_flare=0.75,
+                    staff_deg=-50.0 if f == 15 else 18.0,
+                    butt_len=9.0 if f == 16 else 13.0,
+                    shaft_len=22.0,
+                    blaze=0.82 + 0.12 * t,
+                    halo_flare=0.78,
+                    eclipse_halo=(f == 16),
                     phase=ph,
+                    offhand_orb=(f == 16),
                 )
             )
         elif f == 17:
-            # 1-FRAME 360 SOLAR-RING VORTEX SNAP!
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=11.0,
+                    pose_key="K3_INVOKE",
+                    dx=3.0,
                     dy=0.0,
-                    aim_deg=6.0,
-                    grip_offset=(9.5, -1.0),
+                    staff_deg=14.0,
+                    butt_len=9.0,
+                    shaft_len=22.0,
                     blaze=1.0,
                     halo_flare=1.0,
+                    eclipse_halo=True,
                     phase=ph,
-                    vortex_spec={
-                        "center": (AX + 22.0, 74.0),
-                        "rx": 64.0,
-                        "ry": 18.0,
-                        "thickness": 13.0,
+                    offhand_orb=True,
+                    fx_spec={
+                        "kind": "v2_eclipse_prominence",
+                        "col_x": 136.0,
+                        "y_top": 11,
+                        "half_w": 14.5,
+                        "dissipate": 0.0,
                     },
                 )
             )
-        elif f == 18:
+        elif f in (18, 19):
+            diss = 0.28 if f == 18 else 0.58
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=12.0,
+                    pose_key="K3_INVOKE",
+                    dx=3.0 if f == 18 else 2.0,
                     dy=0.0,
-                    aim_deg=18.0,
-                    grip_offset=(9.0, 0.5),
-                    blaze=0.85,
-                    halo_flare=0.70,
+                    staff_deg=16.0 if f == 18 else 20.0,
+                    butt_len=9.0,
+                    shaft_len=22.0,
+                    blaze=0.88 if f == 18 else 0.68,
+                    halo_flare=0.78 if f == 18 else 0.52,
+                    eclipse_halo=(f == 18),
                     phase=ph,
-                    vortex_spec={
-                        "center": (AX + 24.0, 74.0),
-                        "rx": 60.0,
-                        "ry": 15.0,
-                        "thickness": 7.0,
+                    offhand_orb=(f == 18),
+                    fx_spec={
+                        "kind": "v2_eclipse_prominence",
+                        "col_x": 136.0,
+                        "y_top": 15 if f == 18 else 24,
+                        "half_w": 12.5 if f == 18 else 9.5,
+                        "dissipate": diss,
                     },
                 )
             )
-        elif f in (19, 20, 21, 22):
-            # Coil into explosive crouch before airborne V3 Helios Hop-Slam!
-            t = (f - 19) / 3.0
+        elif f in (20, 21, 22):
+            t = (f - 20) / 2.0
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f <= 20 else "K1_COIL",
-                    dx=lerp(10.0, 1.0, t),
-                    dy=lerp(0.0, 3.0, math.sin(t * math.pi)),
-                    aim_deg=lerp(24.0, -118.0, t),
-                    grip_offset=(lerp(7.5, -1.0, t), lerp(1.0, -6.0, t)),
-                    blaze=0.60 + 0.30 * t,
-                    halo_flare=0.45 + 0.40 * t,
+                    pose_key="K1_COIL",
+                    dx=lerp(1.5, -2.0, t),
+                    dy=lerp(0.0, -2.0, t),
+                    staff_deg=lerp(-36.0, -52.0, t),
+                    butt_len=12.5,
+                    shaft_len=23.5,
+                    blaze=0.65 + 0.25 * t,
+                    halo_flare=0.50 + 0.35 * t,
                     phase=ph,
                 )
             )
 
-        # --- V3 (F23..F29): Airborne Helios Hop-Slam -> Meteoric Flame-Pillar Finisher ---
+        # --- V3 (F23..F29): K4 Levitating Arcane-Hover Cast -> Colossal Sun-Crest Seal & Triple Meteoric Fire-Orb Array ---
         elif f in (23, 24):
             t = f - 23
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K4_LEAP",
-                    dx=5.0 + t * 3.0,
-                    dy=-11.0 - t * 3.0,
-                    aim_deg=-132.0 - t * 14.0,
-                    grip_offset=(0.0, -8.0),
-                    blaze=1.0,
-                    halo_flare=1.0,
+                    pose_key="K4_HOVER",
+                    dx=-2.0 - t * 1.5,
+                    dy=-6.0 - t * 2.5,
+                    staff_deg=-34.0 + t * 6.0,
+                    butt_len=12.0,
+                    shaft_len=23.0,
+                    blaze=0.95,
+                    halo_flare=0.95,
                     phase=ph,
+                    ground_ring_rx=18.0 + t * 4.0,
                 )
             )
         elif f == 25:
-            # 1-FRAME METEORIC FLAME-PILLAR SLAM SNAP (Grounded at y_bot = 115!)
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=14.0,
-                    dy=0.0,
-                    aim_deg=34.0,
-                    grip_offset=(9.5, 2.5),
+                    pose_key="K4_HOVER",
+                    dx=-3.0,
+                    dy=-8.0,
+                    staff_deg=-22.0,
+                    butt_len=12.0,
+                    shaft_len=24.0,
                     blaze=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    pillar_spec={"x": AX + 68.0, "y_floor": 115, "width": 15.0, "intensity": 1.0},
-                    smear_spec={
-                        "center": (AX + 28.0, 66.0),
-                        "deg_start": -142.0,
-                        "deg_end": 44.0,
-                        "r_outer": 64.0,
-                        "thickness": 24.0,
-                        "sparks": 18,
+                    ground_ring_rx=24.0,
+                    fx_spec={"kind": "v3_suncrest_meteor_array", "orb_shift": 0.0, "dissipate": 0.0},
+                )
+            )
+        elif f in (26, 27):
+            diss = 0.28 if f == 26 else 0.58
+            frames.append(
+                compose_mage_frame(
+                    poses,
+                    pose_key="K4_HOVER",
+                    dx=-3.0 if f == 26 else -2.0,
+                    dy=-6.0 if f == 26 else -3.0,
+                    staff_deg=-26.0 if f == 26 else -38.0,
+                    butt_len=12.0,
+                    shaft_len=23.5,
+                    blaze=0.88 if f == 26 else 0.70,
+                    halo_flare=0.82 if f == 26 else 0.55,
+                    phase=ph,
+                    ground_ring_rx=21.0 if f == 26 else 15.0,
+                    fx_spec={
+                        "kind": "v3_suncrest_meteor_array",
+                        "orb_shift": 2.0 if f == 26 else 4.0,
+                        "dissipate": diss,
                     },
                 )
             )
-        elif f == 26:
-            frames.append(
-                compose_mage_frame(
-                    poses,
-                    pose_key="K2_LUNGE",
-                    dx=14.0,
-                    dy=0.0,
-                    aim_deg=42.0,
-                    grip_offset=(9.0, 3.5),
-                    blaze=0.90,
-                    halo_flare=0.80,
-                    phase=ph,
-                    pillar_spec={"x": AX + 68.0, "y_floor": 115, "width": 12.0, "intensity": 0.72},
-                )
-            )
         else:
-            # F27..F29: Crisp grounded recovery back toward battle stance
-            t = (f - 27) / 2.0
+            t = f - 28
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f == 27 else "STAND",
-                    dx=lerp(11.0, 2.0, t),
+                    pose_key="K1_COIL" if f == 28 else "STAND",
+                    dx=lerp(-1.0, 0.0, t),
                     dy=0.0,
-                    aim_deg=lerp(36.0, -34.0, t),
-                    grip_offset=(lerp(8.0, 5.0, t), lerp(2.5, -1.5, t)),
-                    blaze=lerp(0.75, 0.40, t),
-                    halo_flare=lerp(0.55, 0.18, t),
+                    staff_deg=lerp(-54.0, -70.0, t),
+                    butt_len=13.0,
+                    shaft_len=24.5,
+                    blaze=lerp(0.55, 0.40, t),
+                    halo_flare=lerp(0.35, 0.16, t),
                     phase=ph,
                 )
             )
@@ -1348,7 +1480,7 @@ def build_row_2_auto_attack(poses):
 
 
 def build_row_3_skill(poses):
-    """Row 3 SKILL (`TRIPLE SOLAR PILLAR`): Skyward invocation -> sweeping Sun-Glaive command eruption."""
+    """Row 3 SKILL (`SOLAR TRINITY CATACLYSM`): Grand K3 invocation -> Heliacal Rune Seal & Prominence Column."""
     frames = []
     for f in range(30):
         ph = f / 30.0
@@ -1357,73 +1489,56 @@ def build_row_3_skill(poses):
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K1_COIL" if f < 4 else "K3_RISE",
-                    dx=lerp(-2.0, 3.0, t),
+                    pose_key="K1_COIL" if f < 4 else "K3_INVOKE",
+                    dx=lerp(-1.0, 2.5, t),
                     dy=0.0,
-                    aim_deg=lerp(-55.0, -92.0, t),
-                    grip_offset=(4.0, lerp(-2.0, -10.0, t)),
-                    two_handed=False,
-                    offhand_target=(AX - 12.0, lerp(72.0, 56.0, t)),
+                    staff_deg=-52.0 if f < 4 else lerp(22.0, 14.0, (f - 4) / 3.0),
+                    butt_len=9.0 if f >= 4 else 13.0,
+                    shaft_len=22.5,
                     blaze=0.55 + 0.45 * t,
                     halo_flare=0.40 + 0.60 * t,
                     phase=ph,
+                    offhand_orb=(f >= 4),
+                    ground_ring_rx=14.0 + 10.0 * t,
                 )
             )
-        elif f == 8:
+        elif f <= 15:
+            diss = max(0.0, (f - 9) / 7.5)
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=11.0,
+                    pose_key="K2_CAST" if f >= 10 else "K3_INVOKE",
+                    dx=4.5,
                     dy=0.0,
-                    aim_deg=12.0,
-                    grip_offset=(9.0, -1.0),
-                    blaze=1.0,
-                    halo_flare=1.0,
+                    staff_deg=-8.0 if f >= 10 else 14.0,
+                    butt_len=11.0,
+                    shaft_len=22.5,
+                    blaze=1.0 - 0.20 * diss,
+                    halo_flare=1.0 - 0.25 * diss,
                     phase=ph,
-                    pillar_spec={"x": AX + 64.0, "y_floor": 115, "width": 14.0, "intensity": 1.0},
-                    smear_spec={
-                        "center": (AX + 24.0, 68.0),
-                        "deg_start": -96.0,
-                        "deg_end": 28.0,
-                        "r_outer": 60.0,
-                        "thickness": 18.0,
-                        "sparks": 14,
+                    ground_ring_rx=24.0 * (1.0 - 0.5 * diss),
+                    fx_spec={
+                        "kind": "v2_eclipse_prominence",
+                        "col_x": 134.0,
+                        "y_top": 12 + int(diss * 18),
+                        "half_w": 14.0 * (1.0 - 0.35 * diss),
+                        "dissipate": diss,
                     },
                 )
             )
-        elif f < 20:
-            t = (f - 9) / 10.0
-            frames.append(
-                compose_mage_frame(
-                    poses,
-                    pose_key="K2_LUNGE",
-                    dx=11.0 - t * 2.0,
-                    dy=0.0,
-                    aim_deg=14.0 + math.sin(t * math.pi * 2.0) * 5.0,
-                    grip_offset=(8.5, -0.5),
-                    blaze=0.95 - 0.25 * t,
-                    halo_flare=0.85 - 0.30 * t,
-                    phase=ph,
-                    pillar_spec=(
-                        {"x": AX + 64.0, "y_floor": 115, "width": 11.0, "intensity": 1.0 - t * 0.75}
-                        if f <= 14
-                        else None
-                    ),
-                )
-            )
         else:
-            t = (f - 20) / 9.0
+            t = (f - 16) / 13.0
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="STAND",
-                    dx=lerp(8.0, 0.0, t),
+                    pose_key="K1_COIL" if f < 22 else "STAND",
+                    dx=lerp(3.5, 0.0, t),
                     dy=0.0,
-                    aim_deg=lerp(10.0, -40.0, t),
-                    grip_offset=(lerp(8.0, 4.5, t), -1.5),
-                    blaze=lerp(0.65, 0.35, t),
-                    halo_flare=lerp(0.50, 0.15, t),
+                    staff_deg=lerp(-26.0, -72.0, t),
+                    butt_len=13.0,
+                    shaft_len=24.5,
+                    blaze=lerp(0.68, 0.38, t),
+                    halo_flare=lerp(0.55, 0.14, t),
                     phase=ph,
                 )
             )
@@ -1432,8 +1547,8 @@ def build_row_3_skill(poses):
 
 def build_row_4_ultimate(poses):
     """
-    Row 4 ULTIMATE (`BLACK-SUN SUPERNOVA` & `CATACLYSM: LAYWASTE OF INFERNO`):
-    Ascendant K3_RISE -> levitating K4_LEAP Eclipse Archmage -> F18 Cataclysmic Command Slash!
+    Row 4 ULTIMATE (`BLACK-SUN ECLIPSE SINGULARITY` & `CATACLYSM: GRAND HELIOS APOCALYPSE`):
+    Ascendant K3_INVOKE -> Levitating K4_HOVER Eclipse Archmage -> Cataclysmic Staff Command!
     """
     frames = []
     for f in range(30):
@@ -1443,80 +1558,73 @@ def build_row_4_ultimate(poses):
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K3_RISE",
+                    pose_key="K3_INVOKE",
                     dx=lerp(0.0, 2.0, t),
-                    dy=lerp(0.0, -4.0, t),
-                    aim_deg=lerp(-48.0, -90.0, t),
-                    grip_offset=(4.0, lerp(-3.0, -11.0, t)),
+                    dy=lerp(0.0, -3.0, t),
+                    staff_deg=lerp(22.0, 12.0, t),
+                    butt_len=9.0,
+                    shaft_len=22.0,
                     blaze=0.65 + 0.35 * t,
-                    halo_flare=0.50 + 0.50 * t,
+                    halo_flare=0.55 + 0.45 * t,
                     eclipse_halo=True,
                     phase=ph,
+                    offhand_orb=True,
+                    ground_ring_rx=16.0 + 10.0 * t,
                 )
             )
         elif f < 18:
             t = (f - 7) / 10.0
-            hover = -8.0 - math.sin(t * math.pi) * 4.0
+            hover = -7.0 - math.sin(t * math.pi) * 3.0
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K4_LEAP",
-                    dx=3.0,
+                    pose_key="K4_HOVER",
+                    dx=2.0,
                     dy=hover,
-                    aim_deg=-92.0 + math.sin(t * math.tau * 2.0) * 8.0,
-                    grip_offset=(3.0, -10.5),
-                    two_handed=False,
-                    offhand_target=(AX + 18.0, 62.0 + hover),
+                    staff_deg=-34.0 + math.sin(t * math.tau * 2.0) * 7.0,
+                    butt_len=12.0,
+                    shaft_len=23.5,
                     blaze=1.0,
                     halo_flare=1.0,
                     eclipse_halo=(f % 2 == 0),
                     phase=ph,
-                    vortex_spec={
-                        "center": (AX + 4.0, 108.0),
-                        "rx": 26.0 + 6.0 * math.sin(t * math.pi),
-                        "ry": 6.0,
-                        "thickness": 5.0,
-                    },
+                    offhand_orb=True,
+                    ground_ring_rx=26.0 + 4.0 * math.sin(t * math.pi),
                 )
             )
-        elif f == 18:
-            # Cataclysmic Heavensfall Command Slash!
+        elif f <= 21:
+            diss = (f - 18) * 0.26
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=13.0,
+                    pose_key="K2_CAST",
+                    dx=6.0,
                     dy=0.0,
-                    aim_deg=32.0,
-                    grip_offset=(9.5, 2.0),
+                    staff_deg=-6.0,
+                    butt_len=12.0,
+                    shaft_len=22.5,
                     blaze=1.0,
                     halo_flare=1.0,
                     eclipse_halo=True,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 26.0, 66.0),
-                        "deg_start": -132.0,
-                        "deg_end": 54.0,
-                        "r_outer": 65.0,
-                        "thickness": 24.0,
-                        "eclipse": True,
-                        "sparks": 18,
-                    },
+                    ground_ring_rx=28.0 * (1.0 - 0.3 * diss),
+                    fx_spec={"kind": "v3_suncrest_meteor_array", "orb_shift": (f - 18) * 1.5, "dissipate": diss},
                 )
             )
         else:
-            t = (f - 19) / 10.0
+            t = (f - 22) / 7.0
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f < 25 else "STAND",
-                    dx=lerp(12.0, 0.0, t),
+                    pose_key="K1_COIL" if f < 26 else "STAND",
+                    dx=lerp(5.0, 0.0, t),
                     dy=0.0,
-                    aim_deg=lerp(36.0, -40.0, t),
-                    grip_offset=(lerp(9.0, 4.5, t), lerp(2.0, -1.5, t)),
-                    blaze=lerp(0.95, 0.40, t),
-                    halo_flare=lerp(0.90, 0.15, t),
-                    eclipse_halo=(f < 23),
+                    staff_deg=lerp(-24.0, -72.0, t),
+                    butt_len=13.0,
+                    shaft_len=24.5,
+                    blaze=lerp(0.90, 0.38, t),
+                    halo_flare=lerp(0.85, 0.14, t),
+                    eclipse_halo=(f < 25),
                     phase=ph,
                 )
             )
@@ -1534,10 +1642,9 @@ def build_row_5_hit(poses):
                 compose_mage_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=-7.0 * recoil,
+                    dx=-6.5 * recoil,
                     dy=1.0 * recoil,
-                    aim_deg=-118.0 - 18.0 * recoil,
-                    grip_offset=(-2.0, -3.0),
+                    staff_deg=-84.0 - 14.0 * recoil,
                     blaze=0.30,
                     halo_flare=0.10,
                     phase=ph,
@@ -1545,16 +1652,15 @@ def build_row_5_hit(poses):
             )
         elif f < 18:
             t = (f - 7) / 10.0
-            shk = math.sin(f * 2.4) * (1.0 - t) * 1.5
+            shk = math.sin(f * 2.4) * (1.0 - t) * 1.4
             frames.append(
                 compose_mage_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=-7.0 + t * 3.0 + shk,
+                    dx=-6.5 + t * 3.0 + shk,
                     dy=1.0,
-                    aim_deg=-130.0 + t * 30.0,
-                    grip_offset=(-1.0, -2.5),
-                    blaze=0.35,
+                    staff_deg=-96.0 + t * 22.0,
+                    blaze=0.34,
                     phase=ph,
                 )
             )
@@ -1564,11 +1670,10 @@ def build_row_5_hit(poses):
                 compose_mage_frame(
                     poses,
                     pose_key="STAND",
-                    dx=lerp(-4.0, 0.0, t),
+                    dx=lerp(-3.5, 0.0, t),
                     dy=0.0,
-                    aim_deg=lerp(-95.0, -42.0, t),
-                    grip_offset=(4.5, -1.5),
-                    blaze=0.35,
+                    staff_deg=lerp(-78.0, -72.0, t),
+                    blaze=0.36,
                     phase=ph,
                 )
             )
@@ -1576,61 +1681,53 @@ def build_row_5_hit(poses):
 
 
 def build_row_6_block_parry(poses):
-    """Row 6 BLOCK (`F00..F11`) & PARRY COUNTER (`F12..F29`)."""
+    """Row 6 SOLAR WARD (`F00..F11`) & ARCANE COUNTER BURST (`F12..F29`) — `0` melee slash smears!"""
     frames = []
     for f in range(30):
         ph = f / 30.0
         if f < 12:
-            # Spinning vertical Sun-Glaive solar ward
-            wob = math.sin((f / 12.0) * math.tau * 2.0) * 4.0
+            wob = math.sin((f / 12.0) * math.tau * 2.0) * 3.5
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="STAND",
-                    dx=-2.0,
-                    dy=1.0,
-                    aim_deg=-78.0 + wob,
-                    grip_offset=(8.5, -3.5),
-                    blaze=0.65,
-                    halo_flare=0.45,
+                    pose_key="K1_COIL",
+                    dx=-1.5,
+                    dy=0.0,
+                    staff_deg=-76.0 + wob,
+                    blaze=0.68,
+                    halo_flare=0.48,
                     phase=ph,
+                    ground_ring_rx=20.0,
                 )
             )
-        elif f == 12:
-            # Parry counter solar slash snap!
+        elif f <= 15:
+            diss = (f - 12) * 0.28
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE",
-                    dx=11.0,
+                    pose_key="K2_CAST",
+                    dx=5.5,
                     dy=0.0,
-                    aim_deg=26.0,
-                    grip_offset=(9.0, 1.0),
+                    staff_deg=-8.0,
+                    butt_len=12.0,
+                    shaft_len=22.0,
                     blaze=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    smear_spec={
-                        "center": (AX + 24.0, 68.0),
-                        "deg_start": -110.0,
-                        "deg_end": 46.0,
-                        "r_outer": 60.0,
-                        "thickness": 20.0,
-                        "sparks": 14,
-                    },
+                    fx_spec={"kind": "v0_solar_circle_jet", "x_end": 146.0, "half_h": 8.5, "dissipate": diss},
                 )
             )
         else:
-            t = (f - 13) / 16.0
+            t = (f - 16) / 13.0
             frames.append(
                 compose_mage_frame(
                     poses,
-                    pose_key="K2_LUNGE" if f < 20 else "STAND",
-                    dx=lerp(11.0, 0.0, t),
+                    pose_key="K1_COIL" if f < 22 else "STAND",
+                    dx=lerp(4.0, 0.0, t),
                     dy=0.0,
-                    aim_deg=lerp(32.0, -42.0, t),
-                    grip_offset=(lerp(8.5, 4.5, t), -1.0),
-                    blaze=lerp(0.85, 0.35, t),
-                    halo_flare=lerp(0.65, 0.15, t),
+                    staff_deg=lerp(-22.0, -72.0, t),
+                    blaze=lerp(0.75, 0.38, t),
+                    halo_flare=lerp(0.55, 0.14, t),
                     phase=ph,
                 )
             )
@@ -1638,59 +1735,52 @@ def build_row_6_block_parry(poses):
 
 
 def build_row_7_crouch(poses):
-    """Row 7 CROUCH / FLAME WARD: Grounded tactical crouch + orbiting Flame Ward rings."""
+    """Row 7 CROUCH / SOLAR FLAME WARD: Grounded tactical ward + orbiting Solar Rune Circle."""
     frames = []
     for f in range(30):
         ph = f / 30.0
-        bob = math.sin(ph * math.tau * 2.0) * 0.8
         frames.append(
             compose_mage_frame(
                 poses,
-                pose_key="K2_LUNGE",
-                dx=2.0,
-                dy=2.0 + round(bob),
-                aim_deg=-18.0 + math.sin(ph * math.tau) * 5.0,
-                grip_offset=(6.5, 1.0),
-                blaze=0.55 + 0.15 * math.sin(ph * math.tau * 2.0),
-                halo_flare=0.35,
+                pose_key="K1_COIL",
+                dx=1.0,
+                dy=1.0,
+                staff_deg=-56.0 + math.sin(ph * math.tau) * 4.5,
+                blaze=0.60 + 0.15 * math.sin(ph * math.tau * 2.0),
+                halo_flare=0.40,
                 phase=ph,
-                vortex_spec={
-                    "center": (AX + 4.0, 96.0),
-                    "rx": 24.0 + math.sin(ph * math.tau) * 2.0,
-                    "ry": 5.5,
-                    "thickness": 4.2,
-                },
+                ground_ring_rx=23.0 + math.sin(ph * math.tau) * 2.0,
             )
         )
     return frames
 
 
 def build_row_8_jump_blink(poses):
-    """Row 8 JUMP / ARCANE BLINK WARP: K4_LEAP airborne arc + Arcane Blink solar warp rings."""
+    """Row 8 JUMP / ARCANE BLINK WARP: K4_HOVER airborne arc + Arcane Blink solar warp rings."""
     frames = []
     for f in range(30):
         ph = f / 30.0
         arc = math.sin(ph * math.pi)
-        blink = 1.0 - abs(ph - 0.25) * 4.0 if ph < 0.5 else 0.0
         frames.append(
             compose_mage_frame(
                 poses,
-                pose_key="K4_LEAP" if 3 <= f <= 25 else "STAND",
-                dx=arc * 4.0,
-                dy=-arc * 12.0,
-                aim_deg=-52.0 - arc * 36.0 + math.sin(ph * math.tau) * 6.0,
-                grip_offset=(4.5, -3.0 - arc * 3.0),
-                blaze=0.60 + 0.30 * arc,
+                pose_key="K4_HOVER" if 3 <= f <= 25 else "STAND",
+                dx=arc * 3.0,
+                dy=-arc * 9.0,
+                staff_deg=-48.0 - arc * 18.0 + math.sin(ph * math.tau) * 5.0,
+                butt_len=12.0,
+                shaft_len=23.0,
+                blaze=0.62 + 0.30 * arc,
                 halo_flare=0.45 + 0.45 * arc,
                 phase=ph,
-                blink_rings=max(0.0, blink),
+                ground_ring_rx=18.0 * (1.0 - abs(ph - 0.25) * 3.0) if ph < 0.55 else 0.0,
             )
         )
     return frames
 
 
 def build_row_9_death(poses):
-    """Row 9 DEATH: Dramatic stagger -> fallen collapse -> smoldering Helios Sun-Glaive & drifting embers."""
+    """Row 9 DEATH / VICTORY: Dramatic stagger -> fallen collapse beside smoldering Golden Crescent-Sun Staff."""
     frames = []
     for f in range(30):
         ph = f / 30.0
@@ -1700,20 +1790,18 @@ def build_row_9_death(poses):
                 compose_mage_frame(
                     poses,
                     pose_key="K1_COIL",
-                    dx=-8.0 * t,
-                    dy=4.0 * t,
-                    aim_deg=lerp(-110.0, -155.0, t),
-                    grip_offset=(-2.0, 1.0),
+                    dx=-7.0 * t,
+                    dy=2.0 * t,
+                    staff_deg=lerp(-82.0, -126.0, t),
                     blaze=0.35 * (1.0 - t),
                     halo_flare=0.15 * (1.0 - t),
                     phase=ph,
                 )
             )
         else:
-            # Rotate fallen body progressively toward horizontal ground rest at AY=115
             t = clamp((f - 10) / 11.0, 0.0, 1.0)
             rot_deg = lerp(22.0, 84.0, smoothstep(t))
-            base_im = poses["stand_full"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
+            base_im = poses["STAND"]["sprite"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
             b_arr = np.array(base_im)
             ys, xs = np.where(b_arr[:, :, 3] > 0)
             canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
@@ -1724,14 +1812,16 @@ def build_row_9_death(poses):
                 oy = (AY - 2) - max_y
                 canvas.alpha_composite(base_im, (ox, oy))
             arr = np.array(canvas)
-            # Planted/fallen Helios Sun-Glaive resting beside Ignis Sol EX + flickering dying embers (`29/29` transitions!)
-            draw_helios_sunglaive(
+            draw_crescent_sun_staff(
                 arr,
-                (AX + 8.0, 110.0),
-                angle_deg=lerp(-12.0, 4.0, t),
-                length_scale=0.92,
-                blaze=0.18 + 0.08 * math.sin(ph * math.tau * 3.0),
+                grip_pos=(AX + 6.0, 109.0),
+                angle_deg=lerp(-8.0, 2.0, t),
+                butt_len=12.0,
+                shaft_len=21.0,
+                blaze=0.20 + 0.08 * math.sin(ph * math.tau * 3.0),
                 phase=ph,
+                stamp_glove=False,
+                max_y=114,
             )
             for k in range(5):
                 ex = int(round(AX - 16 + k * 9 + math.sin(f * 0.9 + k) * 2.5))
@@ -1748,14 +1838,22 @@ def build_row_9_death(poses):
 def build_portrait():
     raw = Image.open(PORTRAIT_JPG).convert("RGB")
     w, h = raw.size
-    # Crop centered close-up on face, crown, chest orb & Sun-Glaive
-    s = int(min(w, h) * 0.88)
-    x0 = (w - s) // 2
-    y0 = max(0, int((h - s) * 0.30))
+    # Frame full pointed Wizard Hat tip + sun-emblem, wide gold-runed brim, glowing molten eyes & Crescent-Sun Staff!
+    s = int(min(w, h) * 0.98)
+    x0 = max(0, (w - s) // 2)
+    y0 = 0
     crop = raw.crop((x0, y0, x0 + s, y0 + s)).resize((64, 64), Image.Resampling.BILINEAR)
-    q64 = crop.quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGBA")
+    q64 = crop.quantize(colors=48, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGBA")
     arr = np.array(q64)
-    # Crisp 1px dark-gold frame border in 64x64 logical -> 2px in 128x128
+
+    # Boost glowing molten-gold eyes & Crescent-Sun core in 64x64 logical space so they gleam vividly
+    rgb = arr[:, :, :3].astype(np.float32)
+    warm_glow = (rgb[:, :, 0] > 238) & (rgb[:, :, 1] > 205) & (rgb[:, :, 2] < 135)
+    arr[warm_glow] = C_FLAME_GOLD
+    hot_core = (rgb[:, :, 0] > 248) & (rgb[:, :, 1] > 236) & (rgb[:, :, 2] > 145)
+    arr[hot_core] = C_FLAME_CORE
+
+    # Crisp 1px dark-gold Neo-Vision frame border in 64x64 logical -> 2px in 128x128
     arr[0, :] = C_OUT
     arr[63, :] = C_OUT
     arr[:, 0] = C_OUT
@@ -1764,6 +1862,7 @@ def build_portrait():
     arr[62, 1:63] = C_GOLD_DARK
     arr[1:63, 1] = C_GOLD_DARK
     arr[1:63, 62] = C_GOLD_DARK
+
     out128 = Image.fromarray(arr, "RGBA").resize((128, 128), Image.Resampling.NEAREST)
     out128.save(OUT_PORTRAIT)
     return out128
@@ -1775,7 +1874,7 @@ def main():
     args = parser.parse_args()
     os.makedirs(args.scratch_dir, exist_ok=True)
 
-    print("[mage_ex] Loading base & 2x2 action keyposes...")
+    print("[mage_ex] Loading Classic-Wizard Neo-Vision base & 2x2 spellcasting keyposes...")
     poses = load_mage_poses()
 
     row_builders = [
@@ -1800,6 +1899,7 @@ def main():
         assert len(log_frames) == COLS, f"{r_name} produced {len(log_frames)} frames!"
         transitions = 0
         row_320 = []
+        snap_reaches = {}
         for c_idx, farr in enumerate(log_frames):
             if c_idx > 0 and not np.array_equal(log_frames[c_idx - 1], farr):
                 transitions += 1
@@ -1813,12 +1913,20 @@ def main():
                 or a320[:, -1].any()
             ):
                 border_clips += 1
+            if r_idx == 2 and c_idx in (3, 9, 17, 25):
+                _, xs_320 = np.where(a320 > 0)
+                snap_reaches[f"F{c_idx:02d}"] = int(xs_320.max())
             sheet.paste(im_320, (c_idx * CELL_W, r_idx * CELL_H))
             row_320.append(im_320)
         all_rows_320.append(row_320)
-        print(f"  [{r_name}] transitions={transitions}/29")
+        reach_info = f" | snap max_x={snap_reaches}" if snap_reaches else ""
+        print(f"  [{r_name}] transitions={transitions}/29{reach_info}")
         if transitions < 29:
             raise RuntimeError(f"{r_name} has static duplicate frames ({transitions}/29)!")
+        if r_idx == 2:
+            for fk, rx in snap_reaches.items():
+                if rx <= 200:
+                    raise RuntimeError(f"Row 2 {fk} forward cast reach {rx} <= 200!")
 
     if border_clips != 0:
         raise RuntimeError(f"Border clip violation: {border_clips}/300!")
@@ -1828,26 +1936,24 @@ def main():
     print(f"[mage_ex] Saved {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}), border_clips={border_clips}/300")
     print(f"[mage_ex] Saved {OUT_PORTRAIT} ({port.size[0]}x{port.size[1]})")
 
-    # Save Visual QA Contact Sheets in untracked scratch dir!
-    # 1. Row 2 AUTO_ATTACK 6x5 zoomed contact sheet on dark-slate + mid-gray check
-    r2_w, r2_h = 6 * (CELL_W + 6) + 6, 5 * (CELL_H + 6) + 6
-    dbg_r2 = Image.new("RGBA", (r2_w, r2_h), (26, 22, 32, 255))
-    dr = ImageDraw.Draw(dbg_r2)
-    for idx, im320 in enumerate(all_rows_320[2]):
-        gx = (idx % 6) * (CELL_W + 6) + 6
-        gy = (idx // 6) * (CELL_H + 6) + 6
-        # Checkerboard background to expose any white halo immediately!
-        bg = Image.new("RGBA", (CELL_W, CELL_H), (36, 32, 46, 255))
-        bg_d = ImageDraw.Draw(bg)
-        bg_d.line([(0, 230), (319, 230)], fill=(90, 70, 50, 255), width=1)
-        bg_d.line([(112, 0), (112, 239)], fill=(70, 80, 110, 255), width=1)
-        bg.alpha_composite(im320, (0, 0))
-        dbg_r2.paste(bg, (gx, gy))
-        dr.text((gx + 6, gy + 4), f"F{idx:02d}", fill=(255, 235, 140, 255))
-    dbg_r2.save(os.path.join(args.scratch_dir, "debug_mage_ex_row2.png"))
+    # Visual QA Contact Sheets in untracked scratch dir
+    for row_idx_qa, out_name in [(1, "debug_mage_ex_row1_walk.png"), (2, "debug_mage_ex_row2.png")]:
+        r_w, r_h = 6 * (CELL_W + 6) + 6, 5 * (CELL_H + 6) + 6
+        dbg_r = Image.new("RGBA", (r_w, r_h), (26, 22, 32, 255))
+        dr = ImageDraw.Draw(dbg_r)
+        for idx, im320 in enumerate(all_rows_320[row_idx_qa]):
+            gx = (idx % 6) * (CELL_W + 6) + 6
+            gy = (idx // 6) * (CELL_H + 6) + 6
+            bg = Image.new("RGBA", (CELL_W, CELL_H), (36, 32, 46, 255))
+            bg_d = ImageDraw.Draw(bg)
+            bg_d.line([(0, 230), (319, 230)], fill=(90, 70, 50, 255), width=1)
+            bg_d.line([(112, 0), (112, 239)], fill=(70, 80, 110, 255), width=1)
+            bg.alpha_composite(im320, (0, 0))
+            dbg_r.paste(bg, (gx, gy))
+            dr.text((gx + 6, gy + 4), f"F{idx:02d}", fill=(255, 235, 140, 255))
+        dbg_r.save(os.path.join(args.scratch_dir, out_name))
 
-    # 2. All 10 rows split left (F00..F14) and right (F15..F29) at half-size (160x120)
-    for half_idx, (c0, c1, tag) in enumerate([(0, 15, "left_F00_F14"), (15, 30, "right_F15_F29")]):
+    for c0, c1, tag in [(0, 15, "left_F00_F14"), (15, 30, "right_F15_F29")]:
         gw = 15 * (LOG_W + 3) + 3
         gh = 10 * (LOG_H + 3) + 3
         grid = Image.new("RGBA", (gw, gh), (22, 20, 28, 255))
