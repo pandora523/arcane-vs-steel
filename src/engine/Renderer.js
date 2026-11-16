@@ -16,6 +16,14 @@ const FORGE_FIRE_PAL = ['#78350f', '#d97706', '#f59e0b', '#34d399'];
 const STORM_FIRE_PAL = ['#312e81', '#4f46e5', '#818cf8', '#38bdf8'];
 const CRIMSON_FIRE_PAL = ['#881337', '#be123c', '#f43f5e', '#fbbf24'];
 const GLACIAL_FIRE_PAL = ['#0369a1', '#0284c7', '#67e8f9', '#e879f9'];
+const GLACIAL_WIPE_BAYER_4X4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5]
+];
+const GLACIAL_WIPE_TOOTH_L = [3, 1, 4, 2, 5, 1, 3, 0, 2, 4, 1, 5, 2, 3, 0, 2];
+const GLACIAL_WIPE_TOOTH_R = [2, 4, 1, 5, 2, 3, 0, 4, 1, 3, 5, 2, 4, 1, 3, 0];
 
 export const STAGE_ROSTER = [
   { id: 'cathedral', name: 'ECLIPSE CATHEDRAL NAVE', assetKey: 'arenaBg' },
@@ -103,6 +111,10 @@ export class Renderer {
     this.stageSliceFocusX = 600;
     this.stageSliceFocusY = 420;
     this.stageSliceDir = 1;
+    this.glacialWipeTimer = 0;
+    this.glacialWipeMaxTimer = 1.38;
+    this.glacialWipeFromId = null;
+    this.glacialWipeFocusX = 600;
     this.impactFrameTimer = 0;
     this.impactFrameMaxTimer = 0.15;
     this.impactFrameFocusX = 600;
@@ -186,6 +198,8 @@ export class Renderer {
     this.stageSliceTimer = 0;
     this.stageSliceFromId = null;
     this.stageSliceToId = null;
+    this.glacialWipeTimer = 0;
+    this.glacialWipeFromId = null;
     this.impactFrameTimer = 0;
     this.whiteoutTimer = 0;
   }
@@ -264,6 +278,18 @@ export class Renderer {
     this.stageSliceDir = opts.dir === -1 ? -1 : 1;
     this.stageSliceMaxTimer = Math.max(0.35, opts.duration || 1.08);
     this.stageSliceTimer = this.stageSliceMaxTimer;
+  }
+
+  triggerGlacialStageTransition(opts = {}) {
+    const rawFrom =
+      typeof opts.fromStageId === 'string' && opts.fromStageId ? opts.fromStageId : null;
+    this.glacialWipeFromId = rawFrom || this.getActiveStageId() || this.stageId || 'cathedral';
+    PixelForge.ensureStageLoaded?.(this.glacialWipeFromId);
+    const activeDestId = this.getActiveStageId?.();
+    if (activeDestId) PixelForge.ensureStageLoaded?.(activeDestId);
+    this.glacialWipeFocusX = Number.isFinite(opts.focusX) ? opts.focusX : this.worldWidth * 0.5;
+    this.glacialWipeMaxTimer = Math.max(0.35, opts.duration || 1.38);
+    this.glacialWipeTimer = this.glacialWipeMaxTimer;
   }
 
   getStageMetaById(id) {
@@ -661,6 +687,12 @@ export class Renderer {
     }
     if (this.stageSliceTimer > 0) {
       this.stageSliceTimer = Math.max(0, this.stageSliceTimer - rawDt);
+    }
+    if (this.glacialWipeTimer > 0) {
+      this.glacialWipeTimer = Math.max(0, this.glacialWipeTimer - rawDt);
+      if (this.glacialWipeTimer === 0) {
+        this.glacialWipeFromId = null;
+      }
     }
     if (this.trueUltStageTimer > 0) {
       this.trueUltStageTimer = Math.max(0, this.trueUltStageTimer - rawDt);
@@ -1241,6 +1273,10 @@ export class Renderer {
     // 7.20. Whole-Stage Dimensional Katana Rift Seam & Petal/Ember Burst
     if (this.stageSliceTimer > 0) {
       this.drawDimensionalStageSliceWorld(ctx, ww, gy);
+    }
+    // 7.22. Sweeping Crystalline Freeze-Wave Frozen Stage Transition
+    if (this.glacialWipeTimer > 0) {
+      this.drawGlacialFreezeWaveWorld(ctx, ww, gy);
     }
 
     // 7.25. Supreme Finisher High-Contrast Anime Impact Frame & Full-Stage White-Out Deletion Screen!
@@ -1985,6 +2021,54 @@ export class Renderer {
         this.drawShogunateGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       } else if (this.trueUltStageOverride === 'sanctuary') {
         this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      }
+    }
+
+    // Sweeping Crystalline Freeze-Wave Wipe: clips out the expanding central frozen radius across 16 jagged crystal bands!
+    if (this.glacialWipeTimer > 0 && this.glacialWipeFromId && !this.adventureMode) {
+      const fromMeta = this.getStageMetaById(this.glacialWipeFromId);
+      const fromImg = PixelForge.ensureImage(
+        (fromMeta && assets[fromMeta.assetKey]) || assets.arenaBg
+      );
+      const maxDur = Math.max(0.1, this.glacialWipeMaxTimer || 1.38);
+      const p = Math.max(0, Math.min(1, 1 - this.glacialWipeTimer / maxDur));
+      const easeP = 1 - Math.pow(1 - p, 2.15);
+      const frontRadius = Math.round((easeP * 1460) / 4) * 4;
+      const fadeAlpha = p < 0.78 ? 1.0 : Math.max(0, 1 - (p - 0.78) / 0.22);
+      if (fadeAlpha > 0.01 && fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
+        const originX =
+          Math.round(
+            (Number.isFinite(this.glacialWipeFocusX) ? this.glacialWipeFocusX : ww * 0.5) / 4
+          ) * 4;
+        const leftBound = drawX - drawW - 600;
+        const rightBound = drawX + drawW * 2 + 600;
+        const bandTop = Math.round(gy - 1020);
+        const bandBot = Math.round(gy + 420);
+        const stepH = Math.round((bandBot - bandTop) / 16);
+
+        ctx.save();
+        ctx.beginPath();
+        let hasClipRect = false;
+        for (let b = 0; b < 16; b++) {
+          const y0 = b === 0 ? -2600 : bandTop + b * stepH;
+          const y1 = b === 15 ? gy + 2200 : bandTop + (b + 1) * stepH;
+          const bh = Math.max(1, y1 - y0);
+          const cutL = originX - (frontRadius + GLACIAL_WIPE_TOOTH_L[b] * 16);
+          const cutR = originX + (frontRadius + GLACIAL_WIPE_TOOTH_R[b] * 16);
+          if (cutL > leftBound) {
+            ctx.rect(leftBound, y0, cutL - leftBound, bh);
+            hasClipRect = true;
+          }
+          if (rightBound > cutR) {
+            ctx.rect(cutR, y0, rightBound - cutR, bh);
+            hasClipRect = true;
+          }
+        }
+        if (hasClipRect) {
+          ctx.clip();
+          drawStageImageWithWings(fromImg, fadeAlpha);
+        }
+        ctx.restore();
       }
     }
 
@@ -4146,6 +4230,188 @@ export class Renderer {
           petalCols[i % petalCols.length],
           '#ffffff'
         );
+      }
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * World-Space Advancing Crystalline Freeze-Wave Wall & Borealis Curtain (`this.glacialWipeTimer > 0`):
+   *   - Advancing left & right jagged stepped-pixel Glacier Prism Walls & Sapphire/Cyan Borealis Curtains
+   *   - Sweeping ground frost-rime wake across the stage floor
+   *   - 48 wind-whipped pixel snowflakes & diamond-prism shards
+   *   - Subtle 4x4 Bayer frost edge flash (`0` ctx.rotate / arc / ellipse / stroke!)
+   */
+  drawGlacialFreezeWaveWorld(ctx, ww, gy) {
+    const maxDur = Math.max(0.1, this.glacialWipeMaxTimer || 1.38);
+    const p = Math.max(0, Math.min(1, 1 - this.glacialWipeTimer / maxDur));
+    const fade = p < 0.72 ? 1.0 : Math.max(0, 1 - (p - 0.72) / 0.28);
+    if (fade <= 0.01) return;
+
+    const easeP = 1 - Math.pow(1 - p, 2.15);
+    const frontRadius = Math.round((easeP * 1460) / 4) * 4;
+    const originX =
+      Math.round(
+        (Number.isFinite(this.glacialWipeFocusX) ? this.glacialWipeFocusX : ww * 0.5) / 4
+      ) * 4;
+    const bandTop = Math.round(gy - 1020);
+    const bandBot = Math.round(gy + 420);
+    const stepH = Math.round((bandBot - bandTop) / 16);
+    const subH = Math.max(4, Math.round(stepH / 3));
+    const tick = Math.floor((this.time || 0) * 18);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Advancing Left & Right Jagged Stepped-Pixel Glacier Prism Walls & Sapphire/Cyan Borealis Curtains
+    for (let side = -1; side <= 1; side += 2) {
+      const teeth = side < 0 ? GLACIAL_WIPE_TOOTH_L : GLACIAL_WIPE_TOOTH_R;
+      const inward = -side;
+
+      for (let b = 0; b < 16; b++) {
+        const baseY = bandTop + b * stepH;
+        const wallX = Math.round(originX + side * (frontRadius + teeth[b] * 16));
+
+        for (let sub = 0; sub < 3; sub++) {
+          const sy = baseY + sub * subH;
+          const sh = sub === 2 ? bandTop + (b + 1) * stepH - sy : subH;
+          const notch = ((b + sub) % 2 === 0 ? 4 : -4) * side;
+          const edgeX = wallX + notch;
+
+          // Deep Sapphire outer curtain (#1d4ed8)
+          const wSapphire = 56;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = fade * 0.34;
+          ctx.fillStyle = '#1d4ed8';
+          ctx.fillRect(inward > 0 ? edgeX : edgeX - wSapphire, sy, wSapphire, sh);
+
+          // Electric Cerulean borealis sheath (#38bdf8)
+          const wCerulean = 32;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fade * 0.54;
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(inward > 0 ? edgeX : edgeX - wCerulean, sy, wCerulean, sh);
+
+          // Faceted Glacier Aqua prism wall (#67e8f9)
+          const wAqua = 16;
+          ctx.globalAlpha = fade * 0.80;
+          ctx.fillStyle = '#67e8f9';
+          ctx.fillRect(inward > 0 ? edgeX - 2 : edgeX - wAqua + 2, sy, wAqua, sh);
+
+          // Razor-crisp Frost Crest highlight (#ffffff)
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = fade * 0.94;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(edgeX - 2, sy, 4, sh);
+        }
+
+        // Tall vertical Borealis Curtain ribbons rippling behind the advancing freeze front
+        if (b >= 3 && b <= 11 && b % 2 === 0) {
+          const curDrift = Math.round(Math.sin((this.time || 0) * 5.2 + b) * 6);
+          const curX = wallX + inward * (24 + (b % 3) * 16) + curDrift;
+          const curH = 64 + (b % 3) * 28;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fade * 0.36;
+          ctx.fillStyle = b % 4 === 0 ? '#1d4ed8' : '#38bdf8';
+          ctx.fillRect(curX - 4, baseY, 8, curH);
+          ctx.fillStyle = '#67e8f9';
+          ctx.fillRect(curX - 2, baseY + 8, 4, Math.max(12, curH - 16));
+        }
+      }
+
+      // Subtle 4x4 Bayer frost edge flash along advancing crystal wall
+      const bayerCenterY = Math.round((gy - 220) / 4) * 4;
+      const wallMidX = Math.round((originX + side * (frontRadius + teeth[8] * 16)) / 4) * 4;
+      const edgeFlashBoost = p < 0.18 ? 1.35 : 1.0;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.18, 0.14 * fade * edgeFlashBoost);
+      for (let dy = -260; dy <= 220; dy += 4) {
+        const ny = Math.abs(dy) / 260;
+        const by = (dy >> 2) & 3;
+        for (let dx = -16; dx <= 16; dx += 4) {
+          const nx = Math.abs(dx) / 20;
+          const falloff = Math.max(0, 1 - (nx * nx * 0.72 + ny * ny * 0.36));
+          if (falloff <= 0.1) continue;
+          const bx = (dx >> 2) & 3;
+          if (falloff * 16.0 > GLACIAL_WIPE_BAYER_4X4[by][bx]) {
+            ctx.fillStyle = Math.abs(dx) <= 4 ? '#ffffff' : '#67e8f9';
+            ctx.fillRect(wallMidX + dx, bayerCenterY + dy, 4, 4);
+          }
+        }
+      }
+    }
+
+    // 2. Sweeping Ground Frost-Rime Wake across the Arena Floor
+    const wakeLeft = Math.round((originX - frontRadius - 32) / 4) * 4;
+    const wakeRight = Math.round((originX + frontRadius + 32) / 4) * 4;
+    const clampedWakeL = Math.max(-1200, wakeLeft);
+    const clampedWakeR = Math.min(ww + 1200, wakeRight);
+    const wakeW = Math.max(0, clampedWakeR - clampedWakeL);
+    if (wakeW > 8) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.42;
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillRect(clampedWakeL, gy - 4, wakeW, 14);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.56;
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(clampedWakeL, gy - 2, wakeW, 6);
+
+      const shardStep = 36;
+      const startShardX = Math.ceil(clampedWakeL / shardStep) * shardStep;
+      for (let sx = startShardX; sx <= clampedWakeR; sx += shardStep) {
+        const distRatio = Math.min(1, Math.abs(sx - originX) / Math.max(1, frontRadius));
+        const frontBoost = distRatio > 0.72 ? 2 : 1;
+        const hSpike = (6 + ((Math.abs(sx) * 7) % 14)) * frontBoost;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.88;
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(sx - 4, gy - hSpike, 8, hSpike + 4);
+        ctx.fillStyle = '#67e8f9';
+        ctx.fillRect(sx - 2, gy - hSpike + 2, 4, hSpike);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx - 2, gy - hSpike, 2, 4);
+      }
+    }
+
+    // 3. 48 Wind-Whipped Pixel Snowflakes & Diamond-Prism Shards riding both freeze fronts
+    const shardCols = ['#bae6fd', '#67e8f9', '#38bdf8', '#ffffff'];
+    for (let i = 0; i < 48; i++) {
+      const dir = i % 2 === 0 ? -1 : 1;
+      const bandOffset = (i % 16);
+      const wallTooth = (dir < 0 ? GLACIAL_WIPE_TOOTH_L : GLACIAL_WIPE_TOOTH_R)[bandOffset];
+      const baseFrontX = originX + dir * (frontRadius + wallTooth * 16);
+      const trailJitter = -dir * ((i * 23) % 120) + Math.sin(p * 9.5 + i * 1.7) * 20;
+      const px = Math.round((baseFrontX + trailJitter) / 2) * 2;
+      const py = Math.round((gy - 490 + ((i * 73) % 520)) / 2) * 2;
+      const sFade = fade * (0.68 + 0.32 * Math.sin(p * 12 + i));
+      if (sFade <= 0.03) continue;
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = sFade;
+      if (i % 2 === 0) {
+        this.drawDiamondCrystalPixel(
+          ctx,
+          px,
+          py,
+          (tick + i) & 1,
+          i % 4 === 0 ? 1.8 : 1,
+          shardCols[i % shardCols.length],
+          '#ffffff',
+          '#1d4ed8'
+        );
+      } else {
+        const dxStep = dir * 2;
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(px, py, 4, 2);
+        ctx.fillRect(px + dxStep, py + 2, 4, 2);
+        ctx.fillStyle = '#67e8f9';
+        ctx.fillRect(px + dxStep, py + 2, 2, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px + dxStep * 2, py + 4, 2, 2);
       }
     }
 
