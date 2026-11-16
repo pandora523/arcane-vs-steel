@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps113';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps113';
+import { Fighter } from './Fighter.js?v=30fps114';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)

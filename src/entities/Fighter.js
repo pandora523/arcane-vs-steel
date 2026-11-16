@@ -1,5 +1,12 @@
+const FIGHTER_BRAND = Symbol.for('avs.Fighter');
+
 export class Fighter {
+  static [Symbol.hasInstance](instance) {
+    return Boolean(instance && typeof instance === 'object' && instance[FIGHTER_BRAND]);
+  }
+
   constructor(opts) {
+    this[FIGHTER_BRAND] = true;
     this.name = opts.name;
     this.x = opts.x;
     this.y = opts.groundY;

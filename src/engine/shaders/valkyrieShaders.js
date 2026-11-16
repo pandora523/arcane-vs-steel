@@ -23,7 +23,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps113';
+} from '../ArcaneShaderFX.js?v=30fps114';
 
 const TWO_PI = Math.PI * 2;
 
@@ -141,7 +141,7 @@ function renderDragonfireCrescentArc(pen, cx, cy, aimAngle, radius, spanAngle, m
   if (radius <= 1.5 || maxThick <= 0.3) return;
   const steps = ramp.length;
   const halfSpan = spanAngle * 0.5;
-  const bound = radius + maxThick + 3;
+  const bound = Math.ceil((radius + 1) / 0.84) + maxThick + 4;
   const cosA = Math.cos(aimAngle);
   const sinA = Math.sin(aimAngle);
 

@@ -1,38 +1,61 @@
-import { VFXManager } from '../../src/engine/VFXManager.js';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps114';
 import fs from 'node:fs';
 import {
   ArcaneShaderFX,
   ShaderPen
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps114';
+import {
+  ShaderPen as ShaderPen113
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps113';
 import {
   ShaderPen as ShaderPen112
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
 import { Warrior } from '../../src/entities/Warrior.js';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps113';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps114';
 import { Titan } from '../../src/entities/Titan.js';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps114';
 import { Ronin } from '../../src/entities/Ronin.js';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps114';
 import { FireMage } from '../../src/entities/FireMage.js';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps114';
 import { Archer } from '../../src/entities/Archer.js';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps114';
 import { Priestess } from '../../src/entities/Priestess.js';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps114';
 import { Valkyrie } from '../../src/entities/Valkyrie.js';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps114';
 import { IceMage } from '../../src/entities/IceMage.js';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps114';
 import { Reaper } from '../../src/entities/Reaper.js';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps114';
 import { Chronomancer } from '../../src/entities/Chronomancer.js';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps114';
 import { Android } from '../../src/entities/Android.js';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps114';
 
 const HEROES = [
   ['warrior', Warrior],
   ['warrior_ex', WarriorEx],
   ['titan', Titan],
+  ['titan_ex', TitanEx],
   ['ronin', Ronin],
+  ['ronin_ex', RoninEx],
   ['mage', FireMage],
+  ['mage_ex', FireMageEx],
   ['archer', Archer],
+  ['archer_ex', ArcherEx],
   ['priestess', Priestess],
+  ['priestess_ex', PriestessEx],
   ['valkyrie', Valkyrie],
+  ['valkyrie_ex', ValkyrieEx],
   ['icemage', IceMage],
+  ['icemage_ex', IceMageEx],
   ['reaper', Reaper],
+  ['reaper_ex', ReaperEx],
   ['chronomancer', Chronomancer],
+  ['chronomancer_ex', ChronomancerEx],
   ['android', Android],
+  ['android_ex', AndroidEx],
 ];
 
 // Track shadeBox boundary hits and viewport buffer edge hits during live ULTIMATE + TRUE_ULTIMATE
@@ -41,7 +64,7 @@ let currentMode = '';
 const shadeBoxClips = new Map();
 const viewportClips = new Map();
 
-for (const PenCls of new Set([ShaderPen, ShaderPen112])) {
+for (const PenCls of new Set([ShaderPen, ShaderPen113, ShaderPen112])) {
   const origShadeBox = PenCls.prototype.shadeBox;
   PenCls.prototype.shadeBox = function (x0, y0, x1, y1, shaderFn) {
     let edgeAlbedo = 0;
@@ -139,7 +162,8 @@ function makeMockGame(hero, dummy) {
 }
 
 for (const [id, Cls] of HEROES) {
-  const modes = id === 'reaper' ? ['CROUCH', 'ULTIMATE', 'TRUE_ULTIMATE'] : ['ULTIMATE', 'TRUE_ULTIMATE'];
+  const isReaperFamily = id === 'reaper' || id === 'reaper_ex';
+  const modes = isReaperFamily ? ['CROUCH', 'ULTIMATE', 'TRUE_ULTIMATE'] : ['ULTIMATE', 'TRUE_ULTIMATE'];
   for (const mode of modes) {
     currentHero = id;
     currentMode = mode;
@@ -164,12 +188,12 @@ for (const [id, Cls] of HEROES) {
       hero.setState('TRUE_ULTIMATE');
     }
 
-    const totalT = mode === 'CROUCH' ? 2.1 : mode === 'ULTIMATE' ? (id === 'reaper' ? 4.8 : 2.5) : 5.2;
+    const totalT = mode === 'CROUCH' ? 2.1 : mode === 'ULTIMATE' ? (isReaperFamily ? 4.8 : 2.5) : 5.2;
     const dt = 1 / 30;
     for (let t = 0; t < totalT; t += dt) {
       dummy.hp = 999999;
       dummy.isDead = false;
-      if (id === 'reaper' && mode === 'ULTIMATE' && t > 2.0 && hero.deathCompanions?.[0]) {
+      if (isReaperFamily && (mode === 'ULTIMATE' || mode === 'TRUE_ULTIMATE') && t > 2.0 && hero.deathCompanions?.[0]) {
         // Keep mage slightly below maxHp once so Soul-Healer triggers necroHealerSoulTether + necroHealerMendHalo!
         if (Math.abs(t - 2.1) < 0.02) hero.deathCompanions[0].hp = 260;
       }
@@ -210,19 +234,19 @@ for (const [id, Cls] of HEROES) {
   }
 }
 
-const reaperShadeClips = [...shadeBoxClips.keys()].filter(
-  (k) => k.startsWith('reaper:') || k.startsWith('warrior_ex:')
+const targetShadeClips = [...shadeBoxClips.keys()].filter(
+  (k) => k.startsWith('reaper:') || k.includes('_ex:')
 );
-console.log("=== REAPER & WARRIOR_EX SHADEBOX CLIPS ===", reaperShadeClips.length);
-for (const k of reaperShadeClips) {
+console.log('=== REAPER & ALL 11 EX SHADEBOX CLIPS ===', targetShadeClips.length);
+for (const k of targetShadeClips) {
   const v = shadeBoxClips.get(k);
   console.log(`  ${k}: edgeAlbedo=${v.edgeAlbedo} edgeGlow=${v.edgeGlow}`);
 }
-console.log("=== VIEWPORT BUFFER CLIPS ===", viewportClips.size);
+console.log('=== VIEWPORT BUFFER CLIPS (ALL 22 HEROES) ===', viewportClips.size);
 for (const [k, v] of viewportClips.entries()) {
   console.log(`  ${k}: top=${v.topH} bot=${v.botH} left=${v.leftH} right=${v.rightH}`);
 }
-if (reaperShadeClips.length > 0 || viewportClips.size > 0) {
+if (HEROES.length !== 22 || targetShadeClips.length > 0 || viewportClips.size > 0) {
   process.exit(1);
 }
-console.log("[PASS] Zero viewport border leaks across all 12 champions AND zero shadeBox/viewport clips across Malakor & Aethelgard EX!");
+console.log('[PASS] Zero viewport border leaks across all 22 champions (11 Legacy + 11 EX) AND zero shadeBox/viewport clips across Malakor & all 11 EX Champions!');

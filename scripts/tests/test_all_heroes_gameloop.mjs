@@ -40,41 +40,51 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps113';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps113';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps113';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps113';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps113';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps113';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps113';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps113';
-import { Archer } from '../../src/entities/Archer.js?v=30fps113';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps113';
-import { Titan } from '../../src/entities/Titan.js?v=30fps113';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps113';
-import { Android } from '../../src/entities/Android.js?v=30fps113';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps113';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps113';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps113';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps113';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps113';
-import { Game } from '../../src/main.js?v=30fps113';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps113';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps114';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps114';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps114';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps114';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps114';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps114';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps114';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps114';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps114';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps114';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps114';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps114';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps114';
+import { Archer } from '../../src/entities/Archer.js?v=30fps114';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps114';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps114';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps114';
+import { Titan } from '../../src/entities/Titan.js?v=30fps114';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps114';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps114';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps114';
+import { Android } from '../../src/entities/Android.js?v=30fps114';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps114';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps114';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps114';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps114';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps114';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps114';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps114';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps114';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps113';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps113';
+} from '../../src/adventure/AdventureManager.js?v=30fps114';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps114';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps113';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps113';
+} from '../../src/adventure/AdventureProgression.js?v=30fps114';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps114';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps113';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps114';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -663,7 +673,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps113');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps114');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -10169,7 +10179,7 @@ for (const [name, Cls] of CLASSES) {
     const mainJs33 = fs.readFileSync(path.join(REPO_ROOT, 'src/main.js'), 'utf8');
     const rosterCardCount = (indexHtml33.match(/class="champ-card\b/g) || []).length;
     if (
-      rosterCardCount !== 12 ||
+      rosterCardCount !== 22 ||
       !indexHtml33.includes('id="card-warrior"') ||
       !indexHtml33.includes('id="card-warrior_ex"') ||
       !indexHtml33.includes('AETHELGARD EX') ||
@@ -10180,7 +10190,7 @@ for (const [name, Cls] of CLASSES) {
       !mainJs33.includes('const ch = 240;')
     ) {
       throw new Error(
-        `[Suite 33.2] Expected 12 champion cards + zero-clip 320x240 #p1/#p2 pedestal canvases across index.html/style.css/main.js, got count=${rosterCardCount}`
+        `[Suite 33.2] Expected 22 champion cards (11 EX + 11 Legacy) + zero-clip 320x240 #p1/#p2 pedestal canvases across index.html/style.css/main.js, got count=${rosterCardCount}`
       );
     }
   }
@@ -10470,6 +10480,989 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] Suite 33: Untouched Classic Aethelgard SHA-256 + R&D Spec, Wide-Canvas 9600x2400 Aethelgard EX (0/300 clips, 29/29 transitions, x>200 FFBE smears) & Dual-Mode VS/Adventure Combat verified in ${suite33ElapsedMs.toFixed(0)}ms!`
   );
 }
+
+// ============================================================================
+// SUITE 34: 22-Champion Dual-Version Roster Overhaul (`?v=30fps114` — `11 EX` + `11 Legacy`),
+//           100% Legacy SHA-256 Purity, All-11 Wide-Canvas `9600x2400` Art Audit,
+//           `#roster-version-bar` Switcher & Live VS/Adventure Gameplay (`< 3s`)
+// ============================================================================
+{
+  const suite34StartMs = performance.now();
+  const { Worker: Worker34 } = await import('node:worker_threads');
+
+  const EX_HERO_MATRIX_34 = [
+    ['warrior_ex', WarriorEx, 'blade_wave', null],
+    ['mage_ex', FireMageEx, 'fireball', 'inferno'],
+    ['priestess_ex', PriestessEx, 'holy_light', null],
+    ['chronomancer_ex', ChronomancerEx, 'clock_gear', null],
+    ['valkyrie_ex', ValkyrieEx, 'dragon_lance', null],
+    ['ronin_ex', RoninEx, 'ronin_slash', 'shogunate'],
+    ['archer_ex', ArcherEx, 'arrow', null],
+    ['reaper_ex', ReaperEx, 'phantom_scythe', null],
+    ['titan_ex', TitanEx, 'forge_wave', null],
+    ['icemage_ex', IceMageEx, 'cryo_shard', 'glacial'],
+    ['android_ex', AndroidEx, 'cyber_disc', null]
+  ];
+
+  // --------------------------------------------------------------------------
+  // 34.1: 100% SHA-256 Legacy Preservation (`#68` Baseline) & Zero-Emoji Purity
+  // --------------------------------------------------------------------------
+  {
+    const preservedLegacySha256 = {
+      'src/entities/Warrior.js':
+        'bead5970fbc64f121eabfd75ad5c02d00e7a768118d28c055e3eb3e768b27adf',
+      'src/entities/FireMage.js':
+        '1efd4869fa9fbb1f2dbea3caf82270f015861abd9e658e899fe8ba164beeb612',
+      'src/entities/Priestess.js':
+        'a780ff974df5b3c84e47a7b0ee5c73959776850ed16437d9a692df2087943e32',
+      'src/entities/Chronomancer.js':
+        'ae3ebe56fd05ff30ba6119235e7f817247e625d1bc3ec4bb3adb7727e10ee1b5',
+      'src/entities/Valkyrie.js':
+        '7819fa2af192680aa651ae27ab7176b8e984c657a080724674219fedecd6c783',
+      'src/entities/Ronin.js':
+        '9fe31e9805847e166a4b6db7bb1f45c637bc5ed8381c30b61a1588adc08af009',
+      'src/entities/Archer.js':
+        'd57226c0745eb184f6393a834bf044502a5cd45de707792147aa78acbb6ccda5',
+      'src/entities/Reaper.js':
+        '66c7a70c72b6f8238ab84a40e85c7c63efa13d9299b7ef0fe1d02ce75e28bb07',
+      'src/entities/Titan.js':
+        '44019474afab47588303ae5fa78b964f67fffd67a359b4bbc837cea8bd48e2ae',
+      'src/entities/IceMage.js':
+        '61ca2940328ee3f294159b8dc3ee6829d4cf9ced73a04b816bc98b4300adfcbe',
+      'src/entities/Android.js':
+        '5c074a5ebc018ad56850feaaafc8d96d8711c71ea8e54a873129380993ea1c05',
+      'assets/sprites/warrior_sheet.png':
+        '2e5c187e90209f417dc15d0e0f5edf9d4c08ed894b60c8708c50fccf8ee2ad08',
+      'assets/sprites/mage_sheet.png':
+        '18dc573380ff15ed03caa3001437fbf59b4c8a5dae937ba1193b9436f738a527',
+      'assets/sprites/priestess_sheet.png':
+        '568f83967540c0c6b3496dd3f36c40167c37ed48d3c1c9acb30471d9993e5426',
+      'assets/sprites/chronomancer_sheet.png':
+        '978a3b3a2cbd81899e851d7a31806843e6971bd4121370c7926b6ceff27b0b7c',
+      'assets/sprites/valkyrie_sheet.png':
+        '06aefaaf2d47b53c9e33b2691a55a778c6cfdc27adb31a7e41095de0d8ecab7e',
+      'assets/sprites/ronin_sheet.png':
+        'f6ff03d6eda1242231ab5af45e79642f6082429c27ddf02cb01009889894f96c',
+      'assets/sprites/archer_sheet.png':
+        'f3b7d0e91a5732fbaa4db35b9dd36241807c00ac22fb6584e18cc450c94a6186',
+      'assets/sprites/reaper_sheet.png':
+        '47be00b225be8fa91aab985171dd1f51cba3d6c744ba60430ad2e7b6ec24b8e9',
+      'assets/sprites/titan_sheet.png':
+        'd994f2d0f5bea1636bc52d826359e7dbb48606cd273364d0904c2d21d865e81c',
+      'assets/sprites/icemage_sheet.png':
+        '40fa57c34e1ef463c541ca93500c035ffb8b12d773c0e8bab6475ac9cf9d9b61',
+      'assets/sprites/android_sheet.png':
+        '88698257d4088bc7e4bd6e9ae6ed9e225dedcc3dd23f645b0d015f7a3a8b1449',
+      'assets/sprites/warrior_vfx.png':
+        '0e3fff5ffebd70aeefed042c8f31e1b2c760f9ac3d3712272122a800175a8520',
+      'assets/sprites/mage_vfx.png':
+        'ac20d3ed505fbbb4458e145b085800b133779ca5fbd528e276ccf531699ec9c4',
+      'assets/sprites/priestess_vfx.png':
+        'db93af4696f5378e21aba6ce2b3d3bea8725974a814e52869ad309bc65fc0879',
+      'assets/sprites/chronomancer_vfx.png':
+        'bfdd02739535a856c22966cc1949a40b61ae0e9e68841d8cb0a33c7e5534071e',
+      'assets/sprites/valkyrie_vfx.png':
+        'c349afe007e1dc8420bfe03f597d11d23d567106640390c10bd8ea0500967d6b',
+      'assets/sprites/ronin_vfx.png':
+        'f97c950b738c00291ea93255b92294015279e1de55bb012f7d0eb087c657601a',
+      'assets/sprites/archer_vfx.png':
+        '37f540280613cd92914400fded4f8be88733ff8a6c3a849a48ee1ef63a3c1b36',
+      'assets/sprites/reaper_vfx.png':
+        '3cdaebae16925b4b6cb6f6940f3a61b27a828e23db032b7444c3ee219ffe69b5',
+      'assets/sprites/titan_vfx.png':
+        '07d0d694a63a069df248917b0498aed30075fdb421e48b52750d963f91afee6a',
+      'assets/sprites/icemage_vfx.png':
+        '462d9293b706b9d864327d0bf036f0d462c810b2238aaccb5d5d1d853307a805',
+      'assets/sprites/android_vfx.png':
+        '81bb26d1a2f656eee600e3d11c27451611fc3310c9f453a61c875cb4cefdb491',
+      'assets/sprites/warrior_portrait.png':
+        '1b26c5d4083c72f91e5dc5a3bfeec9bbb97cd40973dc3aa922d33e0ceac692ee',
+      'assets/sprites/mage_portrait.png':
+        'a7fc536ae51e8c1ad56e959e3d1efbb9d32bfc40489960eaf7e0040b00aa1dd9',
+      'assets/sprites/priestess_portrait.png':
+        'ee214124b29513d32cc7b5586ba9630a932c7fcfe4b3047094adc85fa230ea0d',
+      'assets/sprites/chronomancer_portrait.png':
+        '04a76828b45b0a98b4482169e69510089288a92d942b93c59541cc2ac71d5335',
+      'assets/sprites/valkyrie_portrait.png':
+        '8b9b5ad9afbce8023dd8369b40a23975764a9d8fd7977f48288c677e2ee3bb4e',
+      'assets/sprites/ronin_portrait.png':
+        'b370a9d79a9e07acf029e5b36457f3c6d6a33bceb0c3d4760287c13ef83ff740',
+      'assets/sprites/archer_portrait.png':
+        'd7658745c5061aeac08e211ca65e9623ff53b0bfe6d6bc5b93b247602d6063dd',
+      'assets/sprites/reaper_portrait.png':
+        'c4c5d1be014f1f74c27bd5df5ecf3d25ca23a426a561bd93ba9581322fa707b7',
+      'assets/sprites/titan_portrait.png':
+        '8262d8c76f4d5cf2f50c8c23d79b81d7cd30700eca1e0bc4e558d54e8cb37d0d',
+      'assets/sprites/icemage_portrait.png':
+        'dc51f4f6f5f5ec9c68c90b08b3b4ae89e56c2192b47b0d3f38805413119b0cfc',
+      'assets/sprites/android_portrait.png':
+        'ebc3b08bf71530c12672c228c5353299a51a54721dfe6ac1ea7d81c04847df7d',
+      'assets/sprites/warrior_ex_sheet.png':
+        '09165e4525a4b328b9c7aa5f6e0d22649aa8a75f01dfdcfb1bc27c2313bdf2bf',
+      'scripts/hd2d_rig_core.py':
+        '66f2bfe8cdd45e031349d30cd9b980cea12621051709782196d776f2a12c8777',
+      'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md':
+        '2891ca38b0ec6e6df9e629e99ccdc1fe1403b297e41fc330174b4c556f9b0361',
+      '.agents/skills/arcane-vs-steel-pipeline/SKILL.md':
+        '8a4614b8007fb6f93a7f37dfe7c0357aef37927837fdedde52a56c7ae3afc3bc'
+    };
+
+    for (const [relFile, expectedHex] of Object.entries(preservedLegacySha256)) {
+      const absFile = path.join(REPO_ROOT, relFile);
+      if (!fs.existsSync(absFile)) {
+        throw new Error(`[Suite 34.1] Missing preserved Legacy/pipeline file: ${relFile}`);
+      }
+      const actualHex = crypto
+        .createHash('sha256')
+        .update(fs.readFileSync(absFile))
+        .digest('hex');
+      if (actualHex !== expectedHex) {
+        throw new Error(
+          `[Suite 34.1] Preserved Legacy file '${relFile}' was modified! expected=${expectedHex}, actual=${actualHex}`
+        );
+      }
+    }
+
+    const fbRoot34 = path.join(REPO_ROOT, 'fallback_backups');
+    if (fs.existsSync(fbRoot34)) {
+      const snaps = fs
+        .readdirSync(fbRoot34)
+        .filter((d) => d.endsWith('_pre_11hero_ex_roster_overhaul'));
+      if (snaps.length < 1) {
+        throw new Error(
+          '[Suite 34.1] Missing fallback_backups/*_pre_11hero_ex_roster_overhaul snapshot!'
+        );
+      }
+      const snapDir = path.join(fbRoot34, snaps[snaps.length - 1]);
+      const restoreScript = path.join(snapDir, 'RESTORE_THIS_BACKUP.sh');
+      const sumsFile = path.join(snapDir, 'SHA256SUMS.txt');
+      if (
+        !fs.existsSync(restoreScript) ||
+        !fs.existsSync(sumsFile) ||
+        (fs.statSync(restoreScript).mode & 0o111) === 0
+      ) {
+        throw new Error(`[Suite 34.1] Incomplete fallback snapshot at ${snapDir}!`);
+      }
+    }
+
+    const emojiRe34 = /[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;
+    const emojiTargets34 = [
+      path.join(REPO_ROOT, 'index.html'),
+      path.join(REPO_ROOT, 'style.css'),
+      path.join(REPO_ROOT, 'manifest.json'),
+      path.join(REPO_ROOT, 'docs/IMPLEMENTATION_LOG.md'),
+      path.join(REPO_ROOT, 'docs/PROJECT_MEMORY_HANDOFF.md')
+    ];
+    const collectSrc34 = (dir) => {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) collectSrc34(full);
+        else if (ent.name.endsWith('.js') && ent.name !== 'PixelFont.js') {
+          emojiTargets34.push(full);
+        }
+      }
+    };
+    collectSrc34(path.join(REPO_ROOT, 'src'));
+    for (const fPath of emojiTargets34) {
+      const txt = fs.readFileSync(fPath, 'utf8');
+      const m = txt.match(emojiRe34);
+      if (m) {
+        throw new Error(
+          `[Suite 34.1] Forbidden Unicode emoji '${m[0]}' (U+${m[0].codePointAt(0).toString(16).toUpperCase()}) in ${fPath}`
+        );
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 34.2: Parallel Pixel Audit of All 11 Wide-Canvas EX Art Suites
+  //       (`*_ex_sheet.png` 9600x2400, `*_ex_vfx.png` 6240x1664, `*_ex_portrait.png` 128x128)
+  // --------------------------------------------------------------------------
+  {
+    const exIds = EX_HERO_MATRIX_34.map(([id]) => id);
+    const workerCount34 = Math.min(6, Math.max(4, os.cpus()?.length || 4));
+    const shards = Array.from({ length: workerCount34 }, () => []);
+    exIds.forEach((id, idx) => shards[idx % workerCount34].push(id));
+
+    const workerScript = `
+      const { parentPort, workerData } = require('node:worker_threads');
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const zlib = require('node:zlib');
+
+      const sheetArr = new Uint8Array(9600 * 2400 * 4);
+      const sheetU32 = new Uint32Array(sheetArr.buffer);
+      const vfxArr = new Uint8Array(6240 * 1664 * 4);
+      const vfxU32 = new Uint32Array(vfxArr.buffer);
+
+      function decodeRgba(pngBytes, out, expW, expH, label) {
+        if (pngBytes.length < 29 || pngBytes.readUInt32BE(0) !== 0x89504e47) {
+          throw new Error('[Suite 34.2] Invalid PNG magic on ' + label);
+        }
+        const w = pngBytes.readUInt32BE(16);
+        const h = pngBytes.readUInt32BE(20);
+        const bd = pngBytes[24];
+        const ct = pngBytes[25];
+        if (w !== expW || h !== expH || bd !== 8 || ct !== 6) {
+          throw new Error('[Suite 34.2] Unexpected PNG ' + label + ': ' + w + 'x' + h + ' bd=' + bd + ' ct=' + ct);
+        }
+        const chunks = [];
+        let off = 8;
+        while (off + 8 <= pngBytes.length) {
+          const len = pngBytes.readUInt32BE(off);
+          const t = pngBytes.readUInt32BE(off + 4);
+          if (t === 0x49444154) chunks.push(pngBytes.subarray(off + 8, off + 8 + len));
+          else if (t === 0x49454e44) break;
+          off += 12 + len;
+        }
+        const rawBuf = zlib.inflateSync(chunks.length === 1 ? chunks[0] : Buffer.concat(chunks));
+        const raw = new Uint8Array(rawBuf.buffer, rawBuf.byteOffset, rawBuf.byteLength);
+        const stride = w * 4;
+        for (let y = 0; y < h; y++) {
+          const srcRow = y * (stride + 1);
+          const f = raw[srcRow];
+          const s0 = srcRow + 1;
+          const d0 = y * stride;
+          const p0 = d0 - stride;
+          if (f === 0) {
+            out.set(raw.subarray(s0, s0 + stride), d0);
+          } else if (f === 1) {
+            let a0 = (out[d0] = raw[s0]);
+            let a1 = (out[d0 + 1] = raw[s0 + 1]);
+            let a2 = (out[d0 + 2] = raw[s0 + 2]);
+            let a3 = (out[d0 + 3] = raw[s0 + 3]);
+            for (let i = 4; i < stride; i += 4) {
+              a0 = out[d0 + i] = (raw[s0 + i] + a0) & 0xff;
+              a1 = out[d0 + i + 1] = (raw[s0 + i + 1] + a1) & 0xff;
+              a2 = out[d0 + i + 2] = (raw[s0 + i + 2] + a2) & 0xff;
+              a3 = out[d0 + i + 3] = (raw[s0 + i + 3] + a3) & 0xff;
+            }
+          } else if (f === 2) {
+            if (y === 0) out.set(raw.subarray(s0, s0 + stride), d0);
+            else for (let i = 0; i < stride; i++) out[d0 + i] = (raw[s0 + i] + out[p0 + i]) & 0xff;
+          } else if (f === 3) {
+            if (y === 0) {
+              for (let i = 0; i < 4; i++) out[d0 + i] = raw[s0 + i];
+              for (let i = 4; i < stride; i++) out[d0 + i] = (raw[s0 + i] + (out[d0 + i - 4] >> 1)) & 0xff;
+            } else {
+              for (let i = 0; i < 4; i++) out[d0 + i] = (raw[s0 + i] + (out[p0 + i] >> 1)) & 0xff;
+              for (let i = 4; i < stride; i++) out[d0 + i] = (raw[s0 + i] + ((out[d0 + i - 4] + out[p0 + i]) >> 1)) & 0xff;
+            }
+          } else if (f === 4) {
+            if (y === 0) {
+              for (let i = 0; i < 4; i++) out[d0 + i] = raw[s0 + i];
+              for (let i = 4; i < stride; i++) out[d0 + i] = (raw[s0 + i] + out[d0 + i - 4]) & 0xff;
+            } else {
+              let a0 = (out[d0] = (raw[s0] + out[p0]) & 0xff);
+              let a1 = (out[d0 + 1] = (raw[s0 + 1] + out[p0 + 1]) & 0xff);
+              let a2 = (out[d0 + 2] = (raw[s0 + 2] + out[p0 + 2]) & 0xff);
+              let a3 = (out[d0 + 3] = (raw[s0 + 3] + out[p0 + 3]) & 0xff);
+              let c0 = out[p0], c1 = out[p0 + 1], c2 = out[p0 + 2], c3 = out[p0 + 3];
+              for (let i = 4; i < stride; i += 4) {
+                const b0 = out[p0 + i], b1 = out[p0 + i + 1], b2 = out[p0 + i + 2], b3 = out[p0 + i + 3];
+                let p = a0 + b0 - c0, pa = p < a0 ? a0 - p : p - a0, pb = p < b0 ? b0 - p : p - b0, pc = p < c0 ? c0 - p : p - c0;
+                a0 = out[d0 + i] = (raw[s0 + i] + (pa <= pb && pa <= pc ? a0 : pb <= pc ? b0 : c0)) & 0xff; c0 = b0;
+                p = a1 + b1 - c1; pa = p < a1 ? a1 - p : p - a1; pb = p < b1 ? b1 - p : p - b1; pc = p < c1 ? c1 - p : p - c1;
+                a1 = out[d0 + i + 1] = (raw[s0 + i + 1] + (pa <= pb && pa <= pc ? a1 : pb <= pc ? b1 : c1)) & 0xff; c1 = b1;
+                p = a2 + b2 - c2; pa = p < a2 ? a2 - p : p - a2; pb = p < b2 ? b2 - p : p - b2; pc = p < c2 ? c2 - p : p - c2;
+                a2 = out[d0 + i + 2] = (raw[s0 + i + 2] + (pa <= pb && pa <= pc ? a2 : pb <= pc ? b2 : c2)) & 0xff; c2 = b2;
+                p = a3 + b3 - c3; pa = p < a3 ? a3 - p : p - a3; pb = p < b3 ? b3 - p : p - b3; pc = p < c3 ? c3 - p : p - c3;
+                a3 = out[d0 + i + 3] = (raw[s0 + i + 3] + (pa <= pb && pa <= pc ? a3 : pb <= pc ? b3 : c3)) & 0xff; c3 = b3;
+              }
+            }
+          }
+        }
+      }
+
+      for (const id of workerData.ids) {
+        const sheetPath = path.join(workerData.repoRoot, 'assets/sprites', id + '_sheet.png');
+        decodeRgba(fs.readFileSync(sheetPath), sheetArr, 9600, 2400, id + '_sheet.png');
+
+        let borderClips = 0;
+        for (let r = 0; r < 10; r++) {
+          let transitions = 0;
+          for (let c = 0; c < 30; c++) {
+            const ox = c * 320;
+            const oy = r * 240;
+            let clipped = false;
+            for (let m = 0; m < 4 && !clipped; m++) {
+              const topRow = (oy + m) * 9600 + ox;
+              const botRow = (oy + 239 - m) * 9600 + ox;
+              for (let x = 0; x < 320; x++) {
+                if (sheetU32[topRow + x] >= 0x01000000 || sheetU32[botRow + x] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+              for (let y = 0; y < 240 && !clipped; y++) {
+                const rowOff = (oy + y) * 9600 + ox;
+                if (sheetU32[rowOff + m] >= 0x01000000 || sheetU32[rowOff + 319 - m] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+            }
+            if (clipped) borderClips++;
+
+            if (c > 0) {
+              const prevOx = (c - 1) * 320;
+              let differs = false;
+              for (let y = 0; y < 240 && !differs; y += 2) {
+                const rb = (oy + y) * 9600;
+                for (let x = 0; x < 320; x += 2) {
+                  if (sheetU32[rb + prevOx + x] !== sheetU32[rb + ox + x]) {
+                    differs = true;
+                    break;
+                  }
+                }
+              }
+              if (differs) transitions++;
+            }
+          }
+          if (transitions !== 29) {
+            throw new Error('[Suite 34.2] Expected 29/29 transitions on ' + id + '_sheet Row ' + r + ', got ' + transitions);
+          }
+        }
+        if (borderClips !== 0) {
+          throw new Error('[Suite 34.2] Expected 0/300 border clips on ' + id + '_sheet.png, got ' + borderClips);
+        }
+
+        for (const snapCol of [3, 9, 17, 25]) {
+          const ox = snapCol * 320;
+          const oy = 2 * 240;
+          let maxFrontX = 0;
+          let frontPx = 0;
+          for (let y = 0; y < 240; y++) {
+            const rb = (oy + y) * 9600 + ox;
+            for (let x = 201; x < 320; x++) {
+              if (sheetU32[rb + x] >= 0x01000000) {
+                frontPx++;
+                if (x > maxFrontX) maxFrontX = x;
+              }
+            }
+          }
+          if (maxFrontX <= 200 || frontPx < 240) {
+            throw new Error('[Suite 34.2] Expected wide smear reach (x > 200, >= 240px) on ' + id + ' Row 2 F' + String(snapCol).padStart(2, '0') + ', got maxX=' + maxFrontX + ', px=' + frontPx);
+          }
+        }
+
+        const vfxPath = path.join(workerData.repoRoot, 'assets/sprites', id + '_vfx.png');
+        decodeRgba(fs.readFileSync(vfxPath), vfxArr, 6240, 1664, id + '_vfx.png');
+        let vfxClips = 0;
+        for (let r = 0; r < 8; r++) {
+          for (let c = 0; c < 30; c++) {
+            const ox = c * 208;
+            const oy = r * 208;
+            let clipped = false;
+            const topRow = oy * 6240 + ox;
+            const botRow = (oy + 207) * 6240 + ox;
+            for (let x = 0; x < 208; x++) {
+              if (vfxU32[topRow + x] >= 0x01000000 || vfxU32[botRow + x] >= 0x01000000) {
+                clipped = true;
+                break;
+              }
+            }
+            for (let y = 0; y < 208 && !clipped; y++) {
+              const rowOff = (oy + y) * 6240 + ox;
+              if (vfxU32[rowOff] >= 0x01000000 || vfxU32[rowOff + 207] >= 0x01000000) {
+                clipped = true;
+                break;
+              }
+            }
+            if (clipped) vfxClips++;
+          }
+        }
+        if (vfxClips !== 0) {
+          throw new Error('[Suite 34.2] Expected 0/240 border clips on ' + id + '_vfx.png, got ' + vfxClips);
+        }
+
+        const portBuf = fs.readFileSync(path.join(workerData.repoRoot, 'assets/sprites', id + '_portrait.png'));
+        if (portBuf.readUInt32BE(0) !== 0x89504e47 || portBuf.readUInt32BE(16) !== 128 || portBuf.readUInt32BE(20) !== 128) {
+          throw new Error('[Suite 34.2] Expected ' + id + '_portrait.png to be 128x128 PNG!');
+        }
+      }
+      parentPort.postMessage({ ok: true, count: workerData.ids.length });
+    `;
+
+    await Promise.all(
+      shards.map(
+        (ids) =>
+          new Promise((resolve, reject) => {
+            const w = new Worker34(workerScript, {
+              eval: true,
+              workerData: { repoRoot: REPO_ROOT, ids }
+            });
+            w.once('message', (msg) => (msg?.ok ? resolve(msg) : reject(new Error('Worker failed'))));
+            w.once('error', reject);
+            w.once('exit', (code) => {
+              if (code !== 0) reject(new Error(`[Suite 34.2] PNG worker exited with code ${code}`));
+            });
+          })
+      )
+    );
+
+    // Verify PixelForge wide-cell metrics & native right-facing (+X) rule across all 22 heroes
+    const pfAssets34 = PixelForge.initAssets();
+    for (const exKey of EX_HERO_KEYS) {
+      const m = PixelForge.resolveSheetMetrics(
+        pfAssets34[exKey],
+        { naturalWidth: 9600, naturalHeight: 2400 },
+        208,
+        208
+      );
+      if (m.cellW !== 320 || m.cellH !== 240 || m.baseX !== -112 || m.baseY !== -230) {
+        throw new Error(`[Suite 34.2] Bad EX sheet metrics for ${exKey}: ${JSON.stringify(m)}`);
+      }
+    }
+    for (const legKey of LEGACY_HERO_KEYS) {
+      const m = PixelForge.resolveSheetMetrics(
+        pfAssets34[legKey],
+        { naturalWidth: 6240, naturalHeight: 2080 },
+        208,
+        208
+      );
+      if (m.cellW !== 208 || m.cellH !== 208 || m.baseX !== -104 || m.baseY !== -198) {
+        throw new Error(`[Suite 34.2] Bad Legacy sheet metrics for ${legKey}: ${JSON.stringify(m)}`);
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 34.3: `#roster-version-bar` UI, Tab Switching (`EX VERSION` <-> `LEGACY VERSION`),
+  //       Cross-Version Matchups & 22-Hero `PixelForge.releaseInactiveAssets` Audit
+  // --------------------------------------------------------------------------
+  {
+    if (
+      EX_HERO_KEYS.length !== 11 ||
+      LEGACY_HERO_KEYS.length !== 11 ||
+      Object.keys(CHAMPION_ROSTER).length !== 22 ||
+      PixelForge.ALL_HERO_KEYS.length !== 22
+    ) {
+      throw new Error(
+        `[Suite 34.3] Expected 11 EX + 11 Legacy = 22 registered champions, got ex=${EX_HERO_KEYS.length}, leg=${LEGACY_HERO_KEYS.length}, roster=${Object.keys(CHAMPION_ROSTER).length}`
+      );
+    }
+
+    const html34 = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const exCardTags = html34.match(/data-roster-group="ex"/g) || [];
+    const legCardTags = html34.match(/data-roster-group="legacy"/g) || [];
+    if (
+      !html34.includes('id="roster-version-bar"') ||
+      !html34.includes('id="btn-roster-version-ex"') ||
+      !html34.includes('id="btn-roster-version-legacy"') ||
+      !html34.includes('EX VERSION') ||
+      !html34.includes('LEGACY VERSION') ||
+      exCardTags.length !== 11 ||
+      legCardTags.length !== 11
+    ) {
+      throw new Error(
+        `[Suite 34.3] Expected #roster-version-bar + 11 EX cards + 11 Legacy cards in index.html, got exCards=${exCardTags.length}, legCards=${legCardTags.length}`
+      );
+    }
+    for (const heroKey of [...EX_HERO_KEYS, ...LEGACY_HERO_KEYS]) {
+      if (
+        !html34.includes(`id="card-${heroKey}"`) ||
+        !html34.includes(`id="preview-${heroKey}"`) ||
+        !html34.includes(`id="ribbon-${heroKey}"`)
+      ) {
+        throw new Error(`[Suite 34.3] Missing DOM card/preview/ribbon IDs for '${heroKey}' in index.html!`);
+      }
+    }
+
+    // Exercise live Game.prototype.setRosterVersion / syncRosterVersionTabs / getActiveRosterPool state machine
+    const makeMockClassList = (init = []) => {
+      const set = new Set(init);
+      return {
+        add: (...c) => c.forEach((x) => set.add(x)),
+        remove: (...c) => c.forEach((x) => set.delete(x)),
+        toggle: (c, force) => {
+          const next = force === undefined ? !set.has(c) : Boolean(force);
+          if (next) set.add(c);
+          else set.delete(c);
+          return next;
+        },
+        contains: (c) => set.has(c)
+      };
+    };
+    const makeMockTabEl = (selected) => {
+      const attrs = { 'aria-selected': String(selected) };
+      return {
+        classList: makeMockClassList(selected ? ['active-version-tab'] : []),
+        setAttribute: (k, v) => {
+          attrs[k] = String(v);
+        },
+        getAttribute: (k) => attrs[k]
+      };
+    };
+    const mockCards = {};
+    for (const k of EX_HERO_KEYS) {
+      mockCards[k] = {
+        hidden: false,
+        classList: makeMockClassList([]),
+        getAttribute: (attr) => (attr === 'data-roster-group' ? 'ex' : null)
+      };
+    }
+    for (const k of LEGACY_HERO_KEYS) {
+      mockCards[k] = {
+        hidden: true,
+        classList: makeMockClassList(['roster-group-hidden']),
+        getAttribute: (attr) => (attr === 'data-roster-group' ? 'legacy' : null)
+      };
+    }
+
+    const rosterStateHarness = {
+      rosterVersion: 'ex',
+      landingStep: 'roster',
+      gameMode: '1v1',
+      slot1Hero: 'warrior_ex',
+      slot2Hero: 'reaper_ex',
+      slot1PartnerHero: 'titan_ex',
+      slot2PartnerHero: 'mage_ex',
+      btnRosterVersionEx: makeMockTabEl(true),
+      btnRosterVersionLegacy: makeMockTabEl(false),
+      cards: mockCards,
+      audio: null,
+      isAdventureMode: Game.prototype.isAdventureMode,
+      getActiveRosterPool: Game.prototype.getActiveRosterPool,
+      syncRosterVersionTabs: Game.prototype.syncRosterVersionTabs,
+      setRosterVersion: Game.prototype.setRosterVersion,
+      ensureDistinctTeamPartners: Game.prototype.ensureDistinctTeamPartners,
+      syncRosterSelectionUI() {}
+    };
+
+    // Default EX VERSION state
+    rosterStateHarness.setRosterVersion('ex', false);
+    if (
+      rosterStateHarness.rosterVersion !== 'ex' ||
+      rosterStateHarness.getActiveRosterPool().length !== 11 ||
+      rosterStateHarness.btnRosterVersionEx.getAttribute('aria-selected') !== 'true' ||
+      rosterStateHarness.btnRosterVersionLegacy.getAttribute('aria-selected') !== 'false' ||
+      EX_HERO_KEYS.some((k) => mockCards[k].hidden || mockCards[k].classList.contains('roster-group-hidden')) ||
+      LEGACY_HERO_KEYS.some((k) => !mockCards[k].hidden || !mockCards[k].classList.contains('roster-group-hidden'))
+    ) {
+      throw new Error('[Suite 34.3] Default EX VERSION tab failed to show 11 EX cards & hide 11 Legacy cards!');
+    }
+
+    // Switch to LEGACY VERSION in Versus Mode & Adventure Mode
+    for (const mode of ['1v1', 'adventure']) {
+      rosterStateHarness.gameMode = mode;
+      rosterStateHarness.setRosterVersion('legacy', false);
+      if (
+        rosterStateHarness.rosterVersion !== 'legacy' ||
+        rosterStateHarness.getActiveRosterPool()[0] !== 'warrior' ||
+        rosterStateHarness.btnRosterVersionEx.getAttribute('aria-selected') !== 'false' ||
+        rosterStateHarness.btnRosterVersionLegacy.getAttribute('aria-selected') !== 'true' ||
+        LEGACY_HERO_KEYS.some((k) => mockCards[k].hidden || mockCards[k].classList.contains('roster-group-hidden')) ||
+        EX_HERO_KEYS.some((k) => !mockCards[k].hidden || !mockCards[k].classList.contains('roster-group-hidden'))
+      ) {
+        throw new Error(`[Suite 34.3] LEGACY VERSION tab failed in mode='${mode}'!`);
+      }
+    }
+
+    // Cross-version P1 EX (`mage_ex`) vs P2 Legacy (`ronin`) matchup + 22-hero VRAM release audit
+    const crossP1 = new CHAMPION_ROSTER.mage_ex.cls({ x: 340, groundY: 560, facing: 1 });
+    const crossP2 = new CHAMPION_ROSTER.ronin.cls({ x: 860, groundY: 560, facing: -1 });
+    if (
+      !(crossP1 instanceof Fighter) ||
+      !(crossP2 instanceof Fighter) ||
+      crossP1.heroId !== 'mage_ex' ||
+      crossP2.heroId !== 'ronin'
+    ) {
+      throw new Error('[Suite 34.3] Cross-version P1 EX vs P2 Legacy Fighter instantiation failed!');
+    }
+
+    // Verify PixelForge.releaseInactiveAssets cleans all 20 inactive hero keys while keeping active + shared textures
+    {
+      const prevWin = globalThis.window;
+      const prevHtmlImg = globalThis.HTMLImageElement;
+      class FakeBrowserImg {
+        constructor(src = '') {
+          this._origSrc = src;
+          this._deferredSrc = null;
+          this.src = src;
+        }
+        removeAttribute(attr) {
+          if (attr === 'src') this.src = '';
+        }
+      }
+      try {
+        globalThis.HTMLImageElement = FakeBrowserImg;
+        globalThis.window = { ...prevWin };
+        const savedAssets = PixelForge.assets;
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps114');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps114');
+        const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
+        const testAssets = {};
+        for (const hk of PixelForge.ALL_HERO_KEYS) {
+          testAssets[hk] = {
+            sheet: new FakeBrowserImg(`assets/sprites/${hk}_sheet.png`),
+            vfx: new FakeBrowserImg(`assets/sprites/${hk}_vfx.png`),
+            portrait: new FakeBrowserImg(`assets/sprites/${hk}_portrait.png`),
+            ...(hk === 'mage' || hk === 'mage_ex' ? { meteor: sharedMeteor } : {}),
+            ...(hk === 'warrior' || hk === 'warrior_ex' || hk === 'priestess' || hk === 'priestess_ex'
+              ? { wings: sharedWings }
+              : {}),
+            ...(hk === 'reaper' || hk === 'reaper_ex' ? { companions: sharedCompanions } : {})
+          };
+        }
+        PixelForge.assets = testAssets;
+        PixelForge.releaseInactiveAssets(['mage_ex', 'ronin'], [], false);
+
+        if (
+          testAssets.mage_ex.sheet._deferredSrc !== null ||
+          testAssets.ronin.sheet._deferredSrc !== null ||
+          sharedMeteor._deferredSrc !== null ||
+          !sharedWings._deferredSrc ||
+          !sharedCompanions._deferredSrc
+        ) {
+          throw new Error('[Suite 34.3] releaseInactiveAssets mishandled active/shared EX+Legacy assets!');
+        }
+        let releasedCount = 0;
+        for (const hk of PixelForge.ALL_HERO_KEYS) {
+          if (hk === 'mage_ex' || hk === 'ronin') continue;
+          if (testAssets[hk].sheet._deferredSrc && testAssets[hk].vfx._deferredSrc) {
+            releasedCount++;
+          }
+        }
+        PixelForge.assets = savedAssets;
+        if (releasedCount !== 20) {
+          throw new Error(
+            `[Suite 34.3] Expected 20/22 inactive hero sheets+vfx released, got ${releasedCount}`
+          );
+        }
+      } finally {
+        globalThis.window = prevWin;
+        if (prevHtmlImg === undefined) delete globalThis.HTMLImageElement;
+        else globalThis.HTMLImageElement = prevHtmlImg;
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 34.4: Live Game-Loop Execution for All 11 EX Champions Across VS & Adventure Mode
+  // --------------------------------------------------------------------------
+  {
+    const iconCtx34 = createMockCtx();
+    for (const [heroId, ExCls, expectedWrathProj, expectedStageDomain] of EX_HERO_MATRIX_34) {
+      const vsTrack = { rotateCalls: 0, quadCalls: 0 };
+      const vsCtx = createMockCtx(vsTrack);
+      let ellipseCalls = 0;
+      vsCtx.ellipse = () => {
+        ellipseCalls++;
+      };
+
+      const vsGame = createMockGame();
+      let triggeredDomain = null;
+      let domainTriggerTime = null;
+      let activeHeroRef = null;
+      vsGame.renderer.triggerInfernoStage = () => {
+        if (!triggeredDomain) {
+          triggeredDomain = 'inferno';
+          domainTriggerTime = activeHeroRef?.stateTimer ?? 0;
+        }
+      };
+      vsGame.renderer.triggerShogunateStage = () => {
+        if (!triggeredDomain) {
+          triggeredDomain = 'shogunate';
+          domainTriggerTime = activeHeroRef?.stateTimer ?? 0;
+        }
+      };
+      vsGame.renderer.triggerGlacialStage = () => {
+        if (!triggeredDomain) {
+          triggeredDomain = 'glacial';
+          domainTriggerTime = activeHeroRef?.stateTimer ?? 0;
+        }
+      };
+      vsGame.renderer.setStageTransformation = (domainKey) => {
+        if (!triggeredDomain) {
+          triggeredDomain = domainKey;
+          domainTriggerTime = activeHeroRef?.stateTimer ?? 0;
+        }
+      };
+
+      const startDist = 148;
+      const ex = new ExCls({ x: 380, groundY: 560, facing: 1, team: 'left' });
+      const dummy = new Warrior({ x: 380 + startDist, groundY: 560, facing: -1, name: 'Dummy', team: 'right' });
+      activeHeroRef = ex;
+      ex.game = vsGame;
+      dummy.game = vsGame;
+      ex.maxHp = 999999;
+      ex.hp = 999999;
+      dummy.maxHp = 999999;
+      dummy.hp = 999999;
+      vsGame.fighters = [ex, dummy];
+      vsGame.getEnemiesOf = (f) => (f === ex ? [dummy] : [ex]);
+      vsGame.getTargetFor = (f) => (f === ex ? dummy : ex);
+      vsGame.spawnProjectile = (p) => vsGame.vfx.projectiles.push(p);
+      vsGame.vfx.projectiles.length = 0;
+
+      // (1) VS 4-Beat AUTO_ATTACK chain (`0,1,2,3`, `vx = 0` snap plant, `_hitStopTimer`, damage, zero IDLE reset)
+      ex.skillCooldown = 999;
+      ex.crouchCooldown = 999;
+      ex.vaultCooldown = 999;
+      ex.dashCooldown = 999;
+      ex.dodgeCooldown = 999;
+      ex.mana = 0;
+      ex.finisherGauge = 0;
+      dummy.stunTimer = 999;
+      ex.comboStep = 0;
+      ex.setState('AUTO_ATTACK');
+
+      const seenBeats = [];
+      let sawIdleMidChain = false;
+      let sawSnapZeroVx = false;
+      let sawHitStop = false;
+      const hpBeforeAuto = dummy.hp;
+
+      for (let tick = 0; tick < 160; tick++) {
+        if (ex.state === 'AUTO_ATTACK') {
+          if (seenBeats[seenBeats.length - 1] !== ex._autoVariant) {
+            seenBeats.push(ex._autoVariant);
+          }
+          if (ex._autoVariant < 3) {
+            ex.queueNextComboBeat?.();
+          }
+        } else if (seenBeats.length > 0 && seenBeats.length < 4 && ex.state === 'IDLE') {
+          sawIdleMidChain = true;
+        }
+
+        ex.update(1 / 60, dummy, vsGame);
+        vsGame.vfx.update(1 / 60, 560, vsGame.renderer, vsGame.audio);
+        dummy.stunTimer = 999;
+
+        if (ex.state === 'AUTO_ATTACK' && Math.abs(ex.vx) < 0.001 && ex.stateTimer >= 0.07) {
+          sawSnapZeroVx = true;
+        }
+        if ((ex._hitStopTimer || 0) > 0) {
+          sawHitStop = true;
+        }
+        if (tick % 16 === 0) {
+          ex.draw(vsCtx, false, vsGame.renderer);
+        }
+        if (seenBeats.length >= 4 && ex.state === 'IDLE') break;
+      }
+
+      if (
+        seenBeats.slice(0, 4).join(',') !== '0,1,2,3' ||
+        sawIdleMidChain ||
+        !sawSnapZeroVx ||
+        !sawHitStop ||
+        dummy.hp >= hpBeforeAuto
+      ) {
+        throw new Error(
+          `[Suite 34.4 VS-Auto ${heroId}] Expected 0,1,2,3 zero-IDLE chain w/ vx=0 snap, _hitStopTimer & damage; got beats=[${seenBeats.join(',')}], idleMid=${sawIdleMidChain}, vx0=${sawSnapZeroVx}, hitStop=${sawHitStop}, dmg=${hpBeforeAuto - dummy.hp}`
+        );
+      }
+
+      if (heroId === 'ronin_ex') {
+        // Also exercise RoninEx Shunpo Draw-Cut (`CROUCH`) and verify strict `'ronin_slash'` & 0 `'fireball'`
+        ex.startCrouch?.(dummy, vsGame);
+        for (let i = 0; i < 40 && ex.state === 'CROUCH'; i++) {
+          ex.update(1 / 30, dummy, vsGame);
+        }
+        const hasRoninSlash = vsGame.vfx.projectiles.some((p) => p.type === 'ronin_slash');
+        const hasFireball = vsGame.vfx.projectiles.some((p) => p.type === 'fireball');
+        if (!hasRoninSlash || hasFireball) {
+          throw new Error(
+            `[Suite 34.4 ronin_ex] Expected piercing 'ronin_slash' (${hasRoninSlash}) and 0 'fireball' (${hasFireball})!`
+          );
+        }
+      }
+
+      // (2) VS SKILL, ULTIMATE & TRUE_ULTIMATE + Stage Domain Triggers
+      for (const [mode, maxSteps] of [
+        ['SKILL', 65],
+        ['ULTIMATE', 165],
+        ['TRUE_ULTIMATE', 200]
+      ]) {
+        ex.x = 410;
+        ex.y = 560;
+        ex.vx = 0;
+        ex.vy = 0;
+        ex.facing = 1;
+        dummy.x = 560;
+        dummy.y = 560;
+        dummy.vx = 0;
+        dummy.vy = 0;
+        dummy.isRooted = false;
+        dummy.stunTimer = 999;
+        ex.tankedDamage = 480;
+        if (heroId === 'priestess_ex') {
+          ex.hp = Math.floor(ex.maxHp * 0.6);
+        }
+        const hpStart = dummy.hp;
+        if (mode === 'ULTIMATE') ex.mana = ex.maxMana;
+        if (mode === 'TRUE_ULTIMATE') {
+          ex.finisherGauge = ex.maxFinisherGauge;
+          triggeredDomain = null;
+          domainTriggerTime = null;
+        }
+        ex.setState(mode);
+
+        for (let step = 0; step < maxSteps; step++) {
+          ex.update(1 / 30, dummy, vsGame);
+          vsGame.vfx.update(1 / 30, 560, vsGame.renderer, vsGame.audio);
+          if (!Number.isFinite(ex.x) || !Number.isFinite(ex.y)) {
+            throw new Error(`[Suite 34.4 ${heroId} ${mode}] Non-finite fighter coords!`);
+          }
+          if (step % 15 === 0 || ex.state !== mode) {
+            ex.drawForegroundOverlay?.(vsCtx, vsGame.renderer);
+            ex.draw(vsCtx, false, vsGame.renderer);
+            ex.drawUltimateForeground?.(vsCtx, vsGame.renderer);
+          }
+          if (ex.state !== mode) break;
+        }
+        if (dummy.hp >= hpStart || ex.state !== 'IDLE') {
+          throw new Error(
+            `[Suite 34.4 ${heroId} ${mode}] Expected real damage (${hpStart - dummy.hp}) & clean IDLE exit (got state=${ex.state})`
+          );
+        }
+      }
+
+      if (expectedStageDomain) {
+        if (triggeredDomain !== expectedStageDomain) {
+          throw new Error(
+            `[Suite 34.4 ${heroId}] Expected TRUE_ULTIMATE stage domain '${expectedStageDomain}', got '${triggeredDomain}'`
+          );
+        }
+        if (heroId === 'mage_ex' && (domainTriggerTime === null || domainTriggerTime < 3.2)) {
+          throw new Error(
+            `[Suite 34.4 mage_ex] Expected inferno stage trigger strictly at meteor impact t >= 3.22s, got t=${domainTriggerTime}`
+          );
+        }
+        if (heroId === 'icemage_ex' && (domainTriggerTime === null || domainTriggerTime < 3.24)) {
+          throw new Error(
+            `[Suite 34.4 icemage_ex] Expected glacial stage trigger strictly at scepter tap t >= 3.28s, got t=${domainTriggerTime}`
+          );
+        }
+      }
+
+      if (vsTrack.rotateCalls !== 0 || ellipseCalls !== 0) {
+        throw new Error(
+          `[Suite 34.4 ${heroId}] Expected 0 ctx.rotate (${vsTrack.rotateCalls}) & 0 ctx.ellipse (${ellipseCalls})!`
+        );
+      }
+
+      // (3) Adventure Mode Kit, Skill Tree, `wrath_1` Authentic Projectile & Bespoke Dodge
+      const kit = ADVENTURE_HERO_KITS[heroId];
+      const theme = HERO_SKILL_TREE_THEMES[heroId];
+      if (!kit || !theme || !theme.branches || !theme.nodes || Object.keys(theme.nodes).length < 9) {
+        throw new Error(`[Suite 34.4 Adv ${heroId}] Missing ADVENTURE_HERO_KITS or 9-node HERO_SKILL_TREE_THEMES!`);
+      }
+      for (let slot = 0; slot < 4; slot++) {
+        PixelForge.drawSkillIcon(iconCtx34, heroId, slot, 64, 64, 0.25);
+        PixelForge.drawHeroSheetIcon(iconCtx34, heroId, slot, 64, 64, 0.25);
+      }
+      for (const act of ['attack', 'dodge', 'skill', 'overdrive', 'ultimate']) {
+        PixelForge.drawAdventureActionIcon(iconCtx34, heroId, act, 64, 64, 0.25);
+      }
+
+      const advGame = createMockGame();
+      advGame.gameMode = 'adventure';
+      advGame.isAdventureMode = () => true;
+      advGame.spawnProjectile = (p) => advGame.vfx.projectiles.push(p);
+
+      const advHero = new ExCls({ x: 360, groundY: 561, facing: 1, team: 'left' });
+      advHero.game = advGame;
+      advGame.leftFighter = advHero;
+      advGame.fighters = [advHero];
+
+      const adv = new AdventureManager(advGame);
+      advGame.adventure = adv;
+      adv.startCampaign(advHero);
+      adv.setAutoPlay(false, false);
+      adv.manualTargetLock = false;
+      adv.lockActive = true;
+      adv.lockMinX = 180;
+      adv.lockMaxX = 980;
+
+      adv.progression.skillPoints = 4;
+      adv.progression.upgradeNode('wrath_1', advHero);
+      adv.progression.upgradeNode('wrath_1', advHero);
+      if (adv.progression.getRank('wrath_1') !== 2) {
+        throw new Error(`[Suite 34.4 Adv ${heroId}] Failed to upgrade wrath_1 to rank 2!`);
+      }
+      advGame.vfx.projectiles.length = 0;
+
+      const mob = adv.spawnMonster('templar', 485, { groundY: 561, skipPortal: true });
+      mob.maxHp = 999999;
+      mob.hp = 999999;
+      mob.autoCooldown = 999;
+      mob.skillCooldown = 999;
+
+      const manualBeats = [];
+      adv.heldAttack = true;
+      for (let tick = 0; tick < 120 && manualBeats.length < 4; tick++) {
+        const prevVar = advHero._autoVariant;
+        const prevState = advHero.state;
+        mob.x = advHero.x + 118;
+        adv.processPlayerControls(1 / 30, advHero, mob);
+        if (
+          advHero.state === 'AUTO_ATTACK' &&
+          (prevState !== 'AUTO_ATTACK' || advHero._autoVariant !== prevVar)
+        ) {
+          manualBeats.push(advHero._autoVariant);
+        }
+      }
+      adv.heldAttack = false;
+
+      const spawnedExpectedProj = advGame.vfx.projectiles.some((p) => p.type === expectedWrathProj);
+      const roninLeakedFireball =
+        heroId === 'ronin_ex' && advGame.vfx.projectiles.some((p) => p.type === 'fireball');
+      if (
+        manualBeats.slice(0, 4).join(',') !== '0,1,2,3' ||
+        !spawnedExpectedProj ||
+        roninLeakedFireball
+      ) {
+        throw new Error(
+          `[Suite 34.4 Adv ${heroId}] Expected manual 0,1,2,3 + wrath_1 '${expectedWrathProj}' (beats=[${manualBeats.join(',')}], projs=[${advGame.vfx.projectiles.map((p) => p.type).join(',')}], roninFireball=${roninLeakedFireball})`
+        );
+      }
+
+      // Bespoke Adventure Dodge (`startHeroAdventureDodge` + `updateHeroAdventureDodge` + `drawAdventureDodgeFX`)
+      advHero.setState('IDLE');
+      advGame.vfx.projectiles.length = 0;
+      advHero.dodgeCooldown = 0;
+      adv.startHeroAdventureDodge(advHero, 1);
+      if (
+        !advHero._advPureDodge ||
+        !advHero.isInvulnerable ||
+        advHero._advDodgeFrameOverride < 180 ||
+        advHero._advDodgeFrameOverride > 209
+      ) {
+        throw new Error(
+          `[Suite 34.4 Adv-Dodge ${heroId}] Expected Row 6 (180..209) invulnerable dodge, got active=${advHero._advPureDodge}, frame=${advHero._advDodgeFrameOverride}`
+        );
+      }
+      const dodgeTrack = { rotateCalls: 0, quadCalls: 0 };
+      const dodgeCtx = createMockCtx(dodgeTrack);
+      for (let d = 0; d < 10; d++) {
+        adv.updateHeroAdventureDodge(1 / 30, advHero);
+        advHero.drawAdventureDodgeFX?.(dodgeCtx, advGame.renderer, 'back');
+        advHero.draw(dodgeCtx, false, advGame.renderer);
+        advHero.drawAdventureDodgeFX?.(dodgeCtx, advGame.renderer, 'front');
+      }
+      adv.stopCampaign();
+      if (advGame.vfx.projectiles.length !== 0 || dodgeTrack.rotateCalls !== 0) {
+        throw new Error(
+          `[Suite 34.4 Adv-Dodge ${heroId}] Expected 0 dodge projectiles (${advGame.vfx.projectiles.length}) & 0 ctx.rotate (${dodgeTrack.rotateCalls})`
+        );
+      }
+    }
+  }
+
+  const suite34ElapsedMs = performance.now() - suite34StartMs;
+  if (suite34ElapsedMs >= 3000) {
+    throw new Error(
+      `[Suite 34] Expected Suite 34 runtime < 3000ms, got ${suite34ElapsedMs.toFixed(1)}ms!`
+    );
+  }
+
+  console.log(
+    `[PASS] Suite 34: 100% Legacy SHA-256 Purity + 0 Emojis (34.1), All-11 Wide-Canvas 9600x2400 EX Sheets/VFX/Portraits (34.2), #roster-version-bar EX/LEGACY Switcher + 22-Hero VRAM Cleanup (34.3) & All-11 EX Live VS/Adventure Gameplay (34.4) verified in ${suite34ElapsedMs.toFixed(0)}ms!`
+  );
+}
+
 
 
 

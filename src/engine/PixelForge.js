@@ -280,7 +280,7 @@ export class PixelForge {
     const sharedSeraphimWings = loadDeferredImg('assets/sprites/seraphim_wings.png?v=30fps114');
     const sharedMageMeteor = loadDeferredImg('assets/sprites/meteor_cataclysm.png?v=30fps114');
     const sharedMageIcons = loadEagerImg('assets/sprites/mage_icons.png?v=30fps114');
-    const sharedReaperCompanions = loadDeferredImg('assets/sprites/reaper_companions.png?v=30fps114');
+    const sharedReaperCompanions = loadDeferredImg('assets/sprites/reaper_companions.png?v=30fps113');
     const sharedBossPortrait = loadDeferredImg(
       'assets/sprites/boss_archfiend_portrait.png?v=30fps114',
       () => this.refreshPortraits()
@@ -336,58 +336,58 @@ export class PixelForge {
       icemage_ex: makeExHeroEntry('icemage_ex'),
       android_ex: makeExHeroEntry('android_ex'),
       mage: {
-        sheet: loadDeferredImg('assets/sprites/mage_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/mage_vfx.png?v=30fps114'),
+        sheet: loadDeferredImg('assets/sprites/mage_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/mage_vfx.png?v=30fps113'),
         meteor: sharedMageMeteor,
         icons: sharedMageIcons,
-        portrait: loadDeferredImg('assets/sprites/mage_portrait.png?v=30fps114', () => this.refreshPortraits())
+        portrait: loadDeferredImg('assets/sprites/mage_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadDeferredImg('assets/sprites/archer_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/archer_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/archer_portrait.png?v=30fps114', () => this.refreshPortraits())
+        sheet: loadDeferredImg('assets/sprites/archer_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/archer_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/archer_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadDeferredImg('assets/sprites/priestess_sheet.png?v=30fps114'),
+        sheet: loadDeferredImg('assets/sprites/priestess_sheet.png?v=30fps113'),
         wings: sharedSeraphimWings,
-        vfx: loadDeferredImg('assets/sprites/priestess_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/priestess_portrait.png?v=30fps114', () => this.refreshPortraits())
+        vfx: loadDeferredImg('assets/sprites/priestess_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/priestess_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadDeferredImg('assets/sprites/reaper_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/reaper_vfx.png?v=30fps114'),
+        sheet: loadDeferredImg('assets/sprites/reaper_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/reaper_vfx.png?v=30fps113'),
         companions: sharedReaperCompanions,
-        portrait: loadDeferredImg('assets/sprites/reaper_portrait.png?v=30fps114', () => this.refreshPortraits())
+        portrait: loadDeferredImg('assets/sprites/reaper_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadDeferredImg('assets/sprites/chronomancer_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/chronomancer_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/chronomancer_portrait.png?v=30fps114', () => this.refreshPortraits())
+        sheet: loadDeferredImg('assets/sprites/chronomancer_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/chronomancer_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/chronomancer_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadDeferredImg('assets/sprites/titan_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/titan_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/titan_portrait.png?v=30fps114', () => this.refreshPortraits())
+        sheet: loadDeferredImg('assets/sprites/titan_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/titan_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/titan_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadDeferredImg('assets/sprites/ronin_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/ronin_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/ronin_portrait.png?v=30fps114', () => this.refreshPortraits())
+        sheet: loadDeferredImg('assets/sprites/ronin_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/ronin_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/ronin_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadDeferredImg('assets/sprites/valkyrie_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/valkyrie_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/valkyrie_portrait.png?v=30fps114', () => this.refreshPortraits())
+        sheet: loadDeferredImg('assets/sprites/valkyrie_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/valkyrie_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/valkyrie_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadDeferredImg('assets/sprites/icemage_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/icemage_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/icemage_portrait.png?v=30fps114', () => this.refreshPortraits())
+        sheet: loadDeferredImg('assets/sprites/icemage_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/icemage_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/icemage_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       android: {
-        sheet: loadDeferredImg('assets/sprites/android_sheet.png?v=30fps114'),
-        vfx: loadDeferredImg('assets/sprites/android_vfx.png?v=30fps114'),
-        portrait: loadDeferredImg('assets/sprites/android_portrait.png?v=30fps114', () => this.refreshPortraits())
+        sheet: loadDeferredImg('assets/sprites/android_sheet.png?v=30fps113'),
+        vfx: loadDeferredImg('assets/sprites/android_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/android_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       templar: {
         sheet: loadDeferredImg('assets/sprites/monster_templar_sheet.png?v=30fps114'),

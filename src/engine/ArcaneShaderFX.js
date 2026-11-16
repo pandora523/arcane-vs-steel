@@ -940,7 +940,13 @@ export function instantiateShaderEffect(def, userCfg = {}) {
  * ArcaneShaderFX — Arena-wide 2.5D (`back` + `front`) pixel-shader VFX runtime for Arcane vs. Steel.
  */
 export class ArcaneShaderFX {
-  static _sharedScratch = null;
+  static get _sharedScratch() {
+    return globalThis.__avsArcaneShaderSharedScratch || null;
+  }
+
+  static set _sharedScratch(v) {
+    globalThis.__avsArcaneShaderSharedScratch = v;
+  }
 
   static _acquireSharedScratch(minW, minH) {
     if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
