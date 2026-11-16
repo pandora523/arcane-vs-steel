@@ -40,51 +40,58 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps114';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps114';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps114';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps114';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps114';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps114';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps114';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps114';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps114';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps114';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps114';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps114';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps114';
-import { Archer } from '../../src/entities/Archer.js?v=30fps114';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps114';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps114';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps114';
-import { Titan } from '../../src/entities/Titan.js?v=30fps114';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps114';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps114';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps114';
-import { Android } from '../../src/entities/Android.js?v=30fps114';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps114';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps114';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps114';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps114';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps114';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps114';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps114';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps114';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps115';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps115';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps115';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps115';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps115';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps115';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps115';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps115';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps115';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps115';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps115';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps115';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps115';
+import { Archer } from '../../src/entities/Archer.js?v=30fps115';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps115';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps115';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps115';
+import { Titan } from '../../src/entities/Titan.js?v=30fps115';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps115';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps115';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps115';
+import { Android } from '../../src/entities/Android.js?v=30fps115';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps115';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps115';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps115';
+import {
+  EX_HERO_PALETTES,
+  ExParticleSystem,
+  drawExPixelParticles,
+  drawExBayerHalo,
+  drawExHitStarburst
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps115';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps115';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps115';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps115';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps115';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps115';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps114';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps114';
+} from '../../src/adventure/AdventureManager.js?v=30fps115';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps115';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps114';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps114';
+} from '../../src/adventure/AdventureProgression.js?v=30fps115';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps115';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps114';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps115';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -673,7 +680,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps114');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps115');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -7282,11 +7289,11 @@ for (const [name, Cls] of CLASSES) {
   if (
     stageImgMatches.length < 6 ||
     stageImgMatches.some(
-      (m) => !m[0].includes('loading="lazy"') || !m[0].includes('decoding="async"')
+      (m) => m[0].includes('loading="lazy"') || !m[0].includes('decoding="async"')
     )
   ) {
     throw new Error(
-      `[Suite 28A] Expected all 6 stage gallery <img> tags to carry loading="lazy" decoding="async", found ${stageImgMatches.length}`
+      `[Suite 28A] Expected all 6 stage gallery <img> tags to omit loading="lazy" and carry decoding="async", found ${stageImgMatches.length}`
     );
   }
   if (
@@ -7685,6 +7692,16 @@ for (const [name, Cls] of CLASSES) {
         const bStack = [];
         const bSave = cctx.save.bind(cctx);
         const bRestore = cctx.restore.bind(cctx);
+        cctx.getImageData = (_x, _y, w, h) => {
+          const data = new Uint8ClampedArray(w * h * 4);
+          for (let i = 0; i < data.length; i += 4) {
+            data[i] = 24;
+            data[i + 1] = 30;
+            data[i + 2] = 52;
+            data[i + 3] = 255;
+          }
+          return { width: w, height: h, data };
+        };
         cctx.save = () => {
           bStack.push({ ty: bTxY, sy: bScaleY });
           bSave();
@@ -10598,7 +10615,41 @@ for (const [name, Cls] of CLASSES) {
       'assets/sprites/android_portrait.png':
         'ebc3b08bf71530c12672c228c5353299a51a54721dfe6ac1ea7d81c04847df7d',
       'assets/sprites/warrior_ex_sheet.png':
-        '09165e4525a4b328b9c7aa5f6e0d22649aa8a75f01dfdcfb1bc27c2313bdf2bf',
+        'e815709cacc2642acfccf87bafb544aceb4c363dd225a5318ddf3383f240c26b',
+      'assets/sprites/warrior_ex_portrait.png':
+        'e59d12cda15654013ca41045095ba5e5b476228fa178643bc6765b216293f933',
+      'assets/sprites/chronomancer_ex_portrait.png':
+        '5749976fb6b69d5627e8711e7bbbbde4d8a2255c2c205b0764698e517c757e91',
+      'assets/sprites/ronin_ex_portrait.png':
+        '9ee478e8bee4f87ff3fd82b8d5245a1c0f9196c390619259ffd992c6163313e5',
+      'assets/sprites/reaper_ex_portrait.png':
+        '3c2d5bc77c1f61e0cfbb413187807a2f0555a2c6b27987654310282425b9fe95',
+      'assets/sprites/titan_ex_portrait.png':
+        '2b9444486a5c64063420ab95f36f1ca09d91149812dd87f6ea49e0c832b0f8e9',
+      'assets/sprites/android_ex_portrait.png':
+        '31bf48e204adfe138da3f3577c90b5c1cbdadca42267d3f39b172f8ebf1432b2',
+      'src/engine/shaders/runicSteelShaders.js':
+        '39cbd1dcd9b36af44203f636fb27378ddb8d3c9b385629de71534199310510b4',
+      'src/engine/shaders/solarShaders.js':
+        '78f5cd68e344f2a6bcc2b811f599e933a6b6b21a45a23a48600287dccaa0db57',
+      'src/engine/shaders/seraphicShaders.js':
+        'b5ff501d6584678df19d6a58afda6882d3337e74fd64093c58277d7ef3812d64',
+      'src/engine/shaders/chronoShaders.js':
+        '155842abe5f21c261d921929da48a682e5dbf2c4bf46eaf81d4771cee8958a31',
+      'src/engine/shaders/valkyrieShaders.js':
+        '420b71889bed0089fb78ffded8bcc551262a53fa1fa7f3901706e5fe4456c201',
+      'src/engine/shaders/stormShaders.js':
+        'c97031ea723786886051651f71712fbc97049ce7d8a6273b76a29343de2d01fd',
+      'src/engine/shaders/sylvanShaders.js':
+        '763483bc55e0d642a62b92396772aa8ab29471634baf0cf2f8b510081c20d09a',
+      'src/engine/shaders/abyssalShaders.js':
+        'd687ce94d9002b7fb101a0634ec1747afc9fe5b341045e9e679b0dcf8b7574f4',
+      'src/engine/shaders/forgeShaders.js':
+        'e71e7404b69d6d28e0912e7843dd1b95cf95777efc8db2e734ccc5960fab6cb2',
+      'src/engine/shaders/glacialShaders.js':
+        'c6d5893c02d08152708929924247a0acb2efdc9c4be4c13f7a6346760521e38b',
+      'src/engine/shaders/cyberShaders.js':
+        '072cb4d29f5d7d0d995b497807ad1caf1607a595da6b4311e369a7d354d620ee',
       'scripts/hd2d_rig_core.py':
         '66f2bfe8cdd45e031349d30cd9b980cea12621051709782196d776f2a12c8777',
       'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md':
@@ -10825,6 +10876,34 @@ for (const [name, Cls] of CLASSES) {
         }
         if (borderClips !== 0) {
           throw new Error('[Suite 34.2] Expected 0/300 border clips on ' + id + '_sheet.png, got ' + borderClips);
+        }
+
+        // Verify Row 1 WALK (frames 30..59) morph-free vertical & ground continuity (#102 Part B)
+        const walkTopYs = [];
+        for (let c = 0; c < 30; c++) {
+          const ox = c * 320;
+          const oy = 240;
+          let minY = 240;
+          let maxY = 0;
+          for (let y = 0; y < 240; y++) {
+            const rb = (oy + y) * 9600 + ox;
+            for (let x = 0; x < 320; x++) {
+              if (sheetU32[rb + x] >= 0x01000000) {
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+          if (maxY < 222 || maxY > 233) {
+            throw new Error('[Suite 34.2] Expected grounded Row 1 WALK footY in [222..233] on ' + id + ' F' + c + ', got ' + maxY);
+          }
+          walkTopYs.push(minY);
+        }
+        for (let c = 0; c < 30; c++) {
+          const adjDelta = Math.abs(walkTopYs[(c + 1) % 30] - walkTopYs[c]);
+          if (adjDelta > 4) {
+            throw new Error('[Suite 34.2] Morph/pop detected on ' + id + ' Row 1 WALK F' + c + '->F' + ((c + 1) % 30) + ': topY delta=' + adjDelta);
+          }
         }
 
         for (const snapCol of [3, 9, 17, 25]) {
@@ -11089,8 +11168,8 @@ for (const [name, Cls] of CLASSES) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps114');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps114');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps115');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps115');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -11459,9 +11538,475 @@ for (const [name, Cls] of CLASSES) {
   }
 
   console.log(
-    `[PASS] Suite 34: 100% Legacy SHA-256 Purity + 0 Emojis (34.1), All-11 Wide-Canvas 9600x2400 EX Sheets/VFX/Portraits (34.2), #roster-version-bar EX/LEGACY Switcher + 22-Hero VRAM Cleanup (34.3) & All-11 EX Live VS/Adventure Gameplay (34.4) verified in ${suite34ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 34: 100% Legacy SHA-256 Purity + 0 Emojis (34.1), All-11 Wide-Canvas 9600x2400 EX Sheets/VFX/Portraits + Morph-Free Row 1 WALK (34.2), #roster-version-bar EX/LEGACY Switcher + 22-Hero VRAM Cleanup (34.3) & All-11 EX Live VS/Adventure Gameplay (34.4) verified in ${suite34ElapsedMs.toFixed(0)}ms!`
   );
 }
+
+// ============================================================================
+// SUITE 35: Ranged/Mage EX Restoration (`>= 510px` Standoff + Classic-Wizard `IGNIS SOL EX`),
+//           Newly-Born EX Kits & `exNextGenFX.js`, 100% Chevron Slash-Bar (`>>>>>>>`) Purge,
+//           Lv.1 Adventure Ranged Projectiles & Stage-Loading Race Immunity (`?v=30fps115`, `< 1.5s`)
+// ============================================================================
+{
+  const suite35StartMs = performance.now();
+
+  // --------------------------------------------------------------------------
+  // 35.1: 100% Purge of `>>>>>>>` Chevron Slash-Bar Loops (`razorScars` / `glaiveScars`)
+  //       & Blurry Radial `renderer.glow*` Blobs + `exNextGenFX.js` Runtime Audit
+  // --------------------------------------------------------------------------
+  {
+    const exEntityFiles = [
+      'WarriorEx.js',
+      'FireMageEx.js',
+      'PriestessEx.js',
+      'ChronomancerEx.js',
+      'ValkyrieEx.js',
+      'RoninEx.js',
+      'ArcherEx.js',
+      'ReaperEx.js',
+      'TitanEx.js',
+      'IceMageEx.js',
+      'AndroidEx.js'
+    ];
+    const forbiddenTokens = [
+      'razorScars',
+      'glaiveScars',
+      'slashScars',
+      'drawPixelRazorScars',
+      'drawPixelScars',
+      'drawGlaiveScars',
+      'renderer.glow'
+    ];
+    // Detect sequential nested-square chevron loops (`fillRect(px - rad, ...)` + `fillRect(px - mid, ...)` inside one `for` loop)
+    const nestedSquareChevronRe =
+      /for\s*\([^)]*\)\s*\{[\s\S]{0,420}?fillRect\s*\(\s*px\s*-\s*rad\b[\s\S]{0,260}?fillRect\s*\(\s*px\s*-\s*(?:mid|core)\b/;
+
+    const stripJsComments = (code) =>
+      code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    for (const relName of exEntityFiles) {
+      const fullPath = path.join(REPO_ROOT, 'src/entities', relName);
+      const src = stripJsComments(fs.readFileSync(fullPath, 'utf8'));
+      for (const tok of forbiddenTokens) {
+        if (src.includes(tok)) {
+          throw new Error(`[Suite 35.1] Forbidden chevron/glow token '${tok}' found in ${relName}!`);
+        }
+      }
+      if (/\.rotate\s*\(/.test(src) || /\.ellipse\s*\(/.test(src)) {
+        throw new Error(`[Suite 35.1] Forbidden ctx.rotate() or ctx.ellipse() found in ${relName}!`);
+      }
+      if (nestedSquareChevronRe.test(src)) {
+        throw new Error(
+          `[Suite 35.1] Forbidden sequential nested-square chevron loop detected in ${relName}!`
+        );
+      }
+    }
+
+    const exFxSrc = stripJsComments(
+      fs.readFileSync(path.join(REPO_ROOT, 'src/engine/shaders/exNextGenFX.js'), 'utf8')
+    );
+    if (
+      /\.rotate\s*\(/.test(exFxSrc) ||
+      /\.ellipse\s*\(/.test(exFxSrc) ||
+      /\.arc\s*\(/.test(exFxSrc) ||
+      nestedSquareChevronRe.test(exFxSrc)
+    ) {
+      throw new Error(
+        '[Suite 35.1] exNextGenFX.js must contain 0 ctx.rotate, 0 .ellipse, 0 .arc, and 0 nested-square chevron loops!'
+      );
+    }
+
+    // Exercise ExParticleSystem, drawExBayerHalo & drawExHitStarburst across all 7 shapes & 11 EX palettes
+    const fxTrack = { rotateCalls: 0, quadCalls: 0 };
+    const fxCtx = createMockCtx(fxTrack);
+    let arcOrEllipse = 0;
+    let maxHaloAlpha = 0;
+    fxCtx.arc = () => {
+      arcOrEllipse++;
+    };
+    fxCtx.ellipse = () => {
+      arcOrEllipse++;
+    };
+    const origFillRect35 = fxCtx.fillRect.bind(fxCtx);
+    fxCtx.fillRect = (x, y, w, h) => {
+      if (fxCtx._inHaloAudit && fxCtx.globalAlpha > maxHaloAlpha) {
+        maxHaloAlpha = fxCtx.globalAlpha;
+      }
+      return origFillRect35(x, y, w, h);
+    };
+
+    const ps = new ExParticleSystem();
+    for (const shape of ['star4', 'diamond', 'ember', 'feather', 'rune', 'bolt', 'ring']) {
+      ps.spawn({
+        shape,
+        x: 420,
+        y: 480,
+        vx: 16,
+        vy: -24,
+        maxLife: 0.5,
+        size: 4,
+        color: '#fb923c',
+        accent: '#fde047',
+        core: '#ffffff',
+        alpha: 0.85,
+        layer: shape === 'ring' ? 'back' : 'front'
+      });
+    }
+    ps.burst(460, 470, {
+      count: 6,
+      shapes: ['star4', 'diamond', 'ember'],
+      color: '#fb923c',
+      accent: '#fde047',
+      core: '#ffffff'
+    });
+    ps.spawnRing(460, 470, 56, '#fb923c', '#fde047', true, 0.28);
+    ps.update(1 / 30);
+    ps.renderBack(fxCtx);
+    ps.renderFront(fxCtx);
+
+    fxCtx._inHaloAudit = true;
+    for (const exKey of EX_HERO_KEYS) {
+      const pal = EX_HERO_PALETTES[exKey];
+      if (!pal) throw new Error(`[Suite 35.1] Missing EX_HERO_PALETTES entry for ${exKey}!`);
+      drawExBayerHalo(fxCtx, 420, 540, 48, 16, pal.primary, pal.accent, 0.2);
+    }
+    fxCtx._inHaloAudit = false;
+    for (const p of [0.1, 0.35, 0.65, 0.9]) {
+      drawExHitStarburst(fxCtx, 460, 470, p, '#38bdf8', '#fde047');
+    }
+
+    // Exercise Renderer EX cut-in banner & ground rim reflection (gated on `*_ex`, 0 arc/ellipse/rotate)
+    const exRen = new Renderer({ width: 1280, height: 720, getContext: () => fxCtx });
+    const solExCutIn = new FireMageEx({ x: 380, groundY: 560, facing: 1, team: 'left' });
+    exRen.cutInHeroId = 'mage_ex';
+    exRen.cutInIsTrueUlt = true;
+    exRen.cutInText = 'CATACLYSM: GRAND HELIOS APOCALYPSE';
+    exRen.cutInMaxTimer = 1.05;
+    exRen.cutInTimer = 0.65;
+    exRen.drawExGroundRimReflection(fxCtx, solExCutIn, 560, EX_HERO_PALETTES.mage_ex, 1);
+    exRen.drawExUltimateCutIn(fxCtx, 1280, 96);
+
+    if (fxTrack.rotateCalls !== 0 || arcOrEllipse !== 0 || maxHaloAlpha > 0.225 || fxCtx._stateStack.length !== 0) {
+      throw new Error(
+        `[Suite 35.1] exNextGenFX / Renderer EX audit failed: rotate=${fxTrack.rotateCalls}, arcOrEllipse=${arcOrEllipse}, maxHaloAlpha=${maxHaloAlpha}, stack=${fxCtx._stateStack.length}`
+      );
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 35.2: Classic-Wizard `IGNIS SOL EX` (`'SOLAR ARCHMAGE'`) & Newly-Born EX Kit Copy
+  // --------------------------------------------------------------------------
+  {
+    const html35 = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const main35 = fs.readFileSync(path.join(REPO_ROOT, 'src/main.js'), 'utf8');
+    const mageCardBlock = html35.match(/id="card-mage_ex"[\s\S]{0,650}?<\/button>/);
+    if (
+      CHAMPION_ROSTER.mage_ex?.role !== 'SOLAR ARCHMAGE' ||
+      !mageCardBlock ||
+      !mageCardBlock[0].includes('SOLAR ARCHMAGE') ||
+      html35.includes('HELIOS SPELL-BLADE') ||
+      main35.includes('HELIOS SPELL-BLADE')
+    ) {
+      throw new Error(
+        `[Suite 35.2] Expected mage_ex role 'SOLAR ARCHMAGE' (0 'HELIOS SPELL-BLADE'), got rosterRole='${CHAMPION_ROSTER.mage_ex?.role}'`
+      );
+    }
+
+    const expectedExKitSignatures = [
+      ['mage_ex', FireMageEx, 'SOLAR TRINITY', 'ECLIPSE SINGULARITY', 'GRAND HELIOS APOCALYPSE'],
+      ['priestess_ex', PriestessEx, 'STAINED-GLASS BENEDICTION', 'ORGAN OF LIGHT', 'GENESIS LUMEN'],
+      ['icemage_ex', IceMageEx, 'BOREALIS PRISM JAWS', 'NINE ICE-SWORDS', 'ZERO KELVIN CATHEDRAL'],
+      ['valkyrie_ex', ValkyrieEx, 'LIGHTNING JAVELINS', 'BAHAMUT VALKYRIE', 'BIFROST GUNGNIR'],
+      ['archer_ex', ArcherEx, 'CONSTELLATION VOLLEY', 'TWELVE-STAR RAIN', 'ASTRAL SUPERNOVA'],
+      ['warrior_ex', WarriorEx, 'DAWN-BREAKER TRINITY', 'PENTAGRAM OMNISLASH', 'SEVEN SWORDS'],
+      ['titan_ex', TitanEx, 'FORGE-ANVIL RICOCHET', 'GRAND-SLAM CRUSHER', 'CONTINENTAL SUNDER'],
+      ['reaper_ex', ReaperEx, 'SOUL-GUILLOTINE', 'LEGION OF THANATOS', 'CATHEDRAL OF OBLIVION'],
+      ['ronin_ex', RoninEx, 'THUNDER-GATE FLASH', 'STORM-GOD CAGE', 'REALM-SLICING SHOGUNATE'],
+      ['chronomancer_ex', ChronomancerEx, 'HOURGLASS SCHISM', 'BROKEN TIMELINES', 'TWELFTH BELL'],
+      ['android_ex', AndroidEx, 'FUNNEL OVERDRIVE', 'HYPER-PRISM BARRAGE', 'SINGULARITY BUSTER']
+    ];
+    for (const [id, Cls, skSub, ultSub, trueSub] of expectedExKitSignatures) {
+      const inst = new Cls({ x: 360, groundY: 560, facing: 1 });
+      const rEntry = CHAMPION_ROSTER[id];
+      if (
+        !String(inst.skillName || '').toUpperCase().includes(skSub) ||
+        !String(inst.ultName || '').toUpperCase().includes(ultSub) ||
+        !String(inst.trueUltName || '').toUpperCase().includes(trueSub) ||
+        !JSON.stringify(rEntry || {}).toUpperCase().includes(skSub)
+      ) {
+        throw new Error(
+          `[Suite 35.2] Newly-born EX kit mismatch on ${id}: skill='${inst.skillName}', ult='${inst.ultName}', trueUlt='${inst.trueUltName}'`
+        );
+      }
+    }
+
+    for (const [casterId, badTag] of [
+      ['mage_ex', 'GLAIVE'],
+      ['priestess_ex', 'GLAIVE'],
+      ['icemage_ex', 'GLAIVE']
+    ]) {
+      const basicTag = String(ADVENTURE_HERO_KITS[casterId]?.basicTag || ADVENTURE_HERO_KITS[casterId]?.attackLabel || '').toUpperCase();
+      if (basicTag.includes(badTag)) {
+        throw new Error(`[Suite 35.2] Caster ${casterId} still carries melee '${badTag}' tag in ADVENTURE_HERO_KITS!`);
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 35.3: All 5 Ranged EX Champions (`>= 510px` Range, `> 240px` Live 1v1 Standoff
+  //       & Lv.1 `wrath_1 === 0` Adventure Ranged Projectiles in Manual + AUTO)
+  // --------------------------------------------------------------------------
+  {
+    const RANGED_EX_SPECS = [
+      ['mage_ex', FireMageEx, 'fireball', 520, 305],
+      ['priestess_ex', PriestessEx, 'holy_light', 512, 315],
+      ['icemage_ex', IceMageEx, 'cryo_shard', 510, 310],
+      ['valkyrie_ex', ValkyrieEx, 'dragon_lance', 520, 310],
+      ['archer_ex', ArcherEx, 'arrow', 520, 350]
+    ];
+
+    for (const [heroId, ExCls, projType, expRange, expSweetMin] of RANGED_EX_SPECS) {
+      // (A) Live Autonomous 1v1 Versus Standoff (`isPlayerControlled = false`, starting at 370px)
+      const vsGame = createMockGame();
+      const ex = new ExCls({ x: 300, groundY: 560, facing: 1, team: 'left' });
+      const foe = new Warrior({ x: 670, groundY: 560, facing: -1, name: 'Target', team: 'right' });
+      ex.isPlayerControlled = false;
+      foe.isPlayerControlled = true; // Keep stationary target so we isolate ranged EX AI spacing & projectile hits!
+      ex.game = vsGame;
+      foe.game = vsGame;
+      ex.maxHp = 999999;
+      ex.hp = 999999;
+      foe.maxHp = 999999;
+      foe.hp = 999999;
+      ex.skillCooldown = 999;
+      ex.crouchCooldown = 999;
+      ex.vaultCooldown = 999;
+      ex.dashCooldown = 999;
+      ex.dodgeCooldown = 999;
+      ex.jumpCooldown = 999;
+      ex.mana = 0;
+      ex.finisherGauge = 0;
+
+      const instStyle = ex.getAiStyleProfile();
+      const baseStyle = Fighter.prototype.getAiStyleProfile.call(ex);
+      if (
+        ex.attackRange < 510 ||
+        ex.attackRange !== expRange ||
+        instStyle.sweetMin < 305 ||
+        instStyle.sweetMin !== expSweetMin ||
+        baseStyle.sweetMin < 305 ||
+        ex.isHackAndSlashMelee?.() === true
+      ) {
+        throw new Error(
+          `[Suite 35.3 ${heroId}] Invalid ranged profile: attackRange=${ex.attackRange}, sweetMin=${instStyle.sweetMin}/${baseStyle.sweetMin}`
+        );
+      }
+
+      vsGame.fighters = [ex, foe];
+      vsGame.getEnemiesOf = (f) => (f === ex ? [foe] : [ex]);
+      vsGame.getTargetFor = (f) => (f === ex ? foe : ex);
+      let totalSpawnedProjectiles = 0;
+      vsGame.spawnProjectile = (p) => {
+        totalSpawnedProjectiles++;
+        vsGame.vfx.projectiles.push(p);
+      };
+      const origVfxSpawn = vsGame.vfx.spawnProjectile?.bind(vsGame.vfx);
+      if (origVfxSpawn) {
+        vsGame.vfx.spawnProjectile = (p) => {
+          totalSpawnedProjectiles++;
+          return origVfxSpawn(p);
+        };
+      }
+
+      const foeHpStart = foe.hp;
+      let minHorizDist = Infinity;
+      let sawAutoAttack = false;
+      for (let step = 0; step < 110; step++) {
+        const dt = 1 / 30;
+        foe.x = 670;
+        foe.vx = 0;
+        foe.stunTimer = 0;
+        ex.update(dt, foe, vsGame);
+        if (ex.state === 'AUTO_ATTACK') sawAutoAttack = true;
+
+        for (let pi = vsGame.vfx.projectiles.length - 1; pi >= 0; pi--) {
+          const p = vsGame.vfx.projectiles[pi];
+          totalSpawnedProjectiles = Math.max(totalSpawnedProjectiles, 1);
+          p.x += (p.vx || 0) * dt;
+          p.y += (p.vy || 0) * dt;
+          if (Math.abs(p.x - foe.x) < 64 && Math.abs((p.y || foe.y - 80) - (foe.y - 80)) < 120) {
+            foe.takeDamage(p.damage || 30, ex, false, 20, 0);
+            vsGame.vfx.projectiles.splice(pi, 1);
+          }
+        }
+        vsGame.vfx.update(dt, 560, vsGame.renderer, vsGame.audio);
+        minHorizDist = Math.min(minHorizDist, Math.abs(foe.x - ex.x));
+      }
+
+      if (!sawAutoAttack || minHorizDist <= 240 || totalSpawnedProjectiles < 1 || foe.hp >= foeHpStart) {
+        throw new Error(
+          `[Suite 35.3 VS ${heroId}] Expected >240px ranged standoff + projectiles + damage; got sawAuto=${sawAutoAttack}, minDist=${minHorizDist.toFixed(1)}, projs=${totalSpawnedProjectiles}, dmg=${foeHpStart - foe.hp}`
+        );
+      }
+
+      // (B) Live Lv.1 (`wrath_1 === 0`) Adventure Mode Ranged Projectiles (`Manual` + `AUTO` Standoff > 240px)
+      const advGame = createMockGame();
+      advGame.gameMode = 'adventure';
+      advGame.isAdventureMode = () => true;
+      advGame.spawnProjectile = (p) => advGame.vfx.projectiles.push(p);
+
+      const advHero = new ExCls({ x: 300, groundY: 561, facing: 1, team: 'left' });
+      advHero.game = advGame;
+      advGame.leftFighter = advHero;
+      advGame.fighters = [advHero];
+
+      const adv = new AdventureManager(advGame);
+      advGame.adventure = adv;
+      adv.startCampaign(advHero);
+      adv.lockActive = true;
+      adv.lockMinX = 160;
+      adv.lockMaxX = 980;
+      if (adv.progression.getRank('wrath_1') !== 0) {
+        throw new Error(`[Suite 35.3 Adv ${heroId}] Expected Lv.1 wrath_1 === 0!`);
+      }
+
+      const mob = adv.spawnMonster('templar', 660, { groundY: 561, skipPortal: true });
+      mob.maxHp = 999999;
+      mob.hp = 999999;
+      mob.autoCooldown = 999;
+      mob.skillCooldown = 999;
+
+      // Manual `LOCK: OFF` at Lv.1 (`dist = 360px`)
+      adv.setAutoPlay(false, false);
+      adv.manualTargetLock = false;
+      advGame.vfx.projectiles.length = 0;
+      adv.heldAttack = true;
+      for (let tick = 0; tick < 28; tick++) {
+        mob.x = 660;
+        adv.processPlayerControls(1 / 30, advHero, mob);
+        advHero.update(1 / 30, mob, advGame);
+      }
+      adv.heldAttack = false;
+      const manualLv1Proj = advGame.vfx.projectiles.some((p) => p.type === projType);
+      if (!manualLv1Proj) {
+        throw new Error(
+          `[Suite 35.3 Adv-Manual Lv.1 ${heroId}] Expected '${projType}' at wrath_1=0, got [${advGame.vfx.projectiles.map((p) => p.type).join(',')}]`
+        );
+      }
+
+      // `AUTO` play at Lv.1 (`dist = 360px`): fires ranged projectile AND holds `> 240px` standoff!
+      advHero.setState('IDLE');
+      advHero.x = 300;
+      advHero.skillCooldown = 999;
+      advHero.mana = 0;
+      advHero.finisherGauge = 0;
+      adv.progression.spirit = 0;
+      adv.progression.ultCharge = 0;
+      adv.progression.astralCharge = 0;
+      advGame.vfx.projectiles.length = 0;
+      adv.setAutoPlay(true, false);
+
+      let minAdvAutoDist = Infinity;
+      for (let tick = 0; tick < 45; tick++) {
+        mob.x = 660;
+        adv.processPlayerControls(1 / 30, advHero, mob);
+        advHero.update(1 / 30, mob, advGame);
+        minAdvAutoDist = Math.min(minAdvAutoDist, Math.abs(mob.x - advHero.x));
+      }
+      const autoLv1Proj = advGame.vfx.projectiles.some((p) => p.type === projType);
+      adv.stopCampaign();
+      if (!autoLv1Proj || minAdvAutoDist <= 240) {
+        throw new Error(
+          `[Suite 35.3 Adv-AUTO Lv.1 ${heroId}] Expected '${projType}' (${autoLv1Proj}) & >240px standoff (${minAdvAutoDist.toFixed(1)})!`
+        );
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 35.4: Stage Loading Fix (`#102` Part A: `.__avsBlobUrl` Retention & `Renderer` Zero-Pixel Race Guard)
+  // --------------------------------------------------------------------------
+  {
+    const vaultBuilderSrc = fs.readFileSync(path.join(REPO_ROOT, 'build/build_web_vault.mjs'), 'utf8');
+    if (
+      !vaultBuilderSrc.includes('__avsBlobUrl') ||
+      !vaultBuilderSrc.includes('revokeImgBlobUrl(this)') ||
+      /addEventListener\(\s*["']load["']\s*,\s*function\s*\(\)\s*\{\s*URL\.revokeObjectURL/.test(vaultBuilderSrc)
+    ) {
+      throw new Error(
+        '[Suite 35.4] build/build_web_vault.mjs must retain __avsBlobUrl until reassignment/removeAttribute("src")!'
+      );
+    }
+
+    let returnZeroPixels = true;
+    const prevCreate35 = globalThis.document.createElement;
+    globalThis.document.createElement = (tag) => {
+      const el = prevCreate35(tag);
+      const baseGetCtx = el.getContext.bind(el);
+      el.getContext = (...args) => {
+        const c = baseGetCtx(...args);
+        c.getImageData = (_x, _y, w, h) => {
+          const data = new Uint8ClampedArray(w * h * 4);
+          if (!returnZeroPixels) {
+            for (let i = 0; i < data.length; i += 4) {
+              data[i] = 20;
+              data[i + 1] = 28;
+              data[i + 2] = 48;
+              data[i + 3] = 255;
+            }
+          }
+          return { width: w, height: h, data };
+        };
+        return c;
+      };
+      return el;
+    };
+
+    try {
+      const stageRen = new Renderer({ width: 1280, height: 720, getContext: () => createMockCtx() });
+      const fakeStage = {
+        complete: true,
+        naturalWidth: 640,
+        naturalHeight: 360,
+        src: 'assets/sprites/arena_bg.png?v=30fps115'
+      };
+
+      // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
+      const raceVault = stageRen.getOrBakeStageUpperVault(fakeStage);
+      const raceComp = stageRen.getOrBakeStageWingComposite(fakeStage);
+      if (raceVault !== null || raceComp !== null) {
+        throw new Error(
+          '[Suite 35.4] Expected getOrBakeStageUpperVault / WingComposite to return null (never cache blank canvas) on all-zero race tick!'
+        );
+      }
+
+      // Tick 2: image bitmap decoded cleanly -> MUST bake & cache valid 640x280 vault + 1920x1360 wing composite!
+      returnZeroPixels = false;
+      const validVault = stageRen.getOrBakeStageUpperVault(fakeStage);
+      const validComp = stageRen.getOrBakeStageWingComposite(fakeStage);
+      const compCanvas = validComp?.canvas || validComp;
+      if (!validVault || validVault.width !== 640 || validVault.height !== 280 || !compCanvas || compCanvas.width !== 1920) {
+        throw new Error(
+          `[Suite 35.4] Expected valid baked stage vault/composite after decode, got vault=${validVault?.width}x${validVault?.height}, comp=${compCanvas?.width}x${compCanvas?.height}`
+        );
+      }
+    } finally {
+      globalThis.document.createElement = prevCreate35;
+    }
+  }
+
+  const suite35ElapsedMs = performance.now() - suite35StartMs;
+  if (suite35ElapsedMs >= 1500) {
+    throw new Error(
+      `[Suite 35] Expected Suite 35 runtime < 1500ms, got ${suite35ElapsedMs.toFixed(1)}ms!`
+    );
+  }
+
+  console.log(
+    `[PASS] Suite 35: 100% Chevron Slash-Bar & Radial Glow Purge + exNextGenFX (35.1), Classic-Wizard IGNIS SOL EX 'SOLAR ARCHMAGE' + 11 Newly-Born EX Kits (35.2), 5-Hero >=510px Ranged Standoff (>240px) + Lv.1 Adventure Projectiles (35.3) & Stage-Loading Race Immunity (35.4) verified in ${suite35ElapsedMs.toFixed(0)}ms!`
+  );
+}
+
 
 
 
