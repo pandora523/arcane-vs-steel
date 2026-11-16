@@ -557,6 +557,48 @@ def draw_yggdrasil_wings_160(buf: np.ndarray, cx: float, cy: float, span_scale: 
             set_px(buf, int(round(px)), int(round(py)), C_WHITE if u > 0.35 else C_GOLD_BRIGHT)
 
 
+def draw_bow_charge_star_160(
+    buf: np.ndarray,
+    cx: float,
+    cy: float,
+    arm: float = 5.0,
+    phase: float = 0.0,
+    max_x: int = 151,
+):
+    """Crisp 16-bit emerald-gold 4-point starlight charge core on bow/arrow tip."""
+    ix, iy = int(round(cx)), int(round(cy))
+    r_main = max(3, int(round(arm + 0.6 * math.sin(phase * 2.0))))
+    r_diag = max(1, r_main // 2)
+
+    def _p(px: int, py: int, col: tuple[int, int, int, int]):
+        if MARGIN_160 <= px <= max_x and MARGIN_160 <= py < LOG_H - MARGIN_160:
+            set_px(buf, px, py, col)
+
+    # Subtle dark emerald edge anchoring diagonal glint tips
+    for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        _p(ix + sx * (r_diag + 1), iy + sy * (r_diag + 1), C_FOREST_DARK)
+
+    # Cross starlight rays
+    for d in range(-r_main, r_main + 1):
+        ad = abs(d)
+        col = C_WHITE if ad <= 1 else (C_GOLD_LIGHT if ad <= max(2, r_main - 2) else C_EMERALD_BRIGHT)
+        _p(ix + d, iy, col)
+        _p(ix, iy + d, col)
+
+    # Diagonal starlight rays
+    for d in range(1, r_diag + 1):
+        col = C_GOLD_LIGHT if d == 1 else C_MINT_LIGHT
+        for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            _p(ix + sx * d, iy + sy * d, col)
+
+    # Intense white-gold diamond center
+    _p(ix, iy, C_WHITE)
+    _p(ix + 1, iy, C_WHITE)
+    _p(ix - 1, iy, C_WHITE)
+    _p(ix, iy + 1, C_WHITE)
+    _p(ix, iy - 1, C_WHITE)
+
+
 def draw_yggdrasil_greatbow_160(
     buf: np.ndarray,
     riser_x: float,
@@ -566,12 +608,15 @@ def draw_yggdrasil_greatbow_160(
     draw_pull: float = 0.0,
     arrow_count: int = 0,
     astral_charge: float = 0.35,
+    charge_star: float = 0.0,
+    star_phase: float = 0.0,
+    max_star_x: int = 151,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """
     Renders Sylvara EX's luminous Yggdrasil Astral Recurve Greatbow / Twin-Arc Bow-Glaive:
       - Symmetrical recurve ivory-gold limbs with bladed emerald-cyan Glaive edges at tips
       - Dynamic flexing astral bowstring (draw_pull > 0 pulls string back; < 0 vibrates forward)
-      - Optional 1, 2, or 3 fan-nocked glowing Astral Arrows!
+      - Optional 1, 2, or 3 fan-nocked glowing Astral Arrows + emerald-gold charge star!
       - Returns (riser_grip_xy, string_grip_xy) for 2-Bone IK hand lock.
     """
     rad = math.radians(aim_deg)
@@ -626,6 +671,7 @@ def draw_yggdrasil_greatbow_160(
             set_px(buf, int(round(lx - ux * 0.9)), int(round(ly - uy * 0.9)), C_GOLD_MID)
 
     # 3. Nocked Luminous Astral Arrow(s) (1, 2, or 3 fan-spread arrows!)
+    tip_pts = []
     if arrow_count > 0:
         spreads = [0.0] if arrow_count == 1 else ([-5.5, 5.5] if arrow_count == 2 else [-9.0, 0.0, 9.0])
         arr_len = 25.0 + draw_pull * 7.0
@@ -641,197 +687,191 @@ def draw_yggdrasil_greatbow_160(
             # Broadhead astral star-tip
             draw_line_px(buf, ax1 - aux * 3.5 + anx * 2.2, ay1 - auy * 3.5 + any_ * 2.2, ax1 + aux * 1.5, ay1 + auy * 1.5, C_GOLD_LIGHT, r=0)
             draw_line_px(buf, ax1 - aux * 3.5 - anx * 2.2, ay1 - auy * 3.5 - any_ * 2.2, ax1 + aux * 1.5, ay1 + auy * 1.5, C_GOLD_LIGHT, r=0)
-            set_px(buf, int(round(ax1 + aux * 1.5)), int(round(ay1 + auy * 1.5)), C_WHITE)
+            tip_x = ax1 + aux * 1.5
+            tip_y = ay1 + auy * 1.5
+            set_px(buf, int(round(tip_x)), int(round(tip_y)), C_WHITE)
+            tip_pts.append((tip_x, tip_y))
+
+    if charge_star > 0.05:
+        if tip_pts:
+            center_tip = tip_pts[len(tip_pts) // 2]
+            draw_bow_charge_star_160(
+                buf,
+                center_tip[0],
+                center_tip[1],
+                arm=3.5 + charge_star * 2.2,
+                phase=star_phase,
+                max_x=max_star_x,
+            )
+        else:
+            draw_bow_charge_star_160(
+                buf,
+                riser_x + ux * 5.0,
+                riser_y + uy * 5.0,
+                arm=3.5 + charge_star * 2.0,
+                phase=star_phase,
+                max_x=max_star_x,
+            )
 
     return (riser_x, riser_y), (nock_x, nock_y)
 
 
 # ==============================================================================
-# 4. 4-BAND EMERALD-GOLD SERRATED BOW-ARC & ARROW-VOLLEY SMEARS
+# 4. CRISP 16-BIT ELVEN STAR-COMPASS BOW-SHOT SIGIL (ROW 2 SNAP/FOLLOW ONLY)
 # ==============================================================================
 
-def draw_astral_crescent_smear_160(
+def draw_yggdrasil_shot_sigil_160(
     buf: np.ndarray,
-    cx: float,
-    cy: float,
-    r_outer: float,
-    r_inner_base: float,
-    deg_start: float,
-    deg_end: float,
-    tilt_y: float = 0.88,
-    intensity: float = 1.0,
-    arrow_rays: list[float] | None = None,
+    origin_x: float,
+    origin_y: float,
+    variant: int = 0,
+    fade: float = 1.0,
 ):
     """
-    4-Band FFBE / Last Cloudia Astral Bow-Arc / Glaive-Slash Release Smear:
-      #ffffff outer core -> #fde047 astral gold -> #34d399 vivid emerald -> #065f46 deep forest
-      + optional Mach shock-ring & 1/2/3 streaking Astral Arrow beams!
+    Crisp 16-bit pixel Yggdrasil Bow-Discharge Star-Compass Sigil (Row 2 ONLY):
+      - Strictly confined in front of the bow (`x_160 = 104..151`, `x_320 = 208..302`),
+        never touching Sylvara EX's body/face and staying <= 151 in 160-space for 0 border clips.
+      - Foreshortened vertical Elven Star-Compass ring (`rx = 8..10, ry = 20..24`)
+        + 4-point star-glint + crisp pixel wind-sparks & astral arrow-wake glints.
     """
-    a0 = math.radians(deg_start)
-    a1 = math.radians(deg_end)
-    if a1 < a0:
-        a0, a1 = a1, a0
-    span = max(0.08, a1 - a0)
+    is_snap = fade >= 0.80
+    rx = (8.0 + (variant % 2) * 1.0) if is_snap else (9.5 + (variant % 2) * 0.5)
+    ry = (20.0 + min(4.0, variant * 1.3)) if is_snap else (21.5 + min(2.5, variant * 0.8))
 
-    xmin = max(MARGIN_160 + 4, int(math.floor(cx - r_outer - 4)))
-    xmax = min(LOG_W - MARGIN_160 - 9, int(math.ceil(cx + r_outer + 4)))
-    ymin = max(MARGIN_160 + 5, int(math.floor(cy - r_outer * tilt_y - 4)))
-    ymax = min(LOG_H - MARGIN_160 - 4, int(math.ceil(cy + r_outer * tilt_y + 4)))
-
-    bayer4 = (
-        (0.0625, 0.5625, 0.1875, 0.6875),
-        (0.8125, 0.3125, 0.9375, 0.4375),
-        (0.2500, 0.7500, 0.1250, 0.6250),
-        (1.0000, 0.5000, 0.8750, 0.3750),
-    )
-
-    for py in range(ymin, ymax + 1):
-        dy = (py - cy) / max(0.22, tilt_y)
-        for px in range(xmin, xmax + 1):
-            # Soft 4x4 Bayer edge taper near logical safe box [10..149, 10..113]
-            edge_u = min(
-                (px - 6) / 6.0,
-                (150 - px) / 6.0,
-                (py - 6) / 6.0,
-                (114 - py) / 4.0,
-            )
-            if edge_u < 1.0 and edge_u <= bayer4[py & 3][px & 3]:
-                continue
-            dx = px - cx
-            r = math.hypot(dx, dy)
-            if r > r_outer + 1.0 or r < r_inner_base * 0.42:
-                continue
-            ang = math.atan2(dy, dx)
-            while ang < a0 - math.pi:
-                ang += 2.0 * math.pi
-            while ang > a0 + math.pi:
-                ang -= 2.0 * math.pi
-            if ang < a0 or ang > a1:
-                continue
-
-            u = (ang - a0) / span
-            taper = math.sin(min(1.0, max(0.0, u)) * math.pi) ** 0.52
-            tri = abs(((u * 16.0) % 2.0) - 1.0)
-            tooth = (tri ** 0.8) * 5.8 * intensity
-            r_in = r_inner_base + (r_outer - r_inner_base) * (1.0 - taper * intensity) + tooth
-            if r < r_in:
-                continue
-
-            v = (r - r_in) / max(1.5, r_outer - r_in)
-            if v >= 0.94 or r >= r_outer - 0.55:
-                col = C_OUTLINE
-            elif v >= 0.76:
-                col = C_WHITE
-            elif v >= 0.52:
-                col = C_GOLD_LIGHT
-            elif v >= 0.26:
-                col = C_EMERALD_BRIGHT
-            else:
-                col = C_FOREST_DARK
+    def _spx(px: int, py: int, col: tuple[int, int, int, int]):
+        if 104 <= px <= 150 and 5 <= py <= 114:
             set_px(buf, px, py, col)
 
-    # Supersonic Mach shock-ring + streaking Astral Arrow wake rays!
-    if arrow_rays:
-        for idx, ray_deg in enumerate(arrow_rays):
-            rr = math.radians(ray_deg)
-            ux, uy = math.cos(rr), math.sin(rr)
-            nx, ny = -uy, ux
-            x0 = cx + ux * 16.0
-            y0 = cy + uy * 16.0
-            x1 = min(146.0, cx + ux * (r_outer + 12.0))
-            y1 = max(12.0, min(110.0, cy + uy * (r_outer + 12.0)))
+    def _sline(x0: float, y0: float, x1: float, y1: float, col: tuple[int, int, int, int]):
+        dx = x1 - x0
+        dy = y1 - y0
+        steps = max(1, int(math.ceil(max(abs(dx), abs(dy)) * 1.6)))
+        for i in range(steps + 1):
+            u = i / steps
+            _spx(int(round(x0 + dx * u)), int(round(y0 + dy * u)), col)
 
-            draw_line_px(buf, x0, y0, x1, y1, C_OUTLINE, r=2)
-            draw_line_px(buf, x0, y0, x1, y1, C_EMERALD_BRIGHT, r=1)
-            draw_line_px(buf, x0 + ux * 6.0, y0 + uy * 6.0, x1, y1, C_GOLD_LIGHT if idx % 2 == 1 else C_WHITE, r=0)
+    # 1. Foreshortened Vertical Elven Star-Compass Ring (outer + inner + 4-node diamond spokes)
+    ring_steps = 96
+    for i in range(ring_steps):
+        if not is_snap and i % 2 == 1:
+            continue
+        ang = (i / ring_steps) * 2.0 * math.pi
+        ca = math.cos(ang)
+        sa = math.sin(ang)
+        px = int(round(origin_x + ca * rx))
+        py = int(round(origin_y + sa * ry))
+        if is_snap and i % 3 != 0:
+            _spx(px - 1, py, C_OUTLINE)
+        if ca > 0.55 and abs(sa) < 0.45:
+            col = C_WHITE if is_snap else C_GOLD_LIGHT
+        elif i % 8 < 2:
+            col = C_GOLD_LIGHT if is_snap else C_GOLD_MID
+        else:
+            col = C_EMERALD_BRIGHT if is_snap else C_EMERALD_MID
+        _spx(px, py, col)
 
-            # Arrowhead diamond + Mach shock-ring oval near muzzle!
-            draw_line_px(buf, x1 - ux * 5.0 + nx * 3.0, y1 - uy * 5.0 + ny * 3.0, x1 + ux * 1.5, y1 + uy * 1.5, C_GOLD_LIGHT, r=0)
-            draw_line_px(buf, x1 - ux * 5.0 - nx * 3.0, y1 - uy * 5.0 - ny * 3.0, x1 + ux * 1.5, y1 + uy * 1.5, C_GOLD_LIGHT, r=0)
-            set_px(buf, int(round(x1 + ux * 1.5)), int(round(y1 + uy * 1.5)), C_WHITE)
+        # Inner concentric compass ring
+        if i % 2 == 0 and (is_snap or i % 4 == 0):
+            ix = int(round(origin_x + ca * (rx * 0.64)))
+            iy = int(round(origin_y + sa * (ry * 0.64)))
+            _spx(ix, iy, C_GOLD_LIGHT if (i % 6 == 0 and is_snap) else (C_MINT_LIGHT if is_snap else C_FOREST_DARK))
 
-            if idx == len(arrow_rays) // 2 and intensity >= 0.8:
-                mx = cx + ux * 32.0
-                my = cy + uy * 32.0
-                for k in range(28):
-                    ma = (k / 28.0) * 2.0 * math.pi
-                    rx_p = mx + ux * (math.cos(ma) * 3.2) + nx * (math.sin(ma) * 10.5)
-                    ry_p = my + uy * (math.cos(ma) * 3.2) + ny * (math.sin(ma) * 10.5)
-                    set_px(buf, int(round(rx_p)), int(round(ry_p)), C_MINT_LIGHT if k % 2 == 0 else C_GOLD_LIGHT)
-            # 4-point Constellation Star-Glint at arrow tip & mid-wake
-            tx_i, ty_i = int(round(x1 - ux * 1.0)), int(round(y1 - uy * 1.0))
-            for arm in range(-3, 4):
-                set_px(buf, tx_i + arm, ty_i, C_WHITE if abs(arm) <= 1 else C_GOLD_LIGHT)
-                set_px(buf, tx_i, ty_i + arm, C_WHITE if abs(arm) <= 1 else C_EMERALD_BRIGHT)
+    # Inscribed 4-point Elven Star-Compass diamond & cross-ticks
+    compass_pts = [
+        (origin_x, origin_y - ry * 0.92),
+        (origin_x + rx * 0.92, origin_y),
+        (origin_x, origin_y + ry * 0.92),
+        (origin_x - rx * 0.92, origin_y),
+    ]
+    spoke_col = C_GOLD_LIGHT if is_snap else C_EMERALD_MID
+    for k in range(4):
+        p0 = compass_pts[k]
+        p1 = compass_pts[(k + 1) % 4]
+        _sline(p0[0], p0[1], p1[0], p1[1], spoke_col)
+        if is_snap or k % 2 == 0:
+            _spx(int(round(p0[0])), int(round(p0[1])), C_WHITE if is_snap else C_GOLD_LIGHT)
+            _spx(int(round(p0[0])) + 1, int(round(p0[1])), C_GOLD_LIGHT if is_snap else C_EMERALD_BRIGHT)
 
+    # 2. Central 4-Point Star-Glint right at bow discharge muzzle
+    glint_cx = int(round(origin_x + 2.0))
+    glint_cy = int(round(origin_y))
+    arm_h = 12 if is_snap else 7
+    arm_v = 10 if is_snap else 6
+    for dx in range(-6 if is_snap else -4, arm_h + 1):
+        u = abs(dx) / max(1, arm_h)
+        col = C_WHITE if abs(dx) <= 2 else (C_GOLD_LIGHT if u < 0.65 else C_EMERALD_BRIGHT)
+        _spx(glint_cx + dx, glint_cy, col)
+    for dy in range(-arm_v, arm_v + 1):
+        u = abs(dy) / max(1, arm_v)
+        col = C_WHITE if abs(dy) <= 2 else (C_GOLD_LIGHT if u < 0.65 else C_EMERALD_BRIGHT)
+        _spx(glint_cx, glint_cy + dy, col)
+    for s in (-1, 1):
+        for t_s in (-1, 1):
+            _spx(glint_cx + s, glint_cy + t_s, C_WHITE if is_snap else C_GOLD_LIGHT)
+            if is_snap:
+                _spx(glint_cx + s * 2, glint_cy + t_s * 2, C_GOLD_LIGHT)
 
-def draw_astral_vortex_smear_160(
-    buf: np.ndarray,
-    cx: float,
-    cy: float,
-    rx: float,
-    ry: float,
-    intensity: float = 1.0,
-    arrow_rays: list[float] | None = None,
-):
-    """2.5D Spinning Astral Wind-Crescent Smear + Rapid 2-Arrow Streak (Row 2 V2 F17-F18)."""
-    xmin = max(MARGIN_160 + 4, int(math.floor(cx - rx * 0.62 - 3)))
-    xmax = min(LOG_W - MARGIN_160 - 9, int(math.ceil(cx + rx + 3)))
-    ymin = max(MARGIN_160 + 5, int(math.floor(cy - ry - 4)))
-    ymax = min(LOG_H - MARGIN_160 - 4, int(math.ceil(cy + ry + 4)))
+    # 3. Crisp Pixel Astral Arrow-Jet Streaks & Wind-Sparks (`variant = 0..3`, zero oval/U-claws!)
+    if variant == 0:
+        ray_degs = [0.0]
+    elif variant == 1:
+        ray_degs = [-14.0, -3.0]
+    elif variant == 2:
+        ray_degs = [-4.0, 4.0]
+    else:
+        ray_degs = [-11.0, 2.0, 12.0]
 
-    bayer4 = (
-        (0.0625, 0.5625, 0.1875, 0.6875),
-        (0.8125, 0.3125, 0.9375, 0.4375),
-        (0.2500, 0.7500, 0.1250, 0.6250),
-        (1.0000, 0.5000, 0.8750, 0.3750),
-    )
+    for idx, r_deg in enumerate(ray_degs):
+        rr = math.radians(r_deg)
+        ux, uy = math.cos(rr), math.sin(rr)
+        ny_off = (idx - (len(ray_degs) - 1) * 0.5) * 4.0
+        sx0 = origin_x + 4.0
+        sy0 = origin_y + ny_off * 0.65
+        reach = (31.0 + variant * 1.0) if is_snap else (25.0 + variant * 0.8)
+        sx1 = min(149.0, origin_x + ux * reach)
+        sy1 = origin_y + ny_off + uy * reach * 0.62
 
-    for py in range(ymin, ymax + 1):
-        ny = (py - cy) / max(1.0, ry)
-        for px in range(xmin, xmax + 1):
-            edge_u = min(
-                (px - 6) / 6.0,
-                (150 - px) / 6.0,
-                (py - 6) / 6.0,
-                (114 - py) / 4.0,
-            )
-            if edge_u < 1.0 and edge_u <= bayer4[py & 3][px & 3]:
-                continue
-            nx = (px - cx) / max(1.0, rx if px >= cx else rx * 0.58)
-            r = math.hypot(nx, ny)
-            if r > 1.03 or r < 0.34:
-                continue
-            ang = math.atan2(ny, nx)
-            front_boost = 0.55 + 0.45 * max(0.0, math.cos(ang))
-            saw = abs(((ang * 5.0 / math.pi) % 2.0) - 1.0) * 0.14
-            r_in = 0.42 + (1.0 - front_boost * intensity) * 0.34 + saw
-            if r < r_in:
-                continue
-            v = (r - r_in) / max(0.08, 1.0 - r_in)
-            if v >= 0.93:
-                col = C_OUTLINE
-            elif v >= 0.74:
-                col = C_WHITE
-            elif v >= 0.50:
-                col = C_GOLD_LIGHT
-            elif v >= 0.25:
-                col = C_EMERALD_BRIGHT
-            else:
-                col = C_FOREST_DARK
-            set_px(buf, px, py, col)
+        # Crisp 1px arrow-jet needle with subtle dark selout tip
+        if is_snap:
+            _sline(sx0 + 2.0, sy0 - 1.0, sx1 - 2.0, sy1 - 1.0, C_EMERALD_BRIGHT)
+            _sline(sx0 + 2.0, sy0 + 1.0, sx1 - 2.0, sy1 + 1.0, C_FOREST_DARK)
+            _sline(sx0, sy0, sx1, sy1, C_GOLD_LIGHT if idx % 2 == 1 else C_WHITE)
+        else:
+            # Fading follow-frame needle sparks
+            for step_i in range(0, 16, 2):
+                uu = step_i / 15.0
+                _spx(
+                    int(round(sx0 + (sx1 - sx0) * uu)),
+                    int(round(sy0 + (sy1 - sy0) * uu)),
+                    C_GOLD_LIGHT if step_i >= 10 else C_EMERALD_BRIGHT,
+                )
 
-    if arrow_rays:
-        for idx, ray_deg in enumerate(arrow_rays):
-            rr = math.radians(ray_deg)
-            ux, uy = math.cos(rr), math.sin(rr)
-            x0 = cx + ux * 18.0
-            y0 = cy + uy * 18.0 + (idx - 0.5) * 5.0
-            x1 = min(147.0, cx + ux * (rx + 12.0))
-            y1 = max(12.0, min(110.0, y0 + uy * (rx * 0.5)))
-            draw_line_px(buf, x0, y0, x1, y1, C_OUTLINE, r=1)
-            draw_line_px(buf, x0, y0, x1, y1, C_GOLD_LIGHT if idx == 0 else C_EMERALD_BRIGHT, r=0)
-            set_px(buf, int(round(x1)), int(round(y1)), C_WHITE)
+        # Tiny crisp diamond arrowhead glint at tip
+        tx_i, ty_i = int(round(sx1)), int(round(sy1))
+        _spx(tx_i, ty_i, C_WHITE if is_snap else C_GOLD_LIGHT)
+        _spx(tx_i - 1, ty_i - 1, C_GOLD_LIGHT if is_snap else C_EMERALD_BRIGHT)
+        _spx(tx_i - 1, ty_i + 1, C_GOLD_LIGHT if is_snap else C_EMERALD_BRIGHT)
+
+    # 4. Crisp Floating Pixel Wind-Sparks & Mini Diamond Glints in front of ring
+    sparks = [
+        (origin_x + 15, origin_y - 16, C_GOLD_LIGHT),
+        (origin_x + 21, origin_y - 9, C_EMERALD_BRIGHT),
+        (origin_x + 26, origin_y - 13, C_MINT_LIGHT),
+        (origin_x + 17, origin_y + 15, C_GOLD_LIGHT),
+        (origin_x + 23, origin_y + 10, C_EMERALD_BRIGHT),
+        (origin_x + 29, origin_y + 5, C_WHITE if is_snap else C_GOLD_LIGHT),
+        (origin_x + 32, origin_y - 4, C_EMERALD_BRIGHT),
+    ]
+    for sp_idx, (kx, ky, kcol) in enumerate(sparks):
+        if not is_snap and sp_idx % 2 == 1:
+            continue
+        ikx, iky = int(round(kx)), int(round(ky))
+        _spx(ikx, iky, kcol)
+        if is_snap and sp_idx % 2 == 0:
+            _spx(ikx + 1, iky, C_WHITE)
+            _spx(ikx - 1, iky, C_EMERALD_MID)
+            _spx(ikx, iky - 1, C_GOLD_LIGHT)
+            _spx(ikx, iky + 1, C_GOLD_LIGHT)
 
 
 # ==============================================================================
@@ -887,8 +927,9 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
     )
 
     # Legs
-    if cfg.get("walk_mode", False):
-        inward_frac = 0.92
+    if cfg.get("walk_mode", False) or cfg.get("hover_mode", False):
+        hover_mode = bool(cfg.get("hover_mode", False))
+        inward_frac = 0.92 if cfg.get("walk_mode", False) else 0.78
         l_hip_xy = (
             ax + (212.0 - SPINE_X_512) * SCALE * (1.0 - inward_frac) + cfg.get("l_hip_dx", 0.0),
             ay + (294.0 - GROUND_Y_512) * SCALE + sink + cfg.get("l_hip_dy", 0.0),
@@ -921,12 +962,20 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
             r_hip_xy[1] + math.cos(r_th_rad) * r_len_160,
         )
 
-        # Draw far/left leg darkened behind near/right leg
+        # Draw far/left leg darkened behind; in hover_mode draw billowing coat-skirts BEHIND raised front leg
         paste_part_160(canvas, parts["l_thigh_dark"], l_hip_xy, angle_deg=l_th_tgt - l_th_rest)
         paste_part_160(canvas, parts["l_shin_dark"], l_knee_xy, angle_deg=l_sh_tgt - l_sh_rest)
+        if hover_mode:
+            paste_part_160(
+                canvas,
+                parts["skirts"],
+                (hip_x + tx_off * 0.4 - 1.5, hip_y + ty_off * 0.5),
+                angle_deg=torso_lean * 0.5 + cfg.get("skirt_wave", 0.0),
+            )
         paste_part_160(canvas, parts["r_thigh"], r_hip_xy, angle_deg=r_th_tgt - r_th_rest)
         paste_part_160(canvas, parts["r_shin"], r_knee_xy, angle_deg=r_sh_tgt - r_sh_rest)
     else:
+        hover_mode = False
         l_hip_xy = (ax + (212.0 - SPINE_X_512) * SCALE - stride_x * 0.55, ay + (294.0 - GROUND_Y_512) * SCALE + sink)
         r_hip_xy = (ax + (296.0 - SPINE_X_512) * SCALE + stride_x * 0.55, ay + (294.0 - GROUND_Y_512) * SCALE + sink)
         l_rad = math.radians(l_hip_ang)
@@ -940,12 +989,13 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
         paste_part_160(canvas, parts["r_shin"], r_knee_xy, angle_deg=r_hip_ang + r_knee_ang)
 
     # Coat skirts & tabard + Torso + Head
-    paste_part_160(
-        canvas,
-        parts["skirts"],
-        (hip_x + tx_off * 0.4, hip_y + ty_off * 0.5),
-        angle_deg=torso_lean * 0.5 + cfg.get("skirt_wave", 0.0),
-    )
+    if not hover_mode:
+        paste_part_160(
+            canvas,
+            parts["skirts"],
+            (hip_x + tx_off * 0.4, hip_y + ty_off * 0.5),
+            angle_deg=torso_lean * 0.5 + cfg.get("skirt_wave", 0.0),
+        )
     torso_xy = map_pt(256.0, 214.0)
     paste_part_160(canvas, parts["torso"], (torso_xy[0] + tx_off * 0.5, torso_xy[1] + ty_off * 0.5), angle_deg=torso_lean)
     head_xy = map_pt(258.0, 118.0)
@@ -967,6 +1017,9 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
         draw_pull=cfg.get("draw_pull", 0.0),
         arrow_count=cfg.get("arrows", 0),
         astral_charge=cfg.get("charge", 0.35),
+        charge_star=cfg.get("charge_star", 0.0),
+        star_phase=cfg.get("phase", 0.0),
+        max_star_x=cfg.get("max_star_x", 151),
     )
     draw_elven_bracer_arm_160(fg_buf, l_sh[0], l_sh[1], str_grip[0], str_grip[1], is_front=False, bend_sign=1.0)
     draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0)
@@ -974,8 +1027,9 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
     # Drifting Yggdrasil starlight motes on active/victory frames
     if cfg.get("motes", False):
         ph = cfg.get("phase", 0.0)
+        max_mx = cfg.get("max_star_x", 151)
         for k in range(3):
-            mx = int(round(ax - 12 + math.cos(ph + k * 2.1) * 16 + k * 8))
+            mx = min(max_mx, int(round(ax - 12 + math.cos(ph + k * 2.1) * 16 + k * 8)))
             my = int(round(ay - 44 + math.sin(ph * 1.3 + k * 1.7) * 18))
             set_px(fg_buf, mx, my, C_GOLD_LIGHT if k % 2 == 0 else C_EMERALD_BRIGHT)
 
@@ -997,7 +1051,7 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
 
     # Back Layer: Optional 6-Pinion Astral Light-Wings + Back Quiver
     back_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
-    wing_cy = ay - (34.0 if kp_name == "K4_SOMERSAULT" else 56.0)
+    wing_cy = ay - (23.0 if kp_name == "K4_SOMERSAULT" else 56.0)
     if cfg.get("wings", 0.0) > 0.05:
         draw_yggdrasil_wings_160(
             back_buf,
@@ -1026,6 +1080,9 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             draw_pull=cfg.get("draw_pull", 0.0),
             arrow_count=cfg.get("arrows", 0),
             astral_charge=cfg.get("charge", 0.65),
+            charge_star=cfg.get("charge_star", 0.0),
+            star_phase=cfg.get("phase", 0.0),
+            max_star_x=cfg.get("max_star_x", 151),
         )
 
         if kp_name == "K3_AIM":
@@ -1045,37 +1102,29 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             inv_sh = (ax + 12.0, ay - 36.0)
             draw_elven_bracer_arm_160(fg_buf, inv_sh[0], inv_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=-1.0)
 
-    smear = cfg.get("smear")
-    if smear:
-        if smear["kind"] == "crescent":
-            draw_astral_crescent_smear_160(
-                fg_buf,
-                cx=ax + smear.get("cx", 18.0),
-                cy=ay + smear.get("cy", -52.0),
-                r_outer=smear["r_outer"],
-                r_inner_base=smear["r_inner"],
-                deg_start=smear["deg_start"],
-                deg_end=smear["deg_end"],
-                tilt_y=smear.get("tilt_y", 0.86),
-                intensity=smear.get("intensity", 1.0),
-                arrow_rays=smear.get("arrow_rays"),
-            )
-        elif smear["kind"] == "vortex":
-            draw_astral_vortex_smear_160(
-                fg_buf,
-                cx=ax + smear.get("cx", 16.0),
-                cy=ay + smear.get("cy", -50.0),
-                rx=smear["rx"],
-                ry=smear["ry"],
-                intensity=smear.get("intensity", 1.0),
-                arrow_rays=smear.get("arrow_rays"),
-            )
+    sigil = cfg.get("shot_sigil")
+    if sigil:
+        draw_yggdrasil_shot_sigil_160(
+            fg_buf,
+            origin_x=sigil["origin_x"],
+            origin_y=sigil["origin_y"],
+            variant=sigil.get("variant", 0),
+            fade=sigil.get("fade", 1.0),
+        )
+
+    if cfg.get("ground_sparks", False):
+        ph = cfg.get("phase", 0.0)
+        for s_i in range(4):
+            sx = int(round(ax + 10.0 + math.cos(ph * 1.4 + s_i * 1.6) * 5.0))
+            sy = int(round(ay - 4.0 - abs(math.sin(ph + s_i * 1.3)) * 5.0))
+            set_px(fg_buf, sx, sy, C_GOLD_LIGHT if s_i % 2 == 0 else C_EMERALD_BRIGHT)
 
     # Living Yggdrasil emerald/gold star-leaf motes so every 30fps frame breathes organically
     if cfg.get("motes", True):
         ph = cfg.get("phase", 0.0)
+        max_mx = cfg.get("max_star_x", 151)
         for k in range(3):
-            mx = int(round(ax - 14.0 + math.cos(ph * 1.25 + k * 2.1) * 18.0 + k * 9.0))
+            mx = min(max_mx, int(round(ax - 14.0 + math.cos(ph * 1.25 + k * 2.1) * 18.0 + k * 9.0)))
             my = int(round(ay - 36.0 + math.sin(ph * 1.5 + k * 1.9) * 16.0))
             set_px(fg_buf, mx, my, C_GOLD_LIGHT if (k + int(ph * 4)) % 2 == 0 else C_EMERALD_BRIGHT)
 
@@ -1196,15 +1245,15 @@ def build_row1_walk(rigs: dict) -> list[Image.Image]:
 def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
     """
     Row 2: Dynamic FFBE / Last Cloudia Ranged-Acrobat 4-Beat Flow ([[60,8],[68,7],[75,8],[83,7]]):
-      V0 (F00..F07): F03 1-frame snap wide emerald-gold astral bow-arc / glaive smear + Mach shock-ring arrow!
-      V1 (F08..F14): F09 1-frame snap rising upward Twin-Star (2-arrow) volley smear!
-      V2 (F15..F22): F17-F18 spinning 2.5D astral wind-crescent vortex + rapid 2-arrow emerald streak!
-      V3 (F23..F29): Airborne backstep/hop apex F25 monumental 3-Arrow Astral Dragon-Piercer smear volley!
+      V0 (F00..F07): F03..F04 Yggdrasil Bow-Discharge Star-Compass Sigil + Astral Starlight Shot!
+      V1 (F08..F14): F09..F10 Rising Twin-Star (2-arrow) Star-Compass Volley!
+      V2 (F15..F22): F17..F18 Rapid 2-Arrow Emerald Streak Star-Compass Sigil!
+      V3 (F23..F29): Airborne backstep/hop apex F25..F26 3-Arrow Astral Dragon-Piercer Star-Compass Sigil!
     """
     frames = []
     for f in range(30):
         ph = (f / 30.0) * 4.0 * math.pi
-        # ---------------- V0: MACH SHOCK-RING SHOT / BOW-GLAIVE ARC (F00..F07) ----------------
+        # ---------------- V0: STARLIGHT SHOT (F00..F07) ----------------
         if f in (0, 1, 2):
             p = f / 2.0
             frames.append(render_keypose_frame(rigs, "K1_COIL" if f < 2 else "K3_AIM", {
@@ -1217,9 +1266,10 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.45 + 0.55 * p,
                 "arrows": 1,
                 "charge": 0.55 + 0.40 * p,
+                "charge_star": 0.35 + 0.35 * p,
             }))
         elif f == 3:
-            # 1-FRAME SNAP: Wide emerald-gold bow-arc release smear + Mach shock-ring arrow (x_320 > 290!)
+            # 1-FRAME SNAP: Yggdrasil Bow-Discharge Star-Compass Sigil (`x_160 = 104..151`)
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
                 "dx": 5.0,
                 "dy": 0.0,
@@ -1230,17 +1280,12 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": -0.22,
                 "arrows": 0,
                 "charge": 1.15,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 18.0,
-                    "cy": -54.0,
-                    "r_outer": 66.0,
-                    "r_inner": 28.0,
-                    "deg_start": -56.0,
-                    "deg_end": 56.0,
-                    "tilt_y": 0.84,
-                    "intensity": 1.0,
-                    "arrow_rays": [0.0],
+                "charge_star": 0.85,
+                "shot_sigil": {
+                    "origin_x": 116.0,
+                    "origin_y": 60.0,
+                    "variant": 0,
+                    "fade": 1.0,
                 },
             }))
         elif f == 4:
@@ -1254,17 +1299,11 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.0,
                 "arrows": 0,
                 "charge": 0.80,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 19.0,
-                    "cy": -54.0,
-                    "r_outer": 64.0,
-                    "r_inner": 40.0,
-                    "deg_start": -40.0,
-                    "deg_end": 40.0,
-                    "tilt_y": 0.84,
-                    "intensity": 0.55,
-                    "arrow_rays": [0.0],
+                "shot_sigil": {
+                    "origin_x": 116.0,
+                    "origin_y": 60.0,
+                    "variant": 0,
+                    "fade": 0.58,
                 },
             }))
         elif f in (5, 6, 7):
@@ -1279,6 +1318,7 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.65 * p,
                 "arrows": 2 if f >= 6 else 0,
                 "charge": 0.65,
+                "charge_star": 0.45 if f >= 6 else 0.0,
             }))
 
         # ---------------- V1: RISING TWIN-STAR 2-ARROW VOLLEY (F08..F14) ----------------
@@ -1293,9 +1333,10 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 1.0,
                 "arrows": 2,
                 "charge": 0.95,
+                "charge_star": 0.65,
             }))
         elif f == 9:
-            # 1-FRAME SNAP: Rising upward Twin-Star 2-arrow volley smear!
+            # 1-FRAME SNAP: Rising upward Twin-Star 2-arrow Star-Compass Sigil
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
                 "dx": 4.0,
                 "dy": 0.0,
@@ -1306,17 +1347,12 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": -0.20,
                 "arrows": 0,
                 "charge": 1.15,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 16.0,
-                    "cy": -54.0,
-                    "r_outer": 66.0,
-                    "r_inner": 28.0,
-                    "deg_start": -68.0,
-                    "deg_end": 38.0,
-                    "tilt_y": 0.86,
-                    "intensity": 1.0,
-                    "arrow_rays": [-18.0, -4.0],
+                "charge_star": 0.90,
+                "shot_sigil": {
+                    "origin_x": 116.0,
+                    "origin_y": 51.0,
+                    "variant": 1,
+                    "fade": 1.0,
                 },
             }))
         elif f == 10:
@@ -1330,17 +1366,11 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.0,
                 "arrows": 0,
                 "charge": 0.75,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 16.0,
-                    "cy": -54.0,
-                    "r_outer": 63.0,
-                    "r_inner": 40.0,
-                    "deg_start": -62.0,
-                    "deg_end": 18.0,
-                    "tilt_y": 0.86,
-                    "intensity": 0.55,
-                    "arrow_rays": [-18.0, -4.0],
+                "shot_sigil": {
+                    "origin_x": 116.0,
+                    "origin_y": 51.0,
+                    "variant": 1,
+                    "fade": 0.58,
                 },
             }))
         elif f in (11, 12, 13, 14):
@@ -1355,9 +1385,10 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.75 * p,
                 "arrows": 2 if f >= 13 else 0,
                 "charge": 0.70,
+                "charge_star": 0.45 if f >= 13 else 0.0,
             }))
 
-        # ---------------- V2: SPINNING 2.5D ASTRAL WIND-CRESCENT + 2-ARROW STREAK (F15..F22) ----------------
+        # ---------------- V2: RAPID 2-ARROW EMERALD STREAK (F15..F22) ----------------
         elif f in (15, 16):
             p = f - 15
             frames.append(render_keypose_frame(rigs, "K1_COIL", {
@@ -1370,9 +1401,10 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.95 + 0.15 * p,
                 "arrows": 2,
                 "charge": 0.95,
+                "charge_star": 0.65,
             }))
         elif f == 17:
-            # 1-FRAME SNAP: Spinning astral wind-crescent vortex + rapid 2-arrow emerald streak!
+            # 1-FRAME SNAP: Star-Compass Bow-Discharge Sigil + rapid 2-arrow emerald jet!
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
                 "dx": 6.0,
                 "dy": 0.0,
@@ -1383,14 +1415,12 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": -0.22,
                 "arrows": 0,
                 "charge": 1.20,
-                "smear": {
-                    "kind": "vortex",
-                    "cx": 16.0,
-                    "cy": -52.0,
-                    "rx": 68.0,
-                    "ry": 21.0,
-                    "intensity": 1.0,
-                    "arrow_rays": [-4.0, 4.0],
+                "charge_star": 0.95,
+                "shot_sigil": {
+                    "origin_x": 118.0,
+                    "origin_y": 61.0,
+                    "variant": 2,
+                    "fade": 1.0,
                 },
             }))
         elif f == 18:
@@ -1404,14 +1434,11 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.05,
                 "arrows": 0,
                 "charge": 0.95,
-                "smear": {
-                    "kind": "vortex",
-                    "cx": 16.0,
-                    "cy": -52.0,
-                    "rx": 64.0,
-                    "ry": 18.0,
-                    "intensity": 0.70,
-                    "arrow_rays": [-2.0, 5.0],
+                "shot_sigil": {
+                    "origin_x": 118.0,
+                    "origin_y": 61.0,
+                    "variant": 2,
+                    "fade": 0.58,
                 },
             }))
         elif f in (19, 20, 21, 22):
@@ -1426,6 +1453,7 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.65 * p,
                 "arrows": 3 if f == 22 else 0,
                 "charge": 0.75,
+                "charge_star": 0.55 if f == 22 else 0.0,
             }))
 
         # ---------------- V3: AIRBORNE HOP APEX 3-ARROW ASTRAL DRAGON-PIERCER (F23..F29) ----------------
@@ -1442,9 +1470,10 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 1.05 + 0.15 * p,
                 "arrows": 3,
                 "charge": 1.15,
+                "charge_star": 0.85 + 0.15 * p,
             }))
         elif f == 25:
-            # 1-FRAME APEX SNAP: Monumental 3-Arrow Astral Dragon-Piercer Smear Volley (x_320 > 300!)
+            # 1-FRAME APEX SNAP: 3-Arrow Astral Dragon-Piercer Star-Compass Sigil!
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
                 "dx": -3.0,
                 "dy": -11.0,
@@ -1456,25 +1485,19 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": -0.25,
                 "arrows": 0,
                 "charge": 1.35,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 20.0,
-                    "cy": -52.0,
-                    "r_outer": 70.0,
-                    "r_inner": 24.0,
-                    "deg_start": -58.0,
-                    "deg_end": 58.0,
-                    "tilt_y": 0.88,
-                    "intensity": 1.05,
-                    "arrow_rays": [-10.0, 4.0, 16.0],
+                "charge_star": 1.05,
+                "shot_sigil": {
+                    "origin_x": 117.0,
+                    "origin_y": 53.0,
+                    "variant": 3,
+                    "fade": 1.0,
                 },
             }))
-        elif f in (26, 27):
-            p = f - 26
+        elif f == 26:
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
                 "dx": -2.0,
-                "dy": -8.0 + 4.0 * p,
-                "wings": 0.65 - 0.25 * p,
+                "dy": -8.0,
+                "wings": 0.65,
                 "phase": ph,
                 "bow_dx": 22.0,
                 "bow_dy": -53.0,
@@ -1482,18 +1505,25 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.0,
                 "arrows": 0,
                 "charge": 0.95,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 20.0,
-                    "cy": -52.0,
-                    "r_outer": 66.0 - 3.0 * p,
-                    "r_inner": 40.0 + 8.0 * p,
-                    "deg_start": -42.0,
-                    "deg_end": 46.0,
-                    "tilt_y": 0.88,
-                    "intensity": 0.60 - 0.22 * p,
-                    "arrow_rays": [-8.0, 4.0, 15.0] if p == 0 else None,
+                "shot_sigil": {
+                    "origin_x": 117.0,
+                    "origin_y": 53.0,
+                    "variant": 3,
+                    "fade": 0.58,
                 },
+            }))
+        elif f == 27:
+            frames.append(render_keypose_frame(rigs, "K3_AIM", {
+                "dx": -1.0,
+                "dy": -4.0,
+                "wings": 0.40,
+                "phase": ph,
+                "bow_dx": 20.5,
+                "bow_dy": -53.0,
+                "aim_deg": 6.0,
+                "draw_pull": 0.08,
+                "arrows": 0,
+                "charge": 0.72,
             }))
         else:  # F28..F29 agile ranger landing settle
             p = f - 28
@@ -1524,14 +1554,7 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
                 "dy": 0.0,
                 "phase": ph,
                 "draw_bow": False,
-                "smear": {
-                    "kind": "vortex",
-                    "cx": 14.0,
-                    "cy": -14.0,
-                    "rx": 42.0 + u * 16.0,
-                    "ry": 9.0,
-                    "intensity": 0.85 if f in (4, 5, 6) else 0.45,
-                } if 3 <= f <= 9 else None,
+                "ground_sparks": 3 <= f <= 9,
             }))
         elif f <= 15:
             p = (f - 12) / 3.0
@@ -1545,6 +1568,7 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.55 + 0.45 * p,
                 "arrows": 3,
                 "charge": 0.85 + 0.25 * p,
+                "charge_star": 0.5 + 0.4 * p,
             }))
         elif f == 16:
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
@@ -1557,18 +1581,7 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
                 "draw_pull": -0.22,
                 "arrows": 0,
                 "charge": 1.25,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 18.0,
-                    "cy": -54.0,
-                    "r_outer": 67.0,
-                    "r_inner": 26.0,
-                    "deg_start": -60.0,
-                    "deg_end": 48.0,
-                    "tilt_y": 0.86,
-                    "intensity": 1.0,
-                    "arrow_rays": [-18.0, -6.0, 8.0],
-                },
+                "charge_star": 0.95,
             }))
         else:
             p = (f - 17) / 12.0
@@ -1590,189 +1603,240 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
 
 def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
     """
-    Row 4: Dual-Window Neo-Vision Choreography:
-      - F00..F02 (120..122): Gale Charge-In Rush & Twin Bow-Blade Vault-Kick launch coil
-      - F03..F14 (123..134): Full 180-deg Acrobatic Airborne Backflip / Somersault Arc:
-          F03..F05: Rising backward tuck rotation (-42 -> -92 -> -136 deg)
-          F06..F11: Inverted 180-deg K4_SOMERSAULT mid-air bow-draw aiming downward + Starlock smears
-          F12..F14: Descending backflip completion (+116 -> +58 -> +18 deg)
-      - F15..F16 (135..136): Agile ranger landing crouch & Yggdrasil Root-Snare invocation
-      - F17..F25 (137..145): 6-Pinion Astral Light-Wings UNFOLDED Sovereign Yggdrasil Greatbow Draw & Release!
-      - F26..F29 (146..149): Winged Supernova follow-through settle
+    Row 4: Dual-Window Neo-Vision Somersault Bow-Charge & Airborne Hover Overdraw (`maxX <= 258`, 0 smears!):
+      - F00..F02 (120..122): Winged leap-off coil (`dy = -2..-6`, `wings = 0.55..0.82`) + nocked arrow & bow charge star
+      - F03..F14 (123..134): 30fps acrobatic airborne somersault with unfolded 6-pinion wings (`0.75..0.96`)
+                             AND brightly charging Yggdrasil bow + glowing emerald-gold starlight core on arrow tip
+      - F15..F16 (135..136): Smooth airborne/touchdown transition (`wings = 0.78..0.88`)
+      - F17..F26 (137..146): Airborne Sovereign Overdraw & Release — graceful mid-air hovering Elven Ranger legs
+                             (front knee bent/tucked in mid-air, rear leg extended with pointed boot, flowing
+                             skirt & hair, `wings = 0.95..1.08`, full overdrawn Yggdrasil Greatbow, `0` smears)
+      - F27..F29 (147..149): Winged Supernova descent & follow-through settle
     """
     frames = []
     for f in range(30):
         ph = (f / 30.0) * 6.0 * math.pi
         if f <= 2:
             p = f / 2.0
-            frames.append(render_keypose_frame(rigs, "K1_COIL" if f == 0 else "K2_CROUCH", {
-                "dx": 3.0 * p,
-                "dy": 0.0,
-                "wings": 0.35 + 0.25 * p,
+            frames.append(render_keypose_frame(rigs, "K1_COIL", {
+                "dx": -1.0 + 3.0 * p,
+                "dy": -2.0 - 4.0 * p,
+                "wings": 0.55 + 0.27 * p,
                 "phase": ph,
-                "draw_bow": f != 1,
-                "bow_dx": 18.0,
-                "bow_dy": -46.0,
-                "aim_deg": -28.0,
+                "draw_bow": True,
+                "bow_dx": 17.0 + 1.5 * p,
+                "bow_dy": -50.0 + 2.0 * p,
+                "aim_deg": -14.0 - 10.0 * p,
                 "bow_h": 20.0,
-                "draw_pull": 0.15,
-                "arrows": 1 if f == 0 else 0,
-                "charge": 0.85,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 16.0,
-                    "cy": -38.0,
-                    "r_outer": 48.0,
-                    "r_inner": 24.0,
-                    "deg_start": -75.0,
-                    "deg_end": 25.0,
-                    "tilt_y": 0.86,
-                    "intensity": 0.90,
-                } if f == 2 else None,
+                "draw_pull": 0.45 + 0.35 * p,
+                "arrows": 1,
+                "charge": 1.05 + 0.15 * p,
+                "charge_star": 0.85 + 0.30 * p,
+                "max_star_x": 128,
             }))
         elif f in (3, 4, 5):
-            # Rising backward somersault launch (-42 -> -92 -> -136 deg around torso center!)
+            # Rising backward somersault launch (-42 -> -92 -> -136 deg) with unfolded wings & glowing bow-charge core!
             idx = f - 3
             rot_deg = (-42.0, -92.0, -136.0)[idx]
             base_im = render_keypose_frame(rigs, "K1_COIL", {
                 "dx": 0.0,
                 "dy": -4.0,
-                "wings": 0.55,
+                "wings": 0.76 + 0.06 * idx,
                 "phase": ph,
-                "bow_dx": 14.0,
+                "bow_dx": 15.0,
                 "bow_dy": -48.0,
-                "aim_deg": 24.0,
+                "aim_deg": 20.0,
                 "bow_h": 19.0,
-                "draw_pull": 0.35,
+                "draw_pull": 0.65 + 0.10 * idx,
                 "arrows": 1,
-                "charge": 0.95,
+                "charge": 1.22,
+                "charge_star": 1.05 + 0.12 * idx,
+                "max_star_x": 128,
                 "motes": False,
             })
             rot_im = base_im.rotate(-rot_deg, resample=Image.Resampling.NEAREST, center=(ANCHOR_X_160 + 2, 68))
             cell = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
-            cell.paste(rot_im, (4, -8 - idx * 2))
+            cell.paste(rot_im, (4, -6 - idx * 2))
             fg = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
-            draw_astral_crescent_smear_160(
-                fg, cx=ANCHOR_X_160 + 4.0, cy=58.0 - idx * 2.0,
-                r_outer=36.0, r_inner_base=22.0,
-                deg_start=-155.0 + idx * 25.0, deg_end=-35.0 + idx * 25.0,
-                tilt_y=0.90, intensity=0.68,
-            )
+            for k in range(3):
+                mx = min(127, int(round(ANCHOR_X_160 - 6.0 + math.cos(ph * 1.4 + k * 2.1) * 18.0)))
+                my = int(round(58.0 + math.sin(ph * 1.6 + k * 1.9) * 16.0))
+                set_px(fg, mx, my, C_GOLD_LIGHT if (k + idx) % 2 == 0 else C_EMERALD_BRIGHT)
             cell.alpha_composite(Image.fromarray(fg, "RGBA"))
             frames.append(cell)
         elif f <= 11:
-            # Inverted 180-deg upside-down mid-air bow-draw aiming downward + Starlock barrage!
+            # Inverted 180-deg upside-down mid-air bow-charge & aim with unfolded Astral Light-Wings (`0` smears!)
             u = (f - 6) / 5.0
-            fire_beat = f in (7, 9, 11)
             frames.append(render_keypose_frame(rigs, "K4_SOMERSAULT", {
-                "dx": 2.0 + 2.0 * math.sin(u * math.pi),
+                "dx": 1.5 + 1.5 * math.sin(u * math.pi),
                 "dy": -14.0 - 3.0 * math.sin(u * math.pi),
                 "body_deg": -16.0 + 32.0 * u,
-                "wings": 0.65,
+                "wings": 0.88 + 0.08 * math.sin(u * math.pi),
                 "phase": ph,
                 "bow_dx": 17.0,
                 "bow_dy": -33.0,
-                "aim_deg": 46.0 + 10.0 * u,
+                "aim_deg": 44.0 + 10.0 * u,
                 "bow_h": 19.5,
-                "draw_pull": -0.18 if fire_beat else 0.88,
-                "arrows": 0 if fire_beat else 2,
-                "charge": 1.18,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 17.0,
-                    "cy": -32.0,
-                    "r_outer": 52.0,
-                    "r_inner": 25.0,
-                    "deg_start": 4.0,
-                    "deg_end": 82.0,
-                    "tilt_y": 0.86,
-                    "intensity": 0.92,
-                    "arrow_rays": [38.0, 54.0],
-                } if fire_beat else None,
+                "draw_pull": 0.72 + 0.28 * math.sin(u * math.pi),
+                "arrows": 1,
+                "charge": 1.32,
+                "charge_star": 1.05 + 0.25 * math.sin(ph),
+                "max_star_x": 128,
             }))
         elif f in (12, 13, 14):
-            # Completing the 180-deg backflip rotation into agile landing (+116 -> +58 -> +18 deg)
+            # Descending backflip completion (+116 -> +58 -> +18 deg) with charging bow & starlight core!
             idx = f - 12
             rot_deg = (116.0, 58.0, 18.0)[idx]
-            kp_nm = "K1_COIL" if idx < 2 else "K3_AIM"
-            base_im = render_keypose_frame(rigs, kp_nm, {
+            base_im = render_keypose_frame(rigs, "K1_COIL", {
                 "dx": 0.0,
                 "dy": -2.0,
-                "wings": 0.55 - idx * 0.08,
+                "wings": 0.88 - idx * 0.04,
                 "phase": ph,
                 "bow_dx": 16.0,
                 "bow_dy": -50.0,
-                "aim_deg": 18.0,
+                "aim_deg": 14.0,
                 "bow_h": 20.0,
-                "draw_pull": 0.25,
+                "draw_pull": 0.65 + 0.10 * idx,
                 "arrows": 1,
-                "charge": 0.90,
-                "motes": True,
+                "charge": 1.25,
+                "charge_star": 1.15 - 0.06 * idx,
+                "max_star_x": 128,
+                "motes": False,
             })
             rot_im = base_im.rotate(-rot_deg, resample=Image.Resampling.NEAREST, center=(ANCHOR_X_160 + 2, 68))
             cell = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
-            cell.paste(rot_im, (2, -8 + idx * 3))
+            cell.paste(rot_im, (2, -7 + idx * 3))
+            fg = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
+            for k in range(3):
+                mx = min(127, int(round(ANCHOR_X_160 - 4.0 + math.cos(ph * 1.3 + k * 2.1) * 18.0)))
+                my = int(round(62.0 + math.sin(ph * 1.5 + k * 1.9) * 16.0))
+                set_px(fg, mx, my, C_GOLD_LIGHT if (k + idx) % 2 == 0 else C_EMERALD_BRIGHT)
+            cell.alpha_composite(Image.fromarray(fg, "RGBA"))
             frames.append(cell)
         elif f in (15, 16):
-            # Agile opposite-side ranger landing crouch -> rise into Sovereign invocation
+            # Smooth airborne / touchdown transition (`wings = 0.78..0.88`)
             p = f - 15
-            frames.append(render_keypose_frame(rigs, "K2_CROUCH" if p == 0 else "K1_COIL", {
-                "dx": 1.5 * (1.0 - p),
-                "dy": 0.0,
-                "wings": 0.45 + 0.30 * p,
+            frames.append(render_stand_rig_frame(rigs, {
+                "hover_mode": True,
+                "dx": 1.0 - 1.0 * p,
+                "dy": -2.0 - 3.5 * p,
+                "wings": 0.78 + 0.10 * p,
                 "phase": ph,
-                "draw_bow": p == 1,
-                "bow_dx": 18.0,
-                "bow_dy": -52.0,
-                "aim_deg": 6.0,
-                "bow_h": 22.0,
-                "draw_pull": 0.35,
+                "torso_lean": 7.0 - 2.5 * p,
+                "head_nod": 1.0 * (1.0 - p),
+                "hair_wave": 12.0 + 1.5 * p,
+                "skirt_wave": 11.0 + 1.5 * p,
+                "l_hip_dx": -1.5,
+                "l_thigh_tgt": 20.0,
+                "l_shin_tgt": 30.0 - 2.0 * p,
+                "r_hip_dx": 2.0,
+                "r_hip_dy": -1.0,
+                "r_thigh_tgt": -52.0 - 10.0 * p,
+                "r_shin_tgt": 8.0 + 6.0 * p,
+                "bow_dx": 17.5 + 1.5 * p,
+                "bow_dy": -12.5 - 1.0 * p,
+                "aim_deg": 8.0 - 6.0 * p,
+                "bow_h": 22.0 + 1.5 * p,
+                "draw_pull": 0.40 + 0.20 * p,
                 "arrows": 1,
-                "charge": 0.95,
+                "charge": 1.10 + 0.08 * p,
+                "charge_star": 0.90 + 0.10 * p,
+                "max_star_x": 128,
+                "motes": True,
             }))
         elif f <= 24:
-            # 6-Pinion Astral Light-Wings UNFOLDED Sovereign Yggdrasil Overdraw Charge!
+            # F17..F24: Airborne Sovereign Overdraw (`wings = 0.95..1.08`, graceful hovering legs, flowing hair & skirt!)
             u = (f - 17) / 7.0
-            frames.append(render_keypose_frame(rigs, "K3_AIM", {
-                "dx": -2.5 * u,
-                "dy": -5.0 - 1.5 * math.sin(u * math.pi),
-                "wings": 0.88 + 0.18 * u,
+            sway = math.sin(u * math.pi)
+            frames.append(render_stand_rig_frame(rigs, {
+                "hover_mode": True,
+                "dx": -2.0 * u,
+                "dy": -7.5 - 2.0 * sway,
+                "wings": 0.95 + 0.13 * u,
                 "phase": ph,
-                "bow_dx": 22.0,
-                "bow_dy": -55.0,
+                "torso_lean": 4.0 - 3.0 * u,
+                "head_nod": -0.5 + 0.8 * u,
+                "hair_wave": 14.0 + 3.5 * math.sin(u * math.pi * 2.0),
+                "skirt_wave": 13.0 + 3.0 * math.cos(u * math.pi * 1.5),
+                "l_hip_dx": -2.0,
+                "l_thigh_tgt": 21.0 + 3.0 * sway,
+                "l_shin_tgt": 29.0 + 4.0 * sway,
+                "r_hip_dx": 2.5,
+                "r_hip_dy": -1.5,
+                "r_thigh_tgt": -66.0 - 4.0 * u,
+                "r_shin_tgt": 14.0 + 4.0 * u,
+                "bow_dx": 19.5 - 1.5 * u,
+                "bow_dy": -13.5,
                 "aim_deg": 0.0,
                 "bow_h": 24.0,
-                "draw_pull": 0.55 + 0.65 * u,
-                "arrows": 3 if u > 0.45 else 1,
-                "charge": 1.0 + 0.45 * u,
+                "draw_pull": 0.65 + 0.55 * u,
+                "arrows": 1,
+                "charge": 1.20 + 0.25 * u,
+                "charge_star": 1.00 + 0.35 * u,
+                "max_star_x": 128,
+                "motes": True,
+            }))
+        elif f in (25, 26):
+            # F25..F26: Airborne Sovereign Overdraw Release (0 smears, poised hover recoil!)
+            p = f - 25
+            frames.append(render_stand_rig_frame(rigs, {
+                "hover_mode": True,
+                "dx": -4.0 + 1.2 * p,
+                "dy": -8.0 + 1.5 * p,
+                "wings": 1.08 - 0.06 * p,
+                "phase": ph,
+                "torso_lean": -4.5 + 2.0 * p,
+                "head_nod": 0.5,
+                "hair_wave": 16.5 - 2.0 * p,
+                "skirt_wave": 14.5 - 1.5 * p,
+                "l_hip_dx": -2.0,
+                "l_thigh_tgt": 23.0 - 2.0 * p,
+                "l_shin_tgt": 31.0 - 2.0 * p,
+                "r_hip_dx": 2.5,
+                "r_hip_dy": -1.5,
+                "r_thigh_tgt": -68.0 + 5.0 * p,
+                "r_shin_tgt": 17.0 - 3.0 * p,
+                "bow_dx": 21.0,
+                "bow_dy": -13.5,
+                "aim_deg": 0.0,
+                "bow_h": 24.0,
+                "draw_pull": -0.22 + 0.16 * p,
+                "arrows": 0,
+                "charge": 1.40 - 0.25 * p,
+                "charge_star": 1.15 - 0.45 * p,
+                "max_star_x": 128,
+                "motes": True,
             }))
         else:
-            # F25..F29: Winged Supernova Pierce Release & Sovereign Settle!
-            p = (f - 25) / 4.0
-            frames.append(render_keypose_frame(rigs, "K3_AIM", {
-                "dx": -4.0 + 2.5 * p,
-                "dy": -5.0 * (1.0 - p),
-                "wings": 1.04 - 0.22 * p,
+            # F27..F29: Winged Supernova descent & follow-through settle cleanly to ground
+            p = (f - 27) / 2.0
+            frames.append(render_stand_rig_frame(rigs, {
+                "hover_mode": True,
+                "dx": -2.0 * (1.0 - p),
+                "dy": -4.5 * (1.0 - p),
+                "wings": 0.94 - 0.26 * p,
                 "phase": ph,
-                "bow_dx": 23.5,
-                "bow_dy": -55.0,
-                "aim_deg": 0.0,
-                "bow_h": 24.0,
-                "draw_pull": -0.24 * (1.0 - p),
-                "arrows": 0,
-                "charge": 1.40 - 0.40 * p,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 20.0,
-                    "cy": -54.0,
-                    "r_outer": 65.0,
-                    "r_inner": 22.0 + 20.0 * p,
-                    "deg_start": -58.0,
-                    "deg_end": 58.0,
-                    "tilt_y": 0.84,
-                    "intensity": max(0.35, 1.02 - 0.62 * p),
-                    "arrow_rays": [-8.0, 0.0, 8.0] if f <= 26 else None,
-                } if f <= 27 else None,
+                "torso_lean": 0.5 + 1.5 * p,
+                "head_nod": 0.3 * p,
+                "hair_wave": 11.5 - 7.5 * p,
+                "skirt_wave": 10.5 - 7.5 * p,
+                "l_hip_dx": -1.5 * (1.0 - p),
+                "l_thigh_tgt": 19.0 - 4.6 * p,
+                "l_shin_tgt": 26.0 - 12.8 * p,
+                "r_hip_dx": 1.5 * (1.0 - p),
+                "r_hip_dy": -1.0 * (1.0 - p),
+                "r_thigh_tgt": -54.0 + 32.2 * p,
+                "r_shin_tgt": 12.0 - 25.8 * p,
+                "bow_dx": 19.5 - 3.5 * p,
+                "bow_dy": -12.5 + 3.0 * p,
+                "aim_deg": 4.0 + 8.0 * p,
+                "bow_h": 23.0 - 1.0 * p,
+                "draw_pull": 0.05 + 0.07 * p,
+                "arrows": 1 if f == 29 else 0,
+                "charge": 0.95 - 0.40 * p,
+                "charge_star": 0.45 * (1.0 - p),
+                "max_star_x": 128,
+                "motes": True,
             }))
     return frames
 
@@ -1905,6 +1969,7 @@ def build_row7_crouch(rigs: dict) -> list[Image.Image]:
                 "dy": 0.0,
                 "phase": ph,
                 "draw_bow": False,
+                "ground_sparks": 4 <= f <= 10,
             }))
         elif f == 14:
             frames.append(render_keypose_frame(rigs, "K2_SNIPE", {
@@ -1918,18 +1983,7 @@ def build_row7_crouch(rigs: dict) -> list[Image.Image]:
                 "draw_pull": -0.22,
                 "arrows": 0,
                 "charge": 1.20,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 18.0,
-                    "cy": -42.0,
-                    "r_outer": 65.0,
-                    "r_inner": 26.0,
-                    "deg_start": -48.0,
-                    "deg_end": 44.0,
-                    "tilt_y": 0.80,
-                    "intensity": 1.0,
-                    "arrow_rays": [-4.0],
-                },
+                "charge_star": 0.95,
             }))
         elif f <= 23:
             p = (f - 15) / 8.0
@@ -1944,17 +1998,7 @@ def build_row7_crouch(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.10 * p,
                 "arrows": 1 if p > 0.5 else 0,
                 "charge": 0.85 * (1.0 - 0.4 * p),
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 18.0,
-                    "cy": -42.0,
-                    "r_outer": 62.0,
-                    "r_inner": 40.0,
-                    "deg_start": -36.0,
-                    "deg_end": 30.0,
-                    "tilt_y": 0.80,
-                    "intensity": 0.50,
-                } if f == 15 else None,
+                "charge_star": 0.45 if f == 15 else 0.0,
             }))
         else:
             p = (f - 24) / 5.0
@@ -2010,21 +2054,10 @@ def build_row8_jump(rigs: dict) -> list[Image.Image]:
                 "bow_dy": -34.0,
                 "aim_deg": 36.0,
                 "bow_h": 20.0,
-                "draw_pull": -0.20 if snap else 0.45,
+                "draw_pull": -0.20 if f == 14 else (-0.05 if f == 15 else 0.45),
                 "arrows": 0 if snap else 1,
                 "charge": 1.10,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 18.0,
-                    "cy": -34.0,
-                    "r_outer": 56.0,
-                    "r_inner": 26.0 if f == 14 else 38.0,
-                    "deg_start": -8.0,
-                    "deg_end": 74.0,
-                    "tilt_y": 0.86,
-                    "intensity": 0.95 if f == 14 else 0.55,
-                    "arrow_rays": [30.0, 44.0] if f == 14 else None,
-                } if snap else None,
+                "charge_star": 0.90 if f == 14 else (0.50 if f == 15 else 0.35),
             }))
         else:
             p = (f - 21) / 8.0
@@ -2060,17 +2093,7 @@ def build_row9_victory(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.35 * (1.0 - u),
                 "arrows": 1,
                 "charge": 0.95,
-                "smear": {
-                    "kind": "crescent",
-                    "cx": 15.0,
-                    "cy": -56.0,
-                    "r_outer": 58.0,
-                    "r_inner": 36.0,
-                    "deg_start": -72.0,
-                    "deg_end": 12.0,
-                    "tilt_y": 0.86,
-                    "intensity": 0.75,
-                } if f == 4 else None,
+                "charge_star": 0.75 if f == 4 else 0.35,
             }))
         else:
             lph = ((f - 15) / 15.0) * 2.0 * math.pi
@@ -2113,33 +2136,8 @@ def finalize_cell_320x240(im_160: Image.Image) -> Image.Image:
 
 
 def build_portrait_128():
-    raw = Image.open(PORTRAIT_REF).convert("RGB")
-    w, h = raw.size
-    side = int(min(w, h) * 0.46)
-    x0 = min(w - side, int(w * 0.25))
-    y0 = min(h - side, int(h * 0.04))
-    cropped = raw.crop((x0, y0, x0 + side, y0 + side))
-    p64 = cropped.resize((64, 64), Image.Resampling.LANCZOS)
-    q64 = p64.quantize(colors=96, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).convert("RGBA")
-    p128 = q64.resize((128, 128), Image.Resampling.NEAREST)
-
-    arr = np.array(p128, dtype=np.uint8)
-    arr[0:2, :, :] = C_FOREST_DARK
-    arr[-2:, :, :] = C_FOREST_DARK
-    arr[:, 0:2, :] = C_FOREST_DARK
-    arr[:, -2:, :] = C_FOREST_DARK
-    arr[2:4, 2:8, :] = C_GOLD_BRIGHT
-    arr[2:8, 2:4, :] = C_GOLD_BRIGHT
-    arr[2:4, -8:-2, :] = C_GOLD_BRIGHT
-    arr[2:8, -4:-2, :] = C_GOLD_BRIGHT
-    arr[-4:-2, 2:8, :] = C_EMERALD_BRIGHT
-    arr[-8:-2, 2:4, :] = C_EMERALD_BRIGHT
-    arr[-4:-2, -8:-2, :] = C_EMERALD_BRIGHT
-    arr[-8:-2, -4:-2, :] = C_EMERALD_BRIGHT
-    out = Image.fromarray(arr, "RGBA")
-    out.save(OUT_PORTRAIT, optimize=False)
-    print(f"[OK] Saved portrait: {OUT_PORTRAIT} ({out.size[0]}x{out.size[1]})")
-    return out
+    # Disabled during sheet-only overhaul to guarantee zero git diff on archer_ex_portrait.png
+    return Image.open(OUT_PORTRAIT)
 
 
 def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Image.Image):
@@ -2174,10 +2172,20 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
         row_transitions.append(trans)
 
     snap_reaches = {}
+    snap_front_px = {}
     for sf in (3, 9, 17, 25):
         arr = np.array(all_rows_320[2][sf], dtype=np.uint8)
         ys, xs = np.where(arr[:, :, 3] > 0)
         snap_reaches[sf] = int(xs.max()) if len(xs) else 0
+        snap_front_px[sf] = int(np.sum(arr[:, 201:, 3] > 0))
+
+    row4_max_x = []
+    for f in range(30):
+        arr = np.array(all_rows_320[4][f], dtype=np.uint8)
+        _, xs_r4 = np.where(arr[:, :, 3] > 0)
+        mx4 = int(xs_r4.max()) if len(xs_r4) else 0
+        row4_max_x.append(mx4)
+        assert mx4 <= 258, f"Row 4 F{f:02d} exceeded maxX <= 258: {mx4}"
 
     # Quantitative Row 1 Walk Crossover Gate (#124)
     foot_spans = []
@@ -2213,13 +2221,15 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
 
     print(f"[QA] border_clips={border_clips}/300 | non_binary_alpha={non_binary_alpha} | non_2x2_blocks={non_2x2_blocks}")
     print(f"[QA] row_transitions={row_transitions}")
-    print(f"[QA] Row 2 snap front reaches (must be > 260): {snap_reaches}")
+    print(f"[QA] Row 2 snap front reaches (261..303): {snap_reaches} | frontPx (>=240): {snap_front_px}")
+    print(f"[QA] Row 4 F00..F29 maxX (must be <= 258): max={max(row4_max_x)}, min={min(row4_max_x)}")
 
     assert border_clips == 0, f"Border clip failure: {border_clips}"
     assert non_binary_alpha == 0, f"Non-binary alpha cells: {non_binary_alpha}"
     assert non_2x2_blocks == 0, f"2x2 block purity failure: {non_2x2_blocks}"
     assert all(t == 29 for t in row_transitions), f"Transition failure: {row_transitions}"
-    assert all(rx > 260 for rx in snap_reaches.values()), f"Smear reach < 260: {snap_reaches}"
+    assert all(260 < rx <= 303 for rx in snap_reaches.values()), f"Row 2 sigil reach out of bounds: {snap_reaches}"
+    assert all(px >= 240 for px in snap_front_px.values()), f"Row 2 sigil frontPx < 240: {snap_front_px}"
 
     def save_row_strip(row_idx: int, label_prefix: str, out_name: str):
         rc, rr = 6, 5
@@ -2259,16 +2269,13 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
 
     p_qa = QA_DIR / "debug_archer_ex_portrait.png"
     portrait_128.resize((256, 256), Image.Resampling.NEAREST).save(p_qa)
-    print(f"[QA] Saved {r2_path}, {ov_path}, {p_qa}")
+    print(f"[QA] Saved {r2_path}, {r4_path}, {ov_path}, {p_qa}")
 
 
 def main():
-    print("=== Building SYLVARA EX (archer_ex) Next-Gen 9600x2400 Sheet & Portrait ===")
+    print("=== Building SYLVARA EX (archer_ex) Next-Gen 9600x2400 Sheet (Portrait Preserved) ===")
     rigs = load_rigs()
-    if "--rebuild-portrait" in sys.argv or not OUT_PORTRAIT.exists():
-        portrait_128 = build_portrait_128()
-    else:
-        portrait_128 = Image.open(OUT_PORTRAIT)
+    portrait_128 = Image.open(OUT_PORTRAIT)
 
     builders = [
         build_row0_idle,
