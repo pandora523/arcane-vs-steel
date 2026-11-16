@@ -99,6 +99,18 @@ MASTER_PALETTE_ICE_EX = np.array([
     [252, 218, 194],  # 25: Porcelain skin highlight (#fcdac2)
 ], dtype=np.int32)
 
+# Extended palette exclusively for Row 1 WALK split-coat velvet-indigo & gold arcane trim
+MASTER_PALETTE_ICE_EX_WALK = np.vstack([
+    MASTER_PALETTE_ICE_EX,
+    np.array([
+        [12, 20, 56],     # 26: Velvet-indigo inner gown deep shadow
+        [18, 30, 82],     # 27: Velvet-indigo inner gown midtone
+        [146, 102, 52],   # 28: Gold arcane coat trim shadow
+        [226, 186, 118],  # 29: Gold arcane coat trim midtone
+        [250, 226, 158],  # 30: Gold arcane coat trim highlight
+    ], dtype=np.int32),
+])
+
 # RGBA tuples for crisp 160x120 pixel-art Frost-Glaive, Crown Halo, Ribbons, & Smears
 C_OUT_DARK = (10, 14, 30, 255)
 C_OUT_LIT = (20, 30, 58, 255)
@@ -521,6 +533,7 @@ def load_rig_and_keyposes():
     parts["l_thigh_dark"] = darken_part_tuple(parts["l_thigh"], 0.84)
     parts["l_shin_dark"] = darken_part_tuple(parts["l_shin"], 0.84)
     parts["l_foot_dark"] = darken_part_tuple(parts["l_foot"], 0.84)
+    parts["l_coat_dark"] = darken_part_tuple(parts["l_coat"], 0.88)
 
     stand_joints = {
         "x_ref": 262.0,
@@ -1663,42 +1676,163 @@ def render_stand_rig_frame_160(
         deg=torso_deg + head_deg + mane_deg, wave_phase=mane_wave_ph, wave_amp=mane_wave_amp,
     )
     if walk_mode:
-        # Draw unified royal-sapphire inner gown bridge + both side coat panels BEHIND stepping legs
-        # (squash_y=0.88 keeps coat hems gracefully at knee height so ankles & boots cross cleanly below!)
+        # Full-volume Winter Empress split-coat gown + sculpted 3D-shaded silver-blue winter greaves & heeled boots
+        # (modeled after mage_ex & priestess_ex robes: 0 horizontal cut, 0 2px stick-legs!)
         dr_hi = ImageDraw.Draw(win_hi)
         px_c, py_c = dst_pelvis[0], dst_pelvis[1]
-        dr_hi.polygon(
-            [
-                (px_c - 22, py_c - 6),
-                (px_c + 22, py_c - 6),
-                (px_c + 28, py_c + 64),
-                (px_c - 28, py_c + 64),
-            ],
-            fill=(24, 52, 132, 255),
-        )
+        walk_ph = coat_wave_ph / max(1e-4, 2.0 * math.pi)
+        stride_open = abs(math.cos(walk_ph * math.tau))
+        sway = math.sin(walk_ph * math.tau)
+        s_wave = math.sin(walk_ph * math.tau * 2.0 - 0.5) * 2.4
+
+        # 2-Bone IK gait for Far (left) and Near (right) armored winter legs (`bend_sign=-1.0` -> natural forward knee!)
+        u_l = walk_ph % 1.0
+        u_r = (u_l + 0.5) % 1.0
+
+        def solve_walk_leg_hi(u, hip_pt):
+            u = u % 1.0
+            stride_hi = 70.0
+            ank_y_ground = ANCHOR_HI_Y - 38.0
+            if u <= 0.50:
+                st = u / 0.50
+                ank_x = hip_pt[0] + stride_hi * (1.0 - 2.0 * st)
+                ank_y = ank_y_ground
+                swing_lift = 0.0
+                if st < 0.15:
+                    boot_deg = -8.0 * (1.0 - st / 0.15)
+                elif st > 0.80:
+                    boot_deg = 12.0 * ((st - 0.80) / 0.20)
+                else:
+                    boot_deg = 0.0
+            else:
+                sw = (u - 0.50) / 0.50
+                sw_ease = sw * sw * (3.0 - 2.0 * sw)
+                ank_x = hip_pt[0] + stride_hi * (-1.0 + 2.0 * sw_ease)
+                swing_lift = math.sin(sw * math.pi) ** 0.45
+                ank_y = ank_y_ground - 66.0 * swing_lift
+                boot_deg = 8.0 * (1.0 - sw) - 6.0 * sw
+            knee_pt, ank_pt = solve_2bone_ik(hip_pt, (ank_x, ank_y), l1=88.0, l2=100.0, bend_sign=-1.0)
+            return {
+                "hip": hip_pt,
+                "knee": knee_pt,
+                "ank": ank_pt,
+                "boot_deg": boot_deg,
+                "swing_lift": swing_lift,
+            }
+
+        l_leg_walk = solve_walk_leg_hi(u_l, l_hip_dst)
+        r_leg_walk = solve_walk_leg_hi(u_r, r_hip_dst)
+
+        def draw_winter_greave_leg_hi(leg_d, is_front=True):
+            hip = leg_d["hip"]
+            knee = leg_d["knee"]
+            ank = leg_d["ank"]
+            bdeg = leg_d["boot_deg"]
+
+            c_out = (10, 14, 30, 255)
+            c_navy = (16, 36, 98, 255) if is_front else (12, 20, 56, 255)
+            c_slate = (60, 76, 118, 255) if is_front else (38, 54, 92, 255)
+            c_mid = (156, 180, 214, 255) if is_front else (106, 128, 168, 255)
+            c_hi = (208, 228, 248, 255) if is_front else (156, 180, 214, 255)
+            c_fur = (244, 250, 255, 255) if is_front else (208, 228, 248, 255)
+            c_gold = (226, 186, 118, 255) if is_front else (146, 102, 52, 255)
+            c_gem = (88, 224, 244, 255) if is_front else (32, 168, 204, 255)
+
+            # Upper thigh (hip -> mid-thigh greave cuff) + full-volume 3D-shaded silver-blue thigh-high armored greave
+            th_cuff = (hip[0] * 0.62 + knee[0] * 0.38, hip[1] * 0.62 + knee[1] * 0.38)
+            dr_hi.line([hip, th_cuff], fill=c_out, width=32)
+            dr_hi.line([hip, th_cuff], fill=c_navy, width=25)
+            dr_hi.line([(hip[0] + 4, hip[1]), (th_cuff[0] + 4, th_cuff[1])], fill=c_slate, width=10)
+
+            # Sculpted thigh greave cuff + knee-to-ankle 3D silver-blue winter greave (`26-30px` @ 818 -> `10-12px` @ 320!)
+            dr_hi.line([th_cuff, knee], fill=c_out, width=31)
+            dr_hi.line([th_cuff, knee], fill=c_slate, width=24)
+            dr_hi.line([th_cuff, knee], fill=c_mid, width=16)
+            dr_hi.line([(th_cuff[0] + 4, th_cuff[1]), (knee[0] + 4, knee[1])], fill=c_hi, width=7)
+
+            dr_hi.line([knee, ank], fill=c_out, width=30)
+            dr_hi.line([knee, ank], fill=c_slate, width=23)
+            dr_hi.line([knee, ank], fill=c_mid, width=16)
+            dr_hi.line([(knee[0] + 4, knee[1]), (ank[0] + 4, ank[1])], fill=c_hi, width=7)
+
+            # Gold + Frost-Silver thigh greave top collar
+            tx_i, ty_i = int(round(th_cuff[0])), int(round(th_cuff[1]))
+            dr_hi.line([(tx_i - 12, ty_i - 2), (tx_i + 12, ty_i + 1)], fill=c_out, width=9)
+            dr_hi.line([(tx_i - 10, ty_i - 2), (tx_i + 10, ty_i + 1)], fill=c_gold, width=5)
+
+            # Sculpted 3D silver-blue & sapphire-gem knee-cop
+            kx, ky = int(round(knee[0])), int(round(knee[1]))
+            dr_hi.ellipse([kx - 15, ky - 14, kx + 16, ky + 14], fill=c_slate, outline=c_out, width=4)
+            dr_hi.ellipse([kx - 10, ky - 10, kx + 12, ky + 10], fill=c_hi)
+            dr_hi.polygon([(kx, ky - 6), (kx + 6, ky), (kx, ky + 6), (kx - 6, ky)], fill=c_gem)
+
+            # Sculpted `+X` heeled winter boot with frost-fur ankle cuff & crisp flat sole
+            def bpt(ox, oy):
+                return rot_pt((ank[0] + ox, ank[1] + oy), ank, bdeg)
+
+            boot_poly = [
+                bpt(-13, -1), bpt(13, -1), bpt(18, 17), bpt(37, 24),
+                bpt(38, 37), bpt(10, 38), bpt(-2, 34), bpt(-4, 38),
+                bpt(-13, 38), bpt(-13, 15),
+            ]
+            dr_hi.polygon(boot_poly, fill=c_navy, outline=c_out, width=4)
+            vamp_poly = [
+                bpt(-5, 5), bpt(11, 5), bpt(17, 19), bpt(32, 26),
+                bpt(28, 32), bpt(4, 31), bpt(-6, 20),
+            ]
+            dr_hi.polygon(vamp_poly, fill=c_mid)
+            dr_hi.line([bpt(6, 10), bpt(28, 25)], fill=c_hi, width=6)
+            dr_hi.line([bpt(-11, 36), bpt(36, 36)], fill=c_out, width=5)
+            dr_hi.line([bpt(-11, 2), bpt(12, 2)], fill=c_fur, width=8)
+            dr_hi.line([bpt(-10, -1), bpt(11, -1)], fill=c_gold, width=4)
+
+        # 1. Arched deep velvet-indigo inner gown backdrop behind thighs (high gothic arch, 0 horizontal cut!)
+        arch_pts = []
+        for i in range(13):
+            ut = i / 12.0
+            ax_p = px_c + (-62.0 - 16.0 * stride_open) * (1.0 - ut) + (68.0 + 16.0 * stride_open) * ut
+            arch_lift = math.sin(ut * math.pi)
+            ay_p = (py_c + 124.0) * (1.0 - arch_lift ** 1.15) + (py_c + 52.0) * (arch_lift ** 1.15)
+            arch_pts.append((ax_p, ay_p))
+        lining_poly = [(px_c - 44.0, py_c - 6.0), (px_c + 44.0, py_c - 6.0)] + list(reversed(arch_pts))
+        dr_hi.polygon(lining_poly, fill=(18, 30, 82, 255), outline=(10, 14, 30, 255), width=4)
+        inner_shadow = [(px_c - 32.0, py_c + 4.0), (px_c + 32.0, py_c + 4.0)] + list(reversed(arch_pts[2:-2]))
+        dr_hi.polygon(inner_shadow, fill=(12, 20, 56, 255))
+
+        # 2. Flowing Royal-Sapphire & Frost-Silver back/left split-coat panel (`squash_y=0.94`, flares cleanly on stride!)
+        l_coat_walk_deg = (-2.0 * (1.0 - stride_open) - 20.0 * stride_open) + s_wave * 0.55
         paste_rotated_part(
-            win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
-            deg=torso_deg + l_coat_deg, squash_x=0.92, squash_y=0.86,
-            wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
+            win_hi, parts["l_coat_dark"], sj["l_coat"], (l_coat_dst[0] - 4.0, l_coat_dst[1] - 4.0),
+            deg=torso_deg + l_coat_walk_deg, squash_x=1.02, squash_y=0.94,
+            wave_phase=coat_wave_ph * 2.0, wave_amp=coat_wave_amp * 1.4,
         )
-        paste_rotated_part(
-            win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
-            deg=torso_deg + r_coat_deg, squash_x=0.92, squash_y=0.86,
-            wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
-        )
+
         paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
-        draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=4, fill=(22, 46, 118, 255), inner=(130, 154, 190, 255))
-        draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=3, fill=(22, 46, 118, 255), inner=(130, 154, 190, 255))
-        paste_rotated_part(win_hi, parts["l_thigh_dark"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
-        paste_rotated_part(win_hi, parts["l_shin_dark"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
-        paste_rotated_part(win_hi, parts["l_foot_dark"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
+        # 3. Far & Near sculpted 3D-shaded silver-blue armored winter greaves + heeled boots
+        draw_winter_greave_leg_hi(l_leg_walk, is_front=False)
+        draw_winter_greave_leg_hi(r_leg_walk, is_front=True)
 
-        draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=4)
-        draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=3)
-        paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
-        paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
-        paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
+        # 4. Flowing Royal-Sapphire front/right split-coat wing + gold arcane trim & frost-fur waist stole
+        r_coat_walk_deg = (1.0 * (1.0 - stride_open) + 21.0 * stride_open) - s_wave * 0.50
+        paste_rotated_part(
+            win_hi, parts["r_coat"], sj["r_coat"], (r_coat_dst[0] + 4.0, r_coat_dst[1] - 5.0),
+            deg=torso_deg + r_coat_walk_deg, squash_x=1.00, squash_y=0.93,
+            wave_phase=coat_wave_ph * 2.0 + 1.1, wave_amp=coat_wave_amp * 1.25,
+        )
+
+        # Ornate Royal-Sapphire & Gold Arcane Split-Coat Front Sash / Peplum draping diagonally over pelvis
+        stole_ang = -3.0 + sway * 5.0
+        def spt(ox, oy):
+            return rot_pt((px_c + ox, py_c + oy), (px_c, py_c), stole_ang)
+
+        stole_poly = [
+            spt(-18, -8), spt(20, -8), spt(24, 52), spt(2, 86), spt(-16, 54),
+        ]
+        dr_hi.polygon(stole_poly, fill=(28, 62, 152, 255), outline=(10, 14, 30, 255), width=4)
+        dr_hi.line([spt(-14, 52), spt(2, 82), spt(20, 50)], fill=(226, 186, 118, 255), width=6)
+        dr_hi.line([spt(2, -4), spt(2, 74)], fill=(250, 226, 158, 255), width=4)
+        dr_hi.line([spt(-15, 56), spt(2, 86), spt(22, 54)], fill=(244, 250, 255, 255), width=5)
     else:
         paste_rotated_part(
             win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
@@ -1726,7 +1860,14 @@ def render_stand_rig_frame_160(
     paste_rotated_part(win_hi, parts["head"], sj["neck"], neck_dst, deg=torso_deg + head_deg)
     paste_ik_arm_hi(win_hi, parts, sj, "r", r_sh_dst, r_target_hi, bend_sign=bend_r)
 
-    body_160 = quantize_and_cluster_160x120(downsample_clean_160x120(win_hi))
+    if walk_mode:
+        body_160 = quantize_and_cluster_160x120(
+            downsample_clean_160x120(win_hi),
+            palette=MASTER_PALETTE_ICE_EX_WALK,
+            protect_indices=(15, 16, 17, 20, 21, 23, 24, 25, 28, 29, 30),
+        )
+    else:
+        body_160 = quantize_and_cluster_160x120(downsample_clean_160x120(win_hi))
 
     shift_y_160 = 0
     if clamp_below_ground_only:
@@ -1888,16 +2029,16 @@ def build_row1_walk(parts, sj):
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=0.6 * s1,
+            pelvis_dx=0.5 * s1,
             pelvis_dy=bob_y,
-            torso_deg=2.0 + math.cos(ph * 2.0) * 0.85,
+            torso_deg=2.2 + math.cos(ph * 2.0) * 0.85,
             head_deg=-0.9 + math.sin(ph) * 0.5,
             mane_deg=-2.0 + s1 * 1.8,
             mane_wave_ph=ph * 2.0,
             mane_wave_amp=3.2,
             l_coat_deg=3.2 + s1 * 2.4,
             r_coat_deg=-3.2 - s1 * 2.4,
-            coat_wave_ph=ph * 2.0,
+            coat_wave_ph=ph,
             coat_wave_amp=1.8,
             l_thigh_deg=l_th_d,
             l_shin_deg=l_sh_d,
@@ -1906,10 +2047,10 @@ def build_row1_walk(parts, sj):
             r_shin_deg=r_sh_d,
             r_foot_deg=r_ft_d,
             walk_mode=True,
-            l_hip_dx=l_dx,
-            l_hip_dy=l_dy,
-            r_hip_dx=r_dx,
-            r_hip_dy=r_dy,
+            l_hip_dx=0.0,
+            l_hip_dy=0.0,
+            r_hip_dx=0.0,
+            r_hip_dy=0.0,
             grip_rel_sh=(10.5 - s1 * 0.9, 8.0 + math.cos(ph * 2.0) * 0.7),
             weapon_deg=-22.5 + s1 * 3.2,
             glaive_len=49.0,

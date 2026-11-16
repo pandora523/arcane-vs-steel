@@ -932,7 +932,7 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
         inward_frac = 0.92 if cfg.get("walk_mode", False) else 0.78
         l_hip_xy = (
             ax + (212.0 - SPINE_X_512) * SCALE * (1.0 - inward_frac) + cfg.get("l_hip_dx", 0.0),
-            ay + (294.0 - GROUND_Y_512) * SCALE + sink + cfg.get("l_hip_dy", 0.0),
+            ay + (294.0 - GROUND_Y_512) * SCALE + sink + (0.9 if cfg.get("walk_mode", False) else 0.0) + cfg.get("l_hip_dy", 0.0),
         )
         r_hip_xy = (
             ax + (296.0 - SPINE_X_512) * SCALE * (1.0 - inward_frac) + cfg.get("r_hip_dx", 0.0),
@@ -1034,6 +1034,20 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
             set_px(fg_buf, mx, my, C_GOLD_LIGHT if k % 2 == 0 else C_EMERALD_BRIGHT)
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    if cfg.get("lock_ground", False):
+        arr_c = np.array(canvas, dtype=np.uint8)
+        ys_c, _ = np.where(arr_c[:, :, 3] > 0)
+        if len(ys_c) > 0:
+            cur_bot = int(ys_c.max())
+            shift_y = ANCHOR_Y_120 - cur_bot
+            if shift_y != 0:
+                shifted = np.zeros_like(arr_c)
+                for y in range(LOG_H):
+                    ny = y + shift_y
+                    if MARGIN_160 <= ny < LOG_H - MARGIN_160:
+                        shifted[ny] = arr_c[y]
+                arr_c = shifted
+        return Image.fromarray(arr_c, "RGBA")
     if cfg.get("clamp_ground", False):
         arr_c = np.array(canvas, dtype=np.uint8)
         arr_c[ANCHOR_Y_120 + 1 :, :, :] = 0
@@ -1129,6 +1143,20 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             set_px(fg_buf, mx, my, C_GOLD_LIGHT if (k + int(ph * 4)) % 2 == 0 else C_EMERALD_BRIGHT)
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    if cfg.get("lock_ground", False):
+        arr_c = np.array(canvas, dtype=np.uint8)
+        ys_c, _ = np.where(arr_c[:, :, 3] > 0)
+        if len(ys_c) > 0:
+            cur_bot = int(ys_c.max())
+            shift_y = ANCHOR_Y_120 - cur_bot
+            if shift_y != 0:
+                shifted = np.zeros_like(arr_c)
+                for y in range(LOG_H):
+                    ny = y + shift_y
+                    if MARGIN_160 <= ny < LOG_H - MARGIN_160:
+                        shifted[ny] = arr_c[y]
+                arr_c = shifted
+        return Image.fromarray(arr_c, "RGBA")
     if cfg.get("clamp_ground", False):
         arr_c = np.array(canvas, dtype=np.uint8)
         arr_c[ANCHOR_Y_120 + 1 :, :, :] = 0
@@ -1166,15 +1194,18 @@ def build_row0_idle(rigs: dict) -> list[Image.Image]:
 _BIPEDAL_WALK_KFS = [
     # (u, thigh_tgt_deg, shin_tgt_deg, hip_dx_160, hip_dy_160)
     # 0 deg = straight vertical down; -deg = forward (+X); +deg = trailing (-X)
-    (0.000, -22.5, -20.0,  1.8,  0.0),   # Front heel contact (+X)
-    (0.085, -14.5,  -7.0,  1.0,  0.4),   # Weight absorption
-    (0.233,   0.0,   0.0,  0.0,  0.0),   # Mid-stance dead vertical under AX (F07 / F22!)
-    (0.380,  13.5,  18.0, -1.0,  0.0),   # Late stance roll-off
-    (0.500,  21.5,  26.5, -1.8, -0.4),   # Rear toe push-off (-X, F15 / F00!)
-    (0.620,   6.0,  39.0, -0.6, -2.0),   # Initial swing knee bend & toe clearance
-    (0.733, -17.0,  18.5, -0.2, -3.2),   # Mid-swing passing crossover over AX (knee high, boot lifted & centered!)
-    (0.875, -24.5, -11.0,  1.2, -1.2),   # Forward swing reach into heel strike
-    (1.000, -22.5, -20.0,  1.8,  0.0),
+    (0.000, -22.5, -19.5,  1.8,  0.0),   # Front heel contact (+X)
+    (0.033, -20.5, -16.5,  1.5,  0.2),   # Early stance load
+    (0.100, -14.0,  -6.5,  1.0,  0.5),   # Weight absorption
+    (0.233,   0.0,   0.0,  0.0,  0.4),   # Mid-stance dead vertical under AX (F07 / F22!)
+    (0.380,  13.5,  17.5, -1.0,  0.2),   # Late stance roll-off
+    (0.500,  21.5,  25.5, -1.8,  0.0),   # Rear toe push-off (-X, F15 / F00!)
+    (0.533,  16.0,  37.0, -1.2, -4.6),   # Immediate crisp toe clearance above y=224!
+    (0.620,   4.0,  47.0, -0.6, -6.2),   # Initial swing knee drive (+X) & heel tuck (-X)
+    (0.733, -17.0,  22.5, -0.2, -6.4),   # Mid-swing passing crossover over AX!
+    (0.867, -24.5,  -8.5,  1.2, -4.4),   # Forward swing reach above ground
+    (0.950, -23.5, -16.0,  1.6, -1.6),   # Controlled heel descent
+    (1.000, -22.5, -19.5,  1.8,  0.0),
 ]
 
 
@@ -1237,7 +1268,7 @@ def build_row1_walk(rigs: dict) -> list[Image.Image]:
             "arrows": 1,
             "charge": 0.42 + 0.12 * (0.5 + 0.5 * s),
             "motes": False,
-            "clamp_ground": True,
+            "lock_ground": True,
         }))
     return frames
 

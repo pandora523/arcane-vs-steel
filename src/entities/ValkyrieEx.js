@@ -204,6 +204,7 @@ export class ValkyrieEx extends Fighter {
     this.hoverOffset = 0;
     this.divePitchRad = 0;
     this.cameraAirLift = 0;
+    this._phaseThroughEnemy = false;
     this.dragoonTargetX = null;
     this.activeSkySpears = [];
     this.plantedSkillJavelins = [];
@@ -305,6 +306,7 @@ export class ValkyrieEx extends Fighter {
 
   setState(newState) {
     const prevState = this.state;
+    this._phaseThroughEnemy = false;
     if (
       prevState === 'AUTO_ATTACK' &&
       newState !== 'AUTO_ATTACK' &&
@@ -953,7 +955,7 @@ export class ValkyrieEx extends Fighter {
       this._volleySlot = null;
     }
 
-    // Long-range Sky-Lancer AI spacing: -24px retreat when dist < 215 (or Backflip hurl when pressured!)
+    // Long-range Sky-Lancer AI spacing: Backflip hurl when closely pressured
     const isManualPlayer = Boolean(
       (this.isPlayerControlled && !this.adventureAutoPlay) || this.isManualAdventureControl
     );
@@ -964,18 +966,11 @@ export class ValkyrieEx extends Fighter {
       !enemy.isDead &&
       (this.state === 'IDLE' || this.state === 'WALK')
     ) {
-      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
       const dist = Math.abs(enemy.x - this.x);
       if (dist < 180 && this.crouchCooldown <= 0 && this.dodgeCooldown <= 0) {
         this.dodgeCooldown = this.dodgeMaxCooldown * 0.85;
         this.startCrouch(enemy, game);
         return;
-      }
-      if (dist < 215 && this.x > 165 && this.x < ww - 165) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-        this.moveDir = -1;
-        this.walkPhase = (this.walkPhase || 0) + dt * 6.0;
-        this.x = this._clampArenaX(this.x - this.facing * 24 * dt * 5.0, game, 82);
       }
     }
 
@@ -1563,6 +1558,7 @@ export class ValkyrieEx extends Fighter {
 
     // Phase 0 (`0.00..0.18s`, Row 3 F00..F05): Grounded Valkyrie Wing-Flare & Invocation!
     if (t < 0.18) {
+      this._phaseThroughEnemy = false;
       this.vx = 0;
       this.vy = 0;
       this.x = originX;
@@ -1576,6 +1572,7 @@ export class ValkyrieEx extends Fighter {
 
     // Phase 1 (`0.18..0.57s`, Row 3 F06..F18): Sleek Low 165px Horizontal Valkyrie Wing-Skim (`18px` lift)!
     if (t < 0.57) {
+      this._phaseThroughEnemy = true;
       if (this._skillStep < 1) {
         this._skillStep = 1;
         this.fx.spawn('valkyrieSlipstreamTrail', this._safeFxX(this.x - this.facing * 18, game), this._safeFxY(this.y - 96), {
@@ -1637,6 +1634,7 @@ export class ValkyrieEx extends Fighter {
 
     // Phase 2 (`0.57..0.98s`, Row 3 F19..F29): Grounded Sovereign Forward Thrust & Dragonfire Pillar Eruption!
     if (t >= 0.57) {
+      this._phaseThroughEnemy = false;
       this.x = skimTargetX;
       this.y = this.groundY;
       this.vx = 0;
@@ -1711,6 +1709,7 @@ export class ValkyrieEx extends Fighter {
     }
 
     if (t >= dur) {
+      this._phaseThroughEnemy = false;
       this._skillJavelinsFired = 0;
       this.plantedSkillJavelins = [];
       this.y = this.groundY;
@@ -1753,7 +1752,7 @@ export class ValkyrieEx extends Fighter {
         this.facing = enemyX >= this.x ? 1 : -1;
       }
 
-      // Compute wide-runway sweeping Valkyrie Wing-Glide waypoints (`>= 260px` horizontal sweep!)
+      // Compute wide-runway pass-through Valkyrie Wing-Glide waypoints (`>= 260px` sweep right over/through enemyX!)
       const advBounds =
         game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
           ? game.adventure.getActiveStageBounds()
@@ -1761,30 +1760,27 @@ export class ValkyrieEx extends Fighter {
       const stageMin = advBounds ? advBounds.minX + 95 : 112;
       const stageMax = advBounds ? advBounds.maxX - 95 : ww - 112;
       const stageMid = (stageMin + stageMax) * 0.5;
-      const openSide = enemyX >= stageMid ? -1 : 1;
-      const outerEdgeX = openSide < 0 ? stageMin : stageMax;
-      const innerEdgeX = clampX(enemyX + openSide * 265);
-
-      let climbX;
-      let landX;
-      if (Math.abs(originX - outerEdgeX) >= 245) {
-        climbX = clampX(originX + (outerEdgeX - originX) * 0.52);
-        landX = outerEdgeX;
-      } else {
-        climbX = clampX(originX + (innerEdgeX - originX) * 0.45);
-        landX = Math.abs(innerEdgeX - originX) >= 245
-          ? innerEdgeX
-          : clampX(originX - openSide * 265);
+      const passDir =
+        Math.abs(enemyX - originX) > 24
+          ? enemyX >= originX
+            ? 1
+            : -1
+          : originX < stageMid
+            ? 1
+            : -1;
+      let landX = clampX(enemyX + passDir * 215);
+      if (Math.abs(landX - enemyX) < 95 || Math.abs(landX - originX) < 250) {
+        const openDir = stageMid >= originX ? 1 : -1;
+        const altLandX = clampX(originX + openDir * 320);
+        const revLandX = clampX(originX - openDir * 320);
+        landX = Math.abs(altLandX - originX) >= Math.abs(revLandX - originX) ? altLandX : revLandX;
       }
-      if (Math.abs(landX - climbX) < 150) {
-        climbX = clampX(originX + (landX >= originX ? 1 : -1) * 115);
-        landX = clampX(originX + (landX >= originX ? 1 : -1) * 285);
-      }
-      const driftX = Math.round((climbX + landX) * 0.5);
+      const climbX = Math.round(originX + (landX - originX) * 0.38);
+      const driftX = Math.round(originX + (landX - originX) * 0.72);
 
       this._ultWaypoints = {
-        climb: { x: climbX, y: this.groundY - 62 },
-        drift: { x: driftX, y: this.groundY - 54 },
+        climb: { x: climbX, y: this.groundY - 128 },
+        drift: { x: driftX, y: this.groundY - 138 },
         land: { x: landX, y: this.groundY }
       };
 
@@ -1836,6 +1832,7 @@ export class ValkyrieEx extends Fighter {
 
     // Stage 0 (`0.00..0.30s`, Row 4 F00..F03): Grounded Valhalla Awakening!
     if (t < 0.30) {
+      this._phaseThroughEnemy = true;
       this.x = originX;
       this.y = this.groundY;
       this.cameraAirLift = 0;
@@ -1849,13 +1846,14 @@ export class ValkyrieEx extends Fighter {
     }
 
     const wps = this._ultWaypoints || {
-      climb: { x: clampX(originX - this.facing * 130), y: this.groundY - 62 },
-      drift: { x: clampX(originX - this.facing * 205), y: this.groundY - 54 },
-      land: { x: clampX(originX - this.facing * 275), y: this.groundY }
+      climb: { x: clampX(originX + this.facing * 122), y: this.groundY - 128 },
+      drift: { x: clampX(originX + this.facing * 230), y: this.groundY - 138 },
+      land: { x: clampX(originX + this.facing * 320), y: this.groundY }
     };
 
-    // Stage 1 (`0.30..1.44s`, Row 4 F04..F12): Wide-Runway Sweeping Valkyrie Wing-Glide + 12 Sleek Gungnir Light-Javelins!
+    // Stage 1 (`0.30..1.44s`, Row 4 F04..F12): High Pass-Through Valkyrie Wing-Glide (`134-144px` lift) + 12 Gungnir Light-Javelins!
     if (t < 1.44) {
+      this._phaseThroughEnemy = true;
       const uGlide = Math.max(0, Math.min(0.999, (t - 0.30) / 1.14));
       const glideCol = 4 + Math.min(8, Math.floor(uGlide * 9));
       this.trueUltFrameOverride = 120 + glideCol;
@@ -1889,8 +1887,9 @@ export class ValkyrieEx extends Fighter {
       } else if (t < 1.10) {
         const u = (t - 0.68) / 0.42;
         const ease = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+        const hoverBeat = -Math.sin(u * Math.PI) * 6;
         this.x = wps.climb.x + (wps.drift.x - wps.climb.x) * ease;
-        this.y = wps.climb.y + (wps.drift.y - wps.climb.y) * ease;
+        this.y = wps.climb.y + (wps.drift.y - wps.climb.y) * ease + hoverBeat;
         if (this._ultStep < 1 && u >= 0.25) {
           this._ultStep = 1;
           this.spawnVfxAnim(0, this.x + this.facing * 38, this.y - 84, 208, 208, 0.28, {
@@ -1959,6 +1958,7 @@ export class ValkyrieEx extends Fighter {
     }
 
     // Stage 2 (`1.44..1.88s`, Row 4 F25..F29): Grounded Sovereign Forward Thrust & 3-Pillar Judgment!
+    this._phaseThroughEnemy = false;
     this.x = wps.land.x;
     this.y = this.groundY;
     this.cameraAirLift = 0;
@@ -2039,6 +2039,7 @@ export class ValkyrieEx extends Fighter {
     }
 
     if (t >= dur) {
+      this._phaseThroughEnemy = false;
       this._spearsFired = 0;
       this.sanctuarySkyLances = [];
       this.bahamutAvatar = null;

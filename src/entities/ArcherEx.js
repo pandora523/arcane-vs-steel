@@ -133,7 +133,7 @@ export class ArcherEx extends Fighter {
       primaryColor: '#34d399',
       hasTrueUltimate: true,
       trueUltName: 'ARROW OF YGGDRASIL: ASTRAL SUPERNOVA',
-      trueUltDuration: 4.55
+      trueUltDuration: 2.88
     });
 
     this.heroId = 'archer_ex';
@@ -153,7 +153,7 @@ export class ArcherEx extends Fighter {
     this.hasTrueUltimate = true;
     this.trueUltName = 'ARROW OF YGGDRASIL: ASTRAL SUPERNOVA';
     this.trueUltSub = 'WORLD-TREE CANOPY & STARLIGHT HORIZON LANCE';
-    this.trueUltDuration = 4.55;
+    this.trueUltDuration = 2.88;
 
     this.windPhase = 0;
     this.shotCombo = 0;
@@ -1068,14 +1068,6 @@ export class ArcherEx extends Fighter {
         this.autoCooldown = this.autoInterval * (0.92 + Math.random() * 0.2);
         this.startCrouch(enemy, game);
         return;
-      }
-
-      // Pure 520px marksman spacing: -26px retreat when dist < 225!
-      if (dist < 225 && this.x > 170 && this.x < ww - 170) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-        this.moveDir = -1;
-        this.walkPhase += dt * 6.0;
-        this.x = this._clampArenaX(this.x - this.facing * 26 * dt * 5.0, game, 84);
       }
     }
 
@@ -2063,7 +2055,7 @@ export class ArcherEx extends Fighter {
           foe.isCrouching = false;
           foe.isDeflecting = false;
           foe.iaidoCounterActive = false;
-          foe.stunTimer = Math.max(foe.stunTimer || 0, 3.20);
+          foe.stunTimer = Math.max(foe.stunTimer || 0, 1.80);
           foe.crouchCooldown = Math.max(foe.crouchCooldown || 0, 0.25);
           foe.dodgeCooldown = Math.max(foe.dodgeCooldown || 0, 0.25);
           foe.dashCooldown = Math.max(foe.dashCooldown || 0, 0.25);
@@ -2073,15 +2065,15 @@ export class ArcherEx extends Fighter {
         this.fx.spawn('yggdrasilRootPrison', this._safeFxX(lockX, game), this._safeFxY(lockY), {
           flip: false,
           palette: SYLVAN_EMERALD_PALETTE,
-          maxDuration: 3.16,
+          maxDuration: 1.84,
           light: 1.22,
           extra: { radius: 26, height: 45 }
         });
-        this.spawnVfxAnim(2, lockX, lockY - 82, 232, 232, 3.12, {
+        this.spawnVfxAnim(2, lockX, lockY - 82, 232, 232, 1.72, {
           flipX: false,
           inFront: false
         });
-        this.spawnVfxAnim(5, lockX, lockY - 72, 340, 220, 3.12, {
+        this.spawnVfxAnim(5, lockX, lockY - 72, 340, 220, 1.72, {
           flipX: false,
           inFront: false
         });
@@ -2091,14 +2083,14 @@ export class ArcherEx extends Fighter {
         this.fx.spawn('yggdrasilRootPrison', this._safeFxX(anchorX, game), this._safeFxY(this.groundY), {
           flip: false,
           palette: SYLVAN_EMERALD_PALETTE,
-          maxDuration: 3.16,
+          maxDuration: 1.84,
           light: 1.22,
           extra: { radius: 26, height: 45 }
         });
       }
     }
 
-    if (t < 3.15) {
+    if (t < 1.72) {
       for (const entry of this._trueUltRootedTargets) {
         const foe = entry.foe;
         if (
@@ -2127,18 +2119,18 @@ export class ArcherEx extends Fighter {
       }
     }
 
-    // Phase 1 (`0.00..0.30s`): Astral Wing-Unfurl & World-Tree Root Bind (`Row 4 F00..F02`)
-    if (t < 0.30) {
+    // Phase 1 (`0.00..0.18s`): Fast Astral Wing-Unfurl & World-Tree Root Bind (`Row 4 F00..F02`)
+    if (t < 0.18) {
       this.y = this.groundY;
       this.cameraAirLift = 0;
-      const fIdx = 120 + Math.min(2, Math.floor((t / 0.30) * 3));
+      const fIdx = 120 + Math.min(2, Math.floor((t / 0.18) * 3));
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
       return;
     }
 
-    // Phase 2 (`0.30..2.26s`): Sweeping Slow-Motion Aerial Somersault Bow-Charge -> Graceful Winged Hover!
-    if (t < 2.26) {
+    // Phase 2 (`0.18..1.02s`, `0.84s` fast aerial somersault): Snappy High-Arc Bow-Charge Somersault -> Winged Hover!
+    if (t < 1.02) {
       if (this._trueUltStep < 2) {
         this._trueUltStep = 2;
         this._trueUltJumpStartX = this.x;
@@ -2154,7 +2146,7 @@ export class ArcherEx extends Fighter {
           offsetY: -124,
           flip: this.facing < 0,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 2.86,
+          maxDuration: 1.56,
           light: 1.28,
           extra: { wingSpan: 34 }
         });
@@ -2163,7 +2155,7 @@ export class ArcherEx extends Fighter {
           offsetX: 26,
           offsetY: -96,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 2.86,
+          maxDuration: 1.56,
           light: 1.26,
           extra: { radius: 28 }
         });
@@ -2172,11 +2164,11 @@ export class ArcherEx extends Fighter {
         }
       }
 
-      const jumpU = Math.min(1, Math.max(0, (t - 0.30) / 1.96));
+      const jumpU = Math.min(1, Math.max(0, (t - 0.18) / 0.84));
       const easeX = 0.5 - 0.5 * Math.cos(Math.PI * jumpU);
       const settleBlend = 0.5 - 0.5 * Math.cos(Math.PI * jumpU);
-      const arcPeak = 170 * Math.pow(Math.sin(Math.PI * jumpU), 1.35) * (1 - 0.18 * jumpU);
-      const lift = 82 * settleBlend + arcPeak;
+      const arcPeak = 176 * Math.pow(Math.sin(Math.PI * jumpU), 1.35) * (1 - 0.18 * jumpU);
+      const lift = 86 * settleBlend + arcPeak;
 
       this.x = this._trueUltJumpStartX + (this._trueUltFarEdgeX - this._trueUltJumpStartX) * easeX;
       this.y = this.groundY - lift;
@@ -2186,14 +2178,14 @@ export class ArcherEx extends Fighter {
       const targetDir = this._trueUltTargetX >= this._trueUltFarEdgeX ? 1 : -1;
       this.facing = jumpU >= 0.46 ? targetDir : jumpDir;
 
-      // Slow-motion somersault frames `123..134` gliding into airborne hover frames `137..141`
+      // Fast aerial somersault frames `123..134` gliding into airborne hover frames `137..141`
       const flipHoverSeq = [123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 137, 138, 139, 140, 141];
       const seqIdx = Math.min(flipHoverSeq.length - 1, Math.floor(jumpU * flipHoverSeq.length));
       const fIdx = flipHoverSeq[seqIdx];
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
 
-      if (t >= 0.85 && !this._trueUltCanopyBloomed) {
+      if (t >= 0.52 && !this._trueUltCanopyBloomed) {
         this._trueUltCanopyBloomed = true;
         if (game?.audio) game.audio.play('archer_ult', this.x);
         if (game?.vfx) {
@@ -2209,14 +2201,14 @@ export class ArcherEx extends Fighter {
         this.spawnLeafRuneBurst(this.x, this.y - 110, 14, 165, true);
       }
 
-      // Spiraling starlight glints & leaf-runes orbiting & converging on her charging bow during the flip
+      // Spiraling starlight glints & leaf-runes orbiting & converging on her charging bow during the fast flip
       this._trueUltMoteTimer += dt;
-      if (this._trueUltMoteTimer >= 0.065) {
+      if (this._trueUltMoteTimer >= 0.045) {
         this._trueUltMoteTimer = 0;
-        const blendU = Math.min(1, Math.max(0, (t - 0.42) / 1.84));
+        const blendU = Math.min(1, Math.max(0, (t - 0.18) / 0.84));
         const muzzleX = this.x + this.facing * (12 + 12 * blendU);
         const muzzleY = this.y - (78 + 44 * blendU);
-        const spAng = t * 7.5;
+        const spAng = t * 11.5;
         const spRad = 54 * (1 - 0.35 * blendU);
         this.spawnStarGlint(
           muzzleX + Math.cos(spAng) * spRad,
@@ -2238,15 +2230,15 @@ export class ArcherEx extends Fighter {
       }
 
       this._afterimageTimer += dt;
-      if (this._afterimageTimer >= 0.11 && fIdx <= 134) {
+      if (this._afterimageTimer >= 0.065 && fIdx <= 134) {
         this._afterimageTimer = 0;
         this.spawnAfterimage(this.x, this.y, this.facing, 4, fIdx - 120, 0.22);
       }
       return;
     }
 
-    // Phase 3 (`2.26s .. 3.15s` -- Weightless Winged Mid-Air Hover Overdraw + World-Tree Canopy + Zodiac Astrolabe!)
-    if (t < 3.15) {
+    // Phase 3 (`1.02s .. 1.72s` -- `0.70s` Crisp Winged Mid-Air Hover Overdraw + World-Tree Canopy + Zodiac Astrolabe!)
+    if (t < 1.72) {
       if (this._trueUltStep < 3) {
         this._trueUltStep = 3;
         this.x = this._trueUltFarEdgeX;
@@ -2256,21 +2248,21 @@ export class ArcherEx extends Fighter {
 
       this.x = this._trueUltFarEdgeX;
       this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
-      const hoverT = t - 2.26;
-      this.y = this.groundY - 82 + Math.sin(hoverT * 3.8) * 6;
+      const hoverT = t - 1.02;
+      this.y = this.groundY - 86 + Math.sin(hoverT * 4.5) * 5;
       this.cameraAirLift = (this.groundY - this.y) * 0.72;
 
-      const drawU = Math.min(1, Math.max(0, (t - 2.26) / 0.89));
+      const drawU = Math.min(1, Math.max(0, (t - 1.02) / 0.70));
       const fIdx = 140 + Math.min(4, Math.floor(drawU * 5));
       this.trueUltFrameOverride = fIdx;
       this._overrideFrameIdx = fIdx;
 
       this._trueUltMoteTimer += dt;
-      if (this._trueUltMoteTimer >= 0.08) {
+      if (this._trueUltMoteTimer >= 0.06) {
         this._trueUltMoteTimer = 0;
         const muzzleX = this.x + this.facing * 24;
         const muzzleY = this.y - 122;
-        const spAng = t * 9.0;
+        const spAng = t * 12.0;
         const spRad = 44 * (1 - 0.55 * drawU);
         this.spawnStarGlint(
           muzzleX + Math.cos(spAng) * spRad,
@@ -2284,11 +2276,11 @@ export class ArcherEx extends Fighter {
       return;
     }
 
-    // Phase 4 (`t >= 3.15s`): Multi-Band Emerald-Gold Starlight Horizon Lance Release (0 blurry whiteout!)
+    // Phase 4 (`t >= 1.72s`): Multi-Band Emerald-Gold Starlight Horizon Lance Release (0 blurry whiteout!)
     if (this._trueUltStep < 4) {
       this._trueUltStep = 4;
       this._trueUltDescStartLift = Math.max(0, this.groundY - this.y);
-      this._trueUltBeamTimer = 0.96;
+      this._trueUltBeamTimer = 0.92;
 
       game?.renderer?.triggerImpactFrame?.(this.x, this.y - 122, 0.08, 'emerald');
       game?.renderer?.triggerShake?.(24, 0.62);
@@ -2359,8 +2351,8 @@ export class ArcherEx extends Fighter {
       this.releaseRootedTargets();
     }
 
-    const descU = Math.min(1, Math.max(0, (t - 3.15) / (this.trueUltDuration - 3.15)));
-    const startLift = this._trueUltDescStartLift ?? 82;
+    const descU = Math.min(1, Math.max(0, (t - 1.72) / (this.trueUltDuration - 1.72)));
+    const startLift = this._trueUltDescStartLift ?? 86;
     const remLift =
       descU < 0.36 ? startLift : startLift * Math.cos(((descU - 0.36) / 0.64) * (Math.PI * 0.5));
     this.y = this.groundY - remLift;
@@ -2391,11 +2383,11 @@ export class ArcherEx extends Fighter {
     const inTrueUlt = this.state === 'TRUE_ULTIMATE';
     if (!inTrueUlt && this._trueUltBeamTimer <= 0) return;
 
-    const t = inTrueUlt ? this.stateTimer : 3.25;
-    if (t < 0.85) return;
+    const t = inTrueUlt ? this.stateTimer : 1.82;
+    if (t < 0.52) return;
 
     const fade = inTrueUlt
-      ? Math.min(1, (t - 0.85) / 0.35) * Math.min(1, Math.max(0, (this.trueUltDuration - t) / 0.45))
+      ? Math.min(1, (t - 0.52) / 0.28) * Math.min(1, Math.max(0, (this.trueUltDuration - t) / 0.42))
       : Math.min(1, this._trueUltBeamTimer / 0.35);
     if (fade <= 0.02) return;
 
@@ -2599,10 +2591,11 @@ export class ArcherEx extends Fighter {
     ctx.translate(Math.round(this.x), Math.round(this.y + groundPlantOffset));
     ctx.scale(this.facing, 1);
 
-    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.windPhase, isReflection, renderer);
+    const animPhase = this.state === 'WALK' ? this.walkPhase : this.windPhase;
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, animPhase, isReflection, renderer);
 
     if (this.hitFlash > 0 && !isReflection) {
-      const frameIdx = PixelForge.getFrameIndex(this, this.windPhase);
+      const frameIdx = PixelForge.getFrameIndex(this, animPhase);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.5;
       PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
@@ -2682,15 +2675,15 @@ export class ArcherEx extends Fighter {
       }
     }
 
-    // Supreme Ultimate (`0.42s .. 3.14s`): Colossal Drawn Celestial Greatbow (`Row 6`, 168x168 -> 280x280)
-    // growing & charging right in her hands during the somersault and winged mid-air hover!
-    if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 0.42 && this.stateTimer <= 3.14) {
-      const chargeU = Math.min(1, Math.max(0, (this.stateTimer - 0.42) / (3.14 - 0.42)));
-      const blendU = Math.min(1, Math.max(0, (this.stateTimer - 0.42) / 1.84));
+    // Supreme Ultimate (`0.18s .. 1.72s`): Colossal Drawn Celestial Greatbow (`Row 6`, 168x168 -> 280x280)
+    // growing & charging right in her hands during the fast somersault and winged mid-air hover!
+    if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 0.18 && this.stateTimer < 1.72) {
+      const chargeU = Math.min(1, Math.max(0, (this.stateTimer - 0.18) / (1.72 - 0.18)));
+      const blendU = Math.min(1, Math.max(0, (this.stateTimer - 0.18) / 0.84));
       const col = Math.min(29, Math.floor(chargeU * 30));
       const sx = col * 208;
       const sy = 6 * 208;
-      const bowSize = Math.round((168 + (280 - 168) * Math.min(1, chargeU * 1.15)) / 2) * 2;
+      const bowSize = Math.round((168 + (280 - 168) * Math.min(1, chargeU * 1.08)) / 2) * 2;
       const halfBow = Math.round(bowSize * 0.5);
       const bowX = Math.round(this.x + this.facing * (12 + 12 * blendU));
       const bowY = Math.round(this.y - (78 + 44 * blendU));
@@ -2709,7 +2702,7 @@ export class ArcherEx extends Fighter {
 
     // Supreme Ultimate Phase 4 (`this._trueUltBeamTimer > 0`): Full-Screen Row 7 Supernova Dragon-Arrow Beam (`coreSliceW = 112`, `tipSliceW = 52`)!
     if (this._trueUltBeamTimer > 0) {
-      const beamProg = Math.min(1, Math.max(0, 1 - this._trueUltBeamTimer / 0.96));
+      const beamProg = Math.min(1, Math.max(0, 1 - this._trueUltBeamTimer / 0.92));
       const col = Math.min(29, Math.floor(beamProg * 30));
       const sx = col * 208;
       const sy = 7 * 208;

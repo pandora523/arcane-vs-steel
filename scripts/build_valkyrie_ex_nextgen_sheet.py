@@ -960,32 +960,35 @@ def compose_stand_rig(
     im_layer = Image.fromarray(canvas, mode="RGBA")
     if walk_mode:
         inward_frac = 0.92
+        # Use symmetric forward-facing +X Valkyrie greaves/sabatons on both legs (far darkened)
+        # so both stride halves match ground height and forward toe orientation cleanly.
         bk_leg_p = stand_parts["back_leg_dark"]
         bk_foot_p = stand_parts["back_foot_dark"]
-        fr_leg_p = stand_parts["front_leg"]
-        fr_foot_p = stand_parts["front_foot"]
+        fr_leg_p = stand_parts["back_leg"]
+        fr_foot_p = stand_parts["back_foot"]
 
-        # Exact rest-angle neutralization from 512x512 A-stance
+        # Exact rest-angle neutralization for back_leg / back_foot in 512x512 stand pose
         bk_leg_rest, bk_foot_rest = -16.33, -18.50
-        fr_leg_rest, fr_foot_rest = 12.09, 10.20
+        fr_leg_rest, fr_foot_rest = -16.33, -18.50
 
         bk_rot = back_leg_rot - bk_leg_rest
         bk_f_rot = back_foot_rot - bk_foot_rest
         fr_rot = front_leg_rot - fr_leg_rest
         fr_f_rot = front_foot_rot - fr_foot_rest
 
-        bk_center_dx = (AX - bk_leg_p.pivot_x) * inward_frac
-        fr_center_dx = (AX - fr_leg_p.pivot_x) * inward_frac
+        bk_center_dx = (AX - bk_leg_p.pivot_x) * 0.94
+        fr_center_dx = (AX - fr_leg_p.pivot_x) * 0.88
 
         bk_dx, bk_dy = knee_delta(bk_leg_p, bk_foot_p, bk_rot)
         fr_dx, fr_dy = knee_delta(fr_leg_p, fr_foot_p, fr_rot)
 
+        # Render far leg darkened behind near leg
         order = [
             ("back_hair", body_dx, body_dy, head_rot * 0.7),
             ("back_leg_dark", body_dx + bk_center_dx + back_leg_dx, body_dy + back_leg_dy, bk_rot),
             ("back_foot_dark", body_dx + bk_center_dx + back_leg_dx + bk_dx, body_dy + back_leg_dy + bk_dy, bk_f_rot),
-            ("front_leg", body_dx + fr_center_dx + front_leg_dx, body_dy + front_leg_dy, fr_rot),
-            ("front_foot", body_dx + fr_center_dx + front_leg_dx + fr_dx, body_dy + front_leg_dy + fr_dy, fr_f_rot),
+            ("back_leg", body_dx + fr_center_dx + front_leg_dx, body_dy + front_leg_dy, fr_rot),
+            ("back_foot", body_dx + fr_center_dx + front_leg_dx + fr_dx, body_dy + front_leg_dy + fr_dy, fr_f_rot),
             ("pelvis", body_dx, body_dy, torso_rot * 0.35),
             ("torso", body_dx, body_dy, torso_rot),
             ("head", body_dx, body_dy, head_rot),
@@ -1015,7 +1018,19 @@ def compose_stand_rig(
     im_layer = Image.fromarray(canvas, mode="RGBA")
     im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=body_dx, dy=body_dy, rot_deg=torso_rot))
     out = np.array(im_layer, dtype=np.uint8)
-    if clamp_ground:
+    if walk_mode:
+        ys_b, _ = np.where(out[:, :, 3] > 0)
+        if len(ys_b) > 0:
+            cur_bot = int(ys_b.max())
+            shift_y = AY - cur_bot
+            if shift_y != 0:
+                shifted = np.zeros_like(out)
+                for y in range(LH):
+                    ny = y + shift_y
+                    if 2 <= ny < LH - 2:
+                        shifted[ny] = out[y]
+                out = shifted
+    elif clamp_ground:
         out[AY + 1 :, :, :] = 0
     return out
 
@@ -1070,31 +1085,35 @@ def compose_keypose(
 
 
 _VALKYRIE_WALK_KFS = [
-    # (u, thigh_tgt_deg, shin_tgt_deg, hip_dx_160, hip_dy_160)
+    # (u, thigh_tgt_deg, shin_tgt_deg, foot_tgt_deg, hip_dx_160, hip_dy_160)
     # 0 deg = straight vertical down; -deg = forward (+X); +deg = trailing (-X)
-    (0.000, -22.0, -19.5,  1.8,  0.0),   # Front heel contact (+X)
-    (0.085, -14.0,  -6.5,  1.0,  0.4),   # Weight absorption
-    (0.233,   0.0,   0.0,  0.0,  0.0),   # Mid-stance dead vertical under AX (F07 / F22!)
-    (0.380,  13.5,  18.0, -1.0,  0.0),   # Late stance roll-off
-    (0.500,  21.5,  26.0, -1.8, -0.4),   # Rear toe push-off (-X, F15 / F00!)
-    (0.620,   6.0,  38.0, -0.6, -2.0),   # Initial swing knee bend & toe clearance
-    (0.733, -17.0,  18.5, -0.2, -3.2),   # Mid-swing passing crossover over AX (knee high, sabaton lifted & centered!)
-    (0.875, -24.0, -10.5,  1.2, -1.2),   # Forward swing reach into heel strike
-    (1.000, -22.0, -19.5,  1.8,  0.0),
+    (0.000, -21.5, -18.5,  -4.0,  1.8,  2.2),   # Front heel contact (+X)
+    (0.033, -19.5, -16.0,   0.0,  1.5,  1.9),   # Flat-foot stance load
+    (0.100, -13.5,  -6.5,   0.0,  1.0,  1.1),   # Weight absorption
+    (0.233,   0.0,   0.0,   0.0,  0.0,  0.2),   # Mid-stance vertical under AX (F07 / F22!)
+    (0.380,  13.5,  16.5,   3.0, -1.0,  1.0),   # Late stance roll-off
+    (0.500,  20.5,  23.5,  10.0, -1.8,  2.1),   # Rear toe push-off (-X, F15 / F00!)
+    (0.533,  15.5,  35.0,  14.0, -1.2, -4.6),   # Immediate crisp toe clearance above y=224!
+    (0.620,   4.0,  45.0,  16.0, -0.6, -6.2),   # Mid-early swing knee drive (+X) & heel tuck (-X)
+    (0.733, -17.0,  22.0,  10.0, -0.2, -6.4),   # Mid-swing passing crossover over AX!
+    (0.867, -23.5,  -8.0,  -4.0,  1.2, -4.2),   # Forward swing reach above ground
+    (0.950, -22.5, -15.5,  -4.0,  1.6, -0.6),   # Controlled heel descent
+    (1.000, -21.5, -18.5,  -4.0,  1.8,  2.2),
 ]
 
 
 def _sample_valkyrie_walk_leg(u: float):
     u = u % 1.0
     for i in range(len(_VALKYRIE_WALK_KFS) - 1):
-        u0, th0, sh0, dx0, dy0 = _VALKYRIE_WALK_KFS[i]
-        u1, th1, sh1, dx1, dy1 = _VALKYRIE_WALK_KFS[i + 1]
+        u0, th0, sh0, ft0, dx0, dy0 = _VALKYRIE_WALK_KFS[i]
+        u1, th1, sh1, ft1, dx1, dy1 = _VALKYRIE_WALK_KFS[i + 1]
         if u <= u1 or i == len(_VALKYRIE_WALK_KFS) - 2:
             t = (u - u0) / max(1e-6, u1 - u0)
             s = t * t * (3.0 - 2.0 * t)
             return (
                 th0 + (th1 - th0) * s,
                 sh0 + (sh1 - sh0) * s,
+                ft0 + (ft1 - ft0) * s,
                 dx0 + (dx1 - dx0) * s,
                 dy0 + (dy1 - dy0) * s,
             )
@@ -1139,28 +1158,28 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         u_l = (f / 30.0) % 1.0
         u_r = (u_l + 0.5) % 1.0
         stride = math.cos(tau_f)
-        bob = 0.65 * math.cos(tau_f * 2.0)
-        bk_th, bk_sh, bk_dx, bk_dy = _sample_valkyrie_walk_leg(u_l)
-        fr_th, fr_sh, fr_dx, fr_dy = _sample_valkyrie_walk_leg(u_r)
+        bob = 0.45 * math.cos(tau_f * 2.0)
+        bk_th, bk_sh, bk_ft, bk_dx, bk_dy = _sample_valkyrie_walk_leg(u_l)
+        fr_th, fr_sh, fr_ft, fr_dx, fr_dy = _sample_valkyrie_walk_leg(u_r)
         return compose_stand_rig(
             stand_parts,
             stand_meta,
-            body_dx=0.6 + stride * 0.45,
+            body_dx=0.5 + stride * 0.40,
             body_dy=bob,
-            torso_rot=2.2 + math.cos(tau_f * 2.0) * 0.85,
-            head_rot=0.8 + math.sin(tau_f + 0.35) * 0.75,
+            torso_rot=2.2 + math.cos(tau_f * 2.0) * 0.75,
+            head_rot=0.8 + math.sin(tau_f + 0.35) * 0.65,
             back_leg_rot=bk_th,
-            back_foot_rot=bk_sh,
+            back_foot_rot=bk_ft,
             back_leg_dx=bk_dx,
             back_leg_dy=bk_dy,
             front_leg_rot=fr_th,
-            front_foot_rot=fr_sh,
+            front_foot_rot=fr_ft,
             front_leg_dx=fr_dx,
             front_leg_dy=fr_dy,
             walk_mode=True,
             hair_phase=tau_f * 2.0,
-            hair_billow=0.88,
-            wing_flap=math.sin(tau_f * 2.0) * 7.5,
+            hair_billow=0.85,
+            wing_flap=math.sin(tau_f * 2.0) * 5.0,
             lance_hand_offset=(15.2 - stride * 1.1, 4.5 + abs(stride) * 0.5),
             lance_angle=16.0 - stride * 3.0,
             clamp_ground=True,
