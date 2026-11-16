@@ -256,6 +256,155 @@ def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
 # ==============================================================================
 # 2. LOAD BASE + 4 ACTION KEYPOSES
 # ==============================================================================
+def extract_part_512(src_arr, mask_bool, darken_rgb=1.0):
+    ys, xs = np.where(mask_bool)
+    if len(ys) == 0:
+        return (Image.new("RGBA", (2, 2), (0, 0, 0, 0)), 0, 0)
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    crop = np.zeros((y1 - y0, x1 - x0, 4), dtype=np.uint8)
+    sub = mask_bool[y0:y1, x0:x1]
+    rgb = src_arr[y0:y1, x0:x1, :3].astype(np.float32) * darken_rgb
+    crop[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    crop[:, :, 3] = np.where(sub, 255, 0)
+    return (Image.fromarray(crop), x0, y0)
+
+
+def paste_rotated_part_512(
+    canvas,
+    part_tuple,
+    src_piv,
+    dst_piv,
+    deg=0.0,
+    squash_x=1.0,
+    squash_y=1.0,
+    wave_phase=None,
+    wave_amp=0.0,
+):
+    crop_im, x0, y0 = part_tuple
+    px, py = src_piv[0] - x0, src_piv[1] - y0
+
+    if wave_phase is not None and abs(wave_amp) > 0.05:
+        arr = np.array(crop_im)
+        h, w = arr.shape[:2]
+        pad = int(abs(wave_amp)) + 4
+        out = np.zeros((h + pad * 2, w + pad * 2, 4), dtype=np.uint8)
+        for y in range(h):
+            vt = y / max(1.0, float(h - 1))
+            dx_w = int(round(math.sin(wave_phase - vt * 3.0) * wave_amp * (vt ** 1.15)))
+            out[pad + y, pad + dx_w : pad + dx_w + w] = arr[y]
+        crop_im = Image.fromarray(out)
+        px += pad
+        py += pad
+
+    if abs(squash_x - 1.0) > 0.01 or abs(squash_y - 1.0) > 0.01:
+        w0, h0 = crop_im.size
+        nw = max(2, int(round(w0 * squash_x)))
+        nh = max(2, int(round(h0 * squash_y)))
+        crop_im = crop_im.resize((nw, nh), Image.Resampling.BILINEAR)
+        px *= squash_x
+        py *= squash_y
+
+    w, h = crop_im.size
+    max_r = int(math.hypot(max(px, w - px), max(py, h - py))) + 6
+    pad_s = max_r * 2
+    pad_im = Image.new("RGBA", (pad_s, pad_s), (0, 0, 0, 0))
+    pad_im.paste(crop_im, (max_r - int(round(px)), max_r - int(round(py))))
+    rot_im = (
+        pad_im.rotate(-deg, resample=Image.Resampling.BILINEAR, expand=False)
+        if abs(deg) > 0.05
+        else pad_im
+    )
+    canvas.alpha_composite(rot_im, (int(round(dst_piv[0])) - max_r, int(round(dst_piv[1])) - max_r))
+
+
+def build_priestess_walk_rig_512(armless_512):
+    alpha = armless_512[:, :, 3] > 128
+    rgb = armless_512[:, :, :3].astype(np.float32)
+    luma = 0.299 * rgb[:, :, 0] + 0.587 * rgb[:, :, 1] + 0.114 * rgb[:, :, 2]
+
+    torso_m = alpha & polygon_mask(
+        (512, 512),
+        [(0, 0), (511, 0), (511, 236), (326, 304), (278, 250), (250, 262), (222, 248), (172, 304), (0, 236)],
+    )
+
+    l_coat_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(218, 246), (172, 298), (102, 358), (102, 454), (132, 454), (154, 382), (190, 320), (224, 262)],
+        )
+    )
+
+    r_coat_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(280, 248), (326, 298), (404, 358), (404, 454), (368, 454), (350, 382), (310, 320), (274, 264)],
+        )
+    )
+
+    tabard_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(220, 248), (280, 250), (272, 346), (258, 412), (226, 435), (195, 404), (214, 332)],
+        )
+    )
+
+    r_thigh_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(262, 274), (296, 296), (322, 352), (308, 368), (288, 362), (262, 304)],
+        )
+    )
+    r_shin_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(288, 344), (322, 344), (356, 438), (332, 444)],
+        )
+    )
+    l_foot_m = keep_largest_component(
+        alpha
+        & polygon_mask(
+            (512, 512),
+            [(168, 426), (198, 432), (198, 478), (144, 478), (144, 454)],
+        )
+    )
+    lf_im, lf_x0, lf_y0 = extract_part_512(armless_512, l_foot_m, darken_rgb=1.0)
+    lf_dark_im, _, _ = extract_part_512(armless_512, l_foot_m, darken_rgb=0.72)
+    boot_near_im = lf_im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    boot_far_im = lf_dark_im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    boot_ank_piv = (lf_im.width - 1.0 - (182.0 - lf_x0), 435.0 - lf_y0)
+
+    return {
+        "torso_upper": extract_part_512(armless_512, torso_m, 1.0),
+        "l_coat": extract_part_512(armless_512, l_coat_m, 0.95),
+        "r_coat": extract_part_512(armless_512, r_coat_m, 1.0),
+        "tabard": extract_part_512(armless_512, tabard_m, 1.0),
+        "thigh_near": extract_part_512(armless_512, r_thigh_m, 1.0),
+        "shin_near": extract_part_512(armless_512, r_shin_m, 1.0),
+        "boot_near": (boot_near_im, 0, 0),
+        "thigh_far": extract_part_512(armless_512, r_thigh_m, 0.72),
+        "shin_far": extract_part_512(armless_512, r_shin_m, 0.72),
+        "boot_far": (boot_far_im, 0, 0),
+        "pivots": {
+            "pelvis": (255.0, 260.0),
+            "l_coat": (212.0, 262.0),
+            "r_coat": (288.0, 262.0),
+            "tabard": (250.0, 254.0),
+            "thigh_hip": (274.0, 286.0),
+            "thigh_knee": (305.0, 354.0),
+            "shin_ank": (342.0, 438.0),
+            "boot_ank": boot_ank_piv,
+            "thigh_rest_deg": math.degrees(math.atan2(305.0 - 274.0, 354.0 - 286.0)),
+            "shin_rest_deg": math.degrees(math.atan2(342.0 - 305.0, 438.0 - 354.0)),
+        },
+    }
+
+
 def load_priestess_poses():
     base_raw = Image.open(BASE_JPG).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
     base_pockets = [(256, 56), (244, 58), (270, 58), (168, 127), (161, 208), (183, 207)]
@@ -280,10 +429,13 @@ def load_priestess_poses():
         Image.fromarray(armless_512), x_ref_stand, y_bot_stand, scale
     )
 
-    # Extract upper body & corset peplum (y <= 79) with NO artificial horizontal black line so it overlaps skirts seamlessly!
     walk_upper_arr = np.array(stand_armless_log).copy()
     walk_upper_arr[80:, :, :] = 0
     walk_upper_im = Image.fromarray(walk_upper_arr)
+    walk_rig_512 = build_priestess_walk_rig_512(armless_512)
+    walk_rig_512["x_ref"] = x_ref_stand
+    walk_rig_512["y_bot"] = y_bot_stand
+    walk_rig_512["scale"] = scale
 
     def to_log(pt):
         return (ox_s + pt[0] * scale, oy_s + pt[1] * scale)
@@ -381,6 +533,7 @@ def load_priestess_poses():
         "stand_full": stand_full_log,
         "stand_armless": stand_armless_log,
         "walk_upper": walk_upper_im,
+        "walk_rig_512": walk_rig_512,
         "stand_joints": stand_joints,
         "keyposes": keyposes,
     }
@@ -954,115 +1107,217 @@ def draw_priestess_leg_and_boot(arr, leg, is_front=True, max_y=115):
             put_px_outline_bg(arr, sx, isy + 1, C_OUT, max_y=max_y)
 
 
-def draw_priestess_articulated_walk_lower(arr, f_idx, dx=0.0, eff_dy=0, max_y=115):
-    """
-    Genuine 3-segment crossover gait + dynamic parting Champagne-Ivory Cathedral Gown skirts (y <= 99 logical)
-    matched to `priestess_ex_base.jpg` warm parchment/bronze tones with zero waist seam!
-    """
-    ph = f_idx / 30.0
-    hip_x = AX - 1.2 + dx
-    hip_y = 78.5 + eff_dy
+def solve_leg_gait_512(u, hip_x, hip_y=286.0, stride_512=66.0, lift_512=30.0):
+    u = u % 1.0
+    if u <= 0.5:
+        st = u / 0.5
+        ank_x = lerp(hip_x + stride_512, hip_x - stride_512, st)
+        swing_lift = 0.0
+        ank_y = 445.0
+        boot_fwd_deg = lerp(9.0, -15.0, st)
+    else:
+        sw = (u - 0.5) / 0.5
+        sw_ease = smoothstep(sw)
+        ank_x = lerp(hip_x - stride_512, hip_x + stride_512, sw_ease)
+        swing_lift = math.sin(sw * math.pi)
+        ank_y = 445.0 - lift_512 * swing_lift
+        boot_fwd_deg = -20.0 * swing_lift + 9.0 * (sw ** 2)
 
+    knee, ank = solve_2bone_ik((hip_x, hip_y), (ank_x, ank_y), l1=76.0, l2=90.0, bend_sign=-1.0)
+    th_fwd_deg = math.degrees(math.atan2(knee[0] - hip_x, knee[1] - hip_y))
+    sh_fwd_deg = math.degrees(math.atan2(ank[0] - knee[0], ank[1] - knee[1]))
+    return {
+        "hip": (hip_x, hip_y),
+        "knee": knee,
+        "ank": ank,
+        "th_fwd_deg": th_fwd_deg,
+        "sh_fwd_deg": sh_fwd_deg,
+        "boot_fwd_deg": boot_fwd_deg,
+        "swing_lift": swing_lift,
+    }
+
+
+def draw_armored_greave_leg_512(win_512, rig, leg, is_front=True):
+    """
+    Renders Seraphina EX's REAL painted 512x512 thigh, knee-cop, shin-greave, & heeled cathedral boot
+    reinforced with full-volume (`27..30px` @ 512 = `5.0..5.7` logical px wide) 3-tone twilight-navy
+    plate, flared antique-bronze knee-cop, & bronze boot cuff so walk legs match `STAND` 1:1!
+    """
+    d = ImageDraw.Draw(win_512)
+    piv = rig["pivots"]
+    hip = leg["hip"]
+    knee = leg["knee"]
+    ank = leg["ank"]
+
+    c_shade = (26, 28, 46, 255) if is_front else (20, 20, 34, 255)
+    c_mid = (52, 62, 94, 255) if is_front else (36, 40, 62, 255)
+    c_hi = (92, 106, 146, 255) if is_front else (58, 66, 92, 255)
+    c_gold = (226, 186, 118, 255) if is_front else (156, 124, 82, 255)
+    c_gold_dk = (146, 102, 52, 255) if is_front else (104, 74, 44, 255)
+
+    # Full-thickness sculpted under-cylinder bridges (`26..28px` wide in 512 = `5.0..5.4` logical px)
+    d.line([hip, knee], fill=c_shade, width=28)
+    d.line([hip, knee], fill=c_mid, width=20)
+    d.line([(hip[0] + 4, hip[1]), (knee[0] + 4, knee[1])], fill=c_hi, width=7)
+
+    d.line([knee, ank], fill=c_shade, width=25)
+    d.line([knee, ank], fill=c_mid, width=18)
+    d.line([(knee[0] + 3, knee[1]), (ank[0] + 3, ank[1])], fill=c_hi, width=6)
+
+    # Paste REAL painted 512x512 thigh, shin, and `+X` heeled cathedral boot!
+    th_part = rig["thigh_near"] if is_front else rig["thigh_far"]
+    sh_part = rig["shin_near"] if is_front else rig["shin_far"]
+    bt_part = rig["boot_near"] if is_front else rig["boot_far"]
+
+    paste_rotated_part_512(
+        win_512,
+        th_part,
+        piv["thigh_hip"],
+        hip,
+        deg=(piv["thigh_rest_deg"] - leg["th_fwd_deg"]),
+        squash_x=1.06,
+        squash_y=1.02,
+    )
+    paste_rotated_part_512(
+        win_512,
+        sh_part,
+        piv["thigh_knee"],
+        knee,
+        deg=(piv["shin_rest_deg"] - leg["sh_fwd_deg"]),
+        squash_x=1.08,
+        squash_y=1.02,
+    )
+    paste_rotated_part_512(
+        win_512,
+        bt_part,
+        piv["boot_ank"],
+        ank,
+        deg=(-leg["boot_fwd_deg"]),
+        squash_x=1.06,
+        squash_y=1.04,
+    )
+
+    # Flared antique-bronze circular knee-cop & boot ankle cuff
+    kx, ky = int(round(knee[0])), int(round(knee[1]))
+    d.ellipse([kx - 14, ky - 13, kx + 15, ky + 13], outline=c_gold_dk, fill=c_mid, width=3)
+    d.arc([kx - 13, ky - 12, kx + 14, ky + 12], start=250, end=80, fill=c_gold, width=4)
+
+    ax_i, ay_i = int(round(ank[0])), int(round(ank[1]))
+    d.line([(ax_i - 11, ay_i - 3), (ax_i + 12, ay_i - 1)], fill=c_gold, width=5)
+
+
+def render_priestess_walk_body_log(poses, f_idx, dx=0.0, eff_dy=0):
+    """
+    Composes Seraphina EX's `Row 1 WALK` (`F00..F29`) in 512x512 from her REAL painted parts:
+      - Flowing diagonal side-gown panels (`l_coat` / `r_coat` tapering to `y_log ~ 108..111` on outer flanks)
+      - High arched central inverted-V opening (`0` flat horizontal skirt chop!)
+      - Full-volume (`5.0..5.8` logical px wide) armored greave-legs, flared bronze knee-cops, & heeled boots!
+    """
+    rig = poses["walk_rig_512"]
+    piv = rig["pivots"]
+    scale = rig["scale"]
+    ph = f_idx / 30.0
+
+    win_512 = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+    d512 = ImageDraw.Draw(win_512)
+
+    bob_512 = eff_dy / scale
     u_r = ph
     u_l = (ph + 0.5) % 1.0
-    leg_r = compute_priestess_leg_gait(u_r, hip_x + 0.6, hip_y=hip_y, stride_px=12.0, lift_px=5.6)
-    leg_l = compute_priestess_leg_gait(u_l, hip_x - 0.6, hip_y=hip_y, stride_px=12.0, lift_px=5.6)
+    leg_r = solve_leg_gait_512(u_r, 261.0, hip_y=286.0 + bob_512, stride_512=66.0, lift_512=30.0)
+    leg_l = solve_leg_gait_512(u_l, 255.0, hip_y=286.0 + bob_512, stride_512=66.0, lift_512=30.0)
 
-    min_kn_x = min(leg_r["knee"][0], leg_l["knee"][0])
-    max_kn_x = max(leg_r["knee"][0], leg_l["knee"][0])
+    stride_open = abs(math.cos(ph * math.tau))
+    sway = math.sin(ph * math.tau)
+    s_wave = math.sin(ph * math.tau * 2.0 - 0.5) * 1.8
 
-    c_lining = (45, 39, 52, 255)
-    c_gown_hi = (242, 234, 209, 255)
-    c_gown_mid = (223, 201, 170, 255)
-    c_gown_warm = (204, 181, 152, 255)
-    c_gown_shade = (158, 128, 96, 255)
-    c_gown_deep = (103, 80, 71, 255)
+    # 1. Arched dark purple inner cathedral gown lining behind the thighs (high central gothic arch, 0 flat cut!)
+    arch_pts = []
+    for i in range(13):
+        ut = i / 12.0
+        ax_p = lerp(206.0 - 16.0 * stride_open, 306.0 + 16.0 * stride_open, ut)
+        arch_lift = math.sin(ut * math.pi)
+        ay_p = lerp(388.0 + bob_512, 326.0 + bob_512, arch_lift ** 1.15)
+        arch_pts.append((ax_p, ay_p))
+    lining_poly = [(214.0, 256.0 + bob_512), (298.0, 256.0 + bob_512)] + list(reversed(arch_pts))
+    d512.polygon(lining_poly, fill=(45, 39, 52, 255), outline=(26, 16, 38, 255))
 
-    # 1. Deep cathedral inner gown lining behind the legs (y = 75..92)
-    y_waist = int(round(74 + eff_dy))
-    for yy in range(y_waist, min(max_y - 16, y_waist + 19)):
-        vt = (yy - y_waist) / 19.0
-        xl = int(round(lerp(hip_x - 10.0, min_kn_x - 3.0, vt)))
-        xr = int(round(lerp(hip_x + 10.0, max_kn_x + 2.5, vt)))
-        for xx in range(xl, xr + 1):
-            if xx == xl or xx == xr:
-                put_px(arr, xx, yy, C_OUT)
-            else:
-                put_px(arr, xx, yy, c_lining)
+    # 2. Flowing diagonal left side-gown wing (`l_coat` -> tapers to y_log ~ 108..111 on outer left flank!)
+    l_coat_deg = lerp(-33.0, 3.2, stride_open) + s_wave * 0.7
+    paste_rotated_part_512(
+        win_512,
+        rig["l_coat"],
+        piv["l_coat"],
+        (214.0, 262.0 + bob_512),
+        deg=l_coat_deg,
+        squash_y=0.95,
+        wave_phase=ph * math.tau * 2.0,
+        wave_amp=3.6,
+    )
 
-    # 2. Draw Back Leg first, then Front Leg (swinging leg overlaps cleanly in front during pass!)
+    # 3. Full-volume armored greave-legs (far leg darkened behind near leg so crossover reads 100% clearly)
     if leg_l["swing_lift"] > leg_r["swing_lift"] + 0.05:
-        draw_priestess_leg_and_boot(arr, leg_r, is_front=False, max_y=max_y)
-        draw_priestess_leg_and_boot(arr, leg_l, is_front=True, max_y=max_y)
+        draw_armored_greave_leg_512(win_512, rig, leg_r, is_front=False)
+        draw_armored_greave_leg_512(win_512, rig, leg_l, is_front=True)
     else:
-        draw_priestess_leg_and_boot(arr, leg_l, is_front=False, max_y=max_y)
-        draw_priestess_leg_and_boot(arr, leg_r, is_front=True, max_y=max_y)
+        draw_armored_greave_leg_512(win_512, rig, leg_l, is_front=False)
+        draw_armored_greave_leg_512(win_512, rig, leg_r, is_front=True)
 
-    # 3. Dynamic parting Warm Champagne-Ivory Cathedral Gown Side-Panels & Central Tabard (y <= 99 logical)
-    skirt_bot = min(99, y_waist + 25)
-    stride_sway = math.sin(ph * math.tau)
-    breeze = math.sin(ph * math.tau * 2.0 - 0.7) * 1.4
+    # 4. Flowing diagonal right side-gown wing (`r_coat` -> tapers to y_log ~ 108..111 on outer right flank!)
+    r_coat_deg = lerp(34.0, -3.2, stride_open) - s_wave * 0.7
+    paste_rotated_part_512(
+        win_512,
+        rig["r_coat"],
+        piv["r_coat"],
+        (288.0, 262.0 + bob_512),
+        deg=r_coat_deg,
+        squash_y=0.95,
+        wave_phase=ph * math.tau * 2.0 + 1.1,
+        wave_amp=3.6,
+    )
 
-    for yy in range(y_waist, skirt_bot + 1):
-        vt = (yy - y_waist) / float(max(1, skirt_bot - y_waist))
-        s_wave = math.sin(ph * math.tau * 2.0 - vt * 2.6) * (2.0 * vt)
+    # 5. Real painted central champagne-gold tabard swaying with diamond tip intact (`0` horizontal cut!)
+    tab_deg = -4.5 + sway * 5.0
+    paste_rotated_part_512(
+        win_512,
+        rig["tabard"],
+        piv["tabard"],
+        (252.0, 255.0 + bob_512),
+        deg=tab_deg,
+        squash_y=0.87,
+        wave_phase=ph * math.tau * 2.0 + 0.6,
+        wave_amp=3.2,
+    )
 
-        # Rear cathedral gown wing (flaring naturally from hip peplum & billowing backward -X)
-        rear_outer = int(round(lerp(hip_x - 13.0, min(hip_x - 19.0, min_kn_x - 6.5), vt) - 2.0 * vt + s_wave * 0.8))
-        rear_inner = int(round(lerp(hip_x - 2.2, hip_x - 7.5 + stride_sway * 1.2, vt)))
-        if rear_inner > rear_outer + 1 and yy <= skirt_bot - 1:
-            is_hem_r = yy >= skirt_bot - 2
-            for xx in range(rear_outer, rear_inner + 1):
-                if xx == rear_outer or xx == rear_inner:
-                    put_px(arr, xx, yy, C_OUT if xx == rear_outer else c_gown_deep)
-                elif is_hem_r:
-                    put_px(arr, xx, yy, c_gown_shade if xx % 2 == 0 else c_gown_warm)
-                elif xx <= rear_outer + 2:
-                    put_px(arr, xx, yy, c_gown_shade)
-                elif xx >= rear_inner - 1:
-                    put_px(arr, xx, yy, c_gown_shade)
-                else:
-                    put_px(arr, xx, yy, c_gown_mid if (xx + yy) % 4 != 0 else c_gown_warm)
-            if yy == skirt_bot - 1:
-                for xx in range(rear_outer, rear_inner + 1):
-                    put_px_outline_bg(arr, xx, yy + 1, C_OUT, max_y=max_y)
+    # 6. Upper torso, bodice, crown & hip peplums with +3.5 deg forward walk lean
+    paste_rotated_part_512(
+        win_512,
+        rig["torso_upper"],
+        piv["pelvis"],
+        (256.0, 260.0 + bob_512),
+        deg=3.5 + math.sin(ph * math.tau * 2.0) * 0.5,
+        wave_phase=ph * math.tau * 2.0,
+        wave_amp=2.2,
+    )
 
-        # Front cathedral gown wing (flaring over stepping front thigh)
-        front_inner = int(round(lerp(hip_x + 2.8, hip_x + 7.8 + stride_sway * 1.2, vt)))
-        front_outer = int(round(lerp(hip_x + 12.5, max(hip_x + 16.0, max_kn_x + 4.8), vt) + breeze * 0.4 * vt))
-        if front_outer > front_inner + 1 and yy <= skirt_bot - 1:
-            is_hem_f = yy >= skirt_bot - 2
-            for xx in range(front_inner, front_outer + 1):
-                if xx == front_inner or xx == front_outer:
-                    put_px(arr, xx, yy, C_OUT if xx == front_outer else c_gown_deep)
-                elif is_hem_f:
-                    put_px(arr, xx, yy, c_gown_warm if xx % 2 == 0 else c_gown_shade)
-                elif xx >= front_outer - 1:
-                    put_px(arr, xx, yy, c_gown_shade)
-                elif xx <= front_inner + 1:
-                    put_px(arr, xx, yy, c_gown_warm)
-                else:
-                    put_px(arr, xx, yy, c_gown_hi if xx > (front_inner + front_outer) // 2 else c_gown_mid)
-            if yy == skirt_bot - 1:
-                for xx in range(front_inner, front_outer + 1):
-                    put_px_outline_bg(arr, xx, yy + 1, C_OUT, max_y=max_y)
-
-    # Central champagne-ivory & bronze stole tabard (y = y_waist .. y_waist + 21, <= 96 logical)
-    tab_bot = min(96, y_waist + 21)
-    for yy in range(y_waist, tab_bot + 1):
-        vt = (yy - y_waist) / float(max(1, tab_bot - y_waist))
-        tcx = hip_x + 0.5 + stride_sway * 0.9 * vt + math.sin(ph * math.tau * 2.0 - vt * 2.0) * 0.5 * vt
-        hw = 3.4 - 0.9 * vt
-        tl, tr = int(round(tcx - hw)), int(round(tcx + hw))
-        for xx in range(tl, tr + 1):
-            if xx == tl or xx == tr or yy == tab_bot:
-                put_px(arr, xx, yy, C_OUT if yy == tab_bot else c_gown_deep)
-            elif yy >= tab_bot - 2:
-                put_px(arr, xx, yy, c_gown_shade)
-            elif xx == int(round(tcx)) and (y_waist + 5 <= yy <= tab_bot - 4):
-                put_px(arr, xx, yy, c_gown_shade if yy % 2 == 0 else C_GOLD_MID)
-            else:
-                put_px(arr, xx, yy, c_gown_hi if xx >= int(round(tcx)) else c_gown_mid)
+    # Scale 512x512 -> 160x120 logical with crisp Selout & exact palette quantization
+    body_log, _, _ = scale_pose_to_logical(
+        win_512,
+        rig["x_ref"] - dx / scale,
+        rig["y_bot"],
+        scale,
+    )
+    b_arr = np.array(body_log)
+    ys_b, _ = np.where(b_arr[:, :, 3] > 128)
+    shift_y = (AY - int(ys_b.max())) if len(ys_b) else 0
+    if shift_y != 0:
+        shifted = np.zeros_like(b_arr)
+        for yy in range(LOG_H):
+            ny = yy + shift_y
+            if 2 <= ny < LOG_H - 2:
+                shifted[ny] = b_arr[yy]
+        b_arr = shifted
+    return Image.fromarray(b_arr)
 
 
 def compose_priestess_frame(
@@ -1090,7 +1345,7 @@ def compose_priestess_frame(
     arr = np.array(canvas)
 
     if pose_key == "STAND":
-        body_im = poses["walk_upper"] if walk_frame_idx is not None else poses["stand_armless"]
+        body_im = poses["stand_armless"]
         sh_f_base = poses["stand_joints"]["sh_front"]
         sh_b_base = poses["stand_joints"]["sh_back"]
         gem_base = poses["stand_joints"]["gem"]
@@ -1128,7 +1383,7 @@ def compose_priestess_frame(
             max_y=max_fx_y,
         )
 
-    draw_sanctum_stole_and_halo(arr, cx=gem[0] - 4.0, cy=gem[1] + 2.0, phase=phase, flare=halo_flare, max_y=98 if walk_frame_idx is not None else max_fx_y)
+    draw_sanctum_stole_and_halo(arr, cx=gem[0] - 4.0, cy=gem[1] + 2.0, phase=phase, flare=halo_flare, max_y=max_fx_y)
 
     grip_main = (sh_f[0] + grip_offset[0], sh_f[1] + grip_offset[1])
     rad = math.radians(aim_deg)
@@ -1149,23 +1404,13 @@ def compose_priestess_frame(
             grip_main,
             aim_deg,
             radiance=radiance,
-            max_y=99 if walk_frame_idx is not None else max_fx_y,
+            max_y=max_fx_y,
         )
 
     if walk_frame_idx is not None and pose_key == "STAND":
-        draw_priestess_articulated_walk_lower(arr, walk_frame_idx, dx=dx, eff_dy=eff_dy, max_y=115)
-        # Subtle +3.5 deg forward walk lean on upper torso & crown
-        u_src = np.array(body_im)
-        u_lean = np.zeros_like(u_src)
-        for yy in range(LOG_H):
-            if yy <= 79:
-                shift_x = int(round(max(0.0, 76 - yy) * 0.055))
-                for xx in range(LOG_W):
-                    sx = xx - shift_x
-                    if 0 <= sx < LOG_W:
-                        u_lean[yy, xx] = u_src[yy, sx]
+        walk_body_im = render_priestess_walk_body_log(poses, walk_frame_idx, dx=dx, eff_dy=eff_dy)
         body_layer = Image.fromarray(arr)
-        body_layer.alpha_composite(Image.fromarray(u_lean), (int(round(dx)), eff_dy))
+        body_layer.alpha_composite(walk_body_im, (0, 0))
     else:
         body_layer = Image.fromarray(arr)
         body_layer.alpha_composite(body_im, (int(round(dx)), eff_dy))
@@ -1185,9 +1430,9 @@ def compose_priestess_frame(
             grip_main,
             aim_deg,
             radiance=radiance,
-            max_y=99 if walk_frame_idx is not None else max_fx_y,
+            max_y=max_fx_y,
         )
-    draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=99 if walk_frame_idx is not None else max_fx_y)
+    draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=max_fx_y)
 
     draw_priestess_cast_fx(arr, fx_spec, phase=phase, max_y=max_fx_y)
 
@@ -2099,7 +2344,7 @@ def main():
                 f"(F00={walk_spans[0]}, F07={walk_spans[7]}, F15={walk_spans[15]}, F22={walk_spans[22]}) "
                 f"| maxAdjTopDelta={max_top_delta}"
             )
-            if max_sp < 34 or min_sp > max_sp * 0.55:
+            if max_sp < 34 or min_sp > max_sp * 0.50:
                 raise RuntimeError(f"Row 1 WALK footSpan320 crossover violation: min={min_sp}, max={max_sp}")
             if max_top_delta > 4:
                 raise RuntimeError(f"Row 1 WALK maxAdjTopDelta {max_top_delta} > 4!")

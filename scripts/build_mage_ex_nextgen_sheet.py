@@ -185,7 +185,7 @@ def segment_white_bg(im_rgb, pocket_seeds=()):
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
     rgba[:, :, :3] = arr.astype(np.uint8)
     rgba[:, :, 3] = np.where(fg, 255, 0)
-    return Image.fromarray(rgba, "RGBA")
+    return Image.fromarray(rgba)
 
 
 def apply_selout_and_quantize(rgba_im, palette_colors=48):
@@ -195,7 +195,7 @@ def apply_selout_and_quantize(rgba_im, palette_colors=48):
         return rgba_im
 
     rgb = arr[:, :, :3].copy()
-    fg_im = Image.fromarray(rgb, "RGB").quantize(
+    fg_im = Image.fromarray(rgb).quantize(
         colors=palette_colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
     ).convert("RGB")
     q_rgb = np.array(fg_im, dtype=np.float32)
@@ -216,7 +216,7 @@ def apply_selout_and_quantize(rgba_im, palette_colors=48):
     out = np.zeros((h, w, 4), dtype=np.uint8)
     out[:, :, :3] = np.clip(q_rgb, 0, 255).astype(np.uint8)
     out[:, :, 3] = np.where(a, 255, 0)
-    return Image.fromarray(out, "RGBA")
+    return Image.fromarray(out)
 
 
 def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
@@ -247,7 +247,7 @@ def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
     clean = np.zeros_like(arr)
     clean[:, :, :3] = arr[:, :, :3]
     clean[:, :, 3] = np.where(fg, 255, 0)
-    quant = apply_selout_and_quantize(Image.fromarray(clean, "RGBA"), palette_colors=48)
+    quant = apply_selout_and_quantize(Image.fromarray(clean), palette_colors=48)
 
     canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
     ox = int(round(AX - x_ref_512 * scale))
@@ -259,6 +259,159 @@ def scale_pose_to_logical(rgba_512, x_ref_512, y_bot_512, scale):
 # ==============================================================================
 # 2. LOAD CLASSIC-WIZARD NEO-VISION BASE + 4 SPELLCASTING KEYPOSES
 # ==============================================================================
+def polygon_mask_512(poly):
+    m = Image.new("L", (512, 512), 0)
+    ImageDraw.Draw(m).polygon(poly, fill=255)
+    return np.array(m) > 127
+
+
+def extract_part_512(src_arr, mask_bool, darken_rgb=1.0):
+    ys, xs = np.where(mask_bool)
+    if len(ys) == 0:
+        return (Image.new("RGBA", (2, 2), (0, 0, 0, 0)), 0, 0)
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+    crop = np.zeros((y1 - y0, x1 - x0, 4), dtype=np.uint8)
+    sub = mask_bool[y0:y1, x0:x1]
+    rgb = src_arr[y0:y1, x0:x1, :3].astype(np.float32) * darken_rgb
+    crop[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    crop[:, :, 3] = np.where(sub, 255, 0)
+    return (Image.fromarray(crop), x0, y0)
+
+
+def rot_pt_2d(pt, piv, deg):
+    rad = math.radians(deg)
+    c, s = math.cos(rad), math.sin(rad)
+    dx, dy = pt[0] - piv[0], pt[1] - piv[1]
+    return (piv[0] + dx * c - dy * s, piv[1] + dx * s + dy * c)
+
+
+def paste_rotated_part_512(
+    canvas,
+    part_tuple,
+    src_piv,
+    dst_piv,
+    deg=0.0,
+    squash_x=1.0,
+    squash_y=1.0,
+    wave_phase=None,
+    wave_amp=0.0,
+):
+    crop_im, x0, y0 = part_tuple
+    px, py = src_piv[0] - x0, src_piv[1] - y0
+
+    if wave_phase is not None and abs(wave_amp) > 0.05:
+        arr = np.array(crop_im)
+        h, w = arr.shape[:2]
+        pad = int(abs(wave_amp)) + 4
+        out = np.zeros((h + pad * 2, w + pad * 2, 4), dtype=np.uint8)
+        for y in range(h):
+            vt = y / max(1.0, float(h - 1))
+            dx_w = int(round(math.sin(wave_phase - vt * 3.0) * wave_amp * (vt ** 1.15)))
+            out[pad + y, pad + dx_w : pad + dx_w + w] = arr[y]
+        crop_im = Image.fromarray(out)
+        px += pad
+        py += pad
+
+    if abs(squash_x - 1.0) > 0.01 or abs(squash_y - 1.0) > 0.01:
+        w0, h0 = crop_im.size
+        nw = max(2, int(round(w0 * squash_x)))
+        nh = max(2, int(round(h0 * squash_y)))
+        crop_im = crop_im.resize((nw, nh), Image.Resampling.BILINEAR)
+        px *= squash_x
+        py *= squash_y
+
+    w, h = crop_im.size
+    max_r = int(math.hypot(max(px, w - px), max(py, h - py))) + 6
+    pad_s = max_r * 2
+    pad_im = Image.new("RGBA", (pad_s, pad_s), (0, 0, 0, 0))
+    pad_im.paste(crop_im, (max_r - int(round(px)), max_r - int(round(py))))
+    rot_im = (
+        pad_im.rotate(-deg, resample=Image.Resampling.BILINEAR, expand=False)
+        if abs(deg) > 0.05
+        else pad_im
+    )
+    canvas.alpha_composite(rot_im, (int(round(dst_piv[0])) - max_r, int(round(dst_piv[1])) - max_r))
+
+
+def build_mage_walk_rig_512(base_arr, x_ref_stand, y_bot_stand, scale):
+    """
+    Extracts Ignis Sol EX's REAL painted 512x512 garments & gold-buckled boots from `base_arr`:
+      - `upper_torso`: Classic pointed Wizard Hat, blazing Sun Crest, pitch-black face, upturned collar, pauldrons, gauntlets, & sun-belt
+      - `back_cape`: REAL painted crimson-gold cape tapering down to `y_log ~ 108`
+      - `l_robe_wing` & `r_robe_wing`: REAL painted ornate gold-trimmed crimson robe flanks (`y_log ~ 107..110` on outer edges) parted in an arched inverted-V opening (`0` horizontal chop!)
+      - `central_stole`: REAL painted black-and-gold 8-Ray Sun-Emblem central stole with pointed diamond tip
+      - `boot_near` / `boot_far`: REAL painted `+X` gold-buckled crimson-obsidian archmage boots!
+    """
+    alpha = base_arr[:, :, 3] > 128
+
+    cape_poly = [(176, 286), (198, 322), (164, 428), (138, 460), (104, 460), (104, 368), (156, 294)]
+    cape_m = keep_largest_component(alpha & polygon_mask_512(cape_poly))
+
+    upper_poly = [
+        (0, 0),
+        (511, 0),
+        (511, 362),
+        (316, 358),
+        (308, 322),
+        (206, 322),
+        (206, 366),
+        (166, 366),
+        (166, 292),
+        (0, 292),
+    ]
+    upper_m = keep_largest_component(alpha & polygon_mask_512(upper_poly) & ~cape_m)
+
+    # Left ornate crimson-gold robe flank + left vertical rune-stole with diagonal arched inverted-V inner opening
+    l_robe_m = keep_largest_component(
+        alpha
+        & polygon_mask_512([(206, 316), (252, 316), (250, 356), (234, 404), (196, 448), (152, 438), (186, 362)])
+    )
+    l_robe_im, lx0, ly0 = extract_part_512(base_arr, l_robe_m, 1.0)
+    dl = ImageDraw.Draw(l_robe_im)
+    dl.line([(196 - lx0, 445 - ly0), (233 - lx0, 402 - ly0)], fill=(217, 138, 28, 255), width=5)
+    dl.line([(198 - lx0, 446 - ly0), (235 - lx0, 403 - ly0)], fill=(10, 14, 28, 255), width=2)
+
+    # Right ornate crimson-gold robe flank + right vertical rune-stole with diagonal arched inverted-V inner opening
+    r_robe_m = keep_largest_component(
+        alpha
+        & polygon_mask_512([(298, 316), (318, 316), (344, 376), (358, 452), (324, 450), (312, 402), (300, 352)])
+    )
+    r_robe_im, rx0, ry0 = extract_part_512(base_arr, r_robe_m, 1.0)
+    dr = ImageDraw.Draw(r_robe_im)
+    dr.line([(325 - rx0, 448 - ry0), (312 - rx0, 402 - ry0)], fill=(217, 138, 28, 255), width=5)
+    dr.line([(323 - rx0, 449 - ry0), (310 - rx0, 403 - ry0)], fill=(10, 14, 28, 255), width=2)
+
+    stole_m = keep_largest_component(
+        alpha & polygon_mask_512([(252, 318), (302, 318), (302, 406), (277, 448), (252, 406)])
+    )
+
+    boot_m = keep_largest_component(
+        alpha & polygon_mask_512([(282, 446), (322, 446), (352, 468), (352, 490), (282, 490)])
+    )
+
+    return {
+        "upper_torso": extract_part_512(base_arr, upper_m, 1.0),
+        "back_cape": extract_part_512(base_arr, cape_m, 0.96),
+        "l_robe": (l_robe_im, lx0, ly0),
+        "r_robe": (r_robe_im, rx0, ry0),
+        "central_stole": extract_part_512(base_arr, stole_m, 1.0),
+        "boot_near": extract_part_512(base_arr, boot_m, 1.0),
+        "boot_far": extract_part_512(base_arr, boot_m, 0.72),
+        "x_ref": x_ref_stand,
+        "y_bot": y_bot_stand,
+        "scale": scale,
+        "pivots": {
+            "pelvis": (258.0, 316.0),
+            "cape": (184.0, 304.0),
+            "l_robe": (218.0, 318.0),
+            "r_robe": (306.0, 318.0),
+            "stole": (277.0, 320.0),
+            "boot_ank": (299.0, 452.0),
+        },
+    }
+
+
 def load_mage_poses():
     base_raw = Image.open(BASE_JPG).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
     base_seg = segment_white_bg(base_raw, pocket_seeds=())
@@ -271,17 +424,7 @@ def load_mage_poses():
     x_ref_stand = 256
 
     stand_log, ox_s, oy_s = scale_pose_to_logical(base_seg, x_ref_stand, y_bot_stand, scale)
-
-    # Extract clean upper-body walker sprite (`y <= 78` logical: Wizard Hat + pitch-black face +
-    # glowing molten eyes + upturned collar + pauldrons + gauntlets + golden sun-wheel belt)
-    # so Row 1 WALK can drive full 3-segment articulated stepping legs & dynamic parting coat-tails!
-    stand_arr = np.array(stand_log)
-    walk_upper_arr = np.zeros_like(stand_arr)
-    walk_upper_arr[:79, :, :] = stand_arr[:79, :, :]
-    # Taper belt bottom cleanly around x = 42..70 at y = 78 so zero wide bell-skirt corners protrude
-    walk_upper_arr[77:79, :41, :] = 0
-    walk_upper_arr[77:79, 72:, :] = 0
-    walk_upper_im = Image.fromarray(walk_upper_arr, "RGBA")
+    walk_rig_512 = build_mage_walk_rig_512(base_arr, x_ref_stand, y_bot_stand, scale)
 
     def to_log(pt, ox, oy):
         return (ox + pt[0] * scale, oy + pt[1] * scale)
@@ -290,7 +433,14 @@ def load_mage_poses():
         "scale": scale,
         "STAND": {
             "sprite": stand_log,
-            "walk_upper": walk_upper_im,
+            "walk_rig_512": walk_rig_512,
+            "ox": ox_s,
+            "oy": oy_s,
+            "grip_512": (352.0, 336.0),
+            "l_eye_512": (247.0, 187.0),
+            "r_eye_512": (299.0, 191.0),
+            "hat_sun_512": (286.0, 123.0),
+            "chest_orb_512": (282.0, 252.0),
             "grip": to_log((352, 336), ox_s, oy_s),
             "offhand": to_log((194, 340), ox_s, oy_s),
             "l_eye": to_log((247, 187), ox_s, oy_s),
@@ -1029,178 +1179,247 @@ def draw_filled_poly(arr, pts, fill_col, out_col=C_OUT, max_y=115):
     arr[m] = fill_col
 
 
-def compute_caster_leg_gait(u, ax_center, hip_y):
-    """
-    Computes 3-segment human walk kinematics for one leg (`u` in `[0, 1)`):
-      - `u = 0.00`: Front heel-strike (`ank_x = ax_center + 11.5`, `y_bot = 115`)
-      - `u = 0.25`: Mid-stance directly under `ax_center` (`ank_x = ax_center`, `y_bot = 115`)
-      - `u = 0.50`: Back toe-off (`ank_x = ax_center - 11.5`, `y_bot = 115`)
-      - `u = 0.75`: Passing swing crossover (`ank_x = ax_center`, lifted `5.5` logical px = `11px` in `320x240`!)
-    """
-    stride = 11.5
+def solve_2bone_ik_512(sh, target, l1, l2, bend_sign=-1.0):
+    dx = target[0] - sh[0]
+    dy = target[1] - sh[1]
+    d = math.hypot(dx, dy)
+    max_reach = l1 + l2 - 0.5
+    if d > max_reach and d > 1e-4:
+        dx *= max_reach / d
+        dy *= max_reach / d
+        target = (sh[0] + dx, sh[1] + dy)
+        d = max_reach
+    d = max(4.0, d)
+    cos_a = clamp((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0, 1.0)
+    ang_base = math.atan2(dy, dx)
+    ang_off = math.acos(cos_a) * bend_sign
+    el = (sh[0] + math.cos(ang_base + ang_off) * l1, sh[1] + math.sin(ang_base + ang_off) * l1)
+    return el, target
+
+
+def solve_mage_leg_gait_512(u, hip_x, hip_y=328.0, stride_512=66.0, lift_512=32.0):
+    u = u % 1.0
     if u <= 0.50:
-        st = u / 0.50  # 0 (front) -> 1 (back)
-        ank_x = lerp(ax_center + stride, ax_center - stride, st)
-        lift = 0.0
-        ank_y = 112.5
-        # Subtle stance knee flexion on weight acceptance, straighter at mid-stance
-        knee_fwd = 2.6 * (1.0 - st) + 1.2 * math.sin(st * math.pi)
-        pitch = lerp(-0.35, 0.45, st)  # negative = heel-strike toe-up; positive = toe-off
+        st = u / 0.50
+        ank_x = lerp(hip_x + stride_512, hip_x - stride_512, st)
+        swing_lift = 0.0
+        ank_y = 463.0
+        boot_fwd_deg = lerp(8.0, -10.0, st)
     else:
-        sw = (u - 0.50) / 0.50  # 0 (back toe-off) -> 0.5 (passing crossover) -> 1 (front heel-strike)
+        sw = (u - 0.50) / 0.50
         sw_ease = smoothstep(sw)
-        ank_x = lerp(ax_center - stride, ax_center + stride, sw_ease)
-        lift = math.sin(sw * math.pi) * 5.6  # -> 11.2px vertical foot lift in 320x240!
-        ank_y = 112.5 - lift
-        knee_fwd = 5.4 * math.sin(sw * math.pi) + 2.2 * sw_ease
-        pitch = math.sin(sw * math.pi) * 0.65 - 0.25 * (sw ** 2)
+        ank_x = lerp(hip_x - stride_512, hip_x + stride_512, sw_ease)
+        swing_lift = math.sin(sw * math.pi)
+        ank_y = 463.0 - lift_512 * swing_lift
+        boot_fwd_deg = -18.0 * swing_lift + 8.0 * (sw ** 2)
 
-    hip = (ax_center, hip_y)
-    mx = 0.5 * (hip[0] + ank_x) + knee_fwd
-    my = 0.5 * (hip[1] + ank_y) - 0.35 * lift
-    return hip, (mx, my), (ank_x, ank_y), lift, pitch
+    knee, ank = solve_2bone_ik_512((hip_x, hip_y), (ank_x, ank_y), l1=70.0, l2=74.0, bend_sign=-1.0)
+    return {
+        "hip": (hip_x, hip_y),
+        "knee": knee,
+        "ank": ank,
+        "boot_fwd_deg": boot_fwd_deg,
+        "swing_lift": swing_lift,
+    }
 
 
-def draw_mage_leg_and_boot(arr, hip, knee, ank, pitch, is_front=True):
-    """Draws Ignis Sol EX's articulated thigh, crimson-gold knee-cop, greave shin, & gold-buckled pointed boot."""
-    c_thigh = (32, 24, 36, 255) if is_front else (22, 16, 26, 255)
-    c_shin = (46, 24, 30, 255) if is_front else (32, 16, 22, 255)
-    c_boot = (38, 28, 38, 255) if is_front else (26, 20, 28, 255)
-    c_boot_hi = (72, 54, 68, 255) if is_front else (48, 36, 48, 255)
-    c_trim = C_GOLD_LIGHT if is_front else C_GOLD_MID
-    c_robe_k = C_ROBE_CRIMSON if is_front else C_ROBE_DARK
+def draw_mage_breeches_and_boot_512(win_512, rig, leg, is_front=True):
+    """
+    Sculpts full-volume (`27..31px` @ 512 = `5.2..6.0` logical px wide) 3-tone cel-shaded Archmage
+    breeches + flared crimson-gold boot cuff + Ignis Sol EX's REAL painted `+X` gold-buckled
+    crimson-obsidian boot (`#0a0e1c` Selout, zero thin stick lines!).
+    """
+    d = ImageDraw.Draw(win_512)
+    piv = rig["pivots"]
+    hip = leg["hip"]
+    knee = leg["knee"]
+    ank = leg["ank"]
 
-    # Thigh & shin with crisp Selout
-    draw_thick_line(arr, hip[0], hip[1], knee[0], knee[1], 2.25, c_thigh, out_col=C_OUT)
-    draw_thick_line(arr, knee[0], knee[1], ank[0], ank[1], 1.85, c_shin, out_col=C_OUT)
+    c_sel = (10, 14, 28, 255)
+    c_shd = (28, 20, 42, 255) if is_front else (18, 12, 26, 255)
+    c_mid = (64, 46, 88, 255) if is_front else (36, 26, 52, 255)
+    c_lit = (114, 86, 142, 255) if is_front else (62, 46, 84, 255)
+    c_crim = (166, 34, 38, 255) if is_front else (98, 20, 24, 255)
+    c_gold = (250, 204, 56, 255) if is_front else (186, 122, 28, 255)
 
-    # Circular crimson-gold battle-mage knee-cop
+    # Full-volume 3-tone cel-shaded thigh breeches (`30px` @ 512 = `5.8` logical px wide!)
+    d.line([hip, knee], fill=c_sel, width=32)
+    d.line([hip, knee], fill=c_shd, width=26)
+    d.line([(hip[0] + 2, hip[1]), (knee[0] + 2, knee[1])], fill=c_mid, width=18)
+    d.line([(hip[0] + 5, hip[1]), (knee[0] + 5, knee[1])], fill=c_lit, width=7)
+
+    # Full-volume 3-tone cel-shaded calf breeches (`26px` @ 512 = `5.0` logical px wide!)
+    d.line([knee, ank], fill=c_sel, width=28)
+    d.line([knee, ank], fill=c_shd, width=22)
+    d.line([(knee[0] + 2, knee[1]), (ank[0] + 2, ank[1])], fill=c_mid, width=15)
+    d.line([(knee[0] + 4, knee[1]), (ank[0] + 4, ank[1])], fill=c_lit, width=6)
+
+    # Sculpted crimson-gold knee-guard
     kx, ky = int(round(knee[0])), int(round(knee[1]))
-    draw_thick_line(arr, knee[0] - 0.6, knee[1], knee[0] + 0.8, knee[1], 1.85, c_robe_k, out_col=C_OUT)
-    put_px(arr, kx + 1, ky, c_trim)
+    d.ellipse([kx - 14, ky - 12, kx + 15, ky + 12], outline=c_sel, fill=c_crim, width=3)
+    d.arc([kx - 12, ky - 10, kx + 13, ky + 10], start=260, end=80, fill=c_gold, width=4)
 
-    # Articulated pointed archmage boot (strictly clamped to y <= 115)
-    heel_x = ank[0] - 2.1
-    heel_y = min(114.5, ank[1] + 2.0 - max(0.0, pitch) * 0.6)
-    toe_x = ank[0] + 4.4
-    toe_y = min(114.5, ank[1] + 2.0 + pitch * 1.6)
-    instep_x = ank[0] + 1.4
-    instep_y = min(113.5, ank[1] + 0.4)
-
-    boot_poly = [
-        (heel_x, ank[1] - 0.3),
-        (instep_x, instep_y - 0.8),
-        (toe_x, toe_y - 0.7),
-        (toe_x + 0.6, min(115.0, toe_y + 0.5)),
-        (heel_x - 0.3, min(115.0, heel_y + 0.5)),
+    # Flared crimson-and-gold archmage boot cuff (`31px` @ 512 = `6.0` logical px wide!)
+    ax_i, ay_i = int(round(ank[0])), int(round(ank[1]))
+    cuff_poly = [
+        (ax_i - 15, ay_i - 16),
+        (ax_i + 16, ay_i - 15),
+        (ax_i + 13, ay_i + 1),
+        (ax_i - 12, ay_i + 1),
     ]
-    draw_filled_poly(arr, boot_poly, c_boot, out_col=C_OUT, max_y=115)
-    put_px(arr, int(round(instep_x)), min(114, int(round(instep_y))), c_trim)
-    put_px(arr, int(round(toe_x - 1.0)), min(114, int(round(toe_y - 0.4))), c_boot_hi)
+    d.polygon(cuff_poly, fill=c_crim, outline=c_sel)
+    d.line([(ax_i - 14, ay_i - 14), (ax_i + 15, ay_i - 13)], fill=c_gold, width=5)
+
+    # Paste Ignis Sol EX's REAL painted `+X` gold-buckled crimson-obsidian boot!
+    bt_part = rig["boot_near"] if is_front else rig["boot_far"]
+    paste_rotated_part_512(
+        win_512,
+        bt_part,
+        piv["boot_ank"],
+        ank,
+        deg=(-leg["boot_fwd_deg"]),
+        squash_x=0.88,
+        squash_y=1.0,
+    )
 
 
-def draw_mage_articulated_walk_lower(arr, f_idx, dx_body, dy_body, phase):
+def render_mage_walk_body_log(pd, f_idx, dx_body, dy_body, phase):
     """
-    Full 30fps human crossover stride for `Row 1 WALK` (`F00..F29`):
-      - Centered hip sockets around `AX` (`0` crab straddle!)
-      - `+-11.5` logical px (`+-23px` output) heel-strike to toe-off stride
-      - `5.6` logical px (`11.2px` output) swing-boot vertical lift crossing directly under `AX` at `F07` & `F22`
-      - Dynamic parting crimson-gold robe panels (`y <= 100` so lower shins & boots in `y_320 = 206..232` read 100% clearly!)
+    Composes Ignis Sol EX's `Row 1 WALK` (`F00..F29`) in 512x512 from his REAL painted robes & boots:
+      - Flowing crimson-gold robe flanks & cape tapering organically down to `y_log ~ 107..110` on outer edges
+      - Arched inverted-V front opening (`0` flat horizontal guillotine cut across `y = 100`!)
+      - Full-volume (`5.0..6.0` logical px wide) 3-tone cel-shaded archmage breeches, flared crimson-gold boot cuffs, & gold-buckled boots (`#0a0e1c` Selout)!
     """
+    rig = pd["walk_rig_512"]
+    piv = rig["pivots"]
+    scale = rig["scale"]
+
+    win_512 = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+    d512 = ImageDraw.Draw(win_512)
+
+    bob_512 = dy_body / scale
     u_l = (f_idx / 30.0) % 1.0
     u_r = (u_l + 0.5) % 1.0
-    ax_c = AX + dx_body + 1.0
-    hip_y = 78.5 + dy_body
+    leg_l = solve_mage_leg_gait_512(u_l, 255.0, hip_y=328.0 + bob_512, stride_512=66.0, lift_512=30.0)
+    leg_r = solve_mage_leg_gait_512(u_r, 261.0, hip_y=328.0 + bob_512, stride_512=66.0, lift_512=30.0)
 
-    l_hip, l_knee, l_ank, _, l_pitch = compute_caster_leg_gait(u_l, ax_c - 0.4, hip_y)
-    r_hip, r_knee, r_ank, _, r_pitch = compute_caster_leg_gait(u_r, ax_c + 0.4, hip_y)
-
-    # S-wave billowing crimson-gold robe panels (`y = 76..100`, strictly above ankle measurement band `y >= 103`!)
+    stride_open = abs(math.cos(phase * math.tau))
     sway = math.sin(phase * math.tau)
-    wave2 = math.sin(phase * math.tau * 2.0 - 0.6)
+    s_wave = math.sin(phase * math.tau * 2.0 - 0.5) * 1.6
 
-    # 1. Back cape & far crimson-gold robe panel (`r_coat`) behind legs
-    r_lead = clamp((r_ank[0] - ax_c) * 0.42, -5.0, 6.0)
-    back_cape_poly = [
-        (ax_c - 12.0, 75.0 + dy_body),
-        (ax_c + 8.0, 76.0 + dy_body),
-        (ax_c + 10.5 + max(0.0, r_lead), 98.5 + dy_body),
-        (ax_c - 17.5 - 2.2 * wave2, 99.5 + dy_body),
-    ]
-    draw_filled_poly(arr, back_cape_poly, C_ROBE_DARK, out_col=C_OUT, max_y=100)
-    # Gold hem trim along back cape edge
-    draw_thick_line(
-        arr,
-        ax_c - 16.5 - 2.0 * wave2,
-        98.5 + dy_body,
-        ax_c - 11.5,
-        77.0 + dy_body,
-        0.75,
-        C_GOLD_MID,
-        out_col=None,
+    # 1. Arched deep obsidian-crimson inner robe shadow behind upper thighs (`0` horizontal line!)
+    arch_pts = []
+    for i in range(13):
+        ut = i / 12.0
+        ax_p = lerp(208.0 - 10.0 * stride_open, 314.0 + 10.0 * stride_open, ut)
+        arch_lift = math.sin(ut * math.pi)
+        ay_p = lerp(402.0 + bob_512, 342.0 + bob_512, arch_lift ** 1.15)
+        arch_pts.append((ax_p, ay_p))
+    d512.polygon([(214.0, 316.0 + bob_512), (308.0, 316.0 + bob_512)] + list(reversed(arch_pts)), fill=(20, 10, 22, 255), outline=(10, 14, 28, 255))
+
+    # 2. Flowing crimson-gold back cape & left ornate robe flank (`y_log ~ 107..110` on outer left edge!)
+    cape_deg = lerp(-35.5, 3.0, stride_open) + s_wave
+    paste_rotated_part_512(
+        win_512,
+        rig["back_cape"],
+        piv["cape"],
+        (188.0, 304.0 + bob_512),
+        deg=cape_deg,
+        squash_y=0.96,
+        wave_phase=phase * math.tau * 2.0,
+        wave_amp=3.6,
     )
 
-    # 2. Far leg (`r_leg`) -> Near leg (`l_leg`)
-    draw_mage_leg_and_boot(arr, r_hip, r_knee, r_ank, r_pitch, is_front=False)
-    draw_mage_leg_and_boot(arr, l_hip, l_knee, l_ank, l_pitch, is_front=True)
-
-    # 3. Dynamic parting near crimson-gold coat-tail (`l_coat`, y = 76..100)
-    l_lead = clamp((l_ank[0] - ax_c) * 0.45, -6.0, 6.5)
-    l_coat_poly = [
-        (ax_c - 11.5, 76.0 + dy_body),
-        (ax_c - 1.5, 76.5 + dy_body),
-        (ax_c - 2.5 + l_lead * 0.55, 99.0 + dy_body),
-        (ax_c - 14.5 + l_lead * 0.35 - 1.6 * wave2, 99.5 + dy_body),
-    ]
-    draw_filled_poly(arr, l_coat_poly, C_ROBE_CRIMSON, out_col=C_OUT, max_y=100)
-    draw_thick_line(
-        arr,
-        ax_c - 13.8 + l_lead * 0.35 - 1.6 * wave2,
-        98.6 + dy_body,
-        ax_c - 3.0 + l_lead * 0.55,
-        98.2 + dy_body,
-        0.8,
-        C_GOLD_LIGHT,
-        out_col=None,
+    l_robe_deg = lerp(-27.0, 3.0, stride_open) + s_wave * 0.6
+    paste_rotated_part_512(
+        win_512,
+        rig["l_robe"],
+        piv["l_robe"],
+        (218.0, 318.0 + bob_512),
+        deg=l_robe_deg,
+        squash_y=0.98,
+        wave_phase=phase * math.tau * 2.0 + 0.4,
+        wave_amp=3.0,
     )
 
-    # Forward right crimson-gold hip tasset (`y = 76..95`)
-    r_tas_poly = [
-        (ax_c + 4.5, 76.5 + dy_body),
-        (ax_c + 11.5, 77.0 + dy_body),
-        (ax_c + 13.0 + max(0.0, r_lead) * 0.5, 94.5 + dy_body),
-        (ax_c + 6.0 + max(0.0, r_lead) * 0.3, 94.0 + dy_body),
-    ]
-    draw_filled_poly(arr, r_tas_poly, C_ROBE_CRIMSON, out_col=C_OUT, max_y=96)
-    draw_thick_line(
-        arr,
-        ax_c + 6.5 + max(0.0, r_lead) * 0.3,
-        93.5 + dy_body,
-        ax_c + 12.2 + max(0.0, r_lead) * 0.5,
-        94.0 + dy_body,
-        0.7,
-        C_GOLD_MID,
-        out_col=None,
+    # 3. Full-volume 3-tone cel-shaded archmage breeches + flared cuffs + gold-buckled boots!
+    if leg_l["swing_lift"] > leg_r["swing_lift"] + 0.05:
+        draw_mage_breeches_and_boot_512(win_512, rig, leg_r, is_front=False)
+        draw_mage_breeches_and_boot_512(win_512, rig, leg_l, is_front=True)
+    else:
+        draw_mage_breeches_and_boot_512(win_512, rig, leg_l, is_front=False)
+        draw_mage_breeches_and_boot_512(win_512, rig, leg_r, is_front=True)
+
+    # 4. Ornate gold-trimmed crimson right robe flank (`y_log ~ 107..110` on outer right edge!)
+    r_robe_deg = lerp(26.5, -10.5, stride_open) - s_wave * 0.6
+    paste_rotated_part_512(
+        win_512,
+        rig["r_robe"],
+        piv["r_robe"],
+        (306.0, 318.0 + bob_512),
+        deg=r_robe_deg,
+        squash_y=0.98,
+        wave_phase=phase * math.tau * 2.0 + 1.1,
+        wave_amp=3.0,
     )
 
-    # 4. Central Dark-Obsidian & Gold-Sun Archmage Stole (`y = 76..98`, unified & tear-free!)
-    stole_sway = sway * 1.2 - wave2 * 0.6
-    stole_poly = [
-        (ax_c - 2.2, 76.5 + dy_body),
-        (ax_c + 5.2, 76.5 + dy_body),
-        (ax_c + 5.6 + stole_sway, 94.0 + dy_body),
-        (ax_c + 1.5 + stole_sway * 1.15, 98.5 + dy_body),
-        (ax_c - 2.6 + stole_sway, 94.0 + dy_body),
-    ]
-    draw_filled_poly(arr, stole_poly, C_GLOVE_DARK, out_col=C_OUT, max_y=99)
-    # Gold border & miniature sun emblem on central stole
-    sx_mid = int(round(ax_c + 1.5 + stole_sway * 0.7))
-    sy_mid = int(round(88.0 + dy_body))
-    put_px(arr, sx_mid, sy_mid, C_GOLD_LIGHT)
-    put_px(arr, sx_mid, sy_mid - 2, C_GOLD_MID)
-    put_px(arr, sx_mid, sy_mid + 2, C_GOLD_MID)
-    put_px(arr, sx_mid - 2, sy_mid, C_GOLD_MID)
-    put_px(arr, sx_mid + 2, sy_mid, C_GOLD_MID)
+    # 5. Real painted central 8-Ray Sun-Emblem obsidian stole with pointed diamond gold tip (`0` flat cut!)
+    stole_deg = -2.0 + sway * 4.5
+    paste_rotated_part_512(
+        win_512,
+        rig["central_stole"],
+        piv["stole"],
+        (277.0, 320.0 + bob_512),
+        deg=stole_deg,
+        squash_y=0.78,
+        wave_phase=phase * math.tau * 2.0 + 0.7,
+        wave_amp=2.6,
+    )
+
+    # 6. Classic pointed Wizard Hat, shadowed face, collar, pauldrons, gauntlets, & belt (`+3.2 deg` lean!)
+    lean_deg = 3.2 + math.sin(phase * math.tau * 2.0) * 0.4
+    pelvis_dst = (piv["pelvis"][0], piv["pelvis"][1] + bob_512)
+    paste_rotated_part_512(
+        win_512,
+        rig["upper_torso"],
+        piv["pelvis"],
+        pelvis_dst,
+        deg=lean_deg,
+    )
+
+    body_log, ox_w, oy_w = scale_pose_to_logical(
+        win_512,
+        rig["x_ref"] - dx_body / scale,
+        rig["y_bot"],
+        scale,
+    )
+    b_arr = np.array(body_log)
+    b_arr[116:, :, :] = 0
+    shift_y = 0
+
+    # Reinforce crisp `#0a0e1c` Selout outline along lower breeches & boots (`y >= 84`)
+    fg_b = b_arr[:, :, 3] > 128
+    for py in range(84, 116):
+        for px in range(3, LOG_W - 3):
+            if fg_b[py, px]:
+                if not (fg_b[py - 1, px] and fg_b[py + 1, px] and fg_b[py, px - 1] and fg_b[py, px + 1]):
+                    rgb = b_arr[py, px, :3]
+                    lum = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+                    if lum < 135.0:
+                        b_arr[py, px] = (10, 14, 28, 255)
+
+    def map_lean_pt(pt512):
+        rp = rot_pt_2d(pt512, piv["pelvis"], lean_deg)
+        return (ox_w + rp[0] * scale, oy_w + (rp[1] + bob_512) * scale + shift_y)
+
+    tracked = {
+        "l_eye": map_lean_pt(pd["l_eye_512"]),
+        "r_eye": map_lean_pt(pd["r_eye_512"]),
+        "hat_sun": map_lean_pt(pd["hat_sun_512"]),
+        "chest_orb": map_lean_pt(pd["chest_orb_512"]),
+        "grip": map_lean_pt(pd["grip_512"]),
+    }
+    return Image.fromarray(b_arr), tracked
 
 
 def compose_mage_frame(
@@ -1259,21 +1478,20 @@ def compose_mage_frame(
         eclipse=eclipse_halo,
     )
 
-    # 3. Composite Wizard body sprite (full articulated 3-segment crossover stride on WALK!)
+    # 3. Composite Wizard body sprite (full 512x512 articulated robe & boot crossover rig on WALK!)
     bx, by = int(round(dx)), int(round(dy))
     if walk_frame_idx is not None and pose_key == "STAND":
-        draw_mage_articulated_walk_lower(arr, walk_frame_idx, bx, by, phase)
-        body_layer = Image.fromarray(arr, "RGBA")
-        # Gentle +3.5 deg forward walk lean: upper torso shifts +1px forward relative to hips
-        body_layer.alpha_composite(pd["walk_upper"], (bx + 1, by))
+        walk_body_im, tracked = render_mage_walk_body_log(pd, walk_frame_idx, dx, by, phase)
+        body_layer = Image.fromarray(arr)
+        body_layer.alpha_composite(walk_body_im, (0, 0))
         arr = np.array(body_layer)
-        l_eye = (l_eye[0] + 1.0, l_eye[1])
-        r_eye = (r_eye[0] + 1.0, r_eye[1])
-        hat_sun = (hat_sun[0] + 1.0, hat_sun[1])
-        chest_orb = (chest_orb[0] + 1.0, chest_orb[1])
-        grip_pt = (grip_pt[0] + 1.0, grip_pt[1])
+        l_eye = tracked["l_eye"]
+        r_eye = tracked["r_eye"]
+        hat_sun = tracked["hat_sun"]
+        chest_orb = tracked["chest_orb"]
+        grip_pt = (tracked["grip"][0] + grip_delta[0], tracked["grip"][1] + grip_delta[1])
     else:
-        body_layer = Image.fromarray(arr, "RGBA")
+        body_layer = Image.fromarray(arr)
         body_layer.alpha_composite(body_im, (bx, by))
         arr = np.array(body_layer)
 
@@ -2209,7 +2427,7 @@ def main():
         for c_idx, farr in enumerate(log_frames):
             if c_idx > 0 and not np.array_equal(log_frames[c_idx - 1], farr):
                 transitions += 1
-            im_log = Image.fromarray(farr, "RGBA")
+            im_log = Image.fromarray(farr)
             im_320 = im_log.resize((CELL_W, CELL_H), Image.Resampling.NEAREST)
             a320 = np.array(im_320)[:, :, 3]
             if (
@@ -2249,7 +2467,7 @@ def main():
                 f"(F00={walk_spans[0]}, F07={walk_spans[7]}, F15={walk_spans[15]}, F22={walk_spans[22]}) "
                 f"| maxAdjTopDelta={max_adj_top}"
             )
-            if max_span < 34 or min_span > int(max_span * 0.55):
+            if max_span < 34 or min_span > int(max_span * 0.50):
                 raise RuntimeError(f"Row 1 WALK crossover gate failed: min={min_span}, max={max_span}!")
             if max_adj_top > 4:
                 raise RuntimeError(f"Row 1 WALK topY pop: maxAdjTopDelta={max_adj_top} > 4!")
