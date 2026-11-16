@@ -294,6 +294,38 @@ def load_rigs() -> dict:
         (274, 378), (370, 378), (378, 510), (274, 510),
     ]) & (~m_r_thigh)
 
+    # Dedicated 3-segment (+X forward-facing) leg parts for Row 1 WALK bipedal crossover
+    m_w_shin = poly_mask(w, h, [
+        (274, 378), (366, 378), (368, 474), (274, 474),
+    ]) & (~m_r_thigh)
+    m_w_foot = poly_mask(w, h, [
+        (286, 468), (378, 468), (378, 510), (286, 510),
+    ])
+
+    def darken_part_copy(part_dict: dict, rgb_scale: float = 0.72) -> dict:
+        arr_p = np.array(part_dict["im"], dtype=np.uint8).copy()
+        fg_m = arr_p[:, :, 3] > 0
+        # Preserve dark outline contour while shading interior plates for far-leg depth separation
+        lum_p = (
+            arr_p[:, :, 0].astype(np.int32) * 299
+            + arr_p[:, :, 1].astype(np.int32) * 587
+            + arr_p[:, :, 2].astype(np.int32) * 114
+        ) // 1000
+        tint_m = fg_m & (lum_p > 26)
+        arr_p[tint_m, 0] = (arr_p[tint_m, 0].astype(np.float32) * rgb_scale).astype(np.uint8)
+        arr_p[tint_m, 1] = (arr_p[tint_m, 1].astype(np.float32) * rgb_scale).astype(np.uint8)
+        arr_p[tint_m, 2] = np.minimum(255, (arr_p[tint_m, 2].astype(np.float32) * (rgb_scale + 0.06)).astype(np.int32)).astype(np.uint8)
+        return {
+            "im": Image.fromarray(arr_p, "RGBA"),
+            "x0": part_dict["x0"],
+            "y0": part_dict["y0"],
+            "pivot": part_dict["pivot"],
+        }
+
+    w_thigh = extract_part(rgba_base, m_r_thigh, (302.0, 340.0))
+    w_shin = extract_part(rgba_base, m_w_shin, (308.0, 392.0))
+    w_foot = extract_part(rgba_base, m_w_foot, (324.0, 474.0))
+
     parts = {
         "hair": extract_part(rgba_base, m_hair, (254.0, 96.0)),
         "head": extract_part(rgba_base, m_head, (278.0, 134.0)),
@@ -303,8 +335,14 @@ def load_rigs() -> dict:
         "r_pauldron": extract_part(rgba_base, m_r_pauldron, (312.0, 148.0)),
         "l_thigh": extract_part(rgba_base, m_l_thigh, (234.0, 340.0)),
         "l_shin": extract_part(rgba_base, m_l_shin, (206.0, 392.0)),
-        "r_thigh": extract_part(rgba_base, m_r_thigh, (302.0, 340.0)),
+        "r_thigh": w_thigh,
         "r_shin": extract_part(rgba_base, m_r_shin, (308.0, 392.0)),
+        "w_thigh": w_thigh,
+        "w_shin": w_shin,
+        "w_foot": w_foot,
+        "w_thigh_far": darken_part_copy(w_thigh, 0.70),
+        "w_shin_far": darken_part_copy(w_shin, 0.70),
+        "w_foot_far": darken_part_copy(w_foot, 0.70),
     }
 
     # Load 2x2 Action Keyposes
@@ -867,6 +905,29 @@ def draw_obi_tassels_160(
 # 4. HAND-SCULPTED 4-BAND SERRATED RAIJIN LIGHTNING SMEARS
 # ==============================================================================
 
+_SMEAR_BAYER_4X4 = (
+    (0.0625, 0.5625, 0.1875, 0.6875),
+    (0.8125, 0.3125, 0.9375, 0.4375),
+    (0.2500, 0.7500, 0.1250, 0.6250),
+    (1.0000, 0.5000, 0.8750, 0.3750),
+)
+
+
+def set_smear_px(buf: np.ndarray, x: int, y: int, col: tuple[int, int, int, int]):
+    """
+    Smoothly radial/margin-tapers smear pixels before x = 8..151, y = 8..114 logical
+    using ordered 4x4 Bayer stippling so ZERO cells ever suffer flat straight-line margin cuts!
+    """
+    if x < 8 or x > 151 or y < 8 or y > 114:
+        return
+    edge_d = min(x - 8, 151 - x, y - 8, 114 - y)
+    if edge_d < 6:
+        keep_prob = (edge_d + 0.5) / 6.5
+        if keep_prob < _SMEAR_BAYER_4X4[y & 3][x & 3]:
+            return
+    buf[y, x] = col
+
+
 def draw_raijin_crescent_smear_160(
     buf: np.ndarray,
     cx: float,
@@ -890,10 +951,10 @@ def draw_raijin_crescent_smear_160(
         a0, a1 = a1, a0
     span = max(0.08, a1 - a0)
 
-    xmin = max(MARGIN_160, int(math.floor(cx - r_outer - 4)))
-    xmax = min(LOG_W - MARGIN_160 - 1, int(math.ceil(cx + r_outer + 4)))
-    ymin = max(MARGIN_160, int(math.floor(cy - r_outer * tilt_y - 4)))
-    ymax = min(LOG_H - MARGIN_160 - 1, int(math.ceil(cy + r_outer * tilt_y + 4)))
+    xmin = max(8, int(math.floor(cx - r_outer - 4)))
+    xmax = min(151, int(math.ceil(cx + r_outer + 4)))
+    ymin = max(8, int(math.floor(cy - r_outer * tilt_y - 4)))
+    ymax = min(114, int(math.ceil(cy + r_outer * tilt_y + 4)))
 
     for py in range(ymin, ymax + 1):
         dy = (py - cy) / max(0.22, tilt_y)
@@ -938,7 +999,7 @@ def draw_raijin_crescent_smear_160(
             else:
                 col = C_GOLD_LIGHT if (tri > 0.52 or int((px + py) * 0.5) % 2 == 0) else C_GOLD_MID
 
-            set_px(buf, px, py, col)
+            set_smear_px(buf, px, py, col)
 
     # Trailing storm-feather streaks & golden lightning arcs across the smear fan
     n_arcs = 5 if intensity >= 0.85 else 3
@@ -952,9 +1013,10 @@ def draw_raijin_crescent_smear_160(
         y0 = cy + math.sin(au0) * rm * tilt_y
         x1 = cx + math.cos(au1) * (rm - 2.0)
         y1 = cy + math.sin(au1) * (rm - 2.0) * tilt_y
-        lcol = C_GOLD_LIGHT if (k % 2 == 0) else C_WHITE
-        draw_line_px(buf, x0, y0, mx, my, lcol, r=0)
-        draw_line_px(buf, mx, my, x1, y1, C_CYAN_BRIGHT, r=0)
+        if 10 <= y0 <= 112 and 10 <= my <= 112 and 10 <= y1 <= 112 and x0 <= 149 and mx <= 149 and x1 <= 149:
+            lcol = C_GOLD_LIGHT if (k % 2 == 0) else C_WHITE
+            draw_line_px(buf, x0, y0, mx, my, lcol, r=0)
+            draw_line_px(buf, mx, my, x1, y1, C_CYAN_BRIGHT, r=0)
 
 
 def draw_raijin_vortex_smear_160(
@@ -969,10 +1031,10 @@ def draw_raijin_vortex_smear_160(
     """
     2.5D Perspective-Foreshortened Supersonic Shunpo Horizontal Vortex Smear (Row 2 V2 F17-F18).
     """
-    xmin = max(MARGIN_160, int(math.floor(cx - rx * 0.65 - 3)))
-    xmax = min(LOG_W - MARGIN_160 - 1, int(math.ceil(cx + rx + 3)))
-    ymin = max(MARGIN_160, int(math.floor(cy - ry - 4)))
-    ymax = min(LOG_H - MARGIN_160 - 1, int(math.ceil(cy + ry + 4)))
+    xmin = max(8, int(math.floor(cx - rx * 0.65 - 3)))
+    xmax = min(151, int(math.ceil(cx + rx + 3)))
+    ymin = max(8, int(math.floor(cy - ry - 4)))
+    ymax = min(114, int(math.ceil(cy + ry + 4)))
     ph = math.radians(phase_deg)
 
     for py in range(ymin, ymax + 1):
@@ -999,7 +1061,7 @@ def draw_raijin_vortex_smear_160(
                 col = C_INDIGO_BRIGHT
             else:
                 col = C_GOLD_LIGHT if saw > 0.07 else C_INDIGO_DARK
-            set_px(buf, px, py, col)
+            set_smear_px(buf, px, py, col)
 
 
 # ==============================================================================
@@ -1330,38 +1392,214 @@ def build_row0_idle(rigs: dict) -> list[Image.Image]:
     return frames
 
 
+_WALK_GAIT_KFS = (
+    # (u, world_thigh_deg, world_shin_deg, world_foot_deg, hip_yaw_px, knee_lift_px)
+    # Convention: -deg = FORWARD (+X, right), +deg = BACKWARD (-X, left).
+    (0.00, -29.0, -21.0, -9.0,  +2.2,  0.0),  # Front Heel-Strike (foot planted at AX + 12..14)
+    (0.14, -15.5,  -5.0,  0.0,  +1.2,  0.0),  # Weight Acceptance (flat sole)
+    (0.25,  +1.5,  +4.5,  0.0,   0.0,  0.0),  # Mid-Stance Vertical Support right under AX
+    (0.50, +27.5, +35.0, +16.0, -2.2,  0.0),  # Rear Push-Off (foot trailing at AX - 12..14)
+    (0.64,  +7.0, +52.0, +22.0, -0.8, -2.2),  # Toe-Off & High Knee Fold Behind
+    (0.75, -15.5, +24.0,  +5.0, +0.6, -2.6),  # Mid-Swing PASSING CROSSOVER directly over AX!
+    (0.90, -30.5, -10.5,  -8.0, +1.9, -0.8),  # Terminal Swing / Forward Reach
+    (1.00, -29.0, -21.0, -9.0,  +2.2,  0.0),  # Seamless Loop Wrap
+)
+
+
+def _sample_walk_gait_ronin(u: float):
+    u = float(u) % 1.0
+    k0, k1 = _WALK_GAIT_KFS[0], _WALK_GAIT_KFS[-1]
+    for i in range(len(_WALK_GAIT_KFS) - 1):
+        if _WALK_GAIT_KFS[i][0] <= u <= _WALK_GAIT_KFS[i + 1][0]:
+            k0, k1 = _WALK_GAIT_KFS[i], _WALK_GAIT_KFS[i + 1]
+            break
+    span = k1[0] - k0[0]
+    t = 0.0 if span <= 1e-6 else (u - k0[0]) / span
+    s = 0.5 - 0.5 * math.cos(math.pi * t)
+    return tuple(k0[j] + (k1[j] - k0[j]) * s for j in range(1, 6))
+
+
 def build_row1_walk(rigs: dict) -> list[Image.Image]:
-    """Row 1: Grounded Samurai Suriashi Gliding Stride Cycle (continuous Seigan carry with Row 0)."""
+    """
+    Row 1: Authentic Human Bipedal Crossover Samurai Walk Cycle (30 frames, 0% crab-walk!):
+      - Both hip sockets centered inward (`inward_frac = 0.85`) under the shared spine/pelvis X
+      - Standing straddle rest angles (`th0_thigh = -6.58 deg`, `th0_shin = -11.31 deg`) neutralized
+      - `u_l = f / 30.0` and `u_r = (u_l + 0.5) % 1.0` driven 180 deg out of phase with far leg (`r_*`)
+        rendered BEHIND near leg (`l_*`)
+      - F00: Left boot plants forward (`AX + 12..14`), Right boot trails (`AX - 12..14`)
+      - F07: Right knee lifts & crosses directly over `AX` (`foot X sep <= 4px` logical / `<= 8px` 320x240)
+      - F15: Right boot plants forward (`AX + 12..14`), Left boot trails (`AX - 12..14`)
+      - F22: Left knee lifts & crosses directly over `AX`
+      - Crisp two-handed Chudan-no-Kamae Thunder-Odachi carry, locked ground sole (`y = 115`), `maxAdjTopDelta <= 4px`.
+    """
+    parts = rigs["parts"]
+    th0_thigh = math.degrees(math.atan2(-(308.0 - 302.0), 392.0 - 340.0))  # -6.58 deg
+    th0_shin = math.degrees(math.atan2(-(324.0 - 308.0), 474.0 - 392.0))   # -11.31 deg
+    len_thigh = math.hypot(308.0 - 302.0, 392.0 - 340.0) * SCALE           # 9.45 logical px
+    len_shin = math.hypot(324.0 - 308.0, 474.0 - 392.0) * SCALE            # 15.07 logical px
+
+    # Neutralize wide standing straddle (`inward_frac = 0.94` -> 94% inward to central pelvis X)
+    lx0 = ANCHOR_X_160 + (234.0 - SPINE_X_512) * SCALE
+    rx0 = ANCHOR_X_160 + (302.0 - SPINE_X_512) * SCALE
+    mid_hip_x = 0.5 * (lx0 + rx0) - 0.3
+    rem_half = 0.5 * (rx0 - lx0) * (1.0 - 0.94)
+    base_hip_y = ANCHOR_Y_120 + (340.0 - GROUND_Y_512) * SCALE
+
     frames = []
     for f in range(30):
-        ph = (f / 30.0) * 2.0 * math.pi
-        s = math.sin(ph)
-        c = math.cos(ph)
-        bob = -abs(c) * 0.85
-        frames.append(render_stand_rig_frame(rigs, {
-            "phase": ph,
-            "sink": bob,
-            "torso_lean": 2.2 + 0.65 * math.sin(ph * 2.0),
-            "head_nod": -0.3 + 0.35 * math.sin(ph * 2.0),
-            "stride_x": s * 2.3,
-            "l_hip": -s * 8.5,
-            "l_knee": max(0.0, s) * 5.5,
-            "r_hip": s * 8.5,
-            "r_knee": max(0.0, -s) * 5.5,
-            "l_lift": -max(0.0, -s) * 1.1,
-            "r_lift": -max(0.0, s) * 1.1,
-            "hair_wave": 2.8 + 1.8 * math.sin(ph - 0.5),
-            "tassel_lag": 10.0 + 4.5 * math.sin(ph - 0.6),
-            "drum_charge": 0.34 + 0.10 * (0.5 + 0.5 * math.sin(ph * 2.0)),
-            "sheathed": False,
-            "two_handed": False,
-            "sword_hx": 13.2 - s * 1.1,
-            "sword_hy": -5.2 - bob * 0.4,
-            "sword_deg": -22.5 + s * 3.8,
-            "sori_sign": -1.0,
-            "storm_charge": 0.32 + 0.12 * (0.5 + 0.5 * c),
-            "clamp_ground": True,
-        }))
+        u_l = (f / 30.0) % 1.0
+        u_r = (u_l + 0.5) % 1.0
+        ph = u_l * 2.0 * math.pi
+
+        lt_w, ls_w, lf_w, lyaw, l_klift = _sample_walk_gait_ronin(u_l)
+        rt_w, rs_w, rf_w, ryaw, r_klift = _sample_walk_gait_ronin(u_r)
+
+        stride_scale = 0.88
+        lt_w *= stride_scale
+        ls_w *= stride_scale
+        lf_w *= stride_scale
+        rt_w *= stride_scale
+        rs_w *= stride_scale
+        rf_w *= stride_scale
+
+        # Subtle 2-step walk cadence (`cos(2 * ph)` -> <= 2px in 320x240, maxAdjTopDelta <= 2px!)
+        bob = 0.75 * math.cos(2.0 * ph)
+        torso_lean = 3.8 + 0.75 * math.sin(2.0 * ph)
+        head_nod = -1.2 + 0.45 * math.sin(2.0 * ph)
+        rad_t = math.radians(torso_lean)
+        tx_off = math.sin(rad_t) * 14.0
+        ty_off = (1.0 - math.cos(rad_t)) * 8.0
+
+        def map_upper(x512: float, y512: float) -> tuple[float, float]:
+            return (
+                ANCHOR_X_160 + (x512 - SPINE_X_512) * SCALE,
+                ANCHOR_Y_120 + (y512 - GROUND_Y_512) * SCALE + bob,
+            )
+
+        # Solve 2-segment + foot FK for Far (Right) and Near (Left) legs, then lock stance sole to ANCHOR_Y_120
+        def solve_leg(hip_x: float, hip_y: float, tw: float, sw: float, fw: float, klift: float):
+            r_th = math.radians(tw)
+            r_sh = math.radians(sw)
+            kx = hip_x - math.sin(r_th) * len_thigh
+            ky = hip_y + math.cos(r_th) * len_thigh + klift
+            ax_pt = kx - math.sin(r_sh) * len_shin
+            ay_pt = ky + math.cos(r_sh) * len_shin
+            return (hip_x, hip_y), (kx, ky), (ax_pt, ay_pt), (tw - th0_thigh), (sw - th0_shin), fw
+
+        r_hip_p, r_knee_p, r_ank_p, r_th_deg, r_sh_deg, r_ft_deg = solve_leg(
+            mid_hip_x + rem_half + ryaw, base_hip_y + bob * 0.5, rt_w, rs_w, rf_w, r_klift
+        )
+        l_hip_p, l_knee_p, l_ank_p, l_th_deg, l_sh_deg, l_ft_deg = solve_leg(
+            mid_hip_x - rem_half + lyaw, base_hip_y + bob * 0.5, lt_w, ls_w, lf_w, l_klift
+        )
+
+        # Render legs onto a dedicated buffer first so we lock the lower stance boot sole to y = ANCHOR_Y_120 (0px vertical pop!)
+        legs_im = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+        # 1) Far leg (`r_*`) strictly BEHIND Near leg (`l_*`)
+        paste_part_160(legs_im, parts["w_thigh_far"], r_hip_p, angle_deg=r_th_deg)
+        paste_part_160(legs_im, parts["w_shin_far"], r_knee_p, angle_deg=r_sh_deg)
+        paste_part_160(legs_im, parts["w_foot_far"], r_ank_p, angle_deg=r_ft_deg)
+        # 2) Near leg (`l_*`) in front
+        paste_part_160(legs_im, parts["w_thigh"], l_hip_p, angle_deg=l_th_deg)
+        paste_part_160(legs_im, parts["w_shin"], l_knee_p, angle_deg=l_sh_deg)
+        paste_part_160(legs_im, parts["w_foot"], l_ank_p, angle_deg=l_ft_deg)
+
+        legs_arr = np.array(legs_im, dtype=np.uint8)
+        lys, _ = np.where(legs_arr[:, :, 3] >= 128)
+        leg_dy = (ANCHOR_Y_120 - int(lys.max())) if len(lys) > 0 else 0
+        if leg_dy != 0:
+            shifted = np.zeros_like(legs_arr)
+            s_y0 = max(0, -leg_dy)
+            s_y1 = min(LOG_H, LOG_H - leg_dy)
+            d_y0 = max(0, leg_dy)
+            d_y1 = min(LOG_H, LOG_H + leg_dy)
+            if s_y1 > s_y0:
+                shifted[d_y0:d_y1] = legs_arr[s_y0:s_y1]
+            legs_im = Image.fromarray(shifted, "RGBA")
+
+        canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+        hip_x, hip_y = map_upper(276.0, 248.0)
+
+        # Layer 0: 5-Drum Raijin Taiko Thunder-Drum Halo Ring
+        drum_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
+        draw_raijin_drums_160(
+            drum_buf,
+            cx=hip_x + tx_off - 2.0,
+            cy=hip_y - 25.0 + ty_off,
+            phase=ph,
+            charge=0.36 + 0.10 * (0.5 + 0.5 * math.sin(ph * 2.0)),
+        )
+        canvas.alpha_composite(Image.fromarray(drum_buf, "RGBA"))
+
+        # Layer 1: Silver-White Samurai Mane
+        hair_x, hair_y = map_upper(254.0, 96.0)
+        paste_part_160(
+            canvas,
+            parts["hair"],
+            (hair_x + tx_off * 1.15, hair_y + ty_off),
+            angle_deg=torso_lean * 0.55 + 2.6 * math.sin(ph - 0.5),
+        )
+
+        # Layer 2: Ground-locked Bipedal Crossover Legs
+        canvas.alpha_composite(legs_im)
+
+        # Layer 3: Obi & Kusazuri Tassets (subtle sway with stride) + Do Cuirass + Pauldrons + Kabuto Head
+        obi_sway = torso_lean * 0.45 + 2.4 * math.cos(ph)
+        paste_part_160(canvas, parts["obi"], (hip_x + tx_off * 0.35, hip_y + ty_off * 0.5), angle_deg=obi_sway, scale_x=0.88)
+        torso_xy = map_upper(276.0, 236.0)
+        paste_part_160(canvas, parts["torso"], (torso_xy[0] + tx_off * 0.5, torso_xy[1] + ty_off * 0.5), angle_deg=torso_lean)
+
+        r_sh = map_upper(312.0, 148.0)
+        r_sh = (r_sh[0] + tx_off, r_sh[1] + ty_off)
+        paste_part_160(canvas, parts["r_pauldron"], r_sh, angle_deg=torso_lean * 0.8)
+
+        head_xy = map_upper(278.0, 134.0)
+        paste_part_160(canvas, parts["head"], (head_xy[0] + tx_off * 1.15, head_xy[1] + ty_off), angle_deg=torso_lean * 0.65 + head_nod)
+
+        l_sh = map_upper(226.0, 144.0)
+        l_sh = (l_sh[0] + tx_off * 0.85, l_sh[1] + ty_off)
+        paste_part_160(canvas, parts["l_pauldron"], l_sh, angle_deg=torso_lean * 0.7)
+
+        # Layer 4: Waist Saya + Two-Handed Chudan-no-Kamae Poise on Curved Raijin Thunder-Odachi
+        fg_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
+        draw_obi_tassels_160(
+            fg_buf,
+            hip_x=hip_x + tx_off * 0.35 + 2.0,
+            hip_y=hip_y + 4.0,
+            lag_deg=12.0 + 4.5 * math.sin(ph - 0.6),
+            wave_phase=ph,
+            energy=0.10,
+        )
+        koiguchi_x = hip_x - 3.5 + tx_off * 0.3
+        koiguchi_y = hip_y + 2.5
+        draw_saya_160(
+            fg_buf,
+            koiguchi_x=koiguchi_x,
+            koiguchi_y=koiguchi_y,
+            angle_deg=156.0 + 2.0 * math.sin(ph),
+            sheathed=False,
+            koiguchi_spark=0.0,
+        )
+
+        # Two-handed Chudan-no-Kamae katana guard with subtle counter-sway
+        sway_c = math.cos(ph)
+        hilt_x = hip_x + 14.5 - sway_c * 1.2
+        hilt_y = hip_y - 5.5 + abs(sway_c) * 0.6
+        sword_deg = -21.5 + sway_c * 3.2
+        fg_grip, bg_grip, _ = draw_raijin_odachi_160(
+            fg_buf,
+            hilt_x=hilt_x,
+            hilt_y=hilt_y,
+            angle_deg=sword_deg,
+            blade_len=55.0,
+            sori_sign=-1.0,
+            storm_charge=0.34 + 0.10 * (0.5 + 0.5 * sway_c),
+        )
+        draw_samurai_kote_arm_160(fg_buf, l_sh[0] + 1, l_sh[1] + 5, bg_grip[0], bg_grip[1], is_front=False, bend_sign=1.0)
+        draw_samurai_kote_arm_160(fg_buf, r_sh[0], r_sh[1] + 5, fg_grip[0], fg_grip[1], is_front=True, bend_sign=1.0)
+
+        canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+        frames.append(canvas)
     return frames
 
 
@@ -1494,23 +1732,23 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "drum_charge": 1.0,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": 16.0,
-                "sword_hy": -64.0,
-                "sword_deg": -62.0,
-                "blade_len": 56.0,
+                "sword_hx": 18.0,
+                "sword_hy": -50.0,
+                "sword_deg": -42.0,
+                "blade_len": 52.0,
                 "sori_sign": 1.0,
                 "storm_charge": 1.15,
                 "tassel_lag": 34.0,
                 "energy": 1.0,
                 "smear": {
                     "kind": "crescent",
-                    "cx": 12.0,
-                    "cy": -50.0,
-                    "r_outer": 66.0,
+                    "cx": 14.0,
+                    "cy": -47.0,
+                    "r_outer": 64.0,
                     "r_inner": 28.0,
-                    "deg_start": -74.0,
-                    "deg_end": 58.0,
-                    "tilt_y": 0.88,
+                    "deg_start": -68.0,
+                    "deg_end": 56.0,
+                    "tilt_y": 0.82,
                     "intensity": 1.0,
                     "tooth_freq": 9.0,
                 },
@@ -1523,23 +1761,23 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "drum_charge": 0.80,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": 14.0,
-                "sword_hy": -66.0,
-                "sword_deg": -72.0,
-                "blade_len": 54.0,
+                "sword_hx": 17.0,
+                "sword_hy": -51.0,
+                "sword_deg": -48.0,
+                "blade_len": 50.0,
                 "sori_sign": 1.0,
                 "storm_charge": 0.85,
                 "tassel_lag": 26.0,
                 "energy": 0.75,
                 "smear": {
                     "kind": "crescent",
-                    "cx": 12.0,
-                    "cy": -51.0,
-                    "r_outer": 64.0,
+                    "cx": 14.0,
+                    "cy": -47.0,
+                    "r_outer": 62.0,
                     "r_inner": 40.0,
-                    "deg_start": -76.0,
+                    "deg_start": -70.0,
                     "deg_end": -8.0,
-                    "tilt_y": 0.88,
+                    "tilt_y": 0.82,
                     "intensity": 0.56,
                     "tooth_freq": 8.0,
                 },
@@ -1547,16 +1785,16 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
         elif f in (11, 12, 13, 14):
             p = (f - 11) / 3.0
             frames.append(render_keypose_frame(rigs, "K3_RISE", {
-                "dx": 4.0 * (1.0 - p) - 2.0 * p,
+                "dx": 4.0 * (1.0 - p) + 2.0 * p,
                 "dy": 0.0,
                 "phase": ph,
                 "drum_charge": 0.55 + 0.25 * p,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": 13.0 * (1.0 - p) - 4.0 * p,
-                "sword_hy": -64.0 * (1.0 - p) - 46.0 * p,
-                "sword_deg": -72.0 * (1.0 - p) - 148.0 * p,
-                "blade_len": 52.0,
+                "sword_hx": 15.0 * (1.0 - p) + 2.0 * p,
+                "sword_hy": -50.0 * (1.0 - p) - 42.0 * p,
+                "sword_deg": -48.0 * (1.0 - p) - 134.0 * p,
+                "blade_len": 46.0 - 6.0 * p,
                 "storm_charge": 0.65,
                 "tassel_lag": 16.0 - 28.0 * p,
                 "energy": 0.55,
@@ -1566,16 +1804,16 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
         elif f in (15, 16):
             p = f - 15
             frames.append(render_keypose_frame(rigs, "K2_LUNGE", {
-                "dx": -3.0 - 2.0 * p,
+                "dx": 2.0 - 1.0 * p,
                 "dy": 0.0,
                 "phase": ph,
                 "drum_charge": 0.80 + 0.15 * p,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": -4.0 - 2.0 * p,
-                "sword_hy": -46.0,
-                "sword_deg": -155.0 - 8.0 * p,
-                "blade_len": 48.0,
+                "sword_hx": 2.0 - 1.0 * p,
+                "sword_hy": -44.0,
+                "sword_deg": -152.0 - 5.0 * p,
+                "blade_len": 38.0,
                 "storm_charge": 0.90,
                 "tassel_lag": -20.0,
                 "energy": 0.75,
@@ -1807,27 +2045,28 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
             p = (f - 10) / 6.0
             frames.append(render_keypose_frame(rigs, "K3_RISE", {
                 "dx": 7.0 - 2.0 * p,
-                "dy": -3.0 * math.sin(p * math.pi),
+                "dy": -2.0 * math.sin(p * math.pi),
                 "phase": ph,
                 "drum_charge": 1.0,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": 16.0,
-                "sword_hy": -62.0,
-                "sword_deg": -56.0 - 10.0 * p,
+                "sword_hx": 18.0,
+                "sword_hy": -49.0,
+                "sword_deg": -42.0 - 6.0 * p,
+                "blade_len": 50.0,
                 "sori_sign": 1.0,
                 "storm_charge": 1.15,
                 "tassel_lag": 34.0,
                 "energy": 1.0,
                 "smear": {
                     "kind": "crescent",
-                    "cx": 12.0,
-                    "cy": -50.0,
-                    "r_outer": 64.0,
+                    "cx": 14.0,
+                    "cy": -47.0,
+                    "r_outer": 62.0,
                     "r_inner": 30.0 + 18.0 * p,
-                    "deg_start": -74.0,
+                    "deg_start": -68.0,
                     "deg_end": 48.0,
-                    "tilt_y": 0.88,
+                    "tilt_y": 0.82,
                     "intensity": max(0.35, 1.0 - 0.65 * p),
                 } if f <= 12 else None,
             }))
@@ -1899,8 +2138,8 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
             beat = (f - 5) // 3
             sub = (f - 5) % 3
             pose = ("K2_LUNGE", "K3_RISE", "K4_LEAP", "K2_LUNGE", "K3_RISE")[beat]
-            dy = -9.0 if pose == "K4_LEAP" else 0.0
-            deg = (6.0, -58.0, 28.0, -14.0, -46.0)[beat]
+            dy = -7.0 if pose == "K4_LEAP" else 0.0
+            deg = (6.0, -42.0, 28.0, -14.0, -38.0)[beat]
             frames.append(render_keypose_frame(rigs, pose, {
                 "dx": 8.0 if sub == 0 else 6.0,
                 "dy": dy,
@@ -1909,9 +2148,9 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
                 "sheathed": False,
                 "two_handed": True,
                 "sword_hx": 20.0,
-                "sword_hy": -46.0 if pose != "K3_RISE" else -62.0,
+                "sword_hy": -45.0 if pose != "K3_RISE" else -49.0,
                 "sword_deg": deg,
-                "blade_len": 58.0,
+                "blade_len": 52.0 if pose == "K3_RISE" else 56.0,
                 "sori_sign": 1.0 if beat % 2 == 1 else -1.0,
                 "storm_charge": 1.35,
                 "tassel_lag": 38.0 - sub * 6.0,
@@ -1919,14 +2158,14 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
                 "smear": {
                     "kind": "vortex" if beat == 3 else "crescent",
                     "cx": 14.0,
-                    "cy": -46.0,
-                    "rx": 66.0,
-                    "ry": 20.0,
-                    "r_outer": 66.0,
+                    "cy": -45.0,
+                    "rx": 64.0,
+                    "ry": 19.0,
+                    "r_outer": 62.0,
                     "r_inner": 28.0 + sub * 12.0,
-                    "deg_start": -68.0 if beat % 2 == 0 else -80.0,
+                    "deg_start": -64.0 if beat % 2 == 0 else -70.0,
                     "deg_end": 54.0,
-                    "tilt_y": 0.86,
+                    "tilt_y": 0.80,
                     "intensity": 1.0 if sub == 0 else 0.55,
                     "phase_deg": beat * 45.0,
                 } if sub <= 1 else None,
@@ -1979,6 +2218,8 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
 def build_row5_hurt_death(rigs: dict) -> list[Image.Image]:
     """
     Row 5: F00..F05 HURT stagger recoil, F06..F15 kneeling collapse, F16..F29 grounded fall.
+    Collapsing/prone body shifts rightward (`slide_dx = +18..+24` logical) so head & silver mane
+    NEVER hit the left cell border (`minX >= 28`, `maxX <= 290`, `height <= 88px` in 320x240, `0` cuts)!
     """
     frames = []
     for f in range(30):
@@ -1986,29 +2227,29 @@ def build_row5_hurt_death(rigs: dict) -> list[Image.Image]:
         if f <= 5:
             p = math.sin(((f + 1) / 6.0) * math.pi)
             frames.append(render_stand_rig_frame(rigs, {
-                "dx": -5.0 * p,
+                "dx": -3.0 * p,
                 "phase": ph,
                 "sink": 2.5 * p,
-                "torso_lean": -14.0 * p,
-                "head_nod": -8.0 * p,
+                "torso_lean": -12.0 * p,
+                "head_nod": -7.0 * p,
                 "l_hip": 10.0 * p,
                 "r_hip": -12.0 * p,
-                "hair_wave": -10.0 * p,
-                "tassel_lag": -24.0 * p,
+                "hair_wave": -8.0 * p,
+                "tassel_lag": -20.0 * p,
                 "drum_charge": 0.15,
                 "sheathed": False,
                 "two_handed": False,
-                "sword_hx": 9.0 - 4.0 * p,
+                "sword_hx": 9.0 - 3.0 * p,
                 "sword_hy": -8.0 - 4.0 * p,
-                "sword_deg": -48.0 - 18.0 * p,
+                "sword_deg": -44.0 - 14.0 * p,
                 "storm_charge": 0.10,
             }))
-        elif f <= 15:
-            p = (f - 6) / 9.0
+        elif f <= 13:
+            p = (f - 6) / 7.0
             frames.append(render_keypose_frame(rigs, "K1_COIL", {
-                "dx": -5.0 - 4.0 * p,
+                "dx": 6.0 + 14.0 * p,
                 "dy": 4.0 * p,
-                "body_deg": -18.0 * p,
+                "body_deg": -24.0 * p,
                 "sy": 1.0 - 0.14 * p,
                 "show_drums": f <= 11,
                 "phase": ph,
@@ -2018,37 +2259,41 @@ def build_row5_hurt_death(rigs: dict) -> list[Image.Image]:
                 "sword_hx": 14.0 + 4.0 * p,
                 "sword_hy": -28.0 + 18.0 * p,
                 "sword_deg": 48.0 + 32.0 * p,
-                "blade_len": 48.0,
+                "blade_len": 46.0,
                 "storm_charge": 0.05,
-                "tassel_lag": -18.0,
+                "tassel_lag": -16.0,
                 "energy": 0.0,
             }))
         else:
-            p = (f - 16) / 13.0
-            ang = -66.0 - 22.0 * min(1.0, p * 1.35)  # settles horizontally at -88 deg on floor
+            p = (f - 14) / 15.0
+            fall_u = min(1.0, (f - 14) / 8.0)  # reaches full horizontal prone by F22!
+            ang = -38.0 - 50.0 * fall_u        # smoothly tilts -38 -> -88 deg onto floor
+            slide_dx = 20.0 + 12.0 * fall_u
+            drop_y = -6.0 - 5.0 * fall_u
             canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
             paste_keypose_160(
                 canvas,
                 rigs["K4_LEAP"],
-                ANCHOR_X_160 + 18.0 + 1.5 * math.sin(p * math.pi),
-                ANCHOR_Y_120 - 15.0,
+                ANCHOR_X_160 + slide_dx,
+                ANCHOR_Y_120 + drop_y,
                 angle_deg=ang,
-                sx=0.94,
-                sy=0.90,
+                sx=0.92,
+                sy=0.88,
             )
             fg_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
-            # Fallen Raijin Odachi resting on the ground beside Kaze-Maru
+            # Fallen Raijin Odachi dropping smoothly to rest beside Kaze-Maru (strictly within x_160 = 24..138)
+            sw_drop = min(1.0, (f - 14) / 4.0)
             draw_raijin_odachi_160(
                 fg_buf,
-                hilt_x=ANCHOR_X_160 + 8.0 + p * 0.8,
-                hilt_y=ANCHOR_Y_120 - 4.0,
-                angle_deg=-2.0 + p * 1.2,
-                blade_len=52.0,
+                hilt_x=ANCHOR_X_160 + 20.0 + 4.0 * sw_drop + p * 0.6,
+                hilt_y=ANCHOR_Y_120 - 12.0 * (1.0 - sw_drop) - 4.0 * sw_drop,
+                angle_deg=26.0 * (1.0 - sw_drop) + (-1.5 + p * 1.0) * sw_drop,
+                blade_len=48.0,
                 storm_charge=0.05 if f % 2 == 0 else 0.0,
             )
             # Subtle fading storm ember so every death frame remains distinct (29/29 transitions)
-            ex = int(round(ANCHOR_X_160 - 8.0 + (f - 16) * 2.2))
-            ey = int(round(ANCHOR_Y_120 - 18.0 - (f - 16) * 0.7))
+            ex = int(round(ANCHOR_X_160 + 8.0 + (f - 14) * 1.8))
+            ey = int(round(ANCHOR_Y_120 - 16.0 - (f - 14) * 0.5))
             set_px(fg_buf, ex, ey, C_CYAN_DEEP if f < 24 else C_INDIGO_MID)
             canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
             frames.append(canvas)
@@ -2464,8 +2709,36 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
         ys, xs = np.where(arr[:, :, 3] > 0)
         snap_reaches[sf] = int(xs.max()) if len(xs) else 0
 
+    # Verify Row 1 WALK top-delta smoothness & locked ground sole, plus Row 5 DEATH prone bounds
+    r1_tops = []
+    r1_bots = []
+    for f in range(30):
+        a = np.array(all_rows_320[1][f], dtype=np.uint8)[:, :, 3] > 0
+        ys, _ = np.where(a)
+        r1_tops.append(int(ys.min()))
+        r1_bots.append(int(ys.max()))
+    max_adj_top_delta = max(abs(r1_tops[i] - r1_tops[(i - 1) % 30]) for i in range(30))
+    max_bot_pop = max(r1_bots) - min(r1_bots)
+
+    for df in range(22, 30):
+        a = np.array(all_rows_320[5][df], dtype=np.uint8)[:, :, 3] > 0
+        ys, xs = np.where(a)
+        dh = int(ys.max() - ys.min() + 1)
+        d_minx, d_maxx = int(xs.min()), int(xs.max())
+        assert dh <= 96 and d_minx >= 24 and d_maxx <= 298, (
+            f"Row 5 F{df:02d} prone bounds violation: h={dh}, x=[{d_minx}..{d_maxx}]"
+        )
+
+    flat_edge_cuts = []
+    for r_idx in range(10):
+        for c_idx in range(30):
+            a = np.array(all_rows_320[r_idx][c_idx], dtype=np.uint8)[:, :, 3] > 0
+            if int(a[4, :].sum()) >= 8 or int(a[:, 4].sum()) >= 8 or int(a[:, 315].sum()) >= 8:
+                flat_edge_cuts.append((r_idx, c_idx))
+
     print(f"[QA] border_clips={border_clips}/300 | non_binary_alpha={non_binary_alpha} | non_2x2_blocks={non_2x2_blocks}")
-    print(f"[QA] row_transitions={row_transitions}")
+    print(f"[QA] row_transitions={row_transitions} | flat_edge_cuts={flat_edge_cuts}")
+    print(f"[QA] Row 1 WALK maxAdjTopDelta={max_adj_top_delta}px (<=4) | botPop={max_bot_pop}px")
     print(f"[QA] Row 2 snap front reaches (must be > 260): {snap_reaches}")
 
     assert border_clips == 0, f"Border clip failure: {border_clips}"
@@ -2473,6 +2746,8 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
     assert non_2x2_blocks == 0, f"2x2 block purity failure: {non_2x2_blocks}"
     assert all(t == 29 for t in row_transitions), f"Transition failure: {row_transitions}"
     assert all(rx > 260 for rx in snap_reaches.values()), f"Smear reach < 260: {snap_reaches}"
+    assert max_adj_top_delta <= 4, f"Row 1 maxAdjTopDelta > 4: {max_adj_top_delta}"
+    assert len(flat_edge_cuts) == 0, f"Flat edge cuts detected: {flat_edge_cuts}"
 
     # Emit Row 1 WALK 30-frame contact sheet (`6x5` @ `320x240`)
     r1_im = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (22, 26, 40, 255))
@@ -2488,6 +2763,22 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
         draw_r1.text((cx + 8, cy + 6), f"R1 F{f:02d}", fill=(125, 211, 252, 255))
     r1_path = QA_DIR / "debug_ronin_ex_row1_walk.png"
     r1_im.save(r1_path)
+
+    # Emit Row 5 DEATH 30-frame contact sheet (`6x5` @ `320x240`)
+    r5_im = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (22, 26, 40, 255))
+    draw_r5 = ImageDraw.Draw(r5_im)
+    for f in range(30):
+        cx = (f % 6) * CELL_W
+        cy = (f // 6) * CELL_H
+        draw_r5.rectangle([cx, cy, cx + CELL_W - 1, cy + CELL_H - 1], outline=(52, 64, 96, 255), width=1)
+        draw_r5.line([(cx + 8, cy + 230), (cx + CELL_W - 8, cy + 230)], fill=(90, 110, 150, 255), width=1)
+        draw_r5.line([(cx + 24, cy), (cx + 24, cy + CELL_H)], fill=(180, 60, 80, 140), width=1)
+        draw_r5.line([(cx + 298, cy), (cx + 298, cy + CELL_H)], fill=(180, 60, 80, 140), width=1)
+        r5_im.alpha_composite(all_rows_320[5][f], (cx, cy))
+        draw_r5.rectangle([cx + 4, cy + 4, cx + 68, cy + 20], fill=(0, 0, 0, 200))
+        draw_r5.text((cx + 8, cy + 6), f"R5 F{f:02d}", fill=(251, 113, 133, 255))
+    r5_path = QA_DIR / "debug_ronin_ex_row5_death.png"
+    r5_im.save(r5_path)
 
     # Emit Row 2 30-frame contact sheet on neutral slate + white split check
     r2_cols = 6
@@ -2530,7 +2821,9 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
 def main():
     print("=== Building KAZE-MARU EX (ronin_ex) Next-Gen 9600x2400 Sheet ===")
     rigs = load_rigs()
-    portrait_128 = Image.open(OUT_PORTRAIT).convert("RGBA") if OUT_PORTRAIT.exists() else build_portrait_128()
+    # Strictly preserve existing ronin_ex_portrait.png (0 diff invariant!)
+    assert OUT_PORTRAIT.exists(), f"Missing {OUT_PORTRAIT}"
+    portrait_128 = Image.open(OUT_PORTRAIT).convert("RGBA")
 
     builders = [
         build_row0_idle,

@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 /**
- * Newly-Born Next-Gen 30fps VFX Sprite Sheet Builder for CHRONOS EX (`chronomancer_ex` -> `ChronomancerEx.js`).
- * Powered by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/chronoShaders.js` +
- * bespoke Neo-Vision horological prism, pendulum, cathedral bell, and 3-timeline pixel-art overlays!
+ * Next-Gen 30fps HD-2D Horological Shader VFX Sprite Sheet Builder for
+ * CHRONOS EX (`chronomancer_ex` -> `ChronomancerEx.js`).
+ * Powered by `src/engine/ArcaneShaderFX.js` + read-only `src/engine/shaders/chronoShaders.js` (`CHRONO_EFFECT_REGISTRY`).
+ *
+ * Key Fix vs Squared Cut-Offs:
+ *   - `0` binary alpha thresholding (`enforceSafeMarginAndBinaryAlpha104` deleted!).
+ *   - Smooth circular radial distance envelope (`r <= 36 -> 1.0`, cosine fade to `0.0` by `r = 48.5`)
+ *     + soft `enforceSafeCellMargin104` across all 8 rows (`R0..R7`) so every Roman astrolabe,
+ *     escapement wheel, hourglass, clock-spear, and twelfth-bell burst glows with `0` flat rectangular edges
+ *     and `0/240` border clips!
  *
  * Outputs:
- *   1. `assets/sprites/chronomancer_ex_vfx.png` (`6240x1664`, `8 rows x 30 cols @ 208x208`, `2x2` integer blocks, `0/240` border clips)
- *   2. `<scratch>/debug_chronomancer_ex_vfx.png` (`8x7` sample contact sheet for visual QA)
+ *   1. `assets/sprites/chronomancer_ex_vfx.png` (`6240x1664`, `8 rows x 30 cols @ 208x208`, `0/240` border clips)
+ *   2. `/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch/debug_chronomancer_ex_vfx.png`
  */
 
 import fs from 'node:fs';
@@ -31,7 +38,7 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SCRATCH_DIR =
-  '/Users/rei/.gemini/antigravity/brain/3134f27a-cc2a-4935-88e2-e05d540e5f89/scratch';
+  '/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -81,85 +88,94 @@ function encodeRgbaPng(width, height, rgba) {
   ]);
 }
 
-function putPx104(rgba, x, y, r, g, b, a = 255) {
+function blendPx104(rgba, x, y, r, g, b, aFloat = 1.0) {
   const ix = Math.round(x);
   const iy = Math.round(y);
-  if (ix < 4 || ix >= 100 || iy < 4 || iy >= 100) return;
+  if (ix < 4 || ix >= 100 || iy < 4 || iy >= 100 || aFloat <= 0.01) return;
   const o = (iy * 104 + ix) * 4;
-  rgba[o] = r;
-  rgba[o + 1] = g;
-  rgba[o + 2] = b;
-  rgba[o + 3] = a;
+  const sa = Math.max(0, Math.min(1, aFloat));
+  const da = rgba[o + 3] / 255;
+  const outA = sa + da * (1 - sa);
+  if (outA <= 0) return;
+  rgba[o] = Math.round((r * sa + rgba[o] * da * (1 - sa)) / outA);
+  rgba[o + 1] = Math.round((g * sa + rgba[o + 1] * da * (1 - sa)) / outA);
+  rgba[o + 2] = Math.round((b * sa + rgba[o + 2] * da * (1 - sa)) / outA);
+  rgba[o + 3] = Math.round(outA * 255);
 }
 
-function drawStar4Px104(rgba, cx, cy, arm, r, g, b) {
+function drawStar4Px104(rgba, cx, cy, arm, r, g, b, alpha = 0.92) {
   const L = Math.max(1, Math.round(arm));
   for (let i = -L; i <= L; i++) {
-    putPx104(rgba, cx + i, cy, Math.abs(i) <= 1 ? 255 : r, Math.abs(i) <= 1 ? 255 : g, Math.abs(i) <= 1 ? 255 : b);
-    putPx104(rgba, cx, cy + i, Math.abs(i) <= 1 ? 255 : r, Math.abs(i) <= 1 ? 255 : g, Math.abs(i) <= 1 ? 255 : b);
+    const fall = (1 - Math.abs(i) / (L + 1.5)) * alpha;
+    const isCore = Math.abs(i) <= 1;
+    blendPx104(rgba, cx + i, cy, isCore ? 255 : r, isCore ? 255 : g, isCore ? 255 : b, fall);
+    blendPx104(rgba, cx, cy + i, isCore ? 255 : r, isCore ? 255 : g, isCore ? 255 : b, fall);
   }
-  putPx104(rgba, cx, cy, 255, 255, 255);
+  blendPx104(rgba, cx, cy, 255, 255, 255, alpha);
 }
 
 /**
- * Adds bespoke Newly-Born Neo-Vision horological pixel accents across all 8 rows:
- * - Row 0: Serrated Minute-Glaive turquoise-brass gear teeth
- * - Row 1: Ruby-violet jewel bearings & swinging escapement anchor ticks
- * - Row 2: Diamond Temporal Prism frame & golden hourglass sand stream
- * - Row 3: 3-Timeline (Amber Past / Turquoise Present / Crimson-Violet Future) sector jewels
- * - Row 4: Asymmetric 4-point Temporal Glass Starburst & prism shards (0 chevrons!)
- * - Row 5: Twin-Blade + Future-Clone Pincer X-Slice (Turquoise x Amber-Gold x Crimson-Violet)
- * - Row 6: Cathedral Clock-Spear finial & Roman tick glints
- * - Row 7: Tolling Golden Twelfth Bell silhouette & prismatic shatter facets
+ * Circular inner horological jewel & clock-tick accents strictly inside `r <= 34`
+ * (zero square boxes, zero rectangular bell blocks!).
  */
-function addNextGenChronoAccents104(rgba, row, col) {
+function addCircularChronoAccents104(rgba, row, col) {
   const u = col / 29;
   const ph = (col / 30) * Math.PI * 2;
+  const cx = 51.5;
+  const cy = 51.5;
 
   if (row === 0) {
-    const fade = u < 0.84 ? 1 : (1 - u) / 0.16;
-    if (fade <= 0.15) return;
-    const cx = 42 + u * 16;
-    const cy = 52;
-    const rBase = 24 + Math.sin(u * Math.PI) * 8;
-    for (let i = 0; i <= 44; i++) {
-      const t = i / 44;
-      const ang = ((-64 + 128 * t) * Math.PI) / 180;
-      const saw = Math.abs(((t * 9 + u * 3) % 1) * 2 - 1) * 4.6 * Math.sin(t * Math.PI);
+    const fade = u < 0.82 ? 1 : (1 - u) / 0.18;
+    if (fade <= 0.1) return;
+    const rBase = 21 + Math.sin(u * Math.PI) * 6;
+    for (let i = 0; i <= 36; i++) {
+      const t = i / 36;
+      const ang = ((-58 + 116 * t) * Math.PI) / 180;
+      const saw = Math.abs(((t * 8 + u * 3) % 1) * 2 - 1) * 3.2 * Math.sin(t * Math.PI);
       const rr = rBase + saw;
-      const px = cx + Math.cos(ang) * rr;
+      const px = cx - 4 + u * 10 + Math.cos(ang) * rr;
       const py = cy + Math.sin(ang) * rr;
-      putPx104(rgba, px, py, 255, 255, 255);
-      putPx104(rgba, px - 1, py, 45, 212, 191);
-      if (i % 4 === 0) {
-        putPx104(rgba, cx + Math.cos(ang) * (rBase - 3), cy + Math.sin(ang) * (rBase - 3), 250, 204, 21);
+      if (Math.hypot(px - cx, py - cy) <= 35) {
+        blendPx104(rgba, px, py, 255, 255, 255, 0.85 * fade);
+        blendPx104(rgba, px - 1, py, 45, 212, 191, 0.72 * fade);
       }
     }
   } else if (row === 1) {
-    // 4 ruby-violet & turquoise jewel bearings rotating on the escapement wheel
+    // 4 rotating escapement jewel bearings at r = 23
     for (let k = 0; k < 4; k++) {
       const a = ph + (k * Math.PI) / 2;
-      const jx = 52 + Math.cos(a) * 24;
-      const jy = 52 + Math.sin(a) * 24;
-      if (k % 2 === 0) drawStar4Px104(rgba, jx, jy, 2, 45, 212, 191);
-      else drawStar4Px104(rgba, jx, jy, 2, 232, 121, 249);
+      const jx = cx + Math.cos(a) * 23;
+      const jy = cy + Math.sin(a) * 23;
+      if (k % 2 === 0) drawStar4Px104(rgba, jx, jy, 2, 45, 212, 191, 0.88);
+      else drawStar4Px104(rgba, jx, jy, 2, 250, 204, 21, 0.88);
     }
   } else if (row === 2) {
-    // Faceted Turquoise-Gold Temporal Prism diamond frame around the Hourglass
-    const rP = 33;
-    for (let i = 0; i <= 26; i++) {
-      const f = i / 26;
-      const cR = i % 2 === 0 ? 45 : 250;
-      const cG = i % 2 === 0 ? 212 : 204;
-      const cB = i % 2 === 0 ? 191 : 21;
-      putPx104(rgba, 52 + f * rP, 52 - (1 - f) * rP, cR, cG, cB);
-      putPx104(rgba, 52 + (1 - f) * rP, 52 + f * rP, cR, cG, cB);
-      putPx104(rgba, 52 - f * rP, 52 + (1 - f) * rP, cR, cG, cB);
-      putPx104(rgba, 52 - (1 - f) * rP, 52 - f * rP, cR, cG, cB);
+    // Circular 12-tick Roman chapter ring glints around the Paradox Hourglass (`r = 28`)
+    for (let k = 0; k < 12; k++) {
+      const a = ph * 0.5 + (k * Math.PI * 2) / 12;
+      const tx = cx + Math.cos(a) * 28;
+      const ty = cy + Math.sin(a) * 28;
+      const isCard = k % 3 === 0;
+      blendPx104(rgba, tx, ty, isCard ? 254 : 45, isCard ? 240 : 212, isCard ? 138 : 191, isCard ? 0.92 : 0.68);
     }
-    drawStar4Px104(rgba, 52, 52, 4, 253, 224, 71);
+    drawStar4Px104(rgba, cx, cy, 3, 253, 224, 71, 0.9);
   } else if (row === 3) {
-    // 3-Timeline Trinity Crown Jewels (Amber-Gold XII, Turquoise IV, Crimson-Violet VIII)
+    // Grand XII Roman Astrolabe: 12 luminous golden-teal dial ticks + 3-Timeline Trinity Crown Jewels inside `r <= 33`
+    for (let k = 0; k < 12; k++) {
+      const a = -Math.PI * 0.5 + ph + (k * Math.PI * 2) / 12;
+      const rIn = k % 3 === 0 ? 27.5 : 29.5;
+      for (let rr = rIn; rr <= 32.5; rr += 1.0) {
+        blendPx104(
+          rgba,
+          cx + Math.cos(a) * rr,
+          cy + Math.sin(a) * rr,
+          k === 0 ? 255 : k % 3 === 0 ? 250 : 94,
+          k === 0 ? 255 : k % 3 === 0 ? 204 : 234,
+          k === 0 ? 255 : k % 3 === 0 ? 21 : 212,
+          0.9
+        );
+      }
+    }
     const triCols = [
       [250, 204, 21],
       [45, 212, 191],
@@ -167,72 +183,99 @@ function addNextGenChronoAccents104(rgba, row, col) {
     ];
     for (let k = 0; k < 3; k++) {
       const a = -Math.PI * 0.5 + ph + (k * Math.PI * 2) / 3;
-      const tx = 52 + Math.cos(a) * 35;
-      const ty = 52 + Math.sin(a) * 35;
-      drawStar4Px104(rgba, tx, ty, 3, triCols[k][0], triCols[k][1], triCols[k][2]);
+      drawStar4Px104(rgba, cx + Math.cos(a) * 32, cy + Math.sin(a) * 32, 3, triCols[k][0], triCols[k][1], triCols[k][2], 0.92);
     }
   } else if (row === 4 && col <= 23) {
-    // Crisp asymmetric 4-needle anime horological starburst (2-pass, 0 chevrons!)
     const k = 1 - col / 24;
-    const spanLong = Math.round(32 * k);
-    const spanShort = Math.round(20 * k);
+    const spanLong = Math.round(28 * k);
+    const spanShort = Math.round(18 * k);
     for (let d = -spanLong; d <= spanLong; d++) {
-      putPx104(rgba, 52 + d, 52 + Math.round(d * 0.28), 45, 212, 191);
+      const fall = (1 - Math.abs(d) / (spanLong + 2)) * 0.88;
+      blendPx104(rgba, cx + d, cy + Math.round(d * 0.28), 45, 212, 191, fall);
     }
     for (let d = -spanShort; d <= spanShort; d++) {
-      putPx104(rgba, 52 - Math.round(d * 0.28), 52 + d, 250, 204, 21);
+      const fall = (1 - Math.abs(d) / (spanShort + 2)) * 0.88;
+      blendPx104(rgba, cx - Math.round(d * 0.28), cy + d, 250, 204, 21, fall);
     }
-    const coreSpan = Math.round(12 * k);
-    for (let d = -coreSpan; d <= coreSpan; d++) {
-      putPx104(rgba, 52 + d, 52 + Math.round(d * 0.28), 255, 255, 255);
-      putPx104(rgba, 52 - Math.round(d * 0.28), 52 + d, 255, 255, 255);
-    }
+    drawStar4Px104(rgba, cx, cy, Math.max(2, Math.round(7 * k)), 255, 255, 255, 0.95 * k);
   } else if (row === 5 && col <= 25) {
-    // Crimson-Violet & Gold Future/Past counter-diagonal intersecting the Turquoise Minute-Glaive
     const k = Math.sin(Math.min(1, (col + 1) / 26) * Math.PI);
-    const span = Math.round(33 * Math.max(0.25, k));
+    const span = Math.round(28 * Math.max(0.25, k));
     for (let d = -span; d <= span; d++) {
-      putPx104(rgba, 52 + d, 52 + Math.round(d * 0.56) + 1, 192, 38, 211);
-      putPx104(rgba, 52 + d, 52 + Math.round(d * 0.56) - 1, 250, 204, 21);
-    }
-    for (let d = -span; d <= span; d++) {
-      if (Math.abs(d) < 14) {
-        putPx104(rgba, 52 + d, 52 + Math.round(d * 0.56), 255, 255, 255);
+      const fall = (1 - Math.abs(d) / (span + 2)) * 0.88;
+      blendPx104(rgba, cx + d, cy + Math.round(d * 0.56) + 1, 192, 38, 211, fall);
+      blendPx104(rgba, cx + d, cy + Math.round(d * 0.56) - 1, 250, 204, 21, fall);
+      if (Math.abs(d) < 12) {
+        blendPx104(rgba, cx + d, cy + Math.round(d * 0.56), 255, 255, 255, fall);
       }
     }
-  } else if (row === 7 && col <= 20) {
-    // Golden Cathedral Bell silhouette & resonance crown at impact center
-    const fade = 1 - col / 21;
-    const swing = Math.round(Math.sin(col * 0.9) * 3 * fade);
-    for (let by = -12; by <= 6; by++) {
-      const bw = by < -6 ? 4 : by < 2 ? 7 : 10;
-      for (let bx = -bw; bx <= bw; bx++) {
-        const isHi = bx < -bw + 3 || by === 6;
-        putPx104(rgba, 52 + bx + swing, 46 + by, isHi ? 254 : 234, isHi ? 240 : 179, isHi ? 138 : 8);
+  } else if (row === 7 && col <= 24) {
+    // Circular 12-Ray Twelfth-Bell Golden Sunburst & Resonance Ring (0 boxy rectangles!)
+    const fade = 1 - col / 25;
+    const ringR = 12 + (1 - fade) * 20;
+    for (let i = 0; i < 48; i++) {
+      const a = (i / 48) * Math.PI * 2 + ph * 0.4;
+      blendPx104(rgba, cx + Math.cos(a) * ringR, cy + Math.sin(a) * ringR, 254, 240, 138, 0.78 * fade);
+    }
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2 + ph * 0.25;
+      const rayLen = (k % 3 === 0 ? 24 : 16) * fade;
+      for (let rr = 3; rr <= rayLen; rr += 1.0) {
+        const f = 1 - rr / (rayLen + 2);
+        blendPx104(
+          rgba,
+          cx + Math.cos(a) * rr,
+          cy + Math.sin(a) * rr,
+          rr < 7 ? 255 : k % 2 === 0 ? 250 : 45,
+          rr < 7 ? 255 : k % 2 === 0 ? 204 : 212,
+          rr < 7 ? 255 : k % 2 === 0 ? 21 : 191,
+          f * 0.85 * fade
+        );
       }
     }
-    drawStar4Px104(rgba, 52 + swing, 55, Math.max(2, Math.round(5 * fade)), 45, 212, 191);
+    drawStar4Px104(rgba, cx, cy, Math.max(2, Math.round(6 * fade)), 254, 240, 138, 0.95 * fade);
   }
 }
 
-function enforceSafeMarginAndBinaryAlpha104(rgba, w = 104, h = 104) {
+/**
+ * Mandatory Radial Distance Envelope (`distFromCenter = hypot(x - 51.5, y - 51.5)`:
+ * `1.0` inside `r <= 36`, smooth cosine fade to `0.0` by `r = 48.5`) + soft `enforceSafeCellMargin104`
+ * (`0` binary square borders, `0` flat rectangular edges, `0/240` border clips!).
+ */
+function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
+  const cx = (w - 1) * 0.5; // 51.5
+  const cy = (h - 1) * 0.5; // 51.5
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
       const o = (y * w + x) * 4;
       let a = rgba[o + 3];
-      if (distEdge < 3) {
-        a = 0;
-      } else if (distEdge < 7 && a > 0) {
-        a = Math.round(a * ((distEdge - 2.0) / 5.0));
+      if (!a) continue;
+
+      const distFromCenter = Math.hypot(x - cx, y - cy);
+      let radialEnv = 1.0;
+      if (distFromCenter >= 48.5) {
+        radialEnv = 0.0;
+      } else if (distFromCenter > 36.0) {
+        const t = (distFromCenter - 36.0) / 12.5;
+        radialEnv = 0.5 * (1 + Math.cos(t * Math.PI));
       }
-      if (a >= 84) {
-        rgba[o + 3] = 255;
-      } else {
+
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      let marginEnv = 1.0;
+      if (distEdge < 3) {
+        marginEnv = 0.0;
+      } else if (distEdge < 8) {
+        marginEnv = (distEdge - 2.0) / 6.0;
+      }
+
+      a = Math.round(a * radialEnv * marginEnv);
+      if (a <= 2) {
         rgba[o] = 0;
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
+      } else {
+        rgba[o + 3] = a;
       }
     }
   }
@@ -258,6 +301,26 @@ function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, ds
           dstRgba[to + 3] = a;
         }
       }
+    }
+  }
+}
+
+function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
+  for (let sy = 0; sy < srcH; sy++) {
+    for (let sx = 0; sx < srcW; sx++) {
+      const so = (sy * srcW + sx) * 4;
+      const sa = srcRgba[so + 3] / 255;
+      if (sa <= 0) continue;
+      const tx = dstX + sx;
+      const ty = dstY + sy;
+      const to = (ty * dstW + tx) * 4;
+      const da = dstRgba[to + 3] / 255;
+      const outA = sa + da * (1 - sa);
+      if (outA <= 0) continue;
+      dstRgba[to] = Math.round((srcRgba[so] * sa + dstRgba[to] * da * (1 - sa)) / outA);
+      dstRgba[to + 1] = Math.round((srcRgba[so + 1] * sa + dstRgba[to + 1] * da * (1 - sa)) / outA);
+      dstRgba[to + 2] = Math.round((srcRgba[so + 2] * sa + dstRgba[to + 2] * da * (1 - sa)) / outA);
+      dstRgba[to + 3] = Math.round(outA * 255);
     }
   }
 }
@@ -300,25 +363,25 @@ function bakeChronomancerExVfx() {
       cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 701 }
     },
     {
-      name: 'Row 1: Spinning 2.5D Brass, Turquoise & Violet Escapement Pendulum Wheel',
+      name: 'Row 1: Spinning 2.5D Brass & Turquoise Escapement Astrolabe Wheel',
       windowSec: 1.0,
       def: CHRONO_EFFECT_REGISTRY.chronoAstrolabeWheelCell,
       cfg: { x: 52, y: 52, palette: CHRONO_BRASS_PALETTE, seed: 713 }
     },
     {
-      name: 'Row 2: Paradox Hourglass Temporal Prism Monolith',
+      name: 'Row 2: Paradox Hourglass Temporal Monolith',
       windowSec: 1.0,
       def: CHRONO_EFFECT_REGISTRY.chronoHourglassMonolithCell,
       cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 723 }
     },
     {
-      name: 'Row 3: Grand XII Astronomic Clockface & 3-Timeline Trinity Crown',
+      name: 'Row 3: Grand XII Astronomic Roman Astrolabe Clockface & Trinity Crown',
       windowSec: 1.0,
       def: CHRONO_EFFECT_REGISTRY.chronoHorologiumSealCell,
       cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 733 }
     },
     {
-      name: 'Row 4: Asymmetric Temporal Glass Starburst & Prism Shards',
+      name: 'Row 4: Temporal Glass Starburst & Circular Shock-Ring',
       windowSec: 1.0,
       def: CHRONO_EFFECT_REGISTRY.chronoShatterBurstCell,
       cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 747 }
@@ -330,13 +393,13 @@ function bakeChronomancerExVfx() {
       cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 759 }
     },
     {
-      name: 'Row 6: Colossal Astronomic Clock-Hand Spear Crest',
+      name: 'Row 6: Luminous Astronomic Clock-Hand Spear Crest',
       windowSec: 1.0,
       def: CHRONO_EFFECT_REGISTRY.suspendedClockSpearCell,
       cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 773 }
     },
     {
-      name: 'Row 7: Cathedral of the Twelfth Bell Golden Resonance & Time Shatter Nova',
+      name: 'Row 7: Twelfth-Bell Golden Resonance & Eternal Zero Shatter Nova',
       windowSec: 1.0,
       def: CHRONO_EFFECT_REGISTRY.twelfthBellCataclysmCell,
       cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 791 }
@@ -358,9 +421,9 @@ function bakeChronomancerExVfx() {
       clearPixelSurface(surface104);
       inst.render(pen104, 'back');
       inst.render(pen104, 'front');
-      resolveSurfaceToRGBA(surface104, cell104, 1.18);
-      addNextGenChronoAccents104(cell104, r, c);
-      enforceSafeMarginAndBinaryAlpha104(cell104, LOGICAL, LOGICAL);
+      resolveSurfaceToRGBA(surface104, cell104, 1.24);
+      addCircularChronoAccents104(cell104, r, c);
+      enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
 
       cell208.fill(0);
       blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
@@ -370,7 +433,7 @@ function bakeChronomancerExVfx() {
 
       const sIdx = sampleCols.indexOf(c);
       if (sIdx >= 0) {
-        blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, qaRgba, qaW, sIdx * CELL, r * CELL);
+        alphaCompositeOnto(cell208, CELL, CELL, qaRgba, qaW, sIdx * CELL, r * CELL);
       }
 
       inst.step(dt);

@@ -233,6 +233,10 @@ def load_stand_and_keyposes():
             [(98, 224), (248, 218), (382, 232), (402, 434), (98, 434)],
             (258, 232),
         ),
+        "walk_cape": (
+            [(98, 224), (248, 218), (344, 232), (322, 342), (258, 354), (168, 354), (156, 434), (98, 434)],
+            (254, 234),
+        ),
         "back_leg": (
             [(264, 260), (336, 260), (350, 428), (286, 428)],
             (294, 274),
@@ -240,6 +244,18 @@ def load_stand_and_keyposes():
         "back_foot": (
             [(286, 418), (376, 418), (382, 506), (286, 506)],
             (312, 432),
+        ),
+        "w_thigh": (
+            [(268, 274), (336, 274), (344, 386), (282, 386)],
+            (296, 286),
+        ),
+        "w_shin": (
+            [(284, 374), (344, 374), (342, 468), (296, 468)],
+            (312, 384),
+        ),
+        "w_foot": (
+            [(296, 458), (378, 458), (380, 498), (296, 498)],
+            (318, 468),
         ),
         "pelvis": (
             [(222, 224), (306, 224), (316, 294), (216, 294)],
@@ -293,6 +309,24 @@ def load_stand_and_keyposes():
 
         px, py = to_logical_coords(*piv512)
         stand_parts[name] = PartSprite(name, canvas, px, py)
+
+    def make_far_part(src_part: PartSprite, name_far: str, rgb_scale: float = 0.68) -> PartSprite:
+        arr_f = src_part.rgba.copy()
+        fg = arr_f[:, :, 3] > 0
+        lum = (
+            arr_f[:, :, 0].astype(np.int32) * 299
+            + arr_f[:, :, 1].astype(np.int32) * 587
+            + arr_f[:, :, 2].astype(np.int32) * 114
+        ) // 1000
+        tint = fg & (lum > 24)
+        arr_f[tint, 0] = (arr_f[tint, 0].astype(np.float32) * rgb_scale).astype(np.uint8)
+        arr_f[tint, 1] = (arr_f[tint, 1].astype(np.float32) * (rgb_scale + 0.03)).astype(np.uint8)
+        arr_f[tint, 2] = np.minimum(255, (arr_f[tint, 2].astype(np.float32) * (rgb_scale + 0.06)).astype(np.int32)).astype(np.uint8)
+        return PartSprite(name_far, arr_f, src_part.pivot_x, src_part.pivot_y)
+
+    stand_parts["w_thigh_far"] = make_far_part(stand_parts["w_thigh"], "w_thigh_far")
+    stand_parts["w_shin_far"] = make_far_part(stand_parts["w_shin"], "w_shin_far")
+    stand_parts["w_foot_far"] = make_far_part(stand_parts["w_foot"], "w_foot_far")
 
     # 2. Load 4 Action Keyposes (`2x2` `1024x1024` -> `512x512` tiles)
     kp_sheet = Image.open(KEYPOSES_JPG).convert("RGB")
@@ -403,6 +437,9 @@ def load_stand_and_keyposes():
         "sh_front": to_logical_coords(214, 142),
         "sh_back": to_logical_coords(300, 144),
         "coat_anchor": to_logical_coords(256, 232),
+        "scale": scale,
+        "stand_cx_512": stand_cx_512,
+        "stand_bot": stand_bot,
     }
     return stand_parts, stand_meta, keyposes
 
@@ -727,6 +764,41 @@ def draw_hour_shortblade(
     return gx + ux * blade_len, gy + uy * blade_len
 
 
+_BAYER4_CHRONO = (
+    (0.0625, 0.5625, 0.1875, 0.6875),
+    (0.8125, 0.3125, 0.9375, 0.4375),
+    (0.2500, 0.7500, 0.1250, 0.6250),
+    (1.0000, 0.5000, 0.8750, 0.3750),
+)
+
+
+def put_smear_px(canvas: np.ndarray, x: int, y: int, rgba):
+    """Places a smear pixel with organic Bayer taper inside x=5..154, y=5..114 (zero flat margin cuts)."""
+    if x < 5 or x > LW - 6 or y < 5 or y > LH - 6:
+        return
+    fade = 1.0
+    if x < 10:
+        fade = min(fade, (x - 4) / 6.0)
+    elif x > LW - 11:
+        fade = min(fade, (LW - 5 - x) / 6.0)
+    if y < 10:
+        fade = min(fade, (y - 4) / 6.0)
+    elif y > LH - 9:
+        fade = min(fade, (LH - 5 - y) / 4.0)
+    if fade < 1.0 and fade < _BAYER4_CHRONO[y & 3][x & 3]:
+        return
+    canvas[y, x] = rgba
+
+
+def outline_smear_layer(layer: np.ndarray) -> np.ndarray:
+    out = outline_layer(layer, OUTLINE)
+    out[:4, :, :] = 0
+    out[-4:, :, :] = 0
+    out[:, :4, :] = 0
+    out[:, -4:, :] = 0
+    return out
+
+
 def draw_chrono_serrated_smear(
     canvas: np.ndarray,
     cx: float,
@@ -787,16 +859,16 @@ def draw_chrono_serrated_smear(
                     col = CRIMSON_MID
             else:
                 col = TEAL_BRIGHT if ru > 0.66 else (TEAL_MID if ru > 0.30 else TEAL_DEEP)
-            put_px(layer, px, py, col)
+            put_smear_px(layer, px, py, col)
 
         # Crisp detached clockwork & cyan sparks off the leading teeth
         if serration_amp > 3.0 and (i % 15 == 6) and 0.14 < u < 0.90:
             sx = int(round(cx + ux * (ro + 3.8)))
             sy = int(round(cy + uy * (ro + 3.8)))
-            put_px(layer, sx, sy, PURE_WHITE if (i % 30 == 6) else BRASS_GOLD)
-            put_px(layer, sx + 1, sy, TEAL_MID if palette_mode != "hour_crimson" else CRIMSON_BRIGHT)
+            put_smear_px(layer, sx, sy, PURE_WHITE if (i % 30 == 6) else BRASS_GOLD)
+            put_smear_px(layer, sx + 1, sy, TEAL_MID if palette_mode != "hour_crimson" else CRIMSON_BRIGHT)
 
-    layer = outline_layer(layer, OUTLINE)
+    layer = outline_smear_layer(layer)
     composite_np(canvas, layer)
 
 
@@ -834,16 +906,16 @@ def draw_chrono_x_scissor_smear(
                     col = PURE_WHITE if frac > 0.76 else (TEAL_BRIGHT if frac > 0.50 else (TEAL_MID if frac > 0.22 else BRASS_GOLD))
                 else:
                     col = PURE_WHITE if frac < 0.24 else (BRASS_SPEC if frac < 0.48 else (CRIMSON_BRIGHT if frac < 0.78 else CRIMSON_MID))
-                put_px(layer, px, py, col)
+                put_smear_px(layer, px, py, col)
 
     # Bright horological X-nexus cross-star at intersection `(cx + reach_x*0.28, cy)`
     nx = int(round(cx + reach_x * 0.30))
     ny = int(round(cy))
     for d in range(-7, 8):
-        put_px(layer, nx + d, ny, PURE_WHITE if abs(d) <= 3 else BRASS_SPEC)
-        put_px(layer, nx, ny + d, PURE_WHITE if abs(d) <= 3 else TEAL_BRIGHT)
+        put_smear_px(layer, nx + d, ny, PURE_WHITE if abs(d) <= 3 else BRASS_SPEC)
+        put_smear_px(layer, nx, ny + d, PURE_WHITE if abs(d) <= 3 else TEAL_BRIGHT)
 
-    layer = outline_layer(layer, OUTLINE)
+    layer = outline_smear_layer(layer)
     composite_np(canvas, layer)
 
 
@@ -874,15 +946,15 @@ def draw_chrono_vortex_dial_smear(
                 col = PURE_WHITE if band_idx >= 7 else (BRASS_SPEC if band_idx >= 5 else (CRIMSON_BRIGHT if band_idx >= 2 else CRIMSON_MID))
             else:
                 col = PURE_WHITE if band_idx >= 7 else (TEAL_BRIGHT if band_idx >= 5 else (TEAL_MID if band_idx >= 2 else BRASS_GOLD))
-            put_px(layer, px, py, col)
+            put_smear_px(layer, px, py, col)
 
         # 12 Roman dial tick sparks around vortex perimeter
         if i % 13 == 4 and 0.1 < u < 0.9:
             sx = int(round(cx + ca * (rx + 5.0)))
             sy = int(round(cy + sa * (ry + 1.8)))
-            put_px(layer, sx, sy, BRASS_SPEC if i % 26 == 4 else TEAL_BRIGHT)
+            put_smear_px(layer, sx, sy, BRASS_SPEC if i % 26 == 4 else TEAL_BRIGHT)
 
-    layer = outline_layer(layer, OUTLINE)
+    layer = outline_smear_layer(layer)
     composite_np(canvas, layer)
 
 
@@ -1057,6 +1129,170 @@ def compose_keypose(
     return canvas
 
 
+# True 4-Phase Bipedal Crossover Gait Keyframes (matches `hd2d_rig_core.py:_BIPEDAL_GAIT_KFS`)
+_CHRONO_WALK_GAIT_KFS = (
+    (0.000, -25.0, -13.0,   7.0,  1.4,  0.0),  # Contact (front heel plant)
+    (0.125, -16.0, -15.0,   1.0,  1.0,  0.4),  # Down (weight absorption)
+    (0.250,  -2.0,   0.0,   0.0,  0.2,  0.0),  # Mid-stance (planted directly under AX!)
+    (0.375,  14.0,  16.0,  -7.0, -0.8,  0.0),  # Push-off
+    (0.500,  23.0,  31.0, -15.0, -1.4, -0.5),  # Back Contact / Toe-off
+    (0.625,  11.0,  52.0, -17.0, -0.7, -2.5),  # Toe lift & knee fold
+    (0.750,  -8.0,  34.0,   3.0,  0.2, -4.5),  # Passing Crossover directly over AX!
+    (0.875, -24.0,   6.0,  11.0,  1.1, -2.0),  # Reach forward
+    (1.000, -25.0, -13.0,   7.0,  1.4,  0.0),  # Wrap
+)
+
+
+def _sample_walk_gait_chrono(u: float) -> tuple[float, float, float, float, float]:
+    u = u % 1.0
+    for i in range(len(_CHRONO_WALK_GAIT_KFS) - 1):
+        u0, t0, s0, f0, y0, k0 = _CHRONO_WALK_GAIT_KFS[i]
+        u1, t1, s1, f1, y1, k1 = _CHRONO_WALK_GAIT_KFS[i + 1]
+        if u <= u1 or i == len(_CHRONO_WALK_GAIT_KFS) - 2:
+            span = max(1e-6, u1 - u0)
+            t = max(0.0, min(1.0, (u - u0) / span))
+            s = t * t * (3.0 - 2.0 * t)
+            return (
+                t0 + (t1 - t0) * s,
+                s0 + (s1 - s0) * s,
+                f0 + (f1 - f0) * s,
+                y0 + (y1 - y0) * s,
+                k0 + (k1 - k0) * s,
+            )
+    _, t0, s0, f0, y0, k0 = _CHRONO_WALK_GAIT_KFS[0]
+    return t0, s0, f0, y0, k0
+
+
+def _place_part_at_pivot(part: PartSprite, target_piv: tuple[float, float], rot_deg: float = 0.0) -> Image.Image:
+    im = part.im
+    if abs(rot_deg) > 0.05:
+        im = im.rotate(-rot_deg, resample=Image.Resampling.NEAREST, center=(part.pivot_x, part.pivot_y))
+    dx = int(round(target_piv[0] - part.pivot_x))
+    dy = int(round(target_piv[1] - part.pivot_y))
+    if dx != 0 or dy != 0:
+        out = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
+        out.paste(im, (dx, dy))
+        return out
+    return im
+
+
+def compose_walk_rig(stand_parts, stand_meta, f: int) -> np.ndarray:
+    """
+    Row 1 WALK (`F00..F29`) — True 4-Phase Bipedal Passing-Crossover Gait (`compute_bipedal_walk_pose`):
+      - Both hip sockets centered inward (`inward_frac = 0.94`) to central pelvis X (`AX`)
+      - Standing straddle rest angles neutralized (`th0_thigh = -9.27 deg`, `th0_shin = -4.09 deg`)
+      - `u_l = f / 30.0` and `u_r = (u_l + 0.5) % 1.0` driven 180 deg out of phase with far leg
+        rendered strictly BEHIND near leg
+      - Unified `walk_cape` gently swaying as one horological coat garment (`0` 4-tentacle tearing!)
+      - Stance boot sole locked to `AY = 115` (`0px` vertical pop, `maxAdjTopDelta <= 4px`).
+    """
+    scale = stand_meta["scale"]
+    u_l = (f / 30.0) % 1.0
+    u_r = (u_l + 0.5) % 1.0
+    tau_f = u_l * math.tau
+    halo_rot = f * 12.0
+
+    th0_thigh = math.degrees(math.atan2(-(312.0 - 296.0), 384.0 - 286.0))
+    th0_shin = math.degrees(math.atan2(-(318.0 - 312.0), 468.0 - 384.0))
+    len_thigh = math.hypot(312.0 - 296.0, 384.0 - 286.0) * scale
+    len_shin = math.hypot(318.0 - 312.0, 468.0 - 384.0) * scale
+
+    lx0 = AX + (236.0 - stand_meta["stand_cx_512"]) * scale
+    rx0 = AX + (296.0 - stand_meta["stand_cx_512"]) * scale
+    mid_hip_x = 0.5 * (lx0 + rx0) - 0.5
+    rem_half = 0.5 * (rx0 - lx0) * (1.0 - 0.94)
+    base_hip_y = AY - (stand_meta["stand_bot"] - 286.0) * scale
+
+    lt_w, ls_w, lf_w, lyaw, l_klift = _sample_walk_gait_chrono(u_l)
+    rt_w, rs_w, rf_w, ryaw, r_klift = _sample_walk_gait_chrono(u_r)
+
+    stride_scale = 0.86
+    lt_w *= stride_scale
+    ls_w *= stride_scale
+    lf_w *= stride_scale
+    rt_w *= stride_scale
+    rs_w *= stride_scale
+    rf_w *= stride_scale
+
+    bob = 0.75 * math.cos(2.0 * tau_f)
+    torso_rot = 2.0 + 0.65 * math.sin(2.0 * tau_f)
+    head_rot = 0.6 + 0.45 * math.sin(2.0 * tau_f)
+    sway_c = math.cos(tau_f)
+
+    def solve_leg(hx_p: float, hy_p: float, tw: float, sw: float, fw: float, klift: float):
+        r_th = math.radians(tw)
+        r_sh = math.radians(sw)
+        kx = hx_p - math.sin(r_th) * len_thigh
+        ky = hy_p + math.cos(r_th) * len_thigh + klift
+        ax_p = kx - math.sin(r_sh) * len_shin
+        ay_p = ky + math.cos(r_sh) * len_shin
+        return (hx_p, hy_p), (kx, ky), (ax_p, ay_p), (tw - th0_thigh), (sw - th0_shin), fw
+
+    r_hip_p, r_knee_p, r_ank_p, r_th_d, r_sh_d, r_ft_d = solve_leg(
+        mid_hip_x + rem_half + ryaw, base_hip_y + bob * 0.5, rt_w, rs_w, rf_w, r_klift
+    )
+    l_hip_p, l_knee_p, l_ank_p, l_th_d, l_sh_d, l_ft_d = solve_leg(
+        mid_hip_x - rem_half + lyaw, base_hip_y + bob * 0.5, lt_w, ls_w, lf_w, l_klift
+    )
+
+    legs_im = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
+    # 1) Far leg strictly BEHIND near leg
+    legs_im.alpha_composite(_place_part_at_pivot(stand_parts["w_thigh_far"], r_hip_p, r_th_d))
+    legs_im.alpha_composite(_place_part_at_pivot(stand_parts["w_shin_far"], r_knee_p, r_sh_d))
+    legs_im.alpha_composite(_place_part_at_pivot(stand_parts["w_foot_far"], r_ank_p, r_ft_d))
+    # 2) Near leg in front
+    legs_im.alpha_composite(_place_part_at_pivot(stand_parts["w_thigh"], l_hip_p, l_th_d))
+    legs_im.alpha_composite(_place_part_at_pivot(stand_parts["w_shin"], l_knee_p, l_sh_d))
+    legs_im.alpha_composite(_place_part_at_pivot(stand_parts["w_foot"], l_ank_p, l_ft_d))
+
+    legs_arr = np.array(legs_im, dtype=np.uint8)
+    lys, _ = np.where(legs_arr[:, :, 3] >= 120)
+    leg_dy = (AY - int(lys.max())) if len(lys) > 0 else 0
+    if leg_dy != 0:
+        shifted = np.zeros_like(legs_arr)
+        s_y0 = max(0, -leg_dy)
+        s_y1 = min(LH, LH - leg_dy)
+        d_y0 = max(0, leg_dy)
+        d_y1 = min(LH, LH + leg_dy)
+        if s_y1 > s_y0:
+            shifted[d_y0:d_y1] = legs_arr[s_y0:s_y1]
+        legs_im = Image.fromarray(shifted, mode="RGBA")
+
+    canvas = np.zeros((LH, LW, 4), dtype=np.uint8)
+    sh_fx, sh_fy = stand_meta["sh_front"][0], stand_meta["sh_front"][1] + bob
+    sh_bx, sh_by = stand_meta["sh_back"][0], stand_meta["sh_back"][1] + bob
+
+    # 1. Rotating XII Brass Escapement Halo behind shoulders
+    draw_escapement_halo(canvas, (sh_fx + sh_bx) * 0.5 - 2.0, sh_fy - 4.0, 15.0, halo_rot, False)
+
+    # 2. Off-hand IK Arm + Crimson-Gold Hour Short-Blade behind torso
+    hbx, hby = draw_chrono_ik_arm(
+        canvas, sh_bx, sh_by, sh_bx + 13.5 + sway_c * 1.2, sh_by - 4.8, bend_sign=1.0, is_back=True
+    )
+    draw_hour_shortblade(canvas, hbx, hby, -35.2 + sway_c * 3.8, blade_len=27.0)
+
+    # 3. Unified swaying `walk_cape` behind legs (`0` 4-tentacle tearing!) + Crossover Legs + Upper Body
+    im_layer = Image.fromarray(canvas, mode="RGBA")
+    cape_rot = 1.6 + 2.4 * math.sin(tau_f - 0.45)
+    im_layer.alpha_composite(transform_part(stand_parts["walk_cape"], dx=0.0, dy=bob - 1.5, rot_deg=cape_rot))
+    im_layer.alpha_composite(transform_part(stand_parts["back_hair"], dx=0.0, dy=bob, rot_deg=head_rot))
+    im_layer.alpha_composite(legs_im)
+    im_layer.alpha_composite(transform_part(stand_parts["pelvis"], dx=0.0, dy=bob, rot_deg=torso_rot * 0.4, sx=0.86))
+    im_layer.alpha_composite(transform_part(stand_parts["torso"], dx=0.0, dy=bob, rot_deg=torso_rot))
+    im_layer.alpha_composite(transform_part(stand_parts["head"], dx=0.0, dy=bob, rot_deg=head_rot))
+    canvas = np.array(im_layer, dtype=np.uint8)
+
+    # 4. Foreground Lead IK Arm + Minute-Glaive + Pauldron
+    mghx, mghy = draw_chrono_ik_arm(
+        canvas, sh_fx, sh_fy, sh_fx + 15.2 - sway_c * 1.2, sh_fy + 5.4 + abs(sway_c) * 0.5, bend_sign=1.0, is_back=False
+    )
+    draw_minute_glaive(canvas, mghx, mghy, 20.5 - sway_c * 3.6, blade_len=46.0)
+
+    im_layer = Image.fromarray(canvas, mode="RGBA")
+    im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=0.0, dy=bob, rot_deg=torso_rot))
+    return np.array(im_layer, dtype=np.uint8)
+
+
 # ==============================================================================
 # 5. 10-Row x 30-Frame Next-Gen Choreography (`0..9`)
 # ==============================================================================
@@ -1088,36 +1324,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         )
 
     # --------------------------------------------------------------------------
-    # ROW 1: WALK -- Grounded Horological Twin-Blade Stride (continuous with Row 0)
+    # ROW 1: WALK -- True Bipedal Passing-Crossover Gait + Unified Swaying Coat
     # --------------------------------------------------------------------------
     if row == 1:
-        stride = math.sin(tau_f)
-        bob = -abs(math.cos(tau_f)) * 0.85
-        return compose_stand_rig(
-            stand_parts,
-            stand_meta,
-            f=f,
-            body_dx=0.5 + stride * 0.65,
-            body_dy=bob,
-            torso_rot=1.5 + math.sin(tau_f * 2.0) * 0.65,
-            head_rot=0.4 + math.sin(tau_f * 2.0) * 0.45,
-            front_leg_rot=-2.5 - stride * 6.5,
-            front_foot_rot=-1.5 - stride * 4.5,
-            back_leg_rot=2.5 + stride * 6.5,
-            back_foot_rot=1.5 + stride * 4.5,
-            front_leg_dx=-0.5 + stride * 1.1,
-            front_leg_dy=-max(0.0, stride) * 0.85,
-            back_leg_dx=0.5 - stride * 1.1,
-            back_leg_dy=-max(0.0, -stride) * 0.85,
-            back_cape_rot=0.8 + math.sin(tau_f - 0.35) * 2.8,
-            show_coat_tails=False,
-            halo_rot=halo_rot,
-            mg_hand_offset=(15.2 - stride * 1.3, 5.5 + abs(stride) * 0.5),
-            mg_angle=20.8 - stride * 4.2,
-            hb_hand_offset=(13.5 + stride * 1.3, -4.8),
-            hb_angle=-35.2 + stride * 4.2,
-            clamp_ground=True,
-        )
+        return compose_walk_rig(stand_parts, stand_meta, f)
 
     # --------------------------------------------------------------------------
     # ROW 2: AUTO_ATTACK -- 4-Beat FFBE/Cloudia Twin-Blade Chain
@@ -1129,19 +1339,19 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
     if row == 2:
         # === V0: F00..F07 ===
         if f <= 2:
-            # Coiled torsion windup (`K1_COIL`), Minute-Glaive cocked high-back inside safe top margin
+            # Coiled torsion windup (`K1_COIL`), Minute-Glaive cocked high-back inside safe margin
             u = f / 2.0
             return compose_keypose(
                 keyposes,
                 "K1_COIL",
-                dx=-3.0 - u * 3.0,
+                dx=-1.0 - u * 1.5,
                 dy=1.0 + u * 1.0,
                 coat_phase=f * 0.45,
-                coat_billow=1.1,
+                coat_billow=1.05,
                 halo_rot=halo_rot,
-                mg_hand_offset=(-8.0 - u * 3.0, -8.0 - u * 2.0),
-                mg_angle=-146.0 - u * 10.0,
-                mg_len=42.0,
+                mg_hand_offset=(-4.0, -9.0),
+                mg_angle=-130.0 - u * 6.0,
+                mg_len=35.0,
                 hb_hand_offset=(10.0, 2.0),
                 hb_angle=32.0,
                 draw_weapons_in_front=False,
@@ -1308,15 +1518,17 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             return compose_keypose(
                 keyposes,
                 "K1_COIL",
-                dx=-2.0 - u * 3.0,
+                dx=-0.5 - u * 1.5,
                 dy=1.0,
                 coat_phase=6.8 + u * 0.5,
-                coat_billow=1.25,
+                coat_billow=1.05,
                 halo_rot=halo_rot,
-                mg_hand_offset=(-12.0, 0.0),
-                mg_angle=172.0,
-                hb_hand_offset=(-8.0, -8.0),
-                hb_angle=-158.0,
+                mg_hand_offset=(-6.0, 0.0),
+                mg_angle=164.0,
+                mg_len=33.0,
+                hb_hand_offset=(-4.0, -7.0),
+                hb_angle=-148.0,
+                hb_len=23.0,
                 draw_weapons_in_front=False,
             )
         if f == 17:
@@ -1351,8 +1563,9 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 coat_lift=0.5,
                 halo_rot=halo_rot + 95.0,
                 halo_flare=True,
-                mg_hand_offset=(-12.0, -2.0),
-                mg_angle=168.0,
+                mg_hand_offset=(-6.0, -2.0),
+                mg_angle=162.0,
+                mg_len=34.0,
                 hb_hand_offset=(20.0, -1.0),
                 hb_angle=-4.0,
                 hb_len=31.0,
@@ -1432,12 +1645,12 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             draw_chrono_serrated_smear(
                 c,
                 cx=86.0,
-                cy=64.0,
-                r_outer=60.0,
+                cy=67.0,
+                r_outer=54.0,
                 r_inner=26.0,
-                deg_start=-96.0,
+                deg_start=-92.0,
                 deg_end=41.0,
-                serration_amp=7.5,
+                serration_amp=5.5,
                 serration_freq=13,
                 palette_mode="minute_teal",
             )
@@ -1496,16 +1709,18 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             c = compose_keypose(
                 keyposes,
                 "K1_COIL" if f < 3 else "K3_RISE",
-                dx=-2.0 + u * 4.0,
-                dy=-2.0 if f < 3 else 1.0,
+                dx=-1.0 + u * 3.0,
+                dy=0.0 if f < 3 else 1.0,
                 coat_phase=tau_f * 2.0,
-                coat_billow=1.2,
+                coat_billow=1.15,
                 halo_rot=halo_rot * 2.0,
                 halo_flare=(f >= 3),
-                mg_hand_offset=(6.0, -8.0 + u * 18.0),
-                mg_angle=-65.0 + u * 150.0,
-                hb_hand_offset=(-8.0, -6.0),
+                mg_hand_offset=(10.0, -5.0 + u * 15.0),
+                mg_angle=-38.0 + u * 123.0,
+                mg_len=41.0,
+                hb_hand_offset=(-6.0, -5.0),
                 hb_angle=-135.0,
+                hb_len=24.0,
             )
             if f in (3, 4, 5):
                 draw_clock_ground_spire(c, gx=76.0, gy=113.0, height=26.0 * (1.0 - (f - 3) * 0.25), intensity=0.75)
@@ -1559,21 +1774,23 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
     if row == 4:
         if f <= 11:
             u = f / 11.0
-            lift = -6.0 - 8.0 * math.sin(u * math.pi * 0.5)
+            lift = -2.5 - 4.0 * math.sin(u * math.pi * 0.5)
             return compose_keypose(
                 keyposes,
                 "K3_RISE",
                 dx=0.0,
                 dy=lift,
                 coat_phase=tau_f * 2.0,
-                coat_billow=1.55,
-                coat_lift=0.75,
+                coat_billow=1.45,
+                coat_lift=0.70,
                 halo_rot=halo_rot * 2.0,
                 halo_flare=True,
-                mg_hand_offset=(14.0, -16.0 - u * 3.0),
-                mg_angle=-68.0 - u * 16.0,
-                hb_hand_offset=(-12.0, -15.0 - u * 3.0),
-                hb_angle=-112.0 + u * 12.0,
+                mg_hand_offset=(15.0, -7.0 - u * 1.5),
+                mg_angle=-30.0 - u * 8.0,
+                mg_len=41.0,
+                hb_hand_offset=(-7.0, -6.0 - u * 1.0),
+                hb_angle=-142.0 + u * 8.0,
+                hb_len=24.0,
             )
         if f <= 15:
             u = (f - 12) / 3.0
@@ -1581,10 +1798,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 keyposes,
                 "K4_LEAP",
                 dx=4.0 + u * 3.0,
-                dy=-12.0,
+                dy=-8.0,
                 coat_phase=tau_f * 2.0,
-                coat_billow=1.6,
-                coat_lift=0.8,
+                coat_billow=1.5,
+                coat_lift=0.75,
                 halo_rot=0.0,
                 halo_flare=True,
                 mg_hand_offset=(20.0, -4.0),
@@ -1599,19 +1816,21 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 keyposes,
                 "K3_RISE",
                 dx=2.0,
-                dy=-8.0,
+                dy=-5.0,
                 coat_phase=tau_f * 2.0,
-                coat_billow=1.5,
+                coat_billow=1.45,
                 coat_lift=0.7,
                 halo_rot=0.0,
                 halo_flare=True,
-                mg_hand_offset=(16.0, -14.0 + u * 8.0),
-                mg_angle=-75.0 + u * 55.0,
-                hb_hand_offset=(12.0, -12.0),
-                hb_angle=-92.0,
+                mg_hand_offset=(16.0, -8.0 + u * 6.0),
+                mg_angle=-38.0 + u * 26.0,
+                mg_len=41.0,
+                hb_hand_offset=(12.0, -8.0),
+                hb_angle=-48.0,
+                hb_len=24.0,
             )
             if f == 18:
-                draw_chrono_serrated_smear(c, cx=82.0, cy=66.0, r_outer=52.0, r_inner=30.0, deg_start=-85.0, deg_end=35.0, serration_amp=6.0, palette_mode="minute_teal")
+                draw_chrono_serrated_smear(c, cx=82.0, cy=67.0, r_outer=50.0, r_inner=30.0, deg_start=-80.0, deg_end=35.0, serration_amp=5.0, palette_mode="minute_teal")
             return c
         # F19..F29 (`139..149`): Twelfth-Bell Judgment Slam & Settle
         u = (f - 19) / 10.0
@@ -1653,17 +1872,18 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 coat_phase=f * 0.5,
                 coat_billow=1.2,
                 halo_rot=-f * 8.0,
-                mg_hand_offset=(8.0 - 5.0 * u, 10.0 + 4.0 * u),
+                mg_hand_offset=(8.0 - 4.0 * u, 10.0 + 4.0 * u),
                 mg_angle=52.0 + 20.0 * u,
-                hb_hand_offset=(6.0, -10.0 - 4.0 * u),
-                hb_angle=-68.0 - 18.0 * u,
+                hb_hand_offset=(8.0, -6.0 - 2.0 * u),
+                hb_angle=-52.0 - 12.0 * u,
+                hb_len=24.0,
             )
         if f <= 21:
-            # Dramatic stagger -> knee drop -> horizontal fall onto arena stone (`y_bot` lands right at `AY=114`)
+            # Dramatic stagger -> knee drop -> horizontal fall onto arena stone (shifted rightward so crown NEVER hits left border!)
             u = (f - 6) / 15.0
-            rot = -14.0 - 76.0 * (u ** 1.35)
+            rot = -10.0 - 80.0 * (u ** 1.28)
             drop_y = 2.0 + 11.0 * (u ** 1.15)
-            slide_x = -4.0 - 8.0 * u
+            slide_x = 4.0 + 22.0 * (u ** 1.15)
             c = np.zeros((LH, LW, 4), dtype=np.uint8)
             kp_im = keyposes["K1_COIL"]["im"].rotate(
                 -rot, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
@@ -1671,23 +1891,23 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
             layer.paste(kp_im, (int(round(slide_x)), int(round(drop_y))))
             c = np.array(layer, dtype=np.uint8)
-            # Dropped Twin Blades skittering onto the stone floor
-            draw_minute_glaive(c, AX + 12.0 + u * 12.0, min(111.0, AY - 22.0 + u * 21.0), 8.0 * (1.0 - u), blade_len=38.0, chrono_glow=(u < 0.7))
-            draw_hour_shortblade(c, AX - 16.0 - u * 8.0, min(111.0, AY - 18.0 + u * 18.0), 175.0, blade_len=24.0)
+            # Dropped Twin Blades skittering onto the stone floor cleanly within safe cell bounds
+            draw_minute_glaive(c, AX + 16.0 + u * 12.0, min(111.0, AY - 22.0 + u * 21.0), 8.0 * (1.0 - u), blade_len=36.0, chrono_glow=(u < 0.7))
+            draw_hour_shortblade(c, AX + 8.0 - u * 4.0, min(111.0, AY - 18.0 + u * 18.0), 175.0, blade_len=20.0)
             return c
-        # F22..F29: Grounded horizontal prone (`29/29` transitions via subtle fading temporal ember)
+        # F22..F29: Grounded horizontal prone (`minX >= 24`, `maxX <= 298`, `height <= 96px` in 320x240, `0` cuts!)
         sub = f - 22
         c = np.zeros((LH, LW, 4), dtype=np.uint8)
         kp_im = keyposes["K1_COIL"]["im"].rotate(
             90.0, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
         )
         layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
-        layer.paste(kp_im, (-12, 13))
+        layer.paste(kp_im, (26, 13))
         c = np.array(layer, dtype=np.uint8)
-        draw_minute_glaive(c, AX + 24.0, 111.0, 2.0, blade_len=38.0, chrono_glow=False)
-        draw_hour_shortblade(c, AX - 24.0, 111.0, 178.0, blade_len=23.0)
-        # Tiny flickering clockwork spark so every prone frame transitions cleanly
-        put_px(c, AX - 2 + (sub % 4) * 2, 99 - (sub % 2), TEAL_BRIGHT if sub % 2 == 0 else BRASS_GOLD)
+        draw_minute_glaive(c, AX + 28.0, 111.0, 2.0, blade_len=36.0, chrono_glow=False)
+        draw_hour_shortblade(c, AX + 4.0, 111.0, 178.0, blade_len=20.0)
+        # Tiny flickering clockwork spark so every prone frame transitions cleanly (29/29)
+        put_px(c, AX + 18 + (sub % 4) * 2, 99 - (sub % 2), TEAL_BRIGHT if sub % 2 == 0 else BRASS_GOLD)
         return c
 
     # --------------------------------------------------------------------------
@@ -1698,15 +1918,16 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         c = compose_keypose(
             keyposes,
             "K4_LEAP" if 4 <= f <= 23 else "K2_LUNGE",
-            dx=8.0 + pulse * 1.5,
+            dx=9.0 + pulse * 1.2,
             dy=-4.0 if 4 <= f <= 23 else 0.0,
             coat_phase=tau_f * 3.0,
-            coat_billow=1.6,
+            coat_billow=1.35,
             coat_lift=0.75,
             halo_rot=halo_rot * 3.0,
             halo_flare=True,
-            mg_hand_offset=(-14.0, 4.0 + pulse),
-            mg_angle=166.0,
+            mg_hand_offset=(-5.0, 4.0 + pulse),
+            mg_angle=163.0,
+            mg_len=34.0,
             hb_hand_offset=(18.0, 2.0),
             hb_angle=8.0,
             draw_weapons_in_front=False,
@@ -1792,20 +2013,22 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             )
         if f <= 17:
             u = (f - 4) / 13.0
-            arc_y = -15.0 * math.sin(u * math.pi)
+            arc_y = -8.5 * math.sin(u * math.pi)
             return compose_keypose(
                 keyposes,
                 "K4_LEAP",
                 dx=4.0,
                 dy=arc_y,
                 coat_phase=tau_f * 2.0,
-                coat_billow=1.45,
-                coat_lift=0.75,
+                coat_billow=1.40,
+                coat_lift=0.72,
                 halo_rot=halo_rot * 2.0,
-                mg_hand_offset=(12.0, -12.0 + u * 8.0),
-                mg_angle=-58.0 + u * 45.0,
-                hb_hand_offset=(-8.0, -8.0),
-                hb_angle=-142.0,
+                mg_hand_offset=(14.0, -5.0 + u * 6.0),
+                mg_angle=-24.0 + u * 28.0,
+                mg_len=41.0,
+                hb_hand_offset=(-6.0, -6.0),
+                hb_angle=-138.0,
+                hb_len=24.0,
             )
         if f <= 24:
             u = (f - 18) / 6.0
@@ -1850,15 +2073,17 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             keyposes,
             "K3_RISE",
             dx=0.0,
-            dy=-2.0 * math.sin(u * math.pi),
+            dy=-1.5 * math.sin(u * math.pi),
             coat_phase=tau_f,
-            coat_billow=1.25,
+            coat_billow=1.20,
             halo_rot=halo_rot,
             halo_flare=True,
-            mg_hand_offset=(12.0, -14.0),
-            mg_angle=-62.0 + u * 20.0,
-            hb_hand_offset=(12.0, -10.0),
-            hb_angle=-118.0 - u * 12.0,
+            mg_hand_offset=(15.0, -7.0),
+            mg_angle=-30.0 + u * 12.0,
+            mg_len=41.0,
+            hb_hand_offset=(13.0, -6.0),
+            hb_angle=-48.0 - u * 8.0,
+            hb_len=24.0,
         )
     u = (f - 11) / 18.0
     c = compose_stand_rig(
@@ -1933,9 +2158,11 @@ def main():
 
     sheet = Image.new("RGBA", (CELL_W * COLS, CELL_H * ROWS), (0, 0, 0, 0))
     border_clips = 0
+    flat_edge_cuts = []
     row_transitions = []
     row1_frames_320 = []
     row2_frames_320 = []
+    row5_frames_320 = []
 
     sample_cols = [0, 3, 9, 17, 24, 25]
     ten_rows_dbg = Image.new("RGBA", (len(sample_cols) * CELL_W, ROWS * CELL_H), (11, 16, 28, 255))
@@ -1949,7 +2176,7 @@ def main():
             im_320 = Image.fromarray(clean_logical, mode="RGBA").resize((CELL_W, CELL_H), Image.Resampling.NEAREST)
             arr_320 = np.array(im_320, dtype=np.uint8)
 
-            # Verify 4px output margin
+            # Verify 4px output margin + zero straight-line flat cuts at x=4, x=315, y=4
             if (
                 arr_320[:4, :, 3].any()
                 or arr_320[-4:, :, 3].any()
@@ -1957,6 +2184,11 @@ def main():
                 or arr_320[:, -4:, 3].any()
             ):
                 border_clips += 1
+            l4 = int((arr_320[:, 4, 3] > 0).sum())
+            r4 = int((arr_320[:, 315, 3] > 0).sum())
+            t4 = int((arr_320[4, :, 3] > 0).sum())
+            if l4 >= 8 or r4 >= 8 or t4 >= 8:
+                flat_edge_cuts.append(f"R{r}F{c:02d}(L={l4},R={r4},T={t4})")
 
             if prev_320 is not None and not np.array_equal(prev_320, arr_320):
                 trans += 1
@@ -1967,6 +2199,8 @@ def main():
                 row1_frames_320.append(im_320)
             if r == 2:
                 row2_frames_320.append(im_320)
+            if r == 5:
+                row5_frames_320.append(im_320)
             if c in sample_cols:
                 s_idx = sample_cols.index(c)
                 ten_rows_dbg.alpha_composite(im_320, (s_idx * CELL_W, r * CELL_H))
@@ -1989,6 +2223,20 @@ def main():
         dr1.text((gx + 8, gy + 6), f"R1 F{idx:02d}", fill=(153, 246, 228, 255))
     r1_dbg.save(SCRATCH_DIR / "debug_chronomancer_ex_row1_walk.png")
 
+    # Save full 30-frame Row 5 DEATH contact sheet (`6 cols x 5 rows` @ `320x240`)
+    r5_dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (12, 18, 30, 255))
+    dr5 = ImageDraw.Draw(r5_dbg)
+    for idx, im_320 in enumerate(row5_frames_320):
+        gx = (idx % 6) * CELL_W
+        gy = (idx // 6) * CELL_H
+        dr5.rectangle([gx, gy, gx + CELL_W - 1, gy + CELL_H - 1], outline=(45, 70, 95, 255), width=1)
+        dr5.line([(gx + 8, gy + 230), (gx + CELL_W - 8, gy + 230)], fill=(90, 130, 150, 255), width=1)
+        dr5.line([(gx + 24, gy), (gx + 24, gy + CELL_H - 1)], fill=(239, 68, 68, 95), width=1)
+        dr5.line([(gx + 298, gy), (gx + 298, gy + CELL_H - 1)], fill=(239, 68, 68, 95), width=1)
+        r5_dbg.alpha_composite(im_320, (gx, gy))
+        dr5.text((gx + 8, gy + 6), f"R5 F{idx:02d}", fill=(252, 165, 165, 255))
+    r5_dbg.save(SCRATCH_DIR / "debug_chronomancer_ex_row5_death.png")
+
     # Save full 30-frame Row 2 contact sheet (`6 cols x 5 rows` @ `320x240`)
     r2_dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (12, 18, 30, 255))
     dr = ImageDraw.Draw(r2_dbg)
@@ -2004,6 +2252,31 @@ def main():
     p128 = Image.open(OUT_PORTRAIT).convert("RGB") if OUT_PORTRAIT.exists() else build_portrait_128()
     p128.save(SCRATCH_DIR / "debug_chronomancer_ex_portrait.png")
 
+    # Quantitative Row 1 WALK crossover & stability checks
+    foot_spans = []
+    tops_r1 = []
+    bots_r1 = []
+    for im_320 in row1_frames_320:
+        a = np.array(im_320)[:, :, 3] > 0
+        ys, _ = np.where(a)
+        tops_r1.append(int(ys.min()))
+        bots_r1.append(int(ys.max()))
+        band = a[206:233, :]
+        xs_b = np.where(band)[1]
+        foot_spans.append(int(xs_b.max() - xs_b.min() + 1) if xs_b.size else 0)
+    max_foot_span = max(foot_spans)
+    min_foot_span = min(foot_spans)
+    max_adj_top = max(abs(tops_r1[i] - tops_r1[(i + 1) % 30]) for i in range(30))
+    bot_pop = max(bots_r1) - min(bots_r1)
+
+    # Quantitative Row 5 DEATH prone checks (F22..F29)
+    for df in range(22, 30):
+        a = np.array(row5_frames_320[df])[:, :, 3] > 0
+        dys, dxs = np.where(a)
+        dh = int(dys.max() - dys.min() + 1)
+        dminx, dmaxx = int(dxs.min()), int(dxs.max())
+        assert dh <= 96 and dminx >= 24 and dmaxx <= 298, f"Row 5 F{df:02d} out of bounds: h={dh}, x=[{dminx}..{dmaxx}]"
+
     # Measure forward reach on Row 2 snap frames
     snap_reach = {}
     for sf in (3, 9, 17, 25):
@@ -2011,10 +2284,19 @@ def main():
         xs = np.where(a)[1]
         snap_reach[f"F{sf:02d}"] = int(xs.max()) if len(xs) else 0
 
-    print(f"[chronomancer_ex] Wrote {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}) & {OUT_PORTRAIT} ({p128.size[0]}x{p128.size[1]})")
-    print(f"[chronomancer_ex] border_clips={border_clips}/300 | row_transitions={row_transitions}")
+    print(f"[chronomancer_ex] Wrote {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}) & preserved {OUT_PORTRAIT}")
+    print(f"[chronomancer_ex] border_clips={border_clips}/300 | flat_edge_cuts={flat_edge_cuts} | row_transitions={row_transitions}")
+    print(f"[chronomancer_ex] Row 1 WALK: F00={foot_spans[0]}px F07={foot_spans[7]}px F15={foot_spans[15]}px F22={foot_spans[22]}px | max={max_foot_span}px min={min_foot_span}px ratio={min_foot_span/max_foot_span:.3f} | maxAdjTop={max_adj_top}px botPop={bot_pop}px")
     print(f"[chronomancer_ex] Row 2 snap x_max (out of 320, anchorX=112): {snap_reach}")
-    if border_clips > 0 or any(t < 29 for t in row_transitions):
+    if (
+        border_clips > 0
+        or flat_edge_cuts
+        or any(t < 29 for t in row_transitions)
+        or max_foot_span < 34
+        or min_foot_span > max_foot_span * 0.55
+        or max_adj_top > 4
+        or bot_pop > 0
+    ):
         raise SystemExit("FAILED QA invariants on chronomancer_ex_sheet.png!")
 
 
