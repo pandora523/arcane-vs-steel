@@ -518,6 +518,9 @@ def load_rig_and_keyposes():
     # Use clean unoccluded extended silver vambrace/sleeve for both IK arms (rear slightly shaded for depth!)
     parts["l_sode_ik"] = darken_part_tuple(parts["r_sode"], 0.86)
     parts["l_forearm_ik"] = darken_part_tuple(parts["r_forearm"], 0.86)
+    parts["l_thigh_dark"] = darken_part_tuple(parts["l_thigh"], 0.84)
+    parts["l_shin_dark"] = darken_part_tuple(parts["l_shin"], 0.84)
+    parts["l_foot_dark"] = darken_part_tuple(parts["l_foot"], 0.84)
 
     stand_joints = {
         "x_ref": 262.0,
@@ -1571,6 +1574,11 @@ def render_stand_rig_frame_160(
     r_thigh_deg=0.0,
     r_shin_deg=0.0,
     r_foot_deg=0.0,
+    walk_mode=False,
+    l_hip_dx=0.0,
+    l_hip_dy=0.0,
+    r_hip_dx=0.0,
+    r_hip_dy=0.0,
     grip_rel_sh=(10.0, 8.0),
     weapon_deg=26.0,
     glaive_len=55.0,
@@ -1607,8 +1615,21 @@ def render_stand_rig_frame_160(
     r_sh_dst = map_torso_pt(sj["r_sh"])
     l_coat_dst = map_torso_pt(sj["l_coat"])
     r_coat_dst = map_torso_pt(sj["r_coat"])
-    l_hip_dst = map_torso_pt(sj["l_hip"])
-    r_hip_dst = map_torso_pt(sj["r_hip"])
+    if walk_mode:
+        inward_frac = 0.92
+        base_lh = map_torso_pt(sj["l_hip"])
+        base_rh = map_torso_pt(sj["r_hip"])
+        l_hip_dst = (
+            dst_pelvis[0] + (base_lh[0] - dst_pelvis[0]) * (1.0 - inward_frac) + l_hip_dx * S_HI,
+            base_lh[1] + l_hip_dy * S_HI,
+        )
+        r_hip_dst = (
+            dst_pelvis[0] + (base_rh[0] - dst_pelvis[0]) * (1.0 - inward_frac) + r_hip_dx * S_HI,
+            base_rh[1] + r_hip_dy * S_HI,
+        )
+    else:
+        l_hip_dst = map_torso_pt(sj["l_hip"])
+        r_hip_dst = map_torso_pt(sj["r_hip"])
 
     mane_rel = (neck_dst[0] + (sj["mane"][0] - sj["neck"][0]), neck_dst[1] + (sj["mane"][1] - sj["neck"][1]))
     mane_dst = rot_pt(mane_rel, neck_dst, torso_deg + head_deg)
@@ -1641,27 +1662,65 @@ def render_stand_rig_frame_160(
         win_hi, parts["mane"], sj["mane"], mane_dst,
         deg=torso_deg + head_deg + mane_deg, wave_phase=mane_wave_ph, wave_amp=mane_wave_amp,
     )
-    paste_rotated_part(
-        win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
-        deg=torso_deg + l_coat_deg, wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
-    )
-    paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
+    if walk_mode:
+        # Draw unified royal-sapphire inner gown bridge + both side coat panels BEHIND stepping legs
+        # (squash_y=0.88 keeps coat hems gracefully at knee height so ankles & boots cross cleanly below!)
+        dr_hi = ImageDraw.Draw(win_hi)
+        px_c, py_c = dst_pelvis[0], dst_pelvis[1]
+        dr_hi.polygon(
+            [
+                (px_c - 22, py_c - 6),
+                (px_c + 22, py_c - 6),
+                (px_c + 28, py_c + 64),
+                (px_c - 28, py_c + 64),
+            ],
+            fill=(24, 52, 132, 255),
+        )
+        paste_rotated_part(
+            win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
+            deg=torso_deg + l_coat_deg, squash_x=0.92, squash_y=0.86,
+            wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
+        )
+        paste_rotated_part(
+            win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
+            deg=torso_deg + r_coat_deg, squash_x=0.92, squash_y=0.86,
+            wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
+        )
+        paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
-    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=4)
-    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=3)
-    paste_rotated_part(win_hi, parts["l_thigh"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
-    paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
-    paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
+        draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=4, fill=(22, 46, 118, 255), inner=(130, 154, 190, 255))
+        draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=3, fill=(22, 46, 118, 255), inner=(130, 154, 190, 255))
+        paste_rotated_part(win_hi, parts["l_thigh_dark"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
+        paste_rotated_part(win_hi, parts["l_shin_dark"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
+        paste_rotated_part(win_hi, parts["l_foot_dark"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
 
-    paste_rotated_part(
-        win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
-        deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
-    )
-    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=4)
-    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=3)
-    paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
-    paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
-    paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
+        draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=4)
+        draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=3)
+        paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
+        paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
+        paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
+    else:
+        paste_rotated_part(
+            win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
+            deg=torso_deg + l_coat_deg, wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
+        )
+        paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
+
+        draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=4)
+        draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=3)
+        paste_rotated_part(win_hi, parts["l_thigh"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
+        paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
+        paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
+
+        paste_rotated_part(
+            win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
+            deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
+        )
+        draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=4)
+        draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=3)
+        paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
+        paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
+        paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
 
     paste_rotated_part(win_hi, parts["torso"], pelvis_src, dst_pelvis, deg=torso_deg)
     paste_rotated_part(win_hi, parts["head"], sj["neck"], neck_dst, deg=torso_deg + head_deg)
@@ -1764,56 +1823,103 @@ def build_row0_idle(parts, sj):
     return frames
 
 
+_ICEMAGE_WALK_KFS = [
+    # (u, thigh_tgt_deg, shin_tgt_deg, foot_tgt_deg, hip_dx_160, hip_dy_160)
+    # 0 deg = straight vertical down; -deg = forward (+X); +deg = trailing (-X)
+    (0.000, -23.0, -20.5, -16.0,  1.8,  0.0),   # Front heel contact (+X)
+    (0.085, -14.5,  -7.0,  -4.0,  1.0,  0.4),   # Weight absorption
+    (0.233,   0.0,   0.0,   0.0,  0.0,  0.0),   # Mid-stance dead vertical under AX (F07 / F22!)
+    (0.380,  14.0,  18.5,  18.5, -1.0,  0.0),   # Late stance roll-off
+    (0.500,  22.0,  27.0,  28.0, -1.8, -0.4),   # Rear toe push-off (-X, F15 / F00!)
+    (0.620,   6.0,  39.0,  39.0, -0.6, -2.0),   # Initial swing knee bend & toe clearance
+    (0.733, -17.5,  19.0,  18.0, -0.2, -3.2),   # Mid-swing passing crossover over AX (knee high, boot lifted & centered!)
+    (0.875, -24.5, -11.0, -10.0,  1.2, -1.2),   # Forward swing reach into heel strike
+    (1.000, -23.0, -20.5, -16.0,  1.8,  0.0),
+]
+
+
+def _sample_icemage_walk_leg(u: float):
+    u = u % 1.0
+    for i in range(len(_ICEMAGE_WALK_KFS) - 1):
+        u0, th0, sh0, ft0, dx0, dy0 = _ICEMAGE_WALK_KFS[i]
+        u1, th1, sh1, ft1, dx1, dy1 = _ICEMAGE_WALK_KFS[i + 1]
+        if u <= u1 or i == len(_ICEMAGE_WALK_KFS) - 2:
+            t = (u - u0) / max(1e-6, u1 - u0)
+            s = t * t * (3.0 - 2.0 * t)
+            return (
+                th0 + (th1 - th0) * s,
+                sh0 + (sh1 - sh0) * s,
+                ft0 + (ft1 - ft0) * s,
+                dx0 + (dx1 - dx0) * s,
+                dy0 + (dy1 - dy0) * s,
+            )
+    return _ICEMAGE_WALK_KFS[0][1:]
+
+
 def build_row1_walk(parts, sj):
     """
-    Row 1: Morph-Free Graceful Figure-Skate Glide (100% unified royal-sapphire gown silhouette,
-    continuous with Row 0 IDLE scepter carry, zero cur_bot head-popping, zero gown tearing!).
+    Row 1: Authentic Bipedal Winter Empress Crossover Stride (Unified sapphire gown parting
+    gracefully behind stepping boots, continuous Row 0 IDLE scepter carry, zero crab straddle!).
     """
     frames = []
-    for f in range(30):
-        ph = (f / 30.0) * 2.0 * math.pi
-        s1 = math.sin(ph)
-        s2 = -s1
-        # Smooth deterministic <= 1.0px glide bob (no dynamic cur_bot vertical jumps!)
-        bob_y = -0.85 * (0.5 + 0.5 * math.cos(ph * 2.0))
+    # Exact 512x512 A-stance rest angles
+    l_th_rest, l_sh_rest, l_ft_rest = 23.63, 19.29, 6.00
+    r_th_rest, r_sh_rest, r_ft_rest = -25.82, -6.01, -18.00
 
-        def post_skate(arr, _n, _g, step=f, ph_loc=ph):
-            # Crisp figure-skate frost ribbon & crystalline ice shavings under skates
-            sx = 44.0 - ((step * 2) % 10)
-            put_px_160(arr, sx, 114, C_CRYO_PALE if step % 2 == 0 else C_CRYO_SKY)
-            put_px_160(arr, sx - 3.0, 113, C_AURORA_ORCHID if step % 3 == 0 else C_PURE_WHITE)
-            put_px_160(arr, 56.0 + math.sin(ph_loc) * 4.0, 114, C_CRYO_AQUA)
+    for f in range(30):
+        u_l = (f / 30.0) % 1.0
+        u_r = (u_l + 0.5) % 1.0
+        ph = u_l * 2.0 * math.pi
+        s1 = math.cos(ph)
+        bob_y = 0.65 * math.cos(ph * 2.0)
+
+        l_th_t, l_sh_t, l_ft_t, l_dx, l_dy = _sample_icemage_walk_leg(u_l)
+        r_th_t, r_sh_t, r_ft_t, r_dx, r_dy = _sample_icemage_walk_leg(u_r)
+
+        l_th_d = l_th_t - l_th_rest
+        l_sh_abs = l_sh_t - l_sh_rest
+        l_sh_d = l_sh_abs - l_th_d
+        l_ft_d = (l_ft_t - l_ft_rest) - l_sh_abs
+
+        r_th_d = r_th_t - r_th_rest
+        r_sh_abs = r_sh_t - r_sh_rest
+        r_sh_d = r_sh_abs - r_th_d
+        r_ft_d = (r_ft_t - r_ft_rest) - r_sh_abs
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=0.8 * s1,
+            pelvis_dx=0.6 * s1,
             pelvis_dy=bob_y,
-            torso_deg=1.8 + math.sin(ph * 2.0) * 0.9,
-            head_deg=-0.9 + math.cos(ph) * 0.5,
+            torso_deg=2.0 + math.cos(ph * 2.0) * 0.85,
+            head_deg=-0.9 + math.sin(ph) * 0.5,
             mane_deg=-2.0 + s1 * 1.8,
             mane_wave_ph=ph * 2.0,
-            mane_wave_amp=3.4,
-            l_coat_deg=1.8 + math.sin(ph - 0.5) * 1.8,
-            r_coat_deg=-1.2 + math.cos(ph) * 1.6,
+            mane_wave_amp=3.2,
+            l_coat_deg=3.2 + s1 * 2.4,
+            r_coat_deg=-3.2 - s1 * 2.4,
             coat_wave_ph=ph * 2.0,
-            coat_wave_amp=1.9,
-            l_thigh_deg=-s1 * 5.2,
-            l_shin_deg=max(0.0, -s1) * 4.5,
-            l_foot_deg=s1 * 3.5,
-            r_thigh_deg=-s2 * 5.2,
-            r_shin_deg=max(0.0, -s2) * 4.5,
-            r_foot_deg=s2 * 3.5,
+            coat_wave_amp=1.8,
+            l_thigh_deg=l_th_d,
+            l_shin_deg=l_sh_d,
+            l_foot_deg=l_ft_d,
+            r_thigh_deg=r_th_d,
+            r_shin_deg=r_sh_d,
+            r_foot_deg=r_ft_d,
+            walk_mode=True,
+            l_hip_dx=l_dx,
+            l_hip_dy=l_dy,
+            r_hip_dx=r_dx,
+            r_hip_dy=r_dy,
             grip_rel_sh=(10.5 - s1 * 0.9, 8.0 + math.cos(ph * 2.0) * 0.7),
-            weapon_deg=-22.5 + s1 * 3.5,
+            weapon_deg=-22.5 + s1 * 3.2,
             glaive_len=49.0,
             weapon_layer="front",
-            scarf_deg=168.0 + s1 * 3.8,
-            scarf_len=30.0,
+            scarf_deg=168.0 + s1 * 3.6,
+            scarf_len=29.0,
             scarf_phase=ph * 2.0,
-            scarf_amp=3.2,
+            scarf_amp=3.0,
             rune_phase=ph * 2.0,
             clamp_below_ground_only=True,
-            post_fn=post_skate,
         ))
     return frames
 
@@ -2645,7 +2751,19 @@ def assemble_and_verify_sheet(all_rows_160):
 
         row_transitions.append(trans)
 
-    sheet.save(OUT_SHEET_PNG)
+    import struct
+    import zlib
+    arr_rgba = np.asarray(sheet, dtype=np.uint8)
+    raw_scan = np.hstack([np.zeros((SHEET_H, 1), dtype=np.uint8), arr_rgba.reshape(SHEET_H, SHEET_W * 4)]).tobytes()
+    def _png_chunk(tag: bytes, payload: bytes) -> bytes:
+        return struct.pack(">I", len(payload)) + tag + payload + struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF)
+    with open(OUT_SHEET_PNG, "wb") as fp_out:
+        fp_out.write(
+            b"\x89PNG\r\n\x1a\n"
+            + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", SHEET_W, SHEET_H, 8, 6, 0, 0, 0))
+            + _png_chunk(b"IDAT", zlib.compress(raw_scan, level=3))
+            + _png_chunk(b"IEND", b"")
+        )
     print(f"[Sheet] Saved {OUT_SHEET_PNG} ({sheet.size[0]}x{sheet.size[1]})")
     print(f"[QA] Border clips (4px output safety margin): {clip_count}/300")
     if clip_details:
@@ -2660,6 +2778,26 @@ def assemble_and_verify_sheet(all_rows_160):
     for snap_f, max_x320 in row2_snap_reaches_320.items():
         assert max_x320 >= 285, f"Row 2 F{snap_f:02d} spell reach too narrow: {max_x320}"
         assert row2_snap_front_px[snap_f] >= 320, f"Row 2 F{snap_f:02d} front px too sparse: {row2_snap_front_px[snap_f]}"
+
+    # Quantitative Row 1 Walk Crossover Gate (#124)
+    foot_spans = []
+    top_ys = []
+    for f_idx in range(30):
+        cell320 = np.array(sheet.crop((f_idx * CELL_W, CELL_H, (f_idx + 1) * CELL_W, 2 * CELL_H)))
+        a_w = cell320[:, :, 3] > 0
+        ys_w, _ = np.where(a_w)
+        top_ys.append(int(ys_w.min()))
+        _, xs_b = np.where(a_w[206:233, :])
+        foot_spans.append(int(xs_b.max() - xs_b.min()) if len(xs_b) else 0)
+    max_fspan = max(foot_spans)
+    min_fspan = min(foot_spans)
+    max_adj_top = max(abs(top_ys[i] - top_ys[(i + 1) % 30]) for i in range(30))
+    print(f"[QA] Row 1 footSpan320: F00={foot_spans[0]} F07={foot_spans[7]} F15={foot_spans[15]} F22={foot_spans[22]} | min={min_fspan} max={max_fspan} ratio={min_fspan/max(1,max_fspan):.2f} | maxAdjTopDelta={max_adj_top}")
+    assert foot_spans[0] >= 34 and foot_spans[15] >= 34, f"Walk stride too narrow: F00={foot_spans[0]}, F15={foot_spans[15]}"
+    assert foot_spans[7] <= max_fspan * 0.55 and foot_spans[22] <= max_fspan * 0.55, (
+        f"Walk crossover failed: F07={foot_spans[7]}, F22={foot_spans[22]}, max={max_fspan}"
+    )
+    assert max_adj_top <= 4, f"Walk head bob > 4px: {max_adj_top}"
 
     return sheet
 

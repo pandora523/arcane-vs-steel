@@ -296,6 +296,13 @@ def load_stand_and_keyposes():
         px, py = to_logical_coords(*piv512)
         stand_parts[name] = PartSprite(name, canvas, px, py)
 
+    for leg_nm in ("back_leg", "back_foot"):
+        src_p = stand_parts[leg_nm]
+        dark_c = src_p.rgba.copy().astype(np.float32)
+        m_a = dark_c[:, :, 3] > 0
+        dark_c[m_a, :3] = np.clip(dark_c[m_a, :3] * 0.84, 0, 255)
+        stand_parts[f"{leg_nm}_dark"] = PartSprite(f"{leg_nm}_dark", dark_c.astype(np.uint8), src_p.pivot_x, src_p.pivot_y)
+
     kp_sheet = Image.open(KEYPOSES_JPG).convert("RGB")
     kp_configs = {
         "K1_COIL": {
@@ -909,6 +916,9 @@ def compose_stand_rig(
     back_foot_rot=0.0,
     front_leg_dx=0.0,
     back_leg_dx=0.0,
+    front_leg_dy=0.0,
+    back_leg_dy=0.0,
+    walk_mode=False,
     hair_phase=0.0,
     hair_billow=0.7,
     wing_flap=0.0,
@@ -946,21 +956,53 @@ def compose_stand_rig(
         ca, sa = math.cos(rad), math.sin(rad)
         return (vx * ca - vy * sa) - vx, (vx * sa + vy * ca) - vy
 
-    bk_dx, bk_dy = knee_delta(stand_parts["back_leg"], stand_parts["back_foot"], back_leg_rot)
-    fr_dx, fr_dy = knee_delta(stand_parts["front_leg"], stand_parts["front_foot"], front_leg_rot)
-
     # 3. Segmented STAND parts
     im_layer = Image.fromarray(canvas, mode="RGBA")
-    order = [
-        ("back_hair", body_dx, body_dy, head_rot * 0.7),
-        ("back_leg", body_dx + back_leg_dx, body_dy, back_leg_rot),
-        ("back_foot", body_dx + back_leg_dx + bk_dx, body_dy + bk_dy, back_foot_rot),
-        ("pelvis", body_dx, body_dy, torso_rot * 0.35),
-        ("front_leg", body_dx + front_leg_dx, body_dy, front_leg_rot),
-        ("front_foot", body_dx + front_leg_dx + fr_dx, body_dy + fr_dy, front_foot_rot),
-        ("torso", body_dx, body_dy, torso_rot),
-        ("head", body_dx, body_dy, head_rot),
-    ]
+    if walk_mode:
+        inward_frac = 0.92
+        bk_leg_p = stand_parts["back_leg_dark"]
+        bk_foot_p = stand_parts["back_foot_dark"]
+        fr_leg_p = stand_parts["front_leg"]
+        fr_foot_p = stand_parts["front_foot"]
+
+        # Exact rest-angle neutralization from 512x512 A-stance
+        bk_leg_rest, bk_foot_rest = -16.33, -18.50
+        fr_leg_rest, fr_foot_rest = 12.09, 10.20
+
+        bk_rot = back_leg_rot - bk_leg_rest
+        bk_f_rot = back_foot_rot - bk_foot_rest
+        fr_rot = front_leg_rot - fr_leg_rest
+        fr_f_rot = front_foot_rot - fr_foot_rest
+
+        bk_center_dx = (AX - bk_leg_p.pivot_x) * inward_frac
+        fr_center_dx = (AX - fr_leg_p.pivot_x) * inward_frac
+
+        bk_dx, bk_dy = knee_delta(bk_leg_p, bk_foot_p, bk_rot)
+        fr_dx, fr_dy = knee_delta(fr_leg_p, fr_foot_p, fr_rot)
+
+        order = [
+            ("back_hair", body_dx, body_dy, head_rot * 0.7),
+            ("back_leg_dark", body_dx + bk_center_dx + back_leg_dx, body_dy + back_leg_dy, bk_rot),
+            ("back_foot_dark", body_dx + bk_center_dx + back_leg_dx + bk_dx, body_dy + back_leg_dy + bk_dy, bk_f_rot),
+            ("front_leg", body_dx + fr_center_dx + front_leg_dx, body_dy + front_leg_dy, fr_rot),
+            ("front_foot", body_dx + fr_center_dx + front_leg_dx + fr_dx, body_dy + front_leg_dy + fr_dy, fr_f_rot),
+            ("pelvis", body_dx, body_dy, torso_rot * 0.35),
+            ("torso", body_dx, body_dy, torso_rot),
+            ("head", body_dx, body_dy, head_rot),
+        ]
+    else:
+        bk_dx, bk_dy = knee_delta(stand_parts["back_leg"], stand_parts["back_foot"], back_leg_rot)
+        fr_dx, fr_dy = knee_delta(stand_parts["front_leg"], stand_parts["front_foot"], front_leg_rot)
+        order = [
+            ("back_hair", body_dx, body_dy, head_rot * 0.7),
+            ("back_leg", body_dx + back_leg_dx, body_dy, back_leg_rot),
+            ("back_foot", body_dx + back_leg_dx + bk_dx, body_dy + bk_dy, back_foot_rot),
+            ("pelvis", body_dx, body_dy, torso_rot * 0.35),
+            ("front_leg", body_dx + front_leg_dx, body_dy, front_leg_rot),
+            ("front_foot", body_dx + front_leg_dx + fr_dx, body_dy + fr_dy, front_foot_rot),
+            ("torso", body_dx, body_dy, torso_rot),
+            ("head", body_dx, body_dy, head_rot),
+        ]
     for pname, dx, dy, rot in order:
         im_layer.alpha_composite(transform_part(stand_parts[pname], dx=dx, dy=dy, rot_deg=rot))
     canvas = np.array(im_layer, dtype=np.uint8)
@@ -1027,6 +1069,38 @@ def compose_keypose(
     return canvas
 
 
+_VALKYRIE_WALK_KFS = [
+    # (u, thigh_tgt_deg, shin_tgt_deg, hip_dx_160, hip_dy_160)
+    # 0 deg = straight vertical down; -deg = forward (+X); +deg = trailing (-X)
+    (0.000, -22.0, -19.5,  1.8,  0.0),   # Front heel contact (+X)
+    (0.085, -14.0,  -6.5,  1.0,  0.4),   # Weight absorption
+    (0.233,   0.0,   0.0,  0.0,  0.0),   # Mid-stance dead vertical under AX (F07 / F22!)
+    (0.380,  13.5,  18.0, -1.0,  0.0),   # Late stance roll-off
+    (0.500,  21.5,  26.0, -1.8, -0.4),   # Rear toe push-off (-X, F15 / F00!)
+    (0.620,   6.0,  38.0, -0.6, -2.0),   # Initial swing knee bend & toe clearance
+    (0.733, -17.0,  18.5, -0.2, -3.2),   # Mid-swing passing crossover over AX (knee high, sabaton lifted & centered!)
+    (0.875, -24.0, -10.5,  1.2, -1.2),   # Forward swing reach into heel strike
+    (1.000, -22.0, -19.5,  1.8,  0.0),
+]
+
+
+def _sample_valkyrie_walk_leg(u: float):
+    u = u % 1.0
+    for i in range(len(_VALKYRIE_WALK_KFS) - 1):
+        u0, th0, sh0, dx0, dy0 = _VALKYRIE_WALK_KFS[i]
+        u1, th1, sh1, dx1, dy1 = _VALKYRIE_WALK_KFS[i + 1]
+        if u <= u1 or i == len(_VALKYRIE_WALK_KFS) - 2:
+            t = (u - u0) / max(1e-6, u1 - u0)
+            s = t * t * (3.0 - 2.0 * t)
+            return (
+                th0 + (th1 - th0) * s,
+                sh0 + (sh1 - sh0) * s,
+                dx0 + (dx1 - dx0) * s,
+                dy0 + (dy1 - dy0) * s,
+            )
+    return _VALKYRIE_WALK_KFS[0][1:]
+
+
 # ==============================================================================
 # 5. 10-Row x 30-Frame Next-Gen Choreography (`0..9`)
 # ==============================================================================
@@ -1055,29 +1129,40 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         )
 
     # --------------------------------------------------------------------------
-    # ROW 1: WALK — Cohesive Valkyrie Sky-Javelin Sovereign Stride (Zero Morph!)
+    # ROW 1: WALK — Authentic Bipedal Valkyrie Crossover Stride (Zero Crab Straddle!)
+    #   F00: Left (back_leg) forward (+X), Right (front_leg) trailing (-X)
+    #   F07: Right knee lifted & crossing directly over AX
+    #   F15: Right (front_leg) forward (+X), Left (back_leg) trailing (-X)
+    #   F22: Left knee lifted & crossing directly over AX
     # --------------------------------------------------------------------------
     if row == 1:
-        stride = math.sin(tau_f)
-        bob = -0.35 - 0.55 * abs(math.cos(tau_f))
+        u_l = (f / 30.0) % 1.0
+        u_r = (u_l + 0.5) % 1.0
+        stride = math.cos(tau_f)
+        bob = 0.65 * math.cos(tau_f * 2.0)
+        bk_th, bk_sh, bk_dx, bk_dy = _sample_valkyrie_walk_leg(u_l)
+        fr_th, fr_sh, fr_dx, fr_dy = _sample_valkyrie_walk_leg(u_r)
         return compose_stand_rig(
             stand_parts,
             stand_meta,
-            body_dx=0.8 + stride * 0.65,
+            body_dx=0.6 + stride * 0.45,
             body_dy=bob,
-            torso_rot=1.6 + math.sin(tau_f) * 1.0,
-            head_rot=0.8 + math.sin(tau_f + 0.35) * 0.85,
-            front_leg_rot=-stride * 7.5,
-            front_foot_rot=-stride * 7.5 + max(0.0, stride) * 4.5,
-            back_leg_rot=stride * 7.5,
-            back_foot_rot=stride * 7.5 + max(0.0, -stride) * 4.5,
-            front_leg_dx=stride * 1.15,
-            back_leg_dx=-stride * 1.15,
+            torso_rot=2.2 + math.cos(tau_f * 2.0) * 0.85,
+            head_rot=0.8 + math.sin(tau_f + 0.35) * 0.75,
+            back_leg_rot=bk_th,
+            back_foot_rot=bk_sh,
+            back_leg_dx=bk_dx,
+            back_leg_dy=bk_dy,
+            front_leg_rot=fr_th,
+            front_foot_rot=fr_sh,
+            front_leg_dx=fr_dx,
+            front_leg_dy=fr_dy,
+            walk_mode=True,
             hair_phase=tau_f * 2.0,
             hair_billow=0.88,
             wing_flap=math.sin(tau_f * 2.0) * 7.5,
             lance_hand_offset=(15.2 - stride * 1.1, 4.5 + abs(stride) * 0.5),
-            lance_angle=16.0 - stride * 3.2,
+            lance_angle=16.0 - stride * 3.0,
             clamp_ground=True,
         )
 
@@ -1123,7 +1208,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_back=10.0,
             )
             draw_valhalla_target_rune_seal(c, cx=97.0, cy=63.0, rx=8.0, ry=22.0, rot_deg=0.0, intensity=1.0)
-            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=63.0, x1=153.0, y1=62.0, cone_half_h=12.5, intensity=1.0, phase=0.4)
+            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=63.0, x1=147.0, y1=62.0, cone_half_h=12.5, intensity=1.0, phase=0.4)
             return c
         if f == 4:
             c = compose_keypose(
@@ -1259,7 +1344,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             )
             draw_valhalla_target_rune_seal(c, cx=98.0, cy=68.0, rx=8.5, ry=23.0, rot_deg=0.0, intensity=1.0)
             draw_valhalla_target_rune_seal(c, cx=122.0, cy=68.0, rx=6.5, ry=17.5, rot_deg=22.5, intensity=0.95)
-            draw_gungnir_lightning_javelin_cone(c, x0=95.0, y0=68.0, x1=154.0, y1=68.0, cone_half_h=14.0, intensity=1.0, phase=1.1)
+            draw_gungnir_lightning_javelin_cone(c, x0=95.0, y0=68.0, x1=147.0, y1=68.0, cone_half_h=14.0, intensity=1.0, phase=1.1)
             return c
         if f == 18:
             c = compose_keypose(
@@ -1276,7 +1361,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             )
             draw_valhalla_target_rune_seal(c, cx=102.0, cy=68.0, rx=7.0, ry=19.0, rot_deg=30.0, intensity=0.75)
             draw_valhalla_target_rune_seal(c, cx=126.0, cy=68.0, rx=5.5, ry=14.5, rot_deg=48.0, intensity=0.70)
-            draw_gungnir_lightning_javelin_cone(c, x0=112.0, y0=68.0, x1=154.0, y1=68.0, cone_half_h=9.5, intensity=0.68, phase=2.4)
+            draw_gungnir_lightning_javelin_cone(c, x0=112.0, y0=68.0, x1=147.0, y1=68.0, cone_half_h=9.5, intensity=0.68, phase=2.4)
             return c
         if f <= 22:
             u = (f - 18) / 4.0
@@ -1341,11 +1426,11 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=38.0,
             )
             # Overhead Valhalla Sky-Gate + Ground Target-Rune Seal + 3 Plunging Gungnir Lightning-Javelins!
-            draw_valhalla_target_rune_seal(c, cx=126.0, cy=22.0, rx=25.0, ry=6.5, rot_deg=0.0, intensity=1.0)
-            draw_valhalla_target_rune_seal(c, cx=132.0, cy=109.0, rx=22.0, ry=5.5, rot_deg=22.5, intensity=0.95)
-            draw_gungnir_lightning_javelin_cone(c, x0=108.0, y0=24.0, x1=116.0, y1=107.0, cone_half_h=6.5, intensity=0.92, phase=0.5)
-            draw_gungnir_lightning_javelin_cone(c, x0=126.0, y0=22.0, x1=134.0, y1=109.0, cone_half_h=8.0, intensity=1.0, phase=1.7)
-            draw_gungnir_lightning_javelin_cone(c, x0=143.0, y0=24.0, x1=151.0, y1=107.0, cone_half_h=6.5, intensity=0.92, phase=2.8)
+            draw_valhalla_target_rune_seal(c, cx=123.0, cy=22.0, rx=22.0, ry=6.5, rot_deg=0.0, intensity=1.0)
+            draw_valhalla_target_rune_seal(c, cx=125.0, cy=108.0, rx=20.0, ry=5.0, rot_deg=22.5, intensity=0.95)
+            draw_gungnir_lightning_javelin_cone(c, x0=106.0, y0=24.0, x1=114.0, y1=107.0, cone_half_h=6.5, intensity=0.92, phase=0.5)
+            draw_gungnir_lightning_javelin_cone(c, x0=123.0, y0=22.0, x1=130.0, y1=108.0, cone_half_h=8.0, intensity=1.0, phase=1.7)
+            draw_gungnir_lightning_javelin_cone(c, x0=138.0, y0=24.0, x1=145.0, y1=107.0, cone_half_h=6.2, intensity=0.92, phase=2.8)
             return c
         if f == 26:
             c = compose_keypose(
@@ -1360,10 +1445,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_hand_offset=(17.0, 4.0),
                 lance_angle=18.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=128.0, cy=23.0, rx=20.0, ry=5.0, rot_deg=25.0, intensity=0.68)
-            draw_valhalla_target_rune_seal(c, cx=133.0, cy=109.0, rx=23.0, ry=5.5, rot_deg=40.0, intensity=0.78)
-            draw_gungnir_lightning_javelin_cone(c, x0=128.0, y0=38.0, x1=135.0, y1=109.0, cone_half_h=6.0, intensity=0.65, phase=2.3)
-            draw_gungnir_lightning_javelin_cone(c, x0=145.0, y0=42.0, x1=152.0, y1=107.0, cone_half_h=5.0, intensity=0.60, phase=3.4)
+            draw_valhalla_target_rune_seal(c, cx=124.0, cy=23.0, rx=19.0, ry=5.0, rot_deg=25.0, intensity=0.68)
+            draw_valhalla_target_rune_seal(c, cx=125.0, cy=108.0, rx=20.0, ry=5.0, rot_deg=40.0, intensity=0.78)
+            draw_gungnir_lightning_javelin_cone(c, x0=124.0, y0=38.0, x1=131.0, y1=108.0, cone_half_h=6.0, intensity=0.65, phase=2.3)
+            draw_gungnir_lightning_javelin_cone(c, x0=139.0, y0=42.0, x1=145.0, y1=107.0, cone_half_h=5.0, intensity=0.60, phase=3.4)
             return c
         u = (f - 26) / 3.0
         return compose_keypose(
@@ -1583,25 +1668,27 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         if f <= 21:
             u = (f - 6) / 15.0
             rot = -14.0 - 76.0 * (u ** 1.35)
-            drop_y = 2.0 + 11.0 * (u ** 1.15)
-            slide_x = 2.0 + 12.0 * u
+            drop_y = 1.0 + 7.5 * (u ** 1.15)
+            slide_x = 4.0 + 16.0 * u
             kp_im = keyposes["K1_COIL"]["im"].rotate(
                 -rot, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
             )
             layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
             layer.paste(kp_im, (int(round(slide_x)), int(round(drop_y))))
             c = np.array(layer, dtype=np.uint8)
-            draw_gungnir_war_lance(c, AX + 18.0 + u * 12.0, min(111.0, AY - 20.0 + u * 20.0), 6.0 * (1.0 - u), fore_len=38.0, back_len=14.0, blazing=(u < 0.7))
+            draw_gungnir_war_lance(c, AX + 20.0 + u * 14.0, min(109.0, AY - 22.0 + u * 18.0), 6.0 * (1.0 - u), fore_len=36.0, back_len=14.0, blazing=(u < 0.7))
+            c[AY :, :, :] = 0
             return c
         sub = f - 22
         kp_im = keyposes["K1_COIL"]["im"].rotate(
             90.0, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
         )
         layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
-        layer.paste(kp_im, (14, 13))
+        layer.paste(kp_im, (20, 8))
         c = np.array(layer, dtype=np.uint8)
-        draw_gungnir_war_lance(c, AX + 30.0, 111.0, 2.0, fore_len=38.0, back_len=14.0, blazing=False)
-        put_px(c, AX + 12 + (sub % 4) * 2, 99 - (sub % 2), GOLD_SPEC if sub % 2 == 0 else CRIMSON_ROSE)
+        draw_gungnir_war_lance(c, AX + 34.0, 109.0, 2.0, fore_len=36.0, back_len=14.0, blazing=False)
+        put_px(c, AX + 16 + (sub % 4) * 2, 96 - (sub % 2), GOLD_SPEC if sub % 2 == 0 else CRIMSON_ROSE)
+        c[AY :, :, :] = 0
         return c
 
     # --------------------------------------------------------------------------
@@ -1799,6 +1886,17 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
 # ==============================================================================
 def enforce_logical_margin_and_binary_alpha(frame_160x120: np.ndarray) -> np.ndarray:
     out = frame_160x120.copy()
+    bayer4 = (
+        (0.0625, 0.5625, 0.1875, 0.6875),
+        (0.8125, 0.3125, 0.9375, 0.4375),
+        (0.2500, 0.7500, 0.1250, 0.6250),
+        (1.0000, 0.5000, 0.8750, 0.3750),
+    )
+    for y in range(2, 8):
+        u = (y - 2) / 6.0
+        for x in range(LW):
+            if out[y, x, 3] > 0 and u <= bayer4[y & 3][x & 3]:
+                out[y, x] = 0
     out[:2, :, :] = 0
     out[-2:, :, :] = 0
     out[:, :2, :] = 0
@@ -1879,7 +1977,18 @@ def main():
 
         row_transitions.append(trans)
 
-    sheet.save(OUT_SHEET)
+    import struct
+    import zlib
+    arr_rgba = np.asarray(sheet, dtype=np.uint8)
+    raw_scan = np.hstack([np.zeros((SHEET_H, 1), dtype=np.uint8), arr_rgba.reshape(SHEET_H, SHEET_W * 4)]).tobytes()
+    def _png_chunk(tag: bytes, payload: bytes) -> bytes:
+        return struct.pack(">I", len(payload)) + tag + payload + struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF)
+    OUT_SHEET.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", SHEET_W, SHEET_H, 8, 6, 0, 0, 0))
+        + _png_chunk(b"IDAT", zlib.compress(raw_scan, level=3))
+        + _png_chunk(b"IEND", b"")
+    )
     ten_rows_dbg.save(SCRATCH_DIR / "debug_valkyrie_ex_10rows.png")
 
     r1_dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (18, 10, 24, 255))
@@ -1920,10 +2029,29 @@ def main():
         snap_reach[f"F{sf:02d}"] = int(xs.max()) if len(xs) else 0
         snap_front_px[f"F{sf:02d}"] = int(np.sum(a[:, 201:]))
 
+    # Quantitative Row 1 Walk Crossover Gate (#124)
+    foot_spans = []
+    top_ys = []
+    for f_idx, im_w in enumerate(row1_frames_320):
+        a_w = np.array(im_w)[:, :, 3] > 0
+        ys_w, _ = np.where(a_w)
+        top_ys.append(int(ys_w.min()))
+        _, xs_b = np.where(a_w[206:233, :])
+        foot_spans.append(int(xs_b.max() - xs_b.min()) if len(xs_b) else 0)
+    max_fspan = max(foot_spans)
+    min_fspan = min(foot_spans)
+    max_adj_top = max(abs(top_ys[i] - top_ys[(i + 1) % 30]) for i in range(30))
+    print(f"[valkyrie_ex] Row 1 footSpan320: F00={foot_spans[0]} F07={foot_spans[7]} F15={foot_spans[15]} F22={foot_spans[22]} | min={min_fspan} max={max_fspan} ratio={min_fspan/max(1,max_fspan):.2f} | maxAdjTopDelta={max_adj_top}")
+    assert foot_spans[0] >= 34 and foot_spans[15] >= 34, f"Walk stride too narrow: F00={foot_spans[0]}, F15={foot_spans[15]}"
+    assert foot_spans[7] <= max_fspan * 0.55 and foot_spans[22] <= max_fspan * 0.55, (
+        f"Walk crossover failed: F07={foot_spans[7]}, F22={foot_spans[22]}, max={max_fspan}"
+    )
+    assert max_adj_top <= 4, f"Walk head bob > 4px: {max_adj_top}"
+
     print(f"[valkyrie_ex] Wrote {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}) | portrait={OUT_PORTRAIT} ({p128.size[0]}x{p128.size[1]})")
     print(f"[valkyrie_ex] border_clips={border_clips}/300 | row_transitions={row_transitions}")
     print(f"[valkyrie_ex] Row 2 snap x_max (out of 320, anchorX=112): {snap_reach} | frontPx(>200): {snap_front_px}")
-    if border_clips > 0 or any(t < 29 for t in row_transitions) or any(v < 240 for v in snap_front_px.values()):
+    if border_clips > 0 or any(t < 29 for t in row_transitions) or any(v < 240 for v in snap_front_px.values()) or any(rx <= 260 for rx in snap_reach.values()):
         raise SystemExit("FAILED QA invariants on valkyrie_ex_sheet.png!")
 
 

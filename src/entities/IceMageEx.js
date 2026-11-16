@@ -221,12 +221,12 @@ export class IceMageEx extends Fighter {
     this._trueUltDiamondDust = [];
     this._overrideFrameIdx = null;
 
-    // Wide 1440x780 world-space dual-buffer coverage so Ultimate / True Ultimate shaders never clip borders
+    // Wide 2160x1380 world-space dual-buffer coverage so Ultimate / True Ultimate shaders never clip borders
     this.fx = new ArcaneShaderFX(GLACIAL_EFFECT_REGISTRY, {
       pixelScale: 3,
-      viewW: 480,
-      viewH: 260,
-      topRatio: 0.82
+      viewW: 720,
+      viewH: 460,
+      topRatio: 0.78
     });
 
     if (typeof Image !== 'undefined') {
@@ -388,12 +388,11 @@ export class IceMageEx extends Fighter {
   _safeFxX(xv, game) {
     const g = game || this.game;
     const ww = g?.renderer ? g.renderer.worldWidth : 1200;
-    const center = ww * 0.5;
-    return Math.max(center - 540, Math.min(center + 540, Math.max(88, Math.min(ww - 88, xv))));
+    return Math.max(48, Math.min(ww - 48, xv));
   }
 
   _safeFxY(yv) {
-    return Math.max(58, Math.min(this.groundY + 18, yv));
+    return Math.max(-140, Math.min(this.groundY + 18, yv));
   }
 
   clearPermafrostZones() {
@@ -1835,6 +1834,21 @@ export class IceMageEx extends Fighter {
       this.spawnPixelFrostRing(cx, this.groundY - 136, 280, '#67e8f9', 0.52, false, true);
       this.spawnDiamondShardBurst(cx, this.groundY - 136, 20, 265, true);
       this.spawnSnowflakeBurst(cx, this.groundY - 136, 14, 210, true);
+      if (game?.vfx?.spawnCrystalSpike) {
+        for (const offX of [-148, 0, 148]) {
+          game.vfx.spawnCrystalSpike({
+            x: this._clampArenaX(cx + offX, game),
+            groundY: this.groundY,
+            width: offX === 0 ? 72 : 56,
+            height: offX === 0 ? 204 : 164,
+            color: offX === 0 ? '#67e8f9' : '#e879f9',
+            owner: this,
+            target: null,
+            damage: 0,
+            delay: offX === 0 ? 0 : 0.05
+          });
+        }
+      }
       game?.vfx?.spawnGlyphBurst?.(cx, this.groundY - 136, 7, 'glacial');
       game?.vfx?.spawnDamageText?.(
         cx,
@@ -2199,7 +2213,7 @@ export class IceMageEx extends Fighter {
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(0.12, fade * 0.10);
+    ctx.globalAlpha = Math.min(0.30, fade * 0.26);
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
     ctx.restore();
   }
@@ -2217,7 +2231,6 @@ export class IceMageEx extends Fighter {
     const fade = fadeIn * fadeOut;
     if (fade <= 0.01) return;
 
-    const ww = renderer?.worldWidth || 1200;
     const gy = this.groundY;
     const vfxSheet = PixelForge.ensureImage(this.getExSprites()?.vfx);
     const coffinX = Math.round((this._trueUltCoffinX || 600) / 4) * 4;
@@ -2225,42 +2238,24 @@ export class IceMageEx extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // Crisp multi-curtain Northern Lights pixel tapestry (stepped integer columns, zero radial wash!)
-    const curtains = [
-      { baseY: 24, amp: 24, freq: 0.009, speed: 2.1, h: 82, colTop: '#34d399', colMid: '#67e8f9', colBot: '#38bdf8', alpha: 0.18 },
-      { baseY: 68, amp: 28, freq: 0.012, speed: -1.7, h: 88, colTop: '#c084fc', colMid: '#e879f9', colBot: '#38bdf8', alpha: 0.16 },
-      { baseY: 112, amp: 20, freq: 0.015, speed: 2.5, h: 68, colTop: '#67e8f9', colMid: '#cffafe', colBot: '#e879f9', alpha: 0.15 }
-    ];
-    const ribbonMinX = -320;
-    const ribbonMaxX = ww + 320;
-    for (const rb of curtains) {
-      for (let x = ribbonMinX; x <= ribbonMaxX; x += 12) {
-        const edgeDist = Math.min(x - ribbonMinX, ribbonMaxX - x);
-        const edgeTaper = Math.max(0, Math.min(1, edgeDist / 220));
-        if (edgeTaper <= 0.01) continue;
-        const wave =
-          Math.sin(x * rb.freq + t * rb.speed) * rb.amp +
-          Math.cos(x * rb.freq * 1.9 - t * rb.speed * 0.8) * (rb.amp * 0.45);
-        const pulse = 0.65 + 0.35 * Math.sin(x * 0.035 + t * 4.2);
-        const ry = Math.round((rb.baseY + wave) / 4) * 4;
-        const rh = Math.round((rb.h * pulse) / 4) * 4;
-        ctx.globalAlpha = Math.min(0.18, fade * rb.alpha * pulse * edgeTaper);
-        ctx.fillStyle = rb.colTop;
-        ctx.fillRect(x, ry, 8, Math.max(6, Math.round(rh * 0.34)));
-        ctx.fillStyle = rb.colMid;
-        ctx.fillRect(x, ry + Math.round(rh * 0.34), 8, Math.max(6, Math.round(rh * 0.32)));
-        ctx.fillStyle = rb.colBot;
-        ctx.fillRect(x, ry + Math.round(rh * 0.66), 8, Math.max(6, Math.round(rh * 0.34)));
-      }
-    }
-
-    // 4x4 Bayer-stippled Borealis Cathedral Sanctuary Floor Mirror!
+    // 4x4 Bayer-stippled Borealis Sky & Cathedral Sanctuary Floor Mirrors (zero boxy fillRect slabs!)
+    drawBayerFrostPool(ctx, coffinX, Math.max(76, gy - 412), 268, 36, '#e879f9', 0.16 * fade, 4);
+    drawBayerFrostPool(ctx, coffinX, Math.max(96, gy - 384), 212, 26, '#67e8f9', 0.15 * fade, 4);
     drawBayerFrostPool(ctx, coffinX, gy - 4, 248, 34, '#67e8f9', 0.16 * fade, 4);
     drawBayerFrostPool(ctx, coffinX, gy - 4, 156, 22, '#e879f9', 0.14 * fade, 4);
 
+    for (let k = 0; k < 10; k++) {
+      const a = t * 1.9 + (k * Math.PI) / 5;
+      const sx = coffinX + Math.cos(a) * 210;
+      const sy = Math.max(54, gy - 332 + Math.sin(a * 1.5) * 38);
+      drawAuroraStarGlint(ctx, sx, sy, k % 2 === 0 ? 6 : 4, k % 2 === 0 ? '#67e8f9' : '#e879f9', fade * 0.86);
+    }
+
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       const col = Math.floor(t * 24) % 30;
-      this.drawBloomedVfxRect(ctx, vfxSheet, 5, col, coffinX, gy - 274, 368, 368, fade * 0.88, false);
+      const roseCol = (col + 11) % 30;
+      this.drawBloomedVfxRect(ctx, vfxSheet, 3, roseCol, coffinX, gy - 356, 396, 132, fade * 0.78, false);
+      this.drawBloomedVfxRect(ctx, vfxSheet, 5, col, coffinX, gy - 274, 368, 368, fade * 0.90, false);
 
       // 6-Pillar Borealis Snowflake Sanctuary Columns flanking the Cathedral!
       if (inTrueUlt && t < 3.28) {
@@ -2269,7 +2264,7 @@ export class IceMageEx extends Fighter {
           const px = coffinX + pillarOffsets[i];
           const py = gy - (i % 2 === 0 ? 96 : 112);
           const pScale = i % 2 === 0 ? 156 : 176;
-          this.drawBloomedVfxRect(ctx, vfxSheet, 2, (col + i * 3) % 20, px, py, pScale, pScale, fade * 0.82, i >= 3);
+          this.drawBloomedVfxRect(ctx, vfxSheet, 2, (col + i * 3) % 20, px, py, pScale, pScale, fade * 0.84, i >= 3);
         }
       }
     }
@@ -2358,7 +2353,8 @@ export class IceMageEx extends Fighter {
 
       if (this.iceDecoy) {
         const fade = Math.min(1, (this.iceDecoy.maxLife - this.iceDecoy.life) * 2.0);
-        this.drawBloomedVfxRect(ctx, vfxSheet, 6, 12, this.iceDecoy.x, this.iceDecoy.y - 88, 176, 188, fade * 0.88, false);
+        const decoyCol = Math.floor(this.iceDecoy.life * 24) % 24;
+        this.drawBloomedVfxRect(ctx, vfxSheet, 6, decoyCol, this.iceDecoy.x, this.iceDecoy.y - 88, 176, 188, fade * 0.88, false);
       }
 
       for (const v of this.activeVfxAnims) {
@@ -2384,9 +2380,11 @@ export class IceMageEx extends Fighter {
       }
 
       // Sky-Rift Prismatic Diamond-Icicle Lances (Row 4)
-      for (const ic of this.activeSkyIcicles) {
+      for (let idxIc = 0; idxIc < this.activeSkyIcicles.length; idxIc++) {
+        const ic = this.activeSkyIcicles[idxIc];
         if (ic.delay > 0) continue;
-        this.drawBloomedVfxRect(ctx, vfxSheet, 4, 14, ic.x, ic.y, 112, 140, 0.95, this.facing < 0);
+        const icCol = (Math.floor(ic.age * 36) + idxIc * 3) % 30;
+        this.drawBloomedVfxRect(ctx, vfxSheet, 4, icCol, ic.x, ic.y, 112, 140, 0.95, this.facing < 0);
       }
 
       // 4-Stack Solid Crystal Freeze Sarcophagus (Row 6)
@@ -2401,8 +2399,11 @@ export class IceMageEx extends Fighter {
       // Skill: BOREALIS PRISM JAWS (Twin Flanking Aurora-Orchid & Cyan Ice-Monoliths + Bayer Mirrors!)
       if (this.glacierJaws && this.glacierJaws.fade > 0.02) {
         const gj = this.glacierJaws;
-        const col = gj.slammed ? 24 : 12;
-        const sealCol = Math.floor((gj.age || 0) * 24) % 30;
+        const gjAge = gj.age || this.stateTimer || 0;
+        const col = gj.slammed
+          ? 20 + (Math.floor(gjAge * 28) % 10)
+          : Math.min(19, Math.floor(gjAge * 36));
+        const sealCol = Math.floor(gjAge * 24) % 30;
         const lx = gj.centerX - gj.span;
         const rx = gj.centerX + gj.span;
 
@@ -2418,24 +2419,28 @@ export class IceMageEx extends Fighter {
       // Overdrive: CORONATION OF NINE ICE-SWORDS (Aurora Crown Halo + 8 Palisade Swords + 9th Sovereign Blade!)
       if (this.coronationDomain) {
         const cd = this.coronationDomain;
-        const haloCol = Math.floor((cd.age || 0) * 24) % 30;
+        const cdAge = cd.age || this.stateTimer || 0;
+        const haloCol = Math.floor(cdAge * 24) % 30;
 
         // Overhead Aurora Crown Halo + Floor Palisade Mirror
         drawBayerFrostPool(ctx, cd.centerX, this.groundY - 2, 184, 24, '#67e8f9', 0.16, 4);
         this.drawBloomedVfxRect(ctx, vfxSheet, 3, haloCol, cd.centerX, this.groundY - 268, 340, 84, 0.90, false);
 
-        for (const sw of cd.swords) {
-          this.drawBloomedVfxRect(ctx, vfxSheet, 4, sw.isAurora ? 18 : 14, sw.x, sw.y, 140, 172, 0.95, sw.isAurora);
+        for (let sIdx = 0; sIdx < cd.swords.length; sIdx++) {
+          const sw = cd.swords[sIdx];
+          const swCol = (Math.floor(cdAge * 28) + sIdx * 3) % 30;
+          this.drawBloomedVfxRect(ctx, vfxSheet, 4, swCol, sw.x, sw.y, 140, 172, 0.95, sw.isAurora);
           if (sw.landed) {
             drawBayerFrostPool(ctx, sw.x, this.groundY - 2, 34, 10, sw.isAurora ? '#e879f9' : '#67e8f9', 0.14, 4);
           }
         }
         // Suspended or Plunged Colossal 9th Sovereign Blade
+        const crownCol = Math.floor(cdAge * 30) % 30;
         this.drawBloomedVfxRect(
           ctx,
           vfxSheet,
           4,
-          20,
+          crownCol,
           cd.centerX,
           cd.crownDropped ? cd.crownY : this.groundY - 284,
           cd.crownDropped ? 236 : 188,
@@ -2565,11 +2570,14 @@ export class IceMageEx extends Fighter {
     if (!sprites) return;
 
     const vfxSheet = PixelForge.ensureImage(sprites.vfx);
-    if (!isReflection && (this.state === 'TRUE_ULTIMATE' || this._trueUltShatterTimer > 0) && vfxSheet?.complete) {
+    const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth);
+    const reflScale = isReflection ? 0.38 : 1.0;
+
+    if ((this.state === 'TRUE_ULTIMATE' || this._trueUltShatterTimer > 0) && hasVfx) {
       const col = Math.floor((this.stateTimer || 0) * 28) % 30;
-      this.drawBloomedVfxRect(ctx, vfxSheet, 5, col, this.x, this.y - 104, 288, 288, 0.88, false);
+      this.drawBloomedVfxRect(ctx, vfxSheet, 5, col, this.x, this.y - 104, 288, 288, 0.88 * reflScale, false);
       if (this.groundY - this.y > 12) {
-        this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, this.x, this.y + 8, 136, 48, 0.88, false);
+        this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, this.x, this.y + 8, 136, 48, 0.88 * reflScale, false);
       }
     }
 
@@ -2592,5 +2600,57 @@ export class IceMageEx extends Fighter {
     }
 
     ctx.restore();
+
+    if (isReflection && hasVfx) {
+      for (const z of this.permafrostZones) {
+        const fade = Math.min(1, (z.maxLife - z.life) * 1.5) * Math.min(1, z.life / 0.15);
+        const col = Math.floor(z.life * 20) % 30;
+        this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, z.x, z.y - 8, z.radius * 1.7, 68, fade * 0.36, false);
+      }
+      if (this.glacierJaws && this.glacierJaws.fade > 0.02) {
+        const gj = this.glacierJaws;
+        const gjAge = gj.age || this.stateTimer || 0;
+        const col = gj.slammed ? 20 + (Math.floor(gjAge * 28) % 10) : Math.min(19, Math.floor(gjAge * 36));
+        this.drawBloomedVfxRect(ctx, vfxSheet, 2, col, gj.centerX - gj.span, this.groundY - 96, 212, 220, gj.fade * 0.38, false);
+        this.drawBloomedVfxRect(ctx, vfxSheet, 2, col, gj.centerX + gj.span, this.groundY - 96, 212, 220, gj.fade * 0.38, true);
+      }
+      if (this.coronationDomain) {
+        const cd = this.coronationDomain;
+        const cdAge = cd.age || this.stateTimer || 0;
+        for (let sIdx = 0; sIdx < cd.swords.length; sIdx++) {
+          const sw = cd.swords[sIdx];
+          this.drawBloomedVfxRect(ctx, vfxSheet, 4, (Math.floor(cdAge * 28) + sIdx * 3) % 30, sw.x, sw.y, 140, 172, 0.36, sw.isAurora);
+        }
+        this.drawBloomedVfxRect(
+          ctx,
+          vfxSheet,
+          4,
+          Math.floor(cdAge * 30) % 30,
+          cd.centerX,
+          cd.crownDropped ? cd.crownY : this.groundY - 284,
+          cd.crownDropped ? 236 : 188,
+          cd.crownDropped ? 268 : 216,
+          0.38,
+          false
+        );
+      }
+      if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 1.12 && this.stateTimer < 3.28) {
+        const monoCol = Math.min(24, Math.floor(((this.stateTimer - 1.12) / 2.16) * 24));
+        this.drawBloomedVfxRect(ctx, vfxSheet, 6, monoCol, Math.round(this._trueUltCoffinX), Math.round(this.groundY - 126), 264, 288, 0.38, false);
+      }
+      if (this._trueUltShatterTimer > 0) {
+        const uShatter = 1 - Math.max(0, Math.min(1, this._trueUltShatterTimer / 1.28));
+        const row7Col = Math.min(29, Math.floor(uShatter * 30));
+        const shatterFade = Math.min(1, this._trueUltShatterTimer / 0.34);
+        this.drawBloomedVfxRect(ctx, vfxSheet, 7, row7Col, Math.round(this._trueUltCoffinX), Math.round(this.groundY - 132), 432, 384, shatterFade * 0.38, false);
+      }
+      for (const v of this.activeVfxAnims) {
+        const u = Math.min(1, Math.max(0, v.age / v.maxLife));
+        const span = Math.max(1, v.endFrame - v.startFrame + 1);
+        const col = Math.min(29, v.startFrame + Math.floor(u * span));
+        const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+        this.drawBloomedVfxRect(ctx, vfxSheet, v.row, col, v.x, v.y, v.w, v.h, fade * 0.36, v.flipX);
+      }
+    }
   }
 }
