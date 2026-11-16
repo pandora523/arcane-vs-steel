@@ -2485,6 +2485,14 @@ export class AdventureManager {
       }
     }
 
+    if (
+      this._comboLockTarget &&
+      (this._comboLockTarget.isDead ||
+        (this.game?.fighters && !this.game.fighters.includes(this._comboLockTarget)))
+    ) {
+      this._comboLockTarget = null;
+    }
+
     const stickyLockMaxX = (player.getHackAndSlashLockRange?.() || 275) + 45;
     if (
       (this.autoPlay || this.manualTargetLock) &&
@@ -2531,6 +2539,9 @@ export class AdventureManager {
     if (this.autoPlay) {
       player._advVaultVelZ = 0;
       player.manualMoveAxis = 0;
+      if ((player._advSideHoldTimer || 0) > 0) {
+        player._advSideHoldTimer = Math.max(0, player._advSideHoldTimer - dt);
+      }
 
       // Auto-spend Skill Points in Auto-Play so autonomous showcase runs demonstrate the Skill Tree!
       if (this.progression.skillPoints > 0) {
@@ -2574,8 +2585,16 @@ export class AdventureManager {
       const rawEffRange = player.getEffectiveAttackRange
         ? player.getEffectiveAttackRange()
         : player.attackRange || 180;
-      const effRange = isRangedEx ? Math.max(510, rawEffRange) : rawEffRange;
-      const isRanged = effRange >= 290 || isRangedEx;
+      const isRangedHero =
+        isRangedEx ||
+        ['mage', 'priestess', 'icemage', 'valkyrie', 'archer'].includes(hid) ||
+        rawEffRange >= 290;
+      const effRange = isRangedEx
+        ? Math.max(510, rawEffRange)
+        : isRangedHero
+          ? Math.max(385, rawEffRange)
+          : rawEffRange;
+      const isRanged = isRangedHero;
       const maxAutoVx = 268 * stats.moveSpeedMult;
       const maxAutoVz = 164 * stats.moveSpeedMult;
 
@@ -2718,8 +2737,38 @@ export class AdventureManager {
           } else {
             player._advAiStuckTimer = Math.max(0, (player._advAiStuckTimer || 0) - dt * 2.2);
           }
-          if ((player._advAiStuckTimer || 0) >= 0.26) {
+          if ((player._advAiStuckTimer || 0) >= 0.24) {
             player._advAiStuckTimer = 0;
+            player._advSideHoldTimer = 0;
+            const targetInsideEffRange = Boolean(
+              target &&
+                !target.isDead &&
+                (target.isColossalBoss
+                  ? isRanged
+                    ? player.x >= 8480
+                    : player.x >= 9145
+                  : Math.abs(target.x - player.x) <= effRange * 0.98)
+            );
+            if (targetInsideEffRange) {
+              const tgtGy = target.isColossalBoss
+                ? pGy
+                : Number.isFinite(target.groundY)
+                  ? target.groundY
+                  : ADVENTURE_DEPTH_MID_Y;
+              const curDz = Math.abs(tgtGy - pGy);
+              player._advAiUnstickTimer = 0;
+              if (!target.isColossalBoss && curDz > (isRanged ? 96 : 46)) {
+                this.shiftEntityDepth(player, Math.sign(tgtGy - pGy) * Math.min(curDz, maxAutoVz * dt * 2.0));
+              }
+              player._advAiVelX = 0;
+              player._advAiVelZ = 0;
+              player._manualWalkActive = false;
+              player._manualSpeedRatio = 0;
+              player.moveDir = 0;
+              player.state = 'IDLE';
+              player.facing = target.x >= player.x ? 1 : -1;
+              return false;
+            }
             player._advAiUnstickTimer = 0.44;
             player._advAiUnstickDirX = player.x < (minWalkX + maxWalkX) * 0.5 ? 1 : -1;
             player._advAiUnstickDirZ = pGy > ADVENTURE_DEPTH_MID_Y ? -1 : 1;
@@ -2901,21 +2950,13 @@ export class AdventureManager {
             player.setState('SKILL');
           } else if (
             player.autoCooldown <= 0 &&
-            !(
-              isRanged &&
-              !midHackChain &&
-              !target.isColossalBoss &&
-              absDx < 185 &&
-              player.x > minWalkX + 96 &&
-              player.x < maxWalkX - 96
-            ) &&
-            (midHackChain || Math.hypot(avoidVx, avoidVz) < 175) &&
+            (midHackChain || Math.hypot(avoidVx, avoidVz) < 235) &&
             (target.isColossalBoss
               ? isRanged
                 ? player.x >= 8480
                 : player.x >= 9145
-              : absDx <= (midHackChain ? Math.max(effRange, autoChainMaxDx) : effRange * 0.96) &&
-                absDz <= (midHackChain ? 78 : isRanged ? 76 : 44))
+              : absDx <= (midHackChain ? Math.max(effRange, autoChainMaxDx) : effRange * 0.98) &&
+                absDz <= (midHackChain ? 82 : isRanged ? 96 : 46))
           ) {
             player._manualWalkActive = false;
             player._manualSpeedRatio = 0;
@@ -2939,6 +2980,25 @@ export class AdventureManager {
           } else if (midHackChain) {
             player._manualWalkActive = false;
             player._manualSpeedRatio = 0;
+          } else if (
+            isRanged &&
+            !target.isColossalBoss &&
+            absDx < 125 &&
+            player.dodgeCooldown <= 0
+          ) {
+            const awayDir = player.x >= target.x ? 1 : -1;
+            const awayRoom = awayDir > 0 ? maxWalkX - player.x : player.x - minWalkX;
+            const openEscDir =
+              awayRoom >= 145
+                ? awayDir
+                : maxWalkX - player.x >= player.x - minWalkX
+                  ? 1
+                  : -1;
+            const escZ = pGy > ADVENTURE_DEPTH_MID_Y ? -0.45 : 0.45;
+            const mag = Math.hypot(openEscDir, escZ) || 1;
+            this.startHeroAdventureDodge(player, openEscDir / mag, escZ / mag, stats);
+            this.progression.syncGaugesToPlayer(player);
+            return;
           } else if (target.isColossalBoss) {
             const bossGoalX = player.isHackAndSlashCaster?.()
               ? 8895 + Math.sin(aiClock * 1.4) * 55
@@ -2957,29 +3017,47 @@ export class AdventureManager {
             }
             isMovingCombat = applyCurvedAutoSteer(bossGoalX, bossGoalGy, 20, 1);
           } else {
-            const idealDistX = isRangedEx
-              ? 345
-              : player.isHackAndSlashCaster?.()
-                ? 320
+            const idealDistX = Math.min(
+              effRange * 0.80,
+              isRangedEx
+                ? 335
                 : isRanged
-                  ? Math.min(355, Math.max(225, effRange * 0.74))
-                  : Math.max(82, Math.min(132, effRange * 0.68));
+                  ? 295
+                  : Math.max(82, Math.min(132, effRange * 0.68))
+            );
             const leftSlot = target.x - idealDistX;
             const rightSlot = target.x + idealDistX;
             const wallMargin = isRanged ? 72 : 40;
             const leftValid = leftSlot >= minWalkX + wallMargin;
             const rightValid = rightSlot <= maxWalkX - wallMargin;
 
-            let wantRightSide = player.x > target.x;
+            let candRightSide = player.x > target.x;
             if (leftValid && !rightValid) {
-              wantRightSide = false;
+              candRightSide = false;
             } else if (!leftValid && rightValid) {
-              wantRightSide = true;
+              candRightSide = true;
             } else if (!leftValid && !rightValid) {
-              wantRightSide = maxWalkX - target.x >= target.x - minWalkX;
+              candRightSide = maxWalkX - target.x >= target.x - minWalkX;
             } else if (isRanged && absDx < 165) {
-              if (player.x < minWalkX + 92) wantRightSide = true;
-              else if (player.x > maxWalkX - 92) wantRightSide = false;
+              if (player.x < minWalkX + 92) candRightSide = true;
+              else if (player.x > maxWalkX - 92) candRightSide = false;
+            }
+
+            const desiredSide = candRightSide ? 'right' : 'left';
+            const prevSide = player._advSideChoice;
+            const prevSideValid =
+              prevSide === 'right' ? rightValid : prevSide === 'left' ? leftValid : false;
+            let wantRightSide = candRightSide;
+            if (
+              prevSide &&
+              prevSide !== desiredSide &&
+              prevSideValid &&
+              (player._advSideHoldTimer || 0) > 0
+            ) {
+              wantRightSide = prevSide === 'right';
+            } else if (prevSide !== desiredSide) {
+              player._advSideChoice = desiredSide;
+              player._advSideHoldTimer = 0.70;
             }
 
             const goalX = wantRightSide ? rightSlot : leftSlot;
@@ -2987,9 +3065,11 @@ export class AdventureManager {
               (wantRightSide && player.x < target.x + 28) ||
               (!wantRightSide && player.x > target.x - 28);
 
+            const safeZMin = depthMin + 10;
+            const safeZMax = depthMax - 10;
             let goalGy = targetGy;
             if (crossingSides) {
-              // Curve wide across the opposite 2.5D depth lane to orbit cleanly past the monster out of corners!
+              // Curve across the opposite 2.5D depth lane (capped <= 54px) to orbit cleanly past the monster!
               const orbitSign =
                 targetGy > ADVENTURE_DEPTH_MID_Y + 12
                   ? -1
@@ -2998,17 +3078,17 @@ export class AdventureManager {
                     : pGy <= targetGy
                       ? -1
                       : 1;
-              goalGy = targetGy + orbitSign * 86;
+              goalGy = Math.max(safeZMin, Math.min(safeZMax, targetGy + orbitSign * 54));
             } else {
               const distFromSlot = Math.abs(player.x - goalX);
               const curveBlend = Math.max(0, Math.min(1, (distFromSlot - 30) / 185));
               const flankSign =
                 (player.heroId ? player.heroId.charCodeAt(0) : 1) % 2 === 0 ? 1 : -1;
-              const rangedWeave = isRanged ? Math.sin(aiClock * 1.95) * 20 : 0;
-              goalGy =
-                targetGy +
-                (Math.sin(aiClock * 2.35) * 42 + flankSign * 26) * curveBlend +
-                rangedWeave * (1 - curveBlend);
+              const rawWeave =
+                (Math.sin(aiClock * 2.35) * 24 + flankSign * 16) * curveBlend +
+                (isRanged ? Math.sin(aiClock * 1.95) * 18 : 0) * (1 - curveBlend);
+              const clampedWeave = Math.max(-24, Math.min(24, rawWeave));
+              goalGy = Math.max(safeZMin, Math.min(safeZMax, targetGy + clampedWeave));
             }
 
             const faceDir =
@@ -3024,22 +3104,52 @@ export class AdventureManager {
         } else {
           player._manualWalkActive = false;
           player._manualSpeedRatio = 0;
-          // Simultaneous Run-and-Cast Corner/Hazard Glide during AUTO_ATTACK
-          const cornerCrowded =
-            !target.isColossalBoss &&
+          // Simultaneous Run-and-Cast Kiting Glide during AUTO_ATTACK
+          const avoidMag = Math.hypot(avoidVx, avoidVz);
+          const rangedKiteActive =
             isRanged &&
-            absDx < 155 &&
-            (player.x < minWalkX + 95 || player.x > maxWalkX - 95);
-          if (player.state === 'AUTO_ATTACK' && (Math.hypot(avoidVx, avoidVz) > 20 || cornerCrowded)) {
+            player.state === 'AUTO_ATTACK' &&
+            !target.isColossalBoss &&
+            (absDx < 225 || avoidMag > 20);
+          if (player.state === 'AUTO_ATTACK' && (avoidMag > 20 || rangedKiteActive)) {
             if (player.isHackAndSlashMelee?.()) {
               this.shiftEntityDepth(player, avoidVz * 0.65 * dt);
             } else {
-              const escDirX = player.x < (minWalkX + maxWalkX) * 0.5 ? 1 : -1;
-              const escDirZ = targetGy > ADVENTURE_DEPTH_MID_Y ? -1 : 1;
-              const glideVx = cornerCrowded ? escDirX * maxAutoVx * 0.72 + avoidVx * 0.5 : avoidVx * 0.65;
-              const glideVz = cornerCrowded ? escDirZ * maxAutoVz * 0.78 + avoidVz * 0.5 : avoidVz * 0.72;
-              player.x = Math.max(minWalkX, Math.min(maxWalkX, player.x + glideVx * dt));
-              this.shiftEntityDepth(player, glideVz * dt);
+              const awayDir = player.x >= target.x ? 1 : -1;
+              const awayRoom = awayDir > 0 ? maxWalkX - player.x : player.x - minWalkX;
+              const openDirX =
+                awayRoom >= 115
+                  ? awayDir
+                  : maxWalkX - player.x >= player.x - minWalkX
+                    ? 1
+                    : -1;
+              const nearCorner = player.x < minWalkX + 95 || player.x > maxWalkX - 95;
+              const kiteVx =
+                rangedKiteActive && absDx < 225
+                  ? openDirX * maxAutoVx * (absDx < 155 ? 0.78 : 0.56) + avoidVx * 0.60
+                  : avoidVx * 0.65;
+              const dzTarget = targetGy - pGy;
+              const cornerEscZ = targetGy > ADVENTURE_DEPTH_MID_Y ? -1 : 1;
+              const kiteVz =
+                avoidMag > 20 && Math.abs(avoidVz) > 16
+                  ? avoidVz * 0.72
+                  : nearCorner && absDx < 175
+                    ? cornerEscZ * maxAutoVz * 0.76
+                    : Math.abs(dzTarget) > 14
+                      ? Math.sign(dzTarget) * maxAutoVz * 0.52
+                      : 0;
+              const prevKiteX = player.x;
+              player.x = Math.max(minWalkX, Math.min(maxWalkX, player.x + kiteVx * dt));
+              const appliedDx = player.x - prevKiteX;
+              if (appliedDx !== 0) {
+                if (player._hnsState) {
+                  player._hnsState.startX += appliedDx;
+                  player._hnsState.destX += appliedDx;
+                }
+                if (Number.isFinite(player._beatStartX)) player._beatStartX += appliedDx;
+                if (Number.isFinite(player._beatTargetX)) player._beatTargetX += appliedDx;
+              }
+              this.shiftEntityDepth(player, kiteVz * dt);
               player.facing = target.x >= player.x ? 1 : -1;
               isMovingCombat = true;
             }

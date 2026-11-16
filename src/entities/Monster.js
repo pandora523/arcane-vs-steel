@@ -598,7 +598,7 @@ export class Monster extends Fighter {
         this.setState('SKILL');
         return;
       }
-      if (dist <= this.attackRange && dist >= 165 && absDz <= 140 && this.autoCooldown <= 0) {
+      if (dist <= this.attackRange && (dist >= 140 || corneredBehind) && absDz <= 140 && this.autoCooldown <= 0) {
         this.autoCooldown = this.autoInterval;
         this.setState('AUTO_ATTACK');
         return;
