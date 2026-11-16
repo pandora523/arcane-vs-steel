@@ -491,17 +491,23 @@ def draw_valkyrie_wings(
     wy: float,
     flap_deg: float = 0.0,
     sovereign: bool = False,
+    delta_dive: bool = False,
 ):
     """
     Majestic Symmetrical Twin 6-Pinion Crimson-Gold Feathered Dragon/Valkyrie Wings behind Freyja EX's torso!
       - Always draws BOTH `-X` (rear) and `+X` (foreshortened front-right) 6-pinion wings on EVERY row.
       - `poised` (`sovereign=False`): 3/4-depth symmetrical battle-wings clearly flanking both shoulders.
       - `sovereign` (`sovereign=True`): Grand full-span twin-wing spread (`Row 4`, `Row 2 V3`, `Row 3`, `Row 9`).
+      - `delta_dive` (`delta_dive=True`): Sleek swept-back Delta-V wingfold for supersonic Falcon Dive (`Row 4 F21..F24`).
     """
     layer = np.zeros((LH, LW, 4), dtype=np.uint8)
 
     for side in (-1, 1):
-        if sovereign:
+        if delta_dive:
+            arch_len = 20.5
+            arch_ang = math.radians((-118.0 - flap_deg * 0.4) if side < 0 else (-62.0 + flap_deg * 0.4))
+            pinion_scale = 0.92
+        elif sovereign:
             arch_len = 24.5
             arch_ang = math.radians((-136.0 - flap_deg * 0.7) if side < 0 else (-44.0 + flap_deg * 0.7))
             pinion_scale = 1.0
@@ -528,7 +534,10 @@ def draw_valkyrie_wings(
         for t_arch, plen, rel_deg in pinion_specs:
             bx = wx + (kx - wx) * t_arch
             by = (wy - 2.5) + (ky - (wy - 2.5)) * t_arch
-            base_deg = (-166.0 - flap_deg * 0.9 + rel_deg) if side < 0 else (-14.0 + flap_deg * 0.9 - rel_deg)
+            if delta_dive:
+                base_deg = (-116.0 + rel_deg * 0.45) if side < 0 else (-64.0 - rel_deg * 0.45)
+            else:
+                base_deg = (-166.0 - flap_deg * 0.9 + rel_deg) if side < 0 else (-14.0 + flap_deg * 0.9 - rel_deg)
             rad = math.radians(base_deg)
             ux, uy = math.cos(rad), math.sin(rad)
             nx, ny = -uy, ux
@@ -1046,6 +1055,7 @@ def compose_keypose(
     hair_billow=1.0,
     wing_flap=0.0,
     sovereign_wings=False,
+    delta_dive_wings=False,
     lance_hand_offset=(18.0, 3.0),
     off_hand_offset=(8.0, 2.0),
     lance_angle=12.0,
@@ -1061,7 +1071,7 @@ def compose_keypose(
     wx, wy = kp["wing_anchor"][0] + dx, kp["wing_anchor"][1] + dy
     hx, hy = kp["hair_anchor"][0] + dx, kp["hair_anchor"][1] + dy
 
-    draw_valkyrie_wings(canvas, wx, wy, flap_deg=wing_flap, sovereign=sovereign_wings)
+    draw_valkyrie_wings(canvas, wx, wy, flap_deg=wing_flap, sovereign=sovereign_wings, delta_dive=delta_dive_wings)
     draw_valkyrie_hair_waves(canvas, hx, hy, phase=hair_phase, billow=hair_billow)
 
     draw_valkyrie_ik_arm(canvas, sh_bx, sh_by, sh_fx + off_hand_offset[0], sh_fy + off_hand_offset[1], bend_sign=1.0, is_back=True)
@@ -1534,113 +1544,157 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
 
     # --------------------------------------------------------------------------
     # ROW 4: ULTIMATE & TRUE_ULTIMATE (`120..149`) — SOVEREIGN TWIN-WING RAGNAROK!
-    #   `F00..F03`: Grounded Cast + Sovereign Wings Unfold
-    #   `F04..F08`: Piercing Bahamut / Gungnir Lance Glide
-    #   `F09..F12`: Vertical `410px` Sky-Ascent (Sovereign Twin Wings Blazing)
-    #   `F13..F18`: Apex Command — Gungnir Aimed Downward (`+44 deg`)
-    #   `F19..F20`: Overhead Convergence Charge
-    #   `F21..F24`: Steep `+32 deg` Diagonal Falcon Spear-Dive (`K4_LEAP`)
-    #   `F25..F29`: Ragnarok Judgment Landing & Sovereign Wing Flare
+    #   `F00..F02` (`120..122`): Valhalla Awakening & Twin-Wing Unfold
+    #   `F03..F11` (`123..131`): 360-deg Aerial Valkyrie Spin / Pirouette + Gungnir Throw
+    #   `F12..F18` (`132..138`): Animated Overhead-to-Downward Aerial Spear-Throw Cycle
+    #   `F19..F20` (`139..140`): High Apex Dive-Coil
+    #   `F21..F24` (`141..144`): Steep Head-First (`54 deg`) Valkyrie Falcon Dive (Delta-V Wings + 52px Gungnir)
+    #   `F25..F29` (`145..149`): Ragnarok Judgment Landing & Sovereign Wing Flare
     # --------------------------------------------------------------------------
     if row == 4:
-        if f <= 3:
-            u = f / 3.0
+        if f <= 2:
+            u = f / 2.0
             return compose_keypose(
                 keyposes,
                 "K3_RISE",
                 dx=0.0,
-                dy=-2.0 * u,
+                dy=-3.0 * u,
                 hair_phase=tau_f * 2.0,
-                hair_billow=1.35,
-                wing_flap=12.0 * u,
+                hair_billow=1.45,
+                wing_flap=-4.0 + 18.0 * u,
                 sovereign_wings=True,
-                lance_hand_offset=(17.0, -1.0 - u * 2.0),
-                lance_angle=-42.0 - u * 14.0,
-                lance_fore=43.0,
+                lance_hand_offset=(16.5, -2.0 - u * 4.0),
+                lance_angle=-48.0 - u * 16.0,
+                lance_fore=42.0,
                 lance_back=12.0,
             )
-        if f <= 8:
-            u = (f - 4) / 4.0
-            return compose_keypose(
+        if f <= 11:
+            # Dynamic 360-deg aerial Valkyrie spin/pirouette (9 frames, 40 deg/frame) with billowing twin wings & whipping spear arm
+            u = (f - 3) / 9.0
+            spin_deg = u * 360.0
+            base_pose = compose_keypose(
                 keyposes,
-                "K2_LUNGE",
-                dx=12.0,
-                dy=-2.0,
-                hair_phase=tau_f * 3.0,
-                hair_billow=1.6,
-                wing_flap=16.0,
-                sovereign_wings=True,
-                lance_hand_offset=(17.5, 6.5),
-                lance_angle=10.0 - u * 4.0,
-                lance_fore=45.0,
-            )
-        if f <= 12:
-            u = (f - 9) / 3.0
-            return compose_keypose(
-                keyposes,
-                "K3_RISE",
+                "K4_LEAP" if (f % 2 == 0) else "K2_LUNGE",
                 dx=2.0,
-                dy=-8.0 - u * 3.0,
-                hair_phase=tau_f * 3.0,
-                hair_billow=1.6,
-                wing_flap=20.0,
+                dy=-6.0,
+                hair_phase=tau_f * 3.0 + u * math.tau,
+                hair_billow=1.40,
+                wing_flap=16.0 + math.sin(u * math.tau) * 8.0,
                 sovereign_wings=True,
-                lance_hand_offset=(18.5, -2.0),
-                lance_angle=-54.0,
-                lance_fore=44.0,
-                lance_back=12.0,
+                delta_dive_wings=False,
+                lance_hand_offset=(13.5, -3.5 + math.sin(u * math.tau) * 5.0),
+                lance_angle=-22.0 + math.sin(u * math.tau) * 42.0,
+                lance_fore=29.0,
+                lance_back=11.0,
             )
+            im_spin = Image.fromarray(base_pose, mode="RGBA").rotate(
+                -spin_deg, resample=Image.Resampling.NEAREST, center=(AX, 68)
+            )
+            centered_spin = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
+            centered_spin.paste(im_spin, (6, -5))
+            return np.array(centered_spin, dtype=np.uint8)
         if f <= 18:
-            u = (f - 13) / 5.0
+            # Animated Aerial Spear-Throw Cycle (`132..138`):
+            # `F12..F13`: High overhead windup -> `F14..F16`: explosive downward hurl -> `F17..F18`: follow-through & re-materialize
+            if f <= 13:
+                u = f - 12
+                return compose_keypose(
+                    keyposes,
+                    "K3_RISE",
+                    dx=1.0,
+                    dy=-5.0 - u * 1.5,
+                    rot_deg=-6.0,
+                    hair_phase=tau_f * 3.0,
+                    hair_billow=1.55,
+                    wing_flap=20.0 + u * 3.0,
+                    sovereign_wings=True,
+                    lance_hand_offset=(-6.0, -12.0),
+                    lance_angle=-138.0 + u * 4.0,
+                    lance_fore=35.0,
+                    lance_back=11.0,
+                    lance_in_front=False,
+                )
+            if f <= 16:
+                u = (f - 14) / 2.0
+                return compose_keypose(
+                    keyposes,
+                    "K4_LEAP",
+                    dx=6.0 + u * 4.0,
+                    dy=-7.0 + u * 2.0,
+                    rot_deg=6.0 + u * 6.0,
+                    hair_phase=tau_f * 3.0,
+                    hair_billow=1.6,
+                    wing_flap=16.0 - u * 12.0,
+                    sovereign_wings=True,
+                    lance_hand_offset=(22.0, 10.0),
+                    lance_angle=48.0,
+                    lance_fore=45.0,
+                    lance_back=12.0,
+                    lance_in_front=True,
+                )
+            u = f - 17
             return compose_keypose(
                 keyposes,
                 "K4_LEAP",
-                dx=5.0,
-                dy=-9.0 + math.sin(u * math.pi) * 1.5,
+                dx=6.0 - u * 3.0,
+                dy=-7.5 - u * 1.5,
+                rot_deg=4.0 * (1.0 - u),
                 hair_phase=tau_f * 3.0,
-                hair_billow=1.55,
-                wing_flap=16.0 + math.sin(u * math.tau) * 5.0,
+                hair_billow=1.5,
+                wing_flap=8.0 + u * 12.0,
                 sovereign_wings=True,
-                lance_hand_offset=(19.0, 9.0),
-                lance_angle=44.0,
-                lance_fore=45.0,
+                lance_hand_offset=(14.0 - u * 10.0, 4.0 - u * 10.0),
+                lance_angle=18.0 - u * 92.0,
+                lance_fore=32.0 + u * 6.0,
                 lance_back=11.0,
+                lance_in_front=(u < 0.5),
             )
         if f <= 20:
+            # High Apex Dive-Coil (`139..140`)
             u = f - 19
             return compose_keypose(
                 keyposes,
                 "K4_LEAP",
                 dx=4.0,
-                dy=-10.0,
+                dy=-9.0 - u * 1.5,
+                rot_deg=12.0 + u * 10.0,
                 hair_phase=tau_f * 3.0,
                 hair_billow=1.6,
-                wing_flap=22.0,
+                wing_flap=22.0 - u * 6.0,
                 sovereign_wings=True,
-                lance_hand_offset=(-2.0, -8.0),
-                lance_angle=-134.0 + u * 18.0,
-                lance_fore=42.0,
-                lance_back=12.0,
+                delta_dive_wings=False,
+                lance_hand_offset=(-4.0, -9.0),
+                lance_angle=-136.0 + u * 16.0,
+                lance_fore=35.0,
+                lance_back=11.0,
                 lance_in_front=False,
             )
         if f <= 24:
-            # Steep diagonal Falcon Spear-Dive (`141..144`)!
+            # Steep Head-First Valkyrie Falcon Dive (`141..144`): `54 deg` nose-down aerodynamic pitch + Delta-V wings + 52px Gungnir!
             u = (f - 21) / 3.0
-            return compose_keypose(
+            dive_base = compose_keypose(
                 keyposes,
                 "K4_LEAP",
-                dx=10.0,
-                dy=-6.0 + u * 1.2,
-                rot_deg=18.0,
-                hair_phase=tau_f * 3.0,
-                hair_billow=1.7,
-                wing_flap=-8.0 - u * 4.0,
+                dx=2.0,
+                dy=-6.0 + math.sin(u * math.tau) * 1.0,
+                rot_deg=6.0,
+                hair_phase=tau_f * 3.0 + u * 0.8,
+                hair_billow=1.65,
+                wing_flap=-6.0 - u * 4.0,
                 sovereign_wings=True,
-                lance_hand_offset=(24.0, 12.0),
-                lance_angle=32.0 + u * 2.0,
-                lance_fore=48.0,
+                delta_dive_wings=True,
+                lance_hand_offset=(18.0, 2.0),
+                lance_angle=4.0 + u * 2.0,
+                lance_fore=52.0,
                 lance_back=12.0,
+                lance_in_front=True,
             )
+            im_dive = Image.fromarray(dive_base, mode="RGBA").rotate(
+                -54.0, resample=Image.Resampling.NEAREST, center=(AX, 60)
+            )
+            shifted_dive = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
+            shifted_dive.paste(im_dive, (6, -5))
+            return np.array(shifted_dive, dtype=np.uint8)
         u = (f - 25) / 4.0
         return compose_keypose(
             keyposes,
