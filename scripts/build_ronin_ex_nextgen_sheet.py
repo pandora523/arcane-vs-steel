@@ -26,6 +26,7 @@ Architecture (FFBE / Last Cloudia / Grand Summoners Paradigm):
 from collections import deque
 import math
 from pathlib import Path
+import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -39,7 +40,7 @@ KEYPOSES_REF = SPRITES_DIR / "ronin_ex_keyposes_ref.jpg"
 OUT_SHEET = SPRITES_DIR / "ronin_ex_sheet.png"
 OUT_PORTRAIT = SPRITES_DIR / "ronin_ex_portrait.png"
 
-QA_DIR = Path("/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch")
+QA_DIR = Path("/Users/rei/.gemini/antigravity/brain/2b67fecd-73c5-4987-946f-3fcc4c35a185/scratch")
 
 # Wide-canvas Next-Gen framing constants
 LOG_W = 160
@@ -295,11 +296,18 @@ def load_rigs() -> dict:
     ]) & (~m_r_thigh)
 
     # Dedicated 3-segment (+X forward-facing) leg parts for Row 1 WALK bipedal crossover
+    # Keep upper dark hakama trouser beneath tasset while avoiding purple tasset corner; split shin cleanly at ankle y=452.
+    m_w_tasset_corner = poly_mask(w, h, [
+        (318, 320), (350, 320), (350, 354), (318, 354),
+    ])
+    m_w_thigh = poly_mask(w, h, [
+        (268, 326), (350, 326), (348, 396), (268, 396),
+    ]) & (~m_w_tasset_corner)
     m_w_shin = poly_mask(w, h, [
-        (274, 378), (366, 378), (368, 474), (274, 474),
-    ]) & (~m_r_thigh)
+        (274, 386), (348, 386), (344, 454), (274, 454),
+    ])
     m_w_foot = poly_mask(w, h, [
-        (286, 468), (378, 468), (378, 510), (286, 510),
+        (296, 446), (378, 446), (378, 494), (296, 494),
     ])
 
     def darken_part_copy(part_dict: dict, rgb_scale: float = 0.72) -> dict:
@@ -322,9 +330,10 @@ def load_rigs() -> dict:
             "pivot": part_dict["pivot"],
         }
 
-    w_thigh = extract_part(rgba_base, m_r_thigh, (302.0, 340.0))
-    w_shin = extract_part(rgba_base, m_w_shin, (308.0, 392.0))
-    w_foot = extract_part(rgba_base, m_w_foot, (324.0, 474.0))
+    r_thigh = extract_part(rgba_base, m_r_thigh, (302.0, 340.0))
+    w_thigh = extract_part(rgba_base, m_w_thigh, (302.0, 340.0))
+    w_shin = extract_part(rgba_base, m_w_shin, (314.0, 392.0))
+    w_foot = extract_part(rgba_base, m_w_foot, (320.0, 452.0))
 
     parts = {
         "hair": extract_part(rgba_base, m_hair, (254.0, 96.0)),
@@ -335,7 +344,7 @@ def load_rigs() -> dict:
         "r_pauldron": extract_part(rgba_base, m_r_pauldron, (312.0, 148.0)),
         "l_thigh": extract_part(rgba_base, m_l_thigh, (234.0, 340.0)),
         "l_shin": extract_part(rgba_base, m_l_shin, (206.0, 392.0)),
-        "r_thigh": w_thigh,
+        "r_thigh": r_thigh,
         "r_shin": extract_part(rgba_base, m_r_shin, (308.0, 392.0)),
         "w_thigh": w_thigh,
         "w_shin": w_shin,
@@ -902,166 +911,262 @@ def draw_obi_tassels_160(
 
 
 # ==============================================================================
-# 4. HAND-SCULPTED 4-BAND SERRATED RAIJIN LIGHTNING SMEARS
+# 4. SLEEK DARK-SAMURAI ZANTETSUKEN IAIDO VACUUM GLEAMS & RAIJIN THUNDER SPARKS
 # ==============================================================================
 
-_SMEAR_BAYER_4X4 = (
-    (0.0625, 0.5625, 0.1875, 0.6875),
-    (0.8125, 0.3125, 0.9375, 0.4375),
-    (0.2500, 0.7500, 0.1250, 0.6250),
-    (1.0000, 0.5000, 0.8750, 0.3750),
-)
-
-
-def set_smear_px(buf: np.ndarray, x: int, y: int, col: tuple[int, int, int, int]):
-    """
-    Smoothly radial/margin-tapers smear pixels before x = 8..151, y = 8..114 logical
-    using ordered 4x4 Bayer stippling so ZERO cells ever suffer flat straight-line margin cuts!
-    """
-    if x < 8 or x > 151 or y < 8 or y > 114:
-        return
-    edge_d = min(x - 8, 151 - x, y - 8, 114 - y)
-    if edge_d < 6:
-        keep_prob = (edge_d + 0.5) / 6.5
-        if keep_prob < _SMEAR_BAYER_4X4[y & 3][x & 3]:
-            return
-    buf[y, x] = col
-
-
-def draw_raijin_crescent_smear_160(
+def set_gleam_px(
     buf: np.ndarray,
-    cx: float,
-    cy: float,
-    r_outer: float,
-    r_inner_base: float,
-    deg_start: float,
-    deg_end: float,
-    tilt_y: float = 0.92,
+    x: int,
+    y: int,
+    col: tuple[int, int, int, int],
+    max_x: int = 154,
+):
+    if 6 <= x <= max_x and 6 <= y <= 113:
+        buf[y, x] = col
+
+
+def _draw_gleam_streak(
+    buf: np.ndarray,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    curve_px: float = 2.0,
+    thickness: int = 2,
+    core_col: tuple = C_WHITE,
+    mid_col: tuple = C_CYAN_BRIGHT,
+    shadow_col: tuple = C_INDIGO_MID,
+    max_x: int = 155,
+    fade_mode: bool = False,
+):
+    dx = x1 - x0
+    dy = y1 - y0
+    dist = max(4.0, math.hypot(dx, dy))
+    ux, uy = dx / dist, dy / dist
+    nx, ny = -uy, ux
+    steps = max(12, int(math.ceil(dist * 1.5)))
+
+    for i in range(steps + 1):
+        u = i / steps
+        # Fade mode skips alternating start pixels to depict dissipating vacuum dust
+        if fade_mode and (u < 0.25 or (i % 3 == 0)):
+            continue
+        bow = curve_px * 4.0 * u * (1.0 - u)
+        px = x0 + dx * u + nx * bow
+        py = y0 + dy * u + ny * bow
+        ix, iy = int(round(px)), int(round(py))
+
+        # Taper cleanly to a 1px logical (2px output) needle tip at both ends
+        is_waist = 0.16 <= u <= 0.80
+        is_mid = 0.08 <= u <= 0.90
+
+        if thickness >= 2 and is_waist:
+            set_gleam_px(
+                buf,
+                int(round(px - nx * 1.0)),
+                int(round(py - ny * 1.0)),
+                C_OUTLINE if u < 0.55 else shadow_col,
+                max_x=max_x,
+            )
+
+        if thickness >= 3 and 0.24 <= u <= 0.72:
+            set_gleam_px(
+                buf,
+                int(round(px - nx * 2.0)),
+                int(round(py - ny * 2.0)),
+                C_INDIGO_DARK,
+                max_x=max_x,
+            )
+
+        if u < 0.16:
+            c_main = shadow_col
+        elif u < 0.42:
+            c_main = mid_col
+        elif u < 0.82:
+            c_main = C_CYAN_ICE if (thickness == 1 and u < 0.65) else core_col
+        else:
+            c_main = core_col
+        set_gleam_px(buf, ix, iy, c_main, max_x=max_x)
+
+        if thickness >= 2 and is_mid:
+            edge_col = core_col if u >= 0.22 else C_CYAN_ICE
+            set_gleam_px(
+                buf,
+                int(round(px + nx * 0.85)),
+                int(round(py + ny * 0.85)),
+                edge_col,
+                max_x=max_x,
+            )
+
+
+def _draw_jagged_raijin_spark(
+    buf: np.ndarray,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    segs: int = 5,
+    amp: float = 3.2,
+    seed: int = 1,
+    col_a: tuple = C_CYAN_BRIGHT,
+    col_b: tuple = C_GOLD_LIGHT,
+    max_x: int = 155,
+):
+    dx = x1 - x0
+    dy = y1 - y0
+    dist = max(2.0, math.hypot(dx, dy))
+    nx, ny = -dy / dist, dx / dist
+    pts = [(x0, y0)]
+    for s in range(1, segs):
+        u = s / segs
+        sgn = 1.0 if ((s + seed) % 2 == 0) else -1.0
+        jitter = amp * sgn * math.sin(u * math.pi)
+        pts.append((x0 + dx * u + nx * jitter, y0 + dy * u + ny * jitter))
+    pts.append((x1, y1))
+
+    for s in range(len(pts) - 1):
+        ax, ay = pts[s]
+        bx, by = pts[s + 1]
+        n = max(2, int(math.ceil(math.hypot(bx - ax, by - ay) * 1.4)))
+        col = col_b if (s == len(pts) - 2 and seed % 2 == 0) else (C_WHITE if s % 2 == 1 else col_a)
+        for k in range(n + 1):
+            t = k / n
+            set_gleam_px(buf, int(round(ax + (bx - ax) * t)), int(round(ay + (by - ay) * t)), col, max_x=max_x)
+
+
+def draw_iaido_vacuum_gleam_160(
+    buf: np.ndarray,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    style: str = "horizon",
     intensity: float = 1.0,
-    tooth_freq: float = 8.0,
+    max_x: int = 154,
+    seed: int = 1,
 ):
     """
-    4-Band FFBE / Last Cloudia Battojutsu Lightning-Katana Crescent Smear:
-      #ffffff outer razor rim -> #38bdf8 vivid sky-cyan -> #6366f1 storm indigo
-      -> #1e1b4b deep night-violet + golden (#fde047 / #f59e0b) lightning sawtooth inner teeth!
+    Sleek Dark-Samurai Zantetsuken Iaido Vacuum Gleam:
+      Razor-sharp 1-3px stepped-pixel cold-steel/indigo/cyan sword-gleam streaks
+      + jagged Raijin thunder sparks (0 chunky banana crescents, 0 U-circle vortexes!).
     """
-    a0 = math.radians(deg_start)
-    a1 = math.radians(deg_end)
-    if a1 < a0:
-        a0, a1 = a1, a0
-    span = max(0.08, a1 - a0)
+    fade_mode = intensity < 0.72
+    thick_main = 3 if (style == "zantetsu" and intensity >= 0.90) else (2 if intensity >= 0.72 else 1)
 
-    xmin = max(8, int(math.floor(cx - r_outer - 4)))
-    xmax = min(151, int(math.ceil(cx + r_outer + 4)))
-    ymin = max(8, int(math.floor(cy - r_outer * tilt_y - 4)))
-    ymax = min(114, int(math.ceil(cy + r_outer * tilt_y + 4)))
+    if style == "rising":
+        # Ascending Kiri-age diagonal Zantetsuken gleam
+        _draw_gleam_streak(
+            buf, x0, y0, x1, y1,
+            curve_px=3.0, thickness=thick_main,
+            core_col=C_WHITE, mid_col=C_CYAN_BRIGHT, shadow_col=C_INDIGO_MID,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 18.0, y0 - 7.0, x1 - 4.0, y1 - 8.0,
+            curve_px=1.5, thickness=1,
+            core_col=C_CYAN_ICE, mid_col=C_INDIGO_BRIGHT, shadow_col=C_INDIGO_DARK,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 24.0, y0 + 8.0, x1 - 8.0, y1 + 9.0,
+            curve_px=-1.0, thickness=1,
+            core_col=C_CYAN_BRIGHT, mid_col=C_INDIGO_MID, shadow_col=C_OUTLINE,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+    elif style == "cross":
+        # Twin crossed supersonic Shunpo horizontal + diagonal thrust-gleam needles
+        _draw_gleam_streak(
+            buf, x0, y0, x1, y1,
+            curve_px=-1.2, thickness=thick_main,
+            core_col=C_WHITE, mid_col=C_CYAN_BRIGHT, shadow_col=C_INDIGO_MID,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 16.0, y0 - 13.0, x1 - 5.0, y1 + 11.0,
+            curve_px=1.6, thickness=2 if not fade_mode else 1,
+            core_col=C_CYAN_ICE, mid_col=C_CYAN_BRIGHT, shadow_col=C_INDIGO_MID,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 22.0, y0 + 12.0, x1 - 7.0, y1 - 12.0,
+            curve_px=-1.4, thickness=1,
+            core_col=C_WHITE, mid_col=C_INDIGO_BRIGHT, shadow_col=C_INDIGO_DARK,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+    elif style == "zantetsu":
+        # Monumental Morote Zantetsuken horizon-cleaving triple razor vacuum needles
+        _draw_gleam_streak(
+            buf, x0, y0, x1, y1,
+            curve_px=-2.2, thickness=thick_main,
+            core_col=C_WHITE, mid_col=C_CYAN_BRIGHT, shadow_col=C_INDIGO_MID,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 14.0, y0 - 11.0, x1 - 3.0, y1 - 6.0,
+            curve_px=-1.2, thickness=2 if not fade_mode else 1,
+            core_col=C_CYAN_ICE, mid_col=C_CYAN_BRIGHT, shadow_col=C_INDIGO_MID,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 18.0, y0 + 10.0, x1 - 6.0, y1 + 8.0,
+            curve_px=1.4, thickness=1,
+            core_col=C_WHITE, mid_col=C_INDIGO_BRIGHT, shadow_col=C_INDIGO_DARK,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        if not fade_mode:
+            _draw_gleam_streak(
+                buf, x0 + 28.0, y0 - 20.0, x1 - 10.0, y1 - 15.0,
+                curve_px=0.8, thickness=1,
+                core_col=C_STEEL_LIGHT, mid_col=C_INDIGO_BRIGHT, shadow_col=C_INDIGO_DARK,
+                max_x=max_x, fade_mode=False,
+            )
+    else:
+        # "horizon": Sleek Nukitsuke horizontal-slight-angled vacuum gleam
+        _draw_gleam_streak(
+            buf, x0, y0, x1, y1,
+            curve_px=-1.8, thickness=thick_main,
+            core_col=C_WHITE, mid_col=C_CYAN_BRIGHT, shadow_col=C_INDIGO_MID,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 16.0, y0 - 7.0, x1 - 5.0, y1 - 6.0,
+            curve_px=-0.8, thickness=1,
+            core_col=C_CYAN_ICE, mid_col=C_INDIGO_BRIGHT, shadow_col=C_INDIGO_DARK,
+            max_x=max_x, fade_mode=fade_mode,
+        )
+        _draw_gleam_streak(
+            buf, x0 + 22.0, y0 + 7.0, x1 - 9.0, y1 + 7.0,
+            curve_px=0.9, thickness=1,
+            core_col=C_STEEL_LIGHT, mid_col=C_CYAN_DEEP, shadow_col=C_INDIGO_DARK,
+            max_x=max_x, fade_mode=fade_mode,
+        )
 
-    for py in range(ymin, ymax + 1):
-        dy = (py - cy) / max(0.22, tilt_y)
-        for px in range(xmin, xmax + 1):
-            dx = px - cx
-            r = math.hypot(dx, dy)
-            if r > r_outer + 1.0 or r < r_inner_base * 0.42:
-                continue
-            ang = math.atan2(dy, dx)
-            while ang < a0 - math.pi:
-                ang += 2.0 * math.pi
-            while ang > a0 + math.pi:
-                ang -= 2.0 * math.pi
-            if ang < a0 or ang > a1:
-                continue
+    # Jagged Raijin thunder sparks crackling along the vacuum cut corridor
+    n_sparks = 3 if intensity >= 0.85 else 2
+    for k in range(n_sparks):
+        u0 = 0.28 + k * 0.24
+        u1 = min(0.96, u0 + 0.30)
+        sx0 = x0 + (x1 - x0) * u0
+        sy0 = y0 + (y1 - y0) * u0 + ((-1) ** k) * (4.0 + k * 2.5)
+        sx1 = x0 + (x1 - x0) * u1
+        sy1 = y0 + (y1 - y0) * u1 + ((-1) ** (k + 1)) * (5.5 + k * 2.0)
+        _draw_jagged_raijin_spark(
+            buf, sx0, sy0, sx1, sy1,
+            segs=4, amp=3.0, seed=seed + k * 3,
+            col_a=C_CYAN_BRIGHT if k % 2 == 0 else C_INDIGO_BRIGHT,
+            col_b=C_GOLD_LIGHT,
+            max_x=max_x,
+        )
 
-            u = (ang - a0) / span
-            taper = math.sin(min(1.0, max(0.0, u)) * math.pi) ** 0.50
-            if u > 0.72:
-                taper = max(taper, 0.80 * (1.0 - (u - 0.72) / 0.32))
-
-            # Sharp jagged lightning sawtooth inner cutout
-            tri = abs(((u * tooth_freq * 2.0) % 2.0) - 1.0)
-            tooth = (tri ** 0.75) * 6.2 * (0.35 + 0.65 * (1.0 - u)) * intensity
-            r_in = r_inner_base + (r_outer - r_inner_base) * (1.0 - taper * intensity) + tooth
-            if r < r_in:
-                continue
-
-            band_w = max(1.5, r_outer - r_in)
-            v = (r - r_in) / band_w  # 0.0 = inner serrated tooth, 1.0 = outer razor edge
-
-            if v >= 0.94 or r >= r_outer - 0.55:
-                col = C_OUTLINE
-            elif v >= 0.77:
-                col = C_WHITE
-            elif v >= 0.52:
-                col = C_CYAN_BRIGHT
-            elif v >= 0.28:
-                col = C_INDIGO_BRIGHT
-            elif v >= 0.14:
-                col = C_INDIGO_DARK
-            else:
-                col = C_GOLD_LIGHT if (tri > 0.52 or int((px + py) * 0.5) % 2 == 0) else C_GOLD_MID
-
-            set_smear_px(buf, px, py, col)
-
-    # Trailing storm-feather streaks & golden lightning arcs across the smear fan
-    n_arcs = 5 if intensity >= 0.85 else 3
-    for k in range(n_arcs):
-        au0 = a0 + span * (0.14 + 0.18 * k)
-        au1 = min(a1, au0 + span * 0.22)
-        rm = (r_outer * 0.82 + r_inner_base * 0.18) - (k % 2) * 4.5
-        mx = cx + math.cos((au0 + au1) * 0.5) * (rm + 2.8)
-        my = cy + math.sin((au0 + au1) * 0.5) * (rm + 2.8) * tilt_y
-        x0 = cx + math.cos(au0) * rm
-        y0 = cy + math.sin(au0) * rm * tilt_y
-        x1 = cx + math.cos(au1) * (rm - 2.0)
-        y1 = cy + math.sin(au1) * (rm - 2.0) * tilt_y
-        if 10 <= y0 <= 112 and 10 <= my <= 112 and 10 <= y1 <= 112 and x0 <= 149 and mx <= 149 and x1 <= 149:
-            lcol = C_GOLD_LIGHT if (k % 2 == 0) else C_WHITE
-            draw_line_px(buf, x0, y0, mx, my, lcol, r=0)
-            draw_line_px(buf, mx, my, x1, y1, C_CYAN_BRIGHT, r=0)
-
-
-def draw_raijin_vortex_smear_160(
-    buf: np.ndarray,
-    cx: float,
-    cy: float,
-    rx: float,
-    ry: float,
-    intensity: float = 1.0,
-    phase_deg: float = 0.0,
-):
-    """
-    2.5D Perspective-Foreshortened Supersonic Shunpo Horizontal Vortex Smear (Row 2 V2 F17-F18).
-    """
-    xmin = max(8, int(math.floor(cx - rx * 0.65 - 3)))
-    xmax = min(151, int(math.ceil(cx + rx + 3)))
-    ymin = max(8, int(math.floor(cy - ry - 4)))
-    ymax = min(114, int(math.ceil(cy + ry + 4)))
-    ph = math.radians(phase_deg)
-
-    for py in range(ymin, ymax + 1):
-        ny = (py - cy) / max(1.0, ry)
-        for px in range(xmin, xmax + 1):
-            nx = (px - cx) / max(1.0, rx if px >= cx else rx * 0.60)
-            r = math.hypot(nx, ny)
-            if r > 1.03 or r < 0.34:
-                continue
-            ang = math.atan2(ny, nx) + ph
-            front_boost = 0.55 + 0.45 * max(0.0, math.cos(ang))
-            saw = abs(((ang * 4.5 / math.pi) % 2.0) - 1.0) * 0.14
-            r_in = 0.42 + (1.0 - front_boost * intensity) * 0.34 + saw
-            if r < r_in:
-                continue
-            v = (r - r_in) / max(0.08, 1.0 - r_in)
-            if v >= 0.93:
-                col = C_OUTLINE
-            elif v >= 0.74:
-                col = C_WHITE
-            elif v >= 0.48:
-                col = C_CYAN_BRIGHT
-            elif v >= 0.24:
-                col = C_INDIGO_BRIGHT
-            else:
-                col = C_GOLD_LIGHT if saw > 0.07 else C_INDIGO_DARK
-            set_smear_px(buf, px, py, col)
+    # Tiny cold-steel & Raijin gold vacuum spark motes
+    for m in range(6 if intensity >= 0.72 else 4):
+        mu = 0.34 + 0.11 * m
+        mx = int(round(x0 + (x1 - x0) * mu))
+        my = int(round(y0 + (y1 - y0) * mu + (((m * 7 + seed) % 13) - 6) * 2.2))
+        mcol = C_GOLD_LIGHT if m % 3 == 0 else (C_WHITE if m % 2 == 0 else C_CYAN_BRIGHT)
+        set_gleam_px(buf, mx, my, mcol, max_x=max_x)
+        if intensity >= 0.90 and m % 2 == 0:
+            set_gleam_px(buf, mx + 1, my, C_CYAN_ICE, max_x=max_x)
 
 
 # ==============================================================================
@@ -1323,32 +1428,21 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
                 is_front=True, bend_sign=cfg.get("bend_f", 1.0),
             )
 
-    # Hand-sculpted 4-band serrated Raijin smears!
+    # Sleek Dark-Samurai Zantetsuken Iaido vacuum gleams & Raijin thunder sparks!
     smear = cfg.get("smear")
     if smear:
         kind = smear["kind"]
-        if kind == "crescent":
-            draw_raijin_crescent_smear_160(
+        if kind == "gleam":
+            draw_iaido_vacuum_gleam_160(
                 fg_buf,
-                cx=ax + smear.get("cx", 14.0),
-                cy=ay + smear.get("cy", -46.0),
-                r_outer=smear["r_outer"],
-                r_inner_base=smear["r_inner"],
-                deg_start=smear["deg_start"],
-                deg_end=smear["deg_end"],
-                tilt_y=smear.get("tilt_y", 0.90),
+                x0=ax + smear.get("x0", 18.0),
+                y0=ay + smear.get("y0", -44.0),
+                x1=ax + smear.get("x1", 88.0),
+                y1=ay + smear.get("y1", -44.0),
+                style=smear.get("style", "horizon"),
                 intensity=smear.get("intensity", 1.0),
-                tooth_freq=smear.get("tooth_freq", 8.0),
-            )
-        elif kind == "vortex":
-            draw_raijin_vortex_smear_160(
-                fg_buf,
-                cx=ax + smear.get("cx", 18.0),
-                cy=ay + smear.get("cy", -45.0),
-                rx=smear["rx"],
-                ry=smear["ry"],
-                intensity=smear.get("intensity", 1.0),
-                phase_deg=smear.get("phase_deg", 0.0),
+                max_x=smear.get("max_x", 155),
+                seed=smear.get("seed", 1),
             )
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
@@ -1395,14 +1489,19 @@ def build_row0_idle(rigs: dict) -> list[Image.Image]:
 _WALK_GAIT_KFS = (
     # (u, world_thigh_deg, world_shin_deg, world_foot_deg, hip_yaw_px, knee_lift_px)
     # Convention: -deg = FORWARD (+X, right), +deg = BACKWARD (-X, left).
-    (0.00, -29.0, -21.0, -9.0,  +2.2,  0.0),  # Front Heel-Strike (foot planted at AX + 12..14)
-    (0.14, -15.5,  -5.0,  0.0,  +1.2,  0.0),  # Weight Acceptance (flat sole)
-    (0.25,  +1.5,  +4.5,  0.0,   0.0,  0.0),  # Mid-Stance Vertical Support right under AX
-    (0.50, +27.5, +35.0, +16.0, -2.2,  0.0),  # Rear Push-Off (foot trailing at AX - 12..14)
-    (0.64,  +7.0, +52.0, +22.0, -0.8, -2.2),  # Toe-Off & High Knee Fold Behind
-    (0.75, -15.5, +24.0,  +5.0, +0.6, -2.6),  # Mid-Swing PASSING CROSSOVER directly over AX!
-    (0.90, -30.5, -10.5,  -8.0, +1.9, -0.8),  # Terminal Swing / Forward Reach
-    (1.00, -29.0, -21.0, -9.0,  +2.2,  0.0),  # Seamless Loop Wrap
+    # Single-stance windows (F01..F06 & F16..F21): planted sole remains strictly in y=[224..230]
+    # traveling -X while lifted swing foot clears cleanly above y=222 and tucks heel behind knee!
+    (0.000, -27.0, -17.0,  -4.0, +2.0,  0.0),  # Front Contact (heel plant forward +X)
+    (0.035, -24.0, -13.0,   0.0, +1.8,  0.0),  # F01 flat sole plant!
+    (0.140, -11.0,  -3.0,   0.0, +0.9,  0.0),  # Weight acceptance
+    (0.250,  +2.5,  +5.0,   0.0,  0.0,  0.0),  # Mid-stance directly under hip
+    (0.375, +15.0, +19.0,  +4.0, -1.0,  0.0),  # Heel rise / push forward
+    (0.500, +23.0, +33.0, +10.0, -1.9, -1.2),  # Rear Push-Off (toe leaves floor next frame!)
+    (0.535, +18.0, +46.0,  +6.0, -1.5, -3.0),  # F01/F16 swing leg clears cleanly above y=223
+    (0.640,  +3.0, +58.0,  -2.0, -0.5, -4.4),  # High knee fold behind!
+    (0.750, -14.0, +36.0,  -5.0, +0.5, -4.6),  # Mid-swing PASSING CROSSOVER directly over AX!
+    (0.880, -28.0,  -4.0,  -7.0, +1.6, -2.0),  # Terminal swing reach
+    (1.000, -27.0, -17.0,  -4.0, +2.0,  0.0),  # Seamless Loop Wrap
 )
 
 
@@ -1421,29 +1520,28 @@ def _sample_walk_gait_ronin(u: float):
 
 def build_row1_walk(rigs: dict) -> list[Image.Image]:
     """
-    Row 1: Authentic Human Bipedal Crossover Samurai Walk Cycle (30 frames, 0% crab-walk!):
-      - Both hip sockets centered inward (`inward_frac = 0.85`) under the shared spine/pelvis X
-      - Standing straddle rest angles (`th0_thigh = -6.58 deg`, `th0_shin = -11.31 deg`) neutralized
+    Row 1: Authentic Human Bipedal Crossover Samurai Walk Cycle (30 frames, 0% crab-walk, 0% moonwalk!):
+      - Both hip sockets centered inward (`inward_frac = 0.94`) under the shared spine/pelvis X
+      - Standing straddle rest angles (`th0_thigh = -13.00 deg`, `th0_shin = -5.71 deg`) neutralized
       - `u_l = f / 30.0` and `u_r = (u_l + 0.5) % 1.0` driven 180 deg out of phase with far leg (`r_*`)
-        rendered BEHIND near leg (`l_*`)
-      - F00: Left boot plants forward (`AX + 12..14`), Right boot trails (`AX - 12..14`)
-      - F07: Right knee lifts & crosses directly over `AX` (`foot X sep <= 4px` logical / `<= 8px` 320x240)
-      - F15: Right boot plants forward (`AX + 12..14`), Left boot trails (`AX - 12..14`)
-      - F22: Left knee lifts & crosses directly over `AX`
+        rendered strictly BEHIND near leg (`l_*`)
+      - F01->F06 & F16->F21: true single-stance planted sole travels `-X` (`stanceDelta <= -8.0px`) while
+        lifted swing heel tucks naturally backward behind knee!
+      - F07 / F22: passing crossover directly over `AX` (`minBootSpan <= 0.55 * maxBootSpan`, `maxBootSpan >= 56px`)
       - Crisp two-handed Chudan-no-Kamae Thunder-Odachi carry, locked ground sole (`y = 115`), `maxAdjTopDelta <= 4px`.
     """
     parts = rigs["parts"]
-    th0_thigh = math.degrees(math.atan2(-(308.0 - 302.0), 392.0 - 340.0))  # -6.58 deg
-    th0_shin = math.degrees(math.atan2(-(324.0 - 308.0), 474.0 - 392.0))   # -11.31 deg
-    len_thigh = math.hypot(308.0 - 302.0, 392.0 - 340.0) * SCALE           # 9.45 logical px
-    len_shin = math.hypot(324.0 - 308.0, 474.0 - 392.0) * SCALE            # 15.07 logical px
+    th0_thigh = math.degrees(math.atan2(-(314.0 - 302.0), 392.0 - 340.0))  # -13.00 deg
+    th0_shin = math.degrees(math.atan2(-(320.0 - 314.0), 452.0 - 392.0))   # -5.71 deg
+    len_thigh = math.hypot(314.0 - 302.0, 392.0 - 340.0) * SCALE           # 9.63 logical px
+    len_shin = math.hypot(320.0 - 314.0, 452.0 - 392.0) * SCALE            # 10.88 logical px
 
     # Neutralize wide standing straddle (`inward_frac = 0.94` -> 94% inward to central pelvis X)
     lx0 = ANCHOR_X_160 + (234.0 - SPINE_X_512) * SCALE
     rx0 = ANCHOR_X_160 + (302.0 - SPINE_X_512) * SCALE
     mid_hip_x = 0.5 * (lx0 + rx0) - 0.3
     rem_half = 0.5 * (rx0 - lx0) * (1.0 - 0.94)
-    base_hip_y = ANCHOR_Y_120 + (340.0 - GROUND_Y_512) * SCALE
+    base_hip_y = ANCHOR_Y_120 + (340.0 - GROUND_Y_512) * SCALE + 2.5
 
     frames = []
     for f in range(30):
@@ -1454,16 +1552,8 @@ def build_row1_walk(rigs: dict) -> list[Image.Image]:
         lt_w, ls_w, lf_w, lyaw, l_klift = _sample_walk_gait_ronin(u_l)
         rt_w, rs_w, rf_w, ryaw, r_klift = _sample_walk_gait_ronin(u_r)
 
-        stride_scale = 0.88
-        lt_w *= stride_scale
-        ls_w *= stride_scale
-        lf_w *= stride_scale
-        rt_w *= stride_scale
-        rs_w *= stride_scale
-        rf_w *= stride_scale
-
         # Subtle 2-step walk cadence (`cos(2 * ph)` -> <= 2px in 320x240, maxAdjTopDelta <= 2px!)
-        bob = 0.75 * math.cos(2.0 * ph)
+        bob = 0.70 * math.cos(2.0 * ph)
         torso_lean = 3.8 + 0.75 * math.sin(2.0 * ph)
         head_nod = -1.2 + 0.45 * math.sin(2.0 * ph)
         rad_t = math.radians(torso_lean)
@@ -1630,7 +1720,7 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "energy": 0.45 + 0.35 * p,
             }))
         elif f == 3:
-            # 1-FRAME SNAP: Nukitsuke lightning draw-slash! Front reach x_160 ~ 142 (x_320 = 284 > 260)
+            # 1-FRAME SNAP: Nukitsuke Zantetsuken vacuum gleam! Front reach x_160 ~ 151 (x_320 = 302)
             frames.append(render_keypose_frame(rigs, "K2_LUNGE", {
                 "dx": 9.0,
                 "dy": 0.0,
@@ -1647,16 +1737,14 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 38.0,
                 "energy": 1.0,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 15.0,
-                    "cy": -44.0,
-                    "r_outer": 66.0,
-                    "r_inner": 28.0,
-                    "deg_start": -42.0,
-                    "deg_end": 58.0,
-                    "tilt_y": 0.72,
+                    "kind": "gleam",
+                    "style": "horizon",
+                    "x0": 18.0,
+                    "y0": -43.0,
+                    "x1": 86.0,
+                    "y1": -46.0,
                     "intensity": 1.0,
-                    "tooth_freq": 8.0,
+                    "seed": 3,
                 },
             }))
         elif f == 4:
@@ -1675,16 +1763,14 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 30.0,
                 "energy": 0.75,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 15.0,
-                    "cy": -45.0,
-                    "r_outer": 63.0,
-                    "r_inner": 38.0,
-                    "deg_start": -38.0,
-                    "deg_end": 26.0,
-                    "tilt_y": 0.72,
-                    "intensity": 0.56,
-                    "tooth_freq": 7.0,
+                    "kind": "gleam",
+                    "style": "horizon",
+                    "x0": 32.0,
+                    "y0": -45.0,
+                    "x1": 80.0,
+                    "y1": -47.0,
+                    "intensity": 0.45,
+                    "seed": 4,
                 },
             }))
         elif f in (5, 6, 7):
@@ -1724,7 +1810,7 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "energy": 0.70,
             }))
         elif f == 9:
-            # 1-FRAME SNAP: Rising Kiri-age heaven-arc smear! Front reach x_160 ~ 140 (x_320 = 280 > 260)
+            # 1-FRAME SNAP: Rising Kiri-age Zantetsuken gleam! Front reach x_160 ~ 148 (x_320 = 296)
             frames.append(render_keypose_frame(rigs, "K3_RISE", {
                 "dx": 6.0,
                 "dy": 0.0,
@@ -1741,16 +1827,14 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 34.0,
                 "energy": 1.0,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 14.0,
-                    "cy": -47.0,
-                    "r_outer": 64.0,
-                    "r_inner": 28.0,
-                    "deg_start": -68.0,
-                    "deg_end": 56.0,
-                    "tilt_y": 0.82,
+                    "kind": "gleam",
+                    "style": "rising",
+                    "x0": 16.0,
+                    "y0": -28.0,
+                    "x1": 86.0,
+                    "y1": -74.0,
                     "intensity": 1.0,
-                    "tooth_freq": 9.0,
+                    "seed": 9,
                 },
             }))
         elif f == 10:
@@ -1770,16 +1854,14 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 26.0,
                 "energy": 0.75,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 14.0,
-                    "cy": -47.0,
-                    "r_outer": 62.0,
-                    "r_inner": 40.0,
-                    "deg_start": -70.0,
-                    "deg_end": -8.0,
-                    "tilt_y": 0.82,
-                    "intensity": 0.56,
-                    "tooth_freq": 8.0,
+                    "kind": "gleam",
+                    "style": "rising",
+                    "x0": 28.0,
+                    "y0": -34.0,
+                    "x1": 78.0,
+                    "y1": -72.0,
+                    "intensity": 0.45,
+                    "seed": 10,
                 },
             }))
         elif f in (11, 12, 13, 14):
@@ -1819,7 +1901,7 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "energy": 0.75,
             }))
         elif f == 17:
-            # 1-FRAME SNAP: 2.5D Supersonic Shunpo Horizontal Vortex (Hit 1 of 2, x_160 ~ 149 -> x_320 = 298 > 260!)
+            # 1-FRAME SNAP: Supersonic Shunpo Cross-Cut Vacuum Gleam (Hit 1 of 2, x_160 ~ 151 -> x_320 = 302)
             frames.append(render_keypose_frame(rigs, "K2_LUNGE", {
                 "dx": 10.0,
                 "dy": 0.0,
@@ -1835,17 +1917,18 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 42.0,
                 "energy": 1.0,
                 "smear": {
-                    "kind": "vortex",
-                    "cx": 14.0,
-                    "cy": -44.0,
-                    "rx": 69.0,
-                    "ry": 21.0,
+                    "kind": "gleam",
+                    "style": "cross",
+                    "x0": 18.0,
+                    "y0": -45.0,
+                    "x1": 85.0,
+                    "y1": -45.0,
                     "intensity": 1.0,
-                    "phase_deg": 0.0,
+                    "seed": 17,
                 },
             }))
         elif f == 18:
-            # Second counter-whipping horizontal lightning ring (Hit 2 of 2)
+            # Counter-whipping cross-cut vacuum dissipator (Hit 2 of 2)
             frames.append(render_keypose_frame(rigs, "K2_LUNGE", {
                 "dx": 9.0,
                 "dy": 0.0,
@@ -1861,13 +1944,14 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 36.0,
                 "energy": 0.90,
                 "smear": {
-                    "kind": "vortex",
-                    "cx": 13.0,
-                    "cy": -46.0,
-                    "rx": 64.0,
-                    "ry": 18.0,
-                    "intensity": 0.72,
-                    "phase_deg": 65.0,
+                    "kind": "gleam",
+                    "style": "cross",
+                    "x0": 24.0,
+                    "y0": -47.0,
+                    "x1": 80.0,
+                    "y1": -43.0,
+                    "intensity": 0.60,
+                    "seed": 18,
                 },
             }))
         elif f in (19, 20, 21, 22):
@@ -1915,34 +1999,33 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "energy": 1.0,
             }))
         elif f == 25:
-            # 1-FRAME MONUMENTAL SNAP: Grounded Two-Handed Morote Zantetsuken Full-Reach Crescent!
-            # Front reach x_160 = 56 + 12 + 16 + 70 = 154 -> x_320 = 308 (> 260, 0 border clips!)
+            # 1-FRAME MONUMENTAL SNAP: Grounded Morote Zantetsuken Full-Reach Vacuum Gleam!
+            # Front reach x_160 = 56 + 11 + 85 = 152 -> x_320 = 305..307 (within [286..310], 0 border clips!)
             frames.append(render_keypose_frame(rigs, "K2_LUNGE", {
-                "dx": 12.0,
+                "dx": 11.0,
                 "dy": 0.0,  # STRICTLY GROUNDED (0px float!)
                 "phase": ph,
                 "drum_charge": 1.25,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": 24.0,
+                "sword_hx": 23.0,
                 "sword_hy": -43.0,
                 "sword_deg": 4.0,
-                "blade_len": 60.0,
+                "blade_len": 59.0,
                 "sori_sign": -1.0,
                 "storm_charge": 1.40,
                 "tassel_lag": 46.0,
                 "energy": 1.2,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 16.0,
-                    "cy": -47.0,
-                    "r_outer": 70.0,
-                    "r_inner": 24.0,
-                    "deg_start": -68.0,
-                    "deg_end": 56.0,
-                    "tilt_y": 0.88,
+                    "kind": "gleam",
+                    "style": "zantetsu",
+                    "x0": 23.0,
+                    "y0": -42.0,
+                    "x1": 85.0,
+                    "y1": -39.0,
                     "intensity": 1.05,
-                    "tooth_freq": 10.0,
+                    "max_x": 153,
+                    "seed": 25,
                 },
             }))
         elif f in (26, 27):
@@ -1962,16 +2045,15 @@ def build_row2_auto_attack(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 34.0 - 8.0 * p,
                 "energy": 0.90,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 16.0,
-                    "cy": -47.0,
-                    "r_outer": 68.0 - 3.0 * p,
-                    "r_inner": 38.0 + 8.0 * p,
-                    "deg_start": -44.0 + 14.0 * p,
-                    "deg_end": 54.0,
-                    "tilt_y": 0.88,
-                    "intensity": 0.65 - 0.25 * p,
-                    "tooth_freq": 9.0,
+                    "kind": "gleam",
+                    "style": "zantetsu",
+                    "x0": 34.0 + 6.0 * p,
+                    "y0": -41.0,
+                    "x1": 82.0 - 4.0 * p,
+                    "y1": -39.0,
+                    "intensity": 0.50 - 0.16 * p,
+                    "max_x": 154,
+                    "seed": 26 + p,
                 },
             }))
         else:  # F28..F29 settle
@@ -2030,15 +2112,14 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 40.0,
                 "energy": 1.0,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 15.0,
-                    "cy": -44.0,
-                    "r_outer": 65.0,
-                    "r_inner": 30.0 + 18.0 * p,
-                    "deg_start": -36.0,
-                    "deg_end": 44.0,
-                    "tilt_y": 0.68,
-                    "intensity": max(0.35, 1.0 - 0.65 * p),
+                    "kind": "gleam",
+                    "style": "horizon",
+                    "x0": 18.0,
+                    "y0": -44.0,
+                    "x1": 78.0 - 6.0 * p,
+                    "y1": -45.0,
+                    "intensity": 0.95 if f == 4 else 0.45,
+                    "seed": 30 + f,
                 } if f <= 6 else None,
             }))
         elif f <= 16:
@@ -2059,15 +2140,14 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 34.0,
                 "energy": 1.0,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 14.0,
-                    "cy": -47.0,
-                    "r_outer": 62.0,
-                    "r_inner": 30.0 + 18.0 * p,
-                    "deg_start": -68.0,
-                    "deg_end": 48.0,
-                    "tilt_y": 0.82,
-                    "intensity": max(0.35, 1.0 - 0.65 * p),
+                    "kind": "gleam",
+                    "style": "rising",
+                    "x0": 16.0,
+                    "y0": -28.0,
+                    "x1": 74.0 - 6.0 * p,
+                    "y1": -70.0,
+                    "intensity": 0.95 if f == 10 else 0.45,
+                    "seed": 40 + f,
                 } if f <= 12 else None,
             }))
         elif f <= 23:
@@ -2086,15 +2166,14 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 32.0,
                 "energy": 0.95,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 12.0,
-                    "cy": -42.0,
-                    "r_outer": 62.0,
-                    "r_inner": 28.0 + 18.0 * p,
-                    "deg_start": -55.0,
-                    "deg_end": 62.0,
-                    "tilt_y": 0.86,
-                    "intensity": max(0.35, 1.0 - 0.65 * p),
+                    "kind": "gleam",
+                    "style": "cross",
+                    "x0": 14.0,
+                    "y0": -48.0,
+                    "x1": 72.0 - 6.0 * p,
+                    "y1": -34.0,
+                    "intensity": 0.95 if f == 17 else 0.45,
+                    "seed": 50 + f,
                 } if f <= 19 else None,
             }))
         else:
@@ -2139,65 +2218,61 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
             sub = (f - 5) % 3
             pose = ("K2_LUNGE", "K3_RISE", "K4_LEAP", "K2_LUNGE", "K3_RISE")[beat]
             dy = -7.0 if pose == "K4_LEAP" else 0.0
-            deg = (6.0, -42.0, 28.0, -14.0, -38.0)[beat]
+            deg = (-42.0, -56.0, 38.0, -34.0, -52.0)[beat]
             frames.append(render_keypose_frame(rigs, pose, {
-                "dx": 8.0 if sub == 0 else 6.0,
+                "dx": 4.0 if sub == 0 else 2.5,
                 "dy": dy,
                 "phase": ph,
                 "drum_charge": 1.25,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": 20.0,
+                "sword_hx": 15.0,
                 "sword_hy": -45.0 if pose != "K3_RISE" else -49.0,
                 "sword_deg": deg,
-                "blade_len": 52.0 if pose == "K3_RISE" else 56.0,
+                "blade_len": 48.0 if pose == "K3_RISE" else 50.0,
                 "sori_sign": 1.0 if beat % 2 == 1 else -1.0,
                 "storm_charge": 1.35,
-                "tassel_lag": 38.0 - sub * 6.0,
+                "tassel_lag": 34.0 - sub * 6.0,
                 "energy": 1.15,
                 "smear": {
-                    "kind": "vortex" if beat == 3 else "crescent",
-                    "cx": 14.0,
-                    "cy": -45.0,
-                    "rx": 64.0,
-                    "ry": 19.0,
-                    "r_outer": 62.0,
-                    "r_inner": 28.0 + sub * 12.0,
-                    "deg_start": -64.0 if beat % 2 == 0 else -70.0,
-                    "deg_end": 54.0,
-                    "tilt_y": 0.80,
-                    "intensity": 1.0 if sub == 0 else 0.55,
-                    "phase_deg": beat * 45.0,
+                    "kind": "gleam",
+                    "style": "cross" if beat == 3 else ("rising" if beat % 2 == 1 else "horizon"),
+                    "x0": 14.0,
+                    "y0": -40.0 if beat % 2 == 0 else -28.0,
+                    "x1": 64.0,
+                    "y1": -58.0 if beat % 2 == 1 else -44.0,
+                    "intensity": 0.90 if sub == 0 else 0.42,
+                    "max_x": 127,
+                    "seed": 60 + f,
                 } if sub <= 1 else None,
             }))
         elif f <= 25:
-            # Towering Susanoo Heaven-Splitting Kiri-oroshi Cleave!
+            # Towering Susanoo Heaven-Splitting Kiri-oroshi Cleave! Keep strictly maxX <= 262 (x_160 <= 130)!
             p = (f - 20) / 5.0
             frames.append(render_keypose_frame(rigs, "K2_LUNGE", {
-                "dx": 11.0 - 2.0 * p,
+                "dx": 6.0 - 1.5 * p,
                 "dy": 0.0,
                 "phase": ph,
                 "drum_charge": 1.35 - 0.25 * p,
                 "sheathed": False,
                 "two_handed": True,
-                "sword_hx": 24.0,
-                "sword_hy": -42.0,
-                "sword_deg": 10.0 + 6.0 * p,
-                "blade_len": 60.0,
+                "sword_hx": 17.0,
+                "sword_hy": -48.0,
+                "sword_deg": 32.0 + 6.0 * p,
+                "blade_len": 52.0,
                 "storm_charge": 1.45 - 0.30 * p,
-                "tassel_lag": 44.0 * (1.0 - 0.4 * p),
+                "tassel_lag": 38.0 * (1.0 - 0.4 * p),
                 "energy": 1.25,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 16.0,
-                    "cy": -48.0,
-                    "r_outer": 70.0,
-                    "r_inner": 22.0 + 24.0 * p,
-                    "deg_start": -78.0,
-                    "deg_end": 58.0,
-                    "tilt_y": 0.92,
-                    "intensity": max(0.30, 1.05 - 0.65 * p),
-                    "tooth_freq": 10.0,
+                    "kind": "gleam",
+                    "style": "zantetsu",
+                    "x0": 18.0,
+                    "y0": -49.0,
+                    "x1": 62.0,
+                    "y1": -20.0,
+                    "intensity": max(0.38, 0.95 - 0.45 * p),
+                    "max_x": 127,
+                    "seed": 80 + f,
                 } if f <= 23 else None,
             }))
         else:
@@ -2397,16 +2472,14 @@ def build_row7_crouch(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 42.0,
                 "energy": 1.10,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 15.0,
-                    "cy": -44.0,
-                    "r_outer": 67.0,
-                    "r_inner": 26.0,
-                    "deg_start": -48.0,
-                    "deg_end": 54.0,
-                    "tilt_y": 0.78,
+                    "kind": "gleam",
+                    "style": "horizon",
+                    "x0": 18.0,
+                    "y0": -43.0,
+                    "x1": 80.0,
+                    "y1": -44.0,
                     "intensity": 1.0,
-                    "tooth_freq": 9.0,
+                    "seed": 714,
                 },
             }))
         elif f <= 22:
@@ -2426,15 +2499,14 @@ def build_row7_crouch(rigs: dict) -> list[Image.Image]:
                 "tassel_lag": 28.0 * (1.0 - p),
                 "energy": 0.65,
                 "smear": {
-                    "kind": "crescent",
-                    "cx": 15.0,
-                    "cy": -44.0,
-                    "r_outer": 64.0,
-                    "r_inner": 40.0,
-                    "deg_start": -40.0,
-                    "deg_end": 30.0,
-                    "tilt_y": 0.78,
-                    "intensity": 0.50,
+                    "kind": "gleam",
+                    "style": "horizon",
+                    "x0": 26.0,
+                    "y0": -44.0,
+                    "x1": 76.0,
+                    "y1": -45.0,
+                    "intensity": 0.45,
+                    "seed": 715,
                 } if f == 15 else None,
             }))
         else:
@@ -2480,32 +2552,30 @@ def build_row8_jump(rigs: dict) -> list[Image.Image]:
             smear = None
             deg = -42.0 + u * 68.0
             if f in (11, 12):
-                # Swallow Cut 1: Downward crescent
+                # Swallow Cut 1: Downward Zantetsuken vacuum gleam
                 deg = 22.0
                 smear = {
-                    "kind": "crescent",
-                    "cx": 12.0,
-                    "cy": -42.0,
-                    "r_outer": 62.0,
-                    "r_inner": 28.0 if f == 11 else 40.0,
-                    "deg_start": -66.0,
-                    "deg_end": 54.0,
-                    "tilt_y": 0.88,
-                    "intensity": 1.0 if f == 11 else 0.55,
+                    "kind": "gleam",
+                    "style": "horizon",
+                    "x0": 16.0,
+                    "y0": -52.0,
+                    "x1": 74.0,
+                    "y1": -34.0,
+                    "intensity": 0.95 if f == 11 else 0.48,
+                    "seed": 811 + f,
                 }
             elif f in (15, 16):
-                # Swallow Cut 2: Instant upward swallow-reversal arc!
+                # Swallow Cut 2: Instant upward swallow-reversal vacuum gleam!
                 deg = -52.0
                 smear = {
-                    "kind": "crescent",
-                    "cx": 13.0,
-                    "cy": -45.0,
-                    "r_outer": 63.0,
-                    "r_inner": 28.0 if f == 15 else 40.0,
-                    "deg_start": -72.0,
-                    "deg_end": 48.0,
-                    "tilt_y": 0.84,
-                    "intensity": 1.0 if f == 15 else 0.55,
+                    "kind": "gleam",
+                    "style": "rising",
+                    "x0": 16.0,
+                    "y0": -32.0,
+                    "x1": 74.0,
+                    "y1": -62.0,
+                    "intensity": 0.95 if f == 15 else 0.48,
+                    "seed": 815 + f,
                 }
             frames.append(render_keypose_frame(rigs, "K4_LEAP", {
                 "dx": 4.0 * math.sin(u * math.pi),
@@ -2569,17 +2639,6 @@ def build_row9_victory(rigs: dict) -> list[Image.Image]:
                     "storm_charge": 0.95 * (1.0 - 0.4 * u),
                     "tassel_lag": 24.0 * (1.0 - u),
                     "energy": 0.80,
-                    "smear": {
-                        "kind": "crescent",
-                        "cx": 12.0,
-                        "cy": -46.0,
-                        "r_outer": 60.0,
-                        "r_inner": 36.0,
-                        "deg_start": -44.0,
-                        "deg_end": 34.0,
-                        "tilt_y": 0.84,
-                        "intensity": 0.65,
-                    } if f == 3 else None,
                 }))
             else:
                 # Deliberate Noto sheath click at F12!
@@ -2669,8 +2728,7 @@ def build_portrait_128():
     return out
 
 
-def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Image.Image):
-    QA_DIR.mkdir(parents=True, exist_ok=True)
+def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Image.Image, emit_qa: bool = False):
     border_clips = 0
     non_binary_alpha = 0
     non_2x2_blocks = 0
@@ -2702,23 +2760,39 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
                     trans += 1
         row_transitions.append(trans)
 
-    # Check Row 2 snap smear front reach (x_320 > 260 on F03, F09, F17, F25)
+    # Check Row 2 snap vacuum-gleam front reach (x_320 in 286..310, frontPx >= 260 on F03, F09, F17, F25)
     snap_reaches = {}
+    snap_front_px = {}
     for sf in (3, 9, 17, 25):
         arr = np.array(all_rows_320[2][sf], dtype=np.uint8)
-        ys, xs = np.where(arr[:, :, 3] > 0)
+        a = arr[:, :, 3] > 0
+        ys, xs = np.where(a)
         snap_reaches[sf] = int(xs.max()) if len(xs) else 0
+        snap_front_px[sf] = int(a[:, 201:].sum())
 
-    # Verify Row 1 WALK top-delta smoothness & locked ground sole, plus Row 5 DEATH prone bounds
+    # Check Row 4 F00..F29 maxX <= 262
+    row4_max_x = max(int(np.where(np.array(all_rows_320[4][c], dtype=np.uint8)[:, :, 3] > 0)[1].max()) for c in range(30))
+
+    # Verify Row 1 WALK top-delta smoothness, boot crossover, & anti-moonwalk single-stance deltas
     r1_tops = []
     r1_bots = []
+    r1_sole_x = []
+    r1_spans = []
     for f in range(30):
         a = np.array(all_rows_320[1][f], dtype=np.uint8)[:, :, 3] > 0
         ys, _ = np.where(a)
         r1_tops.append(int(ys.min()))
         r1_bots.append(int(ys.max()))
+        _, sxs = np.where(a[224:231, :])
+        r1_sole_x.append(float(sxs.mean()) if len(sxs) else -1.0)
+        _, bxs = np.where(a[218:234, :])
+        r1_spans.append(int(bxs.max() - bxs.min() + 1) if len(bxs) else 0)
     max_adj_top_delta = max(abs(r1_tops[i] - r1_tops[(i - 1) % 30]) for i in range(30))
     max_bot_pop = max(r1_bots) - min(r1_bots)
+    stance_d1 = r1_sole_x[6] - r1_sole_x[1]
+    stance_d2 = r1_sole_x[21] - r1_sole_x[16]
+    min_boot_span = min(r1_spans)
+    max_boot_span = max(r1_spans)
 
     for df in range(22, 30):
         a = np.array(all_rows_320[5][df], dtype=np.uint8)[:, :, 3] > 0
@@ -2728,6 +2802,11 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
         assert dh <= 96 and d_minx >= 24 and d_maxx <= 298, (
             f"Row 5 F{df:02d} prone bounds violation: h={dh}, x=[{d_minx}..{d_maxx}]"
         )
+    for vf in range(26, 30):
+        a = np.array(all_rows_320[9][vf], dtype=np.uint8)[:, :, 3] > 0
+        ys, _ = np.where(a)
+        vh = int(ys.max() - ys.min() + 1)
+        assert vh >= 150, f"Row 9 F{vf:02d} upright height < 150: {vh}"
 
     flat_edge_cuts = []
     for r_idx in range(10):
@@ -2738,17 +2817,33 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
 
     print(f"[QA] border_clips={border_clips}/300 | non_binary_alpha={non_binary_alpha} | non_2x2_blocks={non_2x2_blocks}")
     print(f"[QA] row_transitions={row_transitions} | flat_edge_cuts={flat_edge_cuts}")
-    print(f"[QA] Row 1 WALK maxAdjTopDelta={max_adj_top_delta}px (<=4) | botPop={max_bot_pop}px")
-    print(f"[QA] Row 2 snap front reaches (must be > 260): {snap_reaches}")
+    print(
+        f"[QA] Row 1 WALK maxAdjTopDelta={max_adj_top_delta}px | botPop={max_bot_pop}px | "
+        f"bootSpan={min_boot_span}/{max_boot_span} ({min_boot_span / max(1, max_boot_span):.3f}) | "
+        f"stanceDelta=({stance_d1:+.1f}, {stance_d2:+.1f})"
+    )
+    print(f"[QA] Row 2 snap maxX={snap_reaches} | frontPx={snap_front_px} | Row 4 maxX={row4_max_x}")
 
     assert border_clips == 0, f"Border clip failure: {border_clips}"
     assert non_binary_alpha == 0, f"Non-binary alpha cells: {non_binary_alpha}"
     assert non_2x2_blocks == 0, f"2x2 block purity failure: {non_2x2_blocks}"
     assert all(t == 29 for t in row_transitions), f"Transition failure: {row_transitions}"
-    assert all(rx > 260 for rx in snap_reaches.values()), f"Smear reach < 260: {snap_reaches}"
+    assert all(286 <= rx <= 310 for rx in snap_reaches.values()), f"Row 2 gleam reach out of [286..310]: {snap_reaches}"
+    assert all(fp >= 260 for fp in snap_front_px.values()), f"Row 2 frontPx < 260: {snap_front_px}"
+    assert row4_max_x <= 262, f"Row 4 maxX > 262: {row4_max_x}"
     assert max_adj_top_delta <= 4, f"Row 1 maxAdjTopDelta > 4: {max_adj_top_delta}"
+    assert max_boot_span >= 56 and min_boot_span <= max_boot_span * 0.55, (
+        f"Row 1 crossover span failure: {min_boot_span}/{max_boot_span}"
+    )
+    assert stance_d1 <= -8.0 and stance_d2 <= -8.0, (
+        f"Row 1 moonwalk failure: stanceDelta=({stance_d1:+.1f}, {stance_d2:+.1f})"
+    )
     assert len(flat_edge_cuts) == 0, f"Flat edge cuts detected: {flat_edge_cuts}"
 
+    if not emit_qa:
+        return
+
+    QA_DIR.mkdir(parents=True, exist_ok=True)
     # Emit Row 1 WALK 30-frame contact sheet (`6x5` @ `320x240`)
     r1_im = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (22, 26, 40, 255))
     draw_r1 = ImageDraw.Draw(r1_im)
@@ -2764,58 +2859,25 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
     r1_path = QA_DIR / "debug_ronin_ex_row1_walk.png"
     r1_im.save(r1_path)
 
-    # Emit Row 5 DEATH 30-frame contact sheet (`6x5` @ `320x240`)
-    r5_im = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (22, 26, 40, 255))
-    draw_r5 = ImageDraw.Draw(r5_im)
-    for f in range(30):
-        cx = (f % 6) * CELL_W
-        cy = (f // 6) * CELL_H
-        draw_r5.rectangle([cx, cy, cx + CELL_W - 1, cy + CELL_H - 1], outline=(52, 64, 96, 255), width=1)
-        draw_r5.line([(cx + 8, cy + 230), (cx + CELL_W - 8, cy + 230)], fill=(90, 110, 150, 255), width=1)
-        draw_r5.line([(cx + 24, cy), (cx + 24, cy + CELL_H)], fill=(180, 60, 80, 140), width=1)
-        draw_r5.line([(cx + 298, cy), (cx + 298, cy + CELL_H)], fill=(180, 60, 80, 140), width=1)
-        r5_im.alpha_composite(all_rows_320[5][f], (cx, cy))
-        draw_r5.rectangle([cx + 4, cy + 4, cx + 68, cy + 20], fill=(0, 0, 0, 200))
-        draw_r5.text((cx + 8, cy + 6), f"R5 F{f:02d}", fill=(251, 113, 133, 255))
-    r5_path = QA_DIR / "debug_ronin_ex_row5_death.png"
-    r5_im.save(r5_path)
-
-    # Emit Row 2 30-frame contact sheet on neutral slate + white split check
-    r2_cols = 6
-    r2_rows = 5
-    r2_im = Image.new("RGBA", (r2_cols * CELL_W, r2_rows * CELL_H), (28, 32, 48, 255))
-    draw_r2 = ImageDraw.Draw(r2_im)
-    for f in range(30):
-        cx = (f % r2_cols) * CELL_W
-        cy = (f // r2_cols) * CELL_H
-        # Right strip in light gray to catch dark/white halo issues simultaneously
-        draw_r2.rectangle([cx, cy + CELL_H - 10, cx + CELL_W - 1, cy + CELL_H - 9], fill=(90, 110, 150, 255))
-        draw_r2.line([(cx + 112, cy), (cx + 112, cy + CELL_H)], fill=(65, 75, 105, 255), width=1)
-        r2_im.alpha_composite(all_rows_320[2][f], (cx, cy))
-        draw_r2.rectangle([cx + 4, cy + 4, cx + 66, cy + 20], fill=(0, 0, 0, 200))
-        draw_r2.text((cx + 8, cy + 6), f"R2 F{f:02d}", fill=(250, 224, 90, 255))
-    r2_path = QA_DIR / "debug_ronin_ex_row2.png"
-    r2_im.save(r2_path)
-
-    # Emit 10-row keyframe overview sheet (8 representative columns per row)
-    sample_cols = [0, 3, 9, 14, 17, 21, 25, 28]
-    ov_im = Image.new("RGBA", (len(sample_cols) * CELL_W, 10 * CELL_H), (24, 28, 42, 255))
-    draw_ov = ImageDraw.Draw(ov_im)
-    row_names = ["R0 IDLE", "R1 WALK", "R2 AUTO", "R3 SKILL", "R4 ULT", "R5 DEATH", "R6 DASH", "R7 CROUCH", "R8 JUMP", "R9 VICTORY"]
-    for r_idx in range(10):
-        for ci, f in enumerate(sample_cols):
-            cx = ci * CELL_W
-            cy = r_idx * CELL_H
-            draw_ov.line([(cx, cy + 230), (cx + CELL_W, cy + 230)], fill=(70, 85, 120, 255), width=1)
-            ov_im.alpha_composite(all_rows_320[r_idx][f], (cx, cy))
-            draw_ov.rectangle([cx + 4, cy + 4, cx + 108, cy + 20], fill=(0, 0, 0, 200))
-            draw_ov.text((cx + 7, cy + 6), f"{row_names[r_idx]} F{f:02d}", fill=(125, 211, 252, 255))
-    ov_path = QA_DIR / "debug_ronin_ex_10rows.png"
-    ov_im.resize((ov_im.width // 2, ov_im.height // 2), Image.Resampling.NEAREST).save(ov_path)
-
-    p_qa = QA_DIR / "debug_ronin_ex_portrait.png"
-    portrait_128.resize((256, 256), Image.Resampling.NEAREST).save(p_qa)
-    print(f"[QA] Saved {r2_path}, {ov_path}, {p_qa}")
+    # Emit Row 2 + Row 4 strip for visual inspection
+    r24_im = Image.new("RGBA", (8 * CELL_W, 2 * CELL_H), (24, 28, 42, 255))
+    draw_r24 = ImageDraw.Draw(r24_im)
+    for ci, f in enumerate([2, 3, 4, 9, 17, 18, 25, 26]):
+        cx = ci * CELL_W
+        draw_r24.line([(cx, 230), (cx + CELL_W, 230)], fill=(90, 110, 150, 255), width=1)
+        r24_im.alpha_composite(all_rows_320[2][f], (cx, 0))
+        draw_r24.rectangle([cx + 4, 4, cx + 80, 20], fill=(0, 0, 0, 200))
+        draw_r24.text((cx + 8, 6), f"R2 F{f:02d}", fill=(250, 224, 90, 255))
+    for ci, f in enumerate([5, 8, 11, 14, 17, 20, 22, 27]):
+        cx = ci * CELL_W
+        cy = CELL_H
+        draw_r24.line([(cx, cy + 230), (cx + CELL_W, cy + 230)], fill=(90, 110, 150, 255), width=1)
+        r24_im.alpha_composite(all_rows_320[4][f], (cx, cy))
+        draw_r24.rectangle([cx + 4, cy + 4, cx + 80, cy + 20], fill=(0, 0, 0, 200))
+        draw_r24.text((cx + 8, cy + 6), f"R4 F{f:02d}", fill=(125, 211, 252, 255))
+    r24_path = QA_DIR / "debug_ronin_ex_row2_row4.png"
+    r24_im.save(r24_path)
+    print(f"[QA] Saved {r1_path}, {r24_path}")
 
 
 def main():
@@ -2853,7 +2915,7 @@ def main():
 
     sheet.save(OUT_SHEET, optimize=False)
     print(f"[OK] Saved sprite sheet: {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]})")
-    verify_and_emit_qa(all_rows_320, portrait_128)
+    verify_and_emit_qa(all_rows_320, portrait_128, emit_qa="--qa" in sys.argv)
 
 
 if __name__ == "__main__":

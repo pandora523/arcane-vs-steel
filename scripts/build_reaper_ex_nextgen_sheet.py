@@ -1418,15 +1418,18 @@ def render_keypose_frame_160(
 
 _BIPEDAL_WALK_KFS = [
     # (u, world_thigh, world_knee_bend, ankle_flex, hip_yaw_hi, hip_lift_hi)
-    (0.00, -23.5,  4.0,  -6.0,   7.5,   2.0),  # Front Contact (+X plant)
-    (0.12, -13.0,  9.5,   0.0,   4.0,   3.5),  # Weight-acceptance down
-    (0.24,  -0.5,  2.0,   0.0,   0.0,   0.0),  # Mid-stance vertical pillar (F07 Left / F22 Right)
-    (0.38,  12.5,  4.0,   6.0,  -4.0,   1.5),  # Late stance roll-through
-    (0.50,  22.5,  8.5,  14.0,  -7.5,   2.0),  # Rear Push-Off (-X trail)
-    (0.62,   3.5, 42.0,  22.0,  -2.0,  -7.0),  # Toe-off knee fold
-    (0.74, -22.0, 44.0,  20.0,   2.5, -16.5),  # Passing Crossover (F07 Right / F22 Left: knee +X, boot lifted at anchorX!)
-    (0.88, -25.5, 12.0,  -7.0,   6.0,  -4.5),  # Terminal swing reach
-    (1.00, -23.5,  4.0,  -6.0,   7.5,   2.0),
+    (0.00, -25.0,  2.0,  -8.0,   7.5,   3.5),  # Front Heel Contact (+X plant at F00 / F15)
+    (0.08, -16.5,  3.0,   0.0,   5.0,   2.0),  # Early flat-foot weight acceptance
+    (0.20,   1.5,  2.0,   0.0,   0.0,   0.0),  # Mid-stance vertical pillar (-X sole slide!)
+    (0.33,  14.5,  3.0,   6.0,  -4.5,   2.5),  # Late stance behind pelvis
+    (0.45,  23.0,  7.0,  14.0,  -7.5,   3.5),  # Rear push-off peak
+    (0.50,  21.5, 14.0,  14.0,  -7.5,  -1.0),  # Trailing push-off (in sole band at F00/F15 for >=56px span)
+    (0.533, 14.0, 56.0,  14.0,  -5.0, -34.0),  # F01/F16 immediate lift & -X heel tuck above sole band!
+    (0.64,  -4.0, 62.0,  14.0,  -1.0, -44.0),  # High folded swing (-X heel tuck)
+    (0.74, -22.0, 58.0,  10.0,   2.5, -42.0),  # Crossover apex (F07 Right / F22 Left: knee +X, shin tucked -X!)
+    (0.85, -26.5, 30.0,  -2.0,   5.5, -22.0),  # High forward unfold
+    (0.93, -26.5,  9.0,  -8.0,   7.0,  -3.5),  # Terminal swing descending to heel-strike
+    (1.00, -25.0,  2.0,  -8.0,   7.5,   3.5),
 ]
 
 
@@ -1456,6 +1459,168 @@ def _shade_crop_tuple(part_tuple, factor=0.85):
     return (Image.fromarray(arr.astype(np.uint8), "RGBA"), x0, y0)
 
 
+def _scale_rgba(col, factor):
+    if abs(factor - 1.0) < 1e-3:
+        return col
+    return (
+        max(0, min(255, int(round(col[0] * factor)))),
+        max(0, min(255, int(round(col[1] * factor)))),
+        max(0, min(255, int(round(col[2] * factor)))),
+        col[3],
+    )
+
+
+def _draw_tapered_plate_seg_hi(draw, p0, p1, w0_rear, w0_front, w1_rear, w1_front, far_shade=1.0):
+    dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+    seg_len = max(1.0, math.hypot(dx, dy))
+    ux, uy = dx / seg_len, dy / seg_len
+    # Normal pointing +X front when leg points down (ux=0, uy=1 -> nx=+1, ny=0)
+    nx, ny = uy, -ux
+
+    def pt(base, along, side):
+        return (int(round(base[0] + ux * along + nx * side)), int(round(base[1] + uy * along + ny * side)))
+
+    # Dark Selout outer shell
+    outer_poly = [
+        pt(p0, -4, -w0_rear - 4),
+        pt(p0, -4, w0_front + 4),
+        pt(p1, 4, w1_front + 4),
+        pt(p1, 4, -w1_rear - 4),
+    ]
+    draw.polygon(outer_poly, fill=C_OUT_DARK)
+
+    # Rear obsidian shadow plate
+    base_poly = [
+        pt(p0, -2, -w0_rear),
+        pt(p0, -2, w0_front),
+        pt(p1, 2, w1_front),
+        pt(p1, 2, -w1_rear),
+    ]
+    draw.polygon(base_poly, fill=_scale_rgba(C_OBSIDIAN_DEEP, far_shade))
+
+    # Royal-violet necropolis midplate beveled toward +X front
+    mid_poly = [
+        pt(p0, 0, -w0_rear * 0.45),
+        pt(p0, 0, w0_front * 0.92),
+        pt(p1, 0, w1_front * 0.92),
+        pt(p1, 0, -w1_rear * 0.45),
+    ]
+    draw.polygon(mid_poly, fill=_scale_rgba((58, 22, 108, 255), far_shade))
+
+    # Cold bone-slate front armored bevel ridge
+    front_poly = [
+        pt(p0, 2, w0_front * 0.22),
+        pt(p0, 2, w0_front * 0.85),
+        pt(p1, -2, w1_front * 0.85),
+        pt(p1, -2, w1_front * 0.22),
+    ]
+    draw.polygon(front_poly, fill=_scale_rgba(C_BONE_SHAD, far_shade))
+
+
+def _draw_dread_plate_leg_hi(canvas, hip_dst, knee_dst, ank_dst, far_shade=1.0):
+    """Paints wide 3D-shaded obsidian-violet dread-plate thigh cuisses, flanged knee-cops & greaves."""
+    draw = ImageDraw.Draw(canvas)
+    _draw_tapered_plate_seg_hi(draw, hip_dst, knee_dst, 29.0, 26.0, 26.0, 24.0, far_shade=far_shade)
+    _draw_tapered_plate_seg_hi(draw, knee_dst, ank_dst, 28.0, 27.0, 18.0, 18.0, far_shade=far_shade)
+
+    # Pointed obsidian-violet knee-cop / poleyn shield
+    kx, ky = knee_dst
+    poleyn_out = [(kx - 25, ky - 15), (kx + 11, ky - 23), (kx + 29, ky - 2), (kx + 13, ky + 22), (kx - 23, ky + 18)]
+    poleyn_in = [(kx - 20, ky - 11), (kx + 9, ky - 18), (kx + 23, ky - 2), (kx + 10, ky + 17), (kx - 19, ky + 14)]
+    poleyn_rim = [(kx - 4, ky - 12), (kx + 9, ky - 15), (kx + 19, ky - 2), (kx + 8, ky + 12)]
+    draw.polygon(poleyn_out, fill=C_OUT_DARK)
+    draw.polygon(poleyn_in, fill=_scale_rgba(C_OBSIDIAN_MID, far_shade))
+    draw.polygon(poleyn_rim, fill=_scale_rgba(C_BONE_MID, far_shade))
+    draw.ellipse([kx - 5, ky - 6, kx + 7, ky + 5], fill=_scale_rgba(C_CRIMSON_MID, far_shade))
+
+
+def _draw_parting_necro_coat_hi(canvas, dst_pelvis, l_th_deg, r_th_deg, wave_ph):
+    """Paints billowing parting abyssal necro-coat & crimson-hemmed tabard flanks down to y=204 above the boot band."""
+    draw = ImageDraw.Draw(canvas)
+    px, py = dst_pelvis
+    swing_back = 12.0 + max(0.0, l_th_deg, r_th_deg) * 0.55 + math.sin(wave_ph) * 5.0
+    swing_front = 10.0 + max(0.0, -l_th_deg, -r_th_deg) * 0.45 + math.cos(wave_ph) * 4.5
+    top_y = py + 12.0
+    # Anchor coat hem solidly at logical y=102 (204..205 in 320-space) so y=184..204 stays >=36px while y=206..233 remains 100% pure boots!
+    hem_y = min(ANCHOR_HI_Y - 12.05 * S_HI, py + 174.0)
+
+    # Trailing rear abyssal coattail panel (-X back drape through y=184..204)
+    rear_out = [
+        (px - 28, top_y),
+        (px - 2, top_y + 16),
+        (px - 6 - swing_back * 0.30, top_y + 92),
+        (px - 10 - swing_back * 0.42, hem_y),
+        (px - 68 - swing_back * 0.90, hem_y),
+        (px - 64 - swing_back * 0.65, top_y + 82),
+    ]
+    rear_deep = [
+        (px - 24, top_y + 4),
+        (px - 6, top_y + 18),
+        (px - 10 - swing_back * 0.30, top_y + 92),
+        (px - 14 - swing_back * 0.42, hem_y - 3),
+        (px - 62 - swing_back * 0.88, hem_y - 3),
+        (px - 58 - swing_back * 0.62, top_y + 82),
+    ]
+    rear_mid = [
+        (px - 26, top_y + 14),
+        (px - 14 - swing_back * 0.22, top_y + 86),
+        (px - 18 - swing_back * 0.40, hem_y - 10),
+        (px - 48 - swing_back * 0.80, hem_y - 10),
+        (px - 50 - swing_back * 0.60, top_y + 82),
+    ]
+    rear_crimson = [
+        (px - 15 - swing_back * 0.42, hem_y - 10),
+        (px - 61 - swing_back * 0.88, hem_y - 10),
+        (px - 62 - swing_back * 0.88, hem_y - 3),
+        (px - 14 - swing_back * 0.42, hem_y - 3),
+    ]
+    draw.polygon(rear_out, fill=C_OUT_DARK)
+    draw.polygon(rear_deep, fill=(46, 16, 101, 255))
+    draw.polygon(rear_mid, fill=C_SHROUD_DEEP)
+    draw.polygon(rear_crimson, fill=C_CRIMSON_DARK)
+
+    # Forward-parting outer coat flank (+X side drape framing thigh & knee down to y=204)
+    front_hem = min(hem_y - 0.5, py + 173.0)
+    front_out = [
+        (px + 12, top_y + 4),
+        (px + 34, top_y + 12),
+        (px + 44 + swing_front * 0.45, top_y + 88),
+        (px + 40 + swing_front * 0.62, front_hem),
+        (px + 18 + swing_front * 0.32, front_hem - 4),
+        (px + 20, top_y + 86),
+    ]
+    front_fill = [
+        (px + 15, top_y + 8),
+        (px + 30, top_y + 14),
+        (px + 39 + swing_front * 0.45, top_y + 88),
+        (px + 36 + swing_front * 0.58, front_hem - 4),
+        (px + 22 + swing_front * 0.32, front_hem - 8),
+        (px + 22, top_y + 86),
+    ]
+    front_rim = [
+        (px + 22 + swing_front * 0.32, front_hem - 10),
+        (px + 36 + swing_front * 0.58, front_hem - 7),
+        (px + 36 + swing_front * 0.58, front_hem - 3),
+        (px + 22 + swing_front * 0.32, front_hem - 6),
+    ]
+    draw.polygon(front_out, fill=C_OUT_DARK)
+    draw.polygon(front_fill, fill=C_OBSIDIAN_DEEP)
+    draw.polygon(front_rim, fill=C_CRIMSON_DARK)
+
+
+def _draw_waist_tasset_hi(canvas, dst_pelvis):
+    """Paints an armored center-pelvis obsidian-crimson tasset chevron uniting hips with dread greaves."""
+    draw = ImageDraw.Draw(canvas)
+    px, py = dst_pelvis
+    top_y = py + 12.0
+    out_poly = [(px - 22, top_y), (px + 24, top_y), (px + 20, top_y + 52), (px + 2, top_y + 74), (px - 18, top_y + 52)]
+    in_poly = [(px - 17, top_y + 4), (px + 19, top_y + 4), (px + 16, top_y + 48), (px + 2, top_y + 67), (px - 14, top_y + 48)]
+    trim_poly = [(px - 12, top_y + 42), (px + 2, top_y + 62), (px + 14, top_y + 42), (px + 2, top_y + 52)]
+    draw.polygon(out_poly, fill=C_OUT_DARK)
+    draw.polygon(in_poly, fill=C_OBSIDIAN_MID)
+    draw.polygon(trim_poly, fill=C_CRIMSON_MID)
+
+
 def render_stand_rig_frame_160(
     parts,
     stand_joints,
@@ -1481,6 +1646,8 @@ def render_stand_rig_frame_160(
     l_hip_off_hi=(0.0, 0.0),
     r_hip_off_hi=(0.0, 0.0),
     neutralize_leg_rest=False,
+    uniform_side_boots=False,
+    heavy_greaves=False,
     shade_far_leg=1.0,
     grip_rel_sh=(8.5, 9.0),
     weapon_deg=-24.0,
@@ -1534,8 +1701,10 @@ def render_stand_rig_frame_160(
     if neutralize_leg_rest:
         def _leg_sole_reach(side):
             hs, ks, ak = sj[f"{side}_hip"], sj[f"{side}_knee"], sj[f"{side}_ankle"]
-            fim, _, fy0 = parts[f"{side}_foot"]
-            return math.hypot(ks[0] - hs[0], ks[1] - hs[1]) + math.hypot(ak[0] - ks[0], ak[1] - ks[1]) + (fy0 + fim.size[1] - ak[1])
+            foot_key = "r_foot" if uniform_side_boots else f"{side}_foot"
+            ank_key = "r_ankle" if uniform_side_boots else f"{side}_ankle"
+            fim, _, fy0 = parts[foot_key]
+            return math.hypot(ks[0] - hs[0], ks[1] - hs[1]) + math.hypot(ak[0] - ks[0], ak[1] - ks[1]) + (fy0 + fim.size[1] - sj[ank_key][1])
         r_sole_eq_hi = (_leg_sole_reach("l") - _leg_sole_reach("r")) + (l_hip_raw[1] - r_hip_raw[1])
     l_hip_dst = (
         l_hip_raw[0] + (spine_hip_x - l_hip_raw[0]) * hip_inward_frac + l_hip_off_hi[0],
@@ -1553,7 +1722,7 @@ def render_stand_rig_frame_160(
         if neutralize_leg_rest:
             th_rot = th_deg - _bone_rest_deg_stand(hip_s, knee_s)
             sh_rot = (th_deg + sh_deg) - _bone_rest_deg_stand(knee_s, ank_s)
-            ft_rot = ft_deg
+            ft_rot = max(-10.0, min(14.0, ft_deg))
         else:
             th_rot = th_deg
             sh_rot = th_deg + sh_deg
@@ -1582,7 +1751,12 @@ def render_stand_rig_frame_160(
 
     l_thigh_part = _shade_crop_tuple(parts["l_thigh"], shade_far_leg)
     l_shin_part = _shade_crop_tuple(parts["l_shin"], shade_far_leg)
-    l_foot_part = _shade_crop_tuple(parts["l_foot"], shade_far_leg)
+    l_foot_src = parts["r_foot"] if uniform_side_boots else parts["l_foot"]
+    l_ankle_pivot = sj["r_ankle"] if uniform_side_boots else sj["l_ankle"]
+    l_foot_part = _shade_crop_tuple(l_foot_src, shade_far_leg)
+
+    if heavy_greaves:
+        _draw_parting_necro_coat_hi(win_hi, dst_pelvis, l_thigh_deg, r_thigh_deg, coat_wave_ph)
 
     paste_rotated_part(
         win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
@@ -1593,9 +1767,11 @@ def render_stand_rig_frame_160(
 
     draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=r_knee_br)
+    if heavy_greaves:
+        _draw_dread_plate_leg_hi(win_hi, l_hip_dst, l_knee_dst, l_ank_dst, far_shade=shade_far_leg)
     paste_rotated_part(win_hi, l_thigh_part, sj["l_hip"], l_hip_dst, deg=l_th_rot)
     paste_rotated_part(win_hi, l_shin_part, sj["l_knee"], l_knee_dst, deg=l_sh_rot)
-    paste_rotated_part(win_hi, l_foot_part, sj["l_ankle"], l_ank_dst, deg=l_ft_rot)
+    paste_rotated_part(win_hi, l_foot_part, l_ankle_pivot, l_ank_dst, deg=l_ft_rot)
 
     paste_rotated_part(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
@@ -1604,9 +1780,14 @@ def render_stand_rig_frame_160(
     )
     draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=r_knee_br)
+    if heavy_greaves:
+        _draw_dread_plate_leg_hi(win_hi, r_hip_dst, r_knee_dst, r_ank_dst, far_shade=1.0)
     paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_th_rot)
     paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_sh_rot)
     paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_ft_rot)
+
+    if heavy_greaves:
+        _draw_waist_tasset_hi(win_hi, dst_pelvis)
 
     paste_rotated_part(win_hi, parts["torso"], pelvis_src, dst_pelvis, deg=torso_deg)
     paste_rotated_part(win_hi, parts["head"], sj["neck"], neck_dst, deg=torso_deg + head_deg)
@@ -1740,7 +1921,7 @@ def build_row1_walk(parts, sj):
         l_th, l_kb, l_af, l_yaw, l_lift = _sample_bipedal_walk(u_l)
         r_th, r_kb, r_af, r_yaw, r_lift = _sample_bipedal_walk(u_r)
 
-        bob_y = 0.80 * math.cos(ph2) - 1.10
+        bob_y = 1.6 * math.cos(ph2) + 0.2
         stride_sway = math.cos(ph30)
 
         def post_walk(arr, neck, _g, step=f, p=ph30):
@@ -1754,16 +1935,16 @@ def build_row1_walk(parts, sj):
             parts, sj,
             pelvis_dx=0.9 + math.sin(ph2) * 0.35,
             pelvis_dy=bob_y,
-            torso_deg=2.4 + math.cos(ph2) * 0.75,
+            torso_deg=2.6 + math.cos(ph2) * 0.75,
             head_deg=-1.4 - math.cos(ph2) * 0.35,
-            l_coat_deg=-8.0 + max(0.0, l_th) * 0.32,
-            r_coat_deg=4.0 + min(0.0, r_th) * 0.28,
+            l_coat_deg=-6.0 + max(0.0, l_th) * 0.35,
+            r_coat_deg=5.0 + min(0.0, r_th) * 0.32,
             coat_wave_ph=ph2,
-            coat_wave_amp=3.0,
-            coat_y_offset_160=-6.5,
-            coat_x_inward_frac=0.45,
-            coat_squash_x=0.82,
-            coat_squash_y=0.72,
+            coat_wave_amp=3.6,
+            coat_y_offset_160=-3.4,
+            coat_x_inward_frac=0.38,
+            coat_squash_x=0.92,
+            coat_squash_y=0.84,
             l_thigh_deg=l_th,
             l_shin_deg=l_kb,
             l_foot_deg=l_af,
@@ -1774,6 +1955,8 @@ def build_row1_walk(parts, sj):
             l_hip_off_hi=(l_yaw, l_lift),
             r_hip_off_hi=(r_yaw, r_lift),
             neutralize_leg_rest=True,
+            uniform_side_boots=True,
+            heavy_greaves=True,
             shade_far_leg=0.84,
             grip_rel_sh=(9.5 - stride_sway * 0.9, 5.8 + math.sin(ph2) * 0.5),
             weapon_deg=-32.0 + stride_sway * 2.6,
@@ -1787,7 +1970,7 @@ def build_row1_walk(parts, sj):
             rune_phase=ph2,
             lock_lowest_to_ground=False,
             clamp_floor_only=True,
-            leg_bridge_r=(4, 3),
+            leg_bridge_r=(7, 5),
             post_fn=post_walk,
         ))
     return frames
@@ -2744,6 +2927,9 @@ def assemble_and_verify_sheet(all_rows_160):
     walk_spans = []
     walk_tops = []
     walk_bots = []
+    walk_sole_xs = []
+    walk_boot_xs = []
+    walk_mid_leg_mins = []
     for c in range(30):
         cell_a = sh_arr[240:480, c * 320:(c + 1) * 320, 3] > 0
         wy, _ = np.where(cell_a)
@@ -2752,19 +2938,36 @@ def assemble_and_verify_sheet(all_rows_160):
         band = cell_a[206:233, :]
         _, bx = np.where(band)
         walk_spans.append(int(bx.max() - bx.min()) if len(bx) else 0)
+        walk_boot_xs.append(float(bx.mean()) if len(bx) else -1.0)
+        _, sx = np.where(cell_a[218:234, :])
+        walk_sole_xs.append(float(sx.mean()) if len(sx) else -1.0)
+        mid_rows = [int(cell_a[y, :].sum()) for y in range(184, 205)]
+        walk_mid_leg_mins.append(min(mid_rows))
     max_foot_span = max(walk_spans)
     min_foot_span = min(walk_spans)
     max_adj_top = max(abs(walk_tops[(i + 1) % 30] - walk_tops[i]) for i in range(30))
+    d_sole_1 = walk_sole_xs[6] - walk_sole_xs[1]
+    d_sole_2 = walk_sole_xs[21] - walk_sole_xs[16]
+    d_boot_1 = walk_boot_xs[6] - walk_boot_xs[1]
+    d_boot_2 = walk_boot_xs[21] - walk_boot_xs[16]
+    min_mid_leg_px = min(walk_mid_leg_mins)
     print(
         f"[QA] Row 1 WALK footSpan320: min={min_foot_span}px max={max_foot_span}px "
         f"ratio={min_foot_span / max(1, max_foot_span):.2f} "
         f"(F00={walk_spans[0]} F07={walk_spans[7]} F15={walk_spans[15]} F22={walk_spans[22]}) "
         f"bots=[{min(walk_bots)}..{max(walk_bots)}] maxAdjTopDelta={max_adj_top}"
     )
-    assert max_foot_span >= 34, f"Walk contact stride too narrow: {max_foot_span}"
+    print(
+        f"[QA] Row 1 WALK stanceDelta: sole(1->6={d_sole_1:+.1f}px, 16->21={d_sole_2:+.1f}px) "
+        f"boot(1->6={d_boot_1:+.1f}px, 16->21={d_boot_2:+.1f}px) minMidLegPx(y184..204)={min_mid_leg_px}px"
+    )
+    assert max_foot_span >= 56, f"Walk contact stride too narrow: {max_foot_span}"
     assert min_foot_span <= max_foot_span * 0.55, f"Crab walk detected: min={min_foot_span} > 0.55*{max_foot_span}"
     assert min(walk_bots) >= 222 and max(walk_bots) <= 233, f"Walk footY out of [222..233]: {walk_bots}"
     assert max_adj_top <= 4, f"Walk head-top pop > 4px: {max_adj_top}"
+    assert d_sole_1 <= -8.0 and d_sole_2 <= -8.0, f"Moonwalk in sole band: {(d_sole_1, d_sole_2)}"
+    assert d_boot_1 <= -8.0 and d_boot_2 <= -8.0, f"Moonwalk in boot band: {(d_boot_1, d_boot_2)}"
+    assert min_mid_leg_px >= 36, f"Stick-legs detected across y=184..204: {walk_mid_leg_mins}"
 
     flat_cuts = []
     for r in range(10):

@@ -1476,6 +1476,8 @@ export class Game {
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
+    this.appEl?.classList?.toggle('is-adventure-active', Boolean(this.isAdventureMode() && !this.isLandingOpen));
+    this.updateAdventureBossHUD?.();
     if (releaseMemory) {
       this.renderer?.releaseStageCutoutCaches?.(true);
       PixelForge.releaseInactiveAssets?.([], [], false);
@@ -1920,12 +1922,22 @@ export class Game {
       partnerHpBar: document.getElementById(`${side}-partner-hp-bar`),
       partnerManaBar: document.getElementById(`${side}-partner-mana-bar`)
     });
+    this.appEl = document.getElementById('app');
     this.hudEls = {
       left: cacheHUD('left'),
       right: cacheHUD('right'),
       crestVs: document.getElementById('crest-vs-text'),
       modeBadge: document.getElementById('hud-mode-badge'),
       stageBadge: document.getElementById('hud-stage-badge')
+    };
+    this.advBossEls = {
+      root: document.getElementById('adv-boss-raid-hud'),
+      portrait: document.getElementById('adv-boss-raid-portrait'),
+      name: document.getElementById('adv-boss-raid-name'),
+      phase: document.getElementById('adv-boss-raid-phase'),
+      bar: document.getElementById('adv-boss-raid-bar'),
+      ghost: document.getElementById('adv-boss-raid-ghost'),
+      hp: document.getElementById('adv-boss-raid-hp')
     };
     this.btnTestUlt = document.getElementById('btn-test-ult');
     this._testUltRoundRobinIdx = 0;
@@ -2095,7 +2107,6 @@ export class Game {
     }
 
     // Separated Arcade Flow Navigation (Title Screen -> Dedicated VS Branch OR Dedicated Adventure Branch)
-    this.appEl = document.getElementById('app');
     this.stepTabBtns = document.querySelectorAll('.step-tab[data-landing-step]');
     this.stepPanels = {
       title: document.getElementById('landing-step-title'),
@@ -3098,7 +3109,10 @@ export class Game {
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
-    if (this.appEl) this.appEl.classList.remove('is-landing-open');
+    if (this.appEl) {
+      this.appEl.classList.remove('is-landing-open');
+      this.appEl.classList.toggle('is-adventure-active', Boolean(this.isAdventureMode()));
+    }
     this.audio?.ensureCombatWavFiles?.();
     this.resetMatch();
     this.adventure?.syncControlDeckUI();
@@ -3114,7 +3128,11 @@ export class Game {
     clearTimeout(this.autoNextTimeout);
     this.victoryOverlay.classList.add('hidden');
     if (this.landingOverlay) this.landingOverlay.classList.remove('hidden');
-    if (this.appEl) this.appEl.classList.add('is-landing-open');
+    if (this.appEl) {
+      this.appEl.classList.add('is-landing-open');
+      this.appEl.classList.remove('is-adventure-active');
+    }
+    this.updateAdventureBossHUD?.();
     this.adventure?.syncControlDeckUI();
     this.syncPauseMenuUI();
     if (targetStep) {
@@ -4641,8 +4659,134 @@ export class Game {
     }
   }
 
+  updateAdventureBossHUD() {
+    const els =
+      this.advBossEls ||
+      (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? {
+            root: document.getElementById('adv-boss-raid-hud'),
+            portrait: document.getElementById('adv-boss-raid-portrait'),
+            name: document.getElementById('adv-boss-raid-name'),
+            phase: document.getElementById('adv-boss-raid-phase'),
+            bar: document.getElementById('adv-boss-raid-bar'),
+            ghost: document.getElementById('adv-boss-raid-ghost'),
+            hp: document.getElementById('adv-boss-raid-hp')
+          }
+        : null);
+    if (!els || !els.root) return;
+
+    const adv = this.adventure;
+    const boss = adv?.bossEntity || null;
+    const warningActive = Boolean(adv && (adv.bossWarningTimer || 0) > 0);
+    const bossAlive = Boolean(boss && !boss.isDead);
+    const showBossHud = Boolean(
+      adv?.active && !this.isLandingOpen && !this.isMatchOver && (warningActive || bossAlive)
+    );
+
+    els.root.classList?.toggle('hidden', !showBossHud);
+    if (!showBossHud) {
+      return;
+    }
+
+    const isWarningOnly = warningActive && !bossAlive;
+    const maxHp = Math.max(1, Math.round(boss?.maxHp || 11800));
+    const curHp = isWarningOnly ? maxHp : Math.max(0, Math.ceil(boss?.hp ?? maxHp));
+    const hpRatio = isWarningOnly ? 1 : Math.max(0, Math.min(1, (boss?.hp ?? maxHp) / maxHp));
+    const hpPctStr = `${(hpRatio * 100).toFixed(2)}%`;
+
+    if (els.name) {
+      const nextName = boss?.name || 'BEHEMOTH MALPHAS';
+      if (els.name.textContent !== nextName) els.name.textContent = nextName;
+    }
+
+    const phaseNum = Math.max(1, Math.min(3, Number(boss?.bossPhase) || 1));
+    const roman = phaseNum === 3 ? 'III' : phaseNum === 2 ? 'II' : 'I';
+    const isCoreExposed = Boolean(!isWarningOnly && (boss?.vulnerableTimer || 0) > 0);
+    let nextPhaseText = 'INCOMING SIEGE';
+    if (!isWarningOnly) {
+      let statusText = 'ABYSSAL SOVEREIGN';
+      if (isCoreExposed) {
+        statusText = 'CORE EXPOSED!';
+      } else if ((boss?.telegraphTimer || 0) > 0 && boss?.telegraphLabel) {
+        statusText = String(boss.telegraphLabel)
+          .replace(/^!\s*|\s*!$/g, '')
+          .replace(/^PHASE\s+[I]+:\s*/i, '')
+          .trim();
+      } else if ((boss?.emergeTimer || 0) > 0) {
+        statusText = 'BLACK PIT RISING';
+      }
+      nextPhaseText = `PHASE ${roman} • ${statusText || 'ABYSSAL SOVEREIGN'}`;
+    }
+    if (els.phase && els.phase.textContent !== nextPhaseText) {
+      els.phase.textContent = nextPhaseText;
+    }
+
+    if (els.bar?.style) els.bar.style.width = hpPctStr;
+    if (els.ghost?.style) els.ghost.style.width = hpPctStr;
+
+    const nextHpText = `${curHp.toLocaleString('en-US')} / ${maxHp.toLocaleString('en-US')}`;
+    if (els.hp && els.hp.textContent !== nextHpText) {
+      els.hp.textContent = nextHpText;
+    }
+
+    els.root.classList?.toggle('is-boss-warning', isWarningOnly);
+    els.root.classList?.toggle('is-core-exposed', isCoreExposed);
+    els.root.classList?.toggle('is-phase-2', !isWarningOnly && phaseNum === 2);
+    els.root.classList?.toggle('is-phase-3', !isWarningOnly && phaseNum >= 3);
+
+    // Keep Mobile Portrait Boss Plaque cleanly below Zone/Spirit/XP strip with 0 HUD overlap
+    if (els.root.style?.setProperty) {
+      const stripRect = adv?._hudStripRect;
+      const portraitTop =
+        stripRect && Number.isFinite(stripRect.y) && Number.isFinite(stripRect.h)
+          ? Math.round(stripRect.y + stripRect.h + 6)
+          : typeof this.renderer?.getHudBottomY === 'function'
+            ? Math.round(this.renderer.getHudBottomY() + 42)
+            : null;
+      if (portraitTop && portraitTop > 40) {
+        els.root.style.setProperty('--adv-boss-portrait-top', `${portraitTop}px`);
+      }
+    }
+
+    const canvas = els.portrait;
+    if (canvas && typeof canvas.getContext === 'function') {
+      const assets = PixelForge.initAssets?.();
+      const portImg = PixelForge.ensureImage?.(assets?.archfiend?.portrait) || assets?.archfiend?.portrait;
+      if (portImg && portImg.complete && portImg.naturalWidth > 0) {
+        const drawKey = `${portImg.src || 'mem'}:${portImg.naturalWidth}:${canvas.width || 44}`;
+        if (canvas._lastBossPortraitKey !== drawKey) {
+          const pctx = canvas.getContext('2d');
+          if (pctx) {
+            pctx.imageSmoothingEnabled = false;
+            pctx.clearRect(0, 0, canvas.width || 44, canvas.height || 44);
+            pctx.drawImage(portImg, 0, 0, canvas.width || 44, canvas.height || 44);
+            canvas._lastBossPortraitKey = drawKey;
+          }
+        }
+      } else if (portImg && typeof portImg.addEventListener === 'function' && !canvas._listeningPortraitLoad) {
+        canvas._listeningPortraitLoad = true;
+        portImg.addEventListener(
+          'load',
+          () => {
+            canvas._listeningPortraitLoad = false;
+            canvas._lastBossPortraitKey = null;
+            const pctx = canvas.getContext('2d');
+            if (pctx && portImg.naturalWidth > 0) {
+              pctx.imageSmoothingEnabled = false;
+              pctx.clearRect(0, 0, canvas.width || 44, canvas.height || 44);
+              pctx.drawImage(portImg, 0, 0, canvas.width || 44, canvas.height || 44);
+              canvas._lastBossPortraitKey = `${portImg.src || 'mem'}:${portImg.naturalWidth}:${canvas.width || 44}`;
+            }
+          },
+          { once: true }
+        );
+      }
+    }
+  }
+
   updateHUD() {
     const isAdv = this.isAdventureMode();
+    this.appEl?.classList?.toggle('is-adventure-active', Boolean(isAdv && !this.isLandingOpen));
     const advProg = isAdv ? this.adventure?.progression : null;
     const advStats = advProg ? advProg.getComputedStats() : null;
     if (!isAdv) {
@@ -4741,7 +4885,10 @@ export class Game {
     const rightPartner = this.getReserveFighter(2);
 
     sync(this.hudEls.left, leftPoint, leftPartner);
-    sync(this.hudEls.right, rightPoint, rightPartner);
+    if (!isAdv) {
+      sync(this.hudEls.right, rightPoint, rightPartner);
+    }
+    this.updateAdventureBossHUD();
 
     const mins = String(Math.floor(this.matchTime / 60)).padStart(2, '0');
     const secs = String(Math.floor(this.matchTime % 60)).padStart(2, '0');

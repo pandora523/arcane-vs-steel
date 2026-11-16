@@ -1283,15 +1283,16 @@ def render_keypose_frame_160(
 
 
 _BIPEDAL_WALK_KFS = [
-    (0.00, -23.0,  4.0,  -6.0,   7.5,   2.0),
-    (0.12, -13.0,  9.5,   0.0,   4.0,   3.5),
-    (0.24,  -0.5,  2.0,   0.0,   0.0,   0.0),
-    (0.38,  12.5,  4.0,   6.0,  -4.0,   1.5),
-    (0.50,  22.0,  8.5,  14.0,  -7.5,   2.0),
-    (0.62,   3.5, 42.0,  22.0,  -2.0,  -7.0),
-    (0.74, -22.0, 44.0,  20.0,   2.5, -16.5),
-    (0.88, -25.0, 12.0,  -7.0,   6.0,  -4.5),
-    (1.00, -23.0,  4.0,  -6.0,   7.5,   2.0),
+    (0.00, -24.0,  2.5,  -4.0,   8.0,   2.0),
+    (0.12, -13.5,  4.5,   0.0,   4.5,   2.5),
+    (0.24,  -0.5,  1.5,   0.0,   0.0,   0.0),
+    (0.38,  13.0,  3.0,   3.0,  -4.5,   1.0),
+    (0.50,  22.5,  8.0,   6.0,  -8.0,   1.0),
+    (0.56,  15.0, 22.0,   8.0,  -5.0, -14.0),
+    (0.64,   2.0, 28.0,   6.0,  -1.5, -21.0),
+    (0.74, -20.0, 26.0,   3.0,   2.5, -24.0),
+    (0.88, -25.0,  9.0,  -4.0,   6.5,  -8.0),
+    (1.00, -24.0,  2.5,  -4.0,   8.0,   2.0),
 ]
 
 
@@ -1403,10 +1404,11 @@ def render_stand_rig_frame_160(
         hip_s = sj[f"{side}_hip"]
         knee_s = sj[f"{side}_knee"]
         ank_s = sj[f"{side}_ankle"]
+        ft_clamped = max(-10.0, min(12.0, ft_deg))
         if neutralize_leg_rest:
             th_rot = th_deg - _bone_rest_deg_stand(hip_s, knee_s)
             sh_rot = (th_deg + sh_deg) - _bone_rest_deg_stand(knee_s, ank_s)
-            ft_rot = ft_deg
+            ft_rot = ft_clamped
         else:
             th_rot = th_deg
             sh_rot = th_deg + sh_deg
@@ -1567,8 +1569,10 @@ def build_row1_walk(parts, sj):
 
         l_th, l_kb, l_af, l_yaw, l_lift = _sample_bipedal_walk(u_l)
         r_th, r_kb, r_af, r_yaw, r_lift = _sample_bipedal_walk(u_r)
+        l_af = max(-10.0, min(12.0, l_af))
+        r_af = max(-10.0, min(12.0, r_af))
 
-        bob_y = 0.80 * math.cos(ph2) - 0.85
+        bob_y = 0.70 * math.cos(ph2) - 0.75
         stride_sway = math.cos(ph30)
 
         def post_walk(arr, neck, _g, step=f, p=ph30):
@@ -2520,6 +2524,7 @@ def assemble_and_verify_sheet(all_rows_160):
     walk_spans = []
     walk_tops = []
     walk_bots = []
+    sole_means = []
     for c in range(30):
         cell_a = sh_arr[240:480, c * 320:(c + 1) * 320, 3] > 0
         wy, _ = np.where(cell_a)
@@ -2528,17 +2533,24 @@ def assemble_and_verify_sheet(all_rows_160):
         band = cell_a[206:233, :]
         _, bx = np.where(band)
         walk_spans.append(int(bx.max() - bx.min()) if len(bx) else 0)
+        sole_band = cell_a[224:231, :]
+        _, sxs = np.where(sole_band)
+        sole_means.append(float(sxs.mean()) if len(sxs) else 0.0)
     max_foot_span = max(walk_spans)
     min_foot_span = min(walk_spans)
     max_adj_top = max(abs(walk_tops[(i + 1) % 30] - walk_tops[i]) for i in range(30))
+    stance_d1 = sole_means[6] - sole_means[1]
+    stance_d2 = sole_means[21] - sole_means[16]
     print(
         f"[QA] Row 1 WALK footSpan320: min={min_foot_span}px max={max_foot_span}px "
         f"ratio={min_foot_span / max(1, max_foot_span):.2f} "
         f"(F00={walk_spans[0]} F07={walk_spans[7]} F15={walk_spans[15]} F22={walk_spans[22]}) "
-        f"bots=[{min(walk_bots)}..{max(walk_bots)}] maxAdjTopDelta={max_adj_top}"
+        f"bots=[{min(walk_bots)}..{max(walk_bots)}] maxAdjTopDelta={max_adj_top} "
+        f"stanceDelta=(F01->F06:{stance_d1:+.2f}px, F16->F21:{stance_d2:+.2f}px)"
     )
-    assert max_foot_span >= 34, f"Walk contact stride too narrow: {max_foot_span}"
+    assert max_foot_span >= 56, f"Walk contact stride too narrow: {max_foot_span}"
     assert min_foot_span <= max_foot_span * 0.55, f"Crab walk detected: min={min_foot_span} > 0.55*{max_foot_span}"
+    assert stance_d1 <= -6.5 and stance_d2 <= -6.5, f"Walk stance moonwalk detected: F01->F06={stance_d1:+.2f}, F16->F21={stance_d2:+.2f}"
     assert min(walk_bots) >= 222 and max(walk_bots) <= 233, f"Walk footY out of [222..233]: {walk_bots}"
     assert max_adj_top <= 4, f"Walk head-top pop > 4px: {max_adj_top}"
 
@@ -2652,7 +2664,8 @@ def main():
     ]
 
     sheet = assemble_and_verify_sheet(all_rows_160)
-    write_debug_contact_sheets(sheet)
+    if "--no-debug" not in sys.argv:
+        write_debug_contact_sheets(sheet)
     print(f"=== Done in {time.time() - t0:.2f}s ===")
 
 

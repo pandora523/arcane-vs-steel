@@ -991,7 +991,7 @@ export class RoninEx extends Fighter {
     this.addSlashLine(attacker.x - 62, attacker.y - 138, attacker.x + 62, attacker.y - 22, 0.38, true, '#38bdf8');
     this.addSlashLine(attacker.x - 62, attacker.y - 22, attacker.x + 62, attacker.y - 138, 0.38, true, '#fde047');
     this.spawnVfxAnim(1, attacker.x, attacker.groundY - 88, 212, 212, 0.42, { glowColor: 'cyan' });
-    this.spawnVfxAnim(3, attacker.x, attacker.groundY - 12, 212, 212, 0.38, { glowColor: 'cyan', inFront: false });
+    this.spawnVfxAnim(7, attacker.x, attacker.groundY - 88, 196, 196, 0.40, { glowColor: 'cyan', inFront: true });
     this.spawnPixelLightningBolt(attacker.x, attacker.groundY - 240, attacker.groundY, 'cyan', 0.32);
 
     if (game) {
@@ -1653,7 +1653,7 @@ export class RoninEx extends Fighter {
         this._taikoLitCount = 5;
         this.spawnSayaGlint(false);
         this.spawnPixelShockwave(this.x, this.groundY - 4, 132, 'cyan', 0.28, true);
-        this.spawnVfxAnim(3, this.x, this.groundY - 12, 184, 184, 0.30, {
+        this.spawnVfxAnim(7, this.x, this.groundY - 82, 188, 188, 0.34, {
           glowColor: 'cyan',
           inFront: false
         });
@@ -1843,7 +1843,7 @@ export class RoninEx extends Fighter {
           flip: false,
           light: 1.24
         });
-        this.spawnVfxAnim(3, targetX, this.groundY - 12, 248, 248, 1.38, {
+        this.spawnVfxAnim(7, targetX, this.groundY - 96, 224, 224, 0.90, {
           glowColor: 'cyan',
           inFront: false
         });
@@ -1971,9 +1971,9 @@ export class RoninEx extends Fighter {
         glowColor: 'cyan',
         inFront: true
       });
-      this.spawnVfxAnim(3, targetX, this.groundY - 10, 256, 256, 0.44, {
+      this.spawnVfxAnim(7, targetX, this.groundY - 92, 232, 232, 0.48, {
         glowColor: 'gold',
-        inFront: false
+        inFront: true
       });
 
       this.spawnPixelShockwave(targetX, this.groundY - 6, 180, 'gold', 0.40, true);
@@ -2206,10 +2206,11 @@ export class RoninEx extends Fighter {
         this._trueUltStep = 1;
         if (game?.audio) game.audio.play('parry_clang', this.x);
         this.spawnSayaGlint(true);
-        this.spawnVfxAnim(5, this.x, this.groundY - 122, 196, 196, 0.56, {
+        this.spawnVfxAnim(7, this.x, this.groundY - 96, 196, 196, 0.56, {
           glowColor: 'cyan',
           inFront: false
         });
+        this.spawnPixelLightningBolt(this.x, this.groundY - 220, this.groundY, 'cyan', 0.30);
         this.spawnPixelShockwave(this.x, this.groundY - 4, 132, 'gold', 0.28, true);
       }
       return;
@@ -2714,34 +2715,195 @@ export class RoninEx extends Fighter {
     ctx.restore();
   }
 
-  drawBloodMoonRaijinSanctuary(ctx, vfxSheet, renderer = null) {
+  /**
+   * Dark-mood Iaido sword-qi horizon flash + jagged Raijin lightning threads & drifting sparks
+   * for `SKILL` (`_taikoHaloTimer`), `ULTIMATE` (`stormGodMask`), and dash/flash windows.
+   * Pure 2px stepped-pixel `fillRect` rendering (`0` circles, `0` rotation, `0` vector paths).
+   */
+  drawIaidoSwordQiOverlay(ctx, cx, cy, groundY, age, fade, opts = {}) {
+    if (fade <= 0.03) return;
+    const snap = (v) => Math.round(v / 2) * 2;
+    const fx = snap(cx);
+    const fy = snap(cy);
+    const gy = snap(groundY);
+    const halfSpan = Math.round((opts.halfSpan || 136) * Math.min(1, 0.55 + age * 2.4));
+    const isCrimson = Boolean(opts.crimsonAccent);
+    const isReflection = Boolean(opts.isReflection);
+    const alphaScale = isReflection ? 0.30 : 1.0;
+    const tick = Math.floor(age * 20);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Dark-indigo / crimson horizontal sword-qi horizon flash (`2px` stepped cut + `1px` white vacuum glint)
+    const segStep = 6;
+    for (let dx = -halfSpan; dx <= halfSpan; dx += segStep) {
+      const norm = 1 - Math.abs(dx) / Math.max(1, halfSpan);
+      if (norm <= 0.02) continue;
+      const px = fx + dx;
+      const w = Math.min(segStep, halfSpan - Math.abs(dx) + 2);
+      const cutH = norm > 0.55 ? 6 : norm > 0.22 ? 4 : 2;
+      const stepY = fy + ((Math.abs(dx) >> 4) % 2 === 0 ? 0 : (dx < 0 ? 2 : -2));
+
+      // #09081a deep shadow cut
+      ctx.globalAlpha = Math.min(0.88, fade * 0.85 * norm) * alphaScale;
+      ctx.fillStyle = '#09081a';
+      ctx.fillRect(px, stepY - (cutH >> 1), w, cutH);
+
+      // Crimson edge tension flare near blade center + #4f46e5 indigo body
+      if (norm > 0.20) {
+        ctx.globalAlpha = Math.min(0.84, fade * 0.78 * norm) * alphaScale;
+        ctx.fillStyle = isCrimson && norm > 0.68 ? '#e11d48' : '#4f46e5';
+        ctx.fillRect(px, stepY - 1, w, 3);
+      }
+
+      // #38bdf8 vivid cyan energy streak
+      if (norm > 0.14) {
+        ctx.globalAlpha = Math.min(0.92, fade * 0.88 * norm) * alphaScale;
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(px, stepY, w, 2);
+      }
+
+      // #ffffff 1px crisp vacuum glint
+      if (norm > 0.30 && !isReflection) {
+        ctx.globalAlpha = Math.min(0.98, fade * 0.95 * norm);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px, stepY, w, 1);
+      }
+    }
+
+    if (!isReflection) {
+      // Secondary counter-offset dark shadow flash line during Ultimate storm mask
+      if (opts.dualHorizon) {
+        const subY = fy - 24;
+        const subHalf = Math.round(halfSpan * 0.72);
+        ctx.globalAlpha = Math.min(0.76, fade * 0.72);
+        ctx.fillStyle = '#09081a';
+        ctx.fillRect(fx - subHalf, subY - 1, subHalf * 2, 3);
+        ctx.fillStyle = isCrimson ? '#e11d48' : '#4f46e5';
+        ctx.fillRect(fx - Math.round(subHalf * 0.75), subY, Math.round(subHalf * 1.5), 2);
+        ctx.fillStyle = '#bae6fd';
+        ctx.fillRect(fx - Math.round(subHalf * 0.45), subY, Math.round(subHalf * 0.9), 1);
+      }
+
+      // 2. Jagged diagonal/vertical Raijin lightning threads around Kaze-Maru EX (asymmetric dynamic angles)
+      const boltAnchorX = snap(opts.ownerX !== undefined ? opts.ownerX : fx);
+      const boltSpecs = opts.dualHorizon
+        ? [
+            [-84, gy - 172, -38, gy - 14, '#4f46e5', '#38bdf8', 11],
+            [26, gy - 188, 72, gy - 26, '#9f1239', '#bae6fd', 12],
+            [-30, gy - 156, 18, gy - 8, '#4f46e5', '#38bdf8', 9],
+            [86, gy - 144, 42, gy - 10, '#9f1239', '#fde047', 10]
+          ]
+        : [
+            [-68, gy - 158, -22, gy - 16, '#4f46e5', '#38bdf8', 10],
+            [68, gy - 172, 24, gy - 12, '#9f1239', '#bae6fd', 11]
+          ];
+      for (let b = 0; b < boltSpecs.length; b++) {
+        const [dx0, topY, dx1, botY, cOut, cMid, jag] = boltSpecs[b];
+        drawSteppedPixelBolt(
+          ctx,
+          boltAnchorX + dx0,
+          topY,
+          boltAnchorX + dx1,
+          botY,
+          6,
+          jag,
+          cOut,
+          cMid,
+          310 + b * 29 + tick,
+          fade * 0.86
+        );
+      }
+
+      // 3. Drifting ember & cold-steel sparks around Kaze-Maru EX
+      const sparkCount = opts.dualHorizon ? 10 : 7;
+      for (let i = 0; i < sparkCount; i++) {
+        const drift = (age * (54 + (i % 3) * 22) + i * 0.37) % 1.0;
+        const side = i % 2 === 0 ? 1 : -1;
+        const sx = snap(boltAnchorX + side * (22 + ((i * 19) % 58)) + Math.sin(age * 4 + i) * 6);
+        const sy = snap(gy - 16 - drift * 146);
+        const sFade = Math.sin(drift * Math.PI) * fade;
+        if (sFade <= 0.06) continue;
+        ctx.globalAlpha = Math.min(0.95, sFade);
+        ctx.fillStyle = i % 3 === 0 ? '#e11d48' : i % 3 === 1 ? '#38bdf8' : '#fde047';
+        ctx.fillRect(sx, sy, 2, 2);
+        if (i % 2 === 0) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sx + 2, sy, 2, 1);
+        }
+      }
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  drawBloodMoonRaijinSanctuary(ctx, _vfxSheet, _renderer = null, isReflection = false) {
     const sanct = this.raijinEyeSanctuary;
     if (!sanct || sanct.alpha <= 0.02) return;
     const cx = Math.round(sanct.x / 2) * 2;
     const gy = Math.round(this.groundY);
+    const released = Boolean(sanct.released);
+    const clickFlash = released ? Math.max(0, 1 - Math.max(0, sanct.age - 1.95) / 0.38) : 0;
 
-    drawStormBayerHalo(ctx, cx, gy - 6, 220, 34, '#9f1239', '#fde047', sanct.alpha * 0.16);
+    // 1. Brooding low ground-mist 4x4 Bayer atmospheric band (zero flat circles/ellipses!)
+    const step = 4;
+    const halfBandW = 280;
+    const mistTop = gy - 28;
+    const mistBot = gy + 4;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = Math.min(0.54, sanct.alpha * (isReflection ? 0.22 : 0.46));
+    for (let py = mistTop; py <= mistBot; py += step) {
+      const vy = (py - mistTop) / Math.max(1, mistBot - mistTop);
+      const by = ((py >> 2) & 3) << 2;
+      for (let px = cx - halfBandW; px <= cx + halfBandW; px += step) {
+        const dxAbs = Math.abs(px - cx);
+        const vx = Math.max(0, 1 - dxAbs / halfBandW);
+        const density = vx * (0.24 + 0.76 * vy);
+        const thresh = (BAYER_4X4[by + ((px >> 2) & 3)] + 0.5) / 16;
+        if (density * 0.92 > thresh) {
+          if (released && clickFlash > 0.22 && py >= gy - 8 && dxAbs < 200) {
+            ctx.fillStyle = dxAbs < 96 ? '#bae6fd' : '#38bdf8';
+          } else if (dxAbs < 150 && vy > 0.45) {
+            ctx.fillStyle = '#4c0519';
+          } else {
+            ctx.fillStyle = vy > 0.55 ? '#1e1b4b' : '#09081a';
+          }
+          ctx.fillRect(px, py, step, step);
+        }
+      }
+    }
+    ctx.restore();
 
-    if (vfxSheet?.complete && vfxSheet.naturalWidth) {
-      const col = Math.floor(sanct.age * 24) % 30;
-      this.drawBloomedVfxCell(
-        ctx,
-        vfxSheet,
-        6,
-        col,
-        cx,
-        sanct.y,
-        304,
-        304,
-        sanct.alpha * 0.94,
-        false,
-        renderer,
-        'gold'
-      );
+    // 2. Razor-thin crossed Iaido tension hairlines (#e11d48 crimson + #bae6fd ice-steel)
+    //    Flashes icy white on the Tsuba click (`sanct.released`)!
+    const lineAlpha = sanct.alpha * (isReflection ? 0.30 : 0.94);
+    const outerA = released && clickFlash > 0.12 ? '#bae6fd' : '#e11d48';
+    const outerB = released && clickFlash > 0.12 ? '#38bdf8' : '#e11d48';
+    const coreA = released && clickFlash > 0.08 ? '#ffffff' : '#bae6fd';
+    const crossY = gy - 104;
+    drawTwoPassStormHairline(ctx, cx - 220, crossY + 36, cx + 220, crossY - 36, outerA, coreA, lineAlpha, released ? 2 : 1);
+    drawTwoPassStormHairline(ctx, cx - 196, crossY - 34, cx + 196, crossY + 34, outerB, coreA, lineAlpha * 0.92, released ? 2 : 1);
+
+    if (!isReflection && released && clickFlash > 0.05) {
+      // Crisp icy-white Tsuba click cross-glint needle
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = Math.min(0.98, clickFlash);
+      const arm = Math.round(48 * clickFlash / 2) * 2;
+      ctx.fillStyle = '#bae6fd';
+      ctx.fillRect(cx - arm, crossY - 1, arm * 2, 2);
+      ctx.fillRect(cx - 1, crossY - Math.round(arm * 0.5), 2, arm);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - Math.round(arm * 0.6), crossY, Math.round(arm * 1.2), 1);
+      ctx.fillRect(cx - 2, crossY - 2, 4, 4);
+      ctx.restore();
     }
 
-    // Suspended raindrops & sakura petals frozen in dead silence before the Tsuba click!
-    if (this.suspendedSanctuaryDrops.length > 0) {
+    // 3. Suspended raindrops & sakura petals frozen in dead silence before the Tsuba click!
+    if (!isReflection && this.suspendedSanctuaryDrops.length > 0) {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.globalAlpha = Math.min(0.92, sanct.alpha);
@@ -2783,44 +2945,50 @@ export class RoninEx extends Fighter {
     const sheet = PixelForge.ensureImage?.(sprites?.sheet) || sprites?.sheet;
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
 
-    // Subtle pixel floor halo under Kaze-Maru EX
+    // Subtle dark-indigo ground-mist shadow band under Kaze-Maru EX (0 flat circles)
     if (!this.isDead) {
-      drawStormBayerHalo(ctx, this.x, this.groundY - 2, 54, 14, '#4f46e5', '#38bdf8', 0.14);
-    }
-
-    // Raijin Thunder-Drum Eye Sanctuary (`TRUE_ULTIMATE`)
-    if (this.raijinEyeSanctuary) {
-      this.drawBloodMoonRaijinSanctuary(ctx, vfxSheet, renderer);
-    }
-
-    // Susanoo Raijin Thunder-Drum Eye Seal (`ULTIMATE`)
-    if (this.stormGodMask && vfxSheet?.complete && vfxSheet.naturalWidth) {
-      const m = this.stormGodMask;
-      const col = Math.floor(m.age * 30) % 30;
-      const fade = m.collapsed ? Math.max(0, 1 - (m.age - 1.30) / 0.50) : Math.min(1, m.age / 0.18);
-      if (fade > 0.03) {
-        this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, m.x, m.y, 264, 264, fade * 0.94, false, renderer, 'gold');
-      }
-    }
-
-    // 5-Drum Raijin Taiko Pentagon Halo ignited during `ZANTETSUKEN: THUNDER-GATE FLASH`
-    if (this._taikoHaloTimer > 0 && !this.isDead) {
-      const fade = Math.min(1, this._taikoHaloTimer / 0.20);
+      const fx = Math.round(this.x / 2) * 2;
+      const fy = Math.round(this.groundY);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = fade * 0.94;
-      for (let d = 0; d < 5; d++) {
-        const ang = -Math.PI * 0.5 + (d * Math.PI * 2) / 5 + (0.94 - this._taikoHaloTimer) * 2.4;
-        const dx = Math.round((this.x + Math.cos(ang) * 44) / 2) * 2;
-        const dy = Math.round((this.y - 102 + Math.sin(ang) * 36) / 2) * 2;
-        ctx.fillStyle = '#09081a';
-        ctx.fillRect(dx - 6, dy - 6, 12, 12);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(dx - 4, dy - 4, 8, 8);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(dx - 2, dy - 2, 4, 4);
-      }
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = '#09081a';
+      ctx.fillRect(fx - 44, fy - 4, 88, 4);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(fx - 26, fy - 2, 52, 2);
       ctx.restore();
+    }
+
+    // Amakakeru Iaido Sanctuary (`TRUE_ULTIMATE`) — frozen drops, Bayer ground-mist, crossed tension hairlines
+    if (this.raijinEyeSanctuary) {
+      this.drawBloodMoonRaijinSanctuary(ctx, vfxSheet, renderer, false);
+    }
+
+    // Susanoo Sword-Qi Horizon Flash & Raijin Lightning Threads (`ULTIMATE`)
+    if (this.stormGodMask) {
+      const m = this.stormGodMask;
+      const fade = m.collapsed ? Math.max(0, 1 - (m.age - 1.30) / 0.50) : Math.min(1, m.age / 0.18);
+      if (fade > 0.03) {
+        this.drawIaidoSwordQiOverlay(ctx, m.x, this.groundY - 94, this.groundY, m.age, fade, {
+          halfSpan: 176,
+          crimsonAccent: true,
+          dualHorizon: true,
+          ownerX: this.x
+        });
+      }
+    }
+
+    // Dark-Mood Iaido Sword-Qi Horizon Flash & Raijin Threads (`SKILL` / Shunpo Dash flash windows)
+    if (!this.isDead && !this.stormGodMask && (this._taikoHaloTimer > 0 || this.state === 'DASH')) {
+      const isSkillFlash = this._taikoHaloTimer > 0;
+      const fade = isSkillFlash ? Math.min(1, this._taikoHaloTimer / 0.20) : 0.72;
+      const age = isSkillFlash ? Math.max(0, 0.94 - this._taikoHaloTimer) : (this.stateTimer || 0);
+      this.drawIaidoSwordQiOverlay(ctx, this.x, this.y - 84, this.groundY, age, fade, {
+        halfSpan: isSkillFlash ? 142 : 96,
+        crimsonAccent: isSkillFlash,
+        dualHorizon: false,
+        ownerX: this.x
+      });
     }
 
     if (this.afterimages.length > 0 && sheet?.complete && sheet.naturalWidth) {
@@ -2918,49 +3086,32 @@ export class RoninEx extends Fighter {
 
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
 
-    // Floor reflection pass: reflect active glowing VFX animations & Raijin seals at 0.35 alpha!
-    if (isReflection && vfxSheet?.complete && vfxSheet.naturalWidth) {
+    // Floor reflection pass: reflect active dark Iaido sword-qi overlays & glowing VFX animations at 0.30-0.35 alpha!
+    if (isReflection) {
       if (this.raijinEyeSanctuary && this.raijinEyeSanctuary.alpha > 0.03) {
-        const sc = this.raijinEyeSanctuary;
-        const col = Math.floor(sc.age * 24) % 30;
-        this.drawBloomedVfxCell(
-          ctx,
-          vfxSheet,
-          6,
-          col,
-          sc.x,
-          sc.y,
-          280,
-          280,
-          sc.alpha * 0.35,
-          false,
-          renderer,
-          'gold',
-          true
-        );
+        this.drawBloodMoonRaijinSanctuary(ctx, vfxSheet, renderer, true);
       }
       if (this.stormGodMask) {
         const m = this.stormGodMask;
-        const col = Math.floor(m.age * 30) % 30;
         const fade = m.collapsed ? Math.max(0, 1 - (m.age - 1.30) / 0.50) : Math.min(1, m.age / 0.18);
         if (fade > 0.03) {
-          this.drawBloomedVfxCell(
-            ctx,
-            vfxSheet,
-            5,
-            col,
-            m.x,
-            m.y,
-            248,
-            248,
-            fade * 0.35,
-            false,
-            renderer,
-            'gold',
-            true
-          );
+          this.drawIaidoSwordQiOverlay(ctx, m.x, this.groundY - 94, this.groundY, m.age, fade, {
+            halfSpan: 164,
+            crimsonAccent: true,
+            isReflection: true
+          });
         }
       }
+      if (!this.isDead && !this.stormGodMask && this._taikoHaloTimer > 0) {
+        const fade = Math.min(1, this._taikoHaloTimer / 0.20);
+        this.drawIaidoSwordQiOverlay(ctx, this.x, this.y - 84, this.groundY, Math.max(0, 0.94 - this._taikoHaloTimer), fade, {
+          halfSpan: 132,
+          crimsonAccent: true,
+          isReflection: true
+        });
+      }
+    }
+    if (isReflection && vfxSheet?.complete && vfxSheet.naturalWidth) {
       for (let i = 0; i < this.activeVfxAnims.length; i++) {
         const v = this.activeVfxAnims[i];
         const u = Math.min(1, Math.max(0, v.age / v.maxLife));

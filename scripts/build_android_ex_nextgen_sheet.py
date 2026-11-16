@@ -812,7 +812,7 @@ def draw_star_glint_160(arr, cx, cy, arm_len=6, core_r=1.8):
     draw_disc_160(arr, ix, iy, core_r, C_PURE_WHITE)
 
 
-def draw_cyber_fin_funnels_160(arr, neck_x, neck_y, spread_scale=1.0, phase=0.0):
+def draw_cyber_fin_funnels_160(arr, neck_x, neck_y, spread_scale=1.0, phase=0.0, tilt_deg=0.0):
     """
     Renders VEX-09 EX's 4 articulated floating Cyber Fin-Funnel Wing Pylons
     hovering in a V-wing formation behind her shoulders (gunmetal/titanium housing
@@ -825,12 +825,21 @@ def draw_cyber_fin_funnels_160(arr, neck_x, neck_y, spread_scale=1.0, phase=0.0)
         (5.0, -7.0, -34.0, 17.0, False),
         (6.0, 1.0, -16.0, 15.0, True),
     ]
+    t_rad = math.radians(tilt_deg)
+    tc, ts = math.cos(t_rad), math.sin(t_rad)
     for p_idx, (ox, oy, base_deg, base_len, is_mag) in enumerate(pylons):
         bob = math.sin(phase + p_idx * 1.3) * 1.1
-        bx = neck_x + ox * spread_scale
-        by = neck_y + oy + bob
+        rox = ox * spread_scale
+        roy = oy + bob
+        if abs(tilt_deg) > 0.01:
+            rx = rox * tc - roy * ts
+            ry = rox * ts + roy * tc
+        else:
+            rx, ry = rox, roy
+        bx = neck_x + rx
+        by = neck_y + ry
         length = base_len * spread_scale
-        ang = math.radians(base_deg + math.sin(phase + p_idx * 0.8) * 2.5)
+        ang = math.radians(base_deg + tilt_deg + math.sin(phase + p_idx * 0.8) * 2.5)
         ux, uy = math.cos(ang), math.sin(ang)
         nx, ny = -uy, ux
 
@@ -1195,6 +1204,8 @@ def render_keypose_frame_160(
     rune_phase=0.0,
     bend_l=1.0,
     bend_r=1.0,
+    rotate_weapon_with_body=False,
+    rotate_funnels_with_body=False,
     pre_fn=None,
     post_fn=None,
 ):
@@ -1215,11 +1226,22 @@ def render_keypose_frame_160(
     neck_hi = map_kp_pt(kp["neck"])
     mid_sh_hi = (0.5 * (l_sh_hi[0] + r_sh_hi[0]), 0.5 * (l_sh_hi[1] + r_sh_hi[1]))
 
-    grip_hi = (
-        mid_sh_hi[0] + grip_rel_sh[0] * S_HI,
-        mid_sh_hi[1] + grip_rel_sh[1] * S_HI,
-    )
-    w_rad = math.radians(weapon_deg)
+    if rotate_weapon_with_body:
+        gx_r, gy_r = grip_rel_sh[0] * S_HI, grip_rel_sh[1] * S_HI
+        rb = math.radians(body_tilt_deg)
+        cb, sb = math.cos(rb), math.sin(rb)
+        grip_hi = (
+            mid_sh_hi[0] + gx_r * cb - gy_r * sb,
+            mid_sh_hi[1] + gx_r * sb + gy_r * cb,
+        )
+        eff_weapon_deg = weapon_deg + body_tilt_deg
+    else:
+        grip_hi = (
+            mid_sh_hi[0] + grip_rel_sh[0] * S_HI,
+            mid_sh_hi[1] + grip_rel_sh[1] * S_HI,
+        )
+        eff_weapon_deg = weapon_deg
+    w_rad = math.radians(eff_weapon_deg)
     w_ux, w_uy = math.cos(w_rad), math.sin(w_rad)
     l_target_hi = (grip_hi[0] - w_ux * 2.6 * S_HI, grip_hi[1] - w_uy * 2.6 * S_HI)
     r_target_hi = (grip_hi[0] + w_ux * 1.2 * S_HI, grip_hi[1] + w_uy * 1.2 * S_HI)
@@ -1259,11 +1281,25 @@ def render_keypose_frame_160(
         pre_fn(frame, neck_160, grip_160)
 
     if funnel_spread > 0.05:
-        draw_cyber_fin_funnels_160(frame, neck_160[0] - 2.0, neck_160[1] + 4.0, spread_scale=funnel_spread, phase=rune_phase)
+        if rotate_funnels_with_body:
+            f_rad = math.radians(body_tilt_deg)
+            fc, fs = math.cos(f_rad), math.sin(f_rad)
+            fx_off = -2.0 * fc - 4.0 * fs
+            fy_off = -2.0 * fs + 4.0 * fc
+            draw_cyber_fin_funnels_160(
+                frame,
+                neck_160[0] + fx_off,
+                neck_160[1] + fy_off,
+                spread_scale=funnel_spread,
+                phase=rune_phase,
+                tilt_deg=body_tilt_deg,
+            )
+        else:
+            draw_cyber_fin_funnels_160(frame, neck_160[0] - 2.0, neck_160[1] + 4.0, spread_scale=funnel_spread, phase=rune_phase)
 
     if weapon_layer == "behind":
         draw_muramasa_plasma_odachi_160(
-            frame, grip_160[0], grip_160[1], weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=False
+            frame, grip_160[0], grip_160[1], eff_weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=False
         )
 
     mask_b = body_160[:, :, 3] > 128
@@ -1271,7 +1307,7 @@ def render_keypose_frame_160(
 
     if weapon_layer == "front":
         draw_muramasa_plasma_odachi_160(
-            frame, grip_160[0], grip_160[1], weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=True
+            frame, grip_160[0], grip_160[1], eff_weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=True
         )
 
     if post_fn is not None:
@@ -1282,15 +1318,18 @@ def render_keypose_frame_160(
 
 _BIPEDAL_WALK_KFS = [
     # (u, world_thigh, world_knee_bend, ankle_flex, hip_yaw_hi, hip_lift_hi)
-    (0.00, -23.5,  4.0,  -6.0,   7.5,   2.0),  # Front Contact (+X plant)
-    (0.12, -13.0,  9.5,   0.0,   4.0,   3.5),  # Weight-acceptance down
-    (0.24,  -0.5,  2.0,   0.0,   0.0,   0.0),  # Mid-stance vertical pillar (F07 Left / F22 Right)
-    (0.38,  12.5,  4.0,   6.0,  -4.0,   1.5),  # Late stance roll-through
-    (0.50,  22.5,  8.5,  14.0,  -7.5,   2.0),  # Rear Push-Off (-X trail)
-    (0.62,   3.5, 42.0,  22.0,  -2.0,  -7.0),  # Toe-off knee fold
-    (0.74, -22.0, 44.0,  20.0,   2.5, -16.5),  # Passing Crossover (F07 Right / F22 Left: knee +X, boot lifted at anchorX!)
-    (0.88, -25.5, 12.0,  -7.0,   6.0,  -4.5),  # Terminal swing reach
-    (1.00, -23.5,  4.0,  -6.0,   7.5,   2.0),
+    (0.00, -25.0,  2.0,  -8.0,   7.5,   3.5),  # Front Heel Contact (+X plant at F00 / F15)
+    (0.08, -16.5,  3.0,   0.0,   5.0,   2.0),  # Early flat-foot weight acceptance
+    (0.20,   1.5,  2.0,   0.0,   0.0,   0.0),  # Mid-stance vertical pillar (-X sole slide!)
+    (0.33,  14.5,  3.0,   6.0,  -4.5,   2.5),  # Late stance behind pelvis
+    (0.45,  23.0,  7.0,  14.0,  -7.5,   3.5),  # Rear push-off peak
+    (0.50,  21.5, 14.0,  14.0,  -7.5,  -1.0),  # Trailing push-off (in sole band at F00/F15 for >=56px span)
+    (0.533, 14.0, 56.0,  14.0,  -5.0, -34.0),  # F01/F16 immediate crisp lift & -X heel tuck above sole band!
+    (0.64,  -4.0, 62.0,  14.0,  -1.0, -44.0),  # High folded swing (-X heel tuck)
+    (0.74, -22.0, 58.0,  10.0,   2.5, -42.0),  # Crossover apex (F07 Right / F22 Left: knee +X, shin tucked -X!)
+    (0.85, -26.5, 30.0,  -2.0,   5.5, -22.0),  # High forward unfold
+    (0.93, -26.5,  9.0,  -8.0,   7.0,  -3.5),  # Terminal swing descending to heel-strike
+    (1.00, -25.0,  2.0,  -8.0,   7.5,   3.5),
 ]
 
 
@@ -1358,6 +1397,9 @@ def render_stand_rig_frame_160(
     lock_lowest_to_ground=False,
     clamp_ground_only=False,
     leg_bridge_scale=1.0,
+    uniform_side_boots=False,
+    r_hand_rel_neck_160=None,
+    weapon_single_hand=False,
     pre_fn=None,
     post_fn=None,
 ):
@@ -1394,8 +1436,10 @@ def render_stand_rig_frame_160(
     if neutralize_leg_rest:
         def _leg_sole_reach(side):
             hs, ks, ak = sj[f"{side}_hip"], sj[f"{side}_knee"], sj[f"{side}_ankle"]
-            fim, _, fy0 = parts[f"{side}_foot"]
-            return math.hypot(ks[0] - hs[0], ks[1] - hs[1]) + math.hypot(ak[0] - ks[0], ak[1] - ks[1]) + (fy0 + fim.size[1] - ak[1])
+            foot_key = "r_foot" if uniform_side_boots else f"{side}_foot"
+            ank_key = "r_ankle" if uniform_side_boots else f"{side}_ankle"
+            fim, _, fy0 = parts[foot_key]
+            return math.hypot(ks[0] - hs[0], ks[1] - hs[1]) + math.hypot(ak[0] - ks[0], ak[1] - ks[1]) + (fy0 + fim.size[1] - sj[ank_key][1])
         r_sole_eq_hi = (_leg_sole_reach("l") - _leg_sole_reach("r")) + (l_hip_raw[1] - r_hip_raw[1])
     l_hip_dst = (
         l_hip_raw[0] + (spine_hip_x - l_hip_raw[0]) * hip_inward_frac + l_hip_off_hi[0],
@@ -1416,7 +1460,7 @@ def render_stand_rig_frame_160(
         if neutralize_leg_rest:
             th_rot = th_deg - _bone_rest_deg_stand(hip_s, knee_s)
             sh_rot = (th_deg + sh_deg) - _bone_rest_deg_stand(knee_s, ank_s)
-            ft_rot = ft_deg
+            ft_rot = max(-10.0, min(14.0, ft_deg))
         else:
             th_rot = th_deg
             sh_rot = th_deg + sh_deg
@@ -1438,12 +1482,20 @@ def render_stand_rig_frame_160(
 
     w_rad = math.radians(weapon_deg)
     w_ux, w_uy = math.cos(w_rad), math.sin(w_rad)
-    l_target_hi = (grip_hi[0] - w_ux * 2.4 * S_HI, grip_hi[1] - w_uy * 2.4 * S_HI)
-    r_target_hi = (grip_hi[0] + w_ux * 1.2 * S_HI, grip_hi[1] + w_uy * 1.2 * S_HI)
+    if weapon_single_hand:
+        l_target_hi = grip_hi
+    else:
+        l_target_hi = (grip_hi[0] - w_ux * 2.4 * S_HI, grip_hi[1] - w_uy * 2.4 * S_HI)
+    if r_hand_rel_neck_160 is not None:
+        r_target_hi = (neck_dst[0] + r_hand_rel_neck_160[0] * S_HI, neck_dst[1] + r_hand_rel_neck_160[1] * S_HI)
+    else:
+        r_target_hi = (grip_hi[0] + w_ux * 1.2 * S_HI, grip_hi[1] + w_uy * 1.2 * S_HI)
 
     l_thigh_part = _shade_crop_tuple(parts["l_thigh"], shade_far_leg)
     l_shin_part = _shade_crop_tuple(parts["l_shin"], shade_far_leg)
-    l_foot_part = _shade_crop_tuple(parts["l_foot"], shade_far_leg)
+    l_foot_src = parts["r_foot"] if uniform_side_boots else parts["l_foot"]
+    l_ankle_pivot = sj["r_ankle"] if uniform_side_boots else sj["l_ankle"]
+    l_foot_part = _shade_crop_tuple(l_foot_src, shade_far_leg)
 
     paste_rotated_part(win_hi, parts["mane"], sj["mane"], mane_dst, deg=torso_deg + head_deg + mane_deg)
     paste_rotated_part(
@@ -1458,7 +1510,7 @@ def render_stand_rig_frame_160(
     draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=br_knee)
     paste_rotated_part(win_hi, l_thigh_part, sj["l_hip"], l_hip_dst, deg=l_th_rot)
     paste_rotated_part(win_hi, l_shin_part, sj["l_knee"], l_knee_dst, deg=l_sh_rot)
-    paste_rotated_part(win_hi, l_foot_part, sj["l_ankle"], l_ank_dst, deg=l_ft_rot)
+    paste_rotated_part(win_hi, l_foot_part, l_ankle_pivot, l_ank_dst, deg=l_ft_rot)
 
     paste_rotated_part(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
@@ -1517,7 +1569,14 @@ def render_stand_rig_frame_160(
 
     if weapon_layer == "front":
         draw_muramasa_plasma_odachi_160(
-            frame, grip_160[0], grip_160[1], weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=True
+            frame,
+            grip_160[0],
+            grip_160[1],
+            weapon_deg,
+            blade_len=blade_len,
+            sori_sign=sori_sign,
+            rune_phase=rune_phase,
+            draw_gauntlets=(not weapon_single_hand),
         )
 
     if post_fn is not None:
@@ -1578,9 +1637,9 @@ def build_row1_walk(parts, sj):
         l_th, l_kb, l_af, l_yaw, l_lift = _sample_bipedal_walk(u_l)
         r_th, r_kb, r_af, r_yaw, r_lift = _sample_bipedal_walk(u_r)
 
-        bob_y = 0.80 * math.cos(ph2) - 1.05
+        bob_y = 1.6 * math.cos(ph2) + 0.2
         stride_sway = math.cos(ph30)
-        torso_deg = 2.2 + math.cos(ph2) * 0.7
+        torso_deg = 2.6 + math.cos(ph2) * 0.7
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
@@ -1605,6 +1664,7 @@ def build_row1_walk(parts, sj):
             l_hip_off_hi=(l_yaw, l_lift),
             r_hip_off_hi=(r_yaw, r_lift),
             neutralize_leg_rest=True,
+            uniform_side_boots=True,
             shade_far_leg=0.84,
             grip_rel_sh=(11.2 - stride_sway * 0.9, 8.2 + math.sin(ph2) * 0.45),
             weapon_deg=-21.5 + stride_sway * 2.8,
@@ -1961,45 +2021,118 @@ def build_row3_skill(parts, sj, keyposes):
 
 def build_row4_ultimate(parts, sj, keyposes):
     """
-    Row 4: ULTIMATE / TRUE_ULTIMATE -- Valkyrie Visor Hyper-Laser & Project GUNG-09!
-      - F00..F07: Thruster Backstep Evade Leap (K4_LEAP)
-      - F08..F13: Braced Split-Stance Temple Visor Charge & Wide Fin-Funnel Lock
-      - F14..F24: High-Energy Visor Hyper-Laser Firing Pose (Visor Glare + Recoil)
-      - F25..F29: Optical Cool-Down & Odachi Kamae Recovery
+    Row 4: ULTIMATE / TRUE_ULTIMATE -- Cyber-Valkyrie Backflip, Tactical Rail-Charge & Hyper-Rail Release!
+      - F00..F09 (120..129): True 360-Deg Tucked K4_LEAP Backflip (0 -> -360 deg + attached thruster jets)
+      - F10..F17 (130..137): Braced Tactical Spec-Ops Rail-Charge Pose (deep crouch + visor hand + reverse Odachi brace)
+      - F18..F25 (138..145): Full-Output Overclock Command / Hyper-Rail Release Pose (K3_RISE + wide 1.34 flare)
+      - F26..F29 (146..149): Clean Tactical Recovery to Odachi Kamae
     """
     frames = []
-    # F00..F07: Backward Thruster Evade Leap
-    for f in range(8):
-        u = f / 7.0
-        pdy = -math.sin(u * math.pi) * 16.0
+
+    # F00..F09 (10 frames): True 360-Deg Tactical Cyber-Valkyrie Backflip (0 -> -352 deg)
+    for f in range(10):
+        u = f / 9.0
+        tilt_deg = -352.0 * u
+        pdy = -10.0 - math.sin(u * math.pi) * 18.0
+        pdx = 12.0 + math.sin(u * math.pi) * 4.0
+
+        def post_flip(arr, neck, grip, f_idx=f, ang_deg=tilt_deg):
+            # Attach crisp cyan/magenta backpack & boot thruster jets directly to her silhouette (0 detached ovals!)
+            rad = math.radians(ang_deg)
+            ux, uy = math.cos(rad), math.sin(rad)
+            # Thruster vernier nozzles sit right behind neck/back along inverted torso normal
+            nx = neck[0] - ux * 5.0 - uy * 4.0
+            ny = neck[1] - uy * 5.0 + ux * 4.0
+            for j in range(1, 7):
+                t_j = j / 6.0
+                jx = nx - ux * (j * 1.1) + uy * (j * 0.4)
+                jy = ny - uy * (j * 1.1) - ux * (j * 0.4)
+                col = C_PURE_WHITE if j <= 2 else (C_CYAN_NEON if (j + f_idx) % 2 == 0 else C_MAG_HOT)
+                draw_disc_160(arr, jx, jy, max(0.8, 1.8 - t_j * 1.0), col)
+            if f_idx >= 1:
+                draw_star_glint_160(arr, nx - ux * 2.0, ny - uy * 2.0, arm_len=2 + (f_idx % 2), core_r=1.2)
+
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K4_LEAP",
-            pelvis_dx=-f * 0.6, pelvis_dy=pdy, body_tilt_deg=-6.0 + u * 4.0,
-            grip_rel_sh=(-3.5, 4.0), weapon_deg=152.0, blade_len=45.0, weapon_layer="behind",
-            funnel_spread=1.16, rune_phase=f * 0.8,
+            pelvis_dx=pdx,
+            pelvis_dy=pdy,
+            body_tilt_deg=tilt_deg,
+            squash_x=0.90,
+            squash_y=0.86,
+            grip_rel_sh=(3.5, 4.5),
+            weapon_deg=-48.0,
+            blade_len=36.0,
+            sori_sign=-1.0,
+            weapon_layer="behind",
+            funnel_spread=0.84,
+            rune_phase=f * 0.9,
+            rotate_weapon_with_body=True,
+            rotate_funnels_with_body=True,
+            post_fn=post_flip,
         ))
 
-    # F08..F13: Braced Split-Stance Temple Visor Charge & Fin-Funnel Ring Lock
-    for sub in range(6):
-        def post_charge(arr, neck, _g, s=sub):
-            visor_x = neck[0] + 5.0
-            visor_y = neck[1] - 5.0
-            draw_star_glint_160(arr, visor_x, visor_y, arm_len=4 + s, core_r=1.6 + s * 0.15)
-        frames.append(render_keypose_frame_160(
-            parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=4.0, pelvis_dy=1.0, body_tilt_deg=2.5,
-            grip_rel_sh=(-3.5, 5.0), weapon_deg=156.0, blade_len=46.0, weapon_layer="behind",
-            funnel_spread=1.18 + sub * 0.03, rune_phase=sub * 1.0, post_fn=post_charge,
+    # F10..F17 (8 frames): Braced Tactical Spec-Ops Rail-Charge Pose (deep crouch + visor salute + reverse Odachi brace)
+    for sub in range(8):
+        charge_u = sub / 7.0
+
+        def post_charge(arr, neck, grip, s=sub, cu=charge_u):
+            visor_x = neck[0] + 5.2
+            visor_y = neck[1] - 5.2
+            arm_len = 4 + int(round(cu * 5.0)) + (s % 2)
+            draw_star_glint_160(arr, visor_x, visor_y, arm_len=arm_len, core_r=1.5 + cu * 0.9)
+            # Reactor chest core pulse
+            core_x = neck[0] + 0.5
+            core_y = neck[1] + 9.0
+            draw_disc_160(arr, core_x, core_y, 1.5 + cu * 0.9, C_CYAN_CREST if s % 2 == 0 else C_MAG_HOT)
+            put_px_160(arr, core_x, core_y, C_PURE_WHITE)
+            # Single-hand gauntlet grip + temple visor HUD lock highlight
+            draw_disc_160(arr, grip[0], grip[1], 2.2, C_OUT_DARK)
+            draw_disc_160(arr, grip[0], grip[1], 1.4, C_TITANIUM_LIT)
+            put_px_160(arr, grip[0] + 0.5, grip[1], C_CYAN_NEON)
+            draw_disc_160(arr, visor_x - 1.2, visor_y + 1.0, 1.4, C_TITANIUM_LIT)
+            put_px_160(arr, visor_x - 1.0, visor_y + 1.0, C_CYAN_NEON)
+
+        frames.append(render_stand_rig_frame_160(
+            parts, sj,
+            pelvis_dx=-1.5,
+            pelvis_dy=12.2 + math.sin(charge_u * math.pi) * 0.8,
+            torso_deg=14.0 + charge_u * 2.0,
+            head_deg=-11.5 - charge_u * 1.5,
+            mane_deg=-8.0 - math.sin(sub * 1.2) * 2.5,
+            l_coat_deg=-12.0 - sub * 0.8,
+            r_coat_deg=10.0 + sub * 0.6,
+            coat_wave_ph=sub * 0.9,
+            coat_wave_amp=3.5,
+            l_thigh_deg=-50.0,
+            l_shin_deg=74.0,
+            l_foot_deg=-4.0,
+            r_thigh_deg=34.0,
+            r_shin_deg=22.0,
+            r_foot_deg=10.0,
+            hip_inward_frac=0.88,
+            neutralize_leg_rest=True,
+            uniform_side_boots=True,
+            shade_far_leg=0.84,
+            grip_rel_sh=(-4.5, 13.5),
+            weapon_deg=148.0 - charge_u * 3.0,
+            blade_len=40.0,
+            sori_sign=-1.0,
+            weapon_layer="front",
+            r_hand_rel_neck_160=(5.2, -5.0),
+            weapon_single_hand=True,
+            funnel_spread=1.08 + charge_u * 0.22,
+            rune_phase=sub * 1.1,
+            lock_lowest_to_ground=True,
+            post_fn=post_charge,
         ))
 
-    # F14..F24: High-Energy Visor Hyper-Laser Firing Pose!
-    for sub in range(11):
+    # F18..F25 (8 frames): Full-Output Overclock Command / Hyper-Rail Release Pose (K3_RISE + wide 1.34 flare)
+    for sub in range(8):
         def post_fire(arr, neck, _g, s=sub):
             vx = neck[0] + 6.0
             vy = neck[1] - 5.0
-            draw_star_glint_160(arr, vx, vy, arm_len=7 + (s % 2), core_r=2.4)
-            # Short horizontal muzzle-lance beam burst right inside cell ahead of visor!
-            beam_len = 58
+            draw_star_glint_160(arr, vx, vy, arm_len=8 + (s % 2), core_r=2.5)
+            beam_len = 56
             for bx in range(4, beam_len):
                 tx = vx + bx
                 if tx <= LOGICAL_W - MARGIN_LOGICAL - 3:
@@ -2011,19 +2144,45 @@ def build_row4_ultimate(parts, sj, keyposes):
 
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=3.0 - (sub % 3) * 0.8, pelvis_dy=1.5, body_tilt_deg=4.0,
-            grip_rel_sh=(-4.0, 5.5), weapon_deg=160.0, blade_len=46.0, weapon_layer="behind",
-            funnel_spread=1.32, rune_phase=2.0 + sub * 1.1, post_fn=post_fire,
+            pelvis_dx=3.5 - (sub % 3) * 0.7,
+            pelvis_dy=1.4,
+            body_tilt_deg=3.8,
+            grip_rel_sh=(-4.0, 5.5),
+            weapon_deg=158.0,
+            blade_len=44.0,
+            sori_sign=-1.0,
+            weapon_layer="behind",
+            funnel_spread=1.34,
+            rune_phase=2.0 + sub * 1.2,
+            post_fn=post_fire,
         ))
 
-    # F25..F29: Optical Cool-Down & Odachi Kamae Recovery
-    for sub in range(5):
+    # F26..F29 (4 frames): Clean Tactical Recovery to Odachi Kamae
+    for sub in range(4):
+        rec_u = sub / 3.0
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=2.0 * (1.0 - sub / 4.0), pelvis_dy=0.0,
-            torso_deg=3.0 * (1.0 - sub / 4.0), head_deg=-1.5 * (1.0 - sub / 4.0),
-            grip_rel_sh=(11.5, 8.5), weapon_deg=-10.0 - sub * 3.0, blade_len=48.0, sori_sign=-1.0,
-            funnel_spread=1.15 - sub * 0.03, rune_phase=sub * 0.8, lock_lowest_to_ground=True,
+            pelvis_dx=2.0 * (1.0 - rec_u),
+            pelvis_dy=0.0,
+            torso_deg=4.0 * (1.0 - rec_u),
+            head_deg=-2.0 * (1.0 - rec_u),
+            l_thigh_deg=-24.0 + rec_u * 6.0,
+            l_shin_deg=28.0 - rec_u * 6.0,
+            l_foot_deg=0.0,
+            r_thigh_deg=18.0 - rec_u * 4.0,
+            r_shin_deg=10.0 - rec_u * 4.0,
+            r_foot_deg=4.0 * (1.0 - rec_u),
+            hip_inward_frac=0.90,
+            neutralize_leg_rest=True,
+            uniform_side_boots=True,
+            shade_far_leg=0.84,
+            grip_rel_sh=(8.0 + rec_u * 3.5, 9.5 - rec_u * 1.0),
+            weapon_deg=12.0 - rec_u * 32.0,
+            blade_len=47.0,
+            sori_sign=-1.0,
+            funnel_spread=1.24 - rec_u * 0.20,
+            rune_phase=sub * 0.9,
+            lock_lowest_to_ground=True,
         ))
 
     assert len(frames) == 30
@@ -2373,6 +2532,8 @@ def assemble_and_verify_sheet(all_rows_160):
     walk_spans = []
     walk_tops = []
     walk_bots = []
+    walk_sole_xs = []
+    walk_boot_xs = []
     for c in range(30):
         cell_a = sh_arr[240:480, c * 320:(c + 1) * 320, 3] > 0
         wy, _ = np.where(cell_a)
@@ -2381,19 +2542,32 @@ def assemble_and_verify_sheet(all_rows_160):
         band = cell_a[206:233, :]
         _, bx = np.where(band)
         walk_spans.append(int(bx.max() - bx.min()) if len(bx) else 0)
+        walk_boot_xs.append(float(bx.mean()) if len(bx) else -1.0)
+        _, sx = np.where(cell_a[218:234, :])
+        walk_sole_xs.append(float(sx.mean()) if len(sx) else -1.0)
     max_foot_span = max(walk_spans)
     min_foot_span = min(walk_spans)
     max_adj_top = max(abs(walk_tops[(i + 1) % 30] - walk_tops[i]) for i in range(30))
+    d_sole_1 = walk_sole_xs[6] - walk_sole_xs[1]
+    d_sole_2 = walk_sole_xs[21] - walk_sole_xs[16]
+    d_boot_1 = walk_boot_xs[6] - walk_boot_xs[1]
+    d_boot_2 = walk_boot_xs[21] - walk_boot_xs[16]
     print(
         f"[QA] Row 1 WALK footSpan320: min={min_foot_span}px max={max_foot_span}px "
         f"ratio={min_foot_span / max(1, max_foot_span):.2f} "
         f"(F00={walk_spans[0]} F07={walk_spans[7]} F15={walk_spans[15]} F22={walk_spans[22]}) "
         f"bots=[{min(walk_bots)}..{max(walk_bots)}] maxAdjTopDelta={max_adj_top}"
     )
-    assert max_foot_span >= 34, f"Walk contact stride too narrow: {max_foot_span}"
+    print(
+        f"[QA] Row 1 WALK stanceDelta: sole(1->6={d_sole_1:+.1f}px, 16->21={d_sole_2:+.1f}px) "
+        f"boot(1->6={d_boot_1:+.1f}px, 16->21={d_boot_2:+.1f}px)"
+    )
+    assert max_foot_span >= 56, f"Walk contact stride too narrow: {max_foot_span}"
     assert min_foot_span <= max_foot_span * 0.55, f"Crab walk detected: min={min_foot_span} > 0.55*{max_foot_span}"
     assert min(walk_bots) >= 222 and max(walk_bots) <= 233, f"Walk footY out of [222..233]: {walk_bots}"
     assert max_adj_top <= 4, f"Walk head-top pop > 4px: {max_adj_top}"
+    assert d_sole_1 <= -8.0 and d_sole_2 <= -8.0, f"Moonwalk in sole band: {(d_sole_1, d_sole_2)}"
+    assert d_boot_1 <= -8.0 and d_boot_2 <= -8.0, f"Moonwalk in boot band: {(d_boot_1, d_boot_2)}"
 
     flat_cuts = []
     for r in range(10):

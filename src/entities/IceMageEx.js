@@ -2298,7 +2298,6 @@ export class IceMageEx extends Fighter {
       !enemy.isDead &&
       (this.state === 'IDLE' || this.state === 'WALK')
     ) {
-      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
       const dist = Math.abs(enemy.x - this.x);
 
       // Projectile Refraction Mirror Counter
@@ -2315,17 +2314,11 @@ export class IceMageEx extends Fighter {
         }
       }
 
-      // Long-range Winter Empress spacing: -28px skate retreat when dist < 215 (or Sky-Stair kite vault!)
+      // Long-range Winter Empress spacing: Sky-Stair kite vault when closely pressured
       if (dist < 175 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
         this.wallFlipCooldown = 3.0;
         this.startJump(enemy, game);
         return;
-      }
-      if (dist < 215 && this.x > 165 && this.x < ww - 165) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-        this.moveDir = -1;
-        this.walkPhase = (this.walkPhase || 0) + dt * 6.5;
-        this.x = this._clampArenaX(this.x - this.facing * 28 * dt * 5.2, game);
       }
     }
 
