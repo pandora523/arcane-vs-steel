@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 /**
- * Next-Gen 30fps VFX Sprite Sheet Builder for Aethelgard EX (`warrior_ex` / `WarriorEx.js`).
- * Powered natively by `src/engine/ArcaneShaderFX.js` with custom FFBE / Last Cloudia
- * serrated crescent sword-waves, razor hit-slash cross-scars, Dawn-Breaker ground pillars,
- * foreshortened Omnislash locus rings, and sovereign feather/spark bursts.
+ * Newly-Born Neo-Vision 30fps VFX Sprite Sheet Builder for Aethelgard EX (`warrior_ex` / `WarriorEx.js`).
+ * Powered natively by `src/engine/ArcaneShaderFX.js`.
+ *
+ * Row Contract (`assets/sprites/warrior_ex_vfx.png`, 6240x1664 = 8 rows x 30 cols @ 208x208):
+ *   - Row 0: Sovereign Dawn-Breaker Crescent Wave (`blade_wave`, sapphire-cyan & sun-gold + 4-pt star glints)
+ *   - Row 1: Consecrated Runic Sword-Seal & Winged Paladin Parry Crest (`DAWN-BREAKER TRINITY RUSH` seal)
+ *   - Row 2: Sovereign Sky-Pillar Greatsword Eruption (marching sword-pillars & Sky-Pillar Uppercut)
+ *   - Row 3: 5-Point Celestial Pentagram Star-Sanctuary Sigil (`CELESTIAL PENTAGRAM OMNISLASH` floor lock)
+ *   - Row 4: Asymmetric Neo-Vision 4-Point Astral Starburst & Faceted Diamond Shards (0 chevron bars!)
+ *   - Row 5: Stained-Glass Runic Cathedral Rose-Window Sanctuary Crest (`CATHEDRAL OF SEVEN SWORDS`)
+ *   - Row 6: Towering Runic Monolith Greatsword of Light (Pentagram Plunge & 7 Celestial Greatswords)
+ *   - Row 7: Luminous Seraphim Dawn-Feather & Twinkling 4-Point Star-Glints
  *
  * Invariants:
- *   - Output: `assets/sprites/warrior_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208)
  *   - 100% 2x2 integer pixel blocks (authored on 104x104 logical grid -> 2x NEAREST)
- *   - Strict 2px logical (4px output) transparent safety margin on all 240 cells (0/240 clips)
- *   - Crisp #0a0e1c / #141c34 Selout, stepped cel-ramps, 4x4 Bayer stipple fade, 0 muddy blobs
+ *   - Pure binary alpha (0 or 255), strict >= 4px (3px logical = 6px output) transparent margin (0/240 clips)
  *   - Zero Unicode emojis anywhere
  */
 
@@ -29,26 +35,26 @@ import {
   clearPixelSurface,
   resolveSurfaceToRGBA,
   ShaderPen
-} from '../src/engine/ArcaneShaderFX.js';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps115';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SCRATCH_DIR =
-  '/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch';
+  '/Users/rei/.gemini/antigravity/brain/407ee22f-2468-4119-a090-789cbc49325d/scratch';
 
 // Locked Sovereign Exvius Palette (matches `warrior_ex_sheet.png` 1:1)
-const C_SEL_DARK = packHexColor('#0a0e1c');
-const C_SEL_MID = packHexColor('#141c34');
-const C_SAPPH_DEEP = packHexColor('#102a68');
-const C_CYAN_DEEP = packHexColor('#0e84d4');
-const C_CYAN_BRIGHT = packHexColor('#38d0fc');
-const C_CYAN_PALE = packHexColor('#bdf2ff');
-const C_GOLD_DEEP = packHexColor('#8a4b12');
-const C_GOLD_MID = packHexColor('#d98a1e');
-const C_GOLD_BRIGHT = packHexColor('#fcde62');
-const C_GOLD_PALE = packHexColor('#fff5bf');
-const C_CRIMSON = packHexColor('#c82848');
-const C_CRIMSON_LIT = packHexColor('#ff647c');
+const C_SEL_DARK = packHexColor('#080d1a');
+const C_SEL_MID = packHexColor('#121c36');
+const C_SAPPH_DEEP = packHexColor('#102e72');
+const C_CYAN_DEEP = packHexColor('#0284c7');
+const C_CYAN_BRIGHT = packHexColor('#38bdf8');
+const C_CYAN_PALE = packHexColor('#bae6fd');
+const C_GOLD_DEEP = packHexColor('#92400e');
+const C_GOLD_MID = packHexColor('#d97706');
+const C_GOLD_BRIGHT = packHexColor('#facc15');
+const C_GOLD_PALE = packHexColor('#fef08a');
+const C_ROSE_GLASS = packHexColor('#e11d48');
+const C_ROSE_PALE = packHexColor('#fda4af');
 const C_WHITE = PURE_WHITE;
 
 const CRC_TABLE = (() => {
@@ -110,8 +116,7 @@ function enforceStrictCellMargin104(rgba, w = 104, h = 104) {
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
       } else if (rgba[o + 3] > 0) {
-        // Pure crisp binary alpha (255 or 0) for authentic 16-bit pixel art (zero semi-transparent muddy halos!)
-        if (rgba[o + 3] < 108) {
+        if (rgba[o + 3] < 104) {
           rgba[o] = 0;
           rgba[o + 1] = 0;
           rgba[o + 2] = 0;
@@ -178,34 +183,62 @@ function has4pxBorderClip208(cellRgba, cell = 208, margin = 4) {
   return false;
 }
 
-/**
- * Draw a crisp pixel-art 4-pointed star glint (zero blurry circles).
- */
-function drawStarSpark(pen, cx, cy, armLen, coreCol, tipCol, alpha = 1) {
-  if (alpha <= 0.05 || armLen < 1) return;
-  const L = Math.round(armLen);
-  pen.stipple(cx, cy, C_WHITE, alpha);
-  for (let i = 1; i <= L; i++) {
-    const col = i === 1 ? coreCol : tipCol;
-    const a = alpha * (1 - (i - 1) / (L + 1.2));
-    pen.stipple(cx + i, cy, col, a);
-    pen.stipple(cx - i, cy, col, a);
-    pen.stipple(cx, cy + i, col, a);
-    pen.stipple(cx, cy - i, col, a);
+/** Crisp 4-point pixel star-glint with Selout tips and pure white core. */
+function drawStarGlint(pen, cx, cy, armH, armV, coreCol, tipCol, alpha = 1) {
+  if (alpha <= 0.05 || (armH < 1 && armV < 1)) return;
+  const rx = Math.round(cx);
+  const ry = Math.round(cy);
+  const lh = Math.max(1, Math.round(armH));
+  const lv = Math.max(1, Math.round(armV));
+
+  for (let i = -lh - 1; i <= lh + 1; i++) {
+    if (Math.abs(i) === lh + 1) pen.stipple(rx + i, ry, C_SEL_DARK, alpha * 0.9);
   }
-  if (L >= 3) {
-    pen.stipple(cx + 1, cy + 1, tipCol, alpha * 0.8);
-    pen.stipple(cx - 1, cy - 1, tipCol, alpha * 0.8);
-    pen.stipple(cx + 1, cy - 1, tipCol, alpha * 0.8);
-    pen.stipple(cx - 1, cy + 1, tipCol, alpha * 0.8);
+  for (let j = -lv - 1; j <= lv + 1; j++) {
+    if (Math.abs(j) === lv + 1) pen.stipple(rx, ry + j, C_SEL_DARK, alpha * 0.9);
+  }
+  if (lh >= 3 && lv >= 3) {
+    pen.stipple(rx + 1, ry + 1, tipCol, alpha * 0.9);
+    pen.stipple(rx - 1, ry - 1, tipCol, alpha * 0.9);
+    pen.stipple(rx + 1, ry - 1, tipCol, alpha * 0.9);
+    pen.stipple(rx - 1, ry + 1, tipCol, alpha * 0.9);
+  }
+  for (let i = 1; i <= lh; i++) {
+    const col = i <= Math.ceil(lh * 0.45) ? coreCol : tipCol;
+    const a = alpha * (1 - (i - 1) / (lh + 1.4));
+    pen.stipple(rx + i, ry, col, a);
+    pen.stipple(rx - i, ry, col, a);
+  }
+  for (let j = 1; j <= lv; j++) {
+    const col = j <= Math.ceil(lv * 0.45) ? coreCol : tipCol;
+    const a = alpha * (1 - (j - 1) / (lv + 1.4));
+    pen.stipple(rx, ry + j, col, a);
+    pen.stipple(rx, ry - j, col, a);
+  }
+  pen.stipple(rx, ry, C_WHITE, alpha);
+}
+
+/** Faceted pixel diamond crystal shard. */
+function drawDiamondShard(pen, cx, cy, halfW, halfH, rimCol, coreCol, alpha = 1) {
+  if (alpha <= 0.06 || halfW < 1 || halfH < 1) return;
+  const hw = Math.round(halfW);
+  const hh = Math.round(halfH);
+  for (let dy = -hh - 1; dy <= hh + 1; dy++) {
+    const span = Math.round((1 - Math.abs(dy) / (hh + 1.1)) * (hw + 1));
+    for (let dx = -span; dx <= span; dx++) {
+      const edge = Math.abs(dx) === span || Math.abs(dy) >= hh;
+      if (edge) pen.stipple(cx + dx, cy + dy, C_SEL_DARK, alpha * 0.92);
+      else if (Math.abs(dx) <= Math.max(0, span - 2) && Math.abs(dy) <= Math.max(0, hh - 2)) {
+        pen.stipple(cx + dx, cy + dy, dx <= 0 && dy <= 0 ? C_WHITE : coreCol, alpha);
+      } else {
+        pen.stipple(cx + dx, cy + dy, rimCol, alpha);
+      }
+    }
   }
 }
 
-/**
- * Draw a razor-sharp tapered needle slash scar from (x0, y0) to (x1, y1)
- * with 1px dark Selout border, colored bevel, and pure white razor core.
- */
-function drawRazorSlashScar(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, alpha = 1) {
+/** Multi-pass tapered astral needle (Pass 1 Selout -> Pass 2 Bevel -> Pass 3 White Core, zero chevrons). */
+function drawTaperedAstralRay(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, alpha = 1) {
   if (alpha <= 0.04) return;
   const dx = x1 - x0;
   const dy = y1 - y0;
@@ -217,52 +250,50 @@ function drawRazorSlashScar(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, 
   const ny = ux;
   const steps = Math.ceil(len * 2.2);
 
-  // Pass 1: 1px dark Selout sheath + outer bevel
   for (let i = 0; i <= steps; i++) {
     const s = i / steps;
-    const env = Math.sin(s * Math.PI);
-    const hw = maxHalfW * Math.pow(env, 0.72);
+    const hw = maxHalfW * Math.pow(Math.sin(s * Math.PI), 0.72);
     const bx = x0 + ux * (s * len);
     const by = y0 + uy * (s * len);
-    const span = Math.ceil(hw + 1.1);
-    for (let q = -span; q <= span; q += 0.45) {
-      const aq = Math.abs(q);
-      if (aq > hw + 0.85) continue;
-      const px = bx + nx * q;
-      const py = by + ny * q;
-      if (aq >= hw - 0.15) {
-        pen.stipple(px, py, C_SEL_DARK, alpha * 0.95);
-      } else if (aq >= hw * 0.46) {
-        pen.stipple(px, py, q > 0 ? bevelCol : accentCol, alpha);
+    const span = Math.ceil(hw + 1.0);
+    for (let q = -span; q <= span; q += 0.5) {
+      if (Math.abs(q) <= hw + 0.85 && Math.abs(q) >= hw - 0.2) {
+        pen.stipple(bx + nx * q, by + ny * q, C_SEL_DARK, alpha * 0.95);
       }
     }
   }
-  // Pass 2: Pure white razor spine
-  for (let i = 1; i < steps; i++) {
+  for (let i = 0; i <= steps; i++) {
     const s = i / steps;
-    const env = Math.sin(s * Math.PI);
-    const hw = maxHalfW * 0.44 * env;
+    const hw = maxHalfW * Math.pow(Math.sin(s * Math.PI), 0.72);
     const bx = x0 + ux * (s * len);
     const by = y0 + uy * (s * len);
-    for (let q = -hw; q <= hw; q += 0.45) {
+    const span = Math.ceil(hw);
+    for (let q = -span; q <= span; q += 0.5) {
+      if (Math.abs(q) < hw - 0.1) {
+        pen.stipple(bx + nx * q, by + ny * q, q >= 0 ? bevelCol : accentCol, alpha);
+      }
+    }
+  }
+  for (let i = 1; i < steps; i++) {
+    const s = i / steps;
+    const hw = maxHalfW * 0.38 * Math.sin(s * Math.PI);
+    const bx = x0 + ux * (s * len);
+    const by = y0 + uy * (s * len);
+    for (let q = -hw; q <= hw; q += 0.5) {
       pen.stipple(bx + nx * q, by + ny * q, C_WHITE, alpha);
     }
   }
 }
 
-/**
- * Draw an authentic FFBE / Last Cloudia serrated crescent smear arc on a 104x104 surface.
- * Features a razor outer edge, stepped cel-bands, and sawtooth inner wind-rip notches!
- */
 function drawSerratedCrescentArc(pen, opts) {
   const {
     cx = 0,
     cy = 0,
     rx = 34,
-    ry = 34,
+    ry = 38,
     rotRad = 0,
-    aStart = -1.35,
-    aEnd = 1.35,
+    aStart = -1.32,
+    aEnd = 1.32,
     maxWidth = 15,
     teethCount = 6,
     toothDepth = 0.44,
@@ -277,31 +308,22 @@ function drawSerratedCrescentArc(pen, opts) {
   const spanA = aEnd - aStart;
   if (Math.abs(spanA) < 0.06) return;
 
-  const steps = Math.max(90, Math.ceil(Math.abs(spanA) * Math.max(rx, ry) * 2.6));
+  const steps = Math.max(92, Math.ceil(Math.abs(spanA) * Math.max(rx, ry) * 2.6));
   for (let i = 0; i <= steps; i++) {
-    const s = i / steps; // 0 = tail, 1 = leading head
+    const s = i / steps;
     const ang = aStart + spanA * s;
     const cA = Math.cos(ang);
     const sA = Math.sin(ang);
-
-    // Asymmetric FFBE belly profile: needle-sharp tail (s=0), wide heavy belly (s~0.68), crisp leading blade tip (s=1)
-    let belly;
-    if (s < 0.74) {
-      belly = Math.pow(s / 0.74, 1.35);
-    } else {
-      belly = Math.pow(Math.max(0, (1 - s) / 0.26), 0.58);
-    }
-
-    // Authentic sawtooth wind-rip notches carved into the inner trailing edge!
+    const belly = s < 0.74 ? Math.pow(s / 0.74, 1.32) : Math.pow(Math.max(0, (1 - s) / 0.26), 0.56);
     const toothArg = s * teethCount + phase * 0.4;
-    const saw = toothArg - Math.floor(toothArg); // 0..1 sawtooth ramp
+    const saw = toothArg - Math.floor(toothArg);
     const ripNotch = s > 0.08 && s < 0.88 ? Math.pow(saw, 1.5) * toothDepth : 0;
     const wTotal = maxWidth * belly * (1 - ripNotch);
     if (wTotal < 0.45) continue;
 
     const rSteps = Math.max(3, Math.ceil(wTotal * 2.2));
     for (let j = 0; j <= rSteps; j++) {
-      const v = j / rSteps; // 0 = inner serrated trailing edge, 1 = outer razor cutting edge
+      const v = j / rSteps;
       const curRx = rx - (1 - v) * wTotal;
       const curRy = ry - (1 - v) * wTotal * (ry / Math.max(1, rx));
       if (curRx <= 1 || curRy <= 1) continue;
@@ -313,15 +335,11 @@ function drawSerratedCrescentArc(pen, opts) {
 
       let col;
       let pixAlpha = alpha;
-      if (v > 0.92 || s > 0.96 || (v < 0.08 && s > 0.25)) {
-        col = C_SEL_DARK;
-      } else if (v > 0.80) {
-        col = C_WHITE;
-      } else if (v > 0.62) {
-        col = goldDominant ? C_GOLD_BRIGHT : C_CYAN_BRIGHT;
-      } else if (v > 0.38) {
-        col = goldDominant ? C_GOLD_PALE : C_GOLD_BRIGHT;
-      } else if (v > 0.18) {
+      if (v > 0.92 || s > 0.96 || (v < 0.08 && s > 0.25)) col = C_SEL_DARK;
+      else if (v > 0.80) col = C_WHITE;
+      else if (v > 0.60) col = goldDominant ? C_GOLD_BRIGHT : C_CYAN_BRIGHT;
+      else if (v > 0.36) col = goldDominant ? C_GOLD_PALE : C_GOLD_BRIGHT;
+      else if (v > 0.18) {
         col = goldDominant ? C_CYAN_BRIGHT : C_CYAN_DEEP;
         pixAlpha = alpha * 0.92;
       } else {
@@ -334,387 +352,335 @@ function drawSerratedCrescentArc(pen, opts) {
 }
 
 // ============================================================================
-// ROW RENDERERS (f = 0..29 on 104x104 logical surface centered at (52, 52))
+// 8 NEO-VISION ROW RENDERERS (f = 0..29 on 104x104 surface centered at 52,52)
 // ============================================================================
 
-/**
- * Row 0: Serrated Dawn-Breaker Crescent Sword-Wave Projectile (`blade_wave`, F00..F29)
- */
+/** Row 0: Sovereign Dawn-Breaker Crescent Wave (`blade_wave`) */
 function renderRow0SwordWave(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
   const pulse = Math.sin(ph);
-  const rng = new DeterministicRng(101 + f * 17);
 
-  // Trailing horizontal wind-shear speed streaks behind the crescent wave
   for (let k = 0; k < 5; k++) {
     const wy = -24 + k * 12 + Math.sin(ph + k * 1.3) * 1.5;
-    const xEnd = 10 + (k % 2) * 5;
-    const xStart = -34 + ((f * 3 + k * 9) % 18);
-    pen.line(xStart, wy, xEnd, wy, k % 2 === 0 ? C_CYAN_BRIGHT : C_GOLD_BRIGHT, 0.9);
-    pen.line(xStart + 4, wy - 1, xEnd, wy - 1, C_SEL_DARK, 0.85);
+    const xEnd = 8 + (k % 2) * 5;
+    const xStart = -35 + ((f * 3 + k * 9) % 16);
+    pen.line(xStart + 2, wy + 1, xEnd, wy + 1, C_SEL_DARK, 0.88);
+    pen.line(xStart, wy, xEnd, wy, k % 2 === 0 ? C_CYAN_BRIGHT : C_GOLD_BRIGHT, 0.94);
   }
 
-  // Main forward (+X) serrated FFBE crescent vacuum blade
   drawSerratedCrescentArc(pen, {
-    cx: -6 + pulse * 1.2,
+    cx: -5 + pulse * 1.1,
     cy: 0,
     rx: 34,
     ry: 39,
     rotRad: 0,
     aStart: -1.28,
     aEnd: 1.28,
-    maxWidth: 16.5 + pulse * 1.2,
+    maxWidth: 16.5 + pulse * 1.1,
     teethCount: 6,
-    toothDepth: 0.46,
+    toothDepth: 0.45,
     goldDominant: false,
     alpha: 1.0,
     phase: f * 0.35
   });
 
-  // Inner harmonic sun-gold counter-crescent
   drawSerratedCrescentArc(pen, {
     cx: -10,
     cy: 0,
-    rx: 23,
-    ry: 28,
+    rx: 22,
+    ry: 27,
     rotRad: 0,
-    aStart: -0.95,
-    aEnd: 0.95,
-    maxWidth: 7.5,
+    aStart: -0.92,
+    aEnd: 0.92,
+    maxWidth: 7.2,
     teethCount: 4,
-    toothDepth: 0.38,
+    toothDepth: 0.36,
     goldDominant: true,
-    alpha: 0.95,
+    alpha: 0.96,
     phase: -f * 0.3
   });
 
-  // Leading apex razor flare & flying pixel sparks
-  drawStarSpark(pen, 28 + pulse, 0, 5 + (f % 2), C_GOLD_BRIGHT, C_CYAN_BRIGHT, 1.0);
-  for (let s = 0; s < 6; s++) {
-    const sx = rng.between(-32, 22);
-    const sy = rng.between(-32, 32);
-    pen.stipple(sx, sy, s % 2 === 0 ? C_GOLD_BRIGHT : C_CYAN_PALE, 0.95);
-    pen.stipple(sx - 1, sy, C_SEL_DARK, 0.85);
-  }
+  drawStarGlint(pen, 28 + pulse, 0, 6, 8, C_GOLD_PALE, C_CYAN_BRIGHT, 1.0);
+  drawStarGlint(pen, -22, -16 + Math.cos(ph) * 2, 3, 3, C_GOLD_BRIGHT, C_CYAN_BRIGHT, 0.92);
+  drawStarGlint(pen, -20, 17 - Math.sin(ph) * 2, 3, 3, C_CYAN_PALE, C_GOLD_BRIGHT, 0.92);
 }
 
-/**
- * Row 1: Neo-Vision Winged Sovereign Crest & Counter-Parry Flash (F00..F29)
- */
-function renderRow1SovereignCrest(pen, f) {
+/** Row 1: Consecrated Runic Sword-Seal & Winged Paladin Crest (`SKILL` & `CROUCH`) */
+function renderRow1RunicSwordSeal(pen, f) {
   const u = f / 29;
-  const pop = u < 0.18 ? smoothStep(0, 0.18, u) : 1.0;
-  const fade = u > 0.72 ? 1 - (u - 0.72) / 0.28 : 1.0;
-  const scale = (0.68 + 0.32 * pop) * (0.94 + 0.06 * Math.sin(u * Math.PI * 4));
+  const pop = u < 0.16 ? smoothStep(0, 0.16, u) : 1.0;
+  const fade = u > 0.76 ? 1 - (u - 0.76) / 0.24 : 1.0;
+  const rot = u * Math.PI * 1.5;
 
-  // Swept Twin Paladin Pinion Wings
+  // Foreshortened octagonal Runic Sword-Seal ring at base
+  const rx = 36 * pop;
+  const ry = 11 * pop;
+  const sealY = 20;
+  for (let k = 0; k < 8; k++) {
+    const a0 = rot + (k * Math.PI) / 4;
+    const a1 = rot + ((k + 1) * Math.PI) / 4;
+    const x0 = Math.cos(a0) * rx;
+    const y0 = sealY + Math.sin(a0) * ry;
+    const x1 = Math.cos(a1) * rx;
+    const y1 = sealY + Math.sin(a1) * ry;
+    pen.line(x0, y0 + 1, x1, y1 + 1, C_SEL_DARK, fade * 0.92);
+    pen.line(x0, y0, x1, y1, k % 2 === 0 ? C_GOLD_BRIGHT : C_CYAN_BRIGHT, fade);
+    drawStarGlint(pen, x0, y0, 2, 2, C_WHITE, C_GOLD_BRIGHT, fade * 0.9);
+  }
+
+  // Swept Twin Paladin Wings + Central Vertical Sword-Rune Sigil
   for (const side of [-1, 1]) {
-    for (let p = 0; p < 4; p++) {
-      const x0 = side * (6 + p * 2) * scale;
-      const y0 = (-4 + p * 4.5) * scale;
-      const x1 = side * (34 - p * 4.5) * scale;
-      const y1 = (-24 + p * 6.5) * scale;
-      drawRazorSlashScar(
+    for (let p = 0; p < 3; p++) {
+      drawTaperedAstralRay(
         pen,
-        x0,
-        y0,
-        x1,
-        y1,
-        2.3 - p * 0.25,
+        side * (5 + p * 2) * pop,
+        (4 + p * 4) * pop,
+        side * (33 - p * 5) * pop,
+        (-16 + p * 6) * pop,
+        2.1 - p * 0.25,
         p % 2 === 0 ? C_GOLD_BRIGHT : C_CYAN_BRIGHT,
         C_SAPPH_DEEP,
         fade
       );
     }
   }
-
-  // Faceted Diamond Rune-Core Shield Boss (crisp octagonal/diamond lines, zero round blob)
-  const rOut = 15 * scale;
-  const pts = [
-    [0, -rOut * 1.25],
-    [rOut * 0.85, 0],
-    [0, rOut * 1.35],
-    [-rOut * 0.85, 0],
-    [0, -rOut * 1.25]
-  ];
-  for (let i = 0; i < 4; i++) {
-    drawRazorSlashScar(
-      pen,
-      pts[i][0],
-      pts[i][1],
-      pts[i + 1][0],
-      pts[i + 1][1],
-      2.2,
-      C_GOLD_BRIGHT,
-      C_CYAN_DEEP,
-      fade
-    );
-  }
-
-  // Diagonal Counter-Parry Flash Scar across the crest
-  const scarLen = 36 * pop;
-  drawRazorSlashScar(pen, -scarLen, scarLen * 0.62, scarLen, -scarLen * 0.62, 2.8 * fade, C_CYAN_BRIGHT, C_GOLD_BRIGHT, fade);
-  drawStarSpark(pen, 0, 0, Math.round(7 * fade), C_CYAN_BRIGHT, C_GOLD_BRIGHT, fade);
+  drawTaperedAstralRay(pen, 0, -32 * pop, 0, 24 * pop, 3.0, C_GOLD_PALE, C_CYAN_BRIGHT, fade);
+  drawTaperedAstralRay(pen, -14 * pop, -8 * pop, 14 * pop, -8 * pop, 2.2, C_GOLD_BRIGHT, C_GOLD_DEEP, fade);
+  drawDiamondShard(pen, 0, -8 * pop, 4, 5, C_CYAN_BRIGHT, C_GOLD_PALE, fade);
 }
 
-/**
- * Row 2: Dawn-Breaker Ground Light-Pillar & Runic Fissure Spire (F00..F29)
- */
-function renderRow2DawnPillar(pen, f) {
+/** Row 2: Sovereign Sky-Pillar Sword Eruption (`DAWN-BREAKER TRINITY RUSH` pillars) */
+function renderRow2DawnSwordPillar(pen, f) {
   const u = f / 29;
-  const erupt = u < 0.16 ? smoothStep(0, 0.16, u) : 1.0;
+  const erupt = u < 0.14 ? smoothStep(0, 0.14, u) : 1.0;
   const fade = u > 0.68 ? 1 - (u - 0.68) / 0.32 : 1.0;
   const rng = new DeterministicRng(211 + f * 23);
 
-  const baseY = 34;
-  const pillarH = 72 * erupt;
-  const halfW = (11.5 - u * 4.5) * erupt;
+  const baseY = 36;
+  const pillarH = 76 * erupt;
+  const halfW = (11.5 - u * 4.2) * erupt;
 
-  // Foreshortened 2.5D Ground Fissure Ring
-  const ringRx = (18 + 18 * smoothStep(0, 0.6, u)) * erupt;
+  // 2.5D Ground Sanctuary Shock-Ring
+  const ringRx = (16 + 20 * smoothStep(0, 0.62, u)) * erupt;
   const ringRy = ringRx * 0.24;
   for (let i = 0; i < 64; i++) {
-    const a = (i / 64) * Math.PI * 2 + u * 2.2;
+    const a = (i / 64) * Math.PI * 2 + u * 2.4;
     const rx = Math.cos(a) * ringRx;
     const ry = baseY + Math.sin(a) * ringRy;
     pen.stipple(rx, ry + 1, C_SEL_DARK, fade * 0.95);
     pen.stipple(rx, ry, i % 4 === 0 ? C_WHITE : i % 2 === 0 ? C_GOLD_BRIGHT : C_CYAN_BRIGHT, fade);
   }
 
-  // Vertical Stepped Dawn-Breaker Sword-Column
+  // Sculpted Sword-Tipped Dawn Pillar
   if (halfW >= 1.2 && fade > 0.05) {
     const topY = baseY - pillarH;
     for (let y = Math.floor(topY); y <= baseY; y++) {
       const hFrac = clamp01((baseY - y) / Math.max(1, pillarH));
-      const taper = hFrac > 0.78 ? (1 - hFrac) / 0.22 : 1.0 - hFrac * 0.18;
-      const w = halfW * taper;
+      const swordPoint = hFrac > 0.76 ? (1 - hFrac) / 0.24 : 1.0 - hFrac * 0.14;
+      const w = halfW * swordPoint;
       const iw = Math.ceil(w + 1);
       for (let x = -iw; x <= iw; x++) {
         const ax = Math.abs(x);
         if (ax > w + 0.8) continue;
         let col;
-        if (ax >= w - 0.2) col = C_SEL_DARK;
-        else if (ax >= w * 0.68) col = x < 0 ? C_CYAN_BRIGHT : C_GOLD_MID;
-        else if (ax >= w * 0.34) col = x < 0 ? C_GOLD_BRIGHT : C_CYAN_PALE;
+        if (ax >= w - 0.25) col = C_SEL_DARK;
+        else if (ax >= w * 0.66) col = x < 0 ? C_CYAN_DEEP : C_GOLD_MID;
+        else if (ax >= w * 0.34) col = x < 0 ? C_CYAN_BRIGHT : C_GOLD_BRIGHT;
         else col = C_WHITE;
         pen.stipple(x, y, col, fade);
       }
     }
   }
 
-  // Flanking Diagonal Fissure Spikes + Crackling Lightning
-  for (const side of [-1, 1]) {
-    drawRazorSlashScar(
-      pen,
-      side * 4,
-      baseY,
-      side * (22 * erupt),
-      baseY - 28 * erupt,
-      2.6 * fade,
-      C_GOLD_BRIGHT,
-      C_CYAN_DEEP,
-      fade
-    );
-  }
-  if (fade > 0.2) {
-    const chain = buildLightningChain(rng, 0, baseY - pillarH * 0.92, 0, baseY, 0.18, 4);
-    pen.polyline(chain, C_GOLD_BRIGHT, fade * 0.95);
-  }
-}
-
-/**
- * Row 3: Foreshortened 2.5D Omnislash Locus & Consecration Ring (F00..F29)
- */
-function renderRow3OmnislashLocus(pen, f) {
-  const u = f / 29;
-  const ph = u * Math.PI * 2;
-  const rx = 38;
-  const ry = 11.5;
-
-  // Outer & Inner Counter-Rotating 2.5D Perspective Rings
-  for (let i = 0; i < 96; i++) {
-    const a = (i / 96) * Math.PI * 2 + ph;
-    const x = Math.cos(a) * rx;
-    const y = Math.sin(a) * ry;
-    pen.stipple(x, y + 1, C_SEL_DARK, 0.95);
-    pen.stipple(x, y, i % 6 === 0 ? C_WHITE : i % 2 === 0 ? C_CYAN_BRIGHT : C_GOLD_BRIGHT, 1.0);
-
-    const a2 = -(i / 96) * Math.PI * 2 + ph * 1.5;
-    const x2 = Math.cos(a2) * (rx * 0.64);
-    const y2 = Math.sin(a2) * (ry * 0.64);
-    pen.stipple(x2, y2, i % 4 === 0 ? C_GOLD_BRIGHT : C_CYAN_DEEP, 0.92);
-  }
-
-  // 8 Orbiting Sovereign Sword-Sigil Nodes + Rising Speed Streaks
-  for (let k = 0; k < 8; k++) {
-    const a = ph + (k * Math.PI) / 4;
-    const nx = Math.cos(a) * rx;
-    const ny = Math.sin(a) * ry;
-    drawStarSpark(pen, nx, ny, k % 2 === 0 ? 3 : 2, C_GOLD_BRIGHT, C_CYAN_BRIGHT, 1.0);
-    if (k % 2 === 0) {
-      const lift = ((f * 2 + k * 5) % 22);
-      pen.line(nx * 0.82, ny - lift, nx * 0.82, ny - lift - 7, C_CYAN_PALE, 0.9);
+  // Crossguard flare + rising star-glints + stepped lightning
+  const guardY = baseY - pillarH * 0.32;
+  if (erupt > 0.4 && fade > 0.15) {
+    drawTaperedAstralRay(pen, -18 * erupt, guardY, 18 * erupt, guardY, 2.2 * fade, C_GOLD_BRIGHT, C_CYAN_BRIGHT, fade);
+    const chain = buildLightningChain(rng, 0, baseY - pillarH * 0.9, 0, baseY, 0.16, 4);
+    pen.polyline(chain, C_GOLD_PALE, fade * 0.95);
+    for (let s = 0; s < 4; s++) {
+      const sx = ((s % 2 === 0 ? -1 : 1) * (10 + s * 4));
+      const sy = baseY - ((f * 3 + s * 14) % 58);
+      drawStarGlint(pen, sx, sy, 3, 4, C_GOLD_PALE, C_CYAN_BRIGHT, fade);
     }
   }
 }
 
-/**
- * Row 4: Razor FFBE / Last Cloudia Hit-Slash Cross-Scar & Directional Spark Burst (F00..F29)
- * Ultra-crisp asymmetric twin razor cuts (ZERO muddy circles or fat diamond blobs!).
- */
-function renderRow4RazorHitScar(pen, f) {
+/** Row 3: 5-Point Celestial Pentagram Star-Sanctuary Floor Sigil (`CELESTIAL PENTAGRAM OMNISLASH`) */
+function renderRow3PentagramSanctuary(pen, f) {
   const u = f / 29;
-  const snapA = u < 0.08 ? u / 0.08 : 1.0;
-  const fadeA = clamp01(1.18 - u * 1.25);
-  const snapB = u < 0.14 ? 0 : u < 0.24 ? (u - 0.14) / 0.10 : 1.0;
-  const fadeB = u < 0.14 ? 0 : clamp01(1.25 - (u - 0.14) * 1.32);
+  const ph = u * Math.PI * 2;
+  const rx = 40;
+  const ry = 15;
+
+  // Outer Sanctuary Ring
+  for (let i = 0; i < 104; i++) {
+    const a = (i / 104) * Math.PI * 2 + ph * 0.5;
+    const x = Math.cos(a) * rx;
+    const y = Math.sin(a) * ry;
+    pen.stipple(x, y + 1, C_SEL_DARK, 0.95);
+    pen.stipple(x, y, i % 6 === 0 ? C_WHITE : i % 2 === 0 ? C_GOLD_BRIGHT : C_CYAN_BRIGHT, 1.0);
+  }
+
+  // 5-Point Star-Sanctuary Pentagram Chords ({5/2} star polygon: 0->2->4->1->3->0)
+  const verts = [];
+  for (let k = 0; k < 5; k++) {
+    const a = -Math.PI * 0.5 + ph * 0.5 + (k * Math.PI * 2) / 5;
+    verts.push([Math.cos(a) * (rx * 0.92), Math.sin(a) * (ry * 0.92)]);
+  }
+  const starOrder = [0, 2, 4, 1, 3, 0];
+  for (let s = 0; s < 5; s++) {
+    const [x0, y0] = verts[starOrder[s]];
+    const [x1, y1] = verts[starOrder[s + 1]];
+    pen.line(x0, y0 + 1, x1, y1 + 1, C_SEL_DARK, 0.92);
+    pen.line(x0, y0, x1, y1, s % 2 === 0 ? C_GOLD_BRIGHT : C_CYAN_BRIGHT, 0.98);
+  }
+
+  // 5 Glowing Vertex Star-Glints + Central Runic Core
+  for (let k = 0; k < 5; k++) {
+    const [vx, vy] = verts[k];
+    drawStarGlint(pen, vx, vy, 3, 4, C_GOLD_PALE, C_CYAN_BRIGHT, 1.0);
+  }
+  drawDiamondShard(pen, 0, 0, 5, 3, C_GOLD_BRIGHT, C_CYAN_PALE, 0.95);
+}
+
+/** Row 4: Asymmetric Neo-Vision 4-Point Astral Starburst & Faceted Shards (0 chevron bars!) */
+function renderRow4AstralStarburst(pen, f) {
+  const u = f / 29;
+  const pop = u < 0.10 ? u / 0.10 : 1.0;
+  const fade = clamp01(1.16 - u * 1.24);
   const rng = new DeterministicRng(409 + f * 13);
 
-  // Scar 1: Primary Blazing Sky-Cyan Diagonal Cut (-26 deg)
-  if (fadeA > 0.04) {
-    const L1 = 41 * snapA;
-    const ang1 = -0.46;
-    drawRazorSlashScar(
-      pen,
-      -Math.cos(ang1) * L1,
-      -Math.sin(ang1) * L1,
-      Math.cos(ang1) * L1,
-      Math.sin(ang1) * L1,
-      3.1 * fadeA,
-      C_CYAN_BRIGHT,
-      C_SAPPH_DEEP,
-      fadeA
-    );
-  }
+  if (fade <= 0.04) return;
 
-  // Scar 2: Secondary Sovereign Sun-Gold Cross-Cut (+38 deg, staggered 2 frames later like Last Cloudia twin-hit!)
-  if (fadeB > 0.04) {
-    const L2 = 37 * snapB;
-    const ang2 = 0.66;
-    drawRazorSlashScar(
-      pen,
-      -Math.cos(ang2) * L2,
-      -Math.sin(ang2) * L2,
-      Math.cos(ang2) * L2,
-      Math.sin(ang2) * L2,
-      2.8 * fadeB,
-      C_GOLD_BRIGHT,
-      C_CRIMSON_LIT,
-      fadeB
-    );
-  }
+  // Asymmetric 4-ray Neo-Vision starburst (tall vertical/tilted primary + crisp cross-ray + minor diagonal glints)
+  const mainLen = 38 * pop * (0.75 + 0.25 * fade);
+  const crossLen = 28 * pop * (0.75 + 0.25 * fade);
+  drawTaperedAstralRay(pen, -mainLen * 0.28, mainLen * 0.96, mainLen * 0.28, -mainLen * 0.96, 3.0 * fade, C_GOLD_BRIGHT, C_CYAN_DEEP, fade);
+  drawTaperedAstralRay(pen, -crossLen * 0.96, -crossLen * 0.22, crossLen * 0.96, crossLen * 0.22, 2.5 * fade, C_CYAN_BRIGHT, C_GOLD_MID, fade);
 
-  // Crisp Directional Hit-Sparks flying outward along the cut tangents
-  const sparkFade = Math.max(fadeA, fadeB);
-  if (sparkFade > 0.12) {
-    drawStarSpark(pen, 0, 0, Math.max(2, Math.round(6 * sparkFade)), C_GOLD_BRIGHT, C_CYAN_BRIGHT, sparkFade);
-    for (let i = 0; i < 10; i++) {
-      const a = (i % 2 === 0 ? -0.46 : 0.66) + (i < 5 ? 0 : Math.PI) + rng.between(-0.28, 0.28);
-      const dist = (8 + u * 34) * rng.between(0.7, 1.05);
-      const sx = Math.cos(a) * dist;
-      const sy = Math.sin(a) * dist;
-      if (Math.abs(sx) < 44 && Math.abs(sy) < 44) {
-        pen.line(
-          sx,
-          sy,
-          sx - Math.cos(a) * 4,
-          sy - Math.sin(a) * 4,
-          i % 2 === 0 ? C_CYAN_BRIGHT : C_GOLD_BRIGHT,
-          sparkFade
-        );
-        pen.stipple(sx, sy, C_WHITE, sparkFade);
+  const diagLen = 19 * pop * fade;
+  drawTaperedAstralRay(pen, -diagLen, diagLen, diagLen, -diagLen, 1.7 * fade, C_GOLD_PALE, C_CYAN_BRIGHT, fade * 0.9);
+
+  drawStarGlint(pen, 0, 0, Math.max(2, Math.round(7 * fade)), Math.max(2, Math.round(9 * fade)), C_WHITE, C_GOLD_BRIGHT, fade);
+
+  // Outward flying faceted diamond shards & star-sparks
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4 + 0.22 + rng.between(-0.14, 0.14);
+    const dist = (9 + u * 31) * rng.between(0.78, 1.04);
+    const sx = Math.cos(a) * dist;
+    const sy = Math.sin(a) * dist;
+    if (Math.abs(sx) < 42 && Math.abs(sy) < 42) {
+      if (i % 2 === 0) {
+        drawDiamondShard(pen, sx, sy, 2, 3, C_CYAN_BRIGHT, C_GOLD_PALE, fade);
+      } else {
+        drawStarGlint(pen, sx, sy, 2, 2, C_GOLD_BRIGHT, C_CYAN_BRIGHT, fade);
       }
     }
   }
 }
 
-/**
- * Row 5: Colossal Diagonal Exvius Great-Slash Serrated Crescent (F00..F29)
- */
-function renderRow5GreatSlash(pen, f) {
+/** Row 5: Stained-Glass Runic Cathedral Rose-Window Crest (`CATHEDRAL OF SEVEN SWORDS`) */
+function renderRow5StainedGlassRose(pen, f) {
   const u = f / 29;
-  const fade = u > 0.58 ? 1 - (u - 0.58) / 0.42 : 1.0;
-  const erodeTail = -1.65 + u * 1.45;
-  const sweepHead = 1.48 + u * 0.25;
+  const ph = u * Math.PI * 2;
+  const fade = u < 0.12 ? smoothStep(0, 0.12, u) : u > 0.82 ? 1 - (u - 0.82) / 0.18 : 1.0;
+  const R = 37;
 
-  drawSerratedCrescentArc(pen, {
-    cx: -4,
-    cy: 2,
-    rx: 38,
-    ry: 32,
-    rotRad: -0.58,
-    aStart: erodeTail,
-    aEnd: sweepHead,
-    maxWidth: 19 * fade,
-    teethCount: 7,
-    toothDepth: 0.48,
-    goldDominant: true,
-    alpha: fade,
-    phase: u * 2.5
-  });
-
-  // Diagonal razor bisecting scar through the crescent chord
-  const L = 40 * Math.min(1, u * 4.5 + 0.35);
-  drawRazorSlashScar(pen, -L * 0.85, L * 0.72, L * 0.85, -L * 0.72, 2.8 * fade, C_CYAN_BRIGHT, C_GOLD_BRIGHT, fade);
-}
-
-/**
- * Row 6: Supreme Dawn-Breaker Celestial Greatsword Judgment Column (F00..F29)
- */
-function renderRow6JudgmentSword(pen, f) {
-  const u = f / 29;
-  const drop = u < 0.20 ? smoothStep(0, 0.20, u) : 1.0;
-  const fade = u > 0.75 ? 1 - (u - 0.75) / 0.25 : 1.0;
-
-  const tipY = -36 + 74 * drop; // plunges to +38
-  const guardY = tipY - 52;
-  const pomY = guardY - 14;
-
-  // Background consecrated light-ribbon behind the descending Dawn-Breaker blade
-  for (let y = Math.max(-44, Math.floor(pomY)); y <= Math.min(44, Math.ceil(tipY)); y++) {
-    for (let x = -9; x <= 9; x++) {
-      const ax = Math.abs(x);
-      if (ax === 9) pen.stipple(x, y, C_SEL_DARK, fade * 0.85);
-      else if (ax >= 6) pen.stipple(x, y, C_CYAN_DEEP, fade * 0.75);
+  // Stained-glass 8-petal gothic rose window with dark lead cames (`C_SEL_DARK`)
+  for (let y = -R - 2; y <= R + 2; y++) {
+    for (let x = -R - 2; x <= R + 2; x++) {
+      const r = Math.hypot(x, y);
+      if (r > R + 1.2) continue;
+      if (r >= R - 1.2) {
+        pen.stipple(x, y, r >= R ? C_SEL_DARK : C_GOLD_BRIGHT, fade);
+        continue;
+      }
+      if (Math.abs(r - R * 0.62) <= 0.9 || Math.abs(r - R * 0.30) <= 0.8) {
+        pen.stipple(x, y, C_GOLD_MID, fade);
+        continue;
+      }
+      const ang = Math.atan2(y, x) + ph * 0.25;
+      const sec = Math.floor(((ang + Math.PI * 4) / (Math.PI / 4))) % 8;
+      const localA = Math.abs((((ang + Math.PI * 4) % (Math.PI / 4)) - Math.PI / 8));
+      if (localA > Math.PI / 8 - 0.065) {
+        pen.stipple(x, y, C_SEL_DARK, fade * 0.95);
+      } else if (r < R * 0.28) {
+        pen.stipple(x, y, r < R * 0.12 ? C_WHITE : C_GOLD_PALE, fade);
+      } else {
+        const glassCol =
+          sec % 4 === 0
+            ? C_CYAN_BRIGHT
+            : sec % 4 === 1
+              ? C_GOLD_BRIGHT
+              : sec % 4 === 2
+                ? C_SAPPH_DEEP
+                : C_ROSE_GLASS;
+        // Checker stipple so cathedral glass lets stage breathe cleanly!
+        if (((x + y) & 1) === 0 || r > R * 0.82) {
+          pen.stipple(x, y, r > R * 0.82 && sec % 2 === 1 ? C_ROSE_PALE : glassCol, fade * 0.92);
+        }
+      }
     }
   }
+  drawStarGlint(pen, 0, 0, 7, 7, C_WHITE, C_GOLD_BRIGHT, fade);
+}
 
-  // Sculpted Celestial Greatsword Blade (vertical point-down)
+/** Row 6: Towering Runic Monolith Greatsword of Light (Pentagram Plunge & 7 Celestial Swords) */
+function renderRow6MonolithGreatsword(pen, f) {
+  const u = f / 29;
+  const drop = u < 0.18 ? smoothStep(0, 0.18, u) : 1.0;
+  const fade = u > 0.78 ? 1 - (u - 0.78) / 0.22 : 1.0;
+
+  const tipY = -34 + 72 * drop; // locks point-down at +38
+  const guardY = tipY - 54;
+  const pomY = guardY - 14;
+
+  // Sculpted Celestial Monolith Greatsword Blade
   for (let y = Math.floor(guardY); y <= Math.ceil(tipY); y++) {
-    if (y < -45 || y > 45) continue;
-    const bf = clamp01((tipY - y) / 52);
-    const hw = bf < 0.24 ? (bf / 0.24) * 5.2 : 5.2 * (0.9 + 0.15 * bf);
+    if (y < -44 || y > 44) continue;
+    const bf = clamp01((tipY - y) / 54);
+    const hw = bf < 0.22 ? (bf / 0.22) * 6.4 : 6.4 * (0.92 + 0.12 * bf);
     const lim = Math.ceil(hw + 1);
     for (let x = -lim; x <= lim; x++) {
       const ax = Math.abs(x);
       if (ax > hw + 0.6) continue;
       let col;
-      if (ax >= hw - 0.3) col = C_SEL_DARK;
-      else if (ax <= 1.1 && bf > 0.15) col = Math.floor(y * 0.5) % 3 === 0 ? C_GOLD_BRIGHT : C_CYAN_BRIGHT;
-      else col = x < 0 ? C_WHITE : C_CYAN_PALE;
+      if (ax >= hw - 0.35) col = C_SEL_DARK;
+      else if (ax <= 1.2 && bf > 0.16) {
+        col = Math.floor((y + f) * 0.5) % 3 === 0 ? C_GOLD_BRIGHT : C_CYAN_BRIGHT;
+      } else if (ax >= hw * 0.62) {
+        col = x < 0 ? C_CYAN_PALE : C_GOLD_PALE;
+      } else {
+        col = C_WHITE;
+      }
       pen.stipple(x, y, col, fade);
     }
   }
 
-  // Ornate Winged Sun-Gold Crossguard + Hilt + Pommel
-  if (guardY >= -42 && guardY <= 40) {
-    drawRazorSlashScar(pen, -16, guardY - 4, 0, guardY + 1, 2.5, C_GOLD_BRIGHT, C_GOLD_DEEP, fade);
-    drawRazorSlashScar(pen, 16, guardY - 4, 0, guardY + 1, 2.5, C_GOLD_BRIGHT, C_GOLD_DEEP, fade);
-    drawStarSpark(pen, 0, guardY, 3, C_CYAN_BRIGHT, C_GOLD_BRIGHT, fade);
+  // Winged Sun-Gold Crossguard + Sapphire Gem + Hilt + Pommel
+  if (guardY >= -42 && guardY <= 38) {
+    drawTaperedAstralRay(pen, -19, guardY - 4, 0, guardY + 1, 2.8, C_GOLD_BRIGHT, C_GOLD_DEEP, fade);
+    drawTaperedAstralRay(pen, 19, guardY - 4, 0, guardY + 1, 2.8, C_GOLD_BRIGHT, C_GOLD_DEEP, fade);
+    drawDiamondShard(pen, 0, guardY, 3, 3, C_CYAN_BRIGHT, C_WHITE, fade);
   }
-  if (pomY >= -44 && guardY <= 40) {
-    pen.line(0, Math.max(-44, pomY), 0, Math.max(-44, guardY - 2), C_GOLD_BRIGHT, fade);
-    pen.line(-1, Math.max(-44, pomY), -1, Math.max(-44, guardY - 2), C_SEL_DARK, fade);
-    pen.line(1, Math.max(-44, pomY), 1, Math.max(-44, guardY - 2), C_SEL_DARK, fade);
+  if (pomY >= -44 && guardY <= 38) {
+    const yTop = Math.max(-43, Math.floor(pomY));
+    const yBot = Math.max(-43, Math.floor(guardY - 2));
+    pen.line(-1, yTop, -1, yBot, C_SEL_DARK, fade);
+    pen.line(1, yTop, 1, yBot, C_SEL_DARK, fade);
+    pen.line(0, yTop, 0, yBot, C_GOLD_BRIGHT, fade);
+    drawDiamondShard(pen, 0, yTop, 3, 3, C_GOLD_BRIGHT, C_GOLD_PALE, fade);
   }
-  if (drop >= 0.95) {
-    drawRazorSlashScar(pen, -28, 38, 28, 38, 2.6 * fade, C_GOLD_BRIGHT, C_CYAN_BRIGHT, fade);
+
+  // Ground consecration shockbar & star-glints once planted
+  if (drop >= 0.94) {
+    drawTaperedAstralRay(pen, -28, 38, 28, 38, 2.4 * fade, C_GOLD_BRIGHT, C_CYAN_BRIGHT, fade);
+    drawStarGlint(pen, 0, 37, 6, 4, C_WHITE, C_GOLD_BRIGHT, fade);
   }
 }
 
-/**
- * Row 7: Sovereign Winged Plume Feather & Astral Glint Cluster (F00..F29)
- */
+/** Row 7: Luminous Seraphim Dawn-Feather & Twinkling 4-Point Star-Glints */
 function renderRow7SovereignFeather(pen, f) {
   const ph = (f / 30) * Math.PI * 2;
   const sway = Math.sin(ph) * 4.5;
@@ -724,10 +690,9 @@ function renderRow7SovereignFeather(pen, f) {
   const nx = -uy;
   const ny = ux;
 
-  // Crisp 16-bit Pixel Paladin Pinion Feather (centered with gentle sway)
   const L = 22;
   for (let d = -L; d <= L; d += 0.55) {
-    const s = (d + L) / (2 * L); // 0 = quill base, 1 = feather tip
+    const s = (d + L) / (2 * L);
     const env = Math.sin(s * Math.PI);
     const barbNotch = Math.abs(((s * 9) % 1) - 0.35) < 0.12 && s > 0.2 && s < 0.82 ? 0.58 : 1.0;
     const hw = 5.4 * Math.pow(env, 0.68) * barbNotch;
@@ -739,16 +704,15 @@ function renderRow7SovereignFeather(pen, f) {
       if (aq > hw + 0.6) continue;
       let col;
       if (aq >= hw - 0.25) col = C_SEL_MID;
-      else if (aq < 0.65) col = C_GOLD_BRIGHT; // Golden rachis spine!
+      else if (aq < 0.65) col = C_GOLD_BRIGHT;
       else if (s > 0.72) col = C_CYAN_PALE;
       else col = q < 0 ? C_WHITE : C_CYAN_BRIGHT;
       pen.stipple(bx + nx * q, by + ny * q, col, 1.0);
     }
   }
 
-  // Orbiting 4-point Sovereign Star Glints
-  drawStarSpark(pen, -18, -14 + Math.cos(ph) * 3, 3 + (f % 2), C_GOLD_BRIGHT, C_CYAN_BRIGHT, 1.0);
-  drawStarSpark(pen, 19, 12 - Math.sin(ph) * 3, 2 + ((f + 1) % 2), C_CYAN_BRIGHT, C_GOLD_BRIGHT, 1.0);
+  drawStarGlint(pen, -18, -14 + Math.cos(ph) * 3, 4, 4, C_GOLD_PALE, C_CYAN_BRIGHT, 1.0);
+  drawStarGlint(pen, 19, 12 - Math.sin(ph) * 3, 3, 3, C_CYAN_PALE, C_GOLD_BRIGHT, 1.0);
 }
 
 function bakeVfxSheet() {
@@ -778,12 +742,12 @@ function bakeVfxSheet() {
 
   const rowFns = [
     renderRow0SwordWave,
-    renderRow1SovereignCrest,
-    renderRow2DawnPillar,
-    renderRow3OmnislashLocus,
-    renderRow4RazorHitScar,
-    renderRow5GreatSlash,
-    renderRow6JudgmentSword,
+    renderRow1RunicSwordSeal,
+    renderRow2DawnSwordPillar,
+    renderRow3PentagramSanctuary,
+    renderRow4AstralStarburst,
+    renderRow5StainedGlassRose,
+    renderRow6MonolithGreatsword,
     renderRow7SovereignFeather
   ];
 
@@ -800,31 +764,38 @@ function bakeVfxSheet() {
 
       cell208.fill(0);
       blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
-      if (has4pxBorderClip208(cell208, CELL, 4)) {
-        borderClips++;
-      }
+      if (has4pxBorderClip208(cell208, CELL, 4)) borderClips++;
 
       blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
+
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
+      for (let yy = 0; yy < LOGICAL; yy++) {
+        for (let xx = 0; xx < LOGICAL; xx++) {
+          const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
+          const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
+          dbgRgba[o] = isEdge ? 42 : 12;
+          dbgRgba[o + 1] = isEdge ? 68 : 18;
+          dbgRgba[o + 2] = isEdge ? 108 : 34;
+          dbgRgba[o + 3] = 255;
+        }
+      }
       alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
     }
   }
 
-  const outSheetPath = path.join(REPO_ROOT, 'assets', 'sprites', 'warrior_ex_vfx.png');
-  fs.mkdirSync(path.dirname(outSheetPath), { recursive: true });
-  fs.writeFileSync(outSheetPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
+  if (borderClips !== 0) {
+    throw new Error(`[warrior_ex_vfx] Expected 0/240 border clips, got ${borderClips}/240`);
+  }
+
+  const outPath = path.join(REPO_ROOT, 'assets', 'sprites', 'warrior_ex_vfx.png');
+  fs.writeFileSync(outPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
+  console.log(`[warrior_ex_vfx] Wrote ${outPath} (${sheetW}x${sheetH}, borderClips=${borderClips}/240)`);
 
   fs.mkdirSync(SCRATCH_DIR, { recursive: true });
-  const outDbgPath = path.join(SCRATCH_DIR, 'debug_warrior_ex_vfx_30fps.png');
-  fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
-
-  console.log(
-    `[build_warrior_ex_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}) and ${outDbgPath} (${dbgW}x${dbgH}) | borderClips=${borderClips}/240`
-  );
-  if (borderClips > 0) {
-    process.exitCode = 1;
-  }
+  const dbgPath = path.join(SCRATCH_DIR, 'debug_warrior_ex_vfx_contact.png');
+  fs.writeFileSync(dbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
+  console.log(`[warrior_ex_vfx] Wrote contact sheet -> ${dbgPath}`);
 }
 
 bakeVfxSheet();

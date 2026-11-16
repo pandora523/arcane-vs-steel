@@ -22,6 +22,7 @@ Architecture & Weapon Invariant (FFBE / Last Cloudia Paradigm):
 """
 
 import os
+import sys
 import math
 import time
 import numpy as np
@@ -1283,6 +1284,8 @@ def render_stand_rig_frame_160(
     bend_l=1.0,
     bend_r=1.0,
     lock_lowest_to_ground=False,
+    clamp_floor_only=False,
+    leg_bridge_r=None,
     pre_fn=None,
     post_fn=None,
 ):
@@ -1331,19 +1334,21 @@ def render_stand_rig_frame_160(
     l_target_hi = (grip_hi[0] - w_ux * 3.2 * S_HI, grip_hi[1] - w_uy * 3.2 * S_HI)
     r_target_hi = (grip_hi[0] + w_ux * 2.0 * S_HI, grip_hi[1] + w_uy * 2.0 * S_HI)
 
+    r_hip_br, r_knee_br = leg_bridge_r if leg_bridge_r is not None else (10, 8)
+
     paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
-    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=10)
-    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=8)
+    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=r_hip_br)
+    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=r_knee_br)
     paste_rotated_part(win_hi, parts["l_thigh"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
     paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
     paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
     paste_rotated_part(win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst, deg=torso_deg + l_coat_deg)
 
-    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=10)
-    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=8)
+    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=r_hip_br)
+    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=r_knee_br)
     paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
     paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
-    paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
+    paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + l_foot_deg * 0.0 + r_foot_deg)
     paste_rotated_part(win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst, deg=torso_deg + r_coat_deg)
 
     paste_rotated_part(win_hi, parts["torso"], pelvis_src, dst_pelvis, deg=torso_deg)
@@ -1365,6 +1370,14 @@ def render_stand_rig_frame_160(
                     if MARGIN_LOGICAL <= ny < LOGICAL_H - MARGIN_LOGICAL:
                         shifted[ny] = body_160[y]
                 body_160 = shifted
+    elif clamp_floor_only:
+        for y in range(ANCHOR_Y_120 + 1, LOGICAL_H):
+            over = body_160[y, :, 3] > 128
+            if np.any(over):
+                empty_floor = body_160[ANCHOR_Y_120, :, 3] <= 128
+                take = over & empty_floor
+                body_160[ANCHOR_Y_120, take] = body_160[y, take]
+                body_160[y, :, :] = 0
 
     frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_dst[0] / S_HI, neck_dst[1] / S_HI + shift_y_160)
@@ -1438,35 +1451,52 @@ def build_row0_idle(parts, sj):
 
 
 def build_row1_walk(parts, sj):
-    """Row 1: Earth-Shaking Dwarven Forge-March (2 Heavy Cycles across 30 Frames)."""
+    """
+    Row 1: Cohesive Earth-Shaking Dwarven Forge-March (2 Seamless Cycles / 30 Frames).
+    Maintains continuous front-ready World-Maul carry & grounded Forge-King posture
+    from Row 0 IDLE (zero 180-deg weapon flip, zero dynamic ys_b.max() vertical jitter,
+    compact Dwarven stride & synced tasset sway).
+    """
     frames = []
     for f in range(30):
         ph = (f / 15.0) * 2.0 * math.pi
+        ph30 = (f / 30.0) * 2.0 * math.pi
         s1 = math.sin(ph)
-        s2 = math.sin(ph + math.pi)
-        bob_y = -abs(math.cos(ph)) * 2.4 + 1.2
+        s2 = -s1
+        l_lift = max(0.0, math.cos(ph))
+        r_lift = max(0.0, -math.cos(ph))
+        bob_y = 0.45 - abs(math.cos(ph)) * 1.05
+
+        def post_walk(arr, neck, _g, step=f, p=ph30):
+            for m in range(2):
+                mx = neck[0] - 11.0 + m * 20.0 + math.sin(p + m * 2.0) * 2.0
+                my = neck[1] + 8.0 - ((step + m * 9) % 18)
+                put_px_160(arr, mx, my, C_MAGMA_YELLOW if (step + m) % 2 == 0 else C_JADE_LIT)
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=3.5 + math.sin(ph * 2.0) * 0.8,
+            pelvis_dx=1.2 + math.sin(ph * 2.0) * 0.4,
             pelvis_dy=bob_y,
-            torso_deg=8.5 + math.sin(ph * 2.0) * 1.8,
-            head_deg=-5.0,
-            l_coat_deg=8.0 + s1 * 5.0,
-            r_coat_deg=6.0 + s2 * 5.0,
-            l_thigh_deg=-s1 * 22.0,
-            l_shin_deg=max(0.0, -s1) * 20.0 + 4.0,
-            l_foot_deg=s1 * 9.0,
-            r_thigh_deg=-s2 * 22.0,
-            r_shin_deg=max(0.0, -s2) * 20.0 + 4.0,
-            r_foot_deg=s2 * 9.0,
-            grip_rel_sh=(-3.5 + s1 * 1.5, 6.5 + math.sin(ph * 2.0) * 1.0),
-            weapon_deg=152.0 + s1 * 4.0,
-            shaft_len=33.0,
-            weapon_layer="behind",
-            halo_phase=(f / 30.0) * 2.0 * math.pi,
-            rune_phase=(f / 30.0) * 4.0 * math.pi,
-            lock_lowest_to_ground=True,
+            torso_deg=2.4 + math.sin(ph * 2.0) * 0.8,
+            head_deg=-1.4,
+            l_coat_deg=2.5 + s1 * 2.2,
+            r_coat_deg=-1.0 + s2 * 1.8,
+            l_thigh_deg=-2.0 - s1 * 7.0 - l_lift * 2.4,
+            l_shin_deg=1.5 + l_lift * 9.2 + max(0.0, s1) * 1.8,
+            l_foot_deg=l_lift * 3.5 - s1 * 2.0,
+            r_thigh_deg=2.0 - s2 * 7.0 - r_lift * 2.4,
+            r_shin_deg=1.5 + r_lift * 9.2 + max(0.0, s2) * 1.8,
+            r_foot_deg=r_lift * 3.5 - s2 * 2.0,
+            grip_rel_sh=(9.4 + s1 * 1.0, 8.3 + math.sin(ph * 2.0) * 0.6),
+            weapon_deg=-26.5 + s1 * 3.4,
+            shaft_len=36.0,
+            weapon_layer="front",
+            halo_phase=ph30,
+            rune_phase=ph30 * 2.0,
+            lock_lowest_to_ground=False,
+            clamp_floor_only=True,
+            leg_bridge_r=(4, 3),
+            post_fn=post_walk,
         ))
     return frames
 
@@ -2382,6 +2412,24 @@ def assemble_and_verify_sheet(all_rows_160):
 def write_debug_contact_sheets(sheet):
     os.makedirs(SCRATCH_DIR, exist_ok=True)
 
+    r1_cols, r1_rows = 6, 5
+    r1_im = Image.new("RGBA", (r1_cols * CELL_W, r1_rows * CELL_H), (22, 16, 12, 255))
+    r1_draw = ImageDraw.Draw(r1_im)
+    for f in range(30):
+        gc = f % r1_cols
+        gr = f // r1_cols
+        ox, oy = gc * CELL_W, gr * CELL_H
+        cell = sheet.crop((f * CELL_W, 1 * CELL_H, (f + 1) * CELL_W, 2 * CELL_H))
+        r1_draw.rectangle([ox, oy, ox + CELL_W - 1, oy + CELL_H - 1], outline=(76, 54, 34, 255), width=1)
+        r1_draw.line([(ox + 8, oy + ANCHOR_Y_320), (ox + CELL_W - 8, oy + ANCHOR_Y_320)], fill=(98, 68, 42, 255), width=1)
+        r1_draw.line([(ox + ANCHOR_X_320, oy + ANCHOR_Y_320 - 10), (ox + ANCHOR_X_320, oy + ANCHOR_Y_320 + 6)], fill=(16, 185, 129, 255), width=1)
+        r1_im.alpha_composite(cell, (ox, oy))
+        r1_draw.text((ox + 8, oy + 6), f"R1 F{f:02d} (#{30 + f})", fill=(254, 243, 178, 255))
+
+    p_r1 = os.path.join(SCRATCH_DIR, "debug_titan_ex_row1_walk.png")
+    r1_im.save(p_r1)
+    print(f"[Debug] Saved {p_r1}")
+
     r2_cols, r2_rows = 6, 5
     r2_im = Image.new("RGBA", (r2_cols * CELL_W, r2_rows * CELL_H), (22, 16, 12, 255))
     r2_draw = ImageDraw.Draw(r2_im)
@@ -2423,7 +2471,8 @@ def write_debug_contact_sheets(sheet):
 def main():
     t0 = time.time()
     print("=== Building TORGAR EX (titan_ex) Next-Gen Wide-Canvas Assets ===")
-    build_portrait_128()
+    if "--rebuild-portrait" in sys.argv:
+        build_portrait_128()
     parts, stand_joints, keyposes = load_rig_and_keyposes()
 
     all_rows_160 = [
