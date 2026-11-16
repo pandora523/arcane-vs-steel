@@ -735,8 +735,8 @@ def paste_ik_arm_hi(canvas, parts, stand_joints, side, sh_dst, grip_dst, bend_si
     ang1_cur = math.degrees(math.atan2(el_dst[1] - sh_dst[1], el_dst[0] - sh_dst[0]))
     ang2_cur = math.degrees(math.atan2(hand_dst[1] - el_dst[1], hand_dst[0] - el_dst[0]))
 
-    draw_joint_bridge_hi(canvas, sh_dst, el_dst, r=8)
-    draw_joint_bridge_hi(canvas, el_dst, hand_dst, r=6)
+    draw_joint_bridge_hi(canvas, sh_dst, el_dst, r=4)
+    draw_joint_bridge_hi(canvas, el_dst, hand_dst, r=3)
     paste_rotated_part(canvas, parts[sode_nm], sh_src, sh_dst, deg=(ang1_cur - ang1_rest))
     paste_rotated_part(canvas, parts[fore_nm], el_src, el_dst, deg=(ang2_cur - ang2_rest))
     return hand_dst
@@ -856,115 +856,155 @@ def draw_borealis_frost_glaive_160(
     grip_x,
     grip_y,
     deg,
-    glaive_len=55.0,
+    glaive_len=50.0,
     rune_phase=0.0,
     draw_gauntlets=True,
 ):
     """
-    Draws Lyra EX's ornate 2H Borealis Prism Frost-Glaive / Scepter (55 logical px
-    = 110px output reach):
-      - Spiraled sapphire-and-silver long shaft (-13.0 .. +25.0 logical px)
-      - Swept Aurora Crystal Guard Wings at +25.0 logical px
-      - Diamond-Faceted Prism Ice Spearhead Glaive Blade (+25.0 .. +43.0 logical px)
+    Draws Lyra EX's Ornate Borealis Diamond-Snowflake Scepter:
+      - Spiraled royal-sapphire & silver-frost long scepter staff
+      - Swept Aurora-Orchid & Cryo-Cyan filigree cradle wings
+      - Radiant 6-Point Crystalline Diamond-Snowflake Finial with pulsing Aurora Prism Heart
+        (replaces the old melee glaive spearhead 100%!)
     """
     rad = math.radians(deg)
     ux, uy = math.cos(rad), math.sin(rad)
     nx, ny = uy, -ux
 
-    butt_dist = -12.5
-    fwd_reach = glaive_len - abs(butt_dist)  # ~42.5 logical px ahead of grip
+    butt_dist = -11.5
+    fwd_reach = min(38.5, glaive_len - abs(butt_dist))
+    finial_r = 6.6
 
-    # Safety clamp so Frost-Glaive never touches the 2px logical border margin (0/300 clips)
+    # Safety clamp so the 6-Point Diamond-Snowflake Finial + pommel never touch the 2px logical border margin
     max_fwd = fwd_reach
-    for test_fwd in range(int(fwd_reach), 22, -1):
-        tx = grip_x + ux * (test_fwd + 1.5)
-        ty = grip_y + uy * (test_fwd + 1.5)
-        bx = grip_x + ux * (butt_dist - 1.5)
-        by = grip_y + uy * (butt_dist - 1.5)
+    for test_fwd in range(int(fwd_reach), 14, -1):
+        fx = grip_x + ux * test_fwd
+        fy = grip_y + uy * test_fwd
+        bx = grip_x + ux * (butt_dist - 2.2)
+        by = grip_y + uy * (butt_dist - 2.2)
         if (
-            (MARGIN_LOGICAL + 1) <= tx <= (LOGICAL_W - MARGIN_LOGICAL - 2)
-            and (MARGIN_LOGICAL + 1) <= ty <= (LOGICAL_H - MARGIN_LOGICAL - 2)
-            and (MARGIN_LOGICAL + 1) <= bx <= (LOGICAL_W - MARGIN_LOGICAL - 2)
-            and (MARGIN_LOGICAL + 1) <= by <= (LOGICAL_H - MARGIN_LOGICAL - 2)
+            (MARGIN_LOGICAL + finial_r + 1.5) <= fx <= (LOGICAL_W - MARGIN_LOGICAL - finial_r - 2.0)
+            and (MARGIN_LOGICAL + finial_r + 1.5) <= fy <= (LOGICAL_H - MARGIN_LOGICAL - finial_r - 2.0)
+            and (MARGIN_LOGICAL + 2.0) <= bx <= (LOGICAL_W - MARGIN_LOGICAL - 2.5)
+            and (MARGIN_LOGICAL + 2.0) <= by <= (LOGICAL_H - MARGIN_LOGICAL - 2.5)
         ):
             max_fwd = float(test_fwd)
             break
 
-    guard_dist = max_fwd * 0.52
-    tip_dist = max_fwd
+    collar_dist = max_fwd * 0.72
+    finial_cx = grip_x + ux * max_fwd
+    finial_cy = grip_y + uy * max_fwd
 
-    # --- Pass 1: Shaft + Diamond Spearhead 1px Selout ---
-    steps = int((tip_dist - butt_dist) * 3.0) + 1
+    # --- Pass 1: Spiraled Sapphire-Silver Scepter Shaft (1px Selout -> Core) ---
+    steps = int((collar_dist - butt_dist) * 3.0) + 1
     for i in range(steps + 1):
-        d = butt_dist + (tip_dist - butt_dist) * (i / max(1, steps))
+        d = butt_dist + (collar_dist - butt_dist) * (i / max(1, steps))
         cx = grip_x + ux * d
         cy = grip_y + uy * d
-        if d < guard_dist:
-            hw = 1.25
-        else:
-            bt = (d - guard_dist) / max(1.0, tip_dist - guard_dist)
-            if bt < 0.34:
-                hw = 1.6 + (bt / 0.34) * 2.8  # Swells into wide diamond glaive head (hw = 4.4)
-            else:
-                hw = max(0.30, 4.4 * (1.0 - (bt - 0.34) / 0.66))
-        put_px_160(arr, cx + nx * (hw + 0.95), cy + ny * (hw + 0.95), C_OUT_LIT)
-        put_px_160(arr, cx - nx * (hw + 0.95), cy - ny * (hw + 0.95), C_OUT_DARK)
+        put_px_160(arr, cx + nx * 1.95, cy + ny * 1.95, C_OUT_LIT)
+        put_px_160(arr, cx - nx * 1.95, cy - ny * 1.95, C_OUT_DARK)
 
-    put_px_160(arr, grip_x + ux * (tip_dist + 1.0), grip_y + uy * (tip_dist + 1.0), C_OUT_DARK)
-    put_px_160(arr, grip_x + ux * (butt_dist - 1.5), grip_y + uy * (butt_dist - 1.5), C_OUT_DARK)
+    put_px_160(arr, grip_x + ux * (butt_dist - 2.0), grip_y + uy * (butt_dist - 2.0), C_OUT_DARK)
 
-    # --- Pass 2: Spiraled Sapphire Shaft + Diamond-Faceted Prism Ice Spearhead ---
     for i in range(steps + 1):
-        d = butt_dist + (tip_dist - butt_dist) * (i / max(1, steps))
+        d = butt_dist + (collar_dist - butt_dist) * (i / max(1, steps))
         cx = grip_x + ux * d
         cy = grip_y + uy * d
-        if d < guard_dist:
-            spiral = int(abs((d - butt_dist) * 1.4)) % 4
-            for k in (-0.9, -0.3, 0.3, 0.9):
-                if spiral == 0:
-                    col = C_SILVER_LIT if k > 0 else C_SILVER_MID
-                else:
-                    col = C_SAPPH_LIT if k > 0 else C_SAPPH_DEEP
-                put_px_160(arr, cx + nx * k, cy + ny * k, col)
-            continue
-
-        bt = max(0.0, (d - guard_dist) / max(1.0, tip_dist - guard_dist))
-        if bt < 0.34:
-            hw = 1.5 + (bt / 0.34) * 2.7
-        else:
-            hw = max(0.25, 4.2 * (1.0 - (bt - 0.34) / 0.66))
-
-        pulse = 0.5 + 0.5 * math.sin(rune_phase - bt * 5.0)
-        w_samples = int(hw * 3.0) + 1
-        for ws in range(-w_samples, w_samples + 1):
-            off = ws / 3.0
-            if abs(off) > hw:
-                continue
-            if abs(off) <= 0.72 and bt < 0.82:
-                col = C_PURE_WHITE if pulse > 0.68 else C_AURORA_ORCHID
-            elif off > 0:
-                col = C_PURE_WHITE if off > hw * 0.52 else C_CRYO_PALE
+        spiral = int(abs((d - butt_dist) * 1.45)) % 4
+        for k in (-0.85, -0.25, 0.25, 0.85):
+            if spiral == 0:
+                col = C_SILVER_LIT if k > 0 else C_SILVER_MID
+            elif spiral == 2:
+                col = C_CRYO_AQUA if k > 0 else C_CRYO_TEAL
             else:
-                col = C_CRYO_SKY if off > -hw * 0.55 else C_AURORA_VIOLET
-            put_px_160(arr, cx + nx * off, cy + ny * off, col)
+                col = C_SAPPH_LIT if k > 0 else C_SAPPH_DEEP
+            put_px_160(arr, cx + nx * k, cy + ny * k, col)
 
-    # --- Pass 3: Swept Aurora Crystal Guard Wings + Rear Snowflake Pommel ---
-    gx = grip_x + ux * guard_dist
-    gy = grip_y + uy * guard_dist
-    wing_span = 6.8
+    # --- Pass 2: Swept Aurora-Orchid & Cryo-Cyan Cradle Wings ---
+    gx = grip_x + ux * collar_dist
+    gy = grip_y + uy * collar_dist
+    wing_span = 5.8
     for s_sign in (-1.0, 1.0):
-        for w_step in range(0, 15):
-            wt = w_step / 14.0
-            lat = s_sign * wt * wing_span
-            fwd = (wt ** 1.35) * 3.4 - 0.8
+        for w_step in range(0, 13):
+            wt = w_step / 12.0
+            lat = s_sign * (1.2 + wt * wing_span)
+            fwd = (wt ** 1.3) * 4.2 - 0.6
             wx = gx + nx * lat + ux * fwd
             wy = gy + ny * lat + uy * fwd
             put_px_160(arr, wx - ux * 1.0, wy - uy * 1.0, C_OUT_DARK)
             put_px_160(arr, wx + ux * 1.0, wy + uy * 1.0, C_OUT_LIT)
-            put_px_160(arr, wx, wy, C_PURE_WHITE if wt > 0.72 else (C_CRYO_AQUA if s_sign > 0 else C_AURORA_ORCHID))
+            put_px_160(arr, wx, wy, C_PURE_WHITE if wt > 0.74 else (C_CRYO_AQUA if s_sign > 0 else C_AURORA_ORCHID))
 
-    draw_disc_160(arr, gx, gy, 2.2, C_AURORA_VIOLET)
-    draw_disc_160(arr, gx, gy, 1.3, C_CRYO_PALE)
+    # --- Pass 3: Ornate 6-Point Diamond-Snowflake Finial (Selout Pass -> Crystal Pass) ---
+    ring_r = 3.8
+    # Selout silhouette around ring + 6 snowflake crystal arms
+    for i in range(24):
+        ra = (i / 24.0) * 2.0 * math.pi + rune_phase * 0.2
+        rx = finial_cx + math.cos(ra) * ring_r
+        ry = finial_cy + math.sin(ra) * ring_r
+        for oy in (-1, 0, 1):
+            for ox in (-1, 0, 1):
+                put_px_160(arr, rx + ox, ry + oy, C_OUT_DARK)
+
+    for k in range(6):
+        sa = rad + (k / 6.0) * 2.0 * math.pi
+        sux, suy = math.cos(sa), math.sin(sa)
+        snx, sny = -suy, sux
+        arm_l = finial_r if k % 2 == 0 else (finial_r - 1.1)
+        for step_r in range(0, int(arm_l * 2.2) + 1):
+            rr = step_r / 2.2
+            px = finial_cx + sux * rr
+            py = finial_cy + suy * rr
+            for oy in (-1, 0, 1):
+                for ox in (-1, 0, 1):
+                    put_px_160(arr, px + ox, py + oy, C_OUT_DARK if oy >= 0 else C_OUT_LIT)
+        # Side barbs Selout
+        bx = finial_cx + sux * 3.6
+        by = finial_cy + suy * 3.6
+        for b_sign in (-1.0, 1.0):
+            tx = bx + (sux * 0.65 + snx * b_sign * 0.75) * 2.2
+            ty = by + (suy * 0.65 + sny * b_sign * 0.75) * 2.2
+            for oy in (-1, 0, 1):
+                for ox in (-1, 0, 1):
+                    put_px_160(arr, tx + ox, ty + oy, C_OUT_DARK)
+
+    # Crystalline halo ring
+    for i in range(24):
+        ra = (i / 24.0) * 2.0 * math.pi + rune_phase * 0.2
+        rx = finial_cx + math.cos(ra) * ring_r
+        ry = finial_cy + math.sin(ra) * ring_r
+        put_px_160(arr, rx, ry, C_CRYO_SKY if i % 2 == 0 else C_AURORA_VIOLET)
+
+    # 6 Faceted Diamond-Snowflake Spokes + V-barbs
+    for k in range(6):
+        sa = rad + (k / 6.0) * 2.0 * math.pi
+        sux, suy = math.cos(sa), math.sin(sa)
+        snx, sny = -suy, sux
+        arm_l = finial_r if k % 2 == 0 else (finial_r - 1.1)
+        for step_r in range(1, int(arm_l * 2.2) + 1):
+            rr = step_r / 2.2
+            px = finial_cx + sux * rr
+            py = finial_cy + suy * rr
+            if rr > arm_l - 1.3:
+                col = C_PURE_WHITE
+            elif k % 2 == 0:
+                col = C_CRYO_PALE if rr < 3.5 else C_CRYO_AQUA
+            else:
+                col = C_AURORA_PALE if rr < 3.2 else C_AURORA_ORCHID
+            put_px_160(arr, px, py, col)
+        bx = finial_cx + sux * 3.6
+        by = finial_cy + suy * 3.6
+        for b_sign in (-1.0, 1.0):
+            tx = bx + (sux * 0.65 + snx * b_sign * 0.75) * 2.0
+            ty = by + (suy * 0.65 + sny * b_sign * 0.75) * 2.0
+            put_px_160(arr, tx, ty, C_CRYO_PALE if k % 2 == 0 else C_AURORA_ORCHID)
+
+    # Pulsing Aurora Diamond Heart + Collar Gem + Rear Snowflake Pommel
+    pulse = 0.5 + 0.5 * math.sin(rune_phase)
+    draw_disc_160(arr, finial_cx, finial_cy, 2.1, C_AURORA_ORCHID if pulse > 0.5 else C_CRYO_SKY)
+    draw_disc_160(arr, finial_cx, finial_cy, 1.2, C_PURE_WHITE)
+
+    draw_disc_160(arr, gx, gy, 1.9, C_AURORA_VIOLET)
     put_px_160(arr, gx, gy, C_PURE_WHITE)
 
     px_butt = grip_x + ux * butt_dist
@@ -974,12 +1014,232 @@ def draw_borealis_frost_glaive_160(
     put_px_160(arr, px_butt, py_butt, C_PURE_WHITE)
 
     if draw_gauntlets:
-        for gd in (-4.2, 2.4):
+        for gd in (-4.0, 2.2):
             hx = grip_x + ux * gd
             hy = grip_y + uy * gd
-            draw_disc_160(arr, hx, hy, 2.2, C_OUT_DARK)
-            draw_disc_160(arr, hx, hy, 1.4, C_SILVER_LIT)
+            draw_disc_160(arr, hx, hy, 2.1, C_OUT_DARK)
+            draw_disc_160(arr, hx, hy, 1.3, C_SILVER_LIT)
             put_px_160(arr, hx + nx * 0.6, hy + ny * 0.6, C_CRYO_AQUA)
+
+
+def draw_pixel_line_160(arr, x0, y0, x1, y1, col, rad=0):
+    dx = x1 - x0
+    dy = y1 - y0
+    steps = max(1, int(math.ceil(max(abs(dx), abs(dy)) * 1.8)))
+    for i in range(steps + 1):
+        t = i / steps
+        px = int(round(x0 + dx * t))
+        py = int(round(y0 + dy * t))
+        if rad <= 0:
+            put_px_160(arr, px, py, col, margin=MARGIN_LOGICAL + 1)
+        else:
+            for oy in range(-rad, rad + 1):
+                for ox in range(-rad, rad + 1):
+                    if ox * ox + oy * oy <= rad * rad + 0.5:
+                        put_px_160(arr, px + ox, py + oy, col, margin=MARGIN_LOGICAL + 1)
+
+
+def draw_snowflake_magic_circle_160(
+    arr,
+    cx,
+    cy,
+    rx=13.0,
+    ry=24.0,
+    phase=0.0,
+    aurora_dominant=False,
+    double_ring=True,
+):
+    """
+    Renders a 3D-foreshortened Crystalline 6-Point Snowflake Magic Circle & Prismatic Aurora Ring
+    on the 160x120 logical canvas (zero melee slash crescents!).
+    """
+    # Pass 1: Crisp 1px Selout around outer/inner rings & 6 snowflake spokes
+    ring_steps = max(36, int(max(rx, ry) * 3.4))
+    for i in range(ring_steps):
+        a = (i / ring_steps) * 2.0 * math.pi + phase * 0.35
+        px = cx + math.cos(a) * rx
+        py = cy + math.sin(a) * ry
+        draw_pixel_line_160(arr, px, py, px, py, C_OUT_DARK, rad=1)
+        if double_ring and i % 2 == 0:
+            px2 = cx + math.cos(-a) * (rx * 0.62)
+            py2 = cy + math.sin(-a) * (ry * 0.62)
+            draw_pixel_line_160(arr, px2, py2, px2, py2, C_OUT_DARK, rad=1)
+
+    for k in range(6):
+        a = phase * 0.35 + (k / 6.0) * 2.0 * math.pi
+        tx = cx + math.cos(a) * (rx * 1.14)
+        ty = cy + math.sin(a) * (ry * 1.14)
+        draw_pixel_line_160(arr, cx, cy, tx, ty, C_OUT_DARK, rad=1)
+
+    # Pass 2: Prismatic Aurora & Diamond-Cyan Rings + 6 Snowflake Crystal Spokes
+    for i in range(ring_steps):
+        a = (i / ring_steps) * 2.0 * math.pi + phase * 0.35
+        px = cx + math.cos(a) * rx
+        py = cy + math.sin(a) * ry
+        if i % 6 == 0:
+            col = C_PURE_WHITE
+        elif (i // 3) % 2 == 0:
+            col = C_AURORA_ORCHID if aurora_dominant else C_CRYO_SKY
+        else:
+            col = C_CRYO_PALE if not aurora_dominant else C_AURORA_VIOLET
+        put_px_160(arr, px, py, col, margin=MARGIN_LOGICAL + 1)
+
+        if double_ring:
+            px2 = cx + math.cos(-a) * (rx * 0.62)
+            py2 = cy + math.sin(-a) * (ry * 0.62)
+            col2 = C_AURORA_ORCHID if (i % 4 < 2) else C_CRYO_AQUA
+            put_px_160(arr, px2, py2, col2, margin=MARGIN_LOGICAL + 1)
+
+    for k in range(6):
+        a = phase * 0.35 + (k / 6.0) * 2.0 * math.pi
+        ca, sa = math.cos(a), math.sin(a)
+        tx = cx + ca * (rx * 1.14)
+        ty = cy + sa * (ry * 1.14)
+        spoke_col = C_CRYO_PALE if k % 2 == 0 else C_AURORA_ORCHID
+        draw_pixel_line_160(arr, cx, cy, tx, ty, spoke_col, rad=0)
+        put_px_160(arr, tx, ty, C_PURE_WHITE, margin=MARGIN_LOGICAL + 1)
+        # Foreshortened snowflake V-barbs at 70% radius
+        bx = cx + ca * (rx * 0.72)
+        by = cy + sa * (ry * 0.72)
+        for sign in (-1.0, 1.0):
+            ba = a + sign * 0.52
+            btx = bx + math.cos(ba) * (rx * 0.30)
+            bty = by + math.sin(ba) * (ry * 0.30)
+            draw_pixel_line_160(arr, bx, by, btx, bty, C_OUT_DARK, rad=1)
+            draw_pixel_line_160(arr, bx, by, btx, bty, C_PURE_WHITE if k % 2 == 0 else C_CRYO_AQUA, rad=0)
+
+    draw_star_glint_160(arr, cx, cy, arm_len=4, core_r=1.4)
+
+
+def draw_borealis_cast_projection_160(
+    arr,
+    origin_x,
+    origin_y,
+    reach_x=151.0,
+    mode="comet",
+    progress=0.0,
+    phase=0.0,
+):
+    """
+    Long-range forward spell projection in x_160 = 92..153 (x_320 = 184..306) for Row 2/3/4/7/8:
+      - mode="comet": Borealis Prismatic Cryo-Comet + Aurora Ring Ripples + Diamond-Dust Burst
+      - mode="chakram": Spinning 6-Point Snowflake Chakram + Twin Aurora Wake Ribbons
+      - mode="spires": 3 Ground-Marching Crystalline Glacier Spires + Aurora Floor Rune Wave
+      - mode="skyrift": 3 Sky-Rift Prismatic Diamond-Icicle Lances + Aurora Super-Starburst
+    """
+    clamped_reach = min(float(LOGICAL_W - MARGIN_LOGICAL - 4), reach_x)
+
+    if mode == "comet":
+        # Twin prismatic aurora carrier rays + faceted diamond cryo-comet head at clamped_reach!
+        head_x = origin_x + (clamped_reach - origin_x) * (1.0 - progress * 0.12)
+        head_y = origin_y + progress * 1.5
+        # Selout pass for comet body & aurora rays
+        for off_y in (-5.5, 0.0, 5.5):
+            y_end = head_y + off_y * (0.35 + 0.65 * progress)
+            draw_pixel_line_160(arr, origin_x + 4.0, origin_y + off_y * 0.45, head_x - 3.0, y_end, C_OUT_DARK, rad=1)
+        if progress < 0.72:
+            # Faceted diamond cryo-comet spearhead
+            for dx in range(-10, 4):
+                hw = max(0, int(round((1.0 - abs(dx + 2) / 9.0) * 5.2 * (1.0 - progress * 0.45))))
+                for dy in range(-hw - 1, hw + 2):
+                    col = C_OUT_DARK if abs(dy) > hw else (
+                        C_PURE_WHITE if abs(dy) <= 1 else (C_CRYO_PALE if dy < 0 else C_AURORA_ORCHID)
+                    )
+                    put_px_160(arr, head_x + dx, head_y + dy, col, margin=MARGIN_LOGICAL + 1)
+        # Core prismatic rays + foreshortened aurora shock-oval
+        draw_pixel_line_160(arr, origin_x + 4.0, origin_y - 4.5, head_x - 5.0, head_y - 2.0, C_AURORA_ORCHID, rad=0)
+        draw_pixel_line_160(arr, origin_x + 4.0, origin_y + 4.5, head_x - 5.0, head_y + 2.0, C_CRYO_SKY, rad=0)
+        draw_pixel_line_160(arr, origin_x + 3.0, origin_y, head_x + 1.0, head_y, C_PURE_WHITE, rad=0)
+        ring_x = origin_x + (head_x - origin_x) * 0.56
+        draw_snowflake_magic_circle_160(
+            arr, ring_x, head_y, rx=5.5 + progress * 3.0, ry=14.5 + progress * 4.0,
+            phase=phase + 0.8, aurora_dominant=(progress > 0.3), double_ring=False,
+        )
+        draw_star_glint_160(arr, min(LOGICAL_W - 9, head_x + 1.0), head_y, arm_len=max(3, int(6 * (1.0 - progress * 0.4))), core_r=1.5)
+
+    elif mode == "chakram":
+        # Giant 6-Bladed Spinning Diamond-Snowflake Chakram out at x_160 ~ 136..140 (tips reaching 152!)
+        ch_x = min(LOGICAL_W - 18.0, clamped_reach - 13.0)
+        ch_y = origin_y - 1.5
+        # Twin curved aurora ribbon wakes connecting scepter circle -> chakram
+        steps = 28
+        for s_sign, r_col in ((-1.0, C_AURORA_ORCHID), (1.0, C_CRYO_SKY)):
+            pts = []
+            for i in range(steps + 1):
+                u = i / steps
+                px = origin_x + (ch_x - origin_x) * u
+                py = origin_y + (ch_y - origin_y) * u + math.sin(u * math.pi) * s_sign * (8.5 - progress * 3.0)
+                pts.append((px, py))
+            for px, py in pts:
+                draw_pixel_line_160(arr, px, py, px, py, C_OUT_DARK, rad=1)
+            for idx_p, (px, py) in enumerate(pts):
+                put_px_160(arr, px, py, C_PURE_WHITE if idx_p % 5 == 0 else r_col, margin=MARGIN_LOGICAL + 1)
+        draw_snowflake_magic_circle_160(
+            arr, ch_x, ch_y, rx=13.5 * (1.0 - progress * 0.22), ry=13.5 * (1.0 - progress * 0.22),
+            phase=phase * 1.8, aurora_dominant=True, double_ring=True,
+        )
+
+    elif mode == "spires":
+        # 3 Sequential Ground-Marching Crystalline Aurora Glacier Spires across x_160 = 104, 126, 146!
+        spire_specs = [
+            (104.0, 26.0 * (1.0 - progress * 0.35), False),
+            (126.0, 34.0 * (1.0 - progress * 0.25), True),
+            (min(LOGICAL_W - 11.0, clamped_reach - 5.0), 42.0 * (1.0 - progress * 0.20), False),
+        ]
+        # Foreshortened floor frost wave linking scepter -> spires
+        draw_pixel_line_160(arr, origin_x, 111.0, spire_specs[-1][0] + 4.0, 111.0, C_OUT_DARK, rad=1)
+        draw_pixel_line_160(arr, origin_x, 111.0, spire_specs[-1][0] + 4.0, 111.0, C_CRYO_SKY, rad=0)
+        for sx, sh, is_aur in spire_specs:
+            h_i = max(6, int(round(sh)))
+            w_base = 5.4 if h_i > 30 else 4.4
+            for dy in range(h_i + 1):
+                uf = dy / max(1, h_i)
+                y = int(round(112.0 - dy))
+                hw = w_base * ((1.0 - uf) ** 0.75)
+                lim = int(math.ceil(hw + 1))
+                for dx in range(-lim, lim + 1):
+                    ad = abs(dx)
+                    if ad > hw + 0.8:
+                        continue
+                    if ad >= hw - 0.15:
+                        col = C_OUT_DARK
+                    elif abs(dx + 0.6) <= 0.75:
+                        col = C_PURE_WHITE
+                    elif dx < 0:
+                        col = C_CRYO_PALE if not is_aur else C_AURORA_PALE
+                    else:
+                        col = C_AURORA_ORCHID if is_aur else C_CRYO_SKY
+                    put_px_160(arr, sx + dx + uf * 2.5, y, col, margin=MARGIN_LOGICAL + 1)
+            draw_star_glint_160(arr, sx + 2.5, max(12.0, 112.0 - h_i), arm_len=3, core_r=1.1)
+
+    elif mode == "skyrift":
+        # Upper Sky-Rift Aurora Portal + 3 Diagonal Prismatic Diamond-Icicle Lances raining to x_160 = 152!
+        rift_cx = min(LOGICAL_W - 22.0, clamped_reach - 18.0)
+        draw_snowflake_magic_circle_160(
+            arr, rift_cx, 18.0, rx=16.5, ry=5.5, phase=phase, aurora_dominant=True, double_ring=True,
+        )
+        lance_targets = [
+            (rift_cx - 12.0, 20.0, rift_cx - 2.0, 96.0, False),
+            (rift_cx, 16.0, min(LOGICAL_W - 8.0, clamped_reach - 2.0), 106.0, True),
+            (rift_cx + 10.0, 22.0, min(LOGICAL_W - 6.0, clamped_reach), 86.0, False),
+        ]
+        for lx0, ly0, lx1, ly1, is_aur in lance_targets:
+            ux_l = lx1 - lx0
+            uy_l = ly1 - ly0
+            draw_pixel_line_160(arr, lx0 + ux_l * progress * 0.25, ly0 + uy_l * progress * 0.25, lx1, ly1, C_OUT_DARK, rad=2)
+            draw_pixel_line_160(
+                arr, lx0 + ux_l * progress * 0.25, ly0 + uy_l * progress * 0.25, lx1, ly1,
+                C_AURORA_ORCHID if is_aur else C_CRYO_SKY, rad=1,
+            )
+            draw_pixel_line_160(arr, lx0 + ux_l * 0.35, ly0 + uy_l * 0.35, lx1, ly1, C_PURE_WHITE, rad=0)
+            draw_star_glint_160(arr, lx1, ly1, arm_len=4 if is_aur else 3, core_r=1.2)
+
+    # Scatter crisp diamond-dust pixel motes across x_160 = 104..151
+    for m_i in range(7):
+        mx = 104.0 + ((m_i * 19 + int(progress * 23)) % 46)
+        my = 34.0 + ((m_i * 29 + int(phase * 11)) % 68)
+        put_px_160(arr, mx + 1, my, C_OUT_DARK, margin=MARGIN_LOGICAL + 1)
+        put_px_160(arr, mx, my, C_PURE_WHITE if m_i % 3 == 0 else (C_AURORA_ORCHID if m_i % 2 == 0 else C_CRYO_PALE), margin=MARGIN_LOGICAL + 1)
 
 
 def draw_borealis_cryo_smear_160(
@@ -1325,6 +1585,7 @@ def render_stand_rig_frame_160(
     bend_r=1.0,
     show_halo=True,
     lock_lowest_to_ground=False,
+    clamp_below_ground_only=False,
     pre_fn=None,
     post_fn=None,
 ):
@@ -1386,8 +1647,8 @@ def render_stand_rig_frame_160(
     )
     paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
-    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=8)
-    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=6)
+    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=4)
+    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=3)
     paste_rotated_part(win_hi, parts["l_thigh"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
     paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
     paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
@@ -1396,8 +1657,8 @@ def render_stand_rig_frame_160(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
         deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
     )
-    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=8)
-    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=6)
+    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=4)
+    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=3)
     paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
     paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
     paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
@@ -1409,18 +1670,21 @@ def render_stand_rig_frame_160(
     body_160 = quantize_and_cluster_160x120(downsample_clean_160x120(win_hi))
 
     shift_y_160 = 0
-    ys_b, _ = np.where(body_160[:, :, 3] > 128)
-    if len(ys_b) > 0:
-        cur_bot = int(ys_b.max())
-        if lock_lowest_to_ground or cur_bot > ANCHOR_Y_120:
-            shift_y_160 = ANCHOR_Y_120 - cur_bot
-            if shift_y_160 != 0:
-                shifted = np.zeros_like(body_160)
-                for y in range(LOGICAL_H):
-                    ny = y + shift_y_160
-                    if MARGIN_LOGICAL <= ny < LOGICAL_H - MARGIN_LOGICAL:
-                        shifted[ny] = body_160[y]
-                body_160 = shifted
+    if clamp_below_ground_only:
+        body_160[ANCHOR_Y_120 + 1 :, :, :] = 0
+    else:
+        ys_b, _ = np.where(body_160[:, :, 3] > 128)
+        if len(ys_b) > 0:
+            cur_bot = int(ys_b.max())
+            if lock_lowest_to_ground or cur_bot > ANCHOR_Y_120:
+                shift_y_160 = ANCHOR_Y_120 - cur_bot
+                if shift_y_160 != 0:
+                    shifted = np.zeros_like(body_160)
+                    for y in range(LOGICAL_H):
+                        ny = y + shift_y_160
+                        if MARGIN_LOGICAL <= ny < LOGICAL_H - MARGIN_LOGICAL:
+                            shifted[ny] = body_160[y]
+                    body_160 = shifted
 
     frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_dst[0] / S_HI, neck_dst[1] / S_HI + shift_y_160)
@@ -1467,82 +1731,88 @@ def render_stand_rig_frame_160(
 # ==============================================================================
 
 def build_row0_idle(parts, sj):
-    """Row 0: Borealis Sovereign Poised Skating Stance + Crown Halo & Aurora Veil Pulse."""
+    """Row 0: Borealis Sovereign Poised Skating Stance + Diamond-Snowflake Scepter & Crown Halo."""
     frames = []
     for f in range(30):
         ph = (f / 30.0) * 2.0 * math.pi
-        bob_y = math.sin(ph) * 1.15
-        torso_deg = math.sin(ph - 0.4) * 1.4
+        bob_y = math.sin(ph) * 0.85
+        torso_deg = math.sin(ph - 0.4) * 1.1
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=math.sin(ph) * 0.45,
+            pelvis_dx=math.sin(ph) * 0.4,
             pelvis_dy=bob_y,
             torso_deg=torso_deg,
             head_deg=-torso_deg * 0.5,
-            mane_deg=math.sin(ph - 0.8) * 2.8,
+            mane_deg=math.sin(ph - 0.8) * 1.8,
             mane_wave_ph=ph,
-            mane_wave_amp=7.5,
-            l_coat_deg=3.0 + math.sin(ph - 0.7) * 4.5,
-            r_coat_deg=-2.0 + math.sin(ph - 1.1) * 3.5,
+            mane_wave_amp=3.2,
+            l_coat_deg=1.5 + math.sin(ph - 0.7) * 1.8,
+            r_coat_deg=-1.0 + math.sin(ph - 1.1) * 1.6,
             coat_wave_ph=ph,
-            coat_wave_amp=8.5,
-            grip_rel_sh=(10.5, 8.2 + math.sin(ph - 0.3) * 0.9),
-            weapon_deg=-24.0 + math.sin(ph - 0.5) * 2.4,
-            glaive_len=55.0,
+            coat_wave_amp=2.0,
+            grip_rel_sh=(10.5, 8.0 + math.sin(ph - 0.3) * 0.7),
+            weapon_deg=-24.0 + math.sin(ph - 0.5) * 2.2,
+            glaive_len=49.0,
             weapon_layer="front",
-            scarf_deg=166.0 + math.sin(ph - 0.6) * 4.8,
+            scarf_deg=166.0 + math.sin(ph - 0.6) * 3.8,
             scarf_len=29.0,
             scarf_phase=ph * 2.0,
-            scarf_amp=3.4,
+            scarf_amp=3.0,
             rune_phase=ph * 2.0,
+            clamp_below_ground_only=True,
         ))
     return frames
 
 
 def build_row1_walk(parts, sj):
-    """Row 1: Graceful Figure-Skating Ice-Glide Crossover Stride (2 Cycles across 30 Frames)."""
+    """
+    Row 1: Morph-Free Graceful Figure-Skate Glide (100% unified royal-sapphire gown silhouette,
+    continuous with Row 0 IDLE scepter carry, zero cur_bot head-popping, zero gown tearing!).
+    """
     frames = []
     for f in range(30):
-        ph = (f / 15.0) * 2.0 * math.pi
+        ph = (f / 30.0) * 2.0 * math.pi
         s1 = math.sin(ph)
-        s2 = math.sin(ph + math.pi)
-        bob_y = -abs(math.cos(ph)) * 2.4 + 1.0
+        s2 = -s1
+        # Smooth deterministic <= 1.0px glide bob (no dynamic cur_bot vertical jumps!)
+        bob_y = -0.85 * (0.5 + 0.5 * math.cos(ph * 2.0))
 
-        def post_skate(arr, _n, _g, step=f):
-            # Subtle crystalline skate-blade ice shavings behind rear skate
-            sx = 38.0 + (step % 5) * 2.5
+        def post_skate(arr, _n, _g, step=f, ph_loc=ph):
+            # Crisp figure-skate frost ribbon & crystalline ice shavings under skates
+            sx = 44.0 - ((step * 2) % 10)
             put_px_160(arr, sx, 114, C_CRYO_PALE if step % 2 == 0 else C_CRYO_SKY)
-            put_px_160(arr, sx - 3, 113, C_AURORA_ORCHID if step % 3 == 0 else C_PURE_WHITE)
+            put_px_160(arr, sx - 3.0, 113, C_AURORA_ORCHID if step % 3 == 0 else C_PURE_WHITE)
+            put_px_160(arr, 56.0 + math.sin(ph_loc) * 4.0, 114, C_CRYO_AQUA)
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=4.2 + math.sin(ph * 2.0) * 0.9,
+            pelvis_dx=0.8 * s1,
             pelvis_dy=bob_y,
-            torso_deg=11.0 + math.sin(ph * 2.0) * 1.8,
-            head_deg=-6.5,
-            mane_deg=-10.0 + s1 * 4.0,
-            mane_wave_ph=ph,
-            mane_wave_amp=10.0,
-            l_coat_deg=14.0 + math.sin(ph - 0.6) * 7.0,
-            r_coat_deg=8.0 + math.cos(ph) * 5.0,
-            coat_wave_ph=ph,
-            coat_wave_amp=10.5,
-            l_thigh_deg=-s1 * 23.0,
-            l_shin_deg=max(0.0, -s1) * 22.0 + 4.0,
-            l_foot_deg=s1 * 10.0,
-            r_thigh_deg=-s2 * 23.0,
-            r_shin_deg=max(0.0, -s2) * 22.0 + 4.0,
-            r_foot_deg=s2 * 10.0,
-            grip_rel_sh=(8.0, 9.0 + math.sin(ph * 2.0) * 1.0),
-            weapon_deg=154.0 + s1 * 4.0,
-            glaive_len=53.0,
-            weapon_layer="behind",
-            scarf_deg=174.0 + math.sin(ph) * 5.0,
-            scarf_len=31.0,
-            scarf_phase=(f / 30.0) * 4.0 * math.pi,
-            scarf_amp=3.8,
-            rune_phase=(f / 30.0) * 4.0 * math.pi,
-            lock_lowest_to_ground=True,
+            torso_deg=1.8 + math.sin(ph * 2.0) * 0.9,
+            head_deg=-0.9 + math.cos(ph) * 0.5,
+            mane_deg=-2.0 + s1 * 1.8,
+            mane_wave_ph=ph * 2.0,
+            mane_wave_amp=3.4,
+            l_coat_deg=1.8 + math.sin(ph - 0.5) * 1.8,
+            r_coat_deg=-1.2 + math.cos(ph) * 1.6,
+            coat_wave_ph=ph * 2.0,
+            coat_wave_amp=1.9,
+            l_thigh_deg=-s1 * 5.2,
+            l_shin_deg=max(0.0, -s1) * 4.5,
+            l_foot_deg=s1 * 3.5,
+            r_thigh_deg=-s2 * 5.2,
+            r_shin_deg=max(0.0, -s2) * 4.5,
+            r_foot_deg=s2 * 3.5,
+            grip_rel_sh=(10.5 - s1 * 0.9, 8.0 + math.cos(ph * 2.0) * 0.7),
+            weapon_deg=-22.5 + s1 * 3.5,
+            glaive_len=49.0,
+            weapon_layer="front",
+            scarf_deg=168.0 + s1 * 3.8,
+            scarf_len=30.0,
+            scarf_phase=ph * 2.0,
+            scarf_amp=3.2,
+            rune_phase=ph * 2.0,
+            clamp_below_ground_only=True,
             post_fn=post_skate,
         ))
     return frames
@@ -1550,291 +1820,300 @@ def build_row1_walk(parts, sj):
 
 def build_row2_auto_attack(parts, sj, keyposes):
     """
-    Row 2: AUTO_ATTACK [[60,8],[68,7],[75,8],[83,7]] -- FFBE Skating Spell-Blade Chain!
-      - V0 (F00..F07): Hydroblade lunge downward cryo-crescent serrated smear (F03 SNAP)
-      - V1 (F08..F14): Instant reverse rising Arabesque frost-arc smear (F09 SNAP, zero idle reset!)
-      - V2 (F15..F22): 2.5D figure-skating Borealis pirouette 360 cryo-vortex smear (F17/F18 2-hit)
-      - V3 (F23..F29): Airborne Borealis Axel leap (F23..F24) -> shattering Permafrost Glaive-Slam (F25 SNAP)
+    Row 2: AUTO_ATTACK [[60,8],[68,7],[75,8],[83,7]] -- True 510px Winter Empress Sorcery Chain!
+      - V0 (F00..F07): Scepter thrust + 3D Foreshortened 6-Point Snowflake Magic Circle & Borealis Cryo-Comet Burst (F03 SNAP)
+      - V1 (F08..F14): Arabesque scepter flourish + Prismatic Aurora Rings & Spinning Snowflake Chakram Projection (F09 SNAP)
+      - V2 (F15..F22): 2.5D Borealis Pirouette Mandala + 3 Ground-Marching Aurora Glacier Spires (F17/F18 2-hit)
+      - V3 (F23..F29): Airborne Borealis Axel Backstep-Kite (F23..F24) -> Grand Snowflake Circle & Sky-Rift Icicles (F25 SNAP)
     """
     frames = []
 
     # ---------------- BEAT 1 (V0): F00..F07 (Frames 60..67) ----------------
     for sub_i, (pdx, tilt, wdeg, sph, glint) in enumerate([
-        (-2.5, -5.0, -138.0, 0.2, False),
-        (-4.0, -7.5, -145.0, 0.9, False),
-        (-5.2, -9.5, -152.0, 1.7, True),
+        (-1.5, -3.5, -52.0, 0.2, False),
+        (-2.8, -5.5, -68.0, 0.9, True),
+        (-3.8, -7.0, -82.0, 1.7, True),
     ]):
-        def post_v0_coil(arr, _n, grip, do_g=glint):
-            if do_g:
-                draw_star_glint_160(arr, grip[0] - 2.0, grip[1] - 3.0, arm_len=6)
+        def post_v0_coil(arr, _n, grip, step=sub_i):
+            w_rad = math.radians(-52.0 - step * 15.0)
+            fx = grip[0] + math.cos(w_rad) * 32.0
+            fy = grip[1] + math.sin(w_rad) * 32.0
+            draw_star_glint_160(arr, fx, fy, arm_len=4 + step, core_r=1.3)
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K1_COIL",
-            pelvis_dx=pdx, pelvis_dy=-sub_i * 0.5, body_tilt_deg=tilt,
-            grip_rel_sh=(-3.5, -5.5), weapon_deg=wdeg, glaive_len=53.0,
+            pelvis_dx=pdx, pelvis_dy=-sub_i * 0.4, body_tilt_deg=tilt,
+            grip_rel_sh=(4.0 - sub_i * 1.2, -3.5 - sub_i * 0.8), weapon_deg=wdeg, glaive_len=49.0,
             scarf_deg=162.0 - sub_i * 4.0, scarf_len=30.0, scarf_phase=sph, scarf_amp=3.4,
             rune_phase=sph, bend_l=-1.0, bend_r=-1.0, post_fn=post_v0_coil,
         ))
 
-    # F03: 1-FRAME SNAP HYDROBLADE LUNGE + DOWNWARD CRYO-CRESCENT SERRATED SMEAR!
+    # F03: 1-FRAME SNAP SCEPTER CAST + 3D SNOWFLAKE MAGIC CIRCLE & PRISMATIC CRYO-COMET BURST!
     def post_v0_snap(arr, _n, _g):
-        draw_borealis_cryo_smear_160(
-            arr, cx=80.0, cy=61.0,
-            tail_deg=-152.0, lead_deg=28.0, sweep_dir=1,
-            rx_outer=74.0, ry_outer=52.0, max_thickness=30.0,
-            n_teeth=8, tooth_depth=11.0, phase=0.1,
+        draw_snowflake_magic_circle_160(
+            arr, cx=108.0, cy=63.0, rx=11.5, ry=24.5, phase=0.25, aurora_dominant=False, double_ring=True
         )
-        draw_ice_sparks_160(arr, impact_x=130.0, ground_y=114.0, spread=22.0, progress=0.2, count=8)
+        draw_borealis_cast_projection_160(
+            arr, origin_x=108.0, origin_y=63.0, reach_x=151.0, mode="comet", progress=0.0, phase=0.4
+        )
+        draw_ice_sparks_160(arr, impact_x=110.0, ground_y=114.0, spread=16.0, progress=0.2, count=6)
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K2_LUNGE",
-        pelvis_dx=12.0, pelvis_dy=1.0, body_tilt_deg=6.0,
-        grip_rel_sh=(14.5, 3.5), weapon_deg=24.0, glaive_len=56.0,
+        pelvis_dx=8.5, pelvis_dy=0.8, body_tilt_deg=4.5,
+        grip_rel_sh=(14.0, 1.0), weapon_deg=4.0, glaive_len=50.0,
         scarf_deg=182.0, scarf_len=34.0, scarf_phase=2.5, scarf_amp=4.4,
         rune_phase=2.5, post_fn=post_v0_snap,
     ))
 
-    # F04..F05: Smear erosion 1 & 2
-    for e_idx, (tail_d, thick, prog) in enumerate([(-62.0, 18.0, 0.52), (-12.0, 9.0, 0.82)]):
-        def post_v0_erode(arr, _n, _g, td=tail_d, th=thick, pr=prog):
-            draw_borealis_cryo_smear_160(
-                arr, cx=80.0, cy=63.0,
-                tail_deg=td, lead_deg=29.0, sweep_dir=1,
-                rx_outer=71.0, ry_outer=49.0, max_thickness=th,
-                n_teeth=6, tooth_depth=7.5, phase=pr,
+    # F04..F05: Expanding prismatic aurora ring ripples & diamond-dust dissipation
+    for e_idx, prog in enumerate((0.44, 0.78)):
+        def post_v0_erode(arr, _n, _g, pr=prog, ei=e_idx):
+            draw_snowflake_magic_circle_160(
+                arr, cx=109.0 + ei * 2.0, cy=63.0, rx=9.5 - ei * 2.0, ry=21.0 - ei * 3.5,
+                phase=0.8 + ei * 0.6, aurora_dominant=(ei == 1), double_ring=(ei == 0),
             )
-            draw_ice_sparks_160(arr, impact_x=130.0, ground_y=114.0, spread=24.0, progress=pr, count=6)
+            if ei == 0:
+                draw_borealis_cast_projection_160(
+                    arr, origin_x=110.0, origin_y=63.0, reach_x=152.0, mode="comet", progress=pr, phase=1.1
+                )
+            draw_ice_sparks_160(arr, impact_x=118.0 + ei * 8.0, ground_y=114.0, spread=18.0, progress=pr, count=5)
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K2_LUNGE",
-            pelvis_dx=12.5 - e_idx * 0.5, pelvis_dy=1.6, body_tilt_deg=7.0 - e_idx * 0.5,
-            grip_rel_sh=(15.0, 4.5), weapon_deg=28.0 + e_idx * 1.5, glaive_len=56.0,
+            pelvis_dx=8.0 - e_idx * 0.8, pelvis_dy=1.2, body_tilt_deg=4.5 - e_idx * 0.5,
+            grip_rel_sh=(13.8, 1.8), weapon_deg=6.0 + e_idx * 2.0, glaive_len=50.0,
             scarf_deg=188.0 + e_idx * 4.0, scarf_len=33.0, scarf_phase=3.3 + e_idx * 0.8, scarf_amp=4.0,
             rune_phase=3.4 + e_idx * 0.7, post_fn=post_v0_erode,
         ))
 
-    # F06..F07: Clean low hydroblade hold priming Beat 2 (ZERO reset to IDLE!)
+    # F06..F07: Poised scepter cast follow-through priming Beat 2 (ZERO reset to IDLE!)
     for h_idx in range(2):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K2_LUNGE",
-            pelvis_dx=11.0 - h_idx * 1.0, pelvis_dy=1.5 + h_idx * 0.5, body_tilt_deg=6.0 + h_idx * 1.0,
-            grip_rel_sh=(14.0, 5.2 + h_idx * 0.6), weapon_deg=30.0 + h_idx * 2.0, glaive_len=55.0,
+            pelvis_dx=6.8 - h_idx * 1.0, pelvis_dy=1.4 + h_idx * 0.4, body_tilt_deg=4.0 + h_idx * 0.8,
+            grip_rel_sh=(13.0, 2.8 + h_idx * 0.8), weapon_deg=10.0 + h_idx * 3.0, glaive_len=49.0,
             scarf_deg=178.0 - h_idx * 4.0, scarf_len=31.0, scarf_phase=4.8 + h_idx * 0.7, scarf_amp=3.4,
             rune_phase=4.8 + h_idx * 0.7,
         ))
 
     # ---------------- BEAT 2 (V1): F08..F14 (Frames 68..74) ----------------
-    # F08: 1-frame micro-knee skating torque directly from F07's low glaive!
+    # F08: 1-frame micro skating torque into rising Arabesque scepter invocation
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K2_LUNGE",
-        pelvis_dx=9.0, pelvis_dy=2.6, body_tilt_deg=8.5,
-        grip_rel_sh=(12.5, 6.8), weapon_deg=35.0, glaive_len=55.0,
+        pelvis_dx=5.5, pelvis_dy=2.0, body_tilt_deg=5.5,
+        grip_rel_sh=(11.5, 4.2), weapon_deg=16.0, glaive_len=49.0,
         scarf_deg=170.0, scarf_len=30.0, scarf_phase=5.8, scarf_amp=3.2,
         rune_phase=5.8,
     ))
 
-    # F09: 1-FRAME REVERSE RISING ARABESQUE FROST-ARC SMEAR!
+    # F09: 1-FRAME SNAP ARABESQUE SCEPTER FLOURISH + PRISMATIC AURORA RINGS & SNOWFLAKE CHAKRAM!
     def post_v1_snap(arr, _n, _g):
-        draw_borealis_cryo_smear_160(
-            arr, cx=80.0, cy=59.0,
-            tail_deg=36.0, lead_deg=-128.0, sweep_dir=-1,
-            rx_outer=75.0, ry_outer=52.0, max_thickness=29.0,
-            n_teeth=8, tooth_depth=10.5, phase=0.2,
+        draw_snowflake_magic_circle_160(
+            arr, cx=105.0, cy=58.0, rx=10.5, ry=23.0, phase=0.6, aurora_dominant=True, double_ring=True
+        )
+        draw_borealis_cast_projection_160(
+            arr, origin_x=105.0, origin_y=58.0, reach_x=152.0, mode="chakram", progress=0.0, phase=0.7
         )
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K3_RISE",
-        pelvis_dx=10.0, pelvis_dy=-1.0, body_tilt_deg=-4.5,
-        grip_rel_sh=(5.5, -10.5), weapon_deg=-124.0, glaive_len=54.0,
-        scarf_deg=148.0, scarf_len=34.0, scarf_phase=1.2, scarf_amp=4.4,
-        rune_phase=1.5, bend_l=-1.0, bend_r=-1.0, post_fn=post_v1_snap,
+        pelvis_dx=7.5, pelvis_dy=-1.0, body_tilt_deg=-3.5,
+        grip_rel_sh=(12.5, -4.5), weapon_deg=-12.0, glaive_len=50.0,
+        scarf_deg=152.0, scarf_len=34.0, scarf_phase=1.2, scarf_amp=4.4,
+        rune_phase=1.5, post_fn=post_v1_snap,
     ))
 
-    # F10..F11: Rising Arabesque smear erosion
-    for e_idx, (tail_d, thick) in enumerate([(-36.0, 18.0), (-86.0, 9.0)]):
-        def post_v1_erode(arr, _n, _g, td=tail_d, th=thick):
-            draw_borealis_cryo_smear_160(
-                arr, cx=79.0, cy=58.0,
-                tail_deg=td, lead_deg=-130.0, sweep_dir=-1,
-                rx_outer=72.0, ry_outer=50.0, max_thickness=th,
-                n_teeth=6, tooth_depth=7.5, phase=0.45 + e_idx * 0.3,
+    # F10..F11: Outbound Snowflake Chakram aurora wake & sparkling crystal dust
+    for e_idx, prog in enumerate((0.42, 0.78)):
+        def post_v1_erode(arr, _n, _g, pr=prog, ei=e_idx):
+            draw_snowflake_magic_circle_160(
+                arr, cx=106.0, cy=58.0, rx=8.5 - ei * 2.0, ry=18.5 - ei * 3.5,
+                phase=1.2 + ei * 0.7, aurora_dominant=True, double_ring=False,
             )
+            if ei == 0:
+                draw_borealis_cast_projection_160(
+                    arr, origin_x=108.0, origin_y=58.0, reach_x=153.0, mode="chakram", progress=pr, phase=1.5
+                )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=9.5 - e_idx * 0.5, pelvis_dy=-1.2, body_tilt_deg=-5.5,
-            grip_rel_sh=(4.5, -11.2), weapon_deg=-130.0 - e_idx * 2.0, glaive_len=53.0,
+            pelvis_dx=7.0 - e_idx * 0.6, pelvis_dy=-1.2, body_tilt_deg=-4.5,
+            grip_rel_sh=(11.8, -5.5), weapon_deg=-16.0 - e_idx * 3.0, glaive_len=49.0,
             scarf_deg=156.0 + e_idx * 5.0, scarf_len=33.0, scarf_phase=2.1 + e_idx * 0.8, scarf_amp=4.2,
-            rune_phase=2.3 + e_idx * 0.8, bend_l=-1.0, bend_r=-1.0, post_fn=post_v1_erode,
+            rune_phase=2.3 + e_idx * 0.8, post_fn=post_v1_erode,
         ))
 
-    # F12..F14: Poised high Arabesque guard priming Beat 3 pirouette
+    # F12..F14: Regal Arabesque scepter guard priming Beat 3 pirouette
     for h_idx in range(3):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=8.0 - h_idx * 1.2, pelvis_dy=-0.6 + h_idx * 0.3, body_tilt_deg=-4.0 + h_idx * 1.0,
-            grip_rel_sh=(5.0 - h_idx * 1.5, -9.5 + h_idx * 1.2), weapon_deg=-126.0 - h_idx * 6.0, glaive_len=53.0,
+            pelvis_dx=5.8 - h_idx * 1.0, pelvis_dy=-0.6 + h_idx * 0.3, body_tilt_deg=-3.5 + h_idx * 0.8,
+            grip_rel_sh=(10.5 - h_idx * 1.2, -5.0 + h_idx * 1.2), weapon_deg=-22.0 - h_idx * 8.0, glaive_len=49.0,
             scarf_deg=164.0 + h_idx * 3.0, scarf_len=31.0, scarf_phase=3.6 + h_idx * 0.7, scarf_amp=3.6,
-            rune_phase=3.8 + h_idx * 0.7, bend_l=-1.0, bend_r=-1.0,
+            rune_phase=3.8 + h_idx * 0.7,
         ))
 
     # ---------------- BEAT 3 (V2): F15..F22 (Frames 75..82) ----------------
-    # F15..F16: Axial pirouette windup coil
-    for sub_i, (pdx, sqx, wdeg, sph, glint) in enumerate([
-        (2.0, 0.96, 168.0, 0.6, False),
-        (0.5, 0.92, 176.0, 1.4, True),
+    # F15..F16: Figure-skating pirouette gather with foreshortened floor snowflake rune
+    for sub_i, (pdx, sqx, wdeg, sph) in enumerate([
+        (2.0, 0.96, -128.0, 0.6),
+        (0.5, 0.92, -142.0, 1.4),
     ]):
-        def post_v2_coil(arr, _n, grip, do_g=glint):
-            if do_g:
-                draw_star_glint_160(arr, grip[0], grip[1], arm_len=6)
+        def post_v2_coil(arr, _n, _g, step=sub_i):
+            draw_snowflake_magic_circle_160(
+                arr, cx=66.0, cy=108.0, rx=22.0 + step * 5.0, ry=5.5,
+                phase=step * 0.8, aurora_dominant=(step == 1), double_ring=False,
+            )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K1_COIL",
-            pelvis_dx=pdx, pelvis_dy=1.2 + sub_i * 0.5, body_tilt_deg=-3.0,
+            pelvis_dx=pdx, pelvis_dy=1.0 + sub_i * 0.4, body_tilt_deg=-3.0,
             squash_x=sqx, squash_y=1.0,
-            grip_rel_sh=(-4.0, -1.0), weapon_deg=wdeg, glaive_len=52.0,
+            grip_rel_sh=(-3.0, -4.0), weapon_deg=wdeg, glaive_len=48.0,
             scarf_deg=162.0 - sub_i * 6.0, scarf_len=30.0, scarf_phase=sph, scarf_amp=3.6,
-            rune_phase=sph, bend_l=-1.0, bend_r=1.0, post_fn=post_v2_coil,
+            rune_phase=sph, bend_l=-1.0, bend_r=-1.0, post_fn=post_v2_coil,
         ))
 
-    # F17: 1-FRAME 2.5D FIGURE-SKATING BOREALIS PIROUETTE 360 CRYO-VORTEX SMEAR!
+    # F17: 1-FRAME 2.5D PIROUETTE MANDALA + 3 GROUND-MARCHING AURORA GLACIER SPIRES!
     def pre_v2_snap(arr, _n, _g):
         draw_pirouette_vortex_smear_160(
-            arr, cx=80.0, cy=68.0, rx=74.0, ry=23.0, tilt_deg=-10.0, front_thickness=30.0, half="back", erosion=0.0
+            arr, cx=72.0, cy=72.0, rx=44.0, ry=13.0, tilt_deg=-6.0, front_thickness=12.0, half="back", erosion=0.18
         )
 
     def post_v2_snap(arr, _n, _g):
-        draw_pirouette_vortex_smear_160(
-            arr, cx=80.0, cy=68.0, rx=74.0, ry=23.0, tilt_deg=-10.0, front_thickness=34.0, half="front", erosion=0.0
+        draw_snowflake_magic_circle_160(
+            arr, cx=98.0, cy=72.0, rx=9.0, ry=19.0, phase=1.1, aurora_dominant=False, double_ring=True
+        )
+        draw_borealis_cast_projection_160(
+            arr, origin_x=94.0, origin_y=72.0, reach_x=152.0, mode="spires", progress=0.0, phase=1.2
         )
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K2_LUNGE",
-        pelvis_dx=12.0, pelvis_dy=1.0, body_tilt_deg=7.0,
-        grip_rel_sh=(15.0, 1.0), weapon_deg=-3.0, glaive_len=56.0,
+        pelvis_dx=8.5, pelvis_dy=1.0, body_tilt_deg=5.0,
+        grip_rel_sh=(14.0, 0.5), weapon_deg=-2.0, glaive_len=50.0,
         scarf_deg=184.0, scarf_len=35.0, scarf_phase=2.4, scarf_amp=4.6,
         rune_phase=2.5, pre_fn=pre_v2_snap, post_fn=post_v2_snap,
     ))
 
-    # F18: Second counter-tilted pirouette cross-rip (+11 deg, 2-hit!)
-    def pre_v2_cross(arr, _n, _g):
-        draw_pirouette_vortex_smear_160(
-            arr, cx=79.0, cy=68.0, rx=70.0, ry=18.0, tilt_deg=11.0, front_thickness=16.0, half="back", erosion=0.24
-        )
-
+    # F18: Second resonance pulse across the 3 Ground-Marching Aurora Glacier Spires (2-hit!)
     def post_v2_cross(arr, _n, _g):
-        draw_pirouette_vortex_smear_160(
-            arr, cx=79.0, cy=68.0, rx=70.0, ry=18.0, tilt_deg=11.0, front_thickness=17.0, half="front", erosion=0.24
+        draw_snowflake_magic_circle_160(
+            arr, cx=100.0, cy=70.0, rx=10.5, ry=21.0, phase=1.9, aurora_dominant=True, double_ring=True
+        )
+        draw_borealis_cast_projection_160(
+            arr, origin_x=96.0, origin_y=70.0, reach_x=153.0, mode="spires", progress=0.22, phase=2.0
         )
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K3_RISE",
-        pelvis_dx=10.5, pelvis_dy=0.5, body_tilt_deg=3.0,
-        grip_rel_sh=(14.0, 2.5), weapon_deg=12.0, glaive_len=56.0,
+        pelvis_dx=7.8, pelvis_dy=0.5, body_tilt_deg=2.5,
+        grip_rel_sh=(13.5, 1.5), weapon_deg=6.0, glaive_len=50.0,
         scarf_deg=190.0, scarf_len=34.0, scarf_phase=3.3, scarf_amp=4.4,
-        rune_phase=3.3, pre_fn=pre_v2_cross, post_fn=post_v2_cross,
+        rune_phase=3.3, post_fn=post_v2_cross,
     ))
 
-    # F19: Vortex wisp erosion
+    # F19: Dissolving spire frost sparkles
     def post_v2_erode(arr, _n, _g):
-        draw_pirouette_vortex_smear_160(
-            arr, cx=78.0, cy=69.0, rx=65.0, ry=15.0, tilt_deg=8.0, front_thickness=9.5, half="front", erosion=0.62
+        draw_borealis_cast_projection_160(
+            arr, origin_x=98.0, origin_y=72.0, reach_x=150.0, mode="spires", progress=0.65, phase=2.8
         )
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K3_RISE",
-        pelvis_dx=9.5, pelvis_dy=1.0, body_tilt_deg=3.5,
-        grip_rel_sh=(13.0, 3.5), weapon_deg=18.0, glaive_len=55.0,
+        pelvis_dx=6.8, pelvis_dy=0.8, body_tilt_deg=2.5,
+        grip_rel_sh=(12.5, 2.5), weapon_deg=10.0, glaive_len=49.0,
         scarf_deg=194.0, scarf_len=32.0, scarf_phase=4.1, scarf_amp=4.0,
         rune_phase=4.0, post_fn=post_v2_erode,
     ))
 
-    # F20..F22: Deep skating crouch loading Axel jump for Beat 4!
+    # F20..F22: Graceful skating knee-bend loading Axel Backstep-Kite for Beat 4!
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K2_LUNGE",
-        pelvis_dx=7.5, pelvis_dy=2.0, body_tilt_deg=7.0,
-        grip_rel_sh=(11.5, 5.5), weapon_deg=23.0, glaive_len=55.0,
+        pelvis_dx=5.0, pelvis_dy=1.8, body_tilt_deg=5.5,
+        grip_rel_sh=(11.0, 4.5), weapon_deg=16.0, glaive_len=49.0,
         scarf_deg=182.0, scarf_len=31.0, scarf_phase=4.8, scarf_amp=3.5,
         rune_phase=4.7,
     ))
     frames.append(render_keypose_frame_160(
-        parts, sj, keyposes, "K2_LUNGE",
-        pelvis_dx=5.0, pelvis_dy=3.0, body_tilt_deg=9.5,
-        grip_rel_sh=(-3.5, 6.0), weapon_deg=154.0, glaive_len=52.0,
-        weapon_layer="behind",
+        parts, sj, keyposes, "K1_COIL",
+        pelvis_dx=2.5, pelvis_dy=2.2, body_tilt_deg=3.5,
+        grip_rel_sh=(6.0, -3.5), weapon_deg=-48.0, glaive_len=48.0,
         scarf_deg=172.0, scarf_len=30.0, scarf_phase=5.5, scarf_amp=3.2,
         rune_phase=5.4,
     ))
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K1_COIL",
-        pelvis_dx=3.0, pelvis_dy=2.0, body_tilt_deg=4.5,
-        grip_rel_sh=(-4.0, 2.0), weapon_deg=158.0, glaive_len=52.0,
-        weapon_layer="behind",
+        pelvis_dx=0.5, pelvis_dy=1.5, body_tilt_deg=-2.5,
+        grip_rel_sh=(4.5, -6.5), weapon_deg=-72.0, glaive_len=48.0,
         scarf_deg=166.0, scarf_len=30.0, scarf_phase=6.2, scarf_amp=3.4,
-        rune_phase=6.1,
+        rune_phase=6.1, bend_l=-1.0, bend_r=-1.0,
     ))
 
     # ---------------- BEAT 4 (V3): F23..F29 (Frames 83..89) ----------------
-    # F23..F24: Airborne Borealis Axel Leap (K4_LEAP, skates 18..22 logical px off floor!)
+    # F23..F24: Airborne Borealis Axel Backstep-Kite (K4_LEAP, skates lifted off floor!)
     for sub_i, (pdx, pdy, tilt, wdeg, sdeg, sph) in enumerate([
-        (6.0, -18.0, -5.0, -150.0, 128.0, 0.8),
-        (8.0, -22.0, -8.5, -158.0, 120.0, 1.7),
+        (-1.5, -15.0, -4.0, -68.0, 134.0, 0.8),
+        (-3.0, -19.0, -6.5, -52.0, 124.0, 1.7),
     ]):
-        def post_v3_leap(arr, _n, grip, is_apex=(sub_i == 1)):
-            if is_apex:
-                draw_star_glint_160(arr, grip[0] - 1.0, grip[1] - 2.0, arm_len=7, core_r=2.0)
-            else:
-                draw_ice_sparks_160(arr, impact_x=62.0, ground_y=114.0, spread=14.0, progress=0.4, count=5)
+        def post_v3_leap(arr, _n, grip, step=sub_i):
+            w_rad = math.radians(-68.0 + step * 16.0)
+            fx = grip[0] + math.cos(w_rad) * 32.0
+            fy = max(12.0, grip[1] + math.sin(w_rad) * 32.0)
+            draw_star_glint_160(arr, fx, fy, arm_len=5 + step * 2, core_r=1.6 + step * 0.4)
+            draw_ice_sparks_160(arr, impact_x=56.0, ground_y=114.0, spread=14.0, progress=0.35 + step * 0.25, count=5)
 
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K4_LEAP",
             pelvis_dx=pdx, pelvis_dy=pdy, body_tilt_deg=tilt,
-            grip_rel_sh=(-3.0, -7.0), weapon_deg=wdeg, glaive_len=51.0,
+            grip_rel_sh=(7.5, -7.5), weapon_deg=wdeg, glaive_len=48.0,
             scarf_deg=sdeg, scarf_len=33.0, scarf_phase=sph, scarf_amp=4.2,
             rune_phase=sph, bend_l=-1.0, bend_r=-1.0, post_fn=post_v3_leap,
         ))
 
-    # F25: 1-FRAME SHATTERING PERMAFROST GLAIVE-SLAM + FULL-HEIGHT CRYO SMEAR!
+    # F25: 1-FRAME SOVEREIGN SKY-RIFT COMMAND + GRAND 6-POINT SNOWFLAKE CIRCLE & 3x ICICLE LANCES!
     def post_v3_slam(arr, _n, _g):
-        draw_permafrost_pillar_160(arr, impact_x=132.0, top_y=4, bot_y=114, half_w=4.4)
-        draw_borealis_cryo_smear_160(
-            arr, cx=79.0, cy=58.0,
-            tail_deg=-156.0, lead_deg=34.0, sweep_dir=1,
-            rx_outer=76.0, ry_outer=56.0, max_thickness=33.0,
-            n_teeth=8, tooth_depth=12.0, phase=0.1,
+        draw_snowflake_magic_circle_160(
+            arr, cx=108.0, cy=58.0, rx=13.5, ry=27.0, phase=0.5, aurora_dominant=True, double_ring=True
         )
-        draw_ice_sparks_160(arr, impact_x=131.0, ground_y=114.0, spread=28.0, progress=0.15, count=10)
+        draw_borealis_cast_projection_160(
+            arr, origin_x=108.0, origin_y=58.0, reach_x=153.0, mode="skyrift", progress=0.0, phase=0.9
+        )
+        draw_ice_sparks_160(arr, impact_x=134.0, ground_y=114.0, spread=24.0, progress=0.18, count=8)
 
     frames.append(render_keypose_frame_160(
-        parts, sj, keyposes, "K2_LUNGE",
-        pelvis_dx=12.5, pelvis_dy=1.8, body_tilt_deg=8.0,
-        grip_rel_sh=(15.0, 5.0), weapon_deg=26.0, glaive_len=56.0,
-        scarf_deg=142.0, scarf_len=35.0, scarf_phase=2.8, scarf_amp=4.8,
+        parts, sj, keyposes, "K3_RISE",
+        pelvis_dx=5.5, pelvis_dy=-1.0, body_tilt_deg=-2.5,
+        grip_rel_sh=(13.5, -2.5), weapon_deg=-6.0, glaive_len=50.0,
+        scarf_deg=154.0, scarf_len=35.0, scarf_phase=2.8, scarf_amp=4.8,
         rune_phase=2.9, post_fn=post_v3_slam,
     ))
 
-    # F26..F27: Permafrost shock erosion 1 & 2
-    for e_idx, (tail_d, thick, prog) in enumerate([(-64.0, 20.0, 0.5), (-10.0, 10.0, 0.82)]):
-        def post_v3_erode(arr, _n, _g, td=tail_d, th=thick, pr=prog):
-            draw_borealis_cryo_smear_160(
-                arr, cx=78.0, cy=61.0 + e_idx * 2.0,
-                tail_deg=td, lead_deg=28.0, sweep_dir=1,
-                rx_outer=72.0 - e_idx * 4.0, ry_outer=50.0, max_thickness=th,
-                n_teeth=6 - e_idx * 2, tooth_depth=8.0 - e_idx * 3.0, phase=pr,
+    # F26..F27: Sky-Rift diamond-dust & prismatic aurora ring dissipation
+    for e_idx, prog in enumerate((0.45, 0.80)):
+        def post_v3_erode(arr, _n, _g, pr=prog, ei=e_idx):
+            draw_snowflake_magic_circle_160(
+                arr, cx=109.0, cy=59.0, rx=11.0 - ei * 2.5, ry=22.0 - ei * 4.5,
+                phase=1.3 + ei * 0.7, aurora_dominant=(ei == 0), double_ring=(ei == 0),
             )
-            draw_ice_sparks_160(arr, impact_x=131.0, ground_y=114.0, spread=28.0, progress=pr, count=8 - e_idx * 2)
+            if ei == 0:
+                draw_borealis_cast_projection_160(
+                    arr, origin_x=109.0, origin_y=59.0, reach_x=152.0, mode="skyrift", progress=pr, phase=1.7
+                )
+            draw_ice_sparks_160(arr, impact_x=134.0, ground_y=114.0, spread=26.0, progress=pr, count=7 - ei * 2)
 
         frames.append(render_keypose_frame_160(
-            parts, sj, keyposes, "K2_LUNGE",
-            pelvis_dx=12.8 - e_idx * 1.0, pelvis_dy=2.2 - e_idx * 0.4, body_tilt_deg=8.5 - e_idx * 1.0,
-            grip_rel_sh=(15.0, 5.5), weapon_deg=28.0 - e_idx * 1.0, glaive_len=56.0,
-            scarf_deg=178.0 + e_idx * 12.0, scarf_len=33.0, scarf_phase=3.7 + e_idx * 0.8, scarf_amp=4.2,
+            parts, sj, keyposes, "K3_RISE",
+            pelvis_dx=5.0 - e_idx * 0.8, pelvis_dy=-0.4 + e_idx * 0.4, body_tilt_deg=-2.0 + e_idx * 0.8,
+            grip_rel_sh=(13.0, -1.0 + e_idx * 1.5), weapon_deg=-3.0 + e_idx * 4.0, glaive_len=50.0,
+            scarf_deg=168.0 + e_idx * 8.0, scarf_len=33.0, scarf_phase=3.7 + e_idx * 0.8, scarf_amp=4.2,
             rune_phase=3.7 + e_idx * 0.8, post_fn=post_v3_erode,
         ))
 
-    # F28..F29: Graceful Borealis Sovereign recovery
+    # F28..F29: Graceful Winter Empress scepter recovery
     for r_idx in range(2):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=7.5 - r_idx * 3.5, pelvis_dy=0.8 - r_idx * 0.8, body_tilt_deg=2.5 - r_idx * 1.5,
-            grip_rel_sh=(12.0 - r_idx * 1.5, 5.0 + r_idx * 1.5), weapon_deg=22.0 - r_idx * 18.0, glaive_len=55.0,
-            scarf_deg=178.0 - r_idx * 8.0, scarf_len=30.0, scarf_phase=5.3 + r_idx * 0.7, scarf_amp=3.4,
+            pelvis_dx=3.5 - r_idx * 1.8, pelvis_dy=0.4 * (1.0 - r_idx), body_tilt_deg=0.5 - r_idx * 0.5,
+            grip_rel_sh=(11.5 - r_idx * 1.0, 3.5 + r_idx * 3.0), weapon_deg=2.0 - r_idx * 22.0, glaive_len=49.0,
+            scarf_deg=174.0 - r_idx * 6.0, scarf_len=30.0, scarf_phase=5.3 + r_idx * 0.7, scarf_amp=3.4,
             rune_phase=5.2 + r_idx * 0.7,
         ))
 
@@ -1843,69 +2122,65 @@ def build_row2_auto_attack(parts, sj, keyposes):
 
 
 def build_row3_skill(parts, sj, keyposes):
-    """Row 3: SKILL -- Glacial Jaws Twin-Sweep & Cryo Shatter Slam (30 Frames)."""
+    """Row 3: SKILL -- BOREALIS PRISM JAWS Invocation & Diamond-Lotus Shatter Command (30 Frames)."""
     frames = []
     for f in range(4):
         def post_g(arr, _n, grip, step=f):
-            if step >= 2:
-                draw_star_glint_160(arr, grip[0], grip[1] - 4.0, arm_len=4 + step)
+            if step >= 1:
+                draw_star_glint_160(arr, grip[0] + 18.0, grip[1] - 12.0, arm_len=4 + step)
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K1_COIL",
-            pelvis_dx=-2.0 - f * 1.0, pelvis_dy=-f * 0.6, body_tilt_deg=-4.0 - f * 1.5,
-            grip_rel_sh=(-3.5, -5.0), weapon_deg=-136.0 - f * 5.0, glaive_len=53.0,
+            pelvis_dx=-1.5 - f * 0.8, pelvis_dy=-f * 0.5, body_tilt_deg=-3.0 - f * 1.2,
+            grip_rel_sh=(4.5, -5.0), weapon_deg=-52.0 - f * 8.0, glaive_len=49.0,
             scarf_deg=164.0 - f * 3.0, scarf_len=30.0, scarf_phase=f * 0.7, scarf_amp=3.5,
             rune_phase=f * 0.8, bend_l=-1.0, bend_r=-1.0, post_fn=post_g,
         ))
 
-    # F04..F11: Twin Iceberg Summoning Sweep + Pirouette Vortex
+    # F04..F11: Twin Aurora-Orchid & Cyan Monolith Summoning Circle
     for sub in range(8):
         def post_s1(arr, _n, _g, s=sub):
-            if s <= 3:
-                tails = [34.0, -28.0, -76.0, -108.0]
-                thicks = [26.0, 18.0, 11.0, 6.5]
-                draw_borealis_cryo_smear_160(
-                    arr, cx=80.0, cy=60.0, tail_deg=tails[s], lead_deg=-132.0, sweep_dir=-1,
-                    rx_outer=73.0 - s * 2.0, ry_outer=50.0, max_thickness=thicks[s],
-                    n_teeth=7 - s, tooth_depth=9.5 - s * 1.6, phase=0.15 + s * 0.25,
+            if s <= 4:
+                draw_snowflake_magic_circle_160(
+                    arr, cx=108.0, cy=62.0, rx=12.0 - s * 1.2, ry=24.0 - s * 2.0,
+                    phase=0.4 + s * 0.4, aurora_dominant=(s % 2 == 1), double_ring=(s <= 2),
                 )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=8.5 - max(0, sub - 4) * 1.0, pelvis_dy=-1.0, body_tilt_deg=-3.5,
-            grip_rel_sh=(5.5, -9.5), weapon_deg=-128.0 - sub * 1.5, glaive_len=54.0,
+            pelvis_dx=6.5 - max(0, sub - 4) * 0.8, pelvis_dy=-1.0, body_tilt_deg=-3.0,
+            grip_rel_sh=(12.5, -4.5), weapon_deg=-16.0 - sub * 1.5, glaive_len=50.0,
             scarf_deg=154.0 + sub * 3.0, scarf_len=32.0, scarf_phase=1.0 + sub * 0.7, scarf_amp=4.0,
-            rune_phase=1.2 + sub * 0.8, bend_l=-1.0, bend_r=-1.0, post_fn=post_s1,
+            rune_phase=1.2 + sub * 0.8, post_fn=post_s1,
         ))
 
-    # F12..F15: High Sovereign Shatter Coil
+    # F12..F15: Sovereign Scepter Clasp Windup
     for sub in range(4):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K4_LEAP",
-            pelvis_dx=5.0 + sub * 0.8, pelvis_dy=-10.0 - sub * 2.0, body_tilt_deg=-5.0,
-            grip_rel_sh=(-2.5, -7.5), weapon_deg=-148.0 - sub * 3.0, glaive_len=52.0,
-            scarf_deg=134.0 - sub * 3.0, scarf_len=33.0, scarf_phase=sub * 0.8, scarf_amp=4.2,
+            pelvis_dx=3.5 + sub * 0.6, pelvis_dy=-8.0 - sub * 1.5, body_tilt_deg=-4.0,
+            grip_rel_sh=(6.5, -7.5), weapon_deg=-64.0 - sub * 4.0, glaive_len=48.0,
+            scarf_deg=138.0 - sub * 3.0, scarf_len=33.0, scarf_phase=sub * 0.8, scarf_amp=4.2,
             rune_phase=sub * 0.9, bend_l=-1.0, bend_r=-1.0,
         ))
 
-    # F16..F24: Crushing Glacial Jaws Shatter Slam!
+    # F16..F24: Inward Prism Jaws Shatter Command + Diamond-Lotus Nova Circle!
     for sub in range(9):
         def post_slam(arr, _n, _g, s=sub):
-            if s <= 3:
-                tails = [-156.0, -72.0, -20.0, 6.0]
-                thicks = [31.0, 20.0, 12.0, 6.5]
-                draw_borealis_cryo_smear_160(
-                    arr, cx=80.0, cy=60.0, tail_deg=tails[s], lead_deg=30.0, sweep_dir=1,
-                    rx_outer=75.0 - s * 2.0, ry_outer=52.0, max_thickness=thicks[s],
-                    n_teeth=8 - s, tooth_depth=10.5 - s * 1.8, phase=0.1 + s * 0.25,
-                )
-            if s == 0:
-                draw_permafrost_pillar_160(arr, impact_x=130.0, top_y=8, bot_y=114, half_w=3.8)
             if s <= 4:
-                draw_ice_sparks_160(arr, impact_x=128.0, ground_y=114.0, spread=26.0, progress=s / 4.5, count=8 - s)
+                draw_snowflake_magic_circle_160(
+                    arr, cx=112.0, cy=62.0, rx=13.5 - s * 1.5, ry=26.0 - s * 2.5,
+                    phase=0.8 + s * 0.5, aurora_dominant=True, double_ring=(s <= 2),
+                )
+                if s <= 2:
+                    draw_borealis_cast_projection_160(
+                        arr, origin_x=110.0, origin_y=62.0, reach_x=151.0, mode="comet", progress=s * 0.35, phase=s * 0.6
+                    )
+            if s <= 4:
+                draw_ice_sparks_160(arr, impact_x=124.0, ground_y=114.0, spread=24.0, progress=s / 4.5, count=7 - s)
 
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K2_LUNGE",
-            pelvis_dx=12.0 - max(0, sub - 4) * 1.2, pelvis_dy=1.6, body_tilt_deg=7.5 - max(0, sub - 4) * 1.0,
-            grip_rel_sh=(14.5, 5.0), weapon_deg=26.0 + min(3, sub) * 1.0, glaive_len=56.0,
+            pelvis_dx=8.5 - max(0, sub - 4) * 1.0, pelvis_dy=1.2, body_tilt_deg=5.0 - max(0, sub - 4) * 0.8,
+            grip_rel_sh=(14.0, 2.0), weapon_deg=4.0 + min(3, sub) * 1.5, glaive_len=50.0,
             scarf_deg=176.0 + sub * 2.5, scarf_len=33.0, scarf_phase=2.5 + sub * 0.7, scarf_amp=4.2,
             rune_phase=2.5 + sub * 0.8, post_fn=post_slam,
         ))
@@ -1914,8 +2189,8 @@ def build_row3_skill(parts, sj, keyposes):
     for sub in range(5):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=6.5 - sub * 1.2, pelvis_dy=0.5 * (1.0 - sub / 4.0), body_tilt_deg=2.0 - sub * 0.5,
-            grip_rel_sh=(11.5 - sub * 0.3, 6.0), weapon_deg=18.0 - sub * 8.0, glaive_len=55.0,
+            pelvis_dx=4.5 - sub * 0.9, pelvis_dy=0.5 * (1.0 - sub / 4.0), body_tilt_deg=1.5 - sub * 0.4,
+            grip_rel_sh=(11.5 - sub * 0.3, 5.0), weapon_deg=8.0 - sub * 7.0, glaive_len=49.0,
             scarf_deg=174.0 - sub * 2.0, scarf_len=30.0, scarf_phase=sub * 0.8, scarf_amp=3.4,
             rune_phase=sub * 0.8,
         ))
@@ -1926,9 +2201,9 @@ def build_row3_skill(parts, sj, keyposes):
 
 def build_row4_ultimate(parts, sj, keyposes):
     """
-    Row 4: ULTIMATE / TRUE_ULTIMATE -- Absolute Zero Cathedral & Sovereign Scepter-Tap (30 Frames)
+    Row 4: ULTIMATE / TRUE_ULTIMATE -- Nine Ice-Swords Coronation & Zero-Kelvin Cathedral Scepter-Tap (30 Frames)
       - F00..F08: Borealis Ascension & Coronation Halo Invocation
-      - F09..F16: Cathedral Seven-Sword Command Sweep
+      - F09..F16: Nine-Sword Aurora Crown Command Circle
       - F17..F23: Iconic Vertical Sovereign Scepter-Tap Windup & Strike!
       - F24..F29: Eternal Borealis Permafrost Radiance & Descent
     """
@@ -1937,37 +2212,37 @@ def build_row4_ultimate(parts, sj, keyposes):
     for f in range(9):
         def post_asc(arr, neck, grip, step=f):
             draw_borealis_crown_halo_160(arr, neck[0], neck[1] - 2.0, phase=step * 0.5, scale=1.25)
-            draw_star_glint_160(arr, grip[0], max(8.0, grip[1] - 34.0), arm_len=5 + (step % 3))
+            draw_star_glint_160(arr, grip[0], max(10.0, grip[1] - 32.0), arm_len=5 + (step % 3))
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
             pelvis_dx=2.0, pelvis_dy=-min(6.0, f * 0.8), body_tilt_deg=-2.0 - f * 0.4,
-            grip_rel_sh=(6.5, -8.5 - f * 0.3), weapon_deg=-86.0 + math.sin(f * 0.6) * 2.0, glaive_len=51.0,
+            grip_rel_sh=(6.5, -6.5 - f * 0.25), weapon_deg=-86.0 + math.sin(f * 0.6) * 2.0, glaive_len=46.0,
             scarf_deg=156.0 - f * 2.0, scarf_len=33.0, scarf_phase=f * 0.8, scarf_amp=4.0,
             rune_phase=f * 0.9, bend_l=-1.0, bend_r=-1.0, post_fn=post_asc,
         ))
 
-    # F09..F16: Coronation Command Sweep + Pirouette Halo
+    # F09..F16: Coronation Command + Snowflake Sanctuary Circle
     for sub in range(8):
         def post_cmd(arr, _n, _g, s=sub):
-            if s <= 3:
-                draw_pirouette_vortex_smear_160(
-                    arr, cx=80.0, cy=64.0, rx=73.0 - s * 3.0, ry=20.0, tilt_deg=-8.0 + s * 6.0,
-                    front_thickness=22.0 - s * 4.5, half="front", erosion=0.22 * s,
+            if s <= 4:
+                draw_snowflake_magic_circle_160(
+                    arr, cx=108.0, cy=58.0, rx=12.5 - s * 1.2, ry=24.0 - s * 2.0,
+                    phase=0.5 + s * 0.45, aurora_dominant=(s % 2 == 0), double_ring=(s <= 2),
                 )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
-            pelvis_dx=7.0 - sub * 0.4, pelvis_dy=-6.0, body_tilt_deg=-1.5,
-            grip_rel_sh=(12.5, -2.0 + sub * 0.5), weapon_deg=-18.0 + sub * 3.5, glaive_len=55.0,
+            pelvis_dx=6.5 - sub * 0.4, pelvis_dy=-6.0, body_tilt_deg=-1.5,
+            grip_rel_sh=(12.5, -2.0 + sub * 0.5), weapon_deg=-16.0 + sub * 3.0, glaive_len=49.0,
             scarf_deg=168.0 + sub * 2.5, scarf_len=34.0, scarf_phase=sub * 0.9, scarf_amp=4.4,
             rune_phase=sub * 1.0, post_fn=post_cmd,
         ))
 
-    # F17..F23: Iconic Vertical Sovereign Scepter-Tap! (Hoists vertical +90 deg point-down and taps ice floor/pedestal!)
+    # F17..F23: Iconic Vertical Sovereign Scepter-Tap!
     for sub in range(7):
-        hoist_y = -11.0 + (sub / 6.0) * 18.0  # Raises then drives vertical Frost-Glaive butt/tip straight down!
+        hoist_y = -11.0 + (sub / 6.0) * 16.0
         def post_tap(arr, _n, grip, s=sub):
             if s >= 4:
-                draw_star_glint_160(arr, grip[0] + 1.0, min(112.0, grip[1] + 28.0), arm_len=7 + (s - 4) * 2, core_r=2.2)
+                draw_star_glint_160(arr, grip[0] + 1.0, min(110.0, grip[1] + 26.0), arm_len=6 + (s - 4) * 2, core_r=2.0)
                 draw_ice_sparks_160(arr, impact_x=grip[0] + 1.0, ground_y=114.0, spread=28.0, progress=(s - 4) / 3.0, count=9)
         frames.append(render_stand_rig_frame_160(
             parts, sj,
@@ -1976,7 +2251,7 @@ def build_row4_ultimate(parts, sj, keyposes):
             mane_deg=2.0, mane_wave_ph=sub * 0.8, mane_wave_amp=9.0,
             l_coat_deg=6.0 + sub * 1.2, r_coat_deg=-3.0 - sub * 1.0,
             coat_wave_ph=sub * 0.8, coat_wave_amp=9.5,
-            grip_rel_sh=(14.5, hoist_y), weapon_deg=90.0, glaive_len=48.0, weapon_layer="front",
+            grip_rel_sh=(14.5, hoist_y), weapon_deg=90.0, glaive_len=45.0, weapon_layer="front",
             scarf_deg=160.0 + sub * 3.0, scarf_len=33.0, scarf_phase=sub * 0.9, scarf_amp=4.2,
             rune_phase=sub * 1.1,
             post_fn=post_tap,
@@ -1986,7 +2261,10 @@ def build_row4_ultimate(parts, sj, keyposes):
     for sub in range(6):
         def post_fin(arr, _n, _g, s=sub):
             if s <= 2:
-                draw_permafrost_pillar_160(arr, impact_x=126.0, top_y=6 + s * 6, bot_y=114, half_w=5.0 - s * 1.2)
+                draw_snowflake_magic_circle_160(
+                    arr, cx=78.0, cy=108.0, rx=28.0 + s * 6.0, ry=6.5,
+                    phase=s * 0.7, aurora_dominant=True, double_ring=False,
+                )
             draw_ice_sparks_160(arr, impact_x=78.0, ground_y=114.0, spread=32.0, progress=(s + 1) / 6.0, count=8 - s)
 
         frames.append(render_stand_rig_frame_160(
@@ -1995,7 +2273,7 @@ def build_row4_ultimate(parts, sj, keyposes):
             torso_deg=0.0, head_deg=0.0,
             mane_deg=math.sin(sub) * 2.5, mane_wave_ph=sub * 0.7, mane_wave_amp=8.5,
             l_coat_deg=5.0, r_coat_deg=-2.0, coat_wave_ph=sub * 0.7, coat_wave_amp=8.5,
-            grip_rel_sh=(12.5, 6.5), weapon_deg=86.0 - sub * 16.0, glaive_len=50.0, weapon_layer="front",
+            grip_rel_sh=(12.5, 6.5), weapon_deg=86.0 - sub * 16.0, glaive_len=47.0, weapon_layer="front",
             scarf_deg=168.0, scarf_len=31.0, scarf_phase=sub * 0.8, scarf_amp=3.8,
             rune_phase=sub * 0.9, lock_lowest_to_ground=True, post_fn=post_fin,
         ))
@@ -2046,7 +2324,7 @@ def build_row5_death(parts, sj):
             r_th, r_sh = -24.0 * (1.0 - 0.75 * u), 50.0 * (1.0 - 0.75 * u)
             wdeg = 23.0 * (1.0 - u) + 2.0 * u
             gr = (12.0, 11.0)
-            w_abs = (74.0 + u * 12.0, 106.0 + u * 6.0)
+            w_abs = (74.0 + u * 10.0, 102.0 + u * 4.0)
             s_len = 18.0 * (1.0 - 0.6 * u)
             s_deg = 174.0
         else:
@@ -2059,7 +2337,7 @@ def build_row5_death(parts, sj):
             r_th, r_sh = -5.0, 10.0
             wdeg = 1.5
             gr = (12.0, 11.0)
-            w_abs = (86.0, 112.0)
+            w_abs = (84.0, 106.0)
             s_len = 8.0
             s_deg = 178.0 - u * 4.0
 
@@ -2072,7 +2350,7 @@ def build_row5_death(parts, sj):
             coat_wave_ph=f * 0.45, coat_wave_amp=4.5,
             l_thigh_deg=l_th, l_shin_deg=l_sh,
             r_thigh_deg=r_th, r_shin_deg=r_sh,
-            grip_rel_sh=gr, weapon_deg=wdeg, glaive_len=50.0,
+            grip_rel_sh=gr, weapon_deg=wdeg, glaive_len=46.0,
             weapon_layer="front", weapon_abs_160=w_abs,
             scarf_deg=s_deg, scarf_len=s_len, scarf_phase=f * 0.65, scarf_amp=2.4,
             rune_phase=f * 0.7, show_halo=show_halo, lock_lowest_to_ground=True,
@@ -2100,7 +2378,7 @@ def build_row6_dash(parts, sj, keyposes):
             body_tilt_deg=5.0 + math.sin(ph) * 1.5,
             grip_rel_sh=(-3.5, 4.5),
             weapon_deg=158.0 + math.sin(ph) * 3.0,
-            glaive_len=52.0,
+            glaive_len=48.0,
             weapon_layer="behind",
             scarf_deg=178.0 + math.sin(ph) * 3.5,
             scarf_len=35.0,
@@ -2113,13 +2391,16 @@ def build_row6_dash(parts, sj, keyposes):
 
 
 def build_row7_crouch(parts, sj, keyposes):
-    """Row 7: CROUCH -- Hydroblade Mirror-Wall Guard -> Rising Frost-Glaive Riposte!"""
+    """Row 7: CROUCH -- Hydroblade Mirror-Wall Guard -> Borealis Prism Scepter Counter-Cast!"""
     frames = []
     for f in range(10):
         ph = (f / 10.0) * 2.0 * math.pi
         def post_guard(arr, _n, grip, step=f):
             if 2 <= step <= 8:
-                draw_star_glint_160(arr, grip[0] + 6.0, grip[1] - 8.0, arm_len=4 + (step % 3))
+                draw_snowflake_magic_circle_160(
+                    arr, cx=grip[0] + 18.0, cy=grip[1] - 4.0, rx=7.5, ry=18.5,
+                    phase=step * 0.5, aurora_dominant=(step % 2 == 0), double_ring=False,
+                )
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=2.0, pelvis_dy=8.5 + math.sin(ph) * 0.8,
@@ -2130,7 +2411,7 @@ def build_row7_crouch(parts, sj, keyposes):
             r_thigh_deg=-26.0, r_shin_deg=42.0, r_foot_deg=-14.0,
             grip_rel_sh=(11.5, 2.0 + math.sin(ph) * 0.6),
             weapon_deg=-68.0 + math.sin(ph) * 2.0,
-            glaive_len=51.0, weapon_layer="front",
+            glaive_len=48.0, weapon_layer="front",
             scarf_deg=168.0 + math.sin(ph) * 4.0, scarf_len=29.0, scarf_phase=ph * 2.0, scarf_amp=3.2,
             rune_phase=f * 0.7, lock_lowest_to_ground=True, post_fn=post_guard,
         ))
@@ -2138,8 +2419,8 @@ def build_row7_crouch(parts, sj, keyposes):
     for sub in range(3):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K1_COIL",
-            pelvis_dx=-1.0 - sub * 1.2, pelvis_dy=2.0, body_tilt_deg=-3.0 - sub * 1.8,
-            grip_rel_sh=(-3.5, -2.0), weapon_deg=-142.0 - sub * 5.0, glaive_len=52.0,
+            pelvis_dx=-1.0 - sub * 1.2, pelvis_dy=2.0, body_tilt_deg=-3.0 - sub * 1.5,
+            grip_rel_sh=(4.5, -3.5), weapon_deg=-58.0 - sub * 8.0, glaive_len=48.0,
             scarf_deg=160.0, scarf_len=30.0, scarf_phase=sub * 0.8, scarf_amp=3.8,
             rune_phase=sub * 0.9, bend_l=-1.0, bend_r=-1.0,
         ))
@@ -2147,21 +2428,22 @@ def build_row7_crouch(parts, sj, keyposes):
     for sub in range(10):
         def post_riposte(arr, _n, _g, s=sub):
             if s <= 3:
-                tails = [34.0, -28.0, -76.0, -108.0]
-                thicks = [27.0, 18.0, 11.0, 6.5]
-                draw_borealis_cryo_smear_160(
-                    arr, cx=80.0, cy=61.0, tail_deg=tails[s], lead_deg=-124.0, sweep_dir=-1,
-                    rx_outer=74.0 - s * 2.0, ry_outer=50.0, max_thickness=thicks[s],
-                    n_teeth=7 - s, tooth_depth=9.5 - s * 1.6, phase=0.2 + s * 0.25,
+                draw_snowflake_magic_circle_160(
+                    arr, cx=108.0, cy=62.0, rx=11.0 - s * 1.5, ry=22.0 - s * 2.5,
+                    phase=0.4 + s * 0.5, aurora_dominant=True, double_ring=(s <= 1),
                 )
+                if s <= 1:
+                    draw_borealis_cast_projection_160(
+                        arr, origin_x=108.0, origin_y=62.0, reach_x=150.0, mode="comet", progress=s * 0.45, phase=s * 0.7
+                    )
         pose_nm = "K2_LUNGE" if sub == 0 else "K3_RISE"
-        wdeg = -118.0 if sub == 0 else (-126.0 + max(0, sub - 4) * 6.0)
+        wdeg = 2.0 if sub == 0 else (-8.0 - max(0, sub - 4) * 5.0)
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, pose_nm,
-            pelvis_dx=10.5 - max(0, sub - 5) * 1.0, pelvis_dy=0.5, body_tilt_deg=-3.0 + sub * 0.5,
-            grip_rel_sh=(5.5, -10.0 + max(0, sub - 5) * 1.2), weapon_deg=wdeg, glaive_len=53.0,
+            pelvis_dx=7.5 - max(0, sub - 5) * 0.8, pelvis_dy=0.5, body_tilt_deg=-2.0 + sub * 0.4,
+            grip_rel_sh=(13.0, -2.5 + max(0, sub - 5) * 1.0), weapon_deg=wdeg, glaive_len=49.0,
             scarf_deg=154.0 + sub * 3.0, scarf_len=32.0, scarf_phase=1.0 + sub * 0.7, scarf_amp=4.0,
-            rune_phase=sub * 0.8, bend_l=-1.0, bend_r=-1.0, post_fn=post_riposte,
+            rune_phase=sub * 0.8, post_fn=post_riposte,
         ))
 
     for sub in range(7):
@@ -2174,7 +2456,7 @@ def build_row7_crouch(parts, sj, keyposes):
             l_coat_deg=8.0, r_coat_deg=4.0, coat_wave_ph=sub * 0.6, coat_wave_amp=7.0,
             l_thigh_deg=-22.0 * u, l_shin_deg=38.0 * u, l_foot_deg=-12.0 * u,
             r_thigh_deg=-26.0 * u, r_shin_deg=42.0 * u, r_foot_deg=-14.0 * u,
-            grip_rel_sh=(11.5, 2.5), weapon_deg=-68.0, glaive_len=51.0,
+            grip_rel_sh=(11.5, 2.5), weapon_deg=-68.0, glaive_len=48.0,
             scarf_deg=170.0, scarf_len=29.0, scarf_phase=sub * 0.7, scarf_amp=3.2,
             rune_phase=sub * 0.7, lock_lowest_to_ground=True,
         ))
@@ -2184,7 +2466,7 @@ def build_row7_crouch(parts, sj, keyposes):
 
 
 def build_row8_jump(parts, sj, keyposes):
-    """Row 8: JUMP / DODGE -- Triple-Axel Vault -> Airborne Cryo-Slash -> Skate Landing."""
+    """Row 8: JUMP / DODGE -- Triple-Axel Vault -> Airborne Snowflake Circle Cast -> Skate Landing."""
     frames = []
     for f in range(4):
         frames.append(render_stand_rig_frame_160(
@@ -2195,7 +2477,7 @@ def build_row8_jump(parts, sj, keyposes):
             l_coat_deg=10.0, r_coat_deg=6.0, coat_wave_ph=f * 0.6, coat_wave_amp=7.5,
             l_thigh_deg=-18.0 - f * 4.0, l_shin_deg=34.0 + f * 5.0,
             r_thigh_deg=-20.0 - f * 4.0, r_shin_deg=36.0 + f * 5.0,
-            grip_rel_sh=(-3.5, 8.0), weapon_deg=152.0, glaive_len=52.0, weapon_layer="behind",
+            grip_rel_sh=(-3.5, 8.0), weapon_deg=152.0, glaive_len=48.0, weapon_layer="behind",
             scarf_deg=172.0, scarf_len=29.0, scarf_phase=f * 0.7, scarf_amp=3.2,
             rune_phase=f * 0.7, lock_lowest_to_ground=True,
         ))
@@ -2205,8 +2487,8 @@ def build_row8_jump(parts, sj, keyposes):
         pdy = -8.0 - math.sin(t * math.pi * 0.65) * 14.0
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K4_LEAP",
-            pelvis_dx=4.0 + sub * 0.5, pelvis_dy=pdy, body_tilt_deg=-4.0 - sub * 0.5,
-            grip_rel_sh=(-3.0, -6.5), weapon_deg=-144.0 - sub * 1.8, glaive_len=51.0,
+            pelvis_dx=4.0 + sub * 0.4, pelvis_dy=pdy, body_tilt_deg=-4.0 - sub * 0.4,
+            grip_rel_sh=(6.0, -6.5), weapon_deg=-64.0 - sub * 2.0, glaive_len=48.0,
             scarf_deg=128.0 - sub * 1.5, scarf_len=33.0, scarf_phase=sub * 0.8, scarf_amp=4.2,
             rune_phase=sub * 0.8, bend_l=-1.0, bend_r=-1.0,
         ))
@@ -2215,17 +2497,14 @@ def build_row8_jump(parts, sj, keyposes):
         pdy = -20.0 + sub * 2.4
         def post_air(arr, _n, _g, s=sub):
             if s <= 3:
-                tails = [-154.0, -68.0, -18.0, 8.0]
-                thicks = [25.0, 16.0, 9.5, 5.5]
-                draw_borealis_cryo_smear_160(
-                    arr, cx=78.0, cy=52.0 + s * 2.0, tail_deg=tails[s], lead_deg=30.0, sweep_dir=1,
-                    rx_outer=72.0 - s * 2.0, ry_outer=48.0, max_thickness=thicks[s],
-                    n_teeth=7 - s, tooth_depth=9.0 - s * 1.6, phase=0.15 + s * 0.25,
+                draw_snowflake_magic_circle_160(
+                    arr, cx=108.0, cy=54.0 + s * 2.5, rx=10.5 - s * 1.5, ry=20.0 - s * 2.5,
+                    phase=0.5 + s * 0.5, aurora_dominant=(s % 2 == 1), double_ring=(s <= 1),
                 )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K4_LEAP",
-            pelvis_dx=8.0, pelvis_dy=pdy, body_tilt_deg=5.5,
-            grip_rel_sh=(13.5, 4.0), weapon_deg=28.0 + min(3, sub) * 1.5, glaive_len=55.0,
+            pelvis_dx=7.0, pelvis_dy=pdy, body_tilt_deg=4.5,
+            grip_rel_sh=(13.5, 2.0), weapon_deg=12.0 + min(3, sub) * 2.0, glaive_len=49.0,
             scarf_deg=142.0 + sub * 5.0, scarf_len=33.0, scarf_phase=2.0 + sub * 0.8, scarf_amp=4.4,
             rune_phase=sub * 0.9, post_fn=post_air,
         ))
@@ -2245,7 +2524,7 @@ def build_row8_jump(parts, sj, keyposes):
             coat_wave_ph=sub * 0.6, coat_wave_amp=8.0,
             l_thigh_deg=-16.0 * (1.0 - u), l_shin_deg=28.0 * (1.0 - u),
             r_thigh_deg=-18.0 * (1.0 - u), r_shin_deg=30.0 * (1.0 - u),
-            grip_rel_sh=(10.5, 8.2), weapon_deg=-24.0 * u + 26.0 * (1.0 - u), glaive_len=55.0,
+            grip_rel_sh=(10.5, 8.2), weapon_deg=-24.0 * u + 16.0 * (1.0 - u), glaive_len=49.0,
             scarf_deg=168.0, scarf_len=29.0, scarf_phase=sub * 0.7, scarf_amp=3.4,
             rune_phase=sub * 0.7, lock_lowest_to_ground=True, post_fn=post_land,
         ))
@@ -2255,39 +2534,38 @@ def build_row8_jump(parts, sj, keyposes):
 
 
 def build_row9_victory(parts, sj, keyposes):
-    """Row 9: VICTORY -- Skating Pirouette Flourish -> Sovereign Frost-Glaive Plant & Coronation Loop!"""
+    """Row 9: VICTORY -- Skating Pirouette Flourish -> Sovereign Snowflake Scepter Plant & Coronation Loop!"""
     frames = []
     for f in range(7):
-        wdeg = -18.0 - f * 19.0
+        wdeg = -18.0 - f * 14.0
         def post_fl(arr, _n, _g, s=f):
             if 2 <= s <= 5:
-                draw_borealis_cryo_smear_160(
-                    arr, cx=76.0, cy=58.0, tail_deg=wdeg + 48.0, lead_deg=wdeg, sweep_dir=-1,
-                    rx_outer=66.0, ry_outer=46.0, max_thickness=12.0,
-                    n_teeth=5, tooth_depth=5.5, phase=s * 0.3,
+                draw_snowflake_magic_circle_160(
+                    arr, cx=96.0, cy=56.0, rx=9.0, ry=17.0,
+                    phase=s * 0.55, aurora_dominant=(s % 2 == 0), double_ring=False,
                 )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
             pelvis_dx=4.0 - f * 0.4, pelvis_dy=-f * 0.3, body_tilt_deg=-f * 0.5,
-            grip_rel_sh=(10.0 - f * 0.8, 2.0 - f * 1.7), weapon_deg=wdeg, glaive_len=53.0,
+            grip_rel_sh=(10.0 - f * 0.6, 2.0 - f * 1.4), weapon_deg=wdeg, glaive_len=49.0,
             scarf_deg=164.0 - f * 3.0, scarf_len=32.0, scarf_phase=f * 0.8, scarf_amp=3.8,
             rune_phase=f * 0.9, bend_l=-1.0, bend_r=-1.0, post_fn=post_fl,
         ))
 
     for sub in range(6):
         u = (sub + 1) / 6.0
-        plant_y = 58.0 + u * 16.0
+        plant_y = 66.0 + u * 12.0
         def post_plant(arr, _n, _g, s=sub):
             if s >= 4:
                 draw_ice_sparks_160(arr, impact_x=74.0, ground_y=114.0, spread=20.0, progress=(s - 4) * 0.35 + 0.15, count=7)
-                draw_star_glint_160(arr, 74.0, 62.0, arm_len=6)
+                draw_star_glint_160(arr, 74.0, 52.0, arm_len=6)
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=1.5 * (1.0 - u), pelvis_dy=1.2 * math.sin(u * math.pi),
             torso_deg=2.5 * (1.0 - u), head_deg=-1.5,
             mane_deg=-2.5, mane_wave_ph=sub * 0.7, mane_wave_amp=7.5,
             l_coat_deg=5.0, r_coat_deg=-2.0, coat_wave_ph=sub * 0.7, coat_wave_amp=8.0,
-            weapon_abs_160=(74.0, plant_y), weapon_deg=90.0, glaive_len=49.0, weapon_layer="front",
+            weapon_abs_160=(74.0, plant_y), weapon_deg=-90.0, glaive_len=46.0, weapon_layer="front",
             scarf_deg=162.0 + sub * 2.0, scarf_len=31.0, scarf_phase=sub * 0.8, scarf_amp=3.6,
             rune_phase=sub * 0.9, post_fn=post_plant,
         ))
@@ -2307,7 +2585,7 @@ def build_row9_victory(parts, sj, keyposes):
             mane_deg=2.0 + math.sin(ph - 0.6) * 3.5, mane_wave_ph=ph, mane_wave_amp=9.0,
             l_coat_deg=6.0 + math.sin(ph - 0.5) * 5.0, r_coat_deg=-2.0 + math.cos(ph) * 3.5,
             coat_wave_ph=ph, coat_wave_amp=9.5,
-            weapon_abs_160=(74.0, 74.0), weapon_deg=90.0, glaive_len=49.0, weapon_layer="front",
+            weapon_abs_160=(74.0, 78.0), weapon_deg=-90.0, glaive_len=46.0, weapon_layer="front",
             scarf_deg=166.0 + math.sin(ph - 0.4) * 5.0, scarf_len=33.0, scarf_phase=ph * 2.0, scarf_amp=4.2,
             rune_phase=ph * 2.0, post_fn=post_salute,
         ))
@@ -2326,6 +2604,7 @@ def assemble_and_verify_sheet(all_rows_160):
     clip_details = []
     row_transitions = []
     row2_snap_reaches_320 = {}
+    row2_snap_front_px = {}
 
     for r_idx, row_frames in enumerate(all_rows_160):
         assert len(row_frames) == COLS, f"Row {r_idx} has {len(row_frames)} frames"
@@ -2349,15 +2628,19 @@ def assemble_and_verify_sheet(all_rows_160):
                     clip_count += 1
                     clip_details.append((r_idx, c_idx, xmin, xmax, ymin, ymax))
 
-                if r_idx == 2 and c_idx in (3, 9, 17, 25):
-                    row2_snap_reaches_320[c_idx] = (xmax + 1) * 2
+            cell_im = Image.fromarray(clean160, "RGBA").resize((CELL_W, CELL_H), Image.Resampling.NEAREST)
+            if r_idx == 2 and c_idx in (3, 9, 17, 25):
+                c_arr = np.array(cell_im)
+                ca = c_arr[:, :, 3] > 0
+                c_xs = np.where(ca)[1]
+                row2_snap_reaches_320[c_idx] = int(c_xs.max()) if len(c_xs) else 0
+                row2_snap_front_px[c_idx] = int(ca[:, 201:].sum())
 
             if c_idx > 0:
                 prev_a = row_frames[c_idx - 1]
                 if not np.array_equal(clean160, prev_a):
                     trans += 1
 
-            cell_im = Image.fromarray(clean160, "RGBA").resize((CELL_W, CELL_H), Image.Resampling.NEAREST)
             sheet.paste(cell_im, (c_idx * CELL_W, r_idx * CELL_H))
 
         row_transitions.append(trans)
@@ -2369,12 +2652,14 @@ def assemble_and_verify_sheet(all_rows_160):
         print("  Clip details:", clip_details[:10])
     print(f"[QA] Row frame transitions: {row_transitions} (expected [29]*10)")
     print(f"[QA] Row 2 snap-frame front reach x_320 (must be > 200): {row2_snap_reaches_320}")
+    print(f"[QA] Row 2 snap-frame front px > 200 (must be >= 240): {row2_snap_front_px}")
 
     assert sheet.size == (9600, 2400), f"Invalid sheet size: {sheet.size}"
     assert clip_count == 0, f"Border clips detected: {clip_details}"
     assert all(t == 29 for t in row_transitions), f"Static duplicate frames detected: {row_transitions}"
     for snap_f, max_x320 in row2_snap_reaches_320.items():
-        assert max_x320 > 260, f"Row 2 F{snap_f:02d} smear reach too narrow: {max_x320}"
+        assert max_x320 >= 285, f"Row 2 F{snap_f:02d} spell reach too narrow: {max_x320}"
+        assert row2_snap_front_px[snap_f] >= 320, f"Row 2 F{snap_f:02d} front px too sparse: {row2_snap_front_px[snap_f]}"
 
     return sheet
 
@@ -2399,6 +2684,22 @@ def write_debug_contact_sheets(sheet):
     p_r2 = os.path.join(SCRATCH_DIR, "debug_icemage_ex_row2.png")
     r2_im.save(p_r2)
 
+    r1_im = Image.new("RGBA", (r2_cols * CELL_W, r2_rows * CELL_H), (18, 22, 36, 255))
+    r1_draw = ImageDraw.Draw(r1_im)
+    for f in range(30):
+        gc = f % r2_cols
+        gr = f // r2_cols
+        ox, oy = gc * CELL_W, gr * CELL_H
+        cell = sheet.crop((f * CELL_W, 1 * CELL_H, (f + 1) * CELL_W, 2 * CELL_H))
+        r1_draw.rectangle([ox, oy, ox + CELL_W - 1, oy + CELL_H - 1], outline=(46, 56, 84, 255), width=1)
+        r1_draw.line([(ox + 8, oy + ANCHOR_Y_320), (ox + CELL_W - 8, oy + ANCHOR_Y_320)], fill=(58, 72, 108, 255), width=1)
+        r1_draw.line([(ox + ANCHOR_X_320, oy + ANCHOR_Y_320 - 10), (ox + ANCHOR_X_320, oy + ANCHOR_Y_320 + 6)], fill=(103, 232, 249, 255), width=1)
+        r1_im.alpha_composite(cell, (ox, oy))
+        r1_draw.text((ox + 8, oy + 6), f"R1 F{f:02d} (#{30 + f})", fill=(220, 245, 255, 255))
+    p_r1 = os.path.join(SCRATCH_DIR, "debug_icemage_ex_row1_walk.png")
+    r1_im.save(p_r1)
+    print(f"[Debug] Saved {p_r1}")
+
     for half_nm, c_start in (("left_F00_F14", 0), ("right_F15_F29", 15)):
         half_im = Image.new("RGBA", (15 * LOGICAL_W, ROWS * LOGICAL_H), (18, 22, 36, 255))
         hd = ImageDraw.Draw(half_im)
@@ -2421,9 +2722,11 @@ def write_debug_contact_sheets(sheet):
 
 
 def main():
+    import sys
     t0 = time.time()
-    print("=== Building LYRA EX (icemage_ex) Next-Gen Wide-Canvas Assets ===")
-    build_portrait_128()
+    print("=== Building LYRA EX (icemage_ex) Next-Gen Wide-Canvas Sheet ===")
+    if "--rebuild-portrait" in sys.argv or not os.path.exists(OUT_PORTRAIT_PNG):
+        build_portrait_128()
     parts, stand_joints, keyposes = load_rig_and_keyposes()
 
     all_rows_160 = [

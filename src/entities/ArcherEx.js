@@ -1,27 +1,122 @@
-import { Fighter } from './Fighter.js?v=30fps114';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps114';
+import { Fighter } from './Fighter.js?v=30fps115';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps115';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps115';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps114';
+} from '../engine/shaders/sylvanShaders.js?v=30fps115';
 
 const AUTO_SLICES_EX = [
-  [60, 8], // Beat 1 (V0, 0.36s): Astral Bow-Arc Snap + Close-Range Bow-Glaive -> snaps at F03 (63)
-  [68, 7], // Beat 2 (V1, 0.35s): Rising Upward Twin-Star 2-Arrow Volley -> snaps at F09 (69)
-  [75, 8], // Beat 3 (V2, 0.38s): Spinning Astral Wind-Crescent + Rapid 2-Arrow Streak -> snaps at F17/F18 (77/78)
-  [83, 7]  // Beat 4 (V3, 0.48s): Airborne Backstep/Hop Apex 3-Arrow Astral Dragon-Piercer -> snaps at F25 (85)
+  [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
+  [68, 7], // Beat 2 (V1, 0.35s): Rising Twin-Star 2-Arrow Volley -> snaps at F09 (69)
+  [75, 8], // Beat 3 (V2, 0.38s): Rapid 2-Arrow Emerald Streak + Zodiac Starfall Arrow -> snaps at F17/F18 (77/78)
+  [83, 7]  // Beat 4 (V3, 0.48s): -48px Airborne Dragon-Piercer Backstep-Hop 3-Arrow Volley -> snaps at F25 (85)
 ];
 
 const BEAT_DURATIONS = [0.36, 0.35, 0.38, 0.48];
 const INTRA_COMBO_LINK = 0.015;
 
+// 4x4 Ordered Bayer Stipple Matrix for crisp pixel-pure emerald-gold floor halos (alpha <= 0.18, zero radial blur!)
+const BAYER_4X4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5]
+];
+
+function drawBayerSylvanHalo(ctx, cx, cy, rx, ry, hexColor, alpha = 0.16, step = 4) {
+  if (alpha <= 0.01 || rx < 4 || ry < 2) return;
+  const clampedAlpha = Math.min(0.18, Math.max(0, alpha));
+  const gx = Math.round(cx / 2) * 2;
+  const gy = Math.round(cy / 2) * 2;
+  const irx = Math.round(rx / step) * step;
+  const iry = Math.max(step, Math.round(ry / step) * step);
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = hexColor;
+  ctx.globalAlpha = clampedAlpha;
+
+  for (let dy = -iry; dy <= iry; dy += step) {
+    const ny = dy / Math.max(1, iry);
+    for (let dx = -irx; dx <= irx; dx += step) {
+      const nx = dx / Math.max(1, irx);
+      const d2 = nx * nx + ny * ny;
+      if (d2 > 1.0) continue;
+      const falloff = 1.0 - d2;
+      const bx = ((dx / step) & 3 + 4) & 3;
+      const by = ((dy / step) & 3 + 4) & 3;
+      if (falloff * 16.0 > BAYER_4X4[by][bx]) {
+        ctx.fillRect(gx + dx, gy + dy, step, step);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function drawPixelLeafRune(ctx, x, y, phase = 0, isGold = false, alpha = 0.94) {
+  if (alpha <= 0.02) return;
+  const px = Math.round(x / 2) * 2;
+  const py = Math.round(y / 2) * 2;
+  const sway = Math.sin(phase) >= 0 ? 2 : -2;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.fillStyle = '#064e3b';
+  ctx.fillRect(px - 4, py - 2, 10, 6);
+  ctx.fillStyle = isGold ? '#fde047' : '#34d399';
+  ctx.fillRect(px - 2, py, 6, 2);
+  ctx.fillRect(px, py - 2, 4, 2);
+  ctx.fillStyle = '#a7f3d0';
+  ctx.fillRect(px + sway, py, 2, 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(px + 2, py - 2, 2, 2);
+  ctx.restore();
+}
+
+function drawStarlightGlint(ctx, x, y, arm = 6, accentHex = '#fde047', alpha = 0.96) {
+  if (alpha <= 0.02) return;
+  const px = Math.round(x / 2) * 2;
+  const py = Math.round(y / 2) * 2;
+  const L = Math.max(4, Math.round(arm / 2) * 2);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.fillStyle = accentHex;
+  ctx.fillRect(px - L, py, L * 2 + 2, 2);
+  ctx.fillRect(px, py - L, 2, L * 2 + 2);
+  ctx.fillStyle = '#ffffff';
+  const half = Math.max(2, Math.round((L * 0.5) / 2) * 2);
+  ctx.fillRect(px - half, py, half * 2 + 2, 2);
+  ctx.fillRect(px, py - half, 2, half * 2 + 2);
+  ctx.restore();
+}
+
+function drawPixelConstellationThread(ctx, x0, y0, x1, y1, hex = '#a7f3d0', alpha = 0.78) {
+  if (alpha <= 0.02) return;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 4) return;
+  const steps = Math.max(3, Math.min(28, Math.round(dist / 8)));
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.fillStyle = hex;
+  for (let i = 0; i <= steps; i++) {
+    if (i % 2 === 1) continue;
+    const u = i / steps;
+    const sx = Math.round((x0 + dx * u) / 2) * 2;
+    const sy = Math.round((y0 + dy * u) / 2) * 2;
+    ctx.fillRect(sx, sy, 2, 2);
+  }
+  ctx.restore();
+}
+
 /**
- * SYLVARA EX (`archer_ex`) - Yggdrasil Astral Star-Huntress.
- * Next-Gen Wide-Canvas (`320x240`, `anchorX=112, anchorY=230`) FFBE / Last Cloudia Champion.
- * Wields luminous Yggdrasil Astral Recurve Greatbow (doubling as a bladed Elven Twin-Arc Bow-Glaive
- * at close quarters) + Back Quiver + 6-Pinion Astral Light-Wings on Row 4 & Row 9.
+ * SYLVARA EX (`archer_ex`) - Newly Born `520px` Yggdrasil Star-Huntress.
+ * Next-Gen Wide-Canvas (`320x240`, `anchorX=112, anchorY=230`) Pure Long-Range Astral Marksman.
+ * Wields the luminous Yggdrasil Astral Recurve Greatbow + 6-Pinion Astral Light-Wings, loosing
+ * Starwood Constellation Volleys, Zephyr Starlock: Twelve-Star Rain, and
+ * Arrow of Yggdrasil: Astral Supernova (`0` melee scars, `0` blurry whiteout!).
  * Coexists 100% independently alongside classic Sylvara (`archer`).
  */
 export class ArcherEx extends Fighter {
@@ -37,7 +132,7 @@ export class ArcherEx extends Fighter {
       lightColor: 'rgba(16, 185, 129, 1)',
       primaryColor: '#34d399',
       hasTrueUltimate: true,
-      trueUltName: 'ARROW OF YGGDRASIL: SUPERNOVA PIERCE',
+      trueUltName: 'ARROW OF YGGDRASIL: ASTRAL SUPERNOVA',
       trueUltDuration: 4.55
     });
 
@@ -48,13 +143,15 @@ export class ArcherEx extends Fighter {
     this.skillMaxCooldown = 4.00;
     this.autoDuration = BEAT_DURATIONS[0];
     this._postFlurryInterval = 1.24;
-    this.skillName = 'VERDANT SNARE & SEEKERS';
-    this.ultName = 'ZEPHYR VAULT: 180 STARLOCK';
-    this.ultSub = 'INVERTED AERIAL LOCK BARRAGE';
+
+    this.skillName = 'STARWOOD CONSTELLATION VOLLEY';
+    this.ultName = 'ZEPHYR STARLOCK: TWELVE-STAR RAIN';
+    this.ultSub = 'ASTRAL LIGHT-WING VAULT & ZODIAC BARRAGE';
     this.ultDuration = 2.04;
+
     this.hasTrueUltimate = true;
-    this.trueUltName = 'ARROW OF YGGDRASIL: SUPERNOVA PIERCE';
-    this.trueUltSub = 'SUPREME WORLD-TREE ASTRAL LANCE';
+    this.trueUltName = 'ARROW OF YGGDRASIL: ASTRAL SUPERNOVA';
+    this.trueUltSub = 'WORLD-TREE CANOPY & STARLIGHT HORIZON LANCE';
     this.trueUltDuration = 4.55;
 
     this.windPhase = 0;
@@ -72,7 +169,7 @@ export class ArcherEx extends Fighter {
     this.flipTargetX = this.x;
     this.flipAngle = 0;
 
-    // 4-Beat FFBE / Last Cloudia Ranged-Acrobat + Bow-Glaive Combo State
+    // 4-Beat Pure `520px` Marksman Combo State
     this.comboStep = 0;
     this._autoVariant = 0;
     this._comboPersistTimer = 0;
@@ -85,12 +182,19 @@ export class ArcherEx extends Fighter {
     this._overrideFrameIdx = null;
 
     this.activeVfxAnims = [];
-    this.glaiveScars = [];
+    this.constellationSeekers = [];
+    this.starRainLances = [];
+    this.pixelLeafRunes = [];
+    this.starlightGlints = [];
+    this.ambientLeafAccum = 0;
+
+    this._skillSeekersFired = 0;
     this._ultPhase = 0;
-    this._ultShotMask = 0;
-    this._ultChargeDir = this.facing;
+    this._ultLancesFired = 0;
     this._ultStartX = this.x;
-    this._ultPivotX = this.x + this.facing * 200;
+    this._ultLandX = this.x;
+    this._ultTargetX = this.x + this.facing * 360;
+
     this._trueUltStep = 0;
     this._trueUltBeamTimer = 0;
     this._trueUltMoteTimer = 0;
@@ -108,6 +212,7 @@ export class ArcherEx extends Fighter {
     });
 
     if (typeof Image !== 'undefined') {
+      this.getExSprites();
       PixelForge.ensureHeroLoaded?.('archer_ex');
     }
 
@@ -121,7 +226,7 @@ export class ArcherEx extends Fighter {
   getAiStyleProfile() {
     return {
       comboGoal: 4,
-      sweetMin: 340,
+      sweetMin: 350,
       sweetMax: 455,
       counterCrouchBias: 0.50,
       midLeapMin: 0,
@@ -131,29 +236,71 @@ export class ArcherEx extends Fighter {
     };
   }
 
+  isHackAndSlashMelee() {
+    return false;
+  }
+
   getExSprites() {
     if (typeof Image === 'undefined') return null;
     const assets = PixelForge.initAssets?.();
-    return assets?.archer_ex || assets?.archer || null;
+    if (!assets) return null;
+    if (!assets.archer_ex) {
+      const sheet = new Image();
+      sheet.src = 'assets/sprites/archer_ex_sheet.png?v=30fps115';
+      const vfx = new Image();
+      vfx.src = 'assets/sprites/archer_ex_vfx.png?v=30fps115';
+      const portrait = new Image();
+      portrait.src = 'assets/sprites/archer_ex_portrait.png?v=30fps115';
+      assets.archer_ex = {
+        sheet,
+        vfx,
+        portrait,
+        cellW: 320,
+        cellH: 240,
+        anchorX: 112,
+        anchorY: 230
+      };
+    }
+    return assets.archer_ex;
+  }
+
+  _safeFxX(xv, game) {
+    const g = game || this.game;
+    const ww = g?.renderer ? g.renderer.worldWidth : 1200;
+    const center = ww * 0.5;
+    return Math.max(center - 920, Math.min(center + 920, Math.max(76, Math.min(ww - 76, xv))));
+  }
+
+  _safeFxY(yv) {
+    return Math.max(48, Math.min(this.groundY + 24, yv));
   }
 
   _clampArenaX(xv, game, margin = 84) {
+    const g = game || this.game;
+    const advBounds =
+      g?.adventure?.active && typeof g.adventure.getActiveStageBounds === 'function'
+        ? g.adventure.getActiveStageBounds()
+        : null;
     const minX =
-      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
-        ? game.adventure.lockMinX
-        : margin;
-    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+      g?.adventure?.lockActive && Number.isFinite(g.adventure.lockMinX)
+        ? g.adventure.lockMinX
+        : advBounds
+          ? advBounds.minX + 44
+          : margin;
+    const ww = g?.renderer ? g.renderer.worldWidth : 1200;
     const rawMaxX =
-      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
-        ? game.adventure.lockMaxX
-        : ww - margin;
+      g?.adventure?.lockActive && Number.isFinite(g.adventure.lockMaxX)
+        ? g.adventure.lockMaxX
+        : advBounds
+          ? advBounds.maxX - 44
+          : ww - margin;
     const bossAlive = Boolean(
-      game?.adventure?.bossEntity &&
-        !game.adventure.bossEntity.isDead &&
-        game.adventure.bossEntity.isColossalBoss
+      g?.adventure?.bossEntity &&
+        !g.adventure.bossEntity.isDead &&
+        g.adventure.bossEntity.isColossalBoss
     );
     const maxX = bossAlive
-      ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 96)
+      ? Math.min(rawMaxX, (g.adventure.bossEntity.anchorX || 9335) - 96)
       : rawMaxX;
     return Math.max(minX, Math.min(maxX, xv));
   }
@@ -202,14 +349,21 @@ export class ArcherEx extends Fighter {
         this._overrideFrameIdx = null;
       }
     }
+    if (newState === 'SKILL') {
+      this._skillSeekersFired = 0;
+      this._skillLockSpawned = false;
+      this.skillCooldown = Math.max(this.skillCooldown || 0, this.skillMaxCooldown);
+    }
     if (newState === 'ULTIMATE') {
       this._ultPhase = 0;
-      this._ultShotMask = 0;
-      this._ultChargeDir = this.facing;
+      this._ultLancesFired = 0;
       this._ultStartX = this.x;
-      this._ultPivotX = this.x + this.facing * 200;
+      this._ultLandX = this.x;
+      this.starRainLances = [];
       this.isFlipVault = false;
       this._overrideFrameIdx = 120;
+    } else {
+      this.starRainLances = [];
     }
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
@@ -237,12 +391,12 @@ export class ArcherEx extends Fighter {
     }
     if (newState === 'DEATH') {
       this.fx?.clear();
-      this.glaiveScars = [];
+      this.constellationSeekers = [];
+      this.starRainLances = [];
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
     }
     this._drewBowVortex = false;
-    this._skillLockSpawned = false;
     this._afterimageTimer = 0;
   }
 
@@ -250,6 +404,11 @@ export class ArcherEx extends Fighter {
     this._queuedNextBeat = true;
   }
 
+  /**
+   * Initializes one beat (`0..3`) of Sylvara EX's pure `520px` Star-Huntress combo:
+   * - Maintains `350..455px` marksman kiting (`-26px` retreat when `dist < 225`)!
+   * - Executes her signature **`-48px` airborne Dragon-Piercer backstep-hop on `V3`**!
+   */
   _beginComboBeat(beatIdx, game) {
     const v = ((beatIdx % 4) + 4) % 4;
     this._autoVariant = v;
@@ -262,7 +421,7 @@ export class ArcherEx extends Fighter {
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
     this._drewBowVortex = false;
-    this._comboPersistTimer = 0.72;
+    this._comboPersistTimer = 0.74;
     this.y = this.groundY;
     this.vy = 0;
 
@@ -278,16 +437,16 @@ export class ArcherEx extends Fighter {
     this._beatStartX = this.x;
     let desiredX = this.x;
     if (v === 3) {
-      // Beat 4 (`V3`): Agile airborne backstep-hop kiting away as she looses the 3-arrow Dragon-Piercer!
-      desiredX = this.x - this.facing * 44;
+      // Signature -48px airborne Dragon-Piercer backstep-hop on V3!
+      desiredX = this.x - this.facing * 48;
     } else if (enemy && !enemy.isDead) {
       const dist = Math.abs(enemy.x - this.x);
-      if (dist < 105) {
-        desiredX = this.x - this.facing * 18;
-      } else if (dist > 165 && dist < 215) {
-        desiredX = this.x + this.facing * 14;
+      if (dist < 225) {
+        desiredX = this.x - this.facing * 26;
+      } else if (dist > 465) {
+        desiredX = this.x + this.facing * 12;
       } else {
-        desiredX = this.x + this.facing * (v === 2 ? 12 : 6);
+        desiredX = this.x + this.facing * (v === 2 ? 6 : 4);
       }
     }
     this._beatTargetX = this._clampArenaX(desiredX, game, 84);
@@ -302,6 +461,36 @@ export class ArcherEx extends Fighter {
       }
     }
     this._trueUltRootedTargets = [];
+  }
+
+  spawnLeafRuneBurst(x, y, count = 6, speed = 125, goldMix = true) {
+    for (let i = 0; i < count; i++) {
+      if (this.pixelLeafRunes.length >= 44) this.pixelLeafRunes.shift();
+      const ang = (i / Math.max(1, count)) * Math.PI * 2 + 0.3;
+      const spd = speed * (0.5 + (i % 3) * 0.25);
+      this.pixelLeafRunes.push({
+        x,
+        y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 36,
+        phase: i * 1.2,
+        isGold: goldMix && i % 2 === 0,
+        age: 0,
+        maxLife: 0.44 + (i % 3) * 0.10
+      });
+    }
+  }
+
+  spawnStarGlint(x, y, arm = 8, hex = '#fde047', maxLife = 0.24) {
+    if (this.starlightGlints.length >= 32) this.starlightGlints.shift();
+    this.starlightGlints.push({
+      x,
+      y,
+      arm,
+      hex,
+      age: 0,
+      maxLife
+    });
   }
 
   spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.55, opts = {}) {
@@ -339,122 +528,39 @@ export class ArcherEx extends Fighter {
     });
   }
 
-  spawnGlaiveScar(cx, cy, dx, dy, maxLife = 0.22, isGold = false) {
-    if (this.glaiveScars.length >= 16) this.glaiveScars.shift();
-    this.glaiveScars.push({
-      x0: Math.round(cx - dx * 0.5),
-      y0: Math.round(cy - dy * 0.5),
-      x1: Math.round(cx + dx * 0.5),
-      y1: Math.round(cy + dy * 0.5),
-      age: 0,
-      maxLife,
-      isGold
-    });
-  }
-
-  _gatherCloseGlaiveTargets(primaryEnemy, game, reachFront = 196, reachBack = 42) {
-    const targets = [];
-    const seen = new Set();
-    const isAdv = Boolean(game?.isAdventureMode?.() || game?.adventure?.active);
-    const myGy = this.groundY || this.y;
-
-    const consider = (foe) => {
-      if (!foe || foe === this || foe.isDead || foe.isBenched || seen.has(foe)) return;
-      const relX = (foe.x - this.x) * this.facing;
-      const hitPad = foe.isColossalBoss ? 76 : 0;
-      if (relX < -reachBack - hitPad || relX > reachFront + hitPad) return;
-      if (isAdv && !foe.isColossalBoss) {
-        const foeGy = foe.groundY || foe.y;
-        if (Math.abs(foeGy - myGy) > 68) return;
-      }
-      seen.add(foe);
-      targets.push(foe);
-    };
-
-    consider(primaryEnemy);
-    if (game?.getEnemiesOf) {
-      const list = game.getEnemiesOf(this);
-      if (Array.isArray(list)) {
-        for (let i = 0; i < list.length; i++) consider(list[i]);
-      }
+  onProjectileTrail(p) {
+    if (!p || p.type !== 'arrow') return;
+    p._starAcc = (p._starAcc || 0) + 0.016;
+    if (p._starAcc >= 0.056) {
+      p._starAcc = 0;
+      const dir = Math.sign(p.vx || this.facing || 1);
+      this.spawnStarGlint(p.x - dir * 14, p.y, 4, p.pierce ? '#fde047' : '#34d399', 0.14);
     }
-    if (isAdv && Array.isArray(game?.adventure?.enemies)) {
-      for (let i = 0; i < game.adventure.enemies.length; i++) {
-        consider(game.adventure.enemies[i]);
-      }
-    }
-    if (isAdv && game?.adventure?.bossEntity) {
-      consider(game.adventure.bossEntity);
-    }
-    return targets;
-  }
-
-  /**
-   * Close-Quarters Elven Twin-Arc Bow-Glaive sweep: applies crunchy hit-stop + target hit-shake when foes press inside <= 196px!
-   */
-  _applyBowGlaiveSweep(primaryEnemy, game, cfg) {
-    const {
-      damage = 28,
-      reachFront = 198,
-      reachBack = 44,
-      hitStop = 0.044,
-      shakeDur = 0.056,
-      knockX = 48,
-      knockY = -36,
-      isCrit = false,
-      scarDx = 96,
-      scarDy = -76,
-      isGold = false
-    } = cfg;
-
-    const targets = this._gatherCloseGlaiveTargets(primaryEnemy, game, reachFront, reachBack);
-    let landed = false;
-
-    for (let i = 0; i < targets.length; i++) {
-      const foe = targets[i];
-      const dmg = i === 0 ? damage : Math.max(10, Math.round(damage * 0.85));
-      foe.takeDamage(dmg, this, isCrit, knockX, knockY);
-      if (!foe.isDead && !foe.isColossalBoss) {
-        foe._hitStopTimer = Math.max(foe._hitStopTimer || 0, hitStop);
-        foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, shakeDur);
-      } else if (!foe.isDead && foe.isColossalBoss) {
-        foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, shakeDur * 0.75);
-      }
-      const hx = foe.x;
-      const hy = (foe.y || this.groundY) - (foe.isColossalBoss ? 124 : 90);
-      this.spawnGlaiveScar(hx, hy, this.facing * scarDx, scarDy, 0.22, isGold);
-      this.spawnVfxAnim(0, hx, hy, 176, 176, 0.26, {
-        flipX: this.facing < 0,
-        inFront: true
-      });
-      landed = true;
-    }
-
-    if (landed && hitStop > 0) {
-      this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
-      game?.renderer?.triggerHitStop?.(hitStop * 0.65);
-    }
-
-    return landed;
   }
 
   onProjectileHit(p, hitTarget, isCrit, game) {
     if (!p) return false;
+    const hs = p.pierce || isCrit ? 0.048 : 0.040;
+    this._hitStopTimer = Math.max(this._hitStopTimer || 0, hs);
     if (hitTarget && !hitTarget.isDead) {
-      const hs = p.pierce || isCrit ? 0.048 : 0.036;
       if (!hitTarget.isColossalBoss) {
         hitTarget._hitShakeTimer = Math.max(hitTarget._hitShakeTimer || 0, hs + 0.018);
       }
       if (p.pierce || isCrit) {
-        this._hitStopTimer = Math.max(this._hitStopTimer || 0, hs);
         game?.renderer?.triggerHitStop?.(hs * 0.55);
       }
     }
     const hx = hitTarget ? hitTarget.x : p.x;
     const hy = hitTarget ? (hitTarget.y || this.groundY) - 92 : p.y;
     const dir = Math.sign(p.vx || this.facing || 1);
-    this.spawnGlaiveScar(hx, hy, dir * 82, isCrit ? -64 : 42, 0.20, Boolean(isCrit || p.pierce));
-    this.fx?.spawn('sylvanArrowImpactBurst', hx, hy, {
+
+    this.spawnLeafRuneBurst(hx, hy, isCrit ? 6 : 4, 135, true);
+    this.spawnStarGlint(hx, hy, isCrit ? 10 : 6, isCrit ? '#fde047' : '#34d399', 0.22);
+    this.spawnVfxAnim(4, hx, hy, 168, 168, 0.24, {
+      flipX: dir < 0,
+      inFront: true
+    });
+    this.fx?.spawn('sylvanArrowImpactBurst', this._safeFxX(hx, game), this._safeFxY(hy), {
       flip: false,
       palette: isCrit || p.pierce ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
       light: isCrit ? 1.24 : 1.08,
@@ -468,7 +574,7 @@ export class ArcherEx extends Fighter {
 
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
     if (this.isDeflecting && !this.isDead) {
-      this.fx.spawn('sylvanArrowImpactBurst', this.x + this.facing * 36, this.y - 84, {
+      this.fx.spawn('sylvanArrowImpactBurst', this._safeFxX(this.x + this.facing * 36), this._safeFxY(this.y - 84), {
         flip: false,
         palette: SYLVAN_STARLIGHT_PALETTE,
         light: 1.15,
@@ -486,12 +592,12 @@ export class ArcherEx extends Fighter {
 
     if (this.isDead && !this._deathBurstTriggered) {
       this._deathBurstTriggered = true;
-      this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+      this.fx.spawn('zephyrGroundBurst', this._safeFxX(this.x), this._safeFxY(this.groundY), {
         palette: SYLVAN_STARLIGHT_PALETTE,
         light: 1.05,
         extra: { radius: 30 }
       });
-      this.fx.spawn('sylvanArrowImpactBurst', this.x, this.groundY - 64, {
+      this.fx.spawn('sylvanArrowImpactBurst', this._safeFxX(this.x), this._safeFxY(this.groundY - 64), {
         flip: false,
         palette: SYLVAN_EMERALD_PALETTE,
         light: 1.0,
@@ -521,7 +627,7 @@ export class ArcherEx extends Fighter {
     this.isDeflecting = true;
     this.vx = 0;
 
-    this.fx.spawn('sylvanLeafCloakDome', this.x + this.facing * 4, this.groundY, {
+    this.fx.spawn('sylvanLeafCloakDome', this._safeFxX(this.x + this.facing * 4, game), this._safeFxY(this.groundY), {
       follow: this,
       offsetX: 4,
       offsetY: 0,
@@ -563,10 +669,10 @@ export class ArcherEx extends Fighter {
     if (enemy && nearWallOrCornered) {
       this.dashDuration = 0.64;
       const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
-      let target = enemy.x + openSideDir * 350;
+      let target = enemy.x + openSideDir * 365;
       if (Math.abs(target - this.x) < 260) {
         const crossDir = this.x < enemy.x ? 1 : -1;
-        target = enemy.x + crossDir * 340;
+        target = enemy.x + crossDir * 355;
       }
       this.flipTargetX = this._clampArenaX(target, game, 150);
       this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
@@ -585,22 +691,13 @@ export class ArcherEx extends Fighter {
     this.vx = 0;
     this.vy = 0;
     this.heal(13, 'SYLVAN BREEZE');
+    this.spawnLeafRuneBurst(this.x, this.groundY - 64, 6, 130, true);
     if (game?.audio) game.audio.play('zephyr_flip', this.x);
 
-    this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+    this.fx.spawn('zephyrGroundBurst', this._safeFxX(this.x, game), this._safeFxY(this.groundY), {
       palette: SYLVAN_EMERALD_PALETTE,
       light: 1.05,
       extra: { radius: 28 }
-    });
-    this.fx.spawn('zephyrVaultSlipstream', this.x - this.facing * 14, this.y - 108, {
-      follow: this,
-      offsetX: -14,
-      offsetY: -108,
-      flip: this.facing < 0,
-      palette: SYLVAN_EMERALD_PALETTE,
-      maxDuration: this.dashDuration * 0.88,
-      light: 1.05,
-      extra: { length: 28, tilt: -0.18 }
     });
   }
 
@@ -614,17 +711,6 @@ export class ArcherEx extends Fighter {
     if (game?.vfx) {
       game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'GALE STRIDE!', '#34d399');
     }
-
-    this.fx.spawn('zephyrVaultSlipstream', this.x - this.facing * 16, this.y - 102, {
-      follow: this,
-      offsetX: -16,
-      offsetY: -102,
-      flip: this.facing < 0,
-      palette: SYLVAN_STARLIGHT_PALETTE,
-      maxDuration: 0.34,
-      light: 1.0,
-      extra: { length: 24, tilt: -0.08 }
-    });
   }
 
   updateDashOrDodge(dt, enemy, game) {
@@ -684,8 +770,8 @@ export class ArcherEx extends Fighter {
           game.vfx.spawnProjectile({
             x: sx,
             y: sy,
-            vx: (dx / td) * 755,
-            vy: (dy / td) * 755,
+            vx: (dx / td) * 775,
+            vy: (dy / td) * 775,
             radius: 13,
             color: '#34d399',
             coreColor: '#fef08a',
@@ -695,7 +781,7 @@ export class ArcherEx extends Fighter {
           });
         }
 
-        this.fx.spawn('sonicBowReleaseWave', sx, sy, {
+        this.fx.spawn('sonicBowReleaseWave', this._safeFxX(sx, game), this._safeFxY(sy), {
           flip: false,
           palette: SYLVAN_STARLIGHT_PALETTE,
           light: 1.15,
@@ -714,7 +800,12 @@ export class ArcherEx extends Fighter {
       return;
     }
 
-    this.x = this._clampArenaX(this.x + this.dashDir * 295 * dt, game, 84);
+    const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * this.dashDir : 999;
+    if (distToEnemy > 350 || distToEnemy < 0) {
+      this.x = this._clampArenaX(this.x + this.dashDir * 295 * dt, game, 84);
+    } else {
+      this.vx = 0;
+    }
     this._afterimageTimer += dt;
     if (this._afterimageTimer >= 0.14) {
       this._afterimageTimer = 0;
@@ -736,18 +827,18 @@ export class ArcherEx extends Fighter {
         game.vfx.spawnProjectile({
           x: sx,
           y: sy,
-          vx: (dx / d) * 720,
-          vy: (dy / d) * 720,
+          vx: (dx / d) * 745,
+          vy: (dy / d) * 745,
           radius: 13,
           color: '#34d399',
           coreColor: '#fef08a',
           owner: this,
-          damage: 45,
+          damage: 46,
           type: 'arrow'
         });
       }
 
-      this.fx.spawn('sonicBowReleaseWave', sx, sy, {
+      this.fx.spawn('sonicBowReleaseWave', this._safeFxX(sx, game), this._safeFxY(sy), {
         flip: false,
         palette: SYLVAN_EMERALD_PALETTE,
         light: 1.1,
@@ -772,7 +863,7 @@ export class ArcherEx extends Fighter {
 
     if (t >= 0.16 && t < 0.57 && !this._drewBowVortex) {
       this._drewBowVortex = true;
-      this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 52, this.y - 96, {
+      this.fx.spawn('sylvanBowDrawVortex', this._safeFxX(this.x + this.facing * 52, game), this._safeFxY(this.y - 96), {
         follow: this,
         offsetX: 52,
         offsetY: -96,
@@ -793,7 +884,7 @@ export class ArcherEx extends Fighter {
       const dx = enemy ? enemy.x - spawnX : this.facing * 520;
       const dy = targetY - spawnY;
       const dist = Math.hypot(dx, dy) || 1;
-      const speed = 735;
+      const speed = 765;
       const shotAng = Math.atan2(dy, dx);
 
       if (game?.vfx) {
@@ -811,7 +902,7 @@ export class ArcherEx extends Fighter {
         });
       }
 
-      this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+      this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
         flip: false,
         palette: SYLVAN_STARLIGHT_PALETTE,
         light: 1.2,
@@ -827,6 +918,7 @@ export class ArcherEx extends Fighter {
   }
 
   update(dt, enemy, game) {
+    this.game = game || this.game;
     this._currentEnemy = enemy;
     this.windPhase += dt * 3.0;
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
@@ -837,6 +929,77 @@ export class ArcherEx extends Fighter {
     }
     if (this.state !== 'AUTO_ATTACK' && this._comboPersistTimer > 0) {
       this._comboPersistTimer = Math.max(0, this._comboPersistTimer - dt);
+    }
+
+    // Ambient World-Tree pixel leaf-runes drifting softly around Sylvara EX
+    if (!this.isDead) {
+      this.ambientLeafAccum += dt;
+      if (this.ambientLeafAccum >= 0.28) {
+        this.ambientLeafAccum = 0;
+        if (this.pixelLeafRunes.length < 36) {
+          this.pixelLeafRunes.push({
+            x: this.x - this.facing * 16 + ((Math.round(this.x) % 3) - 1) * 8,
+            y: this.y - 108,
+            vx: -this.facing * 14,
+            vy: 22,
+            phase: this.windPhase * 2.0,
+            isGold: Math.random() < 0.42,
+            age: 0,
+            maxLife: 0.48
+          });
+        }
+      }
+    }
+
+    for (let i = this.pixelLeafRunes.length - 1; i >= 0; i--) {
+      const l = this.pixelLeafRunes[i];
+      l.age += dt;
+      l.phase += dt * 7.0;
+      l.x += (l.vx + Math.sin(l.phase) * 16) * dt;
+      l.y += l.vy * dt;
+      l.vy += 65 * dt;
+      if (l.age >= l.maxLife) this.pixelLeafRunes.splice(i, 1);
+    }
+    for (let i = this.starlightGlints.length - 1; i >= 0; i--) {
+      this.starlightGlints[i].age += dt;
+      if (this.starlightGlints[i].age >= this.starlightGlints[i].maxLife) {
+        this.starlightGlints.splice(i, 1);
+      }
+    }
+
+    // Update Arcing Constellation Seeker Arrows (`STARWOOD CONSTELLATION VOLLEY`)
+    const activeFoes = this.getEnemyTargets(enemy, game);
+    for (let i = this.constellationSeekers.length - 1; i >= 0; i--) {
+      const sk = this.constellationSeekers[i];
+      sk.age += dt;
+      const u = Math.min(1, sk.age / sk.flightDur);
+      if (u < 0.65 && enemy && !enemy.isDead) {
+        sk.tx += (enemy.x + sk.spreadX - sk.tx) * Math.min(1, dt * 10.0);
+        sk.ty = (enemy.y || this.groundY) - 92;
+      }
+      const inv = 1 - u;
+      sk.x = inv * inv * sk.x0 + 2 * inv * u * sk.cx + u * u * sk.tx;
+      sk.y = inv * inv * sk.y0 + 2 * inv * u * sk.cy + u * u * sk.ty;
+
+      sk.trail.push({ x: sk.x, y: sk.y });
+      if (sk.trail.length > 7) sk.trail.shift();
+
+      if (u >= 1 && !sk.hit) {
+        sk.hit = true;
+        const target = enemy && !enemy.isDead ? enemy : activeFoes[0] || null;
+        if (target && Math.abs(target.x - sk.x) <= 135) {
+          target.takeDamage(sk.damage, this, sk.isGold, 22, -28);
+          if (!target.isColossalBoss) {
+            target._hitShakeTimer = Math.max(target._hitShakeTimer || 0, 0.048);
+          }
+          this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.036);
+        }
+        if (game?.audio) game.audio.play('arrow_hit', sk.x);
+        this.spawnStarGlint(sk.x, sk.y, 8, sk.isGold ? '#fde047' : '#34d399', 0.22);
+        this.spawnLeafRuneBurst(sk.x, sk.y, 3, 120, sk.isGold);
+        this.spawnVfxAnim(4, sk.x, sk.y, 148, 148, 0.22, { inFront: true });
+        this.constellationSeekers.splice(i, 1);
+      }
     }
 
     this.fx.update(dt);
@@ -864,13 +1027,6 @@ export class ArcherEx extends Fighter {
       }
       if (v.age >= v.maxLife) {
         this.activeVfxAnims.splice(i, 1);
-      }
-    }
-
-    for (let i = this.glaiveScars.length - 1; i >= 0; i--) {
-      this.glaiveScars[i].age += dt;
-      if (this.glaiveScars[i].age >= this.glaiveScars[i].maxLife) {
-        this.glaiveScars.splice(i, 1);
       }
     }
 
@@ -908,7 +1064,7 @@ export class ArcherEx extends Fighter {
       }
 
       if (
-        dist >= 275 &&
+        dist >= 280 &&
         dist <= this.attackRange &&
         this.autoCooldown <= 0 &&
         this.crouchCooldown <= 0 &&
@@ -919,10 +1075,12 @@ export class ArcherEx extends Fighter {
         return;
       }
 
-      if (dist < 220 && this.autoCooldown > 0 && this.x > 175 && this.x < ww - 175) {
+      // Pure 520px marksman spacing: -26px retreat when dist < 225!
+      if (dist < 225 && this.x > 170 && this.x < ww - 170) {
+        this.facing = enemy.x >= this.x ? 1 : -1;
         this.moveDir = -1;
-        this.walkPhase += dt * 0.5;
-        this.x -= this.facing * this.moveSpeed * 0.12 * dt;
+        this.walkPhase += dt * 6.0;
+        this.x = this._clampArenaX(this.x - this.facing * 26 * dt * 5.0, game, 84);
       }
     }
 
@@ -930,15 +1088,15 @@ export class ArcherEx extends Fighter {
   }
 
   /**
-   * 4-Beat Dynamic FFBE / Last Cloudia Ranged-Acrobat + Close-Quarters Bow-Glaive Flow (`[[60,8],[68,7],[75,8],[83,7]]`):
-   * - V0 (`F03` `63`): 1-frame snap wide emerald-gold bow-arc smear + Mach shock-ring arrow (+ Twin-Arc Bow-Glaive slash at close quarters!)
-   * - V1 (`F09` `69`): Rising upward Twin-Star 2-arrow volley (+ rising Bow-Glaive uppercut at close quarters!)
-   * - V2 (`F17/F18` `77/78`): Spinning astral wind-crescent + rapid 2-arrow emerald streak + starfall sky-shot
-   * - V3 (`F25` `85`): Airborne backstep/hop apex (`38px` lift) 3-arrow Astral Dragon-Piercer piercing volley with crunchy hit-stop!
+   * 4-Beat Pure `520px` Yggdrasil Star-Huntress Flow (`[[60,8],[68,7],[75,8],[83,7]]`):
+   * - V0 (`F03` `63`): Supersonic Astral Starlight Arrow + 4-point Constellation Glint!
+   * - V1 (`F09` `69`): Rising Twin-Star 2-Arrow Volley!
+   * - V2 (`F17/F18` `77/78`): Rapid 2-Arrow Emerald Streak + Zodiac Starfall Sky-Arrow!
+   * - V3 (`F25` `85`): `-48px` Airborne Dragon-Piercer Backstep-Hop (`42px` lift) 3-Arrow Piercing Volley!
    */
   updateAutoAttack(dt, enemy, game) {
     this._currentEnemy = enemy;
-    this._comboPersistTimer = 0.72;
+    this._comboPersistTimer = 0.74;
 
     if (this._intraLinkTimer > 0) {
       this._intraLinkTimer = Math.max(0, this._intraLinkTimer - dt);
@@ -986,7 +1144,7 @@ export class ArcherEx extends Fighter {
     this.trueUltFrameOverride = frameIdx;
     this._overrideFrameIdx = frameIdx;
 
-    // Footwork & Airborne Backstep/Hop Arc on Beat 4 (`V3`)
+    // Marksman Footwork & -48px Airborne Dragon-Piercer Backstep-Hop on Beat 4 (`V3`)
     this.vx = 0;
     if (t < snapT) {
       const moveU = Math.min(1, Math.max(0, t / snapT));
@@ -997,7 +1155,7 @@ export class ArcherEx extends Fighter {
         this._drewBowVortex = true;
         const isStar = v >= 2;
         const drawOffY = v === 1 ? -98 : v === 3 ? -120 : -110;
-        this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 54, this.y + drawOffY, {
+        this.fx.spawn('sylvanBowDrawVortex', this._safeFxX(this.x + this.facing * 54, game), this._safeFxY(this.y + drawOffY), {
           follow: this,
           offsetX: 54,
           offsetY: drawOffY,
@@ -1014,12 +1172,10 @@ export class ArcherEx extends Fighter {
     }
 
     if (v === 3) {
-      // Airborne backstep-hop peaking at 38px right at F25 (`t = 0.16s`) and touching down cleanly!
       const hopEnd = dur * 0.84;
       if (t < hopEnd) {
         const hopU = Math.min(1, Math.max(0, t / hopEnd));
-        const liftCurve = Math.sin(hopU * Math.PI);
-        this.y = this.groundY - liftCurve * 38;
+        this.y = this.groundY - Math.sin(hopU * Math.PI) * 42;
         this.vy = 0;
       } else {
         this.y = this.groundY;
@@ -1039,27 +1195,18 @@ export class ArcherEx extends Fighter {
     const shotAng = Math.atan2(dy, dx);
 
     if (v === 0) {
-      // Beat 1 (`V0`, `F03`): 1-frame snap emerald-gold Mach shock-ring arrow + close-quarters Twin-Arc Bow-Glaive sweep!
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
         this._beatHitMask |= 1;
         this.didActionFrame = true;
         this.shotCombo++;
+        this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.044);
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
-        this._applyBowGlaiveSweep(enemy, game, {
-          damage: 28,
-          reachFront: 198,
-          hitStop: 0.044,
-          shakeDur: 0.056,
-          knockX: 34,
-          knockY: 0,
-          scarDx: 102,
-          scarDy: 68,
-          isGold: false
-        });
+        this.spawnStarGlint(spawnX + this.facing * 12, spawnY, 8, '#fde047', 0.20);
+        this.spawnLeafRuneBurst(spawnX, spawnY, 3, 105, true);
 
         if (game?.vfx) {
-          const speed = 755;
+          const speed = 780;
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY,
@@ -1075,7 +1222,7 @@ export class ArcherEx extends Fighter {
             type: 'arrow'
           });
         }
-        this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+        this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
           palette: SYLVAN_EMERALD_PALETTE,
           light: 1.16,
@@ -1083,37 +1230,22 @@ export class ArcherEx extends Fighter {
         });
       }
     } else if (v === 1) {
-      // Beat 2 (`V1`, `F09`): Rising upward Twin-Star 2-arrow volley + close-quarters Bow-Glaive uppercut!
       if ((this._beatHitMask & 1) === 0 && t >= 0.08) {
         this._beatHitMask |= 1;
         this.didActionFrame = true;
         this.shotCombo++;
+        this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.044);
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
-        this._applyBowGlaiveSweep(enemy, game, {
-          damage: 30,
-          reachFront: 202,
-          hitStop: 0.044,
-          shakeDur: 0.058,
-          knockX: 30,
-          knockY: -86,
-          scarDx: 98,
-          scarDy: -84,
-          isGold: true
-        });
-
-        this.spawnVfxAnim(0, spawnX, spawnY, 174, 174, 0.28, {
-          flipX: this.facing < 0,
-          inFront: true
-        });
+        this.spawnStarGlint(spawnX + this.facing * 10, spawnY, 8, '#34d399', 0.20);
 
         if (game?.vfx) {
-          const speed = 735;
+          const speed = 760;
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY - 8,
             vx: (dx / aimDist) * speed,
-            vy: (dy / aimDist) * speed - 22,
+            vy: (dy / aimDist) * speed - 20,
             radius: 14,
             color: '#10b981',
             coreColor: '#fef08a',
@@ -1122,7 +1254,7 @@ export class ArcherEx extends Fighter {
             type: 'arrow'
           });
           game.vfx.spawnProjectile({
-            x: spawnX - this.facing * 16,
+            x: spawnX - this.facing * 14,
             y: spawnY + 8,
             vx: (dx / aimDist) * (speed * 0.96),
             vy: (dy / aimDist) * (speed * 0.96) + 18,
@@ -1134,36 +1266,24 @@ export class ArcherEx extends Fighter {
             type: 'arrow'
           });
         }
-        this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+        this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          light: 1.24,
+          light: 1.22,
           extra: { aimAngle: shotAng, radius: 27, twin: true }
         });
       }
     } else if (v === 2) {
-      // Beat 3 (`V2`, `F17` & `F18`): Spinning astral wind-crescent + rapid 2-arrow emerald streak!
       if ((this._beatHitMask & 1) === 0 && t >= 0.09) {
         this._beatHitMask |= 1;
         this.didActionFrame = true;
         this.shotCombo++;
+        this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.040);
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
         this.spawnAfterimage(this.x, this.groundY, this.facing, 2, 17, 0.18);
 
-        this._applyBowGlaiveSweep(enemy, game, {
-          damage: 20,
-          reachFront: 204,
-          hitStop: 0.036,
-          shakeDur: 0.048,
-          knockX: 20,
-          knockY: -28,
-          scarDx: 108,
-          scarDy: 34,
-          isGold: false
-        });
-
         if (game?.vfx) {
-          const speed = 745;
+          const speed = 770;
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY - 6,
@@ -1177,33 +1297,14 @@ export class ArcherEx extends Fighter {
             type: 'arrow'
           });
         }
-        this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
-          flip: false,
-          palette: SYLVAN_EMERALD_PALETTE,
-          light: 1.18,
-          extra: { aimAngle: shotAng, radius: 24, twin: false }
-        });
       }
       if ((this._beatHitMask & 2) === 0 && t >= 0.16) {
         this._beatHitMask |= 2;
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
-        this._applyBowGlaiveSweep(enemy, game, {
-          damage: 24,
-          reachFront: 206,
-          hitStop: 0.044,
-          shakeDur: 0.054,
-          knockX: 28,
-          knockY: -44,
-          isCrit: true,
-          scarDx: 108,
-          scarDy: -42,
-          isGold: true
-        });
-
-        const strikeX = enemy && !enemy.isDead ? enemy.x : spawnX + this.facing * 280;
+        const strikeX = enemy && !enemy.isDead ? enemy.x : spawnX + this.facing * 340;
         if (game?.vfx) {
-          const speed = 760;
+          const speed = 785;
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY + 6,
@@ -1232,43 +1333,33 @@ export class ArcherEx extends Fighter {
             maxLinger: 0.42
           });
         }
-        this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+        this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          light: 1.26,
+          light: 1.24,
           extra: { aimAngle: shotAng, radius: 28, twin: true }
         });
       }
     } else {
-      // Beat 4 (`V3`, `F25`): Airborne backstep/hop apex 3-arrow Astral Dragon-Piercer smear volley + crunchy hit-stop!
+      // Beat 4 (`V3`, `F25`): -48px Airborne Dragon-Piercer Backstep-Hop 3-Arrow Volley!
       if ((this._beatHitMask & 1) === 0 && t >= 0.16) {
         this._beatHitMask |= 1;
         this.didActionFrame = true;
         this.shotCombo++;
+        this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.052);
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
         this.spawnAfterimage(this.x, this.y, this.facing, 2, 25, 0.22);
+        this.spawnLeafRuneBurst(this.x, this.y - 84, 6, 145, true);
+        this.spawnStarGlint(spawnX + this.facing * 12, spawnY, 10, '#fde047', 0.24);
 
-        this.spawnVfxAnim(3, this.x + this.facing * 58, this.y - 96, 184, 184, 0.36, {
+        this.spawnVfxAnim(3, this.x + this.facing * 58, this.y - 96, 184, 184, 0.34, {
           flipX: this.facing < 0,
           inFront: true
         });
 
-        this._applyBowGlaiveSweep(enemy, game, {
-          damage: 28,
-          reachFront: 224,
-          hitStop: 0.052,
-          shakeDur: 0.076,
-          knockX: 46,
-          knockY: -54,
-          isCrit: true,
-          scarDx: 112,
-          scarDy: -78,
-          isGold: true
-        });
-
         if (game?.vfx) {
-          const speed = 800;
-          const fanOffsets = [-0.065, 0, 0.065];
+          const speed = 820;
+          const fanOffsets = [-0.06, 0, 0.06];
           for (let k = 0; k < fanOffsets.length; k++) {
             const ang = shotAng + fanOffsets[k];
             game.vfx.spawnProjectile({
@@ -1289,26 +1380,11 @@ export class ArcherEx extends Fighter {
           game.vfx.spawnDamageText?.(this.x, this.y - 148, 0, true, 'DRAGON-PIERCER!', '#fde047');
         }
 
-        this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+        this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          light: 1.34,
+          light: 1.32,
           extra: { aimAngle: shotAng, radius: 31, twin: true }
-        });
-      }
-      if ((this._beatHitMask & 2) === 0 && t >= 0.23) {
-        this._beatHitMask |= 2;
-        this._applyBowGlaiveSweep(enemy, game, {
-          damage: 24,
-          reachFront: 226,
-          hitStop: 0,
-          shakeDur: 0.054,
-          knockX: 88,
-          knockY: -76,
-          isCrit: true,
-          scarDx: 106,
-          scarDy: 68,
-          isGold: true
         });
       }
     }
@@ -1332,7 +1408,7 @@ export class ArcherEx extends Fighter {
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= this.attackRange;
+        Math.abs(enemy.x - this.x) <= this.attackRange + 35;
 
       if (v < 3 && (this._queuedNextBeat || advHoldingAttack || aiWantsChain)) {
         if (game?.adventure?.queuedAction === 'attack') {
@@ -1356,205 +1432,119 @@ export class ArcherEx extends Fighter {
     }
   }
 
+  /**
+   * REMADE SKILL (`4.00s CD`, `1.04s`):
+   * `STARWOOD CONSTELLATION VOLLEY` — Erupts a pixel Emerald World-Tree Root Seal under `enemy.x`
+   * while loosing 5 arcing Golden-Emerald Constellation Seeker Arrows with 4-point star-glint trails!
+   */
   updateSkill(_dt, enemy, game) {
     const t = this.stateTimer;
-    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const centerTargetX = Math.max(120, Math.min(ww - 120, enemy ? enemy.x : this.x + this.facing * 320));
-    const targetX = enemy ? enemy.x : centerTargetX;
+    const centerTargetX = this._clampArenaX(
+      enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 365,
+      game,
+      96
+    );
     const groundY = enemy?.groundY || this.groundY;
+    this.vx = 0;
+    this.vy = 0;
 
-    if (t < 0.36) {
-      if (t >= 0.04 && !this._skillLockSpawned) {
-        this._skillLockSpawned = true;
-        this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 48, this.y - 120, {
-          follow: this,
-          offsetX: 48,
-          offsetY: -120,
-          palette: SYLVAN_EMERALD_PALETTE,
-          maxDuration: 0.31,
-          light: 1.05,
-          extra: { radius: 22 }
-        });
-        this.fx.spawn('starfallCelestialLock', centerTargetX, this.groundY, {
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          light: 1.1,
-          extra: { radius: 34, beaconH: 60 }
-        });
+    if (enemy && !enemy.isDead && t < 0.25) {
+      this.facing = enemy.x >= this.x ? 1 : -1;
+    }
 
-        this.spawnVfxAnim(2, targetX, groundY - 84, 220, 220, 1.35, {
-          flipX: false,
-          inFront: false
-        });
-        this.brambleSnareZones.push({
-          x: targetX,
-          groundY,
-          radius: 135,
-          age: 0,
-          maxLife: 1.35
-        });
-        if (enemy && !enemy.isDead) {
-          enemy.vx *= 0.25;
-        }
-
-        const bowX = this.x + this.facing * 48;
-        const bowY = this.y - 120;
-        const dx = targetX - bowX;
-        const dy = (groundY - 96) - bowY;
-        const dist = Math.hypot(dx, dy) || 1;
-        for (const arcSign of [-1, 1]) {
-          this.spawnVfxAnim(1, bowX, bowY + arcSign * 14, 176, 176, 0.52, {
-            vx: (dx / dist) * 560,
-            vy: (dy / dist) * 560 + arcSign * 135,
-            flipX: this.facing < 0,
-            inFront: true,
-            isSeeker: true
-          });
-          if (game?.vfx) {
-            game.vfx.spawnProjectile({
-              x: bowX,
-              y: bowY + arcSign * 12,
-              vx: (dx / dist) * 665,
-              vy: (dy / dist) * 665 + arcSign * 45,
-              radius: 12,
-              color: '#10b981',
-              coreColor: '#fef08a',
-              owner: this,
-              damage: 40,
-              type: 'arrow'
-            });
-          }
-        }
-      }
-    } else if (t >= 0.36 && !this.didActionFrame) {
+    // Step 1 (`t >= 0.06s`): Erupt Pixel Emerald World-Tree Root Seal under `enemy.x`!
+    if (t >= 0.06 && !this._skillLockSpawned) {
+      this._skillLockSpawned = true;
       this.didActionFrame = true;
-      this.vx -= this.facing * 65;
-      this.heal(22, 'STARLIGHT GRACE');
-      if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
-      this._applyBowGlaiveSweep(enemy, game, {
-        damage: 42,
-        reachFront: 215,
-        hitStop: 0.044,
-        shakeDur: 0.058,
-        knockX: 52,
-        knockY: -55,
-        isGold: true
-      });
-
-      const bowX = this.x + this.facing * 48;
-      const bowY = this.y - 120;
-      const fAng = this.facing === 1 ? 0 : Math.PI;
-
-      this.fx.spawn('sonicBowReleaseWave', bowX, bowY, {
-        flip: false,
-        palette: SYLVAN_EMERALD_PALETTE,
-        light: 1.2,
-        extra: { aimAngle: fAng, radius: 27, twin: true }
-      });
-
-      if (game?.vfx) {
-        [-0.16, 0, 0.16].forEach((angOff) => {
-          const a = fAng + angOff;
-          game.vfx.spawnProjectile({
-            x: bowX,
-            y: bowY,
-            vx: Math.cos(a) * 685,
-            vy: Math.sin(a) * 685,
-            radius: 12,
-            color: '#34d399',
-            coreColor: '#fef08a',
-            owner: this,
-            damage: 64,
-            type: 'arrow'
-          });
-        });
-      }
-    } else if (t >= 0.76 && !this.didSecondaryAction) {
-      this.didSecondaryAction = true;
-      this.vx -= this.facing * 45;
-      if (game?.audio) game.audio.play('arrow_rain', centerTargetX);
-
-      const bowX = this.x + this.facing * 42;
-      const bowY = this.y - 134;
-      const skyAng = this.facing === 1 ? -0.58 : Math.PI + 0.58;
-
-      this.fx.spawn('sonicBowReleaseWave', bowX, bowY, {
-        flip: false,
+      this.fx.spawn('starfallCelestialLock', this._safeFxX(centerTargetX, game), this._safeFxY(groundY), {
         palette: SYLVAN_STARLIGHT_PALETTE,
-        light: 1.2,
-        extra: { aimAngle: skyAng, radius: 26, twin: true }
-      });
-
-      this.fx.spawn('emeraldTempestCyclone', centerTargetX, this.groundY, {
-        vx: this.facing * 32,
-        palette: SYLVAN_EMERALD_PALETTE,
         light: 1.15,
-        extra: {
-          baseRadius: 11,
-          topRadius: 30,
-          height: 84,
-          isUltimate: false
-        }
-      });
-      this.fx.spawn('starfallRainBarrage', centerTargetX, this.groundY, {
-        palette: SYLVAN_STARLIGHT_PALETTE,
-        light: 1.2,
-        extra: { spread: 44, count: 7 }
+        extra: { radius: 36, beaconH: 60 }
       });
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - centerTargetX) <= 155) {
-        enemy.takeDamage(54, this, true, 48, -110);
-      }
+      this.spawnVfxAnim(2, centerTargetX, groundY - 82, 224, 224, 1.15, {
+        flipX: false,
+        inFront: false
+      });
+      this.spawnVfxAnim(5, centerTargetX, groundY - 8, 288, 96, 1.15, {
+        flipX: false,
+        inFront: false
+      });
 
-      if (game?.vfx) {
-        game.vfx.spawnTornado?.({
-          x: centerTargetX,
-          groundY: this.groundY,
-          vx: this.facing * 38,
-          radius: 78,
-          height: 265,
-          color: '#10b981',
-          coreColor: '#fef08a',
-          maxLife: 1.10
-        });
+      this.brambleSnareZones.push({
+        x: centerTargetX,
+        groundY,
+        radius: 145,
+        age: 0,
+        maxLife: 1.15
+      });
 
-        for (let i = 0; i < 9; i++) {
-          const spread = (i - 4) * 34 + (Math.random() - 0.5) * 14;
-          game.vfx.spawnSkyStrike?.({
-            x: centerTargetX + spread - this.facing * 90,
-            y: -160 - i * 32,
-            groundY: this.groundY,
-            vx: this.facing * 240,
-            vy: 1280,
-            type: 'starfall_arrow',
-            color: i % 2 === 0 ? '#10b981' : '#34d399',
-            coreColor: '#fef08a',
-            owner: this,
-            target: enemy,
-            damage: 40,
-            delay: i * 0.06,
-            maxLinger: 0.55
-          });
-        }
+      this.spawnLeafRuneBurst(centerTargetX, groundY - 48, 8, 140, true);
+      this.spawnStarGlint(centerTargetX, groundY - 64, 10, '#34d399', 0.26);
+
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - centerTargetX) <= 165) {
+        enemy.vx *= 0.2;
+        enemy.takeDamage(24, this, false, 12, -24);
       }
-    } else if (t >= 1.05) {
+      if (game?.audio) game.audio.play('zephyr_flip', centerTargetX);
+      game?.vfx?.spawnDamageText?.(centerTargetX, groundY - 192, 0, true, 'STARWOOD ROOT SEAL!', '#34d399');
+    }
+
+    // Step 2 (`t = 0.18, 0.27, 0.36, 0.45, 0.54s`): Loose 5 Arcing Golden-Emerald Constellation Seeker Arrows!
+    const seekerTimes = [0.18, 0.27, 0.36, 0.45, 0.54];
+    const arcHeights = [-156, 52, -118, 38, -184];
+    const spreadXs = [-28, 28, -14, 14, 0];
+
+    while (this._skillSeekersFired < 5 && t >= seekerTimes[this._skillSeekersFired]) {
+      const idx = this._skillSeekersFired++;
+      const bowX = this.x + this.facing * 52;
+      const bowY = this.y - 114;
+      const tx = this._clampArenaX(centerTargetX + spreadXs[idx], game, 90);
+      const ty = groundY - 92;
+
+      if (idx === 0) {
+        this.heal(22, 'STARLIGHT GRACE');
+      }
+      if (game?.audio) game.audio.play('arrow_shoot', bowX);
+      this.spawnStarGlint(bowX + this.facing * 8, bowY, 8, idx % 2 === 0 ? '#fde047' : '#34d399', 0.18);
+
+      this.constellationSeekers.push({
+        index: idx,
+        x0: bowX,
+        y0: bowY,
+        cx: (bowX + tx) * 0.5,
+        cy: Math.min(bowY, ty) + arcHeights[idx],
+        tx,
+        ty,
+        spreadX: spreadXs[idx],
+        x: bowX,
+        y: bowY,
+        damage: idx === 4 ? 34 : 24,
+        isGold: idx % 2 === 0,
+        age: 0,
+        flightDur: 0.26,
+        trail: [{ x: bowX, y: bowY }],
+        hit: false
+      });
+    }
+
+    if (t >= 1.04) {
       this.setState('IDLE');
     }
   }
 
   /**
-   * 1-Overdrive Ultimate (`state === 'ULTIMATE'`, `2.04s`):
-   * "ZEPHYR VAULT: 180 STARLOCK"
-   * - Phase 1 (`0.00s .. 0.32s`): Gale Charge-In rush + Twin-Arc Bow-Glaive Vault-Kick (`36` dmg).
-   * - Phase 2 (`0.32s .. 1.56s`): 180 semicircular overhead flip-jump (`Row 4` `124..135` inverted somersault frames,
-   *   zero `ctx.rotate`!) firing 7 radial Lock-On Homing Arrows around the 180 arc!
-   * - Phase 3 (`1.56s .. 2.04s`): Agile opposite-side touchdown (`136`) + Sylvan recovery.
+   * REMADE OVERDRIVE (`state === 'ULTIMATE'`, `2.04s`):
+   * `ZEPHYR STARLOCK: TWELVE-STAR RAIN`
+   * Inverted Astral Light-Wing sky-vault (`Row 4` `124..135` inverted somersault frames)
+   * raining 12 staggered Starlight Lance-Arrows across the target zone!
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
-    this.isInvulnerable = t < 1.56;
+    this.isInvulnerable = t < 1.62;
     this.unstoppablePoise = true;
     this.hurtTimer = 0;
     this.isFlipVault = false;
@@ -1565,156 +1555,107 @@ export class ArcherEx extends Fighter {
     const targets = this.getEnemyTargets(enemy, game);
     const primary = enemy && !enemy.isDead ? enemy : targets[0] || null;
 
-    if (t < 0.32) {
-      if (this._ultPhase < 1) {
-        this._ultPhase = 1;
-        this._ultShotMask = 0;
-        this._ultStartX = this.x;
-        this._ultChargeDir = primary ? (primary.x >= this.x ? 1 : -1) : this.facing;
-        this.facing = this._ultChargeDir;
+    if (this._ultPhase < 1) {
+      this._ultPhase = 1;
+      this._ultLancesFired = 0;
+      this._ultStartX = this.x;
+      this._ultTargetX = this._clampArenaX(
+        primary ? primary.x : this.x + this.facing * 360,
+        game,
+        110
+      );
+      this.facing = this._ultTargetX >= this.x ? 1 : -1;
 
-        if (game?.audio) game.audio.play('zephyr_flip', this.x);
-        if (game?.vfx) {
-          game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'ZEPHYR CHARGE!', '#34d399');
-        }
-        this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
-          palette: SYLVAN_EMERALD_PALETTE,
-          light: 1.1,
-          extra: { radius: 30 }
-        });
-        this.fx.spawn('zephyrVaultSlipstream', this.x - this.facing * 16, this.y - 104, {
-          follow: this,
-          offsetX: -16,
-          offsetY: -104,
-          flip: this.facing < 0,
-          palette: SYLVAN_EMERALD_PALETTE,
-          maxDuration: 1.55,
-          light: 1.1,
-          extra: { length: 28, tilt: -0.12 }
-        });
-        this.fx.spawn('astralWingPlume', this.x - this.facing * 16, this.y - 122, {
-          follow: this,
-          offsetX: -16,
-          offsetY: -122,
-          flip: this.facing < 0,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 1.85,
-          light: 1.2,
-          extra: { wingSpan: 30 }
-        });
-      }
-
-      const advBounds =
-        game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
-          ? game.adventure.getActiveStageBounds()
-          : null;
-      const u = Math.min(1, Math.max(0, t / 0.32));
-      const easeRush = 1 - Math.pow(1 - u, 2.25);
-      const rawContactX = primary
-        ? primary.x - this._ultChargeDir * 48
-        : this._ultStartX + this._ultChargeDir * 240;
-      const contactX = advBounds
-        ? Math.max(advBounds.minX + 36, Math.min(advBounds.maxX - 36, rawContactX))
-        : Math.max(120, Math.min(ww - 120, rawContactX));
-
-      this.x = this._ultStartX + (contactX - this._ultStartX) * easeRush;
-      this.y = this.groundY;
-      this.cameraAirLift = 0;
-      this._overrideFrameIdx = u < 0.55 ? 120 : 121;
-
-      this._afterimageTimer += dt;
-      if (this._afterimageTimer >= 0.09) {
-        this._afterimageTimer = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, u < 0.55 ? 0 : 1, 0.20);
-      }
-      return;
-    }
-
-    const advBounds =
-      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
-        ? game.adventure.getActiveStageBounds()
-        : null;
-
-    if (this._ultPhase < 2) {
-      this._ultPhase = 2;
-      if (primary && !primary.isDead) {
-        if (!primary.isColossalBoss) {
-          primary.x = advBounds
-            ? Math.max(advBounds.minX + 200, Math.min(advBounds.maxX - 200, primary.x))
-            : Math.max(265, Math.min(ww - 265, primary.x));
-          primary.vx = 0;
-        }
-        this._ultPivotX = advBounds
-          ? Math.max(advBounds.minX + 200, Math.min(advBounds.maxX - 200, primary.x))
-          : primary.x;
-        primary.takeDamage(38, this, false, 30, -85);
-        this.spawnVfxAnim(0, primary.x, (primary.groundY || this.groundY) - 96, 184, 184, 0.28, {
-          flipX: this._ultChargeDir < 0,
-          inFront: true
-        });
-        this.fx.spawn('sylvanArrowImpactBurst', primary.x, (primary.groundY || this.groundY) - 96, {
-          flip: false,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          light: 1.2,
-          extra: { aimAngle: -Math.PI * 0.5, isCrit: true }
-        });
+      // Sky-vault arc keeps Sylvara EX safely in her marksman zone (retreating slightly or crossing if cornered!)
+      const retreatCandidate = this.x - this.facing * 120;
+      if (this.x < 210 || this.x > ww - 210) {
+        const openDir = this._ultTargetX < ww * 0.5 ? 1 : -1;
+        this._ultLandX = this._clampArenaX(this._ultTargetX + openDir * 340, game, 110);
       } else {
-        this._ultPivotX = advBounds
-          ? Math.max(advBounds.minX + 200, Math.min(advBounds.maxX - 200, this.x + this._ultChargeDir * 48))
-          : Math.max(265, Math.min(ww - 265, this.x + this._ultChargeDir * 48));
+        this._ultLandX = this._clampArenaX(retreatCandidate, game, 110);
       }
 
-      this.fx.spawn('yggdrasilLockReticle', this._ultPivotX, this.groundY - 98, {
-        flip: false,
-        palette: SYLVAN_STARLIGHT_PALETTE,
-        maxDuration: 1.36,
-        light: 1.25,
-        extra: { radius: 19, chargeDir: this._ultChargeDir }
-      });
-      this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
-        palette: SYLVAN_STARLIGHT_PALETTE,
-        light: 1.15,
-        extra: { radius: 28 }
-      });
       if (game?.audio) {
         game.audio.play('archer_ult', this.x);
         game.audio.play('zephyr_flip', this.x);
       }
       if (game?.vfx) {
-        game.vfx.spawnDamageText(this._ultPivotX, this.groundY - 172, 0, true, '180 STARLOCK!', '#fef08a');
+        game.vfx.spawnDamageText(this._ultTargetX, this.groundY - 212, 0, true, 'TWELVE-STAR RAIN!', '#fef08a');
       }
-      if (game?.renderer) {
-        game.renderer.triggerShake?.(12, 0.24);
-      }
-      this._overrideFrameIdx = 123;
+      this.fx.spawn('zephyrGroundBurst', this._safeFxX(this.x, game), this._safeFxY(this.groundY), {
+        palette: SYLVAN_STARLIGHT_PALETTE,
+        light: 1.15,
+        extra: { radius: 30 }
+      });
+      this.fx.spawn('yggdrasilLockReticle', this._safeFxX(this._ultTargetX, game), this._safeFxY(this.groundY - 96), {
+        flip: false,
+        palette: SYLVAN_STARLIGHT_PALETTE,
+        maxDuration: 1.56,
+        light: 1.24,
+        extra: { radius: 22, chargeDir: this.facing }
+      });
+      this.spawnLeafRuneBurst(this.x, this.groundY - 76, 10, 155, true);
     }
 
-    if (t < 1.56) {
-      const arcU = Math.min(1, Math.max(0, (t - 0.32) / 1.24));
-      const theta = arcU * Math.PI;
-      const arcRadiusX = 192;
-      const arcHeightY = 194;
+    if (t < 1.32 && primary && !primary.isDead) {
+      this._ultTargetX = this._clampArenaX(primary.x, game, 105);
+    }
+    const zoneX = this._ultTargetX;
 
-      if (
-        primary &&
-        !primary.isDead &&
-        !primary.isColossalBoss &&
-        primary.state !== 'DODGE' &&
-        primary.state !== 'JUMP'
-      ) {
-        primary.x += (this._ultPivotX - primary.x) * Math.min(1, dt * 7);
+    // Advance Raining Starlight Lance-Arrows
+    for (let i = this.starRainLances.length - 1; i >= 0; i--) {
+      const ln = this.starRainLances[i];
+      ln.age += dt;
+      const u = Math.min(1, ln.age / ln.fallDur);
+      ln.x = ln.x0 + (ln.tx - ln.x0) * u;
+      ln.y = ln.y0 + (ln.ty - ln.y0) * u;
+      if (u >= 1 && !ln.impacted) {
+        ln.impacted = true;
+        if (game?.audio && ln.index % 2 === 0) game.audio.play('arrow_hit', ln.tx);
+        this.spawnStarGlint(ln.tx, this.groundY - 32, ln.isZenith ? 12 : 6, ln.isZenith ? '#ffffff' : '#fde047', 0.24);
+        this.spawnVfxAnim(4, ln.tx, this.groundY - 48, ln.isZenith ? 196 : 144, ln.isZenith ? 196 : 144, 0.26, {
+          inFront: true
+        });
+        if (ln.isZenith) {
+          this.spawnLeafRuneBurst(ln.tx, this.groundY - 64, 12, 185, true);
+          game?.renderer?.triggerShake?.(15, 0.24);
+        }
+        for (const foe of targets) {
+          if (foe && !foe.isDead && Math.abs(foe.x - zoneX) <= 210) {
+            if (!foe.isColossalBoss) {
+              foe.x += (zoneX - foe.x) * 0.16;
+            }
+            foe.takeDamage(
+              ln.isZenith ? 56 : 19,
+              this,
+              ln.isZenith || ln.index % 3 === 0,
+              ln.isZenith ? 130 : 12,
+              ln.isZenith ? -155 : -20
+            );
+          }
+        }
       }
+      if (ln.age >= ln.fallDur + 0.18) {
+        this.starRainLances.splice(i, 1);
+      }
+    }
 
-      const rawArcX = this._ultPivotX - this._ultChargeDir * Math.cos(theta) * arcRadiusX;
-      this.x = advBounds
-        ? Math.max(advBounds.minX + 24, Math.min(advBounds.maxX - 24, rawArcX))
-        : Math.max(84, Math.min(ww - 84, rawArcX));
-      this.y = this.groundY - Math.sin(theta) * arcHeightY;
-      this.cameraAirLift = Math.sin(theta) * 142;
+    // Inverted Astral Light-Wing Sky-Vault (`0.14..1.58s`, Row 4 `124..135` inverted somersault frames, ZERO ctx.rotate!)
+    if (t < 0.14) {
+      this.y = this.groundY;
+      this.cameraAirLift = 0;
+      this._overrideFrameIdx = 120 + Math.min(3, Math.floor((t / 0.14) * 4));
+      return;
+    }
 
-      this.facing = theta >= Math.PI * 0.5 ? -this._ultChargeDir : this._ultChargeDir;
+    if (t < 1.58) {
+      const arcU = Math.min(1, (t - 0.14) / 1.44);
+      const lift = Math.sin(arcU * Math.PI) * 184;
+      this.x = this._ultStartX + (this._ultLandX - this._ultStartX) * arcU;
+      this.y = this.groundY - lift;
+      this.cameraAirLift = lift * 0.72;
+      this.facing = zoneX >= this.x ? 1 : -1;
 
-      // Baked Row 4 inverted somersault frames `124..135` (`F04..F15`, zero `ctx.rotate`!)
       const somCol = 4 + Math.min(11, Math.floor(arcU * 12));
       this._overrideFrameIdx = 120 + somCol;
 
@@ -1724,85 +1665,42 @@ export class ArcherEx extends Fighter {
         this.spawnAfterimage(this.x, this.y, this.facing, 4, somCol, 0.22);
       }
 
-      const lockAnglesDeg = [22, 46, 70, 90, 110, 134, 158];
-      for (let i = 0; i < lockAnglesDeg.length; i++) {
-        const triggerTheta = (lockAnglesDeg[i] * Math.PI) / 180;
-        if (theta >= triggerTheta && (this._ultShotMask & (1 << i)) === 0) {
-          this._ultShotMask |= 1 << i;
+      // Rain 12 Staggered Starlight Lance-Arrows across `t = 0.24..1.14s` (`every 0.082s`)!
+      const spreadPattern = [-128, 128, -88, 88, -48, 48, -108, 108, -68, 68, -24, 0];
+      while (this._ultLancesFired < 12 && t >= 0.24 + this._ultLancesFired * 0.082) {
+        const idx = this._ultLancesFired++;
+        const tx = this._clampArenaX(zoneX + spreadPattern[idx], game, 90);
+        const startX = tx - this.facing * 36;
+        const startY = this.groundY - 310 - (idx % 3) * 18;
+        if (game?.audio && idx % 2 === 0) game.audio.play('arrow_shoot', this.x);
+        this.spawnStarGlint(startX, startY + 24, 6, idx % 2 === 0 ? '#fde047' : '#34d399', 0.18);
 
-          const tx = primary && !primary.isDead ? primary.x : this._ultPivotX;
-          const ty = (primary && !primary.isDead ? primary.y : this.groundY) - 96;
-          const bowX = this.x + (tx >= this.x ? 16 : -16);
-          const bowY = this.y - 68;
-          const dx = tx - bowX;
-          const dy = ty - bowY;
-          const shotAng = Math.atan2(dy, dx);
-          const isZenith = i === 3;
-          const isFinisher = i === 6;
-
-          if (game?.audio) {
-            game.audio.play('arrow_shoot', this.x);
-            if (isZenith || isFinisher) game.audio.play('arrow_hit', tx);
-          }
-
-          this.fx.spawn('starlockHomingArrow', bowX, bowY, {
-            flip: false,
-            palette: isZenith || isFinisher ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
-            light: isZenith || isFinisher ? 1.3 : 1.15,
-            extra: {
-              dx: dx / 3,
-              dy: dy / 3
-            }
-          });
-
-          this.fx.spawn('sonicBowReleaseWave', bowX, bowY, {
-            flip: false,
-            palette: isZenith ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
-            light: 1.15,
-            extra: { aimAngle: shotAng, radius: isZenith ? 23 : 18, twin: isZenith }
-          });
-
-          this.spawnVfxAnim(1, bowX, bowY, 156, 156, 0.22, {
-            vx: Math.cos(shotAng) * 860,
-            vy: Math.sin(shotAng) * 860,
-            flipX: dx < 0,
-            inFront: true,
-            isSeeker: true
-          });
-
-          if (primary && !primary.isDead) {
-            const shotDmg = isZenith ? 38 : 28;
-            primary.takeDamage(
-              shotDmg,
-              this,
-              isZenith || isFinisher,
-              isFinisher ? 140 : 18,
-              isFinisher ? -170 : -24
-            );
-            if (isZenith || isFinisher) {
-              this.spawnVfxAnim(4, tx, ty, 184, 184, 0.32, {
-                flipX: false,
-                inFront: true
-              });
-              if (game?.renderer) {
-                game.renderer.triggerShake?.(isFinisher ? 18 : 11, 0.25);
-              }
-            }
-          }
-        }
+        this.starRainLances.push({
+          index: idx,
+          x0: startX,
+          y0: startY,
+          tx,
+          ty: this.groundY - 12,
+          x: startX,
+          y: startY,
+          age: 0,
+          fallDur: 0.13,
+          isZenith: idx === 11,
+          impacted: false
+        });
       }
       return;
     }
 
-    if (this._ultPhase < 3) {
-      this._ultPhase = 3;
+    if (this._ultPhase < 2) {
+      this._ultPhase = 2;
       this.didActionFrame = true;
       this.y = this.groundY;
       this.vy = 0;
       this.cameraAirLift = 0;
-      this.facing = primary && !primary.isDead ? (primary.x >= this.x ? 1 : -1) : -this._ultChargeDir;
-      this.autoCooldown = Math.max(this.autoCooldown, 0.52);
-      this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+      this.facing = zoneX >= this.x ? 1 : -1;
+      this.autoCooldown = Math.max(this.autoCooldown, 0.48);
+      this.fx.spawn('zephyrGroundBurst', this._safeFxX(this.x, game), this._safeFxY(this.groundY), {
         palette: SYLVAN_EMERALD_PALETTE,
         light: 1.1,
         extra: { radius: 28 }
@@ -1817,14 +1715,18 @@ export class ArcherEx extends Fighter {
       this.isInvulnerable = false;
       this.unstoppablePoise = false;
       this._overrideFrameIdx = null;
+      this.starRainLances = [];
       this.cameraAirLift = 0;
       this.setState('IDLE');
     }
   }
 
   /**
-   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `4.55s`):
-   * "ARROW OF YGGDRASIL: SUPERNOVA PIERCE"
+   * REMADE SUPREME ULTIMATE (`state === 'TRUE_ULTIMATE'`, `4.55s`):
+   * `ARROW OF YGGDRASIL: ASTRAL SUPERNOVA`
+   * Manifests a luminous pixel-art World-Tree Canopy & Zodiac Target Astrolabe before firing
+   * a multi-band Emerald-Gold Starlight Horizon Lance (`tipSliceW = 44`) with drifting pixel
+   * leaf-runes & star-glints (`0` blurry radial whiteout)!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1880,7 +1782,7 @@ export class ArcherEx extends Fighter {
           this.y - 162,
           0,
           true,
-          'YGGDRASIL ROOTS: BIND!',
+          'WORLD-TREE ASTROLABE: BIND!',
           '#34d399'
         );
       }
@@ -1909,11 +1811,11 @@ export class ArcherEx extends Fighter {
         }
         this._trueUltRootedTargets.push({ foe, lockX, lockY });
 
-        this.fx.spawn('yggdrasilRootPrison', lockX, lockY, {
+        this.fx.spawn('yggdrasilRootPrison', this._safeFxX(lockX, game), this._safeFxY(lockY), {
           flip: false,
           palette: SYLVAN_EMERALD_PALETTE,
           maxDuration: 3.16,
-          light: 1.25,
+          light: 1.22,
           extra: { radius: 26, height: 45 }
         });
         this.spawnVfxAnim(2, lockX, lockY - 82, 232, 232, 3.12, {
@@ -1924,17 +1826,14 @@ export class ArcherEx extends Fighter {
           flipX: false,
           inFront: false
         });
-        if (game?.vfx) {
-          game.vfx.spawnDamageText(lockX, lockY - 152, 0, false, 'ROOTED!', '#6ee7b7');
-        }
       }
 
       if (targets.length === 0) {
-        this.fx.spawn('yggdrasilRootPrison', anchorX, this.groundY, {
+        this.fx.spawn('yggdrasilRootPrison', this._safeFxX(anchorX, game), this._safeFxY(this.groundY), {
           flip: false,
           palette: SYLVAN_EMERALD_PALETTE,
           maxDuration: 3.16,
-          light: 1.25,
+          light: 1.22,
           extra: { radius: 26, height: 45 }
         });
       }
@@ -1983,20 +1882,10 @@ export class ArcherEx extends Fighter {
         this._trueUltStep = 2;
         this._trueUltJumpStartX = this.x;
         if (game?.audio) game.audio.play('zephyr_flip', this.x);
-        this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+        this.fx.spawn('zephyrGroundBurst', this._safeFxX(this.x, game), this._safeFxY(this.groundY), {
           palette: SYLVAN_STARLIGHT_PALETTE,
           light: 1.2,
           extra: { radius: 34 }
-        });
-        this.fx.spawn('zephyrVaultSlipstream', this.x - this.facing * 16, this.y - 104, {
-          follow: this,
-          offsetX: -16,
-          offsetY: -104,
-          flip: this.facing < 0,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 0.88,
-          light: 1.15,
-          extra: { length: 30, tilt: -0.14 }
         });
         if (game?.vfx) {
           game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'FAR-HORIZON VAULT!', '#fef08a');
@@ -2015,7 +1904,7 @@ export class ArcherEx extends Fighter {
       this.facing =
         jumpU >= 0.52 ? (this._trueUltTargetX >= this._trueUltFarEdgeX ? 1 : -1) : jumpDir;
 
-      const flipCol = 4 + Math.min(12, Math.floor(jumpU * 13)); // Row 4 F04..F16 (`124..136`)
+      const flipCol = 4 + Math.min(12, Math.floor(jumpU * 13));
       this.trueUltFrameOverride = 120 + flipCol;
       this._overrideFrameIdx = 120 + flipCol;
 
@@ -2027,7 +1916,7 @@ export class ArcherEx extends Fighter {
       return;
     }
 
-    // Phase 3 (`1.28s .. 3.15s` -- 6-Pinion Astral Light-Wings Ascension `137..144` & Colossal Greatbow Charge!)
+    // Phase 3 (`1.28s .. 3.15s` -- World-Tree Canopy + Zodiac Astrolabe + Colossal Greatbow Charge!)
     if (t < 3.15) {
       if (this._trueUltStep < 3) {
         this._trueUltStep = 3;
@@ -2041,12 +1930,12 @@ export class ArcherEx extends Fighter {
             this.groundY - 168,
             0,
             true,
-            'ARROW OF YGGDRASIL!',
+            'YGGDRASIL CANOPY: BLOOM!',
             '#34d399'
           );
         }
 
-        this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+        this.fx.spawn('zephyrGroundBurst', this._safeFxX(this.x, game), this._safeFxY(this.groundY), {
           palette: SYLVAN_EMERALD_PALETTE,
           light: 1.15,
           extra: { radius: 32 }
@@ -2055,25 +1944,7 @@ export class ArcherEx extends Fighter {
           flipX: false,
           inFront: false
         });
-        this.fx.spawn('astralWingPlume', this.x - this.facing * 16, this.y - 124, {
-          follow: this,
-          offsetX: -16,
-          offsetY: -124,
-          flip: this.facing < 0,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 3.1,
-          light: 1.35,
-          extra: { wingSpan: 35 }
-        });
-        this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 38, this.y - 96, {
-          follow: this,
-          offsetX: 38,
-          offsetY: -96,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 1.84,
-          light: 1.35,
-          extra: { radius: 30 }
-        });
+        this.spawnLeafRuneBurst(this.x, this.groundY - 140, 14, 165, true);
       }
 
       this.x = this._trueUltFarEdgeX;
@@ -2090,45 +1961,26 @@ export class ArcherEx extends Fighter {
 
       if (t >= 1.35 && t <= 3.10) {
         this._trueUltMoteTimer += dt;
-        if (this._trueUltMoteTimer >= 0.16) {
+        if (this._trueUltMoteTimer >= 0.14) {
           this._trueUltMoteTimer = 0;
           const muzzleX = this.x + this.facing * 38;
           const muzzleY = this.y - 96;
-          if (game?.vfx?.spawnParticles) {
-            game.vfx.spawnParticles(muzzleX, muzzleY, 2, '#34d399');
-          } else if (game?.vfx?.spawnParticle) {
-            for (let i = 0; i < 2; i++) {
-              const ang = Math.PI * i + t * 5.5;
-              const rad = 74;
-              game.vfx.spawnParticle({
-                x: muzzleX + Math.cos(ang) * rad,
-                y: muzzleY + Math.sin(ang) * rad,
-                vx: -Math.cos(ang) * 195,
-                vy: -Math.sin(ang) * 195,
-                size: 4.5,
-                color: i % 2 === 0 ? '#34d399' : '#fef08a',
-                maxLife: 0.34
-              });
-            }
-          }
+          this.spawnLeafRuneBurst(muzzleX, muzzleY, 2, 95, true);
+          this.spawnStarGlint(muzzleX + this.facing * 24, muzzleY, 6, '#fde047', 0.18);
         }
       }
       return;
     }
 
+    // Phase 4 (`t >= 3.15s`): Multi-Band Emerald-Gold Starlight Horizon Lance Release (0 blurry whiteout!)
     if (this._trueUltStep < 4) {
       this._trueUltStep = 4;
       this._trueUltBeamTimer = 0.96;
 
-      game?.renderer?.triggerImpactFrame?.(0.11, this.x, this.y - 96, 'emerald');
-      if (game?.renderer && game.renderer.impactFrameTimer > 1.0) {
-        game.renderer.triggerImpactFrame(this.x, this.y - 96, 0.11, 'emerald');
-      }
-      game?.renderer?.shake?.(26, 0.68);
-      game?.renderer?.triggerShake?.(26, 0.68);
-      game?.renderer?.flash?.(0.28, '#ecfdf5');
-      game?.renderer?.triggerAberration?.(16);
-      game?.renderer?.triggerHitStop?.(0.09);
+      game?.renderer?.triggerImpactFrame?.(this.x, this.y - 96, 0.08, 'emerald');
+      game?.renderer?.triggerShake?.(24, 0.62);
+      game?.renderer?.triggerAberration?.(14);
+      game?.renderer?.triggerHitStop?.(0.085);
 
       if (game?.audio) {
         game.audio.play('archer_ult', this.x);
@@ -2137,25 +1989,21 @@ export class ArcherEx extends Fighter {
       }
 
       this.heal(Math.round(this.maxHp * 0.14), 'WORLD-TREE GRACE');
+      this.spawnLeafRuneBurst(this._trueUltTargetX, this.groundY - 110, 18, 225, true);
+      this.spawnStarGlint(this._trueUltTargetX, this.groundY - 110, 16, '#ffffff', 0.34);
 
-      const startX = this.x + this.facing * 42;
-      const startY = this.y - 96;
-      const endX = this.facing >= 0 ? ww - 76 : 76;
+      const startX = this._safeFxX(this.x + this.facing * 42, game);
+      const startY = this._safeFxY(this.y - 96);
+      const endX = this._safeFxX(this.facing >= 0 ? ww - 92 : 92, game);
       this.fx.spawn('astralHurricaneLance', startX, startY, {
         flip: false,
         palette: SYLVAN_STARLIGHT_PALETTE,
-        light: 1.4,
+        light: 1.32,
         extra: {
           dx: (endX - startX) / 3,
           dy: 0,
-          width: 9.6
+          width: 9.0
         }
-      });
-      this.fx.spawn('sonicBowReleaseWave', startX, startY, {
-        flip: false,
-        palette: SYLVAN_STARLIGHT_PALETTE,
-        light: 1.35,
-        extra: { aimAngle: this.facing >= 0 ? 0 : Math.PI, radius: 34, twin: true }
       });
 
       const hitSet = new Set();
@@ -2180,10 +2028,10 @@ export class ArcherEx extends Fighter {
             flipX: false,
             inFront: true
           });
-          this.fx.spawn('sylvanArrowImpactBurst', tFoe.x, impY, {
+          this.fx.spawn('sylvanArrowImpactBurst', this._safeFxX(tFoe.x, game), this._safeFxY(impY), {
             flip: false,
             palette: SYLVAN_STARLIGHT_PALETTE,
-            light: 1.4,
+            light: 1.32,
             extra: { aimAngle: this.facing === 1 ? 0 : Math.PI, isCrit: true }
           });
         }
@@ -2221,47 +2069,108 @@ export class ArcherEx extends Fighter {
     }
   }
 
-  drawGlaiveScars(ctx) {
-    if (!this.glaiveScars || this.glaiveScars.length === 0) return;
+  /**
+   * Renders a luminous pixel-art World-Tree Canopy behind Sylvara EX + Zodiac Target Astrolabe over `_trueUltTargetX`!
+   */
+  drawWorldTreeAndZodiacAstrolabe(ctx) {
+    const inTrueUlt = this.state === 'TRUE_ULTIMATE';
+    if (!inTrueUlt && this._trueUltBeamTimer <= 0) return;
+
+    const t = inTrueUlt ? this.stateTimer : 3.25;
+    if (t < 1.20) return;
+
+    const fade = inTrueUlt
+      ? Math.min(1, (t - 1.20) / 0.35) * Math.min(1, Math.max(0, (this.trueUltDuration - t) / 0.45))
+      : Math.min(1, this._trueUltBeamTimer / 0.35);
+    if (fade <= 0.02) return;
+
+    const tx = Math.round(this.x / 4) * 4;
+    const gy = Math.round(this.groundY / 4) * 4;
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    for (let i = 0; i < this.glaiveScars.length; i++) {
-      const s = this.glaiveScars[i];
-      const u = Math.min(1, s.age / s.maxLife);
-      const fade = u < 0.15 ? 1.0 : Math.max(0, 1 - (u - 0.15) / 0.85);
-      if (fade <= 0.02) continue;
+    // 1. 4x4 Bayer-dithered Emerald-Gold World-Tree Floor Sanctuary Halo
+    drawBayerSylvanHalo(ctx, tx, gy - 2, 164, 24, '#10b981', 0.17 * fade, 4);
+    drawBayerSylvanHalo(ctx, tx, gy - 2, 98, 14, '#fde047', 0.15 * fade, 4);
 
-      const dx = s.x1 - s.x0;
-      const dy = s.y1 - s.y0;
-      const steps = Math.max(10, Math.round(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
-      ctx.globalAlpha = Math.min(1, fade * 0.94);
+    // 2. Stepped Pixel-Art World-Tree Trunk & Luminous Astral Canopy behind Sylvara EX!
+    ctx.globalAlpha = Math.min(0.44, fade * 0.42);
+    ctx.fillStyle = '#065f46';
+    ctx.fillRect(tx - 16, gy - 224, 32, 220);
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(tx - 8, gy - 224, 16, 220);
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(tx - 2, gy - 216, 4, 208);
 
-      for (let k = 0; k <= steps; k++) {
-        const su = k / steps;
-        const taper = Math.sin(su * Math.PI);
-        if (taper <= 0.08) continue;
-        const px = Math.round((s.x0 + dx * su) / 2) * 2;
-        const py = Math.round((s.y0 + dy * su) / 2) * 2;
-        const rad = Math.max(2, Math.round(taper * 5) * 2);
-
-        ctx.fillStyle = s.isGold ? '#065f46' : '#047857';
-        ctx.fillRect(px - rad, py - rad, rad * 2, rad * 2);
-        const mid = Math.max(2, rad - 2);
-        ctx.fillStyle = s.isGold ? '#fde047' : '#34d399';
-        ctx.fillRect(px - mid, py - mid, mid * 2, mid * 2);
-        if (taper > 0.35) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(px - 2, py - 2, 4, 4);
-        }
-      }
+    // Symmetrical stepped pixel boughs & emerald-gold starlight canopy clusters
+    const boughs = [
+      { ox: 0, oy: -256, w: 176, h: 36, col: '#10b981', rim: '#34d399' },
+      { ox: -76, oy: -224, w: 112, h: 28, col: '#059669', rim: '#6ee7b7' },
+      { ox: 76, oy: -224, w: 112, h: 28, col: '#059669', rim: '#6ee7b7' },
+      { ox: 0, oy: -284, w: 116, h: 24, col: '#34d399', rim: '#fde047' }
+    ];
+    for (let i = 0; i < boughs.length; i++) {
+      const b = boughs[i];
+      ctx.globalAlpha = Math.min(0.38, fade * 0.36);
+      ctx.fillStyle = b.col;
+      ctx.fillRect(tx + b.ox - b.w * 0.5, gy + b.oy, b.w, b.h);
+      ctx.fillStyle = b.rim;
+      ctx.fillRect(tx + b.ox - b.w * 0.5 + 8, gy + b.oy - 4, b.w - 16, 6);
     }
 
-    ctx.globalAlpha = 1;
+    // 8 Twinkling Star-Fruits in the World-Tree Canopy
+    for (let k = 0; k < 8; k++) {
+      const sx = tx + ((k - 3.5) * 34);
+      const sy = gy - 236 - (k % 3) * 18;
+      drawStarlightGlint(ctx, sx, sy, 4 + (k % 2) * 2, k % 2 === 0 ? '#fde047' : '#a7f3d0', fade * 0.85);
+    }
+
+    // 3. Rotating 12-Node Pixel Zodiac Target Astrolabe over `_trueUltTargetX`!
+    const zx = Math.round(this._trueUltTargetX / 2) * 2;
+    const zy = Math.round((this.groundY - 96) / 2) * 2;
+    drawBayerSylvanHalo(ctx, zx, this.groundY - 2, 136, 20, '#34d399', 0.16 * fade, 4);
+
+    let prevNx = null;
+    let prevNy = null;
+    let firstNx = null;
+    let firstNy = null;
+    for (let k = 0; k < 12; k++) {
+      const ang = t * 1.8 + (k * Math.PI) / 6;
+      const r = k % 2 === 0 ? 86 : 62;
+      const nx = zx + Math.cos(ang) * r;
+      const ny = zy + Math.sin(ang) * (r * 0.78);
+      if (prevNx !== null) {
+        drawPixelConstellationThread(ctx, prevNx, prevNy, nx, ny, '#6ee7b7', fade * 0.68);
+      } else {
+        firstNx = nx;
+        firstNy = ny;
+      }
+      prevNx = nx;
+      prevNy = ny;
+      drawStarlightGlint(ctx, nx, ny, k % 3 === 0 ? 6 : 4, k % 2 === 0 ? '#fde047' : '#34d399', fade * 0.92);
+    }
+    if (prevNx !== null && firstNx !== null) {
+      drawPixelConstellationThread(ctx, prevNx, prevNy, firstNx, firstNy, '#6ee7b7', fade * 0.68);
+    }
+    drawStarlightGlint(ctx, zx, zy, 10, '#ffffff', fade * 0.95);
+
     ctx.restore();
   }
 
-  drawBehind(ctx, _renderer = null) {
+  drawBehind(ctx) {
+    this.drawWorldTreeAndZodiacAstrolabe(ctx);
+
+    // Subtle 4x4 Bayer-dithered Huntress Floor Halo beneath Sylvara EX (alpha <= 0.14)
+    if (!this.isDead && this.y >= this.groundY - 12) {
+      drawBayerSylvanHalo(ctx, this.x, this.groundY - 2, 46, 12, '#34d399', 0.14, 4);
+    }
+
+    for (const z of this.brambleSnareZones) {
+      const fade = Math.min(1, (z.maxLife - z.age) * 2.0);
+      drawBayerSylvanHalo(ctx, z.x, z.groundY - 2, z.radius * 0.88, 18, '#10b981', 0.17 * fade, 4);
+    }
+
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
@@ -2284,10 +2193,8 @@ export class ArcherEx extends Fighter {
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.94));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.14));
+      ctx.globalAlpha = Math.max(0, Math.min(0.14, alpha * 0.12));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
       ctx.restore();
     }
     ctx.restore();
@@ -2297,7 +2204,7 @@ export class ArcherEx extends Fighter {
     const sprites = this.getExSprites();
     const sheet = PixelForge.ensureImage?.(sprites?.sheet) || sprites?.sheet;
 
-    this.drawBehind(ctx, renderer);
+    this.drawBehind(ctx);
 
     if (this.afterimages.length > 0 && sheet?.complete && sheet.naturalWidth) {
       for (let i = 0; i < this.afterimages.length; i++) {
@@ -2309,8 +2216,6 @@ export class ArcherEx extends Fighter {
         ctx.scale(img.facing, 1);
         ctx.globalAlpha = alpha;
         PixelForge.drawSilhouetteFrame(ctx, sprites, img.frameIdx, 208, 208, '#34d399');
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
         ctx.restore();
       }
     }
@@ -2326,8 +2231,72 @@ export class ArcherEx extends Fighter {
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
-    if (this.glaiveScars.length > 0) {
-      this.drawGlaiveScars(ctx);
+
+    const sprites = this.getExSprites();
+    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+    const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth);
+
+    // Skill: 5 Arcing Constellation Seeker Arrows + Constellation Threads!
+    for (const sk of this.constellationSeekers) {
+      for (let t = 0; t < sk.trail.length - 1; t++) {
+        drawPixelConstellationThread(
+          ctx,
+          sk.trail[t].x,
+          sk.trail[t].y,
+          sk.trail[t + 1].x,
+          sk.trail[t + 1].y,
+          sk.isGold ? '#fde047' : '#6ee7b7',
+          0.78
+        );
+      }
+      if (hasVfx) {
+        const col = Math.floor(sk.age * 36) % 30;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(Math.round(sk.x), Math.round(sk.y));
+        if (sk.tx < sk.x0) ctx.scale(-1, 1);
+        ctx.globalAlpha = 0.96;
+        ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, -72, -72, 144, 144);
+        ctx.restore();
+      }
+      drawStarlightGlint(ctx, sk.x, sk.y, 6, sk.isGold ? '#fde047' : '#34d399', 0.95);
+    }
+
+    // Overdrive: ZEPHYR STARLOCK: TWELVE-STAR RAIN (12-Star Zodiac Crown + Raining Lance-Arrows!)
+    if (this.state === 'ULTIMATE' && this.stateTimer < 1.65) {
+      const crownX = Math.round(this._ultTargetX / 2) * 2;
+      const crownY = Math.round((this.groundY - 296) / 2) * 2;
+      drawBayerSylvanHalo(ctx, crownX, this.groundY - 2, 148, 20, '#34d399', 0.16, 4);
+      for (let k = 0; k < 12; k++) {
+        const a = this.stateTimer * 3.0 + (k * Math.PI) / 6;
+        const sx = crownX + Math.cos(a) * 124;
+        const sy = crownY + Math.sin(a) * 18;
+        drawStarlightGlint(ctx, sx, sy, k % 3 === 0 ? 6 : 4, k % 2 === 0 ? '#fde047' : '#34d399', 0.90);
+      }
+    }
+    for (const ln of this.starRainLances) {
+      if (ln.impacted) continue;
+      drawPixelConstellationThread(ctx, ln.x0, ln.y0, ln.x, ln.y, ln.isZenith ? '#ffffff' : '#fde047', 0.88);
+      if (hasVfx) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(Math.round(ln.x), Math.round(ln.y));
+        ctx.globalAlpha = 0.96;
+        const sz = ln.isZenith ? 184 : 136;
+        ctx.drawImage(vfxSheet, 4 * 208, 4 * 208, 208, 208, -sz * 0.5, -sz * 0.5, sz, sz);
+        ctx.restore();
+      }
+      drawStarlightGlint(ctx, ln.x, ln.y + 12, ln.isZenith ? 10 : 6, '#fde047', 0.96);
+    }
+
+    // Drifting Pixel Leaf-Runes & 4-Point Star-Glints!
+    for (const l of this.pixelLeafRunes) {
+      const fade = 1 - l.age / l.maxLife;
+      drawPixelLeafRune(ctx, l.x, l.y, l.phase, l.isGold, fade * 0.94);
+    }
+    for (const g of this.starlightGlints) {
+      const fade = 1 - g.age / g.maxLife;
+      drawStarlightGlint(ctx, g.x, g.y, g.arm, g.hex, fade * 0.96);
     }
   }
 
@@ -2381,14 +2350,12 @@ export class ArcherEx extends Fighter {
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.96));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.14));
+      ctx.globalAlpha = Math.max(0, Math.min(0.14, alpha * 0.12));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
       ctx.restore();
     }
 
-    // Supreme Ultimate Phase 3 (`1.32s .. 3.14s`): Colossal Drawn Celestial Greatbow (`Row 6`, 280x280) + Sagittarius Sightline
+    // Supreme Ultimate Phase 3 (`1.32s .. 3.14s`): Colossal Drawn Celestial Greatbow (`Row 6`, 280x280) + Constellation Sightline
     if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 1.32 && this.stateTimer <= 3.14) {
       const chargeU = Math.min(1, Math.max(0, (this.stateTimer - 1.32) / 1.82));
       const col = Math.min(29, Math.floor(chargeU * 30));
@@ -2397,27 +2364,15 @@ export class ArcherEx extends Fighter {
       const bowX = Math.round(this.x + this.facing * 38);
       const bowY = Math.round(this.y - 96);
 
-      ctx.save();
-      const sightAlpha = Math.min(0.68, 0.20 + chargeU * 0.48);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = '#34d399';
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = sightAlpha * 0.36;
-      ctx.beginPath();
-      ctx.moveTo(bowX + this.facing * 42, bowY);
-      ctx.lineTo(this._trueUltTargetX, this.groundY - 96);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#fef9c3';
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = sightAlpha * 0.72;
-      ctx.beginPath();
-      ctx.moveTo(bowX + this.facing * 42, bowY);
-      ctx.lineTo(this._trueUltTargetX, this.groundY - 96);
-      ctx.stroke();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-      ctx.restore();
+      drawPixelConstellationThread(
+        ctx,
+        bowX + this.facing * 42,
+        bowY,
+        this._trueUltTargetX,
+        this.groundY - 96,
+        '#fde047',
+        0.35 + chargeU * 0.50
+      );
 
       ctx.save();
       ctx.translate(bowX, bowY);
@@ -2426,14 +2381,12 @@ export class ArcherEx extends Fighter {
       ctx.globalAlpha = 0.96;
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.15;
+      ctx.globalAlpha = 0.14;
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
       ctx.restore();
     }
 
-    // Supreme Ultimate Phase 4 (`this._trueUltBeamTimer > 0`): Seamless Tiled Horizontal Row 7 Supernova Dragon-Arrow Beam!
+    // Supreme Ultimate Phase 4 (`this._trueUltBeamTimer > 0`): Multi-Band Emerald-Gold Starlight Horizon Lance (`tipSliceW = 44`)!
     if (this._trueUltBeamTimer > 0) {
       const beamProg = Math.min(1, Math.max(0, 1 - this._trueUltBeamTimer / 0.96));
       const col = Math.min(29, Math.floor(beamProg * 30));
@@ -2462,7 +2415,7 @@ export class ArcherEx extends Fighter {
       ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.16));
+      ctx.globalAlpha = Math.max(0, Math.min(0.14, env * 0.13));
       for (let i = 0; i < segCount; i++) {
         const segX = 24 + i * coreSliceW;
         ctx.drawImage(vfxSheet, coreSliceX, sy, coreSliceW, 208, segX, -112, coreSliceW, 224);
@@ -2470,8 +2423,6 @@ export class ArcherEx extends Fighter {
       ctx.drawImage(vfxSheet, tipSliceX, sy, tipSliceW, 208, 24 + segCount * coreSliceW, -112, tipSliceW, 224);
       ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
 
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
       ctx.restore();
     }
 

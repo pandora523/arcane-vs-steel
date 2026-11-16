@@ -26,6 +26,7 @@ Architecture (FFBE / Last Cloudia / Grand Summoners Paradigm):
 from collections import deque
 import math
 from pathlib import Path
+import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -728,6 +729,11 @@ def draw_astral_crescent_smear_160(
                     rx_p = mx + ux * (math.cos(ma) * 3.2) + nx * (math.sin(ma) * 10.5)
                     ry_p = my + uy * (math.cos(ma) * 3.2) + ny * (math.sin(ma) * 10.5)
                     set_px(buf, int(round(rx_p)), int(round(ry_p)), C_MINT_LIGHT if k % 2 == 0 else C_GOLD_LIGHT)
+            # 4-point Constellation Star-Glint at arrow tip & mid-wake
+            tx_i, ty_i = int(round(x1)), int(round(y1))
+            for arm in range(-3, 4):
+                set_px(buf, tx_i + arm, ty_i, C_WHITE if abs(arm) <= 1 else C_GOLD_LIGHT)
+                set_px(buf, tx_i, ty_i + arm, C_WHITE if abs(arm) <= 1 else C_EMERALD_BRIGHT)
 
 
 def draw_astral_vortex_smear_160(
@@ -890,6 +896,10 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
             set_px(fg_buf, mx, my, C_GOLD_LIGHT if k % 2 == 0 else C_EMERALD_BRIGHT)
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    if cfg.get("clamp_ground", False):
+        arr_c = np.array(canvas, dtype=np.uint8)
+        arr_c[ANCHOR_Y_120 + 1 :, :, :] = 0
+        return Image.fromarray(arr_c, "RGBA")
     return canvas
 
 
@@ -986,6 +996,10 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             set_px(fg_buf, mx, my, C_GOLD_LIGHT if (k + int(ph * 4)) % 2 == 0 else C_EMERALD_BRIGHT)
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    if cfg.get("clamp_ground", False):
+        arr_c = np.array(canvas, dtype=np.uint8)
+        arr_c[ANCHOR_Y_120 + 1 :, :, :] = 0
+        return Image.fromarray(arr_c, "RGBA")
     return canvas
 
 
@@ -1017,31 +1031,34 @@ def build_row0_idle(rigs: dict) -> list[Image.Image]:
 
 
 def build_row1_walk(rigs: dict) -> list[Image.Image]:
+    """Row 1: Cohesive Yggdrasil Star-Huntress Glide-Stride (Zero Morph, Continuous Bow Carry!)."""
     frames = []
     for f in range(30):
         ph = (f / 30.0) * 2.0 * math.pi
         s = math.sin(ph)
-        bob = abs(math.cos(ph)) * 1.6
+        bob = abs(math.cos(ph)) * 0.85
         frames.append(render_stand_rig_frame(rigs, {
             "phase": ph,
             "sink": bob,
-            "torso_lean": 5.8 + 1.2 * math.sin(ph * 2.0),
-            "head_nod": -1.2,
-            "stride_x": s * 5.6,
-            "l_hip": -s * 17.0,
-            "l_knee": max(0.0, s) * 14.0,
-            "r_hip": s * 17.0,
-            "r_knee": max(0.0, -s) * 14.0,
-            "l_lift": -max(0.0, -s) * 1.8,
-            "r_lift": -max(0.0, s) * 1.8,
-            "hair_wave": 5.5 + 3.0 * math.sin(ph - 0.5),
-            "skirt_wave": 3.5 * s,
-            "bow_dx": 14.5 - s * 2.0,
-            "bow_dy": -7.5 + bob * 0.5,
-            "aim_deg": 24.0 + s * 6.0,
-            "draw_pull": 0.05,
+            "torso_lean": 1.9 + 0.75 * math.sin(ph * 2.0),
+            "head_nod": 0.45 * math.sin(ph + 0.3),
+            "stride_x": s * 1.65,
+            "l_hip": -s * 7.8,
+            "l_knee": max(0.0, s) * 6.0,
+            "r_hip": s * 7.8,
+            "r_knee": max(0.0, -s) * 6.0,
+            "l_lift": -max(0.0, -s) * 0.8,
+            "r_lift": -max(0.0, s) * 0.8,
+            "hair_wave": 2.8 + 1.8 * math.sin(ph - 0.5),
+            "skirt_wave": 1.5 * s,
+            "bow_dx": 15.4 - s * 0.9,
+            "bow_dy": -9.0 + bob * 0.4,
+            "aim_deg": 14.5 + s * 3.2,
+            "draw_pull": 0.08 + 0.04 * abs(s),
             "arrows": 1,
-            "charge": 0.35,
+            "charge": 0.42 + 0.12 * (0.5 + 0.5 * s),
+            "motes": True,
+            "clamp_ground": True,
         }))
     return frames
 
@@ -1943,6 +1960,20 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
     assert all(t == 29 for t in row_transitions), f"Transition failure: {row_transitions}"
     assert all(rx > 260 for rx in snap_reaches.values()), f"Smear reach < 260: {snap_reaches}"
 
+    r1_cols, r1_rows = 6, 5
+    r1_im = Image.new("RGBA", (r1_cols * CELL_W, r1_rows * CELL_H), (22, 34, 30, 255))
+    draw_r1 = ImageDraw.Draw(r1_im)
+    for f in range(30):
+        cx = (f % r1_cols) * CELL_W
+        cy = (f // r1_cols) * CELL_H
+        draw_r1.rectangle([cx, cy + CELL_H - 10, cx + CELL_W - 1, cy + CELL_H - 9], fill=(70, 120, 100, 255))
+        draw_r1.line([(cx + 112, cy), (cx + 112, cy + CELL_H)], fill=(55, 90, 75, 255), width=1)
+        r1_im.alpha_composite(all_rows_320[1][f], (cx, cy))
+        draw_r1.rectangle([cx + 4, cy + 4, cx + 66, cy + 20], fill=(0, 0, 0, 200))
+        draw_r1.text((cx + 8, cy + 6), f"R1 F{f:02d}", fill=(253, 224, 71, 255))
+    r1_path = QA_DIR / "debug_archer_ex_row1_walk.png"
+    r1_im.save(r1_path)
+
     r2_cols, r2_rows = 6, 5
     r2_im = Image.new("RGBA", (r2_cols * CELL_W, r2_rows * CELL_H), (22, 34, 30, 255))
     draw_r2 = ImageDraw.Draw(r2_im)
@@ -1980,7 +2011,10 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
 def main():
     print("=== Building SYLVARA EX (archer_ex) Next-Gen 9600x2400 Sheet & Portrait ===")
     rigs = load_rigs()
-    portrait_128 = build_portrait_128()
+    if "--rebuild-portrait" in sys.argv or not OUT_PORTRAIT.exists():
+        portrait_128 = build_portrait_128()
+    else:
+        portrait_128 = Image.open(OUT_PORTRAIT)
 
     builders = [
         build_row0_idle,
