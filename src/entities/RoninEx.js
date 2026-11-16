@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps117';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps117';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps117';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps117';
+import { Fighter } from './Fighter.js?v=30fps118';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps118';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps118';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps118';
 
 const wrapStormPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -311,8 +311,8 @@ export class RoninEx extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('ronin_ex');
       const roninExAssets = PixelForge.initAssets?.()?.ronin_ex;
-      if (roninExAssets?.vfx?.src && !roninExAssets.vfx.src.includes('v=30fps117')) {
-        roninExAssets.vfx.src = 'assets/sprites/ronin_ex_vfx.png?v=30fps117';
+      if (roninExAssets?.vfx?.src && !roninExAssets.vfx.src.includes('v=30fps118')) {
+        roninExAssets.vfx.src = 'assets/sprites/ronin_ex_vfx.png?v=30fps118';
       }
     }
   }

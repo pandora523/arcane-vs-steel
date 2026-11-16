@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps117';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps117';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps117';
+import { Fighter } from './Fighter.js?v=30fps118';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps118';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps118';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps117';
+} from '../engine/shaders/abyssalShaders.js?v=30fps118';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Wide Downward Reaping Crescent Smear -> snaps at F03 (63)
@@ -199,7 +199,7 @@ export class ReaperEx extends Fighter {
 
     if (!this._fallbackCompanionsImg) {
       const img = new Image();
-      img.src = 'assets/sprites/reaper_companions.png?v=30fps117';
+      img.src = 'assets/sprites/reaper_companions.png?v=30fps118';
       this._fallbackCompanionsImg = img;
     }
     return this._fallbackCompanionsImg;
@@ -2731,7 +2731,7 @@ export class ReaperEx extends Fighter {
    * NEWLY-BORN SUPREME ULTIMATE (`TRUE_ULTIMATE`, `4.50s` + `12.5s` Living Covenant):
    * `MEMENTO MORI: CATHEDRAL OF OBLIVION`
    * - Unseals twin Gothic Oblivion Gates (`Row 5`),
-   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps117`),
+   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps118`),
    * - Drops a colossal 6-Pillar Violet-Crimson Scythe Guillotine across reality (`720` Crit)!
    */
   updateTrueUltimate(dt, enemy, game) {

@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps117';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps117';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps117';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps117';
+import { Fighter } from './Fighter.js?v=30fps118';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps118';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps118';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps118';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps117';
+} from '../engine/shaders/chronoShaders.js?v=30fps118';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -267,8 +267,8 @@ export class ChronomancerEx extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('chronomancer_ex');
       const chronoExAssets = PixelForge.initAssets()?.chronomancer_ex;
-      if (chronoExAssets?.vfx?.src && !chronoExAssets.vfx.src.includes('v=30fps117')) {
-        chronoExAssets.vfx.src = 'assets/sprites/chronomancer_ex_vfx.png?v=30fps117';
+      if (chronoExAssets?.vfx?.src && !chronoExAssets.vfx.src.includes('v=30fps118')) {
+        chronoExAssets.vfx.src = 'assets/sprites/chronomancer_ex_vfx.png?v=30fps118';
       }
     }
 
