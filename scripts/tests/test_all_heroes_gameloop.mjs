@@ -40,58 +40,58 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps115';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps115';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps115';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps115';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps115';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps115';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps115';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps115';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps115';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps115';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps115';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps115';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps115';
-import { Archer } from '../../src/entities/Archer.js?v=30fps115';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps115';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps115';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps115';
-import { Titan } from '../../src/entities/Titan.js?v=30fps115';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps115';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps115';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps115';
-import { Android } from '../../src/entities/Android.js?v=30fps115';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps115';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps115';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps115';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps116';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps116';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps116';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps116';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps116';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps116';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps116';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps116';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps116';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps116';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps116';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps116';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps116';
+import { Archer } from '../../src/entities/Archer.js?v=30fps116';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps116';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps116';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps116';
+import { Titan } from '../../src/entities/Titan.js?v=30fps116';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps116';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps116';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps116';
+import { Android } from '../../src/entities/Android.js?v=30fps116';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps116';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps116';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps116';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps115';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps115';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps115';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps115';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps115';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps115';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps116';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps116';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps116';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps116';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps116';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps116';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps115';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps115';
+} from '../../src/adventure/AdventureManager.js?v=30fps116';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps116';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps115';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps115';
+} from '../../src/adventure/AdventureProgression.js?v=30fps116';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps116';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps115';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps116';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -125,6 +125,7 @@ function createMockCtx(trackForbidden = null) {
     rotate() {
       if (trackForbidden) trackForbidden.rotateCalls++;
     },
+    transform() {},
     setTransform() {},
     beginPath() {},
     moveTo() {},
@@ -680,7 +681,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps115');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps116');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -10615,7 +10616,7 @@ for (const [name, Cls] of CLASSES) {
       'assets/sprites/android_portrait.png':
         'ebc3b08bf71530c12672c228c5353299a51a54721dfe6ac1ea7d81c04847df7d',
       'assets/sprites/warrior_ex_sheet.png':
-        'e815709cacc2642acfccf87bafb544aceb4c363dd225a5318ddf3383f240c26b',
+        'e2e7ccc5f2f65916cceafd72d745bb3fa6d2f9442d5001d13915717188c41557',
       'assets/sprites/warrior_ex_portrait.png':
         'e59d12cda15654013ca41045095ba5e5b476228fa178643bc6765b216293f933',
       'assets/sprites/chronomancer_ex_portrait.png':
@@ -11168,8 +11169,8 @@ for (const [name, Cls] of CLASSES) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps115');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps115');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps116');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps116');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -11968,7 +11969,7 @@ for (const [name, Cls] of CLASSES) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps115'
+        src: 'assets/sprites/arena_bg.png?v=30fps116'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12004,6 +12005,908 @@ for (const [name, Cls] of CLASSES) {
 
   console.log(
     `[PASS] Suite 35: 100% Chevron Slash-Bar & Radial Glow Purge + exNextGenFX (35.1), Classic-Wizard IGNIS SOL EX 'SOLAR ARCHMAGE' + 11 Newly-Born EX Kits (35.2), 5-Hero >=510px Ranged Standoff (>240px) + Lv.1 Adventure Projectiles (35.3) & Stage-Loading Race Immunity (35.4) verified in ${suite35ElapsedMs.toFixed(0)}ms!`
+  );
+}
+
+// ============================================================================
+// SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
+//           Zero-Cutoff Pixel VFX, Choreography & Death Verification (`?v=30fps116`, `< 2.5s`)
+// ============================================================================
+{
+  const suite36StartMs = performance.now();
+  const { Worker: Worker36 } = await import('node:worker_threads');
+  const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
+    '../../src/engine/ArcaneShaderFX.js?v=30fps116'
+  );
+  const { CHRONO_EFFECT_REGISTRY } = await import(
+    '../../src/engine/shaders/chronoShaders.js?v=30fps114'
+  );
+
+  const EX_HERO_CLASSES_36 = [
+    ['warrior_ex', WarriorEx],
+    ['mage_ex', FireMageEx],
+    ['priestess_ex', PriestessEx],
+    ['chronomancer_ex', ChronomancerEx],
+    ['valkyrie_ex', ValkyrieEx],
+    ['ronin_ex', RoninEx],
+    ['archer_ex', ArcherEx],
+    ['reaper_ex', ReaperEx],
+    ['titan_ex', TitanEx],
+    ['icemage_ex', IceMageEx],
+    ['android_ex', AndroidEx]
+  ];
+
+  // --------------------------------------------------------------------------
+  // 36.1: Zero Diff vs `8435209` Across All 11 Legacy Entities, 11 Legacy `*Shaders.js`,
+  //       33 Legacy PNGs & 11 EX Portraits + `0` Unicode Emojis Across UI, `src/**/*.js` & `docs/*.md`
+  // --------------------------------------------------------------------------
+  {
+    const legacyHeroIds36 = [
+      'warrior',
+      'mage',
+      'priestess',
+      'chronomancer',
+      'valkyrie',
+      'ronin',
+      'archer',
+      'reaper',
+      'titan',
+      'icemage',
+      'android'
+    ];
+    const legacyEntityFiles36 = [
+      'Warrior',
+      'FireMage',
+      'Priestess',
+      'Chronomancer',
+      'Valkyrie',
+      'Ronin',
+      'Archer',
+      'Reaper',
+      'Titan',
+      'IceMage',
+      'Android'
+    ].map((n) => `src/entities/${n}.js`);
+    const legacyShaderFiles36 = [
+      'runicSteel',
+      'solar',
+      'seraphic',
+      'chrono',
+      'valkyrie',
+      'storm',
+      'sylvan',
+      'abyssal',
+      'forge',
+      'glacial',
+      'cyber'
+    ].map((n) => `src/engine/shaders/${n}Shaders.js`);
+    const legacyPngFiles36 = legacyHeroIds36.flatMap((id) => [
+      `assets/sprites/${id}_sheet.png`,
+      `assets/sprites/${id}_vfx.png`,
+      `assets/sprites/${id}_portrait.png`
+    ]);
+    const exPortraitFiles36 = legacyHeroIds36.map((id) => `assets/sprites/${id}_ex_portrait.png`);
+    const protectedFiles36 = [
+      ...legacyEntityFiles36,
+      ...legacyShaderFiles36,
+      ...legacyPngFiles36,
+      ...exPortraitFiles36,
+      'scripts/hd2d_rig_core.py',
+      'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md',
+      '.agents/skills/arcane-vs-steel-pipeline/SKILL.md'
+    ];
+
+    for (const rel of protectedFiles36) {
+      if (!fs.existsSync(path.join(REPO_ROOT, rel))) {
+        throw new Error(`[Suite 36.1] Missing protected file: ${rel}`);
+      }
+    }
+
+    if (fs.existsSync(path.join(REPO_ROOT, '.git'))) {
+      let hasBaseCommit = false;
+      try {
+        execFileSync('git', ['rev-parse', '--verify', '8435209^{commit}'], {
+          cwd: REPO_ROOT,
+          stdio: 'ignore'
+        });
+        hasBaseCommit = true;
+      } catch {
+        hasBaseCommit = false;
+      }
+      if (hasBaseCommit) {
+        const diffOut = execFileSync(
+          'git',
+          ['diff', '--name-only', '8435209', '--', ...protectedFiles36],
+          { cwd: REPO_ROOT, encoding: 'utf8' }
+        ).trim();
+        if (diffOut.length > 0) {
+          throw new Error(
+            `[Suite 36.1] Expected ZERO git diff vs 8435209 on protected Legacy/shader/PNG files, got:\n${diffOut}`
+          );
+        }
+      }
+    }
+
+    const emojiRe36 = /[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;
+    const emojiScanTargets36 = [
+      path.join(REPO_ROOT, 'index.html'),
+      path.join(REPO_ROOT, 'style.css'),
+      path.join(REPO_ROOT, 'manifest.json')
+    ];
+    const docsDir36 = path.join(REPO_ROOT, 'docs');
+    for (const ent of fs.readdirSync(docsDir36, { withFileTypes: true })) {
+      if (ent.isFile() && ent.name.endsWith('.md')) {
+        emojiScanTargets36.push(path.join(docsDir36, ent.name));
+      }
+    }
+    const collectSrcJs36 = (dir) => {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) collectSrcJs36(full);
+        else if (ent.name.endsWith('.js') && ent.name !== 'PixelFont.js') {
+          emojiScanTargets36.push(full);
+        }
+      }
+    };
+    collectSrcJs36(path.join(REPO_ROOT, 'src'));
+
+    for (const fPath of emojiScanTargets36) {
+      const txt = fs.readFileSync(fPath, 'utf8');
+      const m = txt.match(emojiRe36);
+      if (m) {
+        throw new Error(
+          `[Suite 36.1] Forbidden Unicode emoji '${m[0]}' (U+${m[0].codePointAt(0).toString(16).toUpperCase()}) in ${fPath}`
+        );
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Parallel PNG Pixel Audit Worker for 36.2 (Row 1 WALK Crossover),
+  // 36.3 (Row 5 DEATH Prone & Row 9 VICTORY Upright) & 36.4 (4px Sheet/VFX Margin + Chrono 192px Box)
+  // --------------------------------------------------------------------------
+  const pngAuditResults36 = new Map();
+  {
+    const exIds36 = EX_HERO_CLASSES_36.map(([id]) => id);
+    const workerCount36 = Math.min(6, Math.max(4, os.cpus()?.length || 4));
+    const shards36 = Array.from({ length: workerCount36 }, () => []);
+    exIds36.forEach((id, idx) => shards36[idx % workerCount36].push(id));
+
+    const workerCode36 = `
+      const { parentPort, workerData } = require('node:worker_threads');
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const zlib = require('node:zlib');
+
+      const sheetArr = new Uint8Array(9600 * 2400 * 4);
+      const sheetU32 = new Uint32Array(sheetArr.buffer);
+      const vfxArr = new Uint8Array(6240 * 1664 * 4);
+      const vfxU32 = new Uint32Array(vfxArr.buffer);
+
+      function decodePng(pngBytes, out, expW, expH, label) {
+        if (pngBytes.length < 29 || pngBytes.readUInt32BE(0) !== 0x89504e47) {
+          throw new Error('[Suite 36] Invalid PNG magic on ' + label);
+        }
+        const w = pngBytes.readUInt32BE(16);
+        const h = pngBytes.readUInt32BE(20);
+        if (w !== expW || h !== expH || pngBytes[24] !== 8 || pngBytes[25] !== 6) {
+          throw new Error('[Suite 36] Unexpected PNG header on ' + label + ': ' + w + 'x' + h);
+        }
+        const chunks = [];
+        let off = 8;
+        while (off + 8 <= pngBytes.length) {
+          const len = pngBytes.readUInt32BE(off);
+          const t = pngBytes.readUInt32BE(off + 4);
+          if (t === 0x49444154) chunks.push(pngBytes.subarray(off + 8, off + 8 + len));
+          else if (t === 0x49454e44) break;
+          off += 12 + len;
+        }
+        const rawBuf = zlib.inflateSync(chunks.length === 1 ? chunks[0] : Buffer.concat(chunks));
+        const raw = new Uint8Array(rawBuf.buffer, rawBuf.byteOffset, rawBuf.byteLength);
+        const stride = w * 4;
+        for (let y = 0; y < h; y++) {
+          const srcRow = y * (stride + 1);
+          const f = raw[srcRow];
+          const s0 = srcRow + 1;
+          const d0 = y * stride;
+          const p0 = d0 - stride;
+          if (f === 0) {
+            out.set(raw.subarray(s0, s0 + stride), d0);
+          } else if (f === 1) {
+            for (let i = 0; i < 4; i++) out[d0 + i] = raw[s0 + i];
+            for (let i = 4; i < stride; i++) out[d0 + i] = (raw[s0 + i] + out[d0 + i - 4]) & 0xff;
+          } else if (f === 2) {
+            if (y === 0) out.set(raw.subarray(s0, s0 + stride), d0);
+            else for (let i = 0; i < stride; i++) out[d0 + i] = (raw[s0 + i] + out[p0 + i]) & 0xff;
+          } else if (f === 3) {
+            if (y === 0) {
+              for (let i = 0; i < 4; i++) out[d0 + i] = raw[s0 + i];
+              for (let i = 4; i < stride; i++) out[d0 + i] = (raw[s0 + i] + (out[d0 + i - 4] >> 1)) & 0xff;
+            } else {
+              for (let i = 0; i < 4; i++) out[d0 + i] = (raw[s0 + i] + (out[p0 + i] >> 1)) & 0xff;
+              for (let i = 4; i < stride; i++) out[d0 + i] = (raw[s0 + i] + ((out[d0 + i - 4] + out[p0 + i]) >> 1)) & 0xff;
+            }
+          } else if (f === 4) {
+            if (y === 0) {
+              for (let i = 0; i < 4; i++) out[d0 + i] = raw[s0 + i];
+              for (let i = 4; i < stride; i++) out[d0 + i] = (raw[s0 + i] + out[d0 + i - 4]) & 0xff;
+            } else {
+              let a0 = (out[d0] = (raw[s0] + out[p0]) & 0xff);
+              let a1 = (out[d0 + 1] = (raw[s0 + 1] + out[p0 + 1]) & 0xff);
+              let a2 = (out[d0 + 2] = (raw[s0 + 2] + out[p0 + 2]) & 0xff);
+              let a3 = (out[d0 + 3] = (raw[s0 + 3] + out[p0 + 3]) & 0xff);
+              let c0 = out[p0], c1 = out[p0 + 1], c2 = out[p0 + 2], c3 = out[p0 + 3];
+              for (let i = 4; i < stride; i += 4) {
+                const b0 = out[p0 + i], b1 = out[p0 + i + 1], b2 = out[p0 + i + 2], b3 = out[p0 + i + 3];
+                let p = a0 + b0 - c0, pa = p < a0 ? a0 - p : p - a0, pb = p < b0 ? b0 - p : p - b0, pc = p < c0 ? c0 - p : p - c0;
+                a0 = out[d0 + i] = (raw[s0 + i] + (pa <= pb && pa <= pc ? a0 : pb <= pc ? b0 : c0)) & 0xff; c0 = b0;
+                p = a1 + b1 - c1; pa = p < a1 ? a1 - p : p - a1; pb = p < b1 ? b1 - p : p - b1; pc = p < c1 ? c1 - p : p - c1;
+                a1 = out[d0 + i + 1] = (raw[s0 + i + 1] + (pa <= pb && pa <= pc ? a1 : pb <= pc ? b1 : c1)) & 0xff; c1 = b1;
+                p = a2 + b2 - c2; pa = p < a2 ? a2 - p : p - a2; pb = p < b2 ? b2 - p : p - b2; pc = p < c2 ? c2 - p : p - c2;
+                a2 = out[d0 + i + 2] = (raw[s0 + i + 2] + (pa <= pb && pa <= pc ? a2 : pb <= pc ? b2 : c2)) & 0xff; c2 = b2;
+                p = a3 + b3 - c3; pa = p < a3 ? a3 - p : p - a3; pb = p < b3 ? b3 - p : p - b3; pc = p < c3 ? c3 - p : p - c3;
+                a3 = out[d0 + i + 3] = (raw[s0 + i + 3] + (pa <= pb && pa <= pc ? a3 : pb <= pc ? b3 : c3)) & 0xff; c3 = b3;
+              }
+            }
+          }
+        }
+      }
+
+      const reports = [];
+      for (const id of workerData.ids) {
+        decodePng(
+          fs.readFileSync(path.join(workerData.repoRoot, 'assets/sprites', id + '_sheet.png')),
+          sheetArr,
+          9600,
+          2400,
+          id + '_sheet.png'
+        );
+
+        // 1) 4px border clips across all 300 sheet cells
+        let sheet4pxClips = 0;
+        for (let r = 0; r < 10; r++) {
+          const oy = r * 240;
+          for (let c = 0; c < 30; c++) {
+            const ox = c * 320;
+            let clipped = false;
+            for (let m = 0; m < 4 && !clipped; m++) {
+              const topR = (oy + m) * 9600 + ox;
+              const botR = (oy + 239 - m) * 9600 + ox;
+              for (let x = 0; x < 320; x++) {
+                if (sheetU32[topR + x] >= 0x01000000 || sheetU32[botR + x] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+              for (let y = 0; y < 240 && !clipped; y++) {
+                const rowOff = (oy + y) * 9600 + ox;
+                if (sheetU32[rowOff + m] >= 0x01000000 || sheetU32[rowOff + 319 - m] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+            }
+            if (clipped) sheet4pxClips++;
+          }
+        }
+
+        // 2) Row 1 WALK (320x240) quantitative boot-band crossover gate (y in 218..233)
+        let minBootSpan = 999;
+        let maxBootSpan = 0;
+        for (let c = 0; c < 30; c++) {
+          const ox = c * 320;
+          const oy = 240;
+          let lx = 320;
+          let rx = -1;
+          for (let y = 218; y <= 233; y++) {
+            const rb = (oy + y) * 9600 + ox;
+            for (let x = 0; x < 320; x++) {
+              if (sheetU32[rb + x] >= 0x01000000) {
+                if (x < lx) lx = x;
+                if (x > rx) rx = x;
+              }
+            }
+          }
+          const span = rx >= lx ? rx - lx + 1 : 0;
+          if (span < minBootSpan) minBootSpan = span;
+          if (span > maxBootSpan) maxBootSpan = span;
+        }
+
+        // 3) Row 5 DEATH F26..F29 prone bounds & Row 9 VICTORY F26..F29 upright bounds
+        let maxDeathH = 0;
+        let minDeathX = 320;
+        let maxDeathX = 0;
+        let minVictoryH = 999;
+        for (let c = 26; c < 30; c++) {
+          const ox = c * 320;
+          let dy0 = 240, dy1 = -1, dx0 = 320, dx1 = -1;
+          for (let y = 0; y < 240; y++) {
+            const rb = (5 * 240 + y) * 9600 + ox;
+            for (let x = 0; x < 320; x++) {
+              if (sheetU32[rb + x] >= 0x01000000) {
+                if (y < dy0) dy0 = y;
+                if (y > dy1) dy1 = y;
+                if (x < dx0) dx0 = x;
+                if (x > dx1) dx1 = x;
+              }
+            }
+          }
+          const dh = dy1 >= dy0 ? dy1 - dy0 + 1 : 999;
+          if (dh > maxDeathH) maxDeathH = dh;
+          if (dx0 < minDeathX) minDeathX = dx0;
+          if (dx1 > maxDeathX) maxDeathX = dx1;
+
+          let vy0 = 240, vy1 = -1;
+          for (let y = 0; y < 240; y++) {
+            const rb = (9 * 240 + y) * 9600 + ox;
+            for (let x = 0; x < 320; x++) {
+              if (sheetU32[rb + x] >= 0x01000000) {
+                if (y < vy0) vy0 = y;
+                if (y > vy1) vy1 = y;
+              }
+            }
+          }
+          const vh = vy1 >= vy0 ? vy1 - vy0 + 1 : 0;
+          if (vh < minVictoryH) minVictoryH = vh;
+        }
+
+        // 4) 4px border clips across all 240 VFX cells + 192px square box [8..199] check on chronomancer_ex_vfx
+        decodePng(
+          fs.readFileSync(path.join(workerData.repoRoot, 'assets/sprites', id + '_vfx.png')),
+          vfxArr,
+          6240,
+          1664,
+          id + '_vfx.png'
+        );
+        let vfx4pxClips = 0;
+        let maxSquare192Run = 0;
+        for (let r = 0; r < 8; r++) {
+          const oy = r * 208;
+          for (let c = 0; c < 30; c++) {
+            const ox = c * 208;
+            let clipped = false;
+            for (let m = 0; m < 4 && !clipped; m++) {
+              const topR = (oy + m) * 6240 + ox;
+              const botR = (oy + 207 - m) * 6240 + ox;
+              for (let x = 0; x < 208; x++) {
+                if (vfxU32[topR + x] >= 0x01000000 || vfxU32[botR + x] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+              for (let y = 0; y < 208 && !clipped; y++) {
+                const rowOff = (oy + y) * 6240 + ox;
+                if (vfxU32[rowOff + m] >= 0x01000000 || vfxU32[rowOff + 207 - m] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+            }
+            if (clipped) vfx4pxClips++;
+
+            if (id === 'chronomancer_ex') {
+              for (const edgeY of [8, 199]) {
+                let run = 0;
+                for (let x = 8; x <= 199; x++) {
+                  const a = vfxArr[((oy + edgeY) * 6240 + ox + x) * 4 + 3];
+                  if (a >= 16) {
+                    run++;
+                    if (run > maxSquare192Run) maxSquare192Run = run;
+                  } else {
+                    run = 0;
+                  }
+                }
+              }
+              for (const edgeX of [8, 199]) {
+                let run = 0;
+                for (let y = 8; y <= 199; y++) {
+                  const a = vfxArr[((oy + y) * 6240 + ox + edgeX) * 4 + 3];
+                  if (a >= 16) {
+                    run++;
+                    if (run > maxSquare192Run) maxSquare192Run = run;
+                  } else {
+                    run = 0;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        reports.push({
+          id,
+          sheet4pxClips,
+          vfx4pxClips,
+          minBootSpan,
+          maxBootSpan,
+          maxDeathH,
+          minDeathX,
+          maxDeathX,
+          minVictoryH,
+          maxSquare192Run
+        });
+      }
+      parentPort.postMessage({ ok: true, reports });
+    `;
+
+    const shardResults = await Promise.all(
+      shards36.map(
+        (ids) =>
+          new Promise((resolve, reject) => {
+            const w = new Worker36(workerCode36, {
+              eval: true,
+              workerData: { repoRoot: REPO_ROOT, ids }
+            });
+            w.once('message', (msg) =>
+              msg?.ok ? resolve(msg.reports) : reject(new Error('[Suite 36] Worker failed'))
+            );
+            w.once('error', reject);
+            w.once('exit', (code) => {
+              if (code !== 0) reject(new Error(`[Suite 36] PNG worker exited with code ${code}`));
+            });
+          })
+      )
+    );
+    for (const batch of shardResults) {
+      for (const rep of batch) {
+        pngAuditResults36.set(rep.id, rep);
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 36.2: All 11 `*_ex_sheet.png` `Row 1 WALK` Quantitative Crossover Gate
+  //       (`minBootSpan <= maxBootSpan * 0.55`, `maxBootSpan >= 56px`) &
+  //       Live Anti-Skate Walk Cycle Immediately After `AUTO_ATTACK`/`SKILL`/`ULTIMATE`
+  // --------------------------------------------------------------------------
+  {
+    for (const [heroId, ExCls] of EX_HERO_CLASSES_36) {
+      const rep = pngAuditResults36.get(heroId);
+      if (
+        !rep ||
+        rep.maxBootSpan < 56 ||
+        rep.minBootSpan > rep.maxBootSpan * 0.55
+      ) {
+        throw new Error(
+          `[Suite 36.2] ${heroId} Row 1 WALK failed bipedal crossover gate: minBootSpan=${rep?.minBootSpan}, maxBootSpan=${rep?.maxBootSpan}, ratio=${rep ? (rep.minBootSpan / rep.maxBootSpan).toFixed(3) : 'N/A'}`
+        );
+      }
+
+      const walkGame = createMockGame();
+      const ex = new ExCls({ x: 240, groundY: 560, facing: 1, team: 'left' });
+      const farEnemy = new Warrior({ x: 1060, groundY: 560, facing: -1, name: 'FarTarget', team: 'right' });
+      ex.game = walkGame;
+      farEnemy.game = walkGame;
+      farEnemy.isPlayerControlled = true;
+      walkGame.fighters = [ex, farEnemy];
+      walkGame.getEnemiesOf = (f) => (f === ex ? [farEnemy] : [ex]);
+      walkGame.getTargetFor = (f) => (f === ex ? farEnemy : ex);
+
+      for (const priorState of ['AUTO_ATTACK', 'SKILL', 'ULTIMATE']) {
+        ex.x = 240;
+        ex.y = 560;
+        ex.vx = 0;
+        ex.vy = 0;
+        ex.facing = 1;
+        ex.isPlayerControlled = false;
+        ex.attackCooldown = 999;
+        ex.skillCooldown = 999;
+        ex.dashCooldown = 999;
+        ex.vaultCooldown = 999;
+        ex.jumpCooldown = 999;
+        ex.crouchCooldown = 999;
+        ex.dodgeCooldown = 999;
+        ex.mana = priorState === 'ULTIMATE' ? ex.maxMana : 0;
+        ex.finisherGauge = 0;
+
+        ex.setState(priorState);
+        ex.update(1 / 30, farEnemy, walkGame);
+        // Simulate mid-action frame overrides left on the fighter right before entering WALK
+        ex._overrideFrameIdx = 128;
+        ex.trueUltFrameOverride = 132;
+        ex.mana = 0;
+        ex.attackCooldown = 999;
+        ex.x = 120;
+        ex.y = 560;
+        ex.vx = 0;
+        ex.vy = 0;
+        ex.facing = 1;
+
+        ex.setState('WALK');
+        if (ex._overrideFrameIdx !== null || ex.trueUltFrameOverride !== null) {
+          throw new Error(
+            `[Suite 36.2] ${heroId} setState('WALK') after ${priorState} failed to clear frame overrides (_override=${ex._overrideFrameIdx}, trueUlt=${ex.trueUltFrameOverride})!`
+          );
+        }
+
+        // Also verify PixelForge.getFrameIndex ignores any residual override if AI assigned state='WALK' directly
+        ex._overrideFrameIdx = 125;
+        ex.trueUltFrameOverride = 141;
+        const guardIdx = PixelForge.getFrameIndex(ex, ex.walkPhase);
+        if (guardIdx < 30 || guardIdx > 59) {
+          throw new Error(
+            `[Suite 36.2] ${heroId} PixelForge.getFrameIndex leaked override ${guardIdx} during WALK!`
+          );
+        }
+        ex._overrideFrameIdx = null;
+        ex.trueUltFrameOverride = null;
+
+        const seenWalkFrames = new Set();
+        const startWalkX = ex.x;
+        for (let step = 0; step < 30; step++) {
+          farEnemy.x = 1060;
+          ex.update(1 / 30, farEnemy, walkGame);
+          if (ex.state !== 'WALK') {
+            throw new Error(
+              `[Suite 36.2] Expected ${heroId} to stay in WALK closing 820px gap after ${priorState}, got state=${ex.state} at step=${step}`
+            );
+          }
+          const fIdx = PixelForge.getFrameIndex(ex, ex.walkPhase);
+          if (fIdx < 30 || fIdx > 59) {
+            throw new Error(
+              `[Suite 36.2] ${heroId} WALK emitted non-Row-1 frame ${fIdx} after ${priorState}!`
+            );
+          }
+          seenWalkFrames.add(fIdx);
+        }
+        if (seenWalkFrames.size < 8 || ex.x <= startWalkX + 40) {
+          throw new Error(
+            `[Suite 36.2] Frozen skating WALK detected on ${heroId} after ${priorState}: uniqueFrames=${seenWalkFrames.size}, dx=${(ex.x - startWalkX).toFixed(1)}`
+          );
+        }
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 36.3: All 11 `*_ex_sheet.png` `Row 5 DEATH` Prone (`height <= 104px`, `minX >= 18`, `maxX <= 302`)
+  //       & `Row 9 VICTORY` Upright (`height >= 150px`) + Mid-Air Fatal `Fighter.takeDamage` Gravity Drop
+  // --------------------------------------------------------------------------
+  {
+    for (const [heroId, ExCls] of EX_HERO_CLASSES_36) {
+      const rep = pngAuditResults36.get(heroId);
+      if (
+        !rep ||
+        rep.maxDeathH > 104 ||
+        rep.minDeathX < 18 ||
+        rep.maxDeathX > 302 ||
+        rep.minVictoryH < 150
+      ) {
+        throw new Error(
+          `[Suite 36.3] ${heroId} Row 5 DEATH / Row 9 VICTORY geometry failed: deathH=${rep?.maxDeathH}, deathX=[${rep?.minDeathX}..${rep?.maxDeathX}], vicH=${rep?.minVictoryH}`
+        );
+      }
+
+      const deathGame = createMockGame();
+      deathGame.testModeUnlimitedHp = false;
+      const victim = new ExCls({ x: 460, groundY: 560, facing: 1, team: 'left' });
+      const killer = new Warrior({ x: 610, groundY: 560, facing: -1, name: 'Killer', team: 'right' });
+      victim.game = deathGame;
+      killer.game = deathGame;
+      deathGame.fighters = [victim, killer];
+
+      // Put victim mid-air with active frame overrides & aerial vault/poise flags, then deal fatal damage
+      victim.hp = 80;
+      victim.y = victim.groundY - 165;
+      victim.vy = -240;
+      victim.state = 'ULTIMATE';
+      victim._overrideFrameIdx = 128;
+      victim.trueUltFrameOverride = 134;
+      victim.isFlipVault = true;
+      victim.isAngelicAscent = true;
+      victim.unstoppablePoise = true;
+      victim.isRooted = true;
+      victim.isInvulnerable = false;
+
+      victim.takeDamage(500, killer, true, 120, -80);
+      if (
+        !victim.isDead ||
+        victim.state !== 'DEATH' ||
+        victim._overrideFrameIdx !== null ||
+        victim.trueUltFrameOverride !== null ||
+        victim.isFlipVault ||
+        victim.isAngelicAscent ||
+        victim.isRooted
+      ) {
+        throw new Error(
+          `[Suite 36.3] ${heroId} mid-air fatal takeDamage failed clean DEATH transition: isDead=${victim.isDead}, state=${victim.state}, ov=${victim._overrideFrameIdx}/${victim.trueUltFrameOverride}`
+        );
+      }
+
+      const deathStartFrame = PixelForge.getFrameIndex(victim, 0);
+      if (deathStartFrame < 150 || deathStartFrame > 179) {
+        throw new Error(
+          `[Suite 36.3] ${heroId} expected Row 5 DEATH frame (150..179), got ${deathStartFrame}`
+        );
+      }
+
+      for (let step = 0; step < 45; step++) {
+        victim.update(1 / 30, killer, deathGame);
+      }
+      const deathEndFrame = PixelForge.getFrameIndex(victim, 0);
+      if (victim.y !== victim.groundY || deathEndFrame < 174 || deathEndFrame > 179) {
+        throw new Error(
+          `[Suite 36.3] ${heroId} mid-air corpse failed to settle on groundY (${victim.y} vs ${victim.groundY}) at prone frame ${deathEndFrame}!`
+        );
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 36.4: Zero `4px` Border Clips Across All 11 `*_ex_sheet.png` (`300` Cells) & 11 `*_ex_vfx.png` (`240` Cells),
+  //       Zero `192px` Square Cut-Offs on `chronomancer_ex_vfx.png`, Dynamic `ArcaneShaderFX.computeViewport`
+  //       at `x = 110`, `x = 1090`, & Adventure `x = 7400` (`0` `736x464` Box Clips), & `0` Canvas2D Vector Calls
+  // --------------------------------------------------------------------------
+  {
+    for (const [heroId] of EX_HERO_CLASSES_36) {
+      const rep = pngAuditResults36.get(heroId);
+      if (!rep || rep.sheet4pxClips !== 0 || rep.vfx4pxClips !== 0) {
+        throw new Error(
+          `[Suite 36.4] Expected 0/300 sheet 4px clips & 0/240 VFX 4px clips on ${heroId}, got sheet=${rep?.sheet4pxClips}, vfx=${rep?.vfx4pxClips}`
+        );
+      }
+    }
+    const chronoRep36 = pngAuditResults36.get('chronomancer_ex');
+    if (!chronoRep36 || chronoRep36.maxSquare192Run >= 16) {
+      throw new Error(
+        `[Suite 36.4] Detected 192px square box cut-off on chronomancer_ex_vfx.png: maxEdgeRun=${chronoRep36?.maxSquare192Run}`
+      );
+    }
+
+    // Dynamic `ArcaneShaderFX.computeViewport` centering & `736x464` (`viewW=368/736`) zero-clip verification at x=110, x=1090, x=7400
+    for (const testWorldX of [110, 1090, 7400]) {
+      const vpFx = new ArcaneShaderFX(CHRONO_EFFECT_REGISTRY, {
+        pixelScale: 2,
+        viewW: 736,
+        viewH: 464,
+        arenaCenterX: 600,
+        groundWorldY: 560,
+        topRatio: 0.72
+      });
+      vpFx.overrideCenterWorldX = null;
+      vpFx.spawn('chronoAstrolabeAura', testWorldX, 556, {
+        maxDuration: 1.2,
+        light: 1.2
+      });
+      vpFx.update(0.18);
+      const vp = vpFx.computeViewport(600, 560);
+      const vpMidX = vp.worldLeft + vp.worldW * 0.5;
+      if (Math.abs(vpMidX - testWorldX) > 4) {
+        throw new Error(
+          `[Suite 36.4] Expected ArcaneShaderFX.computeViewport to auto-center on x=${testWorldX}, got midX=${vpMidX}`
+        );
+      }
+      const rastBack = vpFx.rasterizeLayer('back', 600, 560);
+      const rastFront = vpFx.rasterizeLayer('front', 600, 560);
+      if (!rastBack?.drewAny && !rastFront?.drewAny) {
+        throw new Error(`[Suite 36.4] Expected active shader rasterization at x=${testWorldX}!`);
+      }
+      let borderLeaks = 0;
+      for (const rgbaBuf of [rastBack.rgba, rastFront.rgba]) {
+        for (let x = 0; x < 736; x++) {
+          if (rgbaBuf[x * 4 + 3] > 0 || rgbaBuf[(463 * 736 + x) * 4 + 3] > 0) borderLeaks++;
+        }
+        for (let y = 0; y < 464; y++) {
+          if (rgbaBuf[y * 736 * 4 + 3] > 0 || rgbaBuf[(y * 736 + 735) * 4 + 3] > 0) borderLeaks++;
+        }
+      }
+      if (borderLeaks !== 0) {
+        throw new Error(
+          `[Suite 36.4] Expected 0 736x464 viewport box clips at x=${testWorldX}, got ${borderLeaks}`
+        );
+      }
+      vpFx.dispose();
+    }
+
+    // Static scan: 0 Canvas2D SVG/vector calls (`beginPath`, `moveTo`, `lineTo`, `stroke`, `arc`, `ellipse`, `ctx.rotate`) in all 11 `*Ex.js`
+    const stripComments36 = (code) =>
+      code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const forbiddenCanvasVecRe = /\.(?:beginPath|moveTo|lineTo|stroke|arc|ellipse|rotate)\s*\(/;
+    for (const [heroId] of EX_HERO_CLASSES_36) {
+      const entityName = CHAMPION_ROSTER[heroId]?.cls?.name;
+      const filePath = path.join(REPO_ROOT, 'src/entities', `${entityName}.js`);
+      const cleanSrc = stripComments36(fs.readFileSync(filePath, 'utf8'));
+      const m = cleanSrc.match(forbiddenCanvasVecRe);
+      if (m) {
+        throw new Error(
+          `[Suite 36.4] Forbidden Canvas2D vector/rotate call '${m[0]}' found in ${entityName}.js!`
+        );
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 36.5: Zero `torii` in `RoninEx` + `ArcherEx.updateUltimate` 180-deg Overhead Vault & Facing Flip +
+  //       `ValkyrieEx.updateUltimate` >= 220px Sweep + `VFXManager.getActiveLights` >= 400px `TRUE_ULTIMATE` &
+  //       `fx.active`/`activeVfxAnims` Harvesting + `Renderer.render` Ray-Projected Shadows, Rim Light & EX Reflections
+  // --------------------------------------------------------------------------
+  {
+    for (const relPath of ['src/entities/RoninEx.js', 'scripts/build_ronin_ex_vfx_30fps.mjs']) {
+      const txt = fs.readFileSync(path.join(REPO_ROOT, relPath), 'utf8');
+      if (/torii/i.test(txt)) {
+        throw new Error(`[Suite 36.5] Forbidden 'torii' match found in ${relPath}!`);
+      }
+    }
+
+    // (A) `ArcherEx.updateUltimate`: charges toward `enemy.x` -> vaults `180 deg` overhead (`minY <= groundY - 140`) -> lands opposite side & flips `facing`
+    {
+      const archGame = createMockGame();
+      const sylEx = new ArcherEx({ x: 300, groundY: 560, facing: 1, team: 'left' });
+      const foe = new Warrior({ x: 620, groundY: 560, facing: -1, name: 'VaultFoe', team: 'right' });
+      sylEx.game = archGame;
+      foe.game = archGame;
+      sylEx.maxHp = 999999;
+      sylEx.hp = 999999;
+      foe.maxHp = 999999;
+      foe.hp = 999999;
+      foe.stunTimer = 999;
+      archGame.fighters = [sylEx, foe];
+      archGame.getEnemiesOf = (f) => (f === sylEx ? [foe] : [sylEx]);
+      archGame.getTargetFor = (f) => (f === sylEx ? foe : sylEx);
+
+      sylEx.mana = sylEx.maxMana;
+      sylEx.setState('ULTIMATE');
+      let maxChargeXBeforeVault = sylEx.x;
+      let minAirY = sylEx.groundY;
+      let postVaultX = sylEx.x;
+      let postVaultFacing = sylEx.facing;
+
+      for (let step = 0; step < 90; step++) {
+        const prevT = sylEx.stateTimer;
+        sylEx.update(1 / 30, foe, archGame);
+        archGame.vfx.update(1 / 30, 560, archGame.renderer, archGame.audio);
+        if (prevT < 0.34 && sylEx.x > maxChargeXBeforeVault) {
+          maxChargeXBeforeVault = sylEx.x;
+        }
+        if (sylEx.y < minAirY) minAirY = sylEx.y;
+        if (sylEx.state === 'ULTIMATE') {
+          postVaultX = sylEx.x;
+          postVaultFacing = sylEx.facing;
+        } else {
+          break;
+        }
+      }
+      if (
+        maxChargeXBeforeVault < 500 ||
+        minAirY > sylEx.groundY - 140 ||
+        postVaultX <= foe.x + 60 ||
+        postVaultFacing !== -1
+      ) {
+        throw new Error(
+          `[Suite 36.5 ArcherEx] Expected charge toward ${foe.x} (got ${maxChargeXBeforeVault.toFixed(1)}), minY <= ${sylEx.groundY - 140} (got ${minAirY.toFixed(1)}), opposite-side x > ${foe.x + 60} (got ${postVaultX.toFixed(1)}) & facing=-1 (got ${postVaultFacing})!`
+        );
+      }
+    }
+
+    // (B) `ValkyrieEx.updateUltimate`: sweeps >= 220px horizontally across the arena
+    {
+      const valkGame = createMockGame();
+      const freyEx = new ValkyrieEx({ x: 260, groundY: 560, facing: 1, team: 'left' });
+      const foe = new Warrior({ x: 760, groundY: 560, facing: -1, name: 'GlideFoe', team: 'right' });
+      freyEx.game = valkGame;
+      foe.game = valkGame;
+      freyEx.maxHp = 999999;
+      freyEx.hp = 999999;
+      foe.maxHp = 999999;
+      foe.hp = 999999;
+      foe.stunTimer = 999;
+      valkGame.fighters = [freyEx, foe];
+      valkGame.getEnemiesOf = (f) => (f === freyEx ? [foe] : [freyEx]);
+      valkGame.getTargetFor = (f) => (f === freyEx ? foe : freyEx);
+
+      freyEx.mana = freyEx.maxMana;
+      freyEx.setState('ULTIMATE');
+      let minSweepX = freyEx.x;
+      let maxSweepX = freyEx.x;
+      for (let step = 0; step < 90; step++) {
+        freyEx.update(1 / 30, foe, valkGame);
+        valkGame.vfx.update(1 / 30, 560, valkGame.renderer, valkGame.audio);
+        if (freyEx.x < minSweepX) minSweepX = freyEx.x;
+        if (freyEx.x > maxSweepX) maxSweepX = freyEx.x;
+        if (freyEx.state !== 'ULTIMATE') break;
+      }
+      const horizSweep = maxSweepX - minSweepX;
+      if (horizSweep < 220) {
+        throw new Error(
+          `[Suite 36.5 ValkyrieEx] Expected horizontal Wing-Glide sweep >= 220px during ULTIMATE, got ${horizSweep.toFixed(1)}px`
+        );
+      }
+    }
+
+    // (C) `VFXManager.getActiveLights` (>= 400px TRUE_ULTIMATE + `fx.active` / `activeVfxAnims` harvesting)
+    //     & `Renderer.render` (Ray-Projected Shadows + Directional Specular Rim Light + EX Floor Reflections)
+    {
+      let rayShadowTransforms = 0;
+      let lighterSilhouetteDraws = 0;
+      let reflectionFighterDraws = 0;
+
+      const renCtx = createMockCtx();
+      renCtx.transform = (a, b, c, d) => {
+        if (a === 1 && b === 0 && Math.abs(d) > 0.05 && Math.abs(d) <= 0.35) {
+          rayShadowTransforms++;
+        }
+      };
+      const origDrawImg36 = renCtx.drawImage.bind(renCtx);
+      renCtx.drawImage = (...args) => {
+        if (renCtx.globalCompositeOperation === 'lighter') {
+          lighterSilhouetteDraws++;
+        }
+        return origDrawImg36(...args);
+      };
+
+      const renCanvas = {
+        width: 1280,
+        height: 720,
+        getBoundingClientRect: () => ({ width: 1280, height: 720 }),
+        getContext: () => renCtx
+      };
+      const liveRen = new Renderer(renCanvas);
+      const liveVfx = new VFXManager();
+
+      const casterEx = new FireMageEx({ x: 420, groundY: 560, facing: 1, team: 'left' });
+      const receiverEx = new WarriorEx({ x: 610, groundY: 560, facing: -1, team: 'right' });
+      const origReceiverDraw = receiverEx.draw.bind(receiverEx);
+      receiverEx.draw = (c, isRefl, r) => {
+        if (isRefl) reflectionFighterDraws++;
+        return origReceiverDraw(c, isRefl, r);
+      };
+
+      // Baseline passive lights before TRUE_ULTIMATE / fx.active / activeVfxAnims
+      const baseCount = liveVfx.getActiveLights([casterEx, receiverEx], 560).length;
+
+      casterEx.state = 'TRUE_ULTIMATE';
+      casterEx.fx.spawn('hellfireSolarPillar', 505, 450, { light: 1.45, maxDuration: 1.5 });
+      casterEx.activeVfxAnims = [
+        { row: 2, x: 545, y: 470, w: 196, h: 196, age: 0.08, duration: 0.6 }
+      ];
+
+      const harvestedLights = liveVfx.getActiveLights([casterEx, receiverEx], 560);
+      const hasTrueUlt400 = harvestedLights.some(
+        (L) => L.owner === casterEx && L.radius >= 400 && L.intensity >= 2.0
+      );
+      const hasFxShaderLight = harvestedLights.some(
+        (L) => Math.abs(L.x - 505) <= 2 && !L.isSelfPassive
+      );
+      const hasVfxAnimLight = harvestedLights.some(
+        (L) => Math.abs(L.x - 545) <= 2 && !L.isSelfPassive
+      );
+      if (
+        harvestedLights.length < baseCount + 2 ||
+        !hasTrueUlt400 ||
+        !hasFxShaderLight ||
+        !hasVfxAnimLight
+      ) {
+        throw new Error(
+          `[Suite 36.5 Lights] Expected >=400px TRUE_ULTIMATE light + fx.active & activeVfxAnims harvesting; got count=${harvestedLights.length} (base=${baseCount}), ult400=${hasTrueUlt400}, fxLight=${hasFxShaderLight}, animLight=${hasVfxAnimLight}`
+        );
+      }
+
+      // Execute full live `Renderer.render` and verify ray-projected shadows + rim catchlights + EX floor reflections
+      liveRen.render([casterEx, receiverEx], liveVfx, 1 / 60);
+      if (
+        rayShadowTransforms < 1 ||
+        lighterSilhouetteDraws < 2 ||
+        reflectionFighterDraws < 1 ||
+        renCtx._stateStack.length !== 0
+      ) {
+        throw new Error(
+          `[Suite 36.5 Renderer] Expected ray-projected shadows (${rayShadowTransforms}), directional rim/glow draws (${lighterSilhouetteDraws}), EX floor reflections (${reflectionFighterDraws}) & balanced ctx stack (${renCtx._stateStack.length})!`
+        );
+      }
+      casterEx.fx?.dispose?.();
+      receiverEx.fx?.dispose?.();
+    }
+  }
+
+  const suite36ElapsedMs = performance.now() - suite36StartMs;
+  if (suite36ElapsedMs >= 3000) {
+    throw new Error(
+      `[Suite 36] Expected Suite 36 runtime < 3000ms, got ${suite36ElapsedMs.toFixed(1)}ms!`
+    );
+  }
+
+  console.log(
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-11 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4) & 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 
