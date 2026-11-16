@@ -1,25 +1,63 @@
-import { Renderer } from './engine/Renderer.js?v=30fps113';
-import { VFXManager } from './engine/VFXManager.js?v=30fps113';
-import { PixelForge } from './engine/PixelForge.js?v=30fps113';
-import { AudioManager } from './engine/AudioManager.js?v=30fps113';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps113';
-import { Fighter } from './entities/Fighter.js?v=30fps113';
-import { Warrior } from './entities/Warrior.js?v=30fps113';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps113';
-import { FireMage } from './entities/FireMage.js?v=30fps113';
-import { Archer } from './entities/Archer.js?v=30fps113';
-import { Priestess } from './entities/Priestess.js?v=30fps113';
-import { Reaper } from './entities/Reaper.js?v=30fps113';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps113';
-import { Titan } from './entities/Titan.js?v=30fps113';
-import { Ronin } from './entities/Ronin.js?v=30fps113';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps113';
-import { IceMage } from './entities/IceMage.js?v=30fps113';
-import { Android } from './entities/Android.js?v=30fps113';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps113';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps113';
+import { Renderer } from './engine/Renderer.js?v=30fps114';
+import { VFXManager } from './engine/VFXManager.js?v=30fps114';
+import { PixelForge } from './engine/PixelForge.js?v=30fps114';
+import { AudioManager } from './engine/AudioManager.js?v=30fps114';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps114';
+import { Fighter } from './entities/Fighter.js?v=30fps114';
+import { Warrior } from './entities/Warrior.js?v=30fps114';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps114';
+import { FireMage } from './entities/FireMage.js?v=30fps114';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps114';
+import { Archer } from './entities/Archer.js?v=30fps114';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps114';
+import { Priestess } from './entities/Priestess.js?v=30fps114';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps114';
+import { Reaper } from './entities/Reaper.js?v=30fps114';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps114';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps114';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps114';
+import { Titan } from './entities/Titan.js?v=30fps114';
+import { TitanEx } from './entities/TitanEx.js?v=30fps114';
+import { Ronin } from './entities/Ronin.js?v=30fps114';
+import { RoninEx } from './entities/RoninEx.js?v=30fps114';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps114';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps114';
+import { IceMage } from './entities/IceMage.js?v=30fps114';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps114';
+import { Android } from './entities/Android.js?v=30fps114';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps114';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps114';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps114';
 
-const CHAMPION_ROSTER = {
+export const EX_HERO_KEYS = [
+  'warrior_ex',
+  'mage_ex',
+  'priestess_ex',
+  'chronomancer_ex',
+  'valkyrie_ex',
+  'ronin_ex',
+  'archer_ex',
+  'reaper_ex',
+  'titan_ex',
+  'icemage_ex',
+  'android_ex'
+];
+
+export const LEGACY_HERO_KEYS = [
+  'warrior',
+  'mage',
+  'priestess',
+  'chronomancer',
+  'valkyrie',
+  'ronin',
+  'archer',
+  'reaper',
+  'titan',
+  'icemage',
+  'android'
+];
+
+export const CHAMPION_ROSTER = {
   warrior: {
     id: 'warrior',
     name: 'AETHELGARD',
@@ -62,7 +100,7 @@ const CHAMPION_ROSTER = {
     style: 'FFBE SMEAR VANGUARD',
     trait: 'PASSIVE: DAWN-BREAKER HIT-STOP & PARRY',
     cls: WarriorEx,
-    theme: 'exvius',
+    theme: 'steel',
     color: '#38bdf8',
     selectSfx: 'heavy_cleave',
     victoryLine: 'The Dawn-Breaker cleaves fate itself in Exvius light!',
@@ -87,6 +125,356 @@ const CHAMPION_ROSTER = {
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Five-fold multi-angle teleporting smear blitz leaving golden-cyan silhouettes into a skyward plunge.'
+      }
+    ]
+  },
+  mage_ex: {
+    id: 'mage_ex',
+    name: 'IGNIS SOL EX',
+    role: 'HELIOS SPELL-BLADE',
+    style: 'NEO-VISION SOLAR SPELL-BLADE',
+    trait: 'PASSIVE: HELIOS ORBITALS & PHOENIX BLINK',
+    cls: FireMageEx,
+    theme: 'arcane',
+    color: '#fb923c',
+    selectSfx: 'fireball',
+    victoryLine: 'Helios Prominence ignites the heavens in sovereign solar flame!',
+    trueUltName: 'HELIOS EXTINCTION: LAYWASTE OF THE CORONA',
+    trueUltDesc:
+      'Unfurls Phoenix wings, locks the arena in a Corona Eclipse Matrix & hurls a planetary Helios Meteor!',
+    skills: [
+      {
+        name: 'HELIOS PROMINENCE',
+        type: '4-BEAT SPELL-BLADE',
+        vfxCell: 0,
+        desc: '4-beat solar spell-blade smear arcs weaving searing plasma crescents & Phoenix flash-blinks.'
+      },
+      {
+        name: 'CORONA TRIPLE ERUPTION',
+        type: 'SKILL • 4.2S CD',
+        vfxCell: 1,
+        desc: 'Sweeps the Helios Sun-Staff to detonate 3 advancing columns of white-hot solar prominence.'
+      },
+      {
+        name: 'SUPERNOVA ECLIPSE',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Ascends in a Black-Sun Corona halo, raining solar lances before crashing a blazing star core.'
+      }
+    ]
+  },
+  priestess_ex: {
+    id: 'priestess_ex',
+    name: 'SERAPHINA EX',
+    role: 'SERAPHIC SOVEREIGN',
+    style: 'SIX-WINGED CATHEDRAL VALKYRIE',
+    trait: 'PASSIVE: SERAPHIM PINIONS & SANCTUARY AEGIS',
+    cls: PriestessEx,
+    theme: 'radiant',
+    color: '#fde047',
+    selectSfx: 'holy_heal',
+    victoryLine: 'Six Seraphim pinions unfurl — every shadow bows before Final Grace!',
+    trueUltName: 'FINAL GRACE: CATHEDRAL OF ETERNITY',
+    trueUltDesc:
+      'Ascends on six radiant Seraphim wings, consecrates the Grand Rose Cathedral & fires a purifying Sovereignty Cannon!',
+    skills: [
+      {
+        name: 'SERAPHIC LANCE CADENCE',
+        type: '4-BEAT RADIANT COMBO',
+        vfxCell: 0,
+        desc: '4-beat gilded staff-lance smears calling down star-cross smites & stained-glass wards.'
+      },
+      {
+        name: 'SANCTUARY BENEDICTION',
+        type: 'SKILL • 4.8S CD',
+        vfxCell: 1,
+        desc: 'Unseals a 2.5D Cathedral Rose Sigil that restores vitality while raining Valkyrie light-spears.'
+      },
+      {
+        name: 'CHOIR OF SIX PINIONS',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Soars aloft on 30fps Archangel wings, unleashing judgment pillars & radiant grace across the stage.'
+      }
+    ]
+  },
+  chronomancer_ex: {
+    id: 'chronomancer_ex',
+    name: 'CHRONOS EX',
+    role: 'PARADOX SOVEREIGN',
+    style: 'HOROLOGICAL GLAIVE DUELIST',
+    trait: 'PASSIVE: TWELFTH-BELL ECHOES & REWIND',
+    cls: ChronomancerEx,
+    theme: 'chrono',
+    color: '#2dd4bf',
+    selectSfx: 'clock_gear',
+    victoryLine: 'Past, present, and future kneel before the Paradox Sovereign!',
+    trueUltName: 'ETERNAL ZERO: SOVEREIGN OF THE TWELFTH BELL',
+    trueUltDesc:
+      'Halts causality across the arena, cages foes in 12 Astral Clock-Spears & shatters stopped time on the Twelfth Bell!',
+    skills: [
+      {
+        name: 'CHRONO-GLAIVE QUARTET',
+        type: '4-BEAT PARADOX SMEAR',
+        vfxCell: 0,
+        desc: '4-beat Twin-Hand Glaive smears summoning Future-Clone pincer cuts & golden gear shockwaves.'
+      },
+      {
+        name: 'PARADOX SCHISM REWIND',
+        type: 'SKILL • 4.5S CD',
+        vfxCell: 1,
+        desc: 'Anchors time, warps through the foe with an X-Chrono rift & rewinds to mend lost vitality.'
+      },
+      {
+        name: 'ASTRAL HOROLOGIUM',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Manifests the Grand Clocktower Astrolabe for a multi-timeline convergence blitz.'
+      }
+    ]
+  },
+  valkyrie_ex: {
+    id: 'valkyrie_ex',
+    name: 'FREYJA EX',
+    role: 'RAGNAROK SOVEREIGN',
+    style: 'EINHERJAR DRAGOON SOVEREIGN',
+    trait: 'PASSIVE: SIX-PINION GLIDE & WYRM-LANCE',
+    cls: ValkyrieEx,
+    theme: 'crimson',
+    color: '#f43f5e',
+    selectSfx: 'holy_spear',
+    victoryLine: 'Behold the Ragnarok Sovereign — Gungnir cleaves the heavens asunder!',
+    trueUltName: 'TWILIGHT OF RAGNAROK: SOVEREIGN GUNGNIR',
+    trueUltDesc:
+      'Ascends above Valhalla on crimson-gold pinions and hurls the divine World-Spear Gungnir in a cataclysmic sky-dive!',
+    skills: [
+      {
+        name: 'GUNGNIR DRAGOON QUARTET',
+        type: '4-BEAT LANCE SMEAR',
+        vfxCell: 0,
+        desc: '4-beat crimson-gold Dragon-Lance thrusts, sweeping halberd smears & winged vault counters.'
+      },
+      {
+        name: 'VALHALLA SKY-PIERCER',
+        type: 'SKILL • 4.7S CD',
+        vfxCell: 1,
+        desc: 'High-speed winged dragoon rush launching Gungnir light-javelins into a Dragonfire Obelisk slam.'
+      },
+      {
+        name: 'BAHAMUT SKY-SANCTUARY',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Sweeps the heavens raining 12 Gungnir spears before crashing down in 5 Sovereign Judgment Spires.'
+      }
+    ]
+  },
+  ronin_ex: {
+    id: 'ronin_ex',
+    name: 'KAZE-MARU EX',
+    role: 'RAIJIN BLADE-GOD',
+    style: 'NARUKAMI IAIDO SOVEREIGN',
+    trait: 'PASSIVE: RAIJIN COUNTER-BLINK & SHEATH DETONATION',
+    cls: RoninEx,
+    theme: 'storm',
+    color: '#60a5fa',
+    selectSfx: 'slash',
+    victoryLine: 'Thunder tolls only after the Raijin Odachi clicks home!',
+    trueUltName: 'AMAKAKERU: RAIJIN THOUSAND-CUT DOMAIN',
+    trueUltDesc:
+      'Unleashes the Shogunate Storm Domain, carving a thousand instantaneous lightning-cuts that detonate on sheath-click!',
+    skills: [
+      {
+        name: 'NARUKAMI IAIDO QUARTET',
+        type: '4-BEAT STORM SMEAR',
+        vfxCell: 0,
+        desc: '4-beat grounded Suriashi Odachi smears firing crescent storm waves & Serene Mind counter-blinks.'
+      },
+      {
+        name: 'ZANTETSUKEN RAIJIN FLASH',
+        type: 'SKILL • 4.6S CD',
+        vfxCell: 1,
+        desc: 'Five-fold lightning zig-zag blitz leaving suspended thunder-lines that detonate on the saya click.'
+      },
+      {
+        name: 'SUSANOO BLADE-GOD CAGE',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Manifests the Susanoo Storm-Crest for an 8-angle teleporting Odachi execution.'
+      }
+    ]
+  },
+  archer_ex: {
+    id: 'archer_ex',
+    name: 'SYLVARA EX',
+    role: 'YGGDRASIL SOVEREIGN',
+    style: 'ASTRAL GREATBOW SOVEREIGN',
+    trait: 'PASSIVE: WORLD-TREE ZEPHYR VAULT & SEEKERS',
+    cls: ArcherEx,
+    theme: 'emerald',
+    color: '#34d399',
+    selectSfx: 'arrow_shoot',
+    victoryLine: 'Every star in Yggdrasil’s canopy bends to my bowstring!',
+    trueUltName: 'YGGDRASIL SOVEREIGN: SUPERNOVA DRAGON-ARROW',
+    trueUltDesc:
+      'Binds the arena in World-Tree Star-Roots, vaults to the horizon & fires a full-stage Emerald Supernova Dragon-Arrow!',
+    skills: [
+      {
+        name: 'STARWOOD GREATBOW',
+        type: '4-BEAT VOLLEY + VAULT',
+        vfxCell: 0,
+        desc: '4-beat supersonic emerald comet-arrows, sylvan blade-bow arcs & acrobatic Zephyr vaults.'
+      },
+      {
+        name: 'CONSTELLATION SNARE',
+        type: 'SKILL • 4.1S CD',
+        vfxCell: 1,
+        desc: 'Roots enemies in Yggdrasil starlight vines while raining homing astral seeker shafts.'
+      },
+      {
+        name: '180° STARLOCK OVERDRIVE',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Vaults overhead in a 180° astral somersault, firing a 7-arrow homing constellation barrage.'
+      }
+    ]
+  },
+  reaper_ex: {
+    id: 'reaper_ex',
+    name: 'MALAKOR EX',
+    role: 'THANATOS SOVEREIGN',
+    style: 'ABYSSAL GREATSCYTHE & DEATH-STAND',
+    trait: 'PASSIVE: SHADOW BURROW & THANATOS COVENANT',
+    cls: ReaperEx,
+    theme: 'abyssal',
+    color: '#d946ef',
+    selectSfx: 'scythe_reap',
+    victoryLine: 'Kneel before the Thanatos Sovereign — Oblivion claims its tithe!',
+    trueUltName: 'MEMENTO MORI: THANATOS OBLIVION GATES',
+    trueUltDesc:
+      'Unseals Twin Cathedral Gates of Oblivion, summons his Death Covenant & cleaves reality with the Six-Scythe Guillotine!',
+    skills: [
+      {
+        name: 'THANATOS SCYTHE QUARTET',
+        type: '4-BEAT STAND & BURROW',
+        vfxCell: 0,
+        desc: '4-beat violet-crimson Greatscythe smears with Shadow-Burrow ambushes & Thanatos Stand reaps.'
+      },
+      {
+        name: 'ABYSSAL SOUL-HARVEST',
+        type: 'SKILL • 4.5S CD',
+        vfxCell: 1,
+        desc: 'Rips a resonant Soul Effigy from the target before lunging through in a crimson X-Guillotine.'
+      },
+      {
+        name: 'LEGION OF OBLIVION',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Summons the towering Thanatos Stand & Twin Wraiths for an airborne pincer guillotine.'
+      }
+    ]
+  },
+  titan_ex: {
+    id: 'titan_ex',
+    name: 'TORGAR EX',
+    role: 'WORLD-BREAKER KING',
+    style: 'KHAZAD GOD-FORGE MONARCH',
+    trait: 'PASSIVE: MOLTEN POISE & CRUCIBLE CORES',
+    cls: TitanEx,
+    theme: 'forge',
+    color: '#f59e0b',
+    selectSfx: 'thunder_slam',
+    victoryLine: 'Crowned in molten adamant — the World-Breaker King shatters mountains!',
+    trueUltName: 'RAGNAROK ANVIL: CONTINENTAL WORLD-BREAKER',
+    trueUltDesc:
+      'Assumes colossal Forge-King stature, launches foes skyward & meteor-slams Mjolnir from the heavens!',
+    skills: [
+      {
+        name: 'MJOLNIR KINGSMASH',
+        type: '4-BEAT FORGE SMEAR',
+        vfxCell: 0,
+        desc: '4-beat volcanic 2H God-Hammer smears erupting tectonic fissures & unstoppable magma poise.'
+      },
+      {
+        name: 'CRUCIBLE ANVIL CANNON',
+        type: 'SKILL • 4.7S CD',
+        vfxCell: 1,
+        desc: 'Summons a gravity-pulsing World-Anvil Altar and batters a ricocheting molten cannonball.'
+      },
+      {
+        name: 'SOVEREIGN HOME-RUN SUNDER',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Full-torque royal Mjolnir swing blasting foes across the arena into a tectonic wall-shatter.'
+      }
+    ]
+  },
+  icemage_ex: {
+    id: 'icemage_ex',
+    name: 'LYRA EX',
+    role: 'BOREALIS SOVEREIGN',
+    style: 'CRYSTAL POLE-GLAIVE EMPRESS',
+    trait: 'PASSIVE: 4-STACK DIAMOND FREEZE & ICE-SKATE',
+    cls: IceMageEx,
+    theme: 'glacial',
+    color: '#67e8f9',
+    selectSfx: 'frost_cast',
+    victoryLine: 'Beneath the Borealis Crown, every heartbeat crystallizes at 0.00 Kelvin!',
+    trueUltName: 'BOREALIS CATHEDRAL: ZERO-KELVIN ETERNITY',
+    trueUltDesc:
+      'Unfurls the Aurora Borealis Ice Cathedral, entombs foes at 0.00 K inside a Diamond Monolith & shatters space!',
+    skills: [
+      {
+        name: 'BOREALIS GLAIVE BALLET',
+        type: '4-BEAT CRYO-GLAIVE',
+        vfxCell: 0,
+        desc: '4-beat figure-skating Crystal Pole-Glaive smears, returning snowflake chakrams & rime spires.'
+      },
+      {
+        name: 'TWIN ICEBERG GUILLOTINE',
+        type: 'SKILL • 4.6S CD',
+        vfxCell: 1,
+        desc: 'Raises two flanking Borealis Glacier Walls around the target and crushes them inward.'
+      },
+      {
+        name: 'SEVEN-CROWN PALISADE',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Cages the foe in 6 Celestial Ice-Claymores before shattering all with a 7th Sovereign Crown-Blade.'
+      }
+    ]
+  },
+  android_ex: {
+    id: 'android_ex',
+    name: 'VEX-09 EX',
+    role: 'SINGULARITY VALKYRIE',
+    style: 'SERAPH-FRAME CYBER SOVEREIGN',
+    trait: 'PASSIVE: QUANTUM HEX-AEGIS & FIN-FUNNELS',
+    cls: AndroidEx,
+    theme: 'cyber',
+    color: '#00f0ff',
+    selectSfx: 'cyber_slash',
+    victoryLine: 'Singularity Frame VEX-09 EX online — orbital annihilation complete!',
+    trueUltName: 'SINGULARITY GUNG-09: ORBITAL VALKYRIE BUSTER',
+    trueUltDesc:
+      'Deploys full Seraph-Funnel array, locks orbital coordinates & fires a stage-rending Positron Satellite Buster!',
+    skills: [
+      {
+        name: 'POSITRON MURAMASA-09',
+        type: '4-BEAT RAIL-ODACHI',
+        vfxCell: 0,
+        desc: '4-beat thruster-assisted Rail-Odachi neon smears with Fin-Funnel crossfire & Hex-Matrix parry.'
+      },
+      {
+        name: 'SINGULARITY EMP BLITZ',
+        type: 'SKILL • 4.3S CD',
+        vfxCell: 1,
+        desc: 'High-G vector-thruster breach through the target detonating a holographic EMP overload dome.'
+      },
+      {
+        name: 'SERAPH-FUNNEL HYPER-LASER',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Back-boosts into aerial hover, syncs 6 Fin-Funnels & sweeps a searing Singularity Visor Beam.'
       }
     ]
   },
@@ -481,19 +869,30 @@ export class Game {
     this._lastPreviewMs = 0;
 
     // Default Versus Mode (`1v1` Sovereign Duel; `2v2_tag` = Tag VS; `adventure` = Solo Campaign):
+    this.rosterVersion = 'ex'; // 'ex' (Neo-Vision 11) | 'legacy' (Classic 11)
     this.gameMode = '1v1'; // '1v1' | '2v2_tag' | '2v2_brawl' | 'adventure'
-    this.slot1Hero = 'warrior';
-    this.slot1PartnerHero = 'titan';
-    this.slot2Hero = 'reaper';
-    this.slot2PartnerHero = 'mage';
+    this.slot1Hero = 'warrior_ex';
+    this.slot1PartnerHero = 'titan_ex';
+    this.slot2Hero = 'reaper_ex';
+    this.slot2PartnerHero = 'mage_ex';
     this.inspectLeftRole = 'lead'; // 'lead' | 'partner'
-    this.inspectRightRole = 'lead'; // 'lead' | 'partner'
+    this.inspectRightRole = 'lead'; // 'partner' | 'lead'
     this.activeAssignSlot = 2; // 1 = P1 Lead, 2 = P2 Lead, 3 = P1B Partner, 4 = P2B Partner
     this.isLandingOpen = true;
     this.isPaused = false;
     this.landingStep = 'title'; // 'title' | 'mode' | 'roster'
 
     const params = new URLSearchParams(window.location.search);
+    const versionParam = params.get('version');
+    if (versionParam === 'legacy') {
+      this.rosterVersion = 'legacy';
+      this.slot1Hero = 'warrior';
+      this.slot1PartnerHero = 'titan';
+      this.slot2Hero = 'reaper';
+      this.slot2PartnerHero = 'mage';
+    } else if (versionParam === 'ex') {
+      this.rosterVersion = 'ex';
+    }
     const stepParam = params.get('step');
     if (stepParam === 'title' || stepParam === 'mode' || stepParam === 'roster') {
       this.landingStep = stepParam;
@@ -514,7 +913,7 @@ export class Game {
       this.gameMode = '2v2_brawl';
     } else if (modeParam === 'adventure' || modeParam === 'campaign') {
       this.gameMode = 'adventure';
-      this.slot1Hero = 'mage';
+      this.slot1Hero = this.rosterVersion === 'legacy' ? 'mage' : 'warrior_ex';
       this.activeAssignSlot = 1;
       this.testModeUnlimitedHp = Boolean(this.explicitAdvUnlimitedHp);
     }
@@ -530,6 +929,9 @@ export class Game {
     const rosterHero = params.get('roster');
     if (rosterHero && CHAMPION_ROSTER[rosterHero]) {
       this.slot1Hero = rosterHero;
+      if (!versionParam) {
+        this.rosterVersion = rosterHero.endsWith('_ex') ? 'ex' : 'legacy';
+      }
     }
     if (p1 && CHAMPION_ROSTER[p1]) this.slot1Hero = p1;
     if (p1b && CHAMPION_ROSTER[p1b]) this.slot1PartnerHero = p1b;
@@ -537,7 +939,13 @@ export class Game {
     if (p2b && CHAMPION_ROSTER[p2b]) this.slot2PartnerHero = p2b;
     if (urlHero && CHAMPION_ROSTER[urlHero]) {
       this.slot1Hero = urlHero;
-      this.slot2Hero = urlHero === 'archer' ? 'mage' : 'archer';
+      this.slot2Hero = urlHero.endsWith('_ex')
+        ? urlHero === 'archer_ex'
+          ? 'mage_ex'
+          : 'archer_ex'
+        : urlHero === 'archer'
+          ? 'mage'
+          : 'archer';
     }
     const landscapeParam = params.get('landscape');
     this.forceMobileLandscapeParam = landscapeParam === '1' || landscapeParam === 'true';
@@ -891,13 +1299,59 @@ export class Game {
     return this.gameMode === 'adventure';
   }
 
+  getActiveRosterPool() {
+    return this.rosterVersion === 'legacy' ? LEGACY_HERO_KEYS : EX_HERO_KEYS;
+  }
+
+  syncRosterVersionTabs() {
+    const activeVer = this.rosterVersion === 'legacy' ? 'legacy' : 'ex';
+    if (this.btnRosterVersionEx) {
+      const isEx = activeVer === 'ex';
+      this.btnRosterVersionEx.classList.toggle('active-version-tab', isEx);
+      this.btnRosterVersionEx.setAttribute('aria-selected', String(isEx));
+    }
+    if (this.btnRosterVersionLegacy) {
+      const isLegacy = activeVer === 'legacy';
+      this.btnRosterVersionLegacy.classList.toggle('active-version-tab', isLegacy);
+      this.btnRosterVersionLegacy.setAttribute('aria-selected', String(isLegacy));
+    }
+    if (this.cards) {
+      Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
+        if (!cardEl) return;
+        const cardGroup =
+          cardEl.getAttribute?.('data-roster-group') ||
+          (heroKey.endsWith('_ex') ? 'ex' : 'legacy');
+        const visible = cardGroup === activeVer;
+        cardEl.classList.toggle('roster-group-hidden', !visible);
+        cardEl.hidden = !visible;
+      });
+    }
+  }
+
+  setRosterVersion(version, playSound = true) {
+    const nextVer = version === 'legacy' ? 'legacy' : 'ex';
+    this.rosterVersion = nextVer;
+    this.syncRosterVersionTabs();
+    if (this.landingStep === 'roster') {
+      PixelForge.ensureAllPortraitsLoaded?.(this.rosterVersion);
+    }
+    this.syncRosterSelectionUI(false);
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+  }
+
   ensureDistinctTeamPartners() {
-    const keys = Object.keys(CHAMPION_ROSTER);
+    const keys = this.getActiveRosterPool();
     if (this.slot1PartnerHero === this.slot1Hero) {
-      this.slot1PartnerHero = keys.find((k) => k !== this.slot1Hero && k !== this.slot2Hero) || 'priestess';
+      this.slot1PartnerHero =
+        keys.find((k) => k !== this.slot1Hero && k !== this.slot2Hero) ||
+        (this.rosterVersion === 'legacy' ? 'priestess' : 'priestess_ex');
     }
     if (this.slot2PartnerHero === this.slot2Hero) {
-      this.slot2PartnerHero = keys.find((k) => k !== this.slot2Hero && k !== this.slot1Hero) || 'reaper';
+      this.slot2PartnerHero =
+        keys.find((k) => k !== this.slot2Hero && k !== this.slot1Hero) ||
+        (this.rosterVersion === 'legacy' ? 'reaper' : 'reaper_ex');
     }
   }
 
@@ -1098,7 +1552,7 @@ export class Game {
         : Boolean(this.vsTestModeUnlimitedHp);
     if (mode === 'adventure') {
       if (!CHAMPION_ROSTER[this.slot1Hero]) {
-        this.slot1Hero = 'mage';
+        this.slot1Hero = this.rosterVersion === 'legacy' ? 'mage' : 'warrior_ex';
       }
       this.inspectLeftRole = 'lead';
       this.inspectRightRole = 'lead';
@@ -1353,48 +1807,91 @@ export class Game {
       });
     }
 
+    this.rosterVersionBar = document.getElementById('roster-version-bar');
+    this.btnRosterVersionEx = document.getElementById('btn-roster-version-ex');
+    this.btnRosterVersionLegacy = document.getElementById('btn-roster-version-legacy');
+    if (this.btnRosterVersionEx) {
+      this.btnRosterVersionEx.addEventListener('click', () => this.setRosterVersion('ex', true));
+    }
+    if (this.btnRosterVersionLegacy) {
+      this.btnRosterVersionLegacy.addEventListener('click', () =>
+        this.setRosterVersion('legacy', true)
+      );
+    }
+
     this.cards = {
-      warrior: document.getElementById('card-warrior'),
       warrior_ex: document.getElementById('card-warrior_ex'),
-      archer: document.getElementById('card-archer'),
+      mage_ex: document.getElementById('card-mage_ex'),
+      priestess_ex: document.getElementById('card-priestess_ex'),
+      chronomancer_ex: document.getElementById('card-chronomancer_ex'),
+      valkyrie_ex: document.getElementById('card-valkyrie_ex'),
+      ronin_ex: document.getElementById('card-ronin_ex'),
+      archer_ex: document.getElementById('card-archer_ex'),
+      reaper_ex: document.getElementById('card-reaper_ex'),
+      titan_ex: document.getElementById('card-titan_ex'),
+      icemage_ex: document.getElementById('card-icemage_ex'),
+      android_ex: document.getElementById('card-android_ex'),
+      warrior: document.getElementById('card-warrior'),
       mage: document.getElementById('card-mage'),
       priestess: document.getElementById('card-priestess'),
-      reaper: document.getElementById('card-reaper'),
       chronomancer: document.getElementById('card-chronomancer'),
-      titan: document.getElementById('card-titan'),
-      ronin: document.getElementById('card-ronin'),
       valkyrie: document.getElementById('card-valkyrie'),
+      ronin: document.getElementById('card-ronin'),
+      archer: document.getElementById('card-archer'),
+      reaper: document.getElementById('card-reaper'),
+      titan: document.getElementById('card-titan'),
       icemage: document.getElementById('card-icemage'),
       android: document.getElementById('card-android')
     };
     this.ribbons = {
-      warrior: document.getElementById('ribbon-warrior'),
       warrior_ex: document.getElementById('ribbon-warrior_ex'),
-      archer: document.getElementById('ribbon-archer'),
+      mage_ex: document.getElementById('ribbon-mage_ex'),
+      priestess_ex: document.getElementById('ribbon-priestess_ex'),
+      chronomancer_ex: document.getElementById('ribbon-chronomancer_ex'),
+      valkyrie_ex: document.getElementById('ribbon-valkyrie_ex'),
+      ronin_ex: document.getElementById('ribbon-ronin_ex'),
+      archer_ex: document.getElementById('ribbon-archer_ex'),
+      reaper_ex: document.getElementById('ribbon-reaper_ex'),
+      titan_ex: document.getElementById('ribbon-titan_ex'),
+      icemage_ex: document.getElementById('ribbon-icemage_ex'),
+      android_ex: document.getElementById('ribbon-android_ex'),
+      warrior: document.getElementById('ribbon-warrior'),
       mage: document.getElementById('ribbon-mage'),
       priestess: document.getElementById('ribbon-priestess'),
-      reaper: document.getElementById('ribbon-reaper'),
       chronomancer: document.getElementById('ribbon-chronomancer'),
-      titan: document.getElementById('ribbon-titan'),
-      ronin: document.getElementById('ribbon-ronin'),
       valkyrie: document.getElementById('ribbon-valkyrie'),
+      ronin: document.getElementById('ribbon-ronin'),
+      archer: document.getElementById('ribbon-archer'),
+      reaper: document.getElementById('ribbon-reaper'),
+      titan: document.getElementById('ribbon-titan'),
       icemage: document.getElementById('ribbon-icemage'),
       android: document.getElementById('ribbon-android')
     };
     this.previewCanvases = {
-      warrior: document.getElementById('preview-warrior'),
       warrior_ex: document.getElementById('preview-warrior_ex'),
-      archer: document.getElementById('preview-archer'),
+      mage_ex: document.getElementById('preview-mage_ex'),
+      priestess_ex: document.getElementById('preview-priestess_ex'),
+      chronomancer_ex: document.getElementById('preview-chronomancer_ex'),
+      valkyrie_ex: document.getElementById('preview-valkyrie_ex'),
+      ronin_ex: document.getElementById('preview-ronin_ex'),
+      archer_ex: document.getElementById('preview-archer_ex'),
+      reaper_ex: document.getElementById('preview-reaper_ex'),
+      titan_ex: document.getElementById('preview-titan_ex'),
+      icemage_ex: document.getElementById('preview-icemage_ex'),
+      android_ex: document.getElementById('preview-android_ex'),
+      warrior: document.getElementById('preview-warrior'),
       mage: document.getElementById('preview-mage'),
       priestess: document.getElementById('preview-priestess'),
-      reaper: document.getElementById('preview-reaper'),
       chronomancer: document.getElementById('preview-chronomancer'),
-      titan: document.getElementById('preview-titan'),
-      ronin: document.getElementById('preview-ronin'),
       valkyrie: document.getElementById('preview-valkyrie'),
+      ronin: document.getElementById('preview-ronin'),
+      archer: document.getElementById('preview-archer'),
+      reaper: document.getElementById('preview-reaper'),
+      titan: document.getElementById('preview-titan'),
       icemage: document.getElementById('preview-icemage'),
       android: document.getElementById('preview-android')
     };
+    this.syncRosterVersionTabs();
 
     this.btnStartDuel = document.getElementById('btn-start-duel');
     this.startDuelText = document.getElementById('start-duel-text');
@@ -1557,7 +2054,7 @@ export class Game {
       this.btnStartDuel.addEventListener('click', () => this.startDuel(true));
     }
     const triggerRandomizeAndStart = () => {
-      const keys = [...Object.keys(CHAMPION_ROSTER)].sort(() => Math.random() - 0.5);
+      const keys = [...this.getActiveRosterPool()].sort(() => Math.random() - 0.5);
       this.slot1Hero = keys[0];
       this.slot2Hero = keys[1];
       this.slot1PartnerHero = keys[2];
@@ -1568,7 +2065,7 @@ export class Game {
     if (this.btnRandomDuel) {
       this.btnRandomDuel.addEventListener('click', () => {
         if (this.isAdventureMode()) {
-          const keys = Object.keys(CHAMPION_ROSTER);
+          const keys = this.getActiveRosterPool();
           const pool = keys.filter((k) => k !== this.slot1Hero);
           const pickPool = pool.length > 0 ? pool : keys;
           this.slot1Hero = pickPool[Math.floor(Math.random() * pickPool.length)];
@@ -2139,7 +2636,8 @@ export class Game {
     }
     this.landingStep = validStep;
     if (validStep === 'roster') {
-      PixelForge.ensureAllPortraitsLoaded?.();
+      this.syncRosterVersionTabs();
+      PixelForge.ensureAllPortraitsLoaded?.(this.rosterVersion);
     }
     if (this.landingOverlay) {
       this.landingOverlay.setAttribute('data-active-step', validStep);
@@ -2170,25 +2668,29 @@ export class Game {
 
   advanceTourneyChallenger() {
     clearTimeout(this.autoNextTimeout);
-    const keys = Object.keys(CHAMPION_ROSTER);
+    const keys = this.getActiveRosterPool();
+    const fallbackA = this.rosterVersion === 'legacy' ? 'archer' : 'archer_ex';
+    const fallbackB = this.rosterVersion === 'legacy' ? 'reaper' : 'reaper_ex';
+    const fallbackP = this.rosterVersion === 'legacy' ? 'priestess' : 'priestess_ex';
     if (this.is2v2Mode()) {
       const keepLead = this.reigningHero || this.slot1Hero;
       const keepPartner =
         this.slot1PartnerHero !== keepLead
           ? this.slot1PartnerHero
-          : keys.find((k) => k !== keepLead) || 'priestess';
+          : keys.find((k) => k !== keepLead) || fallbackP;
       const pool = keys
         .filter((k) => k !== keepLead && k !== keepPartner)
         .sort(() => Math.random() - 0.5);
       this.slot1Hero = keepLead;
       this.slot1PartnerHero = keepPartner;
-      this.slot2Hero = pool[0] || 'archer';
-      this.slot2PartnerHero = pool[1] || 'reaper';
+      this.slot2Hero = pool[0] || fallbackA;
+      this.slot2PartnerHero = pool[1] || fallbackB;
     } else {
       const keepHero = this.reigningHero || this.slot1Hero;
       const pool = keys.filter((k) => k !== keepHero && k !== this.slot2Hero);
       const candidates = pool.length > 0 ? pool : keys.filter((k) => k !== keepHero);
-      const nextChallenger = candidates[Math.floor(Math.random() * candidates.length)] || 'archer';
+      const nextChallenger =
+        candidates[Math.floor(Math.random() * candidates.length)] || fallbackA;
       this.slot1Hero = keepHero;
       this.slot2Hero = nextChallenger;
     }
@@ -2248,6 +2750,7 @@ export class Game {
       this.activeAssignSlot = 1;
       this.inspectLeftRole = 'lead';
     }
+    this.syncRosterVersionTabs();
     const c1 = CHAMPION_ROSTER[this.slot1Hero] || CHAMPION_ROSTER.titan;
     const c1b = CHAMPION_ROSTER[this.slot1PartnerHero] || CHAMPION_ROSTER.priestess;
     const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
@@ -2315,7 +2818,11 @@ export class Game {
       sanctuary: 'RADIANT SANCTUARY',
       sylvan: 'SYLVAN STARWOOD',
       boneyard: 'ABYSSAL NECROPOLIS',
-      clocktower: 'ASTRAL CLOCKTOWER'
+      clocktower: 'ASTRAL CLOCKTOWER',
+      shogunate: 'SHOGUNATE CITADEL',
+      shogunate_inferno: 'INFERNO SHOGUNATE',
+      glacial: 'BOREALIS SANCTUARY',
+      shogunate_glacial: 'FROST SHOGUNATE'
     };
     const stageTitleStr = isAdv
       ? 'AUTO: 4-ZONE CAMPAIGN MAP'
@@ -2346,7 +2853,7 @@ export class Game {
     const gridPromptEl = document.getElementById('portrait-grid-label');
     if (gridPromptEl) {
       gridPromptEl.textContent = isAdv
-        ? 'SELECT ANY OF THE 12 CHAMPIONS FOR YOUR 4-REALM ADVENTURE CAMPAIGN'
+        ? 'SELECT ANY OF THE 22 CHAMPIONS (EX OR LEGACY) FOR YOUR 4-REALM CAMPAIGN'
         : `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || 'P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
     }
 
@@ -2627,27 +3134,29 @@ export class Game {
     const t = now * 0.001;
     const is2v2 = this.is2v2Mode();
 
-    // 1. Render the Center Portrait Selector Tiles from crisp pixel portraits (dirty-checked: 0ms steady-state!)
-    Object.keys(CHAMPION_ROSTER).forEach((heroKey) => {
+    // 1. Render ONLY the 11 currently visible Portrait Selector Tiles (`this.rosterVersion`) for locked 60 FPS!
+    const visibleHeroKeys = this.getActiveRosterPool();
+    for (let i = 0; i < visibleHeroKeys.length; i++) {
+      const heroKey = visibleHeroKeys[i];
       const canvas = this.previewCanvases[heroKey];
-      if (!canvas || (canvas.offsetParent === null && canvas.clientWidth === 0)) return;
+      if (!canvas || (canvas.offsetParent === null && canvas.clientWidth === 0)) continue;
       const port = PixelForge.ensureImage(assets[heroKey]?.portrait);
-      if (!port || !port.complete || !port.naturalWidth) return;
-      if (canvas._drawnPortraitImg === port) return;
+      if (!port || !port.complete || !port.naturalWidth) continue;
+      if (canvas._drawnPortraitImg === port) continue;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
       canvas._drawnPortraitImg = port;
-    });
+    }
 
     // Lossless 30fps cadence lock for animated 30fps showcase pedestals (cuts menu CPU/GPU load in half with zero visual change!)
     if (now - (this._lastPreviewMs || 0) < 30) return;
     this._lastPreviewMs = now;
 
     const iconsReady = Boolean(
-      assets.mageIcons?.complete &&
-        assets.mageIcons?.naturalWidth &&
+      assets.mage?.icons?.complete &&
+        assets.mage?.icons?.naturalWidth &&
         assets.heroIconsSheet?.complete &&
         assets.heroIconsSheet?.naturalWidth
     );
@@ -2677,6 +3186,8 @@ export class Game {
       const anchorY = isClassic208 ? 198 : heroEntry?.anchorY ?? (cellH === 240 ? 230 : 198);
       const isWideCell = !(cellW === 208 && cellH === 208);
       const cols = Math.max(1, Math.round(sheet.naturalWidth / cellW));
+      const isExHero = heroKey.endsWith('_ex');
+      const isSeraphim = heroKey === 'priestess' || heroKey === 'priestess_ex';
       let col = 0;
       let row = 0;
       let stateTag = 'IDLE';
@@ -2692,19 +3203,19 @@ export class Game {
           const u = (cycle - 1.8) / 1.0;
           col = Math.min(29, Math.floor(u * 30));
           stateTag = 'ATTACK • 30FPS';
-          if (heroKey === 'priestess') wingEnv = Math.sin(u * Math.PI) * 0.88;
+          if (isSeraphim) wingEnv = Math.sin(u * Math.PI) * 0.88;
         } else if (cycle < 3.8) {
-          row = heroKey === 'priestess' || heroKey === 'warrior_ex' ? 3 : 7;
+          row = heroKey === 'priestess' || isExHero ? 3 : 7;
           const u = (cycle - 2.8) / 1.0;
           col = Math.min(29, Math.floor(u * 30));
           stateTag = 'SKILL • 30FPS';
-          if (heroKey === 'priestess') wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.55);
+          if (isSeraphim) wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.55);
         } else if (cycle < 4.8) {
-          row = heroKey === 'priestess' || heroKey === 'warrior_ex' ? 4 : 8;
+          row = heroKey === 'priestess' || isExHero ? 4 : 8;
           const u = (cycle - 3.8) / 1.0;
           col = Math.min(29, Math.floor(u * 30));
           stateTag = 'OVERDRIVE ULT';
-          if (heroKey === 'priestess') wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.7);
+          if (isSeraphim) wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.7);
         } else {
           row = 1;
           col = Math.floor((t + phaseOffset) * 24) % 30;
@@ -2721,7 +3232,7 @@ export class Game {
         row = (frameIdx / cols) | 0;
       }
       const hover =
-        heroKey === 'priestess'
+        isSeraphim
           ? wingEnv > 0.02
             ? -Math.round(wingEnv * (row === 4 ? 14 : row === 3 ? 10 : 5))
             : Math.round(Math.sin((t + phaseOffset) * 3.2) * 2)
@@ -2776,14 +3287,14 @@ export class Game {
       }
       sctx.restore();
 
-      const wingSheet = heroKey === 'priestess' ? assets.priestess?.wings : null;
+      const wingSheet = isSeraphim ? assets[heroKey]?.wings || assets.priestess?.wings : null;
       const drawHeroWithWings = () => {
         if (wingEnv > 0.02 && wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
           const wScale = (0.72 + 0.10 * wingEnv) * sf;
           const wW = Math.round(320 * wScale);
           const wH = Math.round(232 * wScale);
-          const sx = 98 * sf;
-          const sy = 74 * sf;
+          const sx = (isWideCell ? anchorX - 6 : 98) * sf;
+          const sy = (isWideCell ? anchorY - 124 : 74) * sf;
           const wdx = Math.round(sx - wW * 0.5);
           const wdy = Math.round(sy - wH * (88 / 232));
           const wCol = Math.floor((t + phaseOffset) * 30) % 30;
@@ -3311,7 +3822,11 @@ export class Game {
         boneyard: 'NECROPOLIS',
         clocktower: 'ASTRAL CLOCKTOWER',
         sanctuary: 'RADIANT SANCTUARY',
-        inferno: 'LAYWASTE OF INFERNO'
+        inferno: 'LAYWASTE OF INFERNO',
+        shogunate: 'SHOGUNATE CITADEL',
+        shogunate_inferno: 'INFERNO SHOGUNATE',
+        glacial: 'BOREALIS SANCTUARY',
+        shogunate_glacial: 'FROST SHOGUNATE'
       };
       this.hudEls.stageBadge.textContent = stgNames[this.renderer?.stageId] || 'GOTHIC SANCTUARY';
     }
@@ -3439,6 +3954,7 @@ export class Game {
     if (this.gameMode === '2v2_tag' && ally.isBenched) {
       // Reserve Partner fires a Cross-Arena Tag Assist Barrage from the Sanctuary Pedestal!
       const dir = target.x >= ally.x ? 1 : -1;
+      const baseAllyId = ally.heroId?.endsWith('_ex') ? ally.heroId.slice(0, -3) : ally.heroId;
       ally.facing = dir;
       this.vfx.spawnSpecialCastAura(
         ally,
@@ -3458,27 +3974,29 @@ export class Game {
         damage: 215,
         owner: ally,
         type:
-          ally.heroId === 'archer'
+          baseAllyId === 'archer'
             ? 'arrow'
-            : ally.heroId === 'priestess'
+            : baseAllyId === 'priestess'
               ? 'holy_light'
-              : ally.heroId === 'reaper'
+              : baseAllyId === 'reaper'
                 ? 'phantom_scythe'
-                : ally.heroId === 'chronomancer'
+                : baseAllyId === 'chronomancer'
                   ? 'clock_gear'
-                  : ally.heroId === 'titan'
+                  : baseAllyId === 'titan'
                     ? 'forge_wave'
-                    : ally.heroId === 'ronin'
-                      ? 'storm_wave'
-                      : ally.heroId === 'valkyrie'
-                        ? 'dragon_lance'
-                        : ally.heroId === 'icemage'
-                          ? 'cryo_shard'
-                          : ally.heroId === 'android'
-                            ? 'cyber_disc'
-                            : ally.heroId === 'warrior' || ally.heroId === 'warrior_ex'
-                              ? 'blade_wave'
-                              : 'fireball'
+                    : ally.heroId === 'ronin_ex'
+                      ? 'ronin_slash'
+                      : baseAllyId === 'ronin'
+                        ? 'storm_wave'
+                        : baseAllyId === 'valkyrie'
+                          ? 'dragon_lance'
+                          : baseAllyId === 'icemage'
+                            ? 'cryo_shard'
+                            : baseAllyId === 'android'
+                              ? 'cyber_disc'
+                              : baseAllyId === 'warrior'
+                                ? 'blade_wave'
+                                : 'fireball'
       });
       if (!point.isDead) {
         point.heal(35, 'TAG GRACE');

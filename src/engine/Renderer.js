@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps113';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps113';
+import { PixelForge } from './PixelForge.js?v=30fps114';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps114';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -1034,7 +1034,7 @@ export class Renderer {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
-      const isChrono = f.heroId === 'chronomancer';
+      const isChrono = f.heroId === 'chronomancer' || f.heroId === 'chronomancer_ex';
       const baseAlpha = isChrono
         ? f.state === 'IDLE' || f.state === 'WALK'
           ? 0.28
@@ -1051,7 +1051,7 @@ export class Renderer {
       }
       ctx.restore();
 
-      if (f.heroId !== 'reaper') {
+      if (f.heroId !== 'reaper' && f.heroId !== 'reaper_ex') {
         this.drawCharacterGroundHalo(ctx, f);
       }
       if (!f.isMonster) {

@@ -98,16 +98,19 @@ export class Fighter {
   }
 
   getAiStyleProfile() {
+    const isEx = typeof this.heroId === 'string' && this.heroId.endsWith('_ex');
+    const isMeleeEx = isEx && (this.attackRange || 160) < 240;
     switch (this.heroId) {
       case 'titan':
+      case 'titan_ex':
         return {
-          comboGoal: 3,
-          sweetMin: 114,
-          sweetMax: 138,
+          comboGoal: isEx ? 4 : 3,
+          sweetMin: isEx ? 110 : 114,
+          sweetMax: isEx ? 132 : 138,
           counterCrouchBias: 0.68,
           midLeapMin: 195,
           midLeapMax: 315,
-          midLeapChance: 0.34,
+          midLeapChance: 0.36,
           postStyle: 'juggernaut'
         };
       case 'warrior':
@@ -133,21 +136,23 @@ export class Fighter {
           postStyle: 'vanguard'
         };
       case 'ronin':
+      case 'ronin_ex':
         return {
           comboGoal: 4,
-          sweetMin: 78,
-          sweetMax: 106,
+          sweetMin: isEx ? 96 : 78,
+          sweetMax: isEx ? 120 : 106,
           counterCrouchBias: 0.66,
           midLeapMin: 175,
-          midLeapMax: 280,
+          midLeapMax: 285,
           midLeapChance: 0.44,
           postStyle: 'iaido'
         };
       case 'android':
+      case 'android_ex':
         return {
           comboGoal: 4,
-          sweetMin: 112,
-          sweetMax: 158,
+          sweetMin: isEx ? 108 : 112,
+          sweetMax: isEx ? 128 : 158,
           counterCrouchBias: 0.60,
           midLeapMin: 180,
           midLeapMax: 290,
@@ -155,10 +160,11 @@ export class Fighter {
           postStyle: 'cyber_valkyrie'
         };
       case 'reaper':
+      case 'reaper_ex':
         return {
           comboGoal: 4,
-          sweetMin: 118,
-          sweetMax: 160,
+          sweetMin: isEx ? 112 : 118,
+          sweetMax: isEx ? 136 : 160,
           counterCrouchBias: 0.62,
           midLeapMin: 185,
           midLeapMax: 295,
@@ -166,10 +172,11 @@ export class Fighter {
           postStyle: 'harvester'
         };
       case 'chronomancer':
+      case 'chronomancer_ex':
         return {
           comboGoal: 4,
-          sweetMin: 98,
-          sweetMax: 142,
+          sweetMin: isEx ? 104 : 98,
+          sweetMax: isEx ? 128 : 142,
           counterCrouchBias: 0.56,
           midLeapMin: 175,
           midLeapMax: 285,
@@ -177,21 +184,23 @@ export class Fighter {
           postStyle: 'chrono'
         };
       case 'valkyrie':
+      case 'valkyrie_ex':
         return {
-          comboGoal: 2,
-          sweetMin: 310,
-          sweetMax: 375,
+          comboGoal: isEx ? 4 : 2,
+          sweetMin: isMeleeEx ? 110 : 310,
+          sweetMax: isMeleeEx ? 132 : 375,
           counterCrouchBias: 0.52,
-          midLeapMin: 225,
-          midLeapMax: 385,
+          midLeapMin: isMeleeEx ? 185 : 225,
+          midLeapMax: isMeleeEx ? 305 : 385,
           midLeapChance: 0.40,
           postStyle: 'sky_lancer'
         };
       case 'archer':
+      case 'archer_ex':
         return {
-          comboGoal: 3,
-          sweetMin: 350,
-          sweetMax: 455,
+          comboGoal: isEx ? 4 : 3,
+          sweetMin: isMeleeEx ? 112 : 350,
+          sweetMax: isMeleeEx ? 136 : 455,
           counterCrouchBias: 0.50,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -199,36 +208,39 @@ export class Fighter {
           postStyle: 'marksman'
         };
       case 'icemage':
+      case 'icemage_ex':
         return {
           comboGoal: 4,
-          sweetMin: 310,
-          sweetMax: 435,
+          sweetMin: isMeleeEx ? 108 : 310,
+          sweetMax: isMeleeEx ? 128 : 435,
           counterCrouchBias: 0.58,
-          midLeapMin: 0,
-          midLeapMax: 0,
-          midLeapChance: 0,
+          midLeapMin: isMeleeEx ? 185 : 0,
+          midLeapMax: isMeleeEx ? 295 : 0,
+          midLeapChance: isMeleeEx ? 0.38 : 0,
           postStyle: 'cryo_artillery'
         };
       case 'priestess':
+      case 'priestess_ex':
         return {
           comboGoal: 4,
-          sweetMin: 315,
-          sweetMax: 445,
+          sweetMin: isMeleeEx ? 110 : 315,
+          sweetMax: isMeleeEx ? 130 : 445,
           counterCrouchBias: 0.56,
-          midLeapMin: 0,
-          midLeapMax: 0,
-          midLeapChance: 0,
+          midLeapMin: isMeleeEx ? 180 : 0,
+          midLeapMax: isMeleeEx ? 285 : 0,
+          midLeapChance: isMeleeEx ? 0.32 : 0,
           postStyle: 'sanctuary'
         };
       case 'mage':
+      case 'mage_ex':
         return {
           comboGoal: 4,
-          sweetMin: 305,
-          sweetMax: 430,
+          sweetMin: isMeleeEx ? 108 : 305,
+          sweetMax: isMeleeEx ? 128 : 430,
           counterCrouchBias: 0.48,
-          midLeapMin: 0,
-          midLeapMax: 0,
-          midLeapChance: 0,
+          midLeapMin: isMeleeEx ? 185 : 0,
+          midLeapMax: isMeleeEx ? 295 : 0,
+          midLeapChance: isMeleeEx ? 0.38 : 0,
           postStyle: 'pyromancer'
         };
       default:
@@ -246,9 +258,11 @@ export class Fighter {
   }
 
   isHackAndSlashMelee() {
+    if (typeof this.heroId === 'string' && this.heroId.endsWith('_ex')) {
+      return (this.attackRange || 160) < 250;
+    }
     return (
       this.heroId === 'warrior' ||
-      this.heroId === 'warrior_ex' ||
       this.heroId === 'ronin' ||
       this.heroId === 'android' ||
       this.heroId === 'reaper' ||
@@ -257,10 +271,18 @@ export class Fighter {
   }
 
   isCrossSlashDuelist() {
-    return this.heroId === 'ronin' || this.heroId === 'chronomancer';
+    return (
+      this.heroId === 'ronin' ||
+      this.heroId === 'ronin_ex' ||
+      this.heroId === 'chronomancer' ||
+      this.heroId === 'chronomancer_ex'
+    );
   }
 
   isHackAndSlashCaster() {
+    if (typeof this.heroId === 'string' && this.heroId.endsWith('_ex')) {
+      return (this.attackRange || 160) >= 250;
+    }
     return (
       this.heroId === 'mage' ||
       this.heroId === 'icemage' ||
@@ -959,7 +981,8 @@ export class Fighter {
           (this.state === 'AUTO_ATTACK' && this.isHackAndSlashMelee()) ||
           (enemy.state === 'AUTO_ATTACK' && enemy.isHackAndSlashMelee?.());
         const isExviusSwing =
-          inCloseMeleeSwing && (this.heroId === 'warrior_ex' || enemy.heroId === 'warrior_ex');
+          inCloseMeleeSwing &&
+          (Boolean(this.heroId?.endsWith('_ex')) || Boolean(enemy.heroId?.endsWith('_ex')));
         const minSep = isExviusSwing
           ? isAdv3D
             ? 88
@@ -1146,7 +1169,7 @@ export class Fighter {
 
     // Ambient Aura & Desperation Overdrive Particles (decluttered for the custom-shader heroes)
     const isDeclutteredHero =
-      this.heroId === 'warrior_ex' ||
+      Boolean(this.heroId?.endsWith('_ex')) ||
       this.heroId === 'titan' ||
       this.heroId === 'reaper' ||
       this.heroId === 'archer' ||
@@ -1225,12 +1248,16 @@ export class Fighter {
         }
 
         // 1. Smart Archetype Overdrive Timing (don't waste Overdrive into an invulnerable dodge or from out of effective range!)
+        const baseHeroId =
+          typeof this.heroId === 'string' && this.heroId.endsWith('_ex')
+            ? this.heroId.slice(0, -3)
+            : this.heroId;
         const ultRangeOk =
-          this.heroId === 'warrior' || this.heroId === 'warrior_ex'
+          baseHeroId === 'warrior'
             ? dist <= 400
-            : this.heroId === 'reaper' || this.heroId === 'titan' || this.heroId === 'ronin'
+            : baseHeroId === 'reaper' || baseHeroId === 'titan' || baseHeroId === 'ronin'
               ? dist <= 480
-              : this.heroId === 'valkyrie'
+              : baseHeroId === 'valkyrie'
                 ? dist <= 620
                 : true;
         if (this.mana >= this.maxMana && !enemy.isInvulnerable && ultRangeOk) {
@@ -1323,10 +1350,13 @@ export class Fighter {
           return;
         }
 
+        const isExFighter = Boolean(this.heroId?.endsWith('_ex'));
         const shouldDash =
           !inHackSlashChain &&
           !isAdvMode &&
-          (this.heroId === 'ronin' || this.heroId === 'android' || this.heroId === 'warrior_ex'
+          (this.heroId === 'ronin' ||
+          this.heroId === 'android' ||
+          (isExFighter && this.attackRange < 240)
             ? dist > 185
             : this.attackRange < 200
               ? dist > 205
@@ -1362,7 +1392,7 @@ export class Fighter {
             this.setState('AUTO_ATTACK');
             if (this.hasHackAndSlashCombo()) {
               if ((this.comboStep || 0) !== 0) {
-                this.autoCooldown = this.heroId === 'warrior_ex' ? 0.015 : 0.02;
+                this.autoCooldown = isExFighter ? 0.015 : 0.02;
               } else {
                 const postInt = this._postFlurryInterval || 1.65;
                 this.autoCooldown = postInt * (0.90 + Math.random() * 0.20);
@@ -1387,7 +1417,7 @@ export class Fighter {
             if (this.backflipKiteTimer > 0) {
               this.backflipKiteTimer = Math.max(0, this.backflipKiteTimer - dt);
             }
-            if (this.heroId === 'valkyrie') {
+            if (this.heroId === 'valkyrie' || this.heroId === 'valkyrie_ex') {
               if (!isAdvMode && dist < 325 && (this.backflipKiteTimer || 0) <= 0 && this.startCrouch) {
                 this.backflipKiteTimer = 1.65;
                 this.startCrouch(enemy, game);
@@ -1537,16 +1567,18 @@ export class Fighter {
               this.state = 'IDLE';
               this.moveDir = 0;
             }
-          } else if (this.heroId === 'warrior_ex') {
-            // Exvius Sovereign (Aethelgard EX): disciplined 108..126px Dawn-Breaker sweet-spot so the enemy stands inside the fattest belly of the 208px smear crescent!
+          } else if (isExFighter) {
+            // Next-Gen Wide-Canvas (320x240, anchorX=112) Exvius Sovereign sweet-spot so enemies stand inside the fattest belly of the 208px smear arc!
+            const exSweetMin = aiProfile.sweetMin || 108;
+            const exSweetMax = aiProfile.sweetMax || 128;
             const nearExWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
-            if (dist > 126) {
+            if (dist > exSweetMax) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 4.5;
               this.x += this.facing * this.moveSpeed * 0.88 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < 108 && !nearExWall) {
+            } else if (dist < exSweetMin && !nearExWall) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
@@ -1833,7 +1865,8 @@ export class Fighter {
     }
 
     // Grounded martial stance on V0..V2 (`0px` bounce); modest execution hop (`20–24px`) on V3 only (`0px` on Ronin)
-    const isGroundedStyle = opts.groundedOnly === true || this.heroId === 'ronin';
+    const isGroundedStyle =
+      opts.groundedOnly === true || this.heroId === 'ronin' || this.heroId === 'ronin_ex';
     const hopEndU = opts.hopEndU ?? 0.56;
     const hopHeight = isGroundedStyle ? 0 : variant === 3 ? (opts.v3HopHeight ?? 22) : 0;
     if (hopHeight > 0 && u >= 0.05 && u <= hopEndU) {
@@ -2163,7 +2196,8 @@ export class Fighter {
       return hns;
     }
 
-    const isGroundedCaster = opts.groundedOnly === true || this.heroId === 'priestess';
+    const isGroundedCaster =
+      opts.groundedOnly === true || this.heroId === 'priestess' || this.heroId === 'priestess_ex';
     const hopEndU = opts.hopEndU ?? 0.56;
     const hopHeight = isGroundedCaster ? 0 : variant === 3 ? (opts.v3HopHeight ?? 16) : 0;
     if (hopHeight > 0 && u >= 0.05 && u <= hopEndU) {

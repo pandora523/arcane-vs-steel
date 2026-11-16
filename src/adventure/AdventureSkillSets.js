@@ -34,6 +34,106 @@ export const ADVENTURE_HERO_KITS = {
       ultimate: 'EXVIUS'
     }
   },
+  mage_ex: {
+    id: 'mage_ex',
+    tags: {
+      attack: 'HELIOS',
+      dodge: 'BLINK',
+      skill: 'SOLAR',
+      overdrive: 'ECLIPSE',
+      ultimate: 'METEOR'
+    }
+  },
+  priestess_ex: {
+    id: 'priestess_ex',
+    tags: {
+      attack: 'SERAPH',
+      dodge: 'WINGS',
+      skill: 'SANCTUM',
+      overdrive: 'SPEARS',
+      ultimate: 'GRACE'
+    }
+  },
+  chronomancer_ex: {
+    id: 'chronomancer_ex',
+    tags: {
+      attack: 'PARADOX',
+      dodge: 'WARP',
+      skill: 'SCHISM',
+      overdrive: 'STASIS',
+      ultimate: 'ETERNAL'
+    }
+  },
+  valkyrie_ex: {
+    id: 'valkyrie_ex',
+    tags: {
+      attack: 'GUNGNIR',
+      dodge: 'GLIDE',
+      skill: 'DRAGOON',
+      overdrive: 'BAHAMUT',
+      ultimate: 'RAGNAROK'
+    }
+  },
+  ronin_ex: {
+    id: 'ronin_ex',
+    tags: {
+      attack: 'RAIJIN',
+      dodge: 'SURIASHI',
+      skill: 'THUNDER',
+      overdrive: 'SUSANOO',
+      ultimate: 'AMAKAKR'
+    }
+  },
+  archer_ex: {
+    id: 'archer_ex',
+    tags: {
+      attack: 'ASTRAL',
+      dodge: 'VAULT',
+      skill: 'STARFALL',
+      overdrive: 'STARLOCK',
+      ultimate: 'YGGDRASL'
+    }
+  },
+  reaper_ex: {
+    id: 'reaper_ex',
+    tags: {
+      attack: 'THANATOS',
+      dodge: 'WRAITH',
+      skill: 'HARVEST',
+      overdrive: 'LEGION',
+      ultimate: 'OBLIVION'
+    }
+  },
+  titan_ex: {
+    id: 'titan_ex',
+    tags: {
+      attack: 'MJOLNIR',
+      dodge: 'RUSH',
+      skill: 'ANVIL',
+      overdrive: 'HOMERUN',
+      ultimate: 'RAGNAROK'
+    }
+  },
+  icemage_ex: {
+    id: 'icemage_ex',
+    tags: {
+      attack: 'GLAIVE',
+      dodge: 'SKATE',
+      skill: 'CRYOJAW',
+      overdrive: 'CATHDRAL',
+      ultimate: 'BOREALIS'
+    }
+  },
+  android_ex: {
+    id: 'android_ex',
+    tags: {
+      attack: 'MURAMASA',
+      dodge: 'THRUST',
+      skill: 'FUNNELS',
+      overdrive: 'HYPERLSR',
+      ultimate: 'GUNG-09'
+    }
+  },
   mage: {
     id: 'mage',
     tags: {
@@ -257,6 +357,7 @@ export class AdventureSkillSets {
     const isRanged = Boolean(
       player?.isHackAndSlashCaster?.() ||
         player?.heroId === 'archer' ||
+        player?.heroId === 'archer_ex' ||
         (player?.attackRange || 0) >= 260
     );
     const baseRange = player?.attackRange || (isRanged ? 420 : 180);
@@ -709,12 +810,8 @@ export class AdventureSkillSets {
       }
     }
 
-    // Keep Aethelgard & Aethelgard EX's Seraphim Justice Feathers raining around the active Adventure camera!
-    if (
-      (player.heroId === 'warrior' || player.heroId === 'warrior_ex') &&
-      Array.isArray(player.justiceFeathers) &&
-      player.justiceFeathers.length > 0
-    ) {
+    // Keep Seraphim Justice Feathers raining around the active Adventure camera!
+    if (Array.isArray(player.justiceFeathers) && player.justiceFeathers.length > 0) {
       const camX = Number.isFinite(this.adventure?.game?.renderer?.camX)
         ? this.adventure.game.renderer.camX
         : player.x;

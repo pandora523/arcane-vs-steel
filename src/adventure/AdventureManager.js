@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps113';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps113';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps113';
+import { Fighter } from '../entities/Fighter.js?v=30fps114';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps114';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps113';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps113';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps113';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps113';
+} from './AdventureProgression.js?v=30fps114';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps114';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps114';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps114';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -871,10 +871,11 @@ export class AdventureManager {
     if (!player) return;
 
     const heroKey = player.heroId || this.game.slot1Hero || 'mage';
+    const isMageIconHero = heroKey === 'mage' || heroKey === 'mage_ex';
     const mageImg = PixelForge.assets?.mage?.icons;
     const heroSheet = PixelForge.assets?.heroIconsSheet;
     const mageIconsNowReady =
-      heroKey === 'mage' &&
+      isMageIconHero &&
       Boolean(
         mageImg &&
           (typeof HTMLImageElement === 'undefined' ||
@@ -882,7 +883,7 @@ export class AdventureManager {
             (mageImg.complete && mageImg.naturalWidth >= 448))
       );
     const heroIconsNowReady =
-      heroKey !== 'mage' &&
+      !isMageIconHero &&
       Boolean(
         heroSheet &&
           (typeof HTMLImageElement === 'undefined' ||
@@ -891,8 +892,8 @@ export class AdventureManager {
       );
     if (
       this._renderedIconHero !== heroKey ||
-      (heroKey === 'mage' && mageIconsNowReady && !this._renderedMageIconsReady) ||
-      (heroKey !== 'mage' && heroIconsNowReady && !this._renderedHeroIconsReady)
+      (isMageIconHero && mageIconsNowReady && !this._renderedMageIconsReady) ||
+      (!isMageIconHero && heroIconsNowReady && !this._renderedHeroIconsReady)
     ) {
       this.refreshActionIcons(heroKey);
       if (this.isSkillTreeOpen) {
@@ -1896,6 +1897,7 @@ export class AdventureManager {
   finishHeroAdventureDodge(player, returnToIdle = true) {
     if (!player) return;
     const heroId = player.heroId || 'mage';
+    const baseHeroId = heroId.endsWith('_ex') ? heroId.slice(0, -3) : heroId;
     player._advPureDodge = false;
     player._advDodgeFrameOverride = null;
     player._advDodgeGhostStep = 0;
@@ -1904,11 +1906,11 @@ export class AdventureManager {
     player.vx = 0;
     player.vy = 0;
     player.y = player.groundY;
-    if (heroId === 'priestess') {
+    if (baseHeroId === 'priestess') {
       player.isAngelicAscent = false;
-    } else if (heroId === 'reaper' || heroId === 'mage') {
+    } else if (baseHeroId === 'reaper' || baseHeroId === 'mage') {
       player.wraithAlpha = 1.0;
-    } else if (heroId === 'titan') {
+    } else if (baseHeroId === 'titan') {
       player.unstoppablePoise = false;
     }
     if (returnToIdle && !player.isDead && player.state === 'DODGE') {
@@ -1919,6 +1921,8 @@ export class AdventureManager {
   startHeroAdventureDodge(player, evadeX, evadeZ, stats) {
     if (!player) return;
     const heroId = player.heroId || 'mage';
+    const isExHero = heroId.endsWith('_ex');
+    const dodgeStyle = heroId === 'warrior_ex' ? 'warrior_ex' : isExHero ? heroId.slice(0, -3) : heroId;
     if (Math.abs(evadeX) > 0.15) {
       player.facing = evadeX > 0 ? 1 : -1;
     }
@@ -1940,25 +1944,31 @@ export class AdventureManager {
     if (heroId === 'valkyrie') {
       speedMult = 1.08;
       initFrame = 124; // Row 4 Twin-Winged Sovereign Glide pose!
-    } else if (heroId === 'icemage') {
+    } else if (heroId === 'valkyrie_ex') {
+      speedMult = 1.12;
+      initFrame = 183; // Standard Row 6 EX Sovereign Winged Glide!
+    } else if (dodgeStyle === 'icemage') {
       speedMult = 1.14;
       initFrame = 182; // Row 6 Figure-Skating Ice-Slide!
-    } else if (heroId === 'android') {
+    } else if (dodgeStyle === 'android') {
       speedMult = 1.16;
       initFrame = 184; // Row 6 Rocket-Thruster Boost!
-    } else if (heroId === 'priestess') {
+    } else if (dodgeStyle === 'priestess') {
       speedMult = 1.06;
       initFrame = 182; // Row 6 + Seraphim 30f Archangel Wings!
-    } else if (heroId === 'mage') {
+    } else if (dodgeStyle === 'mage') {
       speedMult = 1.12;
       initFrame = 180; // Row 6 Solar Phoenix Fire-Blink!
     } else if (heroId === 'archer') {
       speedMult = 1.12;
       initFrame = 244; // Row 8 Sylvan Zephyr Wind-Vault!
-    } else if (heroId === 'reaper') {
+    } else if (heroId === 'archer_ex') {
+      speedMult = 1.14;
+      initFrame = 183; // Standard Row 6 EX Astral Zephyr Vault!
+    } else if (dodgeStyle === 'reaper') {
       speedMult = 1.12;
       initFrame = 183; // Row 6 Abyssal Wraith Shadow-Shift!
-    } else if (heroId === 'chronomancer') {
+    } else if (dodgeStyle === 'chronomancer') {
       speedMult = 1.14;
       initFrame = 182; // Row 6 Horological Time-Warp!
     } else if (heroId === 'warrior') {
@@ -1967,10 +1977,10 @@ export class AdventureManager {
     } else if (heroId === 'warrior_ex') {
       speedMult = 1.15;
       initFrame = 183; // Row 6 Exvius Sword-Drag Flash-Step Blitz!
-    } else if (heroId === 'ronin') {
+    } else if (dodgeStyle === 'ronin') {
       speedMult = 1.16;
       initFrame = 185; // Row 6 Lightning Suriashi Slide!
-    } else if (heroId === 'titan') {
+    } else if (dodgeStyle === 'titan') {
       speedMult = 1.08;
       initFrame = 183; // Row 6 Molten Bull-Rush Stride!
     }
@@ -1993,7 +2003,7 @@ export class AdventureManager {
     const vfx = this.game?.vfx;
 
     // Trigger each champion's signature non-attacking Dodge Shaders, Wings, Thrusters & SFX (0 projectiles / 0 damage!)
-    switch (heroId) {
+    switch (dodgeStyle) {
       case 'valkyrie': {
         // Freyja (`GLIDE` — Wings Icon): Sovereign Winged Glide + 6-Pinion Valkyrie Light-Wings & Feather Slipstream!
         audio?.play?.('dash_whoosh', player.x);
@@ -2218,6 +2228,8 @@ export class AdventureManager {
     }
 
     const heroId = player.heroId || 'mage';
+    const isExHero = heroId.endsWith('_ex');
+    const dodgeStyle = heroId === 'warrior_ex' ? 'warrior_ex' : isExHero ? heroId.slice(0, -3) : heroId;
     player._advPureDodgeTimer = (player._advPureDodgeTimer || 0) + dt;
     const dur = player._advPureDodgeDur || 0.28;
     const u = Math.min(1, player._advPureDodgeTimer / dur);
@@ -2225,7 +2237,7 @@ export class AdventureManager {
     // Hero-specific velocity curve (Lyra SKATE glides smoothly with minimal friction; THRUST/SURIASHI burst fast!)
     const speedMult = player._advDodgeSpeedMult || 1.08;
     const speedScale =
-      heroId === 'icemage'
+      dodgeStyle === 'icemage'
         ? speedMult * (1.24 - 0.28 * u)
         : speedMult * 1.36 * (1 - 0.56 * u * u);
     player.x += (player._advPureDodgeDirX || 0) * 580 * speedScale * dt;
@@ -2236,28 +2248,34 @@ export class AdventureManager {
     if (heroId === 'valkyrie') {
       liftY = Math.sin(u * Math.PI) * 30;
       player._advDodgeFrameOverride = 124 + Math.min(7, Math.floor(u * 8));
-    } else if (heroId === 'priestess') {
+    } else if (heroId === 'valkyrie_ex') {
+      liftY = Math.sin(u * Math.PI) * 28;
+      player._advDodgeFrameOverride = 183 + Math.min(23, Math.floor(u * 24));
+    } else if (dodgeStyle === 'priestess') {
       player.isAngelicAscent = true;
       liftY = Math.sin(u * Math.PI) * 26;
       player._advDodgeFrameOverride = 182 + Math.min(23, Math.floor(u * 24));
     } else if (heroId === 'archer') {
       liftY = Math.sin(u * Math.PI) * 34;
       player._advDodgeFrameOverride = 244 + Math.min(21, Math.floor(u * 22));
-    } else if (heroId === 'android') {
+    } else if (heroId === 'archer_ex') {
+      liftY = Math.sin(u * Math.PI) * 30;
+      player._advDodgeFrameOverride = 183 + Math.min(23, Math.floor(u * 24));
+    } else if (dodgeStyle === 'android') {
       liftY = Math.sin(u * Math.PI) * 14;
       player._advDodgeFrameOverride = 184 + Math.min(21, Math.floor(u * 22));
-    } else if (heroId === 'mage') {
+    } else if (dodgeStyle === 'mage') {
       liftY = Math.sin(u * Math.PI) * 16;
       player.wraithAlpha = u > 0.16 && u < 0.64 ? 0.34 : 1.0;
       player._advDodgeFrameOverride = 180 + Math.min(28, Math.floor(u * 29));
-    } else if (heroId === 'icemage') {
+    } else if (dodgeStyle === 'icemage') {
       liftY = Math.sin(u * Math.PI) * 4;
       player._advDodgeFrameOverride = 182 + Math.min(24, Math.floor(u * 25));
-    } else if (heroId === 'reaper') {
+    } else if (dodgeStyle === 'reaper') {
       liftY = Math.sin(u * Math.PI) * 10;
       player.wraithAlpha = u < 0.88 ? 0.34 : 1.0;
       player._advDodgeFrameOverride = 183 + Math.min(23, Math.floor(u * 24));
-    } else if (heroId === 'chronomancer') {
+    } else if (dodgeStyle === 'chronomancer') {
       liftY = Math.sin(u * Math.PI) * 8;
       player._advDodgeFrameOverride = 182 + Math.min(24, Math.floor(u * 25));
     } else if (heroId === 'warrior') {
@@ -2266,7 +2284,7 @@ export class AdventureManager {
     } else if (heroId === 'warrior_ex') {
       liftY = 0;
       player._advDodgeFrameOverride = 183 + Math.min(23, Math.floor(u * 24));
-    } else if (heroId === 'ronin') {
+    } else if (dodgeStyle === 'ronin') {
       liftY = 0;
       player._advDodgeFrameOverride = 185 + Math.min(20, Math.floor(u * 21));
     } else {
@@ -2283,7 +2301,7 @@ export class AdventureManager {
     player._advDodgeTrailAccum = (player._advDodgeTrailAccum || 0) + dt;
     if (player._advDodgeTrailAccum >= 0.032) {
       player._advDodgeTrailAccum = 0;
-      if (heroId === 'icemage') {
+      if (dodgeStyle === 'icemage') {
         this.pushHeroDodgeTrail(player, {
           kind: 'ice_track',
           layer: 'back',
@@ -2292,7 +2310,7 @@ export class AdventureManager {
           w: 32,
           maxLife: 0.36
         });
-      } else if (heroId === 'android') {
+      } else if (dodgeStyle === 'android') {
         this.pushHeroDodgeTrail(player, {
           kind: 'rocket_exhaust',
           layer: 'back',
@@ -2313,33 +2331,33 @@ export class AdventureManager {
           color: '#ff2e93',
           maxLife: 0.18
         });
-      } else if (heroId === 'valkyrie' || heroId === 'priestess') {
+      } else if (dodgeStyle === 'valkyrie' || dodgeStyle === 'priestess') {
         this.pushHeroDodgeTrail(player, {
           kind: 'feather_mote',
           layer: 'front',
           x: player.x - player.facing * 18,
           y: player.y - 86,
-          color: heroId === 'valkyrie' ? '#fbbf24' : '#fef08a',
+          color: dodgeStyle === 'valkyrie' ? '#fbbf24' : '#fef08a',
           maxLife: 0.30
         });
-      } else if (heroId === 'ronin' || heroId === 'warrior' || heroId === 'warrior_ex') {
+      } else if (dodgeStyle === 'ronin' || dodgeStyle === 'warrior' || dodgeStyle === 'warrior_ex') {
         this.pushHeroDodgeTrail(player, {
           kind: 'lightning_spark',
           layer: 'front',
           x: player.x - player.facing * 14,
-          y: player.groundY - (heroId === 'ronin' || heroId === 'warrior_ex' ? 14 : 52),
-          w: heroId === 'warrior_ex' ? 32 : 28,
-          color: heroId === 'ronin' ? '#38bdf8' : '#fde047',
+          y: player.groundY - (dodgeStyle === 'ronin' || dodgeStyle === 'warrior_ex' ? 14 : 52),
+          w: dodgeStyle === 'warrior_ex' ? 32 : 28,
+          color: dodgeStyle === 'ronin' ? '#38bdf8' : '#fde047',
           maxLife: 0.22
         });
-      } else if (heroId === 'titan' || heroId === 'mage') {
+      } else if (dodgeStyle === 'titan' || dodgeStyle === 'mage') {
         this.pushHeroDodgeTrail(player, {
           kind: 'magma_tread',
           layer: 'back',
           x: player.x - player.facing * 12,
           y: player.groundY - 2,
           w: 28,
-          color: heroId === 'titan' ? '#f59e0b' : '#fb923c',
+          color: dodgeStyle === 'titan' ? '#f59e0b' : '#fb923c',
           maxLife: 0.28
         });
       } else {
@@ -2350,7 +2368,7 @@ export class AdventureManager {
           y: player.y - 72,
           w: 28,
           h: 4,
-          color: heroId === 'reaper' ? '#a855f7' : heroId === 'archer' ? '#34d399' : '#2dd4bf',
+          color: dodgeStyle === 'reaper' ? '#a855f7' : dodgeStyle === 'archer' ? '#34d399' : '#2dd4bf',
           maxLife: 0.22
         });
       }
@@ -2364,12 +2382,14 @@ export class AdventureManager {
         player.spawnAfterimage?.(player.x, player.y, player.facing, 4, 4 + Math.min(7, Math.floor(u * 7)), 0.18);
       } else if (heroId === 'archer') {
         player.spawnAfterimage?.(player.x, player.y, player.facing, 8, 4 + Math.min(20, Math.floor(u * 20)), 0.18);
-      } else if (heroId === 'mage') {
-        player.spawnSolarEcho?.(player._advDodgeFrameOverride, 0.78, 0.20);
-      } else if (heroId === 'chronomancer') {
-        player.spawnTemporalEcho?.(player._advDodgeFrameOverride);
-      } else if (heroId === 'ronin') {
+      } else if (dodgeStyle === 'mage' && typeof player.spawnSolarEcho === 'function') {
+        player.spawnSolarEcho(player._advDodgeFrameOverride, 0.78, 0.20);
+      } else if (dodgeStyle === 'chronomancer' && typeof player.spawnTemporalEcho === 'function') {
+        player.spawnTemporalEcho(player._advDodgeFrameOverride);
+      } else if (dodgeStyle === 'ronin') {
         player.spawnAfterimage?.(player.x, player.groundY, player.facing, 6, col, 0.18, 0);
+      } else if (heroId === 'warrior_ex') {
+        player.spawnAfterimage?.(player.x, player.groundY, player.facing, 6, col, 0.18, 'gold');
       } else {
         player.spawnAfterimage?.(player.x, player.y, player.facing, 6, col, 0.18);
       }
@@ -2378,23 +2398,23 @@ export class AdventureManager {
     // Arrival rift flashes for Blink / Warp / Shadow-Shift champions
     if (!player._advDodgeArrivalDone && u >= 0.82) {
       player._advDodgeArrivalDone = true;
-      if (heroId === 'mage') {
+      if (dodgeStyle === 'mage') {
         player.fx?.spawn('arcaneBlinkRift', player.x, player.groundY, {
           light: 1.20,
           extra: { isArrival: true }
         });
-      } else if (heroId === 'chronomancer') {
+      } else if (dodgeStyle === 'chronomancer') {
         player.fx?.spawn('warpPortalPairRift', player.x, player.groundY - 92, {
           flip: player.facing < 0,
           light: 1.20,
           extra: { isArrival: true }
         });
-      } else if (heroId === 'reaper') {
+      } else if (dodgeStyle === 'reaper') {
         player.fx?.spawn('companionSummonRiftPortal', player.x, player.groundY - 4, {
           light: 1.16,
           extra: { radius: 24, isCrimson: true, customDuration: 0.24 }
         });
-      } else if (heroId === 'warrior' || heroId === 'warrior_ex') {
+      } else if (dodgeStyle === 'warrior' || dodgeStyle === 'warrior_ex') {
         player.fx?.spawn('blinkTeleportPillar', player.x, player.groundY, {
           maxDuration: 0.20,
           light: 1.14,
@@ -2890,7 +2910,7 @@ export class AdventureManager {
             if (isHackSlash) {
               if ((player.comboStep || 0) !== 0) {
                 this.autoCdMax = 0.36;
-                player.autoCooldown = player.heroId === 'warrior_ex' ? 0.015 : 0.03;
+                player.autoCooldown = player.heroId?.endsWith('_ex') ? 0.015 : 0.03;
               } else {
                 this.autoCdMax = 0.62;
                 player.autoCooldown = 0.62;
@@ -3237,7 +3257,7 @@ export class AdventureManager {
         if (isHns) {
           if ((player.comboStep || 0) !== 0) {
             this.autoCdMax = 0.34;
-            player.autoCooldown = player.heroId === 'warrior_ex' ? 0.015 : 0.03;
+            player.autoCooldown = player.heroId?.endsWith('_ex') ? 0.015 : 0.03;
           } else {
             this.autoCdMax = 0.36;
             player.autoCooldown = 0.34;

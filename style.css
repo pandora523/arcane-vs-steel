@@ -2483,6 +2483,108 @@ html, body {
   border: 1px solid rgba(212, 175, 55, 0.28);
 }
 
+/* Forged-Brass Darkforge Segmented Switcher: EX VERSION vs LEGACY VERSION */
+.roster-version-bar {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 3px;
+  background: linear-gradient(180deg, #0b101d 0%, #050811 100%);
+  border: 1.5px solid #6b5222;
+  outline: 1px solid #000;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.14), 0 4px 12px rgba(0, 0, 0, 0.72);
+}
+
+.roster-version-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px 8px;
+  background: linear-gradient(180deg, #131b2e 0%, #0a0f1c 100%);
+  border: 1px solid #2e3b52;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: left;
+  transition: filter 0.14s ease, border-color 0.14s ease, background 0.14s ease, transform 0.1s ease;
+}
+
+.roster-version-btn:hover,
+.roster-version-btn:focus-visible {
+  border-color: var(--bronze-lit);
+  color: var(--text-ivory);
+  filter: brightness(1.1);
+}
+
+.roster-version-btn:active {
+  transform: translateY(1px);
+}
+
+.roster-version-btn.active-version-tab {
+  background:
+    radial-gradient(ellipse 85% 75% at 50% 0%, rgba(250, 204, 21, 0.18) 0%, transparent 72%),
+    linear-gradient(180deg, #3b2a0b 0%, #1c1406 65%, #110c04 100%);
+  border-color: var(--bronze-lit);
+  color: var(--text-ivory);
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.36),
+    0 0 12px rgba(212, 175, 55, 0.24);
+}
+
+.roster-version-btn[data-roster-version="ex"].active-version-tab {
+  border-color: #facc15;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 249, 195, 0.42),
+    0 0 14px rgba(56, 189, 248, 0.22);
+}
+
+.roster-version-crest {
+  flex-shrink: 0;
+  display: block;
+}
+
+.roster-version-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.roster-version-main {
+  font-family: var(--font-pixel);
+  font-size: 0.32rem;
+  font-weight: normal;
+  letter-spacing: 0.05em;
+  color: inherit;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.roster-version-sub {
+  font-family: var(--font-pixel);
+  font-size: 0.22rem;
+  letter-spacing: 0.04em;
+  color: #8b9bb4;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.roster-version-btn.active-version-tab .roster-version-main {
+  color: #fef9c3;
+  text-shadow: 0 1px 0 #000;
+}
+
+.roster-version-btn.active-version-tab .roster-version-sub {
+  color: #facc15;
+}
+
+.roster-group-hidden,
+.champ-card[hidden] {
+  display: none !important;
+}
+
 .champion-grid {
   flex: 1;
   min-height: 0;
@@ -2511,9 +2613,23 @@ html, body {
   transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
 }
 
+/* Symmetrical 3-card bottom row centering on 4-column Desktop / Landscape (11 visible cards: 4 + 4 + 3) */
+.champ-card[data-grid-pos="9"] {
+  grid-column: 4 / span 6;
+}
+
+.champ-card[data-grid-pos="10"] {
+  grid-column: 10 / span 6;
+}
+
+.champ-card[data-grid-pos="11"] {
+  grid-column: 16 / span 6;
+}
+
+.champ-card[data-roster-group="ex"] .portrait-tile-frame,
 .champ-card.card-exvius .portrait-tile-frame {
   border-color: #eab308;
-  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.28);
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.26);
 }
 
 .champ-card:hover,
@@ -2976,16 +3092,92 @@ html, body {
   }
   .versus-layout {
     grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  html:not(.is-mobile-landscape) .step-panel-roster {
+    padding: 4px 5px 8px;
+  }
+  html:not(.is-mobile-landscape) .roster-draft-shell {
+    gap: 4px;
+    padding-bottom: 6px;
+  }
+  html:not(.is-mobile-landscape) .matchup-banner {
+    padding: 4px 6px;
+    gap: 3px;
+  }
+  html:not(.is-mobile-landscape) .slot-pill {
+    padding: 3px 6px;
+  }
+  html:not(.is-mobile-landscape) .slot-hero-name {
+    font-size: 0.31rem;
+  }
+  html:not(.is-mobile-landscape) .versus-center-col {
+    gap: 4px;
+  }
+  html:not(.is-mobile-landscape) .portrait-grid-label {
+    font-size: 0.24rem;
+    padding: 2px 4px;
+  }
+  html:not(.is-mobile-landscape) .roster-version-bar {
+    gap: 4px;
+    padding: 2px;
+  }
+  html:not(.is-mobile-landscape) .roster-version-btn {
+    padding: 4px 5px;
+    gap: 5px;
+  }
+  html:not(.is-mobile-landscape) .roster-version-main {
+    font-size: 0.27rem;
+  }
+  html:not(.is-mobile-landscape) .roster-version-sub {
+    font-size: 0.19rem;
+  }
+  html:not(.is-mobile-landscape) .champion-grid {
+    gap: 4px;
   }
   .champ-card {
     grid-column: span 8;
   }
+  html:not(.is-mobile-landscape) .champ-card {
+    padding: 3px 3px;
+    gap: 1px;
+  }
+  /* Symmetrical 2-card bottom row centering on 3-column Mobile Portrait (11 visible cards: 3 + 3 + 3 + 2) */
+  html:not(.is-mobile-landscape) .champ-card[data-grid-pos="9"] {
+    grid-column: span 8;
+  }
+  html:not(.is-mobile-landscape) .champ-card[data-grid-pos="10"] {
+    grid-column: 5 / span 8;
+  }
+  html:not(.is-mobile-landscape) .champ-card[data-grid-pos="11"] {
+    grid-column: 13 / span 8;
+  }
+  html:not(.is-mobile-landscape) .portrait-tile-frame {
+    width: 38px;
+    height: 38px;
+  }
+  html:not(.is-mobile-landscape) .champ-name {
+    font-size: 0.29rem;
+  }
+  html:not(.is-mobile-landscape) .champ-role {
+    font-size: 0.20rem;
+  }
+  html:not(.is-mobile-landscape) .assign-btn {
+    padding: 1px 2px;
+    font-size: 0.22rem;
+  }
   .landing-actions {
     grid-template-columns: 1fr 1fr;
+    gap: 4px;
   }
   .landing-cta-btn {
     grid-column: 1 / -1;
     order: -1;
+    padding: 5px 10px;
+  }
+  html:not(.is-mobile-landscape) .roster-nav-btn {
+    padding: 6px 8px;
+    font-size: 0.29rem;
   }
   .profile-hero-showcase {
     grid-template-columns: 108px minmax(0, 1fr);
@@ -3966,8 +4158,38 @@ html.is-mobile-landscape .versus-layout {
   gap: 6px;
 }
 
+html.is-mobile-landscape .roster-version-bar {
+  padding: 2px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .roster-version-btn {
+  padding: 3px 6px;
+  gap: 5px;
+}
+
+html.is-mobile-landscape .roster-version-main {
+  font-size: 0.26rem;
+}
+
+html.is-mobile-landscape .roster-version-sub {
+  font-size: 0.19rem;
+}
+
 html.is-mobile-landscape .champ-card {
   grid-column: span 6;
+}
+
+html.is-mobile-landscape .champ-card[data-grid-pos="9"] {
+  grid-column: 4 / span 6;
+}
+
+html.is-mobile-landscape .champ-card[data-grid-pos="10"] {
+  grid-column: 10 / span 6;
+}
+
+html.is-mobile-landscape .champ-card[data-grid-pos="11"] {
+  grid-column: 16 / span 6;
 }
 
 html.is-mobile-landscape .landing-actions {

@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps113';
-import { PixelForge } from './PixelForge.js?v=30fps113';
+import { PixelFont } from './PixelFont.js?v=30fps114';
+import { PixelForge } from './PixelForge.js?v=30fps114';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -10,7 +10,27 @@ const LIGHT_RGB_TEAL = { nr: 0.18, ng: 0.86, nb: 0.78 };
 const LIGHT_RGB_GOLD = { nr: 1.0, ng: 0.88, nb: 0.28 };
 const LIGHT_RGB_ORANGE = { nr: 1.0, ng: 0.52, nb: 0.16 };
 
+function baseHeroKey(id) {
+  return typeof id === 'string' && id.endsWith('_ex') ? id.slice(0, -3) : id || '';
+}
+
 export class VFXManager {
+  resolveHeroVfx(assets, baseKey, preferredHeroId = null, ensure = false) {
+    if (!assets) return null;
+    if (preferredHeroId && assets[preferredHeroId]?.vfx) {
+      const pImg = assets[preferredHeroId].vfx;
+      if (ensure) PixelForge.ensureImage?.(pImg);
+      if (pImg.complete && (pImg.naturalWidth || pImg.width)) return pImg;
+      if (ensure) return pImg;
+    }
+    const exImg = assets[`${baseKey}_ex`]?.vfx || null;
+    const legImg = assets[baseKey]?.vfx || null;
+    if (exImg && exImg.complete && (exImg.naturalWidth || exImg.width)) return exImg;
+    if (legImg && legImg.complete && (legImg.naturalWidth || legImg.width)) return legImg;
+    const fallback = preferredHeroId?.endsWith('_ex') ? exImg || legImg : legImg || exImg;
+    if (ensure && fallback) PixelForge.ensureImage?.(fallback);
+    return fallback;
+  }
   constructor() {
     this.particles = [];
     this.shockwaves = [];
@@ -158,12 +178,14 @@ export class VFXManager {
       life: 0,
       maxLife: isCrit ? 0.44 : 0.32
     });
+    const baseHero = baseHeroKey(heroId);
     const isDecluttered =
-      heroId === 'titan' ||
-      heroId === 'reaper' ||
-      heroId === 'archer' ||
-      heroId === 'icemage' ||
-      heroId === 'android';
+      heroId.endsWith('_ex') ||
+      baseHero === 'titan' ||
+      baseHero === 'reaper' ||
+      baseHero === 'archer' ||
+      baseHero === 'icemage' ||
+      baseHero === 'android';
     if (isDecluttered) {
       // Crisp, readable hit sparks without burying the 5 custom-shader heroes in double-layered confetti
       this.spawnBurst(x, y, isCrit ? 6 : 3, col, isCrit ? 220 : 175, {
@@ -567,12 +589,14 @@ export class VFXManager {
     });
 
     const hId = fighter?.heroId || '';
+    const baseHId = baseHeroKey(hId);
     const isDecluttered =
-      hId === 'titan' ||
-      hId === 'reaper' ||
-      hId === 'archer' ||
-      hId === 'icemage' ||
-      hId === 'android';
+      hId.endsWith('_ex') ||
+      baseHId === 'titan' ||
+      baseHId === 'reaper' ||
+      baseHId === 'archer' ||
+      baseHId === 'icemage' ||
+      baseHId === 'android';
 
     // Immediate special-cast burst around the head & shoulders (skip circular shockwave ring for abyssal Reaper & chrono)
     if (!isDecluttered && theme !== 'abyssal' && theme !== 'chrono') {
@@ -604,12 +628,14 @@ export class VFXManager {
         continue;
       }
       const caHeroId = ca.fighter.heroId || '';
+      const caBaseHero = baseHeroKey(caHeroId);
       const caDecluttered =
-        caHeroId === 'titan' ||
-        caHeroId === 'reaper' ||
-        caHeroId === 'archer' ||
-        caHeroId === 'icemage' ||
-        caHeroId === 'android';
+        caHeroId.endsWith('_ex') ||
+        caBaseHero === 'titan' ||
+        caBaseHero === 'reaper' ||
+        caBaseHero === 'archer' ||
+        caBaseHero === 'icemage' ||
+        caBaseHero === 'android';
       if (caDecluttered) {
         if (Math.random() < (ca.isUltimate ? 0.35 : 0.18)) {
           this.spawnParticle({
@@ -1087,23 +1113,24 @@ export class VFXManager {
         64,
         fGy
       );
+      const fBaseHero = baseHeroKey(f.heroId);
       // Seraphina's active Cathedral Rose Halo & Seraphim Wings emit intense Celestial Gold + Emerald Grace light!
-      if (f.heroId === 'priestess' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isAngelicAscent)) {
+      if (fBaseHero === 'priestess' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isAngelicAscent)) {
         pushLight(f.x, f.y - 124, f.state === 'ULTIMATE' ? 385 : 310, 'gold', f.state === 'ULTIMATE' ? 1.98 : 1.75, 90, fGy);
         pushLight(f.x, f.y - 95, 240, 'emerald', 1.35, 76, fGy);
       }
       // Torgar's World-Breaker War-Hammer & Ragnarok World-Forge emit Molten Gold + Emerald Jade Runic light!
-      if (f.heroId === 'titan' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isBulwarkActive)) {
+      if (fBaseHero === 'titan' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isBulwarkActive)) {
         pushLight(f.x, f.y - 110, f.state === 'ULTIMATE' ? 390 : 300, 'gold', f.state === 'ULTIMATE' ? 1.95 : 1.70, 88, fGy);
         pushLight(f.x + f.facing * 32, f.y - 82, 235, 'emerald', 1.40, 74, fGy);
       }
       // Kaze-Maru's Thunder-Odachi & Susanoo Storm-God Avatar emit Electric Indigo + Thunder-Cyan light!
-      if (f.heroId === 'ronin' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
+      if (fBaseHero === 'ronin' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
         pushLight(f.x, f.y - 115, f.state === 'ULTIMATE' ? 395 : 305, 'indigo', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88, fGy);
         pushLight(f.x + f.facing * 34, f.y - 84, 240, 'cyan', 1.45, 76, fGy);
       }
       // Freyja's Gungnir Dragon-Lance & Bahamut Cataclysm emit Dragonfire Crimson + Imperial Gold light!
-      if (f.heroId === 'valkyrie' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
+      if (fBaseHero === 'valkyrie' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
         pushLight(f.x, f.y - 118, f.state === 'ULTIMATE' ? 395 : 305, 'crimson', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88, fGy);
         pushLight(f.x + f.facing * 34, f.y - 84, 245, 'gold', 1.48, 76, fGy);
       }
@@ -1316,7 +1343,9 @@ export class VFXManager {
       const bands = 32;
       const totalH = Math.round(tor.height * 1.04);
       const bandH = Math.max(6, Math.ceil(totalH / bands));
-      const vfxSheet = isSteel ? assets.warrior?.vfx : assets.archer?.vfx;
+      const vfxSheet = isSteel
+        ? this.resolveHeroVfx(assets, 'warrior', tor.owner?.heroId || tor.heroId)
+        : this.resolveHeroVfx(assets, 'archer', tor.owner?.heroId || tor.heroId);
       const torCol = Math.floor(tor.life * 30) % 30;
       const torSx = torCol * 208;
       const torSy = 416;
@@ -1469,9 +1498,10 @@ export class VFXManager {
           ctx.drawImage(glow, baseX - 190, baseY - 340, 380, 380);
         }
 
-        const mageVfx = assets.mage?.vfx;
-        const priestVfx = assets.priestess?.vfx;
-        const reaperVfx = assets.reaper?.vfx;
+        const pilOwnerHeroId = pil.owner?.heroId || pil.heroId || null;
+        const mageVfx = this.resolveHeroVfx(assets, 'mage', pilOwnerHeroId);
+        const priestVfx = this.resolveHeroVfx(assets, 'priestess', pilOwnerHeroId);
+        const reaperVfx = this.resolveHeroVfx(assets, 'reaper', pilOwnerHeroId);
         const flipWave = Math.floor(pil.life * 15) % 2 === 0 ? 1 : -1;
         const pilFrac = Math.min(1, Math.max(0, (pil.life - pil.delay) / Math.max(0.1, pil.maxLife - pil.delay)));
         const pilCol = Math.min(29, Math.floor(pilFrac * 30));
@@ -1650,8 +1680,9 @@ export class VFXManager {
       const sy = Math.round(s.y / 2) * 2;
 
       ctx.save();
+      const strikeHeroId = s.owner?.heroId || s.heroId || null;
       if (s.type === 'runeblade') {
-        const warriorVfx = assets.warrior?.vfx;
+        const warriorVfx = this.resolveHeroVfx(assets, 'warrior', strikeHeroId);
         const bladeSz = s.impacted ? 236 : 220;
         const col = !s.impacted
           ? Math.floor((s.flightTime || 0) * 30) % 12
@@ -1673,7 +1704,7 @@ export class VFXManager {
           isReflection
         );
       } else if (s.type === 'runic_anvil') {
-        const titanVfx = assets.titan?.vfx;
+        const titanVfx = this.resolveHeroVfx(assets, 'titan', strikeHeroId);
         const anvilSz = s.impacted ? 232 : 212;
         const col = !s.impacted
           ? Math.floor((s.flightTime || 0) * 30) % 12
@@ -1695,7 +1726,7 @@ export class VFXManager {
           isReflection
         );
       } else if (s.type === 'holy_spear') {
-        const priestVfx = assets.priestess?.vfx;
+        const priestVfx = this.resolveHeroVfx(assets, 'priestess', strikeHeroId);
         const spearSz = s.impacted ? 212 : 196;
         const col = !s.impacted
           ? Math.floor((s.flightTime || 0) * 30) % 12
@@ -1717,7 +1748,7 @@ export class VFXManager {
           isReflection
         );
       } else if (s.type === 'raijin_odachi') {
-        const roninVfx = assets.ronin?.vfx;
+        const roninVfx = this.resolveHeroVfx(assets, 'ronin', strikeHeroId);
         const odachiSz = s.impacted ? 236 : 216;
         const col = !s.impacted
           ? Math.floor((s.flightTime || 0) * 30) % 12
@@ -1739,7 +1770,7 @@ export class VFXManager {
           isReflection
         );
       } else if (s.type === 'gungnir_lance') {
-        const valkVfx = assets.valkyrie?.vfx;
+        const valkVfx = this.resolveHeroVfx(assets, 'valkyrie', strikeHeroId);
         const lanceSz = s.impacted ? 238 : 218;
         const col = !s.impacted
           ? Math.floor((s.flightTime || 0) * 30) % 12
@@ -1761,7 +1792,7 @@ export class VFXManager {
           isReflection
         );
       } else {
-        const archerVfx = assets.archer?.vfx;
+        const archerVfx = this.resolveHeroVfx(assets, 'archer', strikeHeroId);
         if (!s.impacted) {
           // Row 1 F00..F11: 30fps Descending Starfall Comet-Arrow
           const col = Math.floor((s.flightTime || 0) * 30) % 12;
@@ -1908,10 +1939,11 @@ export class VFXManager {
         b.color === '#9333ea' ||
         b.color === '#f43f5e';
       const isFireBeam = b.color === '#fb923c' || b.color === '#ea580c' || b.color === '#f97316';
-      const archerVfx = assets.archer?.vfx;
-      const priestVfx = assets.priestess?.vfx;
-      const reaperVfx = assets.reaper?.vfx;
-      const mageVfx = assets.mage?.vfx;
+      const beamOwnerHeroId = b.owner?.heroId || b.heroId || null;
+      const archerVfx = this.resolveHeroVfx(assets, 'archer', beamOwnerHeroId);
+      const priestVfx = this.resolveHeroVfx(assets, 'priestess', beamOwnerHeroId);
+      const reaperVfx = this.resolveHeroVfx(assets, 'reaper', beamOwnerHeroId);
+      const mageVfx = this.resolveHeroVfx(assets, 'mage', beamOwnerHeroId);
       const bCol = Math.min(29, Math.floor(t * 30));
 
       if (isEmeraldBeam && archerVfx) {
@@ -2040,30 +2072,29 @@ export class VFXManager {
       const fade = Math.min(1, (1 - t) * 2.5);
       const bx = Math.round(cs.x / 2) * 2;
       const by = Math.round(cs.groundY / 2) * 2;
+      const csHero = baseHeroKey(cs.heroId || cs.owner?.heroId || '');
+      const csPrefHeroId = cs.owner?.heroId || cs.heroId || null;
       const isTitanMonolith =
-        cs.heroId === 'titan' ||
-        cs.owner?.heroId === 'titan' ||
+        csHero === 'titan' ||
         cs.color === '#f59e0b' ||
         cs.color === '#10b981' ||
         cs.color === '#d97706';
       const isRoninPillar =
-        cs.heroId === 'ronin' ||
-        cs.owner?.heroId === 'ronin' ||
+        csHero === 'ronin' ||
         cs.color === '#818cf8' ||
         cs.color === '#6366f1';
       const isValkyrieObelisk =
-        cs.heroId === 'valkyrie' ||
-        cs.owner?.heroId === 'valkyrie' ||
+        csHero === 'valkyrie' ||
         cs.color === '#f43f5e' ||
         cs.color === '#be123c' ||
-        (cs.color === '#fbbf24' && cs.owner?.heroId === 'valkyrie');
+        (cs.color === '#fbbf24' && csHero === 'valkyrie');
       const spireVfx = isRoninPillar
-        ? assets.ronin?.vfx
+        ? this.resolveHeroVfx(assets, 'ronin', csPrefHeroId)
         : isValkyrieObelisk
-          ? assets.valkyrie?.vfx
+          ? this.resolveHeroVfx(assets, 'valkyrie', csPrefHeroId)
           : isTitanMonolith
-            ? assets.titan?.vfx
-            : assets.warrior?.vfx;
+            ? this.resolveHeroVfx(assets, 'titan', csPrefHeroId)
+            : this.resolveHeroVfx(assets, 'warrior', csPrefHeroId);
       const spireGlowCol = isRoninPillar
         ? '#818cf8'
         : isValkyrieObelisk
@@ -2106,7 +2137,7 @@ export class VFXManager {
       const rad = Math.max(24, Math.round((sn.maxRadius * (0.45 + 0.55 * env)) / 4) * 4);
       const sx = Math.round(sn.x / 2) * 2;
       const sy = Math.round(sn.y / 2) * 2;
-      const mageVfx = assets.mage?.vfx;
+      const mageVfx = this.resolveHeroVfx(assets, 'mage', sn.owner?.heroId || sn.heroId);
 
       ctx.save();
       if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
@@ -2168,22 +2199,25 @@ export class VFXManager {
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
       ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.92);
+      const slashBaseHero = baseHeroKey(s.heroId || s.owner?.heroId || '');
+      const slashPrefHeroId = s.heroId || s.owner?.heroId || null;
+      const titanSlashSheet = this.resolveHeroVfx(assets, 'titan', slashPrefHeroId);
       const isRoninSlash =
-        s.heroId === 'ronin' ||
+        slashBaseHero === 'ronin' ||
         s.color === '#818cf8' ||
         s.color === '#6366f1' ||
         s.color === '#a5b4fc';
       const isValkyrieSlash =
-        s.heroId === 'valkyrie' ||
+        slashBaseHero === 'valkyrie' ||
         s.color === '#f43f5e' ||
         s.color === '#be123c' ||
         s.color === '#e11d48';
       const isTitanSlash =
-        s.heroId === 'titan' ||
+        slashBaseHero === 'titan' ||
         s.color === '#f59e0b' ||
         s.color === '#d97706' ||
         s.color === '#b45309' ||
-        (s.color === '#fbbf24' && assets.titan?.vfx?.complete);
+        (s.color === '#fbbf24' && titanSlashSheet?.complete);
       const isEmerald = s.color === '#10b981' || s.color === '#34d399' || s.color === '#6ee7b7';
       const isAbyssal =
         s.color === '#c084fc' ||
@@ -2201,33 +2235,35 @@ export class VFXManager {
         const sy = Math.round(s.y + Math.sin(midAng) * (isFullCircle ? rad * 0.25 : rad * 0.72));
         const slashSize = Math.round(Math.min(196, Math.max(106, s.radius * 1.32)) * (1.06 - t * 0.18));
 
-        let sheet = assets.warrior?.vfx;
+        let sheet = this.resolveHeroVfx(assets, 'warrior', slashPrefHeroId);
         const slashCol = Math.min(29, Math.floor(t * 30));
         const cropX = slashCol * 208;
         const cropY = 832;
-        if (isRoninSlash && assets.ronin?.vfx?.complete) {
-          sheet = assets.ronin.vfx;
-        } else if (isValkyrieSlash && assets.valkyrie?.vfx?.complete) {
-          sheet = assets.valkyrie.vfx;
-        } else if (isTitanSlash && assets.titan?.vfx?.complete) {
-          sheet = assets.titan.vfx;
+        const roninSlashSheet = isRoninSlash ? this.resolveHeroVfx(assets, 'ronin', slashPrefHeroId) : null;
+        const valkSlashSheet = isValkyrieSlash ? this.resolveHeroVfx(assets, 'valkyrie', slashPrefHeroId) : null;
+        if (isRoninSlash && roninSlashSheet?.complete) {
+          sheet = roninSlashSheet;
+        } else if (isValkyrieSlash && valkSlashSheet?.complete) {
+          sheet = valkSlashSheet;
+        } else if (isTitanSlash && titanSlashSheet?.complete) {
+          sheet = titanSlashSheet;
         } else if (isAbyssal) {
-          sheet = assets.reaper?.vfx;
+          sheet = this.resolveHeroVfx(assets, 'reaper', slashPrefHeroId);
         } else if (isEmerald) {
-          sheet = assets.archer?.vfx;
+          sheet = this.resolveHeroVfx(assets, 'archer', slashPrefHeroId);
         } else if (isRadiant) {
-          sheet = assets.priestess?.vfx;
+          sheet = this.resolveHeroVfx(assets, 'priestess', slashPrefHeroId);
         } else if (isChrono) {
-          sheet = assets.chronomancer?.vfx;
+          sheet = this.resolveHeroVfx(assets, 'chronomancer', slashPrefHeroId);
         } else if (
           s.color === '#fb923c' ||
           s.color === '#ea580c' ||
           s.color === '#f97316' ||
           s.color === '#dc2626'
         ) {
-          sheet = assets.mage?.vfx;
+          sheet = this.resolveHeroVfx(assets, 'mage', slashPrefHeroId);
         } else {
-          sheet = assets.warrior?.vfx;
+          sheet = this.resolveHeroVfx(assets, 'warrior', slashPrefHeroId);
         }
 
         PixelForge.ensureImage?.(sheet);
@@ -2318,8 +2354,9 @@ export class VFXManager {
         ctx.restore();
       }
 
+      const projHeroId = proj.owner?.heroId || proj.heroId || null;
       if (proj.isMeteor) {
-        const mageVfx = assets.mage?.vfx;
+        const mageVfx = this.resolveHeroVfx(assets, 'mage', projHeroId);
         const ang = Math.atan2(proj.vy, proj.vx || 1);
         if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
           const mSize = 156;
@@ -2345,7 +2382,7 @@ export class VFXManager {
           ctx.restore();
         }
       } else if (proj.type === 'forge_wave') {
-        const titanVfx = assets.titan?.vfx;
+        const titanVfx = this.resolveHeroVfx(assets, 'titan', projHeroId);
         const dir = Math.sign(proj.vx) || 1;
         ctx.save();
         ctx.translate(px, py);
@@ -2374,7 +2411,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'clock_gear') {
-        const vfxSheet = assets.chronomancer?.vfx;
+        const vfxSheet = this.resolveHeroVfx(assets, 'chronomancer', projHeroId);
         const dir = Math.sign(proj.vx) || 1;
         ctx.save();
         ctx.translate(px, py);
@@ -2403,7 +2440,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'phantom_scythe') {
-        const reaperVfx = assets.reaper?.vfx;
+        const reaperVfx = this.resolveHeroVfx(assets, 'reaper', projHeroId);
         const dir = Math.sign(proj.vx) || 1;
         ctx.save();
         ctx.translate(px, py);
@@ -2429,7 +2466,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'blade_wave') {
-        const warriorVfx = assets.warrior?.vfx;
+        const warriorVfx = this.resolveHeroVfx(assets, 'warrior', projHeroId);
         const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
@@ -2455,8 +2492,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'ronin_slash' || proj.type === 'storm_wave') {
-        const roninVfx = assets.ronin?.vfx;
-        PixelForge.ensureImage?.(roninVfx);
+        const roninVfx = this.resolveHeroVfx(assets, 'ronin', projHeroId, true);
         const dir = (proj.vx || 1) >= 0 ? 1 : -1;
         const qx = Math.round(proj.x / 2) * 2;
         const qy = Math.round(proj.y / 2) * 2;
@@ -2570,7 +2606,7 @@ export class VFXManager {
 
         ctx.restore();
       } else if (proj.type === 'dragon_lance') {
-        const valkVfx = assets.valkyrie?.vfx;
+        const valkVfx = this.resolveHeroVfx(assets, 'valkyrie', projHeroId);
         const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
@@ -2599,7 +2635,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'cryo_shard') {
-        const iceVfx = assets.icemage?.vfx;
+        const iceVfx = this.resolveHeroVfx(assets, 'icemage', projHeroId);
         const dir = (proj.vx || 1) >= 0 ? 1 : -1;
         const qx = Math.round(px / 4) * 4;
         const qy = Math.round(py / 4) * 4;
@@ -2649,7 +2685,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'cyber_disc') {
-        const androidVfx = assets.android?.vfx;
+        const androidVfx = this.resolveHeroVfx(assets, 'android', projHeroId);
         const dir = proj.vx >= 0 ? 1 : -1;
         const qx = Math.round(px / 4) * 4;
         const qy = Math.round(py / 4) * 4;
@@ -2685,7 +2721,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'arrow') {
-        const archerVfx = assets.archer?.vfx;
+        const archerVfx = this.resolveHeroVfx(assets, 'archer', projHeroId);
         const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
@@ -2716,7 +2752,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else if (proj.type === 'holy_light') {
-        const priestessVfx = assets.priestess?.vfx;
+        const priestessVfx = this.resolveHeroVfx(assets, 'priestess', projHeroId);
         const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
@@ -2742,7 +2778,7 @@ export class VFXManager {
         }
         ctx.restore();
       } else {
-        const mageVfx = assets.mage?.vfx;
+        const mageVfx = this.resolveHeroVfx(assets, 'mage', projHeroId);
         const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
@@ -2974,11 +3010,37 @@ export class VFXManager {
       const sealCol = Math.floor(ca.life * 30) % 30;
       ctx.translate(hx, hy);
 
-      if (ca.theme === 'steel' && assets.warrior?.vfx?.complete) {
+      const sealHeroId = ca.fighter?.heroId || null;
+      const sealWarriorVfx =
+        ca.theme === 'steel' || ca.theme === 'exvius'
+          ? this.resolveHeroVfx(assets, 'warrior', sealHeroId)
+          : null;
+      const sealArcherVfx =
+        ca.theme === 'emerald' ? this.resolveHeroVfx(assets, 'archer', sealHeroId) : null;
+      const sealMageVfx =
+        ca.theme === 'arcane' ? this.resolveHeroVfx(assets, 'mage', sealHeroId) : null;
+      const sealPriestVfx =
+        ca.theme === 'radiant' ? this.resolveHeroVfx(assets, 'priestess', sealHeroId) : null;
+      const sealReaperVfx =
+        ca.theme === 'abyssal' ? this.resolveHeroVfx(assets, 'reaper', sealHeroId) : null;
+      const sealChronoVfx =
+        ca.theme === 'chrono' ? this.resolveHeroVfx(assets, 'chronomancer', sealHeroId) : null;
+      const sealTitanVfx =
+        ca.theme === 'forge' ? this.resolveHeroVfx(assets, 'titan', sealHeroId) : null;
+      const sealRoninVfx =
+        ca.theme === 'storm' ? this.resolveHeroVfx(assets, 'ronin', sealHeroId) : null;
+      const sealValkVfx =
+        ca.theme === 'crimson' ? this.resolveHeroVfx(assets, 'valkyrie', sealHeroId) : null;
+      const sealIceVfx =
+        ca.theme === 'glacial' ? this.resolveHeroVfx(assets, 'icemage', sealHeroId) : null;
+      const sealAndroidVfx =
+        ca.theme === 'cyber' ? this.resolveHeroVfx(assets, 'android', sealHeroId) : null;
+
+      if ((ca.theme === 'steel' || ca.theme === 'exvius') && sealWarriorVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.warrior.vfx,
+          sealWarriorVfx,
           sealCol * 208,
           624,
           208,
@@ -2991,12 +3053,12 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'emerald' && assets.archer?.vfx?.complete) {
+      } else if (ca.theme === 'emerald' && sealArcherVfx?.complete) {
         ctx.scale(ca.fighter.facing || 1, 1);
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.archer.vfx,
+          sealArcherVfx,
           sealCol * 208,
           832,
           208,
@@ -3009,11 +3071,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'arcane' && assets.mage?.vfx?.complete) {
+      } else if (ca.theme === 'arcane' && sealMageVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.mage.vfx,
+          sealMageVfx,
           sealCol * 208,
           832,
           208,
@@ -3026,11 +3088,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'radiant' && assets.priestess?.vfx?.complete) {
+      } else if (ca.theme === 'radiant' && sealPriestVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.priestess.vfx,
+          sealPriestVfx,
           sealCol * 208,
           624,
           208,
@@ -3043,11 +3105,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'abyssal' && assets.reaper?.vfx?.complete) {
+      } else if (ca.theme === 'abyssal' && sealReaperVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.reaper.vfx,
+          sealReaperVfx,
           sealCol * 208,
           832,
           208,
@@ -3060,11 +3122,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'chrono' && assets.chronomancer?.vfx?.complete) {
+      } else if (ca.theme === 'chrono' && sealChronoVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.chronomancer.vfx,
+          sealChronoVfx,
           sealCol * 208,
           624,
           208,
@@ -3077,11 +3139,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'forge' && assets.titan?.vfx?.complete) {
+      } else if (ca.theme === 'forge' && sealTitanVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.titan.vfx,
+          sealTitanVfx,
           sealCol * 208,
           624,
           208,
@@ -3094,11 +3156,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'storm' && assets.ronin?.vfx?.complete) {
+      } else if (ca.theme === 'storm' && sealRoninVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.ronin.vfx,
+          sealRoninVfx,
           sealCol * 208,
           624,
           208,
@@ -3111,11 +3173,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'crimson' && assets.valkyrie?.vfx?.complete) {
+      } else if (ca.theme === 'crimson' && sealValkVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.valkyrie.vfx,
+          sealValkVfx,
           sealCol * 208,
           624,
           208,
@@ -3128,11 +3190,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'glacial' && assets.icemage?.vfx?.complete) {
+      } else if (ca.theme === 'glacial' && sealIceVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.icemage.vfx,
+          sealIceVfx,
           sealCol * 208,
           624,
           208,
@@ -3145,11 +3207,11 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'cyber' && assets.android?.vfx?.complete) {
+      } else if (ca.theme === 'cyber' && sealAndroidVfx?.complete) {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          assets.android.vfx,
+          sealAndroidVfx,
           sealCol * 208,
           624,
           208,

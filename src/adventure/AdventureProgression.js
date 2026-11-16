@@ -352,11 +352,196 @@ export const HERO_SKILL_TREE_THEMES = {
       aegis_2: 'VECTOR THRUSTERS',
       aegis_3: 'SELF-REPAIR MATRIX'
     }
+  },
+  mage_ex: {
+    branches: {
+      wrath: { title: 'HELIOS SPELL-BLADE', sub: 'SOLAR EDGE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'CORONA SANCTUM', sub: 'ECLIPSE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'PHOENIX MANTLE', sub: 'SOLAR WARD & BLINK', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'HELIOS FLARE EDGE',
+      wrath_2: 'CORONA RESONANCE',
+      wrath_3: 'SPELL-BLADE MASTERY',
+      astral_1: 'PROMINENCE HARVESTER',
+      astral_2: 'SOLAR OVERDRIVE',
+      astral_3: 'METEOR SOVEREIGN',
+      aegis_1: 'SUNFIRE AEGIS',
+      aegis_2: 'PHOENIX FLASH-BLINK',
+      aegis_3: 'UNDYING HELIOS'
+    }
+  },
+  priestess_ex: {
+    branches: {
+      wrath: { title: 'SERAPHIC LANCE', sub: 'SMITE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'CATHEDRAL CHOIR', sub: 'SPEARS & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'ARCHANGEL PINIONS', sub: 'HALO WARD & WINGS', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'RADIANT JUDGEMENT',
+      wrath_2: 'BENEDICTION FLOW',
+      wrath_3: 'SERAPHIC MASTERY',
+      astral_1: 'SANCTUARY HARVESTER',
+      astral_2: 'DIVINE CHORUS',
+      astral_3: 'SOVEREIGN OF GRACE',
+      aegis_1: 'STAINED-GLASS AEGIS',
+      aegis_2: 'SIX-WINGED GLIDE',
+      aegis_3: 'IMMORTAL COVENANT'
+    }
+  },
+  chronomancer_ex: {
+    branches: {
+      wrath: { title: 'PARADOX GLAIVE', sub: 'SCHISM & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'HOROLOGY ENGINE', sub: 'STASIS & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'CAUSALITY VEIL', sub: 'REWIND & WARP', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CHRONO-GEAR LANCE',
+      wrath_2: 'PENDULUM MOMENTUM',
+      wrath_3: 'PARADOX MASTERY',
+      astral_1: 'EPOCH HARVESTER',
+      astral_2: 'XII CLOCKWORK SURGE',
+      astral_3: 'ETERNAL SOVEREIGN',
+      aegis_1: 'TEMPORAL SHIELD',
+      aegis_2: 'PHASE-WARP STEP',
+      aegis_3: 'TIMELESS CONTINUUM'
+    }
+  },
+  valkyrie_ex: {
+    branches: {
+      wrath: { title: 'GUNGNIR SOVEREIGN', sub: 'DRAGOON & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'TWILIGHT THRONE', sub: 'BAHAMUT & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'VALHALLA PINIONS', sub: 'AEGIS & GLIDE', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CRIMSON WYRM-LANCE',
+      wrath_2: 'EINHERJAR FURY',
+      wrath_3: 'DRAGOON MASTERY',
+      astral_1: 'BIFROST HARVESTER',
+      astral_2: 'SKY-DIVE RESONANCE',
+      astral_3: 'RAGNAROK SOVEREIGN',
+      aegis_1: 'RUNEFORGED MAIL',
+      aegis_2: 'SIX-PINION GLIDE',
+      aegis_3: 'UNDYING VALKYRIE'
+    }
+  },
+  ronin_ex: {
+    branches: {
+      wrath: { title: 'RAIJIN IAIDO', sub: 'THUNDER & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'TAKEMIKAZUCHI', sub: 'SUSANOO & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'STORM SURIASHI', sub: 'PARRY & FLASH-STEP', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'NARUKAMI WAVE-CUT',
+      wrath_2: 'TEMPEST BREATHING',
+      wrath_3: 'BLADE-GOD MASTERY',
+      astral_1: 'STORMCLOUD HARVESTER',
+      astral_2: 'SUSANOO AWAKENING',
+      astral_3: 'AMAKAKERU SOVEREIGN',
+      aegis_1: 'THUNDERCLAD GUARD',
+      aegis_2: 'LIGHTNING SURIASHI',
+      aegis_3: 'UNBROKEN KENDO'
+    }
+  },
+  archer_ex: {
+    branches: {
+      wrath: { title: 'YGGDRASIL GREATBOW', sub: 'STARFALL & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'ASTRAL CANOPY', sub: 'STARLOCK & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'ZEPHYR SYLPH', sub: 'VERDANT WARD & VAULT', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'EMERALD COMET-SHAFT',
+      wrath_2: 'WORLD-TREE SAP',
+      wrath_3: 'STARBOW MASTERY',
+      astral_1: 'CONSTELLATION HARVEST',
+      astral_2: 'ASTRAL CONVERGENCE',
+      astral_3: 'YGGDRASIL SOVEREIGN',
+      aegis_1: 'SYLVAN BARKSKIN',
+      aegis_2: 'WIND-RUNNER VAULT',
+      aegis_3: 'EVERGREEN GRACE'
+    }
+  },
+  reaper_ex: {
+    branches: {
+      wrath: { title: 'THANATOS GREATSCYTHE', sub: 'HARVEST & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'ABYSSAL THRONE', sub: 'LEGION & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'SHROUD OF OBLIVION', sub: 'SOUL-WARD & WRAITH', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'GRIM PHANTOM-ARC',
+      wrath_2: 'SOUL-TITHE SIPHON',
+      wrath_3: 'THANATOS MASTERY',
+      astral_1: 'NETHER HARVESTER',
+      astral_2: 'DEATH-STAND LEGION',
+      astral_3: 'OBLIVION SOVEREIGN',
+      aegis_1: 'OSSUARY CARAPACE',
+      aegis_2: 'UMBRAL WRAITH-SHIFT',
+      aegis_3: 'UNDYING REAPER'
+    }
+  },
+  titan_ex: {
+    branches: {
+      wrath: { title: 'WORLD-BREAKER HAMMER', sub: 'MJOLNIR & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'CRUCIBLE OF KINGS', sub: 'ANVIL & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'ADAMANT BULWARK', sub: 'POISE & BULL-RUSH', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'TECTONIC FORGE-WAVE',
+      wrath_2: 'BELLOWS IGNITION',
+      wrath_3: 'WORLD-BREAKER MASTERY',
+      astral_1: 'SLAG-CORE HARVESTER',
+      astral_2: 'VOLCANIC OVERDRIVE',
+      astral_3: 'KHAZAD KING SOVEREIGN',
+      aegis_1: 'GOD-FORGED PLATE',
+      aegis_2: 'MOLTEN STAMPEDE',
+      aegis_3: 'UNYIELDING MOUNTAIN'
+    }
+  },
+  icemage_ex: {
+    branches: {
+      wrath: { title: 'BOREALIS POLE-GLAIVE', sub: 'CRYO-EDGE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'ICE CATHEDRAL', sub: 'ZERO-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'AURORA MIRROR', sub: 'FROST-WARD & SKATE', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'GLACIAL GLAIVE-SHARD',
+      wrath_2: 'AURORA CADENCE',
+      wrath_3: 'BOREALIS MASTERY',
+      astral_1: 'HOARFROST HARVESTER',
+      astral_2: 'CATHEDRAL RESONANCE',
+      astral_3: 'ZERO-KELVIN SOVEREIGN',
+      aegis_1: 'DIAMOND-ICE AEGIS',
+      aegis_2: 'VALKYRIE ICE-SKATE',
+      aegis_3: 'ETERNAL PERMAFROST'
+    }
+  },
+  android_ex: {
+    branches: {
+      wrath: { title: 'MURAMASA RAIL-ODACHI', sub: 'PLASMA-CUT & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'SINGULARITY CORE', sub: 'GUNG-09 & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'SERAPH-FRAME MK.IX', sub: 'DEFLECTOR & THRUST', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'POSITRON DISC-CUTTER',
+      wrath_2: 'FUNNEL TELEMETRY',
+      wrath_3: 'SINGULARITY MASTERY',
+      astral_1: 'ZERO-POINT HARVESTER',
+      astral_2: 'HYPER-LASER OVERCLOCK',
+      astral_3: 'VALKYRIE-09 SOVEREIGN',
+      aegis_1: 'PHASE-SHIFT ARMOR',
+      aegis_2: 'TWIN-PYLON BOOST',
+      aegis_3: 'QUANTUM REBOOT'
+    }
   }
 };
 
 export function getHeroSkillTreeTheme(heroId = 'mage') {
-  return HERO_SKILL_TREE_THEMES[heroId] || HERO_SKILL_TREE_THEMES.mage;
+  if (HERO_SKILL_TREE_THEMES[heroId]) return HERO_SKILL_TREE_THEMES[heroId];
+  if (heroId?.endsWith('_ex')) {
+    const baseKey = heroId.slice(0, -3);
+    if (HERO_SKILL_TREE_THEMES[baseKey]) return HERO_SKILL_TREE_THEMES[baseKey];
+  }
+  return HERO_SKILL_TREE_THEMES.mage;
 }
 
 export class AdventureProgression {
@@ -706,8 +891,8 @@ export class AdventureProgression {
     const dir = (player.facing || 1) >= 0 ? 1 : -1;
     const isFreeAim = Boolean(this.adventure?.skillSets?.isManualFreeAim?.());
 
-    // Kaze-Maru (`ronin`): Signature HD-2D Long-Range Crescent Katana Slash Waves (`ronin_slash`) — ZERO blue fireball orbs!
-    if (player.heroId === 'ronin') {
+    // Kaze-Maru (`ronin` & `ronin_ex`): Signature HD-2D Long-Range Crescent Katana Slash Waves (`ronin_slash`) — ZERO blue fireball orbs!
+    if (player.heroId === 'ronin' || player.heroId === 'ronin_ex') {
       this.seekerShotCounter++;
       const variant = (((player._autoVariant ?? 0) % 4) + 4) % 4;
       const shouldFireWave =
@@ -773,14 +958,25 @@ export class AdventureProgression {
       warrior: { type: 'blade_wave', color: '#38bdf8', coreColor: '#e0f2fe', radius: 16, pierce: true },
       warrior_ex: { type: 'blade_wave', color: '#38bdf8', coreColor: '#fef08a', radius: 18, pierce: true },
       valkyrie: { type: 'dragon_lance', color: '#f43f5e', coreColor: '#fbbf24', radius: 14, pierce: false },
+      valkyrie_ex: { type: 'dragon_lance', color: '#f43f5e', coreColor: '#fde047', radius: 15, pierce: true },
       reaper: { type: 'phantom_scythe', color: '#c084fc', coreColor: '#f43f5e', radius: 16, pierce: true },
+      reaper_ex: { type: 'phantom_scythe', color: '#c084fc', coreColor: '#fda4af', radius: 17, pierce: true },
       chronomancer: { type: 'clock_gear', color: '#2dd4bf', coreColor: '#facc15', radius: 14, pierce: false },
+      chronomancer_ex: { type: 'clock_gear', color: '#2dd4bf', coreColor: '#fef08a', radius: 15, pierce: true },
       titan: { type: 'forge_wave', color: '#f59e0b', coreColor: '#fef08a', radius: 17, pierce: true },
+      titan_ex: { type: 'forge_wave', color: '#f59e0b', coreColor: '#ffffff', radius: 18, pierce: true },
       android: { type: 'cyber_disc', color: '#00f0ff', coreColor: '#ff2e93', radius: 15, pierce: true },
+      android_ex: { type: 'cyber_disc', color: '#00f0ff', coreColor: '#facc15', radius: 16, pierce: true },
       icemage: { type: 'cryo_shard', color: '#67e8f9', coreColor: '#ffffff', radius: 13, pierce: false },
+      icemage_ex: { type: 'cryo_shard', color: '#67e8f9', coreColor: '#e0f2fe', radius: 14, pierce: true },
       archer: { type: 'arrow', color: '#34d399', coreColor: '#fef08a', radius: 12, pierce: false },
+      archer_ex: { type: 'arrow', color: '#34d399', coreColor: '#ffffff', radius: 13, pierce: true },
       priestess: { type: 'holy_light', color: '#facc15', coreColor: '#ffffff', radius: 13, pierce: false },
-      mage: { type: 'fireball', color: '#fb923c', coreColor: '#fef08a', radius: 12, pierce: false }
+      priestess_ex: { type: 'holy_light', color: '#fde047', coreColor: '#ffffff', radius: 14, pierce: true },
+      ronin: { type: 'ronin_slash', color: '#38bdf8', coreColor: '#ffffff', radius: 18, pierce: true },
+      ronin_ex: { type: 'ronin_slash', color: '#38bdf8', coreColor: '#fef08a', radius: 18, pierce: true },
+      mage: { type: 'fireball', color: '#fb923c', coreColor: '#fef08a', radius: 12, pierce: false },
+      mage_ex: { type: 'fireball', color: '#fb923c', coreColor: '#ffffff', radius: 14, pierce: false }
     };
     const cfg = HERO_SEEKER_CONFIG[player.heroId] || HERO_SEEKER_CONFIG.mage;
     const isGroundWave = cfg.type === 'blade_wave' || cfg.type === 'forge_wave' || cfg.type === 'phantom_scythe' || cfg.type === 'cyber_disc';
