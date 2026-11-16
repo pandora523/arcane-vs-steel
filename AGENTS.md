@@ -21,3 +21,7 @@
 5. **Verification & Character Balance Policy (Never Run Balance Benchmarks Unasked)**:
    - Routine pre-push Web verification runs ONLY the fast suites: `node scripts/tests/check_all_ult_shader_boxes.mjs` and `node scripts/tests/test_all_heroes_gameloop.mjs`.
    - **NEVER run `scripts/tests/benchmark_roster_balance.mjs` or adjust character combat balance during normal UI, engine, stage, Adventure, audio, or platform tasks — ONLY run `benchmark_roster_balance.mjs` when the user explicitly asks to test or change character balance!**
+
+6. **Fast Swarm Integration Policy (Zero Post-Worker Handoff Delay)**:
+   - When using `/swarm`, spawn parallel workers with `workspace: "share"` (fast git worktree, avoiding full-clone overhead) and strictly non-overlapping file ownership (never split a binary `.png` sheet across two workers; group co-dependent edits to the same file into one worker; apply repo-wide glue such as `?v=30fps...` cache-bust bumps and combined test blocks once on `main` after merging).
+   - Never spawn extra sequential post-worker `integrator` or `verifier` sub-agents after parallel workers complete — the coordinator merges finished worker branches directly onto `main`, runs the fast verification suites (`check_all_ult_shader_boxes.mjs` and `test_all_heroes_gameloop.mjs`) directly, and pushes without handoff delays.
