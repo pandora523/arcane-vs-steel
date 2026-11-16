@@ -1,33 +1,33 @@
-import { Renderer } from './engine/Renderer.js?v=30fps114';
-import { VFXManager } from './engine/VFXManager.js?v=30fps114';
-import { PixelForge } from './engine/PixelForge.js?v=30fps114';
-import { AudioManager } from './engine/AudioManager.js?v=30fps114';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps114';
-import { Fighter } from './entities/Fighter.js?v=30fps114';
-import { Warrior } from './entities/Warrior.js?v=30fps114';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps114';
-import { FireMage } from './entities/FireMage.js?v=30fps114';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps114';
-import { Archer } from './entities/Archer.js?v=30fps114';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps114';
-import { Priestess } from './entities/Priestess.js?v=30fps114';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps114';
-import { Reaper } from './entities/Reaper.js?v=30fps114';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps114';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps114';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps114';
-import { Titan } from './entities/Titan.js?v=30fps114';
-import { TitanEx } from './entities/TitanEx.js?v=30fps114';
-import { Ronin } from './entities/Ronin.js?v=30fps114';
-import { RoninEx } from './entities/RoninEx.js?v=30fps114';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps114';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps114';
-import { IceMage } from './entities/IceMage.js?v=30fps114';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps114';
-import { Android } from './entities/Android.js?v=30fps114';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps114';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps114';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps114';
+import { Renderer } from './engine/Renderer.js?v=30fps115';
+import { VFXManager } from './engine/VFXManager.js?v=30fps115';
+import { PixelForge } from './engine/PixelForge.js?v=30fps115';
+import { AudioManager } from './engine/AudioManager.js?v=30fps115';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps115';
+import { Fighter } from './entities/Fighter.js?v=30fps115';
+import { Warrior } from './entities/Warrior.js?v=30fps115';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps115';
+import { FireMage } from './entities/FireMage.js?v=30fps115';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps115';
+import { Archer } from './entities/Archer.js?v=30fps115';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps115';
+import { Priestess } from './entities/Priestess.js?v=30fps115';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps115';
+import { Reaper } from './entities/Reaper.js?v=30fps115';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps115';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps115';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps115';
+import { Titan } from './entities/Titan.js?v=30fps115';
+import { TitanEx } from './entities/TitanEx.js?v=30fps115';
+import { Ronin } from './entities/Ronin.js?v=30fps115';
+import { RoninEx } from './entities/RoninEx.js?v=30fps115';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps115';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps115';
+import { IceMage } from './entities/IceMage.js?v=30fps115';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps115';
+import { Android } from './entities/Android.js?v=30fps115';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps115';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps115';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps115';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -97,16 +97,16 @@ export const CHAMPION_ROSTER = {
     id: 'warrior_ex',
     name: 'AETHELGARD EX',
     role: 'EXVIUS SOVEREIGN',
-    style: 'FFBE SMEAR VANGUARD',
+    style: 'NEO-VISION DAWN VANGUARD',
     trait: 'PASSIVE: DAWN-BREAKER HIT-STOP & PARRY',
     cls: WarriorEx,
     theme: 'steel',
     color: '#38bdf8',
     selectSfx: 'heavy_cleave',
     victoryLine: 'The Dawn-Breaker cleaves fate itself in Exvius light!',
-    trueUltName: 'EXVIUS DAWN: SOVEREIGN OF LIGHT',
+    trueUltName: 'EXVIUS DAWN: CATHEDRAL OF SEVEN SWORDS',
     trueUltDesc:
-      'Consecrates the Dawn-Breaker, boxes foes in a 6-slash celestial smear cage & cleaves heaven to earth!',
+      'Unfurls pixel Seraphim Dawn-Wings, consecrates a Stained-Glass Runic Sanctuary & drops 6 Celestial Greatswords into a Sovereign Dawn-Pillar!',
     skills: [
       {
         name: 'DAWN-BREAKER SMEAR',
@@ -115,51 +115,51 @@ export const CHAMPION_ROSTER = {
         desc: '4-beat grounded FFBE smear chain with crunchy hit-stop, cross-rip & Heavensplitter wave.'
       },
       {
-        name: 'ASTRAL BLADE-RUSH',
+        name: 'DAWN-BREAKER TRINITY RUSH',
         type: 'SKILL • 4.6S CD',
         vfxCell: 1,
-        desc: 'Rapid 3-slash advancing chain-flurry ending in a rising Dragon-Fang uppercut pillar.'
+        desc: 'Consecrates a Runic Sword-Seal underfoot for a 3-beat advancing Dawn-Breaker combo into a Sovereign Sky-Pillar Uppercut.'
       },
       {
-        name: 'RADIANT OMNISLASH',
+        name: 'CELESTIAL PENTAGRAM OMNISLASH',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Five-fold multi-angle teleporting smear blitz leaving golden-cyan silhouettes into a skyward plunge.'
+        desc: 'Locks foes in a 5-point Star-Sanctuary sigil, flashing through 5 Neo-Vision silhouettes before plunging a Runic Monolith Greatsword.'
       }
     ]
   },
   mage_ex: {
     id: 'mage_ex',
     name: 'IGNIS SOL EX',
-    role: 'HELIOS SPELL-BLADE',
-    style: 'NEO-VISION SOLAR SPELL-BLADE',
-    trait: 'PASSIVE: HELIOS ORBITALS & PHOENIX BLINK',
+    role: 'SOLAR ARCHMAGE',
+    style: 'NEO-VISION SOLAR ARCHMAGE',
+    trait: 'PASSIVE: HELIOS SOLAR SORCERY & ARCANE BLINK',
     cls: FireMageEx,
     theme: 'arcane',
     color: '#fb923c',
     selectSfx: 'fireball',
-    victoryLine: 'Helios Prominence ignites the heavens in sovereign solar flame!',
-    trueUltName: 'HELIOS EXTINCTION: LAYWASTE OF THE CORONA',
+    victoryLine: 'Helios Solar Sorcery ignites the heavens in sovereign solar flame!',
+    trueUltName: 'CATACLYSM: GRAND HELIOS APOCALYPSE',
     trueUltDesc:
-      'Unfurls Phoenix wings, locks the arena in a Corona Eclipse Matrix & hurls a planetary Helios Meteor!',
+      'Consecrates a Golden Astrolabe Seal, tears open a jagged Celestial Rift & crashes a Colossal Dreadnought Sun-Meteor into a Laywaste of Inferno!',
     skills: [
       {
-        name: 'HELIOS PROMINENCE',
-        type: '4-BEAT SPELL-BLADE',
+        name: 'HELIOS SOLAR SORCERY',
+        type: '4-BEAT SOLAR ARTILLERY',
         vfxCell: 0,
-        desc: '4-beat solar spell-blade smear arcs weaving searing plasma crescents & Phoenix flash-blinks.'
+        desc: '4-beat Crescent-Sun Staff magic circles launching blazing Solar Comets, remote Prominence Pillars & Arcane Blink kiting.'
       },
       {
-        name: 'CORONA TRIPLE ERUPTION',
+        name: 'SOLAR TRINITY CATACLYSM',
         type: 'SKILL • 4.2S CD',
         vfxCell: 1,
-        desc: 'Sweeps the Helios Sun-Staff to detonate 3 advancing columns of white-hot solar prominence.'
+        desc: 'Stamps 3 cascading Heliacal Rune Seals beneath the enemy that erupt braided Corona Pillars & astral star-glints.'
       },
       {
-        name: 'SUPERNOVA ECLIPSE',
+        name: 'BLACK-SUN ECLIPSE SINGULARITY',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Ascends in a Black-Sun Corona halo, raining solar lances before crashing a blazing star core.'
+        desc: 'Ignites a pixel-dithered Black-Sun Eclipse Ring overhead, raining 7 diagonal Solar Lances into a supernova shock-ring.'
       }
     ]
   },
@@ -167,34 +167,34 @@ export const CHAMPION_ROSTER = {
     id: 'priestess_ex',
     name: 'SERAPHINA EX',
     role: 'SERAPHIC SOVEREIGN',
-    style: 'SIX-WINGED CATHEDRAL VALKYRIE',
+    style: 'SIX-WINGED CATHEDRAL ARCHPRIESTESS',
     trait: 'PASSIVE: SERAPHIM PINIONS & SANCTUARY AEGIS',
     cls: PriestessEx,
     theme: 'radiant',
     color: '#fde047',
     selectSfx: 'holy_heal',
     victoryLine: 'Six Seraphim pinions unfurl — every shadow bows before Final Grace!',
-    trueUltName: 'FINAL GRACE: CATHEDRAL OF ETERNITY',
+    trueUltName: 'FINAL GRACE: GENESIS LUMEN',
     trueUltDesc:
-      'Ascends on six radiant Seraphim wings, consecrates the Grand Rose Cathedral & fires a purifying Sovereignty Cannon!',
+      'Consecrates a Stained-Glass Celestial Dome (+30% Max HP miracle) and fires a prismatic Horizon Purification Beam of Final Grace!',
     skills: [
       {
-        name: 'SERAPHIC LANCE CADENCE',
-        type: '4-BEAT RADIANT COMBO',
+        name: 'CATHEDRAL SANCTUM SORCERY',
+        type: '4-BEAT RADIANT SORCERY',
         vfxCell: 0,
-        desc: '4-beat gilded staff-lance smears calling down star-cross smites & stained-glass wards.'
+        desc: '4-beat Cathedral Sanctum Sorcery firing Purifying Light Rays, Stained-Glass Rose Wards & winged grace kiting.'
       },
       {
-        name: 'SANCTUARY BENEDICTION',
+        name: 'STAINED-GLASS BENEDICTION',
         type: 'SKILL • 4.8S CD',
         vfxCell: 1,
-        desc: 'Unseals a 2.5D Cathedral Rose Sigil that restores vitality while raining Valkyrie light-spears.'
+        desc: 'Consecrates a Rose-Cathedral floor prism that restores vitality while erupting 3 purifying judgment rays under the foe.'
       },
       {
-        name: 'CHOIR OF SIX PINIONS',
+        name: 'SERAPHIC ORGAN OF LIGHT',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Soars aloft on 30fps Archangel wings, unleashing judgment pillars & radiant grace across the stage.'
+        desc: 'Unfurls radiant Seraphim pinions to summon a 5-pillar Golden Cathedral Organ-of-Light & Descending Halo.'
       }
     ]
   },
@@ -209,27 +209,27 @@ export const CHAMPION_ROSTER = {
     color: '#2dd4bf',
     selectSfx: 'clock_gear',
     victoryLine: 'Past, present, and future kneel before the Paradox Sovereign!',
-    trueUltName: 'ETERNAL ZERO: SOVEREIGN OF THE TWELFTH BELL',
+    trueUltName: 'ETERNAL ZERO: CATHEDRAL OF THE TWELFTH BELL',
     trueUltDesc:
-      'Halts causality across the arena, cages foes in 12 Astral Clock-Spears & shatters stopped time on the Twelfth Bell!',
+      'Freezes foes in stopped time inside a Grand XII Astronomic Clockface & 8 Clock-Hand Spears, shattering time on the Twelfth Bell!',
     skills: [
       {
         name: 'CHRONO-GLAIVE QUARTET',
         type: '4-BEAT PARADOX SMEAR',
         vfxCell: 0,
-        desc: '4-beat Twin-Hand Glaive smears summoning Future-Clone pincer cuts & golden gear shockwaves.'
+        desc: '4-beat Twin-Hand Glaive cuts summoning Future-Clone pincer strikes & temporal shock-rings.'
       },
       {
-        name: 'PARADOX SCHISM REWIND',
+        name: 'PARADOX HOURGLASS SCHISM',
         type: 'SKILL • 4.5S CD',
         vfxCell: 1,
-        desc: 'Anchors time, warps through the foe with an X-Chrono rift & rewinds to mend lost vitality.'
+        desc: 'Stamps a glowing Roman-Numeral XII Floor Dial, executes a Twin-Blade + Future-Clone pincer slice & rewinds through a temporal prism.'
       },
       {
-        name: 'ASTRAL HOROLOGIUM',
+        name: 'TRINITY OF BROKEN TIMELINES',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Manifests the Grand Clocktower Astrolabe for a multi-timeline convergence blitz.'
+        desc: 'Splits into Past, Present & Future Chronos mirages around a giant Escapement Pendulum Seal for a 3-timeline shatter.'
       }
     ]
   },
@@ -237,34 +237,34 @@ export const CHAMPION_ROSTER = {
     id: 'valkyrie_ex',
     name: 'FREYJA EX',
     role: 'RAGNAROK SOVEREIGN',
-    style: 'EINHERJAR DRAGOON SOVEREIGN',
-    trait: 'PASSIVE: SIX-PINION GLIDE & WYRM-LANCE',
+    style: 'VALHALLA SKY-JAVELIN SOVEREIGN',
+    trait: 'PASSIVE: SIX-PINION GLIDE & GUNGNIR VOLLEY',
     cls: ValkyrieEx,
     theme: 'crimson',
     color: '#f43f5e',
     selectSfx: 'holy_spear',
     victoryLine: 'Behold the Ragnarok Sovereign — Gungnir cleaves the heavens asunder!',
-    trueUltName: 'TWILIGHT OF RAGNAROK: SOVEREIGN GUNGNIR',
+    trueUltName: 'TWILIGHT OF RAGNAROK: BIFROST GUNGNIR',
     trueUltDesc:
-      'Ascends above Valhalla on crimson-gold pinions and hurls the divine World-Spear Gungnir in a cataclysmic sky-dive!',
+      'Opens a multi-band Bifrost Sky-Gate, pins the arena with 8 Einherjar Runic Lances & executes a supersonic Valkyrie Falcon Dive!',
     skills: [
       {
-        name: 'GUNGNIR DRAGOON QUARTET',
-        type: '4-BEAT LANCE SMEAR',
+        name: 'GUNGNIR LIGHTNING JAVELINS',
+        type: '4-BEAT SKY-JAVELIN',
         vfxCell: 0,
-        desc: '4-beat crimson-gold Dragon-Lance thrusts, sweeping halberd smears & winged vault counters.'
+        desc: '4-beat supersonic Gungnir Lightning Javelins, remote Valhalla Sky-Spears & 6-wing backstep-vault kiting.'
       },
       {
-        name: 'VALHALLA SKY-PIERCER',
+        name: 'VALHALLA LIGHTNING JAVELINS',
         type: 'SKILL • 4.7S CD',
         vfxCell: 1,
-        desc: 'High-speed winged dragoon rush launching Gungnir light-javelins into a Dragonfire Obelisk slam.'
+        desc: 'Winged sky-hop hurling 3 Crimson-Gold Gungnir Javelins that link with lightning chains and detonate.'
       },
       {
-        name: 'BAHAMUT SKY-SANCTUARY',
+        name: 'BAHAMUT VALKYRIE SANCTUARY',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Sweeps the heavens raining 12 Gungnir spears before crashing down in 5 Sovereign Judgment Spires.'
+        desc: 'Ascends on 6 crimson-gold wings to summon the Bahamut Dragon-Crest & rain 5 converging Sky-Lances.'
       }
     ]
   },
@@ -279,27 +279,27 @@ export const CHAMPION_ROSTER = {
     color: '#60a5fa',
     selectSfx: 'slash',
     victoryLine: 'Thunder tolls only after the Raijin Odachi clicks home!',
-    trueUltName: 'AMAKAKERU: RAIJIN THOUSAND-CUT DOMAIN',
+    trueUltName: 'AMAKAKERU: REALM-SLICING SHOGUNATE',
     trueUltDesc:
-      'Unleashes the Shogunate Storm Domain, carving a thousand instantaneous lightning-cuts that detonate on sheath-click!',
+      'Consecrates a Crimson-Moon Torii Sanctuary, carves a horizon Iaido fault-line & clicks his Odachi home to unleash Shogunate Judgement!',
     skills: [
       {
         name: 'NARUKAMI IAIDO QUARTET',
-        type: '4-BEAT STORM SMEAR',
+        type: '4-BEAT STORM IAIDO',
         vfxCell: 0,
-        desc: '4-beat grounded Suriashi Odachi smears firing crescent storm waves & Serene Mind counter-blinks.'
+        desc: '4-beat grounded Suriashi Odachi cuts launching crescent storm waves & Serene Mind counter-blinks.'
       },
       {
-        name: 'ZANTETSUKEN RAIJIN FLASH',
+        name: 'NARUKAMI THUNDER-GATE FLASH',
         type: 'SKILL • 4.6S CD',
         vfxCell: 1,
-        desc: 'Five-fold lightning zig-zag blitz leaving suspended thunder-lines that detonate on the saya click.'
+        desc: 'Ignites 5 Raijin Taiko drums for a 5-point Shunpo lightning zig-zag & Torii thunder-pillars detonating on sheath-click.'
       },
       {
-        name: 'SUSANOO BLADE-GOD CAGE',
+        name: 'TAKEMIKAZUCHI STORM-GOD CAGE',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Manifests the Susanoo Storm-Crest for an 8-angle teleporting Odachi execution.'
+        desc: 'Manifests an Indigo-Gold Raijin War-Mask & 8-drum Thunder Ring while flashing across 8 storm-pillar angles.'
       }
     ]
   },
@@ -307,34 +307,34 @@ export const CHAMPION_ROSTER = {
     id: 'archer_ex',
     name: 'SYLVARA EX',
     role: 'YGGDRASIL SOVEREIGN',
-    style: 'ASTRAL GREATBOW SOVEREIGN',
+    style: 'YGGDRASIL STAR-HUNTRESS',
     trait: 'PASSIVE: WORLD-TREE ZEPHYR VAULT & SEEKERS',
     cls: ArcherEx,
     theme: 'emerald',
     color: '#34d399',
     selectSfx: 'arrow_shoot',
     victoryLine: 'Every star in Yggdrasil’s canopy bends to my bowstring!',
-    trueUltName: 'YGGDRASIL SOVEREIGN: SUPERNOVA DRAGON-ARROW',
+    trueUltName: 'ARROW OF YGGDRASIL: ASTRAL SUPERNOVA',
     trueUltDesc:
-      'Binds the arena in World-Tree Star-Roots, vaults to the horizon & fires a full-stage Emerald Supernova Dragon-Arrow!',
+      'Manifests a luminous World-Tree Canopy & Zodiac Target Astrolabe before loosing a horizon-piercing Starlight Dragon-Lance!',
     skills: [
       {
-        name: 'STARWOOD GREATBOW',
-        type: '4-BEAT VOLLEY + VAULT',
+        name: 'YGGDRASIL GREATBOW VOLLEY',
+        type: '4-BEAT ASTRAL VOLLEY',
         vfxCell: 0,
-        desc: '4-beat supersonic emerald comet-arrows, sylvan blade-bow arcs & acrobatic Zephyr vaults.'
+        desc: '4-beat Yggdrasil Astral Greatbow volleys, homing emerald comet-shafts & Dragon-Piercer backstep-hop kiting.'
       },
       {
-        name: 'CONSTELLATION SNARE',
+        name: 'STARWOOD CONSTELLATION VOLLEY',
         type: 'SKILL • 4.1S CD',
         vfxCell: 1,
-        desc: 'Roots enemies in Yggdrasil starlight vines while raining homing astral seeker shafts.'
+        desc: 'Erupts an Emerald World-Tree Root Seal beneath foes while loosing 5 arcing Constellation Seeker Arrows.'
       },
       {
-        name: '180° STARLOCK OVERDRIVE',
+        name: 'ZEPHYR STARLOCK: TWELVE-STAR RAIN',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Vaults overhead in a 180° astral somersault, firing a 7-arrow homing constellation barrage.'
+        desc: 'Vaults skyward on inverted Astral Light-Wings to rain 12 staggered Starlight Lance-Arrows across the arena.'
       }
     ]
   },
@@ -349,27 +349,27 @@ export const CHAMPION_ROSTER = {
     color: '#d946ef',
     selectSfx: 'scythe_reap',
     victoryLine: 'Kneel before the Thanatos Sovereign — Oblivion claims its tithe!',
-    trueUltName: 'MEMENTO MORI: THANATOS OBLIVION GATES',
+    trueUltName: 'MEMENTO MORI: CATHEDRAL OF OBLIVION',
     trueUltDesc:
-      'Unseals Twin Cathedral Gates of Oblivion, summons his Death Covenant & cleaves reality with the Six-Scythe Guillotine!',
+      'Unseals Twin Gothic Oblivion Gates, summons his 12.5s Death-Mage & Soul-Healer Covenant & drops a 6-Pillar Scythe Guillotine!',
     skills: [
       {
         name: 'THANATOS SCYTHE QUARTET',
         type: '4-BEAT STAND & BURROW',
         vfxCell: 0,
-        desc: '4-beat violet-crimson Greatscythe smears with Shadow-Burrow ambushes & Thanatos Stand reaps.'
+        desc: '4-beat violet-crimson Greatscythe reaps with Shadow-Burrow ambushes & Thanatos Stand strikes.'
       },
       {
-        name: 'ABYSSAL SOUL-HARVEST',
+        name: 'ABYSSAL SOUL-GUILLOTINE',
         type: 'SKILL • 4.5S CD',
         vfxCell: 1,
-        desc: 'Rips a resonant Soul Effigy from the target before lunging through in a crimson X-Guillotine.'
+        desc: 'Tears a resonant Soul-Lantern Effigy out of the foe linked by a soul-chain before shadow-stepping into a Bone-Obelisk Guillotine.'
       },
       {
-        name: 'LEGION OF OBLIVION',
+        name: 'LEGION OF THANATOS',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Summons the towering Thanatos Stand & Twin Wraiths for an airborne pincer guillotine.'
+        desc: 'Rises beneath a Blood-Moon Eclipse Seal while the skeletal Thanatos Sovereign Stand & twin wraiths execute a 3-Scythe Reap.'
       }
     ]
   },
@@ -384,27 +384,27 @@ export const CHAMPION_ROSTER = {
     color: '#f59e0b',
     selectSfx: 'thunder_slam',
     victoryLine: 'Crowned in molten adamant — the World-Breaker King shatters mountains!',
-    trueUltName: 'RAGNAROK ANVIL: CONTINENTAL WORLD-BREAKER',
+    trueUltName: 'MJOLNIR GENESIS: CONTINENTAL SUNDER',
     trueUltDesc:
-      'Assumes colossal Forge-King stature, launches foes skyward & meteor-slams Mjolnir from the heavens!',
+      'Awakens as a colossal World-Forge God-King — Sky-Uppercut into a Meteoric Mjolnir Ground-Anvil Smash & 5 Jade-Gold Lava Geysers!',
     skills: [
       {
         name: 'MJOLNIR KINGSMASH',
-        type: '4-BEAT FORGE SMEAR',
+        type: '4-BEAT FORGE MAUL',
         vfxCell: 0,
-        desc: '4-beat volcanic 2H God-Hammer smears erupting tectonic fissures & unstoppable magma poise.'
+        desc: '4-beat blunt 2H God-Hammer slams erupting tectonic fissures, molten slag sparks & unstoppable magma poise.'
       },
       {
-        name: 'CRUCIBLE ANVIL CANNON',
+        name: 'TECTONIC FORGE-ANVIL RICOCHET',
         type: 'SKILL • 4.7S CD',
         vfxCell: 1,
-        desc: 'Summons a gravity-pulsing World-Anvil Altar and batters a ricocheting molten cannonball.'
+        desc: 'Slams a glowing Runic Dwarven Anvil Monolith that ricochets off the arena wall with molten fissures & jade shock-rings.'
       },
       {
-        name: 'SOVEREIGN HOME-RUN SUNDER',
+        name: 'RAGNAROK GRAND-SLAM CRUSHER',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Full-torque royal Mjolnir swing blasting foes across the arena into a tectonic wall-shatter.'
+        desc: 'Ignites his Crucible Back-Halo for a seismic Maul eruption & World-Breaker Home-Run concussion blast into a wall-shatter stun.'
       }
     ]
   },
@@ -412,34 +412,34 @@ export const CHAMPION_ROSTER = {
     id: 'icemage_ex',
     name: 'LYRA EX',
     role: 'BOREALIS SOVEREIGN',
-    style: 'CRYSTAL POLE-GLAIVE EMPRESS',
-    trait: 'PASSIVE: 4-STACK DIAMOND FREEZE & ICE-SKATE',
+    style: 'BOREALIS SCEPTER CRYOMANCER',
+    trait: 'PASSIVE: 4-STACK CRYSTAL FREEZE & SKATE KITE',
     cls: IceMageEx,
     theme: 'glacial',
     color: '#67e8f9',
     selectSfx: 'frost_cast',
     victoryLine: 'Beneath the Borealis Crown, every heartbeat crystallizes at 0.00 Kelvin!',
-    trueUltName: 'BOREALIS CATHEDRAL: ZERO-KELVIN ETERNITY',
+    trueUltName: 'ETERNAL BOREALIS: ZERO KELVIN CATHEDRAL',
     trueUltDesc:
-      'Unfurls the Aurora Borealis Ice Cathedral, entombs foes at 0.00 K inside a Diamond Monolith & shatters space!',
+      'Unfurls the Northern Lights & 6-pillar Borealis Snowflake Sanctuary, entombs foes in a Diamond Monolith & shatters space at 0.00 K!',
     skills: [
       {
-        name: 'BOREALIS GLAIVE BALLET',
-        type: '4-BEAT CRYO-GLAIVE',
+        name: 'BOREALIS SCEPTER SORCERY',
+        type: '4-BEAT CRYO ARTILLERY',
         vfxCell: 0,
-        desc: '4-beat figure-skating Crystal Pole-Glaive smears, returning snowflake chakrams & rime spires.'
+        desc: '4-beat Borealis Scepter Cryo-Comets, returning Snowflake Chakrams, marching Glacier Spires & Axel skate kiting.'
       },
       {
-        name: 'TWIN ICEBERG GUILLOTINE',
+        name: 'BOREALIS PRISM JAWS',
         type: 'SKILL • 4.6S CD',
         vfxCell: 1,
-        desc: 'Raises two flanking Borealis Glacier Walls around the target and crushes them inward.'
+        desc: 'Summons twin towering Aurora-Orchid & Cyan Ice-Monoliths flanking the foe that slam inward into a Diamond-Lotus Nova.'
       },
       {
-        name: 'SEVEN-CROWN PALISADE',
+        name: 'CORONATION OF NINE ICE-SWORDS',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Cages the foe in 6 Celestial Ice-Claymores before shattering all with a 7th Sovereign Crown-Blade.'
+        desc: 'Suspends 9 Celestial Diamond-Claymores in an Aurora Crown Halo, caging the foe in 8 outer blades before plunging the 9th Sovereign Blade.'
       }
     ]
   },
@@ -454,27 +454,27 @@ export const CHAMPION_ROSTER = {
     color: '#00f0ff',
     selectSfx: 'cyber_slash',
     victoryLine: 'Singularity Frame VEX-09 EX online — orbital annihilation complete!',
-    trueUltName: 'SINGULARITY GUNG-09: ORBITAL VALKYRIE BUSTER',
+    trueUltName: 'PROJECT GUNG-09: ORBITAL SINGULARITY BUSTER',
     trueUltDesc:
-      'Deploys full Seraph-Funnel array, locks orbital coordinates & fires a stage-rending Positron Satellite Buster!',
+      'Locks foes inside an 8-Drone Hexagonal Cyber-Matrix Cage, opens an Orbital Relay Gate & fires a full-column Singularity Buster!',
     skills: [
       {
         name: 'POSITRON MURAMASA-09',
         type: '4-BEAT RAIL-ODACHI',
         vfxCell: 0,
-        desc: '4-beat thruster-assisted Rail-Odachi neon smears with Fin-Funnel crossfire & Hex-Matrix parry.'
+        desc: '4-beat thruster-boosted Rail-Odachi cuts with Fin-Funnel plasma crossfire & Hex-Matrix parry.'
       },
       {
-        name: 'SINGULARITY EMP BLITZ',
+        name: 'SINGULARITY FUNNEL OVERDRIVE',
         type: 'SKILL • 4.3S CD',
         vfxCell: 1,
-        desc: 'High-G vector-thruster breach through the target detonating a holographic EMP overload dome.'
+        desc: 'Deploys 4 Cyber Fin-Funnels in a diamond lock-on grid firing converging plasma beams into an EMP Odachi cross-cut (+32 HP shield).'
       },
       {
-        name: 'SERAPH-FUNNEL HYPER-LASER',
+        name: 'VALKYRIE HYPER-PRISM BARRAGE',
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Back-boosts into aerial hover, syncs 6 Fin-Funnels & sweeps a searing Singularity Visor Beam.'
+        desc: 'Hovers on twin plasma wing-thrusters with a HUD target reticle, sweeping a Neon-Cyan & Hot-Magenta Visor Hyper-Laser + 6 Funnel strikes.'
       }
     ]
   },
@@ -1752,6 +1752,7 @@ export class Game {
         if (this.isAdventureMode()) return;
         const stg = btn.getAttribute('data-stage');
         this.forcedStage = stg === 'auto' ? null : stg;
+        PixelForge.ensureStageLoaded?.(this.forcedStage || this.renderer?.stageId || 'cathedral');
         this.syncRosterSelectionUI(true);
         if (!this.isLandingOpen) {
           this.resetMatch();
@@ -2635,6 +2636,9 @@ export class Game {
       validStep = 'roster';
     }
     this.landingStep = validStep;
+    if ((validStep === 'mode' || validStep === 'roster') && !this.isAdventureMode()) {
+      PixelForge.ensureStageLoaded?.(this.forcedStage || this.renderer?.stageId || 'cathedral');
+    }
     if (validStep === 'roster') {
       this.syncRosterVersionTabs();
       PixelForge.ensureAllPortraitsLoaded?.(this.rosterVersion);
@@ -3753,9 +3757,11 @@ export class Game {
     const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
     const c2b = CHAMPION_ROSTER[this.slot2PartnerHero] || CHAMPION_ROSTER.reaper;
     const activeHeroIds = is2v2 ? [c1.id, c2.id, c1b.id, c2b.id] : [c1.id, c2.id];
+    const activeStageId = this.renderer?.stageId || this.forcedStage || 'cathedral';
     const activeStageMeta = this.renderer?.getCurrentStageMeta?.();
     const activeStageKeys = activeStageMeta?.assetKey ? [activeStageMeta.assetKey] : ['arenaBg'];
     PixelForge.releaseInactiveAssets?.(activeHeroIds, activeStageKeys, false);
+    PixelForge.ensureStageLoaded?.(activeStageId);
     PixelForge.ensureHeroLoaded?.(c1.id);
     PixelForge.ensureHeroLoaded?.(c2.id);
     if (is2v2) {

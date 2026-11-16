@@ -355,35 +355,35 @@ export const HERO_SKILL_TREE_THEMES = {
   },
   mage_ex: {
     branches: {
-      wrath: { title: 'HELIOS SPELL-BLADE', sub: 'SOLAR EDGE & SPIRIT', iconSlot: 'attack' },
-      astral: { title: 'CORONA SANCTUM', sub: 'ECLIPSE & SEALS', iconSlot: 'ultimate' },
+      wrath: { title: 'HELIOS SOLAR SORCERY', sub: 'SOLAR STAFF & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'CORONA ASTROLABE', sub: 'ECLIPSE & SEALS', iconSlot: 'ultimate' },
       aegis: { title: 'PHOENIX MANTLE', sub: 'SOLAR WARD & BLINK', iconSlot: 'dodge' }
     },
     nodes: {
-      wrath_1: 'HELIOS FLARE EDGE',
+      wrath_1: 'HELIOS SOLAR COMET',
       wrath_2: 'CORONA RESONANCE',
-      wrath_3: 'SPELL-BLADE MASTERY',
+      wrath_3: 'SOLAR ARCHMAGE MASTERY',
       astral_1: 'PROMINENCE HARVESTER',
-      astral_2: 'SOLAR OVERDRIVE',
-      astral_3: 'METEOR SOVEREIGN',
+      astral_2: 'BLACK-SUN OVERDRIVE',
+      astral_3: 'GRAND HELIOS SOVEREIGN',
       aegis_1: 'SUNFIRE AEGIS',
-      aegis_2: 'PHOENIX FLASH-BLINK',
+      aegis_2: 'ARCANE FLASH-BLINK',
       aegis_3: 'UNDYING HELIOS'
     }
   },
   priestess_ex: {
     branches: {
-      wrath: { title: 'SERAPHIC LANCE', sub: 'SMITE & SPIRIT', iconSlot: 'attack' },
-      astral: { title: 'CATHEDRAL CHOIR', sub: 'SPEARS & SEALS', iconSlot: 'ultimate' },
+      wrath: { title: 'CATHEDRAL SORCERY', sub: 'HOLY RAY & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'ORGAN OF LIGHT', sub: 'GENESIS & SEALS', iconSlot: 'ultimate' },
       aegis: { title: 'ARCHANGEL PINIONS', sub: 'HALO WARD & WINGS', iconSlot: 'dodge' }
     },
     nodes: {
-      wrath_1: 'RADIANT JUDGEMENT',
+      wrath_1: 'PURIFYING LIGHT RAY',
       wrath_2: 'BENEDICTION FLOW',
-      wrath_3: 'SERAPHIC MASTERY',
+      wrath_3: 'SANCTUM MASTERY',
       astral_1: 'SANCTUARY HARVESTER',
       astral_2: 'DIVINE CHORUS',
-      astral_3: 'SOVEREIGN OF GRACE',
+      astral_3: 'GENESIS LUMEN SOVEREIGN',
       aegis_1: 'STAINED-GLASS AEGIS',
       aegis_2: 'SIX-WINGED GLIDE',
       aegis_3: 'IMMORTAL COVENANT'
@@ -409,14 +409,14 @@ export const HERO_SKILL_TREE_THEMES = {
   },
   valkyrie_ex: {
     branches: {
-      wrath: { title: 'GUNGNIR SOVEREIGN', sub: 'DRAGOON & SPIRIT', iconSlot: 'attack' },
+      wrath: { title: 'GUNGNIR SKY-JAVELIN', sub: 'JAVELIN & SPIRIT', iconSlot: 'attack' },
       astral: { title: 'TWILIGHT THRONE', sub: 'BAHAMUT & SEALS', iconSlot: 'ultimate' },
       aegis: { title: 'VALHALLA PINIONS', sub: 'AEGIS & GLIDE', iconSlot: 'dodge' }
     },
     nodes: {
-      wrath_1: 'CRIMSON WYRM-LANCE',
-      wrath_2: 'EINHERJAR FURY',
-      wrath_3: 'DRAGOON MASTERY',
+      wrath_1: 'LIGHTNING JAVELIN',
+      wrath_2: 'EINHERJAR VOLLEY',
+      wrath_3: 'SKY-SPEAR MASTERY',
       astral_1: 'BIFROST HARVESTER',
       astral_2: 'SKY-DIVE RESONANCE',
       astral_3: 'RAGNAROK SOVEREIGN',
@@ -445,13 +445,13 @@ export const HERO_SKILL_TREE_THEMES = {
   },
   archer_ex: {
     branches: {
-      wrath: { title: 'YGGDRASIL GREATBOW', sub: 'STARFALL & SPIRIT', iconSlot: 'attack' },
+      wrath: { title: 'YGGDRASIL GREATBOW', sub: 'VOLLEY & SPIRIT', iconSlot: 'attack' },
       astral: { title: 'ASTRAL CANOPY', sub: 'STARLOCK & SEALS', iconSlot: 'ultimate' },
       aegis: { title: 'ZEPHYR SYLPH', sub: 'VERDANT WARD & VAULT', iconSlot: 'dodge' }
     },
     nodes: {
-      wrath_1: 'EMERALD COMET-SHAFT',
-      wrath_2: 'WORLD-TREE SAP',
+      wrath_1: 'ASTRAL GREATBOW VOLLEY',
+      wrath_2: 'CONSTELLATION SEEKERS',
       wrath_3: 'STARBOW MASTERY',
       astral_1: 'CONSTELLATION HARVEST',
       astral_2: 'ASTRAL CONVERGENCE',
@@ -499,13 +499,13 @@ export const HERO_SKILL_TREE_THEMES = {
   },
   icemage_ex: {
     branches: {
-      wrath: { title: 'BOREALIS POLE-GLAIVE', sub: 'CRYO-EDGE & SPIRIT', iconSlot: 'attack' },
+      wrath: { title: 'BOREALIS SCEPTER', sub: 'CRYO-COMET & SPIRIT', iconSlot: 'attack' },
       astral: { title: 'ICE CATHEDRAL', sub: 'ZERO-DRIVE & SEALS', iconSlot: 'ultimate' },
       aegis: { title: 'AURORA MIRROR', sub: 'FROST-WARD & SKATE', iconSlot: 'dodge' }
     },
     nodes: {
-      wrath_1: 'GLACIAL GLAIVE-SHARD',
-      wrath_2: 'AURORA CADENCE',
+      wrath_1: 'BOREALIS CRYO-COMET',
+      wrath_2: 'SNOWFLAKE CHAKRAM',
       wrath_3: 'BOREALIS MASTERY',
       astral_1: 'HOARFROST HARVESTER',
       astral_2: 'CATHEDRAL RESONANCE',
@@ -884,12 +884,68 @@ export class AdventureProgression {
     }
   }
 
-  onPlayerCastBasicAttack(player, target, game) {
+  onPlayerCastBasicAttack(player, target, game, opts = {}) {
     if (!player || !game?.vfx) return;
     const stats = this.getComputedStats();
     const rWrath1 = this.getRank('wrath_1');
     const dir = (player.facing || 1) >= 0 ? 1 : -1;
     const isFreeAim = Boolean(this.adventure?.skillSets?.isManualFreeAim?.());
+
+    // Ranged EX Champions (`mage_ex`, `priestess_ex`, `icemage_ex`, `valkyrie_ex`, `archer_ex`):
+    // Guarantee full long-range signature projectiles on EVERY basic attack even at Lv.1 (`wrath_1 === 0`)!
+    const RANGED_EX_LV1_PROJECTILES = {
+      mage_ex: { type: 'fireball', color: '#fb923c', coreColor: '#fef08a', radius: 14, pierce: false, speed: 715 },
+      priestess_ex: { type: 'holy_light', color: '#fde047', coreColor: '#ffffff', radius: 14, pierce: true, speed: 725 },
+      icemage_ex: { type: 'cryo_shard', color: '#67e8f9', coreColor: '#ffffff', radius: 14, pierce: true, speed: 720 },
+      valkyrie_ex: { type: 'dragon_lance', color: '#f43f5e', coreColor: '#fde047', radius: 15, pierce: true, speed: 760 },
+      archer_ex: { type: 'arrow', color: '#34d399', coreColor: '#ffffff', radius: 13, pierce: true, speed: 790 }
+    };
+    const rangedExCfg = RANGED_EX_LV1_PROJECTILES[player.heroId];
+    if (rangedExCfg && !opts.heroAlreadySpawnedProjectile) {
+      const sx = player.x + dir * 48;
+      const sy = (player.y || player.groundY) - 106;
+      const speed = rangedExCfg.speed;
+      let vx = dir * speed;
+      let vy = 0;
+
+      if (
+        !isFreeAim &&
+        target &&
+        !target.isDead &&
+        !target.isDummyFocal &&
+        (target.x - player.x) * dir > 12
+      ) {
+        const dx = target.x - sx;
+        const ty = target.isColossalBoss
+          ? target.y - 135
+          : (target.y || target.groundY) - 96;
+        const rawDy = ty - sy;
+        const absDx = Math.max(90, Math.abs(dx));
+        const clampedSlope = Math.max(-0.24, Math.min(0.24, rawDy / absDx));
+        const mag = Math.hypot(1, clampedSlope) || 1;
+        vx = (dir * speed) / mag;
+        vy = (clampedSlope * speed) / mag;
+      }
+
+      game.vfx.spawnProjectile({
+        x: sx,
+        y: sy,
+        groundY: player.groundY || player.y,
+        vx,
+        vy,
+        radius: rangedExCfg.radius,
+        color: rangedExCfg.color,
+        coreColor: rangedExCfg.coreColor,
+        owner: player,
+        damage: Math.max(48, Math.round((player.attackDamage || 56) * (stats.basicDmgMult || 1))),
+        type: rangedExCfg.type,
+        pierce: rangedExCfg.pierce,
+        maxRange: 680,
+        isMeteor: false
+      });
+
+      if (!stats.hasHomingSeeker) return;
+    }
 
     // Kaze-Maru (`ronin` & `ronin_ex`): Signature HD-2D Long-Range Crescent Katana Slash Waves (`ronin_slash`) — ZERO blue fireball orbs!
     if (player.heroId === 'ronin' || player.heroId === 'ronin_ex') {

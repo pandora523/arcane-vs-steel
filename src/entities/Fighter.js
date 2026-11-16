@@ -1,4 +1,14 @@
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps115';
+
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
+
+const RANGED_EX_HERO_IDS = new Set([
+  'mage_ex',
+  'priestess_ex',
+  'icemage_ex',
+  'valkyrie_ex',
+  'archer_ex'
+]);
 
 export class Fighter {
   static [Symbol.hasInstance](instance) {
@@ -104,9 +114,18 @@ export class Fighter {
     this._hitShakeTimer = 0;
   }
 
+  _ensureExParticles() {
+    if (typeof this.heroId !== 'string' || !this.heroId.endsWith('_ex')) {
+      return null;
+    }
+    if (!this._exParticles) {
+      this._exParticles = new ExParticleSystem(this.heroId, this.primaryColor);
+    }
+    return this._exParticles;
+  }
+
   getAiStyleProfile() {
     const isEx = typeof this.heroId === 'string' && this.heroId.endsWith('_ex');
-    const isMeleeEx = isEx && (this.attackRange || 160) < 240;
     switch (this.heroId) {
       case 'titan':
       case 'titan_ex':
@@ -194,20 +213,20 @@ export class Fighter {
       case 'valkyrie_ex':
         return {
           comboGoal: isEx ? 4 : 2,
-          sweetMin: isMeleeEx ? 110 : 310,
-          sweetMax: isMeleeEx ? 132 : 375,
+          sweetMin: 310,
+          sweetMax: 375,
           counterCrouchBias: 0.52,
-          midLeapMin: isMeleeEx ? 185 : 225,
-          midLeapMax: isMeleeEx ? 305 : 385,
-          midLeapChance: 0.40,
+          midLeapMin: 225,
+          midLeapMax: 385,
+          midLeapChance: isEx ? 0.32 : 0.40,
           postStyle: 'sky_lancer'
         };
       case 'archer':
       case 'archer_ex':
         return {
           comboGoal: isEx ? 4 : 3,
-          sweetMin: isMeleeEx ? 112 : 350,
-          sweetMax: isMeleeEx ? 136 : 455,
+          sweetMin: 350,
+          sweetMax: 455,
           counterCrouchBias: 0.50,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -218,36 +237,36 @@ export class Fighter {
       case 'icemage_ex':
         return {
           comboGoal: 4,
-          sweetMin: isMeleeEx ? 108 : 310,
-          sweetMax: isMeleeEx ? 128 : 435,
+          sweetMin: 310,
+          sweetMax: 435,
           counterCrouchBias: 0.58,
-          midLeapMin: isMeleeEx ? 185 : 0,
-          midLeapMax: isMeleeEx ? 295 : 0,
-          midLeapChance: isMeleeEx ? 0.38 : 0,
+          midLeapMin: 0,
+          midLeapMax: 0,
+          midLeapChance: 0,
           postStyle: 'cryo_artillery'
         };
       case 'priestess':
       case 'priestess_ex':
         return {
           comboGoal: 4,
-          sweetMin: isMeleeEx ? 110 : 315,
-          sweetMax: isMeleeEx ? 130 : 445,
+          sweetMin: 315,
+          sweetMax: 445,
           counterCrouchBias: 0.56,
-          midLeapMin: isMeleeEx ? 180 : 0,
-          midLeapMax: isMeleeEx ? 285 : 0,
-          midLeapChance: isMeleeEx ? 0.32 : 0,
+          midLeapMin: 0,
+          midLeapMax: 0,
+          midLeapChance: 0,
           postStyle: 'sanctuary'
         };
       case 'mage':
       case 'mage_ex':
         return {
           comboGoal: 4,
-          sweetMin: isMeleeEx ? 108 : 305,
-          sweetMax: isMeleeEx ? 128 : 430,
+          sweetMin: 305,
+          sweetMax: 430,
           counterCrouchBias: 0.48,
-          midLeapMin: isMeleeEx ? 185 : 0,
-          midLeapMax: isMeleeEx ? 295 : 0,
-          midLeapChance: isMeleeEx ? 0.38 : 0,
+          midLeapMin: 0,
+          midLeapMax: 0,
+          midLeapChance: 0,
           postStyle: 'pyromancer'
         };
       default:
@@ -265,6 +284,9 @@ export class Fighter {
   }
 
   isHackAndSlashMelee() {
+    if (RANGED_EX_HERO_IDS.has(this.heroId)) {
+      return false;
+    }
     if (typeof this.heroId === 'string' && this.heroId.endsWith('_ex')) {
       return (this.attackRange || 160) < 250;
     }
@@ -287,6 +309,9 @@ export class Fighter {
   }
 
   isHackAndSlashCaster() {
+    if (RANGED_EX_HERO_IDS.has(this.heroId)) {
+      return true;
+    }
     if (typeof this.heroId === 'string' && this.heroId.endsWith('_ex')) {
       return (this.attackRange || 160) >= 250;
     }
@@ -353,6 +378,14 @@ export class Fighter {
       this.isFlipVault = false;
       this.isAngelicAscent = false;
       this.isOmnislashing = false;
+    }
+    if (typeof this.heroId === 'string' && this.heroId.endsWith('_ex')) {
+      const exSys = this._ensureExParticles();
+      if (newState === 'DEATH') {
+        exSys?.clear();
+      } else {
+        exSys?.emitStateFlourish(this, newState);
+      }
     }
   }
 
@@ -598,7 +631,30 @@ export class Fighter {
 
     if (this.game) {
       this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 192, amount, isCrit);
-      this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
+      const attackerIsEx = Boolean(attacker && typeof attacker.heroId === 'string' && attacker.heroId.endsWith('_ex'));
+      const victimIsEx = Boolean(typeof this.heroId === 'string' && this.heroId.endsWith('_ex'));
+      if (attackerIsEx || victimIsEx) {
+        const exHost = attackerIsEx ? attacker._ensureExParticles?.() : this._ensureExParticles?.();
+        const pal = getExHeroPalette(
+          attackerIsEx ? attacker.heroId : this.heroId,
+          attackerIsEx ? attacker.primaryColor : this.primaryColor
+        );
+        const hitY = this.y - (this.isColossalBoss ? 124 : 94);
+        exHost?.spawnHitStarburst(this.x, hitY, pal.primary, pal.accent, isCrit ? 0.19 : 0.15);
+        exHost?.burst(this.x, hitY, {
+          count: isCrit ? 7 : 4,
+          shapes: pal.hitShapes,
+          speedMin: 48,
+          speedMax: isCrit ? 172 : 132,
+          upBias: 36,
+          color: pal.primary,
+          accent: pal.accent,
+          core: pal.core,
+          layer: 'front'
+        });
+      } else {
+        this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
+      }
       if (this.game.vfx.spawnHitImpact) {
         this.game.vfx.spawnHitImpact(this.x, this.y - 98, attacker, isCrit);
       }
@@ -1174,6 +1230,14 @@ export class Fighter {
     this.torsoVel += force * dt;
     this.torsoAngle += this.torsoVel * dt;
 
+    if (typeof this.heroId === 'string' && this.heroId.endsWith('_ex')) {
+      const exSys = this._ensureExParticles();
+      if (exSys) {
+        exSys.emitAmbient(dt, this);
+        exSys.update(dt);
+      }
+    }
+
     // Ambient Aura & Desperation Overdrive Particles (decluttered for the custom-shader heroes)
     const isDeclutteredHero =
       Boolean(this.heroId?.endsWith('_ex')) ||
@@ -1358,16 +1422,18 @@ export class Fighter {
         }
 
         const isExFighter = Boolean(this.heroId?.endsWith('_ex'));
+        const isRangedEx = RANGED_EX_HERO_IDS.has(this.heroId);
         const shouldDash =
           !inHackSlashChain &&
           !isAdvMode &&
           (this.heroId === 'ronin' ||
           this.heroId === 'android' ||
-          (isExFighter && this.attackRange < 240)
+          (isExFighter && !isRangedEx && this.attackRange < 240)
             ? dist > 185
-            : this.attackRange < 200
+            : this.attackRange < 200 && !isRangedEx
               ? dist > 205
-              : dist > 490 || ((this.x < 210 || this.x > ww - 210) && dist < 260));
+              : dist > Math.max(490, (this.attackRange || 350) + 45) ||
+                ((this.x < 210 || this.x > ww - 210) && dist < 260));
         if (this.dashCooldown <= 0 && shouldDash) {
           this.startDash(enemy, game);
           return;
@@ -1419,7 +1485,7 @@ export class Fighter {
           }
 
           // Between attacks (autoCooldown > 0), each champion exhibits their authentic martial spacing & footwork!
-          const isRangedArchetype = this.attackRange >= 300;
+          const isRangedArchetype = this.attackRange >= 300 || isRangedEx;
           if (isRangedArchetype) {
             if (this.backflipKiteTimer > 0) {
               this.backflipKiteTimer = Math.max(0, this.backflipKiteTimer - dt);

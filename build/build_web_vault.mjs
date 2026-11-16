@@ -794,6 +794,12 @@ async function bootVault(){
   }
 
   /* 2. Install transparent HTMLImageElement & window.fetch interceptors */
+  function revokeImgBlobUrl(img){
+    if(img&&img.__avsBlobUrl){
+      try{URL.revokeObjectURL(img.__avsBlobUrl);}catch(_){}
+      img.__avsBlobUrl="";
+    }
+  }
   if(origSrcDesc&&origSrcDesc.get&&origSrcDesc.set){
     const nativeGet=origSrcDesc.get;
     const nativeSet=origSrcDesc.set;
@@ -809,6 +815,7 @@ async function bootVault(){
       set:function(val){
         const str=val==null?"":String(val);
         const reqId=(this.__avsReqId=(this.__avsReqId||0)+1);
+        revokeImgBlobUrl(this);
         if(!str){
           this.__avsLogicalSrc="";
           this.__avsRawSrc="";
@@ -827,19 +834,9 @@ async function bootVault(){
           const mime=assetTable[assetKey][1];
           loadAssetBytes(assetKey).then(function(bytes){
             if(self.__avsReqId!==reqId)return;
+            revokeImgBlobUrl(self);
             const blobUrl=URL.createObjectURL(new Blob([bytes],{type:mime}));
-            let revoked=false;
-            const revoke=function(){
-              if(!revoked){revoked=true;URL.revokeObjectURL(blobUrl);}
-            };
-            self.addEventListener("load",function(){
-              if(typeof self.decode==="function"){
-                self.decode().then(revoke,revoke);
-              }else{
-                revoke();
-              }
-            },{once:true});
-            self.addEventListener("error",revoke,{once:true});
+            self.__avsBlobUrl=blobUrl;
             self.__avsPending=false;
             nativeSet.call(self,blobUrl);
           },function(){
@@ -872,6 +869,7 @@ async function bootVault(){
   imgProto.removeAttribute=function(name){
     if(name&&String(name).toLowerCase()==="src"){
       this.__avsReqId=(this.__avsReqId||0)+1;
+      revokeImgBlobUrl(this);
       this.__avsLogicalSrc="";
       this.__avsRawSrc="";
       this.__avsPending=false;
@@ -944,32 +942,12 @@ async function bootVault(){
   }
 
   const domImgs=document.querySelectorAll("img[data-avs-src]");
-  let lazyObserver=null;
-  if(typeof IntersectionObserver==="function"){
-    lazyObserver=new IntersectionObserver(function(entries,obs){
-      for(let i=0;i<entries.length;i++){
-        if(entries[i].isIntersecting){
-          const img=entries[i].target;
-          obs.unobserve(img);
-          const logical=img.getAttribute("data-avs-src");
-          if(logical){
-            img.removeAttribute("data-avs-src");
-            img.src=logical;
-          }
-        }
-      }
-    },{rootMargin:"200px"});
-  }
   for(let i=0;i<domImgs.length;i++){
     const el=domImgs[i];
     const logical=el.getAttribute("data-avs-src");
     if(!logical)continue;
-    if(el.getAttribute("loading")==="lazy"&&lazyObserver){
-      lazyObserver.observe(el);
-    }else{
-      el.removeAttribute("data-avs-src");
-      el.src=logical;
-    }
+    el.removeAttribute("data-avs-src");
+    el.src=logical;
   }
 
   /* 4. Topological In-Memory ES Module Graph Linker + Immediate Blob URL Revocation */

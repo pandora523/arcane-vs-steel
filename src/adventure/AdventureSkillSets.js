@@ -37,9 +37,9 @@ export const ADVENTURE_HERO_KITS = {
   mage_ex: {
     id: 'mage_ex',
     tags: {
-      attack: 'HELIOS',
+      attack: 'SOLAR',
       dodge: 'BLINK',
-      skill: 'SOLAR',
+      skill: 'TRINITY',
       overdrive: 'ECLIPSE',
       ultimate: 'METEOR'
     }
@@ -47,10 +47,10 @@ export const ADVENTURE_HERO_KITS = {
   priestess_ex: {
     id: 'priestess_ex',
     tags: {
-      attack: 'SERAPH',
+      attack: 'HOLY',
       dodge: 'WINGS',
       skill: 'SANCTUM',
-      overdrive: 'SPEARS',
+      overdrive: 'ORGAN',
       ultimate: 'GRACE'
     }
   },
@@ -60,16 +60,16 @@ export const ADVENTURE_HERO_KITS = {
       attack: 'PARADOX',
       dodge: 'WARP',
       skill: 'SCHISM',
-      overdrive: 'STASIS',
+      overdrive: 'TIMELINE',
       ultimate: 'ETERNAL'
     }
   },
   valkyrie_ex: {
     id: 'valkyrie_ex',
     tags: {
-      attack: 'GUNGNIR',
+      attack: 'JAVELIN',
       dodge: 'GLIDE',
-      skill: 'DRAGOON',
+      skill: 'SPEARS',
       overdrive: 'BAHAMUT',
       ultimate: 'RAGNAROK'
     }
@@ -80,14 +80,14 @@ export const ADVENTURE_HERO_KITS = {
       attack: 'RAIJIN',
       dodge: 'SURIASHI',
       skill: 'THUNDER',
-      overdrive: 'SUSANOO',
+      overdrive: 'STORMGOD',
       ultimate: 'AMAKAKR'
     }
   },
   archer_ex: {
     id: 'archer_ex',
     tags: {
-      attack: 'ASTRAL',
+      attack: 'ARROW',
       dodge: 'VAULT',
       skill: 'STARFALL',
       overdrive: 'STARLOCK',
@@ -99,7 +99,7 @@ export const ADVENTURE_HERO_KITS = {
     tags: {
       attack: 'THANATOS',
       dodge: 'WRAITH',
-      skill: 'HARVEST',
+      skill: 'GUILLOTN',
       overdrive: 'LEGION',
       ultimate: 'OBLIVION'
     }
@@ -111,16 +111,16 @@ export const ADVENTURE_HERO_KITS = {
       dodge: 'RUSH',
       skill: 'ANVIL',
       overdrive: 'HOMERUN',
-      ultimate: 'RAGNAROK'
+      ultimate: 'GENESIS'
     }
   },
   icemage_ex: {
     id: 'icemage_ex',
     tags: {
-      attack: 'GLAIVE',
+      attack: 'FROST',
       dodge: 'SKATE',
-      skill: 'CRYOJAW',
-      overdrive: 'CATHDRAL',
+      skill: 'PRISM',
+      overdrive: '9-SWORDS',
       ultimate: 'BOREALIS'
     }
   },
@@ -354,13 +354,22 @@ export class AdventureSkillSets {
 
   getFreeAimEnvelope(player) {
     const st = player?.state || 'IDLE';
+    const hid = player?.heroId || '';
+    const isRangedEx =
+      hid === 'mage_ex' ||
+      hid === 'priestess_ex' ||
+      hid === 'icemage_ex' ||
+      hid === 'valkyrie_ex' ||
+      hid === 'archer_ex';
     const isRanged = Boolean(
-      player?.isHackAndSlashCaster?.() ||
-        player?.heroId === 'archer' ||
-        player?.heroId === 'archer_ex' ||
+      isRangedEx ||
+        player?.isHackAndSlashCaster?.() ||
+        hid === 'archer' ||
         (player?.attackRange || 0) >= 260
     );
-    const baseRange = player?.attackRange || (isRanged ? 420 : 180);
+    const baseRange = isRangedEx
+      ? Math.max(510, player?.attackRange || 510)
+      : player?.attackRange || (isRanged ? 420 : 180);
     if (st === 'ULTIMATE' || st === 'TRUE_ULTIMATE') {
       return { maxForward: Math.max(620, baseRange + 240), laneTol: 148 };
     }

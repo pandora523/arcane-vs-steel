@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps114';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps114';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
+import { Fighter } from '../entities/Fighter.js?v=30fps115';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps115';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps115';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps114';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps114';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps114';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps114';
+} from './AdventureProgression.js?v=30fps115';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps115';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps115';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps115';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -2564,10 +2564,18 @@ export class AdventureManager {
       const depthMax = (this.depthMaxY || ADVENTURE_DEPTH_MAX_Y) - 12;
       const pGy = Number.isFinite(player.groundY) ? player.groundY : ADVENTURE_DEPTH_MID_Y;
       const aiClock = (this.goBlinkTimer || 0) + (this.game?.renderer?.time || 0) * 0.35;
-      const effRange = player.getEffectiveAttackRange
+      const hid = player.heroId || '';
+      const isRangedEx =
+        hid === 'mage_ex' ||
+        hid === 'priestess_ex' ||
+        hid === 'icemage_ex' ||
+        hid === 'valkyrie_ex' ||
+        hid === 'archer_ex';
+      const rawEffRange = player.getEffectiveAttackRange
         ? player.getEffectiveAttackRange()
         : player.attackRange || 180;
-      const isRanged = effRange >= 290;
+      const effRange = isRangedEx ? Math.max(510, rawEffRange) : rawEffRange;
+      const isRanged = effRange >= 290 || isRangedEx;
       const maxAutoVx = 268 * stats.moveSpeedMult;
       const maxAutoVz = 164 * stats.moveSpeedMult;
 
@@ -2893,6 +2901,14 @@ export class AdventureManager {
             player.setState('SKILL');
           } else if (
             player.autoCooldown <= 0 &&
+            !(
+              isRanged &&
+              !midHackChain &&
+              !target.isColossalBoss &&
+              absDx < 185 &&
+              player.x > minWalkX + 96 &&
+              player.x < maxWalkX - 96
+            ) &&
             (midHackChain || Math.hypot(avoidVx, avoidVz) < 175) &&
             (target.isColossalBoss
               ? isRanged
@@ -2941,11 +2957,13 @@ export class AdventureManager {
             }
             isMovingCombat = applyCurvedAutoSteer(bossGoalX, bossGoalGy, 20, 1);
           } else {
-            const idealDistX = player.isHackAndSlashCaster?.()
-              ? 320
-              : isRanged
-                ? Math.min(355, Math.max(225, effRange * 0.74))
-                : Math.max(82, Math.min(132, effRange * 0.68));
+            const idealDistX = isRangedEx
+              ? 345
+              : player.isHackAndSlashCaster?.()
+                ? 320
+                : isRanged
+                  ? Math.min(355, Math.max(225, effRange * 0.74))
+                  : Math.max(82, Math.min(132, effRange * 0.68));
             const leftSlot = target.x - idealDistX;
             const rightSlot = target.x + idealDistX;
             const wallMargin = isRanged ? 72 : 40;
@@ -3013,7 +3031,7 @@ export class AdventureManager {
             absDx < 155 &&
             (player.x < minWalkX + 95 || player.x > maxWalkX - 95);
           if (player.state === 'AUTO_ATTACK' && (Math.hypot(avoidVx, avoidVz) > 20 || cornerCrowded)) {
-            if (isHackSlash) {
+            if (player.isHackAndSlashMelee?.()) {
               this.shiftEntityDepth(player, avoidVz * 0.65 * dt);
             } else {
               const escDirX = player.x < (minWalkX + maxWalkX) * 0.5 ? 1 : -1;
@@ -3032,7 +3050,11 @@ export class AdventureManager {
         player._manualSpeedRatio = 0;
       }
 
+      if (player.state !== 'AUTO_ATTACK' || (player.stateTimer || 0) < 0.04) {
+        player._advLv1FallbackShot = false;
+      }
       const prevDidAction = Boolean(player.didActionFrame);
+      const prevProjLen = this.game?.vfx?.projectiles?.length || 0;
       const combatTarget = this.skillSets.resolveTarget(player, target);
       const normAutoVz = Math.max(
         -1,
@@ -3040,8 +3062,32 @@ export class AdventureManager {
       );
       this.skillSets.beginPlayerStep(dt, player, combatTarget, isMovingCombat, normAutoVz);
       player.update(dt, combatTarget, this.game);
+      let heroAlreadySpawnedProjectile = false;
+      const curProjs = this.game?.vfx?.projectiles;
+      if (Array.isArray(curProjs) && curProjs.length > prevProjLen) {
+        for (let pi = prevProjLen; pi < curProjs.length; pi++) {
+          if (curProjs[pi]?.owner === player) {
+            heroAlreadySpawnedProjectile = true;
+            break;
+          }
+        }
+      }
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
-        this.progression.onPlayerCastBasicAttack(player, combatTarget || target, this.game);
+        player._advLv1FallbackShot = true;
+        this.progression.onPlayerCastBasicAttack(player, combatTarget || target, this.game, {
+          heroAlreadySpawnedProjectile
+        });
+      } else if (
+        isRangedEx &&
+        player.state === 'AUTO_ATTACK' &&
+        !player.didActionFrame &&
+        !player._advLv1FallbackShot &&
+        (player.stateTimer || 0) >= 0.16
+      ) {
+        player._advLv1FallbackShot = true;
+        this.progression.onPlayerCastBasicAttack(player, combatTarget || target, this.game, {
+          heroAlreadySpawnedProjectile
+        });
       }
       this.progression.syncGaugesToPlayer(player);
       return;
@@ -3327,7 +3373,7 @@ export class AdventureManager {
         isMoving3D &&
         !this.game.isMatchOver
       ) {
-        if (player.hasHackAndSlashCombo?.()) {
+        if (player.isHackAndSlashMelee?.()) {
           // Allow smooth 2.5D depth-lane micro-steering while preserving Hack-and-Slash cross-through & 180° turns!
           this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
         } else {
@@ -3344,13 +3390,27 @@ export class AdventureManager {
         player._advVaultVelZ = 0;
       }
 
+      if (player.state !== 'AUTO_ATTACK' || (player.stateTimer || 0) < 0.04) {
+        player._advLv1FallbackShot = false;
+      }
       const prevDidAction = Boolean(player.didActionFrame);
+      const prevProjLen = this.game?.vfx?.projectiles?.length || 0;
       const combatTarget = this.skillSets.resolveTarget(player, lockTarget);
       this.skillSets.beginPlayerStep(dt, player, combatTarget, isMoving3D, rawDirY);
       player.update(dt, combatTarget, this.game);
+      let heroAlreadySpawnedProjectile = false;
+      const curProjs = this.game?.vfx?.projectiles;
+      if (Array.isArray(curProjs) && curProjs.length > prevProjLen) {
+        for (let pi = prevProjLen; pi < curProjs.length; pi++) {
+          if (curProjs[pi]?.owner === player) {
+            heroAlreadySpawnedProjectile = true;
+            break;
+          }
+        }
+      }
       if (
         player.state === 'AUTO_ATTACK' &&
-        !player.hasHackAndSlashCombo?.() &&
+        !player.isHackAndSlashMelee?.() &&
         isMoving3D &&
         Math.abs(player.vx) > 8
       ) {
@@ -3360,8 +3420,29 @@ export class AdventureManager {
           player.vx *= 0.22;
         }
       }
+      const hidManual = player.heroId || '';
+      const isRangedExManual =
+        hidManual === 'mage_ex' ||
+        hidManual === 'priestess_ex' ||
+        hidManual === 'icemage_ex' ||
+        hidManual === 'valkyrie_ex' ||
+        hidManual === 'archer_ex';
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
-        this.progression.onPlayerCastBasicAttack(player, lockTarget || combatTarget, this.game);
+        player._advLv1FallbackShot = true;
+        this.progression.onPlayerCastBasicAttack(player, lockTarget || combatTarget, this.game, {
+          heroAlreadySpawnedProjectile
+        });
+      } else if (
+        isRangedExManual &&
+        player.state === 'AUTO_ATTACK' &&
+        !player.didActionFrame &&
+        !player._advLv1FallbackShot &&
+        (player.stateTimer || 0) >= 0.16
+      ) {
+        player._advLv1FallbackShot = true;
+        this.progression.onPlayerCastBasicAttack(player, lockTarget || combatTarget, this.game, {
+          heroAlreadySpawnedProjectile
+        });
       }
       this.progression.syncGaugesToPlayer(player);
     }
