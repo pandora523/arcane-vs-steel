@@ -1,55 +1,46 @@
 #!/usr/bin/env node
 /**
- * Next-Gen 30fps Pixel-Art VFX Sheet Builder for SYLVARA EX (archer_ex).
- * Zero external npm dependencies (pure Node zlib PNG encoder).
+ * Next-Gen 30fps 8-Row VFX Sprite Sheet Builder for SYLVARA EX (`archer_ex` -> `ArcherEx.js`).
+ * Powered natively by `src/engine/ArcaneShaderFX.js` + read-only `src/engine/shaders/sylvanShaders.js`
+ * with row-aware radial/vertical distance falloff and soft margin alpha (`0` flat box cuts, `0/240` border clips).
  *
- * Output: assets/sprites/archer_ex_vfx.png (6240x1664, 30 cols x 8 rows, 208x208 cells)
- * Logical grid: 104x104 per cell -> upscaled 2x NEAREST -> 208x208 (100% 2x2 pixel blocks,
- * strict binary alpha 0 or 255, strict 3px logical / 6px output border margin -> 0/240 clips).
- *
- * Row Layout (aligned 1:1 with VFXManager.js & ArcherEx.js):
- *   Row 0 (y=0):    Supersonic Astral Tempest Arrow ('arrow' projectile + Mach shock-ring)
- *   Row 1 (y=208):  Curving Emerald Seeker Arrow & Star-Burst
- *   Row 2 (y=416):  Verdant Yggdrasil Bramble-Star Root Snare
- *   Row 3 (y=624):  Roaring Astral Emerald Dragon-Head Beam Muzzle (beams cropY=624)
- *   Row 4 (y=832):  4-Band Serrated Emerald-Gold Bow-Glaive Slash Wave (slashes cropY=832)
- *   Row 5 (y=1040): Yggdrasil World-Tree Runic Ground Seal
- *   Row 6 (y=1248): Colossal Drawn Celestial Yggdrasil Greatbow Muzzle (TRUE_ULTIMATE)
- *   Row 7 (y=1456): Seamless Tiled Supernova Dragon-Arrow Beam (core x=44..156, tip x=156..200)
+ * Outputs:
+ *   1. `assets/sprites/archer_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<scratch>/debug_archer_ex_vfx.png` (8x30 contact sheet for visual verification)
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { fileURLToPath } from 'node:url';
 
-const COLS = 30;
-const ROWS = 8;
-const LOG = 104;
-const CELL = 208;
-const MARGIN = 3;
+import {
+  createPixelSurface,
+  clearPixelSurface,
+  resolveSurfaceToRGBA,
+  ShaderPen,
+  instantiateShaderEffect,
+  smoothStep
+} from '../src/engine/ArcaneShaderFX.js';
 
-const OUT_PATH = path.resolve('assets/sprites/archer_ex_vfx.png');
-const QA_PATH =
-  '/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch/debug_archer_ex_vfx_30fps.png';
+import {
+  SYLVAN_EMERALD_PALETTE,
+  SYLVAN_STARLIGHT_PALETTE,
+  SYLVAN_EFFECT_REGISTRY
+} from '../src/engine/shaders/sylvanShaders.js';
 
-const PAL = {
-  selout: [5, 22, 16, 255],
-  forestDeep: [6, 95, 70, 255],
-  emeraldMid: [16, 185, 129, 255],
-  emeraldBright: [52, 211, 153, 255],
-  mintLight: [167, 243, 208, 255],
-  white: [255, 255, 255, 255],
-  goldMid: [217, 119, 6, 255],
-  goldBright: [250, 204, 21, 255],
-  goldLight: [253, 224, 71, 255],
-  ivory: [254, 249, 195, 255]
-};
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, '..');
+const SCRATCH_DIR =
+  '/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
     let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
     table[n] = c >>> 0;
   }
   return table;
@@ -57,17 +48,18 @@ const CRC_TABLE = (() => {
 
 function crc32(buf) {
   let c = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  for (let i = 0; i < buf.length; i++) {
+    c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  }
   return (c ^ 0xffffffff) >>> 0;
 }
 
-function pngChunk(typeStr, dataBuf) {
-  const typeBuf = Buffer.from(typeStr, 'ascii');
+function makePngChunk(typeAscii, dataBuf) {
+  const typeBuf = Buffer.from(typeAscii, 'ascii');
   const lenBuf = Buffer.alloc(4);
   lenBuf.writeUInt32BE(dataBuf.length, 0);
-  const crcIn = Buffer.concat([typeBuf, dataBuf]);
   const crcBuf = Buffer.alloc(4);
-  crcBuf.writeUInt32BE(crc32(crcIn), 0);
+  crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, dataBuf])), 0);
   return Buffer.concat([lenBuf, typeBuf, dataBuf, crcBuf]);
 }
 
@@ -84,482 +76,269 @@ function encodeRgbaPng(width, height, rgba) {
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8;
   ihdr[9] = 6;
-  ihdr[10] = 0;
-  ihdr[11] = 0;
-  ihdr[12] = 0;
-  const idat = zlib.deflateSync(raw, { level: 6 });
+
+  const compressed = zlib.deflateSync(raw, { level: 6 });
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    pngChunk('IHDR', ihdr),
-    pngChunk('IDAT', idat),
-    pngChunk('IEND', Buffer.alloc(0))
+    makePngChunk('IHDR', ihdr),
+    makePngChunk('IDAT', compressed),
+    makePngChunk('IEND', Buffer.alloc(0))
   ]);
 }
 
-function makeBuf() {
-  return new Uint8Array(LOG * LOG * 4);
-}
-
-function setPx(buf, x, y, rgba) {
-  const ix = Math.round(x);
-  const iy = Math.round(y);
-  if (ix < MARGIN || ix >= LOG - MARGIN || iy < MARGIN || iy >= LOG - MARGIN) return;
-  const idx = (iy * LOG + ix) * 4;
-  buf[idx] = rgba[0];
-  buf[idx + 1] = rgba[1];
-  buf[idx + 2] = rgba[2];
-  buf[idx + 3] = 255;
-}
-
-function drawDisc(buf, cx, cy, r, rgba) {
-  const r2 = r * r;
-  const x0 = Math.floor(cx - r - 1);
-  const x1 = Math.ceil(cx + r + 1);
-  const y0 = Math.floor(cy - r - 1);
-  const y1 = Math.ceil(cy + r + 1);
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
-      if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r2) {
-        setPx(buf, x, y, rgba);
+/**
+ * Eliminates internal shadeBox square walls while preserving Row 7's horizontal
+ * 3-wave tiling slice (`x_208 = 44..156`, `coreSliceW = 112`) and non-overlapping tip (`156..208`).
+ */
+function applyRowSoftEnvelope104(rgba, row, w = 104, h = 104) {
+  for (let y = 0; y < h; y++) {
+    const dy = y - 52;
+    for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4;
+      const a = rgba[o + 3];
+      if (!a) continue;
+      const dx = x - 52;
+      let env = 1.0;
+      if (row === 7) {
+        // Row 7 Supernova Beam tiles horizontally across x_104 = 22..78; taper vertically + far left/right margins only!
+        env = smoothStep(44, 30, Math.abs(dy));
+        if (x < 16) env *= smoothStep(3, 16, x);
+        if (x > 92) env *= smoothStep(101, 92, x);
+      } else if (row === 0 || row === 1) {
+        // Horizontal arrow bolts: elliptical envelope
+        const rEllip = Math.hypot(dx * 0.92, dy * 1.18);
+        env = smoothStep(47, 35, rEllip);
+      } else if (row === 2) {
+        const r = Math.hypot(dx, dy);
+        env = smoothStep(33, 22, r);
+      } else if (row === 4) {
+        const r = Math.hypot(dx, dy);
+        env = smoothStep(35, 24, r);
+      } else if (row === 5) {
+        const r = Math.hypot(dx, dy);
+        env = smoothStep(37, 25, r);
+      } else {
+        // Row 3 Wind-Dragon Vortex & Row 6 Celestial Greatbow: radial distance falloff!
+        const r = Math.hypot(dx, dy);
+        env = smoothStep(44, 31, r);
+      }
+      const outA = Math.round(a * env);
+      if (outA <= 2) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else {
+        rgba[o + 3] = outA;
       }
     }
   }
 }
 
-function drawLine(buf, x0, y0, x1, y1, rgba, rad = 0) {
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 1.6));
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const px = x0 + dx * t;
-    const py = y0 + dy * t;
-    if (rad <= 0) setPx(buf, px, py, rgba);
-    else drawDisc(buf, px, py, rad, rgba);
-  }
-}
-
-function applySelout104(buf) {
-  const copy = new Uint8Array(buf);
-  for (let y = MARGIN; y < LOG - MARGIN; y++) {
-    for (let x = MARGIN; x < LOG - MARGIN; x++) {
-      const idx = (y * LOG + x) * 4;
-      if (copy[idx + 3] > 0) continue;
-      const touches =
-        copy[((y - 1) * LOG + x) * 4 + 3] > 0 ||
-        copy[((y + 1) * LOG + x) * 4 + 3] > 0 ||
-        copy[(y * LOG + (x - 1)) * 4 + 3] > 0 ||
-        copy[(y * LOG + (x + 1)) * 4 + 3] > 0;
-      if (touches) {
-        buf[idx] = PAL.selout[0];
-        buf[idx + 1] = PAL.selout[1];
-        buf[idx + 2] = PAL.selout[2];
-        buf[idx + 3] = 255;
-      }
-    }
-  }
-  for (let y = 0; y < LOG; y++) {
-    for (let x = 0; x < LOG; x++) {
-      if (x < MARGIN || x >= LOG - MARGIN || y < MARGIN || y >= LOG - MARGIN) {
-        const idx = (y * LOG + x) * 4;
-        buf[idx] = 0;
-        buf[idx + 1] = 0;
-        buf[idx + 2] = 0;
-        buf[idx + 3] = 0;
-      }
-    }
-  }
-}
-
-// Row 0: Supersonic Astral Tempest Arrow ('arrow' projectile + double-helix + Mach ring)
-function renderRow0(f) {
-  const buf = makeBuf();
-  const ph = (f / COLS) * Math.PI * 2;
-  const cy = 52;
-
-  // Double-helix emerald & gold wind wake
-  for (let x = 14; x <= 78; x++) {
-    const u = (x - 14) / 64;
-    const amp = (1 - u * 0.65) * 9.5;
-    const y1 = cy + Math.sin(u * Math.PI * 3.0 - ph * 2.0) * amp;
-    const y2 = cy - Math.sin(u * Math.PI * 3.0 - ph * 2.0) * amp;
-    setPx(buf, x, y1, PAL.emeraldBright);
-    setPx(buf, x, y1 - 1, PAL.mintLight);
-    setPx(buf, x, y2, PAL.goldLight);
-  }
-
-  // Central shaft
-  drawLine(buf, 16, cy, 86, cy, PAL.emeraldMid, 1.4);
-  drawLine(buf, 22, cy, 88, cy, PAL.white, 0.6);
-
-  // Emerald-gold fletching feathers
-  drawLine(buf, 14, cy - 6, 24, cy, PAL.goldBright, 0.8);
-  drawLine(buf, 14, cy + 6, 24, cy, PAL.goldBright, 0.8);
-
-  // Broadhead Astral Star-Tip
-  drawLine(buf, 74, cy - 8, 92, cy, PAL.emeraldBright, 1.4);
-  drawLine(buf, 74, cy + 8, 92, cy, PAL.emeraldBright, 1.4);
-  drawLine(buf, 78, cy - 5, 92, cy, PAL.goldLight, 0.8);
-  drawLine(buf, 78, cy + 5, 92, cy, PAL.goldLight, 0.8);
-  drawDisc(buf, 86, cy, 2.2, PAL.white);
-
-  // Mach shock-ring
-  const ringX = 62 + Math.sin(ph) * 3;
-  for (let k = 0; k < 36; k++) {
-    const a = (k / 36) * Math.PI * 2;
-    setPx(buf, ringX + Math.cos(a) * 4, cy + Math.sin(a) * 14, k % 2 === 0 ? PAL.mintLight : PAL.goldLight);
-  }
-
-  applySelout104(buf);
-  return buf;
-}
-
-// Row 1: Curving Emerald Seeker Arrow & Starlight Hit-Burst
-function renderRow1(f) {
-  const buf = makeBuf();
-  const ph = (f / COLS) * Math.PI * 2;
-  const cy = 52;
-
-  for (let i = 0; i <= 40; i++) {
-    const u = i / 40;
-    const x = 16 + u * 70;
-    const y = cy + Math.sin((1 - u) * 2.2 + ph) * (1 - u) * 12;
-    drawDisc(buf, x, y, 0.9 + u * 1.4, u > 0.7 ? PAL.goldLight : PAL.emeraldBright);
-    if (u > 0.45) setPx(buf, x, y, PAL.white);
-  }
-  drawLine(buf, 76, cy - 7, 90, cy, PAL.goldBright, 1.2);
-  drawLine(buf, 76, cy + 7, 90, cy, PAL.goldBright, 1.2);
-  drawDisc(buf, 86, cy, 2.5, PAL.white);
-  applySelout104(buf);
-  return buf;
-}
-
-// Row 2: Verdant Yggdrasil Bramble-Star Root Snare
-function renderRow2(f) {
-  const buf = makeBuf();
-  const u = f / (COLS - 1);
-  const ph = u * Math.PI * 2;
-  const baseY = 92;
-  const grow = u < 0.25 ? u / 0.25 : Math.max(0.25, 1 - (u - 0.25) * 0.65);
-
-  for (let v = -2; v <= 2; v++) {
-    const startX = 52 + v * 10;
-    let px = startX;
-    let py = baseY;
-    for (let s = 1; s <= 7; s++) {
-      const su = s / 7;
-      const nx = startX + Math.sin(su * 3.5 + v + ph * 0.5) * 8 - v * su * 3;
-      const ny = baseY - su * 58 * grow;
-      drawLine(buf, px, py, nx, ny, PAL.forestDeep, 1.6);
-      drawLine(buf, px, py, nx, ny, s % 2 === 0 ? PAL.emeraldBright : PAL.emeraldMid, 0.8);
-      if (s % 2 === 1) setPx(buf, nx + 2, ny, PAL.goldLight);
-      px = nx;
-      py = ny;
-    }
-  }
-  drawLine(buf, 20, baseY, 84, baseY, PAL.emeraldBright, 1.2);
-  applySelout104(buf);
-  return buf;
-}
-
-// Row 3: Roaring Astral Emerald Dragon-Head Beam Muzzle (VFXManager beams cropY=624)
-function renderRow3(f) {
-  const buf = makeBuf();
-  const ph = (f / COLS) * Math.PI * 2;
-  const cx = 48;
-  const cy = 52;
-  const jaw = 6 + Math.sin(ph * 2) * 3;
-
-  // Coiling emerald-gold dragon head silhouette facing +X
-  drawLine(buf, 14, cy - 8, cx + 18, cy - jaw, PAL.emeraldMid, 5.5);
-  drawLine(buf, 14, cy + 8, cx + 18, cy + jaw, PAL.emeraldMid, 5.5);
-  drawLine(buf, 18, cy - 7, cx + 22, cy - jaw, PAL.emeraldBright, 3.2);
-  drawLine(buf, 18, cy + 7, cx + 22, cy + jaw, PAL.emeraldBright, 3.2);
-  // Sweeping golden antlers/horns
-  drawLine(buf, cx + 2, cy - 10, cx - 22, cy - 28, PAL.goldBright, 2.2);
-  drawLine(buf, cx + 2, cy + 10, cx - 22, cy + 28, PAL.goldBright, 2.2);
-  // Blazing astral core inside open dragon jaws
-  drawDisc(buf, cx + 14, cy, 9.5, PAL.goldLight);
-  drawDisc(buf, cx + 16, cy, 5.8, PAL.white);
-  // Glowing dragon eye
-  drawDisc(buf, cx + 4, cy - jaw - 4, 2.2, PAL.white);
-  applySelout104(buf);
-  return buf;
-}
-
-// Row 4: Twelve-Star Lance-Arrow & Zodiac Constellation Starburst (0 melee glaive crescent!)
-function renderRow4(f) {
-  const buf = makeBuf();
-  const u = f / (COLS - 1);
-  const cx = 52;
-  const cy = 52;
-  const fade = Math.max(0.16, 1 - u * 0.84);
-  const expand = Math.min(1, u * 3.8 + 0.32);
-
-  // Foreshortened Emerald-Gold Zodiac Ring
-  const rRing = 14 + expand * 24;
-  for (let i = 0; i < 72; i++) {
-    if (u > 0.65 && i % 2 === 1) continue;
-    const a = (i / 72) * Math.PI * 2 + u * 1.6;
-    setPx(
-      buf,
-      cx + Math.cos(a) * rRing,
-      cy + Math.sin(a) * (rRing * 0.45),
-      i % 6 === 0 ? PAL.white : i % 2 === 0 ? PAL.goldLight : PAL.emeraldBright
-    );
-  }
-
-  // Descending Starlight Lance-Arrow shaft (early frames) + 8-Point Constellation Starburst
-  if (u < 0.55) {
-    const topY = 10 + u * 26;
-    drawLine(buf, cx, topY, cx, cy + 12, PAL.emeraldBright, 1.8);
-    drawLine(buf, cx, topY + 4, cx, cy + 12, PAL.white, 0.8);
-    drawLine(buf, cx - 6, cy + 2, cx, cy + 14, PAL.goldLight, 1.1);
-    drawLine(buf, cx + 6, cy + 2, cx, cy + 14, PAL.goldLight, 1.1);
-  }
-
-  for (let k = 0; k < 8; k++) {
-    const ang = (k * Math.PI) / 4 + 0.18;
-    const len = (k % 2 === 0 ? 38 : 25) * expand * fade;
-    drawLine(
-      buf,
-      cx + Math.cos(ang) * 3,
-      cy + Math.sin(ang) * 3,
-      cx + Math.cos(ang) * len,
-      cy + Math.sin(ang) * len,
-      k % 2 === 0 ? PAL.goldLight : PAL.emeraldBright,
-      k % 2 === 0 ? 1.3 : 0.8
-    );
-    if (k % 2 === 0) {
-      drawLine(
-        buf,
-        cx + Math.cos(ang) * 2,
-        cy + Math.sin(ang) * 2,
-        cx + Math.cos(ang) * (len * 0.65),
-        cy + Math.sin(ang) * (len * 0.65),
-        PAL.white,
-        0.5
-      );
-    }
-  }
-  drawDisc(buf, cx, cy, Math.max(1.5, 4.5 * fade), PAL.white);
-  applySelout104(buf);
-  return buf;
-}
-
-// Row 5: 2.5D Zodiac Target Astrolabe & Yggdrasil World-Tree Runic Ground Seal
-function renderRow5(f) {
-  const buf = makeBuf();
-  const ph = (f / COLS) * Math.PI * 2;
-  const cx = 52;
-  const cy = 56;
-  const rx = 40;
-  const ry = 17;
-
-  for (let i = 0; i < 120; i++) {
-    const a = (i / 120) * Math.PI * 2;
-    setPx(buf, cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, PAL.emeraldBright);
-    setPx(buf, cx + Math.cos(a) * (rx - 3), cy + Math.sin(a) * (ry - 1.5), PAL.goldLight);
-    setPx(buf, cx + Math.cos(a) * (rx * 0.56), cy + Math.sin(a) * (ry * 0.56), i % 2 === 0 ? PAL.mintLight : PAL.emeraldMid);
-  }
-  // 12 Rotating Zodiac Constellation Star Nodes + 6 World-Tree Root Spokes
-  for (let k = 0; k < 12; k++) {
-    const a = ph + (k * Math.PI * 2) / 12;
-    const dx = cx + Math.cos(a) * (rx * 0.82);
-    const dy = cy + Math.sin(a) * (ry * 0.82);
-    if (k % 2 === 0) {
-      drawLine(buf, cx, cy, dx, dy, PAL.emeraldMid, 0);
-      drawDisc(buf, dx, dy, 2.4, PAL.goldBright);
-      setPx(buf, dx, dy, PAL.white);
-    } else {
-      setPx(buf, dx, dy, PAL.mintLight);
-      setPx(buf, dx + 1, dy, PAL.emeraldBright);
-    }
-  }
-  drawDisc(buf, cx, cy, 4.0, PAL.goldLight);
-  drawDisc(buf, cx, cy, 2.0, PAL.white);
-  applySelout104(buf);
-  return buf;
-}
-
-// Row 6: Colossal Drawn Celestial Yggdrasil Greatbow Muzzle (TRUE_ULTIMATE Row 6!)
-function renderRow6(f) {
-  const buf = makeBuf();
-  const ph = (f / COLS) * Math.PI * 2;
-  const pull = 18 + Math.sin(ph * 2) * 3;
-  const riserX = 58;
-  const riserY = 52;
-
-  // Monumental recurve celestial limbs spanning y=8..96
-  let prevX = null;
-  let prevY = null;
-  for (let i = 0; i <= 44; i++) {
-    const s = -1 + (2 * i) / 44;
-    const ab = Math.abs(s);
-    const lx = riserX - 16 * (ab ** 1.2) + 9 * (ab ** 3.0);
-    const ly = riserY + s * 42;
-    if (prevX !== null) {
-      drawLine(buf, prevX, prevY, lx, ly, PAL.goldBright, 2.8);
-      drawLine(buf, prevX, prevY, lx, ly, ab > 0.65 ? PAL.emeraldBright : PAL.ivory, 1.4);
-    }
-    prevX = lx;
-    prevY = ly;
-  }
-  const topTipX = riserX - 7;
-  const nockX = topTipX - pull;
-  drawLine(buf, topTipX, riserY - 42, nockX, riserY, PAL.mintLight, 0.8);
-  drawLine(buf, topTipX, riserY + 42, nockX, riserY, PAL.mintLight, 0.8);
-
-  // Colossal nocked Supernova Star-Arrow & blazing focal sun
-  drawLine(buf, nockX, riserY, 94, riserY, PAL.emeraldBright, 2.4);
-  drawLine(buf, nockX + 4, riserY, 94, riserY, PAL.white, 1.1);
-  drawLine(buf, 80, riserY - 9, 96, riserY, PAL.goldLight, 1.6);
-  drawLine(buf, 80, riserY + 9, 96, riserY, PAL.goldLight, 1.6);
-  drawDisc(buf, riserX, riserY, 7 + Math.sin(ph * 3) * 1.5, PAL.goldLight);
-  drawDisc(buf, riserX, riserY, 4, PAL.white);
-
-  applySelout104(buf);
-  return buf;
-}
-
-// Row 7: Seamless Horizontally Tiled Supernova Dragon-Arrow Beam (TRUE_ULTIMATE Row 7!)
-// Core tile slice: x_208 = 44..156 -> x_104 = 22..78
-// Tip slice:       x_208 = 156..200 -> x_104 = 78..100 (strictly inside MARGIN=3 -> 0 border clips!)
-function renderRow7(f) {
-  const buf = makeBuf();
-  const ph = (f / COLS) * Math.PI * 2;
-  const cy = 52;
-
-  // Seamless periodic core beam across x=18..79 (period = 56px so x=22 and x=78 match 100% seamlessly!)
-  for (let x = 18; x <= 79; x++) {
-    const wave = Math.sin(((x - 22) / 56) * Math.PI * 4 - ph * 2) * 5.5;
-    const hw = 14 + Math.cos(((x - 22) / 56) * Math.PI * 2 - ph) * 2.0;
-    for (let dy = -Math.ceil(hw + 4); dy <= Math.ceil(hw + 4); dy++) {
-      const ad = Math.abs(dy - wave * 0.25);
-      if (ad > hw) continue;
-      let col = PAL.forestDeep;
-      if (ad < hw * 0.26) col = PAL.white;
-      else if (ad < hw * 0.52) col = PAL.goldLight;
-      else if (ad < hw * 0.78) col = PAL.emeraldBright;
-      setPx(buf, x, cy + dy, col);
-    }
-    // Spiraling emerald-gold helix ribbon
-    const hy = cy + Math.round(wave * 2.1);
-    setPx(buf, x, hy, PAL.goldBright);
-    setPx(buf, x, hy - 1, PAL.white);
-  }
-
-  // Piercing Supernova Dragon-Arrow Spearhead in x=78..98
-  for (let x = 78; x <= 98; x++) {
-    const u = (x - 78) / 20;
-    const hw = Math.max(1, (1 - u) * 18);
-    for (let dy = -Math.ceil(hw); dy <= Math.ceil(hw); dy++) {
-      const ad = Math.abs(dy);
-      let col = PAL.emeraldMid;
-      if (ad < hw * 0.32) col = PAL.white;
-      else if (ad < hw * 0.65) col = PAL.goldLight;
-      else col = PAL.emeraldBright;
-      setPx(buf, x, cy + dy, col);
-    }
-  }
-
-  applySelout104(buf);
-  return buf;
-}
-
-function blitUpscaled2x(sheetRgba, sheetW, cellBuf104, dstX, dstY) {
-  for (let y = 0; y < LOG; y++) {
-    for (let x = 0; x < LOG; x++) {
-      const sIdx = (y * LOG + x) * 4;
-      const r = cellBuf104[sIdx];
-      const g = cellBuf104[sIdx + 1];
-      const b = cellBuf104[sIdx + 2];
-      const a = cellBuf104[sIdx + 3] >= 128 ? 255 : 0;
-      for (let dy = 0; dy < 2; dy++) {
-        for (let dx = 0; dx < 2; dx++) {
-          const dIdx = ((dstY + y * 2 + dy) * sheetW + (dstX + x * 2 + dx)) * 4;
-          sheetRgba[dIdx] = a ? r : 0;
-          sheetRgba[dIdx + 1] = a ? g : 0;
-          sheetRgba[dIdx + 2] = a ? b : 0;
-          sheetRgba[dIdx + 3] = a;
+function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      const o = (y * w + x) * 4;
+      if (distEdge < 2) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else if (distEdge < 8 && rgba[o + 3] > 0) {
+        const k = (distEdge - 1.5) / 6.5;
+        rgba[o + 3] = Math.round(rgba[o + 3] * k);
+        if (rgba[o + 3] <= 2) {
+          rgba[o] = 0;
+          rgba[o + 1] = 0;
+          rgba[o + 2] = 0;
+          rgba[o + 3] = 0;
         }
       }
     }
   }
 }
 
-function main() {
-  console.log('=== Building SYLVARA EX 30fps VFX Sheet (6240x1664) ===');
-  const W = COLS * CELL;
-  const H = ROWS * CELL;
-  const sheetRgba = new Uint8Array(W * H * 4);
-
-  const rowFns = [renderRow0, renderRow1, renderRow2, renderRow3, renderRow4, renderRow5, renderRow6, renderRow7];
-  const sampleCols = [0, 3, 7, 12, 17, 22, 27];
-  const qaW = sampleCols.length * CELL;
-  const qaH = ROWS * CELL;
-  const qaRgba = new Uint8Array(qaW * qaH * 4);
-  for (let i = 0; i < qaW * qaH; i++) {
-    qaRgba[i * 4] = 18;
-    qaRgba[i * 4 + 1] = 30;
-    qaRgba[i * 4 + 2] = 26;
-    qaRgba[i * 4 + 3] = 255;
+function has4pxBorderClip208(rgba208, cell = 208, margin = 4) {
+  for (let y = 0; y < cell; y++) {
+    for (let x = 0; x < cell; x++) {
+      if (x >= margin && x < cell - margin && y >= margin && y < cell - margin) continue;
+      if (rgba208[(y * cell + x) * 4 + 3] > 0) return true;
+    }
   }
+  return false;
+}
 
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const buf = rowFns[r](c);
-      blitUpscaled2x(sheetRgba, W, buf, c * CELL, r * CELL);
-      const sIdx = sampleCols.indexOf(c);
-      if (sIdx >= 0) {
-        for (let y = 0; y < LOG; y++) {
-          for (let x = 0; x < LOG; x++) {
-            const p = (y * LOG + x) * 4;
-            if (buf[p + 3] === 0) continue;
-            for (let dy = 0; dy < 2; dy++) {
-              for (let dx = 0; dx < 2; dx++) {
-                const q = ((r * CELL + y * 2 + dy) * qaW + (sIdx * CELL + x * 2 + dx)) * 4;
-                qaRgba[q] = buf[p];
-                qaRgba[q + 1] = buf[p + 1];
-                qaRgba[q + 2] = buf[p + 2];
-                qaRgba[q + 3] = 255;
-              }
-            }
-          }
+function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, dstY) {
+  for (let sy = 0; sy < srcH; sy++) {
+    for (let sx = 0; sx < srcW; sx++) {
+      const so = (sy * srcW + sx) * 4;
+      const a = srcRgba[so + 3];
+      if (!a) continue;
+      const r = srcRgba[so];
+      const g = srcRgba[so + 1];
+      const b = srcRgba[so + 2];
+      for (let dy = 0; dy < scale; dy++) {
+        const ty = dstY + sy * scale + dy;
+        for (let dx = 0; dx < scale; dx++) {
+          const tx = dstX + sx * scale + dx;
+          const to = (ty * dstW + tx) * 4;
+          dstRgba[to] = r;
+          dstRgba[to + 1] = g;
+          dstRgba[to + 2] = b;
+          dstRgba[to + 3] = a;
         }
       }
     }
   }
+}
 
+function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
+  for (let sy = 0; sy < srcH; sy++) {
+    for (let sx = 0; sx < srcW; sx++) {
+      const so = (sy * srcW + sx) * 4;
+      const sa = srcRgba[so + 3] / 255;
+      if (sa <= 0) continue;
+      const tx = dstX + sx;
+      const ty = dstY + sy;
+      const to = (ty * dstW + tx) * 4;
+      const da = dstRgba[to + 3] / 255;
+      const outA = sa + da * (1 - sa);
+      if (outA <= 0) continue;
+      dstRgba[to] = Math.round((srcRgba[so] * sa + dstRgba[to] * da * (1 - sa)) / outA);
+      dstRgba[to + 1] = Math.round((srcRgba[so + 1] * sa + dstRgba[to + 1] * da * (1 - sa)) / outA);
+      dstRgba[to + 2] = Math.round((srcRgba[so + 2] * sa + dstRgba[to + 2] * da * (1 - sa)) / outA);
+      dstRgba[to + 3] = Math.round(outA * 255);
+    }
+  }
+}
+
+function bakeArcherExVfxSheet() {
+  const ROWS = 8;
+  const COLS = 30;
+  const LOGICAL = 104;
+  const CELL = 208;
+  const sheetW = COLS * CELL;
+  const sheetH = ROWS * CELL;
+  const sheetRgba = new Uint8Array(sheetW * sheetH * 4);
+
+  const dbgPad = 3;
+  const dbgW = COLS * (LOGICAL + dbgPad) + dbgPad;
+  const dbgH = ROWS * (LOGICAL + dbgPad) + dbgPad;
+  const dbgRgba = new Uint8Array(dbgW * dbgH * 4);
+  for (let i = 0; i < dbgW * dbgH; i++) {
+    dbgRgba[i * 4] = 10;
+    dbgRgba[i * 4 + 1] = 22;
+    dbgRgba[i * 4 + 2] = 20;
+    dbgRgba[i * 4 + 3] = 255;
+  }
+
+  const rowSpecs = [
+    {
+      name: 'Row 0: Piercing Emerald-Gold Astral Wind-Arrow (F00..F29)',
+      windowSec: 0.50,
+      def: SYLVAN_EFFECT_REGISTRY.sylvanSupersonicArrowLoop,
+      cfg: { x: 52, y: 52, length: 68, palette: SYLVAN_EMERALD_PALETTE, seed: 183 }
+    },
+    {
+      name: 'Row 1: Homing Starlight Seeker Arrow (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.starfallSeekerArrowCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_STARLIGHT_PALETTE, seed: 211 }
+    },
+    {
+      name: 'Row 2: Verdant Yggdrasil Root-Star Snare Sigil (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.verdantBrambleSnareCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_EMERALD_PALETTE, seed: 229 }
+    },
+    {
+      name: 'Row 3: Tempest Astral Wind-Dragon Vortex (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.tempestWindDragonVortexCell,
+      cfg: { x: 52, y: 54, palette: SYLVAN_EMERALD_PALETTE, seed: 241 }
+    },
+    {
+      name: 'Row 4: Emerald-Gold Star-Cross Impact Burst (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.emeraldStarCrossBurstCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_STARLIGHT_PALETTE, seed: 257 }
+    },
+    {
+      name: 'Row 5: Yggdrasil World-Tree & Sagittarius Constellation Canopy Seal (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.yggdrasilConstellationSealCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_EMERALD_PALETTE, seed: 269 }
+    },
+    {
+      name: 'Row 6: Colossal Drawn Golden-Emerald Celestial Greatbow Muzzle (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.colossalCelestialGreatbowCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_STARLIGHT_PALETTE, seed: 281 }
+    },
+    {
+      name: 'Row 7: World-Piercing Supernova Dragon-Arrow Beam Segment (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.supernovaDragonBeamSegmentCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_EMERALD_PALETTE, seed: 293 }
+    }
+  ];
+
+  const surface104 = createPixelSurface(LOGICAL, LOGICAL);
+  const pen104 = new ShaderPen(surface104);
+  const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const cell208 = new Uint8Array(CELL * CELL * 4);
   let borderClips = 0;
-  let nonBinary = 0;
+
   for (let r = 0; r < ROWS; r++) {
+    const spec = rowSpecs[r];
+    const dt = spec.windowSec / COLS;
+    const inst = instantiateShaderEffect(spec.def, spec.cfg);
+
     for (let c = 0; c < COLS; c++) {
-      const ox = c * CELL;
-      const oy = r * CELL;
-      let clipped = false;
-      for (let y = 0; y < CELL; y++) {
-        for (let x = 0; x < CELL; x++) {
-          const a = sheetRgba[((oy + y) * W + (ox + x)) * 4 + 3];
-          if (a > 0 && a < 255) nonBinary++;
-          if (a > 0 && (x < 4 || x >= CELL - 4 || y < 4 || y >= CELL - 4)) clipped = true;
+      clearPixelSurface(surface104);
+      inst.render(pen104, 'back');
+      inst.render(pen104, 'front');
+      resolveSurfaceToRGBA(surface104, cell104, 1.18);
+      applyRowSoftEnvelope104(cell104, r, LOGICAL, LOGICAL);
+      enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
+
+      cell208.fill(0);
+      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
+      if (has4pxBorderClip208(cell208, CELL, 4)) borderClips++;
+
+      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
+
+      const dx = dbgPad + c * (LOGICAL + dbgPad);
+      const dy = dbgPad + r * (LOGICAL + dbgPad);
+      for (let yy = 0; yy < LOGICAL; yy++) {
+        for (let xx = 0; xx < LOGICAL; xx++) {
+          const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
+          const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
+          dbgRgba[o] = isEdge ? 28 : 14;
+          dbgRgba[o + 1] = isEdge ? 68 : 26;
+          dbgRgba[o + 2] = isEdge ? 56 : 28;
+          dbgRgba[o + 3] = 255;
         }
       }
-      if (clipped) borderClips++;
+      alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+
+      inst.step(dt);
     }
+    console.log(`[archer_ex_vfx] Baked ${spec.name} (30 frames)`);
   }
 
-  console.log(`[QA] archer_ex_vfx.png: borderClips=${borderClips}/240 | nonBinary=${nonBinary}`);
-  if (borderClips !== 0 || nonBinary !== 0) {
-    throw new Error(`archer_ex_vfx QA failed: borderClips=${borderClips}, nonBinary=${nonBinary}`);
-  }
+  const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'archer_ex_vfx.png');
+  fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
 
-  fs.writeFileSync(OUT_PATH, encodeRgbaPng(W, H, sheetRgba));
-  console.log(`[OK] Saved ${OUT_PATH} (${W}x${H})`);
+  fs.mkdirSync(SCRATCH_DIR, { recursive: true });
+  const outDbgPath = path.join(SCRATCH_DIR, 'debug_archer_ex_vfx.png');
+  fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
 
-  fs.mkdirSync(path.dirname(QA_PATH), { recursive: true });
-  fs.writeFileSync(QA_PATH, encodeRgbaPng(qaW, qaH, qaRgba));
-  console.log(`[QA] Saved ${QA_PATH}`);
+  console.log(
+    `[archer_ex_vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}) & ${outDbgPath} | borderClips=${borderClips}/240`
+  );
+  if (borderClips > 0) process.exitCode = 1;
 }
 
-main();
+bakeArcherExVfxSheet();

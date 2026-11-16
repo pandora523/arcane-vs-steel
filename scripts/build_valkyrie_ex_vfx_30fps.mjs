@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * Next-Gen 30fps VFX Sprite Sheet Builder for FREYJA EX (`valkyrie_ex` -> `ValkyrieEx.js`).
- * Powered by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/valkyrieShaders.js` +
- * bespoke Next-Gen serrated crimson-gold pixel-art accents and strict binary alpha (`0` or `255`).
+ * Powered natively by `src/engine/ArcaneShaderFX.js` + read-only `src/engine/shaders/valkyrieShaders.js`
+ * with radial/elliptical distance falloff and soft margin alpha (`0` flat box cuts, `0/240` border clips).
  *
  * Outputs:
- *   1. `assets/sprites/valkyrie_ex_vfx.png` (`6240x1664`, `8 rows x 30 cols @ 208x208`, `2x2` integer blocks, `0/240` border clips)
+ *   1. `assets/sprites/valkyrie_ex_vfx.png` (`6240x1664`, `8 rows x 30 cols @ 208x208`, `0/240` border clips)
  *   2. `<scratch>/debug_valkyrie_ex_vfx.png` (`8x30` contact sheet for visual QA)
  */
 
@@ -19,7 +19,8 @@ import {
   clearPixelSurface,
   resolveSurfaceToRGBA,
   ShaderPen,
-  instantiateShaderEffect
+  instantiateShaderEffect,
+  smoothStep
 } from '../src/engine/ArcaneShaderFX.js';
 
 import {
@@ -80,53 +81,43 @@ function encodeRgbaPng(width, height, rgba) {
   ]);
 }
 
-function putPx104(rgba, x, y, r, g, b, a = 255) {
+function putPx104(rgba, x, y, r, g, b, a = 248) {
   const ix = Math.round(x);
   const iy = Math.round(y);
-  if (ix < 3 || ix >= 101 || iy < 3 || iy >= 101) return;
+  if (ix < 5 || ix >= 99 || iy < 5 || iy >= 99) return;
   const o = (iy * 104 + ix) * 4;
-  rgba[o] = r;
-  rgba[o + 1] = g;
-  rgba[o + 2] = b;
-  rgba[o + 3] = a;
+  if (a >= rgba[o + 3]) {
+    rgba[o] = r;
+    rgba[o + 1] = g;
+    rgba[o + 2] = b;
+    rgba[o + 3] = a;
+  }
 }
 
 /**
- * Adds bespoke Next-Gen Crimson-Gold Gungnir Javelin, Valhalla Target-Rune, & Bifrost accents!
+ * Adds lush crimson-gold Gungnir winged spearhead & Bifrost accents on top of `VALKYRIE_EFFECT_REGISTRY` shaders.
  */
 function addNextGenValkyrieAccents104(rgba, row, col) {
-  const u = col / 29;
   const ph = (col / 30) * Math.PI * 2;
   if (row === 0) {
-    // Supersonic Winged Gungnir Lightning-Javelin Spearhead + Valhalla Mach Ring + Stepped Lightning Helix
-    const tipX = 88 + Math.sin(ph) * 2;
+    // Winged Gungnir Lightning-Javelin Spearhead + Valhalla Mach Ring
+    const tipX = 84 + Math.sin(ph) * 2;
     const cy = 52;
-    // Foreshortened Valhalla Mach shock-ring
-    const ringX = 54 + Math.sin(ph) * 3;
-    for (let k = 0; k < 32; k++) {
-      const a = (k / 32) * Math.PI * 2 + ph;
+    const ringX = 52 + Math.sin(ph) * 3;
+    for (let k = 0; k < 28; k++) {
+      const a = (k / 28) * Math.PI * 2 + ph;
       putPx104(
         rgba,
         ringX + Math.cos(a) * 4,
-        cy + Math.sin(a) * 15,
+        cy + Math.sin(a) * 14,
         k % 2 === 0 ? 255 : 254,
         k % 2 === 0 ? 255 : 240,
-        k % 2 === 0 ? 255 : 138
+        k % 2 === 0 ? 255 : 138,
+        220
       );
     }
-    // Central Gungnir Javelin shaft + stepped golden lightning helix
-    for (let x = 14; x <= tipX; x++) {
-      const t = (x - 14) / Math.max(1, tipX - 14);
-      putPx104(rgba, x, cy, 255, 255, 255);
-      putPx104(rgba, x, cy - 1, 254, 240, 138);
-      putPx104(rgba, x, cy + 1, 251, 113, 133);
-      const zig = (((Math.floor(x / 4) + col) % 2) === 0 ? 1 : -1) * (1 - t * 0.55) * 8;
-      putPx104(rgba, x, cy + zig, 254, 240, 138);
-      putPx104(rgba, x, cy - zig * 0.7, 251, 113, 133);
-    }
-    // Winged Gungnir Spearhead at tipX
-    for (let dx = 0; dx <= 14; dx++) {
-      const hw = Math.round((dx / 14) * 6);
+    for (let dx = 0; dx <= 12; dx++) {
+      const hw = Math.round((dx / 12) * 5);
       for (let dy = -hw; dy <= hw; dy++) {
         const isCore = Math.abs(dy) <= 1;
         putPx104(
@@ -134,49 +125,14 @@ function addNextGenValkyrieAccents104(rgba, row, col) {
           tipX - dx,
           cy + dy,
           isCore ? 255 : 254,
-          isCore ? 255 : (Math.abs(dy) === hw ? 113 : 204),
-          isCore ? 255 : (Math.abs(dy) === hw ? 133 : 21)
+          isCore ? 255 : Math.abs(dy) === hw ? 113 : 204,
+          isCore ? 255 : Math.abs(dy) === hw ? 133 : 21,
+          245
         );
-      }
-    }
-  } else if (row === 4) {
-    // Clear melee crescent & paint crisp 8-Point Valhalla Odin Target-Rune & Stepped Lightning Starburst!
-    rgba.fill(0);
-    const fade = Math.max(0, 1 - u * 0.92);
-    if (fade > 0.08) {
-      const rRing = Math.round((12 + u * 24) * 1.0);
-      for (let i = 0; i < 64; i++) {
-        const a = (i / 64) * Math.PI * 2 + u * 1.8;
-        if (u > 0.65 && i % 2 === 1) continue;
-        putPx104(
-          rgba,
-          52 + Math.cos(a) * rRing,
-          52 + Math.sin(a) * rRing,
-          i % 4 === 0 ? 255 : 254,
-          i % 4 === 0 ? 255 : 204,
-          i % 4 === 0 ? 255 : 21
-        );
-      }
-      for (let k = 0; k < 8; k++) {
-        const ang = (k * Math.PI) / 4 + 0.2;
-        const len = Math.round((k % 2 === 0 ? 38 : 26) * Math.min(1, u * 4.5 + 0.35) * fade);
-        for (let r = 2; r <= len; r++) {
-          const px = 52 + Math.cos(ang) * r;
-          const py = 52 + Math.sin(ang) * r;
-          const core = r < len * 0.55;
-          putPx104(rgba, px, py, core ? 255 : 251, core ? 240 : 113, core ? 138 : 133);
-          if (k % 2 === 0 && r < len * 0.75) {
-            putPx104(rgba, px + Math.sin(ang), py - Math.cos(ang), 190, 18, 60);
-          }
-        }
-      }
-      for (let d = -4; d <= 4; d++) {
-        putPx104(rgba, 52 + d, 52, 255, 255, 255);
-        putPx104(rgba, 52, 52 + d, 255, 255, 255);
       }
     }
   } else if (row === 5) {
-    // Prismatic Bifrost multi-band pixel rim nodes on Einherjar Seal
+    // Prismatic Bifrost rim nodes on Einherjar Seal
     const bifrostCols = [
       [103, 232, 249],
       [250, 204, 21],
@@ -186,35 +142,75 @@ function addNextGenValkyrieAccents104(rgba, row, col) {
     for (let k = 0; k < 8; k++) {
       const a = ph + (k * Math.PI) / 4;
       const c = bifrostCols[k % 4];
-      const nx = 52 + Math.cos(a) * 38;
-      const ny = 52 + Math.sin(a) * 16;
-      putPx104(rgba, nx, ny, 255, 255, 255);
-      putPx104(rgba, nx + 1, ny, c[0], c[1], c[2]);
-      putPx104(rgba, nx - 1, ny, c[0], c[1], c[2]);
-      putPx104(rgba, nx, ny + 1, c[0], c[1], c[2]);
-      putPx104(rgba, nx, ny - 1, c[0], c[1], c[2]);
+      const nx = 52 + Math.cos(a) * 35;
+      const ny = 52 + Math.sin(a) * 15;
+      putPx104(rgba, nx, ny, 255, 255, 255, 240);
+      putPx104(rgba, nx + 1, ny, c[0], c[1], c[2], 210);
+      putPx104(rgba, nx - 1, ny, c[0], c[1], c[2], 210);
     }
   }
 }
 
-function enforceSafeMarginAndBinaryAlpha104(rgba, w = 104, h = 104) {
+/**
+ * Smooth radial / elliptical envelope that eliminates all internal shadeBox borders (including Row 7 B@193!).
+ */
+function applyRowSoftEnvelope104(rgba, row, w = 104, h = 104) {
   for (let y = 0; y < h; y++) {
+    const dy = y - 52;
     for (let x = 0; x < w; x++) {
-      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
       const o = (y * w + x) * 4;
-      let a = rgba[o + 3];
-      if (distEdge < 2) {
-        a = 0;
-      } else if (distEdge < 7 && a > 0) {
-        a = Math.round(a * ((distEdge - 1.5) / 5.5));
-      }
-      if (a >= 84) {
-        rgba[o + 3] = 255;
+      const a = rgba[o + 3];
+      if (!a) continue;
+      const dx = x - 52;
+      let env = 1.0;
+      if (row === 1 || row === 2 || row === 6 || row === 7) {
+        // Vertical Sky-Lances, Dragonfire Obelisks & Ragnarok Pillars: smooth vertical + radial taper (0 B@193/T@26 cuts!)
+        const envX = smoothStep(42, 28, Math.abs(dx));
+        const envY = smoothStep(36, 20, Math.abs(dy));
+        env = envX * envY;
+      } else if (row === 0) {
+        const rEllip = Math.hypot(dx * 0.9, dy * 1.15);
+        env = smoothStep(46, 33, rEllip);
+      } else if (row === 4) {
+        const r = Math.hypot(x - 44, dy);
+        env = smoothStep(37, 25, r);
       } else {
+        // Row 3 Bahamut Crest, Row 5 Bifrost Seal
+        const r = Math.hypot(dx, dy);
+        env = smoothStep(43, 30, r);
+      }
+      const outA = Math.round(a * env);
+      if (outA <= 2) {
         rgba[o] = 0;
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
+      } else {
+        rgba[o + 3] = outA;
+      }
+    }
+  }
+}
+
+function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      const o = (y * w + x) * 4;
+      if (distEdge < 2) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else if (distEdge < 8 && rgba[o + 3] > 0) {
+        const k = (distEdge - 1.5) / 6.5;
+        rgba[o + 3] = Math.round(rgba[o + 3] * k);
+        if (rgba[o + 3] <= 2) {
+          rgba[o] = 0;
+          rgba[o + 1] = 0;
+          rgba[o + 2] = 0;
+          rgba[o + 3] = 0;
+        }
       }
     }
   }
@@ -248,14 +244,18 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
   for (let sy = 0; sy < srcH; sy++) {
     for (let sx = 0; sx < srcW; sx++) {
       const so = (sy * srcW + sx) * 4;
-      if (!srcRgba[so + 3]) continue;
+      const sa = srcRgba[so + 3] / 255;
+      if (sa <= 0) continue;
       const tx = dstX + sx;
       const ty = dstY + sy;
       const to = (ty * dstW + tx) * 4;
-      dstRgba[to] = srcRgba[so];
-      dstRgba[to + 1] = srcRgba[so + 1];
-      dstRgba[to + 2] = srcRgba[so + 2];
-      dstRgba[to + 3] = 255;
+      const da = dstRgba[to + 3] / 255;
+      const outA = sa + da * (1 - sa);
+      if (outA <= 0) continue;
+      dstRgba[to] = Math.round((srcRgba[so] * sa + dstRgba[to] * da * (1 - sa)) / outA);
+      dstRgba[to + 1] = Math.round((srcRgba[so + 1] * sa + dstRgba[to + 1] * da * (1 - sa)) / outA);
+      dstRgba[to + 2] = Math.round((srcRgba[so + 2] * sa + dstRgba[to + 2] * da * (1 - sa)) / outA);
+      dstRgba[to + 3] = Math.round(outA * 255);
     }
   }
 }
@@ -292,14 +292,14 @@ function bakeValkyrieExVfx() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: Wyvern Spiral Gungnir Crimson-Gold Lance-Wave',
+      name: 'Row 0: Wyvern Spiral Gungnir Crimson-Gold Lightning-Javelin',
       windowSec: 0.5,
       warmup: 0,
       def: VALKYRIE_EFFECT_REGISTRY.wyvernSpiralLanceCell,
-      cfg: { x: 50, y: 52, length: 72, palette: VALKYRIE_CRIMSON_PALETTE, seed: 183 }
+      cfg: { x: 50, y: 52, length: 70, palette: VALKYRIE_CRIMSON_PALETTE, seed: 183 }
     },
     {
-      name: 'Row 1: Descending Gungnir Sky-Lance (F00..F11) & Valhalla Rune Crater (F12..F29)',
+      name: 'Row 1: Descending Gungnir Sky-Lance & Valhalla Rune Crater',
       windowSec: 1.0,
       warmup: 0,
       def: VALKYRIE_EFFECT_REGISTRY.gungnirSkyLanceCell,
@@ -320,11 +320,11 @@ function bakeValkyrieExVfx() {
       cfg: { x: 52, y: 52, palette: VALKYRIE_CRIMSON_PALETTE, seed: 197 }
     },
     {
-      name: 'Row 4: Valhalla Dragonfire Serrated Crescent Slash & Starburst',
+      name: 'Row 4: Valhalla Dragonfire Lightning Burst & Crescent',
       windowSec: 0.4,
       warmup: 0.01,
       def: VALKYRIE_EFFECT_REGISTRY.valhallaCrescentSlashCell,
-      cfg: { x: 34, y: 52, radius: 34, palette: VALKYRIE_CRIMSON_PALETTE, seed: 201 }
+      cfg: { x: 42, y: 52, radius: 32, palette: VALKYRIE_CRIMSON_PALETTE, seed: 201 }
     },
     {
       name: 'Row 5: Bifrost Einherjar Target Seal',
@@ -365,9 +365,10 @@ function bakeValkyrieExVfx() {
       clearPixelSurface(surface104);
       inst.render(pen104, 'back');
       inst.render(pen104, 'front');
-      resolveSurfaceToRGBA(surface104, cell104, 1.15);
+      resolveSurfaceToRGBA(surface104, cell104, 1.18);
       addNextGenValkyrieAccents104(cell104, r, c);
-      enforceSafeMarginAndBinaryAlpha104(cell104, LOGICAL, LOGICAL);
+      applyRowSoftEnvelope104(cell104, r, LOGICAL, LOGICAL);
+      enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
 
       cell208.fill(0);
       blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
@@ -377,10 +378,21 @@ function bakeValkyrieExVfx() {
 
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
+      for (let yy = 0; yy < LOGICAL; yy++) {
+        for (let xx = 0; xx < LOGICAL; xx++) {
+          const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
+          const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
+          dbgRgba[o] = isEdge ? 72 : 20;
+          dbgRgba[o + 1] = isEdge ? 28 : 10;
+          dbgRgba[o + 2] = isEdge ? 44 : 18;
+          dbgRgba[o + 3] = 255;
+        }
+      }
       alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
 
       inst.step(dt);
     }
+    console.log(`[valkyrie_ex_vfx] Baked ${spec.name} (30 frames)`);
   }
 
   const outSheetPath = path.join(REPO_ROOT, 'assets', 'sprites', 'valkyrie_ex_vfx.png');

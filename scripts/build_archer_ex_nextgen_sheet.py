@@ -268,6 +268,17 @@ def load_rigs() -> dict:
         (286, 354), (376, 354), (380, 484), (292, 484),
     ]) & (~m_r_thigh) & (~m_skirt_tabard)
 
+    def darken_part(p: dict, factor: float = 0.84) -> dict:
+        arr_p = np.array(p["im"], dtype=np.float32)
+        m_a = arr_p[:, :, 3] > 0
+        arr_p[m_a, :3] = np.clip(arr_p[m_a, :3] * factor, 0, 255)
+        return {
+            "im": Image.fromarray(arr_p.astype(np.uint8), "RGBA"),
+            "x0": p["x0"],
+            "y0": p["y0"],
+            "pivot": p["pivot"],
+        }
+
     parts = {
         "hair": extract_part(rgba_base, m_hair, (214.0, 102.0)),
         "head": extract_part(rgba_base, m_head, (258.0, 118.0)),
@@ -278,6 +289,8 @@ def load_rigs() -> dict:
         "r_thigh": extract_part(rgba_base, m_r_thigh, (296.0, 294.0)),
         "r_shin": extract_part(rgba_base, m_r_shin, (324.0, 364.0)),
     }
+    parts["l_thigh_dark"] = darken_part(parts["l_thigh"], 0.84)
+    parts["l_shin_dark"] = darken_part(parts["l_shin"], 0.84)
 
     kp_raw = Image.open(KEYPOSES_REF).convert("RGB")
     kw, kh = kp_raw.size
@@ -660,14 +673,30 @@ def draw_astral_crescent_smear_160(
         a0, a1 = a1, a0
     span = max(0.08, a1 - a0)
 
-    xmin = max(MARGIN_160, int(math.floor(cx - r_outer - 4)))
-    xmax = min(LOG_W - MARGIN_160 - 1, int(math.ceil(cx + r_outer + 4)))
-    ymin = max(MARGIN_160, int(math.floor(cy - r_outer * tilt_y - 4)))
-    ymax = min(LOG_H - MARGIN_160 - 1, int(math.ceil(cy + r_outer * tilt_y + 4)))
+    xmin = max(MARGIN_160 + 4, int(math.floor(cx - r_outer - 4)))
+    xmax = min(LOG_W - MARGIN_160 - 9, int(math.ceil(cx + r_outer + 4)))
+    ymin = max(MARGIN_160 + 5, int(math.floor(cy - r_outer * tilt_y - 4)))
+    ymax = min(LOG_H - MARGIN_160 - 4, int(math.ceil(cy + r_outer * tilt_y + 4)))
+
+    bayer4 = (
+        (0.0625, 0.5625, 0.1875, 0.6875),
+        (0.8125, 0.3125, 0.9375, 0.4375),
+        (0.2500, 0.7500, 0.1250, 0.6250),
+        (1.0000, 0.5000, 0.8750, 0.3750),
+    )
 
     for py in range(ymin, ymax + 1):
         dy = (py - cy) / max(0.22, tilt_y)
         for px in range(xmin, xmax + 1):
+            # Soft 4x4 Bayer edge taper near logical safe box [10..149, 10..113]
+            edge_u = min(
+                (px - 6) / 6.0,
+                (150 - px) / 6.0,
+                (py - 6) / 6.0,
+                (114 - py) / 4.0,
+            )
+            if edge_u < 1.0 and edge_u <= bayer4[py & 3][px & 3]:
+                continue
             dx = px - cx
             r = math.hypot(dx, dy)
             if r > r_outer + 1.0 or r < r_inner_base * 0.42:
@@ -709,8 +738,8 @@ def draw_astral_crescent_smear_160(
             nx, ny = -uy, ux
             x0 = cx + ux * 16.0
             y0 = cy + uy * 16.0
-            x1 = min(LOG_W - MARGIN_160 - 3, cx + ux * (r_outer + 14.0))
-            y1 = max(MARGIN_160 + 3, min(LOG_H - MARGIN_160 - 3, cy + uy * (r_outer + 14.0)))
+            x1 = min(146.0, cx + ux * (r_outer + 12.0))
+            y1 = max(12.0, min(110.0, cy + uy * (r_outer + 12.0)))
 
             draw_line_px(buf, x0, y0, x1, y1, C_OUTLINE, r=2)
             draw_line_px(buf, x0, y0, x1, y1, C_EMERALD_BRIGHT, r=1)
@@ -730,7 +759,7 @@ def draw_astral_crescent_smear_160(
                     ry_p = my + uy * (math.cos(ma) * 3.2) + ny * (math.sin(ma) * 10.5)
                     set_px(buf, int(round(rx_p)), int(round(ry_p)), C_MINT_LIGHT if k % 2 == 0 else C_GOLD_LIGHT)
             # 4-point Constellation Star-Glint at arrow tip & mid-wake
-            tx_i, ty_i = int(round(x1)), int(round(y1))
+            tx_i, ty_i = int(round(x1 - ux * 1.0)), int(round(y1 - uy * 1.0))
             for arm in range(-3, 4):
                 set_px(buf, tx_i + arm, ty_i, C_WHITE if abs(arm) <= 1 else C_GOLD_LIGHT)
                 set_px(buf, tx_i, ty_i + arm, C_WHITE if abs(arm) <= 1 else C_EMERALD_BRIGHT)
@@ -746,14 +775,29 @@ def draw_astral_vortex_smear_160(
     arrow_rays: list[float] | None = None,
 ):
     """2.5D Spinning Astral Wind-Crescent Smear + Rapid 2-Arrow Streak (Row 2 V2 F17-F18)."""
-    xmin = max(MARGIN_160, int(math.floor(cx - rx * 0.62 - 3)))
-    xmax = min(LOG_W - MARGIN_160 - 1, int(math.ceil(cx + rx + 3)))
-    ymin = max(MARGIN_160, int(math.floor(cy - ry - 4)))
-    ymax = min(LOG_H - MARGIN_160 - 1, int(math.ceil(cy + ry + 4)))
+    xmin = max(MARGIN_160 + 4, int(math.floor(cx - rx * 0.62 - 3)))
+    xmax = min(LOG_W - MARGIN_160 - 9, int(math.ceil(cx + rx + 3)))
+    ymin = max(MARGIN_160 + 5, int(math.floor(cy - ry - 4)))
+    ymax = min(LOG_H - MARGIN_160 - 4, int(math.ceil(cy + ry + 4)))
+
+    bayer4 = (
+        (0.0625, 0.5625, 0.1875, 0.6875),
+        (0.8125, 0.3125, 0.9375, 0.4375),
+        (0.2500, 0.7500, 0.1250, 0.6250),
+        (1.0000, 0.5000, 0.8750, 0.3750),
+    )
 
     for py in range(ymin, ymax + 1):
         ny = (py - cy) / max(1.0, ry)
         for px in range(xmin, xmax + 1):
+            edge_u = min(
+                (px - 6) / 6.0,
+                (150 - px) / 6.0,
+                (py - 6) / 6.0,
+                (114 - py) / 4.0,
+            )
+            if edge_u < 1.0 and edge_u <= bayer4[py & 3][px & 3]:
+                continue
             nx = (px - cx) / max(1.0, rx if px >= cx else rx * 0.58)
             r = math.hypot(nx, ny)
             if r > 1.03 or r < 0.34:
@@ -783,8 +827,8 @@ def draw_astral_vortex_smear_160(
             ux, uy = math.cos(rr), math.sin(rr)
             x0 = cx + ux * 18.0
             y0 = cy + uy * 18.0 + (idx - 0.5) * 5.0
-            x1 = min(LOG_W - MARGIN_160 - 3, cx + ux * (rx + 12.0))
-            y1 = y0 + uy * (rx * 0.5)
+            x1 = min(147.0, cx + ux * (rx + 12.0))
+            y1 = max(12.0, min(110.0, y0 + uy * (rx * 0.5)))
             draw_line_px(buf, x0, y0, x1, y1, C_OUTLINE, r=1)
             draw_line_px(buf, x0, y0, x1, y1, C_GOLD_LIGHT if idx == 0 else C_EMERALD_BRIGHT, r=0)
             set_px(buf, int(round(x1)), int(round(y1)), C_WHITE)
@@ -843,17 +887,57 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
     )
 
     # Legs
-    l_hip_xy = (ax + (212.0 - SPINE_X_512) * SCALE - stride_x * 0.55, ay + (294.0 - GROUND_Y_512) * SCALE + sink)
-    r_hip_xy = (ax + (296.0 - SPINE_X_512) * SCALE + stride_x * 0.55, ay + (294.0 - GROUND_Y_512) * SCALE + sink)
-    l_rad = math.radians(l_hip_ang)
-    r_rad = math.radians(r_hip_ang)
-    l_knee_xy = (l_hip_xy[0] - math.sin(l_rad) * 13.0 - 3.0, l_hip_xy[1] + math.cos(l_rad) * 13.5 + cfg.get("l_lift", 0.0))
-    r_knee_xy = (r_hip_xy[0] - math.sin(r_rad) * 13.0 + 4.5, r_hip_xy[1] + math.cos(r_rad) * 13.5 + cfg.get("r_lift", 0.0))
+    if cfg.get("walk_mode", False):
+        inward_frac = 0.92
+        l_hip_xy = (
+            ax + (212.0 - SPINE_X_512) * SCALE * (1.0 - inward_frac) + cfg.get("l_hip_dx", 0.0),
+            ay + (294.0 - GROUND_Y_512) * SCALE + sink + cfg.get("l_hip_dy", 0.0),
+        )
+        r_hip_xy = (
+            ax + (296.0 - SPINE_X_512) * SCALE * (1.0 - inward_frac) + cfg.get("r_hip_dx", 0.0),
+            ay + (294.0 - GROUND_Y_512) * SCALE + sink + cfg.get("r_hip_dy", 0.0),
+        )
+        # True anatomical target angles (0 deg = straight vertical down, -deg = forward +X, +deg = trailing -X)
+        l_th_tgt = cfg.get("l_thigh_tgt", 0.0)
+        l_sh_tgt = cfg.get("l_shin_tgt", 0.0)
+        r_th_tgt = cfg.get("r_thigh_tgt", 0.0)
+        r_sh_tgt = cfg.get("r_shin_tgt", 0.0)
 
-    paste_part_160(canvas, parts["l_thigh"], l_hip_xy, angle_deg=l_hip_ang)
-    paste_part_160(canvas, parts["l_shin"], l_knee_xy, angle_deg=l_hip_ang + l_knee_ang)
-    paste_part_160(canvas, parts["r_thigh"], r_hip_xy, angle_deg=r_hip_ang)
-    paste_part_160(canvas, parts["r_shin"], r_knee_xy, angle_deg=r_hip_ang + r_knee_ang)
+        # Exact rest-angle neutralization from 512x512 A-stance (pivot -> boot toe center)
+        l_th_rest, l_sh_rest = 14.42, 13.20
+        r_th_rest, r_sh_rest = -21.80, -13.80
+
+        l_th_rad = math.radians(l_th_tgt)
+        r_th_rad = math.radians(r_th_tgt)
+        l_len_160 = math.hypot(194.0 - 212.0, 364.0 - 294.0) * SCALE  # ~14.03
+        r_len_160 = math.hypot(324.0 - 296.0, 364.0 - 294.0) * SCALE  # ~14.64
+
+        l_knee_xy = (
+            l_hip_xy[0] - math.sin(l_th_rad) * l_len_160,
+            l_hip_xy[1] + math.cos(l_th_rad) * l_len_160,
+        )
+        r_knee_xy = (
+            r_hip_xy[0] - math.sin(r_th_rad) * r_len_160,
+            r_hip_xy[1] + math.cos(r_th_rad) * r_len_160,
+        )
+
+        # Draw far/left leg darkened behind near/right leg
+        paste_part_160(canvas, parts["l_thigh_dark"], l_hip_xy, angle_deg=l_th_tgt - l_th_rest)
+        paste_part_160(canvas, parts["l_shin_dark"], l_knee_xy, angle_deg=l_sh_tgt - l_sh_rest)
+        paste_part_160(canvas, parts["r_thigh"], r_hip_xy, angle_deg=r_th_tgt - r_th_rest)
+        paste_part_160(canvas, parts["r_shin"], r_knee_xy, angle_deg=r_sh_tgt - r_sh_rest)
+    else:
+        l_hip_xy = (ax + (212.0 - SPINE_X_512) * SCALE - stride_x * 0.55, ay + (294.0 - GROUND_Y_512) * SCALE + sink)
+        r_hip_xy = (ax + (296.0 - SPINE_X_512) * SCALE + stride_x * 0.55, ay + (294.0 - GROUND_Y_512) * SCALE + sink)
+        l_rad = math.radians(l_hip_ang)
+        r_rad = math.radians(r_hip_ang)
+        l_knee_xy = (l_hip_xy[0] - math.sin(l_rad) * 13.0 - 3.0, l_hip_xy[1] + math.cos(l_rad) * 13.5 + cfg.get("l_lift", 0.0))
+        r_knee_xy = (r_hip_xy[0] - math.sin(r_rad) * 13.0 + 4.5, r_hip_xy[1] + math.cos(r_rad) * 13.5 + cfg.get("r_lift", 0.0))
+
+        paste_part_160(canvas, parts["l_thigh"], l_hip_xy, angle_deg=l_hip_ang)
+        paste_part_160(canvas, parts["l_shin"], l_knee_xy, angle_deg=l_hip_ang + l_knee_ang)
+        paste_part_160(canvas, parts["r_thigh"], r_hip_xy, angle_deg=r_hip_ang)
+        paste_part_160(canvas, parts["r_shin"], r_knee_xy, angle_deg=r_hip_ang + r_knee_ang)
 
     # Coat skirts & tabard + Torso + Head
     paste_part_160(
@@ -1030,34 +1114,80 @@ def build_row0_idle(rigs: dict) -> list[Image.Image]:
     return frames
 
 
+_BIPEDAL_WALK_KFS = [
+    # (u, thigh_tgt_deg, shin_tgt_deg, hip_dx_160, hip_dy_160)
+    # 0 deg = straight vertical down; -deg = forward (+X); +deg = trailing (-X)
+    (0.000, -22.5, -20.0,  1.8,  0.0),   # Front heel contact (+X)
+    (0.085, -14.5,  -7.0,  1.0,  0.4),   # Weight absorption
+    (0.233,   0.0,   0.0,  0.0,  0.0),   # Mid-stance dead vertical under AX (F07 / F22!)
+    (0.380,  13.5,  18.0, -1.0,  0.0),   # Late stance roll-off
+    (0.500,  21.5,  26.5, -1.8, -0.4),   # Rear toe push-off (-X, F15 / F00!)
+    (0.620,   6.0,  39.0, -0.6, -2.0),   # Initial swing knee bend & toe clearance
+    (0.733, -17.0,  18.5, -0.2, -3.2),   # Mid-swing passing crossover over AX (knee high, boot lifted & centered!)
+    (0.875, -24.5, -11.0,  1.2, -1.2),   # Forward swing reach into heel strike
+    (1.000, -22.5, -20.0,  1.8,  0.0),
+]
+
+
+def sample_bipedal_walk_leg(u: float) -> tuple[float, float, float, float]:
+    u = u % 1.0
+    for i in range(len(_BIPEDAL_WALK_KFS) - 1):
+        u0, th0, sh0, dx0, dy0 = _BIPEDAL_WALK_KFS[i]
+        u1, th1, sh1, dx1, dy1 = _BIPEDAL_WALK_KFS[i + 1]
+        if u <= u1 or i == len(_BIPEDAL_WALK_KFS) - 2:
+            t = (u - u0) / max(1e-6, u1 - u0)
+            s = t * t * (3.0 - 2.0 * t)
+            return (
+                th0 + (th1 - th0) * s,
+                sh0 + (sh1 - sh0) * s,
+                dx0 + (dx1 - dx0) * s,
+                dy0 + (dy1 - dy0) * s,
+            )
+    return _BIPEDAL_WALK_KFS[0][1:]
+
+
 def build_row1_walk(rigs: dict) -> list[Image.Image]:
-    """Row 1: Cohesive Yggdrasil Star-Huntress Glide-Stride (Zero Morph, Continuous Bow Carry!)."""
+    """
+    Row 1: Authentic Bipedal Crossover Ranger Stride (Zero Crab Straddle, Continuous Bow Carry!):
+      - F00: Left foot planted forward (+X), Right foot trailing (-X) -> footSpan320 >= 38px
+      - F07: Right knee lifted & crossing directly over AX -> footSpan320 <= 18px
+      - F15: Right foot planted forward (+X), Left foot trailing (-X) -> footSpan320 >= 38px
+      - F22: Left knee lifted & crossing directly over AX -> footSpan320 <= 18px
+    """
     frames = []
     for f in range(30):
-        ph = (f / 30.0) * 2.0 * math.pi
-        s = math.sin(ph)
-        bob = abs(math.cos(ph)) * 0.85
+        u_l = (f / 30.0) % 1.0
+        u_r = (u_l + 0.5) % 1.0
+        ph = u_l * 2.0 * math.pi
+        s = math.cos(ph)
+        # Double-frequency walk bob: slightly lower at contact (F00/F15), rises smoothly at mid-stance (F07/F22)
+        bob = 0.65 * math.cos(2.0 * ph)
+        l_th, l_sh, l_dx, l_dy = sample_bipedal_walk_leg(u_l)
+        r_th, r_sh, r_dx, r_dy = sample_bipedal_walk_leg(u_r)
+
         frames.append(render_stand_rig_frame(rigs, {
+            "walk_mode": True,
             "phase": ph,
             "sink": bob,
-            "torso_lean": 1.9 + 0.75 * math.sin(ph * 2.0),
+            "torso_lean": 2.4 + 0.75 * math.cos(2.0 * ph),
             "head_nod": 0.45 * math.sin(ph + 0.3),
-            "stride_x": s * 1.65,
-            "l_hip": -s * 7.8,
-            "l_knee": max(0.0, s) * 6.0,
-            "r_hip": s * 7.8,
-            "r_knee": max(0.0, -s) * 6.0,
-            "l_lift": -max(0.0, -s) * 0.8,
-            "r_lift": -max(0.0, s) * 0.8,
-            "hair_wave": 2.8 + 1.8 * math.sin(ph - 0.5),
-            "skirt_wave": 1.5 * s,
-            "bow_dx": 15.4 - s * 0.9,
-            "bow_dy": -9.0 + bob * 0.4,
-            "aim_deg": 14.5 + s * 3.2,
+            "l_thigh_tgt": l_th,
+            "l_shin_tgt": l_sh,
+            "l_hip_dx": l_dx,
+            "l_hip_dy": l_dy,
+            "r_thigh_tgt": r_th,
+            "r_shin_tgt": r_sh,
+            "r_hip_dx": r_dx,
+            "r_hip_dy": r_dy,
+            "hair_wave": 2.6 + 1.8 * math.sin(ph - 0.5),
+            "skirt_wave": 1.6 * s,
+            "bow_dx": 15.6 - s * 1.1,
+            "bow_dy": -9.2 + bob * 0.45,
+            "aim_deg": 14.5 - s * 3.0,
             "draw_pull": 0.08 + 0.04 * abs(s),
             "arrows": 1,
             "charge": 0.42 + 0.12 * (0.5 + 0.5 * s),
-            "motes": True,
+            "motes": False,
             "clamp_ground": True,
         }))
     return frames
@@ -1461,93 +1591,186 @@ def build_row3_skill(rigs: dict) -> list[Image.Image]:
 def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
     """
     Row 4: Dual-Window Neo-Vision Choreography:
-      - F00..F03 (120..123): K2_CROUCH emerald root-snare / vault launch coil
-      - F04..F16 (124..136): K4_SOMERSAULT 180-deg inverted Starlock barrage (downward smears!)
-      - F17..F24 (137..144): 6-Pinion Astral Light-Wings UNFOLDED Sovereign Overdraw Charge!
-      - F25..F29 (145..149): 6-Pinion Astral Light-Wings UNFOLDED Supernova Pierce Release!
+      - F00..F02 (120..122): Gale Charge-In Rush & Twin Bow-Blade Vault-Kick launch coil
+      - F03..F14 (123..134): Full 180-deg Acrobatic Airborne Backflip / Somersault Arc:
+          F03..F05: Rising backward tuck rotation (-42 -> -92 -> -136 deg)
+          F06..F11: Inverted 180-deg K4_SOMERSAULT mid-air bow-draw aiming downward + Starlock smears
+          F12..F14: Descending backflip completion (+116 -> +58 -> +18 deg)
+      - F15..F16 (135..136): Agile ranger landing crouch & Yggdrasil Root-Snare invocation
+      - F17..F25 (137..145): 6-Pinion Astral Light-Wings UNFOLDED Sovereign Yggdrasil Greatbow Draw & Release!
+      - F26..F29 (146..149): Winged Supernova follow-through settle
     """
     frames = []
     for f in range(30):
         ph = (f / 30.0) * 6.0 * math.pi
-        if f <= 3:
-            p = f / 3.0
-            frames.append(render_keypose_frame(rigs, "K2_CROUCH", {
-                "dx": 0.0,
+        if f <= 2:
+            p = f / 2.0
+            frames.append(render_keypose_frame(rigs, "K1_COIL" if f == 0 else "K2_CROUCH", {
+                "dx": 3.0 * p,
                 "dy": 0.0,
-                "wings": 0.45 * p,
+                "wings": 0.35 + 0.25 * p,
                 "phase": ph,
-                "draw_bow": False,
-            }))
-        elif f <= 16:
-            # Inverted 180-deg upside-down Starlock Aerial Barrage!
-            u = (f - 4) / 12.0
-            fire_beat = (f - 4) % 3 == 1
-            frames.append(render_keypose_frame(rigs, "K4_SOMERSAULT", {
-                "dx": 2.0 * math.sin(u * math.pi * 2.0),
-                "dy": -16.0 - 4.0 * math.sin(u * math.pi),
-                "wings": 0.65,
-                "phase": ph,
+                "draw_bow": f != 1,
                 "bow_dx": 18.0,
-                "bow_dy": -34.0,
-                "aim_deg": 38.0,
+                "bow_dy": -46.0,
+                "aim_deg": -28.0,
                 "bow_h": 20.0,
-                "draw_pull": -0.18 if fire_beat else 0.85,
-                "arrows": 0 if fire_beat else 2,
-                "charge": 1.15,
+                "draw_pull": 0.15,
+                "arrows": 1 if f == 0 else 0,
+                "charge": 0.85,
                 "smear": {
                     "kind": "crescent",
-                    "cx": 18.0,
-                    "cy": -34.0,
-                    "r_outer": 56.0,
-                    "r_inner": 26.0,
-                    "deg_start": -10.0,
-                    "deg_end": 78.0,
+                    "cx": 16.0,
+                    "cy": -38.0,
+                    "r_outer": 48.0,
+                    "r_inner": 24.0,
+                    "deg_start": -75.0,
+                    "deg_end": 25.0,
                     "tilt_y": 0.86,
-                    "intensity": 0.95,
-                    "arrow_rays": [32.0, 46.0],
+                    "intensity": 0.90,
+                } if f == 2 else None,
+            }))
+        elif f in (3, 4, 5):
+            # Rising backward somersault launch (-42 -> -92 -> -136 deg around torso center!)
+            idx = f - 3
+            rot_deg = (-42.0, -92.0, -136.0)[idx]
+            base_im = render_keypose_frame(rigs, "K1_COIL", {
+                "dx": 0.0,
+                "dy": -4.0,
+                "wings": 0.55,
+                "phase": ph,
+                "bow_dx": 14.0,
+                "bow_dy": -48.0,
+                "aim_deg": 24.0,
+                "bow_h": 19.0,
+                "draw_pull": 0.35,
+                "arrows": 1,
+                "charge": 0.95,
+                "motes": False,
+            })
+            rot_im = base_im.rotate(-rot_deg, resample=Image.Resampling.NEAREST, center=(ANCHOR_X_160 + 2, 68))
+            cell = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+            cell.paste(rot_im, (4, -8 - idx * 2))
+            fg = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
+            draw_astral_crescent_smear_160(
+                fg, cx=ANCHOR_X_160 + 4.0, cy=58.0 - idx * 2.0,
+                r_outer=36.0, r_inner_base=22.0,
+                deg_start=-155.0 + idx * 25.0, deg_end=-35.0 + idx * 25.0,
+                tilt_y=0.90, intensity=0.68,
+            )
+            cell.alpha_composite(Image.fromarray(fg, "RGBA"))
+            frames.append(cell)
+        elif f <= 11:
+            # Inverted 180-deg upside-down mid-air bow-draw aiming downward + Starlock barrage!
+            u = (f - 6) / 5.0
+            fire_beat = f in (7, 9, 11)
+            frames.append(render_keypose_frame(rigs, "K4_SOMERSAULT", {
+                "dx": 2.0 + 2.0 * math.sin(u * math.pi),
+                "dy": -14.0 - 3.0 * math.sin(u * math.pi),
+                "body_deg": -16.0 + 32.0 * u,
+                "wings": 0.65,
+                "phase": ph,
+                "bow_dx": 17.0,
+                "bow_dy": -33.0,
+                "aim_deg": 46.0 + 10.0 * u,
+                "bow_h": 19.5,
+                "draw_pull": -0.18 if fire_beat else 0.88,
+                "arrows": 0 if fire_beat else 2,
+                "charge": 1.18,
+                "smear": {
+                    "kind": "crescent",
+                    "cx": 17.0,
+                    "cy": -32.0,
+                    "r_outer": 52.0,
+                    "r_inner": 25.0,
+                    "deg_start": 4.0,
+                    "deg_end": 82.0,
+                    "tilt_y": 0.86,
+                    "intensity": 0.92,
+                    "arrow_rays": [38.0, 54.0],
                 } if fire_beat else None,
+            }))
+        elif f in (12, 13, 14):
+            # Completing the 180-deg backflip rotation into agile landing (+116 -> +58 -> +18 deg)
+            idx = f - 12
+            rot_deg = (116.0, 58.0, 18.0)[idx]
+            kp_nm = "K1_COIL" if idx < 2 else "K3_AIM"
+            base_im = render_keypose_frame(rigs, kp_nm, {
+                "dx": 0.0,
+                "dy": -2.0,
+                "wings": 0.55 - idx * 0.08,
+                "phase": ph,
+                "bow_dx": 16.0,
+                "bow_dy": -50.0,
+                "aim_deg": 18.0,
+                "bow_h": 20.0,
+                "draw_pull": 0.25,
+                "arrows": 1,
+                "charge": 0.90,
+                "motes": True,
+            })
+            rot_im = base_im.rotate(-rot_deg, resample=Image.Resampling.NEAREST, center=(ANCHOR_X_160 + 2, 68))
+            cell = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+            cell.paste(rot_im, (2, -8 + idx * 3))
+            frames.append(cell)
+        elif f in (15, 16):
+            # Agile opposite-side ranger landing crouch -> rise into Sovereign invocation
+            p = f - 15
+            frames.append(render_keypose_frame(rigs, "K2_CROUCH" if p == 0 else "K1_COIL", {
+                "dx": 1.5 * (1.0 - p),
+                "dy": 0.0,
+                "wings": 0.45 + 0.30 * p,
+                "phase": ph,
+                "draw_bow": p == 1,
+                "bow_dx": 18.0,
+                "bow_dy": -52.0,
+                "aim_deg": 6.0,
+                "bow_h": 22.0,
+                "draw_pull": 0.35,
+                "arrows": 1,
+                "charge": 0.95,
             }))
         elif f <= 24:
             # 6-Pinion Astral Light-Wings UNFOLDED Sovereign Yggdrasil Overdraw Charge!
             u = (f - 17) / 7.0
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
-                "dx": -3.0 * u,
-                "dy": -8.0 - 2.0 * math.sin(u * math.pi),
-                "wings": 0.95 + 0.25 * u,
+                "dx": -2.5 * u,
+                "dy": -5.0 - 1.5 * math.sin(u * math.pi),
+                "wings": 0.88 + 0.18 * u,
                 "phase": ph,
                 "bow_dx": 22.0,
-                "bow_dy": -56.0,
+                "bow_dy": -55.0,
                 "aim_deg": 0.0,
-                "bow_h": 25.0,
+                "bow_h": 24.0,
                 "draw_pull": 0.55 + 0.65 * u,
-                "arrows": 3 if u > 0.5 else 1,
+                "arrows": 3 if u > 0.45 else 1,
                 "charge": 1.0 + 0.45 * u,
             }))
         else:
-            # F25..F29: Winged Supernova Pierce Release!
+            # F25..F29: Winged Supernova Pierce Release & Sovereign Settle!
             p = (f - 25) / 4.0
             frames.append(render_keypose_frame(rigs, "K3_AIM", {
-                "dx": -5.0 + 3.0 * p,
-                "dy": -8.0 * (1.0 - p),
-                "wings": 1.20 - 0.30 * p,
+                "dx": -4.0 + 2.5 * p,
+                "dy": -5.0 * (1.0 - p),
+                "wings": 1.04 - 0.22 * p,
                 "phase": ph,
-                "bow_dx": 24.0,
-                "bow_dy": -56.0,
+                "bow_dx": 23.5,
+                "bow_dy": -55.0,
                 "aim_deg": 0.0,
-                "bow_h": 25.0,
-                "draw_pull": -0.25 * (1.0 - p),
+                "bow_h": 24.0,
+                "draw_pull": -0.24 * (1.0 - p),
                 "arrows": 0,
                 "charge": 1.40 - 0.40 * p,
                 "smear": {
                     "kind": "crescent",
                     "cx": 20.0,
-                    "cy": -55.0,
-                    "r_outer": 70.0,
-                    "r_inner": 22.0 + 22.0 * p,
-                    "deg_start": -64.0,
-                    "deg_end": 64.0,
-                    "tilt_y": 0.88,
-                    "intensity": max(0.35, 1.05 - 0.65 * p),
+                    "cy": -54.0,
+                    "r_outer": 65.0,
+                    "r_inner": 22.0 + 20.0 * p,
+                    "deg_start": -58.0,
+                    "deg_end": 58.0,
+                    "tilt_y": 0.84,
+                    "intensity": max(0.35, 1.02 - 0.62 * p),
                     "arrow_rays": [-8.0, 0.0, 8.0] if f <= 26 else None,
                 } if f <= 27 else None,
             }))
@@ -1561,59 +1784,64 @@ def build_row5_hurt_death(rigs: dict) -> list[Image.Image]:
         if f <= 5:
             p = math.sin(((f + 1) / 6.0) * math.pi)
             frames.append(render_stand_rig_frame(rigs, {
-                "dx": -5.0 * p,
+                "dx": -3.5 * p,
                 "phase": ph,
-                "sink": 2.4 * p,
-                "torso_lean": -14.0 * p,
-                "head_nod": -8.0 * p,
-                "l_hip": 10.0 * p,
-                "r_hip": -12.0 * p,
-                "hair_wave": -10.0 * p,
-                "bow_dx": 11.0 - 4.0 * p,
-                "bow_dy": -8.0 + 3.0 * p,
-                "aim_deg": 42.0 + 18.0 * p,
+                "sink": 2.2 * p,
+                "torso_lean": -12.0 * p,
+                "head_nod": -7.0 * p,
+                "l_hip": 9.0 * p,
+                "r_hip": -10.0 * p,
+                "hair_wave": -8.0 * p,
+                "bow_dx": 11.0 - 3.0 * p,
+                "bow_dy": -8.0 + 2.5 * p,
+                "aim_deg": 42.0 + 16.0 * p,
                 "arrows": 0,
                 "charge": 0.15,
+                "clamp_ground": True,
             }))
         elif f <= 15:
             p = (f - 6) / 9.0
             frames.append(render_keypose_frame(rigs, "K2_CROUCH", {
-                "dx": -4.0 - 4.0 * p,
-                "dy": 2.0 * p,
-                "body_deg": -16.0 * p,
+                "dx": 2.0 + 6.0 * p,
+                "dy": 0.0,
+                "body_deg": -18.0 * p,
                 "sy": 1.0 - 0.12 * p,
                 "phase": ph,
                 "draw_bow": False,
+                "clamp_ground": True,
             }))
         else:
             p = (f - 16) / 13.0
-            ang = -68.0 - 20.0 * min(1.0, p * 1.35)
+            # Smooth collapse onto floor, shifted +18px rightward so head stays >= x_320=36 (0 left-edge cut!)
+            ang = -66.0 - 23.0 * min(1.0, p * 1.45)  # Reaches -89.0 deg flat prone by F22!
             canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
             paste_keypose_160(
                 canvas,
                 rigs["K1_COIL"],
-                ANCHOR_X_160 + 22.0 + 1.5 * math.sin(p * math.pi),
+                ANCHOR_X_160 + 38.0 + 1.0 * math.sin(p * math.pi),
                 ANCHOR_Y_120 - 15.0,
                 angle_deg=ang,
-                sx=0.92,
-                sy=0.90,
+                sx=0.74,
+                sy=0.86,
             )
             fg_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
             draw_yggdrasil_greatbow_160(
                 fg_buf,
-                riser_x=ANCHOR_X_160 + 16.0 + p * 0.8,
-                riser_y=ANCHOR_Y_120 - 6.0,
-                aim_deg=86.0,
-                bow_half_h=18.0,
+                riser_x=ANCHOR_X_160 + 30.0 + p * 0.8,
+                riser_y=ANCHOR_Y_120 - 9.0,
+                aim_deg=92.0,
+                bow_half_h=15.0,
                 draw_pull=0.0,
                 arrow_count=0,
                 astral_charge=0.10,
             )
-            ex = int(round(ANCHOR_X_160 - 6.0 + (f - 16) * 2.1))
-            ey = int(round(ANCHOR_Y_120 - 18.0 - (f - 16) * 0.7))
+            ex = int(round(ANCHOR_X_160 + 8.0 + (f - 16) * 2.0))
+            ey = int(round(ANCHOR_Y_120 - 18.0 - (f - 16) * 0.6))
             set_px(fg_buf, ex, ey, C_EMERALD_MID if f < 24 else C_FOREST_DARK)
             canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
-            frames.append(canvas)
+            arr_c = np.array(canvas, dtype=np.uint8)
+            arr_c[ANCHOR_Y_120 :, :, :] = 0
+            frames.append(Image.fromarray(arr_c, "RGBA"))
     return frames
 
 
@@ -1647,6 +1875,7 @@ def build_row6_dash(rigs: dict) -> list[Image.Image]:
                 "draw_pull": 0.15,
                 "arrows": 1,
                 "charge": 0.85,
+                "clamp_ground": True,
             }))
         else:
             p = (f - 24) / 5.0
@@ -1950,6 +2179,38 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
         ys, xs = np.where(arr[:, :, 3] > 0)
         snap_reaches[sf] = int(xs.max()) if len(xs) else 0
 
+    # Quantitative Row 1 Walk Crossover Gate (#124)
+    foot_spans = []
+    top_ys = []
+    for f in range(30):
+        arr = np.array(all_rows_320[1][f], dtype=np.uint8)
+        a = arr[:, :, 3] > 0
+        ys_all, _ = np.where(a)
+        top_ys.append(int(ys_all.min()))
+        band = a[206:233, :]
+        _, xs_b = np.where(band)
+        span = int(xs_b.max() - xs_b.min()) if len(xs_b) else 0
+        foot_spans.append(span)
+    max_foot_span = max(foot_spans)
+    min_foot_span = min(foot_spans)
+    max_adj_top = max(abs(top_ys[i] - top_ys[(i + 1) % 30]) for i in range(30))
+    print(f"[QA] Row 1 footSpan320: F00={foot_spans[0]} F07={foot_spans[7]} F15={foot_spans[15]} F22={foot_spans[22]} | min={min_foot_span} max={max_foot_span} ratio={min_foot_span/max(1,max_foot_span):.2f} | maxAdjTopDelta={max_adj_top}")
+    assert foot_spans[0] >= 34 and foot_spans[15] >= 34, f"Walk contact stride too narrow: F00={foot_spans[0]}, F15={foot_spans[15]}"
+    assert foot_spans[7] <= max_foot_span * 0.55 and foot_spans[22] <= max_foot_span * 0.55, (
+        f"Walk crossover failed: F07={foot_spans[7]}, F22={foot_spans[22]}, max={max_foot_span}"
+    )
+    assert max_adj_top <= 4, f"Walk head bob jump > 4px: {max_adj_top}"
+
+    # Quantitative Row 5 Prone Death Gate (F22..F29)
+    for df in range(22, 30):
+        arr = np.array(all_rows_320[5][df], dtype=np.uint8)
+        ys_d, xs_d = np.where(arr[:, :, 3] > 0)
+        dh = int(ys_d.max() - ys_d.min() + 1)
+        dmin_x, dmax_x, dmax_y = int(xs_d.min()), int(xs_d.max()), int(ys_d.max())
+        assert dh <= 96 and dmin_x >= 24 and dmax_x <= 298 and dmax_y <= 230, (
+            f"Row 5 F{df:02d} prone bounds fail: h={dh}, x={dmin_x}..{dmax_x}, maxY={dmax_y}"
+        )
+
     print(f"[QA] border_clips={border_clips}/300 | non_binary_alpha={non_binary_alpha} | non_2x2_blocks={non_2x2_blocks}")
     print(f"[QA] row_transitions={row_transitions}")
     print(f"[QA] Row 2 snap front reaches (must be > 260): {snap_reaches}")
@@ -1960,33 +2221,26 @@ def verify_and_emit_qa(all_rows_320: list[list[Image.Image]], portrait_128: Imag
     assert all(t == 29 for t in row_transitions), f"Transition failure: {row_transitions}"
     assert all(rx > 260 for rx in snap_reaches.values()), f"Smear reach < 260: {snap_reaches}"
 
-    r1_cols, r1_rows = 6, 5
-    r1_im = Image.new("RGBA", (r1_cols * CELL_W, r1_rows * CELL_H), (22, 34, 30, 255))
-    draw_r1 = ImageDraw.Draw(r1_im)
-    for f in range(30):
-        cx = (f % r1_cols) * CELL_W
-        cy = (f // r1_cols) * CELL_H
-        draw_r1.rectangle([cx, cy + CELL_H - 10, cx + CELL_W - 1, cy + CELL_H - 9], fill=(70, 120, 100, 255))
-        draw_r1.line([(cx + 112, cy), (cx + 112, cy + CELL_H)], fill=(55, 90, 75, 255), width=1)
-        r1_im.alpha_composite(all_rows_320[1][f], (cx, cy))
-        draw_r1.rectangle([cx + 4, cy + 4, cx + 66, cy + 20], fill=(0, 0, 0, 200))
-        draw_r1.text((cx + 8, cy + 6), f"R1 F{f:02d}", fill=(253, 224, 71, 255))
-    r1_path = QA_DIR / "debug_archer_ex_row1_walk.png"
-    r1_im.save(r1_path)
+    def save_row_strip(row_idx: int, label_prefix: str, out_name: str):
+        rc, rr = 6, 5
+        im_s = Image.new("RGBA", (rc * CELL_W, rr * CELL_H), (22, 34, 30, 255))
+        dr_s = ImageDraw.Draw(im_s)
+        for f in range(30):
+            cx = (f % rc) * CELL_W
+            cy = (f // rc) * CELL_H
+            dr_s.rectangle([cx, cy + CELL_H - 10, cx + CELL_W - 1, cy + CELL_H - 9], fill=(70, 120, 100, 255))
+            dr_s.line([(cx + 112, cy), (cx + 112, cy + CELL_H)], fill=(55, 90, 75, 255), width=1)
+            im_s.alpha_composite(all_rows_320[row_idx][f], (cx, cy))
+            dr_s.rectangle([cx + 4, cy + 4, cx + 66, cy + 20], fill=(0, 0, 0, 200))
+            dr_s.text((cx + 8, cy + 6), f"{label_prefix} F{f:02d}", fill=(253, 224, 71, 255))
+        out_p = QA_DIR / out_name
+        im_s.save(out_p)
+        return out_p
 
-    r2_cols, r2_rows = 6, 5
-    r2_im = Image.new("RGBA", (r2_cols * CELL_W, r2_rows * CELL_H), (22, 34, 30, 255))
-    draw_r2 = ImageDraw.Draw(r2_im)
-    for f in range(30):
-        cx = (f % r2_cols) * CELL_W
-        cy = (f // r2_cols) * CELL_H
-        draw_r2.rectangle([cx, cy + CELL_H - 10, cx + CELL_W - 1, cy + CELL_H - 9], fill=(70, 120, 100, 255))
-        draw_r2.line([(cx + 112, cy), (cx + 112, cy + CELL_H)], fill=(55, 90, 75, 255), width=1)
-        r2_im.alpha_composite(all_rows_320[2][f], (cx, cy))
-        draw_r2.rectangle([cx + 4, cy + 4, cx + 66, cy + 20], fill=(0, 0, 0, 200))
-        draw_r2.text((cx + 8, cy + 6), f"R2 F{f:02d}", fill=(253, 224, 71, 255))
-    r2_path = QA_DIR / "debug_archer_ex_row2.png"
-    r2_im.save(r2_path)
+    r1_path = save_row_strip(1, "R1", "debug_archer_ex_row1_walk.png")
+    r2_path = save_row_strip(2, "R2", "debug_archer_ex_row2.png")
+    r4_path = save_row_strip(4, "R4", "debug_archer_ex_row4_flip.png")
+    r5_path = save_row_strip(5, "R5", "debug_archer_ex_row5_death.png")
 
     sample_cols = [0, 3, 9, 14, 17, 21, 25, 28]
     ov_im = Image.new("RGBA", (len(sample_cols) * CELL_W, 10 * CELL_H), (20, 30, 28, 255))
@@ -2042,7 +2296,19 @@ def main():
         all_rows_320.append(row_320)
         print(f"  [OK] Row {r_idx} finalized (30 cells @ 320x240)")
 
-    sheet.save(OUT_SHEET, optimize=False)
+    import struct
+    import zlib
+    arr_rgba = np.asarray(sheet, dtype=np.uint8)
+    raw_scan = np.hstack([np.zeros((SHEET_H, 1), dtype=np.uint8), arr_rgba.reshape(SHEET_H, SHEET_W * 4)]).tobytes()
+    def _png_chunk(tag: bytes, payload: bytes) -> bytes:
+        return struct.pack(">I", len(payload)) + tag + payload + struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF)
+    png_bytes = (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", struct.pack(">IIBBBBB", SHEET_W, SHEET_H, 8, 6, 0, 0, 0))
+        + _png_chunk(b"IDAT", zlib.compress(raw_scan, level=3))
+        + _png_chunk(b"IEND", b"")
+    )
+    OUT_SHEET.write_bytes(png_bytes)
     print(f"[OK] Saved sprite sheet: {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]})")
     verify_and_emit_qa(all_rows_320, portrait_128)
 
