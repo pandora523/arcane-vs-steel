@@ -1388,6 +1388,8 @@ def render_stand_rig_frame_160(
     bend_l=1.0,
     bend_r=1.0,
     lock_lowest_to_ground=False,
+    clamp_floor_only=False,
+    leg_bridge_r=None,
     pre_fn=None,
     post_fn=None,
 ):
@@ -1445,6 +1447,8 @@ def render_stand_rig_frame_160(
     l_target_hi = (grip_hi[0] - w_ux * 2.0 * S_HI, grip_hi[1] - w_uy * 2.0 * S_HI)
     r_target_hi = (grip_hi[0] + w_ux * 1.2 * S_HI, grip_hi[1] + w_uy * 1.2 * S_HI)
 
+    r_hip_br, r_knee_br = leg_bridge_r if leg_bridge_r is not None else (9, 7)
+
     # Layering back-to-front:
     paste_rotated_part(
         win_hi, parts["mane"], sj["mane"], mane_dst,
@@ -1456,8 +1460,8 @@ def render_stand_rig_frame_160(
     )
     paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
-    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=9)
-    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=7)
+    draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=r_hip_br)
+    draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=r_knee_br)
     paste_rotated_part(win_hi, parts["l_thigh"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
     paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
     paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
@@ -1466,8 +1470,8 @@ def render_stand_rig_frame_160(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
         deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
     )
-    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=9)
-    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=7)
+    draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=r_hip_br)
+    draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=r_knee_br)
     paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
     paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
     paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
@@ -1491,6 +1495,14 @@ def render_stand_rig_frame_160(
                     if MARGIN_LOGICAL <= ny < LOGICAL_H - MARGIN_LOGICAL:
                         shifted[ny] = body_160[y]
                 body_160 = shifted
+    elif clamp_floor_only:
+        for y in range(ANCHOR_Y_120 + 1, LOGICAL_H):
+            over = body_160[y, :, 3] > 128
+            if np.any(over):
+                empty_floor = body_160[ANCHOR_Y_120, :, 3] <= 128
+                take = over & empty_floor
+                body_160[ANCHOR_Y_120, take] = body_160[y, take]
+                body_160[y, :, :] = 0
 
     frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_dst[0] / S_HI, neck_dst[1] / S_HI + shift_y_160)
@@ -1567,51 +1579,60 @@ def build_row0_idle(parts, sj):
 
 
 def build_row1_walk(parts, sj):
-    """Row 1: Athletic Crossover Vanguard Stride (2 Full Cycles across 30 Frames)."""
+    """
+    Row 1: Cohesive Sovereign Vanguard Advancing Stride (2 Seamless Cycles / 30 Frames).
+    Maintains continuous front-ready Dawn-Breaker carry & upright paladin posture from
+    Row 0 IDLE (zero 180-deg weapon flip, zero dynamic ys_b.max() vertical jitter,
+    compact 3/4 leg scissor & synced coat sway).
+    """
     frames = []
     for f in range(30):
-        # 2 full crossover stride cycles in 30 frames -> seamless 30fps loop
         ph = (f / 15.0) * 2.0 * math.pi
+        ph30 = (f / 30.0) * 2.0 * math.pi
         s1 = math.sin(ph)
-        s2 = math.sin(ph + math.pi)
-        bob_y = -abs(math.cos(ph)) * 2.6 + 1.2
+        s2 = -s1
+        l_lift = max(0.0, math.cos(ph))
+        r_lift = max(0.0, -math.cos(ph))
+        bob_y = 0.45 - abs(math.cos(ph)) * 1.10
 
-        l_th = -s1 * 24.0
-        r_th = -s2 * 24.0
-        l_sh = max(0.0, -s1) * 22.0 + 4.0
-        r_sh = max(0.0, -s2) * 22.0 + 4.0
-        l_ft = s1 * 10.0
-        r_ft = s2 * 10.0
+        l_th = -2.5 - s1 * 7.8 - l_lift * 2.6
+        r_th = 2.5 - s2 * 7.8 - r_lift * 2.6
+        l_sh = 1.5 + l_lift * 9.8 + max(0.0, s1) * 2.0
+        r_sh = 1.5 + r_lift * 9.8 + max(0.0, s2) * 2.0
+        l_ft = l_lift * 3.8 - s1 * 2.2
+        r_ft = r_lift * 3.8 - s2 * 2.2
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=4.0 + math.sin(ph * 2.0) * 0.8,
+            pelvis_dx=1.2 + math.sin(ph * 2.0) * 0.4,
             pelvis_dy=bob_y,
-            torso_deg=9.5 + math.sin(ph * 2.0) * 1.8,
-            head_deg=-5.5,
-            mane_deg=-10.0 + math.sin(ph) * 4.0,
-            mane_wave_ph=ph,
-            mane_wave_amp=10.0,
-            l_coat_deg=14.0 + math.sin(ph - 0.6) * 7.0,
-            r_coat_deg=8.0 + math.cos(ph) * 5.0,
-            coat_wave_ph=ph,
-            coat_wave_amp=10.5,
+            torso_deg=2.2 + math.sin(ph * 2.0) * 0.8,
+            head_deg=-1.2,
+            mane_deg=-1.5 + math.sin(ph - 0.6) * 2.2,
+            mane_wave_ph=ph30,
+            mane_wave_amp=5.5,
+            l_coat_deg=3.5 + math.sin(ph - 0.5) * 2.4,
+            r_coat_deg=-1.5 - math.sin(ph - 0.5) * 2.0,
+            coat_wave_ph=ph30,
+            coat_wave_amp=3.5,
             l_thigh_deg=l_th,
             l_shin_deg=l_sh,
             l_foot_deg=l_ft,
             r_thigh_deg=r_th,
             r_shin_deg=r_sh,
             r_foot_deg=r_ft,
-            grip_rel_sh=(-3.5 + s1 * 1.8, 10.5 + math.sin(ph * 2.0) * 1.0),
-            weapon_deg=154.0 + s1 * 4.5,
-            blade_len=43.0,
-            weapon_layer="behind",
-            scarf_deg=173.0 + math.sin(ph - 0.5) * 4.0,
-            scarf_len=33.0,
-            scarf_phase=(f / 30.0) * 4.0 * math.pi,
-            scarf_amp=3.8,
-            rune_phase=(f / 30.0) * 4.0 * math.pi,
-            lock_lowest_to_ground=True,
+            grip_rel_sh=(10.2 + s1 * 1.0, 9.2 + math.sin(ph * 2.0) * 0.6),
+            weapon_deg=27.5 + s1 * 3.4,
+            blade_len=45.0,
+            weapon_layer="front",
+            scarf_deg=168.0 + math.sin(ph - 0.5) * 3.2,
+            scarf_len=31.5,
+            scarf_phase=ph30 * 2.0,
+            scarf_amp=3.2,
+            rune_phase=ph30,
+            lock_lowest_to_ground=False,
+            clamp_floor_only=True,
+            leg_bridge_r=(4, 3),
         ))
     return frames
 
@@ -2655,6 +2676,25 @@ def assemble_and_verify_sheet(all_rows_160):
 def write_debug_contact_sheets(sheet):
     os.makedirs(SCRATCH_DIR, exist_ok=True)
 
+    # 0. Full-size Row 1 WALK 30-frame showcase (6 cols x 5 rows @ 320x240 = 1920x1200)
+    r1_cols, r1_rows = 6, 5
+    r1_im = Image.new("RGBA", (r1_cols * CELL_W, r1_rows * CELL_H), (18, 22, 36, 255))
+    r1_draw = ImageDraw.Draw(r1_im)
+    for f in range(30):
+        gc = f % r1_cols
+        gr = f // r1_cols
+        ox, oy = gc * CELL_W, gr * CELL_H
+        cell = sheet.crop((f * CELL_W, 1 * CELL_H, (f + 1) * CELL_W, 2 * CELL_H))
+        r1_draw.rectangle([ox, oy, ox + CELL_W - 1, oy + CELL_H - 1], outline=(46, 56, 84, 255), width=1)
+        r1_draw.line([(ox + 8, oy + ANCHOR_Y_320), (ox + CELL_W - 8, oy + ANCHOR_Y_320)], fill=(58, 72, 108, 255), width=1)
+        r1_draw.line([(ox + ANCHOR_X_320, oy + ANCHOR_Y_320 - 10), (ox + ANCHOR_X_320, oy + ANCHOR_Y_320 + 6)], fill=(240, 178, 54, 255), width=1)
+        r1_im.alpha_composite(cell, (ox, oy))
+        r1_draw.text((ox + 8, oy + 6), f"R1 F{f:02d} (#{30 + f})", fill=(220, 235, 255, 255))
+
+    p_r1 = os.path.join(SCRATCH_DIR, "debug_warrior_ex_row1_walk.png")
+    r1_im.save(p_r1)
+    print(f"[Debug] Saved {p_r1}")
+
     # 1. Full-size Row 2 30-frame showcase (6 cols x 5 rows @ 320x240 = 1920x1200)
     r2_cols, r2_rows = 6, 5
     r2_im = Image.new("RGBA", (r2_cols * CELL_W, r2_rows * CELL_H), (18, 22, 36, 255))
@@ -2699,7 +2739,8 @@ def write_debug_contact_sheets(sheet):
 def main():
     t0 = time.time()
     print("=== Building AETHELGARD EX (warrior_ex) Next-Gen Wide-Canvas Assets ===")
-    build_portrait_128()
+    if "--rebuild-portrait" in sys.argv:
+        build_portrait_128()
     parts, stand_joints, keyposes = load_rig_and_keyposes()
 
     all_rows_160 = [

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps114';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps114';
+import { Fighter } from './Fighter.js?v=30fps115';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps115';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps115';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps114';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps115';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)
@@ -17,10 +17,29 @@ const AUTO_SLICES_EX = [
 const BEAT_DURATIONS = [0.36, 0.34, 0.38, 0.52];
 const INTRA_COMBO_LINK = 0.015;
 
+// 4x4 Bayer ordered stipple matrix for pixel-pure Neo-Vision floor & rim halos (zero radial blur!)
+const BAYER_4X4 = [
+  0.0625, 0.5625, 0.1875, 0.6875,
+  0.8125, 0.3125, 0.9375, 0.4375,
+  0.2500, 0.7500, 0.1250, 0.6250,
+  1.0000, 0.5000, 0.8750, 0.3750
+];
+
 /**
- * Aethelgard EX (`warrior_ex`) — Exvius Sovereign of the Dawn-Breaker Greatsword.
- * Next-Gen Wide-Canvas (`320x240`, `anchorX=112, anchorY=230`) FFBE / Last Cloudia Hack-and-Slash Champion.
- * Coexists 100% independently alongside classic Aethelgard (`warrior`).
+ * Aethelgard EX (`warrior_ex`) — Newly-Born Neo-Vision Sovereign of the Dawn-Breaker Greatsword.
+ * Wide-Canvas (`320x240`, `anchorX=112, anchorY=230`) FFBE / Last Cloudia Hack-and-Slash Champion.
+ * Coexists 100% independently alongside untouched classic Aethelgard (`warrior`).
+ *
+ * Newly-Born Neo-Vision Kit:
+ * - `SKILL` (`DAWN-BREAKER TRINITY RUSH`): Consecrates a golden-cyan Runic Sword-Seal underfoot,
+ *   executes a 3-beat advancing Dawn-Breaker shockwave combo with `warrior_ex_vfx.png` sword-pillars,
+ *   and finishes with a rising Sovereign Sky-Pillar Uppercut raining 4-point pixel star-glints!
+ * - `ULTIMATE` (`CELESTIAL PENTAGRAM OMNISLASH`): Locks target inside a 5-point pixel Star-Sanctuary
+ *   floor sigil, flashes through 5 golden-cyan Neo-Vision silhouettes linked by 3-pass `2px` astral
+ *   light-threads, and plunges a towering Runic Monolith Greatsword from above!
+ * - `TRUE_ULTIMATE` (`EXVIUS DAWN: CATHEDRAL OF SEVEN SWORDS`): Unfurls luminous pixel Seraphim Dawn-Wings,
+ *   consecrates a full-stage Stained-Glass Runic Sanctuary, drops 6 flanking Celestial Greatswords of Light
+ *   around the target, and cleaves Heaven-to-Earth with a Colossal Sovereign Dawn-Pillar & fluttering feathers!
  */
 export class WarriorEx extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -35,7 +54,7 @@ export class WarriorEx extends Fighter {
       lightColor: 'rgba(125, 211, 252, 1)',
       primaryColor: '#38bdf8',
       hasTrueUltimate: true,
-      trueUltName: 'EXVIUS DAWN: SOVEREIGN OF LIGHT',
+      trueUltName: 'EXVIUS DAWN: CATHEDRAL OF SEVEN SWORDS',
       trueUltDuration: 4.35
     });
 
@@ -47,18 +66,19 @@ export class WarriorEx extends Fighter {
 
     this.autoDuration = BEAT_DURATIONS[0];
     this._postFlurryInterval = 1.38;
-    this.skillName = 'ASTRAL BLADE-RUSH';
+
+    this.skillName = 'DAWN-BREAKER TRINITY RUSH';
     this.skillMaxCooldown = 4.6;
     this.skillCooldown = 1.2;
-    this.skillDuration = 1.02;
+    this.skillDuration = 1.04;
     this.skillTriggerRange = 380;
 
-    this.ultName = 'RADIANT OMNISLASH';
-    this.ultSub = 'FIVE-FOLD SMEAR BLITZ';
-    this.ultDuration = 1.92;
+    this.ultName = 'CELESTIAL PENTAGRAM OMNISLASH';
+    this.ultSub = 'FIVE-POINT STAR SANCTUARY';
+    this.ultDuration = 1.94;
 
-    this.trueUltName = 'EXVIUS DAWN: SOVEREIGN OF LIGHT';
-    this.trueUltSub = 'SUPREME FINISHER - CATHEDRAL DAWN-BREAKER';
+    this.trueUltName = 'EXVIUS DAWN: CATHEDRAL OF SEVEN SWORDS';
+    this.trueUltSub = 'SUPREME FINISHER - SEVEN SWORDS OF LIGHT';
     this.trueUltDuration = 4.35;
 
     this.dodgeMaxCooldown = 3.4;
@@ -73,7 +93,7 @@ export class WarriorEx extends Fighter {
     this.flipTargetX = this.x;
     this.cameraAirLift = 0;
 
-    // 4-Beat FFBE / Last Cloudia Hack-and-Slash State
+    // 4-Beat FFBE / Last Cloudia Grounded Hack-and-Slash State
     this.comboStep = 0;
     this._autoVariant = 0;
     this._comboPersistTimer = 0;
@@ -88,27 +108,37 @@ export class WarriorEx extends Fighter {
     // Skill / Overdrive / True Ultimate State
     this._skillSlashMask = 0;
     this._skillStartX = this.x;
+    this._skillSeal = null;
+
     this._ultInit = false;
     this._ultSlashStep = 0;
     this._ultDidPlunge = false;
     this._ultTargetX = 600;
+    this._pentagramSeal = null;
+
     this._trueUltInit = false;
     this._trueUltStage = 0;
     this._trueUltCageStep = 0;
+    this._sanctuaryTimer = 0;
+    this._sanctuaryCenterX = 600;
+    this.pinnedCelestialSwords = [];
+
     this.justiceWingsActive = false;
     this.justiceWingSpread = 0;
     this.justiceFeatherTimer = 0;
     this.justiceFeathers = [];
-    this.justiceSlashes = [];
 
-    // Pixel-pure visual layers (zero canvas rotation, zero smooth ellipses)
+    // Pixel-pure Neo-Vision visual layers (0 canvas rotation, 0 smooth ellipses, 0 chevron bars!)
     this._overrideFrameIdx = null;
     this.afterimages = [];
     this.afterimageAccum = 0;
     this.activeVfxAnims = [];
-    this.razorScars = [];
+    this.astralThreads = [];
+    this.hitStarbursts = [];
+    this.exParticles = [];
     this.cathedralBeams = [];
     this.stepDustTimer = 0;
+    this._ambientGlintTimer = 0;
 
     this.fx = new ArcaneShaderFX(RUNIC_STEEL_EFFECT_REGISTRY, {
       pixelScale: 3,
@@ -160,6 +190,7 @@ export class WarriorEx extends Fighter {
       this._trueUltInit = false;
       this._trueUltStage = 0;
       this._trueUltCageStep = 0;
+      this.pinnedCelestialSwords.length = 0;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
       this.isOmnislashing = true;
@@ -180,7 +211,13 @@ export class WarriorEx extends Fighter {
       this.cameraAirLift = 0;
       this._overrideFrameIdx = null;
       this.trueUltFrameOverride = null;
-      this.razorScars.length = 0;
+      this._skillSeal = null;
+      this._pentagramSeal = null;
+      this._sanctuaryTimer = 0;
+      this.pinnedCelestialSwords.length = 0;
+      this.astralThreads.length = 0;
+      this.hitStarbursts.length = 0;
+      this.exParticles.length = 0;
       this.cathedralBeams.length = 0;
     }
   }
@@ -207,10 +244,6 @@ export class WarriorEx extends Fighter {
     return Math.max(minX, Math.min(maxX, xv));
   }
 
-  /**
-   * Initializes one beat (`0..3`) of Aethelgard EX's 4-beat FFBE / Last Cloudia combo without returning to IDLE.
-   * Computes exact grounded pre-snap lunge target into the `110..120px` Dawn-Breaker smear belly!
-   */
   _beginComboBeat(beatIdx, game) {
     const v = ((beatIdx % 4) + 4) % 4;
     this._autoVariant = v;
@@ -242,8 +275,6 @@ export class WarriorEx extends Fighter {
       const sweetDist = v === 2 ? 108 : 114;
       const idealStandX = enemy.x - this.facing * sweetDist;
       const rawDelta = (idealStandX - this.x) * this.facing;
-      // Beat 1 closes gap up to +112px with a low sword-drag dash-step when out of melee range;
-      // Subsequent beats step cleanly forward (0..42px) into the 108..120px smear belly without chest overlap!
       const maxForward = v === 0 ? 112 : v === 2 ? 44 : 32;
       const clampedForward = Math.max(0, Math.min(maxForward, rawDelta));
       desiredX = this.x + this.facing * clampedForward;
@@ -257,7 +288,7 @@ export class WarriorEx extends Fighter {
   }
 
   spawnAfterimage(x, y, facing, row, col, maxLife = 0.22, tint = 'cyan') {
-    if (this.afterimages.length >= 14) this.afterimages.shift();
+    if (this.afterimages.length >= 16) this.afterimages.shift();
     this.afterimages.push({
       x,
       y,
@@ -270,7 +301,7 @@ export class WarriorEx extends Fighter {
   }
 
   spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.30, opts = {}) {
-    if (this.activeVfxAnims.length >= 22) this.activeVfxAnims.shift();
+    if (this.activeVfxAnims.length >= 26) this.activeVfxAnims.shift();
     this.activeVfxAnims.push({
       row,
       x,
@@ -293,18 +324,90 @@ export class WarriorEx extends Fighter {
   }
 
   /**
-   * Spawns a crisp integer-stepped pixel-art razor slash-scar (zero canvas rotation, zero smooth ellipses).
+   * Spawns a hairline 3-pass `2px` Astral Light-Thread (Pass 1 Selout -> Pass 2 Bevel -> Pass 3 White Core).
+   * Zero per-step nested squares so overlapping chevrons can NEVER occur!
    */
-  spawnRazorScar(cx, cy, dx, dy, maxLife = 0.22, isGold = false) {
-    if (this.razorScars.length >= 18) this.razorScars.shift();
-    this.razorScars.push({
-      x0: Math.round(cx - dx * 0.5),
-      y0: Math.round(cy - dy * 0.5),
-      x1: Math.round(cx + dx * 0.5),
-      y1: Math.round(cy + dy * 0.5),
+  spawnAstralThread(x0, y0, x1, y1, maxLife = 0.42, isGold = false) {
+    if (this.astralThreads.length >= 18) this.astralThreads.shift();
+    this.astralThreads.push({
+      x0: Math.round(x0 / 2) * 2,
+      y0: Math.round(y0 / 2) * 2,
+      x1: Math.round(x1 / 2) * 2,
+      y1: Math.round(y1 / 2) * 2,
       age: 0,
       maxLife,
       isGold
+    });
+  }
+
+  /**
+   * Spawns an asymmetric 4-frame Neo-Vision pixel hit-starburst (zero chevron bars!).
+   */
+  spawnHitStarburst(x, y, isGold = false, scale = 1.0) {
+    if (this.hitStarbursts.length >= 14) this.hitStarbursts.shift();
+    this.hitStarbursts.push({
+      x: Math.round(x / 2) * 2,
+      y: Math.round(y / 2) * 2,
+      age: 0,
+      maxLife: 0.16,
+      isGold,
+      scale,
+      flip: this.facing < 0
+    });
+  }
+
+  /**
+   * Spawns multi-shape Neo-Vision pixel particles (`star4`, `diamond`, `ring`, `rune`).
+   */
+  spawnExParticles(cx, cy, count = 8, opts = {}) {
+    const shapes = opts.shapes || ['star4', 'diamond'];
+    const speedMin = opts.speedMin ?? 42;
+    const speedMax = opts.speedMax ?? 165;
+    const lifeMin = opts.lifeMin ?? 0.24;
+    const lifeMax = opts.lifeMax ?? 0.52;
+    const gravity = opts.gravity ?? 80;
+    const upwardBias = opts.upwardBias ?? -45;
+    const spreadX = opts.spreadX ?? 16;
+    const spreadY = opts.spreadY ?? 14;
+    const isGold = Boolean(opts.isGold);
+
+    for (let i = 0; i < count; i++) {
+      if (this.exParticles.length >= 76) this.exParticles.shift();
+      const ang = opts.rainDown
+        ? Math.PI * 0.5 + (Math.random() - 0.5) * 0.6
+        : Math.random() * Math.PI * 2;
+      const spd = speedMin + Math.random() * (speedMax - speedMin);
+      const kind = shapes[i % shapes.length];
+      this.exParticles.push({
+        kind,
+        x: cx + (Math.random() - 0.5) * spreadX * 2,
+        y: cy + (Math.random() - 0.5) * spreadY * 2,
+        vx: Math.cos(ang) * spd * (opts.rainDown ? 0.35 : 1),
+        vy: Math.sin(ang) * spd + upwardBias,
+        gravity,
+        age: 0,
+        maxLife: lifeMin + Math.random() * (lifeMax - lifeMin),
+        size: kind === 'ring' ? (opts.ringRadius || 54) : 3 + (i % 3),
+        isGold: isGold ? i % 3 !== 1 : i % 3 === 0,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  spawnPixelShockRing(cx, groundY, maxRx = 92, isGold = false, maxLife = 0.34) {
+    if (this.exParticles.length >= 76) this.exParticles.shift();
+    this.exParticles.push({
+      kind: 'ring',
+      x: Math.round(cx / 2) * 2,
+      y: Math.round(groundY / 2) * 2,
+      vx: 0,
+      vy: 0,
+      gravity: 0,
+      age: 0,
+      maxLife,
+      size: maxRx,
+      isGold,
+      phase: 0
     });
   }
 
@@ -318,14 +421,14 @@ export class WarriorEx extends Fighter {
     });
   }
 
-  spawnExviusFeathers(game, count = 28) {
+  spawnExviusFeathers(game, count = 30) {
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const camX = game?.renderer?.cameraX || 0;
     const minX = game?.isAdventureMode?.() ? Math.max(40, camX - 80) : 50;
     const spanX = game?.isAdventureMode?.() ? 1360 : Math.max(960, ww - 100);
     this.justiceFeatherTimer = 4.8;
     for (let i = 0; i < count; i++) {
-      if (this.justiceFeathers.length >= 36) break;
+      if (this.justiceFeathers.length >= 38) break;
       this.justiceFeathers.push({
         x: minX + Math.random() * spanX,
         y: this.groundY - 120 - Math.random() * 380,
@@ -336,7 +439,7 @@ export class WarriorEx extends Fighter {
         phase: Math.random() * Math.PI * 2,
         age: 0,
         maxLife: 4.2 + Math.random() * 0.9,
-        drawSize: 56 + Math.floor(Math.random() * 20),
+        drawSize: 54 + Math.floor(Math.random() * 18),
         frameOffset: Math.floor(Math.random() * 30),
         flipX: Math.random() < 0.5,
         isGold: i % 3 === 0
@@ -344,9 +447,6 @@ export class WarriorEx extends Fighter {
     }
   }
 
-  /**
-   * Collects all valid melee targets in range (single opponent + Tag VS active foes + Adventure Mode monster packs).
-   */
   _gatherMeleeTargets(primaryEnemy, game, reachFront = 212, reachBack = 42) {
     const targets = [];
     const seen = new Set();
@@ -385,7 +485,8 @@ export class WarriorEx extends Fighter {
   }
 
   /**
-   * Applies crunchy anime hit-stop (`_hitStopTimer`), `+-3px` target `_hitShakeTimer`, damage, and razor slash VFX!
+   * Applies crunchy anime hit-stop (`_hitStopTimer`), `+-3px` target `_hitShakeTimer`, damage,
+   * and crisp Neo-Vision 4-frame pixel hit-starbursts + multi-shape star/diamond particles!
    */
   _applyExviusStrike(primaryEnemy, game, cfg) {
     const {
@@ -397,8 +498,6 @@ export class WarriorEx extends Fighter {
       knockX = 28,
       knockY = 0,
       isCrit = false,
-      scarDx = 96,
-      scarDy = 74,
       isGold = false,
       sfx = 'slash'
     } = cfg;
@@ -422,22 +521,20 @@ export class WarriorEx extends Fighter {
 
       const hitX = foe.x;
       const hitY = foe.y - (foe.isColossalBoss ? 128 : 88);
-      this.spawnRazorScar(hitX, hitY, this.facing * scarDx, scarDy, 0.22, isGold);
-      this.spawnVfxAnim(4, hitX, hitY, 188, 188, 0.22, {
+      this.spawnHitStarburst(hitX, hitY, isGold, isCrit ? 1.25 : 1.0);
+      this.spawnVfxAnim(4, hitX, hitY, 176, 176, 0.20, {
         flipX: this.facing < 0,
         glowColor: isGold ? 'gold' : 'cyan',
         foreground: true
       });
-      this.fx?.burst(hitX, hitY, {
-        count: isCrit ? 9 : 6,
-        speedMin: 48,
-        speedMax: 165,
-        lifeMin: 0.12,
-        lifeMax: 0.26,
-        gravity: 40,
-        colors: isGold
-          ? ['#ffffff', '#fef08a', '#facc15', '#38bdf8']
-          : ['#ffffff', '#bae6fd', '#38bdf8', '#facc15']
+      this.spawnExParticles(hitX, hitY, isCrit ? 8 : 5, {
+        shapes: ['star4', 'diamond'],
+        speedMin: 56,
+        speedMax: 175,
+        lifeMin: 0.16,
+        lifeMax: 0.34,
+        gravity: 95,
+        isGold
       });
       landedAny = true;
     }
@@ -471,7 +568,7 @@ export class WarriorEx extends Fighter {
       isUltimate: Boolean(opts.isUltimate),
       maxRange: opts.maxRange ?? 430
     });
-    this.spawnVfxAnim(0, spawnX, spawnY, 196, 196, 0.26, {
+    this.spawnVfxAnim(0, spawnX, spawnY, 192, 192, 0.26, {
       vx: dir * 280,
       flipX: dir < 0,
       glowColor: opts.isGold ? 'gold' : 'cyan',
@@ -480,19 +577,20 @@ export class WarriorEx extends Fighter {
   }
 
   onProjectileTrail(proj, _game) {
-    if (!this.fx || !proj) return;
+    if (!proj) return;
     proj._trailAcc = (proj._trailAcc || 0) + 0.016;
-    if (proj._trailAcc >= 0.044) {
+    if (proj._trailAcc >= 0.048) {
       proj._trailAcc = 0;
       const dir = Math.sign(proj.vx || this.facing || 1);
-      this.fx.burst(proj.x - dir * 14, proj.y, {
-        count: proj.isUltimate ? 4 : 3,
-        speedMin: 24,
-        speedMax: 80,
-        lifeMin: 0.12,
-        lifeMax: 0.24,
-        gravity: -16,
-        colors: ['#ffffff', '#bae6fd', '#38bdf8', '#facc15']
+      this.spawnExParticles(proj.x - dir * 16, proj.y, proj.isUltimate ? 3 : 2, {
+        shapes: ['star4', 'diamond'],
+        speedMin: 18,
+        speedMax: 64,
+        lifeMin: 0.14,
+        lifeMax: 0.28,
+        gravity: -18,
+        upwardBias: -10,
+        isGold: Boolean(proj.isUltimate)
       });
     }
   }
@@ -505,7 +603,7 @@ export class WarriorEx extends Fighter {
       flip: this.dashDir < 0,
       light: 1.2
     });
-    game?.vfx?.spawnShockwave(this.x, this.groundY - 6, 62, '#38bdf8', 0.22, false, true);
+    this.spawnPixelShockRing(this.x, this.groundY - 2, 64, false, 0.24);
     if (enemy && !enemy.isDead) {
       const targetStandX = enemy.x - this.dashDir * 114;
       this._dashStopX = this._clampArenaX(targetStandX, game);
@@ -514,14 +612,13 @@ export class WarriorEx extends Fighter {
     }
   }
 
-  updateDash(dt, enemy, game) {
+  updateDash(dt, enemy, _game) {
     const t = this.stateTimer;
     const dur = this.dashDuration || 0.36;
     const dir = this.dashDir || this.facing;
     this.vy = 0;
     this.y = this.groundY;
 
-    // Low anime sword-drag vanguard sprint that brakes crisply at the 114px Dawn-Breaker sweet-spot!
     if (t < dur * 0.78) {
       const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * dir : 999;
       if (distToEnemy <= 116 && distToEnemy >= 70) {
@@ -530,17 +627,18 @@ export class WarriorEx extends Fighter {
         this.vx = dir * 640;
       }
       this._dragSparkAcc += dt;
-      if (this._dragSparkAcc >= 0.035) {
+      if (this._dragSparkAcc >= 0.036) {
         this._dragSparkAcc = 0;
         this.spawnAfterimage(this.x, this.y, this.facing, 6, Math.min(24, Math.floor((t / dur) * 30)), 0.18);
-        this.fx?.burst(this.x - dir * 42, this.groundY - 3, {
-          count: 4,
+        this.spawnExParticles(this.x - dir * 42, this.groundY - 4, 3, {
+          shapes: ['star4', 'diamond'],
           speedMin: 36,
-          speedMax: 112,
-          lifeMin: 0.12,
-          lifeMax: 0.24,
-          gravity: 85,
-          colors: ['#ffffff', '#fef08a', '#facc15', '#38bdf8']
+          speedMax: 108,
+          lifeMin: 0.14,
+          lifeMax: 0.26,
+          gravity: 120,
+          upwardBias: -36,
+          isGold: true
         });
       }
     } else {
@@ -562,24 +660,24 @@ export class WarriorEx extends Fighter {
     this.vx = 0;
     this.setState('CROUCH');
     if (game?.audio) game.audio.play('parry_clang', this.x);
-    this.spawnVfxAnim(1, this.x + this.facing * 24, this.y - 84, 184, 184, 0.36, {
+    this.spawnVfxAnim(1, this.x + this.facing * 20, this.y - 78, 188, 188, 0.38, {
       flipX: this.facing < 0,
       glowColor: 'gold',
       foreground: true,
       followOwner: true,
-      offsetX: 24,
-      offsetY: -84
+      offsetX: 20,
+      offsetY: -78
     });
+    this.spawnPixelShockRing(this.x, this.groundY - 2, 74, true, 0.28);
   }
 
-  updateCrouch(dt, enemy, game) {
+  updateCrouch(_dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.crouchDuration || 0.92;
     this.vx = 0;
     this.isCrouching = true;
     this.isDeflecting = t < 0.56;
 
-    // Reflect incoming enemy projectiles off the 2H Dawn-Breaker Greatsword crossguard!
     if (this.isDeflecting && game?.vfx?.projectiles) {
       for (const proj of game.vfx.projectiles) {
         if (
@@ -596,20 +694,15 @@ export class WarriorEx extends Fighter {
           if (game?.audio) game.audio.play('clang', proj.x);
           this.gainMana(14);
           this.gainFinisher(8);
-          this.fx?.burst(proj.x, proj.y, {
-            count: 8,
-            speedMin: 55,
-            speedMax: 160,
-            lifeMin: 0.14,
-            lifeMax: 0.28,
-            gravity: 25,
-            colors: ['#ffffff', '#fef08a', '#38bdf8']
+          this.spawnHitStarburst(proj.x, proj.y, true, 1.15);
+          this.spawnExParticles(proj.x, proj.y, 7, {
+            shapes: ['star4', 'diamond'],
+            isGold: true
           });
         }
       }
     }
 
-    // Explosive Exvius Smear Counter-Riposte at t = 0.50s
     if (!this.didSecondaryAction && t >= 0.50) {
       this.didSecondaryAction = true;
       this.isDeflecting = false;
@@ -617,7 +710,7 @@ export class WarriorEx extends Fighter {
       const spawnY = this.y - 84;
       this.fx?.spawn('runebladeCrescentSlash', spawnX, spawnY, {
         flip: this.facing < 0,
-        light: 1.32,
+        light: 1.28,
         extra: { radius: 34, width: 12, isGold: true }
       });
       this.fireDawnBladeWave(game, {
@@ -636,8 +729,6 @@ export class WarriorEx extends Fighter {
         knockX: 95,
         knockY: -65,
         isCrit: true,
-        scarDx: 112,
-        scarDy: -64,
         isGold: true,
         sfx: 'heavy_cleave'
       });
@@ -670,7 +761,7 @@ export class WarriorEx extends Fighter {
     this.vy = 0;
     this.setState('JUMP');
     if (game?.audio) game.audio.play('storm_leap', this.x);
-    game?.vfx?.spawnShockwave(this.x, this.groundY - 4, 58, '#7dd3fc', 0.22, false, true);
+    this.spawnPixelShockRing(this.x, this.groundY - 2, 62, false, 0.24);
   }
 
   updateJump(dt, enemy, game) {
@@ -688,7 +779,6 @@ export class WarriorEx extends Fighter {
       this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(28, Math.floor(u * 30)), 0.20);
     }
 
-    // Mid-air Dawn-Breaker downward cleave at apex -> descent (u >= 0.54)
     if (!this.didSecondaryAction && u >= 0.54) {
       this.didSecondaryAction = true;
       if (enemy && !enemy.isDead) {
@@ -696,7 +786,7 @@ export class WarriorEx extends Fighter {
       }
       this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 56, this.y - 68, {
         flip: this.facing < 0,
-        light: 1.28,
+        light: 1.24,
         extra: { radius: 34, width: 11.5, isGold: false }
       });
       this.fireDawnBladeWave(game, {
@@ -713,8 +803,6 @@ export class WarriorEx extends Fighter {
         shakeDur: 0.055,
         knockX: 64,
         knockY: -45,
-        scarDx: 102,
-        scarDy: 88,
         sfx: 'heavy_cleave'
       });
     }
@@ -725,7 +813,7 @@ export class WarriorEx extends Fighter {
       this.vy = 0;
       this.isFlipVault = false;
       this.isInvulnerable = false;
-      game?.vfx?.spawnShockwave(this.x, this.groundY - 4, 64, '#38bdf8', 0.22, false, true);
+      this.spawnPixelShockRing(this.x, this.groundY - 2, 68, false, 0.24);
       this.setState('IDLE');
     }
   }
@@ -743,7 +831,7 @@ export class WarriorEx extends Fighter {
   }
 
   /**
-   * 4-Beat Escalating FFBE / Last Cloudia Hack-and-Slash Combo (`[[60,8],[68,7],[75,8],[83,7]]`):
+   * 4-Beat Escalating FFBE / Last Cloudia Grounded Hack-and-Slash Combo (`[[60,8],[68,7],[75,8],[83,7]]`):
    * - Grounded Pre-Snap Impulse -> Hard-Locked Boots (`vx = 0`) right on the 1-frame smear snap!
    * - `0.015s` intra-combo link holding the beat end-pose frame with ZERO return to `IDLE`!
    * - Crunchy `_hitStopTimer` (`42ms`, `42ms`, `32ms+38ms`, `58ms`) + `+-3px` target `_hitShakeTimer`!
@@ -752,7 +840,6 @@ export class WarriorEx extends Fighter {
     this._currentEnemy = enemy;
     this._comboPersistTimer = 0.72;
 
-    // 0.015s Zero-Idle Intra-Combo Link: holds end-pose frame of previous beat before snapping into next beat!
     if (this._intraLinkTimer > 0) {
       this._intraLinkTimer = Math.max(0, this._intraLinkTimer - dt);
       this.vx = 0;
@@ -770,31 +857,25 @@ export class WarriorEx extends Fighter {
     const t = this.stateTimer;
     const [sliceStart, sliceLen] = AUTO_SLICES_EX[v];
 
-    //Snap times aligned to exact art keyposes: V0->F03(0.10s), V1->F09(0.06s), V2->F17(0.08s), V3->F25(0.16s)
     const snapT = v === 0 ? 0.10 : v === 1 ? 0.06 : v === 2 ? 0.08 : 0.16;
 
-    // Exact frame timeline mapping so the 1-frame smear snap lands cleanly at `snapT` and holds during hit-stop!
     let localStep = 0;
     if (v === 0) {
-      // 8 frames (60..67): 60..62 pre-snap coil (0..0.10s), 63 SNAP (0.10..0.15s), 64..65 erosion (0.15..0.24s), 66..67 hold
       if (t < 0.10) localStep = Math.min(2, Math.floor((t / 0.10) * 3));
       else if (t < 0.15) localStep = 3;
       else if (t < 0.25) localStep = 4 + Math.min(1, Math.floor(((t - 0.15) / 0.10) * 2));
       else localStep = 6 + Math.min(1, Math.floor(((t - 0.25) / 0.11) * 2));
     } else if (v === 1) {
-      // 7 frames (68..74): 68 micro-torque (0..0.06s), 69 REVERSE SNAP (0.06..0.115s), 70..71 erosion, 72..74 high guard
       if (t < 0.06) localStep = 0;
       else if (t < 0.115) localStep = 1;
       else if (t < 0.21) localStep = 2 + Math.min(1, Math.floor(((t - 0.115) / 0.095) * 2));
       else localStep = 4 + Math.min(2, Math.floor(((t - 0.21) / 0.13) * 3));
     } else if (v === 2) {
-      // 8 frames (75..82): 75..76 coil (0..0.08s), 77 SNAP-1 (0.08..0.14s), 78 SNAP-2 (0.14..0.195s), 79..82 erosion & crouch coil
       if (t < 0.08) localStep = Math.min(1, Math.floor((t / 0.08) * 2));
       else if (t < 0.14) localStep = 2;
       else if (t < 0.195) localStep = 3;
       else localStep = 4 + Math.min(3, Math.floor(((t - 0.195) / 0.185) * 4));
     } else {
-      // 7 frames (83..89): 83..84 airborne hoist (0..0.16s), 85 GUILLOTINE SLAM SNAP (0.16..0.24s), 86..89 shock-peel & rise
       if (t < 0.16) localStep = Math.min(1, Math.floor((t / 0.16) * 2));
       else if (t < 0.24) localStep = 2;
       else localStep = 3 + Math.min(3, Math.floor(((t - 0.24) / 0.28) * 4));
@@ -803,38 +884,34 @@ export class WarriorEx extends Fighter {
     this.trueUltFrameOverride = frameIdx;
     this._overrideFrameIdx = frameIdx;
 
-    // 1. Grounded Impulse-Then-Plant Footwork (Zero Ice-Skating!)
     this.vx = 0;
     if (t < snapT) {
       const lungeU = Math.min(1, Math.max(0, t / snapT));
       const eased = 1 - Math.pow(1 - lungeU, 2.2);
       this.x = this._beatStartX + (this._beatTargetX - this._beatStartX) * eased;
 
-      // Low sword-drag floor sparks when Beat 1 closes gap (> 26px dash-step)
       if (v === 0 && Math.abs(this._beatTargetX - this._beatStartX) > 26) {
         this._dragSparkAcc += dt;
-        if (this._dragSparkAcc >= 0.032) {
+        if (this._dragSparkAcc >= 0.034) {
           this._dragSparkAcc = 0;
           this.spawnAfterimage(this.x, this.y, this.facing, 2, localStep, 0.16);
-          this.fx?.burst(this.x - this.facing * 36, this.groundY - 2, {
-            count: 4,
-            speedMin: 34,
-            speedMax: 95,
-            lifeMin: 0.10,
-            lifeMax: 0.22,
-            gravity: 75,
-            colors: ['#ffffff', '#fef08a', '#38bdf8']
+          this.spawnExParticles(this.x - this.facing * 36, this.groundY - 4, 3, {
+            shapes: ['star4', 'diamond'],
+            speedMin: 32,
+            speedMax: 92,
+            lifeMin: 0.12,
+            lifeMax: 0.24,
+            gravity: 95,
+            isGold: false
           });
         }
       }
     } else if (!this._bootsPlanted) {
-      // HARD-LOCK boots right on the 1-frame smear snap!
       this._bootsPlanted = true;
       this.x = this._beatTargetX;
       this.vx = 0;
     }
 
-    // Airborne hoist arc on Beat 4 (V3: leaps skyward F23..F24, slams hard onto groundY right at F25 t = 0.16s!)
     if (v === 3) {
       if (t < 0.16) {
         const airU = t / 0.16;
@@ -850,24 +927,13 @@ export class WarriorEx extends Fighter {
       this.vy = 0;
     }
 
-    // 2. Beat-Specific Smear Snap Impacts, Hit-Stop & Cascading Multi-Tick Bite
     if (v === 0) {
-      // Beat 1 (V0): Coiled Downward Dawn-Cleave at F03 (t = 0.10s) -> 42ms hit-stop + diagonal razor scar + dust puff!
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
         this._beatHitMask |= 1;
-        game?.vfx?.spawnShockwave(this.x + this.facing * 42, this.groundY - 4, 56, '#7dd3fc', 0.20, false, true);
-        this.fx?.burst(this.x + this.facing * 28, this.groundY - 2, {
-          count: 6,
-          speedMin: 35,
-          speedMax: 110,
-          lifeMin: 0.14,
-          lifeMax: 0.26,
-          gravity: 55,
-          colors: ['#e0f2fe', '#7dd3fc', '#fde047']
-        });
+        this.spawnPixelShockRing(this.x + this.facing * 42, this.groundY - 2, 58, false, 0.22);
         this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 68, this.y - 84, {
           flip: this.facing < 0,
-          light: 1.24,
+          light: 1.20,
           extra: { radius: 34, width: 11, isGold: false }
         });
         this._applyExviusStrike(enemy, game, {
@@ -877,25 +943,22 @@ export class WarriorEx extends Fighter {
           shakeDur: 0.055,
           knockX: 24,
           knockY: 0,
-          scarDx: 108,
-          scarDy: 86,
           isGold: false,
           sfx: 'slash'
         });
       }
     } else if (v === 1) {
-      // Beat 2 (V1): Instant Reverse Rising Heaven-Slash at F09 (t = 0.06s) -> 42ms hit-stop + rising golden-cyan shockwave + enemy pop!
       if ((this._beatHitMask & 1) === 0 && t >= 0.06) {
         this._beatHitMask |= 1;
         const waveX = this.x + this.facing * 76;
-        game?.vfx?.spawnShockwave(waveX, this.groundY - 8, 68, '#fde047', 0.22, false, true);
+        this.spawnPixelShockRing(waveX, this.groundY - 2, 72, true, 0.24);
         this.fx?.spawn('runebladeCrescentSlash', waveX, this.y - 96, {
           flip: this.facing < 0,
           palette: RUNIC_GOLD_PALETTE,
-          light: 1.28,
+          light: 1.24,
           extra: { radius: 36, width: 11.5, isGold: true }
         });
-        this.spawnVfxAnim(2, waveX, this.groundY - 68, 176, 176, 0.28, {
+        this.spawnVfxAnim(2, waveX, this.groundY - 72, 180, 180, 0.28, {
           flipX: this.facing < 0,
           glowColor: 'gold',
           foreground: false
@@ -907,19 +970,16 @@ export class WarriorEx extends Fighter {
           shakeDur: 0.058,
           knockX: 22,
           knockY: -138,
-          scarDx: 106,
-          scarDy: -92,
           isGold: true,
           sfx: 'slash'
         });
       }
     } else if (v === 2) {
-      // Beat 3 (V2): Last Cloudia Spinning Vortex Cross-Rip -> 2-Hit Rapid Cross-Slice (t = 0.08s & t = 0.14s)!
       if ((this._beatHitMask & 1) === 0 && t >= 0.08) {
         this._beatHitMask |= 1;
         this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 70, this.y - 86, {
           flip: this.facing < 0,
-          light: 1.24,
+          light: 1.20,
           extra: { radius: 34, width: 10.5, eccentricity: 0.34, isGold: false }
         });
         this._applyExviusStrike(enemy, game, {
@@ -929,8 +989,6 @@ export class WarriorEx extends Fighter {
           shakeDur: 0.046,
           knockX: 14,
           knockY: -22,
-          scarDx: 112,
-          scarDy: 34,
           isGold: false,
           sfx: 'slash'
         });
@@ -940,7 +998,7 @@ export class WarriorEx extends Fighter {
         this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 74, this.y - 90, {
           flip: this.facing > 0,
           palette: RUNIC_GOLD_PALETTE,
-          light: 1.28,
+          light: 1.24,
           extra: { radius: 35, width: 11, eccentricity: 0.34, isGold: true }
         });
         this._applyExviusStrike(enemy, game, {
@@ -950,32 +1008,23 @@ export class WarriorEx extends Fighter {
           shakeDur: 0.052,
           knockX: 18,
           knockY: -36,
-          scarDx: 112,
-          scarDy: -42,
           isGold: true,
           sfx: 'clang'
         });
       }
     } else {
-      // Beat 4 (V3): Airborne Heavensplitter Execution at F25 (t = 0.16s) -> 58ms heavy hit-stop + 3 cascading ticks + piercing blade_wave!
       if ((this._beatHitMask & 1) === 0 && t >= 0.16) {
         this._beatHitMask |= 1;
         const slamX = this.x + this.facing * 82;
         game?.renderer?.triggerShake?.(13, 0.26);
         if (game?.audio) game.audio.play('thunder_slam', slamX);
-        game?.vfx?.spawnShockwave(slamX, this.groundY - 4, 96, '#fde047', 0.28, false, true);
+        this.spawnPixelShockRing(slamX, this.groundY - 2, 102, true, 0.30);
         this.fx?.spawn('earthshatterJudgmentWave', slamX, this.groundY - 2, {
           flip: this.facing < 0,
-          light: 1.36,
+          light: 1.30,
           extra: { isUltimate: false }
         });
-        this.fx?.spawn('runebladeCrescentSlash', slamX, this.groundY - 88, {
-          flip: this.facing < 0,
-          palette: RUNIC_GOLD_PALETTE,
-          light: 1.38,
-          extra: { radius: 36, width: 13, isGold: true, groundWrap: true }
-        });
-        this.spawnVfxAnim(2, slamX, this.groundY - 76, 224, 224, 0.38, {
+        this.spawnVfxAnim(2, slamX, this.groundY - 78, 224, 224, 0.38, {
           flipX: this.facing < 0,
           glowColor: 'gold',
           foreground: false
@@ -988,8 +1037,6 @@ export class WarriorEx extends Fighter {
           knockX: 36,
           knockY: -45,
           isCrit: true,
-          scarDx: 24,
-          scarDy: 136,
           isGold: true,
           sfx: 'heavy_cleave'
         });
@@ -1003,7 +1050,6 @@ export class WarriorEx extends Fighter {
           isGold: true
         });
       }
-      // Cascading Dawn-Breaker aftershock ticks 2 & 3 (t = 0.21s & t = 0.26s)
       if ((this._beatHitMask & 2) === 0 && t >= 0.21) {
         this._beatHitMask |= 2;
         this._applyExviusStrike(enemy, game, {
@@ -1013,8 +1059,6 @@ export class WarriorEx extends Fighter {
           shakeDur: 0.045,
           knockX: 28,
           knockY: -35,
-          scarDx: 92,
-          scarDy: 78,
           isGold: false,
           sfx: 'clang'
         });
@@ -1029,15 +1073,12 @@ export class WarriorEx extends Fighter {
           knockX: 92,
           knockY: -88,
           isCrit: true,
-          scarDx: 98,
-          scarDy: -84,
           isGold: true,
           sfx: 'slash'
         });
       }
     }
 
-    // 3. Seamless Direct Beat Chaining (0.015s link, ZERO return to IDLE!)
     if (t >= dur) {
       this.y = this.groundY;
       this.vx = 0;
@@ -1058,7 +1099,6 @@ export class WarriorEx extends Fighter {
         !enemy.isInvulnerable &&
         Math.abs(enemy.x - this.x) <= 245;
 
-      // Chain V0 -> V1 -> V2 -> V3 directly inside AUTO_ATTACK without touching Row 0 IDLE!
       if (v < 3 && (aiWantsChain || advHoldingAttack)) {
         if (game?.adventure?.queuedAction === 'attack') {
           game.adventure.queuedAction = null;
@@ -1067,7 +1107,6 @@ export class WarriorEx extends Fighter {
         return;
       }
 
-      // If player holds Attack past Beat 4 in Adventure Mode, loop cleanly into a fresh 4-beat string after brief 0.06s breath
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
@@ -1086,16 +1125,37 @@ export class WarriorEx extends Fighter {
   }
 
   /**
-   * SPECIAL SKILL (`4.6s CD`, `1.02s`, Row 3 `90..119`):
-   * `ASTRAL BLADE-RUSH` — Rapid 3-slash advancing FFBE chain-flurry ending in a rising Dragon-Fang uppercut pillar!
+   * NEWLY-BORN SKILL (`4.6s CD`, `1.04s`, Row 3 `90..119`):
+   * `DAWN-BREAKER TRINITY RUSH`
+   * - Consecrates a golden-cyan Runic Sword-Seal underfoot (`t = 0.02s`),
+   * - Executes a 3-beat advancing Dawn-Breaker shockwave combo with crisp `warrior_ex_vfx.png` sword-pillars,
+   * - Finishes with a rising Sovereign Sky-Pillar Uppercut raining 4-point pixel star-glints!
    */
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.skillDuration || 1.02;
+    const dur = this.skillDuration || 1.04;
     this.unstoppablePoise = true;
     this.isDeflecting = t < 0.56;
 
-    // Deflect projectiles during advancing rush
+    // Beat 0 (t = 0.02s): Consecrate Golden-Cyan Runic Sword-Seal Underfoot!
+    if ((this._skillSlashMask & 16) === 0 && t >= 0.02) {
+      this._skillSlashMask |= 16;
+      if (game?.audio) game.audio.play('skill_cast', this.x);
+      this._skillSeal = {
+        x: this.x,
+        y: this.groundY,
+        age: 0,
+        maxLife: 0.96
+      };
+      this.spawnVfxAnim(1, this.x, this.groundY - 46, 204, 204, 0.52, {
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        foreground: false
+      });
+      this.spawnPixelShockRing(this.x, this.groundY - 2, 86, true, 0.30);
+      game?.vfx?.spawnDamageText?.(this.x, this.y - 154, 0, false, 'DAWN SWORD-SEAL!', '#fde047');
+    }
+
     if (this.isDeflecting && game?.vfx?.projectiles) {
       for (const proj of game.vfx.projectiles) {
         if (
@@ -1108,11 +1168,12 @@ export class WarriorEx extends Fighter {
           proj.owner = this;
           proj.vx = -proj.vx * 1.15;
           if (game?.audio) game.audio.play('clang', proj.x);
+          this.spawnHitStarburst(proj.x, proj.y, true, 1.0);
         }
       }
     }
 
-    // Advancing 3-slash blitz bursts (0.04..0.52s) that plant right at 110px sweet-spot!
+    // Advancing 3-Beat Trinity Rush bursts into 108px sweet-spot
     if (t < 0.54) {
       const dist = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 150;
       const inBurstWindow =
@@ -1126,21 +1187,23 @@ export class WarriorEx extends Fighter {
       if (this.afterimageAccum >= 0.042) {
         this.afterimageAccum = 0;
         const col = Math.min(18, Math.floor((t / dur) * 30));
-        this.spawnAfterimage(this.x, this.y, this.facing, 3, col, 0.22);
+        this.spawnAfterimage(this.x, this.y, this.facing, 3, col, 0.24, col % 2 === 0 ? 'gold' : 'cyan');
       }
     } else {
       this.vx = 0;
     }
 
-    // Slash 1 (t = 0.14s): Advancing Astral Diagonal Cut
+    // Beat 1 (t = 0.14s): First Dawn-Breaker Sword-Pillar Shockwave
     if ((this._skillSlashMask & 1) === 0 && t >= 0.14) {
       this._skillSlashMask |= 1;
       this.vx = 0;
-      this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 72, this.y - 86, {
-        flip: this.facing < 0,
-        light: 1.28,
-        extra: { radius: 34, width: 11.5, isGold: false }
+      const p1X = this.x + this.facing * 74;
+      this.spawnVfxAnim(2, p1X, this.groundY - 70, 184, 184, 0.32, {
+        flipX: this.facing < 0,
+        glowColor: 'cyan',
+        foreground: false
       });
+      this.spawnPixelShockRing(p1X, this.groundY - 2, 68, false, 0.24);
       this._applyExviusStrike(enemy, game, {
         damage: 24,
         reachFront: 218,
@@ -1148,23 +1211,22 @@ export class WarriorEx extends Fighter {
         shakeDur: 0.048,
         knockX: 22,
         knockY: -18,
-        scarDx: 114,
-        scarDy: 82,
         isGold: false,
         sfx: 'slash'
       });
     }
 
-    // Slash 2 (t = 0.30s): Reverse Golden Cross-Blitz
+    // Beat 2 (t = 0.30s): Second Golden Dawn-Breaker Sword-Pillar Shockwave
     if ((this._skillSlashMask & 2) === 0 && t >= 0.30) {
       this._skillSlashMask |= 2;
       this.vx = 0;
-      this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 76, this.y - 90, {
-        flip: this.facing > 0,
-        palette: RUNIC_GOLD_PALETTE,
-        light: 1.30,
-        extra: { radius: 35, width: 11.5, isGold: true }
+      const p2X = this.x + this.facing * 82;
+      this.spawnVfxAnim(2, p2X, this.groundY - 76, 198, 198, 0.34, {
+        flipX: this.facing > 0,
+        glowColor: 'gold',
+        foreground: true
       });
+      this.spawnPixelShockRing(p2X, this.groundY - 2, 76, true, 0.26);
       this._applyExviusStrike(enemy, game, {
         damage: 26,
         reachFront: 220,
@@ -1172,20 +1234,20 @@ export class WarriorEx extends Fighter {
         shakeDur: 0.048,
         knockX: 22,
         knockY: -28,
-        scarDx: 114,
-        scarDy: -84,
         isGold: true,
         sfx: 'clang'
       });
     }
 
-    // Slash 3 (t = 0.46s): Deep Spinning Vortex Cleave
+    // Beat 3 (t = 0.46s): Third Sovereign Trinity Sword-Pillar Shockwave
     if ((this._skillSlashMask & 4) === 0 && t >= 0.46) {
       this._skillSlashMask |= 4;
       this.vx = 0;
-      this.fx?.spawn('tempestCycloneRing', this.x + this.facing * 42, this.y - 72, {
-        flip: this.facing < 0,
-        light: 1.28
+      const p3X = this.x + this.facing * 90;
+      this.spawnVfxAnim(2, p3X, this.groundY - 82, 212, 212, 0.36, {
+        flipX: this.facing < 0,
+        glowColor: 'cyan',
+        foreground: true
       });
       this._applyExviusStrike(enemy, game, {
         damage: 28,
@@ -1194,40 +1256,54 @@ export class WarriorEx extends Fighter {
         shakeDur: 0.052,
         knockX: 16,
         knockY: -55,
-        scarDx: 120,
-        scarDy: 26,
         isGold: false,
         sfx: 'slash'
       });
     }
 
-    // Finisher (t = 0.68s): Rising Dragon-Fang Uppercut Pillar + Piercing Dawn-Breaker Wave!
-    if (t >= 0.58 && t < 0.84) {
-      const hopU = (t - 0.58) / 0.26;
-      this.y = this.groundY - Math.sin(hopU * Math.PI) * 52;
+    // Finisher (t = 0.68s): Rising Sovereign Sky-Pillar Uppercut + Raining 4-Point Pixel Star-Glints!
+    if (t >= 0.58 && t < 0.86) {
+      const hopU = (t - 0.58) / 0.28;
+      this.y = this.groundY - Math.sin(hopU * Math.PI) * 58;
     } else {
       this.y = this.groundY;
     }
 
     if ((this._skillSlashMask & 8) === 0 && t >= 0.68) {
       this._skillSlashMask |= 8;
-      const pillarX = this.x + this.facing * 86;
+      const pillarX = this.x + this.facing * 88;
       game?.renderer?.triggerShake?.(14, 0.28);
       if (game?.audio) game.audio.play('thunder_slam', pillarX);
+
       this.fx?.spawn('skyJudgmentPillar', pillarX, this.groundY - 2, {
         flip: this.facing < 0,
-        light: 1.38
+        light: 1.32
       });
-      this.fx?.spawn('earthshatterJudgmentWave', pillarX, this.groundY - 2, {
-        flip: this.facing < 0,
-        light: 1.34,
-        extra: { isUltimate: false }
-      });
-      this.spawnVfxAnim(2, pillarX, this.groundY - 82, 232, 232, 0.40, {
+      this.spawnCathedralBeam(pillarX, this.groundY, 54, 0.36);
+      this.spawnVfxAnim(2, pillarX, this.groundY - 88, 244, 244, 0.44, {
         flipX: this.facing < 0,
         glowColor: 'gold',
         foreground: true
       });
+      this.spawnPixelShockRing(pillarX, this.groundY - 2, 114, true, 0.34);
+
+      // Rain of 14 twinkling 4-point pixel star-glints down through the Sky-Pillar!
+      this.spawnExParticles(pillarX, this.groundY - 196, 14, {
+        shapes: ['star4', 'star4', 'diamond'],
+        speedMin: 35,
+        speedMax: 95,
+        lifeMin: 0.38,
+        lifeMax: 0.68,
+        gravity: 165,
+        upwardBias: 15,
+        spreadX: 54,
+        spreadY: 42,
+        rainDown: true,
+        isGold: true
+      });
+
+      game?.vfx?.spawnDamageText?.(pillarX, this.groundY - 178, 0, true, 'SOVEREIGN SKY-PILLAR!', '#fde047');
+
       this._applyExviusStrike(enemy, game, {
         damage: 46,
         reachFront: 232,
@@ -1236,8 +1312,6 @@ export class WarriorEx extends Fighter {
         knockX: 118,
         knockY: -165,
         isCrit: true,
-        scarDx: 32,
-        scarDy: -142,
         isGold: true,
         sfx: 'heavy_cleave'
       });
@@ -1261,12 +1335,15 @@ export class WarriorEx extends Fighter {
   }
 
   /**
-   * OVERDRIVE (`1.92s`, Row 4 `120..149`):
-   * `RADIANT OMNISLASH` — 5 rapid multi-angle teleporting slash-smear cuts leaving golden-cyan silhouettes into a skyward plunge!
+   * NEWLY-BORN OVERDRIVE (`1.94s`, Row 4 `120..149`):
+   * `CELESTIAL PENTAGRAM OMNISLASH`
+   * - Locks `enemy` inside a 5-point pixel Star-Sanctuary floor sigil (`Row 3` + 5-vertex star chords),
+   * - Flashes through 5 golden-cyan Neo-Vision silhouettes linked by hairline 3-pass `2px` astral light-threads,
+   * - Plunges a towering Runic Monolith Greatsword (`Row 6`) from above!
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.ultDuration || 1.92;
+    const dur = this.ultDuration || 1.94;
     this.isInvulnerable = true;
     this.isOmnislashing = true;
     this.vx = 0;
@@ -1283,40 +1360,52 @@ export class WarriorEx extends Fighter {
       if (game?.audio) game.audio.play('ult_cast', this.x);
       this.fx?.spawn('blinkTeleportPillar', this.x, this.groundY - 4, {
         flip: this.facing < 0,
-        light: 1.35
+        light: 1.30
       });
-      this.spawnVfxAnim(3, this._ultTargetX, this.groundY - 18, 240, 120, 0.55, {
+      this._pentagramSeal = {
+        x: this._ultTargetX,
+        y: this.groundY,
+        rx: 158,
+        ry: 34,
+        age: 0,
+        maxLife: 1.82
+      };
+      this.spawnVfxAnim(3, this._ultTargetX, this.groundY - 12, 296, 156, 1.68, {
         flipX: false,
         glowColor: 'gold',
         foreground: false
       });
+      game?.vfx?.spawnDamageText?.(this._ultTargetX, this.groundY - 196, 0, true, 'PENTAGRAM SANCTUARY!', '#38bdf8');
     }
 
     if (enemy && !enemy.isDead) {
       this._ultTargetX = enemy.x;
+      if (this._pentagramSeal) this._pentagramSeal.x = enemy.x;
     }
     const tx = this._ultTargetX;
 
-    // 5-Fold Multi-Angle Teleporting Omnislash Cuts (t = 0.20, 0.44, 0.68, 0.92, 1.16s)
+    // 5-Vertex Pentagram Star-Flash Blitz (`0->2->4->1->3->0` star chords in 3-pass `2px` astral light-threads!)
     const cutSchedule = [
-      { time: 0.20, ox: -116, oy: 0, face: 1, frame: 126, dx: 132, dy: 84, gold: false },
-      { time: 0.44, ox: 116, oy: -28, face: -1, frame: 130, dx: -132, dy: -88, gold: true },
-      { time: 0.68, ox: -108, oy: -54, face: 1, frame: 134, dx: 136, dy: -46, gold: false },
-      { time: 0.92, ox: 112, oy: -18, face: -1, frame: 138, dx: -136, dy: 92, gold: true },
-      { time: 1.16, ox: 0, oy: -148, face: this.facing, frame: 142, dx: 42, dy: 148, gold: true }
+      { time: 0.18, ox: -124, oy: -4, face: 1, frame: 126, txOff: 124, tyOff: -78, gold: false },
+      { time: 0.40, ox: 124, oy: -68, face: -1, frame: 130, txOff: -96, tyOff: -12, gold: true },
+      { time: 0.62, ox: -96, oy: -12, face: 1, frame: 134, txOff: 0, tyOff: -124, gold: false },
+      { time: 0.84, ox: 96, oy: -12, face: -1, frame: 138, txOff: -124, tyOff: -68, gold: true },
+      { time: 1.06, ox: 0, oy: -136, face: this.facing, frame: 142, txOff: 0, tyOff: -14, gold: true }
     ];
 
     while (this._ultSlashStep < 5 && t >= cutSchedule[this._ultSlashStep].time) {
       const cut = cutSchedule[this._ultSlashStep];
       this._ultSlashStep++;
-      // Leave luminous golden-cyan silhouette at departure point
+
+      const prevX = this.x;
+      const prevY = this.y - 72;
       this.spawnAfterimage(
         this.x,
         this.y,
         this.facing,
         4,
         (cut.frame - 120 + 28) % 30,
-        0.34,
+        0.46,
         cut.gold ? 'gold' : 'cyan'
       );
 
@@ -1326,25 +1415,32 @@ export class WarriorEx extends Fighter {
       this.trueUltFrameOverride = cut.frame;
       this._overrideFrameIdx = cut.frame;
 
+      // Crisp golden-cyan Neo-Vision silhouette at vertex
       this.spawnAfterimage(
         this.x,
         this.y,
         this.facing,
         4,
         cut.frame - 120,
-        0.32,
+        0.52,
         cut.gold ? 'gold' : 'cyan'
       );
+
+      // Hairline 3-pass `2px` astral light-thread tracing the Pentagram Star chord!
+      this.spawnAstralThread(
+        prevX,
+        prevY,
+        this._clampArenaX(tx + cut.txOff, game),
+        this.groundY + cut.tyOff,
+        0.64,
+        cut.gold
+      );
+
       this.fx?.spawn('runebladeCrescentSlash', tx, this.groundY - 92, {
         flip: cut.face < 0,
         palette: cut.gold ? RUNIC_GOLD_PALETTE : RUNIC_CYAN_PALETTE,
-        light: 1.34,
+        light: 1.28,
         extra: { radius: 38, width: 12, isGold: cut.gold }
-      });
-      this.spawnVfxAnim(4, tx, this.groundY - 92, 208, 208, 0.26, {
-        flipX: cut.face < 0,
-        glowColor: cut.gold ? 'gold' : 'cyan',
-        foreground: true
       });
       this._applyExviusStrike(enemy, game, {
         damage: 30,
@@ -1355,30 +1451,28 @@ export class WarriorEx extends Fighter {
         knockX: 8,
         knockY: -32,
         isCrit: cut.gold,
-        scarDx: cut.dx,
-        scarDy: cut.dy,
         isGold: cut.gold,
         sfx: 'slash'
       });
     }
 
-    // Stage 6 (1.28..1.52s): High-sky hover above target -> Supersonic Dawn-Breaker Plunge at t = 1.52s!
-    if (t >= 1.28 && t < 1.52) {
-      const hoverU = (t - 1.28) / 0.24;
+    // Stage 6 (1.22..1.50s): Hover -> Plunge Towering Runic Monolith Greatsword from above at t = 1.50s!
+    if (t >= 1.22 && t < 1.50) {
+      const hoverU = (t - 1.22) / 0.28;
       this.x = this._clampArenaX(tx - this.facing * 52, game);
-      this.y = this.groundY - 165 * (1 - Math.pow(hoverU, 2.4));
+      this.y = this.groundY - 172 * (1 - Math.pow(hoverU, 2.4));
       this.cameraAirLift = Math.max(0, (this.groundY - this.y) * 0.45);
       this.trueUltFrameOverride = 143;
       this._overrideFrameIdx = 143;
       this.afterimageAccum += dt;
-      if (this.afterimageAccum >= 0.04) {
+      if (this.afterimageAccum >= 0.044) {
         this.afterimageAccum = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, 23, 0.26, 'gold');
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, 23, 0.28, 'gold');
       }
-    } else if (t >= 1.52) {
+    } else if (t >= 1.50) {
       this.y = this.groundY;
       this.cameraAirLift = 0;
-      const finCol = 24 + Math.min(5, Math.floor(((t - 1.52) / 0.40) * 6));
+      const finCol = 24 + Math.min(5, Math.floor(((t - 1.50) / 0.44) * 6));
       this.trueUltFrameOverride = 120 + finCol;
       this._overrideFrameIdx = 120 + finCol;
 
@@ -1387,17 +1481,35 @@ export class WarriorEx extends Fighter {
         const impactX = this._clampArenaX(tx, game);
         if (game?.audio) game.audio.play('thunder_slam', impactX);
         game?.renderer?.triggerShake?.(18, 0.36);
-        game?.vfx?.spawnShockwave(impactX, this.groundY - 4, 138, '#fde047', 0.34, true, true);
+
+        // Towering Runic Monolith Greatsword (`Row 6`) plunging straight into the Pentagram heart!
+        this.spawnVfxAnim(6, impactX, this.groundY - 118, 296, 296, 0.48, {
+          flipX: false,
+          glowColor: 'gold',
+          foreground: true
+        });
+        this.spawnCathedralBeam(impactX, this.groundY, 72, 0.40);
+        this.spawnPixelShockRing(impactX, this.groundY - 2, 152, true, 0.38);
+        this.spawnExParticles(impactX, this.groundY - 96, 16, {
+          shapes: ['star4', 'diamond'],
+          speedMin: 68,
+          speedMax: 210,
+          lifeMin: 0.24,
+          lifeMax: 0.54,
+          gravity: 110,
+          isGold: true
+        });
+
         this.fx?.spawn('skyJudgmentPillar', impactX, this.groundY - 2, {
           flip: this.facing < 0,
-          light: 1.45
+          light: 1.38
         });
         this.fx?.spawn('earthshatterJudgmentWave', impactX, this.groundY - 2, {
           flip: this.facing < 0,
-          light: 1.42,
+          light: 1.36,
           extra: { isUltimate: true }
         });
-        this.spawnCathedralBeam(impactX, this.groundY, 68, 0.38);
+
         this._applyExviusStrike(enemy, game, {
           damage: 78,
           reachFront: 265,
@@ -1407,8 +1519,6 @@ export class WarriorEx extends Fighter {
           knockX: 145,
           knockY: -175,
           isCrit: true,
-          scarDx: 28,
-          scarDy: 168,
           isGold: true,
           sfx: 'heavy_cleave'
         });
@@ -1429,6 +1539,7 @@ export class WarriorEx extends Fighter {
       this.cameraAirLift = 0;
       this.isInvulnerable = false;
       this.isOmnislashing = false;
+      this._pentagramSeal = null;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
       this.setState('IDLE');
@@ -1436,12 +1547,12 @@ export class WarriorEx extends Fighter {
   }
 
   /**
-   * SUPREME FINISHER (`4.35s`):
-   * `EXVIUS DAWN: SOVEREIGN OF LIGHT`
-   * - Phase 1 (`0.00..1.25s`): Neo-Vision Blade Consecration (NO stage background replacement!)
-   * - Phase 2 (`1.25..2.60s`): 6-Slash Celestial Smear Cage boxing the target in golden-cyan light!
-   * - Phase 3 (`2.60..3.42s`): High-Sky Seraphic Winged Ascent (`cameraAirLift`) & Sovereign Lock-On!
-   * - Phase 4 (`3.42..4.35s`): Colossal Dawn-Breaker Cathedral Beam-Cleave + 4.8s Seraphim Feathers!
+   * NEWLY-BORN SUPREME FINISHER (`4.35s`):
+   * `EXVIUS DAWN: CATHEDRAL OF SEVEN SWORDS`
+   * - Phase 1 (`0.00..1.20s`): Unfurls luminous Seraphim Dawn-Wings & consecrates a full-stage Stained-Glass Runic Sanctuary!
+   * - Phase 2 (`1.20..2.58s`): Drops 6 flanking Celestial Greatswords of Light around the target!
+   * - Phase 3 (`2.58..3.42s`): High-Sky Seraphic Ascent framed by the Stained-Glass Rose-Window!
+   * - Phase 4 (`3.42..4.35s`): Cleaves Heaven-to-Earth with the 7th Colossal Sovereign Dawn-Pillar & 32 fluttering feathers!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1456,73 +1567,92 @@ export class WarriorEx extends Fighter {
       this._trueUltInit = true;
       this._trueUltStage = 1;
       this._trueUltCageStep = 0;
+      this.pinnedCelestialSwords.length = 0;
       this._ultTargetX =
         enemy && !enemy.isDead
           ? enemy.x
           : this._clampArenaX(this.x + this.facing * 200, game);
+      this._sanctuaryCenterX = this._ultTargetX;
+      this._sanctuaryTimer = 4.25;
+
       if (game?.audio) game.audio.play('ult_cast', this.x);
+      game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#38bdf8');
       this.fx?.spawn('celestialCathedralConsecration', this.x, this.groundY - 4, {
         flip: this.facing < 0,
-        light: 1.45
+        light: 1.38
       });
-      this.spawnVfxAnim(3, this.x, this.groundY - 18, 256, 128, 1.15, {
+      this.spawnVfxAnim(3, this._ultTargetX, this.groundY - 12, 312, 160, 2.55, {
         flipX: false,
         glowColor: 'gold',
         foreground: false
       });
+      this.spawnPixelShockRing(this.x, this.groundY - 2, 136, true, 0.42);
     }
 
-    if (enemy && !enemy.isDead) {
+    if (enemy && !enemy.isDead && t < 2.58) {
       this._ultTargetX = enemy.x;
+      this._sanctuaryCenterX = enemy.x;
     }
     const tx = this._ultTargetX;
 
-    // Phase 1 (0.00..1.25s): Solemn Neo-Vision Blade Consecration
-    if (t < 1.25) {
-      const vowFrame = 120 + Math.min(5, Math.floor((t / 1.25) * 6));
+    // Phase 1 (0.00..1.20s): Unfurl Luminous Seraphim Dawn-Wings & Consecrate Stained-Glass Sanctuary
+    if (t < 1.20) {
+      const vowFrame = 120 + Math.min(5, Math.floor((t / 1.20) * 6));
       this.trueUltFrameOverride = vowFrame;
       this._overrideFrameIdx = vowFrame;
-      this.justiceWingsActive = t >= 0.45;
-      this.justiceWingSpread = Math.min(1, Math.max(0, (t - 0.45) / 0.65));
+      this.justiceWingsActive = t >= 0.36;
+      this.justiceWingSpread = Math.min(1, Math.max(0, (t - 0.36) / 0.62));
       return;
     }
 
-    // Phase 2 (1.25..2.60s): 6-Slash Celestial Smear Cage
-    if (t < 2.60) {
+    // Phase 2 (1.20..2.58s): Drop 6 Flanking Celestial Greatswords of Light around Target!
+    if (t < 2.58) {
       this.justiceWingsActive = true;
       this.justiceWingSpread = 1.0;
-      const cageCuts = [
-        { time: 1.30, ox: -124, oy: 0, face: 1, frame: 63, dx: 152, dy: 96, gold: false },
-        { time: 1.50, ox: 124, oy: -24, face: -1, frame: 69, dx: -152, dy: -96, gold: true },
-        { time: 1.70, ox: -116, oy: -58, face: 1, frame: 77, dx: 158, dy: 24, gold: false },
-        { time: 1.90, ox: 116, oy: -58, face: -1, frame: 78, dx: -158, dy: -24, gold: true },
-        { time: 2.10, ox: -92, oy: -96, face: 1, frame: 134, dx: 138, dy: -118, gold: false },
-        { time: 2.30, ox: 92, oy: -96, face: -1, frame: 138, dx: -138, dy: 118, gold: true }
+      const swordSchedule = [
+        { time: 1.26, swordOff: -198, heroOff: -126, oy: 0, face: 1, frame: 63, gold: false },
+        { time: 1.46, swordOff: 198, heroOff: 126, oy: -22, face: -1, frame: 69, gold: true },
+        { time: 1.66, swordOff: -134, heroOff: -112, oy: -52, face: 1, frame: 77, gold: false },
+        { time: 1.86, swordOff: 134, heroOff: 112, oy: -52, face: -1, frame: 78, gold: true },
+        { time: 2.06, swordOff: -70, heroOff: -88, oy: -88, face: 1, frame: 134, gold: false },
+        { time: 2.26, swordOff: 70, heroOff: 88, oy: -88, face: -1, frame: 138, gold: true }
       ];
 
-      while (this._trueUltCageStep < 6 && t >= cageCuts[this._trueUltCageStep].time) {
-        const c = cageCuts[this._trueUltCageStep];
+      while (this._trueUltCageStep < 6 && t >= swordSchedule[this._trueUltCageStep].time) {
+        const s = swordSchedule[this._trueUltCageStep];
         this._trueUltCageStep++;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, 14, 0.42, c.gold ? 'gold' : 'cyan');
-        this.x = this._clampArenaX(tx + c.ox, game);
-        this.y = this.groundY + c.oy;
-        this.facing = c.face;
-        this.trueUltFrameOverride = c.frame;
-        this._overrideFrameIdx = c.frame;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, 18, 0.42, c.gold ? 'gold' : 'cyan');
+        const prevX = this.x;
+        const prevY = this.y - 74;
 
-        // Persistent Celestial Smear Cage Scar that stays locked around the target until Phase 4 shatters it!
-        this.spawnRazorScar(tx, this.groundY - 96, c.dx, c.dy, 1.35, c.gold);
-        this.spawnVfxAnim(5, tx, this.groundY - 96, 216, 216, 0.34, {
-          flipX: c.face < 0,
-          glowColor: c.gold ? 'gold' : 'cyan',
-          foreground: true
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, 14, 0.44, s.gold ? 'gold' : 'cyan');
+        this.x = this._clampArenaX(tx + s.heroOff, game);
+        this.y = this.groundY + s.oy;
+        this.facing = s.face;
+        this.trueUltFrameOverride = s.frame;
+        this._overrideFrameIdx = s.frame;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, 18, 0.44, s.gold ? 'gold' : 'cyan');
+
+        const swordX = this._clampArenaX(tx + s.swordOff, game);
+        this.pinnedCelestialSwords.push({
+          x: swordX,
+          groundY: this.groundY,
+          age: 0,
+          maxLife: 2.65,
+          isGold: s.gold,
+          erupted: false
         });
+        this.spawnAstralThread(prevX, prevY, swordX, this.groundY - 92, 0.72, s.gold);
+        this.spawnPixelShockRing(swordX, this.groundY - 2, 68, s.gold, 0.28);
+        this.spawnExParticles(swordX, this.groundY - 42, 7, {
+          shapes: ['star4', 'diamond'],
+          isGold: s.gold
+        });
+
         this.fx?.spawn('runebladeCrescentSlash', tx, this.groundY - 96, {
-          flip: c.face < 0,
-          palette: c.gold ? RUNIC_GOLD_PALETTE : RUNIC_CYAN_PALETTE,
-          light: 1.38,
-          extra: { radius: 40, width: 12.5, isGold: c.gold }
+          flip: s.face < 0,
+          palette: s.gold ? RUNIC_GOLD_PALETTE : RUNIC_CYAN_PALETTE,
+          light: 1.30,
+          extra: { radius: 40, width: 12.5, isGold: s.gold }
         });
         this._applyExviusStrike(enemy, game, {
           damage: 24,
@@ -1532,27 +1662,25 @@ export class WarriorEx extends Fighter {
           shakeDur: 0.048,
           knockX: 4,
           knockY: -26,
-          isCrit: c.gold,
-          scarDx: c.dx,
-          scarDy: c.dy,
-          isGold: c.gold,
+          isCrit: s.gold,
+          isGold: s.gold,
           sfx: 'slash'
         });
       }
       return;
     }
 
-    // Phase 3 (2.60..3.42s): High-Sky Winged Ascent & Sovereign Lock-On (Row 4 F17..F21 = 137..141)
+    // Phase 3 (2.58..3.42s): High-Sky Winged Ascent & Stained-Glass Rose Lock-On
     if (t < 3.42) {
       if (this._trueUltStage < 3) {
         this._trueUltStage = 3;
         if (game?.audio) game.audio.play('dash_whoosh', this.x);
         this.fx?.spawn('blinkTeleportPillar', this.x, this.y, {
           flip: this.facing < 0,
-          light: 1.4
+          light: 1.32
         });
       }
-      const ascU = Math.min(1, (t - 2.60) / 0.82);
+      const ascU = Math.min(1, (t - 2.58) / 0.84);
       const lift = 420 * (1 - Math.pow(1 - ascU, 2.2));
       this.x = this._clampArenaX(tx - this.facing * 64, game);
       this.y = this.groundY - lift;
@@ -1565,7 +1693,7 @@ export class WarriorEx extends Fighter {
       return;
     }
 
-    // Phase 4 (3.42..4.35s): Colossal Dawn-Breaker Cathedral Beam-Cleave (Row 4 F22..F29 = 142..149)!
+    // Phase 4 (3.42..4.35s): 7th Colossal Sovereign Dawn-Pillar & Sympathetic 6-Sword Eruption!
     if (t < 3.56) {
       const diveU = (t - 3.42) / 0.14;
       this.x = this._clampArenaX(tx - this.facing * 56, game);
@@ -1574,7 +1702,7 @@ export class WarriorEx extends Fighter {
       const diveFrame = 142 + Math.min(2, Math.floor(diveU * 3));
       this.trueUltFrameOverride = diveFrame;
       this._overrideFrameIdx = diveFrame;
-      this.spawnAfterimage(this.x, this.y, this.facing, 4, diveFrame - 120, 0.30, 'gold');
+      this.spawnAfterimage(this.x, this.y, this.facing, 4, diveFrame - 120, 0.32, 'gold');
       return;
     }
 
@@ -1590,20 +1718,35 @@ export class WarriorEx extends Fighter {
       const beamX = this._clampArenaX(tx, game);
       if (game?.audio) game.audio.play('thunder_slam', beamX);
       game?.renderer?.triggerShake?.(24, 0.48);
-      game?.vfx?.spawnShockwave(beamX, this.groundY - 4, 185, '#fde047', 0.42, true, true);
-      this.spawnCathedralBeam(beamX, this.groundY, 118, 0.68);
-      this.spawnExviusFeathers(game, 30);
+
+      // 7th Colossal Sovereign Dawn-Pillar + all 6 flanking Greatswords erupting skyward!
+      this.spawnCathedralBeam(beamX, this.groundY, 128, 0.72);
+      for (const sw of this.pinnedCelestialSwords) {
+        sw.erupted = true;
+        this.spawnCathedralBeam(sw.x, sw.groundY, 34, 0.56);
+      }
+      this.spawnExviusFeathers(game, 32);
+      this.spawnPixelShockRing(beamX, this.groundY - 2, 198, true, 0.46);
+      this.spawnExParticles(beamX, this.groundY - 124, 22, {
+        shapes: ['star4', 'diamond'],
+        speedMin: 75,
+        speedMax: 240,
+        lifeMin: 0.32,
+        lifeMax: 0.68,
+        gravity: 85,
+        isGold: true
+      });
 
       this.fx?.spawn('skyJudgmentPillar', beamX, this.groundY - 2, {
         flip: this.facing < 0,
-        light: 1.5
+        light: 1.44
       });
       this.fx?.spawn('earthshatterJudgmentWave', beamX, this.groundY - 2, {
         flip: this.facing < 0,
-        light: 1.5,
+        light: 1.42,
         extra: { isUltimate: true }
       });
-      this.spawnVfxAnim(6, beamX, this.groundY - 104, 240, 240, 0.55, {
+      this.spawnVfxAnim(6, beamX, this.groundY - 134, 332, 332, 0.62, {
         flipX: false,
         glowColor: 'gold',
         foreground: true
@@ -1617,8 +1760,6 @@ export class WarriorEx extends Fighter {
         knockX: 165,
         knockY: -195,
         isCrit: true,
-        scarDx: 36,
-        scarDy: 204,
         isGold: true,
         sfx: 'heavy_cleave'
       });
@@ -1640,6 +1781,7 @@ export class WarriorEx extends Fighter {
       this.isInvulnerable = false;
       this.unstoppablePoise = false;
       this.isOmnislashing = false;
+      this.pinnedCelestialSwords.length = 0;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
       this.setState('IDLE');
@@ -1651,6 +1793,25 @@ export class WarriorEx extends Fighter {
       this._comboPersistTimer = Math.max(0, this._comboPersistTimer - dt);
       if (this._comboPersistTimer <= 0) {
         this.comboStep = 0;
+      }
+    }
+
+    if (this._skillSeal) {
+      this._skillSeal.age += dt;
+      if (this._skillSeal.age >= this._skillSeal.maxLife) this._skillSeal = null;
+    }
+    if (this._pentagramSeal) {
+      this._pentagramSeal.age += dt;
+      if (this._pentagramSeal.age >= this._pentagramSeal.maxLife) this._pentagramSeal = null;
+    }
+    if (this._sanctuaryTimer > 0) {
+      this._sanctuaryTimer = Math.max(0, this._sanctuaryTimer - dt);
+    }
+
+    for (let i = this.pinnedCelestialSwords.length - 1; i >= 0; i--) {
+      this.pinnedCelestialSwords[i].age += dt;
+      if (this.pinnedCelestialSwords[i].age >= this.pinnedCelestialSwords[i].maxLife) {
+        this.pinnedCelestialSwords.splice(i, 1);
       }
     }
 
@@ -1676,10 +1837,35 @@ export class WarriorEx extends Fighter {
       }
     }
 
-    for (let i = this.razorScars.length - 1; i >= 0; i--) {
-      this.razorScars[i].age += dt;
-      if (this.razorScars[i].age >= this.razorScars[i].maxLife) {
-        this.razorScars.splice(i, 1);
+    for (let i = this.astralThreads.length - 1; i >= 0; i--) {
+      this.astralThreads[i].age += dt;
+      if (this.astralThreads[i].age >= this.astralThreads[i].maxLife) {
+        this.astralThreads.splice(i, 1);
+      }
+    }
+
+    for (let i = this.hitStarbursts.length - 1; i >= 0; i--) {
+      this.hitStarbursts[i].age += dt;
+      if (this.hitStarbursts[i].age >= this.hitStarbursts[i].maxLife) {
+        this.hitStarbursts.splice(i, 1);
+      }
+    }
+
+    for (let i = this.exParticles.length - 1; i >= 0; i--) {
+      const p = this.exParticles[i];
+      p.age += dt;
+      if (p.kind !== 'ring') {
+        p.x += p.vx * dt;
+        p.vy += p.gravity * dt;
+        p.y += p.vy * dt;
+        if (p.y > this.groundY - 2) {
+          p.y = this.groundY - 2;
+          p.vy = -Math.abs(p.vy) * 0.25;
+          p.vx *= 0.6;
+        }
+      }
+      if (p.age >= p.maxLife) {
+        this.exParticles.splice(i, 1);
       }
     }
 
@@ -1713,6 +1899,26 @@ export class WarriorEx extends Fighter {
     this.vaultCooldown = Math.max(0, this.vaultCooldown - dt);
     this.updateCustomVfx(dt);
 
+    // Subtle Neo-Vision ambient star-glint mote around the Dawn-Breaker Greatsword
+    if (!this.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+      this._ambientGlintTimer += dt;
+      if (this._ambientGlintTimer >= 0.42) {
+        this._ambientGlintTimer = 0;
+        this.spawnExParticles(this.x - this.facing * 18, this.y - 84, 1, {
+          shapes: ['star4'],
+          speedMin: 8,
+          speedMax: 24,
+          lifeMin: 0.34,
+          lifeMax: 0.52,
+          gravity: -22,
+          upwardBias: -18,
+          spreadX: 22,
+          spreadY: 28,
+          isGold: Math.random() < 0.5
+        });
+      }
+    }
+
     if (this.fx) {
       if (!this.isDead && !this.haloFxSlot) {
         this.haloFxSlot = this.fx.spawn('runicVanguardAura', this.x, this.groundY - 4, {
@@ -1721,13 +1927,13 @@ export class WarriorEx extends Fighter {
           offsetX: 0,
           offsetY: -4,
           flip: this.facing < 0,
-          light: 1.18,
-          extra: { radius: 25, isAegis: false }
+          light: 1.14,
+          extra: { radius: 24, isAegis: false }
         });
       }
       if (this.haloFxSlot) {
         this.haloFxSlot.inst.cfg.isAegis = Boolean(this.isDeflecting || this.isCrouching);
-        this.haloFxSlot.inst.cfg.radius = this.isDeflecting ? 29 : 25;
+        this.haloFxSlot.inst.cfg.radius = this.isDeflecting ? 28 : 24;
         if (this.isDead) {
           this.haloFxSlot.inst.release();
           this.haloFxSlot = null;
@@ -1741,14 +1947,15 @@ export class WarriorEx extends Fighter {
       if (this.stepDustTimer >= 0.30) {
         this.stepDustTimer = 0;
         if (game?.audio) game.audio.play('footstep_steel', this.x);
-        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
-          count: 4,
-          speedMin: 26,
-          speedMax: 74,
-          lifeMin: 0.12,
-          lifeMax: 0.24,
-          gravity: 32,
-          colors: ['#ffffff', '#38bdf8', '#facc15']
+        this.spawnExParticles(this.x - this.facing * 14, this.groundY - 3, 2, {
+          shapes: ['star4', 'diamond'],
+          speedMin: 22,
+          speedMax: 58,
+          lifeMin: 0.14,
+          lifeMax: 0.26,
+          gravity: 40,
+          upwardBias: -24,
+          isGold: false
         });
       }
     }
@@ -1800,6 +2007,39 @@ export class WarriorEx extends Fighter {
     return typeof Image !== 'undefined' ? PixelForge.initAssets()?.warrior_ex : null;
   }
 
+  /**
+   * Renders a `4x4` Bayer-stippled pixel floor/rim halo (`alpha <= 0.18`, zero blurry radial gradient sprites!).
+   */
+  drawBayerPixelHalo(ctx, cx, cy, rx, ry, outerHex, coreHex, alpha = 0.16) {
+    if (!ctx?.fillRect || alpha <= 0.015 || rx < 4 || ry < 2) return;
+    const step = 4;
+    const icx = Math.round(cx / step) * step;
+    const icy = Math.round(cy / step) * step;
+    const irx = Math.max(step, Math.round(rx / step) * step);
+    const iry = Math.max(step, Math.round(ry / step) * step);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = Math.min(0.18, alpha);
+    for (let dy = -iry; dy <= iry; dy += step) {
+      const ny = dy / iry;
+      const maxDx = Math.round((irx * Math.sqrt(Math.max(0, 1 - ny * ny))) / step) * step;
+      const by = ((dy / step) & 3 + 4) & 3;
+      for (let dx = -maxDx; dx <= maxDx; dx += step) {
+        const nx = dx / irx;
+        const r2 = nx * nx + ny * ny;
+        if (r2 > 1) continue;
+        const intensity = 1 - r2;
+        const bx = ((dx / step) & 3 + 4) & 3;
+        if (intensity > BAYER_4X4[(by << 2) | bx] * 0.92) {
+          ctx.fillStyle = r2 < 0.34 ? coreHex : outerHex;
+          ctx.fillRect(icx + dx, icy + dy, step, step);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
   drawArchangelExviusWings(ctx) {
     const sprites = this.getExSprites();
     const wingsImg = PixelForge.ensureImage(sprites?.wings);
@@ -1810,14 +2050,27 @@ export class WarriorEx extends Fighter {
     const cellW = Math.round(wingsImg.naturalWidth / cols) || 320;
     const cellH = wingsImg.naturalHeight || 232;
     const flapCol = Math.floor(((this.stateTimer || 0) * 28) % cols);
-    const drawW = Math.round(256 * spread);
-    const drawH = 186;
+    const drawW = Math.round(258 * spread);
+    const drawH = 188;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(this.x), Math.round(this.y - 98));
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(
+      wingsImg,
+      flapCol * cellW,
+      0,
+      cellW,
+      cellH,
+      Math.round(-drawW * 0.5),
+      Math.round(-drawH * 0.5),
+      drawW,
+      drawH
+    );
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.88;
+    ctx.globalAlpha = 0.16;
     ctx.drawImage(
       wingsImg,
       flapCol * cellW,
@@ -1832,6 +2085,9 @@ export class WarriorEx extends Fighter {
     ctx.restore();
   }
 
+  /**
+   * Crisp pixel-pure VFX sheet blit with Bayer pixel floor/rim halo (`<= 0.14` highlight).
+   */
   drawBloomedVfxCell(
     ctx,
     vfxSheet,
@@ -1842,9 +2098,7 @@ export class WarriorEx extends Fighter {
     w = 208,
     h = 208,
     alpha = 1.0,
-    flipX = false,
-    renderer = null,
-    glowColor = 'cyan'
+    flipX = false
   ) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
     const rows = Math.max(1, Math.round(vfxSheet.naturalHeight / 208));
@@ -1857,36 +2111,172 @@ export class WarriorEx extends Fighter {
     ctx.translate(Math.round(x), Math.round(y));
     if (flipX) ctx.scale(-1, 1);
 
-    const glowSprite =
-      glowColor === 'gold'
-        ? renderer?.glowGold || renderer?.glowCyan
-        : glowColor === 'white'
-          ? renderer?.glowWhite || renderer?.glowCyan
-          : renderer?.glowCyan;
-    if (glowSprite) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.40);
-      const gw = Math.round(w * 1.12);
-      const gh = Math.round(h * 1.12);
-      ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
-    }
-
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = Math.min(1, alpha);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.48);
+    ctx.globalAlpha = Math.min(0.14, alpha * 0.14);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();
   }
 
   /**
-   * Renders pixel-stepped razor slash-scars, Cathedral Dawn-Breaker beam pillars, and fluttering Seraphim feathers
-   * using strictly integer-snapped `fillRect` pixel clusters (zero canvas rotation, zero smooth ellipses!).
+   * Renders a crisp 3-pass `2px` pixel-stepped hairline between `(x0, y0)` and `(x1, y1)` (`0` chevrons!).
    */
-  drawPixelScarsAndBeams(ctx, renderer = null) {
+  drawThreePassHairline(ctx, x0, y0, x1, y1, sheathHex, bevelHex, coreHex, alpha = 1.0) {
+    if (!ctx?.fillRect || alpha <= 0.02) return;
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const steps = Math.max(4, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 2));
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // Pass 1: Full-line dark Selout outer sheath
+    ctx.globalAlpha = Math.min(0.72, alpha * 0.72);
+    ctx.fillStyle = sheathHex;
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      const px = Math.round((x0 + dx * u) / 2) * 2;
+      const py = Math.round((y0 + dy * u) / 2) * 2;
+      ctx.fillRect(px - 2, py - 2, 6, 6);
+    }
+
+    // Pass 2: Full-line luminous colored bevel
+    ctx.globalAlpha = Math.min(0.92, alpha * 0.92);
+    ctx.fillStyle = bevelHex;
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      const px = Math.round((x0 + dx * u) / 2) * 2;
+      const py = Math.round((y0 + dy * u) / 2) * 2;
+      ctx.fillRect(px - 1, py - 1, 4, 4);
+    }
+
+    // Pass 3: Unbroken `2px` razor white core on top of everything!
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.fillStyle = coreHex;
+    for (let i = 1; i < steps; i++) {
+      const u = i / steps;
+      const px = Math.round((x0 + dx * u) / 2) * 2;
+      const py = Math.round((y0 + dy * u) / 2) * 2;
+      ctx.fillRect(px, py, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Renders the Stained-Glass Runic Cathedral Sanctuary & 6 Pinned Celestial Greatswords behind fighters!
+   */
+  drawStainedGlassSanctuary(ctx, vfxSheet) {
+    if (!ctx?.fillRect) return;
+    const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+
+    // 1. Skill Runic Sword-Seal floor halo
+    if (this._skillSeal) {
+      const u = this._skillSeal.age / this._skillSeal.maxLife;
+      const fade = u > 0.72 ? (1 - u) / 0.28 : 1.0;
+      this.drawBayerPixelHalo(ctx, this._skillSeal.x, this._skillSeal.y - 2, 92, 18, '#0284c7', '#facc15', 0.16 * fade);
+    }
+
+    // 2. Celestial Pentagram Star-Sanctuary Floor Chords (`ULTIMATE`)
+    if (this._pentagramSeal) {
+      const ps = this._pentagramSeal;
+      const u = ps.age / ps.maxLife;
+      const fade = u < 0.10 ? u / 0.10 : u > 0.80 ? (1 - u) / 0.20 : 1.0;
+      this.drawBayerPixelHalo(ctx, ps.x, ps.y - 2, ps.rx, ps.ry, '#0284c7', '#fde047', 0.17 * fade);
+
+      const verts = [];
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI * 0.5 + ps.age * 0.85 + (k * Math.PI * 2) / 5;
+        verts.push([ps.x + Math.cos(a) * ps.rx, ps.y - 4 + Math.sin(a) * ps.ry]);
+      }
+      const order = [0, 2, 4, 1, 3, 0];
+      for (let s = 0; s < 5; s++) {
+        const [x0, y0] = verts[order[s]];
+        const [x1, y1] = verts[order[s + 1]];
+        this.drawThreePassHairline(
+          ctx,
+          x0,
+          y0,
+          x1,
+          y1,
+          '#080d1a',
+          s % 2 === 0 ? '#facc15' : '#38bdf8',
+          '#ffffff',
+          fade * 0.88
+        );
+      }
+    }
+
+    // 3. Full-Stage Stained-Glass Runic Cathedral Sanctuary (`TRUE_ULTIMATE`)
+    if (this._sanctuaryTimer > 0) {
+      const fade = Math.min(1, this._sanctuaryTimer / 0.65);
+      const cx = Math.round(this._sanctuaryCenterX);
+      const gy = Math.round(this.groundY);
+
+      this.drawBayerPixelHalo(ctx, cx, gy - 2, 260, 32, '#0284c7', '#facc15', 0.18 * fade);
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      // 5 Stained-Glass Gothic Lancet Columns in deep background (stippled pixel-pure arches)
+      const offsets = [-240, -120, 0, 120, 240];
+      for (let idx = 0; idx < offsets.length; idx++) {
+        const ax = cx + offsets[idx];
+        const archH = idx === 2 ? 268 : Math.abs(offsets[idx]) === 120 ? 228 : 192;
+        const archW = idx === 2 ? 42 : 30;
+        const topY = gy - archH;
+
+        ctx.globalAlpha = 0.20 * fade;
+        ctx.fillStyle = idx % 2 === 0 ? '#0284c7' : '#d97706';
+        ctx.fillRect(ax - archW + 4, topY + 18, (archW - 4) * 2, archH - 22);
+
+        ctx.globalAlpha = 0.52 * fade;
+        ctx.fillStyle = '#080d1a';
+        ctx.fillRect(ax - archW, topY + 16, 4, archH - 16);
+        ctx.fillRect(ax + archW - 4, topY + 16, 4, archH - 16);
+        ctx.fillStyle = idx % 2 === 0 ? '#38bdf8' : '#facc15';
+        ctx.fillRect(ax - archW + 2, topY + 16, 2, archH - 16);
+        ctx.fillRect(ax + archW - 4, topY + 16, 2, archH - 16);
+        // Pointed gothic lancet capstone
+        ctx.fillRect(ax - Math.round(archW * 0.6), topY + 8, Math.round(archW * 1.2), 4);
+        ctx.fillRect(ax - 4, topY, 8, 8);
+      }
+      ctx.restore();
+
+      // Rotating Stained-Glass Rose-Window (`Row 5`) high in the sanctuary vault
+      if (hasVfx) {
+        const roseCol = Math.floor(((4.35 - this._sanctuaryTimer) * 18) % 30);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 5, roseCol, cx, gy - 216, 232, 232, 0.84 * fade, false);
+      }
+    }
+
+    // 4. Six Flanking Celestial Greatswords of Light pinned around Target (`CATHEDRAL OF SEVEN SWORDS`)
+    if (this.pinnedCelestialSwords.length > 0 && hasVfx) {
+      for (const sw of this.pinnedCelestialSwords) {
+        const u = Math.min(1, sw.age / sw.maxLife);
+        const dropCol = sw.age < 0.24 ? Math.min(8, Math.floor((sw.age / 0.24) * 8)) : 12 + (Math.floor(sw.age * 20) % 10);
+        const fade = u > 0.82 ? (1 - u) / 0.18 : 1.0;
+        this.drawBayerPixelHalo(
+          ctx,
+          sw.x,
+          sw.groundY - 2,
+          38,
+          10,
+          sw.isGold ? '#d97706' : '#0284c7',
+          '#ffffff',
+          0.15 * fade
+        );
+        this.drawBloomedVfxCell(ctx, vfxSheet, 6, dropCol, sw.x, sw.groundY - 82, 212, 212, 0.95 * fade, sw.isGold);
+      }
+    }
+  }
+
+  /**
+   * Renders Cathedral Dawn-Pillars, 3-pass Astral Light-Threads, 4-frame Starbursts, Multi-Shape Particles & Feathers!
+   */
+  drawNeoVisionForegroundFX(ctx) {
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
     const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
@@ -1904,7 +2294,7 @@ export class WarriorEx extends Fighter {
       const beamH = Math.round(b.groundY - topY);
 
       ctx.globalAlpha = Math.min(1, env * 0.92);
-      ctx.fillStyle = '#0c2e59';
+      ctx.fillStyle = '#080d1a';
       ctx.fillRect(b.x - halfW - 4, topY, (halfW + 4) * 2, beamH);
       ctx.fillStyle = '#0284c7';
       ctx.fillRect(b.x - halfW, topY, halfW * 2, beamH);
@@ -1915,47 +2305,116 @@ export class WarriorEx extends Fighter {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(b.x - Math.max(2, Math.round(halfW * 0.20)), topY, Math.max(4, Math.round(halfW * 0.40)), beamH);
 
-      // Stepped horizontal sanctum shock-bars at ground base
-      const barW = Math.round(halfW * 2.8);
+      const barW = Math.round(halfW * 2.4);
       ctx.fillStyle = '#facc15';
-      ctx.fillRect(b.x - barW, b.groundY - 8, barW * 2, 6);
+      ctx.fillRect(b.x - barW, b.groundY - 6, barW * 2, 4);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(b.x - Math.round(barW * 0.65), b.groundY - 6, Math.round(barW * 1.3), 2);
+      ctx.fillRect(b.x - Math.round(barW * 0.65), b.groundY - 5, Math.round(barW * 1.3), 2);
     }
 
-    // 2. Integer-Stepped Bresenham Pixel Razor Slash-Scars across struck targets
-    for (let i = 0; i < this.razorScars.length; i++) {
-      const s = this.razorScars[i];
-      const u = Math.min(1, s.age / s.maxLife);
-      const fade = u < 0.15 ? 1.0 : Math.max(0, 1 - (u - 0.15) / 0.85);
-      if (fade <= 0.02) continue;
+    // 2. Hairline 3-Pass `2px` Astral Light-Threads (Pentagram & 7-Sword Chords — 0 chevrons!)
+    for (let i = 0; i < this.astralThreads.length; i++) {
+      const th = this.astralThreads[i];
+      const u = Math.min(1, th.age / th.maxLife);
+      const fade = u < 0.12 ? 1.0 : Math.max(0, 1 - (u - 0.12) / 0.88);
+      this.drawThreePassHairline(
+        ctx,
+        th.x0,
+        th.y0,
+        th.x1,
+        th.y1,
+        '#080d1a',
+        th.isGold ? '#facc15' : '#38bdf8',
+        '#ffffff',
+        fade * 0.94
+      );
+    }
 
-      const dx = s.x1 - s.x0;
-      const dy = s.y1 - s.y0;
-      const steps = Math.max(12, Math.round(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
-      ctx.globalAlpha = Math.min(1, fade * 0.96);
+    // 3. Asymmetric 4-Frame Pixel Hit-Starbursts
+    for (let i = 0; i < this.hitStarbursts.length; i++) {
+      const hb = this.hitStarbursts[i];
+      const frame = Math.min(3, Math.floor((hb.age / hb.maxLife) * 4));
+      const fade = 1 - frame * 0.22;
+      const armMain = Math.round((28 - frame * 4) * hb.scale);
+      const armCross = Math.round((18 - frame * 3) * hb.scale);
+      const bevel = hb.isGold ? '#facc15' : '#38bdf8';
+      const dir = hb.flip ? -1 : 1;
 
-      for (let k = 0; k <= steps; k++) {
-        const su = k / steps;
-        const taper = Math.sin(su * Math.PI);
-        if (taper <= 0.08) continue;
-        const px = Math.round((s.x0 + dx * su) / 2) * 2;
-        const py = Math.round((s.y0 + dy * su) / 2) * 2;
-        const rad = Math.max(2, Math.round(taper * 6) * 2);
+      this.drawThreePassHairline(
+        ctx,
+        hb.x - dir * 8,
+        hb.y + armMain,
+        hb.x + dir * 8,
+        hb.y - armMain,
+        '#080d1a',
+        bevel,
+        '#ffffff',
+        fade
+      );
+      this.drawThreePassHairline(
+        ctx,
+        hb.x - armCross,
+        hb.y - 4,
+        hb.x + armCross,
+        hb.y + 4,
+        '#080d1a',
+        hb.isGold ? '#38bdf8' : '#fde047',
+        '#ffffff',
+        fade * 0.92
+      );
+    }
 
-        ctx.fillStyle = s.isGold ? '#b45309' : '#0284c7';
-        ctx.fillRect(px - rad, py - rad, rad * 2, rad * 2);
-        const mid = Math.max(2, rad - 2);
-        ctx.fillStyle = s.isGold ? '#fde047' : '#38bdf8';
-        ctx.fillRect(px - mid, py - mid, mid * 2, mid * 2);
-        if (taper > 0.35) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(px - 2, py - 2, 4, 4);
+    // 4. Multi-Shape Pixel Particles (`star4` glints, `diamond` shards, `ring` Bayer floor ripples)
+    for (let i = 0; i < this.exParticles.length; i++) {
+      const p = this.exParticles[i];
+      const u = Math.min(1, p.age / p.maxLife);
+      const fade = u > 0.72 ? (1 - u) / 0.28 : 1.0;
+      if (fade <= 0.03) continue;
+
+      const px = Math.round(p.x / 2) * 2;
+      const py = Math.round(p.y / 2) * 2;
+      const accent = p.isGold ? '#facc15' : '#38bdf8';
+
+      if (p.kind === 'ring') {
+        const rx = Math.round((p.size * (0.32 + 0.68 * (1 - Math.pow(1 - u, 2.2)))) / 2) * 2;
+        const ry = Math.max(4, Math.round((rx * 0.22) / 2) * 2);
+        ctx.globalAlpha = fade * 0.82;
+        for (let aIdx = 0; aIdx < 24; aIdx++) {
+          if (u > 0.55 && (aIdx & 1) === 1) continue;
+          const a = (aIdx / 24) * Math.PI * 2;
+          const rxp = Math.round((px + Math.cos(a) * rx) / 2) * 2;
+          const ryp = Math.round((py + Math.sin(a) * ry) / 2) * 2;
+          ctx.fillStyle = '#080d1a';
+          ctx.fillRect(rxp - 2, ryp, 6, 4);
+          ctx.fillStyle = aIdx % 3 === 0 ? '#ffffff' : accent;
+          ctx.fillRect(rxp, ryp, 4, 2);
         }
+      } else if (p.kind === 'star4') {
+        const twinkle = Math.sin(p.age * 28 + p.phase) > 0 ? 2 : 0;
+        const arm = Math.max(2, p.size * 2 + twinkle);
+        ctx.globalAlpha = fade * 0.96;
+        ctx.fillStyle = '#080d1a';
+        ctx.fillRect(px - arm - 2, py - 2, (arm + 2) * 2 + 2, 6);
+        ctx.fillRect(px - 2, py - arm - 2, 6, (arm + 2) * 2 + 2);
+        ctx.fillStyle = accent;
+        ctx.fillRect(px - arm, py, arm * 2 + 2, 2);
+        ctx.fillRect(px, py - arm, 2, arm * 2 + 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 2, py, 6, 2);
+        ctx.fillRect(px, py - 2, 2, 6);
+      } else {
+        // Faceted `diamond` shard
+        ctx.globalAlpha = fade * 0.95;
+        ctx.fillStyle = '#080d1a';
+        ctx.fillRect(px - 4, py - 6, 8, 12);
+        ctx.fillStyle = accent;
+        ctx.fillRect(px - 2, py - 4, 4, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 2, py - 2, 2, 4);
       }
     }
 
-    // 3. Fluttering Seraphim Feathers (uses warrior_ex_vfx Row 7 when loaded, with crisp pixel-cluster fallback)
+    // 5. Fluttering Seraphim Dawn-Feathers (`warrior_ex_vfx.png` Row 7 + pixel cluster fallback)
     for (let i = 0; i < this.justiceFeathers.length; i++) {
       const f = this.justiceFeathers[i];
       const u = f.age / f.maxLife;
@@ -1974,15 +2433,13 @@ export class WarriorEx extends Fighter {
           f.drawSize,
           f.drawSize,
           fade * 0.94,
-          f.flipX,
-          i % 3 === 0 ? renderer : null,
-          f.isGold ? 'gold' : 'cyan'
+          f.flipX
         );
       } else {
         const fx = Math.round(f.x / 2) * 2;
         const fy = Math.round(f.y / 2) * 2;
         ctx.globalAlpha = fade * 0.92;
-        ctx.fillStyle = '#061228';
+        ctx.fillStyle = '#080d1a';
         ctx.fillRect(fx - 4, fy - 6, 8, 12);
         ctx.fillStyle = f.isGold ? '#facc15' : '#38bdf8';
         ctx.fillRect(fx - 2, fy - 4, 4, 8);
@@ -1995,6 +2452,24 @@ export class WarriorEx extends Fighter {
   }
 
   drawForegroundOverlay(ctx, renderer = null) {
+    const sprites = this.getExSprites();
+    const sheet = PixelForge.ensureImage(sprites?.sheet);
+    const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
+
+    if (!this.isDead) {
+      this.drawBayerPixelHalo(
+        ctx,
+        this.x,
+        this.groundY - 1,
+        54,
+        12,
+        '#0284c7',
+        '#facc15',
+        this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE' ? 0.17 : 0.11
+      );
+      this.drawStainedGlassSanctuary(ctx, vfxSheet);
+    }
+
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
@@ -2004,14 +2479,10 @@ export class WarriorEx extends Fighter {
       this.drawArchangelExviusWings(ctx);
     }
 
-    const sprites = this.getExSprites();
-    const sheet = PixelForge.ensureImage(sprites?.sheet);
-    const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
-
     if (this.afterimages.length > 0 && sheet && sheet.complete && sheet.naturalWidth) {
       for (let i = 0; i < this.afterimages.length; i++) {
         const img = this.afterimages[i];
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.62);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.64);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 2) * 2, Math.round((img.y + 4) / 2) * 2);
@@ -2037,20 +2508,7 @@ export class WarriorEx extends Fighter {
         const span = Math.max(1, v.endFrame - v.startFrame + 1);
         const col = Math.min(29, v.startFrame + Math.floor(u * span));
         const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
-        this.drawBloomedVfxCell(
-          ctx,
-          vfxSheet,
-          v.row,
-          col,
-          v.x,
-          v.y,
-          v.w,
-          v.h,
-          fade * 0.92,
-          v.flipX,
-          renderer,
-          v.glowColor
-        );
+        this.drawBloomedVfxCell(ctx, vfxSheet, v.row, col, v.x, v.y, v.w, v.h, fade * 0.92, v.flipX);
       }
     }
   }
@@ -2067,20 +2525,7 @@ export class WarriorEx extends Fighter {
         const span = Math.max(1, v.endFrame - v.startFrame + 1);
         const col = Math.min(29, v.startFrame + Math.floor(u * span));
         const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
-        this.drawBloomedVfxCell(
-          ctx,
-          vfxSheet,
-          v.row,
-          col,
-          v.x,
-          v.y,
-          v.w,
-          v.h,
-          fade * 0.96,
-          v.flipX,
-          renderer,
-          v.glowColor
-        );
+        this.drawBloomedVfxCell(ctx, vfxSheet, v.row, col, v.x, v.y, v.w, v.h, fade * 0.96, v.flipX);
       }
     }
 
@@ -2090,11 +2535,13 @@ export class WarriorEx extends Fighter {
     }
 
     if (
-      this.razorScars.length > 0 ||
+      this.astralThreads.length > 0 ||
+      this.hitStarbursts.length > 0 ||
+      this.exParticles.length > 0 ||
       this.cathedralBeams.length > 0 ||
       this.justiceFeathers.length > 0
     ) {
-      this.drawPixelScarsAndBeams(ctx, renderer);
+      this.drawNeoVisionForegroundFX(ctx);
     }
   }
 

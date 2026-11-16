@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps114';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps114';
+import { Fighter } from './Fighter.js?v=30fps115';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps115';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps115';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps114';
+} from '../engine/shaders/forgeShaders.js?v=30fps115';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)
@@ -17,25 +17,33 @@ const AUTO_SLICES_EX = [
 const BEAT_DURATIONS = [0.42, 0.40, 0.44, 0.58];
 const INTRA_COMBO_LINK = 0.015;
 
+// 4x4 Bayer ordered stipple matrix for pixel-pure Neo-Vision molten/jade floor halos (zero radial blur!)
+const BAYER_4X4 = [
+  0.0625, 0.5625, 0.1875, 0.6875,
+  0.8125, 0.3125, 0.9375, 0.4375,
+  0.2500, 0.7500, 0.1250, 0.6250,
+  1.0000, 0.5000, 0.8750, 0.3750
+];
+
 /**
- * Torgar EX (`titan_ex`) — World-Breaker Forge King.
- * Next-Gen Wide-Canvas (`320x240`, `9600x2400` 10x30 sheet, `anchorX=112, anchorY=230`)
- * FFBE / Last Cloudia Hack-and-Slash Remake. Coexists 100% independently alongside classic Torgar (`titan`).
+ * Torgar EX (`titan_ex`) — Newly-Born Neo-Vision World-Breaker Forge King.
+ * Wide-Canvas (`320x240`, `9600x2400` 10x30 sheet, `anchorX=112, anchorY=230`)
+ * FFBE / Last Cloudia Hack-and-Slash Champion. Coexists 100% independently alongside classic Torgar (`titan`).
  *
- * Weapon & Smear Invariant:
- * - Wields a colossal Symmetric Double-Faced Molten World-Maul (Mjolnir) + World-Forge Crucible Back-Halo!
- * - ZERO sword-tip slash crescents anywhere: Row 2 snap frames (`F03`, `F09`, `F17`, `F25`) and hit bursts use
- *   blunt, broad-headed Molten Magma & Emerald-Jade Heavy Kinetic Shock-Smear Fans (`#ffffff -> #fde047 -> #f59e0b -> #10b981 / #78350f`)
- *   + blunt anvil shock-bars + flying molten forge sparks!
+ * Weapon & Visual Invariant:
+ * - Strictly Blunt Symmetric Double-Faced Molten World-Maul (Mjolnir) + Ignited Crucible Back-Halo!
+ * - ZERO sword-tip arcs anywhere; 100% blunt anvil shock-plates, octagonal concussion rings,
+ *   stepped molten magma fissures, bouncing molten slag sparks, and 4x4 Bayer-stippled pixel halos!
  *
- * Signature Kit:
- * - Heavy Earth-Shaking 4-Beat Auto (`[[60,8],[68,7],[75,8],[83,7]]`, `vx = 0` snap plants + `52-68ms` bone-crunching `_hitStopTimer`):
- *   V0 Overhead Earth-Crush Smash + Magnetic Fissure Wave; V1 Rising Volcanic Uppercut Maul + Magma-Jade Rune Pillar;
- *   V2 2.5D Baseball-Swing Horizontal Concussion Ring (2-Hit + Khazad Forge-Ancestor + Anvil Resonance);
- *   V3 High Jump -> Meteoric World-Anvil Ground-Fissure Slam (3-Hit + `'forge_wave'` projectile + World-Breaker Temper).
- * - Orbiting `0..5` Molten Crucible Cores + `Magma Bulwark` (`CROUCH`) + `Juggernaut Bull-Rush` (`DASH`) + `Tectonic Crush Leap` (`JUMP`).
- * - `WORLD-ANVIL CATACLYSM` (`SKILL` wall-ricochet cannonball), `WORLD-BREAKER HOME RUN` (`ULTIMATE` horizontal baseball-bat home-run),
- *   and Colossal `2.15x` 4-Beat `GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER` (`TRUE_ULTIMATE`).
+ * Newly-Born Neo-Vision Kit:
+ * - `SKILL` (`TECTONIC FORGE-ANVIL RICOCHET`): Slams a glowing Runic Dwarven Anvil Monolith that
+ *   ricochets off the arena wall with stepped molten magma fissures & emerald-jade shock-rings!
+ * - `ULTIMATE` (`RAGNAROK GRAND-SLAM CRUSHER`): Ignites his Crucible Back-Halo, launches a seismic
+ *   upward Maul eruption + horizontal World-Breaker Home-Run concussion shock-cone (`0.80s` wall-impact
+ *   tectonic stun + flying molten slag chunks)!
+ * - `TRUE_ULTIMATE` (`MJOLNIR GENESIS: CONTINENTAL SUNDER`): Colossal `2.15x` World-Forge God-King
+ *   awakening — Sky-Uppercut -> Volcanic Leap -> Meteoric Mjolnir Ground-Anvil Smash carving a
+ *   multi-layered 2.5D Pixel Magma Crater, 5 erupting Jade-Gold Lava Geysers, & stepped pixel lightning (`735` Crit)!
  */
 export class TitanEx extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -50,7 +58,7 @@ export class TitanEx extends Fighter {
       lightColor: 'rgba(245, 158, 11, 1)',
       primaryColor: '#f59e0b',
       hasTrueUltimate: true,
-      trueUltName: 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER',
+      trueUltName: 'MJOLNIR GENESIS: CONTINENTAL SUNDER',
       trueUltDuration: 3.80
     });
 
@@ -61,12 +69,12 @@ export class TitanEx extends Fighter {
     this.hasPoise = true;
     this.unstoppablePoise = false;
 
-    this.skillName = 'WORLD-ANVIL CATACLYSM';
-    this.ultName = 'WORLD-BREAKER HOME RUN';
-    this.ultSub = 'HORIZONTAL BASEBALL GRAND SLAM';
+    this.skillName = 'TECTONIC FORGE-ANVIL RICOCHET';
+    this.ultName = 'RAGNAROK GRAND-SLAM CRUSHER';
+    this.ultSub = 'CRUCIBLE ERUPTION & HOME-RUN CONCUSSION';
     this.hasTrueUltimate = true;
-    this.trueUltName = 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER';
-    this.trueUltSub = 'SUPREME FINISHER - 2.15X COLOSSUS';
+    this.trueUltName = 'MJOLNIR GENESIS: CONTINENTAL SUNDER';
+    this.trueUltSub = 'SUPREME FINISHER - 2.15X WORLD-FORGE GOD-KING';
     this.trueUltDuration = 3.80;
 
     this.skillTriggerRange = 465;
@@ -74,8 +82,8 @@ export class TitanEx extends Fighter {
     this.dashMaxCooldown = 2.95;
     this.autoDuration = BEAT_DURATIONS[0];
     this._postFlurryInterval = 1.50;
-    this.skillDuration = 0.94;
-    this.ultDuration = 1.46;
+    this.skillDuration = 0.96;
+    this.ultDuration = 1.54;
     this.crouchDuration = 0.80;
     this.dashDuration = 0.42;
 
@@ -93,9 +101,16 @@ export class TitanEx extends Fighter {
     this._dragSparkAcc = 0;
     this._overrideFrameIdx = null;
     this.stepDustTimer = 0;
+    this._ambientSparkTimer = 0;
 
-    // Blunt Molten Anvil Concussion Shock-Bursts (0 sword slash crescents!)
+    // Blunt Molten Anvil Concussion Shock-Bursts & Multi-Shape Pixel Forge Particles
     this.anvilShockBursts = [];
+    this.forgeParticles = [];
+    this.magmaFissureNodes = [];
+    this.mjolnirLightningBolts = [];
+    this.lavaGeyserQueue = [];
+    this._magmaCrater = null;
+    this._crucibleBackHaloTimer = 0;
     this.afterimages = [];
 
     // True Ultimate & Home-Run State
@@ -116,7 +131,7 @@ export class TitanEx extends Fighter {
     this._crucibleOrbitPhase = 0;
     this.forgeArmorTimer = 0;
 
-    // World-Anvil Altar + Ricocheting Anvil Cannonball + Magnetic Fissure Waves
+    // World-Anvil Altar + Ricocheting Anvil Monolith + Magnetic Fissure Waves
     this.worldAnvilAltar = null;
     this.activeAnvil = null;
     this.fissureWaves = [];
@@ -132,6 +147,7 @@ export class TitanEx extends Fighter {
     this._homeRunDir = 1;
     this._homeRunSwingStreak = null;
     this._ultCastTriggered = false;
+    this._ultErupted = false;
     this._ultWaveStep = 0;
 
     this.fx = new ArcaneShaderFX(FORGE_EFFECT_REGISTRY, {
@@ -143,7 +159,6 @@ export class TitanEx extends Fighter {
 
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('titan_ex');
-      PixelForge.ensureHeroLoaded?.('titan');
     }
   }
 
@@ -196,15 +211,92 @@ export class TitanEx extends Fighter {
     return out;
   }
 
+  spawnForgeParticles(cx, cy, count = 8, opts = {}) {
+    const shapes = opts.shapes || ['slag', 'diamond', 'star4'];
+    const speedMin = opts.speedMin ?? 55;
+    const speedMax = opts.speedMax ?? 195;
+    const lifeMin = opts.lifeMin ?? 0.22;
+    const lifeMax = opts.lifeMax ?? 0.48;
+    const gravity = opts.gravity ?? 260;
+    const upwardBias = opts.upwardBias ?? -85;
+    const isJade = Boolean(opts.isJade);
+
+    for (let i = 0; i < count; i++) {
+      if (this.forgeParticles.length >= 84) this.forgeParticles.shift();
+      const ang = opts.dirBias !== undefined
+        ? opts.dirBias + (Math.random() - 0.5) * (opts.spread || 0.9)
+        : Math.random() * Math.PI * 2;
+      const spd = speedMin + Math.random() * (speedMax - speedMin);
+      const kind = shapes[i % shapes.length];
+      this.forgeParticles.push({
+        kind,
+        x: cx + (Math.random() - 0.5) * 18,
+        y: cy + (Math.random() - 0.5) * 14,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd + upwardBias,
+        gravity,
+        bounces: 0,
+        age: 0,
+        maxLife: lifeMin + Math.random() * (lifeMax - lifeMin),
+        size: 3 + (i % 3),
+        isJade: isJade ? i % 3 !== 1 : i % 3 === 0
+      });
+    }
+  }
+
+  spawnForgeShockRing(cx, groundY, maxRx = 96, isJade = false, maxLife = 0.34) {
+    if (this.forgeParticles.length >= 84) this.forgeParticles.shift();
+    this.forgeParticles.push({
+      kind: 'ring',
+      x: Math.round(cx / 2) * 2,
+      y: Math.round(groundY / 2) * 2,
+      vx: 0,
+      vy: 0,
+      gravity: 0,
+      bounces: 0,
+      age: 0,
+      maxLife,
+      size: maxRx,
+      isJade
+    });
+  }
+
+  spawnMagmaFissureNode(x, groundY, isJade = false, maxLife = 0.58) {
+    if (this.magmaFissureNodes.length >= 24) this.magmaFissureNodes.shift();
+    this.magmaFissureNodes.push({
+      x: Math.round(x / 2) * 2,
+      y: Math.round(groundY),
+      w: 22 + Math.floor(Math.random() * 14),
+      age: 0,
+      maxLife,
+      isJade
+    });
+  }
+
+  spawnMjolnirLightning(x, groundY, topOffset = 380, isJade = false, maxLife = 0.36) {
+    if (this.mjolnirLightningBolts.length >= 10) this.mjolnirLightningBolts.shift();
+    const pts = [];
+    const segs = 9;
+    const topY = groundY - topOffset;
+    for (let i = 0; i <= segs; i++) {
+      const u = i / segs;
+      const jitter = i === 0 || i === segs ? 0 : ((i % 2 === 0 ? 1 : -1) * (10 + Math.floor(Math.random() * 16)));
+      pts.push([Math.round((x + jitter) / 2) * 2, Math.round((topY + (groundY - topY) * u) / 2) * 2]);
+    }
+    this.mjolnirLightningBolts.push({
+      pts,
+      age: 0,
+      maxLife,
+      isJade
+    });
+  }
+
   gainCrucibleCore(amount = 1, game = null) {
     const prev = this.crucibleStacks;
     this.crucibleStacks = Math.max(0, Math.min(this.maxCrucibleStacks, this.crucibleStacks + amount));
     if (prev < this.maxCrucibleStacks && this.crucibleStacks >= this.maxCrucibleStacks) {
-      this.fx?.spawn('moltenAnvilSparks', this.x, this.y - 84, {
-        flip: this.facing < 0,
-        palette: FORGE_JADE_PALETTE,
-        light: 1.35
-      });
+      this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 1.4);
+      this.spawnForgeParticles(this.x, this.y - 84, 10, { isJade: true });
       const g = game || this.game;
       g?.vfx?.spawnDamageText?.(this.x, this.y - 166, 0, false, 'CRUCIBLE MAX TEMPER!', '#10b981');
     }
@@ -214,6 +306,7 @@ export class TitanEx extends Fighter {
     if (this.crucibleStacks < this.maxCrucibleStacks) return false;
     this.crucibleStacks = 0;
     this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.58);
+    this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.95);
     this.heal(28, 'WORLD-BREAKER TEMPER');
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
@@ -221,17 +314,18 @@ export class TitanEx extends Fighter {
     this.fx?.spawn('tectonicCraterSlam', obeliskX, this.groundY - 4, {
       flip: this.facing < 0,
       palette: FORGE_JADE_PALETTE,
-      light: 1.38,
+      light: 1.32,
       extra: { maxRx: 136 }
     });
     this.spawnSheetBurst(2, obeliskX, this.groundY - 84, {
       w: 232,
       h: 232,
-      maxLife: 0.56,
+      maxLife: 0.54,
       flipX: this.facing < 0,
       glowColor: 'emerald',
       inFront: false
     });
+    this.spawnForgeShockRing(obeliskX, this.groundY - 2, 128, true, 0.36);
     game?.vfx?.spawnDamageText?.(this.x, this.y - 172, 0, true, 'WORLD-BREAKER TEMPER!', '#34d399');
 
     for (const t of this.getActiveEnemies(enemy, game)) {
@@ -242,7 +336,7 @@ export class TitanEx extends Fighter {
     return true;
   }
 
-  manifestAncestorAvatar(duration = 0.72, light = 1.42) {
+  manifestAncestorAvatar(duration = 0.72, light = 1.36) {
     this.ancestorSpiritTimer = Math.max(this.ancestorSpiritTimer, duration);
     this.fx?.spawn('khazadForgeAncestorAvatar', this.x - this.facing * 22, this.y - 102, {
       follow: this,
@@ -267,23 +361,20 @@ export class TitanEx extends Fighter {
     this.fx?.spawn('tectonicCraterSlam', ax, this.groundY - 4, {
       flip: this.facing < 0,
       palette: FORGE_JADE_PALETTE,
-      light: 1.36,
+      light: 1.30,
       extra: { maxRx: 142 }
     });
-    this.fx?.spawn('moltenAnvilSparks', ax, this.groundY - 64, {
-      flip: this.facing < 0,
-      palette: FORGE_JADE_PALETTE,
-      light: 1.32
-    });
+    this.spawnForgeShockRing(ax, this.groundY - 2, 136, true, 0.36);
+    this.spawnForgeParticles(ax, this.groundY - 58, 10, { isJade: true });
     this.spawnSheetBurst(4, ax, this.groundY - 66, {
-      w: 228,
-      h: 228,
-      maxLife: 0.42,
+      w: 224,
+      h: 224,
+      maxLife: 0.40,
       flipX: this.facing < 0,
       glowColor: 'emerald',
       inFront: true
     });
-    this.spawnSheetBurst(2, ax, this.groundY - 82, {
+    this.spawnSheetBurst(2, ax, this.groundY - 84, {
       w: 216,
       h: 216,
       maxLife: 0.48,
@@ -358,9 +449,11 @@ export class TitanEx extends Fighter {
 
     if (newState === 'ULTIMATE') {
       this._ultCastTriggered = false;
+      this._ultErupted = false;
       this._ultWaveStep = 0;
       this._homeRunFlights = [];
       this._homeRunSwingStreak = null;
+      this._crucibleBackHaloTimer = 1.65;
     }
 
     if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
@@ -368,6 +461,7 @@ export class TitanEx extends Fighter {
       this.cameraAirLift = 0;
       this.isInvulnerable = newState === 'JUMP';
       this._ultCastTriggered = false;
+      this._ultErupted = false;
       this._ultWaveStep = 0;
     }
 
@@ -383,6 +477,8 @@ export class TitanEx extends Fighter {
       this._trueUltAirSparkAccum = 0;
       this._trueUltBoundFoes = [];
       this._superJumpTrail = [];
+      this.lavaGeyserQueue.length = 0;
+      this._crucibleBackHaloTimer = 3.90;
       this.isInvulnerable = true;
     }
 
@@ -402,16 +498,18 @@ export class TitanEx extends Fighter {
       this._overrideFrameIdx = null;
       this.worldAnvilAltar = null;
       this.activeAnvil = null;
+      this._magmaCrater = null;
+      this._crucibleBackHaloTimer = 0;
       this.fissureWaves.length = 0;
       this.anvilShockBursts.length = 0;
+      this.forgeParticles.length = 0;
+      this.magmaFissureNodes.length = 0;
+      this.mjolnirLightningBolts.length = 0;
+      this.lavaGeyserQueue.length = 0;
       this._superJumpTrail = [];
     }
   }
 
-  /**
-   * Initializes one beat (`0..3`) of Torgar EX's heavy 4-beat World-Maul combo (`0` return to IDLE!).
-   * Steps forward during windup, then hard-plants boots (`vx = 0`) right on the blunt anvil-strike snap!
-   */
   _beginComboBeat(beatIdx, game) {
     const v = ((beatIdx % 4) + 4) % 4;
     this._autoVariant = v;
@@ -475,7 +573,7 @@ export class TitanEx extends Fighter {
   }
 
   spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.44, opts = {}) {
-    if (this.activeVfxAnims.length >= 26) this.activeVfxAnims.shift();
+    if (this.activeVfxAnims.length >= 28) this.activeVfxAnims.shift();
     this.activeVfxAnims.push({
       row,
       x,
@@ -502,7 +600,7 @@ export class TitanEx extends Fighter {
   }
 
   /**
-   * Spawns a Blunt Squared-Off Molten Anvil Concussion Shock-Burst (`0` pointed sword crescents!).
+   * Spawns a Blunt Squared-Off Molten Anvil Concussion Shock-Burst (`0` pointed sword arcs!).
    */
   spawnAnvilShockBurst(cx, cy, halfW = 48, halfH = 18, maxLife = 0.22, isJade = false) {
     if (this.anvilShockBursts.length >= 16) this.anvilShockBursts.shift();
@@ -552,7 +650,7 @@ export class TitanEx extends Fighter {
         maxRange: opts.maxRange ?? 430
       });
     }
-    this.spawnVfxAnim(0, spawnX, this.groundY - 54, 212, 212, 0.34, {
+    this.spawnVfxAnim(0, spawnX, this.groundY - 52, 212, 212, 0.34, {
       vx: dir * 290,
       flipX: dir < 0,
       glowColor: 'emerald',
@@ -586,10 +684,6 @@ export class TitanEx extends Fighter {
     return targets;
   }
 
-  /**
-   * Applies Torgar EX's Heavy World-Maul Concussion Impact with `52-68ms` bone-crunching `_hitStopTimer`,
-   * target `_hitShakeTimer`, blunt anvil shock-bars, `Row 4` star-crater bursts, and flying forge sparks!
-   */
   _applyWorldMaulCrush(primaryEnemy, game, cfg) {
     const {
       damage = 34,
@@ -630,23 +724,16 @@ export class TitanEx extends Fighter {
       const hitY = foe.y - (foe.isColossalBoss ? 124 : 86);
       this.spawnAnvilShockBurst(hitX, hitY, shockW, shockH, 0.24, isJade);
       this.spawnSheetBurst(4, hitX, hitY, {
-        w: 196,
-        h: 196,
-        maxLife: 0.26,
+        w: 192,
+        h: 192,
+        maxLife: 0.24,
         flipX: this.facing < 0,
         glowColor: isJade ? 'emerald' : 'gold',
         inFront: true
       });
-      this.fx?.burst(hitX, hitY, {
-        count: isCrit ? 9 : 6,
-        speedMin: 52,
-        speedMax: 175,
-        lifeMin: 0.12,
-        lifeMax: 0.26,
-        gravity: 55,
-        colors: isJade
-          ? ['#ffffff', '#fde047', '#10b981', '#78350f']
-          : ['#ffffff', '#fde047', '#f59e0b', '#78350f']
+      this.spawnForgeParticles(hitX, hitY, isCrit ? 9 : 6, {
+        shapes: ['slag', 'diamond', 'star4'],
+        isJade
       });
 
       if (i === 0 && callout && game?.vfx) {
@@ -684,7 +771,7 @@ export class TitanEx extends Fighter {
         offsetY: -78,
         flip: false,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.18,
+        light: 1.14,
         extra: { fortified: isFortified }
       });
     } else if (slot.inst?.cfg) {
@@ -709,6 +796,7 @@ export class TitanEx extends Fighter {
     this.isCrouching = true;
     this.isDeflecting = true;
     this.forgeArmorTimer = 1.15;
+    this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.90);
     this.gainCrucibleCore(1, game);
     this.heal(14, 'FORGE TEMPER');
     this.vx = 0;
@@ -720,19 +808,9 @@ export class TitanEx extends Fighter {
       offsetY: -78,
       flip: this.facing < 0,
       palette: FORGE_GOLD_PALETTE,
-      light: 1.22
+      light: 1.18
     });
-    this.spawnSheetBurst(3, this.x, this.groundY - 46, {
-      w: 204,
-      h: 204,
-      maxLife: 0.48,
-      followOwner: true,
-      offsetX: 0,
-      offsetY: -46,
-      flipX: this.facing < 0,
-      glowColor: 'emerald',
-      inFront: false
-    });
+    this.spawnForgeShockRing(this.x, this.groundY - 2, 86, true, 0.28);
 
     if (game?.audio) game.audio.play('clang', frontX);
     game?.vfx?.spawnDamageText?.(this.x, this.y - 148, 0, false, 'MAGMA BULWARK!', '#fbbf24');
@@ -759,14 +837,7 @@ export class TitanEx extends Fighter {
           this.gainCrucibleCore(1, game);
           if (game?.audio) game.audio.play('clang', proj.x);
           game.vfx.spawnDamageText(this.x, this.y - 156, 0, false, 'ANVIL DEFLECT!', '#fef08a');
-          this.spawnSheetBurst(4, proj.x, proj.y, {
-            w: 192,
-            h: 192,
-            maxLife: 0.30,
-            flipX: this.facing < 0,
-            glowColor: 'gold',
-            inFront: true
-          });
+          this.spawnAnvilShockBurst(proj.x, proj.y, 42, 16, 0.22, true);
         }
       }
     }
@@ -780,7 +851,7 @@ export class TitanEx extends Fighter {
       this.fx?.spawn('tectonicCraterSlam', slamX, this.groundY - 6, {
         flip: this.facing < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.26,
+        light: 1.22,
         extra: { maxRx: 118 }
       });
       this._applyWorldMaulCrush(enemy, game, {
@@ -826,12 +897,7 @@ export class TitanEx extends Fighter {
     this.vx = 0;
     this.vy = 0;
 
-    this.fx?.spawn('moltenAnvilSparks', this.x, this.groundY - 12, {
-      flip: this.facing < 0,
-      palette: FORGE_GOLD_PALETTE,
-      light: 1.15
-    });
-
+    this.spawnForgeParticles(this.x, this.groundY - 8, 7, { isJade: false });
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
     game?.vfx?.spawnDamageText?.(this.x, this.y - 144, 0, false, 'TECTONIC CRUSH LEAP!', '#fbbf24');
   }
@@ -847,7 +913,7 @@ export class TitanEx extends Fighter {
       offsetY: -78,
       flip: this.facing < 0,
       palette: FORGE_GOLD_PALETTE,
-      light: 1.16
+      light: 1.14
     });
 
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
@@ -875,9 +941,10 @@ export class TitanEx extends Fighter {
         this.fx?.spawn('tectonicCraterSlam', slamX, this.groundY - 6, {
           flip: this.facing < 0,
           palette: FORGE_JADE_PALETTE,
-          light: 1.28,
+          light: 1.24,
           extra: { maxRx: 132 }
         });
+        this.spawnForgeShockRing(slamX, this.groundY - 2, 118, true, 0.30);
         this._applyWorldMaulCrush(enemy, game, {
           damage: 48,
           reachFront: 242,
@@ -952,11 +1019,6 @@ export class TitanEx extends Fighter {
             calloutColor: '#fbbf24',
             sfx: 'heavy_cleave'
           });
-          this.fx?.spawn('moltenAnvilSparks', this.x + this.facing * 52, this.y - 82, {
-            flip: this.facing < 0,
-            palette: FORGE_GOLD_PALETTE,
-            light: 1.22
-          });
           break;
         }
       }
@@ -973,11 +1035,6 @@ export class TitanEx extends Fighter {
    * 4-BEAT HEAVY WORLD-MAUL AUTO-ATTACK (`Row 2 [[60,8],[68,7],[75,8],[83,7]]`):
    * - Earth-shaking pre-snap lunge -> hard-locked `vx = 0` planted boots right on the blunt maul snap!
    * - `0.015s` intra-combo link (`V0 -> V1 -> V2 -> V3`) with ZERO return to `IDLE`!
-   * - `52-68ms` bone-crunching `_hitStopTimer` + blunt anvil shock-fans (`0` sword-tip crescents!):
-   *   * `V0 (F03)`: Overhead earth-crush smash smear (`54ms` hit-stop + `tectonicCraterSlam` + `Magnetic Fissure Wave`).
-   *   * `V1 (F09)`: Rising volcanic uppercut maul smear (`56ms` hit-stop + `Row 2` Magma-Jade Pillar + `+1` Core).
-   *   * `V2 (F17/F18)`: 2.5D baseball-swing horizontal concussion ring (`2-hit` `52ms+56ms` hit-stop + Ancestor Avatar + Resonance).
-   *   * `V3 (F25)`: High jump -> meteoric World-Anvil ground-fissure slam (`3-hit` + `'forge_wave'` + `68ms` hit-stop!).
    */
   updateAutoAttack(dt, enemy, game) {
     this._currentEnemy = enemy;
@@ -1001,7 +1058,6 @@ export class TitanEx extends Fighter {
     const dir = this.facing;
     const [sliceStart, sliceLen] = AUTO_SLICES_EX[v];
 
-    // Snap times aligned to Row 2 blunt maul smears: V0->F03(0.12s), V1->F09(0.08s), V2->F17(0.09s), V3->F25(0.17s)
     const snapT = v === 0 ? 0.12 : v === 1 ? 0.08 : v === 2 ? 0.09 : 0.17;
 
     let localStep = 0;
@@ -1029,7 +1085,6 @@ export class TitanEx extends Fighter {
     this.trueUltFrameOverride = frameIdx;
     this._overrideFrameIdx = frameIdx;
 
-    // 1. Heavy Forge-King Step -> Hard-Locked Boots (`vx = 0`) right on the blunt anvil-strike snap!
     this.vx = 0;
     if (t < snapT) {
       const lungeU = Math.min(1, Math.max(0, t / snapT));
@@ -1038,7 +1093,7 @@ export class TitanEx extends Fighter {
 
       if (v === 2 && !this.didSecondaryAction && t >= 0.03) {
         this.didSecondaryAction = true;
-        this.manifestAncestorAvatar(0.68, 1.44);
+        this.manifestAncestorAvatar(0.68, 1.38);
       }
 
       if (v === 0 && Math.abs(this._beatTargetX - this._beatStartX) > 26) {
@@ -1046,15 +1101,7 @@ export class TitanEx extends Fighter {
         if (this._dragSparkAcc >= 0.036) {
           this._dragSparkAcc = 0;
           this.spawnAfterimage(this.x, this.y, this.facing, 2, localStep, 0.16, false);
-          this.fx?.burst(this.x - dir * 32, this.groundY - 2, {
-            count: 3,
-            speedMin: 32,
-            speedMax: 92,
-            lifeMin: 0.10,
-            lifeMax: 0.22,
-            gravity: 80,
-            colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
-          });
+          this.spawnForgeParticles(this.x - dir * 32, this.groundY - 4, 3, { isJade: false });
         }
       }
     } else if (!this._bootsPlanted) {
@@ -1063,7 +1110,6 @@ export class TitanEx extends Fighter {
       this.vx = 0;
     }
 
-    // High Dwarven jump on Beat 4 (`V3`: leaps F23..F24 up to 68px, meteor-slams onto groundY at F25 `t = 0.17s`!)
     if (v === 3) {
       if (t < 0.17) {
         const airU = t / 0.17;
@@ -1078,9 +1124,7 @@ export class TitanEx extends Fighter {
       this.vy = 0;
     }
 
-    // 2. Beat-Specific Blunt World-Maul Concussion Impacts & 52-68ms Hit-Stop!
     if (v === 0) {
-      // V0 (F03): Overhead Earth-Crush Smash Smear (54ms hit-stop + Crater Slam + Magnetic Fissure Wave)
       if ((this._beatHitMask & 1) === 0 && t >= 0.12) {
         this._beatHitMask |= 1;
         const impactX = this.x + dir * 116;
@@ -1090,9 +1134,10 @@ export class TitanEx extends Fighter {
         this.fx?.spawn('tectonicCraterSlam', impactX, this.groundY - 4, {
           flip: dir < 0,
           palette: FORGE_GOLD_PALETTE,
-          light: 1.34,
+          light: 1.28,
           extra: { maxRx: 132 }
         });
+        this.spawnForgeShockRing(impactX, this.groundY - 2, 86, false, 0.26);
         this.spawnFissureWave(this.x + dir * 94, dir);
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
@@ -1113,7 +1158,6 @@ export class TitanEx extends Fighter {
         if (landed) this.gainMana(3.0);
       }
     } else if (v === 1) {
-      // V1 (F09): Rising Volcanic Uppercut Maul Smear (56ms hit-stop + Magma-Jade Rune Pillar + +1 Crucible Core)
       if ((this._beatHitMask & 1) === 0 && t >= 0.08) {
         this._beatHitMask |= 1;
         const pillarX =
@@ -1122,7 +1166,7 @@ export class TitanEx extends Fighter {
             : this.x + dir * 114;
         game?.renderer?.triggerShake?.(11, 0.22);
 
-        this.spawnSheetBurst(2, pillarX, this.groundY - 82, {
+        this.spawnSheetBurst(2, pillarX, this.groundY - 84, {
           w: 204,
           h: 204,
           maxLife: 0.44,
@@ -1130,11 +1174,7 @@ export class TitanEx extends Fighter {
           glowColor: 'emerald',
           inFront: false
         });
-        this.fx?.spawn('moltenAnvilSparks', pillarX, this.groundY - 68, {
-          flip: dir < 0,
-          palette: FORGE_JADE_PALETTE,
-          light: 1.32
-        });
+        this.spawnForgeShockRing(pillarX, this.groundY - 2, 92, true, 0.28);
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
           damage: 50,
@@ -1157,15 +1197,8 @@ export class TitanEx extends Fighter {
         }
       }
     } else if (v === 2) {
-      // V2 (F17 & F18): 2.5D Baseball-Swing Horizontal Concussion Ring -> 2-Hit Blunt Ring (52ms + 56ms hit-stop)!
       if ((this._beatHitMask & 1) === 0 && t >= 0.09) {
         this._beatHitMask |= 1;
-        const impactX = this.x + dir * 116;
-        this.fx?.spawn('moltenAnvilSparks', impactX, this.groundY - 72, {
-          flip: dir < 0,
-          palette: FORGE_GOLD_PALETTE,
-          light: 1.32
-        });
         this._applyWorldMaulCrush(enemy, game, {
           damage: 32,
           reachFront: 242,
@@ -1188,9 +1221,10 @@ export class TitanEx extends Fighter {
         this.fx?.spawn('tectonicCraterSlam', impactX, this.groundY - 4, {
           flip: dir < 0,
           palette: FORGE_JADE_PALETTE,
-          light: 1.38,
+          light: 1.32,
           extra: { maxRx: 146 }
         });
+        this.spawnForgeShockRing(impactX, this.groundY - 2, 108, true, 0.30);
         const landed = this._applyWorldMaulCrush(enemy, game, {
           damage: 38,
           reachFront: 246,
@@ -1215,7 +1249,6 @@ export class TitanEx extends Fighter {
         this.triggerAnvilResonance(enemy, game, 38);
       }
     } else {
-      // V3 (F25): High Jump -> Meteoric World-Anvil Ground-Fissure Slam (3-Hit + forge_wave + 68ms Hit-Stop!)
       if ((this._beatHitMask & 1) === 0 && t >= 0.17) {
         this._beatHitMask |= 1;
         const slamX =
@@ -1233,14 +1266,10 @@ export class TitanEx extends Fighter {
         this.fx?.spawn('tectonicCraterSlam', slamX, this.groundY - 4, {
           flip: dir < 0,
           palette: FORGE_GOLD_PALETTE,
-          light: 1.42,
+          light: 1.36,
           extra: { maxRx: 152 }
         });
-        this.fx?.spawn('moltenAnvilSparks', slamX, this.groundY - 64, {
-          flip: dir < 0,
-          palette: FORGE_GOLD_PALETTE,
-          light: 1.38
-        });
+        this.spawnForgeShockRing(slamX, this.groundY - 2, 126, false, 0.34);
         this.spawnSheetBurst(2, slamX, this.groundY - 82, {
           w: 216,
           h: 216,
@@ -1317,7 +1346,6 @@ export class TitanEx extends Fighter {
       }
     }
 
-    // 3. Seamless Direct Beat Chaining (0.015s link, ZERO return to IDLE!)
     if (t >= dur) {
       this.y = this.groundY;
       this.vx = 0;
@@ -1364,8 +1392,10 @@ export class TitanEx extends Fighter {
   }
 
   /**
-   * Signature Skill (`WORLD-ANVIL CATACLYSM`):
-   * Plants persistent `3.8s` `worldAnvilAltar` + batters `activeAnvil` cannonball with `bouncesLeft = 1` (`ANVIL WALL-RICOCHET!`)!
+   * NEWLY-BORN SKILL (`TECTONIC FORGE-ANVIL RICOCHET`, `0.96s`):
+   * - Slams a glowing Runic Dwarven Anvil Monolith (`worldAnvilAltar`) into the floor,
+   * - Batters it across the arena so it ricochets off the arena wall (`bouncesLeft = 1`)
+   *   carving stepped molten magma fissures & emerald-jade shock-rings!
    */
   updateSkill(_dt, enemy, game) {
     const t = this.stateTimer;
@@ -1376,6 +1406,7 @@ export class TitanEx extends Fighter {
       this.didActionFrame = true;
       this.vx = dir * 95;
       this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.75);
+      this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 1.0);
       this.gainCrucibleCore(1, game);
 
       const anvilX = Math.max(98, Math.min(ww - 98, this.x + dir * 120));
@@ -1391,28 +1422,23 @@ export class TitanEx extends Fighter {
         dashBoostCd: 0
       };
 
-      this.fx?.spawn('runicBulwarkDome', this.x, this.y - 78, {
-        follow: this,
-        offsetX: 0,
-        offsetY: -78,
-        flip: dir < 0,
-        palette: FORGE_GOLD_PALETTE,
-        light: 1.26
-      });
       this.fx?.spawn('tectonicCraterSlam', anvilX, this.groundY - 4, {
         flip: dir < 0,
         palette: FORGE_JADE_PALETTE,
-        light: 1.28,
+        light: 1.24,
         extra: { maxRx: 132 }
       });
+      this.spawnForgeShockRing(anvilX, this.groundY - 2, 118, true, 0.34);
+      this.spawnMagmaFissureNode(anvilX, this.groundY, true, 0.85);
+      this.spawnForgeParticles(anvilX, this.groundY - 48, 8, { isJade: true });
 
       if (game?.audio) {
         game.audio.play('skill_cast', anvilX);
         game.audio.play('clang', anvilX);
       }
       game?.renderer?.triggerShake?.(8, 0.16);
-      game?.vfx?.spawnSpecialCastAura?.(this, this.skillName, 'WORLD-ANVIL CATACLYSM', 'forge', false);
-      game?.vfx?.spawnDamageText?.(anvilX, this.groundY - 122, 0, false, 'WORLD-ANVIL ALTAR!', '#10b981');
+      game?.vfx?.spawnSpecialCastAura?.(this, this.skillName, 'TECTONIC ANVIL RICOCHET', 'forge', false);
+      game?.vfx?.spawnDamageText?.(anvilX, this.groundY - 126, 0, false, 'RUNIC ANVIL MONOLITH!', '#10b981');
 
       const advSkillBounds =
         game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
@@ -1431,7 +1457,7 @@ export class TitanEx extends Fighter {
       }
     }
 
-    if (t >= 0.45 && !this.didSecondaryAction) {
+    if (t >= 0.44 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       this.vx = 0;
       const impactX = this.worldAnvilAltar ? this.worldAnvilAltar.x : this.x + dir * 124;
@@ -1448,26 +1474,27 @@ export class TitanEx extends Fighter {
       this.fx?.spawn('tectonicCraterSlam', impactX, impactY, {
         flip: dir < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.34,
+        light: 1.28,
         extra: { maxRx: 134 }
       });
-      this.fx?.spawn('moltenAnvilSparks', impactX, impactY - 52, {
-        flip: dir < 0,
-        palette: FORGE_GOLD_PALETTE,
-        light: 1.34
-      });
       this.spawnSheetBurst(4, impactX, impactY - 58, {
-        w: 216,
-        h: 216,
-        maxLife: 0.40,
+        w: 212,
+        h: 212,
+        maxLife: 0.36,
         flipX: dir < 0,
         glowColor: 'gold',
         inFront: true
       });
-      this.spawnAnvilShockBurst(impactX, impactY - 58, 64, 22, 0.26, false);
+      this.spawnAnvilShockBurst(impactX, impactY - 58, 66, 22, 0.26, false);
+      this.spawnForgeShockRing(impactX, this.groundY - 2, 132, false, 0.34);
+      this.spawnForgeParticles(impactX, impactY - 48, 12, {
+        dirBias: dir > 0 ? 0 : Math.PI,
+        spread: 0.85,
+        isJade: false
+      });
 
       this.triggerWorldBreakerTemper(impactX + dir * 64, enemy, game);
-      game?.vfx?.spawnDamageText?.(impactX, this.y - 158, 0, true, 'ANVIL CANNONBALL!', '#fbbf24');
+      game?.vfx?.spawnDamageText?.(impactX, this.y - 158, 0, true, 'ANVIL RICOCHET LAUNCH!', '#fbbf24');
 
       this.activeAnvil = {
         x: impactX + dir * 18,
@@ -1489,26 +1516,28 @@ export class TitanEx extends Fighter {
       }
     }
 
-    if (t >= (this.skillDuration || 0.94)) {
+    if (t >= (this.skillDuration || 0.96)) {
       this.vx = 0;
       this.setState('IDLE');
     }
   }
 
   /**
-   * Overdrive (`ULTIMATE` — `WORLD-BREAKER HOME RUN`, `1.46s`):
-   * Batter's Box (`Row 4 F00..F05`) -> horizontal baseball-bat home-run swing (`Row 4 F06..F14`)
-   * launching hit enemies into the farthest wall + `0.80s` Stun!
+   * NEWLY-BORN OVERDRIVE (`ULTIMATE` — `RAGNAROK GRAND-SLAM CRUSHER`, `1.54s`):
+   * - Ignites his 8-Cog Crucible Back-Halo (`Row 3`),
+   * - Launches a Seismic Upward Maul Eruption (`t = 0.22s`, `Row 2` Jade-Gold Lava Geyser) popping targets into the Batter's Box,
+   * - Swings a Horizontal World-Breaker Home-Run Concussion Shock-Cone (`t = 0.46s`, `0.80s` wall-impact tectonic stun + molten slag chunks)!
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.ultDuration || 1.46;
+    const dur = this.ultDuration || 1.54;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
     this.mana = 0;
     this.giantScale = 1.0;
-    this.isInvulnerable = t < 0.88;
-    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.55);
+    this.isInvulnerable = t < 0.94;
+    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.60);
+    this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.45);
     this.vx = 0;
     this.vy = 0;
 
@@ -1527,6 +1556,7 @@ export class TitanEx extends Fighter {
 
     if (t >= 0.02 && !this._ultCastTriggered) {
       this._ultCastTriggered = true;
+      this._ultErupted = false;
       this._ultWaveStep = 0;
       this._homeRunFlights = [];
       this.gainCrucibleCore(1, game);
@@ -1549,27 +1579,42 @@ export class TitanEx extends Fighter {
         game.audio.play('clang', this.x);
       }
       if (game?.vfx) {
-        game.vfx.spawnSpecialCastAura(this, this.ultName, 'WORLD-BREAKER HOME RUN!', 'forge', true);
-        game.vfx.spawnDamageText(this.x, this.y - 168, 0, true, 'BATTER UP!', '#fde047');
+        game.vfx.spawnSpecialCastAura(this, this.ultName, 'RAGNAROK GRAND-SLAM!', 'forge', true);
+        game.vfx.spawnDamageText(this.x, this.y - 168, 0, true, 'CRUCIBLE HALO IGNITE!', '#fde047');
       }
       game?.renderer?.triggerShake?.(9, 0.16);
-
-      const plateX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x + this._homeRunDir * 108;
-      this.spawnSheetBurst(3, plateX, this.groundY - 28, {
-        w: 204,
-        h: 204,
-        maxLife: 0.52,
-        flipX: this._homeRunDir < 0,
-        glowColor: 'gold',
-        inFront: false
-      });
+      this.spawnForgeShockRing(this.x, this.groundY - 2, 112, false, 0.32);
     }
 
     const batDir = this._homeRunDir || this.facing;
     this.facing = batDir;
 
-    if (t < 0.42) {
-      const windupU = Math.max(0, Math.min(0.999, t / 0.42));
+    // Beat 1 (t = 0.22s): Seismic Upward Maul Eruption popping targets into the Batter's Box!
+    if (t >= 0.22 && !this._ultErupted) {
+      this._ultErupted = true;
+      const eruptX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x + batDir * 110;
+      if (game?.audio) game.audio.play('thunder_slam', eruptX);
+      game?.renderer?.triggerShake?.(12, 0.20);
+      this.spawnSheetBurst(2, eruptX, this.groundY - 86, {
+        w: 228,
+        h: 228,
+        maxLife: 0.44,
+        flipX: batDir < 0,
+        glowColor: 'emerald',
+        inFront: false
+      });
+      this.spawnForgeShockRing(eruptX, this.groundY - 2, 108, true, 0.30);
+      this.spawnForgeParticles(eruptX, this.groundY - 48, 8, { isJade: true });
+      for (const f of foes) {
+        if (f === leadFoe || Math.abs(f.x - eruptX) <= 185) {
+          f.takeDamage(16, this, false, 0, -95);
+          this.mana = 0;
+        }
+      }
+    }
+
+    if (t < 0.46) {
+      const windupU = Math.max(0, Math.min(0.999, t / 0.46));
       this.trueUltFrameOverride = 120 + Math.min(5, Math.floor(windupU * 6));
 
       if (leadFoe && !leadFoe.isDead) {
@@ -1579,13 +1624,13 @@ export class TitanEx extends Fighter {
             wallMinX,
             Math.min(wallMaxX, (leadFoe.anchorX || leadFoe.x) + bossFace * 116)
           );
-          const stepSpeed = t < 0.20 ? 28 : 14;
+          const stepSpeed = t < 0.22 ? 28 : 14;
           this.x += (bossBatterX - this.x) * Math.min(1, dt * stepSpeed);
         } else {
           const clampedFoeX = Math.max(wallMinX + 112, Math.min(wallMaxX - 112, leadFoe.x));
           leadFoe.x += (clampedFoeX - leadFoe.x) * Math.min(1, dt * 16);
           const batterX = Math.max(wallMinX + 4, Math.min(wallMaxX - 4, leadFoe.x - batDir * 110));
-          const stepSpeed = t < 0.20 ? 28 : 14;
+          const stepSpeed = t < 0.22 ? 28 : 14;
           this.x += (batterX - this.x) * Math.min(1, dt * stepSpeed);
           const sweetSpotX = Math.max(wallMinX + 68, Math.min(wallMaxX - 68, this.x + batDir * 110));
           for (const f of foes) {
@@ -1599,7 +1644,8 @@ export class TitanEx extends Fighter {
       return;
     }
 
-    if (t >= 0.42 && (this._ultWaveStep || 0) < 1) {
+    // Beat 2 (t >= 0.46s): Horizontal World-Breaker Home-Run Concussion Shock-Cone!
+    if (t >= 0.46 && (this._ultWaveStep || 0) < 1) {
       this._ultWaveStep = 1;
       const contactX = leadFoe?.isColossalBoss
         ? (leadFoe.anchorX || leadFoe.x) + (leadFoe.facing || -1) * 20
@@ -1620,12 +1666,22 @@ export class TitanEx extends Fighter {
       game?.renderer?.triggerHitStop?.(0.065);
       this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.064);
 
-      this.fx?.spawn('moltenAnvilSparks', contactX, contactY, {
-        flip: batDir < 0,
-        palette: FORGE_JADE_PALETTE,
-        light: 1.44
+      this.spawnAnvilShockBurst(contactX, contactY, 76, 26, 0.28, true);
+      this.spawnSheetBurst(4, contactX, contactY, {
+        w: 224,
+        h: 224,
+        maxLife: 0.34,
+        flipX: batDir < 0,
+        glowColor: 'gold',
+        inFront: true
       });
-      this.spawnAnvilShockBurst(contactX, contactY, 72, 24, 0.28, true);
+      this.spawnForgeParticles(contactX, contactY, 14, {
+        dirBias: batDir > 0 ? 0 : Math.PI,
+        spread: 0.65,
+        speedMin: 95,
+        speedMax: 260,
+        isJade: true
+      });
 
       this._homeRunSwingStreak = {
         startX: contactX,
@@ -1633,10 +1689,10 @@ export class TitanEx extends Fighter {
         targetWallX: this._homeRunTargetWallX,
         dir: batDir,
         age: 0,
-        maxLife: 0.48
+        maxLife: 0.52
       };
 
-      game?.vfx?.spawnDamageText?.(contactX, this.groundY - 178, 0, true, 'HOME-RUN GRAND SLAM!', '#fde047');
+      game?.vfx?.spawnDamageText?.(contactX, this.groundY - 178, 0, true, 'RAGNAROK GRAND-SLAM!', '#fde047');
 
       for (const foe of foes) {
         if (foe !== leadFoe && Math.abs(foe.x - contactX) > 195) continue;
@@ -1645,7 +1701,7 @@ export class TitanEx extends Fighter {
         const targetWallX = foe.isColossalBoss
           ? foe.anchorX || foe.x
           : this._homeRunTargetWallX || (distRight >= distLeft ? wallMaxX : wallMinX);
-        foe.takeDamage(44, this, true, batDir * 680, -110);
+        foe.takeDamage(34, this, true, batDir * 680, -110);
         this.mana = 0;
         this._homeRunFlights.push({
           foe,
@@ -1676,18 +1732,14 @@ export class TitanEx extends Fighter {
         fl.foe.hurtTimer = Math.max(fl.foe.hurtTimer || 0, 0.18);
 
         fl.sparkAccum += dt;
-        if (fl.sparkAccum >= 0.085) {
+        if (fl.sparkAccum >= 0.065) {
           fl.sparkAccum = 0;
-          this.fx?.burst(fl.foe.x - fl.dir * 18, fl.foe.y - 68, {
-            count: 2,
-            speedMin: 42,
-            speedMax: 105,
-            lifeMin: 0.12,
-            lifeMax: 0.22,
-            gravity: 30,
-            angle: fl.dir >= 0 ? Math.PI : 0,
+          this.spawnForgeParticles(fl.foe.x - fl.dir * 18, fl.foe.y - 68, 3, {
+            dirBias: fl.dir >= 0 ? Math.PI : 0,
             spread: 0.55,
-            colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
+            speedMin: 45,
+            speedMax: 120,
+            isJade: false
           });
         }
 
@@ -1701,7 +1753,7 @@ export class TitanEx extends Fighter {
           fl.foe.vx = 0;
           fl.foe.vy = 0;
 
-          fl.foe.takeDamage(42, this, true, -fl.dir * 35, -110);
+          fl.foe.takeDamage(36, this, true, -fl.dir * 35, -110);
           this.mana = 0;
           if (!fl.foe.isColossalBoss) {
             fl.foe.x = wallX;
@@ -1724,37 +1776,41 @@ export class TitanEx extends Fighter {
           this.fx?.spawn('tectonicCraterSlam', wallX, this.groundY - 4, {
             flip: fl.dir < 0,
             palette: FORGE_JADE_PALETTE,
-            light: 1.44,
+            light: 1.38,
             extra: { maxRx: 165 }
           });
-          this.fx?.spawn('moltenAnvilSparks', wallX, this.groundY - 68, {
-            flip: fl.dir < 0,
-            palette: FORGE_GOLD_PALETTE,
-            light: 1.38
-          });
           this.spawnSheetBurst(4, wallX, this.groundY - 78, {
-            w: 208,
-            h: 208,
+            w: 216,
+            h: 216,
             maxLife: 0.40,
             flipX: fl.dir < 0,
             glowColor: 'gold',
             inFront: true
           });
+          this.spawnForgeShockRing(wallX, this.groundY - 2, 138, true, 0.38);
+          this.spawnForgeParticles(wallX, this.groundY - 68, 12, {
+            dirBias: fl.dir >= 0 ? Math.PI : 0,
+            spread: 1.1,
+            speedMin: 68,
+            speedMax: 210,
+            isJade: true
+          });
+          this.triggerSoilRockSplash(wallX, this.groundY, ww, 'leap');
 
-          game?.vfx?.spawnDamageText?.(wallX, this.groundY - 176, 0, true, 'WALL CRASH! STUNNED 0.8S!', '#34d399');
+          game?.vfx?.spawnDamageText?.(wallX, this.groundY - 176, 0, true, 'TECTONIC WALL-STUN 0.8S!', '#34d399');
           this.triggerAnvilResonance(enemy, game, 34);
         }
       }
     }
 
-    if (t < 0.68) {
-      const swingU = Math.max(0, Math.min(0.999, (t - 0.42) / 0.26));
+    if (t < 0.72) {
+      const swingU = Math.max(0, Math.min(0.999, (t - 0.46) / 0.26));
       this.trueUltFrameOverride = 120 + 6 + Math.min(4, Math.floor(swingU * 5));
-    } else if (t < 1.08) {
-      const holdU = Math.max(0, Math.min(0.999, (t - 0.68) / 0.40));
+    } else if (t < 1.14) {
+      const holdU = Math.max(0, Math.min(0.999, (t - 0.72) / 0.42));
       this.trueUltFrameOverride = 120 + 10 + Math.min(1, Math.floor(holdU * 2));
     } else {
-      const recU = Math.max(0, Math.min(0.999, (t - 1.08) / Math.max(0.01, dur - 1.08)));
+      const recU = Math.max(0, Math.min(0.999, (t - 1.14) / Math.max(0.01, dur - 1.14)));
       this.trueUltFrameOverride = 120 + 12 + Math.min(2, Math.floor(recU * 3));
     }
 
@@ -1769,9 +1825,11 @@ export class TitanEx extends Fighter {
   }
 
   /**
-   * Supreme Ultimate (`TRUE_ULTIMATE`, `3.80s`):
-   * "GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER"
-   * Colossal `2.15x` 4-Beat Sky-Uppercut -> Fast-Jump (`Super-Leap`) -> Meteor Ground-Smash + 2.5D Soil/Bedrock Crater Splash!
+   * NEWLY-BORN SUPREME FINISHER (`TRUE_ULTIMATE`, `3.80s`):
+   * `MJOLNIR GENESIS: CONTINENTAL SUNDER`
+   * - Colossal `2.15x` World-Forge God-King awakening -> Sky-Uppercut -> Volcanic Leap ->
+   *   Meteoric Mjolnir Ground-Anvil Smash (`735` Crit) carving a multi-layered 2.5D Pixel Magma Crater,
+   *   5 erupting Jade-Gold Lava Geysers, & stepped pixel lightning!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1819,6 +1877,7 @@ export class TitanEx extends Fighter {
       this._trueUltStep = 1;
       this._superJumpTrail = [];
       this.forgeArmorTimer = 6.0;
+      this._crucibleBackHaloTimer = 4.2;
       this.crucibleStacks = this.maxCrucibleStacks;
       this._trueUltBoundFoes = [...activeFoes];
       for (const foe of activeFoes) {
@@ -1830,23 +1889,24 @@ export class TitanEx extends Fighter {
       game?.audio?.play?.('ult_cast', this.x);
       game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
       game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#f97316');
-      game?.vfx?.spawnSpecialCastAura?.(this, this.trueUltName, 'GOD-HAMMER MJOLNIR!', 'forge', true);
-      game?.vfx?.spawnDamageText?.(this.x, this.y - 185, 0, true, 'COLOSSUS AWAKENING!', '#f97316');
+      game?.vfx?.spawnSpecialCastAura?.(this, this.trueUltName, 'MJOLNIR GENESIS!', 'forge', true);
+      game?.vfx?.spawnDamageText?.(this.x, this.y - 185, 0, true, 'WORLD-FORGE GOD-KING!', '#f97316');
 
       this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
         flip: ultDir < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.38,
+        light: 1.32,
         extra: { maxRx: 165 }
       });
-      this.spawnSheetBurst(5, this._trueUltAnvilX, this.groundY - 96, {
-        w: 288,
-        h: 288,
-        maxLife: 2.40,
+      this.spawnSheetBurst(5, this._trueUltAnvilX, this.groundY - 46, {
+        w: 312,
+        h: 312,
+        maxLife: 2.35,
         flipX: ultDir < 0,
         glowColor: 'gold',
         inFront: false
       });
+      this.spawnMjolnirLightning(this._trueUltAnvilX, this.groundY, 360, false, 0.34);
     }
 
     if (t < 0.62) {
@@ -1903,14 +1963,18 @@ export class TitanEx extends Fighter {
         this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
           flip: ultDir < 0,
           palette: FORGE_GOLD_PALETTE,
-          light: 1.42,
+          light: 1.36,
           extra: { maxRx: 168 }
         });
-        this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 92, {
-          flip: ultDir < 0,
-          palette: FORGE_GOLD_PALETTE,
-          light: 1.42
+        this.spawnSheetBurst(2, this._trueUltAnvilX, this.groundY - 102, {
+          w: 276,
+          h: 276,
+          maxLife: 0.56,
+          flipX: ultDir < 0,
+          glowColor: 'gold',
+          inFront: false
         });
+        this.spawnMjolnirLightning(this._trueUltAnvilX, this.groundY, 390, true, 0.38);
       }
 
       const launchU = Math.max(0, Math.min(1, (t - 0.62) / 0.44));
@@ -1933,18 +1997,10 @@ export class TitanEx extends Fighter {
       }
 
       this._trueUltAirSparkAccum = (this._trueUltAirSparkAccum || 0) + dt;
-      if (this._trueUltAirSparkAccum >= 0.095) {
+      if (this._trueUltAirSparkAccum >= 0.085) {
         this._trueUltAirSparkAccum = 0;
-        this.fx?.burst(this._trueUltAnvilX, targetFoeY - 46, {
-          count: 2,
-          speedMin: 35,
-          speedMax: 90,
-          lifeMin: 0.12,
-          lifeMax: 0.20,
-          gravity: 35,
-          angle: -Math.PI * 0.5,
-          spread: 0.85,
-          colors: ['#ffffff', '#fde047', '#f59e0b']
+        this.spawnForgeParticles(this._trueUltAnvilX, targetFoeY - 42, 3, {
+          isJade: true
         });
       }
 
@@ -1972,16 +2028,11 @@ export class TitanEx extends Fighter {
           this.fx?.spawn('tectonicCraterSlam', standX, this.groundY - 4, {
             flip: ultDir < 0,
             palette: FORGE_GOLD_PALETTE,
-            light: 1.38,
+            light: 1.32,
             extra: { maxRx: 156 }
           });
-          this.fx?.spawn('moltenAnvilSparks', standX, this.groundY - 24, {
-            flip: ultDir < 0,
-            palette: FORGE_GOLD_PALETTE,
-            light: 1.36
-          });
           this.triggerSoilRockSplash(standX, this.groundY, ww, 'leap');
-          game?.vfx?.spawnDamageText?.(standX, this.groundY - 190, 0, true, 'COLOSSUS SKY-LEAP!', '#fbbf24');
+          game?.vfx?.spawnDamageText?.(standX, this.groundY - 190, 0, true, 'VOLCANIC GOD-LEAP!', '#fbbf24');
         }
 
         const prevFrame = this.trueUltFrameOverride || 120 + 20;
@@ -2028,11 +2079,8 @@ export class TitanEx extends Fighter {
         this._trueUltMidAirClanged = true;
         game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
         game?.renderer?.triggerHitStop?.(0.045);
-        this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 215, {
-          flip: ultDir < 0,
-          palette: FORGE_GOLD_PALETTE,
-          light: 1.46
-        });
+        this.spawnAnvilShockBurst(this._trueUltAnvilX, this.groundY - 210, 72, 24, 0.24, false);
+        this.spawnForgeParticles(this._trueUltAnvilX, this.groundY - 210, 10, { isJade: false });
       }
 
       const foeDriveU = plungeU < 0.34 ? 0 : Math.min(1, (plungeU - 0.34) / 0.66);
@@ -2054,10 +2102,11 @@ export class TitanEx extends Fighter {
       return;
     }
 
+    // Beat 4 (t >= 2.36s): Meteoric Mjolnir Ground-Anvil Smash -> 2.5D Pixel Magma Crater + 5 Jade-Gold Lava Geysers + Stepped Lightning!
     if (this._trueUltStep < 4) {
       this._trueUltStep = 4;
       this._superJumpTrail = [];
-      this._trueUltGeyserTimer = 1.05;
+      this._trueUltGeyserTimer = 1.25;
       this.isFlipVault = false;
       this.y = this.groundY;
       this.trueUltFrameOverride = 120 + 27;
@@ -2084,35 +2133,56 @@ export class TitanEx extends Fighter {
       this.fx?.spawn('ragnarokWorldForgeWave', this._trueUltAnvilX, this.groundY - 4, {
         flip: ultDir < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.55,
+        light: 1.44,
         extra: { stage: 3 }
       });
       this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
         flip: ultDir < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.48,
+        light: 1.40,
         extra: { maxRx: 215 }
       });
 
-      this.spawnSheetBurst(7, this._trueUltAnvilX, this.groundY - 64, {
-        w: 420,
-        h: 256,
-        maxLife: 0.98,
+      // Multi-layered 2.5D Pixel Magma Crater (`Row 7` + persistent caldera pool)
+      this._magmaCrater = {
+        x: this._trueUltAnvilX,
+        y: this.groundY,
+        rx: 218,
+        ry: 28,
+        age: 0,
+        maxLife: 2.35
+      };
+      this.spawnSheetBurst(7, this._trueUltAnvilX, this.groundY - 48, {
+        w: 392,
+        h: 248,
+        maxLife: 1.15,
         flipX: ultDir < 0,
         glowColor: 'none',
         inFront: false
       });
-      for (const side of [-1, 1]) {
-        const splashX = Math.max(110, Math.min(ww - 110, this._trueUltAnvilX + side * 190));
-        this.spawnSheetBurst(7, splashX, this.groundY - 46, {
-          w: 284,
-          h: 184,
-          maxLife: 0.90,
-          flipX: side < 0,
-          glowColor: 'none',
-          inFront: true
+
+      // Queue 5 Erupting Jade-Gold Lava Geysers + Stepped Pixel Lightning across the sundered fault!
+      const geyserOffsets = [0, -108, 108, -214, 214];
+      this.lavaGeyserQueue = [];
+      for (let gIdx = 0; gIdx < geyserOffsets.length; gIdx++) {
+        const gx = Math.max(96, Math.min(ww - 96, this._trueUltAnvilX + geyserOffsets[gIdx]));
+        this.lavaGeyserQueue.push({
+          x: gx,
+          delay: Math.floor(gIdx / 2) * 0.085,
+          isJade: gIdx % 2 === 1,
+          size: gIdx === 0 ? 284 : 228
         });
       }
+      this.spawnMjolnirLightning(this._trueUltAnvilX, this.groundY, 440, false, 0.46);
+      this.spawnMjolnirLightning(Math.max(96, this._trueUltAnvilX - 118), this.groundY, 390, true, 0.42);
+      this.spawnMjolnirLightning(Math.min(ww - 96, this._trueUltAnvilX + 118), this.groundY, 390, true, 0.42);
+
+      this.spawnForgeShockRing(this._trueUltAnvilX, this.groundY - 2, 208, false, 0.48);
+      this.spawnForgeParticles(this._trueUltAnvilX, this.groundY - 58, 22, {
+        speedMin: 85,
+        speedMax: 265,
+        isJade: true
+      });
       this.triggerSoilRockSplash(this._trueUltAnvilX, this.groundY, ww, 'cataclysm');
 
       game?.vfx?.spawnDamageText?.(
@@ -2186,6 +2256,9 @@ export class TitanEx extends Fighter {
     if (this.forgeArmorTimer > 0) {
       this.forgeArmorTimer = Math.max(0, this.forgeArmorTimer - dt);
     }
+    if (this._crucibleBackHaloTimer > 0) {
+      this._crucibleBackHaloTimer = Math.max(0, this._crucibleBackHaloTimer - dt);
+    }
     if (this._crucibleGainIcd > 0) {
       this._crucibleGainIcd = Math.max(0, this._crucibleGainIcd - dt);
     }
@@ -2198,17 +2271,71 @@ export class TitanEx extends Fighter {
         this._homeRunSwingStreak = null;
       }
     }
+    if (this._magmaCrater) {
+      this._magmaCrater.age += dt;
+      if (this._magmaCrater.age >= this._magmaCrater.maxLife) {
+        this._magmaCrater = null;
+      }
+    }
     this._crucibleOrbitPhase += dt * (this.crucibleStacks >= this.maxCrucibleStacks ? 4.4 : 2.8);
+
+    // Process staggered 5-Geyser eruptions during Continental Sunder
+    for (let i = this.lavaGeyserQueue.length - 1; i >= 0; i--) {
+      const g = this.lavaGeyserQueue[i];
+      g.delay -= dt;
+      if (g.delay <= 0) {
+        this.spawnSheetBurst(2, g.x, this.groundY - Math.round(g.size * 0.42), {
+          w: g.size,
+          h: g.size,
+          maxLife: 0.72,
+          flipX: g.isJade,
+          glowColor: g.isJade ? 'emerald' : 'gold',
+          inFront: g.isJade
+        });
+        this.spawnSheetBurst(6, g.x, this.groundY - 96, {
+          w: 196,
+          h: 196,
+          maxLife: 0.44,
+          flipX: g.isJade,
+          glowColor: g.isJade ? 'emerald' : 'gold',
+          inFront: true
+        });
+        this.spawnForgeParticles(g.x, this.groundY - 52, 6, { isJade: g.isJade });
+        this.lavaGeyserQueue.splice(i, 1);
+      }
+    }
+
+    if (!this.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+      this._ambientSparkTimer += dt;
+      if (this._ambientSparkTimer >= 0.48) {
+        this._ambientSparkTimer = 0;
+        this.spawnForgeParticles(this.x - this.facing * 12, this.y - 88, 1, {
+          shapes: ['star4'],
+          speedMin: 10,
+          speedMax: 28,
+          lifeMin: 0.30,
+          lifeMax: 0.48,
+          gravity: -28,
+          upwardBias: -16,
+          isJade: this.crucibleStacks >= this.maxCrucibleStacks
+        });
+      }
+    }
 
     if (this.isDead) {
       this.worldAnvilAltar = null;
       this.activeAnvil = null;
+      this._magmaCrater = null;
       this.fissureWaves.length = 0;
       this._homeRunFlights.length = 0;
       this._homeRunSwingStreak = null;
       this._soilRockChunks.length = 0;
       this._soilDustPlumes.length = 0;
       this.anvilShockBursts.length = 0;
+      this.forgeParticles.length = 0;
+      this.magmaFissureNodes.length = 0;
+      this.mjolnirLightningBolts.length = 0;
+      this.lavaGeyserQueue.length = 0;
     }
 
     for (let i = this.afterimages.length - 1; i >= 0; i--) {
@@ -2222,6 +2349,44 @@ export class TitanEx extends Fighter {
       this.anvilShockBursts[i].age += dt;
       if (this.anvilShockBursts[i].age >= this.anvilShockBursts[i].maxLife) {
         this.anvilShockBursts.splice(i, 1);
+      }
+    }
+
+    for (let i = this.magmaFissureNodes.length - 1; i >= 0; i--) {
+      this.magmaFissureNodes[i].age += dt;
+      if (this.magmaFissureNodes[i].age >= this.magmaFissureNodes[i].maxLife) {
+        this.magmaFissureNodes.splice(i, 1);
+      }
+    }
+
+    for (let i = this.mjolnirLightningBolts.length - 1; i >= 0; i--) {
+      this.mjolnirLightningBolts[i].age += dt;
+      if (this.mjolnirLightningBolts[i].age >= this.mjolnirLightningBolts[i].maxLife) {
+        this.mjolnirLightningBolts.splice(i, 1);
+      }
+    }
+
+    for (let i = this.forgeParticles.length - 1; i >= 0; i--) {
+      const p = this.forgeParticles[i];
+      p.age += dt;
+      if (p.kind !== 'ring') {
+        p.x += p.vx * dt;
+        p.vy += p.gravity * dt;
+        p.y += p.vy * dt;
+        if (p.y >= this.groundY - 2) {
+          p.y = this.groundY - 2;
+          if (p.bounces < 1 && Math.abs(p.vy) > 65) {
+            p.bounces++;
+            p.vy = -Math.abs(p.vy) * 0.36;
+            p.vx *= 0.65;
+          } else {
+            p.vy = 0;
+            p.vx *= 0.4;
+          }
+        }
+      }
+      if (p.age >= p.maxLife) {
+        this.forgeParticles.splice(i, 1);
       }
     }
 
@@ -2290,11 +2455,7 @@ export class TitanEx extends Fighter {
             t.takeDamage(24, this, false, pullSign * 85, -88);
             this.gainMana(1.0);
             game.vfx?.spawnDamageText?.(t.x, t.y - 146, 0, false, 'MAGNETIC FISSURE!', '#34d399');
-            this.fx?.spawn('moltenAnvilSparks', t.x, this.groundY - 36, {
-              flip: wv.dir < 0,
-              palette: FORGE_JADE_PALETTE,
-              light: 1.22
-            });
+            this.spawnForgeParticles(t.x, this.groundY - 36, 6, { isJade: true });
           }
         }
 
@@ -2328,12 +2489,7 @@ export class TitanEx extends Fighter {
       if (altar.pulseTimer <= 0 && altar.life > 0.25) {
         altar.pulseTimer = 1.35;
         const ww = game.renderer ? game.renderer.worldWidth : 1200;
-        this.fx?.spawn('tectonicCraterSlam', altar.x, this.groundY - 4, {
-          flip: altar.dir < 0,
-          palette: FORGE_JADE_PALETTE,
-          light: 1.18,
-          extra: { maxRx: 108 }
-        });
+        this.spawnForgeShockRing(altar.x, this.groundY - 2, 108, true, 0.32);
         const advBounds =
           game.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
             ? game.adventure.getActiveStageBounds()
@@ -2362,18 +2518,13 @@ export class TitanEx extends Fighter {
       if (a.state === 'flying') {
         a.x += a.vx * dt;
         a.trailAccum = (a.trailAccum || 0) + dt;
-        if (a.trailAccum >= 0.085) {
+        if (a.trailAccum >= 0.048) {
           a.trailAccum = 0;
-          this.fx?.burst(a.x - a.dir * 20, a.y - 42, {
-            count: 1,
-            speedMin: 35,
-            speedMax: 90,
-            lifeMin: 0.12,
-            lifeMax: 0.22,
-            gravity: 45,
-            angle: a.dir >= 0 ? Math.PI : 0,
-            spread: 0.65,
-            colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
+          this.spawnMagmaFissureNode(a.x, a.y, a.rebounded, 0.48);
+          this.spawnForgeParticles(a.x - a.dir * 20, a.y - 36, 2, {
+            dirBias: a.dir >= 0 ? Math.PI : 0,
+            spread: 0.6,
+            isJade: a.rebounded
           });
         }
 
@@ -2399,12 +2550,7 @@ export class TitanEx extends Fighter {
             game.renderer?.triggerShake?.(11, 0.22);
             game.renderer?.triggerHitStop?.(0.052);
 
-            this.fx?.spawn('tectonicCraterSlam', t.x, this.groundY - 6, {
-              flip: a.dir < 0,
-              palette: a.rebounded ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
-              light: 1.28,
-              extra: { maxRx: 124 }
-            });
+            this.spawnForgeShockRing(t.x, this.groundY - 2, 114, a.rebounded, 0.30);
             this.spawnSheetBurst(4, t.x, t.y - 68, {
               w: 196,
               h: 196,
@@ -2417,11 +2563,7 @@ export class TitanEx extends Fighter {
             if (t.isColossalBoss || t.x <= wallMin + 121 || t.x >= wallMax - 121) {
               t.takeDamage(34, this, true, -a.dir * 135, -205);
               game.vfx?.spawnDamageText?.(t.x, t.y - 165, 0, true, 'ANVIL WALL-CRUSH!', '#fef08a');
-              this.fx?.spawn('moltenAnvilSparks', t.x, t.y - 54, {
-                flip: a.dir < 0,
-                palette: FORGE_JADE_PALETTE,
-                light: 1.38
-              });
+              this.spawnForgeParticles(t.x, t.y - 54, 10, { isJade: true });
             }
           }
         }
@@ -2437,17 +2579,10 @@ export class TitanEx extends Fighter {
           game.audio?.play?.('clang', a.x);
           game.renderer?.triggerShake?.(9, 0.16);
           game.vfx?.spawnDamageText?.(a.x, this.groundY - 128, 0, true, 'ANVIL WALL-RICOCHET!', '#34d399');
-          this.fx?.spawn('moltenAnvilSparks', a.x, a.y - 44, {
-            flip: a.dir < 0,
-            palette: FORGE_JADE_PALETTE,
-            light: 1.36
-          });
+          this.spawnForgeShockRing(a.x, this.groundY - 2, 128, true, 0.36);
+          this.spawnForgeParticles(a.x, a.y - 44, 10, { isJade: true });
         } else if (a.x < wallMin - 28 || a.x > wallMax + 28 || a.age > 2.35) {
-          this.fx?.spawn('moltenAnvilSparks', a.x, a.y - 38, {
-            flip: a.dir < 0,
-            palette: FORGE_GOLD_PALETTE,
-            light: 1.22
-          });
+          this.spawnForgeParticles(a.x, a.y - 38, 6, { isJade: a.rebounded });
           this.activeAnvil = null;
         }
       }
@@ -2461,10 +2596,49 @@ export class TitanEx extends Fighter {
       if (this.stepDustTimer >= 0.36) {
         this.stepDustTimer = 0;
         if (game?.audio) game.audio.play('footstep_steel', this.x);
+        this.spawnForgeParticles(this.x - this.facing * 14, this.groundY - 3, 2, {
+          shapes: ['slag'],
+          speedMin: 24,
+          speedMax: 65,
+          isJade: false
+        });
       }
     }
 
     super.update(dt, enemy, game);
+  }
+
+  /**
+   * Renders a `4x4` Bayer-stippled pixel floor/rim halo (`alpha <= 0.18`, zero blurry radial gradient sprites!).
+   */
+  drawBayerPixelHalo(ctx, cx, cy, rx, ry, outerHex, coreHex, alpha = 0.16) {
+    if (!ctx?.fillRect || alpha <= 0.015 || rx < 4 || ry < 2) return;
+    const step = 4;
+    const icx = Math.round(cx / step) * step;
+    const icy = Math.round(cy / step) * step;
+    const irx = Math.max(step, Math.round(rx / step) * step);
+    const iry = Math.max(step, Math.round(ry / step) * step);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = Math.min(0.18, alpha);
+    for (let dy = -iry; dy <= iry; dy += step) {
+      const ny = dy / iry;
+      const maxDx = Math.round((irx * Math.sqrt(Math.max(0, 1 - ny * ny))) / step) * step;
+      const by = ((dy / step) & 3 + 4) & 3;
+      for (let dx = -maxDx; dx <= maxDx; dx += step) {
+        const nx = dx / irx;
+        const r2 = nx * nx + ny * ny;
+        if (r2 > 1) continue;
+        const intensity = 1 - r2;
+        const bx = ((dx / step) & 3 + 4) & 3;
+        if (intensity > BAYER_4X4[(by << 2) | bx] * 0.92) {
+          ctx.fillStyle = r2 < 0.36 ? coreHex : outerHex;
+          ctx.fillRect(icx + dx, icy + dy, step, step);
+        }
+      }
+    }
+    ctx.restore();
   }
 
   drawPixelForgeChain(ctx, x1, y1, x2, y2, phase = 0) {
@@ -2482,7 +2656,7 @@ export class TitanEx extends Fighter {
       const px = Math.round(x1 + dx * u);
       const py = Math.round(y1 + dy * u + sag);
       const isJade = (i + Math.floor(phase * 10)) % 3 === 0;
-      ctx.fillStyle = '#0d0f1c';
+      ctx.fillStyle = '#0d0907';
       ctx.fillRect(px - 4, py - 4, 8, 8);
       ctx.fillStyle = isJade ? '#10b981' : '#f59e0b';
       ctx.fillRect(px - 3, py - 3, 6, 6);
@@ -2512,7 +2686,7 @@ export class TitanEx extends Fighter {
       const oy = Math.round(cy + depth * ry + Math.sin(this._crucibleOrbitPhase * 1.8 + i) * 3);
       const s = scale >= 1.8 ? 2 : 1;
 
-      ctx.fillStyle = '#0d0f1c';
+      ctx.fillStyle = '#0d0907';
       ctx.fillRect(ox - 5 * s, oy - 3 * s, 10 * s, 6 * s);
       ctx.fillRect(ox - 3 * s, oy - 5 * s, 6 * s, 10 * s);
 
@@ -2529,9 +2703,6 @@ export class TitanEx extends Fighter {
     ctx.restore();
   }
 
-  /**
-   * Renders blunt squared-off Molten Anvil Concussion Shock-Bars (`0` pointed sword crescents, `fillRect` only!).
-   */
   drawAnvilShockBursts(ctx) {
     if (!ctx?.fillRect || this.anvilShockBursts.length === 0) return;
     ctx.save();
@@ -2547,21 +2718,17 @@ export class TitanEx extends Fighter {
       const hh = Math.max(6, Math.round((b.halfH * (1 - u * 0.48)) / 2) * 2);
 
       ctx.globalAlpha = Math.min(1, fade * 0.92);
-      // Outer scorched bronze-iron / jade anvil concussion plate
       ctx.fillStyle = b.isJade ? '#064e3b' : '#78350f';
       ctx.fillRect(b.cx - hw - 4, b.cy - hh - 2, (hw + 4) * 2, (hh + 2) * 2);
 
-      // Molten amber / emerald shock body
       ctx.fillStyle = b.isJade ? '#10b981' : '#f59e0b';
       ctx.fillRect(b.cx - hw, b.cy - hh, hw * 2, hh * 2);
 
-      // Molten sun-gold crest
       const midW = Math.max(8, Math.round(hw * 0.78));
       const midH = Math.max(4, Math.round(hh * 0.62));
       ctx.fillStyle = '#fde047';
       ctx.fillRect(b.cx - midW, b.cy - midH, midW * 2, midH * 2);
 
-      // Blunt squared-off pure white anvil-strike core
       const coreW = Math.max(6, Math.round(hw * 0.52));
       const coreH = Math.max(2, Math.round(hh * 0.34));
       ctx.fillStyle = '#ffffff';
@@ -2570,7 +2737,156 @@ export class TitanEx extends Fighter {
     ctx.restore();
   }
 
+  /**
+   * Renders Stepped Molten Magma Fissure Trails, 2.5D Pixel Magma Crater, Stepped Mjolnir Lightning, & Forge Particles!
+   */
+  drawForgeFloorAndParticles(ctx, inFront = false) {
+    if (!ctx?.fillRect) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    if (!inFront) {
+      // 1. Persistent Multi-Layered 2.5D Pixel Magma Crater (`MJOLNIR GENESIS: CONTINENTAL SUNDER`)
+      if (this._magmaCrater) {
+        const mc = this._magmaCrater;
+        const u = mc.age / mc.maxLife;
+        const fade = u > 0.72 ? (1 - u) / 0.28 : 1.0;
+        this.drawBayerPixelHalo(ctx, mc.x, mc.y - 2, mc.rx + 28, mc.ry + 10, '#9a3412', '#fde047', 0.18 * fade);
+
+        ctx.globalAlpha = 0.92 * fade;
+        const irx = Math.round(mc.rx / 4) * 4;
+        const iry = Math.round(mc.ry / 4) * 4;
+        for (let dy = -iry; dy <= iry; dy += 4) {
+          const ny = dy / Math.max(1, iry);
+          const span = Math.round((irx * Math.sqrt(Math.max(0, 1 - ny * ny))) / 4) * 4;
+          if (span < 4) continue;
+          ctx.fillStyle = '#241914';
+          ctx.fillRect(mc.x - span - 4, mc.y - 2 + dy, (span + 4) * 2, 4);
+          ctx.fillStyle = Math.abs(dy) < iry * 0.5 ? '#f97316' : '#9a3412';
+          ctx.fillRect(mc.x - span, mc.y - 2 + dy, span * 2, 4);
+          if (Math.abs(dy) <= 4) {
+            ctx.fillStyle = '#fde047';
+            ctx.fillRect(mc.x - Math.round(span * 0.65), mc.y - 2 + dy, Math.round(span * 1.3), 4);
+          }
+        }
+      }
+
+      // 2. Stepped Molten Magma Fissure Nodes (Anvil Ricochet ground wake)
+      for (let i = 0; i < this.magmaFissureNodes.length; i++) {
+        const fn = this.magmaFissureNodes[i];
+        const u = fn.age / fn.maxLife;
+        const fade = u > 0.68 ? (1 - u) / 0.32 : 1.0;
+        ctx.globalAlpha = fade * 0.92;
+        ctx.fillStyle = '#0d0907';
+        ctx.fillRect(fn.x - fn.w - 2, fn.y - 5, (fn.w + 2) * 2, 8);
+        ctx.fillStyle = fn.isJade ? '#10b981' : '#f97316';
+        ctx.fillRect(fn.x - fn.w, fn.y - 4, fn.w * 2, 4);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(fn.x - Math.round(fn.w * 0.55), fn.y - 3, Math.round(fn.w * 1.1), 2);
+      }
+      ctx.restore();
+      return;
+    }
+
+    // Foreground: Stepped Pixel Mjolnir Lightning Bolts (3-pass full-bolt rendering -> 0 chevrons!)
+    for (let i = 0; i < this.mjolnirLightningBolts.length; i++) {
+      const bolt = this.mjolnirLightningBolts[i];
+      const u = bolt.age / bolt.maxLife;
+      const fade = u > 0.65 ? (1 - u) / 0.35 : 1.0;
+
+      for (const pass of [0, 1, 2]) {
+        ctx.globalAlpha = pass === 0 ? fade * 0.80 : fade * 0.98;
+        ctx.fillStyle = pass === 0 ? '#0d0907' : pass === 1 ? (bolt.isJade ? '#10b981' : '#f59e0b') : '#ffffff';
+        const thick = pass === 0 ? 8 : pass === 1 ? 4 : 2;
+        for (let s = 0; s < bolt.pts.length - 1; s++) {
+          const [x0, y0] = bolt.pts[s];
+          const [x1, y1] = bolt.pts[s + 1];
+          const steps = Math.max(2, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / 3));
+          for (let k = 0; k <= steps; k++) {
+            const su = k / steps;
+            const px = Math.round((x0 + (x1 - x0) * su) / 2) * 2;
+            const py = Math.round((y0 + (y1 - y0) * su) / 2) * 2;
+            ctx.fillRect(px - Math.floor(thick * 0.5), py - Math.floor(thick * 0.5), thick, thick);
+          }
+        }
+      }
+    }
+
+    // Foreground: Multi-Shape Pixel Forge Particles (`slag`, `diamond`, `star4`, `ring`)
+    for (let i = 0; i < this.forgeParticles.length; i++) {
+      const p = this.forgeParticles[i];
+      const u = Math.min(1, p.age / p.maxLife);
+      const fade = u > 0.72 ? (1 - u) / 0.28 : 1.0;
+      if (fade <= 0.03) continue;
+
+      const px = Math.round(p.x / 2) * 2;
+      const py = Math.round(p.y / 2) * 2;
+      const accent = p.isJade ? '#10b981' : '#f59e0b';
+
+      if (p.kind === 'ring') {
+        const rx = Math.round((p.size * (0.32 + 0.68 * (1 - Math.pow(1 - u, 2.2)))) / 2) * 2;
+        const ry = Math.max(4, Math.round((rx * 0.22) / 2) * 2);
+        ctx.globalAlpha = fade * 0.86;
+        for (let aIdx = 0; aIdx < 24; aIdx++) {
+          if (u > 0.55 && (aIdx & 1) === 1) continue;
+          const a = (aIdx / 24) * Math.PI * 2;
+          const rxp = Math.round((px + Math.cos(a) * rx) / 2) * 2;
+          const ryp = Math.round((py + Math.sin(a) * ry) / 2) * 2;
+          ctx.fillStyle = '#0d0907';
+          ctx.fillRect(rxp - 2, ryp, 6, 4);
+          ctx.fillStyle = aIdx % 3 === 0 ? '#fde047' : accent;
+          ctx.fillRect(rxp, ryp, 4, 2);
+        }
+      } else if (p.kind === 'star4') {
+        const arm = p.size * 2;
+        ctx.globalAlpha = fade * 0.96;
+        ctx.fillStyle = '#0d0907';
+        ctx.fillRect(px - arm - 2, py - 2, (arm + 2) * 2 + 2, 6);
+        ctx.fillRect(px - 2, py - arm - 2, 6, (arm + 2) * 2 + 2);
+        ctx.fillStyle = accent;
+        ctx.fillRect(px - arm, py, arm * 2 + 2, 2);
+        ctx.fillRect(px, py - arm, 2, arm * 2 + 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px, py, 2, 2);
+      } else {
+        // Bouncing Molten Slag / Jade Diamond Shard
+        ctx.globalAlpha = fade * 0.96;
+        ctx.fillStyle = '#0d0907';
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillStyle = accent;
+        ctx.fillRect(px - 2, py - 2, 6, 6);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(px - 2, py - 2, 2, 2);
+      }
+    }
+    ctx.restore();
+  }
+
   drawBehind(ctx, renderer = null) {
+    const sprites = this.getExSprites();
+    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+    const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+
+    // Ignited 8-Cog Crucible Back-Halo behind Torgar's shoulders (`RAGNAROK GRAND-SLAM CRUSHER` & Max Temper!)
+    if (!this.isDead && (this._crucibleBackHaloTimer > 0 || this.crucibleStacks >= this.maxCrucibleStacks) && hasVfx) {
+      const sc = this.giantScale || 1.0;
+      const haloSize = Math.round(168 * sc);
+      const haloCol = Math.floor((this._crucibleOrbitPhase * 6) % 30);
+      const fade = this.crucibleStacks >= this.maxCrucibleStacks ? 0.90 : Math.min(0.92, this._crucibleBackHaloTimer * 1.4);
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        3,
+        haloCol,
+        this.x - this.facing * Math.round(8 * sc),
+        this.y - Math.round(104 * sc),
+        haloSize,
+        haloSize,
+        fade,
+        this.facing < 0
+      );
+    }
+
     if (this.state !== 'TRUE_ULTIMATE') return;
     const t = this.stateTimer || 0;
     const dur = this.trueUltDuration || 3.80;
@@ -2580,39 +2896,19 @@ export class TitanEx extends Fighter {
       const envAlpha =
         t < 0.30 ? t / 0.30 : t > dur - 0.55 ? Math.max(0, (dur - t) / 0.55) : 1.0;
       ctx.save();
-      ctx.fillStyle = `rgba(18, 8, 4, ${(0.44 * envAlpha).toFixed(3)})`;
+      ctx.fillStyle = `rgba(18, 8, 4, ${(0.38 * envAlpha).toFixed(3)})`;
       ctx.fillRect(0, -480, ww, this.groundY + 620);
-      ctx.fillStyle = `rgba(245, 158, 11, ${(0.14 * envAlpha).toFixed(3)})`;
-      ctx.fillRect(0, this.groundY - 12, ww, 16);
-
-      if (t >= 1.50 && t < 2.36) {
-        const ax = Math.round(this._trueUltAnvilX || 600);
-        const topY = Math.round(this.y - 210);
-        const beamH = Math.max(24, Math.round(this.groundY - topY));
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.14)';
-        ctx.fillRect(ax - 18, topY, 36, beamH);
-        ctx.fillStyle = 'rgba(251, 191, 36, 0.24)';
-        ctx.fillRect(ax - 6, topY, 12, beamH);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.38)';
-        ctx.fillRect(ax - 2, topY, 4, beamH);
-      }
       ctx.restore();
     }
 
     if (t >= 2.36) return;
 
-    const sprites = this.getExSprites();
-    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
     const col = Math.floor(t * 30) % 30;
     const ax = this._trueUltAnvilX || 600;
-    const ay = this.groundY - 110;
+    const ay = this.groundY - 56;
 
-    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, ax, ay, 336, 336, 0.96, this.facing < 0, renderer, 'gold');
-
-      if (t >= 1.50) {
-        this.drawBloomedVfxCell(ctx, vfxSheet, 3, col, this.x, this.y - 185, 312, 312, 0.88, this.facing < 0, renderer, 'emerald');
-      }
+    if (hasVfx) {
+      this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, ax, ay, 312, 312, 0.94, this.facing < 0);
     }
 
     const foes = this.game ? this.getActiveEnemies(null, this.game) : [];
@@ -2620,11 +2916,14 @@ export class TitanEx extends Fighter {
       if (t >= 1.50) {
         this.drawPixelForgeChain(ctx, this.x, this.y - 140, foe.x, foe.y - 64, t);
       } else {
-        this.drawPixelForgeChain(ctx, ax, this.groundY - 64, foe.x, foe.y - 68, t);
+        this.drawPixelForgeChain(ctx, ax, this.groundY - 36, foe.x, foe.y - 68, t);
       }
     }
   }
 
+  /**
+   * Crisp pixel-pure VFX sheet blit with Bayer pixel floor/rim halo (`<= 0.14` highlight).
+   */
   drawBloomedVfxCell(
     ctx,
     vfxSheet,
@@ -2636,7 +2935,7 @@ export class TitanEx extends Fighter {
     h = 208,
     alpha = 1.0,
     flipX = false,
-    renderer = null,
+    _renderer = null,
     glowColor = 'gold'
   ) {
     const sheet = PixelForge.ensureImage?.(vfxSheet) || vfxSheet;
@@ -2650,27 +2949,13 @@ export class TitanEx extends Fighter {
     ctx.translate(Math.round(x), Math.round(y));
     if (flipX) ctx.scale(-1, 1);
 
-    const useGlow = glowColor !== 'none';
-    const glowSprite = !useGlow
-      ? null
-      : glowColor === 'emerald'
-        ? renderer?.glowEmerald || renderer?.glowGold || renderer?.glowOrange
-        : renderer?.glowGold || renderer?.glowOrange;
-    if (glowSprite) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.14);
-      const gw = Math.round(w * 1.06);
-      const gh = Math.round(h * 1.06);
-      ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
-    }
-
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = Math.min(1, alpha);
     ctx.drawImage(sheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
-    if (useGlow) {
+    if (glowColor !== 'none') {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.16);
+      ctx.globalAlpha = Math.min(0.14, alpha * 0.14);
       ctx.drawImage(sheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
     }
 
@@ -2698,8 +2983,9 @@ export class TitanEx extends Fighter {
         const altar = this.worldAnvilAltar;
         const col = Math.floor(altar.age * 30) % 30;
         const fade = altar.life < 0.45 ? Math.max(0, altar.life / 0.45) : 1.0;
-        this.drawBloomedVfxCell(ctx, sheet, 3, col, altar.x, altar.y - 36, 212, 212, fade * 0.92, altar.dir < 0, renderer, 'emerald');
-        this.drawBloomedVfxCell(ctx, sheet, 1, col, altar.x, altar.y - 54, 196, 196, fade * 0.98, altar.dir < 0, renderer, 'gold');
+        this.drawBayerPixelHalo(ctx, altar.x, altar.y - 2, 76, 16, '#065f46', '#f59e0b', 0.16 * fade);
+        this.drawBloomedVfxCell(ctx, sheet, 5, col, altar.x, altar.y - 24, 212, 212, fade * 0.88, altar.dir < 0, renderer, 'emerald');
+        this.drawBloomedVfxCell(ctx, sheet, 1, col, altar.x, altar.y - 52, 196, 196, fade * 0.98, altar.dir < 0, renderer, 'gold');
       }
       return;
     }
@@ -2714,7 +3000,8 @@ export class TitanEx extends Fighter {
     if (this.activeAnvil && this.activeAnvil.state === 'flying') {
       const a = this.activeAnvil;
       const col = Math.floor(a.age * 30) % 30;
-      this.drawBloomedVfxCell(ctx, sheet, 0, col, a.x - a.dir * 28, a.y - 48, 192, 192, 0.88, a.dir < 0, renderer, a.rebounded ? 'emerald' : 'gold');
+      this.drawBayerPixelHalo(ctx, a.x, a.y - 2, 68, 14, a.rebounded ? '#10b981' : '#f59e0b', '#fde047', 0.16);
+      this.drawBloomedVfxCell(ctx, sheet, 0, col, a.x - a.dir * 28, a.y - 48, 184, 184, 0.88, a.dir < 0, renderer, a.rebounded ? 'emerald' : 'gold');
       this.drawBloomedVfxCell(ctx, sheet, 1, col, a.x, a.y - 52, 208, 208, 0.98, a.dir < 0, renderer, a.rebounded ? 'emerald' : 'gold');
     }
 
@@ -2820,14 +3107,11 @@ export class TitanEx extends Fighter {
       ctx.fillRect(cx - hs - 2, cy - hs, s + 4, s);
       ctx.fillRect(cx - hs, cy - hs - 2, s, s + 4);
 
-      ctx.fillStyle = c.isRock ? '#292524' : '#362214';
+      ctx.fillStyle = c.isRock ? '#292524' : '#f97316';
       ctx.fillRect(cx - hs, cy - hs, s, s);
 
-      ctx.fillStyle = c.isRock ? '#57534e' : '#5c3d26';
+      ctx.fillStyle = c.isRock ? '#57534e' : '#fde047';
       ctx.fillRect(cx - hs, cy - hs, Math.max(2, s - 2), Math.max(2, s - 2));
-
-      ctx.fillStyle = c.isRock ? '#a8a29e' : '#a67c52';
-      ctx.fillRect(cx - hs + 2, cy - hs, Math.max(2, s - 4), Math.max(2, Math.round(s * 0.45)));
     }
     ctx.restore();
   }
@@ -2837,12 +3121,26 @@ export class TitanEx extends Fighter {
     const sheet = PixelForge.ensureImage?.(sprites?.sheet) || sprites?.sheet;
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
 
+    if (!this.isDead) {
+      this.drawBayerPixelHalo(
+        ctx,
+        this.x,
+        this.groundY - 1,
+        Math.round(58 * (this.giantScale || 1)),
+        13,
+        this.crucibleStacks >= this.maxCrucibleStacks ? '#065f46' : '#9a3412',
+        '#fde047',
+        this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE' ? 0.17 : 0.11
+      );
+      this.drawForgeFloorAndParticles(ctx, false);
+    }
+
     this.drawBehind(ctx, renderer);
 
     if (this.afterimages.length > 0 && sheet && sheet.complete && sheet.naturalWidth) {
       for (let i = 0; i < this.afterimages.length; i++) {
         const img = this.afterimages[i];
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.36);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.42);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 2) * 2, Math.round((img.y + 4) / 2) * 2);
@@ -2872,7 +3170,10 @@ export class TitanEx extends Fighter {
     this.drawCrucibleCores(ctx, false);
   }
 
-  drawHomeRunTrajectory(ctx) {
+  /**
+   * Renders the Horizontal World-Breaker Home-Run Concussion Shock-Cone (`0` vector curves).
+   */
+  drawHomeRunShockCone(ctx) {
     if (!ctx?.fillRect || !this._homeRunSwingStreak) return;
     const st = this._homeRunSwingStreak;
     const u = Math.min(1, st.age / st.maxLife);
@@ -2889,21 +3190,29 @@ export class TitanEx extends Fighter {
     const cy = Math.round(st.startY);
 
     ctx.save();
-    ctx.globalAlpha = alpha * 0.82;
-    ctx.fillStyle = '#0d0f1c';
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = alpha * 0.86;
+    ctx.fillStyle = '#0d0907';
+    ctx.fillRect(minX, cy - 5, spanW, 10);
+    ctx.fillStyle = '#10b981';
     ctx.fillRect(minX, cy - 4, spanW, 8);
     ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(minX, cy - 3, spanW, 6);
+    ctx.fillRect(minX, cy - 2, spanW, 4);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(minX, cy - 1, spanW, 2);
 
-    const ringCount = Math.min(6, Math.max(2, Math.floor(spanW / 135)));
+    // Expanding Blunt Vertical Concussion Shock-Cone Rings along the Home-Run Flight!
+    const ringCount = Math.min(5, Math.max(2, Math.floor(spanW / 120)));
     for (let i = 1; i <= ringCount; i++) {
-      const rx = Math.round(startX + ((endX - startX) * i) / (ringCount + 1));
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(rx - 2, cy - 20, 4, 40);
+      const frac = i / (ringCount + 1);
+      const rx = Math.round(startX + (endX - startX) * frac);
+      const coneH = Math.round(16 + frac * 28);
+      ctx.fillStyle = '#0d0907';
+      ctx.fillRect(rx - 4, cy - coneH - 2, 8, (coneH + 2) * 2);
+      ctx.fillStyle = i % 2 === 0 ? '#10b981' : '#f59e0b';
+      ctx.fillRect(rx - 2, cy - coneH, 4, coneH * 2);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(rx - 1, cy - 16, 2, 32);
+      ctx.fillRect(rx - 1, cy - Math.round(coneH * 0.7), 2, Math.round(coneH * 1.4));
     }
     ctx.restore();
   }
@@ -2913,7 +3222,8 @@ export class TitanEx extends Fighter {
     this.fx?.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
 
     this.drawAnvilShockBursts(ctx);
-    this.drawHomeRunTrajectory(ctx);
+    this.drawHomeRunShockCone(ctx);
+    this.drawForgeFloorAndParticles(ctx, true);
     this.drawCrucibleCores(ctx, true);
 
     const sprites = this.getExSprites();
@@ -2936,7 +3246,6 @@ export class TitanEx extends Fighter {
     const groundPlantOffset = 4;
     const sheet = PixelForge.ensureImage?.(sprites.sheet) || sprites.sheet;
 
-    // Wide-canvas (`320x240`) compatible 2-ghost upward motion trail during `2.15x` Super-Leap!
     if (
       !isReflection &&
       sheet &&
