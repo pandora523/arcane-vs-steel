@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps121';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps121';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps121';
+import { Fighter } from './Fighter.js?v=30fps122';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps122';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps122';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps121';
+} from '../engine/shaders/sylvanShaders.js?v=30fps122';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -258,11 +258,11 @@ export class ArcherEx extends Fighter {
     if (!assets) return null;
     if (!assets.archer_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/archer_ex_sheet.png?v=30fps121';
+      sheet.src = 'assets/sprites/archer_ex_sheet.png?v=30fps122';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/archer_ex_vfx.png?v=30fps121';
+      vfx.src = 'assets/sprites/archer_ex_vfx.png?v=30fps122';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/archer_ex_portrait.png?v=30fps121';
+      portrait.src = 'assets/sprites/archer_ex_portrait.png?v=30fps122';
       assets.archer_ex = {
         sheet,
         vfx,
@@ -275,8 +275,8 @@ export class ArcherEx extends Fighter {
     } else if (assets.archer_ex.vfx) {
       const vfxImg = assets.archer_ex.vfx;
       const curSrc = vfxImg._deferredSrc || vfxImg._origSrc || vfxImg.src || '';
-      if (typeof curSrc === 'string' && !curSrc.includes('?v=30fps121')) {
-        const freshVfxSrc = 'assets/sprites/archer_ex_vfx.png?v=30fps121';
+      if (typeof curSrc === 'string' && !curSrc.includes('?v=30fps122')) {
+        const freshVfxSrc = 'assets/sprites/archer_ex_vfx.png?v=30fps122';
         vfxImg._origSrc = freshVfxSrc;
         if (vfxImg._deferredSrc) {
           vfxImg._deferredSrc = freshVfxSrc;
@@ -339,7 +339,9 @@ export class ArcherEx extends Fighter {
   setState(newState) {
     const prevState = this.state;
     if (
-      prevState === 'AUTO_ATTACK' &&
+      (prevState === 'AUTO_ATTACK' ||
+        prevState === 'ULTIMATE' ||
+        prevState === 'TRUE_ULTIMATE') &&
       newState !== 'AUTO_ATTACK' &&
       newState !== 'JUMP' &&
       newState !== 'DODGE' &&
@@ -348,6 +350,7 @@ export class ArcherEx extends Fighter {
     ) {
       this.y = this.groundY;
       this.vy = 0;
+      this.cameraAirLift = 0;
     }
 
     super.setState(newState);
@@ -2030,7 +2033,8 @@ export class ArcherEx extends Fighter {
 
     this.y = this.groundY;
     this.cameraAirLift = 0;
-    this._overrideFrameIdx = t < 1.80 ? 135 : 136;
+    const landU = Math.min(1, Math.max(0, (t - 1.58) / Math.max(0.05, this.ultDuration - 1.58)));
+    this._overrideFrameIdx = 147 + Math.min(2, Math.floor(landU * 3));
 
     if (t >= this.ultDuration) {
       this.isInvulnerable = false;
@@ -2602,11 +2606,19 @@ export class ArcherEx extends Fighter {
     this.x = this._arrowEndX + (safeLandX - this._arrowEndX) * descU;
     this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
 
-    const remLift =
-      descU < 0.22 ? 92 : 92 * Math.cos(((descU - 0.22) / 0.78) * (Math.PI * 0.5));
+    let remLift = 0;
+    let relIdx = 149;
+    if (descU < 0.62) {
+      remLift =
+        descU < 0.16 ? 92 : 92 * Math.cos(((descU - 0.16) / 0.46) * (Math.PI * 0.5));
+      relIdx = descU < 0.35 ? 145 : 146;
+    } else {
+      remLift = 0;
+      const landU = (descU - 0.62) / 0.38;
+      relIdx = 147 + Math.min(2, Math.floor(landU * 3));
+    }
     this.y = this.groundY - remLift;
     this.cameraAirLift = remLift * 0.72;
-    const relIdx = 145 + Math.min(4, Math.floor(descU * 5));
     this.trueUltFrameOverride = relIdx;
     this._overrideFrameIdx = relIdx;
 

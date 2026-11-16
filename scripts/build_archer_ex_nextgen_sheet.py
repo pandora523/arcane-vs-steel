@@ -74,8 +74,15 @@ C_GOLD_MID = (217, 119, 6, 255)       # #d97706
 C_GOLD_BRIGHT = (250, 204, 21, 255)   # #facc15
 C_GOLD_LIGHT = (253, 224, 71, 255)    # #fde047
 C_IVORY_LIMB = (254, 249, 195, 255)   # #fef9c3
+C_SILVER_LIGHT = (232, 240, 248, 255) # Polished Elven silver specular
 C_SILVER_MID = (148, 163, 184, 255)
+C_SILVER_DARK = (71, 85, 105, 255)
 C_LEATHER = (92, 54, 24, 255)
+# Sampled directly from archer_ex_base.jpg face/hands
+C_SKIN_LIGHT = (252, 224, 198, 255)
+C_SKIN_MID = (244, 192, 158, 255)
+C_SKIN_SHAD = (196, 136, 104, 255)
+C_SKIN_OUT = (44, 24, 18, 255)
 
 
 # ==============================================================================
@@ -470,6 +477,102 @@ def solve_ik_2bone(sx: float, sy: float, tx: float, ty: float, l1: float, l2: fl
     return sx + math.cos(ang) * l1, sy + math.sin(ang) * l1
 
 
+def draw_sculpted_elven_hand_160(
+    buf: np.ndarray,
+    tx: float,
+    ty: float,
+    role: str = "bow_grip",
+    aim_deg: float = 0.0,
+    wrist_dir: tuple[float, float] = (1.0, 0.0),
+) -> set[tuple[int, int]]:
+    """
+    Pixel-by-pixel sculpted Elven hand (`role='bow_grip'` or `'string_draw'`) in 160x120
+    using Sylvara EX's sampled peach skin ramp + selective 1px contour (`0` black-square blobs).
+    """
+    if role == "bow_grip":
+        rad = math.radians(aim_deg)
+        ux, uy = math.cos(rad), math.sin(rad)
+        nx, ny = -uy, ux
+        # Oriented pixel-offsets (u = forward along arrow aim, v = downward perpendicular)
+        skin_offsets = [
+            (-2, -1, C_SKIN_MID),
+            (-2, 0, C_SKIN_MID),
+            (-1, -1, C_SKIN_LIGHT),
+            (-1, 0, C_SKIN_MID),
+            (-1, 1, C_SKIN_SHAD),
+            # Thumb bracing upper arrow shelf + 3 curled fingers around bow riser
+            (0, -2, C_SKIN_LIGHT),
+            (0, -1, C_SKIN_LIGHT),
+            (0, 0, C_SKIN_MID),
+            (0, 1, C_SKIN_SHAD),
+            (1, -1, C_SKIN_MID),
+            (1, 0, C_SKIN_LIGHT),
+            (1, 1, C_SKIN_SHAD),
+        ]
+        # Selective 1px silhouette contour (leaves riser above/below clean & continuous!)
+        outline_offsets = [
+            (0, -3), (-1, -2), (1, -2),
+            (2, -1), (2, 0), (2, 1),
+            (0, 2), (1, 2), (-1, 2), (-2, 1),
+        ]
+        skin_pts: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+        for ou, ov, col in skin_offsets:
+            px = int(round(tx + ux * ou + nx * ov))
+            py = int(round(ty + uy * ou + ny * ov))
+            skin_pts[(px, py)] = col
+        for ou, ov in outline_offsets:
+            px = int(round(tx + ux * ou + nx * ov))
+            py = int(round(ty + uy * ou + ny * ov))
+            if (px, py) not in skin_pts and MARGIN_160 <= px < LOG_W - MARGIN_160 and MARGIN_160 <= py < LOG_H - MARGIN_160:
+                if buf[py, px, 3] == 0:
+                    set_px(buf, px, py, C_SKIN_OUT)
+        for (px, py), col in skin_pts.items():
+            set_px(buf, px, py, col)
+        return set(skin_pts.keys())
+
+    # role == "string_draw": 3-finger Mediterranean archery hook gripping bowstring at (tx, ty)
+    facing_u = 1.0 if wrist_dir[0] >= -0.25 else -1.0
+    if facing_u > 0:
+        # Forearm approaches from left (-X), fingers hook string cleanly on right (+X)
+        skin_offsets = [
+            (-2, -1, C_SKIN_LIGHT),
+            (-2, 0, C_SKIN_MID),
+            (-1, -2, C_SKIN_LIGHT),  # thumb tucked on upper side of palm
+            (-1, -1, C_SKIN_LIGHT),  # index base
+            (-1, 0, C_SKIN_MID),     # middle base
+            (-1, 1, C_SKIN_SHAD),    # ring base
+            (0, -1, C_SKIN_MID),     # hooked index tip
+            (0, 0, C_SKIN_LIGHT),    # hooked middle finger on string nock
+            (0, 1, C_SKIN_SHAD),     # hooked ring tip
+        ]
+    else:
+        skin_offsets = [
+            (2, -1, C_SKIN_LIGHT),
+            (2, 0, C_SKIN_MID),
+            (1, -2, C_SKIN_LIGHT),
+            (1, -1, C_SKIN_LIGHT),
+            (1, 0, C_SKIN_MID),
+            (1, 1, C_SKIN_SHAD),
+            (0, -1, C_SKIN_MID),
+            (0, 0, C_SKIN_LIGHT),
+            (0, 1, C_SKIN_SHAD),
+        ]
+    itx, ity = int(round(tx)), int(round(ty))
+    skin_pts = {(itx + ox, ity + oy): col for ox, oy, col in skin_offsets}
+    skin_keys = set(skin_pts.keys())
+    for px, py in skin_keys:
+        for dx_o, dy_o in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx_p, ny_p = px + dx_o, py + dy_o
+            if (nx_p, ny_p) in skin_keys:
+                continue
+            if MARGIN_160 <= nx_p < LOG_W - MARGIN_160 and MARGIN_160 <= ny_p < LOG_H - MARGIN_160:
+                if buf[ny_p, nx_p, 3] == 0:
+                    set_px(buf, nx_p, ny_p, C_SKIN_OUT)
+    for (px, py), col in skin_pts.items():
+        set_px(buf, px, py, col)
+    return skin_keys
+
+
 def draw_elven_bracer_arm_160(
     buf: np.ndarray,
     sx: float,
@@ -478,28 +581,107 @@ def draw_elven_bracer_arm_160(
     ty: float,
     is_front: bool = True,
     bend_sign: float = 1.0,
-    highlight_draw: bool = False,
+    role: str = "bow_grip",
+    archer_draw_mode: bool = False,
+    aim_deg: float = 0.0,
 ):
-    l1, l2 = 10.0, 10.5
-    ex, ey = solve_ik_2bone(sx, sy, tx, ty, l1, l2, bend_sign=bend_sign)
-    c_sleeve = C_MINT_LIGHT if highlight_draw else (C_EMERALD_MID if is_front else C_FOREST_DARK)
-    c_trim = C_WHITE if highlight_draw else (C_GOLD_BRIGHT if is_front else C_GOLD_MID)
+    """
+    Renders a sleek 16-bit Elven arm (3-4 logical px wide, zero sausage tubes!):
+      - Upper emerald sleeve (shaded by depth) + small gold pauldron trim
+      - Polished Silver-Steel Vambrace + Gold elbow/wrist cuffs (matching archer_ex_base.jpg)
+      - Pixel-by-pixel sculpted bare peach-skin Elven hand & fingers (`draw_sculpted_elven_hand_160`).
+    """
+    total_dx = tx - sx
+    total_dy = ty - sy
+    total_d = math.hypot(total_dx, total_dy) or 1.0
+    hand_setback = 2.0 if total_d > 5.0 else max(0.8, total_d * 0.25)
 
-    draw_line_px(buf, sx, sy, ex, ey, C_OUTLINE, r=2)
-    draw_line_px(buf, ex, ey, tx, ty, C_OUTLINE, r=2)
-    draw_line_px(buf, sx, sy, ex, ey, C_EMERALD_MID if highlight_draw else C_FOREST_DARK, r=1)
-    draw_line_px(buf, sx, sy - 0.6, ex, ey - 0.6, c_sleeve, r=0)
-    draw_line_px(buf, ex, ey, tx, ty, C_GOLD_BRIGHT if highlight_draw else c_sleeve, r=1)
-    draw_line_px(buf, ex, ey - 0.7, tx, ty - 0.7, c_trim, r=0)
+    # First pass elbow estimate to compute forearm direction to stop silver vambrace cleanly at wrist cuff
+    l1, l2 = 9.2, 8.8
+    if archer_draw_mode and role == "string_draw":
+        # Continuous ergonomic archer draw elbow: reaches forward to grab string -> pulls elbow back behind shoulder!
+        pull_u = max(0.0, min(1.0, (sx + 14.0 - tx) / 18.5))
+        reach_ex = (sx + tx) * 0.5
+        reach_ey = max(sy, ty) + 1.8
+        back_ex = sx - 7.0
+        back_ey = sy + 2.0
+        ex = reach_ex + (back_ex - reach_ex) * pull_u
+        ey = reach_ey + (back_ey - reach_ey) * pull_u
+    else:
+        ex, ey = solve_ik_2bone(sx, sy, tx, ty, l1, l2, bend_sign=bend_sign)
 
-    gx, gy = int(round(tx)), int(round(ty))
-    for oy in range(-1, 2):
-        for ox in range(-1, 2):
-            set_px(buf, gx + ox, gy + oy, C_OUTLINE)
-    set_px(buf, gx, gy, C_WHITE if highlight_draw else C_GOLD_LIGHT)
-    set_px(buf, gx + 1, gy, C_GOLD_LIGHT if highlight_draw else C_EMERALD_BRIGHT)
-    if highlight_draw:
-        set_px(buf, gx, gy - 1, C_GOLD_LIGHT)
+    fd_x = tx - ex
+    fd_y = ty - ey
+    fd_len = math.hypot(fd_x, fd_y) or 1.0
+    fux, fuy = fd_x / fd_len, fd_y / fd_len
+    wx = tx - fux * hand_setback
+    wy = ty - fuy * hand_setback
+
+    arm_px: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    dark_sleeve = (4, 58, 44, 255)
+    c_slv_hi = C_EMERALD_MID if is_front else C_FOREST_DARK
+    c_slv_lo = C_FOREST_DARK if is_front else dark_sleeve
+    c_vamb_hi = C_SILVER_LIGHT if is_front else C_SILVER_MID
+    c_vamb_lo = C_SILVER_MID if is_front else C_SILVER_DARK
+    c_gold_hi = C_GOLD_LIGHT if is_front else C_GOLD_BRIGHT
+    c_gold_lo = C_GOLD_MID if is_front else C_GOLD_DARK
+
+    def _collect_seg(x0: float, y0: float, x1: float, y1: float, is_forearm: bool):
+        dx = x1 - x0
+        dy = y1 - y0
+        seg_l = math.hypot(dx, dy)
+        if seg_l < 0.25:
+            return
+        nx, ny = -dy / seg_l, dx / seg_l
+        if ny > 0:
+            nx, ny = -nx, -ny
+        steps = max(4, int(math.ceil(seg_l * 3.0)))
+        for i in range(steps + 1):
+            u = i / steps
+            cx = x0 + dx * u
+            cy = y0 + dy * u
+            if not is_forearm:
+                hi_col, lo_col = c_slv_hi, c_slv_lo
+                if is_front and u < 0.24:
+                    hi_col, lo_col = C_GOLD_BRIGHT, C_EMERALD_BRIGHT
+            else:
+                if u < 0.20 or u > 0.78:
+                    hi_col, lo_col = c_gold_hi, c_gold_lo
+                else:
+                    hi_col, lo_col = c_vamb_hi, c_vamb_lo
+            p_hi = (int(round(cx + nx * 0.48)), int(round(cy + ny * 0.48)))
+            p_lo = (int(round(cx - nx * 0.48)), int(round(cy - ny * 0.48)))
+            arm_px[p_hi] = hi_col
+            if p_lo not in arm_px:
+                arm_px[p_lo] = lo_col
+
+    _collect_seg(sx, sy, ex, ey, is_forearm=False)
+    _collect_seg(ex, ey, wx, wy, is_forearm=True)
+
+    # Crisp 1px outer selout contour around slender arm pixels (only on empty background pixels!)
+    arm_keys = set(arm_px.keys())
+    for ax_p, ay_p in arm_keys:
+        for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx_p, ny_p = ax_p + ox, ay_p + oy
+            if (nx_p, ny_p) in arm_keys:
+                continue
+            if MARGIN_160 <= nx_p < LOG_W - MARGIN_160 and MARGIN_160 <= ny_p < LOG_H - MARGIN_160:
+                if buf[ny_p, nx_p, 3] == 0:
+                    set_px(buf, nx_p, ny_p, C_OUTLINE)
+
+    # Paint slender sleeve + silver vambrace + gold cuffs
+    for (ax_p, ay_p), col in arm_px.items():
+        set_px(buf, ax_p, ay_p, col)
+
+    # Pixel-by-pixel sculpted bare Elven hand & fingers at (tx, ty)
+    draw_sculpted_elven_hand_160(
+        buf,
+        tx=tx,
+        ty=ty,
+        role=role,
+        aim_deg=aim_deg,
+        wrist_dir=(fux, fuy),
+    )
 
 
 def draw_quiver_160(buf: np.ndarray, qx: float, qy: float, tilt_deg: float = -36.0):
@@ -615,6 +797,7 @@ def draw_yggdrasil_greatbow_160(
     star_phase: float = 0.0,
     max_star_x: int = 151,
     fixed_arrow_len: float | None = None,
+    face_mask: np.ndarray | None = None,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """
     Renders Sylvara EX's luminous Yggdrasil Astral Recurve Greatbow / Twin-Arc Bow-Glaive:
@@ -649,12 +832,24 @@ def draw_yggdrasil_greatbow_160(
     nock_x = base_str_x - ux * (draw_pull * 15.0)
     nock_y = base_str_y - uy * (draw_pull * 15.0)
 
-    # 1. Astral Bowstring (drawn behind limb tips)
+    # 1. Astral Bowstring (drawn behind face/eyes via face_mask!)
     str_col = C_WHITE if astral_charge >= 0.75 else C_MINT_LIGHT
-    draw_line_px(buf, top_tip[0], top_tip[1], nock_x, nock_y, C_FOREST_DARK, r=0)
-    draw_line_px(buf, bot_tip[0], bot_tip[1], nock_x, nock_y, C_FOREST_DARK, r=0)
-    draw_line_px(buf, top_tip[0], top_tip[1], nock_x, nock_y, str_col, r=0)
-    draw_line_px(buf, bot_tip[0], bot_tip[1], nock_x, nock_y, str_col, r=0)
+    for sx_0, sy_0, sx_1, sy_1, s_col in (
+        (top_tip[0], top_tip[1], nock_x, nock_y, C_FOREST_DARK),
+        (bot_tip[0], bot_tip[1], nock_x, nock_y, C_FOREST_DARK),
+        (top_tip[0], top_tip[1], nock_x, nock_y, str_col),
+        (bot_tip[0], bot_tip[1], nock_x, nock_y, str_col),
+    ):
+        sdx = sx_1 - sx_0
+        sdy = sy_1 - sy_0
+        ssteps = max(1, int(math.ceil(max(abs(sdx), abs(sdy)) * 1.5)))
+        for si in range(ssteps + 1):
+            su = si / ssteps
+            px = int(round(sx_0 + sdx * su))
+            py = int(round(sy_0 + sdy * su))
+            if face_mask is not None and 0 <= py < LOG_H and 0 <= px < LOG_W and face_mask[py, px]:
+                continue
+            set_px(buf, px, py, s_col)
 
     # 2. Greatbow Limbs & Bladed Twin-Arc Glaive Edges (Selout pass -> Core pass)
     for lx, ly, _, ab in limb_pts:
@@ -1004,20 +1199,25 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
     torso_xy = map_pt(256.0, 214.0)
     paste_part_160(canvas, parts["torso"], (torso_xy[0] + tx_off * 0.5, torso_xy[1] + ty_off * 0.5), angle_deg=torso_lean)
     head_xy = map_pt(258.0, 118.0)
-    paste_part_160(canvas, parts["head"], (head_xy[0] + tx_off * 1.1, head_xy[1] + ty_off), angle_deg=torso_lean * 0.65 + head_nod)
+    head_canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+    paste_part_160(head_canvas, parts["head"], (head_xy[0] + tx_off * 1.1, head_xy[1] + ty_off), angle_deg=torso_lean * 0.65 + head_nod)
+    canvas.alpha_composite(head_canvas)
+    head_arr = np.asarray(head_canvas, dtype=np.uint8)
+    face_mask = head_arr[:, :, 3] > 0
 
-    # Foreground: IK Elven Bracer Arms + Luminous Yggdrasil Recurve Greatbow
+    # Foreground: IK Silver Vambrace Arms + Sculpted Elven Hands + Luminous Yggdrasil Recurve Greatbow
     fg_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
     l_sh = (hip_x - 6.5 + tx_off, hip_y - 16.5 + ty_off)
     r_sh = (hip_x + 7.5 + tx_off, hip_y - 16.5 + ty_off)
 
     riser_x = hip_x + cfg.get("bow_dx", 16.0)
     riser_y = hip_y + cfg.get("bow_dy", -10.0)
+    aim_deg_cur = cfg.get("aim_deg", 12.0)
     riser_grip, str_grip = draw_yggdrasil_greatbow_160(
         fg_buf,
         riser_x=riser_x,
         riser_y=riser_y,
-        aim_deg=cfg.get("aim_deg", 12.0),
+        aim_deg=aim_deg_cur,
         bow_half_h=cfg.get("bow_h", 22.0),
         draw_pull=cfg.get("draw_pull", 0.0),
         arrow_count=cfg.get("arrows", 0),
@@ -1026,16 +1226,28 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
         star_phase=cfg.get("phase", 0.0),
         max_star_x=cfg.get("max_star_x", 151),
         fixed_arrow_len=cfg.get("fixed_arrow_len", None),
+        face_mask=face_mask if cfg.get("archer_draw_mode", False) else None,
     )
     if cfg.get("archer_draw_mode", False):
-        # 3/4 Power-Draw pose: far arm braces the Greatbow forward; near arm clearly draws string back to cheek with high elbow!
-        far_sh = (hip_x + 7.0 + tx_off, hip_y - 15.5 + ty_off)
-        near_sh = (hip_x - 3.5 + tx_off, hip_y - 14.0 + ty_off)
-        draw_elven_bracer_arm_160(fg_buf, far_sh[0], far_sh[1], riser_grip[0], riser_grip[1], is_front=False, bend_sign=1.0)
-        draw_elven_bracer_arm_160(fg_buf, near_sh[0], near_sh[1], str_grip[0], str_grip[1], is_front=True, bend_sign=-1.0, highlight_draw=True)
+        far_sh = (hip_x + 6.5 + tx_off, hip_y - 16.0 + ty_off)
+        near_sh = (hip_x - 5.5 + tx_off, hip_y - 15.5 + ty_off)
+        draw_elven_bracer_arm_160(
+            fg_buf, far_sh[0], far_sh[1], riser_grip[0], riser_grip[1],
+            is_front=False, bend_sign=1.0, role="bow_grip", archer_draw_mode=True, aim_deg=aim_deg_cur,
+        )
+        draw_elven_bracer_arm_160(
+            fg_buf, near_sh[0], near_sh[1], str_grip[0], str_grip[1],
+            is_front=True, bend_sign=1.0, role="string_draw", archer_draw_mode=True, aim_deg=aim_deg_cur,
+        )
     else:
-        draw_elven_bracer_arm_160(fg_buf, l_sh[0], l_sh[1], str_grip[0], str_grip[1], is_front=False, bend_sign=1.0)
-        draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0)
+        draw_elven_bracer_arm_160(
+            fg_buf, l_sh[0], l_sh[1], str_grip[0], str_grip[1],
+            is_front=False, bend_sign=1.0, role="string_draw", aim_deg=aim_deg_cur,
+        )
+        draw_elven_bracer_arm_160(
+            fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1],
+            is_front=True, bend_sign=1.0, role="bow_grip", aim_deg=aim_deg_cur,
+        )
 
     # Drifting Yggdrasil starlight motes on active/victory frames
     if cfg.get("motes", False):
@@ -1112,22 +1324,23 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             max_star_x=cfg.get("max_star_x", 151),
         )
 
+        aim_deg_kp = cfg.get("aim_deg", 0.0)
         if kp_name == "K3_AIM":
-            # Native draw-hand is at cheek; IK front bow-arm holds riser!
+            # Native draw-hand is at cheek; IK front bow-arm holds riser with silver vambrace + sculpted hand!
             r_sh = (ax + 8.0, ay - 61.0)
-            draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0)
+            draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0, role="bow_grip", aim_deg=aim_deg_kp)
         elif kp_name == "K1_COIL":
             l_sh = (ax - 8.0, ay - 56.0)
             r_sh = (ax + 7.0, ay - 56.0)
-            draw_elven_bracer_arm_160(fg_buf, l_sh[0], l_sh[1], str_grip[0], str_grip[1], is_front=False, bend_sign=1.0)
-            draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0)
+            draw_elven_bracer_arm_160(fg_buf, l_sh[0], l_sh[1], str_grip[0], str_grip[1], is_front=False, bend_sign=1.0, role="string_draw", aim_deg=aim_deg_kp)
+            draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0, role="bow_grip", aim_deg=aim_deg_kp)
         elif kp_name == "K2_SNIPE":
             r_sh = (ax + 5.0, ay - 44.0)
-            draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0)
+            draw_elven_bracer_arm_160(fg_buf, r_sh[0], r_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=1.0, role="bow_grip", aim_deg=aim_deg_kp)
         elif kp_name == "K4_SOMERSAULT":
             # Inverted upside-down shoulder attaches cleanly to inverted bow grip!
             inv_sh = (ax + 12.0, ay - 36.0)
-            draw_elven_bracer_arm_160(fg_buf, inv_sh[0], inv_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=-1.0)
+            draw_elven_bracer_arm_160(fg_buf, inv_sh[0], inv_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=-1.0, role="bow_grip", aim_deg=aim_deg_kp)
 
     sigil = cfg.get("shot_sigil")
     if sigil:
@@ -1758,35 +1971,31 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
             cell.alpha_composite(Image.fromarray(fg, "RGBA"))
             frames.append(cell)
         elif f <= 24:
-            # F15..F24 (`10` frames): Unmistakable Winged Sovereign Power-Draw progression!
-            # Reaches forward to nock the luminous arrow -> smoothly pulls string back past her cheek with high elbow!
+            # F15..F24 (`10` frames): Clean poised Elven A-stance (no distorted hover_mode legs!) + full bow-pull at collarbone height!
             u = (f - 15) / 9.0
             ease = u * u * (3.0 - 2.0 * u)
             hover_bob = math.sin(u * math.pi * 0.85)
             frames.append(render_stand_rig_frame(rigs, {
-                "hover_mode": True,
                 "archer_draw_mode": True,
-                "fixed_arrow_len": 34.0,
-                "dx": 2.0 - 5.2 * ease,
-                "dy": -4.0 - 4.0 * hover_bob,
+                "fixed_arrow_len": 33.0,
+                "dx": 2.0 - 5.0 * ease,
+                "dy": -2.0 - 1.5 * hover_bob,
                 "wings": 0.80 + 0.30 * ease,
                 "phase": ph,
-                "torso_lean": 11.0 - 19.5 * ease,
-                "head_nod": 2.0 - 2.5 * ease,
-                "hair_wave": 11.0 + 8.5 * ease,
-                "skirt_wave": 10.0 + 7.5 * ease,
-                "l_hip_dx": -2.0,
-                "l_thigh_tgt": 16.0 + 11.0 * ease,
-                "l_shin_tgt": 26.0 + 8.0 * ease,
-                "r_hip_dx": 2.5,
-                "r_hip_dy": -1.5,
-                "r_thigh_tgt": -52.0 - 18.0 * ease,
-                "r_shin_tgt": 8.0 + 12.0 * ease,
-                "bow_dx": 15.0 + 5.0 * min(1.0, u * 1.35),
-                "bow_dy": -13.5 - 3.0 * ease,
-                "aim_deg": 6.0 * (1.0 - min(1.0, u * 1.4)),
-                "bow_h": 21.5 + 2.5 * ease,
-                "draw_pull": 0.06 + 1.44 * ease,
+                "torso_lean": 9.5 - 17.0 * ease,
+                "head_nod": 1.5 - 2.0 * ease,
+                "hair_wave": 9.5 + 7.5 * ease,
+                "skirt_wave": 8.5 + 6.5 * ease,
+                "stride_x": 0.8 + 2.2 * ease,
+                "l_hip": 3.0 + 4.5 * ease,
+                "l_knee": 1.5 + 2.5 * ease,
+                "r_hip": -3.0 - 5.5 * ease,
+                "r_knee": 1.5 + 2.5 * ease,
+                "bow_dx": 15.0 + 4.5 * min(1.0, u * 1.35),
+                "bow_dy": -11.0 - 1.2 * ease,
+                "aim_deg": 5.0 * (1.0 - min(1.0, u * 1.4)),
+                "bow_h": 21.5 + 2.0 * ease,
+                "draw_pull": 0.08 + 1.32 * ease,
                 "arrows": 1,
                 "charge": 0.95 + 0.55 * ease,
                 "charge_star": 0.35 + 1.05 * ease,
@@ -1794,67 +2003,64 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
                 "motes": True,
             }))
         elif f in (25, 26):
-            # F25..F26: Airborne Sovereign Overdraw Release (0 smears, crisp bowstring snap recoil!)
+            # F25..F26: Airborne Sovereign Overdraw Release (clean poised boots, crisp bowstring snap recoil!)
             p = f - 25
             frames.append(render_stand_rig_frame(rigs, {
-                "hover_mode": True,
                 "archer_draw_mode": True,
-                "dx": -3.8 + 1.4 * p,
-                "dy": -7.5 + 1.6 * p,
-                "wings": 1.08 - 0.06 * p,
+                "dx": -3.0 + 1.2 * p,
+                "dy": -2.5 + 1.0 * p,
+                "wings": 1.06 - 0.12 * p,
                 "phase": ph,
-                "torso_lean": -8.5 + 3.5 * p,
+                "torso_lean": -7.5 + 3.5 * p,
                 "head_nod": 0.5,
-                "hair_wave": 17.0 - 2.5 * p,
-                "skirt_wave": 15.0 - 2.0 * p,
-                "l_hip_dx": -2.0,
-                "l_thigh_tgt": 24.0 - 2.5 * p,
-                "l_shin_tgt": 32.0 - 2.5 * p,
-                "r_hip_dx": 2.5,
-                "r_hip_dy": -1.5,
-                "r_thigh_tgt": -68.0 + 6.0 * p,
-                "r_shin_tgt": 18.0 - 3.5 * p,
-                "bow_dx": 20.5,
-                "bow_dy": -16.0 + 1.0 * p,
+                "hair_wave": 15.5 - 2.5 * p,
+                "skirt_wave": 13.5 - 2.5 * p,
+                "stride_x": 2.6 - 0.6 * p,
+                "l_hip": 6.5 - 2.0 * p,
+                "l_knee": 3.0 - 1.0 * p,
+                "r_hip": -7.5 + 2.5 * p,
+                "r_knee": 3.0 - 1.0 * p,
+                "bow_dx": 19.5 - 0.5 * p,
+                "bow_dy": -12.0 + 0.5 * p,
                 "aim_deg": 0.0,
-                "bow_h": 24.0,
-                "draw_pull": -0.24 + 0.18 * p,
+                "bow_h": 23.5,
+                "draw_pull": -0.22 + 0.16 * p,
                 "arrows": 0,
-                "charge": 1.35 - 0.30 * p,
-                "charge_star": 0.85 - 0.45 * p,
+                "charge": 1.30 - 0.30 * p,
+                "charge_star": 0.80 - 0.40 * p,
                 "max_star_x": 126,
                 "motes": True,
             }))
         else:
-            # F27..F29: Winged Supernova descent & follow-through settle cleanly to ground
+            # F27..F29: Grounded Touchdown & Agile Cushion Settle (`lock_ground = True`, `botY = 230..231`)
             p = (f - 27) / 2.0
             frames.append(render_stand_rig_frame(rigs, {
-                "hover_mode": True,
-                "dx": -2.0 * (1.0 - p),
-                "dy": -4.5 * (1.0 - p),
-                "wings": 0.94 - 0.26 * p,
+                "archer_draw_mode": True,
+                "dx": -1.5 * (1.0 - p),
+                "dy": 0.0,
+                "sink": 2.4 * (1.0 - p),
+                "wings": 0.78 - 0.56 * p,
                 "phase": ph,
-                "torso_lean": 0.5 + 1.5 * p,
-                "head_nod": 0.3 * p,
-                "hair_wave": 11.5 - 7.5 * p,
-                "skirt_wave": 10.5 - 7.5 * p,
-                "l_hip_dx": -1.5 * (1.0 - p),
-                "l_thigh_tgt": 19.0 - 4.6 * p,
-                "l_shin_tgt": 26.0 - 12.8 * p,
-                "r_hip_dx": 1.5 * (1.0 - p),
-                "r_hip_dy": -1.0 * (1.0 - p),
-                "r_thigh_tgt": -54.0 + 32.2 * p,
-                "r_shin_tgt": 12.0 - 25.8 * p,
-                "bow_dx": 19.5 - 3.5 * p,
-                "bow_dy": -12.5 + 3.0 * p,
-                "aim_deg": 4.0 + 8.0 * p,
+                "torso_lean": 5.0 * (1.0 - p),
+                "head_nod": 1.5 * (1.0 - p),
+                "hair_wave": 10.0 * (1.0 - p),
+                "skirt_wave": 8.0 * (1.0 - p),
+                "stride_x": 2.4 * (1.0 - p),
+                "l_hip": 5.0 * (1.0 - p),
+                "l_knee": 3.5 * (1.0 - p),
+                "r_hip": -5.5 * (1.0 - p),
+                "r_knee": 3.5 * (1.0 - p),
+                "bow_dx": 18.5 - 2.5 * p,
+                "bow_dy": -12.0 + 2.0 * p,
+                "aim_deg": 5.0 + 7.0 * p,
                 "bow_h": 23.0 - 1.0 * p,
-                "draw_pull": 0.05 + 0.07 * p,
+                "draw_pull": 0.04 + 0.06 * p,
                 "arrows": 1 if f == 29 else 0,
-                "charge": 0.95 - 0.40 * p,
-                "charge_star": 0.45 * (1.0 - p),
-                "max_star_x": 128,
+                "charge": 0.85 - 0.45 * p,
+                "charge_star": 0.35 * (1.0 - p),
+                "max_star_x": 126,
                 "motes": True,
+                "lock_ground": True,
             }))
     return frames
 

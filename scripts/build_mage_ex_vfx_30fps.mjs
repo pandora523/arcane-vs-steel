@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * IGNIS SOL EX (`mage_ex` / `FireMageEx.js`) — Newly Born Next-Gen 30fps VFX Sprite Sheet Builder (`?v=30fps121`).
+ * IGNIS SOL EX (`mage_ex` / `FireMageEx.js`) — Newly Born Next-Gen 30fps VFX Sprite Sheet Builder (`?v=30fps122`).
  *
  * Outputs:
  *   1. `assets/sprites/mage_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208)
@@ -27,13 +27,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps121';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps122';
 
 import {
   SOLAR_CORONA_PALETTE,
   ECLIPSE_ABYSS_PALETTE,
   SOLAR_EFFECT_REGISTRY
-} from '../src/engine/shaders/solarShaders.js?v=30fps121';
+} from '../src/engine/shaders/solarShaders.js?v=30fps122';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
