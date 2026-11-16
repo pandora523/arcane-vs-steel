@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps123';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
+import { Fighter } from './Fighter.js?v=30fps124';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -1228,8 +1228,27 @@ export class Monster extends Fighter {
 
   draw(ctx, isReflection = false, renderer = null) {
     const assets = PixelForge.initAssets();
+    const charKey = this.heroId || this.kind;
+    if (charKey) PixelForge.ensureHeroLoaded?.(charKey);
     const charSet = assets[this.heroId] || assets[this.kind];
-    if (charSet && charSet.sheet && charSet.sheet.complete && charSet.sheet.naturalWidth > 0) {
+    const sheet = PixelForge.ensureImage(charSet?.sheet);
+    if (
+      !isReflection &&
+      ctx?.fillRect &&
+      charSet &&
+      sheet &&
+      (!sheet.complete || !sheet.naturalWidth) &&
+      typeof HTMLImageElement !== 'undefined' &&
+      sheet instanceof HTMLImageElement
+    ) {
+      ctx.save();
+      ctx.translate(Math.round(this.x), Math.round(this.y));
+      PixelForge._drawLoadingSilhouette?.(ctx, { heroId: charKey, team: 2 }, this.w || 72, this.h || 104);
+      ctx.restore();
+      if (!isReflection) this.drawOverheadPlate(ctx);
+      return;
+    }
+    if (charSet && sheet && sheet.complete && sheet.naturalWidth > 0) {
       const emergeU =
         this.portalSpawnTimer > 0
           ? 1 - this.portalSpawnTimer / Math.max(0.1, this.portalSpawnMax || 0.72)
@@ -2714,8 +2733,9 @@ export class ArchfiendBoss extends Monster {
   draw(ctx, isReflection = false, renderer = null) {
     if (isReflection || !ctx) return;
     const assets = PixelForge.initAssets();
+    PixelForge.ensureHeroLoaded?.('archfiend');
     const charSet = assets.archfiend;
-    const colossusImg = charSet?.colossus;
+    const colossusImg = PixelForge.ensureImage(charSet?.colossus);
 
     if (colossusImg && colossusImg.complete && colossusImg.naturalWidth > 0) {
       // Strict 9-arg 512x512 integer pixel blit helper (obeys Suite 17C/20D spy & zero ctx.rotate!)

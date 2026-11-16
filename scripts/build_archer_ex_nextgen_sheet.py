@@ -30,6 +30,9 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks
+
 ROOT = Path(__file__).resolve().parents[1]
 SPRITES_DIR = ROOT / "assets" / "sprites"
 
@@ -200,7 +203,7 @@ def remove_white_bg_512(
         255, (rgba[bright_edge, 1].astype(np.int32) * 38 // 100) + 14
     ).astype(np.uint8)
     rgba[bright_edge, 2] = (rgba[bright_edge, 2].astype(np.int32) * 28 // 100).astype(np.uint8)
-    return rgba
+    return clean_512_pose_holes_and_specks(rgba, max_hole_area=200, min_island_area=36)
 
 
 def poly_mask(w: int, h: int, pts: list[tuple[int, int]]) -> np.ndarray:
@@ -1249,18 +1252,29 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
             is_front=True, bend_sign=1.0, role="bow_grip", aim_deg=aim_deg_cur,
         )
 
-    # Drifting Yggdrasil starlight motes on active/victory frames
+    canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    arr_c = seal_160_char_pinholes_and_leaks(
+        np.array(canvas, dtype=np.uint8),
+        max_pinhole_lpx=5,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=3.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
+
+    # Drifting Yggdrasil starlight motes on active/victory frames (2x2 so zero 1px specks)
     if cfg.get("motes", False):
         ph = cfg.get("phase", 0.0)
         max_mx = cfg.get("max_star_x", 151)
         for k in range(3):
-            mx = min(max_mx, int(round(ax - 12 + math.cos(ph + k * 2.1) * 16 + k * 8)))
+            mx = min(max_mx - 1, int(round(ax - 12 + math.cos(ph + k * 2.1) * 16 + k * 8)))
             my = int(round(ay - 44 + math.sin(ph * 1.3 + k * 1.7) * 18))
-            set_px(fg_buf, mx, my, C_GOLD_LIGHT if k % 2 == 0 else C_EMERALD_BRIGHT)
+            col_m = C_GOLD_LIGHT if k % 2 == 0 else C_EMERALD_BRIGHT
+            for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                set_px(arr_c, mx + ox, my + oy, col_m)
 
-    canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
     if cfg.get("lock_ground", False):
-        arr_c = np.array(canvas, dtype=np.uint8)
         ys_c, _ = np.where(arr_c[:, :, 3] > 0)
         if len(ys_c) > 0:
             cur_bot = int(ys_c.max())
@@ -1274,10 +1288,9 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
                 arr_c = shifted
         return Image.fromarray(arr_c, "RGBA")
     if cfg.get("clamp_ground", False):
-        arr_c = np.array(canvas, dtype=np.uint8)
         arr_c[ANCHOR_Y_120 + 1 :, :, :] = 0
         return Image.fromarray(arr_c, "RGBA")
-    return canvas
+    return Image.fromarray(arr_c, "RGBA")
 
 
 def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
@@ -1342,10 +1355,21 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             inv_sh = (ax + 12.0, ay - 36.0)
             draw_elven_bracer_arm_160(fg_buf, inv_sh[0], inv_sh[1], riser_grip[0], riser_grip[1], is_front=True, bend_sign=-1.0, role="bow_grip", aim_deg=aim_deg_kp)
 
+    canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    arr_c = seal_160_char_pinholes_and_leaks(
+        np.array(canvas, dtype=np.uint8),
+        max_pinhole_lpx=5,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=3.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
+
     sigil = cfg.get("shot_sigil")
     if sigil:
         draw_yggdrasil_shot_sigil_160(
-            fg_buf,
+            arr_c,
             origin_x=sigil["origin_x"],
             origin_y=sigil["origin_y"],
             variant=sigil.get("variant", 0),
@@ -1357,20 +1381,22 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
         for s_i in range(4):
             sx = int(round(ax + 10.0 + math.cos(ph * 1.4 + s_i * 1.6) * 5.0))
             sy = int(round(ay - 4.0 - abs(math.sin(ph + s_i * 1.3)) * 5.0))
-            set_px(fg_buf, sx, sy, C_GOLD_LIGHT if s_i % 2 == 0 else C_EMERALD_BRIGHT)
+            col_s = C_GOLD_LIGHT if s_i % 2 == 0 else C_EMERALD_BRIGHT
+            for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                set_px(arr_c, sx + ox, sy + oy, col_s)
 
-    # Living Yggdrasil emerald/gold star-leaf motes so every 30fps frame breathes organically
+    # Living Yggdrasil emerald/gold star-leaf motes (2x2 so zero 1px specks)
     if cfg.get("motes", True):
         ph = cfg.get("phase", 0.0)
         max_mx = cfg.get("max_star_x", 151)
         for k in range(3):
-            mx = min(max_mx, int(round(ax - 14.0 + math.cos(ph * 1.25 + k * 2.1) * 18.0 + k * 9.0)))
+            mx = min(max_mx - 1, int(round(ax - 14.0 + math.cos(ph * 1.25 + k * 2.1) * 18.0 + k * 9.0)))
             my = int(round(ay - 36.0 + math.sin(ph * 1.5 + k * 1.9) * 16.0))
-            set_px(fg_buf, mx, my, C_GOLD_LIGHT if (k + int(ph * 4)) % 2 == 0 else C_EMERALD_BRIGHT)
+            col_m = C_GOLD_LIGHT if (k + int(ph * 4)) % 2 == 0 else C_EMERALD_BRIGHT
+            for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                set_px(arr_c, mx + ox, my + oy, col_m)
 
-    canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
     if cfg.get("lock_ground", False):
-        arr_c = np.array(canvas, dtype=np.uint8)
         ys_c, _ = np.where(arr_c[:, :, 3] > 0)
         if len(ys_c) > 0:
             cur_bot = int(ys_c.max())
@@ -1384,10 +1410,9 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
                 arr_c = shifted
         return Image.fromarray(arr_c, "RGBA")
     if cfg.get("clamp_ground", False):
-        arr_c = np.array(canvas, dtype=np.uint8)
         arr_c[ANCHOR_Y_120 + 1 :, :, :] = 0
         return Image.fromarray(arr_c, "RGBA")
-    return canvas
+    return Image.fromarray(arr_c, "RGBA")
 
 
 # ==============================================================================
@@ -2100,35 +2125,57 @@ def build_row5_hurt_death(rigs: dict) -> list[Image.Image]:
             }))
         else:
             p = (f - 16) / 13.0
-            # Smooth collapse onto floor, shifted +18px rightward so head stays >= x_320=36 (0 left-edge cut!)
-            ang = -66.0 - 23.0 * min(1.0, p * 1.45)  # Reaches -89.0 deg flat prone by F22!
-            canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
+            # Clockwise (+deg) collapse onto floor: head/shoulders forward +X, legs horizontal -X!
+            ang = 58.0 + 28.0 * min(1.0, p * 1.45)
+            body_c = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
             paste_keypose_160(
-                canvas,
+                body_c,
                 rigs["K1_COIL"],
-                ANCHOR_X_160 + 38.0 + 1.0 * math.sin(p * math.pi),
-                ANCHOR_Y_120 - 15.0,
+                ANCHOR_X_160 + 4.0 + p * 2.0,
+                ANCHOR_Y_120 - 10.0,
                 angle_deg=ang,
-                sx=0.74,
-                sy=0.86,
+                sx=0.66,
+                sy=0.68,
             )
+            arr_c = np.array(body_c, dtype=np.uint8)
+            ys_p, _ = np.where(arr_c[:, :, 3] > 0)
+            if len(ys_p) > 0:
+                dy_g = (ANCHOR_Y_120 - 1) - int(ys_p.max())
+                if dy_g != 0:
+                    sh = np.zeros_like(arr_c)
+                    for yy in range(LOG_H):
+                        ny = yy + dy_g
+                        if MARGIN_160 <= ny < LOG_H - MARGIN_160:
+                            sh[ny] = arr_c[yy]
+                    arr_c = sh
             fg_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
             draw_yggdrasil_greatbow_160(
                 fg_buf,
-                riser_x=ANCHOR_X_160 + 30.0 + p * 0.8,
-                riser_y=ANCHOR_Y_120 - 9.0,
-                aim_deg=92.0,
-                bow_half_h=15.0,
+                riser_x=ANCHOR_X_160 + 24.0 + p * 0.8,
+                riser_y=ANCHOR_Y_120 - 5.0,
+                aim_deg=88.0,
+                bow_half_h=12.0,
                 draw_pull=0.0,
                 arrow_count=0,
                 astral_charge=0.10,
             )
-            ex = int(round(ANCHOR_X_160 + 8.0 + (f - 16) * 2.0))
-            ey = int(round(ANCHOR_Y_120 - 18.0 - (f - 16) * 0.6))
-            set_px(fg_buf, ex, ey, C_EMERALD_MID if f < 24 else C_FOREST_DARK)
+            canvas = Image.fromarray(arr_c, "RGBA")
             canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
-            arr_c = np.array(canvas, dtype=np.uint8)
+            arr_c = seal_160_char_pinholes_and_leaks(
+                np.array(canvas, dtype=np.uint8),
+                max_pinhole_lpx=6,
+                min_detached_lpx=4,
+                max_orphan_lpx=20,
+                orphan_dist_lpx=4.0,
+                bridge_max_lpx=56,
+                bridge_gap_lpx=2.5,
+            )
             arr_c[ANCHOR_Y_120 :, :, :] = 0
+            ex = int(round(ANCHOR_X_160 + 8.0 + (f - 16) * 2.0))
+            ey = int(round(ANCHOR_Y_120 - 14.0 - (f - 16) * 0.4))
+            col_e = C_EMERALD_MID if f < 24 else C_FOREST_DARK
+            for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                set_px(arr_c, ex + ox, ey + oy, col_e)
             frames.append(Image.fromarray(arr_c, "RGBA"))
     return frames
 

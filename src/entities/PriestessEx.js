@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps123';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
-import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps123';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps123';
+import { Fighter } from './Fighter.js?v=30fps124';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps124';
+import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps124';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps124';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Grounded Rose-Window Magic Circle + Sanctum Light-Ray -> snaps at F03 (63)
@@ -1914,21 +1914,25 @@ export class PriestessEx extends Fighter {
     if (!assets.priestess_ex) {
       const mkImg = (src) => {
         const img = new Image();
+        img._origSrc = src;
         img.src = src;
         return img;
       };
       assets.priestess_ex = {
-        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps123'),
-        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps123'),
-        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps123'),
-        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps123'),
+        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps124'),
+        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps124'),
+        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps124'),
+        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps124'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
         anchorY: 230
       };
-    } else if (!assets.priestess_ex.wings && assets.priestess?.wings) {
-      assets.priestess_ex.wings = assets.priestess.wings;
+    } else {
+      PixelForge.ensureHeroLoaded?.('priestess_ex');
+      if (!assets.priestess_ex.wings && assets.priestess?.wings) {
+        assets.priestess_ex.wings = assets.priestess.wings;
+      }
     }
     return assets.priestess_ex;
   }

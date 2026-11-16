@@ -33,6 +33,9 @@ import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks, filter_mask_min_area, _fill_enclosed_holes_rgba
+
 try:
     from scipy.ndimage import label as _nd_label
 except ImportError:
@@ -312,7 +315,8 @@ def clean_pose_512(im_rgba_512, pocket_seeds=(), strip_polys=(), head_y_split=15
     vivid_soul = alpha & ((r0 - g0) > 45) & (r0 > 165) & (b0 > 130)
     arr[:, :, :3] = np.where(alpha[:, :, None], np.where(vivid_soul[:, :, None], arr[:, :, :3], cel_rgb), 0)
     arr[alpha, 3] = 255
-    return fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    filled = fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    return clean_512_pose_holes_and_specks(filled, max_hole_area=200, min_island_area=36)
 
 
 def downsample_clean_160x120(win_hi):
@@ -464,7 +468,10 @@ def assign_remaining_geodesic(alpha, mask_list):
     labels = np.zeros((H, W), dtype=np.int16)
     names = [nm for nm, _ in mask_list]
     for idx, (nm, m) in enumerate(mask_list, start=1):
-        mc = m if nm in ("l_coat", "r_coat", "torso") else keep_largest_component(m)
+        if nm in ("l_coat", "r_coat", "torso"):
+            mc = filter_mask_min_area(m & alpha, min_area=40)
+        else:
+            mc = keep_largest_component(m)
         mc = mc & alpha & (labels == 0)
         labels[mc] = idx
 
@@ -805,10 +812,7 @@ def draw_reaper_shroud_ribbons_160(
         put_px_160(arr, pts[-1][0] + ux, pts[-1][1] + uy, C_OUT_DARK)
 
         for px, py, t in pts:
-            # Tattered soul-fringe notches near tail
-            if t > 0.84 and int(t * 24 + idx * 3) % 3 == 0:
-                continue
-            half_w = (2.0 if idx == 0 else 1.6) * (1.0 - 0.52 * t)
+            half_w = (2.0 if idx == 0 else 1.6) * (1.0 - 0.50 * t)
             is_crimson_tail = (t > 0.72)
             for k_step in range(-3, 4):
                 k = k_step * 0.55
@@ -1378,15 +1382,15 @@ def render_keypose_frame_160(
                     shifted[ny] = body_160[y]
             body_160 = shifted
 
-    frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
+    fx_behind = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_hi[0] / S_HI, neck_hi[1] / S_HI + shift_y_160)
     grip_160 = (grip_hi[0] / S_HI, grip_hi[1] / S_HI + shift_y_160)
 
     if pre_fn is not None:
-        pre_fn(frame, neck_160, grip_160)
+        pre_fn(fx_behind, neck_160, grip_160)
 
     draw_reaper_shroud_ribbons_160(
-        frame,
+        fx_behind,
         neck_160[0] - 2.0,
         neck_160[1] + 2.0,
         base_deg=shroud_deg,
@@ -1395,20 +1399,35 @@ def render_keypose_frame_160(
         wave_amp=shroud_amp,
     )
 
+    char_160 = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     if weapon_layer == "behind":
         draw_thanatos_great_scythe_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, fang_side=fang_side, rune_phase=rune_phase, draw_gauntlets=False,
         )
 
     mask_b = body_160[:, :, 3] > 128
-    frame[mask_b] = body_160[mask_b]
+    char_160[mask_b] = body_160[mask_b]
 
     if weapon_layer != "behind":
         draw_thanatos_great_scythe_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, fang_side=fang_side, rune_phase=rune_phase, draw_gauntlets=True,
         )
+
+    char_160 = seal_160_char_pinholes_and_leaks(
+        char_160,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=20,
+        orphan_dist_lpx=3.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
+    frame = fx_behind
+    mask_c = char_160[:, :, 3] > 128
+    frame[mask_c] = char_160[mask_c]
+    frame = _fill_enclosed_holes_rgba(frame, max_hole_area=6, safe_border=2)
 
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
@@ -1758,6 +1777,7 @@ def render_stand_rig_frame_160(
     if heavy_greaves:
         _draw_parting_necro_coat_hi(win_hi, dst_pelvis, l_thigh_deg, r_thigh_deg, coat_wave_ph)
 
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] - 8.0, dst_pelvis[1] + 5.0), l_coat_dst, r=5)
     paste_rotated_part(
         win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
         deg=torso_deg + l_coat_deg, squash_x=coat_squash_x, squash_y=coat_squash_y,
@@ -1765,6 +1785,7 @@ def render_stand_rig_frame_160(
     )
     paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
+    draw_joint_bridge_hi(win_hi, dst_pelvis, l_hip_dst, r=max(6, r_hip_br))
     draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=r_knee_br)
     if heavy_greaves:
@@ -1773,11 +1794,13 @@ def render_stand_rig_frame_160(
     paste_rotated_part(win_hi, l_shin_part, sj["l_knee"], l_knee_dst, deg=l_sh_rot)
     paste_rotated_part(win_hi, l_foot_part, l_ankle_pivot, l_ank_dst, deg=l_ft_rot)
 
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] + 8.0, dst_pelvis[1] + 5.0), r_coat_dst, r=5)
     paste_rotated_part(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
         deg=torso_deg + r_coat_deg, squash_x=coat_squash_x, squash_y=coat_squash_y,
         wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
     )
+    draw_joint_bridge_hi(win_hi, dst_pelvis, r_hip_dst, r=max(6, r_hip_br))
     draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=r_knee_br)
     if heavy_greaves:
@@ -1817,16 +1840,16 @@ def render_stand_rig_frame_160(
                 body_160[ANCHOR_Y_120, take] = body_160[y, take]
                 body_160[y, :, :] = 0
 
-    frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
+    fx_behind = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_dst[0] / S_HI, neck_dst[1] / S_HI + shift_y_160)
     grip_160 = (grip_hi[0] / S_HI, grip_hi[1] / S_HI + shift_y_160)
 
     if pre_fn is not None:
-        pre_fn(frame, neck_160, grip_160)
+        pre_fn(fx_behind, neck_160, grip_160)
 
     if shroud_len > 1.0:
         draw_reaper_shroud_ribbons_160(
-            frame,
+            fx_behind,
             neck_160[0] - 2.0,
             neck_160[1] + 2.0,
             base_deg=shroud_deg,
@@ -1835,20 +1858,35 @@ def render_stand_rig_frame_160(
             wave_amp=shroud_amp,
         )
 
+    char_160 = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     if weapon_layer == "behind":
         draw_thanatos_great_scythe_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, fang_side=fang_side, rune_phase=rune_phase, draw_gauntlets=False,
         )
 
     mask_b = body_160[:, :, 3] > 128
-    frame[mask_b] = body_160[mask_b]
+    char_160[mask_b] = body_160[mask_b]
 
     if weapon_layer == "front":
         draw_thanatos_great_scythe_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, fang_side=fang_side, rune_phase=rune_phase, draw_gauntlets=True,
         )
+
+    char_160 = seal_160_char_pinholes_and_leaks(
+        char_160,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=20,
+        orphan_dist_lpx=3.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
+    frame = fx_behind
+    mask_c = char_160[:, :, 3] > 128
+    frame[mask_c] = char_160[mask_c]
+    frame = _fill_enclosed_holes_rgba(frame, max_hole_area=6, safe_border=2)
 
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
@@ -1869,12 +1907,13 @@ def build_row0_idle(parts, sj):
         torso_deg = math.sin(ph - 0.4) * 1.5
 
         def post_idle(arr, neck, _g, step=f, p=ph):
-            # Subtle floating Ferryman Soul-Motes behind horned hood
+            # Subtle floating 2x2 Ferryman Soul-Motes behind horned hood (zero 1-2px specks)
             for m in range(2):
                 mx = neck[0] - 12.0 - m * 8.0 + math.sin(p + m * 2.3) * 2.2
                 my = neck[1] - 4.0 + m * 11.0 + math.cos(p * 2.0 + m) * 2.0
-                put_px_160(arr, mx, my, C_SOUL_WHITE if (step + m) % 3 == 0 else C_ORCHID_BRIGHT)
-                put_px_160(arr, mx - 1, my, C_CRIMSON_EDGE)
+                c_m = C_SOUL_WHITE if (step + m) % 3 == 0 else C_ORCHID_BRIGHT
+                for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                    put_px_160(arr, mx + ox, my + oy, c_m if (ox == 0 and oy == 0) else C_CRIMSON_EDGE)
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
@@ -2575,40 +2614,56 @@ def build_row5_death(parts, sj):
             s_deg = 156.0 + u * 14.0
         elif f < 22:
             u = (f - 14) / 7.0
-            pdx = -7.5 + u * 8.5
+            pdx = -4.0 + u * 18.0
             pdy = 20.0 + u * 14.0
-            tdeg = 32.0 + u * 55.0
+            tdeg = 32.0 + u * 54.5
             hdeg = 14.0 - u * 10.0
-            l_th, l_sh = -32.0 * (1.0 - 0.75 * u), 56.0 * (1.0 - 0.75 * u)
-            r_th, r_sh = -26.0 * (1.0 - 0.75 * u), 52.0 * (1.0 - 0.75 * u)
-            wdeg = 18.0 * (1.0 - u) + 1.0 * u
+            l_th = -24.0 * (1.0 - u) + 82.0 * u
+            l_sh = 48.0 * (1.0 - u) + 10.0 * u
+            r_th = -18.0 * (1.0 - u) + 85.0 * u
+            r_sh = 44.0 * (1.0 - u) + 6.0 * u
+            h_in = 0.72 * u
+            c_in = 0.65 * u
+            lc_deg, rc_deg = 2.0, 4.0
+            wdeg = 18.0 * (1.0 - u) + 1.5 * u
             gr = (12.0, 11.0)
-            w_abs = (74.0 + u * 10.0, 104.0 + u * 6.0)
+            w_abs = (76.0 + u * 8.0, 108.0 + u * 2.0)
             s_len = 20.0 * (1.0 - 0.6 * u)
             s_deg = 174.0
         else:
             u = (f - 22) / 7.0
-            pdx = 1.0
+            pdx = 14.0
             pdy = 34.0
-            tdeg = 87.5 + math.sin(u * math.pi) * 0.8
+            tdeg = 86.5 + math.sin(u * math.pi) * 0.6
             hdeg = 4.0
-            l_th, l_sh = -7.0, 12.0
-            r_th, r_sh = -5.0, 10.0
+            l_th, l_sh = 82.0, 10.0
+            r_th, r_sh = 85.0, 6.0
+            h_in = 0.72
+            c_in = 0.65
+            lc_deg, rc_deg = 2.0, 4.0
             wdeg = 1.0
             gr = (12.0, 11.0)
             w_abs = (84.0, 110.0)
             s_len = 9.0
             s_deg = 178.0 - u * 4.0
 
+        if f < 14:
+            h_in = 0.0
+            c_in = 0.25
+            lc_deg = max(-20.0, -tdeg * 0.25)
+            rc_deg = max(-16.0, -tdeg * 0.20)
+
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=pdx, pelvis_dy=pdy,
             torso_deg=tdeg, head_deg=hdeg,
-            l_coat_deg=max(-25.0, -tdeg * 0.35), r_coat_deg=max(-20.0, -tdeg * 0.25),
-            coat_wave_ph=f * 0.45, coat_wave_amp=5.0,
+            l_coat_deg=lc_deg, r_coat_deg=rc_deg,
+            coat_wave_ph=f * 0.45, coat_wave_amp=3.2 if f >= 14 else 5.0,
+            coat_x_inward_frac=c_in,
             l_thigh_deg=l_th, l_shin_deg=l_sh, l_foot_deg=0.0,
             r_thigh_deg=r_th, r_shin_deg=r_sh, r_foot_deg=0.0,
-            grip_rel_sh=gr, weapon_deg=wdeg, shaft_len=38.0, fang_side=-1.0 if f >= 14 else 1.0,
+            hip_inward_frac=h_in,
+            grip_rel_sh=gr, weapon_deg=wdeg, shaft_len=36.0, fang_side=-1.0 if f >= 14 else 1.0,
             weapon_layer="front", weapon_abs_160=w_abs,
             shroud_deg=s_deg, shroud_len=s_len, shroud_phase=f * 0.65, shroud_amp=2.4,
             rune_phase=f * 0.7,

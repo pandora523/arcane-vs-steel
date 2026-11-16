@@ -29,6 +29,10 @@ import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks, filter_mask_min_area, _fill_enclosed_holes_rgba
+
 try:
     from scipy.ndimage import label as _nd_label
 except ImportError:
@@ -296,7 +300,8 @@ def clean_pose_512(im_rgba_512, pocket_seeds=(), strip_polys=(), paint_sapphire_
     vivid_gem = alpha & (((b0 - r0) > 45) & (g0 > 150) | ((r0 > 140) & (b0 > 180) & (r0 - g0 > 35)))
     arr[:, :, :3] = np.where(alpha[:, :, None], np.where(vivid_gem[:, :, None], arr[:, :, :3], cel_rgb), 0)
     arr[alpha, 3] = 255
-    return fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    filled = fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    return clean_512_pose_holes_and_specks(filled, max_hole_area=200, min_island_area=36)
 
 
 def downsample_clean_160x120(win_hi):
@@ -458,7 +463,10 @@ def assign_remaining_geodesic(alpha, mask_list):
     labels = np.zeros((H, W), dtype=np.int16)
     names = [nm for nm, _ in mask_list]
     for idx, (nm, m) in enumerate(mask_list, start=1):
-        mc = m if nm in ("mane", "l_coat", "r_coat") else keep_largest_component(m)
+        if nm in ("mane", "l_coat", "r_coat"):
+            mc = filter_mask_min_area(m & alpha, min_area=40)
+        else:
+            mc = keep_largest_component(m)
         mc = mc & alpha & (labels == 0)
         labels[mc] = idx
 
@@ -876,24 +884,27 @@ def draw_borealis_crown_halo_160(arr, neck_x, neck_y, phase=0.0, scale=1.0):
     cx = neck_x - 3.5
     cy = max(14.0, neck_y - 12.5 + math.sin(phase) * 0.9)
     r_ring = 9.5 * scale
-    # Subtle crystalline ring
-    for i in range(24):
-        ang = (i / 24.0) * 2.0 * math.pi + phase * 0.25
+    # Continuous 8-connected crystalline crown ring behind hair/tiara (zero 1px floating specks!)
+    for i in range(96):
+        ang = (i / 96.0) * 2.0 * math.pi + phase * 0.25
         rx = cx + math.cos(ang) * r_ring
         ry = cy + math.sin(ang) * (r_ring * 0.82)
-        if i % 2 == 0:
-            put_px_160(arr, rx, ry, C_CRYO_SKY if i % 4 == 0 else C_AURORA_VIOLET)
+        put_px_160(arr, rx + math.cos(ang) * 0.9, ry + math.sin(ang) * 0.9, C_OUT_LIT)
+        put_px_160(arr, rx, ry, C_CRYO_SKY if (i // 4) % 2 == 0 else C_AURORA_VIOLET)
 
-    # 6 Snowflake Crystal Spokes
+    # 6 Snowflake Crystal Spokes anchored cleanly into the ring
     for k in range(6):
         ang = (k / 6.0) * 2.0 * math.pi + phase * 0.25
         ux, uy = math.cos(ang), math.sin(ang) * 0.85
         tip_r = (13.2 if k % 2 == 0 else 10.8) * scale
-        tx = cx + ux * tip_r
-        ty = cy + uy * tip_r
-        put_px_160(arr, tx + ux * 0.9, ty + uy * 0.9, C_OUT_LIT)
-        put_px_160(arr, tx, ty, C_PURE_WHITE if k % 2 == 0 else C_AURORA_ORCHID)
-        put_px_160(arr, cx + ux * (tip_r - 1.6), cy + uy * (tip_r - 1.6), C_CRYO_AQUA)
+        n_steps = int(round((tip_r - r_ring * 0.72) * 3.0)) + 1
+        for si in range(n_steps + 1):
+            rr = r_ring * 0.72 + (tip_r - r_ring * 0.72) * (si / max(1, n_steps))
+            sx = cx + ux * rr
+            sy = cy + uy * rr
+            put_px_160(arr, sx + ux * 0.8, sy + uy * 0.8, C_OUT_LIT)
+            col = C_PURE_WHITE if (k % 2 == 0 and si >= n_steps - 2) else (C_CRYO_AQUA if si % 2 == 0 else C_AURORA_ORCHID)
+            put_px_160(arr, sx, sy, col)
 
 
 def draw_aurora_veil_ribbons_160(
@@ -986,7 +997,7 @@ def draw_borealis_frost_glaive_160(
     finial_cy = grip_y + uy * max_fwd
 
     # --- Pass 1: Spiraled Sapphire-Silver Scepter Shaft (1px Selout -> Core) ---
-    steps = int((collar_dist - butt_dist) * 3.0) + 1
+    steps = int((collar_dist - butt_dist) * 4.5) + 1
     for i in range(steps + 1):
         d = butt_dist + (collar_dist - butt_dist) * (i / max(1, steps))
         cx = grip_x + ux * d
@@ -1001,13 +1012,13 @@ def draw_borealis_frost_glaive_160(
         cx = grip_x + ux * d
         cy = grip_y + uy * d
         spiral = int(abs((d - butt_dist) * 1.45)) % 4
-        for k in (-0.85, -0.25, 0.25, 0.85):
+        for k in (-1.0, -0.5, 0.0, 0.5, 1.0):
             if spiral == 0:
-                col = C_SILVER_LIT if k > 0 else C_SILVER_MID
+                col = C_SILVER_LIT if k >= 0 else C_SILVER_MID
             elif spiral == 2:
-                col = C_CRYO_AQUA if k > 0 else C_CRYO_TEAL
+                col = C_CRYO_AQUA if k >= 0 else C_CRYO_TEAL
             else:
-                col = C_SAPPH_LIT if k > 0 else C_SAPPH_DEEP
+                col = C_SAPPH_LIT if k >= 0 else C_SAPPH_DEEP
             put_px_160(arr, cx + nx * k, cy + ny * k, col)
 
     # --- Pass 2: Swept Aurora-Orchid & Cryo-Cyan Cradle Wings ---
@@ -1015,14 +1026,14 @@ def draw_borealis_frost_glaive_160(
     gy = grip_y + uy * collar_dist
     wing_span = 5.8
     for s_sign in (-1.0, 1.0):
-        for w_step in range(0, 13):
-            wt = w_step / 12.0
-            lat = s_sign * (1.2 + wt * wing_span)
+        for w_step in range(0, 21):
+            wt = w_step / 20.0
+            lat = s_sign * (1.0 + wt * wing_span)
             fwd = (wt ** 1.3) * 4.2 - 0.6
             wx = gx + nx * lat + ux * fwd
             wy = gy + ny * lat + uy * fwd
-            put_px_160(arr, wx - ux * 1.0, wy - uy * 1.0, C_OUT_DARK)
-            put_px_160(arr, wx + ux * 1.0, wy + uy * 1.0, C_OUT_LIT)
+            put_px_160(arr, wx - ux * 0.9, wy - uy * 0.9, C_OUT_DARK)
+            put_px_160(arr, wx + ux * 0.9, wy + uy * 0.9, C_OUT_LIT)
             put_px_160(arr, wx, wy, C_PURE_WHITE if wt > 0.74 else (C_CRYO_AQUA if s_sign > 0 else C_AURORA_ORCHID))
 
     # --- Pass 3: Ornate 6-Point Diamond-Snowflake Finial (Selout Pass -> Crystal Pass) ---
@@ -1540,11 +1551,10 @@ def draw_ice_sparks_160(arr, impact_x, ground_y, spread=22.0, progress=0.0, coun
         ang = math.radians(-90.0 + frac * 68.0)
         dist = (4.0 + progress * spread) * (0.65 + 0.35 * ((i * 37) % 5) / 4.0)
         sx = impact_x + math.cos(ang) * dist
-        sy = min(ground_y, ground_y + math.sin(ang) * dist * 0.55)
+        sy = min(ground_y - 1.0, ground_y + math.sin(ang) * dist * 0.55)
         col = C_PURE_WHITE if progress < 0.35 else (C_CRYO_AQUA if i % 2 == 0 else C_AURORA_ORCHID)
-        put_px_160(arr, sx, sy, col)
-        if progress < 0.65:
-            put_px_160(arr, sx - math.cos(ang) * 1.5, min(ground_y, sy - math.sin(ang) * 1.0), C_CRYO_SKY)
+        for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+            put_px_160(arr, sx + ox, sy + oy, col if (ox == 0 and oy == 0) else C_CRYO_SKY)
 
 
 # ==============================================================================
@@ -1659,6 +1669,16 @@ def render_keypose_frame_160(
             frame, grip_160[0], grip_160[1], weapon_deg, glaive_len=glaive_len, rune_phase=rune_phase, draw_gauntlets=True
         )
 
+    frame = seal_160_char_pinholes_and_leaks(
+        frame,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.0,
+        bridge_max_lpx=56,
+        bridge_gap_lpx=2.5,
+    )
+
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
 
@@ -1679,12 +1699,14 @@ def render_stand_rig_frame_160(
     r_coat_deg=0.0,
     coat_wave_ph=0.0,
     coat_wave_amp=7.0,
+    coat_x_inward_frac=0.0,
     l_thigh_deg=0.0,
     l_shin_deg=0.0,
     l_foot_deg=0.0,
     r_thigh_deg=0.0,
     r_shin_deg=0.0,
     r_foot_deg=0.0,
+    hip_inward_frac=0.0,
     walk_mode=False,
     l_hip_dx=0.0,
     l_hip_dy=0.0,
@@ -1724,8 +1746,16 @@ def render_stand_rig_frame_160(
     neck_dst = map_torso_pt(sj["neck"])
     l_sh_dst = map_torso_pt(sj["l_sh"])
     r_sh_dst = map_torso_pt(sj["r_sh"])
-    l_coat_dst = map_torso_pt(sj["l_coat"])
-    r_coat_dst = map_torso_pt(sj["r_coat"])
+    l_coat_raw = map_torso_pt(sj["l_coat"])
+    r_coat_raw = map_torso_pt(sj["r_coat"])
+    l_coat_dst = (
+        l_coat_raw[0] + (dst_pelvis[0] - l_coat_raw[0]) * coat_x_inward_frac,
+        l_coat_raw[1],
+    )
+    r_coat_dst = (
+        r_coat_raw[0] + (dst_pelvis[0] - r_coat_raw[0]) * coat_x_inward_frac,
+        r_coat_raw[1],
+    )
     if walk_mode:
         inward_frac = 0.98
         base_lh = map_torso_pt(sj["l_hip"])
@@ -1739,8 +1769,16 @@ def render_stand_rig_frame_160(
             base_rh[1] + r_hip_dy * S_HI,
         )
     else:
-        l_hip_dst = map_torso_pt(sj["l_hip"])
-        r_hip_dst = map_torso_pt(sj["r_hip"])
+        base_lh = map_torso_pt(sj["l_hip"])
+        base_rh = map_torso_pt(sj["r_hip"])
+        l_hip_dst = (
+            dst_pelvis[0] + (base_lh[0] - dst_pelvis[0]) * (1.0 - hip_inward_frac),
+            base_lh[1],
+        )
+        r_hip_dst = (
+            dst_pelvis[0] + (base_rh[0] - dst_pelvis[0]) * (1.0 - hip_inward_frac),
+            base_rh[1],
+        )
 
     mane_rel = (neck_dst[0] + (sj["mane"][0] - sj["neck"][0]), neck_dst[1] + (sj["mane"][1] - sj["neck"][1]))
     mane_dst = rot_pt(mane_rel, neck_dst, torso_deg + head_deg)
@@ -1859,12 +1897,16 @@ def render_stand_rig_frame_160(
             ay_p = (py_c + 118.0) * (1.0 - arch_lift ** 1.15) + (py_c + 74.0) * (arch_lift ** 1.15)
             arch_pts.append((ax_p, ay_p))
         lining_poly = [(px_c - 44.0, py_c + 10.0), (px_c + 46.0, py_c + 10.0)] + list(reversed(arch_pts))
-        dr_hi.polygon(lining_poly, fill=(32, 168, 204, 255), outline=(10, 14, 30, 255), width=4)
+        dr_hi.polygon(lining_poly, fill=(142, 206, 242, 255), outline=(28, 62, 152, 255), width=2)
         inner_shadow = [(px_c - 32.0, py_c + 10.0), (px_c + 34.0, py_c + 10.0)] + list(reversed(arch_pts[2:-2]))
-        dr_hi.polygon(inner_shadow, fill=(14, 98, 134, 255))
+        dr_hi.polygon(inner_shadow, fill=(78, 158, 224, 255))
 
         # 2. Rear/left coat flap folding inward gracefully on passing
         l_coat_walk_deg = -26.0 * (1.0 - stride_open) - 5.0 * stride_open + s_wave * 0.45
+        dr_hi.polygon(
+            [(px_c - 38.0, py_c - 6.0), (px_c - 8.0, py_c - 2.0), (px_c - 10.0, py_c + 24.0), (px_c - 36.0, py_c + 18.0)],
+            fill=(178, 214, 244, 255), outline=(28, 62, 152, 255), width=1,
+        )
         paste_rotated_part(
             win_hi, wr["walk_l_coat_dark"], wp["l_coat"], (dst_pelvis[0] - 32.0, dst_pelvis[1] - 9.0),
             deg=torso_deg + l_coat_walk_deg, squash_x=1.00, squash_y=0.88,
@@ -1873,11 +1915,11 @@ def render_stand_rig_frame_160(
 
         paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
-        # 3. Right coat wing + royal-sapphire waist bridge under walk_torso (behind legs like BASE_JPG!)
+        # 3. Right coat wing + ice-blue/silver waist bridge under walk_torso (cleanly sealing shoulder-ribbon seam!)
         r_coat_walk_deg = 24.0 * (1.0 - stride_open) + 3.0 * stride_open - s_wave * 0.45
         dr_hi.polygon(
-            [(px_c + 10.0, py_c + 4.0), (px_c + 42.0, py_c + 16.0), (px_c + 36.0, py_c + 46.0), (px_c + 10.0, py_c + 28.0)],
-            fill=(28, 62, 152, 255), outline=(10, 14, 30, 255), width=3,
+            [(px_c + 8.0, py_c - 4.0), (px_c + 40.0, py_c + 10.0), (px_c + 38.0, py_c + 44.0), (px_c + 10.0, py_c + 28.0)],
+            fill=(124, 186, 238, 255), outline=(28, 62, 152, 255), width=1,
         )
         paste_rotated_part(
             win_hi, wr["walk_r_coat"], wp["r_coat"], (dst_pelvis[0] + 38.0, dst_pelvis[1] + 22.0),
@@ -1893,6 +1935,8 @@ def render_stand_rig_frame_160(
             draw_winter_greave_leg_hi(l_leg_walk, is_front=False)
             draw_winter_greave_leg_hi(r_leg_walk, is_front=True)
     else:
+        draw_joint_bridge_hi(win_hi, dst_pelvis, l_hip_dst, r=6)
+        draw_joint_bridge_hi(win_hi, (dst_pelvis[0] - 8.0, dst_pelvis[1] + 4.0), l_coat_dst, r=5)
         paste_rotated_part(
             win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
             deg=torso_deg + l_coat_deg, wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
@@ -1905,6 +1949,8 @@ def render_stand_rig_frame_160(
         paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
         paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
 
+        draw_joint_bridge_hi(win_hi, dst_pelvis, r_hip_dst, r=6)
+        draw_joint_bridge_hi(win_hi, (dst_pelvis[0] + 8.0, dst_pelvis[1] + 4.0), r_coat_dst, r=5)
         paste_rotated_part(
             win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
             deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
@@ -1949,19 +1995,19 @@ def render_stand_rig_frame_160(
                             shifted[ny] = body_160[y]
                     body_160 = shifted
 
-    frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
+    fx_behind = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_dst[0] / S_HI, neck_dst[1] / S_HI + shift_y_160)
     grip_160 = (grip_hi[0] / S_HI, grip_hi[1] / S_HI + shift_y_160)
 
     if pre_fn is not None:
-        pre_fn(frame, neck_160, grip_160)
+        pre_fn(fx_behind, neck_160, grip_160)
 
     if show_halo:
-        draw_borealis_crown_halo_160(frame, neck_160[0], neck_160[1], phase=rune_phase)
+        draw_borealis_crown_halo_160(fx_behind, neck_160[0], neck_160[1], phase=rune_phase)
 
     if scarf_len > 1.0:
         draw_aurora_veil_ribbons_160(
-            frame,
+            fx_behind,
             neck_160[0] - 2.0,
             neck_160[1] + 2.0,
             base_deg=scarf_deg,
@@ -1970,18 +2016,33 @@ def render_stand_rig_frame_160(
             wave_amp=scarf_amp,
         )
 
+    char_160 = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     if weapon_layer == "behind":
         draw_borealis_frost_glaive_160(
-            frame, grip_160[0], grip_160[1], weapon_deg, glaive_len=glaive_len, rune_phase=rune_phase, draw_gauntlets=False
+            char_160, grip_160[0], grip_160[1], weapon_deg, glaive_len=glaive_len, rune_phase=rune_phase, draw_gauntlets=False
         )
 
     mask_b = body_160[:, :, 3] > 128
-    frame[mask_b] = body_160[mask_b]
+    char_160[mask_b] = body_160[mask_b]
 
-    if weapon_layer == "front":
+    if weapon_layer != "behind":
         draw_borealis_frost_glaive_160(
-            frame, grip_160[0], grip_160[1], weapon_deg, glaive_len=glaive_len, rune_phase=rune_phase, draw_gauntlets=True
+            char_160, grip_160[0], grip_160[1], weapon_deg, glaive_len=glaive_len, rune_phase=rune_phase, draw_gauntlets=True
         )
+
+    char_160 = seal_160_char_pinholes_and_leaks(
+        char_160,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.0,
+        bridge_max_lpx=56,
+        bridge_gap_lpx=2.5,
+    )
+    frame = fx_behind
+    mask_c = char_160[:, :, 3] > 128
+    frame[mask_c] = char_160[mask_c]
+    frame = _fill_enclosed_holes_rgba(frame, max_hole_area=6, safe_border=2)
 
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
@@ -2547,12 +2608,12 @@ def build_row4_ultimate(parts, sj, keyposes):
             rune_phase=sub * 1.0, post_fn=post_cmd,
         ))
 
-    # F17..F23: Iconic Vertical Sovereign Scepter-Tap (strictly grounded boots at y=230..231!)
+    # F17..F23: Iconic Vertical Sovereign Scepter-Tap (crystal head UP at -90 deg, strictly grounded boots!)
     for sub in range(7):
-        hoist_y = -11.0 + (sub / 6.0) * 16.0
+        hoist_y = 2.0 + (sub / 6.0) * 14.0
         def post_tap(arr, _n, grip, s=sub):
             if s >= 4:
-                draw_star_glint_160(arr, grip[0] + 1.0, min(110.0, grip[1] + 26.0), arm_len=6 + (s - 4) * 2, core_r=2.0)
+                draw_star_glint_160(arr, grip[0] + 1.0, grip[1] - 28.0, arm_len=6 + (s - 4) * 2, core_r=2.0)
                 draw_ice_sparks_160(arr, impact_x=grip[0] + 1.0, ground_y=114.0, spread=28.0, progress=(s - 4) / 3.0, count=9)
         frames.append(render_stand_rig_frame_160(
             parts, sj,
@@ -2561,12 +2622,12 @@ def build_row4_ultimate(parts, sj, keyposes):
             mane_deg=2.0, mane_wave_ph=sub * 0.8, mane_wave_amp=9.0,
             l_coat_deg=6.0 + sub * 1.2, r_coat_deg=-3.0 - sub * 1.0,
             coat_wave_ph=sub * 0.8, coat_wave_amp=9.5,
-            grip_rel_sh=(14.5, hoist_y), weapon_deg=90.0, glaive_len=45.0, weapon_layer="front",
+            grip_rel_sh=(14.5, hoist_y), weapon_deg=-90.0, glaive_len=38.0, weapon_layer="front",
             scarf_deg=160.0 + sub * 3.0, scarf_len=33.0, scarf_phase=sub * 0.9, scarf_amp=4.2,
             rune_phase=sub * 1.1, lock_lowest_to_ground=True, post_fn=post_tap,
         ))
 
-    # F24..F29: Eternal Borealis Sovereign Descent (grounded boots, 0 baked mid-air floor circle!)
+    # F24..F29: Eternal Borealis Sovereign Descent (upright crystal head transitioning cleanly to guard!)
     for sub in range(6):
         def post_fin(arr, _n, _g, s=sub):
             draw_ice_sparks_160(arr, impact_x=78.0, ground_y=112.0, spread=18.0, progress=(s + 1) / 6.0, count=max(3, 7 - s))
@@ -2577,7 +2638,7 @@ def build_row4_ultimate(parts, sj, keyposes):
             torso_deg=0.0, head_deg=0.0,
             mane_deg=math.sin(sub) * 2.5, mane_wave_ph=sub * 0.7, mane_wave_amp=8.5,
             l_coat_deg=5.0, r_coat_deg=-2.0, coat_wave_ph=sub * 0.7, coat_wave_amp=8.5,
-            grip_rel_sh=(12.5, 6.5), weapon_deg=86.0 - sub * 16.0, glaive_len=47.0, weapon_layer="front",
+            grip_rel_sh=(12.5, 10.0 - sub * 0.7), weapon_deg=-86.0 + sub * 12.0, glaive_len=43.0, weapon_layer="front",
             scarf_deg=168.0, scarf_len=31.0, scarf_phase=sub * 0.8, scarf_amp=3.8,
             rune_phase=sub * 0.9, lock_lowest_to_ground=True, post_fn=post_fin,
         ))
@@ -2620,41 +2681,57 @@ def build_row5_death(parts, sj):
             s_deg = 155.0 + u * 15.0
         elif f < 22:
             u = (f - 14) / 7.0
-            pdx = -7.5 + u * 8.5
+            pdx = -4.0 + u * 18.0
             pdy = 20.0 + u * 14.0
-            tdeg = 32.0 + u * 55.0
+            tdeg = 32.0 + u * 54.5
             hdeg = 14.0 - u * 10.0
-            l_th, l_sh = -30.0 * (1.0 - 0.75 * u), 54.0 * (1.0 - 0.75 * u)
-            r_th, r_sh = -24.0 * (1.0 - 0.75 * u), 50.0 * (1.0 - 0.75 * u)
+            l_th = -24.0 * (1.0 - u) + 82.0 * u
+            l_sh = 48.0 * (1.0 - u) + 10.0 * u
+            r_th = -18.0 * (1.0 - u) + 85.0 * u
+            r_sh = 44.0 * (1.0 - u) + 6.0 * u
+            h_in = 0.72 * u
+            c_in = 0.65 * u
+            lc_deg, rc_deg = 2.0, 4.0
             wdeg = 23.0 * (1.0 - u) + 2.0 * u
             gr = (12.0, 11.0)
-            w_abs = (74.0 + u * 10.0, 102.0 + u * 4.0)
+            w_abs = (76.0 + u * 8.0, 108.0 + u * 2.0)
             s_len = 18.0 * (1.0 - 0.6 * u)
             s_deg = 174.0
         else:
             u = (f - 22) / 7.0
-            pdx = 1.0
+            pdx = 14.0
             pdy = 34.0
-            tdeg = 87.5 + math.sin(u * math.pi) * 0.8
+            tdeg = 86.5 + math.sin(u * math.pi) * 0.6
             hdeg = 4.0
-            l_th, l_sh = -7.0, 12.0
-            r_th, r_sh = -5.0, 10.0
+            l_th, l_sh = 82.0, 10.0
+            r_th, r_sh = 85.0, 6.0
+            h_in = 0.72
+            c_in = 0.65
+            lc_deg, rc_deg = 2.0, 4.0
             wdeg = 1.5
             gr = (12.0, 11.0)
-            w_abs = (84.0, 106.0)
+            w_abs = (84.0, 110.0)
             s_len = 8.0
             s_deg = 178.0 - u * 4.0
+
+        if f < 14:
+            h_in = 0.0
+            c_in = 0.25
+            lc_deg = max(-20.0, -tdeg * 0.25)
+            rc_deg = max(-16.0, -tdeg * 0.20)
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=pdx, pelvis_dy=pdy,
             torso_deg=tdeg, head_deg=hdeg,
-            mane_deg=-tdeg * 0.25, mane_wave_ph=f * 0.45, mane_wave_amp=5.0,
-            l_coat_deg=max(-25.0, -tdeg * 0.35), r_coat_deg=max(-20.0, -tdeg * 0.25),
-            coat_wave_ph=f * 0.45, coat_wave_amp=4.5,
+            mane_deg=-tdeg * 0.22, mane_wave_ph=f * 0.45, mane_wave_amp=5.0,
+            l_coat_deg=lc_deg, r_coat_deg=rc_deg,
+            coat_wave_ph=f * 0.45, coat_wave_amp=3.2 if f >= 14 else 4.5,
+            coat_x_inward_frac=c_in,
             l_thigh_deg=l_th, l_shin_deg=l_sh,
             r_thigh_deg=r_th, r_shin_deg=r_sh,
-            grip_rel_sh=gr, weapon_deg=wdeg, glaive_len=46.0,
+            hip_inward_frac=h_in,
+            grip_rel_sh=gr, weapon_deg=wdeg, glaive_len=38.0,
             weapon_layer="front", weapon_abs_160=w_abs,
             scarf_deg=s_deg, scarf_len=s_len, scarf_phase=f * 0.65, scarf_amp=2.4,
             rune_phase=f * 0.7, show_halo=show_halo, lock_lowest_to_ground=True,

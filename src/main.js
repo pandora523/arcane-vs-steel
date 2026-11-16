@@ -1,33 +1,33 @@
-import { Renderer } from './engine/Renderer.js?v=30fps123';
-import { VFXManager } from './engine/VFXManager.js?v=30fps123';
-import { PixelForge } from './engine/PixelForge.js?v=30fps123';
-import { AudioManager } from './engine/AudioManager.js?v=30fps123';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps123';
-import { Fighter } from './entities/Fighter.js?v=30fps123';
-import { Warrior } from './entities/Warrior.js?v=30fps123';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps123';
-import { FireMage } from './entities/FireMage.js?v=30fps123';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps123';
-import { Archer } from './entities/Archer.js?v=30fps123';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps123';
-import { Priestess } from './entities/Priestess.js?v=30fps123';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps123';
-import { Reaper } from './entities/Reaper.js?v=30fps123';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps123';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps123';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps123';
-import { Titan } from './entities/Titan.js?v=30fps123';
-import { TitanEx } from './entities/TitanEx.js?v=30fps123';
-import { Ronin } from './entities/Ronin.js?v=30fps123';
-import { RoninEx } from './entities/RoninEx.js?v=30fps123';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps123';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps123';
-import { IceMage } from './entities/IceMage.js?v=30fps123';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps123';
-import { Android } from './entities/Android.js?v=30fps123';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps123';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps123';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps123';
+import { Renderer } from './engine/Renderer.js?v=30fps124';
+import { VFXManager } from './engine/VFXManager.js?v=30fps124';
+import { PixelForge } from './engine/PixelForge.js?v=30fps124';
+import { AudioManager } from './engine/AudioManager.js?v=30fps124';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps124';
+import { Fighter } from './entities/Fighter.js?v=30fps124';
+import { Warrior } from './entities/Warrior.js?v=30fps124';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps124';
+import { FireMage } from './entities/FireMage.js?v=30fps124';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps124';
+import { Archer } from './entities/Archer.js?v=30fps124';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps124';
+import { Priestess } from './entities/Priestess.js?v=30fps124';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps124';
+import { Reaper } from './entities/Reaper.js?v=30fps124';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps124';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps124';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps124';
+import { Titan } from './entities/Titan.js?v=30fps124';
+import { TitanEx } from './entities/TitanEx.js?v=30fps124';
+import { Ronin } from './entities/Ronin.js?v=30fps124';
+import { RoninEx } from './entities/RoninEx.js?v=30fps124';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps124';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps124';
+import { IceMage } from './entities/IceMage.js?v=30fps124';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps124';
+import { Android } from './entities/Android.js?v=30fps124';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps124';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps124';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps124';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1159,10 +1159,14 @@ export class Game {
     this._activeFightersScratch = [];
     this._lastActiveVsStageId = null;
     this._wasAdventureMatch = false;
+    this._matchAssetGateUntil = 0;
     this.installVisibilityAndThermalLifecycle();
 
     this.lastTime = 0;
     this.startLoop();
+    if (typeof window !== 'undefined' && typeof HTMLImageElement !== 'undefined' && !this.simMode) {
+      setTimeout(() => this.prewarmSelectedAssets(), 160);
+    }
   }
 
   installVisibilityAndThermalLifecycle() {
@@ -1479,6 +1483,7 @@ export class Game {
     this.appEl?.classList?.toggle('is-adventure-active', Boolean(this.isAdventureMode() && !this.isLandingOpen));
     this.updateAdventureBossHUD?.();
     if (releaseMemory) {
+      this._matchAssetGateUntil = 0;
       this.renderer?.releaseStageCutoutCaches?.(true);
       PixelForge.releaseInactiveAssets?.([], [], false);
       ArcaneShaderFX.releaseSharedCanvases?.();
@@ -1491,8 +1496,48 @@ export class Game {
     this.setPaused(false, false);
     this.teardownActiveMatch(true);
     this.openLanding('title');
+    if (typeof window !== 'undefined' && typeof HTMLImageElement !== 'undefined' && !this.simMode) {
+      setTimeout(() => this.prewarmSelectedAssets(), 150);
+    }
     if (playSound && this.audio) {
       this.audio.play('clock_gear', 600);
+    }
+  }
+
+  _getActiveMatchAssetOpts() {
+    if (this.isAdventureMode()) {
+      return {
+        heroIds: [this.slot1Hero || 'mage'],
+        stageId: null,
+        isAdventure: true,
+        zoneIdx: this.adventure?.zoneIndex || 0
+      };
+    }
+    const heroIds = [this.slot1Hero, this.slot2Hero];
+    if (this.is2v2Mode()) {
+      heroIds.push(this.slot1PartnerHero, this.slot2PartnerHero);
+    }
+    return {
+      heroIds: heroIds.filter(Boolean),
+      stageId: this.renderer?.stageId || this.forcedStage || 'cathedral',
+      isAdventure: false,
+      zoneIdx: 0
+    };
+  }
+
+  prewarmSelectedAssets() {
+    if (typeof HTMLImageElement === 'undefined') return;
+    if (this.isAdventureMode()) {
+      PixelForge.ensureHeroLoaded?.(this.slot1Hero || 'warrior_ex');
+      PixelForge.ensureAdventureLoaded?.(0);
+      return;
+    }
+    PixelForge.ensureStageLoaded?.(this.forcedStage || this.renderer?.stageId || 'cathedral');
+    PixelForge.ensureHeroLoaded?.(this.slot1Hero);
+    PixelForge.ensureHeroLoaded?.(this.slot2Hero);
+    if (this.is2v2Mode()) {
+      PixelForge.ensureHeroLoaded?.(this.slot1PartnerHero);
+      PixelForge.ensureHeroLoaded?.(this.slot2PartnerHero);
     }
   }
 
@@ -1568,6 +1613,7 @@ export class Game {
     }
     this.syncLandingBranchUI();
     this.syncRosterSelectionUI(playSound);
+    this.prewarmSelectedAssets();
     if (!this.isLandingOpen) {
       this.resetMatch();
     }
@@ -2756,6 +2802,7 @@ export class Game {
     }
     this.ensureDistinctTeamPartners();
     this.syncRosterSelectionUI(playSound, heroKey);
+    this.prewarmSelectedAssets();
   }
 
   syncRosterSelectionUI(playSound = false, soundHeroKey = null) {
@@ -3113,8 +3160,12 @@ export class Game {
       this.appEl.classList.remove('is-landing-open');
       this.appEl.classList.toggle('is-adventure-active', Boolean(this.isAdventureMode()));
     }
-    this.audio?.ensureCombatWavFiles?.();
     this.resetMatch();
+    if (typeof window !== 'undefined' && typeof HTMLImageElement !== 'undefined' && !this.simMode) {
+      setTimeout(() => this.audio?.ensureCombatWavFiles?.(), 120);
+    } else {
+      this.audio?.ensureCombatWavFiles?.();
+    }
     this.adventure?.syncControlDeckUI();
     this.syncPauseMenuUI();
     if (playSound && this.audio) {
@@ -3137,6 +3188,9 @@ export class Game {
     this.syncPauseMenuUI();
     if (targetStep) {
       this.setLandingStep(targetStep, false);
+    }
+    if (typeof window !== 'undefined' && typeof HTMLImageElement !== 'undefined' && !this.simMode) {
+      setTimeout(() => this.prewarmSelectedAssets(), 80);
     }
   }
 
@@ -3692,6 +3746,15 @@ export class Game {
       PixelForge.releaseInactiveAssets?.([heroKey], [], true);
       PixelForge.ensureHeroLoaded?.(heroKey);
       PixelForge.ensureAdventureLoaded?.(0);
+      const canAssetGate =
+        typeof window !== 'undefined' &&
+        typeof HTMLImageElement !== 'undefined' &&
+        !this.simMode &&
+        !this.isLandingOpen;
+      this._matchAssetGateUntil =
+        canAssetGate && !PixelForge.areMatchAssetsReady?.({ heroIds: [heroKey], isAdventure: true, zoneIdx: 0 })
+          ? Date.now() + 1400
+          : 0;
       const c1 = CHAMPION_ROSTER[heroKey];
       this.leftFighter = new c1.cls(240, gy, 1);
       if (!this.leftFighter.heroId) this.leftFighter.heroId = heroKey;
@@ -3790,6 +3853,20 @@ export class Game {
       PixelForge.ensureHeroLoaded?.(c1b.id);
       PixelForge.ensureHeroLoaded?.(c2b.id);
     }
+    const canAssetGate =
+      typeof window !== 'undefined' &&
+      typeof HTMLImageElement !== 'undefined' &&
+      !this.simMode &&
+      !this.isLandingOpen;
+    this._matchAssetGateUntil =
+      canAssetGate &&
+      !PixelForge.areMatchAssetsReady?.({
+        heroIds: activeHeroIds,
+        stageId: activeStageId,
+        isAdventure: false
+      })
+        ? Date.now() + 1400
+        : 0;
 
     this.leftFighter = new c1.cls(is2v2 ? ww * 0.25 : ww * 0.2, gy, 1);
     this.rightFighter = new c2.cls(is2v2 ? ww * 0.75 : ww * 0.8, gy, -1);
@@ -5085,6 +5162,37 @@ export class Game {
     }
   }
 
+  _renderAssetSummoningOverlay(ctx) {
+    if (!ctx?.fillRect || !ctx?.fillText) return;
+    const cw = ctx.canvas?.width || 1280;
+    const ch = ctx.canvas?.height || 720;
+    const boxW = 296;
+    const boxH = 54;
+    const bx = Math.round((cw - boxW) * 0.5);
+    const by = Math.round(ch * 0.16);
+    const step = ((Date.now() / 110) | 0) % 8;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = 'rgba(9, 13, 22, 0.88)';
+    ctx.fillRect(bx, by, boxW, boxH);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx + 1, by + 1, boxW - 2, boxH - 2);
+    ctx.fillStyle = '#e0f2fe';
+    ctx.font = 'bold 13px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SUMMONING CHAMPIONS...', bx + Math.round(boxW * 0.5), by + 20);
+    for (let i = 0; i < 8; i++) {
+      const active = i === step || i === (step + 7) % 8;
+      ctx.fillStyle = active ? '#fbbf24' : '#1e3a5f';
+      ctx.fillRect(bx + 54 + i * 24, by + 35, 16, 8);
+    }
+    ctx.restore();
+  }
+
   loop(now) {
     this._rafId = 0;
     if (this._appSuspended || (typeof document !== 'undefined' && document.hidden)) {
@@ -5132,6 +5240,21 @@ export class Game {
       !this.isSimPaused &&
       !(this.isAdventureMode() && this.adventure?.isSkillTreeOpen)
     ) {
+      if (this._matchAssetGateUntil > 0) {
+        const ready =
+          typeof HTMLImageElement === 'undefined' ||
+          this.simMode ||
+          PixelForge.areMatchAssetsReady?.(this._getActiveMatchAssetOpts()) ||
+          Date.now() >= this._matchAssetGateUntil;
+        if (ready) {
+          this._matchAssetGateUntil = 0;
+        } else {
+          this._pausedFrameRendered = false;
+          this.renderer.render(this.fighters, this.vfx);
+          this._renderAssetSummoningOverlay(this.renderer?.ctx);
+          return;
+        }
+      }
       this._pausedFrameRendered = false;
       this.stepSimulation(rawDt);
       this.renderer.render(this.fighters, this.vfx);

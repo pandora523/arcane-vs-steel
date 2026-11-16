@@ -27,7 +27,11 @@ Invariants enforced:
 import argparse
 import math
 import os
+import sys
 from collections import deque
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -414,7 +418,11 @@ def build_mage_walk_rig_512(base_arr, x_ref_stand, y_bot_stand, scale):
 
 def load_mage_poses():
     base_raw = Image.open(BASE_JPG).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
-    base_seg = segment_white_bg(base_raw, pocket_seeds=())
+    base_seg = clean_512_pose_holes_and_specks(
+        segment_white_bg(base_raw, pocket_seeds=()),
+        max_hole_area=220,
+        min_island_area=36,
+    )
     base_arr = np.array(base_seg)
 
     ys, _ = np.where(base_arr[:, :, 3] > 0)
@@ -512,7 +520,11 @@ def load_mage_poses():
 
     for kname, spec in quad_specs.items():
         tile = kp_sheet.crop(spec["crop"]).resize((512, 512), Image.Resampling.LANCZOS)
-        seg = segment_white_bg(tile, pocket_seeds=spec["pockets"])
+        seg = clean_512_pose_holes_and_specks(
+            segment_white_bg(tile, pocket_seeds=spec["pockets"]),
+            max_hole_area=220,
+            min_island_area=36,
+        )
         s_arr = np.array(seg)
         k_ys, _ = np.where(s_arr[:, :, 3] > 0)
         y_bot = spec["y_bot_override"] if spec["y_bot_override"] is not None else int(k_ys.max())
@@ -1440,8 +1452,7 @@ def compose_mage_frame(
     walk_frame_idx=None,
     offhand_orb=False,
 ):
-    canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
-    arr = np.array(canvas)
+    fx_behind = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
 
     pd = poses[pose_key]
     body_im = pd["sprite"]
@@ -1457,7 +1468,7 @@ def compose_mage_frame(
     # 1. Optional ground arcane ward ring (back half)
     if ground_ring_rx > 1.0:
         draw_foreshortened_magic_circle(
-            arr,
+            fx_behind,
             cx=AX + dx + 2.0,
             cy=min(113.0, 108.0 + max(0.0, dy)),
             rx=ground_ring_rx,
@@ -1467,9 +1478,10 @@ def compose_mage_frame(
             inscribed_points=6,
         )
 
+    char_arr = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
     # 2. Floating Back Solar Astrolabe Halo behind Ignis Sol EX's shoulders
     draw_solar_astrolabe_halo(
-        arr,
+        char_arr,
         cx=halo_pt[0] - 3.0,
         cy=halo_pt[1] - 2.0,
         phase=phase,
@@ -1482,30 +1494,25 @@ def compose_mage_frame(
     bx, by = int(round(dx)), int(round(dy))
     if walk_frame_idx is not None and pose_key == "STAND":
         walk_body_im, tracked = render_mage_walk_body_log(pd, walk_frame_idx, dx, by, phase)
-        body_layer = Image.fromarray(arr)
+        body_layer = Image.fromarray(char_arr)
         body_layer.alpha_composite(walk_body_im, (0, 0))
-        arr = np.array(body_layer)
+        char_arr = np.array(body_layer)
         l_eye = tracked["l_eye"]
         r_eye = tracked["r_eye"]
         hat_sun = tracked["hat_sun"]
         chest_orb = tracked["chest_orb"]
         grip_pt = (tracked["grip"][0] + grip_delta[0], tracked["grip"][1] + grip_delta[1])
     else:
-        body_layer = Image.fromarray(arr)
+        body_layer = Image.fromarray(char_arr)
         body_layer.alpha_composite(body_im, (bx, by))
-        arr = np.array(body_layer)
+        char_arr = np.array(body_layer)
 
     # 4. Crisp glowing molten-gold eyes under pitch-black hat brim + sun emblems
-    stamp_molten_wizard_eyes_and_gems(arr, l_eye, r_eye, hat_sun, chest_orb, blaze=blaze, phase=phase)
-    add_wizard_robe_and_ember_motion(arr, dx, dy, phase, blaze=blaze)
-
-    # Optional offhand arcane sun-mote during grand two-hand invocations
-    if offhand_orb:
-        draw_pixel_star4(arr, off_pt[0], off_pt[1] - 3.0, arm=3, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD, out_col=C_OUT)
+    stamp_molten_wizard_eyes_and_gems(char_arr, l_eye, r_eye, hat_sun, chest_orb, blaze=blaze, phase=phase)
 
     # 5. Ornate Golden Crescent-Sun Archmage Staff (`0` spear/halberd blades!)
     draw_crescent_sun_staff(
-        arr,
+        char_arr,
         grip_pos=grip_pt,
         angle_deg=staff_deg,
         butt_len=butt_len,
@@ -1515,6 +1522,25 @@ def compose_mage_frame(
         stamp_glove=True,
         max_y=114,
     )
+
+    char_arr = seal_160_char_pinholes_and_leaks(
+        char_arr,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=20,
+        orphan_dist_lpx=4.0,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
+    arr = fx_behind
+    c_mask = char_arr[:, :, 3] > 128
+    arr[c_mask] = char_arr[c_mask]
+
+    add_wizard_robe_and_ember_motion(arr, dx, dy, phase, blaze=blaze)
+
+    # Optional offhand arcane sun-mote during grand two-hand invocations
+    if offhand_orb:
+        draw_pixel_star4(arr, off_pt[0], off_pt[1] - 3.0, arm=3, core_col=C_FLAME_CORE, ray_col=C_FLAME_GOLD, out_col=C_OUT)
 
     # 6. Pure High-Sorcery Spellcasting FX in front space (`x_320 = 185..308`)
     draw_spell_cast_fx(arr, fx_spec, phase=phase)
@@ -2106,23 +2132,25 @@ def build_row_5_death(poses):
         else:
             # F12..F21 falling collapse -> F22..F29 grounded horizontal prone rest (`height <= 84px` in 320x240!)
             t_fall = clamp((f - 12) / 10.0, 0.0, 1.0)
-            rot_deg = lerp(42.0, 88.0, smoothstep(t_fall))
-            base_im = poses["STAND"]["sprite"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
+            st = smoothstep(t_fall)
+            rot_deg = lerp(38.0, 88.0, st)
+            base_im = poses["K1_COIL"]["sprite"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
+            v_drape = lerp(1.0, 0.78, st)
+            rw, rh = base_im.size
+            base_im = base_im.resize((rw, max(8, int(round(rh * v_drape)))), Image.Resampling.NEAREST)
             b_arr = np.array(base_im)
             ys, xs = np.where(b_arr[:, :, 3] > 0)
             canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
             if len(ys) > 0:
                 min_x, max_x = int(xs.min()), int(xs.max())
                 max_y = int(ys.max())
-                # Keep minX >= 14 logical (>= 28 in 320x240) and maxX <= 146 logical (<= 292 in 320x240)
-                ox = int(clamp(AX + 6 - (min_x + max_x) // 2, 15 - min_x, 145 - max_x))
+                ox = int(clamp(AX + 8 - (min_x + max_x) // 2, 16 - min_x, 144 - max_x))
                 oy = (AY - 1) - max_y
                 canvas.alpha_composite(base_im, (ox, oy))
             arr = np.array(canvas)
-            # Clamp any stray upright feather/tip on F22..F29 so prone height stays strictly <= 44 logical (<= 88px in 320x240)
             if f >= 22:
-                arr[:71, :, :] = 0
-            staff_y = lerp(102.0, 111.0, t_fall)
+                arr[:72, :, :] = 0
+            staff_y = lerp(103.0, 111.0, t_fall)
             draw_crescent_sun_staff(
                 arr,
                 grip_pos=(AX + 8.0, staff_y),
@@ -2134,11 +2162,15 @@ def build_row_5_death(poses):
                 stamp_glove=False,
                 max_y=114,
             )
-            # Subtle low smoldering solar embers right above the prone wizard (`y = 94..110`, never tall!)
+            arr = seal_160_char_pinholes_and_leaks(
+                arr, max_pinhole_lpx=8, min_detached_lpx=4, max_orphan_lpx=20, orphan_dist_lpx=4.0, bridge_max_lpx=48, bridge_gap_lpx=2.5
+            )
             for k in range(4):
                 ex = int(round(AX - 12 + k * 9 + math.sin(f * 0.8 + k * 1.7) * 2.0))
-                ey = int(round(108 - ((f + k * 3) % 10)))
-                put_px(arr, ex, ey, C_FLAME_GOLD if (f + k) % 2 == 0 else C_FLAME_CRIMSON)
+                ey = int(round(107 - ((f + k * 3) % 9)))
+                col_e = C_FLAME_GOLD if (f + k) % 2 == 0 else C_FLAME_CRIMSON
+                for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                    put_px(arr, ex + ox, ey + oy, col_e)
             enforce_safety_margin(arr)
             frames.append(arr)
     return frames

@@ -478,7 +478,7 @@ export class AudioManager {
     if (!this.ctx || this._combatWavsEnsured) return;
     this._combatWavsEnsured = true;
     const queue = this.wavKeys.filter((k) => !this.buffers[k] && !this._loadingWavKeys.has(k));
-    const CONCURRENCY = 6;
+    const CONCURRENCY = 3;
     let cursor = 0;
     const worker = async () => {
       while (cursor < queue.length) {

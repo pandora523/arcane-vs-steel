@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps123';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps123';
+import { PixelForge } from './PixelForge.js?v=30fps124';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps124';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps123';
+} from './shaders/exNextGenFX.js?v=30fps124';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -6537,9 +6537,10 @@ export class Renderer {
 
       // 1. Real-Time Ray-Projected Ground Silhouette Cast Shadows (up to 2 strongest nearby dynamic lights)
       const sprites = f.heroId ? assets[f.heroId] : null;
+      const sheetImg = sprites?.sheet ? PixelForge.ensureImage(sprites.sheet) : null;
       if (
-        sprites?.sheet?.complete &&
-        sprites.sheet.naturalWidth > 0 &&
+        sheetImg?.complete &&
+        sheetImg.naturalWidth > 0 &&
         Array.isArray(lights) &&
         lights.length > 0 &&
         typeof ctx.transform === 'function'

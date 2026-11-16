@@ -28,6 +28,10 @@ import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks, filter_mask_min_area, _fill_enclosed_holes_rgba
+
 try:
     from scipy.ndimage import label as _nd_label
 except ImportError:
@@ -303,7 +307,8 @@ def clean_pose_512(im_rgba_512, pocket_seeds=(), strip_polys=(), head_y_split=17
     keep_vivid = vivid_jade | vivid_ember
     arr[:, :, :3] = np.where(alpha[:, :, None], np.where(keep_vivid[:, :, None], arr[:, :, :3], cel_rgb), 0)
     arr[alpha, 3] = 255
-    return fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    filled = fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    return clean_512_pose_holes_and_specks(filled, max_hole_area=200, min_island_area=36)
 
 
 def downsample_clean_160x120(win_hi):
@@ -454,7 +459,10 @@ def assign_remaining_geodesic(alpha, mask_list):
     labels = np.zeros((H, W), dtype=np.int16)
     names = [nm for nm, _ in mask_list]
     for idx, (nm, m) in enumerate(mask_list, start=1):
-        mc = m if nm in ("l_coat", "r_coat", "torso") else keep_largest_component(m)
+        if nm in ("l_coat", "r_coat", "torso"):
+            mc = filter_mask_min_area(m & alpha, min_area=40)
+        else:
+            mc = keep_largest_component(m)
         mc = mc & alpha & (labels == 0)
         labels[mc] = idx
 
@@ -764,30 +772,31 @@ def draw_crucible_back_halo_160(arr, cx, cy, radius=19.5, rot_phase=0.0, boosted
     his armored pauldrons with glowing Khazad gold & emerald-jade runes.
     """
     r = radius * (1.14 if boosted else 1.0)
-    steps = 72
+    steps = 120
     for i in range(steps):
         a = (i / float(steps)) * 2.0 * math.pi + rot_phase
         px = cx + math.cos(a) * r
         py = cy + math.sin(a) * r
-        put_px_160(arr, px + math.cos(a) * 1.1, py + math.sin(a) * 1.1, C_OUT_DARK)
-        put_px_160(arr, px - math.cos(a) * 1.1, py - math.sin(a) * 1.1, C_OUT_DARK)
-        col = C_MAGMA_YELLOW if (i // 3) % 2 == 0 else C_GOLD_MID
+        put_px_160(arr, px + math.cos(a) * 1.0, py + math.sin(a) * 1.0, C_OUT_DARK)
+        put_px_160(arr, px - math.cos(a) * 1.0, py - math.sin(a) * 1.0, C_OUT_DARK)
+        col = C_MAGMA_YELLOW if (i // 5) % 2 == 0 else C_GOLD_MID
         put_px_160(arr, px, py, col)
 
-    # 8 Symmetric Dwarven Forge-Cog Teeth with Emerald-Jade Rune Pips
+    # 8 Symmetric Dwarven Forge-Cog Teeth anchored continuously into ring
     for k in range(8):
         ang = rot_phase + k * (math.pi / 4.0)
         ux, uy = math.cos(ang), math.sin(ang)
         nx, ny = -uy, ux
-        for d in range(2, 5):
-            for w in (-1, 0, 1):
+        for si in range(1, 10):
+            d = 0.5 + (si / 9.0) * 3.5
+            for w in (-1.0, -0.4, 0.0, 0.4, 1.0):
                 tx = cx + ux * (r + d) + nx * w
                 ty = cy + uy * (r + d) + ny * w
-                if abs(w) == 1 or d == 4:
+                if abs(w) > 0.7 or d > 3.6:
                     put_px_160(arr, tx, ty, C_OUT_DARK)
                 else:
                     put_px_160(arr, tx, ty, C_JADE_LIT if k % 2 == 0 else C_MAGMA_YELLOW)
-        put_px_160(arr, cx + ux * (r + 1.0), cy + uy * (r + 1.0), C_JADE_MID if k % 2 == 0 else C_FLASH_WHITE)
+        put_px_160(arr, cx + ux * (r + 0.8), cy + uy * (r + 0.8), C_JADE_MID if k % 2 == 0 else C_FLASH_WHITE)
 
 
 def draw_worldbreaker_maul_160(
@@ -1249,32 +1258,47 @@ def render_keypose_frame_160(
                     shifted[ny] = body_160[y]
             body_160 = shifted
 
-    frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
+    fx_behind = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_hi[0] / S_HI, neck_hi[1] / S_HI + shift_y_160)
     grip_160 = (grip_hi[0] / S_HI, grip_hi[1] / S_HI + shift_y_160)
 
+    if pre_fn is not None:
+        pre_fn(fx_behind, neck_160, grip_160)
+
+    char_160 = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     # World-Forge 8-Cog Crucible Back-Halo behind shoulders
     draw_crucible_back_halo_160(
-        frame, neck_160[0] - 4.0, neck_160[1] + 5.0, radius=19.0, rot_phase=halo_phase, boosted=halo_boost
+        char_160, neck_160[0] - 4.0, neck_160[1] + 5.0, radius=19.0, rot_phase=halo_phase, boosted=halo_boost
     )
-
-    if pre_fn is not None:
-        pre_fn(frame, neck_160, grip_160)
 
     if weapon_layer == "behind":
         draw_worldbreaker_maul_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, head_scale=head_scale, rune_phase=rune_phase, draw_gauntlets=False,
         )
 
     mask_b = body_160[:, :, 3] > 128
-    frame[mask_b] = body_160[mask_b]
+    char_160[mask_b] = body_160[mask_b]
 
     if weapon_layer != "behind":
         draw_worldbreaker_maul_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, head_scale=head_scale, rune_phase=rune_phase, draw_gauntlets=True,
         )
+
+    char_160 = seal_160_char_pinholes_and_leaks(
+        char_160,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=24,
+        orphan_dist_lpx=5.0,
+        bridge_max_lpx=64,
+        bridge_gap_lpx=2.8,
+    )
+    frame = fx_behind
+    mask_c = char_160[:, :, 3] > 128
+    frame[mask_c] = char_160[mask_c]
+    frame = _fill_enclosed_holes_rgba(frame, max_hole_area=6, safe_border=2)
 
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
@@ -1332,6 +1356,7 @@ def render_stand_rig_frame_160(
     l_coat_deg=0.0,
     r_coat_deg=0.0,
     coat_y_offset_160=0.0,
+    coat_x_inward_frac=0.0,
     l_thigh_deg=0.0,
     l_shin_deg=0.0,
     l_foot_deg=0.0,
@@ -1379,11 +1404,17 @@ def render_stand_rig_frame_160(
     r_sh_dst = map_torso_pt(sj["r_sh"])
     l_coat_raw = map_torso_pt(sj["l_coat"])
     r_coat_raw = map_torso_pt(sj["r_coat"])
-    l_coat_dst = (l_coat_raw[0], l_coat_raw[1] + coat_y_offset_160 * S_HI)
-    r_coat_dst = (r_coat_raw[0], r_coat_raw[1] + coat_y_offset_160 * S_HI)
+    spine_hip_x = ANCHOR_HI_X + pelvis_dx * S_HI
+    l_coat_dst = (
+        l_coat_raw[0] + (spine_hip_x - l_coat_raw[0]) * coat_x_inward_frac,
+        l_coat_raw[1] + coat_y_offset_160 * S_HI,
+    )
+    r_coat_dst = (
+        r_coat_raw[0] + (spine_hip_x - r_coat_raw[0]) * coat_x_inward_frac,
+        r_coat_raw[1] + coat_y_offset_160 * S_HI,
+    )
     l_hip_raw = map_torso_pt(sj["l_hip"])
     r_hip_raw = map_torso_pt(sj["r_hip"])
-    spine_hip_x = ANCHOR_HI_X + pelvis_dx * S_HI
     r_sole_eq_hi = 0.0
     if neutralize_leg_rest:
         def _leg_sole_reach(side):
@@ -1439,18 +1470,22 @@ def render_stand_rig_frame_160(
     l_foot_part = _shade_crop_tuple(parts["l_foot"], shade_far_leg)
 
     paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
+    draw_joint_bridge_hi(win_hi, dst_pelvis, l_hip_dst, r=max(7, r_hip_br))
     draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=r_knee_br)
     paste_rotated_part(win_hi, l_thigh_part, sj["l_hip"], l_hip_dst, deg=l_th_rot)
     paste_rotated_part(win_hi, l_shin_part, sj["l_knee"], l_knee_dst, deg=l_sh_rot)
     paste_rotated_part(win_hi, l_foot_part, sj["l_ankle"], l_ank_dst, deg=l_ft_rot)
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] - 8.0, dst_pelvis[1] + 5.0), l_coat_dst, r=6)
     paste_rotated_part(win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst, deg=torso_deg + l_coat_deg)
 
+    draw_joint_bridge_hi(win_hi, dst_pelvis, r_hip_dst, r=max(7, r_hip_br))
     draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=r_knee_br)
     paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_th_rot)
     paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_sh_rot)
     paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_ft_rot)
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] + 8.0, dst_pelvis[1] + 5.0), r_coat_dst, r=6)
     paste_rotated_part(win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst, deg=torso_deg + r_coat_deg)
 
     paste_rotated_part(win_hi, parts["torso"], pelvis_src, dst_pelvis, deg=torso_deg)
@@ -1481,32 +1516,47 @@ def render_stand_rig_frame_160(
                 body_160[ANCHOR_Y_120, take] = body_160[y, take]
                 body_160[y, :, :] = 0
 
-    frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
+    fx_behind = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_dst[0] / S_HI, neck_dst[1] / S_HI + shift_y_160)
     grip_160 = (grip_hi[0] / S_HI, grip_hi[1] / S_HI + shift_y_160)
 
+    if pre_fn is not None:
+        pre_fn(fx_behind, neck_160, grip_160)
+
+    char_160 = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     if show_halo:
         draw_crucible_back_halo_160(
-            frame, neck_160[0] - 4.0, neck_160[1] + 5.0, radius=19.0, rot_phase=halo_phase, boosted=halo_boost
+            char_160, neck_160[0] - 4.0, neck_160[1] + 5.0, radius=19.0, rot_phase=halo_phase, boosted=halo_boost
         )
-
-    if pre_fn is not None:
-        pre_fn(frame, neck_160, grip_160)
 
     if weapon_layer == "behind":
         draw_worldbreaker_maul_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, head_scale=head_scale, rune_phase=rune_phase, draw_gauntlets=False,
         )
 
     mask_b = body_160[:, :, 3] > 128
-    frame[mask_b] = body_160[mask_b]
+    char_160[mask_b] = body_160[mask_b]
 
-    if weapon_layer == "front":
+    if weapon_layer != "behind":
         draw_worldbreaker_maul_160(
-            frame, grip_160[0], grip_160[1], weapon_deg,
+            char_160, grip_160[0], grip_160[1], weapon_deg,
             shaft_len=shaft_len, head_scale=head_scale, rune_phase=rune_phase, draw_gauntlets=True,
         )
+
+    char_160 = seal_160_char_pinholes_and_leaks(
+        char_160,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=24,
+        orphan_dist_lpx=5.0,
+        bridge_max_lpx=64,
+        bridge_gap_lpx=2.8,
+    )
+    frame = fx_behind
+    mask_c = char_160[:, :, 3] > 128
+    frame[mask_c] = char_160[mask_c]
+    frame = _fill_enclosed_holes_rgba(frame, max_hole_area=6, safe_border=2)
 
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
@@ -1527,11 +1577,13 @@ def build_row0_idle(parts, sj):
         torso_deg = math.sin(ph - 0.4) * 1.3
 
         def post_idle(arr, neck, _g, step=f, p=ph):
-            # Rising forge ember sparks
+            # Rising 2x2 forge ember sparks (zero 1px specks)
             for m in range(2):
                 mx = neck[0] - 10.0 + m * 22.0 + math.sin(p + m * 2.0) * 2.0
                 my = neck[1] + 8.0 - ((step + m * 9) % 18)
-                put_px_160(arr, mx, my, C_MAGMA_YELLOW if (step + m) % 2 == 0 else C_JADE_LIT)
+                c_e = C_MAGMA_YELLOW if (step + m) % 2 == 0 else C_JADE_LIT
+                for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                    put_px_160(arr, mx + ox, my + oy, c_e if (ox == 0 and oy == 0) else C_MAGMA_ORANGE)
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
@@ -2190,45 +2242,63 @@ def build_row5_death(parts, sj):
             show_h = (u < 0.6)
         elif f < 22:
             u = (f - 14) / 7.0
-            pdx = -7.5 + u * 8.5
+            pdx = -4.0 + u * 18.0
             pdy = 19.0 + u * 14.0
-            tdeg = 32.0 + u * 55.0
+            tdeg = 32.0 + u * 54.5
             hdeg = 12.0 - u * 8.0
-            l_th, l_sh = -30.0 * (1.0 - 0.75 * u), 54.0 * (1.0 - 0.75 * u)
-            r_th, r_sh = -24.0 * (1.0 - 0.75 * u), 50.0 * (1.0 - 0.75 * u)
-            wdeg = 20.0 * (1.0 - u) + 0.0 * u
+            l_th = -24.0 * (1.0 - u) + 82.0 * u
+            l_sh = 48.0 * (1.0 - u) + 10.0 * u
+            r_th = -18.0 * (1.0 - u) + 85.0 * u
+            r_sh = 44.0 * (1.0 - u) + 6.0 * u
+            h_in = 0.72 * u
+            c_in = 0.65 * u
+            lc_deg, rc_deg = 2.0, 4.0
+            wdeg = 20.0 * (1.0 - u) + 1.0 * u
             gr = (12.0, 11.0)
-            w_abs = (74.0 + u * 10.0, 102.0 + u * 3.0)
+            w_abs = (76.0 + u * 8.0, 108.0)
             show_h = False
         else:
             u = (f - 21) / 8.0
-            pdx = 1.0 + u * 1.6
+            pdx = 14.0 + u * 1.2
             pdy = 33.0
-            tdeg = 87.2 + u * 2.6
-            hdeg = 4.0 - u * 2.5
-            l_th, l_sh = -7.0 + u * 2.0, 12.0 - u * 2.0
-            r_th, r_sh = -5.0 + u * 1.5, 10.0 - u * 1.5
-            wdeg = -1.5 * (1.0 - u)
+            tdeg = 86.5 + u * 1.6
+            hdeg = 4.0 - u * 2.0
+            l_th, l_sh = 82.0, 10.0
+            r_th, r_sh = 85.0, 6.0
+            h_in = 0.72
+            c_in = 0.65
+            lc_deg, rc_deg = 2.0, 4.0
+            wdeg = 0.5 * (1.0 - u)
             gr = (12.0, 11.0)
-            w_abs = (84.0 + u * 1.8, 105.0)
+            w_abs = (84.0 + u * 1.6, 108.0)
             show_h = False
+
+        if f < 14:
+            h_in = 0.0
+            c_in = 0.25
+            lc_deg = max(-20.0, -tdeg * 0.25)
+            rc_deg = max(-18.0, -tdeg * 0.20)
 
         def post_ko(arr, _n, _g, step=f):
             if step >= 18:
-                # Subtle cooling forge-ember motes drifting upward from fallen Mjolnir head
                 ex = 108 + ((step * 5) % 9) - 4
                 ey = 104 - ((step - 18) * 2) % 15
-                put_px_160(arr, ex, ey, C_MAGMA_YELLOW if step % 2 == 0 else C_MAGMA_ORANGE)
-                put_px_160(arr, ex - 9, ey - 3, C_JADE_MID if step % 3 == 0 else C_MAGMA_AMBER)
+                c1 = C_MAGMA_YELLOW if step % 2 == 0 else C_MAGMA_ORANGE
+                c2 = C_JADE_MID if step % 3 == 0 else C_MAGMA_AMBER
+                for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                    put_px_160(arr, ex + ox, ey + oy, c1)
+                    put_px_160(arr, ex - 9 + ox, ey - 3 + oy, c2)
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=pdx, pelvis_dy=pdy,
             torso_deg=tdeg, head_deg=hdeg,
-            l_coat_deg=max(-20.0, -tdeg * 0.3), r_coat_deg=max(-18.0, -tdeg * 0.25),
+            l_coat_deg=lc_deg, r_coat_deg=rc_deg,
+            coat_x_inward_frac=c_in,
             l_thigh_deg=l_th, l_shin_deg=l_sh, l_foot_deg=0.0,
             r_thigh_deg=r_th, r_shin_deg=r_sh, r_foot_deg=0.0,
-            grip_rel_sh=gr, weapon_deg=wdeg, shaft_len=32.0,
+            hip_inward_frac=h_in,
+            grip_rel_sh=gr, weapon_deg=wdeg, shaft_len=31.0,
             weapon_layer="front", weapon_abs_160=w_abs,
             show_halo=show_h, halo_phase=f * 0.5, rune_phase=f * 0.7,
             post_fn=post_ko,

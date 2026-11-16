@@ -28,8 +28,12 @@ Outputs:
 from collections import deque
 import math
 from pathlib import Path
+import sys
 import numpy as np
 from PIL import Image, ImageDraw
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPRITES_DIR = REPO_ROOT / "assets" / "sprites"
@@ -170,7 +174,7 @@ def defringe_and_remove_bg_512(
     arr[bright_edge, 1] = 16
     arr[bright_edge, 2] = 28
     arr[bright_edge, 3] = 255
-    return arr
+    return clean_512_pose_holes_and_specks(arr, max_hole_area=220, min_island_area=36)
 
 
 def extract_poly_512(src_rgba: np.ndarray, poly):
@@ -1123,6 +1127,15 @@ def compose_stand_rig(
     im_layer = Image.fromarray(canvas, mode="RGBA")
     im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=body_dx, dy=body_dy, rot_deg=torso_rot))
     out = np.array(im_layer, dtype=np.uint8)
+    out = seal_160_char_pinholes_and_leaks(
+        out,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
     if clamp_ground and AY + 1 < LH:
         over = out[AY + 1, :, 3] >= 120
         out[AY + 1:, :, :] = 0
@@ -1202,6 +1215,15 @@ def compose_keypose(
                     if 2 <= ny < LH - 2:
                         shifted[ny] = canvas[y]
                 canvas = shifted
+    canvas = seal_160_char_pinholes_and_leaks(
+        canvas,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
     return canvas
 
 
@@ -1368,7 +1390,16 @@ def compose_walk_rig(stand_parts, stand_meta, f: int) -> np.ndarray:
 
     im_layer = Image.fromarray(canvas, mode="RGBA")
     im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=0.0, dy=bob, rot_deg=torso_rot))
-    return np.array(im_layer, dtype=np.uint8)
+    out = np.array(im_layer, dtype=np.uint8)
+    return seal_160_char_pinholes_and_leaks(
+        out,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
 
 
 # ==============================================================================
@@ -1959,35 +1990,60 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 hb_len=24.0,
             )
         if f <= 21:
-            # Dramatic stagger -> knee drop -> horizontal fall onto arena stone (shifted rightward so crown NEVER hits left border!)
             u = (f - 6) / 15.0
-            rot = -10.0 - 80.0 * (u ** 1.28)
-            drop_y = 2.0 + 11.0 * (u ** 1.15)
-            slide_x = 4.0 + 22.0 * (u ** 1.15)
-            c = np.zeros((LH, LW, 4), dtype=np.uint8)
+            rot = -10.0 - 78.0 * (u ** 1.28)
+            slide_x = 4.0 + 20.0 * (u ** 1.15)
             kp_im = keyposes["K1_COIL"]["im"].rotate(
                 -rot, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
             )
+            rw, rh = kp_im.size
+            v_drape = 1.0 - 0.18 * (u ** 1.2)
+            kp_im = kp_im.resize((rw, max(8, int(round(rh * v_drape)))), Image.Resampling.NEAREST)
             layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
-            layer.paste(kp_im, (int(round(slide_x)), int(round(drop_y))))
-            c = np.array(layer, dtype=np.uint8)
-            # Dropped Twin Blades skittering onto the stone floor cleanly within safe cell bounds
+            layer.paste(kp_im, (int(round(slide_x)), 0))
+            b_tmp = np.array(layer, dtype=np.uint8)
+            ys_p, _ = np.where(b_tmp[:, :, 3] > 0)
+            c = np.zeros((LH, LW, 4), dtype=np.uint8)
+            if len(ys_p) > 0:
+                dy_ground = (AY - 1) - int(ys_p.max())
+                for yy in range(LH):
+                    ny = yy + dy_ground
+                    if 2 <= ny < LH - 2:
+                        c[ny] = b_tmp[yy]
             draw_minute_glaive(c, AX + 16.0 + u * 12.0, min(111.0, AY - 22.0 + u * 21.0), 8.0 * (1.0 - u), blade_len=36.0, chrono_glow=(u < 0.7))
             draw_hour_shortblade(c, AX + 8.0 - u * 4.0, min(111.0, AY - 18.0 + u * 18.0), 175.0, blade_len=20.0)
+            c = seal_160_char_pinholes_and_leaks(
+                c, max_pinhole_lpx=8, min_detached_lpx=4, max_orphan_lpx=20, orphan_dist_lpx=4.0, bridge_max_lpx=56, bridge_gap_lpx=2.5
+            )
+            c[AY:, :, :] = 0
             return c
-        # F22..F29: Grounded horizontal prone (`minX >= 24`, `maxX <= 298`, `height <= 96px` in 320x240, `0` cuts!)
         sub = f - 22
-        c = np.zeros((LH, LW, 4), dtype=np.uint8)
         kp_im = keyposes["K1_COIL"]["im"].rotate(
-            90.0, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
+            88.0, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
         )
+        rw, rh = kp_im.size
+        kp_im = kp_im.resize((rw, max(8, int(round(rh * 0.82)))), Image.Resampling.NEAREST)
         layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
-        layer.paste(kp_im, (26, 13))
-        c = np.array(layer, dtype=np.uint8)
+        layer.paste(kp_im, (24, 0))
+        b_tmp = np.array(layer, dtype=np.uint8)
+        ys_p, _ = np.where(b_tmp[:, :, 3] > 0)
+        c = np.zeros((LH, LW, 4), dtype=np.uint8)
+        if len(ys_p) > 0:
+            dy_ground = (AY - 1) - int(ys_p.max())
+            for yy in range(LH):
+                ny = yy + dy_ground
+                if 2 <= ny < LH - 2:
+                    c[ny] = b_tmp[yy]
         draw_minute_glaive(c, AX + 28.0, 111.0, 2.0, blade_len=36.0, chrono_glow=False)
         draw_hour_shortblade(c, AX + 4.0, 111.0, 178.0, blade_len=20.0)
-        # Tiny flickering clockwork spark so every prone frame transitions cleanly (29/29)
-        put_px(c, AX + 18 + (sub % 4) * 2, 99 - (sub % 2), TEAL_BRIGHT if sub % 2 == 0 else BRASS_GOLD)
+        c = seal_160_char_pinholes_and_leaks(
+            c, max_pinhole_lpx=8, min_detached_lpx=4, max_orphan_lpx=20, orphan_dist_lpx=4.0, bridge_max_lpx=56, bridge_gap_lpx=2.5
+        )
+        c[AY:, :, :] = 0
+        col_sp = TEAL_BRIGHT if sub % 2 == 0 else BRASS_GOLD
+        sx_p, sy_p = AX + 18 + (sub % 4) * 2, 99 - (sub % 2)
+        for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+            put_px(c, sx_p + ox, sy_p + oy, col_sp)
         return c
 
     # --------------------------------------------------------------------------

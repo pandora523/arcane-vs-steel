@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps123';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps123';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
+import { Fighter } from '../entities/Fighter.js?v=30fps124';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps124';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps123';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps123';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps123';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps123';
+} from './AdventureProgression.js?v=30fps124';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps124';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps124';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps124';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -1210,6 +1210,15 @@ export class AdventureManager {
     const z = ADVENTURE_ZONES[zoneIdx];
     if (!z) return;
     PixelForge.ensureAdventureLoaded?.(zoneIdx);
+    if (subWave >= 2 && zoneIdx < 3) {
+      const nextZone = zoneIdx + 1;
+      const schedulePrewarm = () => PixelForge.ensureAdventureLoaded?.(nextZone);
+      if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(schedulePrewarm, { timeout: 600 });
+      } else {
+        setTimeout(schedulePrewarm, 180);
+      }
+    }
     this.zoneIndex = zoneIdx;
     this.subWave = subWave;
     this.goPromptActive = false;

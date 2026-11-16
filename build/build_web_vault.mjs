@@ -710,10 +710,22 @@ async function decryptPackBuffer(packArrayBuf){
 }
 
 async function fetchAndDecryptPack(packId){
-  const res=await origFetch("packs/"+packId+".bin");
-  if(!res.ok)throw new Error("Vault HTTP "+res.status);
-  const enc=await res.arrayBuffer();
-  return decryptPackBuffer(enc);
+  const delays=[120,300];
+  let lastErr=null;
+  for(let attempt=0;attempt<=delays.length;attempt++){
+    try{
+      const res=await origFetch("packs/"+packId+".bin");
+      if(!res.ok)throw new Error("Vault HTTP "+res.status);
+      const enc=await res.arrayBuffer();
+      return await decryptPackBuffer(enc);
+    }catch(err){
+      lastErr=err;
+      if(attempt<delays.length){
+        await new Promise(function(r){setTimeout(r,delays[attempt]);});
+      }
+    }
+  }
+  throw lastErr||new Error("Vault pack load failed: "+packId);
 }
 
 async function gunzipToText(buf){
@@ -745,8 +757,8 @@ async function bootVault(){
   const inFlight=new Map();
   const smallCache=new Map();
   let smallCacheBytes=0;
-  const SMALL_ITEM_CAP=262144;
-  const SMALL_TOTAL_CAP=2097152;
+  const SMALL_ITEM_CAP=5242880;
+  const SMALL_TOTAL_CAP=29360128;
 
   function resolveAssetKey(rawInput){
     if(!rawInput||typeof rawInput!=="string")return null;
@@ -767,7 +779,11 @@ async function bootVault(){
 
   function loadAssetBytes(assetKey){
     const cached=smallCache.get(assetKey);
-    if(cached)return Promise.resolve(cached.slice(0));
+    if(cached){
+      smallCache.delete(assetKey);
+      smallCache.set(assetKey,cached);
+      return Promise.resolve(cached.slice(0));
+    }
     const pending=inFlight.get(assetKey);
     if(pending)return pending.then(function(b){return b.slice(0);});
     const entry=assetTable[assetKey];
@@ -820,6 +836,7 @@ async function bootVault(){
           this.__avsLogicalSrc="";
           this.__avsRawSrc="";
           this.__avsPending=false;
+          this.__avsFailed=false;
           origRemoveAttr.call(this,"src");
           return;
         }
@@ -830,6 +847,7 @@ async function bootVault(){
           this.__avsRawSrc=str;
           this.__avsLogicalSrc=resolvedUrl;
           this.__avsPending=true;
+          this.__avsFailed=false;
           const self=this;
           const mime=assetTable[assetKey][1];
           loadAssetBytes(assetKey).then(function(bytes){
@@ -838,10 +856,12 @@ async function bootVault(){
             const blobUrl=URL.createObjectURL(new Blob([bytes],{type:mime}));
             self.__avsBlobUrl=blobUrl;
             self.__avsPending=false;
+            self.__avsFailed=false;
             nativeSet.call(self,blobUrl);
           },function(){
             if(self.__avsReqId!==reqId)return;
             self.__avsPending=false;
+            self.__avsFailed=true;
             self.dispatchEvent(new Event("error"));
           });
           return;
@@ -849,6 +869,7 @@ async function bootVault(){
         this.__avsLogicalSrc="";
         this.__avsRawSrc="";
         this.__avsPending=false;
+        this.__avsFailed=false;
         nativeSet.call(this,str);
       }
     });
@@ -873,6 +894,7 @@ async function bootVault(){
       this.__avsLogicalSrc="";
       this.__avsRawSrc="";
       this.__avsPending=false;
+      this.__avsFailed=false;
     }
     return origRemoveAttr.call(this,name);
   };

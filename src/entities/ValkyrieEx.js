@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps123';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
+import { Fighter } from './Fighter.js?v=30fps124';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps124';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps123';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps124';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Gungnir Lightning-Javelin + Valhalla Rune Seal -> snaps at F03 (63)
@@ -328,28 +328,23 @@ export class ValkyrieEx extends Fighter {
     const assets = PixelForge.initAssets?.();
     if (!assets) return null;
     if (!assets.valkyrie_ex) {
-      const sheet = new Image();
-      sheet.src = 'assets/sprites/valkyrie_ex_sheet.png?v=30fps123';
-      const vfx = new Image();
-      vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps123';
-      const portrait = new Image();
-      portrait.src = 'assets/sprites/valkyrie_ex_portrait.png?v=30fps123';
+      const mkImg = (src) => {
+        const img = new Image();
+        img._origSrc = src;
+        img.src = src;
+        return img;
+      };
       assets.valkyrie_ex = {
-        sheet,
-        vfx,
-        portrait,
+        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps124'),
+        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps124'),
+        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps124'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
         anchorY: 230
       };
     } else {
-      if (assets.valkyrie_ex.sheet?.src && !assets.valkyrie_ex.sheet.src.includes('v=30fps123')) {
-        assets.valkyrie_ex.sheet.src = 'assets/sprites/valkyrie_ex_sheet.png?v=30fps123';
-      }
-      if (assets.valkyrie_ex.vfx?.src && !assets.valkyrie_ex.vfx.src.includes('v=30fps123')) {
-        assets.valkyrie_ex.vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps123';
-      }
+      PixelForge.ensureHeroLoaded?.('valkyrie_ex');
     }
     return assets.valkyrie_ex;
   }

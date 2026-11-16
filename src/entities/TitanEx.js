@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps123';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
+import { Fighter } from './Fighter.js?v=30fps124';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps124';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps123';
+} from '../engine/shaders/forgeShaders.js?v=30fps124';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)
@@ -163,7 +163,9 @@ export class TitanEx extends Fighter {
   }
 
   getExSprites() {
-    return typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan_ex : null;
+    if (typeof Image === 'undefined') return null;
+    PixelForge.ensureHeroLoaded?.('titan_ex');
+    return PixelForge.initAssets()?.titan_ex || null;
   }
 
   _clampArenaX(xv, game) {

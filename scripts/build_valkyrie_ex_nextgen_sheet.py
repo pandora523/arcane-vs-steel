@@ -34,6 +34,9 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPRITES_DIR = REPO_ROOT / "assets" / "sprites"
 SCRATCH_DIR = Path("/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch")
@@ -184,7 +187,7 @@ def defringe_and_remove_bg_512(
     arr[bright_edge, 1] = 10
     arr[bright_edge, 2] = 18
     arr[bright_edge, 3] = 255
-    return arr
+    return clean_512_pose_holes_and_specks(arr, max_hole_area=220, min_island_area=36)
 
 
 def extract_poly_512(src_rgba: np.ndarray, poly):
@@ -1117,7 +1120,15 @@ def compose_stand_rig(
                 out = shifted
     elif clamp_ground:
         out[AY + 1 :, :, :] = 0
-    return out
+    return seal_160_char_pinholes_and_leaks(
+        out,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.0,
+        bridge_max_lpx=56,
+        bridge_gap_lpx=2.5,
+    )
 
 
 def compose_keypose(
@@ -1169,6 +1180,15 @@ def compose_keypose(
         lhx, lhy = draw_valkyrie_ik_arm(canvas, sh_fx, sh_fy, sh_fx + lance_hand_offset[0], sh_fy + lance_hand_offset[1], bend_sign=1.0, is_back=False)
         draw_gungnir_war_lance(canvas, lhx, lhy, lance_angle, fore_len=lance_fore, back_len=lance_back)
         draw_sculpted_valkyrie_hand_clasp(canvas, lhx, lhy, lance_angle, is_back=False)
+    canvas = seal_160_char_pinholes_and_leaks(
+        canvas,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.0,
+        bridge_max_lpx=56,
+        bridge_gap_lpx=2.5,
+    )
     return canvas
 
 
@@ -1810,28 +1830,57 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             )
         if f <= 21:
             u = (f - 6) / 15.0
-            rot = -14.0 - 76.0 * (u ** 1.35)
-            drop_y = 1.0 + 7.5 * (u ** 1.15)
+            rot = -14.0 - 74.0 * (u ** 1.35)
             slide_x = 4.0 + 16.0 * u
             kp_im = keyposes["K1_COIL"]["im"].rotate(
                 -rot, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
             )
+            rw, rh = kp_im.size
+            v_drape = 1.0 - 0.20 * (u ** 1.2)
+            kp_im = kp_im.resize((rw, max(8, int(round(rh * v_drape)))), Image.Resampling.NEAREST)
             layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
-            layer.paste(kp_im, (int(round(slide_x)), int(round(drop_y))))
-            c = np.array(layer, dtype=np.uint8)
-            draw_gungnir_war_lance(c, AX + 20.0 + u * 14.0, min(109.0, AY - 22.0 + u * 18.0), 6.0 * (1.0 - u), fore_len=36.0, back_len=14.0, blazing=(u < 0.7))
-            c[AY :, :, :] = 0
+            layer.paste(kp_im, (int(round(slide_x)), 0))
+            b_tmp = np.array(layer, dtype=np.uint8)
+            ys_p, _ = np.where(b_tmp[:, :, 3] > 0)
+            c = np.zeros((LH, LW, 4), dtype=np.uint8)
+            if len(ys_p) > 0:
+                dy_ground = (AY - 1) - int(ys_p.max())
+                for yy in range(LH):
+                    ny = yy + dy_ground
+                    if 2 <= ny < LH - 2:
+                        c[ny] = b_tmp[yy]
+            draw_gungnir_war_lance(c, AX + 18.0 + u * 12.0, min(111.0, AY - 20.0 + u * 17.0), 6.0 * (1.0 - u), fore_len=36.0, back_len=14.0, blazing=(u < 0.7))
+            c = seal_160_char_pinholes_and_leaks(
+                c, max_pinhole_lpx=8, min_detached_lpx=4, max_orphan_lpx=22, orphan_dist_lpx=4.0, bridge_max_lpx=64, bridge_gap_lpx=3.0
+            )
+            c[AY:, :, :] = 0
             return c
         sub = f - 22
         kp_im = keyposes["K1_COIL"]["im"].rotate(
-            90.0, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
+            88.0, resample=Image.Resampling.NEAREST, center=(AX, AY - 26)
         )
+        rw, rh = kp_im.size
+        kp_im = kp_im.resize((rw, max(8, int(round(rh * 0.80)))), Image.Resampling.NEAREST)
         layer = Image.new("RGBA", (LW, LH), (0, 0, 0, 0))
-        layer.paste(kp_im, (20, 8))
-        c = np.array(layer, dtype=np.uint8)
-        draw_gungnir_war_lance(c, AX + 34.0, 109.0, 2.0, fore_len=36.0, back_len=14.0, blazing=False)
-        put_px(c, AX + 16 + (sub % 4) * 2, 96 - (sub % 2), GOLD_SPEC if sub % 2 == 0 else CRIMSON_ROSE)
-        c[AY :, :, :] = 0
+        layer.paste(kp_im, (20, 0))
+        b_tmp = np.array(layer, dtype=np.uint8)
+        ys_p, _ = np.where(b_tmp[:, :, 3] > 0)
+        c = np.zeros((LH, LW, 4), dtype=np.uint8)
+        if len(ys_p) > 0:
+            dy_ground = (AY - 1) - int(ys_p.max())
+            for yy in range(LH):
+                ny = yy + dy_ground
+                if 2 <= ny < LH - 2:
+                    c[ny] = b_tmp[yy]
+        draw_gungnir_war_lance(c, AX + 26.0, 108.0, 1.5, fore_len=36.0, back_len=14.0, blazing=False)
+        c = seal_160_char_pinholes_and_leaks(
+            c, max_pinhole_lpx=8, min_detached_lpx=4, max_orphan_lpx=22, orphan_dist_lpx=4.0, bridge_max_lpx=64, bridge_gap_lpx=3.0
+        )
+        c[AY:, :, :] = 0
+        col_sp = GOLD_SPEC if sub % 2 == 0 else CRIMSON_ROSE
+        gx_p, gy_p = AX + 16 + (sub % 4) * 2, 96 - (sub % 2)
+        for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+            put_px(c, gx_p + ox, gy_p + oy, col_sp)
         return c
 
     # --------------------------------------------------------------------------
@@ -2011,11 +2060,11 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         hair_billow=1.0,
         wing_flap=14.0 + math.sin(u * math.tau) * 4.0,
         sovereign_wings=True,
-        # Gungnir War-Lance planted vertically downward (`+90 deg`) cleanly beside her!
-        lance_hand_offset=(21.0, -6.0),
-        lance_angle=90.0,
-        lance_fore=62.0,
-        lance_back=15.0,
+        # Gungnir War-Lance planted vertically with butt on ground (`-90 deg` spearhead UP!) cleanly beside her!
+        lance_hand_offset=(21.0, -4.0),
+        lance_angle=-90.0,
+        lance_fore=44.0,
+        lance_back=24.0,
     )
 
 

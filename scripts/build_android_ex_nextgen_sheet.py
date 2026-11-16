@@ -30,6 +30,10 @@ import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks, filter_mask_min_area, _fill_enclosed_holes_rgba
+
 try:
     from scipy.ndimage import label as _nd_label
 except ImportError:
@@ -275,7 +279,8 @@ def clean_pose_512(im_rgba_512, pocket_seeds=(), strip_polys=(), extra_mask_fn=N
     vivid_neon = alpha & (((b0 - r0) > 42) & (g0 > 150) | ((r0 - g0) > 55) & (r0 > 160))
     arr[:, :, :3] = np.where(alpha[:, :, None], np.where(vivid_neon[:, :, None], arr[:, :, :3], cel_rgb), 0)
     arr[alpha, 3] = 255
-    return fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    filled = fill_interior_pinholes_rgba(arr, max_hole_px=14)
+    return clean_512_pose_holes_and_specks(filled, max_hole_area=180, min_island_area=36)
 
 
 def downsample_clean_160x120(win_hi):
@@ -440,7 +445,10 @@ def assign_remaining_geodesic(alpha, mask_list):
     labels = np.zeros((H, W), dtype=np.int16)
     names = [nm for nm, _ in mask_list]
     for idx, (nm, m) in enumerate(mask_list, start=1):
-        mc = m if nm in ("mane", "l_coat", "r_coat") else keep_largest_component(m)
+        if nm in ("mane", "l_coat", "r_coat"):
+            mc = filter_mask_min_area(m & alpha, min_area=40)
+        else:
+            mc = keep_largest_component(m)
         mc = mc & alpha & (labels == 0)
         labels[mc] = idx
 
@@ -1356,6 +1364,14 @@ def render_keypose_frame_160(
             frame, grip_160[0], grip_160[1], eff_weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=True
         )
 
+    frame = seal_160_char_pinholes_and_leaks(
+        frame,
+        max_pinhole_lpx=6,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=5.0,
+    )
+
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
 
@@ -1419,6 +1435,8 @@ def render_stand_rig_frame_160(
     coat_wave_amp=5.0,
     coat_y_offset_160=0.0,
     coat_x_inward_frac=0.0,
+    l_coat_inward_frac=None,
+    r_coat_inward_frac=None,
     l_thigh_deg=0.0,
     l_shin_deg=0.0,
     l_foot_deg=0.0,
@@ -1468,12 +1486,14 @@ def render_stand_rig_frame_160(
     l_coat_raw = map_torso_pt(sj["l_coat"])
     r_coat_raw = map_torso_pt(sj["r_coat"])
     spine_hip_x = ANCHOR_HI_X + pelvis_dx * S_HI
+    l_c_in = coat_x_inward_frac if l_coat_inward_frac is None else l_coat_inward_frac
+    r_c_in = coat_x_inward_frac if r_coat_inward_frac is None else r_coat_inward_frac
     l_coat_dst = (
-        l_coat_raw[0] + (spine_hip_x - l_coat_raw[0]) * coat_x_inward_frac,
+        l_coat_raw[0] + (spine_hip_x - l_coat_raw[0]) * l_c_in,
         l_coat_raw[1] + coat_y_offset_160 * S_HI,
     )
     r_coat_dst = (
-        r_coat_raw[0] + (spine_hip_x - r_coat_raw[0]) * coat_x_inward_frac,
+        r_coat_raw[0] + (spine_hip_x - r_coat_raw[0]) * r_c_in,
         r_coat_raw[1] + coat_y_offset_160 * S_HI,
     )
     l_hip_raw = map_torso_pt(sj["l_hip"])
@@ -1544,6 +1564,9 @@ def render_stand_rig_frame_160(
     l_foot_part = _shade_crop_tuple(l_foot_src, shade_far_leg)
 
     paste_rotated_part(win_hi, parts["mane"], sj["mane"], mane_dst, deg=torso_deg + head_deg + mane_deg)
+    l_coat_mid = rot_pt((l_coat_dst[0] - 86.0, l_coat_dst[1] + 84.0), l_coat_dst, torso_deg + l_coat_deg)
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] - 8.0, dst_pelvis[1] + 8.0), l_coat_dst, r=7)
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] - 12.0, dst_pelvis[1] + 14.0), l_coat_mid, r=8)
     paste_rotated_part(
         win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
         deg=torso_deg + l_coat_deg, wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
@@ -1552,16 +1575,21 @@ def render_stand_rig_frame_160(
 
     br_hip = max(2, int(round(7 * leg_bridge_scale)))
     br_knee = max(2, int(round(5 * leg_bridge_scale)))
+    draw_joint_bridge_hi(win_hi, dst_pelvis, l_hip_dst, r=max(5, br_hip))
     draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=br_hip)
     draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=br_knee)
     paste_rotated_part(win_hi, l_thigh_part, sj["l_hip"], l_hip_dst, deg=l_th_rot)
     paste_rotated_part(win_hi, l_shin_part, sj["l_knee"], l_knee_dst, deg=l_sh_rot)
     paste_rotated_part(win_hi, l_foot_part, l_ankle_pivot, l_ank_dst, deg=l_ft_rot)
 
+    r_coat_mid = rot_pt((r_coat_dst[0] + 48.0, r_coat_dst[1] + 56.0), r_coat_dst, torso_deg + r_coat_deg)
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] + 8.0, dst_pelvis[1] + 8.0), r_coat_dst, r=7)
+    draw_joint_bridge_hi(win_hi, (dst_pelvis[0] + 10.0, dst_pelvis[1] + 14.0), r_coat_mid, r=7)
     paste_rotated_part(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
         deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
     )
+    draw_joint_bridge_hi(win_hi, dst_pelvis, r_hip_dst, r=max(5, br_hip))
     draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=br_hip)
     draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=br_knee)
     paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_th_rot)
@@ -1595,27 +1623,28 @@ def render_stand_rig_frame_160(
                         shifted[ny] = body_160[y]
                 body_160 = shifted
 
-    frame = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
+    fx_behind = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     neck_160 = (neck_dst[0] / S_HI, neck_dst[1] / S_HI + shift_y_160)
     grip_160 = (grip_hi[0] / S_HI, grip_hi[1] / S_HI + shift_y_160)
 
     if pre_fn is not None:
-        pre_fn(frame, neck_160, grip_160)
+        pre_fn(fx_behind, neck_160, grip_160)
 
     if funnel_spread > 0.05:
-        draw_cyber_fin_funnels_160(frame, neck_160[0] - 2.0, neck_160[1] + 4.0, spread_scale=funnel_spread, phase=rune_phase)
+        draw_cyber_fin_funnels_160(fx_behind, neck_160[0] - 2.0, neck_160[1] + 4.0, spread_scale=funnel_spread, phase=rune_phase)
 
+    char_160 = np.zeros((LOGICAL_H, LOGICAL_W, 4), dtype=np.uint8)
     if weapon_layer == "behind":
         draw_muramasa_plasma_odachi_160(
-            frame, grip_160[0], grip_160[1], weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=False
+            char_160, grip_160[0], grip_160[1], weapon_deg, blade_len=blade_len, sori_sign=sori_sign, rune_phase=rune_phase, draw_gauntlets=False
         )
 
     mask_b = body_160[:, :, 3] > 128
-    frame[mask_b] = body_160[mask_b]
+    char_160[mask_b] = body_160[mask_b]
 
     if weapon_layer == "front":
         draw_muramasa_plasma_odachi_160(
-            frame,
+            char_160,
             grip_160[0],
             grip_160[1],
             weapon_deg,
@@ -1624,6 +1653,20 @@ def render_stand_rig_frame_160(
             rune_phase=rune_phase,
             draw_gauntlets=(not weapon_single_hand),
         )
+
+    char_160 = seal_160_char_pinholes_and_leaks(
+        char_160,
+        max_pinhole_lpx=6,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=5.0,
+        bridge_max_lpx=64,
+        bridge_gap_lpx=2.5,
+    )
+    frame = fx_behind
+    mask_c = char_160[:, :, 3] > 128
+    frame[mask_c] = char_160[mask_c]
+    frame = _fill_enclosed_holes_rgba(frame, max_hole_area=6, safe_border=2)
 
     if post_fn is not None:
         post_fn(frame, neck_160, grip_160)
@@ -1699,7 +1742,9 @@ def build_row1_walk(parts, sj):
             coat_wave_ph=ph2,
             coat_wave_amp=2.2,
             coat_y_offset_160=-3.0,
-            coat_x_inward_frac=0.30,
+            coat_x_inward_frac=0.45,
+            l_coat_inward_frac=0.42,
+            r_coat_inward_frac=0.58,
             l_thigh_deg=l_th,
             l_shin_deg=l_kb,
             l_foot_deg=l_af,
@@ -2147,11 +2192,12 @@ def build_row4_ultimate(parts, sj, keyposes):
             coat_wave_ph=sub * 0.9,
             coat_wave_amp=3.5,
             coat_y_offset_160=-2.0,
-            coat_x_inward_frac=0.18,
-            l_thigh_deg=-26.0,
+            coat_x_inward_frac=0.36,
+            r_coat_inward_frac=0.24,
+            l_thigh_deg=-30.0,
             l_shin_deg=42.0,
             l_foot_deg=-4.0,
-            r_thigh_deg=18.0,
+            r_thigh_deg=26.0,
             r_shin_deg=16.0,
             r_foot_deg=6.0,
             hip_inward_frac=0.18,
@@ -2264,37 +2310,55 @@ def build_row5_death(parts, sj):
             w_abs = None
         elif f < 22:
             u = (f - 14) / 7.0
-            pdx = -7.5 + u * 8.5
+            pdx = -4.0 + u * 18.0
             pdy = 20.0 + u * 14.0
-            tdeg = 32.0 + u * 55.0
+            tdeg = 32.0 + u * 54.5
             hdeg = 14.0 - u * 10.0
-            l_th, l_sh = -28.0 * (1.0 - 0.75 * u), 52.0 * (1.0 - 0.75 * u)
-            r_th, r_sh = -22.0 * (1.0 - 0.75 * u), 48.0 * (1.0 - 0.75 * u)
-            wdeg = 23.0 * (1.0 - u) + 2.0 * u
+            l_th = -12.0 * (1.0 - u) + 56.0 * u
+            l_sh = 44.0 * (1.0 - u) + 2.0 * u
+            r_th = 42.0 * (1.0 - u) + 114.0 * u
+            r_sh = 16.0 * (1.0 - u) - 8.0 * u
+            h_in = 0.72 * u
+            c_in = 0.65 * u
+            lc_deg = 2.0
+            rc_deg = 4.0
+            wdeg = 18.0 * (1.0 - u) + 2.0 * u
             gr = (12.0, 11.0)
-            w_abs = (74.0 + u * 12.0, 106.0 + u * 6.0)
+            w_abs = (76.0 + u * 8.0, 108.0 + u * 2.0)
         else:
             u = (f - 22) / 7.0
-            pdx = 1.0
+            pdx = 14.0
             pdy = 34.0
-            tdeg = 87.5 + math.sin(u * math.pi) * 0.8
+            tdeg = 86.5 + math.sin(u * math.pi) * 0.6
             hdeg = 4.0
-            l_th, l_sh = -7.0, 12.0
-            r_th, r_sh = -5.0, 10.0
+            l_th, l_sh = 56.0, 2.0
+            r_th, r_sh = 114.0, -8.0
+            h_in = 0.72
+            c_in = 0.65
+            lc_deg = 2.0
+            rc_deg = 4.0
             wdeg = 1.5
             gr = (12.0, 11.0)
-            w_abs = (86.0, 112.0)
+            w_abs = (84.0, 110.0)
+
+        if f < 14:
+            h_in = 0.0
+            c_in = 0.25
+            lc_deg = max(-20.0, -tdeg * 0.25)
+            rc_deg = max(-16.0, -tdeg * 0.20)
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=pdx, pelvis_dy=pdy,
             torso_deg=tdeg, head_deg=hdeg,
-            mane_deg=-tdeg * 0.25,
-            l_coat_deg=max(-25.0, -tdeg * 0.35), r_coat_deg=max(-20.0, -tdeg * 0.25),
-            coat_wave_ph=f * 0.45, coat_wave_amp=4.0,
+            mane_deg=-tdeg * 0.22,
+            l_coat_deg=lc_deg, r_coat_deg=rc_deg,
+            coat_wave_ph=f * 0.45, coat_wave_amp=3.0 if f >= 14 else 4.0,
+            coat_x_inward_frac=c_in,
             l_thigh_deg=l_th, l_shin_deg=l_sh,
             r_thigh_deg=r_th, r_shin_deg=r_sh,
-            grip_rel_sh=gr, weapon_deg=wdeg, blade_len=45.0,
+            hip_inward_frac=h_in,
+            grip_rel_sh=gr, weapon_deg=wdeg, blade_len=42.0,
             weapon_layer="front", weapon_abs_160=w_abs,
             funnel_spread=f_spread, rune_phase=f * 0.7, lock_lowest_to_ground=True,
         ))

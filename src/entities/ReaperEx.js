@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps123';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
+import { Fighter } from './Fighter.js?v=30fps124';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps124';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps123';
+} from '../engine/shaders/abyssalShaders.js?v=30fps124';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Wide Downward Reaping Crescent Smear -> snaps at F03 (63)
@@ -186,7 +186,9 @@ export class ReaperEx extends Fighter {
   }
 
   getExSprites() {
-    return typeof Image !== 'undefined' ? PixelForge.initAssets()?.reaper_ex : null;
+    if (typeof Image === 'undefined') return null;
+    PixelForge.ensureHeroLoaded?.('reaper_ex');
+    return PixelForge.initAssets()?.reaper_ex || null;
   }
 
   getCompanionSheet() {
@@ -201,10 +203,12 @@ export class ReaperEx extends Fighter {
 
     if (!this._fallbackCompanionsImg) {
       const img = new Image();
-      img.src = 'assets/sprites/reaper_companions.png?v=30fps123';
+      const src = 'assets/sprites/reaper_companions.png?v=30fps113';
+      img._origSrc = src;
+      img.src = src;
       this._fallbackCompanionsImg = img;
     }
-    return this._fallbackCompanionsImg;
+    return PixelForge.ensureImage?.(this._fallbackCompanionsImg) || this._fallbackCompanionsImg;
   }
 
   _clampArenaX(xv, game) {
@@ -2792,7 +2796,7 @@ export class ReaperEx extends Fighter {
    * NEWLY-BORN SUPREME ULTIMATE (`TRUE_ULTIMATE`, `4.50s` + `12.5s` Living Covenant):
    * `MEMENTO MORI: CATHEDRAL OF OBLIVION`
    * - Unseals twin Gothic Oblivion Gates (`Row 5`),
-   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps123`),
+   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps124`),
    * - Drops a colossal 6-Pillar Violet-Crimson Scythe Guillotine across reality (`720` Crit)!
    */
   updateTrueUltimate(dt, enemy, game) {

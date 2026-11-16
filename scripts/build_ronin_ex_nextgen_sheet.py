@@ -30,6 +30,9 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks
+
 ROOT = Path(__file__).resolve().parents[1]
 SPRITES_DIR = ROOT / "assets" / "sprites"
 
@@ -40,7 +43,7 @@ KEYPOSES_REF = SPRITES_DIR / "ronin_ex_keyposes_ref.jpg"
 OUT_SHEET = SPRITES_DIR / "ronin_ex_sheet.png"
 OUT_PORTRAIT = SPRITES_DIR / "ronin_ex_portrait.png"
 
-QA_DIR = Path("/Users/rei/.gemini/antigravity/brain/2b67fecd-73c5-4987-946f-3fcc4c35a185/scratch")
+QA_DIR = Path("/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch")
 
 # Wide-canvas Next-Gen framing constants
 LOG_W = 160
@@ -214,7 +217,7 @@ def remove_white_bg_512(
     rgba[bright_edge, 2] = np.minimum(
         255, (rgba[bright_edge, 2].astype(np.int16) * 42 // 100) + 22
     ).astype(np.uint8)
-    return rgba
+    return clean_512_pose_holes_and_specks(rgba, max_hole_area=240, min_island_area=36)
 
 
 def poly_mask(w: int, h: int, pts: list[tuple[int, int]]) -> np.ndarray:
@@ -1292,7 +1295,8 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
     tx_off = math.sin(rad_t) * 14.0
     ty_off = (1.0 - math.cos(rad_t)) * 8.0
 
-    # Layer 0: 5-Drum Raijin Taiko Thunder-Drum Halo Ring behind shoulders!
+    # Layer 0: Keep 5-Drum Raijin Taiko Thunder-Drum halo in separate bg buffer so char sealing preserves all 5 drums!
+    bg_drums = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
     if cfg.get("show_drums", True):
         drum_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
         draw_raijin_drums_160(
@@ -1302,7 +1306,7 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
             phase=cfg.get("phase", 0.0),
             charge=cfg.get("drum_charge", 0.30),
         )
-        canvas.alpha_composite(Image.fromarray(drum_buf, "RGBA"))
+        bg_drums = Image.fromarray(drum_buf, "RGBA")
 
     # Layer 1: Flowing Silver-White Samurai Mane (behind torso & head)
     hair_x, hair_y = map_pt(254.0, 96.0)
@@ -1395,6 +1399,17 @@ def render_stand_rig_frame(rigs: dict, cfg: dict) -> Image.Image:
         draw_samurai_kote_arm_160(fg_buf, r_sh[0], r_sh[1] + 5, fg_grip[0], fg_grip[1], is_front=True, bend_sign=cfg.get("bend_f", 1.0))
 
     canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    char_clean = seal_160_char_pinholes_and_leaks(
+        np.array(canvas, dtype=np.uint8),
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
+    bg_drums.alpha_composite(Image.fromarray(char_clean, "RGBA"))
+    canvas = bg_drums
     if cfg.get("clamp_ground", False):
         arr_c = np.array(canvas, dtype=np.uint8)
         if ANCHOR_Y_120 + 1 < LOG_H:
@@ -1417,7 +1432,8 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
     sx = cfg.get("sx", 1.0)
     sy = cfg.get("sy", 1.0)
 
-    # Back Layer: 5-Drum Raijin Taiko Thunder-Drum Halo Ring
+    # Back Layer: 5-Drum Raijin Taiko Thunder-Drum Halo Ring preserved separately from body sealing
+    bg_drums = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
     if cfg.get("show_drums", True):
         drum_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
         drum_cy = ay - (56.0 if kp_name != "K1_COIL" else 48.0)
@@ -1428,7 +1444,7 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
             phase=cfg.get("phase", 0.0),
             charge=cfg.get("drum_charge", 0.45),
         )
-        canvas.alpha_composite(Image.fromarray(drum_buf, "RGBA"))
+        bg_drums = Image.fromarray(drum_buf, "RGBA")
 
     # Paste 3D-foreshortened samurai keypose body
     paste_keypose_160(canvas, kp, ax, ay, angle_deg=body_deg, sx=sx, sy=sy)
@@ -1520,13 +1536,27 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
                 is_front=True, bend_sign=cfg.get("bend_f", 1.0),
             )
 
-    # Sleek Dark-Samurai Zantetsuken Iaido vacuum gleams & Raijin thunder sparks!
+    canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+    char_clean = seal_160_char_pinholes_and_leaks(
+        np.array(canvas, dtype=np.uint8),
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=18,
+        orphan_dist_lpx=4.5,
+        bridge_max_lpx=48,
+        bridge_gap_lpx=2.0,
+    )
+    bg_drums.alpha_composite(Image.fromarray(char_clean, "RGBA"))
+    canvas = bg_drums
+
+    # Sleek Dark-Samurai Zantetsuken Iaido vacuum gleams & Raijin thunder sparks AFTER sealing!
     smear = cfg.get("smear")
     if smear:
         kind = smear["kind"]
         if kind == "gleam":
+            sm_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
             draw_iaido_vacuum_gleam_160(
-                fg_buf,
+                sm_buf,
                 x0=ax + smear.get("x0", 18.0),
                 y0=ay + smear.get("y0", -44.0),
                 x1=ax + smear.get("x1", 88.0),
@@ -1536,8 +1566,7 @@ def render_keypose_frame(rigs: dict, kp_name: str, cfg: dict) -> Image.Image:
                 max_x=smear.get("max_x", 155),
                 seed=smear.get("seed", 1),
             )
-
-    canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+            canvas.alpha_composite(Image.fromarray(sm_buf, "RGBA"))
     if cfg.get("clamp_ground", False):
         arr_c = np.array(canvas, dtype=np.uint8)
         if ANCHOR_Y_120 + 1 < LOG_H:
@@ -2439,36 +2468,58 @@ def build_row5_hurt_death(rigs: dict) -> list[Image.Image]:
         else:
             p = (f - 14) / 15.0
             fall_u = min(1.0, (f - 14) / 8.0)  # reaches full horizontal prone by F22!
-            ang = -38.0 - 50.0 * fall_u        # smoothly tilts -38 -> -88 deg onto floor
-            slide_dx = 20.0 + 12.0 * fall_u
-            drop_y = -6.0 - 5.0 * fall_u
+            ang = -38.0 - 49.0 * fall_u
+            slide_dx = 22.0 + 12.0 * fall_u
+            drop_y = -6.0 - 4.0 * fall_u
             canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
             paste_keypose_160(
                 canvas,
-                rigs["K4_LEAP"],
+                rigs["K1_COIL"],
                 ANCHOR_X_160 + slide_dx,
                 ANCHOR_Y_120 + drop_y,
                 angle_deg=ang,
-                sx=0.92,
-                sy=0.88,
+                sx=0.88,
+                sy=0.82,
             )
+            arr_c = np.array(canvas, dtype=np.uint8)
+            ys_p, _ = np.where(arr_c[:, :, 3] > 0)
+            if len(ys_p) > 0:
+                dy_g = (ANCHOR_Y_120 - 1) - int(ys_p.max())
+                if dy_g != 0:
+                    sh = np.zeros_like(arr_c)
+                    for yy in range(LOG_H):
+                        ny = yy + dy_g
+                        if 2 <= ny < LOG_H - 2:
+                            sh[ny] = arr_c[yy]
+                    arr_c = sh
             fg_buf = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
-            # Fallen Raijin Odachi dropping smoothly to rest beside Kaze-Maru (strictly within x_160 = 24..138)
             sw_drop = min(1.0, (f - 14) / 4.0)
             draw_raijin_odachi_160(
                 fg_buf,
                 hilt_x=ANCHOR_X_160 + 20.0 + 4.0 * sw_drop + p * 0.6,
-                hilt_y=ANCHOR_Y_120 - 12.0 * (1.0 - sw_drop) - 4.0 * sw_drop,
+                hilt_y=ANCHOR_Y_120 - 11.0 * (1.0 - sw_drop) - 4.0 * sw_drop,
                 angle_deg=26.0 * (1.0 - sw_drop) + (-1.5 + p * 1.0) * sw_drop,
-                blade_len=48.0,
+                blade_len=46.0,
                 storm_charge=0.05 if f % 2 == 0 else 0.0,
             )
-            # Subtle fading storm ember so every death frame remains distinct (29/29 transitions)
+            canvas = Image.fromarray(arr_c, "RGBA")
+            canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
+            arr_c = seal_160_char_pinholes_and_leaks(
+                np.array(canvas, dtype=np.uint8),
+                max_pinhole_lpx=8,
+                min_detached_lpx=4,
+                max_orphan_lpx=20,
+                orphan_dist_lpx=4.0,
+                bridge_max_lpx=56,
+                bridge_gap_lpx=2.5,
+            )
+            arr_c[ANCHOR_Y_120 :, :, :] = 0
             ex = int(round(ANCHOR_X_160 + 8.0 + (f - 14) * 1.8))
             ey = int(round(ANCHOR_Y_120 - 16.0 - (f - 14) * 0.5))
-            set_px(fg_buf, ex, ey, C_CYAN_DEEP if f < 24 else C_INDIGO_MID)
-            canvas.alpha_composite(Image.fromarray(fg_buf, "RGBA"))
-            frames.append(canvas)
+            col_e = C_CYAN_DEEP if f < 24 else C_INDIGO_MID
+            for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                set_px(arr_c, ex + ox, ey + oy, col_e)
+            frames.append(Image.fromarray(arr_c, "RGBA"))
     return frames
 
 

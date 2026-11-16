@@ -23,7 +23,11 @@ Invariants enforced:
 import argparse
 import math
 import os
+import sys
 from collections import deque
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ex_sprite_clean_utils import clean_512_pose_holes_and_specks, seal_160_char_pinholes_and_leaks
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -408,7 +412,11 @@ def build_priestess_walk_rig_512(armless_512):
 def load_priestess_poses():
     base_raw = Image.open(BASE_JPG).convert("RGB").resize((512, 512), Image.Resampling.LANCZOS)
     base_pockets = [(256, 56), (244, 58), (270, 58), (168, 127), (161, 208), (183, 207)]
-    base_seg = segment_ivory_safe_white_bg(base_raw, pocket_seeds=base_pockets)
+    base_seg = clean_512_pose_holes_and_specks(
+        segment_ivory_safe_white_bg(base_raw, pocket_seeds=base_pockets),
+        max_hole_area=320,
+        min_island_area=36,
+    )
     base_arr = np.array(base_seg)
 
     ys, _ = np.where(base_arr[:, :, 3] > 0)
@@ -514,6 +522,8 @@ def load_priestess_poses():
             t_arr[pm, 3] = 0
         t_fg = keep_largest_component(t_arr[:, :, 3] > 0)
         t_arr[:, :, 3] = np.where(t_fg, 255, 0)
+        t_arr = clean_512_pose_holes_and_specks(t_arr, max_hole_area=320, min_island_area=36)
+        t_fg = t_arr[:, :, 3] > 128
 
         k_ys, _ = np.where(t_fg)
         true_y_bot = int(k_ys.max()) if len(k_ys) else spec["y_bot"]
@@ -1411,8 +1421,8 @@ def compose_priestess_frame(
         assert pose_key != "K4_LEAP", "K4_LEAP is forbidden when lock_grounded=True!"
         dy = 0.0
 
-    canvas = Image.new("RGBA", (LOG_W, LOG_H), (0, 0, 0, 0))
-    arr = np.array(canvas)
+    fx_behind = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
+    char_arr = np.zeros((LOG_H, LOG_W, 4), dtype=np.uint8)
 
     if pose_key == "STAND":
         body_im = poses["stand_armless"]
@@ -1444,7 +1454,7 @@ def compose_priestess_frame(
 
     if ground_seal_rx > 1.0:
         draw_rose_window_magic_circle(
-            arr,
+            fx_behind,
             cx=AX + dx + 2.0,
             cy=min(float(max_fx_y - 3), 108.0 + max(0.0, eff_dy)),
             rx=ground_seal_rx,
@@ -1453,24 +1463,25 @@ def compose_priestess_frame(
             max_y=max_fx_y,
         )
 
-    draw_sanctum_stole_and_halo(arr, cx=gem[0] - 4.0, cy=gem[1] + 2.0, phase=phase, flare=halo_flare, max_y=max_fx_y)
+    draw_sanctum_stole_and_halo(char_arr, cx=gem[0] - 4.0, cy=gem[1] + 2.0, phase=phase, flare=halo_flare, max_y=max_fx_y)
 
     grip_main = (sh_f[0] + grip_offset[0], sh_f[1] + grip_offset[1])
     rad = math.radians(aim_deg)
     ux, uy = math.cos(rad), math.sin(rad)
     grip_rear = (grip_main[0] - ux * 7.5, grip_main[1] - uy * 7.5)
 
+    offhand_star_pt = None
     if two_handed:
-        draw_priestess_arm(arr, sh_b, grip_rear, is_front=False, bend_sign=1.0, max_y=max_fx_y, role="scepter_grip", grip_axis=(ux, uy))
+        draw_priestess_arm(char_arr, sh_b, grip_rear, is_front=False, bend_sign=1.0, max_y=max_fx_y, role="scepter_grip", grip_axis=(ux, uy))
     elif offhand_target is not None:
-        oh = draw_priestess_arm(arr, sh_b, offhand_target, is_front=False, bend_sign=1.0, max_y=max_fx_y, role="benediction")
+        oh = draw_priestess_arm(char_arr, sh_b, offhand_target, is_front=False, bend_sign=1.0, max_y=max_fx_y, role="benediction")
         if radiance > 0.45:
-            draw_pixel_star4(arr, oh[0], oh[1] - 1.5, arm=2, core_col=C_LIGHT_CORE, ray_col=C_LIGHT_SUNGOLD, max_y=max_fx_y)
+            offhand_star_pt = oh
 
     weapon_behind = (-175.0 <= aim_deg <= -118.0)
     if weapon_behind:
         draw_sunburst_cathedral_scepter(
-            arr,
+            char_arr,
             grip_main,
             aim_deg,
             radiance=radiance,
@@ -1479,32 +1490,50 @@ def compose_priestess_frame(
 
     if walk_frame_idx is not None and pose_key == "STAND":
         walk_body_im = render_priestess_walk_body_log(poses, walk_frame_idx, dx=dx, eff_dy=eff_dy)
-        body_layer = Image.fromarray(arr)
+        body_layer = Image.fromarray(char_arr)
         body_layer.alpha_composite(walk_body_im, (0, 0))
     else:
-        body_layer = Image.fromarray(arr)
+        body_layer = Image.fromarray(char_arr)
         body_layer.alpha_composite(body_im, (int(round(dx)), eff_dy))
-    arr = np.array(body_layer)
+    char_arr = np.array(body_layer)
 
     gx_i, gy_i = int(round(gem[0])), int(round(gem[1]))
-    put_px(arr, gx_i, gy_i, C_LIGHT_CORE if (int(phase * 30) % 3 == 0) else C_SAPPHIRE)
-    for k in range(2):
-        ang = phase * math.tau + k * math.pi
-        mx = int(round(AX + dx + lean_dx + math.cos(ang) * 9.0))
-        my = int(round(34 + eff_dy + math.sin(ang) * 1.5))
-        put_px(arr, mx, my, C_LIGHT_SUNGOLD if k == 0 else C_LIGHT_ROSE)
+    put_px(char_arr, gx_i, gy_i, C_LIGHT_CORE if (int(phase * 30) % 3 == 0) else C_SAPPHIRE)
 
     if not weapon_behind:
         draw_sunburst_cathedral_scepter(
-            arr,
+            char_arr,
             grip_main,
             aim_deg,
             radiance=radiance,
             max_y=max_fx_y,
         )
         if two_handed:
-            draw_sculpted_priestess_hand(arr, grip_rear, -uy, ux, is_front=False, role="scepter_grip", max_y=max_fx_y)
-    draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=max_fx_y, role="scepter_grip", grip_axis=(ux, uy))
+            draw_sculpted_priestess_hand(char_arr, grip_rear, -uy, ux, is_front=False, role="scepter_grip", max_y=max_fx_y)
+    draw_priestess_arm(char_arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=max_fx_y, role="scepter_grip", grip_axis=(ux, uy))
+
+    char_arr = seal_160_char_pinholes_and_leaks(
+        char_arr,
+        max_pinhole_lpx=8,
+        min_detached_lpx=4,
+        max_orphan_lpx=20,
+        orphan_dist_lpx=4.0,
+        bridge_max_lpx=64,
+        bridge_gap_lpx=2.5,
+    )
+    arr = fx_behind
+    c_mask = char_arr[:, :, 3] > 128
+    arr[c_mask] = char_arr[c_mask]
+
+    if offhand_star_pt is not None:
+        draw_pixel_star4(arr, offhand_star_pt[0], offhand_star_pt[1] - 1.5, arm=2, core_col=C_LIGHT_CORE, ray_col=C_LIGHT_SUNGOLD, max_y=max_fx_y)
+    for k in range(2):
+        ang = phase * math.tau + k * math.pi
+        mx = int(round(AX + dx + lean_dx + math.cos(ang) * 9.0))
+        my = int(round(34 + eff_dy + math.sin(ang) * 1.5))
+        c_m = C_LIGHT_SUNGOLD if k == 0 else C_LIGHT_ROSE
+        for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+            put_px(arr, mx + ox, my + oy, c_m)
 
     draw_priestess_cast_fx(arr, fx_spec, phase=phase, max_y=max_fx_y)
 
@@ -2051,9 +2080,9 @@ def build_row_5_death(poses):
             t = clamp((f - 10) / 11.0, 0.0, 1.0)
             st = smoothstep(t)
             rot_deg = lerp(24.0, 87.0, st)
-            rot_im = poses["stand_armless"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
+            rot_im = poses["keyposes"]["K1_COIL"]["armless"].rotate(-rot_deg, resample=Image.Resampling.NEAREST, expand=True)
             # Gravity drapes the wide cathedral gown smoothly toward the floor as she lands prone
-            v_drape = lerp(1.0, 0.72, st)
+            v_drape = lerp(1.0, 0.76, st)
             rw, rh = rot_im.size
             dh = max(8, int(round(rh * v_drape)))
             draped_im = rot_im.resize((rw, dh), Image.Resampling.NEAREST)
@@ -2063,19 +2092,10 @@ def build_row_5_death(poses):
             if len(ys) > 0:
                 min_x, max_x = int(xs.min()), int(xs.max())
                 max_y = int(ys.max())
-                ox = int(clamp(AX + 4 - (min_x + max_x) // 2, 16, LOG_W - b_arr.shape[1] - 16))
+                ox = int(clamp(AX + 8 - (min_x + max_x) // 2, 16, LOG_W - b_arr.shape[1] - 16))
                 oy = (AY - 1) - max_y
                 canvas.alpha_composite(draped_im, (ox, oy))
             arr = np.array(canvas)
-
-            # Re-ensure crisp dark selout outline around draped prone silhouette
-            fg_m = arr[:, :, 3] > 0
-            for py in range(3, LOG_H - 3):
-                for px in range(3, LOG_W - 3):
-                    if not fg_m[py, px]:
-                        if fg_m[py + 1, px] or fg_m[py - 1, px] or fg_m[py, px + 1] or fg_m[py, px - 1]:
-                            if py <= 114:
-                                arr[py, px] = C_OUT
 
             # Fallen Sunburst Cathedral Scepter resting beside her on the sanctuary floor
             scepter_y = lerp(104.0, 111.0, st)
@@ -2087,11 +2107,24 @@ def build_row_5_death(poses):
                 radiance=0.22 if f < 22 else (0.16 + 0.05 * math.sin(ph * math.tau * 3.0)),
                 max_y=114,
             )
-            # Gentle fading stained-glass sanctuary motes (keeps all 29/29 transitions alive while prone <= 92px!)
-            for k in range(4):
-                ex = int(round(AX - 12 + k * 9 + math.sin(f * 0.85 + k) * 2.0))
-                ey = int(round(108 - ((f + k * 3) % 10)))
-                put_px(arr, ex, ey, C_LIGHT_SUNGOLD if (f + k) % 2 == 0 else C_LIGHT_ROSE)
+            arr = seal_160_char_pinholes_and_leaks(
+                arr, max_pinhole_lpx=8, min_detached_lpx=4, max_orphan_lpx=20, orphan_dist_lpx=4.0, bridge_max_lpx=64, bridge_gap_lpx=2.5
+            )
+            # Re-ensure crisp dark selout outline around draped prone silhouette
+            fg_m = arr[:, :, 3] > 0
+            for py in range(3, LOG_H - 3):
+                for px in range(3, LOG_W - 3):
+                    if not fg_m[py, px]:
+                        if fg_m[py + 1, px] or fg_m[py - 1, px] or fg_m[py, px + 1] or fg_m[py, px - 1]:
+                            if py <= 114:
+                                arr[py, px] = C_OUT
+            # Gentle fading stained-glass sanctuary motes (2x2 so zero 1px specks)
+            for k in range(3):
+                ex = int(round(AX - 10 + k * 11 + math.sin(f * 0.85 + k) * 2.0))
+                ey = int(round(107 - ((f + k * 3) % 9)))
+                col_m = C_LIGHT_SUNGOLD if (f + k) % 2 == 0 else C_LIGHT_ROSE
+                for ox, oy in ((0, 0), (1, 0), (0, -1), (1, -1)):
+                    put_px(arr, ex + ox, ey + oy, col_m)
             enforce_safety_margin(arr)
             frames.append(arr)
     return frames
