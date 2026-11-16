@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps118';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps118';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps118';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps118';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps118';
+import { Fighter } from './Fighter.js?v=30fps119';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps119';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps119';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps119';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps119';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -2133,9 +2133,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps118'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps118'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps118'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps119'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps119'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps119'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -2143,12 +2143,12 @@ export class FireMageEx extends Fighter {
       };
     } else if (assets.mage_ex.vfx) {
       const vfxImg = assets.mage_ex.vfx;
-      if (vfxImg._deferredSrc && !vfxImg._deferredSrc.includes('v=30fps118')) {
-        vfxImg._deferredSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps118';
-        vfxImg._origSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps118';
-      } else if (!vfxImg._deferredSrc && !String(vfxImg.src || '').includes('v=30fps118')) {
-        vfxImg._origSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps118';
-        vfxImg.src = 'assets/sprites/mage_ex_vfx.png?v=30fps118';
+      if (vfxImg._deferredSrc && !vfxImg._deferredSrc.includes('v=30fps119')) {
+        vfxImg._deferredSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps119';
+        vfxImg._origSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps119';
+      } else if (!vfxImg._deferredSrc && !String(vfxImg.src || '').includes('v=30fps119')) {
+        vfxImg._origSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps119';
+        vfxImg.src = 'assets/sprites/mage_ex_vfx.png?v=30fps119';
       }
     }
     return assets.mage_ex;

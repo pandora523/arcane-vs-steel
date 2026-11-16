@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps118';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps118';
+import { Fighter } from './Fighter.js?v=30fps119';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps119';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -2952,14 +2952,29 @@ export class ArchfiendBoss extends Monster {
         blitCell(7, 0, jawX, jawY, torsoSize, torsoSize);
         blitCell(5, 0, frontPauldronX, frontPauldronY, torsoSize, torsoSize);
 
-        // Subtle <=0.18 additive hit-flash across torso & skull on player impact
-        if (!this.isDead && this.hitFlash > 0) {
+        // Subtle <=0.14 Neo-Vision EX additive molten-gold & abyssal-violet rim catchlight + rising hell-embers
+        if (!this.isDead) {
+          const exAlpha = this.hitFlash > 0
+            ? Math.min(0.16, 0.08 + this.hitFlash * 0.9)
+            : 0.07 + 0.04 * Math.sin(t * 4.2);
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = Math.min(0.18, this.hitFlash * 1.25);
+          ctx.globalAlpha = exAlpha;
           blitCell(2, 0, torsoX, torsoY, torsoSize, torsoSize);
           blitCell(6, 0, skullX, skullY, torsoSize, torsoSize);
           ctx.restore();
+
+          // Rising 2x4 stepped-pixel Sovereign Hellfire embers around Malphas (0 rotate/vector calls)
+          const emberBase = Math.floor(t * 20);
+          for (let ei = 0; ei < 6; ei++) {
+            const ph = ((t * 1.45 + ei * 0.17) % 1.0);
+            const ex = Math.round((torsoX + 90 + ((ei * 73 + emberBase) % 270)) / 2) * 2;
+            const ey = Math.round((torsoY + 340 - ph * 220) / 2) * 2;
+            ctx.fillStyle = ei % 2 === 0 ? '#fde047' : '#f43f5e';
+            ctx.fillRect(ex, ey, 4, 4);
+            ctx.fillStyle = '#c084fc';
+            ctx.fillRect(ex, ey + 4, 4, 2);
+          }
         }
 
         // During DEATH collapse, the foreground Claw + Horizontal Vambrace (`4,2`) sink strictly inside the obsidian parapet!
@@ -3160,6 +3175,11 @@ export class ArchfiendBoss extends Monster {
 
     // 7. Colossal Boss Phase & Telegraph Callout Plate cleanly above Horns & Eclipse Crown Crest (`y = 128`)
     if (!this.isDead) {
+      const hasRaidHud =
+        Boolean(this.game?.adventure?.active) &&
+        typeof document !== 'undefined' &&
+        typeof document.getElementById === 'function' &&
+        Boolean(document.getElementById('adv-boss-raid-hud'));
       const bx = Math.round(this.anchorX + 10);
       const by = 128;
       const barW = 148;
@@ -3179,22 +3199,24 @@ export class ArchfiendBoss extends Monster {
         ctx.strokeRect(bx - Math.floor(tw * 0.5), by - 26, tw, 14);
         ctx.fillStyle = this.vulnerableTimer > 0 ? '#ecfeff' : '#fef08a';
         ctx.fillText(this.telegraphLabel, bx, by - 16);
-      } else {
+      } else if (!hasRaidHud) {
         ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fca5a5';
         ctx.fillText(`COLOSSUS • PHASE ${this.bossPhase || 1}`, bx, by - 6);
       }
 
-      ctx.fillStyle = '#05070e';
-      ctx.fillRect(x0 - 1, by - 1, barW + 2, barH + 2);
-      ctx.strokeStyle = this.vulnerableTimer > 0 ? '#67e8f9' : '#ef4444';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x0 - 1, by - 1, barW + 2, barH + 2);
-      ctx.fillStyle = this.vulnerableTimer > 0 ? '#38bdf8' : '#dc2626';
-      ctx.fillRect(x0, by, Math.round(barW * hpPct), barH);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.30)';
-      ctx.fillRect(x0, by, Math.round(barW * hpPct), 2);
+      if (!hasRaidHud) {
+        ctx.fillStyle = '#05070e';
+        ctx.fillRect(x0 - 1, by - 1, barW + 2, barH + 2);
+        ctx.strokeStyle = this.vulnerableTimer > 0 ? '#67e8f9' : '#ef4444';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x0 - 1, by - 1, barW + 2, barH + 2);
+        ctx.fillStyle = this.vulnerableTimer > 0 ? '#38bdf8' : '#dc2626';
+        ctx.fillRect(x0, by, Math.round(barW * hpPct), barH);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.30)';
+        ctx.fillRect(x0, by, Math.round(barW * hpPct), 2);
+      }
       ctx.restore();
     }
   }

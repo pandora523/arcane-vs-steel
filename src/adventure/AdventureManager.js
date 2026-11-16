@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps118';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps118';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps118';
+import { Fighter } from '../entities/Fighter.js?v=30fps119';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps119';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps119';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps118';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps118';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps118';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps118';
+} from './AdventureProgression.js?v=30fps119';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps119';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps119';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps119';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -1810,48 +1810,40 @@ export class AdventureManager {
 
     if (primaryMonster) {
       g.rightFighter = primaryMonster;
+      // Do NOT show normal enemies on the right-side player HUD during Adventure Mode;
+      // Colossal Boss uses the dedicated `#adv-boss-raid-hud` Raid Plaque instead.
+      const keepInternalWardenTag = Boolean(primaryMonster.isMiniBoss);
       if (rightEls.name) {
-        const nextName = primaryMonster.isBoss
-          ? `${primaryMonster.name}`
-          : primaryMonster.isMiniBoss
-            ? living.length > 1
-              ? `${primaryMonster.name} (+${living.length - 1})`
-              : `${primaryMonster.name}`
-            : living.length > 1
-              ? `${primaryMonster.name} (+${living.length - 1})`
-              : primaryMonster.name;
+        const nextName = keepInternalWardenTag
+          ? living.length > 1
+            ? `${primaryMonster.name} (+${living.length - 1})`
+            : `${primaryMonster.name}`
+          : '';
         if (rightEls.name.textContent !== nextName) {
           rightEls.name.textContent = nextName;
         }
       }
       if (rightEls.skillText) {
-        const nextSkill = primaryMonster.isBoss
-          ? `PHASE ${primaryMonster.bossPhase || 1} • ${primaryMonster.skillName}`
-          : primaryMonster.isMiniBoss
-            ? `WARDEN • ${primaryMonster.skillName}`
-            : this.totalWaveLabel;
+        const nextSkill = keepInternalWardenTag
+          ? `WARDEN • ${primaryMonster.skillName}`
+          : '';
         if (rightEls.skillText.textContent !== nextSkill) {
           rightEls.skillText.textContent = nextSkill;
         }
       }
-      if (rightEls.hpBar) {
+      if (rightEls.hpBar && primaryMonster.isBoss) {
         const nextBarCls = `hp-fill fill-${primaryMonster.theme || 'abyssal'}`;
         if (rightEls.hpBar.className !== nextBarCls) {
           rightEls.hpBar.className = nextBarCls;
         }
       }
-      if (rightEls.portraitFrame) {
-        const nextFrameCls = 'portrait-frame frame-abyssal';
-        if (rightEls.portraitFrame.className !== nextFrameCls) {
-          rightEls.portraitFrame.className = nextFrameCls;
-        }
-      }
       if (rightEls.partnerWing && !rightEls.partnerWing.classList?.contains?.('hidden')) {
         rightEls.partnerWing.classList?.add?.('hidden');
       }
-      const leftHeroId = g.leftFighter?.heroId || 'mage';
-      const leftCol = g.leftFighter?.primaryColor || '#fb923c';
-      PixelForge.setHUDPortraits(leftHeroId, leftCol, 'archfiend', '#ef4444');
+      if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+        const rightHudEl = document.getElementById('hud-right');
+        rightHudEl?.classList?.add?.('hidden');
+      }
     }
 
     if (g.hudEls?.crestVs) {
@@ -1875,6 +1867,7 @@ export class AdventureManager {
         g.hudEls.modeBadge.textContent = nextBadge;
       }
     }
+    g.updateAdventureBossHUD?.();
   }
 
   pushHeroDodgeTrail(player, entry) {

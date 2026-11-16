@@ -249,6 +249,57 @@ function addCircularChronoAccents104(rgba, row, col) {
 }
 
 /**
+ * Purges opaque dark `#08101e` / `#041b1d` `SELOUT_INDIGO` / `SELOUT_TEAL` radial-glow halo
+ * flood clouds emitted by `chronoShaders.js` (`applySelectiveOutlineOnSurface` over soft
+ * `radialGlow` rings), replacing non-border flood disks with transparent air and converting
+ * any 1px silhouette rim adjacent to bright VFX (`lum >= 72`) into subtle translucent deep teal.
+ */
+function purgeSeloutDarkFlood104(rgba, w = 104, h = 104) {
+  const src = new Uint8Array(rgba);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4;
+      const sa = src[o + 3];
+      if (!sa) continue;
+      const lum = 0.299 * src[o] + 0.587 * src[o + 1] + 0.114 * src[o + 2];
+      if (lum >= 36) continue;
+
+      let hasBrightNeighbor = false;
+      for (let dy = -1; dy <= 1 && !hasBrightNeighbor; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          if (nx < 0 || nx >= w) continue;
+          const no = (ny * w + nx) * 4;
+          const na = src[no + 3];
+          if (na >= 96) {
+            const nLum = 0.299 * src[no] + 0.587 * src[no + 1] + 0.114 * src[no + 2];
+            if (nLum >= 72) {
+              hasBrightNeighbor = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!hasBrightNeighbor) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else {
+        rgba[o] = 16;
+        rgba[o + 1] = 112;
+        rgba[o + 2] = 116;
+        rgba[o + 3] = Math.min(sa, 64);
+      }
+    }
+  }
+}
+
+/**
  * Mandatory Radial Distance Envelope (`distFromCenter = hypot(x - 51.5, y - 51.5)`:
  * `1.0` inside `r <= 36`, smooth cosine fade to `0.0` by `r = 48.5`) + soft `enforceSafeCellMargin104`
  * (`0` binary square borders, `0` flat rectangular edges, `0/240` border clips!).
@@ -435,6 +486,7 @@ function bakeChronomancerExVfx() {
       inst.render(pen104, 'back');
       inst.render(pen104, 'front');
       resolveSurfaceToRGBA(surface104, cell104, 1.24);
+      purgeSeloutDarkFlood104(cell104, LOGICAL, LOGICAL);
       addCircularChronoAccents104(cell104, r, c);
       enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
 

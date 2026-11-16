@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps118';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps118';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps118';
+import { Fighter } from './Fighter.js?v=30fps119';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps119';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps119';
 import {
   GLACIAL_EFFECT_REGISTRY,
   GLACIAL_CRYO_PALETTE,
   BOREALIS_PRISM_PALETTE
-} from '../engine/shaders/glacialShaders.js?v=30fps118';
+} from '../engine/shaders/glacialShaders.js?v=30fps119';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.35s): Borealis Snowflake Circle -> 'cryo_shard' Diamond Comet -> snaps at F03 (63)
@@ -260,11 +260,11 @@ export class IceMageEx extends Fighter {
     if (!assets) return null;
     if (!assets.icemage_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/icemage_ex_sheet.png?v=30fps118';
+      sheet.src = 'assets/sprites/icemage_ex_sheet.png?v=30fps119';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/icemage_ex_vfx.png?v=30fps118';
+      vfx.src = 'assets/sprites/icemage_ex_vfx.png?v=30fps119';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/icemage_ex_portrait.png?v=30fps118';
+      portrait.src = 'assets/sprites/icemage_ex_portrait.png?v=30fps119';
       assets.icemage_ex = {
         sheet,
         vfx,
