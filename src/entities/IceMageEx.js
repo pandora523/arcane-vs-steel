@@ -219,6 +219,8 @@ export class IceMageEx extends Fighter {
     this._trueUltCracks = [];
     this._trueUltGlassShards = [];
     this._trueUltDiamondDust = [];
+    this._trueUltSnowfall = [];
+    this._trueUltSnowfallInit = false;
     this._overrideFrameIdx = null;
 
     // Wide 2160x1380 world-space dual-buffer coverage so Ultimate / True Ultimate shaders never clip borders
@@ -326,6 +328,10 @@ export class IceMageEx extends Fighter {
       this.unstoppablePoise = true;
       this.clearPermafrostZones();
       this._buildTrueUltFracturesAndShards();
+      this._trueUltSnowfallInit = false;
+      for (let i = 0; i < this._trueUltSnowfall.length; i++) {
+        this._trueUltSnowfall[i].active = false;
+      }
     } else if (prevState === 'TRUE_ULTIMATE') {
       this.cameraAirLift = 0;
       this.unstoppablePoise = false;
@@ -348,6 +354,11 @@ export class IceMageEx extends Fighter {
       this.cameraAirLift = 0;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
+      this._trueUltShatterTimer = 0;
+      this._trueUltSnowfallInit = false;
+      for (let i = 0; i < this._trueUltSnowfall.length; i++) {
+        this._trueUltSnowfall[i].active = false;
+      }
       if (newState === 'DEATH') {
         this.fx?.clear();
       }
@@ -1658,6 +1669,118 @@ export class IceMageEx extends Fighter {
     }
   }
 
+  _getTrueUltCamCenter(game) {
+    const g = game || this.game;
+    if (g?.renderer && Number.isFinite(g.renderer.camX)) return g.renderer.camX;
+    if (g?.renderer && Number.isFinite(g.renderer.worldWidth)) return g.renderer.worldWidth * 0.5;
+    if (Number.isFinite(this._trueUltCoffinX)) return this._trueUltCoffinX;
+    return Number.isFinite(this.x) ? this.x : 600;
+  }
+
+  _initTrueUltSnowfall(game) {
+    const camCenter = this._getTrueUltCamCenter(game);
+    const gy = Number.isFinite(this.groundY) ? this.groundY : 520;
+    const minX = camCenter - 780;
+    const spanX = 1560;
+    const minY = gy - 580;
+    const spanY = 600;
+    const TOTAL_FLAKES = 72;
+
+    for (let i = 0; i < TOTAL_FLAKES; i++) {
+      const layer = i % 3;
+      const hx = (i * 0.61803398875 + layer * 0.17) % 1;
+      const hy = ((i * 29 + 7) % TOTAL_FLAKES) / TOTAL_FLAKES;
+      const x = minX + hx * spanX;
+      const y = minY + hy * spanY;
+      const arm = layer === 2 ? (i % 2 === 0 ? 6 : 4) : layer === 1 ? (i % 4 === 0 ? 6 : 4) : 2;
+      const isStreak = layer === 2 && i % 2 === 1;
+      const hex =
+        layer === 0
+          ? i % 2 === 0
+            ? '#93c5fd'
+            : '#bae6fd'
+          : layer === 1
+            ? i % 4 === 0
+              ? '#e879f9'
+              : '#67e8f9'
+            : isStreak
+              ? '#38bdf8'
+              : '#bae6fd';
+      let slot = this._trueUltSnowfall[i];
+      if (!slot) {
+        slot = {};
+        this._trueUltSnowfall[i] = slot;
+      }
+      slot.layer = layer;
+      slot.x = x;
+      slot.y = y;
+      slot.vx = -48;
+      slot.vy = 160 + layer * 40;
+      slot.phase = i * 0.87;
+      slot.arm = arm;
+      slot.isStreak = isStreak;
+      slot.hex = hex;
+      slot.active = i < 24;
+    }
+    this._trueUltSnowfall.length = TOTAL_FLAKES;
+    this._trueUltSnowfallInit = true;
+  }
+
+  _updateTrueUltSnowfall(dt, game) {
+    const inUlt = this.state === 'TRUE_ULTIMATE';
+    if (inUlt && (this.stateTimer || 0) < 0.04) return;
+    if (!inUlt && this._trueUltShatterTimer <= 0) return;
+
+    if (!this._trueUltSnowfallInit || this._trueUltSnowfall.length !== 72) {
+      this._initTrueUltSnowfall(game);
+    }
+
+    const castChargeU = inUlt ? Math.min(1, Math.max(0, (this.stateTimer || 0) / 3.24)) : 1;
+    const activeCount = Math.min(72, Math.max(24, Math.round(24 + 48 * castChargeU)));
+    const camCenter = this._getTrueUltCamCenter(game);
+    const minX = camCenter - 780;
+    const spanX = 1560;
+    const gy = Number.isFinite(this.groundY) ? this.groundY : 520;
+    const minY = gy - 580;
+    const spanY = 600;
+    const tVal = inUlt ? this.stateTimer || 0 : 3.4;
+    const windStrength = 48 + 168 * castChargeU;
+
+    for (let i = 0; i < this._trueUltSnowfall.length; i++) {
+      const p = this._trueUltSnowfall[i];
+      p.active = i < activeCount;
+      const layerFrac = p.layer * 0.5;
+      const speedBlend = Math.min(1, 0.30 * layerFrac + 0.70 * castChargeU);
+      const jitterVy = (((i * 13) % 7) - 3) * 6;
+      const vy = Math.max(160, Math.min(440, 160 + 280 * speedBlend + jitterVy));
+      const vx =
+        -windStrength * (0.48 + p.layer * 0.32) +
+        Math.sin(tVal * 3.1 + p.phase) * (18 + p.layer * 10);
+      p.vx = vx;
+      p.vy = vy;
+      p.x += vx * dt;
+      p.y += vy * dt;
+      p.y = minY + ((((p.y - minY) % spanY) + spanY) % spanY);
+      p.x = minX + ((((p.x - minX) % spanX) + spanX) % spanX);
+    }
+  }
+
+  _getTrueUltSnowFade() {
+    if (this.isDead || !this._trueUltSnowfallInit || this._trueUltSnowfall.length === 0) return 0;
+    if (this.state === 'TRUE_ULTIMATE') {
+      const t = this.stateTimer || 0;
+      if (t < 0.04) return 0;
+      const fadeIn = Math.min(1, Math.max(0.32, (t - 0.04) / 0.18));
+      const dur = this.trueUltDuration || 4.60;
+      const fadeOut = Math.min(1, Math.max(0, (dur - t) / 0.42));
+      return fadeIn * fadeOut;
+    }
+    if (this._trueUltShatterTimer > 0) {
+      return Math.min(1, this._trueUltShatterTimer / 0.45);
+    }
+    return 0;
+  }
+
   /**
    * REMADE SUPREME ULTIMATE (`4.60s`):
    * `ETERNAL BOREALIS: ZERO KELVIN CATHEDRAL`
@@ -1668,6 +1791,9 @@ export class IceMageEx extends Fighter {
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    if (t >= 0.04) {
+      this._updateTrueUltSnowfall(dt, game);
+    }
     const advBounds =
       game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
         ? game.adventure.getActiveStageBounds()
@@ -1801,9 +1927,24 @@ export class IceMageEx extends Fighter {
         if (foe) foe.chronoTimeStopTimer = 0;
       }
 
+      // Capture previous stage ID BEFORE glacial stage domain transformation!
+      const rawActiveId = game?.renderer?.getActiveStageId?.();
+      const rawStageId = game?.renderer?.stageId;
+      const prevStageId =
+        typeof rawActiveId === 'string' && rawActiveId
+          ? rawActiveId
+          : typeof rawStageId === 'string' && rawStageId
+            ? rawStageId
+            : 'cathedral';
+
       // Strictly trigger Glacial / Shogunate-Glacial Stage Domain Synergy at t >= 3.28s!
       game?.renderer?.triggerGlacialStage?.();
       game?.renderer?.setStageTransformation?.('glacial', 1.0, true, 0);
+      game?.renderer?.triggerGlacialStageTransition?.({
+        fromStageId: prevStageId,
+        focusX: cx,
+        duration: 1.38
+      });
       if (!advBounds) {
         const finalStg = game?.renderer?.permanentStageOverride || 'glacial';
         game?.renderer?.triggerStageEvent?.(
@@ -1918,6 +2059,9 @@ export class IceMageEx extends Fighter {
 
     if (this._trueUltShatterTimer > 0) {
       this._trueUltShatterTimer = Math.max(0, this._trueUltShatterTimer - dt);
+      if (this.state !== 'TRUE_ULTIMATE') {
+        this._updateTrueUltSnowfall(dt, game);
+      }
       for (const s of this._trueUltGlassShards) {
         s.x += s.vx * dt;
         s.y += s.vy * dt;
@@ -2218,6 +2362,115 @@ export class IceMageEx extends Fighter {
     ctx.restore();
   }
 
+  drawGrowingBluishCastAura(ctx, isReflection = false) {
+    if (this.isDead) return;
+    const inUlt = this.state === 'TRUE_ULTIMATE';
+    let auraFade = 0;
+    if (inUlt) {
+      const t = this.stateTimer || 0;
+      if (t >= 3.64) return;
+      const fadeIn = Math.min(1, 0.45 + t / 0.22);
+      const fadeOut = t <= 3.28 ? 1 : Math.max(0, 1 - (t - 3.28) / 0.36);
+      auraFade = fadeIn * fadeOut;
+    } else if (this._trueUltShatterTimer > 0) {
+      const elapsedShatter = 1.28 - this._trueUltShatterTimer;
+      if (elapsedShatter >= 0.36 || elapsedShatter < 0) return;
+      auraFade = Math.max(0, 1 - elapsedShatter / 0.36);
+    } else {
+      return;
+    }
+    if (auraFade <= 0.01) return;
+
+    const castChargeU = this.state === 'TRUE_ULTIMATE' ? Math.min(1, Math.max(0, (this.stateTimer || 0) / 3.24)) : 1;
+    const reflScale = isReflection ? 0.38 : 1.0;
+    const finalAlpha = auraFade * reflScale;
+    const cx = Math.round(this.x / 2) * 2;
+    const auraCy = Math.round((this.y - 92) / 2) * 2;
+    const floorCy = Math.round(((Number.isFinite(this.groundY) ? this.groundY : this.y) - 2) / 2) * 2;
+
+    // 1. 3-tier expanding 4x4 Bayer-stippled bluish aura + expanding floor frost pool (0 arc/ellipse)
+    const rx1 = Math.round(44 + (192 - 44) * castChargeU);
+    const ry1 = Math.round(56 + (224 - 56) * castChargeU);
+    const floorRx = Math.round(56 + (248 - 56) * castChargeU);
+    const floorRy = Math.round(14 + 34 * castChargeU);
+    drawBayerFrostPool(ctx, cx, auraCy, rx1, ry1, '#1d4ed8', 0.17 * finalAlpha, 4);
+    drawBayerFrostPool(ctx, cx, auraCy, Math.round(rx1 * 0.86), Math.round(ry1 * 0.86), '#2563eb', 0.15 * finalAlpha, 4);
+    drawBayerFrostPool(ctx, cx, floorCy, floorRx, floorRy, '#1d4ed8', 0.17 * finalAlpha, 4);
+    drawBayerFrostPool(ctx, cx, floorCy, Math.round(floorRx * 0.78), Math.round(floorRy * 0.78), '#2563eb', 0.16 * finalAlpha, 4);
+
+    const rx2 = Math.round(30 + (142 - 30) * castChargeU);
+    const ry2 = Math.round(40 + (172 - 40) * castChargeU);
+    const rx3 = Math.round(18 + (88 - 18) * castChargeU);
+    const ry3 = Math.round(24 + (114 - 24) * castChargeU);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'lighter';
+    drawBayerFrostPool(ctx, cx, auraCy, rx2, ry2, '#0ea5e9', 0.17 * finalAlpha, 4);
+    drawBayerFrostPool(ctx, cx, auraCy, Math.round(rx2 * 0.84), Math.round(ry2 * 0.84), '#38bdf8', 0.16 * finalAlpha, 4);
+    drawBayerFrostPool(ctx, cx, auraCy, rx3, ry3, '#7dd3fc', 0.17 * finalAlpha, 4);
+    drawBayerFrostPool(ctx, cx, auraCy, Math.round(rx3 * 0.76), Math.round(ry3 * 0.76), '#e0f2fe', 0.17 * finalAlpha, 4);
+
+    // 2. 14 rising stepped-pixel (2x2/4x4) bluish energy wisps & spiraling frost-flame pillars
+    const spreadX = 34 + (148 - 34) * castChargeU;
+    const riseH = 46 + (228 - 46) * castChargeU;
+    const animT = inUlt ? this.stateTimer || 0 : 3.4;
+    const trailColors = ['#ffffff', '#bae6fd', '#38bdf8', '#1d4ed8'];
+    for (let w = 0; w < 14; w++) {
+      const phase = (animT * (0.95 + (w % 4) * 0.16) + w / 14) % 1;
+      const theta = phase * Math.PI * 2.5 + (w * Math.PI * 2) / 14 + animT * 2.4;
+      const orbitR = spreadX * (0.42 + 0.58 * Math.sin(phase * Math.PI * 0.85)) * (0.74 + 0.26 * (w % 3));
+      const wY = Math.round((this.y + 6 - phase * riseH) / 2) * 2;
+      const wFade = Math.sin(phase * Math.PI) * finalAlpha;
+      if (wFade <= 0.03) continue;
+
+      for (let seg = 0; seg < 4; seg++) {
+        const segTheta = theta - seg * 0.34;
+        const segX = Math.round((cx + Math.cos(segTheta) * orbitR) / 2) * 2;
+        const segY = wY + seg * 6;
+        const segSize = seg === 0 ? 2 : 4;
+        ctx.globalCompositeOperation = seg >= 2 ? 'source-over' : 'lighter';
+        ctx.globalAlpha = wFade * (seg === 0 ? 0.96 : seg === 1 ? 0.82 : seg === 2 ? 0.66 : 0.52);
+        ctx.fillStyle = trailColors[seg];
+        ctx.fillRect(segX - (segSize >> 1), segY - (segSize >> 1), segSize, segSize);
+      }
+    }
+    ctx.restore();
+
+    // 3. Growing icemage_ex_vfx.png cast rings (Row 5 Borealis Mandala 156->344px + Row 7 Diamond-Lotus 120->308px)
+    const vfxSheet = PixelForge.ensureImage(this.getExSprites()?.vfx);
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      const col5 = Math.floor(animT * 28) % 30;
+      const col7 = Math.floor(animT * 24 + 9) % 30;
+      const mandalaSz = Math.round((156 + (344 - 156) * castChargeU) / 4) * 4;
+      const lotusSz = Math.round((120 + (308 - 120) * castChargeU) / 4) * 4;
+      this.drawBloomedVfxRect(
+        ctx,
+        vfxSheet,
+        5,
+        col5,
+        cx,
+        auraCy,
+        mandalaSz,
+        mandalaSz,
+        (0.68 + 0.28 * castChargeU) * finalAlpha,
+        false
+      );
+      this.drawBloomedVfxRect(
+        ctx,
+        vfxSheet,
+        7,
+        col7,
+        cx,
+        auraCy,
+        lotusSz,
+        lotusSz,
+        (0.46 + 0.42 * castChargeU) * finalAlpha,
+        true
+      );
+    }
+  }
+
   drawTrueUltPolarNightBackground(ctx, renderer = null) {
     const inTrueUlt = this.state === 'TRUE_ULTIMATE';
     if (!inTrueUlt && this._trueUltShatterTimer <= 0) return;
@@ -2269,11 +2522,36 @@ export class IceMageEx extends Fighter {
       }
     }
 
+    // Far parallax snow layer: 2x2 #93c5fd / #bae6fd pixel flakes across arena sky
+    const snowFade = this._getTrueUltSnowFade();
+    if (snowFade > 0.02 && this._trueUltSnowfall.length > 0) {
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i < this._trueUltSnowfall.length; i++) {
+        const p = this._trueUltSnowfall[i];
+        if (!p.active || p.layer !== 0) continue;
+        const px = Math.round(p.x / 2) * 2;
+        const py = Math.round(p.y / 2) * 2;
+        ctx.globalAlpha = snowFade * 0.72;
+        ctx.fillStyle = p.hex;
+        ctx.fillRect(px, py, 2, 2);
+      }
+    }
+
     ctx.restore();
   }
 
   drawForegroundOverlay(ctx, renderer = null) {
     this.drawTrueUltPolarNightBackground(ctx, renderer);
+
+    // Mid parallax snow layer: 6-arm drawPixelSnowflakeMote flakes
+    const midSnowFade = this._getTrueUltSnowFade();
+    if (midSnowFade > 0.02 && this._trueUltSnowfall.length > 0) {
+      for (let i = 0; i < this._trueUltSnowfall.length; i++) {
+        const p = this._trueUltSnowfall[i];
+        if (!p.active || p.layer !== 1) continue;
+        drawPixelSnowflakeMote(ctx, p.x, p.y, p.arm, '#ffffff', p.hex, midSnowFade * 0.86);
+      }
+    }
 
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     if (this.fx && !this.isDead) {
@@ -2287,6 +2565,50 @@ export class IceMageEx extends Fighter {
     // Subtle 4x4 Bayer-stippled Empress Skate Frost Halo beneath Lyra EX (alpha <= 0.15)
     if (!this.isDead && this.y >= this.groundY - 12) {
       drawBayerFrostPool(ctx, this.x, this.groundY - 2, 48, 12, '#67e8f9', 0.14, 4);
+    }
+
+    // Creeping sapphire-cyan floor permafrost rime carpet (96px -> 620px) spreading outward across t = 1.35..3.28s
+    const inUltRime = this.state === 'TRUE_ULTIMATE';
+    if (!this.isDead && ((inUltRime && (this.stateTimer || 0) >= 1.35) || this._trueUltShatterTimer > 0)) {
+      const tRime = inUltRime ? this.stateTimer || 0 : 3.35;
+      const rimeU = inUltRime ? Math.min(1, Math.max(0, (tRime - 1.35) / 1.93)) : 1;
+      const easeRime = 1 - Math.pow(1 - rimeU, 1.45);
+      const durRime = this.trueUltDuration || 4.60;
+      const rimeFadeIn = inUltRime ? Math.min(1, Math.max(0.35, (tRime - 1.35) / 0.24)) : 1;
+      const rimeFadeOut = inUltRime
+        ? Math.min(1, Math.max(0, (durRime - tRime) / 0.42))
+        : Math.min(1, this._trueUltShatterTimer / 0.45);
+      const rimeFade = rimeFadeIn * rimeFadeOut;
+      if (rimeFade > 0.02) {
+        const carpetW = Math.round((96 + 524 * easeRime) / 4) * 4;
+        const halfW = Math.round(carpetW * 0.5);
+        const gyFloor = Math.round((this.groundY || this.y) - 2);
+        const rCenterX = Math.round(this.x / 4) * 4;
+        drawBayerFrostPool(ctx, rCenterX, gyFloor, halfW, Math.round(14 + 26 * easeRime), '#1d4ed8', 0.17 * rimeFade, 4);
+        drawBayerFrostPool(ctx, rCenterX, gyFloor, Math.round(halfW * 0.78), Math.round(10 + 18 * easeRime), '#0ea5e9', 0.16 * rimeFade, 4);
+        drawBayerFrostPool(ctx, rCenterX, gyFloor, Math.round(halfW * 0.46), Math.round(6 + 12 * easeRime), '#67e8f9', 0.15 * rimeFade, 4);
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        const toothCount = Math.max(4, Math.floor(carpetW / 32));
+        for (let k = 0; k <= toothCount; k++) {
+          const frac = (k / Math.max(1, toothCount)) * 2 - 1;
+          const vx = Math.round((rCenterX + frac * (halfW - 6)) / 4) * 4;
+          const edgeFade = Math.max(0.25, 1 - Math.abs(frac) * 0.55);
+          const spikeH = 4 + ((k * 7) % 10);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = rimeFade * edgeFade * 0.85;
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(vx - 6, gyFloor - 2, 12, 4);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(vx - 4, gyFloor - spikeH, 4, spikeH + 2);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = rimeFade * edgeFade * 0.75;
+          ctx.fillStyle = '#e0f2fe';
+          ctx.fillRect(vx - 2, gyFloor - spikeH - 2, 2, 4);
+        }
+        ctx.restore();
+      }
     }
 
     if (this.afterimages.length > 0 && sheet && sheet.complete && sheet.naturalWidth) {
@@ -2550,6 +2872,33 @@ export class IceMageEx extends Fighter {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
 
+    // Near-camera parallax snow layer: larger snowflakes + 2x6 stepped #38bdf8/#ffffff diagonal snow-rain streaks
+    const nearSnowFade = this._getTrueUltSnowFade();
+    if (nearSnowFade > 0.02 && this._trueUltSnowfall.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (let i = 0; i < this._trueUltSnowfall.length; i++) {
+        const p = this._trueUltSnowfall[i];
+        if (!p.active || p.layer !== 2) continue;
+        if (p.isStreak) {
+          const px = Math.round(p.x / 2) * 2;
+          const py = Math.round(p.y / 2) * 2;
+          const dxStep = p.vx >= 0 ? 2 : -2;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = nearSnowFade * 0.88;
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(px, py, 2, 2);
+          ctx.fillRect(px + dxStep, py + 2, 2, 2);
+          ctx.fillRect(px + dxStep * 2, py + 4, 2, 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(px + dxStep, py + 2, 2, 2);
+        } else {
+          drawPixelSnowflakeMote(ctx, p.x, p.y, p.arm, '#ffffff', p.hex, nearSnowFade * 0.94);
+        }
+      }
+      ctx.restore();
+    }
+
     // Crisp Pixel Snowflake Motes, Faceted Diamond Shards, & 4-Point Aurora Star-Glints!
     for (const m of this.pixelSnowMotes) {
       const fade = 1 - m.age / m.maxLife;
@@ -2573,12 +2922,10 @@ export class IceMageEx extends Fighter {
     const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth);
     const reflScale = isReflection ? 0.38 : 1.0;
 
-    if ((this.state === 'TRUE_ULTIMATE' || this._trueUltShatterTimer > 0) && hasVfx) {
+    this.drawGrowingBluishCastAura(ctx, isReflection);
+    if ((this.state === 'TRUE_ULTIMATE' || this._trueUltShatterTimer > 0) && hasVfx && this.groundY - this.y > 12) {
       const col = Math.floor((this.stateTimer || 0) * 28) % 30;
-      this.drawBloomedVfxRect(ctx, vfxSheet, 5, col, this.x, this.y - 104, 288, 288, 0.88 * reflScale, false);
-      if (this.groundY - this.y > 12) {
-        this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, this.x, this.y + 8, 136, 48, 0.88 * reflScale, false);
-      }
+      this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, this.x, this.y + 8, 136, 48, 0.88 * reflScale, false);
     }
 
     ctx.save();

@@ -1241,6 +1241,13 @@ export class VFXManager {
           pushLight(f.trueUltMeteor.targetX, fGy - 20, 320, 'gold', 1.65, 48, fGy, f, false);
         }
       }
+      if (f.heroId === 'icemage_ex' && f.state === 'TRUE_ULTIMATE') {
+        const uCast = Math.min(1, Math.max(0, (f.stateTimer || 0) / 3.24));
+        const castRadius = Math.round(250 + 270 * uCast);
+        const castIntensity = 1.45 + 1.00 * uCast;
+        pushLight(f.x, f.y - 96, castRadius, 'cyan', castIntensity, 98, fGy, f, false);
+        pushLight(f.x, f.y - 72, castRadius, 'indigo', castIntensity, 98, fGy, f, false);
+      }
       // Harvest up to 6 active lights from f.fx.active (ArcaneShaderFX) & f.activeVfxAnims!
       let harvestedCount = 0;
       if (Array.isArray(f.fx?.active) && f.fx.active.length > 0) {
