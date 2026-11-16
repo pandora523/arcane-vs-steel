@@ -14,6 +14,34 @@ const AUTO_SLICES_EX = [
 const BEAT_DURATIONS = [0.38, 0.36, 0.40, 0.52];
 const INTRA_COMBO_LINK = 0.015;
 
+// Pad astralCataclysmImpactDome's shadeBox bounds so craggy dome peaks never touch a box edge
+const MAGE_EX_SOLAR_REGISTRY = {
+  ...SOLAR_EFFECT_REGISTRY,
+  astralCataclysmImpactDome: {
+    ...SOLAR_EFFECT_REGISTRY.astralCataclysmImpactDome,
+    create(cfg) {
+      const inner = SOLAR_EFFECT_REGISTRY.astralCataclysmImpactDome.create(cfg);
+      return {
+        step: inner.step ? (dt, c) => inner.step(dt, c) : undefined,
+        renderBack(pen, localT, c) {
+          if (!inner.renderBack) return;
+          const origShadeBox = pen.shadeBox;
+          pen.shadeBox = (x0, y0, x1, y1, fn) =>
+            origShadeBox.call(pen, x0 - 16, y0 - 20, x1 + 16, y1 + 4, fn);
+          try {
+            inner.renderBack(pen, localT, c);
+          } finally {
+            pen.shadeBox = origShadeBox;
+          }
+        },
+        renderFront: inner.renderFront
+          ? (pen, localT, c) => inner.renderFront(pen, localT, c)
+          : undefined
+      };
+    }
+  }
+};
+
 /**
  * Ignis Sol EX (`mage_ex`) — Solar Archmage (Neo-Vision Awakening).
  * Classic Wide-Brimmed Wizard Hat + Glowing Molten-Gold Eyes + Golden Crescent-Sun Staff
@@ -130,7 +158,7 @@ export class FireMageEx extends Fighter {
     this.stepDustTimer = 0;
     this._exParticles = new ExParticleSystem('mage_ex', '#fb923c');
 
-    this.fx = new ArcaneShaderFX(SOLAR_EFFECT_REGISTRY, {
+    this.fx = new ArcaneShaderFX(MAGE_EX_SOLAR_REGISTRY, {
       pixelScale: 3,
       viewW: 540,
       viewH: 360
@@ -1630,7 +1658,7 @@ export class FireMageEx extends Fighter {
   /**
    * NEWLY BORN SUPREME FINISHER (`CATACLYSM: GRAND HELIOS APOCALYPSE`, `5.20s`):
    * - Phase 1 (`0.00..1.55s`): Full-stage Golden Astrolabe Seal + Jagged Celestial Rift (`Row 5`)
-   * - Phase 2 (`1.55..3.22s`): Colossal Heavensfall Meteor (`meteor_cataclysm.png` + `Row 6`) + 7 Comet Wake Plumes (`Row 7`)
+   * - Phase 2 (`1.55..3.22s`): Colossal 3D-Tumbling Dreadnought Sun-Meteor (`Row 6`) + 7 Comet Wake Plumes (`Row 7`)
    * - Phase 3 (`t >= 3.22s..5.20s`): Whiteout Deletion + triggers `triggerInfernoStage()` strictly at `t >= 3.22s`!
    */
   updateTrueUltimate(dt, enemy, game) {
@@ -1681,25 +1709,30 @@ export class FireMageEx extends Fighter {
       game?.renderer?.triggerAberration?.(10);
 
       this.fx?.spawn('astralBlackMageLeyLines', this._safeFxX(this.x, game), this.groundY, {
-        light: 1.44
+        light: 1.58
       });
       this.fx?.spawn('solarFlameWard', this._safeFxX(this.x, game), this.groundY - 92, {
         follow: this,
         offsetX: 0,
         offsetY: -92,
-        light: 1.34
+        light: 1.48
       });
       this.fx?.spawn('heliosPalmFocus', this._safeFxX(this.x + this.facing * 26, game), this.groundY - 126, {
         follow: this,
         offsetX: 26,
         offsetY: -126,
         flip: this.facing < 0,
-        light: 1.32
+        light: 1.45
       });
       this.fx?.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
-        light: 1.44
+        light: 1.54
+      });
+      this.fx?.spawn('eclipseSupernovaDomain', this._safeFxX(this.x, game), this.groundY, {
+        light: 1.40
       });
 
+      game?.vfx?.spawnShockwave(this.x, this.groundY - 12, 220, '#fb923c', 0.52, true);
+      game?.vfx?.spawnGlyphBurst?.(this.x, this.groundY - 96, 12, 'arcane');
       this.spawnSolarStarCluster(this.x, this.groundY - 96, 12, 165, false);
       game?.vfx?.spawnDamageText(
         this.x,
@@ -1810,13 +1843,27 @@ export class FireMageEx extends Fighter {
           });
           if (m.trailNodes.length > 8) m.trailNodes.shift();
 
-          if (m.y > this.groundY - 620) {
+          if (m.y > this.groundY - 680) {
             this.fx?.spawn('astralMeteorSlipstreamWake', this._safeFxX(m.x - m.dir * 18, game), m.y - 36, {
-              light: 1.38,
+              light: 1.48,
               extra: { scale: 0.88 + u * 0.52 }
             });
           }
 
+          game?.vfx?.spawnShockwave(m.x, m.y + 34, 145 + u * 95, '#fb923c', 0.24, true, true);
+          this.fx?.burst(
+            this._safeFxX(m.x + (Math.random() - 0.5) * 140, game),
+            m.y + (Math.random() - 0.5) * 90,
+            {
+              count: 8,
+              speedMin: 65,
+              speedMax: 220,
+              lifeMin: 0.22,
+              lifeMax: 0.45,
+              gravity: -65,
+              colors: ['#ffffff', '#fef08a', '#fb923c', '#ea580c', '#dc2626']
+            }
+          );
           this.spawnSolarStarCluster(m.x, m.y, 5, 165, false);
           this.spawnExParticle({
             x: m.x,
@@ -1868,29 +1915,26 @@ export class FireMageEx extends Fighter {
           game.renderer.triggerInfernoStage?.();
           game.renderer.setStageTransformation?.('inferno', 1.0, true, 0);
           game.renderer.triggerShake?.(42, 1.25);
-          game.renderer.triggerAberration?.(24);
+          game.renderer.triggerAberration?.(26);
           game.renderer.triggerHitStop?.(0.14);
         }
         if (game?.hudEls?.stageBadge) {
           game.hudEls.stageBadge.textContent = 'LAYWASTE OF INFERNO';
         }
 
-        this.fx?.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
-          light: 1.65
+        // Colossal 120Hz `ArcaneShaderFX` Thermonuclear Cataclysm Impact Domes
+        this.fx?.spawn('astralCataclysmImpactDome', targetX, this.groundY, {
+          light: 1.85
         });
-        this.spawnVfxAnim(2, targetX, this.groundY - 102, 264, 264, 0.62, {
-          flipX: false,
-          inFront: true
-        });
-        this.spawnVfxAnim(4, targetX, this.groundY - 98, 240, 240, 0.52, {
-          flipX: false,
-          inFront: true
-        });
-
         [-190, 0, 190].forEach((off, idx) => {
           const bx = this._safeFxX(Math.max(120, Math.min(ww - 120, targetX + off)), game);
+          if (idx !== 1) {
+            this.fx?.spawn('astralCataclysmImpactDome', bx, this.groundY, {
+              light: 1.55
+            });
+          }
           this.fx?.spawn('solarMeteorImpactBurst', bx, this.groundY - 78, {
-            light: idx === 1 ? 1.52 : 1.32,
+            light: idx === 1 ? 1.65 : 1.42,
             extra: { isMeteor: true }
           });
           this.spawnSolarStarCluster(bx, this.groundY - 82, 10, 210, idx !== 1);
@@ -1907,18 +1951,24 @@ export class FireMageEx extends Fighter {
             isUltimate: true
           });
           this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
-            light: isCenter ? 1.45 : 1.24,
+            light: isCenter ? 1.55 : 1.32,
             extra: { scaleWidth: isCenter ? 1.38 : 0.95 }
           });
         });
 
-        this.fx?.spawn('magmaFissureCrack', this._safeFxX(140, game), this.groundY, {
-          light: 1.38,
-          extra: { spanX: ww - 280 }
+        const fissureStartX = ww <= 1600 ? 140 : Math.max(140, targetX - 270);
+        const fissureSpanX = ww <= 1600 ? ww - 280 : 540;
+        this.fx?.spawn('magmaFissureCrack', this._safeFxX(fissureStartX, game), this.groundY, {
+          light: 1.5,
+          extra: { spanX: fissureSpanX }
         });
 
         game?.vfx?.spawnShockwave(targetX, this.groundY - 12, 480, '#fef08a', 0.85, true);
+        game?.vfx?.spawnShockwave(targetX, this.groundY - 42, 380, '#fb923c', 0.68, false);
         game?.vfx?.spawnDecal?.(targetX, 280, 'fissure', '#fb923c', 12.0);
+        game?.vfx?.spawnBurst(targetX, this.groundY - 24, 52, '#fef08a', 460, { upBias: 210, size: 10 });
+        game?.vfx?.spawnBurst(targetX, this.groundY - 24, 44, '#ea580c', 420, { upBias: 185, size: 9 });
+        game?.vfx?.spawnGlyphBurst?.(targetX, this.groundY - 72, 16, 'arcane');
 
         this.heal(Math.round(this.maxHp * 0.14), 'ASTRAL LEY-WARD');
         const enemies = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
@@ -2075,16 +2125,22 @@ export class FireMageEx extends Fighter {
       };
       assets.mage_ex = {
         sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps116'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps116'),
-        meteor: assets.mage?.meteor || mkImg('assets/sprites/meteor_cataclysm.png?v=30fps116'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps117'),
         portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps116'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
         anchorY: 230
       };
-    } else if (!assets.mage_ex.meteor && assets.mage?.meteor) {
-      assets.mage_ex.meteor = assets.mage.meteor;
+    } else if (assets.mage_ex.vfx) {
+      const vfxImg = assets.mage_ex.vfx;
+      if (vfxImg._deferredSrc && !vfxImg._deferredSrc.includes('v=30fps117')) {
+        vfxImg._deferredSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps117';
+        vfxImg._origSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps117';
+      } else if (!vfxImg._deferredSrc && !String(vfxImg.src || '').includes('v=30fps117')) {
+        vfxImg._origSrc = 'assets/sprites/mage_ex_vfx.png?v=30fps117';
+        vfxImg.src = 'assets/sprites/mage_ex_vfx.png?v=30fps117';
+      }
     }
     return assets.mage_ex;
   }
@@ -2334,105 +2390,182 @@ export class FireMageEx extends Fighter {
 
   /**
    * Renders `CATACLYSM: GRAND HELIOS APOCALYPSE`:
-   * Full-stage Golden Astrolabe Seal + Jagged Celestial Rift (`Row 5`) + 7 Comet Wake Plumes (`Row 7`) +
-   * Colossal Heavensfall Meteor (`meteor_cataclysm.png` layered with 30fps `Row 6` Dreadnought Sun-Meteor,
-   * zero `ctx.rotate`!).
+   * 2.5D Ground Cataclysm Target Seal (`Row 5` + `Row 4` + `Row 1`),
+   * 9 scrolling Starfall Lock-On Motes, High-Cosmos Dimensional Heavensfall Sky Breach (`Row 5` + `Row 2`),
+   * 7 Comet Wake Plumes (`Row 7`), and native `208x208` 30fps 3D-Tumbling Obsidian-Magma Dreadnought
+   * Sun-Meteor (`Row 6`, zero `ctx.rotate`!).
    */
   drawTrueUltimateMeteor(ctx, renderer = null) {
+    void renderer;
     const m = this.trueUltMeteor;
     if (!m || !m.active) return;
 
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage(sprites?.vfx);
-    const meteorImg = PixelForge.ensureImage(sprites?.meteor);
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
-    const baseCol = Math.floor((this.stateTimer || 0) * 30) % 30;
+    const animTime = Number.isFinite(this.stateTimer) ? this.stateTimer : performance.now() * 0.001;
+    const baseCol = Math.floor(animTime * 30) % 30;
     const revCol = (30 - baseCol) % 30;
     const meteorDir = m.dir || 1;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Full-Stage Golden Solar Astrolabe Target Seal on the Sanctuary Floor
+    // =========================================================================
+    // 1. 2.5D PIXEL-ART GROUND CATACLYSM TARGET SEAL (`mage_ex_vfx.png` Rows 5, 4, 1)
+    // =========================================================================
     const gx = Math.round(m.targetX);
     const gy = Math.round(this.groundY - 6);
     const ringScale = m.phase === 'descent' ? 0.94 + 0.36 * m.progress : Math.max(0.25, m.riftScale);
     const sealW = Math.round(480 * ringScale);
-    const sealH = Math.round(136 * ringScale);
+    const sealH = Math.round(140 * ringScale);
+
+    drawExBayerHalo(
+      ctx,
+      gx,
+      gy,
+      Math.min(96, sealW * 0.42),
+      Math.min(34, sealH * 0.58),
+      '#ea580c',
+      '#fef08a',
+      0.19 * Math.min(1, ringScale)
+    );
+
+    ctx.save();
+    ctx.translate(gx, gy);
+
+    // Outer 2.5D Accretion Target Seal (Row 5 `y = 1040`, native `208x208` `astralSkyBreachPortalCell`)
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.95 * Math.min(1, ringScale * 1.15);
+    ctx.drawImage(
+      vfxSheet,
+      baseCol * 208,
+      1040,
+      208,
+      208,
+      Math.round(-sealW * 0.5),
+      Math.round(-sealH * 0.5),
+      sealW,
+      sealH
+    );
+
+    // Inner Rotating Seamless Golden Solar Astrolabe Magic Circle (Row 4 `y = 832`)
     const innerW = Math.round(sealW * 0.72);
     const innerH = Math.round(sealH * 0.72);
-
-    drawExBayerHalo(ctx, gx, gy, 88 * Math.min(1, ringScale), 26 * Math.min(1, ringScale), '#ea580c', '#fef08a', 0.18 * Math.min(1, ringScale));
-    this._drawBloomedVfxCell(
-      ctx,
-      renderer,
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.90 * Math.min(1, ringScale * 1.15);
+    ctx.drawImage(
       vfxSheet,
-      baseCol,
-      4,
-      Math.round(gx - sealW * 0.5),
-      Math.round(gy - sealH * 0.5),
-      sealW,
-      sealH,
-      '#fb923c',
-      0.94 * Math.min(1, ringScale * 1.15),
-      false
-    );
-    this._drawBloomedVfxCell(
-      ctx,
-      renderer,
-      vfxSheet,
-      (baseCol + 11) % 30,
-      3,
-      Math.round(gx - innerW * 0.5),
-      Math.round(gy - innerH * 0.5),
+      ((baseCol + 9) % 30) * 208,
+      832,
+      208,
+      208,
+      Math.round(-innerW * 0.5),
+      Math.round(-innerH * 0.5),
       innerW,
-      innerH,
-      '#fef08a',
-      0.86 * Math.min(1, ringScale * 1.15),
-      false
+      innerH
     );
 
-    // 2. Jagged High-Cosmos Celestial Rift Breach (`Row 5` + `Row 2` Black-Sun Core)
+    // Stepped Pixel-Art Catastrophe Lock-On Flare rising from the Target Seal (Row 1 `y = 208`)
+    const pillarCol = (baseCol + 4) % 30;
+    const pillarW = Math.round(104 * ringScale);
+    const pillarH = Math.round(164 * ringScale);
+    ctx.drawImage(
+      vfxSheet,
+      pillarCol * 208,
+      208,
+      208,
+      208,
+      Math.round(-pillarW * 0.5),
+      Math.round(-pillarH * 0.88),
+      pillarW,
+      pillarH
+    );
+    ctx.restore();
+
+    // =========================================================================
+    // 2. HIGH-COSMOS DIMENSIONAL HEAVENSFALL SKY BREACH (`ry = startY - 18`)
+    // =========================================================================
     const rx = Math.round(m.startX);
     const ry = Math.round(m.startY - 18);
     const riftScale = Math.max(0.24, m.riftScale);
     const breachW = Math.round(620 * riftScale);
     const breachH = Math.round(256 * riftScale);
-    const coreW = Math.round(330 * riftScale);
-    const coreH = Math.round(182 * riftScale);
 
-    drawExBayerHalo(ctx, rx, ry, 84 * riftScale, 36 * riftScale, '#c026d3', '#fb923c', 0.18 * riftScale);
-    this._drawBloomedVfxCell(
+    // 9 Scrolling Pixel Starfall Lock-On Motes pulsing along `(rx, ry) -> (gx, gy)`
+    const guideFade =
+      m.phase === 'rift' ? riftScale * 0.78 : Math.max(0, (1 - m.progress * 1.15) * 0.65);
+    if (guideFade > 0.04) {
+      const moteCount = 9;
+      const scroll = (animTime * 2.4) % 1;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < moteCount; i++) {
+        const uGuide = (i + scroll) / moteCount;
+        if (uGuide < 0.08 || uGuide > 0.94) continue;
+        const px = Math.round((rx + (gx - rx) * uGuide) / 2) * 2;
+        const py = Math.round((ry + (gy - ry) * uGuide) / 2) * 2;
+        const env = Math.sin(uGuide * Math.PI) * guideFade;
+        ctx.globalAlpha = env * 0.85;
+        ctx.fillStyle = i % 2 === 0 ? '#fef08a' : '#fb923c';
+        ctx.fillRect(px - 2, py - 6, 4, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 1, py - 3, 2, 6);
+      }
+      ctx.restore();
+    }
+
+    drawExBayerHalo(
       ctx,
-      renderer,
-      vfxSheet,
-      baseCol,
-      5,
-      Math.round(rx - breachW * 0.5),
-      Math.round(ry - breachH * 0.5),
-      breachW,
-      breachH,
+      rx,
+      ry,
+      Math.min(96, breachW * 0.42),
+      Math.min(44, breachH * 0.48),
       '#c026d3',
-      Math.min(1, riftScale * 1.15),
-      false
-    );
-    this._drawBloomedVfxCell(
-      ctx,
-      renderer,
-      vfxSheet,
-      revCol,
-      2,
-      Math.round(rx - coreW * 0.5),
-      Math.round(ry - coreH * 0.5),
-      coreW,
-      coreH,
       '#fb923c',
-      0.88 * riftScale,
-      false
+      0.18 * Math.min(1, riftScale)
     );
 
-    // 3. 7 Enclosed Diagonal Solar Comet Wake Plumes (`Row 7`) + Colossal Heavensfall Meteor (`meteor_cataclysm.png` + `Row 6`)
+    ctx.save();
+    ctx.translate(rx, ry);
+
+    // Primary Native `208x208` 30fps Dimensional Sky Breach Portal (Row 5 `y = 1040`)
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.min(1, riftScale * 1.15);
+    ctx.drawImage(
+      vfxSheet,
+      baseCol * 208,
+      1040,
+      208,
+      208,
+      Math.round(-breachW * 0.5),
+      Math.round(-breachH * 0.5),
+      breachW,
+      breachH
+    );
+
+    // Counter-Rotating Black-Sun Eclipse Singularity Core inside the Breach (Row 2 `y = 416`)
+    const coreW = Math.round(340 * riftScale);
+    const coreH = Math.round(188 * riftScale);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.88 * riftScale;
+    ctx.drawImage(
+      vfxSheet,
+      revCol * 208,
+      416,
+      208,
+      208,
+      Math.round(-coreW * 0.5),
+      Math.round(-coreH * 0.5),
+      coreW,
+      coreH
+    );
+    ctx.restore();
+
+    // =========================================================================
+    // 3. 7 STAGGERED `Row 7` (`y = 1456`) PIXEL-ART COMET WAKE PLUMES (ZERO `ctx.rotate`!)
+    // =========================================================================
     const mx = Math.round(m.x);
     const my = Math.round(m.y);
 
@@ -2444,73 +2577,57 @@ export class FireMageEx extends Fighter {
         const wy = Math.round(my + (ry - my) * uNode);
         const wSize = Math.round((384 - uNode * 146) * (0.88 + 0.3 * m.progress));
         const wCol = (baseCol + i * 4) % 30;
-        const wOffX = Math.round(-wSize * ((104 + 6) / 208));
-        const wOffY = Math.round(-wSize * ((104 + 12) / 208));
+        const wOffX = Math.round(-wSize * ((104 + 24) / 208));
+        const wOffY = Math.round(-wSize * ((104 + 48) / 208));
 
         ctx.save();
         ctx.translate(wx, wy);
         ctx.scale(meteorDir, 1);
-        this._drawBloomedVfxCell(
-          ctx,
-          renderer,
-          vfxSheet,
-          wCol,
-          7,
-          wOffX,
-          wOffY,
-          wSize,
-          wSize,
-          '#fb923c',
-          (1 - uNode * 0.62) * 0.92,
-          false
-        );
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalCompositeOperation = i < 4 ? 'source-over' : 'lighter';
+        ctx.globalAlpha = (1 - uNode * 0.62) * 0.95;
+        ctx.drawImage(vfxSheet, wCol * 208, 1456, 208, 208, wOffX, wOffY, wSize, wSize);
         ctx.restore();
       }
     }
 
+    // =========================================================================
+    // 4. COLOSSAL NATIVE `208x208` 30FPS 3D-TUMBLING OBSIDIAN-MAGMA DREADNOUGHT METEOR (`Row 6`, `y = 1248`)
+    // =========================================================================
     const meteorScale =
       m.phase === 'rift' ? 0.82 + 0.66 * m.riftScale : 1.54 + 0.72 * m.progress;
     const meteorSize = Math.round(208 * meteorScale);
+    const drawOffX = Math.round(-meteorSize * ((104 + 18) / 208));
+    const drawOffY = Math.round(-meteorSize * ((104 + 27) / 208));
     const meteorAlpha = m.phase === 'rift' ? Math.min(1, m.riftScale * 1.25) : 1.0;
 
-    drawExBayerHalo(ctx, mx, my, Math.min(84, meteorSize * 0.36), Math.min(72, meteorSize * 0.36), '#ea580c', '#fef08a', 0.20 * meteorAlpha);
+    drawExBayerHalo(
+      ctx,
+      mx,
+      my,
+      Math.min(84, meteorSize * 0.36),
+      Math.min(72, meteorSize * 0.36),
+      '#ea580c',
+      '#fef08a',
+      0.20 * meteorAlpha
+    );
 
-    // Layer A: `meteor_cataclysm.png` Colossal Heavensfall Meteor (natively faces bottom-left `-X`, so `-meteorDir` aligns it with `meteorDir` without rotation!)
-    if (meteorImg && meteorImg.complete && meteorImg.naturalWidth > 0) {
-      const catSize = Math.round(meteorSize * 1.06);
-      const halfCat = Math.round(catSize * 0.5);
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.translate(mx, my);
-      ctx.scale(-meteorDir, 1);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = meteorAlpha * 0.94;
-      ctx.drawImage(meteorImg, -halfCat, -halfCat, catSize, catSize);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = meteorAlpha * 0.34;
-      ctx.drawImage(meteorImg, -halfCat, -halfCat, catSize, catSize);
-      ctx.restore();
-    }
-
-    // Layer B: 30fps Animated Voronoi Sun-Meteor Core (`mage_ex_vfx.png` Row 6) via `drawBloomedSprite`
-    const drawOffX = Math.round(-meteorSize * ((104 + 18) / 208));
-    const drawOffY = Math.round(-meteorSize * ((104 + 22) / 208));
     ctx.save();
     ctx.translate(mx, my);
     ctx.scale(meteorDir, 1);
-    this._drawBloomedVfxCell(
-      ctx,
-      renderer,
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = meteorAlpha;
+    ctx.drawImage(
       vfxSheet,
-      baseCol,
-      6,
+      baseCol * 208,
+      1248,
+      208,
+      208,
       drawOffX,
       drawOffY,
       meteorSize,
-      meteorSize,
-      '#fb923c',
-      meteorAlpha * 0.92,
-      false
+      meteorSize
     );
     ctx.restore();
 
@@ -2580,6 +2697,57 @@ export class FireMageEx extends Fighter {
           0.58,
           true
         );
+      }
+
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth && this.trueUltMeteor?.active) {
+        const m = this.trueUltMeteor;
+        const baseCol = Math.floor((this.stateTimer || 0) * 30) % 30;
+        const ringScale = m.phase === 'descent' ? 0.94 + 0.36 * m.progress : Math.max(0.25, m.riftScale);
+        const sealRelX = Math.round((m.targetX - this.x) * this.facing);
+        const sealW = Math.round(346 * ringScale);
+        const sealH = Math.round(100 * ringScale);
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.44 * Math.min(1, ringScale);
+        ctx.drawImage(
+          vfxSheet,
+          ((baseCol + 9) % 30) * 208,
+          832,
+          208,
+          208,
+          Math.round(sealRelX - sealW * 0.5),
+          Math.round(-sealH * 0.5 - 6),
+          sealW,
+          sealH
+        );
+
+        if (m.phase === 'descent') {
+          const meteorScale = 1.54 + 0.72 * m.progress;
+          const meteorSize = Math.round(208 * meteorScale);
+          const drawOffX = Math.round(-meteorSize * ((104 + 18) / 208));
+          const drawOffY = Math.round(-meteorSize * ((104 + 27) / 208));
+          const meteorRelX = Math.round((m.x - this.x) * this.facing);
+          const meteorRelY = Math.round(m.y - this.y - groundPlantOffset);
+          ctx.save();
+          ctx.translate(meteorRelX, meteorRelY);
+          ctx.scale((m.dir || 1) * this.facing, 1);
+          ctx.globalAlpha = 0.34 + 0.24 * m.progress;
+          ctx.drawImage(
+            vfxSheet,
+            baseCol * 208,
+            1248,
+            208,
+            208,
+            drawOffX,
+            drawOffY,
+            meteorSize,
+            meteorSize
+          );
+          ctx.restore();
+        }
+        ctx.restore();
       }
     }
 

@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 /**
- * IGNIS SOL EX (`mage_ex` / `FireMageEx.js`) — Newly Born Next-Gen 30fps VFX Sprite Sheet Builder (`?v=30fps115`).
+ * IGNIS SOL EX (`mage_ex` / `FireMageEx.js`) — Newly Born Next-Gen 30fps VFX Sprite Sheet Builder (`?v=30fps117`).
  *
  * Outputs:
  *   1. `assets/sprites/mage_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208)
  *   2. Untracked QA contact sheet in scratch dir (`debug_mage_ex_vfx.png`)
+ *   3. Untracked full-res `208x208` closeup audit strip (`debug_mage_ex_ult_rows567.png`)
  *
  * Invariants:
- *   - 100% `2x2` integer pixel blocks (authored/resolved at `104x104` logical -> upscaled `2x NEAREST` to `208x208`)
- *   - Smooth radial/elliptical distance falloff + soft `enforceSafeCellMargin104` (`0` binary square borders, `0` flat box cuts, `0/240` border clips)
+ *   - Rows 0..4: `104x104` logical -> upscaled `2x NEAREST` to `208x208` (`enforceSafeCellMargin104`)
+ *   - Row 4: Seamless 30-frame continuous rotating Golden Solar Astrolabe Magic Circle (`expand = 1.0, dissipate = 0`)
+ *   - Rows 5..7 (`native208: true`): 100% full-scale native `208x208` `SOLAR_EFFECT_REGISTRY` fidelity
+ *     (`astralSkyBreachPortalCell`, `astralMeteorColossusCell`, `astralCataclysmWakeCell`) with circular
+ *     radial margin `enforceCircularCellMargin208` (`0` square/box walls, `0/240` `4px` border clips)
  *   - `29/29` active transitions per row across all 8 rows
- *   - 0 melee slash crescents! Row 4 is a pure 30fps Golden Solar Rune Magic Circle & Starburst Invocation,
- *     supporting `SOLAR TRINITY CATACLYSM`, `BLACK-SUN ECLIPSE SINGULARITY`, & `CATACLYSM: GRAND HELIOS APOCALYPSE`!
  */
 
 import fs from 'node:fs';
@@ -25,13 +27,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps115';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps117';
 
 import {
   SOLAR_CORONA_PALETTE,
   ECLIPSE_ABYSS_PALETTE,
   SOLAR_EFFECT_REGISTRY
-} from '../src/engine/shaders/solarShaders.js?v=30fps115';
+} from '../src/engine/shaders/solarShaders.js?v=30fps117';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -136,17 +138,16 @@ function drawStarGlint104(rgba, cx, cy, arm, coreR = 255, coreG = 255, coreB = 2
 }
 
 /**
- * Pure High-Sorcery Row 4: 30fps Rotating Golden Solar Astrolabe Magic Circle & 8-Point Starburst Seal!
- * Zero melee slash crescents!
+ * Pure High-Sorcery Row 4: Seamless 30fps Continuous Rotating Golden Solar Astrolabe Magic Circle & 8-Point Starburst Seal!
+ * Zero melee slash crescents, zero fade-out blink (`expand = 1.0`, `dissipate = 0`).
  */
 function drawSolarAstrolabeMagicCircle104(rgba, cx, cy, frameIdx, totalFrames) {
   const phase = frameIdx / totalFrames;
-  const prog = frameIdx / Math.max(1, totalFrames - 1);
   const rot = phase * Math.PI * 2;
-  const expand = prog < 0.2 ? 0.65 + (prog / 0.2) * 0.35 : 1.0;
+  const expand = 1.0;
   const rOuter = 40 * expand;
   const rInner = 27 * expand;
-  const dissipate = prog > 0.72 ? (prog - 0.72) / 0.28 : 0;
+  const dissipate = 0;
 
   // Soft golden-crimson solar emissive halo + Bayer-stippled corona aura (0 square borders!)
   for (let py = 5; py < 99; py++) {
@@ -326,6 +327,43 @@ function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
   }
 }
 
+/**
+ * 100% Circular Radial Margin for native `208x208` Supreme Ultimate cells (`Rows 5, 6, 7`)
+ * — NEVER carves a square/rectangular alpha box!
+ */
+function enforceCircularCellMargin208(rgba, w = 208, h = 208) {
+  const cx = (w - 1) * 0.5;
+  const cy = (h - 1) * 0.5;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4;
+      if (x < 4 || y < 4 || x >= w - 4 || y >= h - 4) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+        continue;
+      }
+      const r = Math.hypot(x - cx, y - cy);
+      if (r >= 98.5) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else if (r > 90.5 && rgba[o + 3] > 0) {
+        const k = smoothstep01((98.5 - r) / 8);
+        const na = Math.round(rgba[o + 3] * k);
+        rgba[o + 3] = na;
+        if (na === 0) {
+          rgba[o] = 0;
+          rgba[o + 1] = 0;
+          rgba[o + 2] = 0;
+        }
+      }
+    }
+  }
+}
+
 function downsample208To104(src208, dst104) {
   for (let y = 0; y < 104; y++) {
     for (let x = 0; x < 104; x++) {
@@ -383,11 +421,11 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
   }
 }
 
-function auditStraightWall104(rgba, alphaMin = 20) {
-  let minX = 104, maxX = -1, minY = 104, maxY = -1;
-  for (let y = 0; y < 104; y++) {
-    for (let x = 0; x < 104; x++) {
-      if (rgba[(y * 104 + x) * 4 + 3] >= alphaMin) {
+function auditStraightWall(rgba, dim, alphaMin = 20) {
+  let minX = dim, maxX = -1, minY = dim, maxY = -1;
+  for (let y = 0; y < dim; y++) {
+    for (let x = 0; x < dim; x++) {
+      if (rgba[(y * dim + x) * 4 + 3] >= alphaMin) {
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -398,14 +436,56 @@ function auditStraightWall104(rgba, alphaMin = 20) {
   if (maxX < minX) return 0;
   let top = 0, bot = 0, left = 0, right = 0;
   for (let x = minX; x <= maxX; x++) {
-    if (rgba[(minY * 104 + x) * 4 + 3] >= alphaMin) top++;
-    if (rgba[(maxY * 104 + x) * 4 + 3] >= alphaMin) bot++;
+    if (rgba[(minY * dim + x) * 4 + 3] >= alphaMin) top++;
+    if (rgba[(maxY * dim + x) * 4 + 3] >= alphaMin) bot++;
   }
   for (let y = minY; y <= maxY; y++) {
-    if (rgba[(y * 104 + minX) * 4 + 3] >= alphaMin) left++;
-    if (rgba[(y * 104 + maxX) * 4 + 3] >= alphaMin) right++;
+    if (rgba[(y * dim + minX) * 4 + 3] >= alphaMin) left++;
+    if (rgba[(y * dim + maxX) * 4 + 3] >= alphaMin) right++;
   }
   return Math.max(top, bot, left, right);
+}
+
+function auditStraightWall104(rgba, alphaMin = 20) {
+  return auditStraightWall(rgba, 104, alphaMin);
+}
+
+function auditOuterBoxWall208(rgba, alphaMin = 16) {
+  const cx = 103.5;
+  const cy = 103.5;
+  let outerViolations = 0;
+  for (let y = 0; y < 208; y++) {
+    for (let x = 0; x < 208; x++) {
+      const a = rgba[(y * 208 + x) * 4 + 3];
+      if (a > 0 && (x < 4 || y < 4 || x >= 204 || y >= 204 || Math.hypot(x - cx, y - cy) >= 98.5)) {
+        outerViolations++;
+      }
+    }
+  }
+  if (outerViolations > 0) {
+    throw new Error(`Outer 208 radius violation detected: ${outerViolations} px at border or r >= 98.5`);
+  }
+
+  let maxEdgeRun = 0;
+  for (const edge of [5, 6, 7, 8, 9, 10, 197, 198, 199, 200, 201, 202]) {
+    let runH = 0;
+    let runV = 0;
+    for (let k = 5; k <= 202; k++) {
+      if (rgba[(edge * 208 + k) * 4 + 3] >= alphaMin) {
+        runH++;
+        if (runH > maxEdgeRun) maxEdgeRun = runH;
+      } else {
+        runH = 0;
+      }
+      if (rgba[(k * 208 + edge) * 4 + 3] >= alphaMin) {
+        runV++;
+        if (runV > maxEdgeRun) maxEdgeRun = runV;
+      } else {
+        runV = 0;
+      }
+    }
+  }
+  return maxEdgeRun;
 }
 
 function arraysEqual(a, b) {
@@ -436,6 +516,20 @@ function bakeVfxSheet() {
     dbgRgba[i * 4 + 3] = 255;
   }
 
+  // Full-resolution `208x208` closeup audit strip for Rows 5, 6 (dark #0e0a18 + mid-slate #2e3448), & 7
+  const closeupCols = [0, 4, 8, 12, 16, 20, 24, 28];
+  const cuPad = 6;
+  const cuRows = 4;
+  const cuW = closeupCols.length * (CELL + cuPad) + cuPad;
+  const cuH = cuRows * (CELL + cuPad) + cuPad;
+  const cuRgba = new Uint8Array(cuW * cuH * 4);
+  for (let i = 0; i < cuW * cuH; i++) {
+    cuRgba[i * 4] = 10;
+    cuRgba[i * 4 + 1] = 8;
+    cuRgba[i * 4 + 2] = 18;
+    cuRgba[i * 4 + 3] = 255;
+  }
+
   const rowSpecs = [
     {
       name: 'Row 0: Blazing Helios Solar Comet & Star-Glint Muzzle Burst',
@@ -464,31 +558,27 @@ function bakeVfxSheet() {
       layers: [{ def: SOLAR_EFFECT_REGISTRY.cataclysmSolarMeteorCell, warmup: 0.1, cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
-      name: 'Row 4: Pure 30fps Golden Solar Astrolabe Magic Circle & Octagram Seal',
+      name: 'Row 4: Pure 30fps Seamless Golden Solar Astrolabe Magic Circle & Octagram Seal',
       windowSec: 1.0,
       pureMagicCircleRow: true,
-      falloff104: { cx: 52, cy: 52, rx: 46, ry: 46 },
       layers: []
     },
     {
-      name: 'Row 5: Jagged Celestial Heavensfall Sky Breach (2x2 pixel-pure, 0 box cut)',
+      name: 'Row 5: Native 208x208 Dimensional Heavensfall Sky Breach Portal (F00..F29)',
       windowSec: 1.0,
       native208: true,
-      falloff208: { cx: 104, cy: 103.5, rx: 74, ry: 25, diamondK: 0.88 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralSkyBreachPortalCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: ECLIPSE_ABYSS_PALETTE } }]
     },
     {
-      name: 'Row 6: Colossal Dreadnought Voronoi Sun-Meteor (2x2 pixel-pure, 0 box cut)',
+      name: 'Row 6: Native 208x208 Colossal Dreadnought Voronoi Sun-Meteor (F00..F29)',
       windowSec: 1.0,
       native208: true,
-      falloff208: { cx: 122, cy: 126, rx: 52, ry: 48, diamondK: 0.24 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralMeteorColossusCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: SOLAR_CORONA_PALETTE } }]
     },
     {
-      name: 'Row 7: Enclosed Diagonal Solar Comet Wake Plume & Mach Ring (2x2 pixel-pure, 0 box cut)',
+      name: 'Row 7: Native 208x208 Voluminous Volcanic Comet Wake & Mach Rings (F00..F29)',
       windowSec: 1.0,
       native208: true,
-      falloff208: { cx: 110, cy: 116, rx: 44, ry: 52, diamondK: 0.24 },
       layers: [{ def: SOLAR_EFFECT_REGISTRY.astralCataclysmWakeCell, warmup: 0.1, cfg: { x: 104, y: 104, palette: SOLAR_CORONA_PALETTE } }]
     }
   ];
@@ -498,7 +588,7 @@ function bakeVfxSheet() {
   const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
 
   const surf208 = createPixelSurface(CELL, CELL);
-  const pen208 = new ShaderPen(CELL ? surf208 : surf104);
+  const pen208 = new ShaderPen(surf208);
   const cell208 = new Uint8Array(CELL * CELL * 4);
 
   let borderClips = 0;
@@ -521,75 +611,76 @@ function bakeVfxSheet() {
     for (let c = 0; c < COLS; c++) {
       const phase = c / COLS;
       cell104.fill(0);
-      if (spec.pureMagicCircleRow) {
-        drawSolarAstrolabeMagicCircle104(cell104, 52, 52, c, COLS);
-      } else if (is208) {
+
+      if (is208) {
         clearPixelSurface(surf208);
         for (const inst of instances) inst.render(pen208, 'back');
         for (const inst of instances) inst.render(pen208, 'front');
-        resolveSurfaceToRGBA(surf208, cell208, 1.14);
-        if (spec.falloff208) {
-          applyEllipticalFalloff(
-            cell208,
-            CELL,
-            CELL,
-            spec.falloff208.cx,
-            spec.falloff208.cy,
-            spec.falloff208.rx,
-            spec.falloff208.ry,
-            0.70,
-            phase,
-            spec.falloff208.diamondK || 0
-          );
+        resolveSurfaceToRGBA(surf208, cell208, 1.12);
+        enforceCircularCellMargin208(cell208, CELL, CELL);
+
+        const wall208 = auditOuterBoxWall208(cell208, 16);
+        if (wall208 > rowMaxWall) rowMaxWall = wall208;
+        if (wall208 > maxWallOverall) maxWallOverall = wall208;
+
+        if (prevCell && !arraysEqual(prevCell, cell208)) {
+          transitions++;
         }
+        prevCell = new Uint8Array(cell208);
+
+        blitUpscaledNearest(cell208, CELL, CELL, 1, sheetRgba, sheetW, c * CELL, r * CELL);
         downsample208To104(cell208, cell104);
       } else {
-        clearPixelSurface(surf104);
-        for (const inst of instances) inst.render(pen104, 'back');
-        for (const inst of instances) inst.render(pen104, 'front');
-        resolveSurfaceToRGBA(surf104, cell104, 1.14);
+        if (spec.pureMagicCircleRow) {
+          drawSolarAstrolabeMagicCircle104(cell104, 52, 52, c, COLS);
+        } else {
+          clearPixelSurface(surf104);
+          for (const inst of instances) inst.render(pen104, 'back');
+          for (const inst of instances) inst.render(pen104, 'front');
+          resolveSurfaceToRGBA(surf104, cell104, 1.14);
+        }
+
+        if (spec.falloff104) {
+          applyEllipticalFalloff(
+            cell104,
+            LOGICAL,
+            LOGICAL,
+            spec.falloff104.cx,
+            spec.falloff104.cy,
+            spec.falloff104.rx,
+            spec.falloff104.ry,
+            0.74,
+            phase
+          );
+        }
+        if (spec.pillarFalloff) {
+          applyPillarOrganicFalloff104(cell104, phase);
+        }
+
+        if (spec.addStarGlints) {
+          const ga = phase * Math.PI * 2;
+          drawStarGlint104(cell104, 52 + Math.cos(ga) * 24, 52 + Math.sin(ga) * 20, 2);
+          drawStarGlint104(cell104, 52 - Math.cos(ga) * 24, 52 - Math.sin(ga) * 20, 2);
+        }
+
+        const sparkAng = phase * Math.PI * 2 + r * 0.7;
+        const sx = Math.round(52 + Math.cos(sparkAng) * 26);
+        const sy = Math.round(52 + Math.sin(sparkAng) * 14);
+        putPx104(cell104, sx, sy, 254, 240, 138, 220);
+
+        enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
+
+        const wall = auditStraightWall104(cell104, 20);
+        if (wall > rowMaxWall) rowMaxWall = wall;
+        if (wall > maxWallOverall) maxWallOverall = wall;
+
+        if (prevCell && !arraysEqual(prevCell, cell104)) {
+          transitions++;
+        }
+        prevCell = new Uint8Array(cell104);
+
+        blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
       }
-
-      if (spec.falloff104) {
-        applyEllipticalFalloff(
-          cell104,
-          LOGICAL,
-          LOGICAL,
-          spec.falloff104.cx,
-          spec.falloff104.cy,
-          spec.falloff104.rx,
-          spec.falloff104.ry,
-          0.74,
-          phase
-        );
-      }
-      if (spec.pillarFalloff) {
-        applyPillarOrganicFalloff104(cell104, phase);
-      }
-
-      if (spec.addStarGlints) {
-        const ga = phase * Math.PI * 2;
-        drawStarGlint104(cell104, 52 + Math.cos(ga) * 24, 52 + Math.sin(ga) * 20, 2);
-        drawStarGlint104(cell104, 52 - Math.cos(ga) * 24, 52 - Math.sin(ga) * 20, 2);
-      }
-
-      const sparkAng = phase * Math.PI * 2 + r * 0.7;
-      const sx = Math.round(52 + Math.cos(sparkAng) * 26);
-      const sy = Math.round(52 + Math.sin(sparkAng) * 14);
-      putPx104(cell104, sx, sy, 254, 240, 138, 220);
-
-      enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
-
-      const wall = auditStraightWall104(cell104, 20);
-      if (wall > rowMaxWall) rowMaxWall = wall;
-      if (wall > maxWallOverall) maxWallOverall = wall;
-
-      if (prevCell && !arraysEqual(prevCell, cell104)) {
-        transitions++;
-      }
-      prevCell = new Uint8Array(cell104);
-
-      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
 
       const ox = c * CELL;
       const oy = r * CELL;
@@ -623,15 +714,47 @@ function bakeVfxSheet() {
       }
       alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
 
+      const cuIdx = closeupCols.indexOf(c);
+      if (is208 && cuIdx >= 0) {
+        const targets =
+          r === 5
+            ? [{ row: 0, bg: [14, 10, 24] }]
+            : r === 6
+              ? [
+                  { row: 1, bg: [14, 10, 24] },
+                  { row: 2, bg: [46, 52, 72] }
+                ]
+              : [{ row: 3, bg: [14, 10, 24] }];
+
+        for (const t of targets) {
+          const cx = cuPad + cuIdx * (CELL + cuPad);
+          const cy = cuPad + t.row * (CELL + cuPad);
+          for (let yy = 0; yy < CELL; yy++) {
+            for (let xx = 0; xx < CELL; xx++) {
+              const isEdge = xx === 0 || yy === 0 || xx === CELL - 1 || yy === CELL - 1;
+              const o = ((cy + yy) * cuW + (cx + xx)) * 4;
+              cuRgba[o] = isEdge ? 82 : t.bg[0];
+              cuRgba[o + 1] = isEdge ? 44 : t.bg[1];
+              cuRgba[o + 2] = isEdge ? 28 : t.bg[2];
+              cuRgba[o + 3] = 255;
+            }
+          }
+          alphaCompositeOnto(cell208, CELL, CELL, cuRgba, cuW, cx, cy);
+        }
+      }
+
       for (const inst of instances) inst.step(dt);
     }
 
-    console.log(`[mage_ex_vfx] ${spec.name} -> transitions=${transitions}/29 | maxWall104=${rowMaxWall}`);
+    const wallCap = is208 ? 24 : 16;
+    console.log(
+      `[mage_ex_vfx] ${spec.name} -> transitions=${transitions}/29 | maxWall${is208 ? '208' : '104'}=${rowMaxWall}`
+    );
     if (transitions < 29) {
       throw new Error(`Static duplicate frames in ${spec.name}: ${transitions}/29`);
     }
-    if (rowMaxWall > 16) {
-      throw new Error(`Flat box cut wall detected in ${spec.name}: maxWall104=${rowMaxWall} (>16)`);
+    if (rowMaxWall > wallCap) {
+      throw new Error(`Flat box cut wall detected in ${spec.name}: maxWall=${rowMaxWall} (>${wallCap})`);
     }
   }
 
@@ -641,12 +764,16 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'mage_ex_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[mage_ex_vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240, maxWall104=${maxWallOverall}`);
+  console.log(`[mage_ex_vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240, maxWall=${maxWallOverall}`);
 
   fs.mkdirSync(SCRATCH_DIR, { recursive: true });
   const outDbgPath = path.join(SCRATCH_DIR, 'debug_mage_ex_vfx.png');
   fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
   console.log(`[mage_ex_vfx] Wrote QA contact sheet -> ${outDbgPath}`);
+
+  const outCuPath = path.join(SCRATCH_DIR, 'debug_mage_ex_ult_rows567.png');
+  fs.writeFileSync(outCuPath, encodeRgbaPng(cuW, cuH, cuRgba));
+  console.log(`[mage_ex_vfx] Wrote 208x208 closeup audit -> ${outCuPath}`);
 }
 
 bakeVfxSheet();
