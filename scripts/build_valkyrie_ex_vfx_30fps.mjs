@@ -420,11 +420,11 @@ function renderWingedGungnirWarSpear104(
   const wingFlap = Math.sin(phase) * 0.9;
   const pinions = isColossal
     ? [
-        { aRoot: 2.0, aTip: -22.5, span: 35.5, thick: 2.4 },
-        { aRoot: 0.5, aTip: -18.0, span: 30.0, thick: 2.1 },
-        { aRoot: -1.0, aTip: -13.5, span: 24.5, thick: 1.9 },
-        { aRoot: -2.4, aTip: -9.5, span: 18.8, thick: 1.7 },
-        { aRoot: -3.6, aTip: -6.2, span: 13.5, thick: 1.5 }
+        { aRoot: 2.0, aTip: -10.0, span: 35.5, thick: 2.4 },
+        { aRoot: 0.2, aTip: -9.5, span: 30.0, thick: 2.1 },
+        { aRoot: -1.6, aTip: -9.0, span: 24.5, thick: 1.9 },
+        { aRoot: -3.2, aTip: -8.5, span: 18.8, thick: 1.7 },
+        { aRoot: -4.6, aTip: -8.0, span: 13.5, thick: 1.5 }
       ]
     : [
         { aRoot: 2.0, aTip: -21.0, span: 32.0, thick: 2.2 },
@@ -1380,7 +1380,7 @@ function bakeValkyrieExVfx() {
       def: VALKYRIE_EFFECT_REGISTRY.bifrostEinherjarSealCell,
       cfg: { x: 52, y: 52, palette: VALKYRIE_CRIMSON_PALETTE, seed: 209 }
     },
-    { name: 'Row 6: Colossal Full-Span 184px Einherjar Winged Sky-Spear (+Y)' },
+    { name: 'Row 6: Colossal Full-Span 184px Einherjar Winged Sky-Spear (+56 deg)' },
     { name: 'Row 7: Gungnir Ragnarok Dragon-Pillar w/ Tapered Jagged Flame Crown' }
   ];
 
@@ -1441,11 +1441,12 @@ function bakeValkyrieExVfx() {
         renderRow2DragonfireObelisk104(c, surface104, pen104, cell104, coreBuf104);
       } else if (r === 6) {
         const loopU = c / COLS;
+        const diveRad = (56 * Math.PI) / 180;
         renderWingedGungnirWarSpear104(surface104, pen104, cell104, coreBuf104, {
           cx: 51.5,
           cy: 51.5,
-          ux: 0,
-          uy: 1,
+          ux: Math.cos(diveRad),
+          uy: Math.sin(diveRad),
           phase: loopU * TWO_PI,
           loopU,
           seed: 213,

@@ -449,13 +449,19 @@ export class ValkyrieEx extends Fighter {
       this._ultStep = 0;
       this._ultPassCone1 = false;
       this._ultPassCone3 = false;
+      this._ultRetreatDir = undefined;
+      this._ultLandX = undefined;
       this._ultWaypoints = null;
+      this._phaseThroughEnemy = false;
       this.sanctuarySkyLances = [];
+      this.trueUltFrameOverride = 210;
       this.isInvulnerable = true;
     } else {
       this.sanctuarySkyLances = [];
       this._ultPassCone1 = false;
       this._ultPassCone3 = false;
+      this._ultRetreatDir = undefined;
+      this._ultLandX = undefined;
     }
 
     if (newState === 'TRUE_ULTIMATE') {
@@ -815,7 +821,9 @@ export class ValkyrieEx extends Fighter {
     const midY = (startY + targetY) * 0.5;
     const ctrlY = Math.max(this.groundY - 210, Math.min(this.groundY - 26, midY + vArc));
 
-    this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.042);
+    if (!isUlt) {
+      this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.042);
+    }
     this.didActionFrame = true;
 
     this.activeSkySpears.push({
@@ -982,7 +990,9 @@ export class ValkyrieEx extends Fighter {
               if (!tFoe.isColossalBoss) {
                 tFoe._hitShakeTimer = Math.max(tFoe._hitShakeTimer || 0, 0.052);
               }
-              this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.038);
+              if (!sp.isUlt && this.state !== 'ULTIMATE') {
+                this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.038);
+              }
               this.gainMana(sp.isUlt ? 0 : 1.15);
               if (game.audio) game.audio.play('holy_spear', sp.x);
 
@@ -1788,10 +1798,9 @@ export class ValkyrieEx extends Fighter {
 
   // ============================================================================
   // REMADE OVERDRIVE (`ULTIMATE`) - `BAHAMUT VALKYRIE SANCTUARY` (`1.88s`)
-  // Grounded Valhalla Awakening -> Wide-Runway Sweeping Valkyrie Wing-Glide
-  // (`>= 240px` across the arena) with beating Sovereign Wings commanding
-  // 12 sleek shallow-curving Gungnir Light-Javelins -> Grounded Sovereign Forward
-  // Thrust & 3-Pillar Judgment!
+  // Grounded Valhalla Coil (`210..212`) -> High-Arcing `-360 deg` Aerial Backflip
+  // Retreat Away From Enemy (`148px` lift, `255px` retreat) Firing 12 Gungnir
+  // War-Spears Forward-Downward -> Crisp Landing & 3-Pillar Judgment!
   // ============================================================================
 
   updateUltimate(dt, enemy, game) {
@@ -1799,13 +1808,18 @@ export class ValkyrieEx extends Fighter {
     const dur = this.ultDuration || 1.88;
     if (!this._spearsFired) this._spearsFired = 0;
     this.isInvulnerable = true;
+    this._phaseThroughEnemy = false;
     this.vx = 0;
     this.vy = 0;
 
-    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const clampX = (xVal) => this._clampArenaX(xVal, game, 102);
     const originX = this._ultOriginX !== undefined ? this._ultOriginX : this.x;
-    const enemyX = clampX(enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 360);
+    const enemyX =
+      enemy && !enemy.isDead
+        ? clampX(enemy.x)
+        : this._ultTargetX !== undefined
+          ? this._ultTargetX
+          : clampX(this.x + this.facing * 360);
     this._ultTargetX = enemyX;
 
     if (!this.didActionFrame) {
@@ -1816,39 +1830,13 @@ export class ValkyrieEx extends Fighter {
       this._ultPassCone3 = false;
       this.sanctuarySkyLances = [];
 
-      if (Math.abs(enemyX - this.x) > 8) {
-        this.facing = enemyX >= this.x ? 1 : -1;
-      }
+      this.facing = enemyX >= this.x ? 1 : -1;
 
-      // Compute wide-runway pass-through Valkyrie Wing-Glide waypoints (`>= 260px` sweep right over/through enemyX!)
-      const advBounds =
-        game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
-          ? game.adventure.getActiveStageBounds()
-          : null;
-      const stageMin = advBounds ? advBounds.minX + 95 : 112;
-      const stageMax = advBounds ? advBounds.maxX - 95 : ww - 112;
-      const stageMid = (stageMin + stageMax) * 0.5;
-      const passDir =
-        Math.abs(enemyX - originX) > 24
-          ? enemyX >= originX
-            ? 1
-            : -1
-          : originX < stageMid
-            ? 1
-            : -1;
-      let landX = clampX(enemyX + passDir * 215);
-      if (Math.abs(landX - enemyX) < 95 || Math.abs(landX - originX) < 250) {
-        const openDir = stageMid >= originX ? 1 : -1;
-        const altLandX = clampX(originX + openDir * 320);
-        const revLandX = clampX(originX - openDir * 320);
-        landX = Math.abs(altLandX - originX) >= Math.abs(revLandX - originX) ? altLandX : revLandX;
-      }
-      const climbX = Math.round(originX + (landX - originX) * 0.38);
-      const driftX = Math.round(originX + (landX - originX) * 0.72);
-
+      const retreatDir = this._ultOriginX <= enemyX ? -1 : 1;
+      const landX = clampX(this._ultOriginX + retreatDir * 255);
+      this._ultRetreatDir = retreatDir;
+      this._ultLandX = landX;
       this._ultWaypoints = {
-        climb: { x: climbX, y: this.groundY - 128 },
-        drift: { x: driftX, y: this.groundY - 138 },
         land: { x: landX, y: this.groundY }
       };
 
@@ -1894,39 +1882,57 @@ export class ValkyrieEx extends Fighter {
       if (game?.vfx) {
         game.vfx.spawnSpecialCastAura(this, this.ultName, 'ULTIMATE OVERDRIVE', 'crimson', true);
         game.vfx.spawnShockwave(this.x, this.groundY - 4, 155, '#fbbf24', 0.34, true);
-        game.vfx.spawnDamageText(enemyX, this.groundY - 216, 0, true, 'GUNGNIR TWELVE-SPEAR GLIDE!', '#fbbf24');
+        game.vfx.spawnDamageText(enemyX, this.groundY - 216, 0, true, 'VALKYRIE BACKFLIP SPEAR-VOLLEY!', '#fbbf24');
       }
     }
 
-    // Stage 0 (`0.00..0.30s`, Row 4 F00..F03): Grounded Valhalla Awakening!
-    if (t < 0.30) {
-      this._phaseThroughEnemy = true;
+    // Stage 0 (`0.00..0.24s`, Row 7 F00..F02 `210..212`): Grounded Valhalla Coil!
+    if (t < 0.24) {
+      this._phaseThroughEnemy = false;
       this.x = originX;
       this.y = this.groundY;
       this.cameraAirLift = 0;
       this.divePitchRad = 0;
-      this.trueUltFrameOverride = 120 + Math.min(3, Math.floor((t / 0.30) * 4));
+      this.trueUltFrameOverride = 210 + Math.min(2, Math.floor((t / 0.24) * 3));
       this._overrideFrameIdx = this.trueUltFrameOverride;
-      if (enemy && !enemy.isDead) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-      }
+      this.facing = enemyX >= this.x ? 1 : -1;
       return;
     }
 
-    const wps = this._ultWaypoints || {
-      climb: { x: clampX(originX + this.facing * 122), y: this.groundY - 128 },
-      drift: { x: clampX(originX + this.facing * 230), y: this.groundY - 138 },
-      land: { x: clampX(originX + this.facing * 320), y: this.groundY }
-    };
+    const landX =
+      this._ultLandX !== undefined
+        ? this._ultLandX
+        : clampX(originX + (originX <= enemyX ? -1 : 1) * 255);
 
-    // Stage 1 (`0.30..1.44s`, Row 4 F03..F11): Spinning 360-deg Pass-Through Valkyrie Wing-Glide (`134-144px` lift) + 12 Gungnir War-Spears!
-    if (t < 1.44) {
-      this._phaseThroughEnemy = true;
-      const uGlide = Math.max(0, Math.min(0.999, (t - 0.30) / 1.14));
-      const spinStep = Math.floor(((uGlide * 2.0) % 1.0) * 9);
-      const glideCol = 3 + Math.min(8, Math.max(0, spinStep));
-      this.trueUltFrameOverride = 120 + glideCol;
-      this._overrideFrameIdx = this.trueUltFrameOverride;
+    // Stage 1 (`0.24..1.42s`): High-Arcing `-360 deg` Aerial Backflip Retreat (`213..232` woven cleanly into `133..138` at throw pulses) + 12 Forward-Downward Gungnir War-Spears!
+    if (t < 1.42) {
+      this._phaseThroughEnemy = false;
+      const uFlip = Math.max(0, Math.min(1, (t - 0.24) / (1.42 - 0.24)));
+      const easeFlip = 1 - Math.pow(1 - uFlip, 2);
+      this.x = originX + (landX - originX) * easeFlip;
+      this.y = this.groundY - Math.sin(uFlip * Math.PI) * 148;
+      this.cameraAirLift = Math.max(0, (this.groundY - this.y) * 0.65);
+      this.facing = enemyX >= this.x ? 1 : -1;
+
+      let frameIdx = 213;
+      if (t < 0.54) {
+        const subU = Math.min(0.999, (t - 0.24) / 0.30);
+        frameIdx = 213 + Math.min(19, Math.floor(subU * 20));
+      } else if (t < 0.76) {
+        const subU = Math.min(0.999, (t - 0.54) / 0.22);
+        frameIdx = 133 + Math.min(5, Math.floor(subU * 6));
+      } else if (t < 1.08) {
+        const subU = Math.min(0.999, (t - 0.76) / 0.32);
+        frameIdx = 213 + Math.min(19, Math.floor(subU * 20));
+      } else if (t < 1.32) {
+        const subU = Math.min(0.999, (t - 1.08) / 0.24);
+        frameIdx = 133 + Math.min(5, Math.floor(subU * 6));
+      } else {
+        const subU = Math.min(0.999, (t - 1.32) / 0.10);
+        frameIdx = 230 + Math.min(2, Math.floor(subU * 3));
+      }
+      this.trueUltFrameOverride = frameIdx;
+      this._overrideFrameIdx = frameIdx;
 
       if (!this._ultPassCone1) {
         this._ultPassCone1 = true;
@@ -1938,75 +1944,64 @@ export class ValkyrieEx extends Fighter {
           palette: VALKYRIE_CRIMSON_PALETTE,
           maxDuration: 1.12,
           light: 1.18,
-          extra: { length: 32, tilt: -0.08 }
+          extra: { length: 32, tilt: -0.22 }
         });
         this.fx.spawn('gungnirSpearThrustCone', this._safeFxX(this.x + this.facing * 32, game), this._safeFxY(this.y - 92), {
           flip: false,
           palette: VALKYRIE_CRIMSON_PALETTE,
           light: 1.18,
-          extra: { aimAngle: wps.climb.x >= originX ? -0.14 : Math.PI + 0.14, radius: 26, twin: false }
+          extra: { aimAngle: this.facing >= 0 ? 0.36 : Math.PI - 0.36, radius: 26, twin: false }
         });
       }
 
-      if (t < 0.68) {
-        const u = (t - 0.30) / 0.38;
-        const ease = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
-        this.x = originX + (wps.climb.x - originX) * ease;
-        this.y = this.groundY + (wps.climb.y - this.groundY) * ease;
-      } else if (t < 1.10) {
-        const u = (t - 0.68) / 0.42;
-        const ease = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
-        const hoverBeat = -Math.sin(u * Math.PI) * 6;
-        this.x = wps.climb.x + (wps.drift.x - wps.climb.x) * ease;
-        this.y = wps.climb.y + (wps.drift.y - wps.climb.y) * ease + hoverBeat;
-        if (this._ultStep < 1 && u >= 0.25) {
-          this._ultStep = 1;
-          this.spawnVfxAnim(0, this.x + this.facing * 38, this.y - 84, 208, 208, 0.28, {
-            vx: this.facing * 260,
-            flipX: this.facing < 0,
-            glowColor: 'gold'
-          });
-        }
-      } else {
-        const u = (t - 1.10) / 0.34;
-        const ease = u * u * (3 - 2 * u);
-        this.x = wps.drift.x + (wps.land.x - wps.drift.x) * ease;
-        this.y = wps.drift.y + (wps.land.y - wps.drift.y) * ease;
-        if (!this._ultPassCone3) {
-          this._ultPassCone3 = true;
-          this.fx.spawn('gungnirSpearThrustCone', this._safeFxX(this.x + this.facing * 36, game), this._safeFxY(this.y - 86), {
-            flip: false,
-            palette: VALKYRIE_GOLD_PALETTE,
-            light: 1.2,
-            extra: { aimAngle: this.facing >= 0 ? 0.14 : Math.PI - 0.14, radius: 28, twin: true }
-          });
-        }
+      if (this._ultStep < 1 && uFlip >= 0.35) {
+        this._ultStep = 1;
+        this.spawnVfxAnim(0, this.x + this.facing * 38, this.y - 84, 208, 208, 0.28, {
+          vx: this.facing * 240,
+          vy: 110,
+          flipX: this.facing < 0,
+          glowColor: 'gold'
+        });
       }
 
-      this.facing = enemyX >= this.x ? 1 : -1;
-      this.cameraAirLift = Math.max(0, (this.groundY - this.y) * 0.65);
+      if (!this._ultPassCone3 && uFlip >= 0.72) {
+        this._ultPassCone3 = true;
+        this.fx.spawn('gungnirSpearThrustCone', this._safeFxX(this.x + this.facing * 36, game), this._safeFxY(this.y - 86), {
+          flip: false,
+          palette: VALKYRIE_GOLD_PALETTE,
+          light: 1.2,
+          extra: { aimAngle: this.facing >= 0 ? 0.42 : Math.PI - 0.42, radius: 28, twin: true }
+        });
+      }
 
       this.afterimageSpawnAccum += dt;
       if (this.afterimageSpawnAccum >= 0.038) {
         this.afterimageSpawnAccum = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, glideCol, 0.24);
+        this.spawnAfterimage(
+          this.x,
+          this.y,
+          this.facing,
+          Math.floor(frameIdx / 30),
+          frameIdx % 30,
+          0.24
+        );
       }
 
-      // Command 12 Sleek Shallow-Curving Gungnir Light-Javelins across the arena!
-      const spearInterval = 0.082;
-      const expectedSpears = Math.min(12, Math.floor(Math.max(0, t - 0.34) / spearInterval) + 1);
-      const sySlots = [-124, -76, -114, -84, -104, -92, -128, -72, -110, -80, -118, -88];
-      const arcSpreadSlots = [-95, 95, -65, 65, -35, 35, -115, 115, -45, 45, -80, 80];
-      const vArcSlots = [-56, 18, -42, 12, -28, -8, -62, 22, -34, 8, -48, 14];
+      // Command 12 Sleek Gungnir War-Spears forward-downward onto `enemyX` (`t = 0.28..1.26s`, dmg=14)!
+      const spearInterval = 0.088;
+      const expectedSpears = t >= 0.28 ? Math.min(12, Math.floor((t - 0.28) / spearInterval) + 1) : 0;
+      const sySlots = [-116, -78, -108, -84, -100, -90, -118, -76, -110, -82, -114, -86];
+      const arcSpreadSlots = [-62, 62, -44, 44, -24, 24, -74, 74, -36, 36, -52, 52];
+      const vArcSlots = [-28, 12, -20, 14, -14, 8, -32, 16, -18, 10, -24, 12];
 
       while (this._spearsFired < expectedSpears) {
         const idx = this._spearsFired++;
-        const sx = this.x + this.facing * (14 + (idx % 4) * 10);
+        const sx = this.x + this.facing * (18 + (idx % 4) * 10);
         const sy = this.y + sySlots[idx % sySlots.length];
         const rawTx =
           enemy && !enemy.isDead
             ? enemy.x + ((idx % 5) - 2) * 16
-            : enemyX + (idx - 5.5) * 42;
+            : enemyX + (idx - 5.5) * 32;
         const clampedTx = clampX(rawTx);
         const ty = enemy && !enemy.isDead ? enemy.y - 48 : this.groundY - 48;
 
@@ -2028,17 +2023,15 @@ export class ValkyrieEx extends Fighter {
       return;
     }
 
-    // Stage 2 (`1.44..1.88s`, Row 4 F25..F29): Grounded Sovereign Forward Thrust & 3-Pillar Judgment!
+    // Stage 2 (`1.42..1.88s`, Row 4 F25..F29 `145..149`): Crisp Landing at `landX` & 3-Pillar Judgment!
     this._phaseThroughEnemy = false;
-    this.x = wps.land.x;
+    this.x = landX;
     this.y = this.groundY;
     this.cameraAirLift = 0;
     this.divePitchRad = 0;
-    this.trueUltFrameOverride = 145 + Math.min(4, Math.floor(Math.max(0, (t - 1.44) / Math.max(0.05, dur - 1.44)) * 5));
+    this.trueUltFrameOverride = 145 + Math.min(4, Math.floor(Math.max(0, (t - 1.42) / Math.max(0.05, dur - 1.42)) * 5));
     this._overrideFrameIdx = this.trueUltFrameOverride;
-    if (enemy && !enemy.isDead) {
-      this.facing = enemy.x >= this.x ? 1 : -1;
-    }
+    this.facing = enemyX >= this.x ? 1 : -1;
 
     if (!this.didSecondaryAction) {
       this.didSecondaryAction = true;
@@ -2299,7 +2292,7 @@ export class ValkyrieEx extends Fighter {
             flip: false,
             palette: lance.index % 2 === 0 ? VALKYRIE_GOLD_PALETTE : VALKYRIE_CRIMSON_PALETTE,
             light: 1.2,
-            extra: { aimAngle: Math.PI * 0.5, isCrit: true }
+            extra: { aimAngle: lance.angle ?? Math.PI * 0.5, isCrit: true }
           });
           this.spawnFeatherBurst(lance.targetX, this.groundY - 54, 4, 140, true);
 
@@ -2350,7 +2343,7 @@ export class ValkyrieEx extends Fighter {
       }
     }
 
-    // PHASE 1 (0.00s..1.10s): Ascend 410px into the Heavens & Open Multi-Band Bifrost Sky-Gate
+    // PHASE 1 (0.00s..1.10s): Ascend 410px to the Approach Flank & Open Multi-Band Bifrost Sky-Gate
     if (t < 1.10) {
       if (t < 0.22) {
         const uPrep = t / 0.22;
@@ -2363,8 +2356,9 @@ export class ValkyrieEx extends Fighter {
         const lift = 410 * easeAsc;
         this.y = this.groundY - lift;
         this.cameraAirLift = lift;
+        const approachFlankX = this._clampArenaX(targetX - this.facing * 276, game, 105);
         const driftTowardArena =
-          this._trueUltOriginX + (targetX - this.facing * 235 - this._trueUltOriginX) * (easeAsc * 0.65);
+          this._trueUltOriginX + (approachFlankX - this._trueUltOriginX) * easeAsc;
         this.x = this._clampArenaX(driftTowardArena, game, 105);
         const ascCol = 9 + Math.min(3, Math.floor(uAsc * 4));
         this.trueUltFrameOverride = 120 + ascCol;
@@ -2386,11 +2380,14 @@ export class ValkyrieEx extends Fighter {
       return;
     }
 
-    // PHASE 2 (1.10s..2.55s): Shot-Synced Downward Gungnir Spear-Command (F13..F18) Pinning 6 Einherjar Sky-Lances!
+    // PHASE 2 (1.10s..2.55s): Hover Elevated on Approach Flank (`y = groundY - 410`) & Spawn 6 Parallel ~56 deg Diagonal Einherjar Sky-Lances!
     if (t < 2.55) {
       const hoverT = t - 1.10;
+      const approachFlankX = this._clampArenaX(targetX - this.facing * 276, game, 105);
+      this.x += (approachFlankX - this.x) * Math.min(1, dt * 7.5);
       this.y = this.groundY - 410 + Math.sin(hoverT * 6.5) * 6;
       this.cameraAirLift = 410;
+      this.facing = targetX >= this.x ? 1 : -1;
 
       const lanceSchedule = [1.14, 1.35, 1.56, 1.77, 1.98, 2.19];
       const ringOffsets = [-136, 136, -88, 88, -42, 42];
@@ -2404,9 +2401,11 @@ export class ValkyrieEx extends Fighter {
         const offsetX = ringOffsets[idx];
         const depthY = ringDepths[idx];
         const pinX = this._clampArenaX(targetX + offsetX, game, 95);
-        const startX = this.x + this.facing * 26;
-        const startY = this.y - 84;
         const pinY = this.groundY - 122 + depthY;
+        const lanceFacing = this.facing;
+        const startX = pinX - lanceFacing * 228;
+        const startY = pinY - 338;
+        const lanceAngle = Math.atan2(pinY - startY, pinX - startX);
 
         this.einherjarSkyLances.push({
           index: idx,
@@ -2416,6 +2415,8 @@ export class ValkyrieEx extends Fighter {
           pinY,
           x: startX,
           y: startY,
+          facing: lanceFacing,
+          angle: lanceAngle,
           inFront: depthY > 0,
           age: 0,
           fallDuration: 0.16,
@@ -2708,7 +2709,7 @@ export class ValkyrieEx extends Fighter {
       if (lance.impacted) {
         drawBayerCrimsonGoldHalo(
           ctx,
-          lance.x,
+          lance.x + (lance.facing || 1) * 56,
           this.groundY - 2,
           36,
           10,
@@ -2720,6 +2721,7 @@ export class ValkyrieEx extends Fighter {
 
       if (hasVfx) {
         const scalePulse = lance.shatterAge !== undefined ? 1 + lance.shatterAge * 1.1 : 1.0;
+        const lanceSz = Math.round(312 * scalePulse);
         this.drawBloomedVfxCell(
           ctx,
           vfxSheet,
@@ -2727,11 +2729,14 @@ export class ValkyrieEx extends Fighter {
           col,
           lance.x,
           lance.y,
-          Math.round(268 * scalePulse),
-          Math.round(356 * scalePulse),
+          lanceSz,
+          lanceSz,
           0.95 * shatterFade,
-          lance.index % 2 === 1
+          (lance.facing || 1) < 0
         );
+      }
+      if (lance.angle !== undefined) {
+        drawSteppedAngledGungnirLance(ctx, lance.x, lance.y, lance.angle, 164, 0.90 * shatterFade, true);
       }
     }
 
@@ -2742,9 +2747,9 @@ export class ValkyrieEx extends Fighter {
       for (let i = 0; i < planted.length - 1; i++) {
         drawPixelSteppedLightningChain(
           ctx,
-          planted[i].x,
+          planted[i].x + (planted[i].facing || 1) * 32,
           this.groundY - 76,
-          planted[i + 1].x,
+          planted[i + 1].x + (planted[i + 1].facing || 1) * 32,
           this.groundY - 76,
           this.stateTimer * 2.5 + i,
           '#fb7185',
@@ -3060,7 +3065,10 @@ export class ValkyrieEx extends Fighter {
         const col = Math.floor(lance.age * 30) % 30;
         const shatterFade = lance.shatterAge !== undefined ? Math.max(0, 1 - lance.shatterAge / 0.30) : 1.0;
         if (shatterFade > 0.02) {
-          this.drawBloomedVfxCell(ctx, vfxSheet, 6, col, lance.x, lance.y, 268, 356, shatterFade * 0.36, lance.index % 2 === 1);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 6, col, lance.x, lance.y, 312, 312, shatterFade * 0.36, (lance.facing || 1) < 0);
+          if (lance.angle !== undefined) {
+            drawSteppedAngledGungnirLance(ctx, lance.x, lance.y, lance.angle, 164, shatterFade * 0.32, true);
+          }
         }
       }
       if (this.bahamutAvatar) {
