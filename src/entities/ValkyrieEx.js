@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps122';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps122';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps122';
+import { Fighter } from './Fighter.js?v=30fps123';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps122';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps123';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Gungnir Lightning-Javelin + Valhalla Rune Seal -> snaps at F03 (63)
@@ -329,11 +329,11 @@ export class ValkyrieEx extends Fighter {
     if (!assets) return null;
     if (!assets.valkyrie_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/valkyrie_ex_sheet.png?v=30fps122';
+      sheet.src = 'assets/sprites/valkyrie_ex_sheet.png?v=30fps123';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps122';
+      vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps123';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/valkyrie_ex_portrait.png?v=30fps122';
+      portrait.src = 'assets/sprites/valkyrie_ex_portrait.png?v=30fps123';
       assets.valkyrie_ex = {
         sheet,
         vfx,
@@ -344,11 +344,11 @@ export class ValkyrieEx extends Fighter {
         anchorY: 230
       };
     } else {
-      if (assets.valkyrie_ex.sheet?.src && !assets.valkyrie_ex.sheet.src.includes('v=30fps122')) {
-        assets.valkyrie_ex.sheet.src = 'assets/sprites/valkyrie_ex_sheet.png?v=30fps122';
+      if (assets.valkyrie_ex.sheet?.src && !assets.valkyrie_ex.sheet.src.includes('v=30fps123')) {
+        assets.valkyrie_ex.sheet.src = 'assets/sprites/valkyrie_ex_sheet.png?v=30fps123';
       }
-      if (assets.valkyrie_ex.vfx?.src && !assets.valkyrie_ex.vfx.src.includes('v=30fps122')) {
-        assets.valkyrie_ex.vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps122';
+      if (assets.valkyrie_ex.vfx?.src && !assets.valkyrie_ex.vfx.src.includes('v=30fps123')) {
+        assets.valkyrie_ex.vfx.src = 'assets/sprites/valkyrie_ex_vfx.png?v=30fps123';
       }
     }
     return assets.valkyrie_ex;
@@ -388,6 +388,19 @@ export class ValkyrieEx extends Fighter {
     }
 
     super.setState(newState);
+
+    if (
+      (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
+      newState !== 'JUMP' &&
+      newState !== 'DODGE' &&
+      newState !== 'SKILL' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
+    }
 
     if (
       newState !== 'SKILL' &&

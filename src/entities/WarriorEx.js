@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps122';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps122';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps122';
+import { Fighter } from './Fighter.js?v=30fps123';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps122';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps123';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)
@@ -155,6 +155,19 @@ export class WarriorEx extends Fighter {
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
+
+    if (
+      (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
+      newState !== 'JUMP' &&
+      newState !== 'DODGE' &&
+      newState !== 'SKILL' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
+    }
 
     if (newState === 'AUTO_ATTACK') {
       if (this._comboPersistTimer <= 0 && prevState !== 'AUTO_ATTACK') {

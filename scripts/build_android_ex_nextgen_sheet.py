@@ -967,9 +967,55 @@ def draw_muramasa_plasma_odachi_160(
         for gd in (-3.6, 1.0):
             hx = grip_x + ux * gd
             hy = grip_y + uy * gd
-            draw_disc_160(arr, hx, hy, 2.2, C_OUT_DARK)
-            draw_disc_160(arr, hx, hy, 1.4, C_TITANIUM_LIT)
-            put_px_160(arr, hx + nx * 0.6, hy + ny * 0.6, C_CYAN_NEON)
+            draw_sculpted_cyber_hand_160(arr, hx, hy, ux, uy, nx, ny, role="grip")
+
+
+def draw_sculpted_cyber_hand_160(arr, hx, hy, ux, uy, nx, ny, role="grip"):
+    """
+    Pixel-by-pixel sculpted Valkyrie cyber-gauntlet hand (0 round circle blobs):
+      - "grip": gunmetal cuff + titanium dorsal ridge + neon-cyan knuckle LED + 3 fingers + thumb
+      - "visor": slender 2-finger tactical visor touch + compact titanium palm
+    """
+    if role == "visor":
+        pts = [
+            (-1.2,  0.5, C_GUNMETAL_DARK),
+            (-0.4,  0.0, C_TITANIUM_MID),
+            ( 0.4, -0.4, C_TITANIUM_LIT),
+            ( 0.4,  0.6, C_TITANIUM_MID),
+            ( 1.3, -0.8, C_CYAN_NEON),
+            ( 1.3,  0.2, C_TITANIUM_LIT),
+            (-0.2,  1.1, C_TITANIUM_MID),
+        ]
+    else:
+        pts = [
+            (-1.2, -0.5, C_GUNMETAL_DARK),
+            (-1.2,  0.5, C_GUNMETAL_DARK),
+            (-0.4, -1.2, C_TITANIUM_LIT),  # opposed thumb along upper hilt
+            (-0.4,  0.0, C_TITANIUM_LIT),  # titanium dorsal plate
+            ( 0.4, -0.8, C_CYAN_NEON),     # index knuckle LED + cyber finger
+            ( 0.4,  0.2, C_TITANIUM_LIT),  # middle finger
+            ( 0.4,  1.1, C_TITANIUM_MID),  # ring finger
+            ( 1.2, -0.6, C_TITANIUM_MID),  # curled tips across Muramasa shaft
+            ( 1.2,  0.3, C_TITANIUM_MID),
+        ]
+
+    resolved: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    for ou, ov, col in pts:
+        px = int(round(hx + ux * ou + nx * ov))
+        py = int(round(hy + uy * ou + ny * ov))
+        resolved[(px, py)] = col
+
+    for px, py in resolved:
+        for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            sx_p, sy_p = px + ox, py + oy
+            if (sx_p, sy_p) in resolved:
+                continue
+            if MARGIN_LOGICAL <= sx_p < LOGICAL_W - MARGIN_LOGICAL and MARGIN_LOGICAL <= sy_p < LOGICAL_H - MARGIN_LOGICAL:
+                if arr[sy_p, sx_p, 3] == 0:
+                    arr[sy_p, sx_p] = C_OUT_DARK
+
+    for (px, py), col in resolved.items():
+        put_px_160(arr, px, py, col)
 
 
 def draw_hf_plasma_smear_160(
@@ -2085,31 +2131,30 @@ def build_row4_ultimate(parts, sj, keyposes):
             core_y = neck[1] + 9.0
             draw_disc_160(arr, core_x, core_y, 1.5 + cu * 0.9, C_CYAN_CREST if s % 2 == 0 else C_MAG_HOT)
             put_px_160(arr, core_x, core_y, C_PURE_WHITE)
-            # Single-hand gauntlet grip + temple visor HUD lock highlight
-            draw_disc_160(arr, grip[0], grip[1], 2.2, C_OUT_DARK)
-            draw_disc_160(arr, grip[0], grip[1], 1.4, C_TITANIUM_LIT)
-            put_px_160(arr, grip[0] + 0.5, grip[1], C_CYAN_NEON)
-            draw_disc_160(arr, visor_x - 1.2, visor_y + 1.0, 1.4, C_TITANIUM_LIT)
-            put_px_160(arr, visor_x - 1.0, visor_y + 1.0, C_CYAN_NEON)
+            # Single-hand sculpted gauntlet grip + 2-finger visor HUD lock touch
+            draw_sculpted_cyber_hand_160(arr, grip[0], grip[1], -0.84, 0.54, 0.54, 0.84, role="grip")
+            draw_sculpted_cyber_hand_160(arr, visor_x - 1.2, visor_y + 1.0, 0.85, -0.52, 0.52, 0.85, role="visor")
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=-1.5,
-            pelvis_dy=12.2 + math.sin(charge_u * math.pi) * 0.8,
-            torso_deg=14.0 + charge_u * 2.0,
-            head_deg=-11.5 - charge_u * 1.5,
+            pelvis_dy=9.0 + math.sin(charge_u * math.pi) * 0.8,
+            torso_deg=12.0 + charge_u * 2.0,
+            head_deg=-10.0 - charge_u * 1.5,
             mane_deg=-8.0 - math.sin(sub * 1.2) * 2.5,
-            l_coat_deg=-12.0 - sub * 0.8,
-            r_coat_deg=10.0 + sub * 0.6,
+            l_coat_deg=-10.0 - sub * 0.8,
+            r_coat_deg=8.0 + sub * 0.6,
             coat_wave_ph=sub * 0.9,
             coat_wave_amp=3.5,
-            l_thigh_deg=-50.0,
-            l_shin_deg=74.0,
+            coat_y_offset_160=-2.0,
+            coat_x_inward_frac=0.18,
+            l_thigh_deg=-26.0,
+            l_shin_deg=42.0,
             l_foot_deg=-4.0,
-            r_thigh_deg=34.0,
-            r_shin_deg=22.0,
-            r_foot_deg=10.0,
-            hip_inward_frac=0.88,
+            r_thigh_deg=18.0,
+            r_shin_deg=16.0,
+            r_foot_deg=6.0,
+            hip_inward_frac=0.18,
             neutralize_leg_rest=True,
             uniform_side_boots=True,
             shade_far_leg=0.84,
@@ -2157,7 +2202,7 @@ def build_row4_ultimate(parts, sj, keyposes):
             post_fn=post_fire,
         ))
 
-    # F26..F29 (4 frames): Clean Tactical Recovery to Odachi Kamae
+    # F26..F29 (4 frames): Clean Tactical Recovery to Odachi Kamae (coherent hip skirts, wide A-stance)
     for sub in range(4):
         rec_u = sub / 3.0
         frames.append(render_stand_rig_frame_160(
@@ -2166,14 +2211,14 @@ def build_row4_ultimate(parts, sj, keyposes):
             pelvis_dy=0.0,
             torso_deg=4.0 * (1.0 - rec_u),
             head_deg=-2.0 * (1.0 - rec_u),
-            l_thigh_deg=-24.0 + rec_u * 6.0,
-            l_shin_deg=28.0 - rec_u * 6.0,
+            l_thigh_deg=-8.0 * (1.0 - rec_u),
+            l_shin_deg=10.0 * (1.0 - rec_u),
             l_foot_deg=0.0,
-            r_thigh_deg=18.0 - rec_u * 4.0,
-            r_shin_deg=10.0 - rec_u * 4.0,
-            r_foot_deg=4.0 * (1.0 - rec_u),
-            hip_inward_frac=0.90,
-            neutralize_leg_rest=True,
+            r_thigh_deg=8.0 * (1.0 - rec_u),
+            r_shin_deg=4.0 * (1.0 - rec_u),
+            r_foot_deg=0.0,
+            hip_inward_frac=0.0,
+            neutralize_leg_rest=False,
             uniform_side_boots=True,
             shade_far_leg=0.84,
             grip_rel_sh=(8.0 + rec_u * 3.5, 9.5 - rec_u * 1.0),

@@ -613,20 +613,90 @@ def solve_2bone_ik(sh, target, l1=8.2, l2=8.2, bend_sign=1.0):
     return el, target
 
 
-def draw_priestess_arm(arr, sh, grip, is_front=True, bend_sign=1.0, max_y=114):
+def draw_sculpted_priestess_hand(arr, hand, dir_x, dir_y, is_front=True, role="scepter_grip", max_y=114):
+    """
+    Pixel-by-pixel sculpted Porcelain High-Priestess hand with articulated fingers
+    & thumb (0 thick tubes or circular blobs, selective 1px dark Selout only on empty bg).
+    """
+    d_len = math.hypot(dir_x, dir_y) or 1.0
+    ux, uy = dir_x / d_len, dir_y / d_len
+    nx, ny = -uy, ux
+    if ny > 0.35:
+        nx, ny = -nx, -ny
+
+    sk_hi = C_SKIN_LIGHT if is_front else C_SKIN_SHADOW
+    sk_sh = C_SKIN_SHADOW if is_front else C_GOLD_DARK
+    cuff = C_GOLD_LIGHT if is_front else C_GOLD_MID
+
+    if role == "benediction":
+        # Open grace-casting hand: thumb up + 3 slender articulated outstretched fingers
+        pts = [
+            (-1.2, -0.4, cuff),
+            (-1.2,  0.4, cuff),
+            (-0.3, -1.2, sk_hi),   # raised thumb
+            (-0.3,  0.0, sk_hi),   # palm
+            (-0.3,  0.8, sk_sh),
+            ( 0.6, -0.8, sk_hi),   # index finger
+            ( 0.7,  0.0, sk_hi),   # middle finger
+            ( 0.5,  0.8, sk_sh),   # ring finger
+            ( 1.5, -0.9, sk_hi),   # index tip
+            ( 1.6,  0.0, sk_hi),   # middle tip
+        ]
+    else:
+        # Scepter-grip: fingers wrap orthogonally across the Cathedral Scepter shaft!
+        pts = [
+            (-1.1, -0.5, cuff),
+            (-1.1,  0.4, cuff),
+            (-0.4, -1.3, sk_hi),   # opposed thumb bracing shaft
+            (-0.3,  0.0, sk_hi),
+            ( 0.5, -0.9, sk_hi),   # index finger curling across shaft
+            ( 0.5,  0.0, sk_hi),   # middle finger curling across shaft
+            ( 0.5,  0.9, sk_sh),   # ring finger curling across shaft
+            ( 1.1, -0.5, sk_sh),
+            ( 1.1,  0.4, sk_sh),
+        ]
+
+    hpts = {}
+    for ou, ov, col in pts:
+        px = int(round(hand[0] + ux * ou + nx * ov))
+        py = int(round(hand[1] + uy * ou + ny * ov))
+        if 2 <= px < LOG_W - 2 and 2 <= py <= min(LOG_H - 3, max_y):
+            hpts[(px, py)] = col
+
+    for px, py in hpts:
+        for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            sx_p, sy_p = px + ox, py + oy
+            if (sx_p, sy_p) in hpts:
+                continue
+            put_px_outline_bg(arr, sx_p, sy_p, C_OUT, max_y=max_y)
+
+    for (px, py), col in hpts.items():
+        put_px(arr, px, py, col)
+
+
+def draw_priestess_arm(arr, sh, grip, is_front=True, bend_sign=1.0, max_y=114, role="scepter_grip", grip_axis=None):
     el, hand = solve_2bone_ik(sh, grip, l1=8.3, l2=8.3, bend_sign=bend_sign)
     sleeve_upper = C_NAVY_MID if is_front else C_NAVY_DARK
     bracer = C_IVORY_LIGHT if is_front else C_IVORY_MID
     cuff = C_GOLD_LIGHT if is_front else C_GOLD_MID
-    skin = C_SKIN_LIGHT if is_front else C_SKIN_SHADOW
 
-    draw_thick_line(arr, sh[0] - 0.8, sh[1] - 0.6, sh[0] + 1.0, sh[1] + 0.5, 2.0, bracer, out_col=C_OUT, max_y=max_y)
-    put_px(arr, int(round(sh[0])), int(round(sh[1] - 1)), cuff)
-    draw_thick_line(arr, sh[0], sh[1], el[0], el[1], 1.65, sleeve_upper, out_col=C_OUT, max_y=max_y)
-    draw_thick_line(arr, el[0], el[1], hand[0], hand[1], 1.55, bracer, out_col=C_OUT, max_y=max_y)
-    mx, my = lerp(el[0], hand[0], 0.58), lerp(el[1], hand[1], 0.58)
-    draw_thick_line(arr, mx - 0.4, my - 0.4, mx + 0.4, my + 0.4, 1.35, cuff, out_col=None, max_y=max_y)
-    draw_thick_line(arr, hand[0] - 0.4, hand[1] - 0.3, hand[0] + 0.5, hand[1] + 0.3, 1.4, skin, out_col=C_OUT, max_y=max_y)
+    fdx, fdy = hand[0] - el[0], hand[1] - el[1]
+    fd_len = math.hypot(fdx, fdy) or 1.0
+    fux, fuy = fdx / fd_len, fdy / fd_len
+    wx = hand[0] - fux * 1.7
+    wy = hand[1] - fuy * 1.7
+
+    draw_thick_line(arr, sh[0] - 0.6, sh[1] - 0.5, sh[0] + 0.8, sh[1] + 0.4, 1.45, bracer, out_col=C_OUT, max_y=max_y)
+    put_px(arr, int(round(sh[0])), min(max_y, int(round(sh[1] - 1))), cuff)
+    draw_thick_line(arr, sh[0], sh[1], el[0], el[1], 1.25, sleeve_upper, out_col=C_OUT, max_y=max_y)
+    draw_thick_line(arr, el[0], el[1], wx, wy, 1.15, bracer, out_col=C_OUT, max_y=max_y)
+    mx, my = lerp(el[0], wx, 0.72), lerp(el[1], wy, 0.72)
+    draw_thick_line(arr, mx - 0.3, my - 0.3, mx + 0.3, my + 0.3, 1.0, cuff, out_col=None, max_y=max_y)
+
+    if grip_axis is not None:
+        draw_sculpted_priestess_hand(arr, hand, -grip_axis[1], grip_axis[0], is_front=is_front, role=role, max_y=max_y)
+    else:
+        draw_sculpted_priestess_hand(arr, hand, fux, fuy, is_front=is_front, role=role, max_y=max_y)
     return hand
 
 
@@ -1391,9 +1461,9 @@ def compose_priestess_frame(
     grip_rear = (grip_main[0] - ux * 7.5, grip_main[1] - uy * 7.5)
 
     if two_handed:
-        draw_priestess_arm(arr, sh_b, grip_rear, is_front=False, bend_sign=1.0, max_y=max_fx_y)
+        draw_priestess_arm(arr, sh_b, grip_rear, is_front=False, bend_sign=1.0, max_y=max_fx_y, role="scepter_grip", grip_axis=(ux, uy))
     elif offhand_target is not None:
-        oh = draw_priestess_arm(arr, sh_b, offhand_target, is_front=False, bend_sign=1.0, max_y=max_fx_y)
+        oh = draw_priestess_arm(arr, sh_b, offhand_target, is_front=False, bend_sign=1.0, max_y=max_fx_y, role="benediction")
         if radiance > 0.45:
             draw_pixel_star4(arr, oh[0], oh[1] - 1.5, arm=2, core_col=C_LIGHT_CORE, ray_col=C_LIGHT_SUNGOLD, max_y=max_fx_y)
 
@@ -1432,7 +1502,9 @@ def compose_priestess_frame(
             radiance=radiance,
             max_y=max_fx_y,
         )
-    draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=max_fx_y)
+        if two_handed:
+            draw_sculpted_priestess_hand(arr, grip_rear, -uy, ux, is_front=False, role="scepter_grip", max_y=max_fx_y)
+    draw_priestess_arm(arr, sh_f, grip_main, is_front=True, bend_sign=1.0, max_y=max_fx_y, role="scepter_grip", grip_axis=(ux, uy))
 
     draw_priestess_cast_fx(arr, fx_spec, phase=phase, max_y=max_fx_y)
 

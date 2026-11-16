@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps122';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps122';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps122';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps122';
+import { Fighter } from './Fighter.js?v=30fps123';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps123';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps122';
+} from '../engine/shaders/chronoShaders.js?v=30fps123';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -267,8 +267,8 @@ export class ChronomancerEx extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('chronomancer_ex');
       const chronoExAssets = PixelForge.initAssets()?.chronomancer_ex;
-      if (chronoExAssets?.vfx?.src && !chronoExAssets.vfx.src.includes('v=30fps122')) {
-        chronoExAssets.vfx.src = 'assets/sprites/chronomancer_ex_vfx.png?v=30fps122';
+      if (chronoExAssets?.vfx?.src && !chronoExAssets.vfx.src.includes('v=30fps123')) {
+        chronoExAssets.vfx.src = 'assets/sprites/chronomancer_ex_vfx.png?v=30fps123';
       }
     }
 
@@ -419,6 +419,8 @@ export class ChronomancerEx extends Fighter {
       if (newState !== 'TRUE_ULTIMATE') {
         this.isInvulnerable = false;
         this.y = this.groundY;
+        this.vy = 0;
+        this.cameraAirLift = 0;
       }
     }
 
@@ -441,6 +443,8 @@ export class ChronomancerEx extends Fighter {
       this.eternalZeroDome = null;
       this.suspendedClockSpears = [];
       this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
     }
 
     if (newState === 'DEATH') {
@@ -2510,8 +2514,10 @@ export class ChronomancerEx extends Fighter {
     }
 
     const postU = clamp01Local((t - 3.53) / Math.max(0.1, dur - 3.53));
-    this.y = this.groundY - Math.round(42 * Math.max(0, 1 - postU * 1.45));
+    const landFrac = Math.min(1, postU / 0.33);
+    this.y = this.groundY - Math.round(42 * (1 - landFrac));
     this.trueUltFrameOverride = 139 + Math.min(10, Math.floor(postU * 11));
+    this._overrideFrameIdx = this.trueUltFrameOverride;
 
     for (let i = this.suspendedClockSpears.length - 1; i >= 0; i--) {
       const sp = this.suspendedClockSpears[i];

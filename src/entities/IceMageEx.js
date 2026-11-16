@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps122';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps122';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps122';
+import { Fighter } from './Fighter.js?v=30fps123';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
 import {
   GLACIAL_EFFECT_REGISTRY,
   GLACIAL_CRYO_PALETTE,
   BOREALIS_PRISM_PALETTE
-} from '../engine/shaders/glacialShaders.js?v=30fps122';
+} from '../engine/shaders/glacialShaders.js?v=30fps123';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.35s): Borealis Snowflake Circle -> 'cryo_shard' Diamond Comet -> snaps at F03 (63)
@@ -260,11 +260,11 @@ export class IceMageEx extends Fighter {
     if (!assets) return null;
     if (!assets.icemage_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/icemage_ex_sheet.png?v=30fps122';
+      sheet.src = 'assets/sprites/icemage_ex_sheet.png?v=30fps123';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/icemage_ex_vfx.png?v=30fps122';
+      vfx.src = 'assets/sprites/icemage_ex_vfx.png?v=30fps123';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/icemage_ex_portrait.png?v=30fps122';
+      portrait.src = 'assets/sprites/icemage_ex_portrait.png?v=30fps123';
       assets.icemage_ex = {
         sheet,
         vfx,
@@ -293,6 +293,19 @@ export class IceMageEx extends Fighter {
     }
 
     super.setState(newState);
+
+    if (
+      (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
+      newState !== 'JUMP' &&
+      newState !== 'DODGE' &&
+      newState !== 'SKILL' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
+    }
 
     if (newState === 'AUTO_ATTACK') {
       if (this._comboPersistTimer <= 0 && prevState !== 'AUTO_ATTACK') {
@@ -1532,7 +1545,8 @@ export class IceMageEx extends Fighter {
       this._overrideFrameIdx = this.trueUltFrameOverride;
     } else {
       const descU = Math.min(1, (t - 1.44) / 0.46);
-      this.y = this.groundY - 46 * (1 - descU);
+      const landFrac = Math.min(1, descU / 0.72);
+      this.y = this.groundY - Math.round(46 * (1 - landFrac));
       this.trueUltFrameOverride = 139 + Math.min(10, Math.floor(descU * 11));
       this._overrideFrameIdx = this.trueUltFrameOverride;
     }
@@ -2010,8 +2024,9 @@ export class IceMageEx extends Fighter {
     }
 
     const descU = Math.min(1, Math.max(0, (t - 3.28) / Math.max(0.01, this.trueUltDuration - 3.28)));
-    const smoothDesc = descU * descU * (3 - 2 * descU);
-    this.y = this.groundY - 92 * (1 - smoothDesc);
+    const landFrac = Math.min(1, descU / 0.70);
+    const smoothDesc = landFrac * landFrac * (3 - 2 * landFrac);
+    this.y = this.groundY - Math.round(92 * (1 - smoothDesc));
     this.cameraAirLift = 112 * (1 - smoothDesc);
     this.trueUltFrameOverride = 144 + Math.min(5, Math.floor(descU * 6));
     this._overrideFrameIdx = this.trueUltFrameOverride;

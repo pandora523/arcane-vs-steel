@@ -67,6 +67,10 @@ GOLD_BRIGHT = (250, 204, 21, 255)
 GOLD_SPEC = (254, 240, 138, 255)
 PURE_WHITE = (255, 255, 255, 255)
 
+SKIN_LIGHT = (246, 204, 178, 255)
+SKIN_MID = (224, 168, 144, 255)
+SKIN_SHAD = (176, 118, 98, 255)
+
 HAIR_DARK = (118, 62, 78, 255)
 HAIR_MID = (196, 134, 150, 255)
 HAIR_BRIGHT = (242, 208, 216, 255)
@@ -595,20 +599,90 @@ def solve_2bone_ik(sx, sy, tx, ty, l1, l2, bend_sign=1.0):
     return (ex, ey), (hx, hy)
 
 
-def draw_valkyrie_ik_arm(canvas: np.ndarray, sx, sy, tx, ty, bend_sign=1.0, is_back=False):
+def draw_sculpted_valkyrie_hand(
+    layer: np.ndarray,
+    hx: float,
+    hy: float,
+    dir_x: float,
+    dir_y: float,
+    is_back: bool = False,
+    role: str = "lance_grip",
+):
+    """
+    Pixel-by-pixel sculpted Valkyrie crimson-gold half-gauntlet hand & 3 fingers
+    (0 round 5x5 circle blobs, 0 sausage tubes).
+    """
+    d_len = math.hypot(dir_x, dir_y) or 1.0
+    ux, uy = dir_x / d_len, dir_y / d_len
+    nx, ny = -uy, ux
+    if ny > 0.35:
+        nx, ny = -nx, -ny
+
+    trim = GOLD_MID if is_back else GOLD_BRIGHT
+    knuckle = GOLD_BRIGHT if is_back else GOLD_SPEC
+    plate = CRIMSON_DEEP if is_back else CRIMSON_MID
+    sk_hi = SKIN_MID if is_back else SKIN_LIGHT
+    sk_lo = SKIN_SHAD if is_back else SKIN_MID
+
+    if role == "open":
+        pts = [
+            (-1.1, -0.5, trim),
+            (-1.1,  0.4, plate),
+            (-0.3, -1.2, sk_hi),   # open thumb
+            (-0.3,  0.0, trim),
+            ( 0.6, -0.8, sk_hi),   # index finger
+            ( 0.7,  0.0, sk_hi),   # middle finger
+            ( 0.5,  0.8, sk_lo),   # ring finger
+            ( 1.4, -0.7, sk_hi),
+            ( 1.5,  0.0, sk_lo),
+        ]
+    else:
+        pts = [
+            (-1.2, -0.5, trim),
+            (-1.2,  0.4, trim),
+            (-0.4, -1.3, sk_hi),   # opposed thumb along upper Gungnir shaft
+            (-0.4,  0.0, knuckle), # gold Valkyrie knuckle dorsal plate
+            ( 0.5, -0.9, sk_hi),   # index finger curling over war-lance
+            ( 0.5,  0.0, sk_hi),   # middle finger
+            ( 0.5,  0.9, sk_lo),   # ring finger
+            ( 1.1, -0.5, sk_lo),
+            ( 1.1,  0.3, sk_lo),
+        ]
+    for ou, ov, col in pts:
+        put_px(layer, int(round(hx + ux * ou + nx * ov)), int(round(hy + uy * ou + ny * ov)), col)
+
+
+def draw_sculpted_valkyrie_hand_clasp(
+    canvas: np.ndarray,
+    hx: float,
+    hy: float,
+    lance_deg: float,
+    is_back: bool = False,
+):
+    """Stamps articulated Valkyrie gauntlet fingers cleanly over Gungnir shaft after lance draw."""
+    rad = math.radians(lance_deg)
+    ux, uy = -math.sin(rad), math.cos(rad)
+    layer = np.zeros((LH, LW, 4), dtype=np.uint8)
+    draw_sculpted_valkyrie_hand(layer, hx, hy, ux, uy, is_back=is_back, role="lance_grip")
+    layer = outline_layer(layer, OUTLINE)
+    composite_np(canvas, layer)
+
+
+def draw_valkyrie_ik_arm(canvas: np.ndarray, sx, sy, tx, ty, bend_sign=1.0, is_back=False, hand_role="lance_grip"):
     (ex, ey), (hx, hy) = solve_2bone_ik(sx, sy, tx, ty, 8.5, 8.5, bend_sign=bend_sign)
     layer = np.zeros((LH, LW, 4), dtype=np.uint8)
     plate = CRIMSON_DEEP if is_back else CRIMSON_MID
     trim = GOLD_MID if is_back else GOLD_BRIGHT
-    draw_thick_line(layer, sx, sy, ex, ey, 2.1, plate)
-    draw_thick_line(layer, sx, sy, ex, ey, 0.9, CRIMSON_ROSE if not is_back else CRIMSON_MID)
-    draw_thick_line(layer, ex, ey, hx, hy, 1.85, plate)
-    draw_thick_line(layer, ex + (hx - ex) * 0.45, ey + (hy - ey) * 0.45, hx, hy, 1.45, trim)
-    for oy in range(-2, 3):
-        for ox in range(-2, 3):
-            if ox * ox + oy * oy <= 4:
-                put_px(layer, int(round(hx + ox)), int(round(hy + oy)), trim)
-    put_px(layer, int(round(hx)), int(round(hy - 1)), GOLD_SPEC)
+    fdx, fdy = hx - ex, hy - ey
+    fd_len = math.hypot(fdx, fdy) or 1.0
+    fux, fuy = fdx / fd_len, fdy / fd_len
+    wx, wy = hx - fux * 1.7, hy - fuy * 1.7
+
+    draw_thick_line(layer, sx, sy, ex, ey, 1.35, plate)
+    draw_thick_line(layer, sx, sy - 0.3, ex, ey - 0.3, 0.70, CRIMSON_ROSE if not is_back else CRIMSON_MID)
+    draw_thick_line(layer, ex, ey, wx, wy, 1.15, plate)
+    draw_thick_line(layer, ex + (wx - ex) * 0.55, ey + (wy - ey) * 0.55, wx, wy, 1.0, trim)
+    draw_sculpted_valkyrie_hand(layer, hx, hy, fux, fuy, is_back=is_back, role=hand_role)
     layer = outline_layer(layer, OUTLINE)
     composite_np(canvas, layer)
     return hx, hy
@@ -951,11 +1025,12 @@ def compose_stand_rig(
     draw_valkyrie_hair_waves(canvas, hx, hy, phase=hair_phase, billow=hair_billow)
 
     # 2. Off-hand IK arm behind torso
-    draw_valkyrie_ik_arm(canvas, sh_bx, sh_by, sh_fx + off_hand_offset[0], sh_fy + off_hand_offset[1], bend_sign=1.0, is_back=True)
+    draw_valkyrie_ik_arm(canvas, sh_bx, sh_by, sh_fx + off_hand_offset[0], sh_fy + off_hand_offset[1], bend_sign=1.0, is_back=True, hand_role="open")
 
     if lance_behind:
         lhx, lhy = draw_valkyrie_ik_arm(canvas, sh_fx, sh_fy, sh_fx + lance_hand_offset[0], sh_fy + lance_hand_offset[1], bend_sign=1.0, is_back=True)
         draw_gungnir_war_lance(canvas, lhx, lhy, lance_angle, fore_len=lance_fore, back_len=lance_back)
+        draw_sculpted_valkyrie_hand_clasp(canvas, lhx, lhy, lance_angle, is_back=True)
 
     # Exact knee-joint tracking so sabaton feet stay 100% locked to rotated thighs!
     def knee_delta(leg_part: PartSprite, foot_part: PartSprite, leg_rot_deg: float):
@@ -1019,10 +1094,11 @@ def compose_stand_rig(
         im_layer.alpha_composite(transform_part(stand_parts[pname], dx=dx, dy=dy, rot_deg=rot))
     canvas = np.array(im_layer, dtype=np.uint8)
 
-    # 4. Foreground Lead IK Arm + Gungnir War-Lance + Pauldron
+    # 4. Foreground Lead IK Arm + Gungnir War-Lance + Sculpted Clasp + Pauldron
     if not lance_behind:
         lhx, lhy = draw_valkyrie_ik_arm(canvas, sh_fx, sh_fy, sh_fx + lance_hand_offset[0], sh_fy + lance_hand_offset[1], bend_sign=1.0, is_back=False)
         draw_gungnir_war_lance(canvas, lhx, lhy, lance_angle, fore_len=lance_fore, back_len=lance_back)
+        draw_sculpted_valkyrie_hand_clasp(canvas, lhx, lhy, lance_angle, is_back=False)
 
     im_layer = Image.fromarray(canvas, mode="RGBA")
     im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=body_dx, dy=body_dy, rot_deg=torso_rot))
@@ -1074,10 +1150,11 @@ def compose_keypose(
     draw_valkyrie_wings(canvas, wx, wy, flap_deg=wing_flap, sovereign=sovereign_wings, delta_dive=delta_dive_wings)
     draw_valkyrie_hair_waves(canvas, hx, hy, phase=hair_phase, billow=hair_billow)
 
-    draw_valkyrie_ik_arm(canvas, sh_bx, sh_by, sh_fx + off_hand_offset[0], sh_fy + off_hand_offset[1], bend_sign=1.0, is_back=True)
+    draw_valkyrie_ik_arm(canvas, sh_bx, sh_by, sh_fx + off_hand_offset[0], sh_fy + off_hand_offset[1], bend_sign=1.0, is_back=True, hand_role="open")
     if not lance_in_front:
         lhx, lhy = draw_valkyrie_ik_arm(canvas, sh_fx, sh_fy, sh_fx + lance_hand_offset[0], sh_fy + lance_hand_offset[1], bend_sign=1.0, is_back=True)
         draw_gungnir_war_lance(canvas, lhx, lhy, lance_angle, fore_len=lance_fore, back_len=lance_back)
+        draw_sculpted_valkyrie_hand_clasp(canvas, lhx, lhy, lance_angle, is_back=True)
 
     im_kp = kp["im"]
     if abs(rot_deg) > 0.05:
@@ -1091,6 +1168,7 @@ def compose_keypose(
     if lance_in_front:
         lhx, lhy = draw_valkyrie_ik_arm(canvas, sh_fx, sh_fy, sh_fx + lance_hand_offset[0], sh_fy + lance_hand_offset[1], bend_sign=1.0, is_back=False)
         draw_gungnir_war_lance(canvas, lhx, lhy, lance_angle, fore_len=lance_fore, back_len=lance_back)
+        draw_sculpted_valkyrie_hand_clasp(canvas, lhx, lhy, lance_angle, is_back=False)
     return canvas
 
 

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps122';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps122';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps122';
+import { Fighter } from './Fighter.js?v=30fps123';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps123';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps123';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps122';
+} from '../engine/shaders/cyberShaders.js?v=30fps123';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -281,11 +281,11 @@ export class AndroidEx extends Fighter {
     if (!assets) return null;
     if (!assets.android_ex) {
       const sheet = new Image();
-      sheet.src = 'assets/sprites/android_ex_sheet.png?v=30fps122';
+      sheet.src = 'assets/sprites/android_ex_sheet.png?v=30fps123';
       const vfx = new Image();
-      vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps122';
+      vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps123';
       const portrait = new Image();
-      portrait.src = 'assets/sprites/android_ex_portrait.png?v=30fps122';
+      portrait.src = 'assets/sprites/android_ex_portrait.png?v=30fps123';
       assets.android_ex = {
         sheet,
         vfx,
@@ -295,8 +295,8 @@ export class AndroidEx extends Fighter {
         anchorX: 112,
         anchorY: 230
       };
-    } else if (assets.android_ex.vfx?.src && !assets.android_ex.vfx.src.includes('v=30fps122')) {
-      assets.android_ex.vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps122';
+    } else if (assets.android_ex.vfx?.src && !assets.android_ex.vfx.src.includes('v=30fps123')) {
+      assets.android_ex.vfx.src = 'assets/sprites/android_ex_vfx.png?v=30fps123';
     }
     return assets.android_ex;
   }
@@ -363,6 +363,19 @@ export class AndroidEx extends Fighter {
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
+
+    if (
+      (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
+      newState !== 'JUMP' &&
+      newState !== 'DODGE' &&
+      newState !== 'SKILL' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
+    }
 
     if (newState === 'AUTO_ATTACK') {
       if (this._comboPersistTimer <= 0 && prevState !== 'AUTO_ATTACK') {

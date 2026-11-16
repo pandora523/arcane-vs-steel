@@ -82,6 +82,9 @@ C_GOLD_LIGHT = (253, 224, 71, 255)    # #fde047
 C_CRIMSON_LACQ = (153, 27, 27, 255)   # #991b1b
 C_SAKURA_PINK = (244, 114, 182, 255)  # #f472b6
 C_SAKURA_PALE = (251, 207, 232, 255)  # #fbcfe8
+C_SKIN_LIGHT = (242, 198, 172, 255)
+C_SKIN_MID = (218, 166, 140, 255)
+C_SKIN_SHAD = (176, 122, 100, 255)
 C_STEEL_DARK = (51, 65, 85, 255)
 C_STEEL_MID = (148, 163, 184, 255)
 C_STEEL_LIGHT = (226, 232, 240, 255)
@@ -552,6 +555,62 @@ def solve_ik_2bone(
     return ex, ey
 
 
+def draw_sculpted_samurai_hand_160(
+    buf: np.ndarray,
+    tx: float,
+    ty: float,
+    dir_x: float,
+    dir_y: float,
+    is_front: bool = True,
+):
+    """
+    Pixel-by-pixel sculpted 16-bit Samurai Kote Tekko gauntlet + 3 articulated gripping
+    fingers & opposed thumb (0 blobs, 0 3x3 black squares, selective 1px dark Selout
+    strictly on transparent pixels).
+    """
+    d_len = math.hypot(dir_x, dir_y) or 1.0
+    ux, uy = dir_x / d_len, dir_y / d_len
+    nx, ny = -uy, ux
+    if ny > 0.35:
+        nx, ny = -nx, -ny
+
+    c_tekko_hi = C_GOLD_BRIGHT if is_front else C_GOLD_MID
+    c_tekko_lo = C_GOLD_MID if is_front else C_GOLD_DARK
+    c_sk_hi = C_SKIN_LIGHT if is_front else C_SKIN_MID
+    c_sk_lo = C_SKIN_MID if is_front else C_SKIN_SHAD
+
+    # (along forearm, across wrist, color): wrist guard + tekko plate + 3 fingers + thumb
+    hand_offsets = [
+        (-1.4, -0.7, c_tekko_hi),
+        (-1.4,  0.3, c_tekko_lo),
+        (-0.5, -1.5, c_sk_hi),   # opposed thumb curling over upper tsuka
+        (-0.5, -0.5, c_tekko_hi),
+        (-0.5,  0.5, c_tekko_lo),
+        ( 0.5, -1.0, c_sk_hi),   # index finger wrapping hilt
+        ( 0.5,  0.0, c_sk_hi),   # middle finger wrapping hilt
+        ( 0.5,  1.0, c_sk_lo),   # ring finger wrapping hilt
+        ( 1.2, -0.7, c_sk_lo),   # index tip
+        ( 1.2,  0.3, c_sk_lo),   # middle tip
+    ]
+    hand_pts: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    for ou, ov, col in hand_offsets:
+        px = int(round(tx + ux * ou + nx * ov))
+        py = int(round(ty + uy * ou + ny * ov))
+        hand_pts[(px, py)] = col
+
+    for px, py in hand_pts:
+        for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            sx_p, sy_p = px + ox, py + oy
+            if (sx_p, sy_p) in hand_pts:
+                continue
+            if MARGIN_160 <= sx_p < LOG_W - MARGIN_160 and MARGIN_160 <= sy_p < LOG_H - MARGIN_160:
+                if buf[sy_p, sx_p, 3] == 0:
+                    set_px(buf, sx_p, sy_p, C_OUTLINE)
+
+    for (px, py), col in hand_pts.items():
+        set_px(buf, px, py, col)
+
+
 def draw_samurai_kote_arm_160(
     buf: np.ndarray,
     sx: float,
@@ -562,38 +621,71 @@ def draw_samurai_kote_arm_160(
     bend_sign: float = 1.0,
 ):
     """
-    2-Bone Analytical IK Samurai Arm (indigo lamellar sode sleeve + cyan-veined kote bracer + gold gauntlet).
+    Slender 2-Bone Analytical IK Samurai Arm (indigo lamellar sode sleeve + violet-rimmed
+    kote bracer + gold wrist cuff + sculpted fingered tekko hand).
     """
+    total_d = math.hypot(tx - sx, ty - sy) or 1.0
+    hand_setback = min(1.8, total_d * 0.25)
+
     l1, l2 = 10.5, 11.0
     ex, ey = solve_ik_2bone(sx, sy, tx, ty, l1, l2, bend_sign=bend_sign)
+    fdx, fdy = tx - ex, ty - ey
+    fd_len = math.hypot(fdx, fdy) or 1.0
+    fux, fuy = fdx / fd_len, fdy / fd_len
+    wx = tx - fux * hand_setback
+    wy = ty - fuy * hand_setback
 
-    c_dark = C_INDIGO_DARK
-    c_mid = C_INDIGO_MID if is_front else C_INK_DEEP
-    c_hi = C_VIOLET_RIM if is_front else C_INDIGO_MID
+    c_slv_hi = C_INDIGO_MID if is_front else C_INDIGO_DARK
+    c_slv_lo = C_INDIGO_DARK if is_front else C_INK_DEEP
+    c_kote_hi = C_VIOLET_RIM if is_front else C_INDIGO_MID
+    c_kote_lo = C_INDIGO_MID if is_front else C_INDIGO_DARK
+    c_gold_hi = C_GOLD_BRIGHT if is_front else C_GOLD_MID
+    c_gold_lo = C_GOLD_MID if is_front else C_GOLD_DARK
 
-    # Outline pass
-    draw_line_px(buf, sx, sy, ex, ey, C_OUTLINE, r=2)
-    draw_line_px(buf, ex, ey, tx, ty, C_OUTLINE, r=2)
+    arm_px: dict[tuple[int, int], tuple[int, int, int, int]] = {}
 
-    # Upper arm sode lamellar sleeve
-    draw_line_px(buf, sx, sy, ex, ey, c_dark, r=1)
-    draw_line_px(buf, sx, sy - 0.7, ex, ey - 0.7, c_mid, r=0)
+    def _collect(x0: float, y0: float, x1: float, y1: float, is_forearm: bool):
+        dx, dy = x1 - x0, y1 - y0
+        seg_l = math.hypot(dx, dy)
+        if seg_l < 0.25:
+            return
+        nx, ny = -dy / seg_l, dx / seg_l
+        if ny > 0:
+            nx, ny = -nx, -ny
+        steps = max(4, int(math.ceil(seg_l * 3.0)))
+        for i in range(steps + 1):
+            u = i / steps
+            cx = x0 + dx * u
+            cy = y0 + dy * u
+            if not is_forearm:
+                hi_col, lo_col = (c_gold_hi, c_gold_lo) if (is_front and u < 0.20) else (c_slv_hi, c_slv_lo)
+            else:
+                if u < 0.18 or u > 0.80:
+                    hi_col, lo_col = c_gold_hi, c_gold_lo
+                elif is_front and 0.40 <= u <= 0.65:
+                    hi_col, lo_col = C_CYAN_BRIGHT, c_kote_lo
+                else:
+                    hi_col, lo_col = c_kote_hi, c_kote_lo
+            arm_px[(int(round(cx)), int(round(cy)))] = hi_col
+            arm_px[(int(round(cx + nx * 0.8)), int(round(cy + ny * 0.8)))] = hi_col
+            arm_px[(int(round(cx - nx * 0.85)), int(round(cy - ny * 0.85)))] = lo_col
 
-    # Forearm kote bracer + cyan lightning vein
-    draw_line_px(buf, ex, ey, tx, ty, c_mid, r=1)
-    draw_line_px(buf, ex, ey - 0.7, tx, ty - 0.7, c_hi, r=0)
-    mx = (ex + tx) * 0.5
-    my = (ey + ty) * 0.5
-    set_px(buf, int(round(mx)), int(round(my)), C_CYAN_BRIGHT)
+    _collect(sx, sy, ex, ey, is_forearm=False)
+    _collect(ex, ey, wx, wy, is_forearm=True)
 
-    # Elbow & wrist gold tekko guard
-    set_px(buf, int(round(ex)), int(round(ey)), C_GOLD_MID)
-    gx, gy = int(round(tx)), int(round(ty))
-    for oy in range(-1, 2):
-        for ox in range(-1, 2):
-            set_px(buf, gx + ox, gy + oy, C_OUTLINE)
-    set_px(buf, gx, gy, C_GOLD_BRIGHT)
-    set_px(buf, gx + 1, gy, C_INDIGO_MID)
+    for px, py in arm_px:
+        for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx_p, ny_p = px + ox, py + oy
+            if (nx_p, ny_p) in arm_px:
+                continue
+            if MARGIN_160 <= nx_p < LOG_W - MARGIN_160 and MARGIN_160 <= ny_p < LOG_H - MARGIN_160:
+                if buf[ny_p, nx_p, 3] == 0:
+                    set_px(buf, nx_p, ny_p, C_OUTLINE)
+
+    for (px, py), col in arm_px.items():
+        set_px(buf, px, py, col)
+
+    draw_sculpted_samurai_hand_160(buf, tx, ty, fux, fuy, is_front=is_front)
 
 
 def draw_raijin_drums_160(
@@ -2278,7 +2370,11 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
         else:
             p = (f - 26) / 3.0
             frames.append(render_stand_rig_frame(rigs, {
+                "dx": 2.0 * (1.0 - 0.5 * p),
                 "phase": ph,
+                "stride_x": 3.4 * (1.0 - 0.25 * p),
+                "l_hip": 9.0 * (1.0 - 0.30 * p),
+                "r_hip": -9.0 * (1.0 - 0.30 * p),
                 "torso_lean": 2.0 * (1.0 - p),
                 "hair_wave": 5.0 * (1.0 - p),
                 "tassel_lag": 14.0 * (1.0 - p),
@@ -2286,6 +2382,7 @@ def build_row4_ultimate(rigs: dict) -> list[Image.Image]:
                 "sheathed": True,
                 "koiguchi_spark": 1.30 if f == 27 else 0.45,
                 "energy": 0.70,
+                "clamp_ground": True,
             }))
     return frames
 

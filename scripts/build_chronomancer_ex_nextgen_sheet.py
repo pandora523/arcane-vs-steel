@@ -630,21 +630,78 @@ def solve_2bone_ik(sx, sy, tx, ty, l1, l2, bend_sign=1.0):
     return (ex, ey), (hx, hy)
 
 
+def draw_sculpted_chrono_hand(
+    layer: np.ndarray,
+    hx: float,
+    hy: float,
+    dir_x: float,
+    dir_y: float,
+    is_back: bool = False,
+):
+    """
+    Pixel-by-pixel sculpted Horological Brass Gauntlet hand (0 round circle blobs):
+      - Burnished brass dorsal plate + cuff
+      - 3 articulated dark-bronze/brass gauntleted fingers + opposed thumb
+    """
+    d_len = math.hypot(dir_x, dir_y) or 1.0
+    ux, uy = dir_x / d_len, dir_y / d_len
+    nx, ny = -uy, ux
+    if ny > 0.35:
+        nx, ny = -nx, -ny
+
+    cuff = BRASS_MID if is_back else BRASS_GOLD
+    knuckle = BRASS_GOLD if is_back else BRASS_SPEC
+    finger_hi = BRASS_DARK if is_back else BRASS_MID
+    finger_tip = COAT_DARK if is_back else BRASS_DARK
+
+    pts = [
+        (-1.2, -0.5, cuff),
+        (-1.2,  0.4, cuff),
+        (-0.4, -1.3, knuckle),     # opposed thumb ridge
+        (-0.4,  0.0, cuff),        # brass dorsal guard
+        ( 0.5, -0.9, finger_hi),   # index finger
+        ( 0.5,  0.0, finger_hi),   # middle finger
+        ( 0.5,  0.9, finger_tip),  # ring finger
+        ( 1.2, -0.5, finger_tip),  # curled index tip
+        ( 1.2,  0.3, finger_tip),  # curled middle tip
+    ]
+    for ou, ov, col in pts:
+        put_px(layer, int(round(hx + ux * ou + nx * ov)), int(round(hy + uy * ou + ny * ov)), col)
+
+
+def draw_sculpted_chrono_hand_clasp(
+    canvas: np.ndarray,
+    hx: float,
+    hy: float,
+    weapon_deg: float,
+    is_back: bool = False,
+):
+    """Stamps sculpted horological gauntlet fingers wrapping cleanly over blade hilt after weapon draw."""
+    rad = math.radians(weapon_deg)
+    # Orient fingers across the blade axis (-ny, nx)
+    ux, uy = -math.sin(rad), math.cos(rad)
+    layer = np.zeros((LH, LW, 4), dtype=np.uint8)
+    draw_sculpted_chrono_hand(layer, hx, hy, ux, uy, is_back=is_back)
+    layer = outline_layer(layer, OUTLINE)
+    composite_np(canvas, layer)
+
+
 def draw_chrono_ik_arm(canvas: np.ndarray, sx, sy, tx, ty, bend_sign=1.0, is_back=False):
     (ex, ey), (hx, hy) = solve_2bone_ik(sx, sy, tx, ty, 8.8, 8.8, bend_sign=bend_sign)
     layer = np.zeros((LH, LW, 4), dtype=np.uint8)
     sleeve = COAT_DARK if is_back else COAT_MID
     cuff = BRASS_MID if is_back else BRASS_GOLD
-    draw_thick_line(layer, sx, sy, ex, ey, 2.25, sleeve)
-    draw_thick_line(layer, sx, sy, ex, ey, 1.0, COAT_BRIGHT if not is_back else COAT_MID)
-    draw_thick_line(layer, ex, ey, hx, hy, 1.95, BRASS_DARK if is_back else sleeve)
-    draw_thick_line(layer, ex + (hx - ex) * 0.45, ey + (hy - ey) * 0.45, hx, hy, 1.5, cuff)
-    # Armored clockwork gauntlet fist
-    for oy in range(-2, 3):
-        for ox in range(-2, 3):
-            if ox * ox + oy * oy <= 4:
-                put_px(layer, int(round(hx + ox)), int(round(hy + oy)), cuff)
-    put_px(layer, int(round(hx)), int(round(hy - 1)), BRASS_SPEC)
+    fdx, fdy = hx - ex, hy - ey
+    fd_len = math.hypot(fdx, fdy) or 1.0
+    fux, fuy = fdx / fd_len, fdy / fd_len
+    wx, wy = hx - fux * 1.7, hy - fuy * 1.7
+
+    draw_thick_line(layer, sx, sy, ex, ey, 1.45, sleeve)
+    draw_thick_line(layer, sx, sy - 0.3, ex, ey - 0.3, 0.75, COAT_BRIGHT if not is_back else COAT_MID)
+    draw_thick_line(layer, ex, ey, wx, wy, 1.25, BRASS_DARK if is_back else sleeve)
+    draw_thick_line(layer, ex + (wx - ex) * 0.55, ey + (wy - ey) * 0.55, wx, wy, 1.05, cuff)
+    put_px(layer, int(round(ex + (wx - ex) * 0.35)), int(round(ey + (wy - ey) * 0.35)), TEAL_BRIGHT)
+    draw_sculpted_chrono_hand(layer, hx, hy, fux, fuy, is_back=is_back)
     layer = outline_layer(layer, OUTLINE)
     composite_np(canvas, layer)
     return hx, hy
@@ -708,11 +765,11 @@ def draw_minute_glaive(
         if 0.06 < u < 0.84 and chrono_glow:
             put_px(layer, int(round(bx + nx * 0.4)), int(round(by + ny * 0.4)), PURE_WHITE if i % 3 == 0 else TEAL_BRIGHT)
 
-    # Guard jewel core
-    for oy in range(-1, 2):
-        for ox in range(-1, 2):
-            put_px(layer, int(round(gx + ox)), int(round(gy + oy)), TEAL_MID)
-    put_px(layer, int(round(gx)), int(round(gy)), PURE_WHITE)
+    # Guard jewel core (crisp diamond cross, 0 3x3 square stamp)
+    igx, igy = int(round(gx)), int(round(gy))
+    for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        put_px(layer, igx + ox, igy + oy, TEAL_MID)
+    put_px(layer, igx, igy, PURE_WHITE)
 
     layer = outline_layer(layer, OUTLINE)
     composite_np(canvas, layer)
@@ -1031,10 +1088,12 @@ def compose_stand_rig(
     # 3. Off-hand IK Arm + Crimson-Gold Hour Short-Blade behind torso
     hbx, hby = draw_chrono_ik_arm(canvas, sh_bx, sh_by, sh_bx + hb_hand_offset[0], sh_by + hb_hand_offset[1], bend_sign=1.0, is_back=True)
     draw_hour_shortblade(canvas, hbx, hby, hb_angle, blade_len=hb_len)
+    draw_sculpted_chrono_hand_clasp(canvas, hbx, hby, hb_angle, is_back=True)
 
     if mg_behind:
         mghx, mghy = draw_chrono_ik_arm(canvas, sh_fx, sh_fy, sh_fx + mg_hand_offset[0], sh_fy + mg_hand_offset[1], bend_sign=1.0, is_back=True)
         draw_minute_glaive(canvas, mghx, mghy, mg_angle, blade_len=mg_len)
+        draw_sculpted_chrono_hand_clasp(canvas, mghx, mghy, mg_angle, is_back=True)
 
     # 4. Segmented STAND parts in anatomical order
     im_layer = Image.fromarray(canvas, mode="RGBA")
@@ -1055,10 +1114,11 @@ def compose_stand_rig(
         im_layer.alpha_composite(part_im)
     canvas = np.array(im_layer, dtype=np.uint8)
 
-    # 5. Foreground Lead IK Arm + Minute-Glaive + Pauldron
+    # 5. Foreground Lead IK Arm + Minute-Glaive + Sculpted Clasp + Pauldron
     if not mg_behind:
         mghx, mghy = draw_chrono_ik_arm(canvas, sh_fx, sh_fy, sh_fx + mg_hand_offset[0], sh_fy + mg_hand_offset[1], bend_sign=1.0, is_back=False)
         draw_minute_glaive(canvas, mghx, mghy, mg_angle, blade_len=mg_len)
+        draw_sculpted_chrono_hand_clasp(canvas, mghx, mghy, mg_angle, is_back=False)
 
     im_layer = Image.fromarray(canvas, mode="RGBA")
     im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=body_dx, dy=body_dy, rot_deg=torso_rot))
@@ -1091,6 +1151,7 @@ def compose_keypose(
     hb_angle=-28.0,
     hb_len=27.0,
     draw_weapons_in_front=True,
+    lock_ground=False,
 ) -> np.ndarray:
     kp = keyposes[kname]
     canvas = np.zeros((LH, LW, 4), dtype=np.uint8)
@@ -1109,8 +1170,10 @@ def compose_keypose(
     if not draw_weapons_in_front:
         mghx, mghy = draw_chrono_ik_arm(canvas, sh_fx, sh_fy, sh_fx + mg_hand_offset[0], sh_fy + mg_hand_offset[1], bend_sign=1.0, is_back=True)
         draw_minute_glaive(canvas, mghx, mghy, mg_angle, blade_len=mg_len)
+        draw_sculpted_chrono_hand_clasp(canvas, mghx, mghy, mg_angle, is_back=True)
     hbx, hby = draw_chrono_ik_arm(canvas, sh_bx, sh_by, sh_bx + hb_hand_offset[0], sh_by + hb_hand_offset[1], bend_sign=1.0, is_back=True)
     draw_hour_shortblade(canvas, hbx, hby, hb_angle, blade_len=hb_len)
+    draw_sculpted_chrono_hand_clasp(canvas, hbx, hby, hb_angle, is_back=True)
 
     # 4. Keypose full-body sprite
     im_kp = kp["im"]
@@ -1122,10 +1185,23 @@ def compose_keypose(
     im_layer.alpha_composite(body_layer)
     canvas = np.array(im_layer, dtype=np.uint8)
 
-    # 5. Foreground Minute-Glaive IK Arm
+    # 5. Foreground Minute-Glaive IK Arm + Sculpted Hand Clasp
     if draw_weapons_in_front:
         mghx, mghy = draw_chrono_ik_arm(canvas, sh_fx, sh_fy, sh_fx + mg_hand_offset[0], sh_fy + mg_hand_offset[1], bend_sign=1.0, is_back=False)
         draw_minute_glaive(canvas, mghx, mghy, mg_angle, blade_len=mg_len)
+        draw_sculpted_chrono_hand_clasp(canvas, mghx, mghy, mg_angle, is_back=False)
+
+    if lock_ground:
+        ys_g, _ = np.where(canvas[:, :, 3] > 0)
+        if len(ys_g) > 0:
+            shift_y = AY - int(ys_g.max())
+            if shift_y != 0:
+                shifted = np.zeros_like(canvas)
+                for y in range(LH):
+                    ny = y + shift_y
+                    if 2 <= ny < LH - 2:
+                        shifted[ny] = canvas[y]
+                canvas = shifted
     return canvas
 
 
@@ -1270,6 +1346,7 @@ def compose_walk_rig(stand_parts, stand_meta, f: int) -> np.ndarray:
         canvas, sh_bx, sh_by, sh_bx + 13.5 + sway_c * 1.2, sh_by - 4.8, bend_sign=1.0, is_back=True
     )
     draw_hour_shortblade(canvas, hbx, hby, -35.2 + sway_c * 3.8, blade_len=27.0)
+    draw_sculpted_chrono_hand_clasp(canvas, hbx, hby, -35.2 + sway_c * 3.8, is_back=True)
 
     # 3. Unified swaying `walk_cape` behind legs (`0` 4-tentacle tearing!) + Crossover Legs + Upper Body
     im_layer = Image.fromarray(canvas, mode="RGBA")
@@ -1282,11 +1359,12 @@ def compose_walk_rig(stand_parts, stand_meta, f: int) -> np.ndarray:
     im_layer.alpha_composite(transform_part(stand_parts["head"], dx=0.0, dy=bob, rot_deg=head_rot))
     canvas = np.array(im_layer, dtype=np.uint8)
 
-    # 4. Foreground Lead IK Arm + Minute-Glaive + Pauldron
+    # 4. Foreground Lead IK Arm + Minute-Glaive + Sculpted Hand Clasp + Pauldron
     mghx, mghy = draw_chrono_ik_arm(
         canvas, sh_fx, sh_fy, sh_fx + 15.2 - sway_c * 1.2, sh_fy + 5.4 + abs(sway_c) * 0.5, bend_sign=1.0, is_back=False
     )
     draw_minute_glaive(canvas, mghx, mghy, 20.5 - sway_c * 3.6, blade_len=46.0)
+    draw_sculpted_chrono_hand_clasp(canvas, mghx, mghy, 20.5 - sway_c * 3.6, is_back=False)
 
     im_layer = Image.fromarray(canvas, mode="RGBA")
     im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=0.0, dy=bob, rot_deg=torso_rot))
@@ -1832,13 +1910,14 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             if f == 18:
                 draw_chrono_serrated_smear(c, cx=82.0, cy=67.0, r_outer=50.0, r_inner=30.0, deg_start=-80.0, deg_end=35.0, serration_amp=5.0, palette_mode="minute_teal")
             return c
-        # F19..F29 (`139..149`): Twelfth-Bell Judgment Slam & Settle
+        # F19..F29 (`139..149`): Twelfth-Bell Judgment Slam (`F19..F21` descend -> `F22..F29` firmly grounded!)
         u = (f - 19) / 10.0
+        desc_dy = (-5.0 * (1.0 - (f - 19) / 3.0)) if f <= 21 else 0.0
         c = compose_keypose(
             keyposes,
             "K2_LUNGE" if f <= 24 else "K3_RISE",
             dx=10.0 * (1.0 - u * 0.7),
-            dy=-6.0 * max(0.0, 1.0 - u * 2.0),
+            dy=desc_dy,
             coat_phase=tau_f * 2.0,
             coat_billow=1.5 - 0.6 * u,
             halo_rot=halo_rot,
@@ -1847,6 +1926,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             mg_angle=24.0 - u * 8.0,
             hb_hand_offset=(16.0 - u * 3.0, -2.0 - u * 4.0),
             hb_angle=-12.0 - u * 24.0,
+            lock_ground=(f >= 22),
         )
         if f in (19, 20):
             draw_clock_ground_spire(c, gx=134.0, gy=113.0, height=50.0 if f == 19 else 30.0, intensity=1.0 if f == 19 else 0.7)

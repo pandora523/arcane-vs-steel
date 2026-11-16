@@ -112,6 +112,9 @@ MASTER_PALETTE_ICE_EX_WALK = np.vstack([
 C_OUT_DARK = (10, 14, 30, 255)
 C_OUT_LIT = (20, 30, 58, 255)
 C_SLATE = (38, 54, 92, 255)
+C_SKIN_SHAD = (176, 112, 86, 255)
+C_SKIN_MID = (230, 168, 136, 255)
+C_SKIN_LIT = (252, 218, 194, 255)
 C_SILVER_SHAD = (106, 128, 168, 255)
 C_SILVER_MID = (156, 180, 214, 255)
 C_SILVER_LIT = (208, 228, 248, 255)
@@ -1104,9 +1107,33 @@ def draw_borealis_frost_glaive_160(
         for gd in (-4.0, 2.2):
             hx = grip_x + ux * gd
             hy = grip_y + uy * gd
-            draw_disc_160(arr, hx, hy, 2.1, C_OUT_DARK)
-            draw_disc_160(arr, hx, hy, 1.3, C_SILVER_LIT)
-            put_px_160(arr, hx + nx * 0.6, hy + ny * 0.6, C_CRYO_AQUA)
+            # Pixel-by-pixel sculpted porcelain scepter-grip hand + silver cuff (0 circle discs!)
+            pts = [
+                (-1.1, -0.5, C_SILVER_SHAD),
+                (-1.1,  0.5, C_SILVER_LIT),
+                (-0.4, -1.2, C_SKIN_LIT),   # opposed thumb along upper scepter shaft
+                (-0.3,  0.0, C_SKIN_MID),
+                ( 0.4, -0.8, C_SKIN_LIT),   # index finger
+                ( 0.4,  0.1, C_SKIN_LIT),   # middle finger
+                ( 0.4,  1.0, C_SKIN_SHAD),  # ring finger
+                ( 1.1, -0.4, C_SKIN_MID),
+                ( 1.1,  0.4, C_SKIN_SHAD),
+            ]
+            hpts: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+            for ou, ov, col in pts:
+                px = int(round(hx + ux * ou + nx * ov))
+                py = int(round(hy + uy * ou + ny * ov))
+                hpts[(px, py)] = col
+            for px, py in hpts:
+                for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    sx_p, sy_p = px + ox, py + oy
+                    if (sx_p, sy_p) in hpts:
+                        continue
+                    if (MARGIN_LOGICAL + 1) <= sx_p < (LOGICAL_W - MARGIN_LOGICAL - 1) and (MARGIN_LOGICAL + 1) <= sy_p < (LOGICAL_H - MARGIN_LOGICAL - 1):
+                        if arr[sy_p, sx_p, 3] == 0:
+                            arr[sy_p, sx_p] = C_OUT_DARK
+            for (px, py), col in hpts.items():
+                put_px_160(arr, px, py, col)
 
 
 def draw_pixel_line_160(arr, x0, y0, x1, y1, col, rad=0):
@@ -2520,7 +2547,7 @@ def build_row4_ultimate(parts, sj, keyposes):
             rune_phase=sub * 1.0, post_fn=post_cmd,
         ))
 
-    # F17..F23: Iconic Vertical Sovereign Scepter-Tap!
+    # F17..F23: Iconic Vertical Sovereign Scepter-Tap (strictly grounded boots at y=230..231!)
     for sub in range(7):
         hoist_y = -11.0 + (sub / 6.0) * 16.0
         def post_tap(arr, _n, grip, s=sub):
@@ -2529,26 +2556,20 @@ def build_row4_ultimate(parts, sj, keyposes):
                 draw_ice_sparks_160(arr, impact_x=grip[0] + 1.0, ground_y=114.0, spread=28.0, progress=(s - 4) / 3.0, count=9)
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=2.0, pelvis_dy=-5.0 + (1.5 if sub >= 5 else 0.0),
+            pelvis_dx=2.0, pelvis_dy=(1.0 if sub >= 4 else 0.0),
             torso_deg=1.5 if sub >= 4 else -2.5, head_deg=2.0,
             mane_deg=2.0, mane_wave_ph=sub * 0.8, mane_wave_amp=9.0,
             l_coat_deg=6.0 + sub * 1.2, r_coat_deg=-3.0 - sub * 1.0,
             coat_wave_ph=sub * 0.8, coat_wave_amp=9.5,
             grip_rel_sh=(14.5, hoist_y), weapon_deg=90.0, glaive_len=45.0, weapon_layer="front",
             scarf_deg=160.0 + sub * 3.0, scarf_len=33.0, scarf_phase=sub * 0.9, scarf_amp=4.2,
-            rune_phase=sub * 1.1,
-            post_fn=post_tap,
+            rune_phase=sub * 1.1, lock_lowest_to_ground=True, post_fn=post_tap,
         ))
 
-    # F24..F29: Eternal Borealis Shatter Shock & Sovereign Descent
+    # F24..F29: Eternal Borealis Sovereign Descent (grounded boots, 0 baked mid-air floor circle!)
     for sub in range(6):
         def post_fin(arr, _n, _g, s=sub):
-            if s <= 2:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=78.0, cy=108.0, rx=28.0 + s * 6.0, ry=6.5,
-                    phase=s * 0.7, aurora_dominant=True, double_ring=False,
-                )
-            draw_ice_sparks_160(arr, impact_x=78.0, ground_y=114.0, spread=32.0, progress=(s + 1) / 6.0, count=8 - s)
+            draw_ice_sparks_160(arr, impact_x=78.0, ground_y=112.0, spread=18.0, progress=(s + 1) / 6.0, count=max(3, 7 - s))
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
