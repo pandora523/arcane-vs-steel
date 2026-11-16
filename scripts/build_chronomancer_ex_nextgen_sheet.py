@@ -940,6 +940,9 @@ def compose_stand_rig(
     hb_angle=-36.0,
     hb_len=27.0,
     mg_behind=False,
+    back_cape_rot=None,
+    show_coat_tails=True,
+    clamp_ground=False,
 ) -> np.ndarray:
     canvas = np.zeros((LH, LW, 4), dtype=np.uint8)
     sh_fx, sh_fy = stand_meta["sh_front"][0] + body_dx, stand_meta["sh_front"][1] + body_dy
@@ -949,8 +952,9 @@ def compose_stand_rig(
     # 1. Rotating XII Brass Escapement Halo behind shoulders
     draw_escapement_halo(canvas, (sh_fx + sh_bx) * 0.5 - 2.0, sh_fy - 4.0, 17.5 if halo_flare else 15.0, halo_rot, halo_flare)
 
-    # 2. Flowing Coat Tails behind legs
-    draw_chrono_coat_tails(canvas, ca_x, ca_y, coat_phase, billow=coat_billow, lift=coat_lift)
+    # 2. Flowing Coat Tails behind legs (omitted on Row 1 WALK so STAND back_cape stays unified without split double-tails)
+    if show_coat_tails:
+        draw_chrono_coat_tails(canvas, ca_x, ca_y, coat_phase, billow=coat_billow, lift=coat_lift)
 
     # 3. Off-hand IK Arm + Crimson-Gold Hour Short-Blade behind torso
     hbx, hby = draw_chrono_ik_arm(canvas, sh_bx, sh_by, sh_bx + hb_hand_offset[0], sh_by + hb_hand_offset[1], bend_sign=1.0, is_back=True)
@@ -962,8 +966,9 @@ def compose_stand_rig(
 
     # 4. Segmented STAND parts in anatomical order
     im_layer = Image.fromarray(canvas, mode="RGBA")
+    cape_r = (torso_rot * 0.5) if back_cape_rot is None else back_cape_rot
     order = [
-        ("back_cape", body_dx, body_dy, torso_rot * 0.5),
+        ("back_cape", body_dx, body_dy, cape_r),
         ("back_hair", body_dx, body_dy, head_rot),
         ("back_leg", body_dx + back_leg_dx, body_dy + back_leg_dy, back_leg_rot),
         ("back_foot", body_dx + back_leg_dx, body_dy + back_leg_dy, back_foot_rot),
@@ -985,7 +990,14 @@ def compose_stand_rig(
 
     im_layer = Image.fromarray(canvas, mode="RGBA")
     im_layer.alpha_composite(transform_part(stand_parts["front_pauldron"], dx=body_dx, dy=body_dy, rot_deg=torso_rot))
-    return np.array(im_layer, dtype=np.uint8)
+    out = np.array(im_layer, dtype=np.uint8)
+    if clamp_ground and AY + 1 < LH:
+        over = out[AY + 1, :, 3] >= 120
+        out[AY + 1:, :, :] = 0
+        for x_i in np.where(over)[0]:
+            if out[AY, x_i, 3] >= 120:
+                out[AY, x_i] = OUTLINE
+    return out
 
 
 def compose_keypose(
@@ -1053,7 +1065,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
     halo_rot = f * 12.0  # Exact 360 deg per 30 frames -> seamless loop!
 
     # --------------------------------------------------------------------------
-    # ROW 0: IDLE — Twin Hands of Fate Sovereign Stance + Ticking XII Halo
+    # ROW 0: IDLE -- Twin Hands of Fate Sovereign Stance + Ticking XII Halo
     # --------------------------------------------------------------------------
     if row == 0:
         breath = math.sin(tau_f) * 1.15
@@ -1076,37 +1088,39 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         )
 
     # --------------------------------------------------------------------------
-    # ROW 1: WALK — Purposeful Horological Twin-Blade Stride
+    # ROW 1: WALK -- Grounded Horological Twin-Blade Stride (continuous with Row 0)
     # --------------------------------------------------------------------------
     if row == 1:
         stride = math.sin(tau_f)
-        bob = abs(math.cos(tau_f)) * -2.2
+        bob = -abs(math.cos(tau_f)) * 0.85
         return compose_stand_rig(
             stand_parts,
             stand_meta,
             f=f,
-            body_dx=1.5 + stride * 1.2,
+            body_dx=0.5 + stride * 0.65,
             body_dy=bob,
-            torso_rot=3.5 + stride * 2.2,
-            head_rot=1.5 + stride * 1.2,
-            front_leg_rot=-stride * 20.0,
-            front_foot_rot=-stride * 15.0,
-            back_leg_rot=stride * 20.0,
-            back_foot_rot=stride * 15.0,
-            front_leg_dx=stride * 3.5,
-            back_leg_dx=-stride * 3.5,
-            coat_phase=tau_f * 2.0,
-            coat_billow=1.05,
-            coat_lift=0.25,
-            halo_rot=halo_rot * 2.0,
-            mg_hand_offset=(14.5 - stride * 3.5, 5.5 + abs(stride) * 1.5),
-            mg_angle=28.0 - stride * 12.0,
-            hb_hand_offset=(13.5 + stride * 3.5, -4.5),
-            hb_angle=-28.0 + stride * 14.0,
+            torso_rot=1.5 + math.sin(tau_f * 2.0) * 0.65,
+            head_rot=0.4 + math.sin(tau_f * 2.0) * 0.45,
+            front_leg_rot=-2.5 - stride * 6.5,
+            front_foot_rot=-1.5 - stride * 4.5,
+            back_leg_rot=2.5 + stride * 6.5,
+            back_foot_rot=1.5 + stride * 4.5,
+            front_leg_dx=-0.5 + stride * 1.1,
+            front_leg_dy=-max(0.0, stride) * 0.85,
+            back_leg_dx=0.5 - stride * 1.1,
+            back_leg_dy=-max(0.0, -stride) * 0.85,
+            back_cape_rot=0.8 + math.sin(tau_f - 0.35) * 2.8,
+            show_coat_tails=False,
+            halo_rot=halo_rot,
+            mg_hand_offset=(15.2 - stride * 1.3, 5.5 + abs(stride) * 0.5),
+            mg_angle=20.8 - stride * 4.2,
+            hb_hand_offset=(13.5 + stride * 1.3, -4.8),
+            hb_angle=-35.2 + stride * 4.2,
+            clamp_ground=True,
         )
 
     # --------------------------------------------------------------------------
-    # ROW 2: AUTO_ATTACK — 4-Beat FFBE/Cloudia Twin-Blade Chain
+    # ROW 2: AUTO_ATTACK -- 4-Beat FFBE/Cloudia Twin-Blade Chain
     #   V0 (`F00..F07`): Snap Minute-Glaive Diagonal Cleave Smear (`F03`)
     #   V1 (`F08..F14`): Snap Twin-Blade X-Scissor Rising Smear (`F09`)
     #   V2 (`F15..F22`): 2.5D Foreshortened XII-Dial Vortex Spin (`F17` + `F18`)
@@ -1473,7 +1487,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         )
 
     # --------------------------------------------------------------------------
-    # ROW 3: SKILL — CHRONO-SCHISM REWIND (`F00..F07` Plant Anchor, `F08..F18` Warp X-Cut, `F19..F29` Rewind Snap)
+    # ROW 3: SKILL -- CHRONO-SCHISM REWIND (`F00..F07` Plant Anchor, `F08..F18` Warp X-Cut, `F19..F29` Rewind Snap)
     # --------------------------------------------------------------------------
     if row == 3:
         if f <= 7:
@@ -1536,7 +1550,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         )
 
     # --------------------------------------------------------------------------
-    # ROW 4: ULTIMATE & TRUE_ULTIMATE — ETERNAL ZERO: TWELFTH BELL
+    # ROW 4: ULTIMATE & TRUE_ULTIMATE -- ETERNAL ZERO: TWELFTH BELL
     #   `F00..F11` (`120..131`): Levitating XII Bell Invocation
     #   `F12..F15` (`132..135`): Conductor Cross-Command
     #   `F16..F18` (`136..138`): Sovereign Zero-Hour Snap
@@ -1677,7 +1691,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         return c
 
     # --------------------------------------------------------------------------
-    # ROW 6: DASH — Temporal Phase-Jet Glide
+    # ROW 6: DASH -- Temporal Phase-Jet Glide
     # --------------------------------------------------------------------------
     if row == 6:
         pulse = math.sin(tau_f * 2.0)
@@ -1705,7 +1719,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         return c
 
     # --------------------------------------------------------------------------
-    # ROW 7: CROUCH — ESCAPEMENT X-GUARD (`F00..F09`) & RIPOSTE SNAP (`F10..F20`)
+    # ROW 7: CROUCH -- ESCAPEMENT X-GUARD (`F00..F09`) & RIPOSTE SNAP (`F10..F20`)
     # --------------------------------------------------------------------------
     if row == 7:
         if f <= 9:
@@ -1758,7 +1772,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         )
 
     # --------------------------------------------------------------------------
-    # ROW 8: JUMP — Pendulum Leap, Apex Hover & Aerial Cleave
+    # ROW 8: JUMP -- Pendulum Leap, Apex Hover & Aerial Cleave
     # --------------------------------------------------------------------------
     if row == 8:
         if f <= 3:
@@ -1828,7 +1842,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         )
 
     # --------------------------------------------------------------------------
-    # ROW 9: VICTORY — Twelfth Bell Twin-Blade Salute & Minute-Glaive Stone Plant
+    # ROW 9: VICTORY -- Twelfth Bell Twin-Blade Salute & Minute-Glaive Stone Plant
     # --------------------------------------------------------------------------
     if f <= 10:
         u = f / 10.0
@@ -1920,6 +1934,7 @@ def main():
     sheet = Image.new("RGBA", (CELL_W * COLS, CELL_H * ROWS), (0, 0, 0, 0))
     border_clips = 0
     row_transitions = []
+    row1_frames_320 = []
     row2_frames_320 = []
 
     sample_cols = [0, 3, 9, 17, 24, 25]
@@ -1948,6 +1963,8 @@ def main():
             prev_320 = arr_320
 
             sheet.paste(im_320, (c * CELL_W, r * CELL_H))
+            if r == 1:
+                row1_frames_320.append(im_320)
             if r == 2:
                 row2_frames_320.append(im_320)
             if c in sample_cols:
@@ -1958,6 +1975,19 @@ def main():
 
     sheet.save(OUT_SHEET)
     ten_rows_dbg.save(SCRATCH_DIR / "debug_chronomancer_ex_10rows.png")
+
+    # Save full 30-frame Row 1 WALK contact sheet (`6 cols x 5 rows` @ `320x240`)
+    r1_dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (12, 18, 30, 255))
+    dr1 = ImageDraw.Draw(r1_dbg)
+    for idx, im_320 in enumerate(row1_frames_320):
+        gx = (idx % 6) * CELL_W
+        gy = (idx // 6) * CELL_H
+        dr1.rectangle([gx, gy, gx + CELL_W - 1, gy + CELL_H - 1], outline=(45, 70, 95, 255), width=1)
+        dr1.line([(gx + 8, gy + 230), (gx + CELL_W - 8, gy + 230)], fill=(90, 130, 150, 255), width=1)
+        dr1.line([(gx + 112, gy), (gx + 112, gy + CELL_H - 1)], fill=(45, 212, 191, 90), width=1)
+        r1_dbg.alpha_composite(im_320, (gx, gy))
+        dr1.text((gx + 8, gy + 6), f"R1 F{idx:02d}", fill=(153, 246, 228, 255))
+    r1_dbg.save(SCRATCH_DIR / "debug_chronomancer_ex_row1_walk.png")
 
     # Save full 30-frame Row 2 contact sheet (`6 cols x 5 rows` @ `320x240`)
     r2_dbg = Image.new("RGBA", (6 * CELL_W, 5 * CELL_H), (12, 18, 30, 255))
@@ -1971,7 +2001,7 @@ def main():
         dr.text((gx + 8, gy + 6), f"R2 F{idx:02d}", fill=(250, 204, 21, 255))
     r2_dbg.save(SCRATCH_DIR / "debug_chronomancer_ex_row2.png")
 
-    p128 = build_portrait_128()
+    p128 = Image.open(OUT_PORTRAIT).convert("RGB") if OUT_PORTRAIT.exists() else build_portrait_128()
     p128.save(SCRATCH_DIR / "debug_chronomancer_ex_portrait.png")
 
     # Measure forward reach on Row 2 snap frames

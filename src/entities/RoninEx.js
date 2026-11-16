@@ -1,7 +1,46 @@
-import { Fighter } from './Fighter.js?v=30fps114';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps114';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps114';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps114';
+import { Fighter } from './Fighter.js?v=30fps115';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps115';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps115';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps115';
+
+const wrapStormPaddedPen = (pen) =>
+  new Proxy(pen, {
+    get(target, prop) {
+      if (prop === 'shadeBox') {
+        return (x0, y0, x1, y1, fn) => target.shadeBox(x0 - 4, y0 - 4, x1 + 4, y1 + 4, fn);
+      }
+      const val = target[prop];
+      return typeof val === 'function' ? val.bind(target) : val;
+    }
+  });
+
+const STORM_EX_EFFECT_REGISTRY = Object.fromEntries(
+  Object.entries(STORM_EFFECT_REGISTRY).map(([key, spec]) => [
+    key,
+    {
+      ...spec,
+      create(cfg) {
+        const inst = spec.create(cfg);
+        return {
+          ...inst,
+          renderBack: inst.renderBack
+            ? (pen, ...args) => inst.renderBack.call(inst, wrapStormPaddedPen(pen), ...args)
+            : undefined,
+          renderFront: inst.renderFront
+            ? (pen, ...args) => inst.renderFront.call(inst, wrapStormPaddedPen(pen), ...args)
+            : undefined
+        };
+      }
+    }
+  ])
+);
+
+const BAYER_4X4 = [
+  0, 8, 2, 10,
+  12, 4, 14, 6,
+  3, 11, 1, 9,
+  15, 7, 13, 5
+];
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.34s): Coiled Nukitsuke Draw-Slash -> snaps at F03 (63)
@@ -14,7 +53,161 @@ const BEAT_DURATIONS = [0.34, 0.32, 0.36, 0.48];
 const INTRA_COMBO_LINK = 0.015;
 
 /**
- * KAZE-MARU EX (`ronin_ex`) - Raijin Storm-Blade Iaido Ronin.
+ * Crisp 4x4 Bayer-stippled pixel halo (alpha <= 0.18, zero blurry radial gradient blobs, zero ellipse primitives!).
+ */
+function drawStormBayerHalo(ctx, cx, cy, rx, ry, outerHex, coreHex, alpha = 0.15) {
+  if (alpha <= 0.01 || rx < 4 || ry < 3) return;
+  const step = 4;
+  const x0 = Math.floor((cx - rx) / step) * step;
+  const x1 = Math.ceil((cx + rx) / step) * step;
+  const y0 = Math.floor((cy - ry) / step) * step;
+  const y1 = Math.ceil((cy + ry) / step) * step;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = Math.min(0.18, alpha);
+  for (let py = y0; py <= y1; py += step) {
+    const ny = (py - cy) / ry;
+    const ny2 = ny * ny;
+    if (ny2 >= 1) continue;
+    const by = ((py >> 2) & 3) << 2;
+    for (let px = x0; px <= x1; px += step) {
+      const nx = (px - cx) / rx;
+      const d2 = nx * nx + ny2;
+      if (d2 >= 1) continue;
+      const falloff = 1 - d2;
+      const thresh = (BAYER_4X4[by + ((px >> 2) & 3)] + 0.5) / 16;
+      if (falloff * 0.92 > thresh) {
+        ctx.fillStyle = d2 < 0.32 ? coreHex : outerHex;
+        ctx.fillRect(px, py, step, step);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+/**
+ * Ultra-crisp 2-pass pixel-stepped hairline (Pass 1 all 3px outer glow -> Pass 2 all 1-2px #ffffff core).
+ * Guarantees ZERO overlapping `>>>>>>>` chevron stripes or fat 24px caterpillars!
+ */
+function drawTwoPassStormHairline(ctx, x0, y0, x1, y1, outerHex, coreHex = '#ffffff', alpha = 0.92, coreSize = 2) {
+  if (alpha <= 0.02) return;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const dist = Math.max(Math.abs(dx), Math.abs(dy));
+  if (dist < 2) return;
+  const steps = Math.max(2, Math.ceil(dist / 2));
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Pass 1: Entire outer 3px electric aura line
+  ctx.globalAlpha = Math.min(0.76, alpha * 0.74);
+  ctx.fillStyle = outerHex;
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps;
+    const px = Math.round((x0 + dx * u) / 2) * 2;
+    const py = Math.round((y0 + dy * u) / 2) * 2;
+    ctx.fillRect(px - 1, py - 1, 3, 3);
+  }
+
+  // Pass 2: Entire inner 1px-2px white-hot katana/lightning core on top
+  ctx.globalAlpha = Math.min(0.98, alpha);
+  ctx.fillStyle = coreHex;
+  const cSz = coreSize >= 2 ? 2 : 1;
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps;
+    const px = Math.round((x0 + dx * u) / 2) * 2;
+    const py = Math.round((y0 + dy * u) / 2) * 2;
+    ctx.fillRect(px, py, cSz, cSz);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Multi-segment stepped pixel lightning bolt rendered in 2 full passes (0 chevrons, 0 canvas rotation).
+ */
+function drawSteppedPixelBolt(ctx, x0, y0, x1, y1, segs, jagAmp, outerHex, midHex, seed, alpha = 0.94) {
+  if (alpha <= 0.02) return;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const pts = [[Math.round(x0), Math.round(y0)]];
+  for (let s = 1; s < segs; s++) {
+    const f = s / segs;
+    const env = Math.sin(f * Math.PI);
+    const h = Math.sin((seed + s * 13.7) * 127.1) * 43758.5453;
+    const off = ((h - Math.floor(h)) * 2 - 1) * jagAmp * (0.4 + 0.6 * env);
+    pts.push([
+      Math.round((x0 + dx * f + nx * off) / 2) * 2,
+      Math.round((y0 + dy * f + ny * off) / 2) * 2
+    ]);
+  }
+  pts.push([Math.round(x1), Math.round(y1)]);
+
+  // Pass 1: All segments outer electric sheath
+  for (let s = 0; s < pts.length - 1; s++) {
+    const [ax, ay] = pts[s];
+    const [bx, by] = pts[s + 1];
+    const d = Math.max(2, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) / 2));
+    ctx.fillStyle = outerHex;
+    ctx.globalAlpha = Math.min(0.68, alpha * 0.65);
+    for (let k = 0; k <= d; k++) {
+      const u = k / d;
+      const px = Math.round((ax + (bx - ax) * u) / 2) * 2;
+      const py = Math.round((ay + (by - ay) * u) / 2) * 2;
+      ctx.fillRect(px - 2, py - 2, 4, 4);
+    }
+  }
+  // Pass 2: All segments mid & white core
+  for (let s = 0; s < pts.length - 1; s++) {
+    const [ax, ay] = pts[s];
+    const [bx, by] = pts[s + 1];
+    const d = Math.max(2, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) / 2));
+    for (let k = 0; k <= d; k++) {
+      const u = k / d;
+      const px = Math.round((ax + (bx - ax) * u) / 2) * 2;
+      const py = Math.round((ay + (by - ay) * u) / 2) * 2;
+      ctx.fillStyle = midHex;
+      ctx.globalAlpha = Math.min(0.88, alpha * 0.85);
+      ctx.fillRect(px - 1, py - 1, 3, 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = Math.min(0.98, alpha);
+      ctx.fillRect(px, py, 2, 2);
+    }
+  }
+}
+
+/**
+ * Crisp asymmetric 4-frame anime pixel hit-starburst (zero chevron bars!).
+ */
+function drawStormHitStarburst(ctx, cx, cy, u, primaryHex = '#38bdf8', accentHex = '#fde047') {
+  const fade = 1 - u;
+  if (fade <= 0.04) return;
+  const snap = (v) => Math.round(v / 2) * 2;
+  const sx = snap(cx);
+  const sy = snap(cy);
+  const longArm = Math.round((26 - u * 10) * (u < 0.18 ? u / 0.18 : 1));
+  const shortArm = Math.round(longArm * 0.58);
+
+  drawTwoPassStormHairline(ctx, sx - longArm, sy - Math.round(longArm * 0.25), sx + longArm, sy + Math.round(longArm * 0.25), primaryHex, '#ffffff', fade, 2);
+  drawTwoPassStormHairline(ctx, sx + Math.round(shortArm * 0.25), sy - shortArm, sx - Math.round(shortArm * 0.25), sy + shortArm, accentHex, '#ffffff', fade * 0.92, 2);
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(0.96, fade);
+  ctx.fillStyle = accentHex;
+  ctx.fillRect(sx - 4, sy - 2, 8, 4);
+  ctx.fillRect(sx - 2, sy - 4, 4, 8);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(sx - 2, sy - 2, 4, 4);
+  ctx.restore();
+}
+
+/**
+ * KAZE-MARU EX (`ronin_ex`) - Newly-Born Raijin Storm-Blade Iaido Sovereign.
  * Next-Gen Wide-Canvas (`320x240`, `anchorX=112, anchorY=230`) FFBE / Last Cloudia Champion.
  * Wields curved Raijin Thunder-Odachi + waist Saya scabbard + 5-Drum Raijin Taiko Halo Ring.
  * Coexists 100% independently alongside classic Kaze-Maru (`ronin`).
@@ -32,19 +225,19 @@ export class RoninEx extends Fighter {
       lightColor: 'rgba(129, 140, 248, 1)',
       primaryColor: '#38bdf8',
       hasTrueUltimate: true,
-      trueUltName: 'AMAKAKERU: SHOGUNATE REALM SLICE',
+      trueUltName: 'AMAKAKERU: REALM-SLICING SHOGUNATE',
       trueUltDuration: 3.70
     });
 
     this.heroId = 'ronin_ex';
     this.secondaryColor = '#fde047';
     this.deathSfx = 'death_ronin';
-    this.skillName = 'ZANTETSUKEN FLASH';
-    this.ultName = 'SUSANOO THUNDERSTORM';
-    this.ultSub = 'SIX-FOLD RAIJIN BLITZ';
+    this.skillName = 'NARUKAMI THUNDER-GATE FLASH';
+    this.ultName = 'TAKEMIKAZUCHI STORM-GOD CAGE';
+    this.ultSub = 'EIGHT-DRUM RAIJIN BLITZ';
     this.hasTrueUltimate = true;
-    this.trueUltName = 'AMAKAKERU: SHOGUNATE REALM SLICE';
-    this.trueUltSub = 'SUPREME IAIDO - REALM SEVERANCE';
+    this.trueUltName = 'AMAKAKERU: REALM-SLICING SHOGUNATE';
+    this.trueUltSub = 'CRIMSON-MOON TORII IAIDO';
     this.trueUltDuration = 3.70;
     this.theme = 'storm';
     this.hasPoise = false;
@@ -55,8 +248,8 @@ export class RoninEx extends Fighter {
     this.dashMaxCooldown = 3.30;
     this.autoDuration = BEAT_DURATIONS[0];
     this._postFlurryInterval = 1.48;
-    this.skillDuration = 0.90;
-    this.ultDuration = 1.80;
+    this.skillDuration = 0.94;
+    this.ultDuration = 1.84;
     this.crouchDuration = 0.62;
     this.crouchCooldown = 0;
     this.vaultCooldown = 0;
@@ -80,7 +273,7 @@ export class RoninEx extends Fighter {
     this.stepDustTimer = 0;
     this.divePitchRad = 0;
 
-    // Signature Iaido & Raijin Storm-God Layers
+    // Newly-Born Iaido Hairlines, Torii Pillars, Storm-God Cage & Pixel Particles
     this.afterimages = [];
     this.afterimageSpawnAccum = 0;
     this.activeSlashLines = [];
@@ -88,10 +281,15 @@ export class RoninEx extends Fighter {
     this.iaidoCounterActive = false;
     this.activeVfxAnims = [];
     this.cleanBladeCuts = [];
+    this.exParticles = [];
+    this.toriiPillars = [];
+    this._taikoHaloTimer = 0;
+    this._taikoLitCount = 0;
     this._ultTargetX = 600;
-    this.susanooAvatar = null;
+    this._ultPetalAccum = 0;
+    this.stormGodMask = null;
 
-    // Supreme Ultimate (`AMAKAKERU: SHOGUNATE REALM SLICE`) state
+    // Supreme Ultimate (`AMAKAKERU: REALM-SLICING SHOGUNATE`) state
     this._trueUltInit = false;
     this._trueUltStep = 0;
     this._trueUltCutsDone = 0;
@@ -99,18 +297,24 @@ export class RoninEx extends Fighter {
     this._trueUltDashDir = 1;
     this._trueUltStartX = 300;
     this._trueUltBackX = 750;
-    this.raijinEyeSeal = null;
-    this.amakakeruCleaves = [];
+    this.crimsonMoonSanctuary = null;
+    this.suspendedSanctuaryDrops = [];
+    this.horizonFaultLine = null;
     this.trueUltLightningSurge = null;
 
-    this.fx = new ArcaneShaderFX(STORM_EFFECT_REGISTRY, {
+    this.fx = new ArcaneShaderFX(STORM_EX_EFFECT_REGISTRY, {
       pixelScale: 3,
-      viewW: 440,
-      viewH: 220
+      viewW: 640,
+      viewH: 460,
+      topRatio: 0.70
     });
 
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('ronin_ex');
+      const roninExAssets = PixelForge.initAssets?.()?.ronin_ex;
+      if (roninExAssets?.vfx?.src && roninExAssets.vfx.src.includes('v=30fps114')) {
+        roninExAssets.vfx.src = 'assets/sprites/ronin_ex_vfx.png?v=30fps115';
+      }
     }
   }
 
@@ -146,6 +350,17 @@ export class RoninEx extends Fighter {
     return assets?.ronin_ex || assets?.ronin || null;
   }
 
+  _safeFxX(xv, game) {
+    const g = game || this.game;
+    const ww = g?.renderer ? g.renderer.worldWidth : 1200;
+    const center = ww * 0.5;
+    return Math.max(center - 740, Math.min(center + 740, Math.max(84, Math.min(ww - 84, xv))));
+  }
+
+  _safeFxY(yv) {
+    return Math.max(58, Math.min(this.groundY + 20, yv));
+  }
+
   _clampArenaX(xv, game, margin = 80) {
     const minX =
       game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
@@ -165,6 +380,41 @@ export class RoninEx extends Fighter {
       ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 92)
       : rawMaxX;
     return Math.max(minX, Math.min(maxX, xv));
+  }
+
+  spawnStormParticle(kind, x, y, vx, vy, maxLife, color, accent = '#ffffff', size = 3) {
+    if (this.exParticles.length >= 96) this.exParticles.shift();
+    this.exParticles.push({
+      kind, // 'sakura' | 'star4' | 'mote' | 'rain'
+      x,
+      y,
+      vx,
+      vy,
+      age: 0,
+      maxLife,
+      color,
+      accent,
+      size,
+      phase: Math.floor(Math.random() * 16)
+    });
+  }
+
+  spawnSakuraBurst(cx, cy, count = 8, electrified = true) {
+    for (let i = 0; i < count; i++) {
+      const ang = (i / count) * Math.PI * 2 + (i % 2) * 0.25;
+      const spd = 48 + (i % 4) * 32;
+      this.spawnStormParticle(
+        i % 3 === 0 ? 'star4' : 'sakura',
+        cx + Math.cos(ang) * 8,
+        cy + Math.sin(ang) * 6,
+        Math.cos(ang) * spd,
+        Math.sin(ang) * spd - 24,
+        0.42 + (i % 3) * 0.12,
+        electrified ? (i % 2 === 0 ? '#f472b6' : '#38bdf8') : '#fb7185',
+        electrified ? '#fde047' : '#fbcfe8',
+        i % 3 === 0 ? 4 : 3
+      );
+    }
   }
 
   setState(newState) {
@@ -191,7 +441,7 @@ export class RoninEx extends Fighter {
       this.fx?.stopByKey('shunpoSpearMachCone');
     }
     if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
-      this.susanooAvatar = null;
+      this.stormGodMask = null;
       this.fx?.stopByKey('susanooStormDomain');
     }
     if (
@@ -208,14 +458,16 @@ export class RoninEx extends Fighter {
       this._zantetsuStep = 0;
       this._skillOriginX = this.x;
       this._skillOriginY = this.y;
+      this._taikoHaloTimer = 0.94;
+      this._taikoLitCount = 5;
+      this.toriiPillars = [];
     }
 
     if (newState === 'ULTIMATE') {
       this._omniStep = 0;
       this._ultOriginX = this.x;
       this._ultOriginY = this.y;
-      this._ultApexStartX = this.x;
-      this._ultApexStartY = this.y;
+      this._ultPetalAccum = 0;
     }
 
     if (newState === 'TRUE_ULTIMATE') {
@@ -225,14 +477,17 @@ export class RoninEx extends Fighter {
       this._trueUltDashDir = this.facing || 1;
       this._trueUltStartX = this.x;
       this._trueUltBackX = this.x;
-      this.raijinEyeSeal = null;
-      this.amakakeruCleaves = [];
+      this.crimsonMoonSanctuary = null;
+      this.suspendedSanctuaryDrops = [];
+      this.horizonFaultLine = null;
       this.trueUltLightningSurge = null;
       this.trueUltFrameOverride = 214;
       this._overrideFrameIdx = 214;
     } else {
       this._trueUltInit = false;
-      this.raijinEyeSeal = null;
+      this.crimsonMoonSanctuary = null;
+      this.suspendedSanctuaryDrops = [];
+      this.horizonFaultLine = null;
       this.cameraAirLift = 0;
       if (newState !== 'AUTO_ATTACK') {
         this.unstoppablePoise = false;
@@ -244,17 +499,19 @@ export class RoninEx extends Fighter {
     }
 
     if (newState === 'AUTO_ATTACK') {
-      if (this._comboPersistTimer <= 0 && prevState !== 'AUTO_ATTACK') {
-        this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
-      } else {
-        this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
-      }
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
       this._beginComboBeat(this._autoVariant, this.game);
     }
 
     if (newState === 'DEATH') {
       this.fx?.clear();
       this.cleanBladeCuts = [];
+      this.activeSlashLines = [];
+      this.toriiPillars = [];
+      this.stormGodMask = null;
+      this.crimsonMoonSanctuary = null;
+      this.suspendedSanctuaryDrops = [];
+      this.horizonFaultLine = null;
       this.trueUltLightningSurge = null;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
@@ -267,8 +524,6 @@ export class RoninEx extends Fighter {
 
   /**
    * Initializes one grounded Battojutsu beat (`0..3`) with 0px vertical float (`y = groundY`)!
-   * - Beats 0, 1, 3 step cleanly into the 104..116px Raijin Odachi smear belly in front of the enemy.
-   * - Beat 2 (`V2`) performs Kaze-Maru EX's signature Shunpo Cross-Slash onto the opposite flank when within <= 165px!
    */
   _beginComboBeat(beatIdx, game) {
     const v = ((beatIdx % 4) + 4) % 4;
@@ -304,7 +559,6 @@ export class RoninEx extends Fighter {
     if (enemy && !enemy.isDead) {
       const dist = Math.abs(enemy.x - this.x);
       if (v === 2 && !enemy.isColossalBoss && dist <= 165) {
-        // Single supersonic Shunpo cross-step onto the opposite flank within <= 165px!
         const crossDir = enemy.x >= this.x ? 1 : -1;
         const flankTarget = enemy.x + crossDir * 98;
         desiredX = this._clampArenaX(flankTarget, game, 72);
@@ -416,10 +670,10 @@ export class RoninEx extends Fighter {
     const cutCenterY = this.groundY - 78;
     this.cleanBladeCuts.push({
       type: 'blade',
-      x0: this.x + this.facing * 24,
-      y0: cutCenterY - cutSlope * 38,
-      x1: this.x + this.facing * 148,
-      y1: cutCenterY + cutSlope * 38,
+      x0: this.x + this.facing * 26,
+      y0: cutCenterY - cutSlope * 36,
+      x1: this.x + this.facing * 144,
+      y1: cutCenterY + cutSlope * 36,
       age: 0,
       maxLife: 0.14
     });
@@ -443,25 +697,14 @@ export class RoninEx extends Fighter {
       const hitX = foe.x;
       const hitY = (foe.y || this.groundY) - (foe.isColossalBoss ? 124 : 82);
       this.cleanBladeCuts.push({
-        type: 'wound',
+        type: 'starburst',
         x: hitX,
         y: hitY,
-        dir: this.facing,
-        slope: cutSlope,
         isCrit,
-        seed: (this._autoVariant + 1) * 19 + Math.round((this.stateTimer || 0) * 120) + i * 7,
         age: 0,
-        maxLife: 0.22
+        maxLife: 0.18
       });
-      this.fx?.burst(hitX, hitY, {
-        count: isCrit ? 9 : 6,
-        speedMin: 48,
-        speedMax: isCrit ? 180 : 140,
-        lifeMin: 0.12,
-        lifeMax: 0.25,
-        gravity: 45,
-        colors: ['#ffffff', '#fde047', '#38bdf8', '#818cf8']
-      });
+      this.spawnSakuraBurst(hitX, hitY, isCrit ? 6 : 4, true);
     }
 
     if (struckFoes.length > 0) {
@@ -561,20 +804,20 @@ export class RoninEx extends Fighter {
       };
     }
 
-    if (this.fx && (p.type === 'ronin_slash' || p.type === 'storm_wave') && (p.ringTimer || 0) >= 0.048) {
+    if ((p.type === 'ronin_slash' || p.type === 'storm_wave') && (p.ringTimer || 0) >= 0.05) {
       p.ringTimer = 0;
       const dir = Math.sign(p.vx || this.facing || 1);
-      this.fx.burst(p.x - dir * 18, p.y + (((Math.round(p.travelDist || 0) >> 3) % 3) - 1) * 14, {
-        count: 2,
-        speedMin: 24,
-        speedMax: 72,
-        lifeMin: 0.12,
-        lifeMax: 0.22,
-        gravity: 0,
-        spread: 0.45,
-        angle: dir >= 0 ? Math.PI : 0,
-        colors: ['#ffffff', '#fde047', '#38bdf8']
-      });
+      this.spawnStormParticle(
+        'sakura',
+        p.x - dir * 16,
+        p.y + (((Math.round(p.travelDist || 0) >> 3) % 3) - 1) * 14,
+        -dir * 38,
+        14,
+        0.24,
+        '#38bdf8',
+        '#fde047',
+        3
+      );
     }
   }
 
@@ -590,42 +833,34 @@ export class RoninEx extends Fighter {
         hitTarget._hitShakeTimer = Math.max(hitTarget._hitShakeTimer || 0, 0.052);
       }
     }
-    const dir = Math.sign(p.vx || this.facing || 1);
     const hx = hitTarget ? hitTarget.x : p.x;
     const hy = hitTarget ? (hitTarget.y || this.groundY) - 82 : p.y;
     this.cleanBladeCuts.push({
-      type: 'wound',
+      type: 'starburst',
       x: hx,
       y: hy,
-      dir,
-      slope: p.isTwinSlash ? -0.22 : -0.14,
       isCrit: Boolean(isCrit || p.isTwinSlash),
-      seed: Math.round((p.age || 0) * 1000) + 31,
       age: 0,
-      maxLife: 0.22
+      maxLife: 0.20
     });
     if (game?.audio) {
       game.audio.play(isCrit ? 'hit_crit' : 'slash', hx);
     }
-    this.fx?.burst(hx, hy, {
-      count: isCrit ? 10 : 6,
-      speedMin: 55,
-      speedMax: isCrit ? 195 : 145,
-      lifeMin: 0.14,
-      lifeMax: 0.26,
-      gravity: 55,
-      colors: ['#ffffff', '#fde047', '#38bdf8', '#818cf8']
-    });
+    this.spawnSakuraBurst(hx, hy, isCrit ? 7 : 5, true);
     return true;
   }
 
   spawnSayaGlint(isSheath = false) {
-    if (!this.fx) return;
-    this.fx.spawn('iaidoSayaGlint', this.x - this.facing * 14, this.y - 68, {
-      flip: this.facing < 0,
-      light: isSheath ? 1.42 : 1.24,
-      extra: { isSheath }
-    });
+    const gx = this.x - this.facing * 14;
+    const gy = this.y - 68;
+    this.spawnStormParticle('star4', gx, gy, 0, -8, isSheath ? 0.30 : 0.22, '#38bdf8', '#fde047', isSheath ? 6 : 4);
+    if (this.fx) {
+      this.fx.spawn('iaidoSayaGlint', this._safeFxX(gx), this._safeFxY(gy), {
+        flip: this.facing < 0,
+        light: isSheath ? 1.32 : 1.18,
+        extra: { isSheath }
+      });
+    }
   }
 
   spawnAfterimage(x, y, facing, row = 6, col = 14, maxLife = 0.28, pitch = 0) {
@@ -642,7 +877,7 @@ export class RoninEx extends Fighter {
   }
 
   spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.48, opts = {}) {
-    if (this.activeVfxAnims.length >= 24) this.activeVfxAnims.shift();
+    if (this.activeVfxAnims.length >= 26) this.activeVfxAnims.shift();
     this.activeVfxAnims.push({
       row,
       x,
@@ -666,34 +901,31 @@ export class RoninEx extends Fighter {
 
   spawnPixelShockwave(x, y, maxR = 135, colorType = 'cyan', maxLife = 0.32, isGround = false) {
     if (!this.fx) return;
-    this.fx.spawn('raijinTaikoShockwave', x, y, {
+    this.fx.spawn('raijinTaikoShockwave', this._safeFxX(x), this._safeFxY(y), {
       flip: false,
-      light: colorType === 'gold' ? 1.38 : 1.24,
+      light: colorType === 'gold' ? 1.28 : 1.16,
       maxDuration: maxLife,
-      extra: { maxRWorld: maxR, colorType, isGround }
+      extra: { maxRWorld: Math.min(180, maxR), colorType, isGround }
     });
   }
 
   spawnPixelLightningBolt(x, topY, botY, colorType = 'cyan', maxLife = 0.34) {
-    if (!this.fx) return;
-    this.fx.spawn('raijinSkyThunderbolt', x, botY, {
-      flip: false,
-      light: colorType === 'gold' ? 1.42 : 1.28,
-      maxDuration: maxLife,
-      extra: { spanWorldY: Math.max(90, botY - topY), colorType }
-    });
-    this.fx.burst(x, botY - 8, {
-      count: 8,
-      speedMin: 45,
-      speedMax: 155,
-      lifeMin: 0.14,
-      lifeMax: 0.28,
-      gravity: 65,
-      colors: colorType === 'gold' ? ['#ffffff', '#fef08a', '#eab308'] : ['#ffffff', '#67e8f9', '#a78bfa']
-    });
+    if (this.fx) {
+      this.fx.spawn('raijinSkyThunderbolt', this._safeFxX(x), this._safeFxY(botY), {
+        flip: false,
+        light: colorType === 'gold' ? 1.32 : 1.20,
+        maxDuration: maxLife,
+        extra: { spanWorldY: Math.min(240, Math.max(90, botY - topY)), colorType }
+      });
+    }
+    this.spawnSakuraBurst(x, botY - 12, 4, true);
   }
 
-  addSlashLine(x1, y1, x2, y2, maxLife = 0.65, detonated = false) {
+  /**
+   * Registers an ultra-thin 2-pass electric hairline thread (`0` chevron stripes!).
+   */
+  addSlashLine(x1, y1, x2, y2, maxLife = 0.62, detonated = false, colorHex = '#38bdf8') {
+    if (this.activeSlashLines.length >= 24) this.activeSlashLines.shift();
     this.activeSlashLines.push({
       x1,
       y1,
@@ -701,39 +933,27 @@ export class RoninEx extends Fighter {
       y2,
       age: 0,
       maxLife,
-      detonated
+      detonated,
+      colorHex
     });
-    if (this.fx) {
-      this.fx.spawn('judgmentSlashBeam', x1, y1, {
-        flip: false,
-        light: detonated ? 1.44 : 1.24,
-        maxDuration: maxLife,
-        extra: {
-          dx: x2 - x1,
-          dy: y2 - y1,
-          detonated,
-          customDuration: maxLife
-        }
-      });
-    }
   }
 
   syncSpearMachCone() {
     if (!this.fx) return;
-    const isSkillDive = this.state === 'SKILL' && this.stateTimer >= 0.18 && this.stateTimer < 0.48;
-    const isUltDive = this.state === 'ULTIMATE' && this.stateTimer >= 0.30 && this.stateTimer < 1.26;
+    const isSkillDive = this.state === 'SKILL' && this.stateTimer >= 0.16 && this.stateTimer < 0.56;
+    const isUltDive = this.state === 'ULTIMATE' && this.stateTimer >= 0.26 && this.stateTimer < 1.30;
     const isTrueUltBlitz =
       this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 0.92 && this.stateTimer < 1.28;
     if (isSkillDive || isUltDive || isTrueUltBlitz) {
-      const isHeavenSplit = this.state === 'ULTIMATE' && this.stateTimer >= 1.02;
+      const isHeavenSplit = this.state === 'ULTIMATE' && this.stateTimer >= 1.06;
       let slot = this.fx.active.find((s) => s.key === 'shunpoSpearMachCone');
       if (!slot) {
-        slot = this.fx.spawn('shunpoSpearMachCone', this.x, this.y - 72, {
+        slot = this.fx.spawn('shunpoSpearMachCone', this._safeFxX(this.x), this._safeFxY(this.y - 72), {
           follow: this,
           offsetX: 0,
           offsetY: -72,
           flip: this.facing < 0,
-          light: isHeavenSplit ? 1.42 : 1.28,
+          light: isHeavenSplit ? 1.32 : 1.18,
           extra: { pitchAngle: this.divePitchRad || 0, isHeavenSplit }
         });
       } else {
@@ -760,17 +980,11 @@ export class RoninEx extends Fighter {
     this.spawnAfterimage((oldX + this.x) * 0.5, this.y - 12, this.facing, 6, 12, 0.28);
     this.spawnSayaGlint(true);
 
-    this.addSlashLine(attacker.x - 62, attacker.y - 138, attacker.x + 62, attacker.y - 22, 0.42, true);
-    this.addSlashLine(attacker.x - 62, attacker.y - 22, attacker.x + 62, attacker.y - 138, 0.42, true);
-    this.spawnVfxAnim(3, attacker.x, attacker.y - 78, 216, 216, 0.42, { glowColor: 'cyan' });
-    this.spawnVfxAnim(1, attacker.x, attacker.groundY - 92, 208, 208, 0.44, {
-      startFrame: 18,
-      endFrame: 29,
-      glowColor: 'purple'
-    });
-    this.spawnVfxAnim(4, attacker.x, attacker.y - 80, 196, 196, 0.34, { glowColor: 'cyan' });
-    this.spawnPixelShockwave(attacker.x, attacker.y - 80, 128, 'cyan', 0.30, false);
-    this.spawnPixelLightningBolt(attacker.x, attacker.groundY - 260, attacker.groundY, 'cyan', 0.34);
+    this.addSlashLine(attacker.x - 62, attacker.y - 138, attacker.x + 62, attacker.y - 22, 0.38, true, '#38bdf8');
+    this.addSlashLine(attacker.x - 62, attacker.y - 22, attacker.x + 62, attacker.y - 138, 0.38, true, '#fde047');
+    this.spawnVfxAnim(1, attacker.x, attacker.groundY - 88, 212, 212, 0.42, { glowColor: 'cyan' });
+    this.spawnVfxAnim(3, attacker.x, attacker.groundY - 12, 212, 212, 0.38, { glowColor: 'cyan', inFront: false });
+    this.spawnPixelLightningBolt(attacker.x, attacker.groundY - 240, attacker.groundY, 'cyan', 0.32);
 
     if (game) {
       if (game.audio) {
@@ -803,6 +1017,9 @@ export class RoninEx extends Fighter {
     this._currentEnemy = enemy;
     this.crouchCooldown = Math.max(0, (this.crouchCooldown || 0) - dt);
     this.vaultCooldown = Math.max(0, (this.vaultCooldown || 0) - dt);
+    if (this._taikoHaloTimer > 0) {
+      this._taikoHaloTimer = Math.max(0, this._taikoHaloTimer - dt);
+    }
     if (this.state !== 'AUTO_ATTACK' && this._comboPersistTimer > 0) {
       this._comboPersistTimer = Math.max(0, this._comboPersistTimer - dt);
     }
@@ -818,6 +1035,27 @@ export class RoninEx extends Fighter {
       this.activeSlashLines[i].age += dt;
       if (this.activeSlashLines[i].age >= this.activeSlashLines[i].maxLife) {
         this.activeSlashLines.splice(i, 1);
+      }
+    }
+
+    for (let i = this.toriiPillars.length - 1; i >= 0; i--) {
+      this.toriiPillars[i].age += dt;
+      if (this.toriiPillars[i].age >= this.toriiPillars[i].maxLife) {
+        this.toriiPillars.splice(i, 1);
+      }
+    }
+
+    for (let i = this.exParticles.length - 1; i >= 0; i--) {
+      const p = this.exParticles[i];
+      p.age += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.kind === 'sakura') {
+        p.vx += Math.sin(p.age * 9 + p.phase) * 28 * dt;
+        p.vy += 26 * dt;
+      }
+      if (p.age >= p.maxLife) {
+        this.exParticles.splice(i, 1);
       }
     }
 
@@ -843,6 +1081,13 @@ export class RoninEx extends Fighter {
       }
     }
 
+    if (this.horizonFaultLine) {
+      this.horizonFaultLine.age += dt;
+      if (this.horizonFaultLine.age >= this.horizonFaultLine.maxLife) {
+        this.horizonFaultLine = null;
+      }
+    }
+
     if (this.trueUltLightningSurge) {
       this.trueUltLightningSurge.age += dt;
       if (this.trueUltLightningSurge.age >= this.trueUltLightningSurge.maxLife) {
@@ -864,15 +1109,7 @@ export class RoninEx extends Fighter {
       if (this.stepDustTimer >= 0.24) {
         this.stepDustTimer = 0;
         if (game?.audio) game.audio.play('footstep_steel', this.x);
-        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
-          count: 4,
-          speedMin: 30,
-          speedMax: 85,
-          lifeMin: 0.14,
-          lifeMax: 0.26,
-          gravity: 35,
-          colors: ['#ffffff', '#67e8f9', '#818cf8']
-        });
+        this.spawnStormParticle('star4', this.x - this.facing * 14, this.groundY - 4, -this.facing * 24, -18, 0.22, '#38bdf8', '#fde047', 3);
       }
     } else if (this.state === 'IDLE') {
       this.divePitchRad *= Math.pow(0.001, dt);
@@ -901,13 +1138,13 @@ export class RoninEx extends Fighter {
     this.isDeflecting = true;
     this.vx = 0;
     this.spawnSayaGlint(false);
-    this.fx?.spawn('sereneMindParryWard', this.x, this.groundY - 4, {
+    this.fx?.spawn('sereneMindParryWard', this._safeFxX(this.x, game), this._safeFxY(this.groundY - 4), {
       follow: this,
       useGroundY: true,
       offsetX: 0,
       offsetY: -4,
       flip: false,
-      light: 1.24
+      light: 1.18
     });
     this.spawnPixelShockwave(this.x, this.groundY - 4, 88, 'purple', 0.26, true);
     if (game?.audio) game.audio.play('clang', this.x);
@@ -956,7 +1193,6 @@ export class RoninEx extends Fighter {
       }
     }
 
-    // If unprovoked by t = 0.38s, unleash Shunpo Draw-Cut Dash + piercing `ronin_slash` crescent wave!
     if (t >= 0.38 && !this.didActionFrame) {
       this.didActionFrame = true;
       this.iaidoCounterActive = false;
@@ -966,7 +1202,7 @@ export class RoninEx extends Fighter {
       this.spawnAfterimage(oldX, this.y, this.facing, 7, 14, 0.28);
       this.x = this._clampArenaX(this.x + this.facing * 165, game, 85);
       this.spawnSayaGlint(false);
-      this.addSlashLine(oldX, this.y - 68, this.x, this.y - 68, 0.32);
+      this.addSlashLine(oldX, this.y - 68, this.x, this.y - 68, 0.30, false, '#38bdf8');
       this.spawnPixelShockwave(this.x, this.y - 72, 108, 'cyan', 0.26, false);
       if (game?.audio) game.audio.play('slash', this.x);
       const crouchHitFoes = [];
@@ -1065,13 +1301,12 @@ export class RoninEx extends Fighter {
       if (u >= 0.36 && !this.didActionFrame) {
         this.didActionFrame = true;
         if (game?.audio) game.audio.play('slash', this.x);
-        this.addSlashLine(this.x - 45, this.y - 110, this.x + this.facing * 75, this.y - 20, 0.28);
+        this.addSlashLine(this.x - 45, this.y - 110, this.x + this.facing * 75, this.y - 20, 0.26, false, '#38bdf8');
         this.spawnVfxAnim(0, this.x + this.facing * 28, this.y - 68, 192, 192, 0.26, {
           vx: this.facing * 210,
           flipX: this.facing < 0,
           glowColor: 'cyan'
         });
-        this.spawnPixelShockwave(this.x, this.y - 68, 96, 'cyan', 0.24, false);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 155) {
           enemy.takeDamage(34, this, false, 45, -130);
         }
@@ -1080,13 +1315,12 @@ export class RoninEx extends Fighter {
       if (u >= 0.58 && !this.didSecondaryAction) {
         this.didSecondaryAction = true;
         if (game?.audio) game.audio.play('slash', this.x);
-        this.addSlashLine(this.x - 45, this.y - 20, this.x + this.facing * 75, this.y - 110, 0.28);
+        this.addSlashLine(this.x - 45, this.y - 20, this.x + this.facing * 75, this.y - 110, 0.26, false, '#818cf8');
         this.spawnVfxAnim(0, this.x + this.facing * 32, this.y - 64, 196, 196, 0.28, {
           vx: this.facing * 230,
           flipX: this.facing < 0,
           glowColor: 'purple'
         });
-        this.spawnPixelShockwave(this.x, this.y - 68, 106, 'purple', 0.26, false);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 165) {
           enemy.takeDamage(38, this, true, 95, 120);
         }
@@ -1116,11 +1350,7 @@ export class RoninEx extends Fighter {
   }
 
   /**
-   * 4-Beat 100% Grounded (`0px` float!) Next-Gen Battojutsu Combo (`[[60,8],[68,7],[75,8],[83,7]]`):
-   * - V0 (`F03` `63`): Coiled Nukitsuke lightning draw-slash (1-hit, 42ms hit-stop)
-   * - V1 (`F09` `69`): Reverse rising Kiri-age heaven-arc (1-hit, 44ms hit-stop)
-   * - V2 (`F17/F18` `77/78`): 2.5D Shunpo horizontal vortex (2-hit, single flank cross-step when <= 165px)
-   * - V3 (`F25` `85`): Grounded two-handed Morote Zantetsuken full-reach lightning cleave (3-hit + piercing `ronin_slash` wave, 56ms hit-stop)
+   * 4-Beat 100% Grounded (`0px` float!) Next-Gen Battojutsu Combo (`[[60,8],[68,7],[75,8],[83,7]]`).
    */
   updateAutoAttack(dt, enemy, game) {
     this._currentEnemy = enemy;
@@ -1146,7 +1376,6 @@ export class RoninEx extends Fighter {
     const t = this.stateTimer;
     const [sliceStart, sliceLen] = AUTO_SLICES_EX[v];
 
-    // Snap times aligned 1:1 with Row 2 1-frame lightning smear frames (`F03`, `F09`, `F17`, `F25`)
     const snapT = v === 0 ? 0.09 : v === 1 ? 0.06 : v === 2 ? 0.08 : 0.14;
 
     let localStep = 0;
@@ -1175,7 +1404,6 @@ export class RoninEx extends Fighter {
     this.trueUltFrameOverride = frameIdx;
     this._overrideFrameIdx = frameIdx;
 
-    // Grounded Fumikomi / Shunpo Pre-Snap Advance -> Hard-Planted Boots (`vx = 0`) right at `snapT`!
     this.vx = 0;
     if (t < snapT) {
       const lungeU = Math.min(1, Math.max(0, t / snapT));
@@ -1215,7 +1443,6 @@ export class RoninEx extends Fighter {
       }
     }
 
-    // Beat-Specific 1-Frame Smear Impacts
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.09) {
         this._beatHitMask |= 1;
@@ -1285,14 +1512,13 @@ export class RoninEx extends Fighter {
         });
       }
     } else {
-      // V3 (F25 = 85): Grounded Two-Handed Morote Zantetsuken -> 3-hit cascading cleave + long-range `ronin_slash` crescent wave!
       if ((this._beatHitMask & 1) === 0 && t >= 0.14) {
         this._beatHitMask |= 1;
         const cleaveX = this.x + this.facing * 78;
         this.spawnSayaGlint(true);
         game?.renderer?.triggerShake?.(11, 0.22);
         this.spawnPixelShockwave(cleaveX, this.groundY - 6, 112, 'gold', 0.26, true);
-        this.spawnPixelLightningBolt(cleaveX, this.groundY - 245, this.groundY, 'gold', 0.28);
+        this.spawnPixelLightningBolt(cleaveX, this.groundY - 230, this.groundY, 'gold', 0.28);
         const meleeHitFoes = this._applyBattoStrike(enemy, game, {
           damage: 24,
           reachFront: 224,
@@ -1392,10 +1618,16 @@ export class RoninEx extends Fighter {
     }
   }
 
+  /**
+   * NEWLY BORN SKILL (`0.94s`, `4.70s` CD): `NARUKAMI THUNDER-GATE FLASH`
+   * Ignites all 5 Raijin Taiko drums, executes a 5-point lightning Shunpo zig-zag leaving
+   * ultra-thin 2px 2-pass electric hairlines + pixel Torii thunder-pillars that detonate
+   * simultaneously on the Saya sheath-click!
+   */
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
     if (!this._zantetsuStep) this._zantetsuStep = 0;
-    this.isInvulnerable = t < 0.66;
+    this.isInvulnerable = t < 0.70;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const clampX = (xVal) => this._clampArenaX(xVal, game, 85);
     const originX = this._skillOriginX !== undefined ? this._skillOriginX : this.x;
@@ -1405,7 +1637,8 @@ export class RoninEx extends Fighter {
         : Math.max(220, Math.min(ww - 220, originX + this.facing * 165));
     const dir = center >= originX ? 1 : -1;
 
-    if (t < 0.18) {
+    // Phase 0 (0.00..0.15s): Ignite all 5 Raijin Taiko Drums + Torii Floor Seal
+    if (t < 0.15) {
       this.vx = 0;
       this.vy = 0;
       this.y = this.groundY;
@@ -1414,51 +1647,38 @@ export class RoninEx extends Fighter {
         this._zantetsuStep = 1;
         this._skillOriginX = this.x;
         this._skillOriginY = this.groundY;
+        this._taikoHaloTimer = 0.94;
+        this._taikoLitCount = 5;
         this.spawnSayaGlint(false);
-        this.spawnVfxAnim(3, this.x, this.groundY - 76, 176, 176, 0.24, {
-          followOwner: true,
-          offsetX: 0,
-          offsetY: -76,
-          glowColor: 'cyan'
+        this.spawnVfxAnim(3, this.x, this.groundY - 12, 184, 184, 0.30, {
+          glowColor: 'cyan',
+          inFront: false
         });
-        this.spawnPixelShockwave(this.x, this.groundY - 4, 96, 'cyan', 0.24, true);
+        this.spawnSakuraBurst(this.x, this.groundY - 82, 6, true);
+        if (game?.audio) game.audio.play('clang', this.x);
       }
       return;
     }
 
-    const passWindows = [
-      {
-        t0: 0.18,
-        t1: 0.27,
-        p0: { x: originX, y: this.groundY },
-        p1: { x: clampX(center + dir * 130), y: this.groundY - 82 }
-      },
-      {
-        t0: 0.27,
-        t1: 0.36,
-        p0: { x: clampX(center + dir * 130), y: this.groundY - 82 },
-        p1: { x: clampX(center - dir * 130), y: this.groundY - 76 }
-      },
-      {
-        t0: 0.36,
-        t1: 0.48,
-        p0: { x: clampX(center - dir * 130), y: this.groundY - 76 },
-        p1: { x: clampX(center + dir * 108), y: this.groundY }
-      }
+    // Phase 1 (0.15..0.55s): 5-Point Lightning Shunpo Zig-Zag + Ultra-Thin 2px 2-Pass Hairlines + Torii Pillars
+    const zigWaypoints = [
+      { x: originX, y: this.groundY },
+      { x: clampX(center + dir * 124), y: this.groundY - 96 },
+      { x: clampX(center - dir * 122), y: this.groundY - 32 },
+      { x: clampX(center + dir * 116), y: this.groundY - 118 },
+      { x: clampX(center - dir * 114), y: this.groundY - 64 },
+      { x: clampX(center + dir * 104), y: this.groundY }
     ];
 
-    if (t >= 0.18 && t < 0.48) {
-      let passIdx = 0;
-      if (t >= 0.36) passIdx = 2;
-      else if (t >= 0.27) passIdx = 1;
+    if (t >= 0.15 && t < 0.55) {
+      const segDur = 0.40 / 5;
+      const passIdx = Math.min(4, Math.floor((t - 0.15) / segDur));
+      const localU = Math.min(1, Math.max(0, (t - (0.15 + passIdx * segDur)) / segDur));
+      const p0 = zigWaypoints[passIdx];
+      const p1 = zigWaypoints[passIdx + 1];
 
-      const win = passWindows[passIdx];
-      const localU = Math.min(1, Math.max(0, (t - win.t0) / (win.t1 - win.t0)));
-      const easeU = localU < 0.5 ? 2 * localU * localU : 1 - Math.pow(-2 * localU + 2, 2) / 2;
-
-      const { p0, p1 } = win;
-      this.x = p0.x + (p1.x - p0.x) * easeU;
-      this.y = p0.y + (p1.y - p0.y) * easeU;
+      this.x = p0.x + (p1.x - p0.x) * localU;
+      this.y = p0.y + (p1.y - p0.y) * localU;
       this.vx = 0;
       this.vy = 0;
 
@@ -1470,37 +1690,41 @@ export class RoninEx extends Fighter {
       this.afterimageSpawnAccum += dt;
       if (this.afterimageSpawnAccum >= 0.024) {
         this.afterimageSpawnAccum = 0;
-        const col = Math.min(15, Math.max(6, Math.floor((t / this.skillDuration) * 30)));
-        this.spawnAfterimage(this.x, this.y, this.facing, 3, col, 0.28, 0);
+        const col = Math.min(20, Math.max(5, Math.floor((t / this.skillDuration) * 30)));
+        this.spawnAfterimage(this.x, this.y, this.facing, 3, col, 0.24, 0);
       }
 
       const targetStep = passIdx + 2;
       if (this._zantetsuStep < targetStep) {
         this._zantetsuStep = targetStep;
-        this.addSlashLine(p0.x, p0.y - 62, p1.x, p1.y - 62, 0.64);
-        const midY = (p0.y + p1.y) * 0.5 - 64;
-        this.spawnVfxAnim(0, center, midY, 208, 208, 0.28, {
-          vx: this.facing * 280,
-          flipX: this.facing < 0,
-          glowColor: passIdx % 2 === 0 ? 'cyan' : 'purple'
-        });
-        this.spawnPixelShockwave(
-          center,
-          midY,
-          112,
-          passIdx % 2 === 0 ? 'cyan' : 'purple',
-          0.26,
-          false
-        );
+        const threadCol = passIdx % 2 === 0 ? '#38bdf8' : '#818cf8';
+        this.addSlashLine(p0.x, p0.y - 66, p1.x, p1.y - 66, 0.68, false, threadCol);
+
+        // Plant 3 sacred pixel Torii Thunder-Pillars across passes 0, 2, 4
+        if (passIdx % 2 === 0) {
+          const pxTorii = clampX(center + (passIdx - 2) * 34);
+          this.toriiPillars.push({
+            x: pxTorii,
+            y: this.groundY,
+            age: 0,
+            maxLife: 0.72,
+            detonated: false
+          });
+          this.spawnVfxAnim(1, pxTorii, this.groundY - 78, 172, 172, 0.44, {
+            glowColor: 'cyan',
+            inFront: false
+          });
+        }
+
         if (game?.audio) game.audio.play('dash_whoosh', center);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 245) {
-          enemy.takeDamage(35, this, passIdx === 2, 22, -98);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 250) {
+          enemy.takeDamage(21, this, passIdx === 4, 16, -64);
         }
       }
       return;
     }
 
-    if (t >= 0.48 && t < 0.66) {
+    if (t >= 0.55 && t < 0.68) {
       this.y = this.groundY;
       this.divePitchRad = 0;
       if (enemy && !enemy.isDead) {
@@ -1508,13 +1732,17 @@ export class RoninEx extends Fighter {
       }
     }
 
-    if (t >= 0.66 && !this.didSecondaryAction) {
+    // Phase 2 (t >= 0.68s): Saya Sheath-Click -> Simultaneous 5-Hairline + Torii Thunder-Pillar Detonation!
+    if (t >= 0.68 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       this.y = this.groundY;
       this.divePitchRad = 0;
       this.spawnSayaGlint(true);
-      if (game?.audio) game.audio.play('slash', this.x);
-      game?.renderer?.triggerShake?.(11, 0.22);
+      if (game?.audio) {
+        game.audio.play('parry_clang', this.x);
+        game.audio.play('thunder_slam', center);
+      }
+      game?.renderer?.triggerShake?.(12, 0.22);
       game?.renderer?.triggerAberration?.(6);
       game?.renderer?.triggerHitStop?.(0.05);
       this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.05);
@@ -1523,60 +1751,44 @@ export class RoninEx extends Fighter {
         this.y - 156,
         0,
         true,
-        'ZANTETSUKEN: SHEATH!',
-        '#38bdf8'
+        'NARUKAMI: SAYA CLICK!',
+        '#fde047'
       );
 
       for (const line of this.activeSlashLines) {
         line.detonated = true;
-        const mx = (line.x1 + line.x2) * 0.5;
-        const my = (line.y1 + line.y2) * 0.5;
-        this.fx?.spawn('judgmentSlashBeam', line.x1, line.y1, {
-          flip: false,
-          light: 1.45,
-          maxDuration: 0.34,
-          extra: {
-            dx: line.x2 - line.x1,
-            dy: line.y2 - line.y1,
-            detonated: true,
-            customDuration: 0.34
-          }
-        });
-        this.fx?.burst(mx, my, {
-          count: 8,
-          speedMin: 55,
-          speedMax: 185,
-          lifeMin: 0.14,
-          lifeMax: 0.28,
-          gravity: 40,
-          colors: ['#ffffff', '#fef08a', '#67e8f9', '#a78bfa']
+        line.colorHex = '#fde047';
+      }
+      for (const tp of this.toriiPillars) {
+        tp.detonated = true;
+        this.spawnVfxAnim(2, tp.x, this.groundY - 96, 196, 196, 0.38, {
+          glowColor: 'cyan',
+          inFront: true
         });
       }
 
       const strikeX = enemy && !enemy.isDead ? enemy.x : center;
-      this.spawnVfxAnim(1, strikeX, this.groundY - 94, 220, 220, 0.46, {
-        startFrame: 18,
-        endFrame: 29,
-        glowColor: 'cyan'
+      this.spawnVfxAnim(1, strikeX, this.groundY - 90, 224, 224, 0.42, {
+        glowColor: 'cyan',
+        inFront: true
       });
-      this.spawnVfxAnim(2, strikeX, this.groundY - 96, 212, 212, 0.46, {
-        startFrame: 18,
-        endFrame: 29,
-        glowColor: 'purple'
-      });
-      this.spawnVfxAnim(4, strikeX, this.groundY - 86, 212, 212, 0.36, {
-        glowColor: 'cyan'
-      });
-      this.spawnPixelShockwave(strikeX, this.groundY - 6, 155, 'cyan', 0.34, true);
-      this.spawnPixelLightningBolt(strikeX, this.groundY - 270, this.groundY, 'cyan', 0.36);
+      this.spawnPixelShockwave(strikeX, this.groundY - 6, 148, 'gold', 0.32, true);
+      this.spawnPixelLightningBolt(strikeX, this.groundY - 250, this.groundY, 'gold', 0.34);
+      this.spawnSakuraBurst(strikeX, this.groundY - 88, 10, true);
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 350) {
-        enemy.takeDamage(74, this, true, 165, -210);
-        if (!enemy.isDead && !enemy.isColossalBoss) {
-          enemy._hitShakeTimer = Math.max(enemy._hitShakeTimer || 0, 0.072);
+      const foes = this._gatherBattoTargets(enemy, game, 320, 320);
+      let hitAny = false;
+      for (const foe of foes) {
+        foe.takeDamage(foe === enemy ? 74 : 56, this, true, 165 * dir, -205);
+        if (!foe.isDead && !foe.isColossalBoss) {
+          foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.072);
         }
+        hitAny = true;
       }
-      this.heal(18, 'ZANSHIN FOCUS');
+      if (!hitAny && enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 360) {
+        enemy.takeDamage(74, this, true, 165 * dir, -205);
+      }
+      this.heal(18, 'NARUKAMI FOCUS');
     }
 
     if (t >= this.skillDuration) {
@@ -1588,6 +1800,11 @@ export class RoninEx extends Fighter {
     }
   }
 
+  /**
+   * NEWLY BORN OVERDRIVE (`1.84s`): `TAKEMIKAZUCHI STORM-GOD CAGE`
+   * Manifests a crisp pixel-art Indigo-Gold Raijin War-Mask & 8-drum Thunder Ring overhead while
+   * Kaze-Maru flashes across 8 angles with `ronin_ex_vfx.png` crescent storm-pillars & falling electrified sakura petals!
+   */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     if (!this._omniStep) this._omniStep = 0;
@@ -1597,25 +1814,58 @@ export class RoninEx extends Fighter {
     const originX = this._ultOriginX !== undefined ? this._ultOriginX : this.x;
     const targetX = enemy && !enemy.isDead ? enemy.x : ww * 0.5;
     this._ultTargetX = targetX;
-    this.susanooAvatar = { x: targetX, y: this.groundY };
+    this.stormGodMask = {
+      x: targetX,
+      y: this.groundY - 194,
+      age: t,
+      collapsed: t >= 1.30
+    };
     const dir = targetX >= originX ? 1 : -1;
-    const landX = clampX(targetX - dir * 68);
+    const landX = clampX(targetX - dir * 72);
 
-    if (t < 0.30) {
+    // Falling electrified sakura petals inside the Storm-God Cage
+    this._ultPetalAccum = (this._ultPetalAccum || 0) + dt;
+    if (this._ultPetalAccum >= 0.045 && t < 1.55) {
+      this._ultPetalAccum = 0;
+      const px = targetX + (Math.random() - 0.5) * 290;
+      const py = this.groundY - 245 - Math.random() * 40;
+      this.spawnStormParticle(
+        Math.random() < 0.25 ? 'star4' : 'sakura',
+        px,
+        py,
+        (Math.random() - 0.5) * 42,
+        78 + Math.random() * 44,
+        0.72,
+        Math.random() < 0.5 ? '#f472b6' : '#38bdf8',
+        '#fde047',
+        3
+      );
+    }
+
+    if (t < 0.26) {
       if (this._omniStep === 0) {
         this._omniStep = 1;
         this._ultOriginX = this.x;
         this._ultOriginY = this.groundY;
         this.spawnSayaGlint(false);
-        this.fx?.spawn('susanooStormDomain', targetX, this.groundY - 4, {
+        this.fx?.spawn('susanooStormDomain', this._safeFxX(targetX, game), this._safeFxY(this.groundY - 4), {
           flip: false,
-          light: 1.34
+          light: 1.24
         });
-        this.spawnVfxAnim(3, targetX, this.groundY - 82, 236, 236, 1.32, {
-          glowColor: 'cyan'
+        this.spawnVfxAnim(3, targetX, this.groundY - 12, 248, 248, 1.38, {
+          glowColor: 'cyan',
+          inFront: false
         });
-        this.spawnPixelShockwave(this.x, this.groundY - 4, 145, 'purple', 0.34, true);
-        this.spawnPixelLightningBolt(this.x, this.groundY - 280, this.groundY, 'cyan', 0.36);
+        this.spawnPixelShockwave(this.x, this.groundY - 4, 140, 'purple', 0.30, true);
+        if (game?.audio) game.audio.play('ult_cast', targetX);
+        game?.vfx?.spawnDamageText?.(
+          targetX,
+          this.groundY - 216,
+          0,
+          true,
+          'TAKEMIKAZUCHI STORM-GOD CAGE!',
+          '#fde047'
+        );
       }
       this.x = this._ultOriginX;
       this.y = this.groundY;
@@ -1626,66 +1876,28 @@ export class RoninEx extends Fighter {
       return;
     }
 
-    const omniPasses = [
-      {
-        t0: 0.30,
-        t1: 0.48,
-        p0: { x: originX, y: this.groundY },
-        p1: { x: clampX(targetX + dir * 135), y: this.groundY - 128 }
-      },
-      {
-        t0: 0.48,
-        t1: 0.60,
-        p0: { x: clampX(targetX + dir * 135), y: this.groundY - 128 },
-        p1: { x: clampX(targetX - dir * 130), y: this.groundY - 16 }
-      },
-      {
-        t0: 0.60,
-        t1: 0.72,
-        p0: { x: clampX(targetX - dir * 130), y: this.groundY - 16 },
-        p1: { x: clampX(targetX + dir * 130), y: this.groundY - 142 }
-      },
-      {
-        t0: 0.72,
-        t1: 0.84,
-        p0: { x: clampX(targetX + dir * 130), y: this.groundY - 142 },
-        p1: { x: clampX(targetX - dir * 140), y: this.groundY - 124 }
-      },
-      {
-        t0: 0.84,
-        t1: 1.02,
-        p0: { x: clampX(targetX - dir * 140), y: this.groundY - 124 },
-        p1: { x: clampX(targetX + dir * 145), y: this.groundY - 188 }
-      },
-      {
-        t0: 1.02,
-        t1: 1.26,
-        p0: { x: clampX(targetX + dir * 145), y: this.groundY - 188 },
-        p1: { x: landX, y: this.groundY }
-      }
+    // 8-Angle Storm-God Cage Blitz (`0.26s .. 1.30s`)
+    const cageNodes = [
+      { x: originX, y: this.groundY },
+      { x: clampX(targetX + dir * 142), y: this.groundY - 134 },
+      { x: clampX(targetX - dir * 138), y: this.groundY - 18 },
+      { x: clampX(targetX + dir * 136), y: this.groundY - 162 },
+      { x: clampX(targetX - dir * 144), y: this.groundY - 118 },
+      { x: clampX(targetX + dir * 124), y: this.groundY - 24 },
+      { x: clampX(targetX - dir * 128), y: this.groundY - 172 },
+      { x: clampX(targetX + dir * 146), y: this.groundY - 188 },
+      { x: landX, y: this.groundY }
     ];
 
-    if (t >= 0.30 && t < 1.26) {
-      let passIdx = 0;
-      for (let i = omniPasses.length - 1; i >= 0; i--) {
-        if (t >= omniPasses[i].t0) {
-          passIdx = i;
-          break;
-        }
-      }
+    if (t >= 0.26 && t < 1.30) {
+      const segDur = (1.30 - 0.26) / 8;
+      const passIdx = Math.min(7, Math.floor((t - 0.26) / segDur));
+      const localU = Math.min(1, Math.max(0, (t - (0.26 + passIdx * segDur)) / segDur));
+      const p0 = cageNodes[passIdx];
+      const p1 = cageNodes[passIdx + 1];
 
-      const pass = omniPasses[passIdx];
-      const localU = Math.min(1, Math.max(0, (t - pass.t0) / (pass.t1 - pass.t0)));
-      const easeDive =
-        passIdx === 5
-          ? localU * localU * (3 - 2 * localU)
-          : localU < 0.5
-            ? 2 * localU * localU
-            : 1 - Math.pow(-2 * localU + 2, 2) / 2;
-
-      const { p0, p1 } = pass;
-      this.x = p0.x + (p1.x - p0.x) * easeDive;
-      this.y = p0.y + (p1.y - p0.y) * easeDive;
+      this.x = p0.x + (p1.x - p0.x) * localU;
+      this.y = p0.y + (p1.y - p0.y) * localU;
       this.vx = 0;
       this.vy = 0;
 
@@ -1695,52 +1907,46 @@ export class RoninEx extends Fighter {
       this.divePitchRad = Math.atan2(dy, Math.max(1, Math.abs(dx)));
 
       this.afterimageSpawnAccum += dt;
-      const spawnInterval = passIdx === 5 ? 0.018 : 0.022;
-      if (this.afterimageSpawnAccum >= spawnInterval) {
+      if (this.afterimageSpawnAccum >= 0.022) {
         this.afterimageSpawnAccum = 0;
-        const col = Math.min(20, Math.max(5, Math.floor((t / this.ultDuration) * 30)));
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.32, 0);
+        const col = Math.min(22, Math.max(5, Math.floor((t / this.ultDuration) * 30)));
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.28, 0);
       }
 
-      if (passIdx < 5) {
-        const stepTrigger = passIdx + 2;
-        if (this._omniStep < stepTrigger && localU >= 0.25) {
-          this._omniStep = stepTrigger;
-          this.addSlashLine(p0.x, p0.y - 62, p1.x, p1.y - 62, 0.58);
-          const hitY = (p0.y + p1.y) * 0.5 - 62;
-          this.spawnVfxAnim(0, targetX, hitY, 212, 212, 0.26, {
-            vx: this.facing * 260,
-            flipX: this.facing < 0,
-            glowColor: passIdx % 2 === 0 ? 'cyan' : 'purple'
-          });
-          this.spawnPixelShockwave(
-            targetX,
-            hitY,
-            124,
-            passIdx % 2 === 0 ? 'cyan' : 'purple',
-            0.26,
-            false
-          );
-          if (passIdx % 2 === 1) {
-            this.spawnPixelLightningBolt(
-              targetX + (passIdx - 2) * 26,
-              this.groundY - 260,
-              this.groundY,
-              'cyan',
-              0.28
-            );
-          }
-          if (game?.audio) game.audio.play('slash', targetX);
-          game?.renderer?.triggerShake?.(8, 0.12);
-          if (enemy && !enemy.isDead) {
-            enemy.takeDamage(36, this, true, 16, -95);
-          }
+      const stepTrigger = passIdx + 2;
+      if (this._omniStep < stepTrigger && localU >= 0.22) {
+        this._omniStep = stepTrigger;
+        this.addSlashLine(
+          p0.x,
+          p0.y - 62,
+          p1.x,
+          p1.y - 62,
+          0.62,
+          false,
+          passIdx % 2 === 0 ? '#38bdf8' : '#fde047'
+        );
+        const pillarX = clampX(targetX + ((passIdx % 3) - 1) * 44);
+        this.spawnVfxAnim(2, pillarX, this.groundY - 96, 198, 198, 0.34, {
+          flipX: passIdx % 2 === 1,
+          glowColor: passIdx % 2 === 0 ? 'cyan' : 'gold',
+          inFront: passIdx % 2 === 0
+        });
+        this.spawnVfxAnim(0, targetX, (p0.y + p1.y) * 0.5 - 64, 196, 196, 0.24, {
+          vx: this.facing * 240,
+          flipX: this.facing < 0,
+          glowColor: 'cyan'
+        });
+        if (game?.audio) game.audio.play('slash', targetX);
+        game?.renderer?.triggerShake?.(7, 0.10);
+        if (enemy && !enemy.isDead) {
+          enemy.takeDamage(23, this, true, 12, -72);
         }
       }
       return;
     }
 
-    if (t >= 1.26 && !this.didSecondaryAction) {
+    // Final 8-Drum Storm-Cage Convergence & Saya Click at t >= 1.30s
+    if (t >= 1.30 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       this.x = landX;
       this.y = this.groundY;
@@ -1748,57 +1954,57 @@ export class RoninEx extends Fighter {
       this.divePitchRad = 0;
       this.spawnSayaGlint(true);
 
-      const apexPt = omniPasses[5].p0;
-      this.addSlashLine(apexPt.x, apexPt.y - 62, landX, this.groundY - 42, 0.58, true);
-      this.addSlashLine(targetX, this.groundY - 275, targetX, this.groundY, 0.54, true);
+      for (const line of this.activeSlashLines) {
+        line.detonated = true;
+        line.colorHex = '#fde047';
+      }
+      this.addSlashLine(targetX, this.groundY - 265, targetX, this.groundY, 0.48, true, '#fde047');
 
-      this.spawnVfxAnim(1, targetX, this.groundY - 98, 248, 248, 0.52, {
-        startFrame: 18,
-        endFrame: 29,
-        glowColor: 'cyan'
+      this.spawnVfxAnim(2, targetX, this.groundY - 108, 248, 248, 0.48, {
+        glowColor: 'gold',
+        inFront: true
       });
-      this.spawnVfxAnim(2, targetX, this.groundY - 104, 240, 240, 0.56, {
-        startFrame: 18,
-        endFrame: 29,
-        glowColor: 'purple'
+      this.spawnVfxAnim(1, targetX, this.groundY - 92, 232, 232, 0.44, {
+        glowColor: 'cyan',
+        inFront: true
       });
-      this.spawnVfxAnim(3, targetX, this.groundY - 84, 244, 244, 0.48, {
-        glowColor: 'cyan'
-      });
-      this.spawnVfxAnim(4, targetX, this.groundY - 92, 232, 232, 0.42, {
-        glowColor: 'cyan'
+      this.spawnVfxAnim(3, targetX, this.groundY - 10, 256, 256, 0.44, {
+        glowColor: 'gold',
+        inFront: false
       });
 
-      this.spawnPixelShockwave(targetX, this.groundY - 6, 235, 'cyan', 0.44, true);
-      this.spawnPixelShockwave(targetX, this.groundY - 82, 175, 'gold', 0.38, false);
-      this.spawnPixelLightningBolt(targetX, this.groundY - 310, this.groundY, 'gold', 0.44);
-      this.spawnPixelLightningBolt(targetX - 56, this.groundY - 270, this.groundY, 'cyan', 0.38);
-      this.spawnPixelLightningBolt(targetX + 56, this.groundY - 270, this.groundY, 'purple', 0.38);
+      this.spawnPixelShockwave(targetX, this.groundY - 6, 180, 'gold', 0.40, true);
+      this.spawnPixelLightningBolt(targetX, this.groundY - 260, this.groundY, 'gold', 0.40);
+      this.spawnPixelLightningBolt(targetX - 58, this.groundY - 230, this.groundY, 'cyan', 0.34);
+      this.spawnPixelLightningBolt(targetX + 58, this.groundY - 230, this.groundY, 'purple', 0.34);
+      this.spawnSakuraBurst(targetX, this.groundY - 96, 14, true);
 
       if (game?.audio) game.audio.play('thunder_slam', targetX);
       game?.renderer?.triggerShake?.(15, 0.28);
       game?.renderer?.triggerAberration?.(9);
       game?.renderer?.triggerHitStop?.(0.06);
       this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.06);
-      game?.vfx?.spawnBurst?.(targetX, this.groundY - 68, 32, '#818cf8', 320, {
-        upBias: 175,
-        size: 7
-      });
       game?.vfx?.spawnDamageText?.(
         targetX,
         this.groundY - 176,
         0,
         true,
-        'SUSANOO THUNDERSTORM!',
+        'EIGHT-DRUM STORM JUDGEMENT!',
         '#38bdf8'
       );
 
-      this.heal(22, 'SUSANOO FOCUS');
-      if (enemy && !enemy.isDead) {
-        enemy.takeDamage(96, this, true, 220, -245);
-        if (!enemy.isDead && !enemy.isColossalBoss) {
-          enemy._hitShakeTimer = Math.max(enemy._hitShakeTimer || 0, 0.082);
+      this.heal(22, 'TAKEMIKAZUCHI FOCUS');
+      const foes = this._gatherBattoTargets(enemy, game, 340, 340);
+      let hitAny = false;
+      for (const foe of foes) {
+        foe.takeDamage(foe === enemy ? 96 : 72, this, true, 220 * dir, -245);
+        if (!foe.isDead && !foe.isColossalBoss) {
+          foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.082);
         }
+        hitAny = true;
+      }
+      if (!hitAny && enemy && !enemy.isDead) {
+        enemy.takeDamage(96, this, true, 220 * dir, -245);
       }
     }
 
@@ -1807,11 +2013,18 @@ export class RoninEx extends Fighter {
       this.y = this.groundY;
       this.divePitchRad = 0;
       this.isInvulnerable = false;
-      this.susanooAvatar = null;
+      this.stormGodMask = null;
       this.setState('IDLE');
     }
   }
 
+  /**
+   * NEWLY BORN SUPREME ULTIMATE (`3.70s`): `AMAKAKERU: REALM-SLICING SHOGUNATE`
+   * Consecrates a Crimson-Moon Torii Sanctuary, suspends raindrops & sakura petals in dead silence,
+   * carves a crisp full-screen horizon Iaido fault-line, and clicks his katana home at t = 1.95s
+   * to trigger `triggerShogunateStage` (`shogunate` / `shogunate_inferno` / `shogunate_glacial` 3-way synergy intact!)
+   * + cascading thunder-pillar Judgement!
+   */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game?.renderer?.worldWidth || 1200;
@@ -1845,9 +2058,7 @@ export class RoninEx extends Fighter {
       this._trueUltCutsDone = 0;
       this._trueUltAfterimageAcc = 0;
 
-      const rawEnemyX = focusEnemy
-        ? focusEnemy.x
-        : this.x + (this.facing || 1) * 280;
+      const rawEnemyX = focusEnemy ? focusEnemy.x : this.x + (this.facing || 1) * 280;
       const dashDir =
         Math.abs(rawEnemyX - this.x) > 4
           ? rawEnemyX >= this.x
@@ -1858,15 +2069,19 @@ export class RoninEx extends Fighter {
 
       const minTargetX = dashDir === 1 ? 195 : 235;
       const maxTargetX = dashDir === 1 ? ww - 235 : ww - 195;
-      const initTargetX = Math.max(minTargetX, Math.min(maxTargetX, rawEnemyX));
+      const initTargetX = this._clampArenaX(
+        Math.max(minTargetX, Math.min(maxTargetX, rawEnemyX)),
+        game,
+        120
+      );
       this._trueUltTargetX = initTargetX;
 
       let startX = this.x;
       if ((initTargetX - startX) * dashDir < 110) {
-        startX = Math.max(80, Math.min(ww - 80, initTargetX - dashDir * 145));
+        startX = this._clampArenaX(initTargetX - dashDir * 145, game, 80);
       }
       this._trueUltStartX = startX;
-      this._trueUltBackX = Math.max(80, Math.min(ww - 80, initTargetX + dashDir * 148));
+      this._trueUltBackX = this._clampArenaX(initTargetX + dashDir * 148, game, 80);
       this.x = startX;
       this.y = this.groundY;
       this.facing = dashDir;
@@ -1876,28 +2091,42 @@ export class RoninEx extends Fighter {
         game.audio.play('parry_clang', this.x);
       }
       if (game?.renderer) {
-        game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.54);
+        game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.56);
         game.renderer.triggerShake?.(7, 0.20);
       }
 
-      this.raijinEyeSeal = {
-        x: this.x - dashDir * 10,
-        y: this.groundY - 108,
+      this.crimsonMoonSanctuary = {
+        x: initTargetX,
+        y: this.groundY - 168,
         age: 0,
         alpha: 1.0,
-        floorLockAlpha: 0
+        released: false
       };
-      this.amakakeruCleaves = [];
+
+      // Populate suspended raindrops & sakura blossoms frozen in dead silence!
+      this.suspendedSanctuaryDrops = [];
+      for (let i = 0; i < 34; i++) {
+        const isPetal = i % 3 === 0;
+        this.suspendedSanctuaryDrops.push({
+          isPetal,
+          x: initTargetX + ((i * 53) % 560) - 280,
+          y: this.groundY - 36 - ((i * 41) % 310),
+          vx: isPetal ? dashDir * (42 + (i % 4) * 18) : -dashDir * 18,
+          vy: isPetal ? 85 + (i % 3) * 24 : 340 + (i % 5) * 35,
+          phase: i
+        });
+      }
+      this.horizonFaultLine = null;
 
       this.spawnSayaGlint(false);
       this.spawnPixelShockwave(this.x, this.groundY - 4, 150, 'cyan', 0.34, true);
-      this.fx.spawn('susanooStormDomain', this.x, this.groundY, {
+      this.fx.spawn('susanooStormDomain', this._safeFxX(this.x, game), this._safeFxY(this.groundY), {
         key: 'susanooStormDomain',
         follow: this,
         offsetX: 0,
         offsetY: 0,
         useGroundY: true,
-        light: 1.34
+        light: 1.24
       });
 
       game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#38bdf8');
@@ -1908,8 +2137,8 @@ export class RoninEx extends Fighter {
           this.groundY - 168,
           0,
           true,
-          'AMAKAKERU: SHOGUNATE REALM SLICE',
-          '#38bdf8'
+          'AMAKAKERU: REALM-SLICING SHOGUNATE',
+          '#fde047'
         );
       }
     }
@@ -1917,52 +2146,33 @@ export class RoninEx extends Fighter {
     const dashDir = this._trueUltDashDir || 1;
 
     if (game?.renderer && t < 2.65) {
-      const dimTarget = t <= 1.95 ? 0.54 : 0.54 * Math.max(0, 1 - (t - 1.95) / 0.70);
+      const dimTarget = t <= 1.95 ? 0.56 : 0.56 * Math.max(0, 1 - (t - 1.95) / 0.70);
       game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, dimTarget);
     }
 
     if (t < 0.90 && focusEnemy && !focusEnemy.isDead) {
-      const minTargetX = dashDir === 1 ? 195 : 235;
-      const maxTargetX = dashDir === 1 ? ww - 235 : ww - 195;
-      const desiredX = Math.max(minTargetX, Math.min(maxTargetX, focusEnemy.x));
+      const desiredX = this._clampArenaX(focusEnemy.x, game, 120);
       this._trueUltTargetX += (desiredX - this._trueUltTargetX) * Math.min(1, dt * 9.0);
-      if (!focusEnemy.isColossalBoss) {
-        if (focusEnemy.x > maxTargetX) focusEnemy.x -= Math.min(focusEnemy.x - maxTargetX, dt * 320);
-        if (focusEnemy.x < minTargetX) focusEnemy.x += Math.min(minTargetX - focusEnemy.x, dt * 320);
-      }
       if ((this._trueUltTargetX - this._trueUltStartX) * dashDir < 105) {
-        this._trueUltStartX = Math.max(
-          80,
-          Math.min(ww - 80, this._trueUltTargetX - dashDir * 140)
-        );
+        this._trueUltStartX = this._clampArenaX(this._trueUltTargetX - dashDir * 140, game, 80);
       }
-      this._trueUltBackX = Math.max(
-        80,
-        Math.min(ww - 80, this._trueUltTargetX + dashDir * 148)
-      );
+      this._trueUltBackX = this._clampArenaX(this._trueUltTargetX + dashDir * 148, game, 80);
     }
 
     const targetX = this._trueUltTargetX;
     const startX = this._trueUltStartX;
     const backSideX = this._trueUltBackX;
 
-    if (this.raijinEyeSeal) {
-      this.raijinEyeSeal.age += dt;
-      this.raijinEyeSeal.x = this.x - this.facing * 10;
-      this.raijinEyeSeal.y = this.y - 106;
-      this.raijinEyeSeal.alpha =
-        t < 2.25 ? Math.min(1, t / 0.20) : Math.max(0, 1 - (t - 2.25) / 0.55);
-      this.raijinEyeSeal.floorLockAlpha =
-        t >= 0.92 && t < 2.15
-          ? Math.min(1, (t - 0.92) / 0.14) * (t <= 1.95 ? 1 : Math.max(0, 1 - (t - 1.95) / 0.20))
-          : 0;
-    }
-
-    for (let i = this.amakakeruCleaves.length - 1; i >= 0; i--) {
-      const c = this.amakakeruCleaves[i];
-      c.age += dt;
-      if (c.age >= c.maxLife) {
-        this.amakakeruCleaves.splice(i, 1);
+    if (this.crimsonMoonSanctuary) {
+      this.crimsonMoonSanctuary.age += dt;
+      this.crimsonMoonSanctuary.x = targetX;
+      this.crimsonMoonSanctuary.alpha =
+        t < 2.45 ? Math.min(1, t / 0.22) : Math.max(0, 1 - (t - 2.45) / 0.65);
+      if (this.crimsonMoonSanctuary.released) {
+        for (const d of this.suspendedSanctuaryDrops) {
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+        }
       }
     }
 
@@ -1975,7 +2185,7 @@ export class RoninEx extends Fighter {
       focusEnemy.vy = Math.min(0, focusEnemy.vy || 0);
     }
 
-    // BEAT 1 (`0.00s .. 0.92s`): Grounded Iaido Battojutsu Charge & Pose
+    // BEAT 1 (`0.00s .. 0.92s`): Crimson-Moon Torii Consecration & Dead-Silence Iaido Coil
     if (t < 0.92) {
       this.x = startX;
       this.y = this.groundY;
@@ -1995,7 +2205,7 @@ export class RoninEx extends Fighter {
       return;
     }
 
-    // BEAT 2 (`0.92s .. 1.34s`): Single Supersonic Iaido Flash-Dash Through Enemy onto Back Side
+    // BEAT 2 (`0.92s .. 1.34s`): Blinding Horizon Iaido Severance Dash
     if (t < 1.34) {
       if (this._trueUltStep < 2) {
         this._trueUltStep = 2;
@@ -2048,15 +2258,19 @@ export class RoninEx extends Fighter {
           focusEnemy.x = targetX;
         }
 
-        this.addSlashLine(
-          targetX - dashDir * 245,
-          this.groundY - 66,
-          targetX + dashDir * 245,
-          this.groundY - 122,
-          1.05,
-          false
-        );
-        this.spawnPixelLightningBolt(targetX, this.groundY - 260, this.groundY, 'cyan', 0.26);
+        // Full-screen crisp 2-pass horizon Iaido fault-line!
+        this.horizonFaultLine = {
+          cx: targetX,
+          cy: this.groundY - 94,
+          dir: dashDir,
+          age: 0,
+          maxLife: 1.55,
+          detonated: false
+        };
+        this.spawnVfxAnim(7, targetX, this.groundY - 94, 248, 248, 0.65, {
+          glowColor: 'cyan',
+          inFront: true
+        });
         this.spawnPixelShockwave(targetX, this.groundY - 88, 145, 'cyan', 0.26, false);
 
         if (game?.audio) game.audio.play('raijin_slash', targetX);
@@ -2070,7 +2284,7 @@ export class RoninEx extends Fighter {
             this.groundY - 158,
             0,
             true,
-            'IAIDO FLASH-CUT!',
+            'HORIZON IAIDO FAULT!',
             '#67e8f9'
           );
         }
@@ -2091,7 +2305,7 @@ export class RoninEx extends Fighter {
       return;
     }
 
-    // BEAT 3 (`1.34s .. 3.70s`): Zanshin Back-Side Pause -> Noto Resheath -> t = 1.95s Tsuba Click -> 3-Way Shogunate Realm Slice!
+    // BEAT 3 (`1.34s .. 3.70s`): Noto Resheath -> t = 1.95s Tsuba Click -> 3-Way Shogunate Realm Slice!
     if (this._trueUltStep < 3) {
       this._trueUltStep = 3;
       this.fx?.stopByKey('shunpoSpearMachCone');
@@ -2122,6 +2336,12 @@ export class RoninEx extends Fighter {
       this.y = this.groundY;
       this.facing = dashDir;
       this.spawnSayaGlint(true);
+      if (this.crimsonMoonSanctuary) {
+        this.crimsonMoonSanctuary.released = true;
+      }
+      if (this.horizonFaultLine) {
+        this.horizonFaultLine.detonated = true;
+      }
 
       // 3-Way Bidirectional Stage Domain Synergy (`shogunate` / `shogunate_inferno` / `shogunate_glacial`)!
       const activeStageNow = game?.renderer?.getActiveStageId?.() || game?.renderer?.stageId || 'cathedral';
@@ -2171,9 +2391,6 @@ export class RoninEx extends Fighter {
         game.renderer.triggerHitStop?.(0.085);
       }
 
-      for (const line of this.activeSlashLines) {
-        line.detonated = true;
-      }
       this.triggerTrueUltLightningSurge(
         targetX,
         this.groundY,
@@ -2183,18 +2400,19 @@ export class RoninEx extends Fighter {
         stageAlreadyGlacial
       );
 
-      const boltColor = stageAlreadyBurning ? 'gold' : 'cyan';
-      this.spawnPixelShockwave(targetX, this.groundY - 6, 320, boltColor, 0.46, true);
-      for (const offX of [-270, -90, 90, 270]) {
-        const bx = Math.max(50, Math.min(ww - 50, targetX + offX));
-        this.spawnPixelLightningBolt(
-          bx,
-          this.groundY - 480,
-          this.groundY,
-          offX % 180 === 0 ? boltColor : 'purple',
-          0.46
-        );
+      // Cascading Storm-Pillar Judgement across the sanctuary!
+      for (const offX of [-180, -85, 0, 85, 180]) {
+        const px = this._clampArenaX(targetX + offX, game, 64);
+        this.spawnVfxAnim(2, px, this.groundY - 106, 224, 224, 0.52, {
+          glowColor: offX === 0 ? 'gold' : 'cyan',
+          inFront: offX === 0
+        });
       }
+      this.spawnVfxAnim(7, targetX, this.groundY - 96, 280, 280, 0.56, {
+        glowColor: 'gold',
+        inFront: true
+      });
+      this.spawnSakuraBurst(targetX, this.groundY - 96, 18, true);
 
       if (game?.vfx) {
         const waveCol = stageAlreadyBurning ? '#fb923c' : stageAlreadyGlacial ? '#a5f3fc' : '#38bdf8';
@@ -2203,8 +2421,7 @@ export class RoninEx extends Fighter {
           : stageAlreadyGlacial
             ? 'FROZEN SHOGUNATE REALM SLICE!'
             : 'SHOGUNATE REALM SLICE!';
-        game.vfx.spawnShockwave(targetX, this.groundY - 6, 320, waveCol, 0.48, true);
-        game.vfx.spawnBurst(targetX, this.groundY - 76, 36, waveCol, 365, { upBias: 205, size: 5 });
+        game.vfx.spawnShockwave(targetX, this.groundY - 6, 280, waveCol, 0.48, true);
         game.vfx.spawnDamageText(targetX, this.groundY - 198, 0, true, callout, waveCol);
       }
 
@@ -2246,7 +2463,9 @@ export class RoninEx extends Fighter {
       this.unstoppablePoise = false;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
-      this.raijinEyeSeal = null;
+      this.crimsonMoonSanctuary = null;
+      this.suspendedSanctuaryDrops = [];
+      this.horizonFaultLine = null;
       this.trueUltLightningSurge = null;
       if (focusEnemy && !focusEnemy.isDead && Math.abs(focusEnemy.x - this.x) > 8) {
         this.facing = focusEnemy.x >= this.x ? 1 : -1;
@@ -2275,6 +2494,9 @@ export class RoninEx extends Fighter {
     };
   }
 
+  /**
+   * Pixel-pure VFX cell draw using subtle 4x4 Bayer floor/rim stippling (zero radial gradient glow blobs!).
+   */
   drawBloomedVfxCell(
     ctx,
     vfxSheet,
@@ -2286,41 +2508,33 @@ export class RoninEx extends Fighter {
     h = 208,
     alpha = 1.0,
     flipX = false,
-    renderer = null,
+    _renderer = null,
     glowColor = 'cyan'
   ) {
-    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth || alpha <= 0.02) return;
     const cell = 208;
     const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
     const sy = Math.max(0, Math.min(7, Math.floor(row))) * cell;
+
+    if (row !== 0) {
+      const outerHex =
+        glowColor === 'gold' ? '#b45309' : glowColor === 'purple' ? '#4f46e5' : '#0284c7';
+      const coreHex =
+        glowColor === 'gold' ? '#fde047' : glowColor === 'purple' ? '#818cf8' : '#38bdf8';
+      drawStormBayerHalo(ctx, x, y, w * 0.36, h * 0.24, outerHex, coreHex, Math.min(0.14, alpha * 0.14));
+    }
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(x), Math.round(y));
     if (flipX) ctx.scale(-1, 1);
 
-    if (row !== 0) {
-      const glowSprite =
-        glowColor === 'gold'
-          ? renderer?.glowGold || renderer?.glowCyan
-          : glowColor === 'purple'
-            ? renderer?.glowViolet || renderer?.glowPurple || renderer?.glowCyan
-            : renderer?.glowCyan;
-      if (glowSprite) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.16, alpha * 0.16);
-        const gw = Math.round(w * 1.04);
-        const gh = Math.round(h * 1.04);
-        ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
-      }
-    }
-
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = Math.min(1, alpha);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(0.24, alpha * (row === 0 ? 0.18 : 0.24));
+    ctx.globalAlpha = Math.min(0.14, alpha * 0.13);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'source-over';
@@ -2328,90 +2542,102 @@ export class RoninEx extends Fighter {
     ctx.restore();
   }
 
-  drawCleanBladeCutsWorld(ctx) {
-    if (!this.cleanBladeCuts || this.cleanBladeCuts.length === 0) return;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.lineCap = 'butt';
-    ctx.lineJoin = 'miter';
-
-    for (const c of this.cleanBladeCuts) {
-      const u = Math.min(1, Math.max(0, c.age / Math.max(0.01, c.maxLife)));
+  drawStormParticlesAndThreads(ctx) {
+    // 1. 2-pass ultra-crisp 1px-2px suspended electric hairlines (0 chevron stripes!)
+    for (let i = 0; i < this.activeSlashLines.length; i++) {
+      const line = this.activeSlashLines[i];
+      const u = Math.min(1, line.age / Math.max(0.05, line.maxLife));
       const fade = 1 - u;
-      if (fade <= 0.02) continue;
+      if (fade <= 0.03) continue;
+      drawTwoPassStormHairline(
+        ctx,
+        line.x1,
+        line.y1,
+        line.x2,
+        line.y2,
+        line.detonated ? '#fde047' : line.colorHex || '#38bdf8',
+        '#ffffff',
+        fade,
+        line.detonated ? 2 : 1
+      );
+    }
 
-      if (c.type === 'blade') {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.56;
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(Math.round(c.x0), Math.round(c.y0));
-        ctx.lineTo(Math.round(c.x1), Math.round(c.y1));
-        ctx.stroke();
-
-        ctx.globalAlpha = fade * 0.94;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(Math.round(c.x0), Math.round(c.y0));
-        ctx.lineTo(Math.round(c.x1), Math.round(c.y1));
-        ctx.stroke();
-      } else if (c.type === 'wound') {
-        const span = (c.isCrit ? 34 : 26) * (0.65 + 0.35 * Math.min(1, u * 3.2));
-        const dx = c.dir * span;
-        const dy = span * (c.slope || -0.14);
-        const x0 = Math.round(c.x - dx);
-        const y0 = Math.round(c.y - dy);
-        const x1 = Math.round(c.x + dx);
-        const y1 = Math.round(c.y + dy);
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.94;
-        ctx.strokeStyle = c.isCrit ? '#4f46e5' : '#9f1239';
-        ctx.lineWidth = c.isCrit ? 5 : 4;
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
-
-        ctx.strokeStyle = c.isCrit ? '#38bdf8' : '#fb7185';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(Math.round(c.x - dx * 0.72), Math.round(c.y - dy * 0.72));
-        ctx.lineTo(Math.round(c.x + dx * 0.72), Math.round(c.y + dy * 0.72));
-        ctx.stroke();
-
-        for (let k = 0; k < 6; k++) {
-          const spd = 72 + ((c.seed + k * 23) % 88);
-          const spreadY = ((k % 3) - 1) * 24 + (c.slope || 0) * 65;
-          const sx = Math.round((c.x + c.dir * (10 + u * spd) + (k - 2.5) * 4) / 2) * 2;
-          const sy = Math.round((c.y + u * spreadY + u * u * 38) / 2) * 2;
-          ctx.fillStyle = k % 3 === 0 ? '#ffffff' : k % 2 === 0 ? '#fde047' : '#38bdf8';
-          const sz = k === 0 ? 4 : 3;
-          ctx.fillRect(sx, sy, sz, sz - (k % 2));
-        }
+    // 2. Full-screen Amakakeru Horizon Iaido Fault-Line
+    if (this.horizonFaultLine) {
+      const hf = this.horizonFaultLine;
+      const u = Math.min(1, hf.age / hf.maxLife);
+      const fade = u < 0.72 ? 1 : (1 - u) / 0.28;
+      if (fade > 0.03) {
+        drawTwoPassStormHairline(
+          ctx,
+          hf.cx - 640,
+          hf.cy + hf.dir * 24,
+          hf.cx + 640,
+          hf.cy - hf.dir * 24,
+          hf.detonated ? '#fde047' : '#38bdf8',
+          '#ffffff',
+          fade,
+          hf.detonated ? 2 : 1
+        );
       }
     }
 
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    ctx.restore();
+    // 3. Clean 2-pass blade hairlines & 4-frame anime hit-starbursts
+    for (let i = 0; i < this.cleanBladeCuts.length; i++) {
+      const c = this.cleanBladeCuts[i];
+      const u = Math.min(1, Math.max(0, c.age / Math.max(0.01, c.maxLife)));
+      if (c.type === 'blade') {
+        drawTwoPassStormHairline(ctx, c.x0, c.y0, c.x1, c.y1, '#38bdf8', '#ffffff', 1 - u, 1);
+      } else {
+        drawStormHitStarburst(
+          ctx,
+          c.x,
+          c.y,
+          u,
+          c.isCrit ? '#38bdf8' : '#818cf8',
+          c.isCrit ? '#fde047' : '#fbcfe8'
+        );
+      }
+    }
+
+    // 4. Multi-shape pixel particles (electrified sakura petals & 4-point star-glints, 0 canvas rotation!)
+    if (this.exParticles.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (let i = 0; i < this.exParticles.length; i++) {
+        const p = this.exParticles[i];
+        const fade = Math.max(0, 1 - p.age / p.maxLife);
+        if (fade <= 0.04) continue;
+        const px = Math.round(p.x / 2) * 2;
+        const py = Math.round(p.y / 2) * 2;
+        ctx.globalAlpha = Math.min(0.95, fade);
+        if (p.kind === 'star4') {
+          const arm = p.size * 2;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(px - arm, py, arm * 2 + 2, 2);
+          ctx.fillRect(px, py - arm, 2, arm * 2 + 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(px, py, 2, 2);
+        } else {
+          // Stepped 2-tone sakura petal silhouette cycling flutter phases via integer pixel rects!
+          const flutter = (Math.floor(p.age * 14) + p.phase) % 2;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(px, py, 4, 2);
+          ctx.fillRect(px + (flutter === 0 ? 2 : -2), py + 2, 4, 2);
+          ctx.fillStyle = p.accent;
+          ctx.fillRect(px, py, 2, 2);
+        }
+      }
+      ctx.restore();
+    }
   }
 
-  drawLightningSurgeWorld(ctx, renderer = null) {
+  drawLightningSurgeWorld(ctx) {
     const surge = this.trueUltLightningSurge;
     if (!surge) return;
     const u = Math.min(1, Math.max(0, surge.age / Math.max(0.05, surge.maxLife)));
     const fade = u < 0.14 ? 1.0 : Math.pow(1 - (u - 0.14) / 0.86, 1.25);
-    if (fade <= 0.015) return;
+    if (fade <= 0.02) return;
 
     const fx = surge.focusX;
     const gy = surge.groundY;
@@ -2419,181 +2645,90 @@ export class RoninEx extends Fighter {
     const isGlac = surge.isGlacial;
     const outerCol = isInf ? '#ea580c' : isGlac ? '#0284c7' : '#4f46e5';
     const midCol = isInf ? '#fb923c' : isGlac ? '#a5f3fc' : '#38bdf8';
-    const hiCol = isInf ? '#fef08a' : '#e0f2fe';
-    const glowTex = isInf ? renderer?.glowOrange || renderer?.glowGold : renderer?.glowCyan;
+    const hiCol = isInf ? '#fef08a' : '#fde047';
     const tick = Math.floor(surge.age * 24);
-
-    const hashSigned = (n) => {
-      const s = Math.sin(n * 127.1 + tick * 311.7) * 43758.5453;
-      return (s - Math.floor(s)) * 2 - 1;
-    };
-
-    const strokeJaggedBolt = (x0, y0, x1, y1, segs, jitterAmp, wOuter, wMid, wCore, seedBase, alphaScale = 1) => {
-      const pts = [[Math.round(x0), Math.round(y0)]];
-      const dx = x1 - x0;
-      const dy = y1 - y0;
-      const len = Math.hypot(dx, dy) || 1;
-      const nx = -dy / len;
-      const ny = dx / len;
-      for (let s = 1; s < segs; s++) {
-        const f = s / segs;
-        const env = Math.sin(f * Math.PI);
-        const off = hashSigned(seedBase + s * 13.7) * jitterAmp * (0.45 + 0.55 * env);
-        pts.push([
-          Math.round((x0 + dx * f + nx * off) / 2) * 2,
-          Math.round((y0 + dy * f + ny * off) / 2) * 2
-        ]);
-      }
-      pts.push([Math.round(x1), Math.round(y1)]);
-
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.75, fade * 0.58 * alphaScale);
-      ctx.strokeStyle = outerCol;
-      ctx.lineWidth = wOuter;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
-      ctx.stroke();
-
-      ctx.globalAlpha = Math.min(0.92, fade * 0.84 * alphaScale);
-      ctx.strokeStyle = midCol;
-      ctx.lineWidth = wMid;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
-      ctx.stroke();
-
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, fade * 0.96 * alphaScale);
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = wCore;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
-      ctx.stroke();
-
-      return pts;
-    };
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.lineCap = 'butt';
-    ctx.lineJoin = 'miter';
 
-    if (u < 0.24) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = (1 - u / 0.24) * 0.14;
-      ctx.fillStyle = midCol;
-      ctx.fillRect(fx - 900, gy - 680, 1800, 860);
-    }
-
-    const skyOffsets = [-540, -405, -270, -135, 0, 135, 270, 405, 540];
+    const skyOffsets = [-420, -280, -140, 0, 140, 280, 420];
     for (let b = 0; b < skyOffsets.length; b++) {
       const stagger = (b % 3) * 0.05;
       if (u < stagger) continue;
-      const isCenter = skyOffsets[b] === 0;
-      const bxTop = fx + skyOffsets[b] + hashSigned(b * 19 + 3) * 34;
-      const bxBot = fx + skyOffsets[b] + hashSigned(b * 31 + 7) * 26;
-      const byTop = gy - 580;
-      const byBot = gy + ((b % 3) - 1) * 10;
-      const spine = strokeJaggedBolt(
+      const bxTop = fx + skyOffsets[b] + ((b % 2 === 0 ? 1 : -1) * 18);
+      const bxBot = fx + skyOffsets[b];
+      drawSteppedPixelBolt(
+        ctx,
         bxTop,
-        byTop,
+        gy - 520,
         bxBot,
-        byBot,
-        12,
-        isCenter ? 38 : 30,
-        isCenter ? 9 : 6,
-        isCenter ? 4.5 : 3,
-        isCenter ? 2.2 : 1.5,
-        100 + b * 41,
-        isCenter ? 1.0 : 0.88
+        gy - 2,
+        10,
+        b === 3 ? 28 : 20,
+        outerCol,
+        midCol,
+        100 + b * 41 + tick,
+        fade
       );
-
-      const forkA = spine[4] || [bxTop, gy - 360];
-      const forkB = spine[8] || [bxBot, gy - 180];
-      const sideA = b % 2 === 0 ? -1 : 1;
-      strokeJaggedBolt(
-        forkA[0],
-        forkA[1],
-        forkA[0] + sideA * (64 + (b % 3) * 22),
-        forkA[1] + 96,
-        5,
-        14,
-        3.5,
-        2.0,
-        1.0,
-        500 + b * 29,
-        0.78
-      );
-      strokeJaggedBolt(
-        forkB[0],
-        forkB[1],
-        forkB[0] - sideA * (54 + (b % 2) * 24),
-        forkB[1] + 84,
-        4,
-        12,
-        3.0,
-        1.8,
-        1.0,
-        700 + b * 37,
-        0.74
-      );
-
-      if (glowTex && b % 2 === 0) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.20, fade * 0.18);
-        ctx.drawImage(glowTex, bxBot - 36, byBot - 22, 72, 44);
-      }
-      ctx.globalCompositeOperation = 'source-over';
+      drawStormBayerHalo(ctx, bxBot, gy - 4, 36, 12, midCol, hiCol, fade * 0.16);
       ctx.globalAlpha = fade * 0.92;
-      ctx.fillStyle = hiCol;
-      ctx.fillRect(Math.round(bxBot) - 14, Math.round(byBot) - 2, 28, 4);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(Math.round(bxBot) - 6, Math.round(byBot) - 6, 12, 12);
+      ctx.fillRect(Math.round(bxBot) - 4, Math.round(gy) - 6, 8, 6);
     }
 
-    const webHeights = [-410, -305, -210, -125, -68, -26];
-    for (let w = 0; w < webHeights.length; w++) {
-      const reach = (260 + u * 440) * (0.85 + (w % 2) * 0.18);
-      const wy0 = gy + webHeights[w] + hashSigned(900 + w * 17) * 24;
-      const wy1 = gy + webHeights[w] - surge.dir * (w % 2 === 0 ? 46 : -38);
-      strokeJaggedBolt(fx - reach, wy0, fx + reach, wy1, 14, 26, 5.5, 2.6, 1.3, 1100 + w * 53, 0.84);
-    }
+    ctx.restore();
+  }
 
-    for (let g = 0; g < 14; g++) {
-      const gDir = g % 2 === 0 ? 1 : -1;
-      const lane = Math.floor(g / 2);
-      const startX = fx + gDir * (14 + lane * 26);
-      const endX = startX + gDir * (130 + lane * 68) * (0.45 + 0.55 * Math.min(1, u * 2.2));
-      const gy0 = gy - 8 + ((g * 7) % 30);
-      const gy1 = gy - 6 + (((g + 3) * 11) % 32);
-      strokeJaggedBolt(startX, gy0, endX, gy1, 6, 11, 4.0, 2.0, 1.0, 1600 + g * 23, 0.80);
-    }
+  drawCrimsonMoonAndToriiSanctuary(ctx, vfxSheet) {
+    const sanct = this.crimsonMoonSanctuary;
+    if (!sanct || sanct.alpha <= 0.02) return;
+    const cx = Math.round(sanct.x / 2) * 2;
+    const gy = Math.round(this.groundY);
 
-    for (let e = 0; e < 8; e++) {
-      const ang = (e / 8) * Math.PI * 2 + tick * 0.35;
-      const rIn = 10 + (e % 2) * 8;
-      const rOut = 74 + (e % 3) * 28;
-      const cy = gy - 88;
-      strokeJaggedBolt(
-        fx + Math.cos(ang) * rIn,
-        cy + Math.sin(ang) * rIn * 0.85,
-        fx + Math.cos(ang + 0.45) * rOut,
-        cy + Math.sin(ang + 0.45) * rOut * 0.85,
-        5,
-        15,
-        5.0,
-        2.5,
-        1.3,
-        2100 + e * 31,
-        0.92
+    drawStormBayerHalo(ctx, cx, gy - 6, 220, 34, '#9f1239', '#fde047', sanct.alpha * 0.16);
+
+    if (vfxSheet?.complete && vfxSheet.naturalWidth) {
+      const col = Math.floor(sanct.age * 24) % 30;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        6,
+        col,
+        cx,
+        sanct.y,
+        312,
+        312,
+        sanct.alpha * 0.92,
+        false,
+        null,
+        'gold'
       );
     }
 
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    ctx.restore();
+    // Suspended raindrops & sakura petals frozen in dead silence before the Tsuba click!
+    if (this.suspendedSanctuaryDrops.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = Math.min(0.92, sanct.alpha);
+      for (let i = 0; i < this.suspendedSanctuaryDrops.length; i++) {
+        const d = this.suspendedSanctuaryDrops[i];
+        if (d.y > gy + 8) continue;
+        const dx = Math.round(d.x / 2) * 2;
+        const dy = Math.round(d.y / 2) * 2;
+        if (d.isPetal) {
+          ctx.fillStyle = '#f472b6';
+          ctx.fillRect(dx, dy, 4, 2);
+          ctx.fillStyle = '#fbcfe8';
+          ctx.fillRect(dx + 2, dy + 2, 2, 2);
+        } else {
+          ctx.fillStyle = '#67e8f9';
+          ctx.fillRect(dx, dy, 2, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(dx, dy + 6, 2, 2);
+        }
+      }
+      ctx.restore();
+    }
   }
 
   drawForegroundOverlay(ctx, renderer = null) {
@@ -2606,53 +2741,75 @@ export class RoninEx extends Fighter {
     const sheet = PixelForge.ensureImage?.(sprites?.sheet) || sprites?.sheet;
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
 
-    if (this.raijinEyeSeal && vfxSheet?.complete && vfxSheet.naturalWidth) {
-      const seal = this.raijinEyeSeal;
-      const col = Math.floor(seal.age * 30) % 30;
-      if (seal.floorLockAlpha > 0.02) {
-        const cell = 208;
-        const sx = ((col + 10) % 30) * cell;
-        const sy = 5 * cell;
-        const fw = 328;
-        const fh = 328;
-        ctx.save();
-        ctx.imageSmoothingEnabled = false;
-        ctx.translate(Math.round(this._trueUltTargetX), Math.round(this.groundY - 4));
-        ctx.scale(1, 0.32);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = seal.floorLockAlpha * 0.88;
-        ctx.drawImage(vfxSheet, sx, sy, cell, cell, -fw * 0.5, -fh * 0.5, fw, fh);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = seal.floorLockAlpha * 0.55;
-        ctx.drawImage(vfxSheet, sx, sy, cell, cell, -fw * 0.5, -fh * 0.5, fw, fh);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
-        ctx.restore();
+    // Subtle pixel floor halo under Kaze-Maru EX
+    if (!this.isDead) {
+      drawStormBayerHalo(ctx, this.x, this.groundY - 2, 54, 14, '#4f46e5', '#38bdf8', 0.14);
+    }
+
+    // Crimson-Moon Torii Sanctuary (`TRUE_ULTIMATE`)
+    if (this.crimsonMoonSanctuary) {
+      this.drawCrimsonMoonAndToriiSanctuary(ctx, vfxSheet);
+    }
+
+    // Takemikazuchi Raijin War-Mask & 8-Drum Thunder Ring (`ULTIMATE`)
+    if (this.stormGodMask && vfxSheet?.complete && vfxSheet.naturalWidth) {
+      const m = this.stormGodMask;
+      const col = Math.floor(m.age * 30) % 30;
+      const fade = m.collapsed ? Math.max(0, 1 - (m.age - 1.30) / 0.50) : Math.min(1, m.age / 0.18);
+      if (fade > 0.03) {
+        this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, m.x, m.y, 264, 264, fade * 0.94, false, null, 'gold');
       }
-      if (seal.alpha > 0.02) {
-        const deploy = Math.min(1, seal.age / 0.20);
-        const sz = Math.round(258 * (0.6 + 0.4 * deploy));
-        this.drawBloomedVfxCell(
-          ctx,
-          vfxSheet,
-          5,
-          col,
-          seal.x,
-          seal.y,
-          sz,
-          sz,
-          seal.alpha * 0.94,
-          false,
-          renderer,
-          'cyan'
-        );
+    }
+
+    // 5-Drum Raijin Taiko Pentagon Halo ignited during `NARUKAMI THUNDER-GATE FLASH`
+    if (this._taikoHaloTimer > 0 && !this.isDead) {
+      const fade = Math.min(1, this._taikoHaloTimer / 0.20);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = fade * 0.94;
+      for (let d = 0; d < 5; d++) {
+        const ang = -Math.PI * 0.5 + (d * Math.PI * 2) / 5 + (0.94 - this._taikoHaloTimer) * 2.4;
+        const dx = Math.round((this.x + Math.cos(ang) * 44) / 2) * 2;
+        const dy = Math.round((this.y - 102 + Math.sin(ang) * 36) / 2) * 2;
+        ctx.fillStyle = '#09081a';
+        ctx.fillRect(dx - 6, dy - 6, 12, 12);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(dx - 4, dy - 4, 8, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(dx - 2, dy - 2, 4, 4);
       }
+      ctx.restore();
+    }
+
+    // Pixel Torii Thunder-Pillars (`SKILL`)
+    if (this.toriiPillars.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const tp of this.toriiPillars) {
+        const fade = Math.max(0, 1 - tp.age / tp.maxLife);
+        const tx = Math.round(tp.x / 2) * 2;
+        const by = Math.round(tp.y);
+        ctx.globalAlpha = fade * 0.92;
+        ctx.fillStyle = '#09081a';
+        ctx.fillRect(tx - 24, by - 68, 48, 6);
+        ctx.fillRect(tx - 16, by - 62, 6, 62);
+        ctx.fillRect(tx + 10, by - 62, 6, 62);
+        ctx.fillStyle = tp.detonated ? '#fde047' : '#e11d48';
+        ctx.fillRect(tx - 22, by - 66, 44, 4);
+        ctx.fillRect(tx - 18, by - 54, 36, 3);
+        ctx.fillRect(tx - 14, by - 62, 4, 60);
+        ctx.fillRect(tx + 10, by - 62, 4, 60);
+        if (tp.detonated) {
+          drawSteppedPixelBolt(ctx, tx, by - 180, tx, by, 6, 14, '#4f46e5', '#fde047', tx + Math.floor(tp.age * 30), fade);
+        }
+      }
+      ctx.restore();
     }
 
     if (this.afterimages.length > 0 && sheet?.complete && sheet.naturalWidth) {
       for (let i = 0; i < this.afterimages.length; i++) {
         const img = this.afterimages[i];
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.58);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.56);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 2) * 2, Math.round((img.y + 4) / 2) * 2);
@@ -2696,8 +2853,8 @@ export class RoninEx extends Fighter {
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
 
-    this.drawCleanBladeCutsWorld(ctx);
-    this.drawLightningSurgeWorld(ctx, renderer);
+    this.drawStormParticlesAndThreads(ctx);
+    this.drawLightningSurgeWorld(ctx);
 
     if (this.activeVfxAnims.length > 0 && vfxSheet?.complete && vfxSheet.naturalWidth) {
       for (let i = 0; i < this.activeVfxAnims.length; i++) {
@@ -2750,7 +2907,7 @@ export class RoninEx extends Fighter {
     if (this.hitFlash > 0 && !isReflection) {
       const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 0.45;
       PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 
