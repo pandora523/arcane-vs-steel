@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps135';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
-import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps135';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps135';
+import { Fighter } from './Fighter.js?v=30fps136';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps136';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps136';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Coil + Forward lunge + finger-tap -> Twin Star-Packet Bolts
@@ -13,6 +13,22 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.38, 0.36, 0.42, 0.50];
 const INTRA_COMBO_LINK = 0.015;
+
+const KERNEL_OVERCLOCK_PALETTE = Object.freeze({
+  core: [255, 255, 255],
+  bright: [253, 164, 175],
+  mid: [244, 63, 94],
+  deep: [136, 19, 55],
+  glow: [34, 211, 238]
+});
+
+const FIREWALL_EMERALD_PALETTE = Object.freeze({
+  core: [255, 255, 255],
+  bright: [167, 243, 208],
+  mid: [34, 211, 238],
+  deep: [15, 118, 110],
+  glow: [52, 211, 153]
+});
 
 /**
  * Nyx EX (`nyx_ex`) — Next-Gen Cosmic Nebula AI Assistant Created by Cob.
@@ -159,6 +175,19 @@ export class NyxEx extends Fighter {
     return false;
   }
 
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.maxHp = 3520;
+      this.hp = this.maxHp;
+      this._postFlurryInterval = 1.38;
+    } else if (aspect === 2) {
+      this.maxHp = 3510;
+      this.hp = this.maxHp;
+      this.dodgeMaxCooldown = 3.00;
+      this._postFlurryInterval = 1.48;
+    }
+  }
+
   getAiStyleProfile() {
     return {
       comboGoal: 4,
@@ -183,9 +212,9 @@ export class NyxEx extends Fighter {
         return im;
       };
       assets.nyx_ex = {
-        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps135'),
-        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps135'),
-        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps135'),
+        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps136'),
+        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps136'),
+        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps136'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -370,7 +399,8 @@ export class NyxEx extends Fighter {
 
   _triggerCtrlZGlitchBlink(enemy, game) {
     if (this._advPureDodge || this.isDead) return false;
-    this._ctrlZCd = 4.8;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    this._ctrlZCd = vsAspect === 2 ? 3.6 : 4.8;
     const oldX = this.x;
     const dirAway = enemy ? (this.x >= enemy.x ? 1 : -1) : -this.facing;
     let targetX = this._clampArenaX(oldX + dirAway * 210, game);
@@ -965,17 +995,26 @@ export class NyxEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
-    this.crouchCooldown = 3.6;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    this.crouchCooldown = vsAspect === 2 ? 3.2 : 3.6;
     this.crouchDuration = 0.88;
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isDeflecting = true;
     this.vx = 0;
     this.y = this.groundY;
-    this.holoPatchShield = Math.max(this.holoPatchShield, 46);
-    this.holoPatchTimer = Math.max(this.holoPatchTimer, 2.2);
+    this.holoPatchShield = Math.max(this.holoPatchShield, vsAspect === 1 ? 22 : vsAspect === 2 ? 68 : 46);
+    this.holoPatchTimer = Math.max(this.holoPatchTimer, vsAspect === 2 ? 2.5 : 2.2);
     this.spawnNebulaFloorSeal(this.x, this.groundY, 82, 0.60);
-    this.fx?.spawn('nebulaPromptBurst', this._safeFxX(this.x, game), this.groundY - 76, { light: 1.15 });
+    this.fx?.spawn('nebulaPromptBurst', this._safeFxX(this.x, game), this.groundY - 76, {
+      palette:
+        vsAspect === 1
+          ? KERNEL_OVERCLOCK_PALETTE
+          : vsAspect === 2
+            ? FIREWALL_EMERALD_PALETTE
+            : undefined,
+      light: 1.15
+    });
     if (game?.audio) game.audio.play('clock_gear', this.x);
   }
 
@@ -1106,6 +1145,15 @@ export class NyxEx extends Fighter {
     const dy = targetY - spawnY;
     const dist = Math.hypot(dx, dy) || 1;
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const aspectPal =
+      vsAspect === 1
+        ? KERNEL_OVERCLOCK_PALETTE
+        : vsAspect === 2
+          ? FIREWALL_EMERALD_PALETTE
+          : undefined;
+    const autoScale = vsAspect === 2 ? 0.89 : 1.0;
+
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.09) {
         this._beatHitMask |= 1;
@@ -1113,7 +1161,10 @@ export class NyxEx extends Fighter {
         this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.018);
         this.contextTokens = Math.min(3, this.contextTokens + 1);
         if (game?.audio) game.audio.play('clock_gear', spawnX);
-        this.fx?.spawn('nebulaPromptBurst', this._safeFxX(spawnX, game), spawnY, { light: 1.18 });
+        this.fx?.spawn('nebulaPromptBurst', this._safeFxX(spawnX, game), spawnY, {
+          palette: aspectPal,
+          light: 1.18
+        });
         this.spawnVfxAnim(0, spawnX, spawnY, 128, 128, 0.24, { inFront: true });
         this._spawnProj(game, {
           x: spawnX,
@@ -1122,10 +1173,10 @@ export class NyxEx extends Fighter {
           vy: (dy / dist) * 745 - 14,
           radius: 14,
           maxRange: 640,
-          color: '#22d3ee',
+          color: vsAspect === 1 ? '#fb7185' : vsAspect === 2 ? '#34d399' : '#22d3ee',
           coreColor: '#ffffff',
           owner: this,
-          damage: 24,
+          damage: vsAspect === 1 ? 21 : vsAspect === 2 ? 21 : 24,
           type: 'nebula_packet',
           isMeteor: false
         });
@@ -1139,10 +1190,27 @@ export class NyxEx extends Fighter {
           color: '#d946ef',
           coreColor: '#a5f3fc',
           owner: this,
-          damage: 24,
+          damage: vsAspect === 1 ? 21 : vsAspect === 2 ? 21 : 24,
           type: 'nebula_packet',
           isMeteor: false
         });
+        if (vsAspect === 1) {
+          // Aspect II (Kernel Overclock): 3rd DDoS packet!
+          this._spawnProj(game, {
+            x: spawnX + this.facing * 8,
+            y: spawnY,
+            vx: (dx / dist) * 785,
+            vy: (dy / dist) * 785,
+            radius: 13,
+            maxRange: 640,
+            color: '#22d3ee',
+            coreColor: '#ffffff',
+            owner: this,
+            damage: 16,
+            type: 'nebula_packet',
+            isMeteor: false
+          });
+        }
       }
     } else if (v === 1) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.07) {
@@ -1150,9 +1218,16 @@ export class NyxEx extends Fighter {
         this.didActionFrame = true;
         this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.018);
         this.contextTokens = Math.min(3, this.contextTokens + 1);
+        if (vsAspect === 2) {
+          this.holoPatchShield = Math.max(this.holoPatchShield, 20);
+          this.holoPatchTimer = Math.max(this.holoPatchTimer, 1.5);
+        }
         if (game?.audio) game.audio.play('skill_cast', spawnX);
         this.spawnNebulaFloorSeal(this.x, this.groundY, 64, 0.36);
-        this.fx?.spawn('nebulaPromptBurst', this._safeFxX(spawnX, game), spawnY, { light: 1.22 });
+        this.fx?.spawn('nebulaPromptBurst', this._safeFxX(spawnX, game), spawnY, {
+          palette: aspectPal,
+          light: 1.22
+        });
         this._spawnProj(game, {
           x: spawnX,
           y: spawnY,
@@ -1161,10 +1236,10 @@ export class NyxEx extends Fighter {
           radius: 18,
           maxRange: 650,
           pierce: true,
-          color: '#c084fc',
+          color: vsAspect === 1 ? '#fb7185' : vsAspect === 2 ? '#34d399' : '#c084fc',
           coreColor: '#22d3ee',
           owner: this,
-          damage: 46,
+          damage: vsAspect === 0 ? 46 : Math.round(46 * autoScale),
           type: 'nebula_packet',
           isMeteor: false
         });
@@ -1179,22 +1254,39 @@ export class NyxEx extends Fighter {
         if (game?.audio) game.audio.play('clock_gear', this._v2RemoteX);
         this.spawnNebulaFloorSeal(this._v2RemoteX, this.groundY, 84, 0.44);
         this.spawnVfxAnim(1, this._v2RemoteX, this.groundY - 128, 176, 176, 0.34, { inFront: true, vy: 28 });
-        this._applyRemoteNebulaStrike(this._v2RemoteX, 88, 26, game, aimFoe || enemy, {
-          knockX: 16,
-          knockY: -18,
-          hitStop: 0.030
-        });
+        this._applyRemoteNebulaStrike(
+          this._v2RemoteX,
+          88,
+          vsAspect === 0 ? 26 : Math.round(26 * autoScale),
+          game,
+          aimFoe || enemy,
+          {
+            knockX: 16,
+            knockY: -18,
+            hitStop: 0.030
+          }
+        );
       }
       if ((this._beatHitMask & 2) === 0 && t >= 0.17) {
         this._beatHitMask |= 2;
         this.spawnVfxAnim(4, this._v2RemoteX, this.groundY - 96, 172, 172, 0.34, { inFront: true });
-        this.fx?.spawn('nebulaPromptBurst', this._safeFxX(this._v2RemoteX, game), this.groundY - 94, { light: 1.24 });
-        this._applyRemoteNebulaStrike(this._v2RemoteX, 92, 30, game, aimFoe || enemy, {
-          isCrit: true,
-          knockX: 28,
-          knockY: -36,
-          hitStop: 0.018
+        this.fx?.spawn('nebulaPromptBurst', this._safeFxX(this._v2RemoteX, game), this.groundY - 94, {
+          palette: aspectPal,
+          light: 1.24
         });
+        this._applyRemoteNebulaStrike(
+          this._v2RemoteX,
+          92,
+          vsAspect === 0 ? 30 : Math.round(30 * autoScale),
+          game,
+          aimFoe || enemy,
+          {
+            isCrit: true,
+            knockX: 28,
+            knockY: -36,
+            hitStop: 0.018
+          }
+        );
       }
     } else {
       if ((this._beatHitMask & 1) === 0 && t >= 0.15) {
@@ -1205,7 +1297,7 @@ export class NyxEx extends Fighter {
         this._v3RemoteX = this._clampArenaX(rawRemoteX, game);
         const orbMuzzleX = this.nekoOrb?.x ?? (this.x + this.facing * 32);
         const orbMuzzleY = this.nekoOrb?.y ?? (this.groundY - 112);
-        const tokenBonus = this.contextTokens * 10;
+        const tokenBonus = this.contextTokens * (vsAspect === 1 ? 14 : vsAspect === 2 ? 8 : 10);
         this.contextTokens = 0;
 
         this._beat4Laser = {
@@ -1220,7 +1312,8 @@ export class NyxEx extends Fighter {
         this.spawnNebulaFloorSeal(this._v3RemoteX, this.groundY, 96, 0.46);
         this.spawnVfxAnim(3, this._v3RemoteX, this.groundY - 88, 196, 196, 0.32, { inFront: false });
         this.spawnVfxAnim(4, this._v3RemoteX, this.groundY - 98, 188, 188, 0.36, { inFront: true });
-        this._applyRemoteNebulaStrike(this._v3RemoteX, 96, 38 + tokenBonus, game, aimFoe || enemy, {
+        const baseB4 = vsAspect === 0 ? 38 : Math.round(38 * autoScale);
+        this._applyRemoteNebulaStrike(this._v3RemoteX, 96, baseB4 + tokenBonus, game, aimFoe || enemy, {
           isCrit: true,
           knockX: 54,
           knockY: -44,
@@ -1233,22 +1326,29 @@ export class NyxEx extends Fighter {
           vy: (dy / dist) * 760,
           radius: 15,
           maxRange: 640,
-          color: '#22d3ee',
+          color: vsAspect === 1 ? '#fb7185' : '#22d3ee',
           coreColor: '#ffffff',
           owner: this,
-          damage: 28,
+          damage: vsAspect === 0 ? 28 : Math.round(28 * autoScale),
           type: 'nebula_packet',
           isMeteor: false
         });
       }
       if ((this._beatHitMask & 2) === 0 && t >= 0.24) {
         this._beatHitMask |= 2;
-        this._applyRemoteNebulaStrike(this._v3RemoteX, 96, 26, game, aimFoe || enemy, {
-          isCrit: true,
-          knockX: 48,
-          knockY: -48,
-          hitStop: 0.040
-        });
+        this._applyRemoteNebulaStrike(
+          this._v3RemoteX,
+          96,
+          vsAspect === 0 ? 26 : Math.round(26 * autoScale),
+          game,
+          aimFoe || enemy,
+          {
+            isCrit: true,
+            knockX: 48,
+            knockY: -48,
+            hitStop: 0.040
+          }
+        );
       }
     }
 
@@ -1324,6 +1424,14 @@ export class NyxEx extends Fighter {
     const targetX = this._safeFxX(Math.max(115, Math.min(ww - 115, rawTarget)), game);
     this._skillTargetX = targetX;
 
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    const skillPal =
+      vsSkill === 1
+        ? KERNEL_OVERCLOCK_PALETTE
+        : vsSkill === 2
+          ? FIREWALL_EMERALD_PALETTE
+          : undefined;
+
     if (this._skillPhase === 0 && t >= 0.10) {
       this._skillPhase = 1;
       if (game?.audio) game.audio.play('clock_gear', targetX);
@@ -1338,9 +1446,26 @@ export class NyxEx extends Fighter {
         vx: 72,
         vy: -78
       });
-      this.heal(31, 'AUTO-PATCH');
-      this.holoPatchShield = 106;
-      this.holoPatchTimer = 2.9;
+      if (vsSkill === 1) {
+        // Skill II (BSOD Fatal Exception): Zero heal & zero shield, extra glitch window!
+        this.spawnVfxAnim(1, targetX, this.groundY - 124, 156, 156, 0.52, {
+          inFront: true,
+          vy: 64
+        });
+      } else if (vsSkill === 2) {
+        // Skill III (Auto-Patch Firewall v2.0): Fortified Holo-Patch + Tag-Ally Restore!
+        this.heal(24, 'FIREWALL PATCH');
+        this.holoPatchShield = 98;
+        this.holoPatchTimer = 2.9;
+        this.healTeammateTagGrace(28, 'AUTO-PATCH', 42, 2.4);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 225) {
+          enemy.vx += (Math.sign(enemy.x - this.x) || this.facing) * 210;
+        }
+      } else {
+        this.heal(31, 'AUTO-PATCH');
+        this.holoPatchShield = 106;
+        this.holoPatchTimer = 2.9;
+      }
       this.spawnNebulaCluster(this.x, this.y - 96, 10, 145);
     }
 
@@ -1358,11 +1483,18 @@ export class NyxEx extends Fighter {
       // Twin Flanking Converging Holographic Star-Prisms (0 vertical poles!)
       this.spawnVfxAnim(0, targetX - 68, this.groundY - 108, 144, 144, 0.48, { inFront: false, vx: 64 });
       this.spawnVfxAnim(0, targetX + 68, this.groundY - 108, 144, 144, 0.48, { inFront: false, vx: -64 });
-      this._applyRemoteNebulaStrike(targetX, 114, 34, game, enemy, {
-        knockX: 18,
-        knockY: -22,
-        hitStop: 0.018
-      });
+      this._applyRemoteNebulaStrike(
+        targetX,
+        114,
+        vsSkill === 1 ? 40 : vsSkill === 2 ? 25 : 34,
+        game,
+        enemy,
+        {
+          knockX: 18,
+          knockY: -22,
+          hitStop: 0.018
+        }
+      );
     }
 
     if (this._skillPhase === 2 && t >= 0.46) {
@@ -1373,28 +1505,68 @@ export class NyxEx extends Fighter {
       // Descending Row 2 `Cob` Creator Holo-Crest + Expanding Row 4 Supernova Galaxy Burst!
       this.spawnVfxAnim(2, targetX, this.groundY - 224, 220, 220, 0.54, { inFront: true, vy: 225 });
       this.spawnVfxAnim(4, targetX, this.groundY - 108, 216, 216, 0.52, { inFront: false });
-      this.fx?.spawn('cobCreatorCrestSeal', targetX, this.groundY, { light: 1.36 });
-      this.spawnExParticle({ x: targetX, y: this.groundY - 86, shape: 'ring', size: 120, color: '#22d3ee', maxLife: 0.32 });
-      this._applyRemoteNebulaStrike(targetX, 128, 86, game, enemy, {
-        isCrit: true,
-        knockX: 64,
-        knockY: -54,
-        hitStop: 0.018
+      this.fx?.spawn('cobCreatorCrestSeal', targetX, this.groundY, {
+        palette: skillPal,
+        light: 1.36
       });
-      this._spawnProj(game, {
-        x: this.x + this.facing * 54,
-        y: this.groundY - 96,
-        vx: this.facing * 730,
-        vy: 0,
-        radius: 16,
-        maxRange: 640,
-        color: '#22d3ee',
-        coreColor: '#fde047',
-        owner: this,
-        damage: 38,
-        type: 'nebula_packet',
-        isMeteor: false
+      this.spawnExParticle({
+        x: targetX,
+        y: this.groundY - 86,
+        shape: 'ring',
+        size: 120,
+        color: vsSkill === 1 ? '#fb7185' : vsSkill === 2 ? '#34d399' : '#22d3ee',
+        maxLife: 0.32
       });
+      const hitSk = this._applyRemoteNebulaStrike(
+        targetX,
+        128,
+        vsSkill === 1 ? 100 : vsSkill === 2 ? 68 : 86,
+        game,
+        enemy,
+        {
+          isCrit: true,
+          knockX: vsSkill === 1 ? 26 : 64,
+          knockY: -54,
+          hitStop: 0.018
+        }
+      );
+      if (vsSkill === 1 && hitSk && enemy) {
+        enemy.applyBuildRoot?.(0.36, 'BSOD PIN!', '#fb7185');
+      }
+      if (vsSkill === 1) {
+        for (const vyOff of [-18, 18]) {
+          this._spawnProj(game, {
+            x: this.x + this.facing * 54,
+            y: this.groundY - 96 + vyOff * 0.4,
+            vx: this.facing * 790,
+            vy: vyOff,
+            radius: 15,
+            maxRange: 650,
+            pierce: true,
+            color: '#fb7185',
+            coreColor: '#22d3ee',
+            owner: this,
+            damage: 26,
+            type: 'nebula_packet',
+            isMeteor: false
+          });
+        }
+      } else {
+        this._spawnProj(game, {
+          x: this.x + this.facing * 54,
+          y: this.groundY - 96,
+          vx: this.facing * 730,
+          vy: 0,
+          radius: 16,
+          maxRange: 640,
+          color: vsSkill === 2 ? '#34d399' : '#22d3ee',
+          coreColor: '#fde047',
+          owner: this,
+          damage: vsSkill === 2 ? 29 : 38,
+          type: 'nebula_packet',
+          isMeteor: false
+        });
+      }
     }
 
     if (t >= dur) {
@@ -1437,6 +1609,14 @@ export class NyxEx extends Fighter {
       game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.24 * dimWave);
     }
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    const ultPal =
+      vsUlt === 1
+        ? KERNEL_OVERCLOCK_PALETTE
+        : vsUlt === 2
+          ? FIREWALL_EMERALD_PALETTE
+          : undefined;
+
     if (this._ultStep === 0 && t >= 0.08) {
       this._ultStep = 1;
       this._ultNodesActive = true;
@@ -1449,9 +1629,20 @@ export class NyxEx extends Fighter {
       };
       if (game?.audio) game.audio.play('ult_cast', this.x);
       game?.vfx?.spawnSpecialCastAura?.(this, this.ultName, 'COB-OS OVERDRIVE', 'nebula', true);
+      if (vsUlt === 1) {
+        this.gainFinisher(12);
+      } else if (vsUlt === 2) {
+        this.heal(20, 'COB SANCTUARY');
+        this.holoPatchShield = Math.max(this.holoPatchShield, 48);
+        this.holoPatchTimer = Math.max(this.holoPatchTimer, 2.5);
+        this.healTeammateTagGrace(36, 'COB RESTORE', 46, 2.6);
+      }
       this.spawnNebulaFloorSeal(this.x, this.groundY, 114, 1.45);
       this.spawnNebulaFloorSeal(targetX, this.groundY, 196, 1.56);
-      this.fx?.spawn('nebulaOrbitalMatrix', targetX, this.groundY, { light: 1.44 });
+      this.fx?.spawn('nebulaOrbitalMatrix', targetX, this.groundY, {
+        palette: ultPal,
+        light: 1.44
+      });
       // Translucent Row 2 Command Crest framed behind target while casting
       this.spawnVfxAnim(2, targetX, this.groundY - 118, 176, 176, 1.05, { inFront: false });
 
@@ -1496,12 +1687,19 @@ export class NyxEx extends Fighter {
       this.spawnVfxAnim(0, px, this.groundY - 110 - (idx % 2) * 32, 112, 112, 0.42, { inFront: true });
       this.spawnExParticle({ x: px, y: this.groundY - 104, shape: 'ring', size: 84, color: idx % 2 === 0 ? '#22d3ee' : '#d946ef', coreColor: '#fde047', maxLife: 0.30 });
       if (idx === 4) {
-        this._applyRemoteNebulaStrike(targetX, 182, 68, game, enemy, {
-          isCrit: false,
-          knockX: 24,
-          knockY: -44,
-          hitStop: 0.018
-        });
+        this._applyRemoteNebulaStrike(
+          targetX,
+          182,
+          vsUlt === 1 ? 78 : vsUlt === 2 ? 52 : 68,
+          game,
+          enemy,
+          {
+            isCrit: false,
+            knockX: 24,
+            knockY: -44,
+            hitStop: 0.018
+          }
+        );
       }
     }
 
@@ -1513,17 +1711,47 @@ export class NyxEx extends Fighter {
       game?.renderer?.triggerAberration?.(12);
       game?.renderer?.triggerShake?.(20, 0.48);
       game?.renderer?.triggerHitStop?.(0.06);
+      if (vsUlt === 1) {
+        game?.vfx?.spawnBeam?.({
+          x1: targetX,
+          y1: this.groundY - 410,
+          x2: targetX,
+          y2: this.groundY - 8,
+          width: 64,
+          color: '#fb7185',
+          coreColor: '#22d3ee',
+          maxLife: 0.46
+        });
+      }
       this.spawnVfxAnim(2, targetX, this.groundY - 210, 212, 212, 0.62, { inFront: true, vy: 185 });
       this.spawnVfxAnim(4, targetX, this.groundY - 110, 236, 236, 0.56, { inFront: false });
       this.spawnNebulaCluster(targetX, this.groundY - 112, 18, 225);
-      this.spawnExParticle({ x: targetX, y: this.groundY - 110, shape: 'ring', size: 235, color: '#22d3ee', coreColor: '#fde047', maxLife: 0.46 });
-      this._applyRemoteNebulaStrike(targetX, 198, 142, game, enemy, {
-        isCrit: true,
-        knockX: 118,
-        knockY: -165,
-        hitStop: 0.02
-      });
-      game?.vfx?.spawnDamageText?.(targetX, this.groundY - 196, 0, true, 'COB-OS OVERCLOCK!', '#22d3ee');
+      this.spawnExParticle({ x: targetX, y: this.groundY - 110, shape: 'ring', size: 235, color: vsUlt === 1 ? '#fb7185' : vsUlt === 2 ? '#34d399' : '#22d3ee', coreColor: '#fde047', maxLife: 0.46 });
+      this._applyRemoteNebulaStrike(
+        targetX,
+        198,
+        vsUlt === 1 ? 166 : vsUlt === 2 ? 112 : 142,
+        game,
+        enemy,
+        {
+          isCrit: true,
+          knockX: 118,
+          knockY: -165,
+          hitStop: 0.02
+        }
+      );
+      game?.vfx?.spawnDamageText?.(
+        targetX,
+        this.groundY - 196,
+        0,
+        true,
+        vsUlt === 1
+          ? 'ROOT-ACCESS HYPER-LASER!'
+          : vsUlt === 2
+            ? 'COB-OS SANCTUARY!'
+            : 'COB-OS OVERCLOCK!',
+        '#22d3ee'
+      );
     }
 
     if (t >= dur) {

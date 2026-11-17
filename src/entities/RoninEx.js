@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps135';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps135';
+import { Fighter } from './Fighter.js?v=30fps136';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps136';
 
 const wrapStormPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -310,6 +310,19 @@ export class RoninEx extends Fighter {
 
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('ronin_ex');
+    }
+  }
+
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.moveSpeed = Math.round(this.moveSpeed * 1.08);
+      this.maxHp = Math.round(this.maxHp * 0.98);
+      this.hp = this.maxHp;
+      this._postFlurryInterval = 1.22;
+    } else if (aspect === 2) {
+      this.maxHp = Math.round(this.maxHp * 0.99);
+      this.hp = this.maxHp;
+      this._postFlurryInterval = 1.49;
     }
   }
 
@@ -1021,13 +1034,22 @@ export class RoninEx extends Fighter {
       );
     }
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
     this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.045);
-    attacker.takeDamage(74, this, true, 145, -155);
+    attacker.takeDamage(vsAspect === 1 ? 82 : vsAspect === 2 ? 70 : 74, this, true, 145, -155);
     if (!attacker.isDead && !attacker.isColossalBoss) {
       attacker._hitShakeTimer = Math.max(attacker._hitShakeTimer || 0, 0.065);
     }
-    this.heal(20, 'SERENE FOCUS');
-    this.gainMana(4);
+    if (vsAspect === 2) {
+      this.heal(20, 'SERENE FOCUS');
+      this.grantBuildShield(38, 2.1, 'STORM WARD!', '#38bdf8');
+      this.gainMana(6);
+    } else if (vsAspect === 0) {
+      this.heal(20, 'SERENE FOCUS');
+      this.gainMana(4);
+    } else {
+      this.gainMana(5);
+    }
     this.didActionFrame = true;
   }
 
@@ -1141,13 +1163,17 @@ export class RoninEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
-    this.crouchCooldown = 3.0;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    this.crouchCooldown = vsAspect === 2 ? 2.5 : 3.0;
     this.crouchDuration = 0.62;
     this.setState('CROUCH');
     this.isCrouching = true;
     this.iaidoCounterActive = true;
     this.isDeflecting = true;
     this.vx = 0;
+    if (vsAspect === 2) {
+      this.grantBuildShield(18, 1.4, 'SERENE WARD!', '#38bdf8');
+    }
     this.spawnSayaGlint(false);
     this.fx?.spawn('sereneMindParryWard', this._safeFxX(this.x, game), this._safeFxY(this.groundY - 4), {
       follow: this,
@@ -1454,13 +1480,16 @@ export class RoninEx extends Fighter {
       }
     }
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const autoScale = vsAspect === 2 ? 0.83 : 1.0;
+
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.09) {
         this._beatHitMask |= 1;
         this.spawnSayaGlint(false);
-        this.spawnPixelShockwave(this.x + this.facing * 52, this.groundY - 6, 68, 'cyan', 0.20, true);
-        this._applyBattoStrike(enemy, game, {
-          damage: 28,
+        this.spawnPixelShockwave(this.x + this.facing * 52, this.groundY - 6, 68, vsAspect === 1 ? 'gold' : 'cyan', 0.20, true);
+        const meleeHit0 = this._applyBattoStrike(enemy, game, {
+          damage: vsAspect === 0 ? 28 : Math.round(28 * autoScale),
           reachFront: 212,
           hitStop: 0.042,
           shakeDur: 0.056,
@@ -1470,13 +1499,23 @@ export class RoninEx extends Fighter {
           manaGain: 2.2,
           sfx: 'slash'
         });
+        if (vsAspect === 1) {
+          this.fireRaijinSlashWave(game, {
+            x: this.x + this.facing * 60,
+            y: this.groundY - 76,
+            damage: 24,
+            speed: 800,
+            maxRange: 560,
+            ignoreTargets: meleeHit0
+          });
+        }
       }
     } else if (v === 1) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.06) {
         this._beatHitMask |= 1;
         this.spawnPixelShockwave(this.x + this.facing * 64, this.groundY - 76, 74, 'purple', 0.22, false);
         this._applyBattoStrike(enemy, game, {
-          damage: 30,
+          damage: vsAspect === 0 ? 30 : Math.round(30 * autoScale),
           reachFront: 214,
           hitStop: 0.044,
           shakeDur: 0.058,
@@ -1494,7 +1533,7 @@ export class RoninEx extends Fighter {
         this.spawnAfterimage(this.x - this.facing * 22, this.groundY, this.facing, 2, 17, 0.20, 0);
         this.spawnPixelShockwave(this.x + this.facing * 58, this.groundY - 78, 86, 'cyan', 0.22, false);
         this._applyBattoStrike(enemy, game, {
-          damage: 21,
+          damage: vsAspect === 0 ? 21 : Math.round(21 * autoScale),
           reachFront: 216,
           reachBack: 62,
           hitStop: 0.036,
@@ -1509,7 +1548,7 @@ export class RoninEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.14) {
         this._beatHitMask |= 2;
         this._applyBattoStrike(enemy, game, {
-          damage: 24,
+          damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
           reachFront: 218,
           reachBack: 62,
           hitStop: 0.046,
@@ -1531,7 +1570,7 @@ export class RoninEx extends Fighter {
         this.spawnPixelShockwave(cleaveX, this.groundY - 6, 112, 'gold', 0.26, true);
         this.spawnPixelLightningBolt(cleaveX, this.groundY - 230, this.groundY, 'gold', 0.28);
         const meleeHitFoes = this._applyBattoStrike(enemy, game, {
-          damage: 24,
+          damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
           reachFront: 224,
           hitStop: 0.056,
           shakeDur: 0.080,
@@ -1546,8 +1585,8 @@ export class RoninEx extends Fighter {
         this.fireRaijinSlashWave(game, {
           x: this.x + this.facing * 64,
           y: this.groundY - 76,
-          damage: 34,
-          speed: 790,
+          damage: vsAspect === 1 ? 39 : vsAspect === 2 ? 26 : 34,
+          speed: vsAspect === 1 ? 820 : 790,
           maxRange: 580,
           ignoreTargets: meleeHitFoes
         });
@@ -1555,7 +1594,7 @@ export class RoninEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.20) {
         this._beatHitMask |= 2;
         this._applyBattoStrike(enemy, game, {
-          damage: 16,
+          damage: vsAspect === 0 ? 16 : Math.round(16 * autoScale),
           reachFront: 226,
           hitStop: 0,
           shakeDur: 0.046,
@@ -1569,7 +1608,7 @@ export class RoninEx extends Fighter {
       if ((this._beatHitMask & 4) === 0 && t >= 0.26) {
         this._beatHitMask |= 4;
         this._applyBattoStrike(enemy, game, {
-          damage: 24,
+          damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
           reachFront: 228,
           hitStop: 0,
           shakeDur: 0.056,
@@ -1649,6 +1688,8 @@ export class RoninEx extends Fighter {
     const dir = center >= originX ? 1 : -1;
     const dashTargetX = clampX(center + dir * 136);
 
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+
     // Phase 0 (0.00..0.15s): Deep Iaido Coil + Ignite 5 Raijin Taiko Drums & Thunder Crest
     if (t < 0.15) {
       this.vx = 0;
@@ -1661,10 +1702,13 @@ export class RoninEx extends Fighter {
         this._skillOriginY = this.groundY;
         this._taikoHaloTimer = 0.94;
         this._taikoLitCount = 5;
+        if (vsSkill === 2) {
+          this.grantBuildShield(48, 2.4, 'NARUKAMI WARD!', '#38bdf8');
+        }
         this.spawnSayaGlint(false);
-        this.spawnPixelShockwave(this.x, this.groundY - 4, 132, 'cyan', 0.28, true);
+        this.spawnPixelShockwave(this.x, this.groundY - 4, 132, vsSkill === 1 ? 'gold' : 'cyan', 0.28, true);
         this.spawnVfxAnim(7, this.x, this.groundY - 82, 188, 188, 0.34, {
-          glowColor: 'cyan',
+          glowColor: vsSkill === 1 ? 'gold' : 'cyan',
           inFront: false
         });
         this.spawnSakuraBurst(this.x, this.groundY - 82, 6, true);
@@ -1694,17 +1738,17 @@ export class RoninEx extends Fighter {
 
       if (this._zantetsuStep < 2 && dashU >= 0.12) {
         this._zantetsuStep = 2;
-        this.addSlashLine(originX, this.groundY - 74, dashTargetX, this.groundY - 74, 0.64, false, '#38bdf8');
+        this.addSlashLine(originX, this.groundY - 74, dashTargetX, this.groundY - 74, 0.64, false, vsSkill === 1 ? '#f43f5e' : '#38bdf8');
         if (game?.audio) game.audio.play('dash_whoosh', center);
       }
 
       // Crisp X-Cross Katana Flash slicing right through enemy center!
       if (this._zantetsuStep < 3 && dashU >= 0.48) {
         this._zantetsuStep = 3;
-        this.addSlashLine(center - 68, this.groundY - 138, center + 68, this.groundY - 26, 0.56, false, '#38bdf8');
+        this.addSlashLine(center - 68, this.groundY - 138, center + 68, this.groundY - 26, 0.56, false, vsSkill === 1 ? '#f43f5e' : '#38bdf8');
         this.addSlashLine(center - 68, this.groundY - 26, center + 68, this.groundY - 138, 0.56, false, '#818cf8');
         this.spawnVfxAnim(1, center, this.groundY - 84, 212, 212, 0.38, {
-          glowColor: 'cyan',
+          glowColor: vsSkill === 1 ? 'gold' : 'cyan',
           inFront: true
         });
         this.spawnVfxAnim(0, center + dir * 24, this.groundY - 78, 196, 196, 0.28, {
@@ -1716,7 +1760,17 @@ export class RoninEx extends Fighter {
         game?.vfx?.spawnLightning?.(center, this.groundY - 220, this.groundY - 8, '#67e8f9', '#4f46e5');
         if (game?.audio) game.audio.play('raijin_slash', center);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 255) {
-          enemy.takeDamage(58, this, true, 14 * dir, -56);
+          enemy.takeDamage(vsSkill === 1 ? 64 : vsSkill === 2 ? 45 : 58, this, true, 14 * dir, -56);
+        }
+        if (vsSkill === 1) {
+          this.fireRaijinSlashWave(game, {
+            x: center + dir * 48,
+            y: this.groundY - 76,
+            damage: 24,
+            speed: 810,
+            maxRange: 560,
+            ignoreTargets: enemy ? [enemy] : []
+          });
         }
       }
       return;
@@ -1753,7 +1807,11 @@ export class RoninEx extends Fighter {
         this.y - 156,
         0,
         true,
-        'ZANTETSUKEN: SAYA CLICK!',
+        vsSkill === 1
+          ? 'ASHURA SAYA CLICK!'
+          : vsSkill === 2
+            ? 'NARUKAMI SANCTUARY!'
+            : 'ZANTETSUKEN: SAYA CLICK!',
         '#fde047'
       );
 
@@ -1777,19 +1835,26 @@ export class RoninEx extends Fighter {
       });
       this.spawnSakuraBurst(strikeX, this.groundY - 88, 12, true);
 
+      const mainClickDmg = vsSkill === 1 ? 124 : vsSkill === 2 ? 75 : 102;
+      const sideClickDmg = vsSkill === 1 ? 92 : vsSkill === 2 ? 56 : 76;
       const foes = this._gatherBattoTargets(enemy, game, 320, 320);
       let hitAny = false;
       for (const foe of foes) {
-        foe.takeDamage(foe === enemy ? 102 : 76, this, true, 165 * dir, -205);
+        foe.takeDamage(foe === enemy ? mainClickDmg : sideClickDmg, this, true, 165 * dir, -205);
         if (!foe.isDead && !foe.isColossalBoss) {
           foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.072);
         }
         hitAny = true;
       }
       if (!hitAny && enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 360) {
-        enemy.takeDamage(102, this, true, 165 * dir, -205);
+        enemy.takeDamage(mainClickDmg, this, true, 165 * dir, -205);
       }
-      this.heal(24, 'RAIJIN FOCUS');
+      if (vsSkill === 2) {
+        this.heal(26, 'RAIJIN FOCUS');
+        this.healTeammateTagGrace(24, 'TAG RAIJIN', 40, 2.4);
+      } else if (vsSkill === 0) {
+        this.heal(24, 'RAIJIN FOCUS');
+      }
     }
 
     if (t >= this.skillDuration) {
@@ -1888,6 +1953,8 @@ export class RoninEx extends Fighter {
       { x: landX, y: this.groundY }
     ];
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+
     if (t >= 0.26 && t < 1.30) {
       const segDur = (1.30 - 0.26) / 6;
       const passIdx = Math.min(5, Math.floor((t - 0.26) / segDur));
@@ -1923,7 +1990,7 @@ export class RoninEx extends Fighter {
           p1.y - 62,
           0.62,
           false,
-          passIdx % 2 === 0 ? '#38bdf8' : '#fde047'
+          vsUlt === 1 ? (passIdx % 2 === 0 ? '#f43f5e' : '#fde047') : passIdx % 2 === 0 ? '#38bdf8' : '#fde047'
         );
         this.spawnVfxAnim(4, targetX, this.groundY - 94, 212, 212, 0.34, {
           flipX: passIdx % 2 === 1,
@@ -1947,7 +2014,7 @@ export class RoninEx extends Fighter {
         if (game?.audio) game.audio.play('slash', targetX);
         game?.renderer?.triggerShake?.(7, 0.10);
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(31, this, true, 12, -72);
+          enemy.takeDamage(vsUlt === 1 ? 37 : vsUlt === 2 ? 24 : 31, this, true, 12, -72);
         }
       }
       return;
@@ -2006,18 +2073,32 @@ export class RoninEx extends Fighter {
         '#38bdf8'
       );
 
-      this.heal(28, 'SUSANOO FOCUS');
+      if (vsUlt === 2) {
+        this.heal(26, 'RAIJIN AEGIS');
+        this.grantBuildShield(48, 2.5, 'RAIJIN BARRIER!', '#38bdf8');
+        this.healTeammateTagGrace(30, 'TAG RAIJIN', 44, 2.6);
+      } else if (vsUlt === 0) {
+        this.heal(28, 'SUSANOO FOCUS');
+      }
+      const mainUltDmg = vsUlt === 1 ? 120 : vsUlt === 2 ? 71 : 96;
+      const sideUltDmg = vsUlt === 1 ? 90 : vsUlt === 2 ? 52 : 72;
       const foes = this._gatherBattoTargets(enemy, game, 340, 340);
       let hitAny = false;
       for (const foe of foes) {
-        foe.takeDamage(foe === enemy ? 96 : 72, this, true, 220 * dir, -245);
+        foe.takeDamage(foe === enemy ? mainUltDmg : sideUltDmg, this, true, 220 * dir, -245);
         if (!foe.isDead && !foe.isColossalBoss) {
           foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.082);
+          if (vsUlt === 2) {
+            foe.applyBuildRoot?.(0.40, 'THUNDER BIND!', '#38bdf8');
+          }
         }
         hitAny = true;
       }
       if (!hitAny && enemy && !enemy.isDead) {
-        enemy.takeDamage(96, this, true, 220 * dir, -245);
+        enemy.takeDamage(mainUltDmg, this, true, 220 * dir, -245);
+        if (vsUlt === 2) {
+          enemy.applyBuildRoot?.(0.40, 'THUNDER BIND!', '#38bdf8');
+        }
       }
     }
 

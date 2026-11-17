@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps135';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps135';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
+import { Fighter } from './Fighter.js?v=30fps136';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps136';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps135';
+} from '../engine/shaders/chronoShaders.js?v=30fps136';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {

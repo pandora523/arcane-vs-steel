@@ -1,9 +1,9 @@
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps135';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps136';
 import fs from 'node:fs';
 import {
   ArcaneShaderFX,
   ShaderPen
-} from '../../src/engine/ArcaneShaderFX.js?v=30fps135';
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps136';
 import {
   ShaderPen as ShaderPen114
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps114';
@@ -14,28 +14,29 @@ import {
   ShaderPen as ShaderPen112
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
 import { Warrior } from '../../src/entities/Warrior.js';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps135';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps136';
 import { Titan } from '../../src/entities/Titan.js';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps135';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps136';
 import { Ronin } from '../../src/entities/Ronin.js';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps135';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps136';
 import { FireMage } from '../../src/entities/FireMage.js';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps135';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps136';
 import { Archer } from '../../src/entities/Archer.js';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps135';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps136';
 import { Priestess } from '../../src/entities/Priestess.js';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps135';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps136';
 import { Valkyrie } from '../../src/entities/Valkyrie.js';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps135';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps136';
 import { IceMage } from '../../src/entities/IceMage.js';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps135';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps136';
 import { Reaper } from '../../src/entities/Reaper.js';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps135';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps136';
 import { Chronomancer } from '../../src/entities/Chronomancer.js';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps135';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps136';
 import { Android } from '../../src/entities/Android.js';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps135';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps135';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps136';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps136';
+import { HeroBuildSystem } from '../../src/combat/HeroBuildSystem.js?v=30fps136';
 
 const HEROES = [
   ['warrior', Warrior],
@@ -230,6 +231,84 @@ for (const [id, Cls] of HEROES) {
               const prev = viewportClips.get(vKey) || { topH: 0, botH: 0, leftH: 0, rightH: 0, total: 0 };
               if (total > prev.total) {
                 viewportClips.set(vKey, { topH, botH, leftH, rightH, total });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Also verify Sovereign Loadout Presets [II] (1/1/1) & [III] (2/2/2) SKILL + ULTIMATE shaders across Batch-1 EX Heroes
+const SOVEREIGN_SHADER_HEROES = [
+  ['priestess_ex', PriestessEx],
+  ['warrior_ex', WarriorEx],
+  ['mage_ex', FireMageEx],
+  ['nyx_ex', NyxEx],
+  ['ronin_ex', RoninEx],
+  ['reaper_ex', ReaperEx]
+];
+for (const [id, Cls] of SOVEREIGN_SHADER_HEROES) {
+  for (const tier of [1, 2]) {
+    for (const mode of ['SKILL', 'ULTIMATE']) {
+      currentHero = `${id}_tier${tier}`;
+      currentMode = mode;
+      const hero = new Cls(320, 580, 1);
+      const dummy = new Warrior(820, 580, -1);
+      dummy.maxHp = 999999;
+      dummy.hp = 999999;
+      const game = makeMockGame(hero, dummy);
+      hero.game = game;
+      dummy.game = game;
+      HeroBuildSystem.applyBuildToFighter(
+        hero,
+        HeroBuildSystem.describeConcreteBuild(id, tier, tier, tier, false),
+        false
+      );
+      hero.maxHp = 999999;
+      hero.hp = 999999;
+      if (mode === 'SKILL') {
+        hero.skillCooldown = 0;
+        hero.setState('SKILL');
+      } else {
+        hero.mana = hero.maxMana;
+        hero.setState('ULTIMATE');
+      }
+      const totalT = mode === 'SKILL' ? 1.3 : id === 'reaper_ex' ? 4.8 : 2.5;
+      const dt = 1 / 30;
+      for (let t = 0; t < totalT; t += dt) {
+        dummy.hp = 999999;
+        dummy.isDead = false;
+        hero.update(dt, dummy, game);
+        if (hero.fx) {
+          for (const pass of ['back', 'front']) {
+            const res = hero.fx.rasterizeLayer(pass, 600, 580);
+            if (res.drewAny) {
+              const w = hero.fx.viewW;
+              const h = hero.fx.viewH;
+              const surf = pass === 'back' ? hero.fx.surfaceBack : hero.fx.surfaceFront;
+              let topH = 0, botH = 0, leftH = 0, rightH = 0;
+              for (let x = 0; x < w; x++) {
+                for (let dy = 0; dy < 8; dy++) {
+                  if (surf.albedo[dy * w + x] || surf.emissive[dy * w + x]) topH++;
+                  if (surf.albedo[(h - 1 - dy) * w + x] || surf.emissive[(h - 1 - dy) * w + x]) botH++;
+                }
+              }
+              for (let y = 0; y < h; y++) {
+                for (let dx = 0; dx < 8; dx++) {
+                  if (surf.albedo[y * w + dx] || surf.emissive[y * w + dx]) leftH++;
+                  if (surf.albedo[y * w + (w - 1 - dx)] || surf.emissive[y * w + (w - 1 - dx)]) rightH++;
+                }
+              }
+              const total = topH + botH + leftH + rightH;
+              if (total > 8) {
+                const keys = hero.fx.active.map((a) => a.key).join('+');
+                const vKey = `${id}[T${tier}]:${mode}:${pass}(${w}x${h}) [${keys}]`;
+                const prev = viewportClips.get(vKey) || { topH: 0, botH: 0, leftH: 0, rightH: 0, total: 0 };
+                if (total > prev.total) {
+                  viewportClips.set(vKey, { topH, botH, leftH, rightH, total });
+                }
               }
             }
           }

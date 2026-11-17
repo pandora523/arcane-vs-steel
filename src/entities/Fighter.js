@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps135';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps136';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -117,6 +117,62 @@ export class Fighter {
     this._advDodgeTrails = [];
     this._hitStopTimer = 0;
     this._hitShakeTimer = 0;
+    this.buildConfig = null;
+    this.buildAspect = 0;
+    this.buildSkill = 0;
+    this.buildUlt = 0;
+    this.buildShieldHp = 0;
+    this.buildShieldTimer = 0;
+    this.buildShieldLabel = '';
+    this.buildShieldColor = '#fde047';
+    this._buildShieldTextCd = 0;
+    this.buildRootTimer = 0;
+  }
+
+  grantBuildShield(amount, duration = 2.8, label = 'SANCTUARY BARRIER!', color = '#fde047') {
+    if (this.isDead || amount <= 0 || this.game?.isAdventureMode?.()) return;
+    this.buildShieldHp = Math.max(this.buildShieldHp || 0, Math.round(amount));
+    this.buildShieldTimer = Math.max(this.buildShieldTimer || 0, duration);
+    this.buildShieldLabel = label;
+    this.buildShieldColor = color || this.primaryColor || '#fde047';
+  }
+
+  applyBuildRoot(duration = 0.36, label = 'SPEAR ROOT!', color = '#fb7185') {
+    if (
+      this.isDead ||
+      this.isBenched ||
+      this.isColossalBoss ||
+      this.unstoppablePoise ||
+      duration <= 0 ||
+      this.game?.isAdventureMode?.()
+    ) {
+      return false;
+    }
+    this.buildRootTimer = Math.max(this.buildRootTimer || 0, duration);
+    this.vx *= 0.15;
+    if (this.game?.vfx && (this._buildRootTextCd || 0) <= 0) {
+      this._buildRootTextCd = 0.45;
+      this.game.vfx.spawnDamageText(this.x, this.y - 178, 0, false, label, color);
+    }
+    return true;
+  }
+
+  healTeammateTagGrace(amount, label = 'TAG SANCTUARY', barrierAmt = 0, barrierDur = 2.6) {
+    if (!this.game || this.game.isAdventureMode?.() || !this.game.is2v2Mode?.() || amount <= 0) {
+      return 0;
+    }
+    const ally = this.game.getTeammateOf ? this.game.getTeammateOf(this) : null;
+    if (!ally || ally.isDead) return 0;
+    ally._isAllyGraceHeal = true;
+    const healed = ally.heal(Math.round(amount), label);
+    ally._isAllyGraceHeal = false;
+    if (this.stats && healed > 0) {
+      this.stats.healingDone += Math.round(healed);
+    }
+    if (!ally.isBenched && barrierAmt > 0) {
+      ally.grantBuildShield(barrierAmt, barrierDur, `${label}!`, this.primaryColor);
+    }
+    return healed;
   }
 
   getBaseHeroId() {
@@ -691,6 +747,38 @@ export class Fighter {
     } else if (this.hasPoise) {
       knockX *= 0.35;
       knockY *= 0.35;
+    }
+    if (this.buildShieldHp > 0 && !this.game?.isAdventureMode?.()) {
+      const absorbed = Math.min(this.buildShieldHp, amount);
+      this.buildShieldHp = Math.max(0, this.buildShieldHp - absorbed);
+      amount = Math.max(0, amount - absorbed);
+      knockX *= 0.42;
+      knockY *= 0.42;
+      if (this.buildShieldHp <= 0.1) {
+        this.buildShieldHp = 0;
+        this.buildShieldTimer = 0;
+      }
+      if (this.game?.vfx && (this._buildShieldTextCd || 0) <= 0) {
+        this._buildShieldTextCd = 0.35;
+        this.game.vfx.spawnDamageText(
+          this.x,
+          this.y - 204,
+          0,
+          false,
+          this.buildShieldLabel || 'SANCTUARY BARRIER!',
+          this.buildShieldColor || '#fde047'
+        );
+        this.game.vfx.spawnShockwave(
+          this.x,
+          this.y - 88,
+          64,
+          this.buildShieldColor || '#fde047',
+          0.22
+        );
+      }
+      if (amount <= 0.5) {
+        return;
+      }
     }
     const unlimitedHp = Boolean(this.game && this.game.testModeUnlimitedHp && !this.isMonster);
     const prevHp = this.hp;
@@ -1304,6 +1392,21 @@ export class Fighter {
     if (this.hurtTimer > 0) this.hurtTimer = Math.max(0, this.hurtTimer - dt);
     if (this._hitShakeTimer > 0) this._hitShakeTimer = Math.max(0, this._hitShakeTimer - dt);
     if (this._evadeManaCd > 0) this._evadeManaCd = Math.max(0, this._evadeManaCd - dt);
+    if (this._buildShieldTextCd > 0) this._buildShieldTextCd = Math.max(0, this._buildShieldTextCd - dt);
+    if (this._buildRootTextCd > 0) this._buildRootTextCd = Math.max(0, this._buildRootTextCd - dt);
+    if (this.buildShieldTimer > 0) {
+      this.buildShieldTimer = Math.max(0, this.buildShieldTimer - dt);
+      if (this.buildShieldTimer <= 0 || this.game?.isAdventureMode?.()) {
+        this.buildShieldHp = 0;
+        this.buildShieldTimer = 0;
+      }
+    }
+    if (this.buildRootTimer > 0) {
+      this.buildRootTimer = Math.max(0, this.buildRootTimer - dt);
+      if (!game?.isAdventureMode?.() && !this.isDead && !this.unstoppablePoise) {
+        this.vx *= 0.16;
+      }
+    }
 
     // Chronos "ETERNAL ZERO" Time-Stop Freeze: freezes enemies mid-frame & mid-air in stopped time!
     if (this.chronoTimeStopTimer > 0 && !this.isDead && this.state !== 'TRUE_ULTIMATE') {

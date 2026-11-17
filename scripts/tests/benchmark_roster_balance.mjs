@@ -132,12 +132,17 @@ function installHeadlessGlobals() {
 
 installHeadlessGlobals();
 
-const [{ Fighter }, { VFXManager }, { EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER, Game }] =
-  await Promise.all([
-    import('../../src/entities/Fighter.js?v=30fps135'),
-    import('../../src/engine/VFXManager.js?v=30fps135'),
-    import('../../src/main.js?v=30fps135')
-  ]);
+const [
+  { Fighter },
+  { VFXManager },
+  { EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER, Game },
+  { HeroBuildSystem, SOVEREIGN_BUILD_HERO_IDS, HERO_BUILD_CATALOG }
+] = await Promise.all([
+  import('../../src/entities/Fighter.js?v=30fps136'),
+  import('../../src/engine/VFXManager.js?v=30fps136'),
+  import('../../src/main.js?v=30fps136'),
+  import('../../src/combat/HeroBuildSystem.js?v=30fps136')
+]);
 
 const STAGES = ['cathedral', 'sylvan', 'boneyard', 'clocktower'];
 const PERMANENT_STAGE_KEYS = new Set([
@@ -583,7 +588,33 @@ HeadlessArenaSim.prototype.triggerTeamTagSwap = Game.prototype.triggerTeamTagSwa
 HeadlessArenaSim.prototype.triggerTeamAssist = Game.prototype.triggerTeamAssist;
 HeadlessArenaSim.prototype.updateProjectiles = Game.prototype.updateProjectiles;
 
-function runDuel(ROSTER, idx1, idx2, seed, stageId, groundY, isLegacy) {
+function applySimBuild(f, heroId, buildSpec, isLegacy) {
+  if (isLegacy || !buildSpec) return;
+  HeroBuildSystem.applyBuildToFighter(
+    f,
+    HeroBuildSystem.describeConcreteBuild(
+      heroId,
+      buildSpec.aspect ?? 0,
+      buildSpec.skill ?? 0,
+      buildSpec.ult ?? 0,
+      false
+    ),
+    false
+  );
+}
+
+function runDuel(
+  ROSTER,
+  idx1,
+  idx2,
+  seed,
+  stageId,
+  groundY,
+  isLegacy,
+  p1Build = null,
+  p2Build = null,
+  tagMeta = null
+) {
   const h1 = ROSTER[idx1];
   const h2 = ROSTER[idx2];
   const origRandom = Math.random;
@@ -594,6 +625,8 @@ function runDuel(ROSTER, idx1, idx2, seed, stageId, groundY, isLegacy) {
     const f2 = new h2.Cls(960, groundY, -1);
     attachFighterToSim(f1, sim, h1.id, 1, 'lead', true, false, isLegacy);
     attachFighterToSim(f2, sim, h2.id, 2, 'lead', true, false, isLegacy);
+    applySimBuild(f1, h1.id, p1Build, isLegacy);
+    applySimBuild(f2, h2.id, p2Build, isLegacy);
     sim.leftFighter = f1;
     sim.rightFighter = f2;
     sim.fighters = [f1, f2];
@@ -624,14 +657,15 @@ function runDuel(ROSTER, idx1, idx2, seed, stageId, groundY, isLegacy) {
       f1Dmg: f1.stats.damageDealt,
       f2Dmg: f2.stats.damageDealt,
       f1Heal: f1.stats.healingDone,
-      f2Heal: f2.stats.healingDone
+      f2Heal: f2.stats.healingDone,
+      tagMeta
     };
   } finally {
     Math.random = origRandom;
   }
 }
 
-function run2v2(ROSTER, mode, team1Idx, team2Idx, seed, stageId, groundY, isLegacy) {
+function run2v2(ROSTER, mode, team1Idx, team2Idx, seed, stageId, groundY, isLegacy, teamBuilds = null) {
   const [i0, i1] = team1Idx;
   const [i2, i3] = team2Idx;
   const origRandom = Math.random;
@@ -651,6 +685,12 @@ function run2v2(ROSTER, mode, team1Idx, team2Idx, seed, stageId, groundY, isLega
     attachFighterToSim(f2, sim, h2.id, 2, 'lead', true, false, isLegacy);
     attachFighterToSim(f1b, sim, h1.id, 1, 'partner', false, isTag, isLegacy);
     attachFighterToSim(f2b, sim, h3.id, 2, 'partner', false, isTag, isLegacy);
+    if (teamBuilds) {
+      applySimBuild(f1, h0.id, teamBuilds.p1, isLegacy);
+      applySimBuild(f1b, h1.id, teamBuilds.p1b, isLegacy);
+      applySimBuild(f2, h2.id, teamBuilds.p2, isLegacy);
+      applySimBuild(f2b, h3.id, teamBuilds.p2b, isLegacy);
+    }
     sim.leftFighter = f1;
     sim.rightFighter = f2;
     sim.fighters = [f1b, f2b, f1, f2];
@@ -700,19 +740,263 @@ function executeTaskBatch(tasks, isLegacy) {
   const results = [];
   for (const task of tasks) {
     if (task.type === '1v1') {
-      results.push(runDuel(ROSTER, task.idx1, task.idx2, task.seed, task.stageId, groundY, isLegacy));
+      results.push(
+        runDuel(
+          ROSTER,
+          task.idx1,
+          task.idx2,
+          task.seed,
+          task.stageId,
+          groundY,
+          isLegacy,
+          task.p1Build || null,
+          task.p2Build || null,
+          task.tagMeta || null
+        )
+      );
     } else {
       results.push(
-        run2v2(ROSTER, task.mode, task.team1, task.team2, task.seed, task.stageId, groundY, isLegacy)
+        run2v2(
+          ROSTER,
+          task.mode,
+          task.team1,
+          task.team2,
+          task.seed,
+          task.stageId,
+          groundY,
+          isLegacy,
+          task.teamBuilds || null
+        )
       );
     }
   }
   return results;
 }
 
+async function dispatchTasksInParallel(tasks, isLegacy) {
+  const workerCount = Math.min(8, Math.max(1, os.cpus().length));
+  const buckets = Array.from({ length: workerCount }, () => []);
+  for (let i = 0; i < tasks.length; i++) {
+    buckets[i % workerCount].push(tasks[i]);
+  }
+  const startMs = Date.now();
+  const batches = await Promise.all(
+    buckets
+      .filter((b) => b.length > 0)
+      .map(
+        (chunk) =>
+          new Promise((resolve, reject) => {
+            const w = new Worker(new URL(import.meta.url), {
+              workerData: { tasks: chunk, isLegacy }
+            });
+            w.once('message', resolve);
+            w.once('error', reject);
+            w.once('exit', (code) => {
+              if (code !== 0) reject(new Error(`Benchmark worker exited with code ${code}`));
+            });
+          })
+      )
+  );
+  return {
+    allResults: batches.flat(),
+    workerCount,
+    elapsedSec: ((Date.now() - startMs) / 1000).toFixed(2)
+  };
+}
+
 if (!isMainThread) {
   const results = executeTaskBatch(workerData.tasks, workerData.isLegacy);
   parentPort.postMessage(results);
+} else if (process.argv.includes('--builds')) {
+  const ROSTER = buildRoster(false);
+  const heroIdxById = new Map(ROSTER.map((r, idx) => [r.id, idx]));
+  const tasks = [];
+
+  // Build canonical seed lookup matching the default 1v1 round-robin (`1001..1528`)
+  const canonicalSeedMap = new Map();
+  let canonSeed = 1001;
+  for (let i = 0; i < ROSTER.length; i++) {
+    for (let j = 0; j < ROSTER.length; j++) {
+      if (i === j) continue;
+      for (let stIdx = 0; stIdx < STAGES.length; stIdx++) {
+        canonicalSeedMap.set(`${i}:${j}:${stIdx}`, canonSeed++);
+      }
+    }
+  }
+
+  // 1) Symmetric 1v1 Round-Robin for every Batch-1 Sovereign Hero x Preset ([I], [II], [III])
+  //    against all 11 opposing EX champions across all 4 stages (P1 + P2 = 88 matches/preset).
+  for (const heroId of SOVEREIGN_BUILD_HERO_IDS) {
+    const hIdx = heroIdxById.get(heroId);
+    for (const presetIdx of [0, 1, 2]) {
+      const bSpec = { aspect: presetIdx, skill: presetIdx, ult: presetIdx };
+      for (let oppIdx = 0; oppIdx < ROSTER.length; oppIdx++) {
+        if (oppIdx === hIdx) continue;
+        for (let stIdx = 0; stIdx < STAGES.length; stIdx++) {
+          const stageId = STAGES[stIdx];
+          tasks.push({
+            type: '1v1',
+            idx1: hIdx,
+            idx2: oppIdx,
+            stageId,
+            seed: canonicalSeedMap.get(`${hIdx}:${oppIdx}:${stIdx}`),
+            p1Build: bSpec,
+            p2Build: null,
+            tagMeta: { heroId, presetIdx, side: 1 }
+          });
+          tasks.push({
+            type: '1v1',
+            idx1: oppIdx,
+            idx2: hIdx,
+            stageId,
+            seed: canonicalSeedMap.get(`${oppIdx}:${hIdx}:${stIdx}`),
+            p1Build: null,
+            p2Build: bSpec,
+            tagMeta: { heroId, presetIdx, side: 2 }
+          });
+        }
+      }
+    }
+  }
+
+  // 2) 2v2 Tag & 2v2 Brawl Sovereign Loadout Verification (48 matches across Presets II/III & Hybrids)
+  const buildIdxList = SOVEREIGN_BUILD_HERO_IDS.map((id) => heroIdxById.get(id));
+  for (const mode of ['2v2_tag', '2v2_brawl']) {
+    for (let m = 0; m < 24; m++) {
+      const i0 = buildIdxList[m % buildIdxList.length];
+      const i1 = buildIdxList[(m + 1) % buildIdxList.length];
+      const i2 = buildIdxList[(m + 2) % buildIdxList.length];
+      const i3 = buildIdxList[(m + 3) % buildIdxList.length];
+      const tierA = (m % 2) + 1;
+      const tierB = ((m + 1) % 2) + 1;
+      tasks.push({
+        type: '2v2',
+        mode,
+        team1: [i0, i1],
+        team2: [i2, i3],
+        stageId: STAGES[m % STAGES.length],
+        seed: 9100 + m,
+        teamBuilds: {
+          p1: { aspect: tierA, skill: tierA, ult: tierA },
+          p1b: { aspect: tierB, skill: tierB, ult: tierB },
+          p2: { aspect: tierB, skill: tierA, ult: tierB },
+          p2b: { aspect: tierA, skill: tierB, ult: tierA }
+        }
+      });
+    }
+  }
+
+  const { allResults, workerCount, elapsedSec } = await dispatchTasksInParallel(tasks, false);
+
+  const presetStats = new Map();
+  for (const heroId of SOVEREIGN_BUILD_HERO_IDS) {
+    const cfg = CHAMPION_ROSTER[heroId];
+    const cat = HERO_BUILD_CATALOG[heroId];
+    for (const presetIdx of [0, 1, 2]) {
+      const presetMeta = cat.presets[presetIdx];
+      presetStats.set(`${heroId}:${presetIdx}`, {
+        heroId,
+        heroName: cfg.name,
+        presetIdx,
+        roman: presetMeta.roman,
+        presetName: presetMeta.shortName,
+        wins: 0,
+        games: 0,
+        timeouts: 0,
+        totalDuration: 0,
+        overdrives: 0,
+        trueUlts: 0,
+        dmgDealt: 0,
+        healing: 0
+      });
+    }
+  }
+
+  let total1v1 = 0;
+  let timeouts1v1 = 0;
+  let odMatches = 0;
+  let tuMatches = 0;
+  let total2v2 = 0;
+  let timeoutsBrawl = 0;
+  let timeoutsTag = 0;
+
+  for (const res of allResults) {
+    if (res.type === '1v1' && res.tagMeta) {
+      total1v1++;
+      if (res.timedOut) timeouts1v1++;
+      if (res.f1Overdrives + res.f2Overdrives >= 1) odMatches++;
+      if (res.f1TrueUlts + res.f2TrueUlts >= 1) tuMatches++;
+
+      const key = `${res.tagMeta.heroId}:${res.tagMeta.presetIdx}`;
+      const st = presetStats.get(key);
+      const isSide1 = res.tagMeta.side === 1;
+      st.games++;
+      if (res.winner === res.tagMeta.side) st.wins++;
+      if (res.timedOut) st.timeouts++;
+      st.totalDuration += res.duration;
+      st.overdrives += isSide1 ? res.f1Overdrives : res.f2Overdrives;
+      st.trueUlts += isSide1 ? res.f1TrueUlts : res.f2TrueUlts;
+      st.dmgDealt += isSide1 ? res.f1Dmg : res.f2Dmg;
+      st.healing += isSide1 ? res.f1Heal : res.f2Heal;
+    } else if (res.type === '2v2') {
+      total2v2++;
+      if (res.timedOut) {
+        if (res.mode === '2v2_brawl') timeoutsBrawl++;
+        else timeoutsTag++;
+      }
+    }
+  }
+
+  const odPct = (odMatches / total1v1) * 100;
+  const tuPct = (tuMatches / total1v1) * 100;
+
+  console.log('============================================================================================================');
+  console.log(
+    `SOVEREIGN LOADOUTS BENCHMARK [BATCH 1: 6 EX HEROES x 3 PRESETS] (${total1v1} 1v1 + ${total2v2} 2v2 | ${workerCount} workers in ${elapsedSec}s)`
+  );
+  console.log('============================================================================================================');
+  console.log(
+    `1v1 Timeouts@180s: ${timeouts1v1} | 2v2 Brawl Timeouts: ${timeoutsBrawl} | 2v2 Tag Timeouts: ${timeoutsTag} | OD: ${odPct.toFixed(1)}% | TrueUlt: ${tuPct.toFixed(1)}%`
+  );
+  console.log('------------------------------------------------------------------------------------------------------------');
+  console.log(
+    'Hero           | Preset         | WinRate | AvgDur | OD/gm | TrueUlt/gm | AvgDPS | AvgHeal/gm'
+  );
+  console.log('------------------------------------------------------------------------------------------------------------');
+
+  const failures = [];
+  if (timeouts1v1 !== 0) failures.push(`1v1 timeouts expected 0, got ${timeouts1v1}`);
+  if (timeoutsBrawl !== 0) failures.push(`2v2 Brawl Sovereign timeouts expected 0, got ${timeoutsBrawl}`);
+  if (odPct < 90.0) failures.push(`Overdrive match rate ${odPct.toFixed(1)}% < 90.0%`);
+  if (tuPct < 90.0) failures.push(`TRUE_ULTIMATE match rate ${tuPct.toFixed(1)}% < 90.0%`);
+
+  for (const st of presetStats.values()) {
+    const wrNum = (st.wins / st.games) * 100;
+    const wr = wrNum.toFixed(1).padStart(5);
+    const avgDur = st.totalDuration / st.games;
+    const dps = (st.dmgDealt / st.totalDuration).toFixed(1).padStart(6);
+    const od = (st.overdrives / st.games).toFixed(2).padStart(5);
+    const tu = (st.trueUlts / st.games).toFixed(2).padStart(10);
+    const hl = (st.healing / st.games).toFixed(0).padStart(10);
+    const pTag = `[${st.roman}] ${st.presetName}`.padEnd(14);
+    console.log(
+      `${st.heroName.padEnd(14)} | ${pTag} |  ${wr}% | ${avgDur.toFixed(1).padStart(5)}s | ${od} | ${tu} | ${dps} | ${hl}`
+    );
+    if (wrNum < 40.0 || wrNum > 60.0) {
+      failures.push(`${st.heroName} [${st.roman}] ${st.presetName} WR ${wrNum.toFixed(1)}% outside [40.0%, 60.0%]`);
+    }
+  }
+  console.log('============================================================================================================');
+
+  if (failures.length > 0) {
+    console.error('[SOVEREIGN BUILDS BALANCE GATE FAILED]');
+    for (const msg of failures) console.error(` - ${msg}`);
+    process.exit(1);
+  } else {
+    console.log(
+      `[SOVEREIGN BUILDS BALANCE GATES PASSED] All 18 Presets within [40.0%, 60.0%] WR, 0 timeouts, OD=${odPct.toFixed(1)}%, TrueUlt=${tuPct.toFixed(1)}%`
+    );
+  }
 } else {
   const isLegacy = process.argv.includes('--legacy');
   const ROSTER = buildRoster(isLegacy);
@@ -759,32 +1043,7 @@ if (!isMainThread) {
     }
   }
 
-  const workerCount = Math.min(8, Math.max(1, os.cpus().length));
-  const buckets = Array.from({ length: workerCount }, () => []);
-  for (let i = 0; i < tasks.length; i++) {
-    buckets[i % workerCount].push(tasks[i]);
-  }
-
-  const startMs = Date.now();
-  const batches = await Promise.all(
-    buckets
-      .filter((b) => b.length > 0)
-      .map(
-        (chunk) =>
-          new Promise((resolve, reject) => {
-            const w = new Worker(new URL(import.meta.url), {
-              workerData: { tasks: chunk, isLegacy }
-            });
-            w.once('message', resolve);
-            w.once('error', reject);
-            w.once('exit', (code) => {
-              if (code !== 0) reject(new Error(`Benchmark worker exited with code ${code}`));
-            });
-          })
-      )
-  );
-  const allResults = batches.flat();
-  const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(2);
+  const { allResults, workerCount, elapsedSec } = await dispatchTasksInParallel(tasks, isLegacy);
 
   const heroStats = ROSTER.map((r) => {
     const sample = new r.Cls(240, groundY, 1);

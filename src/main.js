@@ -1,34 +1,35 @@
-import { Renderer } from './engine/Renderer.js?v=30fps135';
-import { VFXManager } from './engine/VFXManager.js?v=30fps135';
-import { PixelForge } from './engine/PixelForge.js?v=30fps135';
-import { AudioManager } from './engine/AudioManager.js?v=30fps135';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps135';
-import { Fighter } from './entities/Fighter.js?v=30fps135';
-import { Warrior } from './entities/Warrior.js?v=30fps135';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps135';
-import { FireMage } from './entities/FireMage.js?v=30fps135';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps135';
-import { Archer } from './entities/Archer.js?v=30fps135';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps135';
-import { Priestess } from './entities/Priestess.js?v=30fps135';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps135';
-import { Reaper } from './entities/Reaper.js?v=30fps135';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps135';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps135';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps135';
-import { Titan } from './entities/Titan.js?v=30fps135';
-import { TitanEx } from './entities/TitanEx.js?v=30fps135';
-import { Ronin } from './entities/Ronin.js?v=30fps135';
-import { RoninEx } from './entities/RoninEx.js?v=30fps135';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps135';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps135';
-import { IceMage } from './entities/IceMage.js?v=30fps135';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps135';
-import { Android } from './entities/Android.js?v=30fps135';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps135';
-import { NyxEx } from './entities/NyxEx.js?v=30fps135';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps135';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps135';
+import { Renderer } from './engine/Renderer.js?v=30fps136';
+import { VFXManager } from './engine/VFXManager.js?v=30fps136';
+import { PixelForge } from './engine/PixelForge.js?v=30fps136';
+import { AudioManager } from './engine/AudioManager.js?v=30fps136';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps136';
+import { Fighter } from './entities/Fighter.js?v=30fps136';
+import { Warrior } from './entities/Warrior.js?v=30fps136';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps136';
+import { FireMage } from './entities/FireMage.js?v=30fps136';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps136';
+import { Archer } from './entities/Archer.js?v=30fps136';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps136';
+import { Priestess } from './entities/Priestess.js?v=30fps136';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps136';
+import { Reaper } from './entities/Reaper.js?v=30fps136';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps136';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps136';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps136';
+import { Titan } from './entities/Titan.js?v=30fps136';
+import { TitanEx } from './entities/TitanEx.js?v=30fps136';
+import { Ronin } from './entities/Ronin.js?v=30fps136';
+import { RoninEx } from './entities/RoninEx.js?v=30fps136';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps136';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps136';
+import { IceMage } from './entities/IceMage.js?v=30fps136';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps136';
+import { Android } from './entities/Android.js?v=30fps136';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps136';
+import { NyxEx } from './entities/NyxEx.js?v=30fps136';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps136';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps136';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps136';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -974,6 +975,25 @@ export class Game {
     if (p1b && CHAMPION_ROSTER[p1b]) this.slot1PartnerHero = p1b;
     if (p2 && CHAMPION_ROSTER[p2]) this.slot2Hero = p2;
     if (p2b && CHAMPION_ROSTER[p2b]) this.slot2PartnerHero = p2b;
+
+    HeroBuildSystem.reloadFromStorage();
+    HeroBuildSystem.clearTourneyOverrides();
+    const tourneyBuildsParam = params.get('tourneybuilds');
+    if (tourneyBuildsParam === '0' || tourneyBuildsParam === 'false') {
+      HeroBuildSystem.setChallengerRngEnabled(false);
+    } else if (tourneyBuildsParam === '1' || tourneyBuildsParam === 'true') {
+      HeroBuildSystem.setChallengerRngEnabled(true);
+    }
+    const applyUrlBuildParam = (paramName, slotKey, heroKey) => {
+      const val = params.get(paramName);
+      if (!val || !heroKey) return;
+      const parsed = HeroBuildSystem.parseBuildShorthand(val);
+      if (parsed) HeroBuildSystem.setSlotBuild(slotKey, heroKey, parsed, false);
+    };
+    applyUrlBuildParam('p1build', 'p1', this.slot1Hero);
+    applyUrlBuildParam('p1bbuild', 'p1b', this.slot1PartnerHero);
+    applyUrlBuildParam('p2build', 'p2', this.slot2Hero);
+    applyUrlBuildParam('p2bbuild', 'p2b', this.slot2PartnerHero);
     if (urlHero && CHAMPION_ROSTER[urlHero]) {
       this.slot1Hero = urlHero;
       this.slot2Hero = urlHero.endsWith('_ex')
@@ -1988,6 +2008,7 @@ export class Game {
 
     const cacheHUD = (side) => ({
       name: document.getElementById(`${side}-name`),
+      buildBadge: document.getElementById(`${side}-build-badge`),
       portraitFrame: document.getElementById(`${side}-portrait-frame`),
       hpBar: document.getElementById(`${side}-hp-bar`),
       hpDmg: document.getElementById(`${side}-hp-dmg`),
@@ -2083,6 +2104,54 @@ export class Game {
         this.setActiveSlot(4);
       });
     }
+
+    // Sovereign Loadouts: Preset strip & inline [ I | II | III ] skill-card tabs (EX VS Mode only)
+    const resolveBuildPanelTarget = (panelKey) => {
+      const is2v2 = this.is2v2Mode();
+      if (panelKey === 'p2') {
+        const isPart = is2v2 && this.inspectRightRole === 'partner';
+        return {
+          slotKey: isPart ? 'p2b' : 'p2',
+          heroKey: isPart ? this.slot2PartnerHero : this.slot2Hero,
+          sfxX: 850
+        };
+      }
+      const isPart = is2v2 && this.inspectLeftRole === 'partner';
+      return {
+        slotKey: isPart ? 'p1b' : 'p1',
+        heroKey: isPart ? this.slot1PartnerHero : this.slot1Hero,
+        sfxX: 350
+      };
+    };
+
+    document.querySelectorAll('[data-build-panel][data-preset]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.isAdventureMode()) return;
+        const panelKey = btn.getAttribute('data-build-panel');
+        const presetKey = btn.getAttribute('data-preset');
+        const { slotKey, heroKey, sfxX } = resolveBuildPanelTarget(panelKey);
+        if (!HeroBuildSystem.hasCustomBuilds(heroKey)) return;
+        HeroBuildSystem.setSlotPreset(slotKey, heroKey, presetKey === 'rng' ? 'rng' : Number(presetKey));
+        this.syncRosterSelectionUI(false);
+        if (this.audio) this.audio.play('clock_gear', sfxX);
+      });
+    });
+
+    document.querySelectorAll('[data-build-panel][data-build-cat][data-tier]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.isAdventureMode()) return;
+        const panelKey = btn.getAttribute('data-build-panel');
+        const cat = btn.getAttribute('data-build-cat');
+        const tier = Number(btn.getAttribute('data-tier'));
+        const { slotKey, heroKey, sfxX } = resolveBuildPanelTarget(panelKey);
+        if (!HeroBuildSystem.hasCustomBuilds(heroKey)) return;
+        HeroBuildSystem.setSlotCategoryTier(slotKey, heroKey, cat, tier);
+        this.syncRosterSelectionUI(false);
+        if (this.audio) this.audio.play('clock_gear', sfxX);
+      });
+    });
 
     // Direct P1 / P2 slot buttons on each roster card
     document.querySelectorAll('[data-assign-p1]').forEach((btn) => {
@@ -2795,6 +2864,12 @@ export class Game {
       this.slot1Hero = keepHero;
       this.slot2Hero = nextChallenger;
     }
+    if (!this.isAdventureMode() && HeroBuildSystem.isChallengerRngEnabled()) {
+      HeroBuildSystem.rollChallengerBuild('p2', this.slot2Hero);
+      if (this.is2v2Mode()) {
+        HeroBuildSystem.rollChallengerBuild('p2b', this.slot2PartnerHero);
+      }
+    }
     this.syncRosterSelectionUI(false);
     this.resetMatch();
   }
@@ -3100,7 +3175,7 @@ export class Game {
     });
 
     // 4. Populate Left (P1 / P1B) and Right (P2 / P2B or Adventure Final Boss) Profile Panels
-    const syncProfilePanel = (prefix, sideName, cfg, partnerCfg) => {
+    const syncProfilePanel = (prefix, sideName, cfg, partnerCfg, slotKey) => {
       if (!cfg) return;
       const asideEl = document.getElementById(`profile-${sideName}`);
       const nameEl = document.getElementById(`${prefix}-profile-name`);
@@ -3110,6 +3185,13 @@ export class Game {
       const haloEl = document.getElementById(`${prefix}-halo`);
       const trueUltNameEl = document.getElementById(`${prefix}-true-ult-name`);
       const trueUltDescEl = document.getElementById(`${prefix}-true-ult-desc`);
+      const headerEl = document.getElementById(`${prefix}-skills-header`);
+      const presetBarEl = document.getElementById(`${prefix}-build-preset-bar`);
+      const presetLblEl = document.getElementById(`${prefix}-build-preset-label`);
+
+      const kit = HeroBuildSystem.getProfileDisplayKit(cfg.id || '', cfg, slotKey, isAdv);
+      const showBuild = Boolean(kit?.showBuildUI && !isAdv);
+
       if (asideEl) asideEl.className = `fighter-profile profile-${cfg.theme}`;
       if (nameEl) nameEl.textContent = cfg.name;
       if (roleEl) {
@@ -3117,23 +3199,70 @@ export class Game {
           is2v2 && partnerCfg ? `${cfg.role} • DUO WITH ${partnerCfg.name}` : cfg.role;
       }
       if (styleEl) styleEl.textContent = cfg.style;
-      if (traitEl) traitEl.textContent = cfg.trait;
+      if (traitEl) traitEl.textContent = kit?.trait || cfg.trait;
       if (haloEl) haloEl.className = `stage-halo halo-${cfg.theme}`;
       if (trueUltNameEl && cfg.trueUltName) trueUltNameEl.textContent = cfg.trueUltName;
       if (trueUltDescEl && cfg.trueUltDesc) trueUltDescEl.textContent = cfg.trueUltDesc;
 
-      if (Array.isArray(cfg.skills)) {
-        cfg.skills.forEach((sk, idx) => {
+      if (headerEl) {
+        headerEl.textContent =
+          isAdv && prefix === 'p2'
+            ? '3-PHASE RAID MECHANICS & CATACLYSM'
+            : showBuild
+              ? 'SOVEREIGN LOADOUT'
+              : '4-SLOT SOVEREIGN KIT & SUPREME ULTIMATE';
+      }
+      if (presetBarEl) {
+        presetBarEl.classList.toggle('hidden', !showBuild);
+        presetBarEl.classList.toggle('is-locked-std', Boolean(showBuild && !kit?.hasCustomBuilds));
+        if (showBuild && kit?.slotBuild) {
+          if (presetLblEl) presetLblEl.textContent = kit.activeSummary || 'SOVEREIGN';
+          presetBarEl.querySelectorAll('[data-preset]').forEach((btn) => {
+            const pAttr = btn.getAttribute('data-preset');
+            const isRngBtn = pAttr === 'rng';
+            const pIdx = isRngBtn ? -99 : Number(pAttr);
+            const active = isRngBtn
+              ? Boolean(kit.slotBuild.rng)
+              : !kit.slotBuild.rng && kit.slotBuild.presetIndex === pIdx;
+            btn.classList.toggle('active-preset', active);
+            if (!isRngBtn && kit.presets?.[pIdx]) {
+              btn.title = `Preset ${kit.presets[pIdx].roman}: ${kit.presets[pIdx].name}`;
+            }
+          });
+        }
+      }
+
+      const displaySkills = Array.isArray(kit?.skills) ? kit.skills : cfg.skills;
+      if (Array.isArray(displaySkills)) {
+        const tierVals = kit?.slotBuild
+          ? [kit.slotBuild.aspect, kit.slotBuild.skill, kit.slotBuild.ult]
+          : [0, 0, 0];
+        displaySkills.forEach((sk, idx) => {
+          if (!sk) return;
           const sName = document.getElementById(`${prefix}-skill-name-${idx}`);
           const sType = document.getElementById(`${prefix}-skill-type-${idx}`);
           const sDesc = document.getElementById(`${prefix}-skill-desc-${idx}`);
+          const tabsEl = document.getElementById(`${prefix}-tier-tabs-${idx}`);
           if (sName) sName.textContent = sk.name;
           if (sType) sType.textContent = sk.type;
           if (sDesc) sDesc.textContent = sk.desc;
+          if (tabsEl) {
+            tabsEl.classList.toggle('hidden', !showBuild);
+            tabsEl.classList.toggle('is-locked-std', Boolean(showBuild && !kit?.hasCustomBuilds));
+            if (showBuild) {
+              const curTier = tierVals[idx] || 0;
+              tabsEl.querySelectorAll('[data-tier]').forEach((tBtn) => {
+                const tVal = Number(tBtn.getAttribute('data-tier'));
+                tBtn.classList.toggle('active-tier', !kit?.slotBuild?.rng && tVal === curTier);
+              });
+            }
+          }
         });
       }
     };
 
+    const leftSlotKey = is2v2 && this.inspectLeftRole === 'partner' ? 'p1b' : 'p1';
+    const rightSlotKey = is2v2 && this.inspectRightRole === 'partner' ? 'p2b' : 'p2';
     const baseLeftInspected = is2v2 && this.inspectLeftRole === 'partner' ? c1b : c1;
     const leftInspected = baseLeftInspected;
     const leftOther = is2v2 && this.inspectLeftRole === 'partner' ? c1 : c1b;
@@ -3170,8 +3299,8 @@ export class Game {
         : c2;
     const rightOther = is2v2 && this.inspectRightRole === 'partner' ? c2 : c2b;
 
-    syncProfilePanel('p1', 'left', leftInspected, leftOther);
-    syncProfilePanel('p2', 'right', rightInspected, isAdv ? null : rightOther);
+    syncProfilePanel('p1', 'left', leftInspected, leftOther, leftSlotKey);
+    syncProfilePanel('p2', 'right', rightInspected, isAdv ? null : rightOther, rightSlotKey);
 
     if (this.startDuelText) {
       if (this.isAdventureMode()) {
@@ -3808,6 +3937,7 @@ export class Game {
       this.leftFighter.isBenched = false;
       this.leftPartner = null;
       this.rightPartner = null;
+      HeroBuildSystem.applyBuildToFighter(this.leftFighter, null, true);
 
       this.applySideHUDTheme(this.hudEls.left, c1, this.leftFighter, null);
       PixelForge.setHUDPortraits(c1.id, c1.color, 'archfiend', '#ef4444');
@@ -3925,6 +4055,18 @@ export class Game {
     this.rightFighter.isBenched = false;
     this.leftFighter.benchX = 76;
     this.rightFighter.benchX = ww - 76;
+    if (!this.leftFighter.heroId) this.leftFighter.heroId = c1.id;
+    if (!this.rightFighter.heroId) this.rightFighter.heroId = c2.id;
+    HeroBuildSystem.applyBuildToFighter(
+      this.leftFighter,
+      HeroBuildSystem.resolveMatchBuild('p1', c1.id, { isAdventure: false }),
+      false
+    );
+    HeroBuildSystem.applyBuildToFighter(
+      this.rightFighter,
+      HeroBuildSystem.resolveMatchBuild('p2', c2.id, { isAdventure: false }),
+      false
+    );
 
     if (is2v2) {
       const isTag = this.gameMode === '2v2_tag';
@@ -3942,6 +4084,18 @@ export class Game {
       this.rightPartner.isBenched = isTag;
       this.leftPartner.benchX = 76;
       this.rightPartner.benchX = ww - 76;
+      if (!this.leftPartner.heroId) this.leftPartner.heroId = c1b.id;
+      if (!this.rightPartner.heroId) this.rightPartner.heroId = c2b.id;
+      HeroBuildSystem.applyBuildToFighter(
+        this.leftPartner,
+        HeroBuildSystem.resolveMatchBuild('p1b', c1b.id, { isAdventure: false }),
+        false
+      );
+      HeroBuildSystem.applyBuildToFighter(
+        this.rightPartner,
+        HeroBuildSystem.resolveMatchBuild('p2b', c2b.id, { isAdventure: false }),
+        false
+      );
       // Render partners slightly behind lead fighters
       this.fighters = [this.leftPartner, this.rightPartner, this.leftFighter, this.rightFighter];
     } else {
@@ -4006,9 +4160,38 @@ export class Game {
     this.updateHUD();
   }
 
+  syncFighterBuildBadge(badgeEl, fighter, isAdv = false) {
+    if (!badgeEl) return;
+    const cfg = !isAdv && fighter && !fighter.isMonster ? fighter.buildConfig : null;
+    if (!cfg) {
+      if (!badgeEl.classList.contains('hidden')) {
+        badgeEl.className = 'hud-build-badge hidden';
+      }
+      return;
+    }
+    const compact = Boolean(
+      this.renderer?.isMobilePortrait ||
+        this.renderer?.isMobileLandscape ||
+        (typeof window !== 'undefined' && window.innerWidth <= 860)
+    );
+    const nextText = compact ? cfg.hudCompact : cfg.hudLabel;
+    const variantCls =
+      cfg.isRng || cfg.presetIndex < 0
+        ? ' badge-preset-custom'
+        : cfg.presetIndex === 1
+          ? ' badge-preset-1'
+          : cfg.presetIndex === 2
+            ? ' badge-preset-2'
+            : '';
+    const nextCls = `hud-build-badge${variantCls}`;
+    if (badgeEl.textContent !== nextText) badgeEl.textContent = nextText;
+    if (badgeEl.className !== nextCls) badgeEl.className = nextCls;
+  }
+
   applySideHUDTheme(els, rosterCfg, fighter, partnerCfg = null) {
     if (!els || !rosterCfg || !fighter) return;
     if (els.name) els.name.textContent = rosterCfg.name;
+    this.syncFighterBuildBadge(els.buildBadge, fighter, this.isAdventureMode());
     if (els.skillText) els.skillText.textContent = fighter.skillName;
     if (els.hpBar) {
       els.hpBar.className = `hp-fill fill-${rosterCfg.theme}`;
@@ -4941,6 +5124,7 @@ export class Game {
           ? `MAX ${Math.ceil(f.hp)}`
           : `${Math.ceil(f.hp)}`;
       els.state.textContent = f.isDead ? 'DEFEATED' : f.state;
+      this.syncFighterBuildBadge(els.buildBadge, f, isAdv);
 
       const isMobilePortrait = Boolean(this.renderer?.isMobilePortrait);
       els.manaBar.style.width = `${manaPct}%`;

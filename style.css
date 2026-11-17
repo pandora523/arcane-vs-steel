@@ -402,6 +402,43 @@ html, body {
   text-overflow: ellipsis;
 }
 
+.hud-build-badge {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.26rem, 0.58vw, 0.36rem);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  padding: 2px 5px;
+  background: linear-gradient(180deg, #162036 0%, #090d18 100%);
+  border: 1px solid #6b5222;
+  color: #fde047;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+}
+
+.hud-build-badge.badge-preset-1 {
+  border-color: #fb7185;
+  color: #fecdd3;
+  background: linear-gradient(180deg, #3b0d1e 0%, #19060e 100%);
+}
+
+.hud-build-badge.badge-preset-2 {
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  background: linear-gradient(180deg, #0c2d48 0%, #061524 100%);
+}
+
+.hud-build-badge.badge-preset-custom {
+  border-color: #c084fc;
+  color: #f3e8ff;
+  background: linear-gradient(180deg, #2b1246 0%, #12071f 100%);
+}
+
+.hud-build-badge.hidden,
+#app.is-adventure-active .hud-build-badge {
+  display: none !important;
+}
+
 .hp-num {
   font-family: var(--font-pixel);
   font-size: clamp(0.48rem, 1.1vw, 0.66rem);
@@ -2344,9 +2381,11 @@ html, body {
   justify-content: space-between;
   gap: 4px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .profile-corner-tag {
+  flex-shrink: 0;
   font-family: var(--font-pixel);
   font-size: 0.31rem;
   padding: 3px 6px;
@@ -2368,9 +2407,14 @@ html, body {
 }
 
 .duo-tab-row {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 3px;
+}
+
+.duo-tab-row.hidden {
+  display: none !important;
 }
 
 .duo-tab-btn {
@@ -2404,6 +2448,8 @@ html, body {
 }
 
 .profile-style-pill {
+  flex: 0 1 auto;
+  min-width: 0;
   font-family: var(--font-pixel);
   font-size: 0.28rem;
   color: var(--bronze-lit);
@@ -2520,14 +2566,98 @@ html, body {
   line-height: 1.35;
 }
 
-.profile-skills-header {
+.profile-skills-header-row {
   flex-shrink: 0;
-  font-family: var(--font-pixel);
-  font-size: 0.31rem;
-  color: #8b9bb4;
-  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
   border-bottom: 1px solid #1e293b;
   padding-bottom: 3px;
+}
+
+.profile-skills-header {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.30rem;
+  color: #8b9bb4;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.build-preset-strip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.build-preset-strip.hidden,
+.skill-tier-tabs.hidden,
+.landing-overlay[data-branch="adventure"] .build-preset-strip,
+.landing-overlay[data-branch="adventure"] .skill-tier-tabs,
+#app.is-adventure-active .build-preset-strip,
+#app.is-adventure-active .skill-tier-tabs {
+  display: none !important;
+}
+
+.preset-active-label {
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  color: #fde047;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preset-btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.preset-pill-btn {
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  line-height: 1;
+  padding: 2px 4px;
+  background: #0b1120;
+  border: 1px solid #3b4961;
+  color: #94a3b8;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.1s ease, color 0.1s ease, background 0.1s ease;
+}
+
+.preset-pill-btn:hover {
+  border-color: var(--bronze-lit);
+  color: var(--text-ivory);
+}
+
+.preset-pill-btn.active-preset {
+  background: linear-gradient(180deg, #6b4e16 0%, #3b2a0a 100%);
+  border-color: #fde047;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.35);
+}
+
+.preset-pill-btn.preset-pill-rng.active-preset {
+  background: linear-gradient(180deg, #4c1d95 0%, #1e1b4b 100%);
+  border-color: #22d3ee;
+  color: #e0f2fe;
+}
+
+.build-preset-strip.is-locked-std .preset-pill-btn:not([data-preset="0"]),
+.skill-tier-tabs.is-locked-std .tier-tab-btn:not([data-tier="0"]) {
+  opacity: 0.34;
+  pointer-events: none;
 }
 
 /* 4-Slot Compact Kit Readout (Auto + Skill + Overdrive + Supreme Ultimate) */
@@ -2635,6 +2765,8 @@ html, body {
 }
 
 .skill-name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-family: var(--font-pixel);
   font-size: 0.35rem;
   font-weight: normal;
@@ -2645,6 +2777,57 @@ html, body {
   text-overflow: ellipsis;
 }
 
+.skill-title-meta {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.skill-tier-tabs {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  background: #050811;
+  border: 1px solid #334155;
+  padding: 1px;
+}
+
+.tier-tab-btn {
+  font-family: var(--font-pixel);
+  font-size: 0.22rem;
+  line-height: 1;
+  padding: 2px 4px;
+  background: #0d1424;
+  border: 1px solid transparent;
+  color: #8b9bb4;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tier-tab-btn:hover {
+  color: var(--text-ivory);
+  border-color: #64748b;
+}
+
+.tier-tab-btn.active-tier {
+  background: linear-gradient(180deg, #075985 0%, #0c2d48 100%);
+  border-color: #7dd3fc;
+  color: #ffffff;
+}
+
+.tier-tab-btn.active-tier[data-tier="1"] {
+  background: linear-gradient(180deg, #881337 0%, #4c0519 100%);
+  border-color: #fda4af;
+}
+
+.tier-tab-btn.active-tier[data-tier="2"] {
+  background: linear-gradient(180deg, #065f46 0%, #064e3b 100%);
+  border-color: #6ee7b7;
+}
+
 .supreme-ult-title {
   color: #f7df94;
 }
@@ -2652,12 +2835,58 @@ html, body {
 .skill-type-badge {
   flex-shrink: 0;
   font-family: var(--font-pixel);
-  font-size: 0.26rem;
+  font-size: 0.25rem;
   padding: 2px 4px;
   border: 1px solid #3f4e66;
   background: #0d1320;
   color: #cbd5e1;
   white-space: nowrap;
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1140px), (max-height: 670px) {
+  .preset-active-label {
+    max-width: 58px;
+    font-size: 0.21rem;
+  }
+  .preset-pill-btn {
+    font-size: 0.21rem;
+    padding: 2px 3px;
+  }
+  .tier-tab-btn {
+    font-size: 0.20rem;
+    padding: 2px 3px;
+  }
+  .skill-type-badge {
+    max-width: 72px;
+    font-size: 0.21rem;
+    padding: 1px 3px;
+  }
+}
+
+@media (max-width: 900px), (max-height: 560px) {
+  .preset-active-label {
+    display: none;
+  }
+  .skill-type-badge {
+    max-width: 58px;
+    font-size: 0.19rem;
+    padding: 1px 2px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hud-build-badge {
+    font-size: 0.22rem;
+    padding: 1px 3px;
+  }
+}
+
+html.is-mobile-landscape .hud-build-badge {
+  font-size: 0.23rem;
+  padding: 1px 4px;
 }
 
 .badge-auto {
@@ -4386,8 +4615,8 @@ html.is-mobile-landscape .roster-draft-shell {
 }
 
 html.is-mobile-landscape .versus-layout {
-  grid-template-columns: minmax(210px, 1fr) minmax(280px, 1.35fr) minmax(210px, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 html.is-mobile-landscape .roster-version-bar {

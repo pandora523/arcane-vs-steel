@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps135';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps135';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps135';
+import { Fighter } from './Fighter.js?v=30fps136';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps136';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps136';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -13,6 +13,22 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.38, 0.36, 0.40, 0.52];
 const INTRA_COMBO_LINK = 0.015;
+
+const CALDERA_CRIMSON_PALETTE = Object.freeze({
+  core: [255, 255, 255],
+  bright: [254, 215, 170],
+  mid: [239, 68, 68],
+  deep: [127, 29, 29],
+  glow: [248, 113, 113]
+});
+
+const CORONA_ASTRAL_PALETTE = Object.freeze({
+  core: [255, 255, 255],
+  bright: [254, 249, 195],
+  mid: [250, 204, 21],
+  deep: [161, 98, 7],
+  glow: [253, 224, 71]
+});
 
 // Pad astralCataclysmImpactDome's shadeBox bounds so craggy dome peaks never touch a box edge
 const MAGE_EX_SOLAR_REGISTRY = {
@@ -181,6 +197,23 @@ export class FireMageEx extends Fighter {
 
   hasHackAndSlashCombo() {
     return false;
+  }
+
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.maxHp = 3590;
+      this.hp = this.maxHp;
+      this.autoInterval = 1.10;
+      this._postFlurryInterval = 1.68;
+      this.dodgeMaxCooldown = 3.30;
+    } else if (aspect === 2) {
+      this.maxHp = 3610;
+      this.hp = this.maxHp;
+      this.autoInterval = 0.89;
+      this._postFlurryInterval = 1.44;
+      this.dodgeMaxCooldown = 2.55;
+      this.moveSpeed = 177;
+    }
   }
 
   getAiStyleProfile() {
@@ -903,7 +936,8 @@ export class FireMageEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
-    this.crouchCooldown = 3.2;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    this.crouchCooldown = vsAspect === 2 ? 2.75 : 3.2;
     this.crouchDuration = 0.94;
     this.setState('CROUCH');
     this.isCrouching = true;
@@ -913,11 +947,22 @@ export class FireMageEx extends Fighter {
     this.y = this.groundY;
 
     if (game?.audio) game.audio.play('parry_clang', this.x);
-    this.heal(12, 'SOLAR WARD');
+    if (vsAspect === 2) {
+      this.heal(12, 'SOLAR WARD');
+      this.grantBuildShield(28, 1.8, 'SOLAR BARRIER!', '#fde047');
+    } else if (vsAspect === 0) {
+      this.heal(12, 'SOLAR WARD');
+    }
     this.fx?.spawn('solarFlameWard', this.x, this.groundY - 92, {
       follow: this,
       offsetX: 0,
       offsetY: -92,
+      palette:
+        vsAspect === 1
+          ? CALDERA_CRIMSON_PALETTE
+          : vsAspect === 2
+            ? CORONA_ASTRAL_PALETTE
+            : undefined,
       light: 1.24
     });
     this.spawnRemoteSeal(this.x, this.groundY, 68, 0.65, false);
@@ -1107,6 +1152,16 @@ export class FireMageEx extends Fighter {
     const dist = Math.hypot(dx, dy) || 1;
     const aimAng = Math.atan2(dy, Math.abs(dx));
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const aspectPal =
+      vsAspect === 1
+        ? CALDERA_CRIMSON_PALETTE
+        : vsAspect === 2
+          ? CORONA_ASTRAL_PALETTE
+          : undefined;
+    const spdScale = vsAspect === 1 ? 0.93 : vsAspect === 2 ? 1.12 : 1.0;
+    const dmgScale = vsAspect === 1 ? 1.10 : vsAspect === 2 ? 0.83 : 1.0;
+
     // 2. Beat-Specific Pure Long-Range Sorcery Casts
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
@@ -1120,21 +1175,23 @@ export class FireMageEx extends Fighter {
         });
         this.fx?.spawn('solarFireballMachCone', spawnX, spawnY, {
           flip: this.facing < 0,
+          palette: aspectPal,
           light: 1.18,
           extra: { aimAngle: aimAng, isTwin: false }
         });
         this.spawnSolarStarCluster(spawnX, spawnY, 5, 115, false);
+        const spd0 = 740 * spdScale;
         game?.vfx?.spawnProjectile({
           x: spawnX,
           y: spawnY,
-          vx: (dx / dist) * 740,
-          vy: (dy / dist) * 740,
-          radius: 16,
+          vx: (dx / dist) * spd0,
+          vy: (dy / dist) * spd0,
+          radius: vsAspect === 1 ? 20 : 16,
           maxRange: 640,
-          color: '#fb923c',
-          coreColor: '#fef08a',
+          color: vsAspect === 1 ? '#ef4444' : vsAspect === 2 ? '#fde047' : '#fb923c',
+          coreColor: vsAspect === 2 ? '#ffffff' : '#fef08a',
           owner: this,
-          damage: 46,
+          damage: vsAspect === 0 ? 46 : Math.round(46 * dmgScale),
           type: 'fireball',
           isMeteor: false
         });
@@ -1151,23 +1208,24 @@ export class FireMageEx extends Fighter {
         });
         this.fx?.spawn('solarFireballMachCone', spawnX, spawnY, {
           flip: this.facing < 0,
+          palette: aspectPal,
           light: 1.20,
           extra: { aimAngle: aimAng, isTwin: true }
         });
         this.spawnSolarStarCluster(spawnX, spawnY, 6, 120, false);
         if (game?.vfx) {
-          const speed = 720;
+          const speed = 720 * spdScale;
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY - 14,
             vx: (dx / dist) * speed,
             vy: (dy / dist) * speed - 22,
-            radius: 14,
+            radius: vsAspect === 1 ? 16 : 14,
             maxRange: 640,
-            color: '#fb923c',
+            color: vsAspect === 1 ? '#ef4444' : vsAspect === 2 ? '#fde047' : '#fb923c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 28,
+            damage: vsAspect === 0 ? 28 : Math.round(28 * dmgScale),
             type: 'fireball',
             isMeteor: false
           });
@@ -1176,12 +1234,12 @@ export class FireMageEx extends Fighter {
             y: spawnY + 14,
             vx: (dx / dist) * speed,
             vy: (dy / dist) * speed + 22,
-            radius: 14,
+            radius: vsAspect === 1 ? 16 : 14,
             maxRange: 640,
             color: '#ea580c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 26,
+            damage: vsAspect === 0 ? 26 : Math.round(26 * dmgScale),
             type: 'fireball',
             isMeteor: false
           });
@@ -1204,12 +1262,19 @@ export class FireMageEx extends Fighter {
           flipX: false,
           inFront: true
         });
-        this._applyRemoteSolarEruption(this._v2RemoteTargetX, 86, 24, game, aimFoe || enemy, {
-          knockX: 16,
-          knockY: -22,
-          hitStop: 0.032,
-          isEclipse: true
-        });
+        this._applyRemoteSolarEruption(
+          this._v2RemoteTargetX,
+          86,
+          vsAspect === 0 ? 24 : Math.round(24 * dmgScale),
+          game,
+          aimFoe || enemy,
+          {
+            knockX: 16,
+            knockY: -22,
+            hitStop: 0.032,
+            isEclipse: true
+          }
+        );
       }
       if ((this._beatHitMask & 2) === 0 && t >= 0.16) {
         this._beatHitMask |= 2;
@@ -1223,9 +1288,10 @@ export class FireMageEx extends Fighter {
           delay: 0.02,
           maxLife: 0.82,
           scaleWidth: 0.88,
-          tickDamage: 10
+          tickDamage: vsAspect === 1 ? 12 : vsAspect === 2 ? 6 : 10
         });
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
+          palette: aspectPal,
           light: 1.26,
           extra: { scaleWidth: 0.88 }
         });
@@ -1233,12 +1299,19 @@ export class FireMageEx extends Fighter {
           flipX: this.facing < 0,
           inFront: true
         });
-        this._applyRemoteSolarEruption(px, 92, 30, game, aimFoe || enemy, {
-          isCrit: true,
-          knockX: 28,
-          knockY: -54,
-          hitStop: 0.040
-        });
+        this._applyRemoteSolarEruption(
+          px,
+          92,
+          vsAspect === 0 ? 30 : Math.round(30 * dmgScale),
+          game,
+          aimFoe || enemy,
+          {
+            isCrit: true,
+            knockX: 28,
+            knockY: -54,
+            hitStop: 0.040
+          }
+        );
       }
     } else {
       // Beat 4 (V3): -42px Backstep-Hover Cast -> Triple Meteoric Fireball Barrage + Remote Helios Sunburst (3-hit!)
@@ -1263,18 +1336,18 @@ export class FireMageEx extends Fighter {
 
         // Fire Meteoric Comet #1 & #2
         if (game?.vfx) {
-          const speed = 745;
+          const speed = 745 * spdScale;
           game.vfx.spawnProjectile({
             x: spawnX + this.facing * 8,
             y: spawnY - 22,
             vx: (dx / dist) * speed,
             vy: (dy / dist) * speed + 16,
-            radius: 15,
+            radius: vsAspect === 1 ? 18 : 15,
             maxRange: 660,
             color: '#ea580c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 24,
+            damage: vsAspect === 0 ? 24 : Math.round(24 * dmgScale),
             type: 'fireball',
             isMeteor: false
           });
@@ -1283,12 +1356,12 @@ export class FireMageEx extends Fighter {
             y: spawnY,
             vx: (dx / dist) * (speed * 1.03),
             vy: (dy / dist) * (speed * 1.03),
-            radius: 17,
+            radius: vsAspect === 1 ? 20 : 17,
             maxRange: 660,
             color: '#dc2626',
             coreColor: '#ffffff',
             owner: this,
-            damage: 30,
+            damage: vsAspect === 0 ? 30 : Math.round(30 * dmgScale),
             type: 'fireball',
             isMeteor: false
           });
@@ -1298,18 +1371,18 @@ export class FireMageEx extends Fighter {
         this._beatHitMask |= 2;
         // Fire Meteoric Comet #3
         if (game?.vfx) {
-          const speed = 735;
+          const speed = 735 * spdScale;
           game.vfx.spawnProjectile({
             x: spawnX + this.facing * 6,
             y: spawnY + 22,
             vx: (dx / dist) * speed,
             vy: (dy / dist) * speed - 18,
-            radius: 15,
+            radius: vsAspect === 1 ? 18 : 15,
             maxRange: 660,
             color: '#fb923c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 24,
+            damage: vsAspect === 0 ? 24 : Math.round(24 * dmgScale),
             type: 'fireball',
             isMeteor: false
           });
@@ -1326,12 +1399,19 @@ export class FireMageEx extends Fighter {
           flipX: false,
           inFront: true
         });
-        this._applyRemoteSolarEruption(burstX, 94, 24, game, aimFoe || enemy, {
-          isCrit: true,
-          knockX: 64,
-          knockY: -58,
-          hitStop: 0.044
-        });
+        this._applyRemoteSolarEruption(
+          burstX,
+          94,
+          vsAspect === 0 ? 24 : Math.round(24 * dmgScale),
+          game,
+          aimFoe || enemy,
+          {
+            isCrit: true,
+            knockX: 64,
+            knockY: -58,
+            hitStop: 0.044
+          }
+        );
       }
     }
 
@@ -1396,22 +1476,48 @@ export class FireMageEx extends Fighter {
     const rawBase = enemy ? enemy.x : this.x + this.facing * 360;
     const baseTargetX = this._safeFxX(Math.max(135, Math.min(ww - 135, rawBase)), game);
 
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    const skillPal =
+      vsSkill === 1
+        ? CALDERA_CRIMSON_PALETTE
+        : vsSkill === 2
+          ? CORONA_ASTRAL_PALETTE
+          : undefined;
+
     if (!this.didSkillAura) {
       this.didSkillAura = true;
-      this.heal(16, 'HELIOS AEGIS');
+      if (vsSkill === 2) {
+        this.heal(20, 'CORONA AEGIS');
+        this.grantBuildShield(44, 2.4, 'SOLAR BARRIER!', '#fde047');
+        this.healTeammateTagGrace(20, 'TAG CORONA', 38, 2.4);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 245) {
+          const backDir = enemy.x >= this.x ? -1 : 1;
+          this.x = this._clampArenaX(this.x + backDir * 68, game);
+          this.fx?.spawn('arcaneBlinkRift', this._safeFxX(this.x, game), this.groundY, {
+            light: 1.20,
+            extra: { isArrival: true }
+          });
+        }
+      } else if (vsSkill === 0) {
+        this.heal(16, 'HELIOS AEGIS');
+      }
       game?.vfx?.spawnSpecialCastAura(this, this.skillName, 'SOLAR ARCHMAGE', 'arcane', false);
       this.fx?.spawn('heliosPalmFocus', this._safeFxX(this.x + this.facing * 28, game), this.y - 108, {
         follow: this,
         offsetX: 28,
         offsetY: -108,
         flip: this.facing < 0,
+        palette: skillPal,
         light: 1.24
       });
-      this._skillTrinitySeals = [
-        this._safeFxX(Math.max(95, Math.min(ww - 95, baseTargetX - 96)), game),
-        baseTargetX,
-        this._safeFxX(Math.max(95, Math.min(ww - 95, baseTargetX + 96)), game)
-      ];
+      this._skillTrinitySeals =
+        vsSkill === 2
+          ? [baseTargetX]
+          : [
+              this._safeFxX(Math.max(95, Math.min(ww - 95, baseTargetX - 96)), game),
+              baseTargetX,
+              this._safeFxX(Math.max(95, Math.min(ww - 95, baseTargetX + 96)), game)
+            ];
       for (let i = 0; i < this._skillTrinitySeals.length; i++) {
         this.spawnRemoteSeal(this._skillTrinitySeals[i], this.groundY, i === 1 ? 82 : 64, 0.90, false);
       }
@@ -1419,30 +1525,49 @@ export class FireMageEx extends Fighter {
 
     if (t >= 0.26 && !this.didActionFrame) {
       this.didActionFrame = true;
-      const centerSealX = this._skillTrinitySeals[1] || baseTargetX;
+      const centerSealX = this._skillTrinitySeals[1] || this._skillTrinitySeals[0] || baseTargetX;
       if (game?.audio) game.audio.play('fireball', centerSealX);
       game?.renderer?.triggerShake?.(10, 0.22);
 
-      const delays = [0.16, 0.04, 0.16];
-      const widths = [0.86, 1.22, 0.86];
+      const delays = this._skillTrinitySeals.length === 1 ? [0.04] : [0.16, 0.04, 0.16];
+      const widths = this._skillTrinitySeals.length === 1 ? [1.14] : [0.86, 1.22, 0.86];
       for (let i = 0; i < this._skillTrinitySeals.length; i++) {
         const px = this._skillTrinitySeals[i];
+        const isMain = this._skillTrinitySeals.length === 1 || i === 1;
         game?.vfx?.spawnFlamePillar(px, this.groundY, this, enemy, {
           theme: 'arcane',
           delay: delays[i],
-          maxLife: i === 1 ? 1.44 : 1.24,
+          maxLife: isMain ? 1.44 : 1.24,
           scaleWidth: widths[i],
-          tickDamage: 17
+          tickDamage: vsSkill === 1 ? 18 : vsSkill === 2 ? 9 : 17
         });
+        if (vsSkill === 1) {
+          game?.vfx?.spawnSkyStrike({
+            x: px - this.facing * 42,
+            y: -150,
+            targetX: px,
+            groundY: this.groundY,
+            vx: this.facing * 120,
+            vy: 1360,
+            type: 'solar_lance',
+            color: isMain ? '#fef08a' : '#ef4444',
+            coreColor: '#ffffff',
+            owner: this,
+            target: enemy,
+            damage: isMain ? 18 : 11,
+            isUltimate: false
+          });
+        }
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
-          light: i === 1 ? 1.34 : 1.20,
+          palette: skillPal,
+          light: isMain ? 1.34 : 1.20,
           extra: { scaleWidth: widths[i] }
         });
-        this.spawnVfxAnim(1, px, this.groundY - 98, i === 1 ? 212 : 174, i === 1 ? 216 : 176, 0.44, {
+        this.spawnVfxAnim(1, px, this.groundY - 98, isMain ? 212 : 174, isMain ? 216 : 176, 0.44, {
           flipX: i === 0,
           inFront: true
         });
-        this.spawnSolarStarCluster(px, this.groundY - 76, i === 1 ? 9 : 6, 150, false);
+        this.spawnSolarStarCluster(px, this.groundY - 76, isMain ? 9 : 6, 150, false);
       }
       this.spawnVfxAnim(4, centerSealX, this.groundY - 124, 196, 196, 0.40, {
         flipX: false,
@@ -1467,18 +1592,19 @@ export class FireMageEx extends Fighter {
       const dx = enemy ? enemy.x - sx : this.facing * 440;
       const dy = enemy ? enemy.y - 98 - sy : 0;
       const dist = Math.hypot(dx, dy) || 1;
-      for (const vyOff of [-32, 32]) {
+      const fanOffsets = vsSkill === 2 ? [-42, 0, 42] : [-32, 32];
+      for (const vyOff of fanOffsets) {
         game?.vfx?.spawnProjectile({
           x: sx,
           y: sy,
-          vx: (dx / dist) * 705,
-          vy: (dy / dist) * 705 + vyOff,
-          radius: 15,
+          vx: (dx / dist) * (vsSkill === 2 ? 790 : 705),
+          vy: (dy / dist) * (vsSkill === 2 ? 790 : 705) + vyOff,
+          radius: vsSkill === 1 ? 18 : 15,
           maxRange: 660,
-          color: '#fb923c',
+          color: vsSkill === 1 ? '#ef4444' : vsSkill === 2 ? '#fde047' : '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 50,
+          damage: vsSkill === 1 ? 51 : vsSkill === 2 ? 25 : 50,
           type: 'fireball',
           isMeteor: false
         });
@@ -1512,12 +1638,27 @@ export class FireMageEx extends Fighter {
     );
     const eclipseY = this.groundY - 372;
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    const ultPal =
+      vsUlt === 1
+        ? CALDERA_CRIMSON_PALETTE
+        : vsUlt === 2
+          ? CORONA_ASTRAL_PALETTE
+          : undefined;
+
     if (!this.spawnedEclipse) {
       this.spawnedEclipse = true;
       this._ultLanceStep = 0;
       this._ultLockedTargetX = initTargetX;
       this._ultLockedEclipseX = initEclipseX;
-      this.heal(18, 'ECLIPSE CORONA');
+      if (vsUlt === 2) {
+        this.heal(23, 'CORONA SINGULARITY');
+        this.grantBuildShield(48, 2.6, 'CORONA BARRIER!', '#fde047');
+        this.healTeammateTagGrace(28, 'TAG CORONA', 44, 2.6);
+        this.gainFinisher(7);
+      } else if (vsUlt === 0) {
+        this.heal(18, 'ECLIPSE CORONA');
+      }
       if (game?.audio) game.audio.play('eclipse_charge', initEclipseX);
       game?.vfx?.spawnSpecialCastAura(this, this.ultName, 'NEO-VISION OVERDRIVE', 'arcane', true);
 
@@ -1531,9 +1672,11 @@ export class FireMageEx extends Fighter {
       };
 
       this.fx?.spawn('eclipseSupernovaDomain', initTargetX, this.groundY, {
+        palette: ultPal,
         light: 1.34
       });
       this.fx?.spawn('arcaneBlinkRift', this._safeFxX(this.x, game), this.groundY, {
+        palette: ultPal,
         light: 1.24,
         extra: { isArrival: false }
       });
@@ -1553,10 +1696,11 @@ export class FireMageEx extends Fighter {
     // Gravitational Singularity Pull during Eclipse Rain (`0.00..0.92s`)
     const foes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
     if (t < 0.92) {
+      const pullSpeed = vsUlt === 2 ? 188 : 124;
       for (const foe of foes) {
         if (foe && !foe.isDead && !foe.isBenched && !foe.isColossalBoss) {
           if (Math.abs(targetX - foe.x) > 8) {
-            foe.x += Math.sign(targetX - foe.x) * 124 * dt;
+            foe.x += Math.sign(targetX - foe.x) * pullSpeed * dt;
           }
         }
       }
@@ -1580,11 +1724,11 @@ export class FireMageEx extends Fighter {
         vx: dirX * 2.8,
         vy: 1320,
         type: 'solar_lance',
-        color: idx === 3 ? '#fef08a' : '#fb923c',
+        color: vsUlt === 1 ? '#ef4444' : idx === 3 ? '#fef08a' : '#fb923c',
         coreColor: '#ffffff',
         owner: this,
         target: enemy,
-        damage: idx === 3 ? 44 : 26,
+        damage: vsUlt === 1 ? (idx === 3 ? 47 : 28) : vsUlt === 2 ? (idx === 3 ? 32 : 19) : idx === 3 ? 44 : 26,
         isUltimate: true
       });
       if (idx % 3 === 0) {
@@ -1598,10 +1742,10 @@ export class FireMageEx extends Fighter {
           vy: (mDy / mLen) * 820,
           radius: 17,
           maxRange: 640,
-          color: '#ea580c',
+          color: vsUlt === 1 ? '#dc2626' : '#ea580c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 18,
+          damage: vsUlt === 1 ? 20 : vsUlt === 2 ? 12 : 18,
           type: 'meteor',
           isMeteor: true
         });
@@ -1625,12 +1769,13 @@ export class FireMageEx extends Fighter {
         x2: targetX,
         y2: this.groundY - 10,
         width: 78,
-        color: '#fb923c',
+        color: vsUlt === 1 ? '#ef4444' : '#fb923c',
         coreColor: '#fef08a',
         maxLife: 0.56
       });
 
       this.fx?.spawn('solarMeteorImpactBurst', targetX, this.groundY - 78, {
+        palette: ultPal,
         light: 1.38,
         extra: { isMeteor: true }
       });
@@ -1648,21 +1793,29 @@ export class FireMageEx extends Fighter {
           maxLife: 1.08,
           scaleWidth: idx === 1 ? 1.14 : 0.80,
           isUltimate: true,
-          tickDamage: 18
+          tickDamage: vsUlt === 1 ? 20 : vsUlt === 2 ? 11 : 18
         });
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
+          palette: ultPal,
           light: idx === 1 ? 1.36 : 1.22,
           extra: { scaleWidth: idx === 1 ? 1.14 : 0.80 }
         });
       });
 
-      this._applyRemoteSolarEruption(targetX, 185, 158, game, enemy, {
-        isCrit: true,
-        knockX: 155,
-        knockY: -205,
-        hitStop: 0.06,
-        isEclipse: true
-      });
+      this._applyRemoteSolarEruption(
+        targetX,
+        185,
+        vsUlt === 1 ? 174 : vsUlt === 2 ? 120 : 158,
+        game,
+        enemy,
+        {
+          isCrit: true,
+          knockX: 155,
+          knockY: -205,
+          hitStop: 0.06,
+          isEclipse: true
+        }
+      );
 
       game?.vfx?.spawnDamageText(
         targetX,
@@ -2155,9 +2308,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps135'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps135'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps135'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps136'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps136'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps136'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

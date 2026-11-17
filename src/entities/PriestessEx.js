@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps135';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
-import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps135';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps135';
+import { Fighter } from './Fighter.js?v=30fps136';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps136';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps136';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Grounded Rose-Window Magic Circle + Sanctum Light-Ray -> snaps at F03 (63)
@@ -13,6 +13,22 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.38, 0.36, 0.40, 0.52];
 const INTRA_COMBO_LINK = 0.015;
+
+const CRIMSON_INQUISITOR_PALETTE = Object.freeze({
+  core: [255, 255, 255],
+  bright: [253, 164, 175],
+  mid: [244, 63, 94],
+  deep: [136, 19, 55],
+  glow: [251, 113, 133]
+});
+
+const ASTRAL_SERAPH_PALETTE = Object.freeze({
+  core: [255, 255, 255],
+  bright: [224, 242, 254],
+  mid: [56, 189, 248],
+  deep: [30, 58, 138],
+  glow: [125, 211, 252]
+});
 
 /**
  * Seraphina EX (`priestess_ex`) — Neo-Vision High Priestess & Sanctuary Sovereign.
@@ -136,6 +152,21 @@ export class PriestessEx extends Fighter {
 
   isHackAndSlashCaster() {
     return false;
+  }
+
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.maxHp = 3510;
+      this.hp = this.maxHp;
+      this._postFlurryInterval = 1.44;
+    } else if (aspect === 2) {
+      this.maxHp = 3590;
+      this.hp = this.maxHp;
+      this.moveSpeed = 175;
+      this.dodgeMaxCooldown = 3.05;
+      this.wallWingCooldown = 0;
+      this._postFlurryInterval = 1.54;
+    }
   }
 
   hasHackAndSlashCombo() {
@@ -359,14 +390,17 @@ export class PriestessEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    let stepDelta = v === 3 ? -38 : v === 0 ? 12 : v === 1 ? 10 : 14;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const v3Backstep = vsAspect === 2 ? -54 : -38;
+    const closeRetreat = vsAspect === 2 ? -36 : -26;
+    let stepDelta = v === 3 ? v3Backstep : v === 0 ? 12 : v === 1 ? 10 : 14;
 
     if (enemy && !enemy.isDead) {
       const horizDist = Math.abs(enemy.x - this.x);
       if (v === 3) {
-        stepDelta = -38;
-      } else if (horizDist < 215) {
-        stepDelta = -26;
+        stepDelta = v3Backstep;
+      } else if (horizDist < (vsAspect === 2 ? 245 : 215)) {
+        stepDelta = closeRetreat;
       } else {
         stepDelta = v === 0 ? 12 : v === 1 ? 10 : 14;
       }
@@ -797,20 +831,42 @@ export class PriestessEx extends Fighter {
         flipX: this.facing < 0,
         inFront: true
       });
-      game?.vfx?.spawnProjectile({
-        x: sx,
-        y: sy,
-        vx: (dx / len) * 725,
-        vy: (dy / len) * 725,
-        radius: 15,
-        maxRange: 640,
-        color: '#fde047',
-        coreColor: '#ffffff',
-        owner: this,
-        damage: 42,
-        type: 'holy_light',
-        isMeteor: false
-      });
+      const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+      if (vsAspect === 2) {
+        // Aspect III (Astral Seraph): Twin aerial starlight bolts on Winged Vault!
+        for (const vyOff of [-22, 22]) {
+          game?.vfx?.spawnProjectile({
+            x: sx,
+            y: sy + vyOff * 0.4,
+            vx: (dx / len) * 760,
+            vy: (dy / len) * 760 + vyOff,
+            radius: 14,
+            maxRange: 650,
+            color: vyOff < 0 ? '#7dd3fc' : '#fde047',
+            coreColor: '#ffffff',
+            owner: this,
+            damage: 24,
+            type: 'holy_light',
+            isMeteor: false
+          });
+        }
+      } else {
+        const boltSpd = vsAspect === 1 ? 825 : 725;
+        game?.vfx?.spawnProjectile({
+          x: sx,
+          y: sy,
+          vx: (dx / len) * boltSpd,
+          vy: (dy / len) * boltSpd,
+          radius: 15,
+          maxRange: 640,
+          color: vsAspect === 1 ? '#fb7185' : '#fde047',
+          coreColor: '#ffffff',
+          owner: this,
+          damage: vsAspect === 1 ? 46 : 42,
+          type: 'holy_light',
+          isMeteor: false
+        });
+      }
     }
 
     if (u >= 1) {
@@ -837,7 +893,8 @@ export class PriestessEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
-    this.crouchCooldown = 3.8;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    this.crouchCooldown = vsAspect === 2 ? 3.3 : 3.8;
     this.crouchDuration = 0.94;
     this.setState('CROUCH');
     this.isCrouching = true;
@@ -853,10 +910,21 @@ export class PriestessEx extends Fighter {
       offsetY: 0,
       useGroundY: true,
       flip: this.facing < 0,
+      palette:
+        vsAspect === 1
+          ? CRIMSON_INQUISITOR_PALETTE
+          : vsAspect === 2
+            ? ASTRAL_SERAPH_PALETTE
+            : undefined,
       light: 1.18
     });
     if (game?.audio) game.audio.play('holy_heal', this.x);
-    this.heal(7, 'BENEDICTION');
+    if (vsAspect !== 1) {
+      this.heal(7, 'BENEDICTION');
+    }
+    if (vsAspect === 2) {
+      this.grantBuildShield(20, 1.6, 'ASTRAL AEGIS!', '#7dd3fc');
+    }
     this.spawnPrismSeal(this.x, this.groundY, 68, 0.65);
   }
 
@@ -1037,6 +1105,17 @@ export class PriestessEx extends Fighter {
     const dist = Math.hypot(dx, dy) || 1;
     const aimAng = Math.atan2(dy, Math.abs(dx));
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const aspectPal =
+      vsAspect === 1
+        ? CRIMSON_INQUISITOR_PALETTE
+        : vsAspect === 2
+          ? ASTRAL_SERAPH_PALETTE
+          : undefined;
+    const boltColor = vsAspect === 1 ? '#fb7185' : vsAspect === 2 ? '#7dd3fc' : '#fde047';
+    const boltSpeedMult = vsAspect === 1 ? 1.14 : vsAspect === 2 ? 1.07 : 1.0;
+    const dmgScale = vsAspect === 1 ? 1.12 : vsAspect === 2 ? 0.85 : 1.0;
+
     // 2. Beat-Specific Pure Long-Range Sacred Casts
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
@@ -1050,21 +1129,23 @@ export class PriestessEx extends Fighter {
         });
         this.fx?.spawn('scepterStarburstCone', spawnX, spawnY, {
           flip: this.facing < 0,
+          palette: aspectPal,
           light: 1.18,
           extra: { aimAngle: aimAng }
         });
         this.spawnSanctumCluster(spawnX, spawnY, 5, 115, false);
+        const spd0 = 735 * boltSpeedMult;
         game?.vfx?.spawnProjectile({
           x: spawnX,
           y: spawnY,
-          vx: (dx / dist) * 735,
-          vy: (dy / dist) * 735,
+          vx: (dx / dist) * spd0,
+          vy: (dy / dist) * spd0,
           radius: 15,
           maxRange: 640,
-          color: '#fde047',
+          color: boltColor,
           coreColor: '#ffffff',
           owner: this,
-          damage: 39,
+          damage: vsAspect === 0 ? 39 : Math.round(39 * dmgScale),
           type: 'holy_light',
           isMeteor: false
         });
@@ -1081,12 +1162,13 @@ export class PriestessEx extends Fighter {
         });
         this.fx?.spawn('scepterStarburstCone', spawnX, spawnY, {
           flip: this.facing < 0,
+          palette: aspectPal,
           light: 1.20,
           extra: { aimAngle: aimAng, isGrace: true }
         });
         this.spawnSanctumCluster(spawnX, spawnY, 6, 120, true);
         if (game?.vfx) {
-          const speed = 715;
+          const speed = 715 * boltSpeedMult;
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY - 14,
@@ -1094,10 +1176,10 @@ export class PriestessEx extends Fighter {
             vy: (dy / dist) * speed - 20,
             radius: 14,
             maxRange: 640,
-            color: '#fde047',
+            color: boltColor,
             coreColor: '#ffffff',
             owner: this,
-            damage: 23,
+            damage: vsAspect === 0 ? 23 : Math.round(23 * dmgScale),
             type: 'holy_light',
             isMeteor: false
           });
@@ -1108,10 +1190,10 @@ export class PriestessEx extends Fighter {
             vy: (dy / dist) * speed + 20,
             radius: 14,
             maxRange: 640,
-            color: '#fb7185',
+            color: vsAspect === 2 ? '#fde047' : '#fb7185',
             coreColor: '#fef9c3',
             owner: this,
-            damage: 21,
+            damage: vsAspect === 0 ? 21 : Math.round(21 * dmgScale),
             type: 'holy_light',
             isMeteor: false
           });
@@ -1134,11 +1216,18 @@ export class PriestessEx extends Fighter {
           flipX: false,
           inFront: false
         });
-        this._applyRemoteSanctumJudgment(this._v2RemoteX, 86, 22, game, aimFoe || enemy, {
-          knockX: 16,
-          knockY: -20,
-          hitStop: 0.032
-        });
+        this._applyRemoteSanctumJudgment(
+          this._v2RemoteX,
+          86,
+          vsAspect === 0 ? 22 : Math.round(22 * dmgScale),
+          game,
+          aimFoe || enemy,
+          {
+            knockX: 16,
+            knockY: -20,
+            hitStop: 0.032
+          }
+        );
       }
       if ((this._beatHitMask & 2) === 0 && t >= 0.16) {
         this._beatHitMask |= 2;
@@ -1154,6 +1243,7 @@ export class PriestessEx extends Fighter {
           tickDamage: 0
         });
         this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
+          palette: aspectPal,
           light: 1.24,
           extra: { scaleWidth: 0.90 }
         });
@@ -1161,12 +1251,22 @@ export class PriestessEx extends Fighter {
           flipX: this.facing < 0,
           inFront: true
         });
-        this._applyRemoteSanctumJudgment(px, 92, 28, game, aimFoe || enemy, {
-          isCrit: true,
-          knockX: 26,
-          knockY: -48,
-          hitStop: 0.038
-        });
+        const hitV2 = this._applyRemoteSanctumJudgment(
+          px,
+          92,
+          vsAspect === 0 ? 28 : Math.round(28 * dmgScale),
+          game,
+          aimFoe || enemy,
+          {
+            isCrit: true,
+            knockX: vsAspect === 1 ? 10 : 26,
+            knockY: -48,
+            hitStop: 0.038
+          }
+        );
+        if (vsAspect === 1 && hitV2 && (aimFoe || enemy)) {
+          (aimFoe || enemy).applyBuildRoot?.(0.36, 'SPEAR ROOT!', '#fb7185');
+        }
       }
     } else {
       // Beat 4 (V3): -38px Grounded Sanctum Backstep Kite -> Purifying Star-Pillar at enemy.x + holy_light bolt + Dawn Grace micro-heal (3-hit!)
@@ -1184,16 +1284,39 @@ export class PriestessEx extends Fighter {
 
         if (game?.audio) {
           game.audio.play('holy_bolt', spawnX);
-          game.audio.play('holy_heal', this.x);
+          if (vsAspect !== 1) game.audio.play('holy_heal', this.x);
         }
-        this.heal(12, 'DAWN GRACE');
-        this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
-          follow: this,
-          offsetX: 0,
-          offsetY: 0,
-          useGroundY: true,
-          light: 1.20
-        });
+        if (vsAspect !== 1) {
+          this.heal(12, 'DAWN GRACE');
+          this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
+            follow: this,
+            offsetX: 0,
+            offsetY: 0,
+            useGroundY: true,
+            palette: aspectPal,
+            light: 1.20
+          });
+        } else {
+          // Aspect II (Crimson Inquisitor): zero heal, drops pinning Crimson Sky-Spear!
+          game?.vfx?.spawnSkyStrike({
+            x: this._v3RemoteX,
+            y: -140,
+            groundY: this.groundY,
+            vx: 0,
+            vy: 1380,
+            type: 'holy_spear',
+            color: '#fb7185',
+            coreColor: '#ffffff',
+            owner: this,
+            target: aimFoe || enemy,
+            damage: 14,
+            delay: 0.02,
+            isUltimate: false
+          });
+        }
+        if (vsAspect === 2) {
+          this.gainMana(3);
+        }
         this.spawnPrismSeal(this.x, this.groundY, 58, 0.38);
         this.spawnVfxAnim(4, spawnX + this.facing * 8, spawnY, 168, 168, 0.28, {
           flipX: this.facing < 0,
@@ -1201,27 +1324,35 @@ export class PriestessEx extends Fighter {
         });
         this.spawnSanctumCluster(spawnX, spawnY, 8, 140, true);
 
+        const spd3 = 740 * boltSpeedMult;
         game?.vfx?.spawnProjectile({
           x: spawnX + this.facing * 10,
           y: spawnY,
-          vx: (dx / dist) * 740,
-          vy: (dy / dist) * 740,
+          vx: (dx / dist) * spd3,
+          vy: (dy / dist) * spd3,
           radius: 16,
           maxRange: 650,
-          color: '#fde047',
+          color: boltColor,
           coreColor: '#ffffff',
           owner: this,
-          damage: 29,
+          damage: vsAspect === 0 ? 29 : Math.round(29 * dmgScale),
           type: 'holy_light',
           isMeteor: false
         });
 
         this.spawnPrismSeal(this._v3RemoteX, this.groundY, 82, 0.44);
-        this._applyRemoteSanctumJudgment(this._v3RemoteX, 90, 19, game, aimFoe || enemy, {
-          knockX: 20,
-          knockY: -28,
-          hitStop: 0.034
-        });
+        this._applyRemoteSanctumJudgment(
+          this._v3RemoteX,
+          90,
+          vsAspect === 0 ? 19 : Math.round(19 * dmgScale),
+          game,
+          aimFoe || enemy,
+          {
+            knockX: 20,
+            knockY: -28,
+            hitStop: 0.034
+          }
+        );
       }
       if ((this._beatHitMask & 2) === 0 && t >= 0.24) {
         this._beatHitMask |= 2;
@@ -1235,6 +1366,7 @@ export class PriestessEx extends Fighter {
           tickDamage: 0
         });
         this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
+          palette: aspectPal,
           light: 1.28,
           extra: { scaleWidth: 0.96 }
         });
@@ -1242,12 +1374,22 @@ export class PriestessEx extends Fighter {
           flipX: false,
           inFront: true
         });
-        this._applyRemoteSanctumJudgment(px, 96, 23, game, aimFoe || enemy, {
-          isCrit: true,
-          knockX: 62,
-          knockY: -56,
-          hitStop: 0.044
-        });
+        const hitV3 = this._applyRemoteSanctumJudgment(
+          px,
+          96,
+          vsAspect === 0 ? 23 : Math.round(23 * dmgScale),
+          game,
+          aimFoe || enemy,
+          {
+            isCrit: true,
+            knockX: vsAspect === 1 ? 18 : 62,
+            knockY: -56,
+            hitStop: 0.044
+          }
+        );
+        if (vsAspect === 1 && hitV3 && (aimFoe || enemy)) {
+          (aimFoe || enemy).applyBuildRoot?.(0.36, 'SPEAR ROOT!', '#fb7185');
+        }
       }
     }
 
@@ -1317,19 +1459,46 @@ export class PriestessEx extends Fighter {
     const rawTarget = enemy ? enemy.x : this.x + this.facing * 355;
     const targetX = this._safeFxX(Math.max(115, Math.min(ww - 115, rawTarget)), game);
 
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    const skillPal =
+      vsSkill === 1
+        ? CRIMSON_INQUISITOR_PALETTE
+        : vsSkill === 2
+          ? ASTRAL_SERAPH_PALETTE
+          : undefined;
+
     if (t >= 0.16 && !this.didSanctuaryHeal) {
       this.didSanctuaryHeal = true;
-      if (game?.audio) game.audio.play('holy_heal', this.x);
+      if (game?.audio) game.audio.play(vsSkill === 1 ? 'holy_bolt' : 'holy_heal', this.x);
       game?.vfx?.spawnSpecialCastAura(this, this.skillName, 'SERAPHIC SOVEREIGN', 'radiant', false);
-      this.heal(30, 'SANCTUARY');
-      this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
-        follow: this,
-        offsetX: 0,
-        offsetY: 0,
-        useGroundY: true,
-        light: 1.28
-      });
-      this.spawnPrismSeal(this.x, this.groundY, 88, 0.76);
+      if (vsSkill === 1) {
+        // Skill II (Crimson Spear-Tribunal): Zero self-heal!
+        this.spawnPrismSeal(this.x, this.groundY, 84, 0.72);
+      } else if (vsSkill === 2) {
+        // Skill III (Eternal Sanctuary Aegis): Barrier + Self & Tag-Partner Heal!
+        this.heal(32, 'ETERNAL SANCTUARY');
+        this.grantBuildShield(48, 2.5, 'SANCTUARY BARRIER!', '#fde047');
+        this.healTeammateTagGrace(34, 'TAG SANCTUARY', 40, 2.4);
+        this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
+          follow: this,
+          offsetX: 0,
+          offsetY: 0,
+          useGroundY: true,
+          palette: ASTRAL_SERAPH_PALETTE,
+          light: 1.32
+        });
+        this.spawnPrismSeal(this.x, this.groundY, 102, 0.88);
+      } else {
+        this.heal(30, 'SANCTUARY');
+        this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
+          follow: this,
+          offsetX: 0,
+          offsetY: 0,
+          useGroundY: true,
+          light: 1.28
+        });
+        this.spawnPrismSeal(this.x, this.groundY, 88, 0.76);
+      }
       this.spawnPrismSeal(targetX, this.groundY, 104, 0.84);
       this.spawnVfxAnim(3, this.x, this.groundY - 104, 192, 192, 0.48, {
         flipX: false,
@@ -1339,7 +1508,7 @@ export class PriestessEx extends Fighter {
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 215) {
         const pushDir = Math.sign(enemy.x - this.x) || this.facing;
-        enemy.vx += pushDir * 180;
+        enemy.vx += pushDir * (vsSkill === 2 ? 230 : 180);
       }
     }
 
@@ -1348,47 +1517,53 @@ export class PriestessEx extends Fighter {
       if (game?.audio) game.audio.play('holy_bolt', targetX);
       game?.renderer?.triggerShake?.(10, 0.22);
 
-      const rayXs = [
-        this._safeFxX(Math.max(85, Math.min(ww - 85, targetX - 56)), game),
-        targetX,
-        this._safeFxX(Math.max(85, Math.min(ww - 85, targetX + 56)), game)
-      ];
+      const rayOffsets =
+        vsSkill === 1
+          ? [-88, -44, 0, 44, 88]
+          : vsSkill === 2
+            ? [0]
+            : [-56, 0, 56];
 
-      for (let i = 0; i < rayXs.length; i++) {
-        const rx = rayXs[i];
-        const isCenter = i === 1;
+      for (let i = 0; i < rayOffsets.length; i++) {
+        const off = rayOffsets[i];
+        const rx = this._safeFxX(Math.max(85, Math.min(ww - 85, targetX + off)), game);
+        const isCenter = off === 0;
         this.fx?.spawn('holySpearReticle', rx, this.groundY, {
+          palette: skillPal,
           light: 1.22
         });
-        game?.vfx?.spawnFlamePillar(rx, this.groundY, this, enemy, {
-          theme: 'radiant',
-          delay: isCenter ? 0.01 : 0.05,
-          maxLife: isCenter ? 0.86 : 0.68,
-          scaleWidth: isCenter ? 1.04 : 0.74,
-          tickDamage: 10
-        });
+        if (vsSkill !== 1 || Math.abs(off) <= 44) {
+          game?.vfx?.spawnFlamePillar(rx, this.groundY, this, enemy, {
+            theme: 'radiant',
+            delay: isCenter ? 0.01 : 0.05,
+            maxLife: isCenter ? 0.86 : 0.68,
+            scaleWidth: isCenter ? 1.04 : 0.74,
+            tickDamage: vsSkill === 2 ? 6 : 10
+          });
+        }
         game?.vfx?.spawnSkyStrike({
           x: rx,
           y: -160,
           groundY: this.groundY,
           vx: 0,
-          vy: 1320,
+          vy: vsSkill === 1 ? 1420 : 1320,
           type: 'holy_spear',
-          color: isCenter ? '#fde047' : '#fb7185',
+          color: vsSkill === 1 ? '#fb7185' : isCenter ? '#fde047' : '#fb7185',
           coreColor: '#ffffff',
           owner: this,
           target: enemy,
-          damage: isCenter ? 28 : 18,
-          delay: isCenter ? 0 : 0.05,
+          damage: vsSkill === 1 ? (isCenter ? 26 : 15) : vsSkill === 2 ? 20 : isCenter ? 28 : 18,
+          delay: isCenter ? 0 : 0.04,
           isUltimate: false
         });
         this.spawnVfxAnim(2, rx, this.groundY - (isCenter ? 102 : 86), isCenter ? 204 : 164, isCenter ? 216 : 172, 0.44, {
-          flipX: i === 0,
+          flipX: off < 0,
           inFront: true
         });
       }
 
       this.fx?.spawn('cathedralSanctumPillar', targetX, this.groundY, {
+        palette: skillPal,
         light: 1.30,
         extra: { scaleWidth: 1.02 }
       });
@@ -1397,12 +1572,22 @@ export class PriestessEx extends Fighter {
         inFront: false
       });
 
-      this._applyRemoteSanctumJudgment(targetX, 118, 55, game, enemy, {
-        isCrit: true,
-        knockX: 60,
-        knockY: -48,
-        hitStop: 0.042
-      });
+      const hitSkill = this._applyRemoteSanctumJudgment(
+        targetX,
+        118,
+        vsSkill === 1 ? 64 : vsSkill === 2 ? 39 : 55,
+        game,
+        enemy,
+        {
+          isCrit: true,
+          knockX: vsSkill === 1 ? 22 : 60,
+          knockY: -48,
+          hitStop: 0.042
+        }
+      );
+      if (vsSkill === 1 && hitSkill && enemy) {
+        enemy.applyBuildRoot?.(0.46, 'INQUISITOR ROOT!', '#fb7185');
+      }
 
       const sx = this._safeFxX(this.x + this.facing * 64, game);
       const sy = this.y - 108;
@@ -1412,14 +1597,14 @@ export class PriestessEx extends Fighter {
       game?.vfx?.spawnProjectile({
         x: sx,
         y: sy,
-        vx: (dx / dist) * 710,
-        vy: (dy / dist) * 710,
+        vx: (dx / dist) * (vsSkill === 1 ? 810 : 710),
+        vy: (dy / dist) * (vsSkill === 1 ? 810 : 710),
         radius: 15,
         maxRange: 650,
-        color: '#fde047',
+        color: vsSkill === 1 ? '#fb7185' : vsSkill === 2 ? '#7dd3fc' : '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 38,
+        damage: vsSkill === 1 ? 43 : vsSkill === 2 ? 26 : 38,
         type: 'holy_light',
         isMeteor: false
       });
@@ -1463,19 +1648,44 @@ export class PriestessEx extends Fighter {
     }
     this.y = this.groundY - lift;
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    const ultPal =
+      vsUlt === 1
+        ? CRIMSON_INQUISITOR_PALETTE
+        : vsUlt === 2
+          ? ASTRAL_SERAPH_PALETTE
+          : undefined;
+
     if (t >= 0.14 && !this.didUltMiracle) {
       this.didUltMiracle = true;
       this.ultOrganStep = 0;
-      if (game?.audio) game.audio.play('holy_heal', this.x);
+      if (game?.audio) game.audio.play(vsUlt === 1 ? 'holy_bolt' : 'holy_heal', this.x);
       game?.vfx?.spawnSpecialCastAura(this, this.ultName, 'NEO-VISION OVERDRIVE', 'radiant', true);
-      this.heal(32, 'MIRACLE');
-      this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
-        follow: this,
-        offsetX: 0,
-        offsetY: 0,
-        useGroundY: true,
-        light: 1.30
-      });
+      if (vsUlt === 1) {
+        // Ult II (Crimson Inquisitor Crucible): Zero Miracle heal!
+      } else if (vsUlt === 2) {
+        // Ult III (Choir of Eternal Sanctuary): Enhanced Miracle + Tag-Partner Heal + Radiant Barrier!
+        this.heal(40, 'ETERNAL CHOIR');
+        this.grantBuildShield(58, 2.8, 'ETERNAL BARRIER!', '#fde047');
+        this.healTeammateTagGrace(46, 'CHOIR GRACE', 48, 2.8);
+        this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
+          follow: this,
+          offsetX: 0,
+          offsetY: 0,
+          useGroundY: true,
+          palette: ASTRAL_SERAPH_PALETTE,
+          light: 1.34
+        });
+      } else {
+        this.heal(32, 'MIRACLE');
+        this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
+          follow: this,
+          offsetX: 0,
+          offsetY: 0,
+          useGroundY: true,
+          light: 1.30
+        });
+      }
       this._organVisual = {
         active: true,
         centerX: targetX,
@@ -1520,17 +1730,35 @@ export class PriestessEx extends Fighter {
         x2: px,
         y2: this.groundY - 6,
         width: isCenter ? 54 : 38,
-        color: '#fde047',
+        color: vsUlt === 1 ? '#fb7185' : vsUlt === 2 ? '#7dd3fc' : '#fde047',
         coreColor: '#ffffff',
         maxLife: isCenter ? 0.54 : 0.42
       });
+      if (vsUlt === 1) {
+        game?.vfx?.spawnSkyStrike({
+          x: px,
+          y: -170,
+          groundY: this.groundY,
+          vx: 0,
+          vy: 1450,
+          type: 'holy_spear',
+          color: '#fb7185',
+          coreColor: '#ffffff',
+          owner: this,
+          target: enemy,
+          damage: 8,
+          delay: 0.01,
+          isUltimate: true
+        });
+      }
       this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
+        palette: ultPal,
         light: isCenter ? 1.36 : 1.22,
         extra: { scaleWidth: isCenter ? 1.22 : 0.86 }
       });
       this.spawnSanctumCluster(px, this.groundY - 92, isCenter ? 10 : 6, 150, true);
       if (enemy && !enemy.isDead && Math.abs(enemy.x - px) <= 135) {
-        enemy.takeDamage(22, this, false, 24, 0);
+        enemy.takeDamage(vsUlt === 1 ? 25 : vsUlt === 2 ? 14 : 22, this, false, 24, 0);
       }
     }
 
@@ -1544,6 +1772,7 @@ export class PriestessEx extends Fighter {
 
       this.fx?.spawn('sanctuaryNovaBurst', targetX, this.groundY - 118, {
         flip: false,
+        palette: ultPal,
         light: 1.38
       });
       this.spawnVfxAnim(3, targetX, this.groundY - 118, 256, 256, 0.58, {
@@ -1552,12 +1781,22 @@ export class PriestessEx extends Fighter {
       });
       this.spawnSanctumCluster(targetX, this.groundY - 118, 16, 195, true);
 
-      this._applyRemoteSanctumJudgment(targetX, 195, 136, game, enemy, {
-        isCrit: true,
-        knockX: 145,
-        knockY: -195,
-        hitStop: 0.06
-      });
+      const hitUlt = this._applyRemoteSanctumJudgment(
+        targetX,
+        195,
+        vsUlt === 1 ? 162 : vsUlt === 2 ? 99 : 136,
+        game,
+        enemy,
+        {
+          isCrit: true,
+          knockX: vsUlt === 1 ? 95 : 145,
+          knockY: -195,
+          hitStop: 0.06
+        }
+      );
+      if (vsUlt === 1 && hitUlt && enemy) {
+        enemy.applyBuildRoot?.(0.42, 'CRUCIBLE PIN!', '#fb7185');
+      }
 
       game?.vfx?.spawnDamageText(
         targetX,
@@ -1925,10 +2164,10 @@ export class PriestessEx extends Fighter {
         return img;
       };
       assets.priestess_ex = {
-        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps135'),
-        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps135'),
-        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps135'),
-        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps135'),
+        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps136'),
+        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps136'),
+        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps136'),
+        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps136'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

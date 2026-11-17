@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps135';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
+import { Fighter } from './Fighter.js?v=30fps136';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps135';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps136';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)
@@ -149,6 +149,20 @@ export class WarriorEx extends Fighter {
 
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('warrior_ex');
+    }
+  }
+
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.moveSpeed = 210;
+      this.maxHp = 3740;
+      this.hp = this.maxHp;
+      this._postFlurryInterval = 1.32;
+    } else if (aspect === 2) {
+      this.moveSpeed = 174;
+      this.maxHp = 3920;
+      this.hp = this.maxHp;
+      this._postFlurryInterval = 1.56;
     }
   }
 
@@ -679,7 +693,8 @@ export class WarriorEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
-    this.crouchCooldown = 3.2;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    this.crouchCooldown = vsAspect === 2 ? 2.7 : vsAspect === 1 ? 2.9 : 3.2;
     this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.4);
     this.isCrouching = true;
     this.isDeflecting = true;
@@ -687,7 +702,14 @@ export class WarriorEx extends Fighter {
     this.vx = 0;
     this.setState('CROUCH');
     if (game?.audio) game.audio.play('parry_clang', this.x);
-    if (!game?.isAdventureMode?.()) this.heal(13, 'AEGIS VOW');
+    if (!game?.isAdventureMode?.()) {
+      if (vsAspect === 2) {
+        this.heal(13, 'AEGIS VOW');
+        this.grantBuildShield(32, 2.0, 'AEGIS BARRIER!', '#38bdf8');
+      } else if (vsAspect === 0) {
+        this.heal(13, 'AEGIS VOW');
+      }
+    }
     this.spawnVfxAnim(1, this.x + this.facing * 20, this.y - 78, 188, 188, 0.38, {
       flipX: this.facing < 0,
       glowColor: 'gold',
@@ -956,25 +978,43 @@ export class WarriorEx extends Fighter {
       this.vy = 0;
     }
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    if (vsAspect === 2 && (v === 1 || v === 3)) {
+      this.unstoppablePoise = true;
+    }
+    const autoScale = vsAspect === 2 ? 0.80 : 1.0;
+
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
         this._beatHitMask |= 1;
-        this.spawnPixelShockRing(this.x + this.facing * 42, this.groundY - 2, 58, false, 0.22);
+        this.spawnPixelShockRing(this.x + this.facing * 42, this.groundY - 2, 58, vsAspect === 1, 0.22);
         this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 68, this.y - 84, {
           flip: this.facing < 0,
+          palette: vsAspect === 1 ? RUNIC_GOLD_PALETTE : undefined,
           light: 1.20,
-          extra: { radius: 34, width: 11, isGold: false }
+          extra: { radius: 34, width: 11, isGold: vsAspect === 1 }
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 31,
+          damage: vsAspect === 0 ? 31 : Math.round(31 * autoScale),
           reachFront: 214,
           hitStop: 0.042,
           shakeDur: 0.055,
           knockX: 24,
           knockY: 0,
-          isGold: false,
+          isGold: vsAspect === 1,
           sfx: 'slash'
         });
+        if (vsAspect === 1) {
+          this.fireDawnBladeWave(game, {
+            x: this.x + this.facing * 70,
+            y: this.groundY - 76,
+            damage: 16,
+            speed: 720,
+            maxRange: 500,
+            pierce: true,
+            isGold: true
+          });
+        }
       }
     } else if (v === 1) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.06) {
@@ -993,7 +1033,7 @@ export class WarriorEx extends Fighter {
           foreground: false
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 34,
+          damage: vsAspect === 0 ? 34 : Math.round(34 * autoScale),
           reachFront: 216,
           hitStop: 0.042,
           shakeDur: 0.058,
@@ -1012,7 +1052,7 @@ export class WarriorEx extends Fighter {
           extra: { radius: 34, width: 10.5, eccentricity: 0.34, isGold: false }
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 21,
+          damage: vsAspect === 0 ? 21 : Math.round(21 * autoScale),
           reachFront: 214,
           hitStop: 0.032,
           shakeDur: 0.046,
@@ -1031,7 +1071,7 @@ export class WarriorEx extends Fighter {
           extra: { radius: 35, width: 11, eccentricity: 0.34, isGold: true }
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 25,
+          damage: vsAspect === 0 ? 25 : Math.round(25 * autoScale),
           reachFront: 216,
           hitStop: 0.038,
           shakeDur: 0.052,
@@ -1059,7 +1099,7 @@ export class WarriorEx extends Fighter {
           foreground: false
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 27,
+          damage: vsAspect === 0 ? 27 : Math.round(27 * autoScale),
           reachFront: 222,
           hitStop: 0.058,
           shakeDur: 0.082,
@@ -1072,9 +1112,9 @@ export class WarriorEx extends Fighter {
         this.fireDawnBladeWave(game, {
           x: slamX,
           y: this.groundY - 76,
-          damage: 29,
-          speed: 680,
-          maxRange: 430,
+          damage: vsAspect === 1 ? 32 : vsAspect === 2 ? 25 : 29,
+          speed: vsAspect === 1 ? 740 : 680,
+          maxRange: vsAspect === 1 ? 520 : 430,
           pierce: true,
           isGold: true
         });
@@ -1082,7 +1122,7 @@ export class WarriorEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.21) {
         this._beatHitMask |= 2;
         this._applyExviusStrike(enemy, game, {
-          damage: 18,
+          damage: vsAspect === 0 ? 18 : Math.round(18 * autoScale),
           reachFront: 224,
           hitStop: 0,
           shakeDur: 0.045,
@@ -1095,7 +1135,7 @@ export class WarriorEx extends Fighter {
       if ((this._beatHitMask & 4) === 0 && t >= 0.26) {
         this._beatHitMask |= 4;
         this._applyExviusStrike(enemy, game, {
-          damage: 24,
+          damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
           reachFront: 226,
           hitStop: 0,
           shakeDur: 0.055,
@@ -1166,6 +1206,8 @@ export class WarriorEx extends Fighter {
     this.unstoppablePoise = true;
     this.isDeflecting = t < 0.56;
 
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+
     // Beat 0 (t = 0.02s): Consecrate Golden-Cyan Runic Sword-Seal Underfoot!
     if ((this._skillSlashMask & 16) === 0 && t >= 0.02) {
       this._skillSlashMask |= 16;
@@ -1188,8 +1230,44 @@ export class WarriorEx extends Fighter {
       });
       game?.vfx?.spawnShockwave?.(this.x, this.groundY - 2, '#38bdf8', 96, 0.28);
       this.spawnPixelShockRing(this.x, this.groundY - 2, 86, true, 0.30);
-      if (!game?.isAdventureMode?.()) this.heal(20, 'DAWN SWORD-SEAL');
-      game?.vfx?.spawnDamageText?.(this.x, this.y - 154, 0, false, 'DAWN SWORD-SEAL!', '#fde047');
+      if (!game?.isAdventureMode?.()) {
+        if (vsSkill === 2) {
+          this.heal(18, 'BASTION VOW');
+          this.grantBuildShield(36, 2.2, 'AEGIS BASTION!', '#38bdf8');
+          this.healTeammateTagGrace(22, 'TAG BASTION', 36, 2.4);
+          for (const side of [-1, 1]) {
+            game?.vfx?.spawnCrystalSpike?.({
+              x: this._safeFxX(this.x + side * 62, game),
+              groundY: this.groundY,
+              height: 92,
+              width: 28,
+              tilt: side * 0.12,
+              color: '#38bdf8',
+              coreColor: '#ffffff',
+              owner: this,
+              target: null,
+              damage: 0,
+              delay: 0.02,
+              maxLife: 0.44,
+              isUltimate: false
+            });
+          }
+        } else if (vsSkill === 0) {
+          this.heal(20, 'DAWN SWORD-SEAL');
+        }
+      }
+      game?.vfx?.spawnDamageText?.(
+        this.x,
+        this.y - 154,
+        0,
+        false,
+        vsSkill === 1
+          ? 'HEAVENSFALL DIVE!'
+          : vsSkill === 2
+            ? 'AEGIS BASTION!'
+            : 'DAWN SWORD-SEAL!',
+        '#fde047'
+      );
     }
 
     if (this.isDeflecting && game?.vfx?.projectiles) {
@@ -1209,13 +1287,14 @@ export class WarriorEx extends Fighter {
       }
     }
 
-    // Advancing 3-Beat Trinity Rush bursts into 108px sweet-spot
+    // Advancing 3-Beat Trinity Rush bursts into 108px sweet-spot (Dragoon leaps wider; Bastion holds firmer)
     if (t < 0.54) {
       const dist = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 150;
       const inBurstWindow =
         (t >= 0.04 && t < 0.13) || (t >= 0.20 && t < 0.29) || (t >= 0.36 && t < 0.45);
       if (inBurstWindow && dist > 108) {
-        this.vx = this.facing * Math.min(560, (dist - 104) * 9.5 + 220);
+        const maxRush = vsSkill === 1 ? 660 : vsSkill === 2 ? 380 : 560;
+        this.vx = this.facing * Math.min(maxRush, (dist - 104) * 9.5 + 220);
       } else {
         this.vx = 0;
       }
@@ -1229,6 +1308,8 @@ export class WarriorEx extends Fighter {
       this.vx = 0;
     }
 
+    const skMult = vsSkill === 1 ? 1.06 : vsSkill === 2 ? 0.74 : 1.0;
+
     // Beat 1 (t = 0.14s): First Dawn-Breaker Sword-Pillar Shockwave
     if ((this._skillSlashMask & 1) === 0 && t >= 0.14) {
       this._skillSlashMask |= 1;
@@ -1236,7 +1317,7 @@ export class WarriorEx extends Fighter {
       const p1X = this.x + this.facing * 74;
       this.spawnVfxAnim(2, p1X, this.groundY - 70, 184, 184, 0.32, {
         flipX: this.facing < 0,
-        glowColor: 'cyan',
+        glowColor: vsSkill === 1 ? 'gold' : 'cyan',
         foreground: false
       });
       game?.vfx?.spawnCrystalSpike?.({
@@ -1254,15 +1335,15 @@ export class WarriorEx extends Fighter {
         maxLife: 0.34,
         isUltimate: false
       });
-      this.spawnPixelShockRing(p1X, this.groundY - 2, 68, false, 0.24);
+      this.spawnPixelShockRing(p1X, this.groundY - 2, 68, vsSkill === 1, 0.24);
       this._applyExviusStrike(enemy, game, {
-        damage: 27,
+        damage: vsSkill === 0 ? 27 : Math.round(27 * skMult),
         reachFront: 218,
         hitStop: 0.032,
         shakeDur: 0.048,
         knockX: 22,
         knockY: -18,
-        isGold: false,
+        isGold: vsSkill === 1,
         sfx: 'slash'
       });
     }
@@ -1279,7 +1360,7 @@ export class WarriorEx extends Fighter {
       });
       this.spawnPixelShockRing(p2X, this.groundY - 2, 76, true, 0.26);
       this._applyExviusStrike(enemy, game, {
-        damage: 29,
+        damage: vsSkill === 0 ? 29 : Math.round(29 * skMult),
         reachFront: 220,
         hitStop: 0.032,
         shakeDur: 0.048,
@@ -1297,25 +1378,28 @@ export class WarriorEx extends Fighter {
       const p3X = this.x + this.facing * 90;
       this.spawnVfxAnim(2, p3X, this.groundY - 82, 212, 212, 0.36, {
         flipX: this.facing < 0,
-        glowColor: 'cyan',
+        glowColor: vsSkill === 1 ? 'gold' : 'cyan',
         foreground: true
       });
       this._applyExviusStrike(enemy, game, {
-        damage: 31,
+        damage: vsSkill === 0 ? 31 : Math.round(31 * skMult),
         reachFront: 222,
         hitStop: 0.036,
         shakeDur: 0.052,
         knockX: 16,
         knockY: -55,
-        isGold: false,
+        isGold: vsSkill === 1,
         sfx: 'slash'
       });
     }
 
-    // Finisher (t = 0.68s): Rising Sovereign Sky-Pillar Uppercut + Raining 4-Point Pixel Star-Glints!
-    if (t >= 0.58 && t < 0.86) {
+    // Finisher (t = 0.68s): Rising Sovereign Sky-Pillar Uppercut (or Dragoon High-Arcing Dive!)
+    if (vsSkill === 1 && t >= 0.46 && t < 0.74) {
+      const hopU = (t - 0.46) / 0.28;
+      this.y = this.groundY - Math.sin(hopU * Math.PI) * 96;
+    } else if (t >= 0.58 && t < 0.86) {
       const hopU = (t - 0.58) / 0.28;
-      this.y = this.groundY - Math.sin(hopU * Math.PI) * 58;
+      this.y = this.groundY - Math.sin(hopU * Math.PI) * (vsSkill === 2 ? 32 : 58);
     } else {
       this.y = this.groundY;
     }
@@ -1388,7 +1472,7 @@ export class WarriorEx extends Fighter {
       game?.vfx?.spawnDamageText?.(pillarX, this.groundY - 178, 0, true, 'SOVEREIGN SKY-PILLAR!', '#fde047');
 
       this._applyExviusStrike(enemy, game, {
-        damage: 52,
+        damage: vsSkill === 1 ? 56 : vsSkill === 2 ? 36 : 52,
         reachFront: 232,
         hitStop: 0.052,
         shakeDur: 0.075,
@@ -1401,11 +1485,22 @@ export class WarriorEx extends Fighter {
       this.fireDawnBladeWave(game, {
         x: pillarX,
         y: this.groundY - 78,
-        damage: 31,
-        speed: 700,
-        maxRange: 460,
+        damage: vsSkill === 1 ? 32 : vsSkill === 2 ? 20 : 31,
+        speed: vsSkill === 1 ? 745 : 700,
+        maxRange: vsSkill === 1 ? 520 : 460,
         isGold: true
       });
+      if (vsSkill === 1) {
+        // Skill II (Heavensfall Dragoon Dive): Twin trailing gale blade-wave!
+        this.fireDawnBladeWave(game, {
+          x: pillarX - this.facing * 24,
+          y: this.groundY - 62,
+          damage: 14,
+          speed: 660,
+          maxRange: 440,
+          isGold: false
+        });
+      }
     }
 
     if (t >= dur) {
@@ -1476,9 +1571,12 @@ export class WarriorEx extends Fighter {
       { time: 1.06, ox: 0, oy: -136, face: this.facing, frame: 142, txOff: 0, tyOff: -14, gold: true }
     ];
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+
     while (this._ultSlashStep < 5 && t >= cutSchedule[this._ultSlashStep].time) {
       const cut = cutSchedule[this._ultSlashStep];
       this._ultSlashStep++;
+      const useGold = vsUlt === 1 ? true : cut.gold;
 
       const prevX = this.x;
       const prevY = this.y - 72;
@@ -1489,7 +1587,7 @@ export class WarriorEx extends Fighter {
         4,
         (cut.frame - 120 + 28) % 30,
         0.46,
-        cut.gold ? 'gold' : 'cyan'
+        useGold ? 'gold' : 'cyan'
       );
 
       this.x = this._clampArenaX(tx + cut.ox, game);
@@ -1506,7 +1604,7 @@ export class WarriorEx extends Fighter {
         4,
         cut.frame - 120,
         0.52,
-        cut.gold ? 'gold' : 'cyan'
+        useGold ? 'gold' : 'cyan'
       );
 
       // Hairline 3-pass `2px` astral light-thread tracing the Pentagram Star chord!
@@ -1516,25 +1614,25 @@ export class WarriorEx extends Fighter {
         this._clampArenaX(tx + cut.txOff, game),
         this.groundY + cut.tyOff,
         0.64,
-        cut.gold
+        useGold
       );
 
       this.fx?.spawn('runebladeCrescentSlash', tx, this.groundY - 92, {
         flip: cut.face < 0,
-        palette: cut.gold ? RUNIC_GOLD_PALETTE : RUNIC_CYAN_PALETTE,
+        palette: useGold ? RUNIC_GOLD_PALETTE : RUNIC_CYAN_PALETTE,
         light: 1.28,
-        extra: { radius: 38, width: 12, isGold: cut.gold }
+        extra: { radius: 38, width: 12, isGold: useGold }
       });
       this._applyExviusStrike(enemy, game, {
-        damage: 32,
+        damage: vsUlt === 1 ? 34 : vsUlt === 2 ? 23 : 32,
         reachFront: 245,
         reachBack: 145,
         hitStop: 0.028,
         shakeDur: 0.052,
         knockX: 8,
         knockY: -32,
-        isCrit: cut.gold,
-        isGold: cut.gold,
+        isCrit: useGold,
+        isGold: useGold,
         sfx: 'slash'
       });
     }
@@ -1561,7 +1659,17 @@ export class WarriorEx extends Fighter {
 
       if (!this._ultDidPlunge) {
         this._ultDidPlunge = true;
-        if (!game?.isAdventureMode?.()) this.heal(22, 'SANCTUARY GRACE');
+        if (!game?.isAdventureMode?.()) {
+          if (vsUlt === 1) {
+            this.gainFinisher(10);
+          } else if (vsUlt === 2) {
+            this.heal(24, 'BASTION GRACE');
+            this.grantBuildShield(44, 2.6, 'SANCTUARY BASTION!', '#fde047');
+            this.healTeammateTagGrace(30, 'TAG BASTION', 44, 2.8);
+          } else {
+            this.heal(22, 'SANCTUARY GRACE');
+          }
+        }
         const impactX = this._clampArenaX(tx, game);
         if (game?.audio) game.audio.play('thunder_slam', impactX);
         game?.renderer?.triggerShake?.(18, 0.36);
@@ -1583,13 +1691,14 @@ export class WarriorEx extends Fighter {
           scale: 1.42,
           isUltimate: true
         });
-        for (const side of [-1, 1]) {
+        const spikeSides = vsUlt === 2 ? [-2, -1, 1, 2] : [-1, 1];
+        for (const side of spikeSides) {
           game?.vfx?.spawnCrystalSpike?.({
-            x: this._safeFxX(impactX + side * 74, game),
+            x: this._safeFxX(impactX + side * 66, game),
             groundY: this.groundY,
-            height: 112,
+            height: Math.abs(side) === 1 ? 112 : 94,
             width: 32,
-            tilt: side * 0.16,
+            tilt: Math.sign(side) * 0.16,
             color: side < 0 ? '#38bdf8' : '#fde047',
             coreColor: '#ffffff',
             owner: this,
@@ -1630,7 +1739,7 @@ export class WarriorEx extends Fighter {
         });
 
         this._applyExviusStrike(enemy, game, {
-          damage: 90,
+          damage: vsUlt === 1 ? 98 : vsUlt === 2 ? 66 : 90,
           reachFront: 265,
           reachBack: 150,
           hitStop: 0.056,
@@ -1644,8 +1753,8 @@ export class WarriorEx extends Fighter {
         this.fireDawnBladeWave(game, {
           x: impactX,
           y: this.groundY - 80,
-          damage: 40,
-          speed: 740,
+          damage: vsUlt === 1 ? 44 : vsUlt === 2 ? 28 : 40,
+          speed: vsUlt === 1 ? 780 : 740,
           maxRange: 540,
           isUltimate: true,
           isGold: true
