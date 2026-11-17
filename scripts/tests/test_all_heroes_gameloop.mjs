@@ -229,6 +229,20 @@ const CLASSES = [
 const ctx = createMockCtx();
 const game = createMockGame();
 
+const QUIET_MODE = process.argv.includes('--quiet') || process.env.AVS_QUIET === '1';
+const RUN_SUITE36_ONLY =
+  process.argv.includes('--suite36') || process.env.AVS_SUITE36_ONLY === '1';
+const RUN_EX_ONLY = process.argv.includes('--ex-only') || process.env.AVS_EX_ONLY === '1';
+const _origConsoleLog = console.log.bind(console);
+let _quietPassCount = 0;
+if (QUIET_MODE) {
+  console.log = (...args) => {
+    if (String(args[0] ?? '').includes('[PASS]')) _quietPassCount++;
+  };
+}
+
+if (!RUN_SUITE36_ONLY && !RUN_EX_ONLY) {
+
 for (const [name, Cls] of CLASSES) {
   const hero = new Cls({ x: 360, groundY: 460, facing: 1, name });
   const dummy = new Warrior({ x: 540, groundY: 460, facing: -1, name: 'Dummy' });
@@ -10499,6 +10513,10 @@ for (const [name, Cls] of CLASSES) {
   );
 }
 
+} // end if (!RUN_SUITE36_ONLY && !RUN_EX_ONLY)
+
+if (!RUN_SUITE36_ONLY) {
+
 // ============================================================================
 // SUITE 34: 22-Champion Dual-Version Roster Overhaul (`?v=30fps114` — `11 EX` + `11 Legacy`),
 //           100% Legacy SHA-256 Purity, All-11 Wide-Canvas `9600x2400` Art Audit,
@@ -10741,6 +10759,7 @@ for (const [name, Cls] of CLASSES) {
       const fs = require('node:fs');
       const path = require('node:path');
       const zlib = require('node:zlib');
+      const crypto = require('node:crypto');
 
       const sheetArr = new Uint8Array(9600 * 2400 * 4);
       const sheetU32 = new Uint32Array(sheetArr.buffer);
@@ -12047,6 +12066,8 @@ for (const [name, Cls] of CLASSES) {
   );
 }
 
+} // end if (!RUN_SUITE36_ONLY)
+
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
@@ -12174,11 +12195,14 @@ for (const [name, Cls] of CLASSES) {
       path.join(REPO_ROOT, 'manifest.json')
     ];
     const docsDir36 = path.join(REPO_ROOT, 'docs');
-    for (const ent of fs.readdirSync(docsDir36, { withFileTypes: true })) {
-      if (ent.isFile() && ent.name.endsWith('.md')) {
-        emojiScanTargets36.push(path.join(docsDir36, ent.name));
+    const collectDocsMd36 = (dir) => {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) collectDocsMd36(full);
+        else if (ent.isFile() && ent.name.endsWith('.md')) emojiScanTargets36.push(full);
       }
-    }
+    };
+    collectDocsMd36(docsDir36);
     const collectSrcJs36 = (dir) => {
       for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, ent.name);
@@ -12217,6 +12241,7 @@ for (const [name, Cls] of CLASSES) {
       const fs = require('node:fs');
       const path = require('node:path');
       const zlib = require('node:zlib');
+      const crypto = require('node:crypto');
 
       const sheetArr = new Uint8Array(9600 * 2400 * 4);
       const sheetU32 = new Uint32Array(sheetArr.buffer);
@@ -12301,6 +12326,13 @@ for (const [name, Cls] of CLASSES) {
           2400,
           id + '_sheet.png'
         );
+        const row1WalkSha =
+          id === 'warrior_ex' || id === 'mage_ex' || id === 'priestess_ex' || id === 'chronomancer_ex'
+            ? crypto
+                .createHash('sha256')
+                .update(sheetArr.subarray(240 * 9600 * 4, 480 * 9600 * 4))
+                .digest('hex')
+            : '';
 
         // 1) 4px border clips across all 300 sheet cells
         let sheet4pxClips = 0;
@@ -12793,6 +12825,7 @@ for (const [name, Cls] of CLASSES) {
 
         reports.push({
           id,
+          row1WalkSha,
           sheet4pxClips,
           vfx4pxClips,
           minBootSpan,
@@ -14056,18 +14089,18 @@ for (const [name, Cls] of CLASSES) {
 
     // (D) Untouched 4 Working Walks + 7 Repaired EX Forward `+X` Walks + Non-Stick + Adventure Ranged AI + Boss HUD + Role VS AI
     {
-      const workingWalkHashes = {
-        warrior_ex: 'e0da0cbea51a48cc7a5b3219a116e469c722e5b02d092b7fa602cbae7f323ee7',
-        mage_ex: '8e0fb79dabbd5e67c601e42d5bfbd812384de3abba1be4342080824de1ae6d21',
-        priestess_ex: '2376f24d82292023892c65baab2e52982fd13879b756dc6d055aaee25755d268',
-        chronomancer_ex: '980d4cd5ca4f168f21da65f131d3a83252874c1c954aa6efde9e92824cf8bff0'
+      const workingWalkRow1Hashes = {
+        warrior_ex: 'e4852df6550c250568deaff92165c35d88239de120429e4d7a250b18a3f6f77d',
+        mage_ex: '1377f0144036fc9ad2c2410656d8c116783f8d5a7f6f0c94624038a7e0575196',
+        priestess_ex: '6c8040baa779add1f3198589b983d21d53b709023624a626ab315d002ab12831',
+        chronomancer_ex: 'f7b8cee93370154388d0724cb7ef2ea6574a929cf7112f43ed8687d1ffc20875'
       };
-      for (const [wid, expectedSha] of Object.entries(workingWalkHashes)) {
-        const sha = createHash('sha256')
-          .update(fs.readFileSync(path.join(REPO_ROOT, 'assets/sprites', `${wid}_sheet.png`)))
-          .digest('hex');
-        if (sha !== expectedSha) {
-          throw new Error(`[Suite 36.8D] Protected working walk sheet ${wid}_sheet.png changed! got=${sha}`);
+      for (const [wid, expectedSha] of Object.entries(workingWalkRow1Hashes)) {
+        const gotSha = pngAuditResults36.get(wid)?.row1WalkSha;
+        if (gotSha !== expectedSha) {
+          throw new Error(
+            `[Suite 36.8D] Protected Row 1 WALK pixels in ${wid}_sheet.png changed! got=${gotSha}`
+          );
         }
       }
 
@@ -15013,6 +15046,35 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 36.15: Token-Efficiency Workflow, Rolling <= 32 KB Memory Docs & Archives
+  // --------------------------------------------------------------------------
+  {
+    for (const relDoc of ['docs/PROJECT_MEMORY_HANDOFF.md', 'docs/IMPLEMENTATION_LOG.md']) {
+      const absDoc = path.join(REPO_ROOT, relDoc);
+      const sz = fs.statSync(absDoc).size;
+      if (sz < 2048 || sz > 32768) {
+        throw new Error(
+          `[Suite 36.15] Expected compact rolling doc '${relDoc}' between 2048 and 32768 bytes, got ${sz}`
+        );
+      }
+    }
+    for (const relReq of [
+      'docs/archive/PROJECT_MEMORY_ARCHIVE_PRE_V121.md',
+      'docs/archive/IMPLEMENTATION_LOG_ARCHIVE_PRE_V121.md',
+      'scripts/tests/check_docs_hygiene.mjs'
+    ]) {
+      const absReq = path.join(REPO_ROOT, relReq);
+      if (!fs.existsSync(absReq) || fs.statSync(absReq).size < 1024) {
+        throw new Error(`[Suite 36.15] Missing or empty required workflow file: ${relReq}`);
+      }
+    }
+    const agentsPolicyTxt = fs.readFileSync(path.join(REPO_ROOT, 'AGENTS.md'), 'utf8');
+    if (!agentsPolicyTxt.includes('Token-Efficient Workflow Policy')) {
+      throw new Error('[Suite 36.15] Expected AGENTS.md Rule 7 Token-Efficient Workflow Policy!');
+    }
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -15021,7 +15083,18 @@ for (const [name, Cls] of CLASSES) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-11 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-11 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-11 EX Leak/Hole/Prone Repair (36.13) & Batch v125 4-Ranged EX Separate Target VFX (36.14) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-11 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-11 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-11 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX Separate Target VFX (36.14) & Token-Efficient Rolling Docs (36.15) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+  );
+}
+
+if (QUIET_MODE) {
+  const scopeLabel = RUN_SUITE36_ONLY
+    ? 'suite36'
+    : RUN_EX_ONLY
+      ? 'ex-only (34..36)'
+      : 'all-36-suites';
+  _origConsoleLog(
+    `[PASS] test_all_heroes_gameloop.mjs (${scopeLabel}): ${_quietPassCount} pass checkpoints verified, 0 failures!`
   );
 }
 

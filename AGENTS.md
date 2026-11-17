@@ -1,8 +1,8 @@
 # Arcane vs Steel — Workspace Agent Rules (Web & Native Swift iOS/macOS)
 
-1. **Always Read Project Memory First**:
+1. **Always Read Project Memory First (`<= 32 KB` Rolling Cap)**:
    - At the start of every session, read `docs/PROJECT_MEMORY_HANDOFF.md` and `docs/IMPLEMENTATION_LOG.md` (plus `.agents/skills/arcane-vs-steel-pipeline/SKILL.md` via `lookup_skill` when working on champions, stages, Adventure Mode, UI, or porting to Swift/Xcode).
-   - Update `docs/IMPLEMENTATION_LOG.md` and `docs/PROJECT_MEMORY_HANDOFF.md` immediately upon completing each milestone.
+   - Keep both active memory files compact (`<= 32 KB` each, holding only current baseline/invariants + latest 5 batches). When updating them after a milestone, rotate entries older than the latest 5 batches into `docs/archive/`, and **do NOT read `docs/archive/*`** unless investigating an older historical regression.
 
 2. **Core Art & Gameplay Invariants (Shared Across Web & Swift iOS/macOS)**:
    - **100% Lossless Pixel Purity**: Never lossily compress PNG sprite sheets or use bilinear filtering (`imageSmoothingEnabled = false` on Canvas; `.nearest` filtering in SpriteKit / Metal / SwiftUI).
@@ -19,9 +19,14 @@
    - Before modifying project code/assets in any task, always run `bash scripts/create_fallback_backup.sh <label>` so a clean fallback snapshot (`RESTORE_THIS_BACKUP.sh` + `SHA256SUMS.txt`) is saved in `fallback_backups/`.
 
 5. **Verification & Character Balance Policy (Never Run Balance Benchmarks Unasked)**:
-   - Routine pre-push Web verification runs ONLY the fast suites: `node scripts/tests/check_all_ult_shader_boxes.mjs` and `node scripts/tests/test_all_heroes_gameloop.mjs`.
+   - Use fast inner-loop checks while iterating on EX assets (`node scripts/tests/test_all_heroes_gameloop.mjs --suite36 --quiet` or `--ex-only --quiet`), and run `node scripts/tests/check_docs_hygiene.mjs` (`< 50ms`) after markdown/doc edits instead of re-running all 36 gameplay suites.
+   - Routine pre-push Web verification MUST still run **both full gates** once right before commit/push: `node scripts/tests/check_all_ult_shader_boxes.mjs` and `node scripts/tests/test_all_heroes_gameloop.mjs --quiet`.
    - **NEVER run `scripts/tests/benchmark_roster_balance.mjs` or adjust character combat balance during normal UI, engine, stage, Adventure, audio, or platform tasks — ONLY run `benchmark_roster_balance.mjs` when the user explicitly asks to test or change character balance!**
 
 6. **Fast Swarm Integration Policy (Zero Post-Worker Handoff Delay)**:
    - When using `/swarm`, spawn parallel workers with `workspace: "share"` (fast git worktree, avoiding full-clone overhead) and strictly non-overlapping file ownership (never split a binary `.png` sheet across two workers; group co-dependent edits to the same file into one worker; apply repo-wide glue such as `?v=30fps...` cache-bust bumps and combined test blocks once on `main` after merging).
-   - Never spawn extra sequential post-worker `integrator` or `verifier` sub-agents after parallel workers complete — the coordinator merges finished worker branches directly onto `main`, runs the fast verification suites (`check_all_ult_shader_boxes.mjs` and `test_all_heroes_gameloop.mjs`) directly, and pushes without handoff delays.
+   - Never spawn extra sequential post-worker `integrator` or `verifier` sub-agents after parallel workers complete — the coordinator merges finished worker branches directly onto `main`, runs the fast verification suites (`check_all_ult_shader_boxes.mjs` and `test_all_heroes_gameloop.mjs --quiet`) directly, and pushes without handoff delays.
+
+7. **Token-Efficient Workflow Policy (Zero-Bug Gate Preservation)**:
+   - Run the full pre-push gates (`check_all_ult_shader_boxes.mjs` and `test_all_heroes_gameloop.mjs --quiet`) **once** right before `git commit` / `git push` rather than repeating full runs after doc-only edits (validate doc/memory edits with `node scripts/tests/check_docs_hygiene.mjs`).
+   - Reserve full `dist/` Vault builds (`node build/build_web_vault.mjs`) + Headless Chrome E2E screenshots for loader/vault, UI/CSS, shader, or `Renderer.js` changes; for pure sprite-sheet/pose adjustments, inspect compact cropped PNG strips in `scratch/` and rely on `Suite 34` / `Suite 36` pixel/clip/transition gates.
