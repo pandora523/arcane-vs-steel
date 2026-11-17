@@ -6,13 +6,13 @@
 
 ---
 
-## Latest Completed Workflow Upgrade (Token-Efficiency, Rolling Memory Archive & Fast Hygiene Gates — Runtime Cache-Bust Unchanged at `?v=30fps125`)
+## Latest Completed Workflow Upgrade (Token-Efficiency, Rolling Memory Archive & Integrated New-Champion EX Pipeline — Runtime Cache-Bust Unchanged at `?v=30fps125`)
 
 | Milestone | Status | Summary | Key Files |
 | :--- | :--- | :--- | :--- |
-| **1. Pre-Change Snapshot (`20261117_124951_d75f3d2_pre_token_efficiency_workflow`) & Protected Purity** | `[COMPLETED]` | Created verified pre-change fallback snapshot (`401` files hashed) with zero edits to Legacy assets, EX sheets, playbooks, or runtime `?v=30fps125` assets. | `fallback_backups/20261117_124951_d75f3d2_pre_token_efficiency_workflow/` |
-| **2. Lossless Memory/Log Archival (`255 KB -> < 30 KB`)** | `[COMPLETED]` | Rotated pre-`?v=30fps121` entries from `docs/PROJECT_MEMORY_HANDOFF.md` and `docs/IMPLEMENTATION_LOG.md` into `docs/archive/PROJECT_MEMORY_ARCHIVE_PRE_V121.md` and `docs/archive/IMPLEMENTATION_LOG_ARCHIVE_PRE_V121.md`, keeping active rolling docs under `<= 32 KB` each. | `docs/PROJECT_MEMORY_HANDOFF.md`, `docs/IMPLEMENTATION_LOG.md`, `docs/archive/*_PRE_V121.md` |
-| **3. `--quiet` / `--suite36` / `--ex-only`, Row-1 Walk Hash, `check_docs_hygiene.mjs` & `Suite 36.15`** | `[COMPLETED]` | Added `< 50ms` `check_docs_hygiene.mjs` for post-doc emoji/SHA-256/cap validation, added `--quiet` / `--suite36` / `--ex-only` CLI flags to `test_all_heroes_gameloop.mjs`, narrowed `Suite 36.8D` `workingWalkHashes` to Row-1-only RGBA pixel SHA-256 hashes, codified Rule 7 in `AGENTS.md`, and added `Suite 36.15`. | `AGENTS.md`, `scripts/tests/check_docs_hygiene.mjs`, `scripts/tests/test_all_heroes_gameloop.mjs` |
+| **1. Pre-Change Snapshots (`pre_token_efficiency_workflow`, `pre_new_champion_pipeline_skill`) & Protected Purity** | `[COMPLETED]` | Created verified pre-change fallback snapshots (`401`/`402` files hashed) keeping `0` diff vs `8435209` across all Legacy entities, `*Shaders.js`, 33 Legacy PNGs, `hd2d_rig_core.py`, `CHAMPION_DEVELOPMENT_PLAYBOOK.md`, and runtime `?v=30fps125` web assets. | `fallback_backups/20261117_124951_d75f3d2_pre_token_efficiency_workflow/`, `fallback_backups/20261117_131001_53a5d4f_pre_new_champion_pipeline_skill/` |
+| **2. Lossless Memory/Log Archival (`255 KB -> < 23 KB` each) & Hygiene Gates** | `[COMPLETED]` | Rotated pre-`?v=30fps121` entries into `docs/archive/*_PRE_V121.md`, added `<50ms` `check_docs_hygiene.mjs`, added `--quiet`/`--suite36`/`--ex-only` flags to `test_all_heroes_gameloop.mjs`, narrowed `Suite 36.8D` walk locks to Row-1-only RGBA SHA-256, codified `AGENTS.md` Rule 7, and added `Suite 36.15`. | `AGENTS.md`, `docs/PROJECT_MEMORY_HANDOFF.md`, `docs/IMPLEMENTATION_LOG.md`, `docs/archive/*_PRE_V121.md`, `scripts/tests/check_docs_hygiene.mjs` |
+| **3. Integrated New-Champion & EX Sprite Hygiene Pipeline (`AGENTS.md` Rule 8 + `SKILL.md`)** | `[COMPLETED]` | Embedded the `New-Champion Design-First Gate`, mandatory `ex_sprite_clean_utils.py` leak/hole pass, sculpted hands/vambraces, `4px` margins, `setState` ground-snap, and pure-ranged `Row 2/3` VFX separation into `AGENTS.md` Rule 8 and compact `.agents/skills/arcane-vs-steel-pipeline/SKILL.md` (`8.5 KB`), syncing SHA-256 locks in `check_docs_hygiene.mjs`, `Suites 33.1/34.1/36.1/36.15`. | `AGENTS.md`, `.agents/skills/arcane-vs-steel-pipeline/SKILL.md`, `scripts/tests/check_docs_hygiene.mjs`, `scripts/tests/test_all_heroes_gameloop.mjs` |
 
 ---
 

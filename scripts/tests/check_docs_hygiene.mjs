@@ -17,6 +17,7 @@ function collectFiles(dir, predicate, out = []) {
 
 const emojiTargets = [
   path.join(REPO_ROOT, 'AGENTS.md'),
+  path.join(REPO_ROOT, '.agents/skills/arcane-vs-steel-pipeline/SKILL.md'),
   path.join(REPO_ROOT, 'index.html'),
   path.join(REPO_ROOT, 'style.css'),
   path.join(REPO_ROOT, 'manifest.json'),
@@ -44,7 +45,7 @@ const protectedDocsSha256 = {
   'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md':
     '2891ca38b0ec6e6df9e629e99ccdc1fe1403b297e41fc330174b4c556f9b0361',
   '.agents/skills/arcane-vs-steel-pipeline/SKILL.md':
-    '8a4614b8007fb6f93a7f37dfe7c0357aef37927837fdedde52a56c7ae3afc3bc'
+    '7b915cc454b5b4c9e979313a56eca6a3329dccedc6aa77aba69c14becea87705'
 };
 
 for (const [rel, expectedSha] of Object.entries(protectedDocsSha256)) {
@@ -57,6 +58,20 @@ for (const [rel, expectedSha] of Object.entries(protectedDocsSha256)) {
     throw new Error(
       `[check_docs_hygiene] Protected file '${rel}' was modified! expected=${expectedSha}, actual=${actualSha}`
     );
+  }
+}
+
+const skillAbs = path.join(REPO_ROOT, '.agents/skills/arcane-vs-steel-pipeline/SKILL.md');
+const skillBytes = fs.statSync(skillAbs).size;
+if (skillBytes > 12288) {
+  throw new Error(
+    `[check_docs_hygiene] Pipeline SKILL.md must stay compact (<= 12288 bytes), got ${skillBytes}!`
+  );
+}
+const skillTxt = fs.readFileSync(skillAbs, 'utf8');
+for (const marker of ['New-Champion Design-First Gate', 'ex_sprite_clean_utils.py']) {
+  if (!skillTxt.includes(marker)) {
+    throw new Error(`[check_docs_hygiene] Pipeline SKILL.md missing '${marker}'!`);
   }
 }
 
@@ -81,7 +96,11 @@ for (const rel of [
 }
 
 const agentsTxt = fs.readFileSync(path.join(REPO_ROOT, 'AGENTS.md'), 'utf8');
-for (const marker of ['Fast Swarm Integration Policy', 'Token-Efficient Workflow Policy']) {
+for (const marker of [
+  'Fast Swarm Integration Policy',
+  'Token-Efficient Workflow Policy',
+  'Mandatory New-Champion & EX Sprite Pipeline'
+]) {
   if (!agentsTxt.includes(marker)) {
     throw new Error(`[check_docs_hygiene] AGENTS.md missing required section '${marker}'!`);
   }

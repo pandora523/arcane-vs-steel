@@ -9892,7 +9892,7 @@ for (const [name, Cls] of CLASSES) {
       'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md':
         '2891ca38b0ec6e6df9e629e99ccdc1fe1403b297e41fc330174b4c556f9b0361',
       '.agents/skills/arcane-vs-steel-pipeline/SKILL.md':
-        '8a4614b8007fb6f93a7f37dfe7c0357aef37927837fdedde52a56c7ae3afc3bc',
+        '7b915cc454b5b4c9e979313a56eca6a3329dccedc6aa77aba69c14becea87705',
       'scripts/hd2d_rig_core.py':
         '66f2bfe8cdd45e031349d30cd9b980cea12621051709782196d776f2a12c8777',
       'scripts/build_warrior_30fps_sheet.py':
@@ -10674,7 +10674,7 @@ if (!RUN_SUITE36_ONLY) {
       'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md':
         '2891ca38b0ec6e6df9e629e99ccdc1fe1403b297e41fc330174b4c556f9b0361',
       '.agents/skills/arcane-vs-steel-pipeline/SKILL.md':
-        '8a4614b8007fb6f93a7f37dfe7c0357aef37927837fdedde52a56c7ae3afc3bc'
+        '7b915cc454b5b4c9e979313a56eca6a3329dccedc6aa77aba69c14becea87705'
     };
 
     for (const [relFile, expectedHex] of Object.entries(preservedLegacySha256)) {
@@ -12153,14 +12153,25 @@ if (!RUN_SUITE36_ONLY) {
       ...legacyPngFiles36,
       ...exPortraitFiles36,
       'scripts/hd2d_rig_core.py',
-      'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md',
-      '.agents/skills/arcane-vs-steel-pipeline/SKILL.md'
+      'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md'
     ];
 
     for (const rel of protectedFiles36) {
       if (!fs.existsSync(path.join(REPO_ROOT, rel))) {
         throw new Error(`[Suite 36.1] Missing protected file: ${rel}`);
       }
+    }
+
+    const skillAbs36 = path.join(REPO_ROOT, '.agents/skills/arcane-vs-steel-pipeline/SKILL.md');
+    const expectedSkillSha36 = '7b915cc454b5b4c9e979313a56eca6a3329dccedc6aa77aba69c14becea87705';
+    if (!fs.existsSync(skillAbs36)) {
+      throw new Error('[Suite 36.1] Missing .agents/skills/arcane-vs-steel-pipeline/SKILL.md!');
+    }
+    const actualSkillSha36 = crypto.createHash('sha256').update(fs.readFileSync(skillAbs36)).digest('hex');
+    if (actualSkillSha36 !== expectedSkillSha36) {
+      throw new Error(
+        `[Suite 36.1] Unexpected SHA-256 on SKILL.md! expected=${expectedSkillSha36}, actual=${actualSkillSha36}`
+      );
     }
 
     if (fs.existsSync(path.join(REPO_ROOT, '.git'))) {
@@ -12190,6 +12201,8 @@ if (!RUN_SUITE36_ONLY) {
 
     const emojiRe36 = /[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;
     const emojiScanTargets36 = [
+      path.join(REPO_ROOT, 'AGENTS.md'),
+      path.join(REPO_ROOT, '.agents/skills/arcane-vs-steel-pipeline/SKILL.md'),
       path.join(REPO_ROOT, 'index.html'),
       path.join(REPO_ROOT, 'style.css'),
       path.join(REPO_ROOT, 'manifest.json')
@@ -15070,8 +15083,22 @@ if (!RUN_SUITE36_ONLY) {
       }
     }
     const agentsPolicyTxt = fs.readFileSync(path.join(REPO_ROOT, 'AGENTS.md'), 'utf8');
-    if (!agentsPolicyTxt.includes('Token-Efficient Workflow Policy')) {
-      throw new Error('[Suite 36.15] Expected AGENTS.md Rule 7 Token-Efficient Workflow Policy!');
+    if (
+      !agentsPolicyTxt.includes('Token-Efficient Workflow Policy') ||
+      !agentsPolicyTxt.includes('Mandatory New-Champion & EX Sprite Pipeline')
+    ) {
+      throw new Error(
+        '[Suite 36.15] Expected AGENTS.md Rule 7 Token-Efficient Workflow Policy & Rule 8 Mandatory New-Champion & EX Sprite Pipeline!'
+      );
+    }
+    const skillPolicyTxt = fs.readFileSync(
+      path.join(REPO_ROOT, '.agents/skills/arcane-vs-steel-pipeline/SKILL.md'),
+      'utf8'
+    );
+    if (!skillPolicyTxt.includes('ex_sprite_clean_utils.py')) {
+      throw new Error(
+        '[Suite 36.15] Expected SKILL.md to mandate ex_sprite_clean_utils.py leak/hole cleaning!'
+      );
     }
   }
 
