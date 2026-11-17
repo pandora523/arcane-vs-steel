@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps136';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { Fighter } from './Fighter.js?v=30fps137';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps137';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps136';
+} from '../engine/shaders/cyberShaders.js?v=30fps137';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -55,6 +55,28 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.35, 0.33, 0.37, 0.50];
 const INTRA_COMBO_LINK = 0.015;
+
+const POSITRON_CRIMSON_PALETTE = [
+  '#1a0514',
+  '#4a0832',
+  '#9d174d',
+  '#e11d48',
+  '#ff2e93',
+  '#fb7185',
+  '#fde047',
+  '#ffffff'
+];
+
+const QUANTUM_AEGIS_PALETTE = [
+  '#061326',
+  '#0c2e59',
+  '#0284c7',
+  '#06b6d4',
+  '#22d3ee',
+  '#67e8f9',
+  '#bae6fd',
+  '#ffffff'
+];
 
 /**
  * Crisp 4x4 Bayer-stippled pixel floor/rim halo (alpha <= 0.14, zero blurry radial blobs, zero ellipse primitives!).
@@ -275,6 +297,21 @@ export class AndroidEx extends Fighter {
     }
   }
 
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.maxHp = 3620;
+      this.hp = this.maxHp;
+      this.moveSpeed = 238;
+      this._postFlurryInterval = 1.30;
+    } else if (aspect === 2) {
+      this.maxHp = 3740;
+      this.hp = this.maxHp;
+      this.moveSpeed = 212;
+      this.crouchMaxCooldown = 3.8;
+      this._postFlurryInterval = 1.44;
+    }
+  }
+
   getExSprites() {
     if (typeof Image === 'undefined') return null;
     const assets = PixelForge.initAssets?.();
@@ -287,9 +324,9 @@ export class AndroidEx extends Fighter {
         return img;
       };
       assets.android_ex = {
-        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps136'),
-        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps136'),
-        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps136'),
+        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps137'),
+        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps137'),
+        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps137'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -791,6 +828,7 @@ export class AndroidEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isDeflecting = true;
@@ -798,6 +836,9 @@ export class AndroidEx extends Fighter {
     this.crouchDuration = 0.86;
     this.crouchCooldown = this.crouchMaxCooldown || 4.0;
     this.vx = 0;
+    if (vsAspect === 2) {
+      this.grantBuildShield(34, 2.2, 'HEX BARRIER!', '#22d3ee');
+    }
 
     this.fx?.spawn('aegisHexDome', this._safeFxX(this.x + this.facing * 6, game), this._safeFxY(this.groundY), {
       follow: this,
@@ -1106,6 +1147,13 @@ export class AndroidEx extends Fighter {
       this.vy = 0;
     }
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const dmgMult = vsAspect === 1 ? 1.05 : vsAspect === 2 ? 0.84 : 1.0;
+    const neonPal =
+      vsAspect === 1 ? POSITRON_CRIMSON_PALETTE : vsAspect === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_NEON_PALETTE;
+    const magPal =
+      vsAspect === 1 ? POSITRON_CRIMSON_PALETTE : vsAspect === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_MAGENTA_PALETTE;
+
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
         this._beatHitMask |= 1;
@@ -1113,11 +1161,21 @@ export class AndroidEx extends Fighter {
         game?.vfx?.spawnShockwave?.(this.x + this.facing * 40, this.groundY - 4, 56, '#22d3ee', 0.20, false, true);
         this.fx?.spawn('plasmaCrescentSlash', this._safeFxX(slashX, game), this._safeFxY(this.y - 84), {
           flip: this.facing < 0,
-          palette: CYBER_NEON_PALETTE,
+          palette: neonPal,
           light: 1.12
         });
+        if (vsAspect === 1) {
+          this.fireCyberDiscChakram(game, {
+            x: slashX,
+            y: this.y - 84,
+            damage: 16,
+            speed: 730,
+            maxRange: 460,
+            pierce: true
+          });
+        }
         this._applyOdachiStrike(enemy, game, {
-          damage: 37,
+          damage: vsAspect === 0 ? 37 : Math.round(37 * dmgMult),
           reachFront: 218,
           hitStop: 0.044,
           shakeDur: 0.056,
@@ -1125,7 +1183,7 @@ export class AndroidEx extends Fighter {
           knockY: 0,
           scarDx: 108,
           scarDy: 86,
-          isMagenta: false,
+          isMagenta: vsAspect === 1,
           sfx: 'slash'
         });
       }
@@ -1136,12 +1194,12 @@ export class AndroidEx extends Fighter {
         game?.vfx?.spawnShockwave?.(slashX, this.groundY - 8, 66, '#ec4899', 0.22, false, true);
         this.fx?.spawn('plasmaCrescentSlash', this._safeFxX(slashX, game), this._safeFxY(this.y - 94), {
           flip: this.facing < 0,
-          palette: CYBER_MAGENTA_PALETTE,
+          palette: magPal,
           light: 1.14
         });
-        this.fireFinFunnelVolley(enemy, game, 1, 10);
+        this.fireFinFunnelVolley(enemy, game, 1, vsAspect === 0 ? 10 : Math.round(10 * dmgMult));
         this._applyOdachiStrike(enemy, game, {
-          damage: 37,
+          damage: vsAspect === 0 ? 37 : Math.round(37 * dmgMult),
           reachFront: 220,
           hitStop: 0.046,
           shakeDur: 0.058,
@@ -1159,11 +1217,11 @@ export class AndroidEx extends Fighter {
         const slashX = this.x + this.facing * 72;
         this.fx?.spawn('twinCrossSlash', this._safeFxX(slashX, game), this._safeFxY(this.y - 88), {
           flip: this.facing < 0,
-          palette: CYBER_NEON_PALETTE,
+          palette: neonPal,
           light: 1.12
         });
         this._applyOdachiStrike(enemy, game, {
-          damage: 27,
+          damage: vsAspect === 0 ? 27 : Math.round(27 * dmgMult),
           reachFront: 218,
           hitStop: 0.044,
           shakeDur: 0.048,
@@ -1177,9 +1235,9 @@ export class AndroidEx extends Fighter {
       }
       if ((this._beatHitMask & 2) === 0 && t >= 0.14) {
         this._beatHitMask |= 2;
-        this.fireFinFunnelVolley(enemy, game, 2, 12);
+        this.fireFinFunnelVolley(enemy, game, 2, vsAspect === 0 ? 12 : Math.round(12 * dmgMult));
         this._applyOdachiStrike(enemy, game, {
-          damage: 29,
+          damage: vsAspect === 0 ? 29 : Math.round(29 * dmgMult),
           reachFront: 220,
           hitStop: 0.046,
           shakeDur: 0.054,
@@ -1202,8 +1260,11 @@ export class AndroidEx extends Fighter {
           flipX: this.facing < 0,
           foreground: false
         });
+        if (vsAspect === 2 && !game?.isAdventureMode?.()) {
+          this.shieldHp = Math.min(260, (this.shieldHp || 0) + 14);
+        }
         this._applyOdachiStrike(enemy, game, {
-          damage: 33,
+          damage: vsAspect === 0 ? 33 : Math.round(33 * dmgMult),
           reachFront: 224,
           hitStop: 0.060,
           shakeDur: 0.084,
@@ -1218,8 +1279,8 @@ export class AndroidEx extends Fighter {
         this.fireCyberDiscChakram(game, {
           x: slamX,
           y: this.groundY - 78,
-          damage: 35,
-          speed: 700,
+          damage: vsAspect === 0 ? 35 : Math.round(35 * dmgMult),
+          speed: vsAspect === 1 ? 750 : 700,
           maxRange: 460,
           pierce: true
         });
@@ -1227,7 +1288,7 @@ export class AndroidEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.21) {
         this._beatHitMask |= 2;
         this._applyOdachiStrike(enemy, game, {
-          damage: 22,
+          damage: vsAspect === 0 ? 22 : Math.round(22 * dmgMult),
           reachFront: 226,
           hitStop: 0,
           shakeDur: 0.046,
@@ -1242,7 +1303,7 @@ export class AndroidEx extends Fighter {
       if ((this._beatHitMask & 4) === 0 && t >= 0.26) {
         this._beatHitMask |= 4;
         this._applyOdachiStrike(enemy, game, {
-          damage: 29,
+          damage: vsAspect === 0 ? 29 : Math.round(29 * dmgMult),
           reachFront: 228,
           hitStop: 0,
           shakeDur: 0.056,
@@ -1316,6 +1377,11 @@ export class AndroidEx extends Fighter {
 
     const lockX = enemy && !enemy.isDead ? enemy.x : this._clampArenaX(this.x + this.facing * 150, game);
     const lockY = this.groundY - 94;
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    const skillNeonPal =
+      vsSkill === 1 ? POSITRON_CRIMSON_PALETTE : vsSkill === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_NEON_PALETTE;
+    const skillMagPal =
+      vsSkill === 1 ? POSITRON_CRIMSON_PALETTE : vsSkill === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_MAGENTA_PALETTE;
 
     if (t < 0.48) {
       const dist = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 150;
@@ -1355,7 +1421,7 @@ export class AndroidEx extends Fighter {
       };
       this.spawnVfxAnim(3, lockX, lockY, 184, 184, 0.48, { foreground: true });
       this.fx?.spawn('holoTargetReticle', this._safeFxX(lockX, game), this._safeFxY(this.groundY), {
-        palette: CYBER_NEON_PALETTE,
+        palette: skillNeonPal,
         light: 1.08,
         extra: { boxW: 24, boxH: 60 }
       });
@@ -1374,21 +1440,31 @@ export class AndroidEx extends Fighter {
         [g.cx - g.rx, g.cy]
       ];
       for (let i = 0; i < nodes.length; i++) {
-        this.spawnPlasmaBeam(nodes[i][0], nodes[i][1], lockX, lockY, 0.24, i % 2 === 1, 4, 2);
+        this.spawnPlasmaBeam(nodes[i][0], nodes[i][1], lockX, lockY, 0.24, vsSkill === 1 || i % 2 === 1, 4, 2);
         game?.vfx?.spawnBeam?.({
           x1: nodes[i][0],
           y1: nodes[i][1],
           x2: lockX,
           y2: lockY,
           width: 12,
-          color: i % 2 === 1 ? '#ec4899' : '#22d3ee',
+          color: vsSkill === 1 ? '#fb7185' : i % 2 === 1 ? '#ec4899' : '#22d3ee',
           coreColor: '#ffffff',
           maxLife: 0.22,
           owner: this
         });
       }
+      if (vsSkill === 1) {
+        this.fireCyberDiscChakram(game, {
+          x: this.x + this.facing * 80,
+          y: this.y - 88,
+          damage: 16,
+          speed: 740,
+          maxRange: 480,
+          pierce: true
+        });
+      }
       this._applyOdachiStrike(enemy, game, {
-        damage: 37,
+        damage: vsSkill === 1 ? 39 : vsSkill === 2 ? 26 : 37,
         reachFront: 222,
         hitStop: 0.036,
         shakeDur: 0.050,
@@ -1396,7 +1472,7 @@ export class AndroidEx extends Fighter {
         knockY: -22,
         scarDx: 112,
         scarDy: 82,
-        isMagenta: false,
+        isMagenta: vsSkill === 1,
         sfx: 'slash'
       });
     }
@@ -1436,12 +1512,12 @@ export class AndroidEx extends Fighter {
         this._safeFxY(this.y - 88),
         {
           flip: this.facing < 0,
-          palette: CYBER_MAGENTA_PALETTE,
+          palette: skillMagPal,
           light: 1.12
         }
       );
       this._applyOdachiStrike(enemy, game, {
-        damage: 37,
+        damage: vsSkill === 1 ? 39 : vsSkill === 2 ? 26 : 37,
         reachFront: 224,
         hitStop: 0.038,
         shakeDur: 0.054,
@@ -1454,34 +1530,43 @@ export class AndroidEx extends Fighter {
       });
     }
 
-    // Step 4 (t = 0.58s): Thruster-Boosted EMP Odachi Cross-Cut Detonation + +32 HP Shield Recharge!
+    // Step 4 (t = 0.58s): Thruster-Boosted EMP Odachi Cross-Cut Detonation!
     if ((this._skillStepMask & 8) === 0 && t >= 0.58) {
       this._skillStepMask |= 8;
       const empX = this.x + this.facing * 82;
       game?.renderer?.triggerShake?.(14, 0.26);
       game?.renderer?.triggerImpactFrame?.(empX, this.groundY - 86, 0.06, 'cyber');
       game?.audio?.play?.('emp_blast', empX);
-      game?.vfx?.spawnShockwave?.(empX, this.groundY - 2, '#ec4899', 132, 0.32);
+      game?.vfx?.spawnShockwave?.(empX, this.groundY - 2, vsSkill === 2 ? '#22d3ee' : '#ec4899', 132, 0.32);
       game?.vfx?.spawnDecal?.(empX, this.groundY, 'scorch', 88);
       this.fx?.spawn('empOverloadDome', this._safeFxX(empX, game), this._safeFxY(this.groundY), {
-        palette: CYBER_NEON_PALETTE,
+        palette: skillNeonPal,
         warmup: 0.36,
         light: 1.14,
-        extra: { radius: 48, fringe: '#ec4899' }
+        extra: { radius: 48, fringe: vsSkill === 2 ? '#22d3ee' : '#ec4899' }
       });
       this.spawnVfxAnim(2, empX, this.groundY - 82, 212, 212, 0.38, {
         flipX: this.facing < 0,
         foreground: true
       });
       this.spawnCyberHexBurst(empX, this.groundY - 86, 10, true);
-      this.shieldHp = Math.min(260, (this.shieldHp || 0) + 46);
-      this.heal(38, 'SINGULARITY SHIELD');
-      this._applyOdachiStrike(enemy, game, {
-        damage: 66,
+      if (vsSkill === 1) {
+        // Skill II (Positron Rail-Cross Blitz): Zero heal & zero shield!
+      } else if (vsSkill === 2) {
+        this.shieldHp = Math.min(260, (this.shieldHp || 0) + 32);
+        this.heal(30, 'AEGIS-09 RECHARGE');
+        this.grantBuildShield(44, 2.4, 'HEX-AEGIS BARRIER!', '#22d3ee');
+        this.healTeammateTagGrace(26, 'NANITE PATCH', 30, 2.4);
+      } else {
+        this.shieldHp = Math.min(260, (this.shieldHp || 0) + 46);
+        this.heal(38, 'SINGULARITY SHIELD');
+      }
+      const hitStep4 = this._applyOdachiStrike(enemy, game, {
+        damage: vsSkill === 1 ? 72 : vsSkill === 2 ? 44 : 66,
         reachFront: 236,
         hitStop: 0.052,
         shakeDur: 0.076,
-        knockX: 112,
+        knockX: vsSkill === 1 ? 42 : 112,
         knockY: -152,
         isCrit: true,
         scarDx: 32,
@@ -1489,6 +1574,9 @@ export class AndroidEx extends Fighter {
         isMagenta: true,
         sfx: 'emp_blast'
       });
+      if (vsSkill === 1 && hitStep4 && enemy && !enemy.isDead) {
+        enemy.applyBuildRoot?.(0.36, 'EMP LOCK!', '#fb7185');
+      }
     }
 
     if (this.diamondFunnelGrid) {
@@ -1520,6 +1608,12 @@ export class AndroidEx extends Fighter {
     this.vx = 0;
     this.vy = 0;
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    const ultNeonPal =
+      vsUlt === 1 ? POSITRON_CRIMSON_PALETTE : vsUlt === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_NEON_PALETTE;
+    const ultMagPal =
+      vsUlt === 1 ? POSITRON_CRIMSON_PALETTE : vsUlt === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_MAGENTA_PALETTE;
+
     if (this._ultStep === 0) {
       this._ultStep = 1;
       this._ultStartX = this.x;
@@ -1537,13 +1631,13 @@ export class AndroidEx extends Fighter {
         offsetX: -18,
         offsetY: -112,
         flip: this.facing < 0,
-        palette: CYBER_NEON_PALETTE,
+        palette: ultNeonPal,
         maxDuration: 1.72,
         light: 1.08,
         extra: { length: 22, tilt: -0.52 }
       });
       this.fx?.spawn('singularityReactor', this._safeFxX(this._ultFocusX, game), this._safeFxY(this.groundY), {
-        palette: CYBER_NEON_PALETTE,
+        palette: ultNeonPal,
         light: 1.12,
         extra: { radius: 40, coreY: -32 }
       });
@@ -1568,8 +1662,12 @@ export class AndroidEx extends Fighter {
         this.groundY - 212,
         0,
         true,
-        'VALKYRIE HYPER-PRISM BARRAGE!',
-        '#22d3ee'
+        vsUlt === 1
+          ? 'HYPER-POSITRON ANNIHILATOR!'
+          : vsUlt === 2
+            ? 'ORBITAL AEGIS MATRIX!'
+            : 'VALKYRIE HYPER-PRISM BARRAGE!',
+        vsUlt === 1 ? '#fb7185' : '#22d3ee'
       );
     }
 
@@ -1629,7 +1727,7 @@ export class AndroidEx extends Fighter {
 
       this.fx?.spawn('visorHyperLaserBeam', this._safeFxX(visorX, game), this._safeFxY(visorY), {
         flip: false,
-        palette: pulseIdx % 2 === 0 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
+        palette: pulseIdx % 2 === 0 ? ultMagPal : ultNeonPal,
         light: 1.16,
         extra: {
           dx: beamDx,
@@ -1665,12 +1763,13 @@ export class AndroidEx extends Fighter {
       }
 
       const foes = this.getEnemyTargets(enemy, game);
+      const sweepDmg = vsUlt === 1 ? 46 : vsUlt === 2 ? 32 : 43;
       for (const foe of foes) {
         if (Math.abs(foe.x - this._ultFocusX) <= 320 || foe === enemy) {
           if (!foe.isColossalBoss) {
             foe.x += (this._ultFocusX - foe.x) * 0.28;
           }
-          foe.takeDamage(43, this, false, 24, 0);
+          foe.takeDamage(sweepDmg, this, false, 24, 0);
           foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.05);
         }
       }
@@ -1709,7 +1808,7 @@ export class AndroidEx extends Fighter {
 
       this.fx?.spawn('visorHyperLaserBeam', this._safeFxX(visorX, game), this._safeFxY(visorY), {
         flip: false,
-        palette: CYBER_MAGENTA_PALETTE,
+        palette: ultMagPal,
         light: 1.20,
         extra: {
           dx: beamDx,
@@ -1719,20 +1818,32 @@ export class AndroidEx extends Fighter {
         }
       });
       this.fx?.spawn('supernovaExplosion', this._safeFxX(this._ultFocusX, game), this._safeFxY(this.groundY - 88), {
-        palette: CYBER_MAGENTA_PALETTE,
+        palette: ultMagPal,
         light: 1.16
       });
       this.fx?.spawn('empOverloadDome', this._safeFxX(this._ultFocusX, game), this._safeFxY(this.groundY), {
-        palette: CYBER_NEON_PALETTE,
+        palette: ultNeonPal,
         warmup: 0.42,
         light: 1.14,
         extra: { radius: 52, fringe: '#ec4899' }
       });
 
+      if (vsUlt === 1) {
+        this.gainFinisher(8);
+      } else if (vsUlt === 2) {
+        this.heal(34, 'ORBITAL AEGIS');
+        this.grantBuildShield(62, 2.6, 'ORBITAL BARRIER!', '#22d3ee');
+        this.healTeammateTagGrace(28, 'AEGIS MATRIX', 32, 2.5);
+      }
+
       const foes = this.getEnemyTargets(enemy, game);
+      const finDmg = vsUlt === 1 ? 190 : vsUlt === 2 ? 132 : 176;
       for (const foe of foes) {
         if (Math.abs(foe.x - this._ultFocusX) <= 370 || foe === enemy) {
-          foe.takeDamage(176, this, true, 200, -180);
+          foe.takeDamage(finDmg, this, true, 200, -180);
+          if (vsUlt === 2 && !foe.isDead) {
+            foe.applyBuildRoot?.(0.40, 'EMP STASIS!', '#22d3ee');
+          }
           this.spawnHitStarburst(foe.x, foe.y - 94, true, 0.24);
         }
       }

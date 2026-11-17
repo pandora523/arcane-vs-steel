@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps136';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { Fighter } from './Fighter.js?v=30fps137';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps137';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps136';
+} from '../engine/shaders/sylvanShaders.js?v=30fps137';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -16,6 +16,17 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.36, 0.35, 0.38, 0.48];
 const INTRA_COMBO_LINK = 0.015;
+
+const ASTRAL_DEADEYE_PALETTE = [
+  '#171306',
+  '#422006',
+  '#854d0e',
+  '#ca8a04',
+  '#eab308',
+  '#facc15',
+  '#fef08a',
+  '#ffffff'
+];
 
 // 4x4 Ordered Bayer Stipple Matrix for crisp pixel-pure emerald-gold floor halos (alpha <= 0.18, zero radial blur!)
 const BAYER_4X4 = [
@@ -252,6 +263,21 @@ export class ArcherEx extends Fighter {
     return false;
   }
 
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.maxHp = 3690;
+      this.hp = this.maxHp;
+      this.moveSpeed = 198;
+      this._postFlurryInterval = 1.18;
+    } else if (aspect === 2) {
+      this.maxHp = 3680;
+      this.hp = this.maxHp;
+      this.moveSpeed = 194;
+      this.dodgeMaxCooldown = 2.70;
+      this._postFlurryInterval = 1.34;
+    }
+  }
+
   getExSprites() {
     if (typeof Image === 'undefined') return null;
     const assets = PixelForge.initAssets?.();
@@ -264,9 +290,9 @@ export class ArcherEx extends Fighter {
         return img;
       };
       assets.archer_ex = {
-        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps136'),
-        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps136'),
-        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps136'),
+        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps137'),
+        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps137'),
+        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps137'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -692,12 +718,16 @@ export class ArcherEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
-    this.crouchCooldown = 3.2;
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    this.crouchCooldown = vsAspect === 2 ? 3.1 : 3.2;
     this.crouchDuration = 0.96;
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isDeflecting = true;
     this.vx = 0;
+    if (vsAspect === 2) {
+      this.grantBuildShield(36, 2.2, 'CANOPY BARRIER!', '#34d399');
+    }
 
     this.fx.spawn('sylvanLeafCloakDome', this._safeFxX(this.x + this.facing * 4, game), this._safeFxY(this.groundY), {
       follow: this,
@@ -762,7 +792,10 @@ export class ArcherEx extends Fighter {
 
     this.vx = 0;
     this.vy = 0;
-    this.heal(18, 'SYLVAN BREEZE');
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    if (vsAspect !== 1) {
+      this.heal(vsAspect === 2 ? 22 : 18, 'SYLVAN BREEZE');
+    }
     this.spawnLeafRuneBurst(this.x, this.groundY - 64, 6, 130, true);
     if (game?.audio) game.audio.play('zephyr_flip', this.x);
 
@@ -1243,6 +1276,11 @@ export class ArcherEx extends Fighter {
     const dy = targetY - spawnY;
     const aimDist = Math.hypot(dx, dy) || 1;
     const shotAng = Math.atan2(dy, dx);
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const dmgMult = vsAspect === 1 ? 1.07 : vsAspect === 2 ? 0.86 : 1.0;
+    const spdMult = vsAspect === 1 ? 1.12 : 1.0;
+    const emeraldPal = vsAspect === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_EMERALD_PALETTE;
+    const starPal = vsAspect === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_STARLIGHT_PALETTE;
 
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
@@ -1256,25 +1294,25 @@ export class ArcherEx extends Fighter {
         this.spawnLeafRuneBurst(spawnX, spawnY, 3, 105, true);
 
         if (game?.vfx) {
-          const speed = 780;
+          const speed = Math.round(780 * spdMult);
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY,
             vx: (dx / aimDist) * speed,
             vy: (dy / aimDist) * speed,
             radius: 14,
-            color: '#10b981',
+            color: vsAspect === 1 ? '#facc15' : '#10b981',
             coreColor: '#fef08a',
             owner: this,
-            damage: 86,
-            isCrit: false,
-            pierce: false,
+            damage: vsAspect === 0 ? 86 : Math.round(86 * dmgMult),
+            isCrit: vsAspect === 1,
+            pierce: vsAspect === 1,
             type: 'arrow'
           });
         }
         this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
-          palette: SYLVAN_EMERALD_PALETTE,
+          palette: emeraldPal,
           light: 1.16,
           extra: { aimAngle: shotAng, radius: 24, twin: false }
         });
@@ -1290,17 +1328,17 @@ export class ArcherEx extends Fighter {
         this.spawnStarGlint(spawnX + this.facing * 10, spawnY, 8, '#34d399', 0.20);
 
         if (game?.vfx) {
-          const speed = 760;
+          const speed = Math.round(760 * spdMult);
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY - 8,
             vx: (dx / aimDist) * speed,
             vy: (dy / aimDist) * speed - 20,
             radius: 14,
-            color: '#10b981',
+            color: vsAspect === 1 ? '#facc15' : '#10b981',
             coreColor: '#fef08a',
             owner: this,
-            damage: 62,
+            damage: vsAspect === 0 ? 62 : Math.round(62 * dmgMult),
             type: 'arrow'
           });
           game.vfx.spawnProjectile({
@@ -1312,13 +1350,13 @@ export class ArcherEx extends Fighter {
             color: '#34d399',
             coreColor: '#fef08a',
             owner: this,
-            damage: 54,
+            damage: vsAspect === 0 ? 54 : Math.round(54 * dmgMult),
             type: 'arrow'
           });
         }
         this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
-          palette: SYLVAN_STARLIGHT_PALETTE,
+          palette: starPal,
           light: 1.22,
           extra: { aimAngle: shotAng, radius: 27, twin: true }
         });
@@ -1333,7 +1371,7 @@ export class ArcherEx extends Fighter {
         this.spawnAfterimage(this.x, this.groundY, this.facing, 2, 17, 0.18);
 
         if (game?.vfx) {
-          const speed = 770;
+          const speed = Math.round(770 * spdMult);
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY - 6,
@@ -1343,7 +1381,7 @@ export class ArcherEx extends Fighter {
             color: '#34d399',
             coreColor: '#ffffff',
             owner: this,
-            damage: 52,
+            damage: vsAspect === 0 ? 52 : Math.round(52 * dmgMult),
             type: 'arrow'
           });
         }
@@ -1354,7 +1392,7 @@ export class ArcherEx extends Fighter {
 
         const strikeX = enemy && !enemy.isDead ? enemy.x : spawnX + this.facing * 340;
         if (game?.vfx) {
-          const speed = 785;
+          const speed = Math.round(785 * spdMult);
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY + 6,
@@ -1364,7 +1402,7 @@ export class ArcherEx extends Fighter {
             color: '#10b981',
             coreColor: '#fef08a',
             owner: this,
-            damage: 56,
+            damage: vsAspect === 0 ? 56 : Math.round(56 * dmgMult),
             type: 'arrow'
           });
           game.vfx.spawnSkyStrike?.({
@@ -1374,18 +1412,18 @@ export class ArcherEx extends Fighter {
             vx: this.facing * 110,
             vy: 1420,
             type: 'starfall_arrow',
-            color: '#34d399',
+            color: vsAspect === 1 ? '#facc15' : '#34d399',
             coreColor: '#fef08a',
             owner: this,
             target: enemy,
-            damage: 48,
+            damage: vsAspect === 0 ? 48 : Math.round(48 * dmgMult),
             delay: 0,
             maxLinger: 0.42
           });
         }
         this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
-          palette: SYLVAN_STARLIGHT_PALETTE,
+          palette: starPal,
           light: 1.24,
           extra: { aimAngle: shotAng, radius: 28, twin: true }
         });
@@ -1408,20 +1446,21 @@ export class ArcherEx extends Fighter {
         });
 
         if (game?.vfx) {
-          const speed = 820;
+          const speed = Math.round(820 * spdMult);
           const fanOffsets = [-0.06, 0, 0.06];
           for (let k = 0; k < fanOffsets.length; k++) {
             const ang = shotAng + fanOffsets[k];
+            const baseFanDmg = k === 1 ? 72 : 54;
             game.vfx.spawnProjectile({
               x: spawnX + (k === 1 ? this.facing * 8 : 0),
               y: spawnY + (k - 1) * 9,
               vx: Math.cos(ang) * speed,
               vy: Math.sin(ang) * speed,
               radius: k === 1 ? 16 : 14,
-              color: k === 1 ? '#10b981' : '#34d399',
+              color: vsAspect === 1 ? '#facc15' : k === 1 ? '#10b981' : '#34d399',
               coreColor: '#fef08a',
               owner: this,
-              damage: k === 1 ? 72 : 54,
+              damage: vsAspect === 0 ? baseFanDmg : Math.round(baseFanDmg * dmgMult),
               isCrit: true,
               pierce: true,
               type: 'arrow'
@@ -1432,7 +1471,7 @@ export class ArcherEx extends Fighter {
 
         this.fx.spawn('sonicBowReleaseWave', this._safeFxX(spawnX, game), this._safeFxY(spawnY), {
           flip: false,
-          palette: SYLVAN_STARLIGHT_PALETTE,
+          palette: starPal,
           light: 1.32,
           extra: { aimAngle: shotAng, radius: 31, twin: true }
         });
@@ -1497,6 +1536,9 @@ export class ArcherEx extends Fighter {
     );
     const targetX = enemy && !enemy.isDead ? this._clampArenaX(enemy.x, game, 84) : centerTargetX;
     const groundY = enemy?.groundY || this.groundY;
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    const skillEmeraldPal = vsSkill === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_EMERALD_PALETTE;
+    const skillStarPal = vsSkill === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_STARLIGHT_PALETTE;
 
     if (enemy && !enemy.isDead && t < 0.25) {
       this.facing = enemy.x >= this.x ? 1 : -1;
@@ -1512,13 +1554,13 @@ export class ArcherEx extends Fighter {
         follow: this,
         offsetX: 48,
         offsetY: -120,
-        palette: SYLVAN_EMERALD_PALETTE,
+        palette: skillEmeraldPal,
         maxDuration: 0.31,
         light: 1.05,
         extra: { radius: 22 }
       });
       this.fx.spawn('starfallCelestialLock', this._safeFxX(centerTargetX, game), this._safeFxY(groundY), {
-        palette: SYLVAN_STARLIGHT_PALETTE,
+        palette: skillStarPal,
         light: 1.1,
         extra: { radius: 34, beaconH: 60 }
       });
@@ -1530,15 +1572,18 @@ export class ArcherEx extends Fighter {
       this.brambleSnareZones.push({
         x: targetX,
         groundY,
-        radius: 135,
+        radius: vsSkill === 2 ? 165 : 135,
         age: 0,
-        maxLife: 1.35
+        maxLife: vsSkill === 2 ? 1.7 : 1.35
       });
       this.spawnLeafRuneBurst(targetX, groundY - 48, 6, 130, true);
       if (enemy && !enemy.isDead) {
         enemy.vx *= 0.25;
         if (Math.abs(enemy.x - targetX) <= 165) {
-          enemy.takeDamage(20, this, false, 12, -24);
+          enemy.takeDamage(vsSkill === 1 ? 24 : vsSkill === 2 ? 16 : 20, this, false, 12, -24);
+          if (vsSkill === 1 && !enemy.isDead) {
+            enemy.applyBuildRoot?.(0.42, 'BRAMBLE ROOT!', '#facc15');
+          }
         }
       }
 
@@ -1553,13 +1598,14 @@ export class ArcherEx extends Fighter {
           game.vfx.spawnProjectile({
             x: bowX,
             y: bowY + arcSign * 10,
-            vx: (dx / dist) * 700,
-            vy: (dy / dist) * 700 + arcSign * 28,
+            vx: (dx / dist) * (vsSkill === 1 ? 780 : 700),
+            vy: (dy / dist) * (vsSkill === 1 ? 780 : 700) + arcSign * 28,
             radius: 12,
-            color: '#10b981',
+            color: vsSkill === 1 ? '#facc15' : '#10b981',
             coreColor: '#fef08a',
             owner: this,
-            damage: 28,
+            damage: vsSkill === 1 ? 32 : vsSkill === 2 ? 22 : 28,
+            pierce: vsSkill === 1,
             type: 'arrow'
           });
         }
@@ -1570,7 +1616,15 @@ export class ArcherEx extends Fighter {
     if (t >= 0.36 && !this.didActionFrame) {
       this.didActionFrame = true;
       this.vx -= this.facing * 58;
-      this.heal(34, 'STARLIGHT GRACE');
+      if (vsSkill === 1) {
+        // Skill II (Zodiac Sniper Barrage): Zero Starlight Grace heal!
+      } else if (vsSkill === 2) {
+        this.heal(36, 'WORLD-TREE GRACE');
+        this.grantBuildShield(46, 2.4, 'CANOPY BARRIER!', '#34d399');
+        this.healTeammateTagGrace(28, 'YGGDRASIL GRACE', 32, 2.4);
+      } else {
+        this.heal(34, 'STARLIGHT GRACE');
+      }
       if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
       const bowX = this.x + this.facing * 48;
@@ -1579,7 +1633,7 @@ export class ArcherEx extends Fighter {
 
       this.fx.spawn('sonicBowReleaseWave', this._safeFxX(bowX, game), this._safeFxY(bowY), {
         flip: false,
-        palette: SYLVAN_EMERALD_PALETTE,
+        palette: skillEmeraldPal,
         light: 1.2,
         extra: { aimAngle: fAng, radius: 27, twin: true }
       });
@@ -1588,23 +1642,25 @@ export class ArcherEx extends Fighter {
       if (game?.vfx) {
         [-0.15, 0, 0.15].forEach((angOff) => {
           const a = fAng + angOff;
+          const fanSpd = vsSkill === 1 ? 800 : 710;
           game.vfx.spawnProjectile({
             x: bowX,
             y: bowY,
-            vx: Math.cos(a) * 710,
-            vy: Math.sin(a) * 710,
+            vx: Math.cos(a) * fanSpd,
+            vy: Math.sin(a) * fanSpd,
             radius: 12,
-            color: '#34d399',
+            color: vsSkill === 1 ? '#facc15' : '#34d399',
             coreColor: '#fef08a',
             owner: this,
-            damage: 36,
+            damage: vsSkill === 1 ? 38 : vsSkill === 2 ? 26 : 36,
+            pierce: vsSkill === 1,
             type: 'arrow'
           });
         });
       }
     }
 
-    // Beat 3 (`t >= 0.72s`): Skyward -34 deg Beacon + Emerald Tempest Cyclone + 10 Sky-Falling Starfall Arrows
+    // Beat 3 (`t >= 0.72s`): Skyward -34 deg Beacon + Emerald Tempest Cyclone + Sky-Falling Starfall Arrows
     if (t >= 0.72 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       this.vx -= this.facing * 45;
@@ -1616,15 +1672,26 @@ export class ArcherEx extends Fighter {
 
       this.fx.spawn('sonicBowReleaseWave', this._safeFxX(bowX, game), this._safeFxY(bowY), {
         flip: false,
-        palette: SYLVAN_STARLIGHT_PALETTE,
+        palette: skillStarPal,
         light: 1.2,
         extra: { aimAngle: skyAng, radius: 26, twin: true }
       });
-      game?.vfx?.spawnDamageText?.(centerTargetX, groundY - 196, 0, true, 'STARFALL ARROW RAIN!', '#34d399');
+      game?.vfx?.spawnDamageText?.(
+        centerTargetX,
+        groundY - 196,
+        0,
+        true,
+        vsSkill === 1
+          ? 'ZODIAC SNIPER BARRAGE!'
+          : vsSkill === 2
+            ? 'WORLD-TREE SANCTUARY RAIN!'
+            : 'STARFALL ARROW RAIN!',
+        vsSkill === 1 ? '#facc15' : '#34d399'
+      );
 
       this.fx.spawn('emeraldTempestCyclone', this._safeFxX(centerTargetX, game), this._safeFxY(groundY), {
         vx: this.facing * 32,
-        palette: SYLVAN_EMERALD_PALETTE,
+        palette: skillEmeraldPal,
         light: 1.15,
         extra: {
           baseRadius: 11,
@@ -1634,7 +1701,7 @@ export class ArcherEx extends Fighter {
         }
       });
       this.fx.spawn('starfallRainBarrage', this._safeFxX(centerTargetX, game), this._safeFxY(groundY), {
-        palette: SYLVAN_STARLIGHT_PALETTE,
+        palette: skillStarPal,
         light: 1.2,
         extra: { spread: 52, count: 9 }
       });
@@ -1646,26 +1713,28 @@ export class ArcherEx extends Fighter {
           vx: this.facing * 38,
           radius: 78,
           height: 265,
-          color: '#10b981',
+          color: vsSkill === 1 ? '#eab308' : '#10b981',
           coreColor: '#fef08a',
           maxLife: 1.10
         });
 
-        for (let i = 0; i < 10; i++) {
-          const spread = (i - 4.5) * 32 + (i % 2 === 0 ? 1 : -1) * 6;
+        const rainCount = vsSkill === 1 ? 12 : vsSkill === 2 ? 8 : 10;
+        const midRain = (rainCount - 1) * 0.5;
+        for (let i = 0; i < rainCount; i++) {
+          const spread = (i - midRain) * 32 + (i % 2 === 0 ? 1 : -1) * 6;
           game.vfx.spawnSkyStrike({
             x: centerTargetX + spread - this.facing * 90,
             y: -160 - i * 32,
             groundY,
             vx: this.facing * 240,
-            vy: 1320,
+            vy: vsSkill === 1 ? 1420 : 1320,
             type: 'starfall_arrow',
-            color: i % 2 === 0 ? '#10b981' : '#34d399',
+            color: vsSkill === 1 ? '#facc15' : i % 2 === 0 ? '#10b981' : '#34d399',
             coreColor: '#fef08a',
             owner: this,
             target: enemy,
-            damage: 30,
-            delay: i * 0.055,
+            damage: vsSkill === 1 ? 29 : vsSkill === 2 ? 23 : 30,
+            delay: i * (vsSkill === 1 ? 0.048 : 0.055),
             maxLinger: 0.55
           });
         }
@@ -1701,6 +1770,9 @@ export class ArcherEx extends Fighter {
 
     const targets = this.getEnemyTargets(enemy, game);
     const primary = enemy && !enemy.isDead ? enemy : targets[0] || null;
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    const ultEmeraldPal = vsUlt === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_EMERALD_PALETTE;
+    const ultStarPal = vsUlt === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_STARLIGHT_PALETTE;
     const advBounds =
       game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
         ? game.adventure.getActiveStageBounds()
@@ -1862,22 +1934,38 @@ export class ArcherEx extends Fighter {
 
       this.fx.spawn('yggdrasilLockReticle', this._safeFxX(this._ultPivotX, game), this._safeFxY(this.groundY - 98), {
         flip: false,
-        palette: SYLVAN_STARLIGHT_PALETTE,
+        palette: ultStarPal,
         maxDuration: 1.38,
         light: 1.25,
         extra: { radius: 20, chargeDir: this._ultChargeDir }
       });
       this.fx.spawn('zephyrGroundBurst', this._safeFxX(this.x, game), this._safeFxY(this.groundY), {
-        palette: SYLVAN_STARLIGHT_PALETTE,
+        palette: ultStarPal,
         light: 1.18,
         extra: { radius: 30 }
       });
+      if (vsUlt === 2) {
+        this.heal(36, 'YGGDRASIL CANOPY');
+        this.grantBuildShield(66, 2.7, 'YGGDRASIL BARRIER!', '#34d399');
+        this.healTeammateTagGrace(30, 'CANOPY GRACE', 36, 2.6);
+      }
       if (game?.audio) {
         game.audio.play('archer_ult', this.x);
         game.audio.play('zephyr_flip', this.x);
       }
       if (game?.vfx) {
-        game.vfx.spawnDamageText(this._ultPivotX, this.groundY - 196, 0, true, '180 STARLOCK VAULT!', '#fef08a');
+        game.vfx.spawnDamageText(
+          this._ultPivotX,
+          this.groundY - 196,
+          0,
+          true,
+          vsUlt === 1
+            ? 'SUPERNOVA STARLOCK BLITZ!'
+            : vsUlt === 2
+              ? 'YGGDRASIL CANOPY VAULT!'
+              : '180 STARLOCK VAULT!',
+          vsUlt === 1 ? '#facc15' : '#fef08a'
+        );
       }
       game?.renderer?.triggerShake?.(12, 0.24);
       this._overrideFrameIdx = 123;
@@ -1955,7 +2043,7 @@ export class ArcherEx extends Fighter {
 
           this.fx.spawn('starlockHomingArrow', this._safeFxX(bowX, game), this._safeFxY(bowY), {
             flip: false,
-            palette: isZenith || isFinisher ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
+            palette: isZenith || isFinisher ? ultStarPal : ultEmeraldPal,
             light: isZenith || isFinisher ? 1.32 : 1.16,
             extra: {
               dx: dx / 3,
@@ -1964,7 +2052,7 @@ export class ArcherEx extends Fighter {
           });
           this.fx.spawn('sonicBowReleaseWave', this._safeFxX(bowX, game), this._safeFxY(bowY), {
             flip: false,
-            palette: isZenith ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
+            palette: isZenith ? ultStarPal : ultEmeraldPal,
             light: 1.18,
             extra: { aimAngle: shotAng, radius: isZenith ? 24 : 18, twin: isZenith }
           });
@@ -1986,7 +2074,24 @@ export class ArcherEx extends Fighter {
 
           for (const foe of targets) {
             if (foe && !foe.isDead && Math.abs(foe.x - tx) <= 210) {
-              const shotDmg = isFinisher ? 38 : isZenith ? 32 : 21;
+              const shotDmg =
+                vsUlt === 1
+                  ? isFinisher
+                    ? 42
+                    : isZenith
+                      ? 35
+                      : 23
+                  : vsUlt === 2
+                    ? isFinisher
+                      ? 30
+                      : isZenith
+                        ? 25
+                        : 16
+                    : isFinisher
+                      ? 38
+                      : isZenith
+                        ? 32
+                        : 21;
               foe.takeDamage(
                 shotDmg,
                 this,
@@ -1994,6 +2099,9 @@ export class ArcherEx extends Fighter {
                 isFinisher ? 135 : 14,
                 isFinisher ? -165 : -22
               );
+              if (vsUlt === 2 && isFinisher && !foe.isDead) {
+                foe.applyBuildRoot?.(0.40, 'WORLD-TREE BIND!', '#34d399');
+              }
             }
           }
         }
@@ -2005,6 +2113,9 @@ export class ArcherEx extends Fighter {
     if (this._ultPhase < 3) {
       this._ultPhase = 3;
       this.didActionFrame = true;
+      if (vsUlt === 1) {
+        this.gainFinisher(8);
+      }
       const landRawX = this._ultPivotX + this._ultChargeDir * 140;
       this.x = advBounds
         ? Math.max(advBounds.minX + 36, Math.min(advBounds.maxX - 36, landRawX))

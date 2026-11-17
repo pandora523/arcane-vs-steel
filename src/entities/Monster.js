@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps136';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps136';
+import { Fighter } from './Fighter.js?v=30fps137';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps137';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)

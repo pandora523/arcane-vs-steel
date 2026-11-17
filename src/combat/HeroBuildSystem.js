@@ -1,5 +1,5 @@
 /**
- * Sovereign Loadouts — Per-Hero Custom Skill/Loadout Build System (Batch 1)
+ * Sovereign Loadouts — Per-Hero Custom Skill/Loadout Build System (All 12 EX Champions)
  *
  * Supports 3 independent customizable slots per EX hero in Versus Mode (`1v1`, `2v2_tag`, `2v2_brawl`):
  *   - `aspect`: `0 | 1 | 2` (Slot 0: Auto + Passive Aspect)
@@ -24,7 +24,13 @@ export const SOVEREIGN_BUILD_HERO_IDS = [
   'mage_ex',
   'nyx_ex',
   'ronin_ex',
-  'reaper_ex'
+  'reaper_ex',
+  'valkyrie_ex',
+  'icemage_ex',
+  'archer_ex',
+  'android_ex',
+  'chronomancer_ex',
+  'titan_ex'
 ];
 
 const SOVEREIGN_BUILD_HERO_SET = new Set(SOVEREIGN_BUILD_HERO_IDS);
@@ -340,6 +346,318 @@ export const HERO_BUILD_CATALOG = {
         name: 'UNDYING LEGION PACT',
         type: 'OVERDRIVE ULT',
         desc: 'Drains +42 HP Soul-Feast (+26 Tag-Ally HP) & grants 96 HP Grave-Ward Barrier (-18% three-scythe reap dmg).'
+      }
+    ]
+  },
+
+  valkyrie_ex: {
+    heroId: 'valkyrie_ex',
+    presets: [
+      { index: 0, roman: 'I', shortName: 'SOVEREIGN', name: 'SOVEREIGN STANDARD', aspect: 0, skill: 0, ult: 0 },
+      { index: 1, roman: 'II', shortName: 'GUNGNIR', name: 'RAGNAROK SPEAR-STORM', aspect: 1, skill: 1, ult: 1 },
+      { index: 2, roman: 'III', shortName: 'EINHERJAR', name: 'EINHERJAR SANCTUARY', aspect: 2, skill: 2, ult: 2 }
+    ],
+    aspect: [
+      null,
+      {
+        trait: 'ASPECT II: RAGNAROK SPEAR-STORM (ZERO-HEAL LANCE PIN)',
+        name: 'RAGNAROK THUNDER-LANCES',
+        type: 'ZERO-HEAL SPEAR BURST',
+        desc: 'Forfeits wing self-heals (-6% HP) for +12% Gungnir velocity, +9% spear burst & 0.34s Spear-Pin root on Beat 4.'
+      },
+      {
+        trait: 'ASPECT III: EINHERJAR SANCTUARY (WING-AEGIS & GRACE)',
+        name: 'ASGARDIAN WING-AEGIS',
+        type: 'BARRIER + AERIAL KITE',
+        desc: 'Grants 52 HP Asgard Barrier on Backflip & Wing-Vault with faster 2.65s evade (-11% auto javelin dmg).'
+      }
+    ],
+    skill: [
+      null,
+      {
+        name: 'RAGNAROK JAVELIN TEMPEST',
+        type: 'SKILL • 4.6S CD',
+        cooldown: 4.6,
+        desc: 'Zero self-heal; fans 8 storm-javelins into a crimson Ragnarok Obelisk inflicting 0.38s Spear-Root & high burst.'
+      },
+      {
+        name: 'EINHERJAR AEGIS VOLLEY',
+        type: 'SKILL • 5.4S CD',
+        cooldown: 5.4,
+        desc: 'Grants 42 HP Valhalla Barrier + self & Tag-Partner heal (+28 ally HP) while loosing 4 guardian spears (-26% burst).'
+      }
+    ],
+    ult: [
+      null,
+      {
+        name: 'BAHAMUT SPEAR-CATACLYSM',
+        type: 'OVERDRIVE ULT',
+        desc: 'Zero Sanctuary heal; rains 14 storm-spears into a high-crit Ragnarok Three-Pillar Judgment (+14% burst & +12 Ult).'
+      },
+      {
+        name: 'ASGARDIAN VALKYRIE CHOIR',
+        type: 'OVERDRIVE ULT',
+        desc: 'Restores +46 HP (+34 Tag-Ally HP) + 88 HP Asgard Barrier & 0.36s Valhalla Bind (-22% pillar burst).'
+      }
+    ]
+  },
+
+  icemage_ex: {
+    heroId: 'icemage_ex',
+    presets: [
+      { index: 0, roman: 'I', shortName: 'SOVEREIGN', name: 'SOVEREIGN STANDARD', aspect: 0, skill: 0, ult: 0 },
+      { index: 1, roman: 'II', shortName: 'SHATTER', name: 'ABSOLUTE SHATTER-LANCE', aspect: 1, skill: 1, ult: 1 },
+      { index: 2, roman: 'III', shortName: 'GLACIER', name: 'AURORA MIRROR SANCTUM', aspect: 2, skill: 2, ult: 2 }
+    ],
+    aspect: [
+      null,
+      {
+        trait: 'ASPECT II: ABSOLUTE SHATTER-LANCE (ZERO-HEAL RIME BURST)',
+        name: 'ZERO-KELVIN LANCE SORCERY',
+        type: 'HIGH-RIME SHATTER',
+        desc: 'Forfeits shatter & chakram heals (-4.5% HP) for 2-stack Beat 1 rime, +10% comet speed & +24% shatter burst.'
+      },
+      {
+        trait: 'ASPECT III: AURORA MIRROR SANCTUM (CRYO BARRIER & SKATE)',
+        name: 'EMPRESS MIRROR-SKATE',
+        type: 'MIRROR BARRIER + KITE',
+        desc: 'Faster 2.65s Sky-Stair evade, 54 HP Mirror Barrier on Crouch & enhanced shatter mend (-12% auto cryo dmg).'
+      }
+    ],
+    skill: [
+      null,
+      {
+        name: 'DIAMOND GUILLOTINE JAWS',
+        type: 'SKILL • 4.7S CD',
+        cooldown: 4.7,
+        desc: 'Zero Prism heal; crushes monoliths inward with a piercing cryo-lance, +14% shatter burst & 0.38s Frost-Pin root.'
+      },
+      {
+        name: 'AURORA MIRROR BASTION',
+        type: 'SKILL • 5.5S CD',
+        cooldown: 5.5,
+        desc: 'Restores +22 HP (+26 Tag-Ally HP) + 42 HP Glacier Barrier & slowing Permafrost Zone (-32% crush dmg).'
+      }
+    ],
+    ult: [
+      null,
+      {
+        name: 'EXECUTION OF NINE BLADES',
+        type: 'OVERDRIVE ULT',
+        desc: 'Zero Coronation heal; plunges amethyst-prism Ice-Claymores for +17% Sovereign Blade burst & +10 Ult gauge.'
+      },
+      {
+        name: 'WINTER EMPRESS SANCTUARY',
+        type: 'OVERDRIVE ULT',
+        desc: 'Restores +46 HP (+36 Tag-Ally HP) + 92 HP Borealis Barrier & 0.40s Cryo-Bind root (-20% blade dmg).'
+      }
+    ]
+  },
+
+  archer_ex: {
+    heroId: 'archer_ex',
+    presets: [
+      { index: 0, roman: 'I', shortName: 'SOVEREIGN', name: 'SOVEREIGN STANDARD', aspect: 0, skill: 0, ult: 0 },
+      { index: 1, roman: 'II', shortName: 'DEADEYE', name: 'ASTRAL DEADEYE', aspect: 1, skill: 1, ult: 1 },
+      { index: 2, roman: 'III', shortName: 'WARDEN', name: 'YGGDRASIL WARDEN', aspect: 2, skill: 2, ult: 2 }
+    ],
+    aspect: [
+      null,
+      {
+        trait: 'ASPECT II: ASTRAL DEADEYE (PIERCING STARLIGHT SNIPER)',
+        name: 'DRAGON-PIERCER GREATBOW',
+        type: 'PIERCING SNIPER VOLLEY',
+        desc: 'Forfeits Zephyr Vault heal (-3.6% HP) for +12% arrow velocity, piercing Beat 1 sniper shot & +10% Beat 4 crit.'
+      },
+      {
+        trait: 'ASPECT III: YGGDRASIL WARDEN (CANOPY BARRIER & BREEZE)',
+        name: 'WORLD-TREE CANOPY BOW',
+        type: 'LEAF-VEIL + KITE',
+        desc: 'Shorter 2.55s Zephyr Vault (+22 HP Breeze) & 48 HP Canopy Barrier on Stealth Crouch (-9% auto arrow dmg).'
+      }
+    ],
+    skill: [
+      null,
+      {
+        name: 'ZODIAC SNIPER BARRAGE',
+        type: 'SKILL • 4.3S CD',
+        cooldown: 4.3,
+        desc: 'Zero Starlight heal; inflicts 0.42s Bramble-Root, fires 3 piercing sniper arrows & rains 12 Zodiac Starfall bolts.'
+      },
+      {
+        name: 'WORLD-TREE SANCTUARY RAIN',
+        type: 'SKILL • 4.8S CD',
+        cooldown: 4.8,
+        desc: 'Restores +36 HP (+28 Tag-Ally HP) + 46 HP Canopy Barrier & widens Bramble Snare (-22% arrow rain dmg).'
+      }
+    ],
+    ult: [
+      null,
+      {
+        name: 'SUPERNOVA STARLOCK BLITZ',
+        type: 'OVERDRIVE ULT',
+        desc: 'Zero heal; looses 9 high-crit Golden Supernova Seekers during 180° vault (+18% shot burst & +12 Ult gauge).'
+      },
+      {
+        name: 'YGGDRASIL CANOPY VAULT',
+        type: 'OVERDRIVE ULT',
+        desc: 'Unfurls World-Tree Canopy restoring +46 HP (+36 Tag-Ally HP) + 88 HP Barrier & 0.40s root (-19% arrow dmg).'
+      }
+    ]
+  },
+
+  android_ex: {
+    heroId: 'android_ex',
+    presets: [
+      { index: 0, roman: 'I', shortName: 'SOVEREIGN', name: 'SOVEREIGN STANDARD', aspect: 0, skill: 0, ult: 0 },
+      { index: 1, roman: 'II', shortName: 'RAILGUN', name: 'POSITRON OVERDRIVE', aspect: 1, skill: 1, ult: 1 },
+      { index: 2, roman: 'III', shortName: 'AEGIS-09', name: 'HEX-AEGIS PROTOCOL', aspect: 2, skill: 2, ult: 2 }
+    ],
+    aspect: [
+      null,
+      {
+        trait: 'ASPECT II: POSITRON OVERDRIVE (DUAL CHAKRAMS & RAIL-CUTS)',
+        name: 'OVERCLOCKED MURAMASA-09',
+        type: 'HIGH-OUTPUT RAIL BLADE',
+        desc: '+5% thruster speed, Cyber-Disc Chakrams on Beat 1 + Beat 4 & +11% plasma dmg; forfeits passive shield (-4% HP).'
+      },
+      {
+        trait: 'ASPECT III: HEX-AEGIS PROTOCOL (DEFLECTOR & NANITE SHIELD)',
+        name: 'AEGIS-09 DEFLECTOR FRAME',
+        type: 'HEX BARRIER + PARRY',
+        desc: 'Shorter 3.2s Hex-Matrix Guard (+58 HP Barrier) & +28 Shield recharge on Beat 4 slam (-10% Odachi dmg).'
+      }
+    ],
+    skill: [
+      null,
+      {
+        name: 'POSITRON RAIL-CROSS BLITZ',
+        type: 'SKILL • 4.3S CD',
+        cooldown: 4.3,
+        desc: 'Zero heal & zero shield; fires twin Cyber-Discs + Magenta Positron Cross-Beams into an EMP Lock execution cut.'
+      },
+      {
+        name: 'AEGIS-09 DOME RECHARGE',
+        type: 'SKILL • 4.9S CD',
+        cooldown: 4.9,
+        desc: 'Restores +30 HP (+26 Tag-Ally HP) + 44 HP Hex-Aegis Barrier & +32 Core Shield (-30% Odachi slash dmg).'
+      }
+    ],
+    ult: [
+      null,
+      {
+        name: 'HYPER-POSITRON ANNIHILATOR',
+        type: 'OVERDRIVE ULT',
+        desc: 'Zero shield; overclocks 6 Funnels & Visor Railgun into +16% Magenta Positron sweeps & +12 Ult gauge.'
+      },
+      {
+        name: 'ORBITAL AEGIS MATRIX',
+        type: 'OVERDRIVE ULT',
+        desc: 'Projects Hex-Aegis Matrix restoring +48 HP (+38 Tag-Ally HP) + 98 HP Barrier & 0.40s EMP root (-19% dmg).'
+      }
+    ]
+  },
+
+  chronomancer_ex: {
+    heroId: 'chronomancer_ex',
+    presets: [
+      { index: 0, roman: 'I', shortName: 'SOVEREIGN', name: 'SOVEREIGN STANDARD', aspect: 0, skill: 0, ult: 0 },
+      { index: 1, roman: 'II', shortName: 'PARADOX', name: 'PARADOX ASSASSIN', aspect: 1, skill: 1, ult: 1 },
+      { index: 2, roman: 'III', shortName: 'HOROLOGIUM', name: 'GRAND HOROLOGIUM', aspect: 2, skill: 2, ult: 2 }
+    ],
+    aspect: [
+      null,
+      {
+        trait: 'ASPECT II: PARADOX ASSASSIN (TWIN MIRAGES & CLOCK-GEAR)',
+        name: 'PARADOX SCISSOR QUARTET',
+        type: 'MIRAGE ASSASSIN BLITZ',
+        desc: '+6% stride speed, Violet Paradox Clones on Beat 1 + Beat 2, +14% blade dmg & Beat 4 Clock-Gear (-3% HP).'
+      },
+      {
+        trait: 'ASPECT III: GRAND HOROLOGIUM (STASIS WARD & REWIND)',
+        name: 'HOROLOGIUM AEGIS GLAIVES',
+        type: 'CHRONO BARRIER + SLOW',
+        desc: 'Grants 62 HP Chrono Barrier on Escapement Parry & Paradox Slip + longer 1.65s XII slow (-9% slash dmg).'
+      }
+    ],
+    skill: [
+      null,
+      {
+        name: 'PARADOX SCISSOR EXECUTION',
+        type: 'SKILL • 4.55S CD',
+        cooldown: 4.55,
+        desc: 'Zero Rewind heal; holds flank instead of retreating, unleashing Violet Clones, X-Scissor burst & 0.32s Time-Pin.'
+      },
+      {
+        name: 'HOROLOGIUM REWIND SANCTUM',
+        type: 'SKILL • 5.0S CD',
+        cooldown: 5.0,
+        desc: 'Widens Stasis Field & rewinds restoring +46 HP (+30 Tag-Ally HP) + 54 HP Astrolabe Barrier (-24% spear dmg).'
+      }
+    ],
+    ult: [
+      null,
+      {
+        name: 'SHATTERED TIMELINE BLITZ',
+        type: 'OVERDRIVE ULT',
+        desc: 'Zero Mend heal; converges 3 Violet-Gold Timeline Mirages for +16% Astrolabe Shatter & +12 Ult gauge.'
+      },
+      {
+        name: 'ETERNAL PENDULUM AEGIS',
+        type: 'OVERDRIVE ULT',
+        desc: 'Restores +58 HP (+40 Tag-Ally HP) + 98 HP Horologium Barrier & 0.42s Time-Lock root (-19% shatter dmg).'
+      }
+    ]
+  },
+
+  titan_ex: {
+    heroId: 'titan_ex',
+    presets: [
+      { index: 0, roman: 'I', shortName: 'SOVEREIGN', name: 'SOVEREIGN STANDARD', aspect: 0, skill: 0, ult: 0 },
+      { index: 1, roman: 'II', shortName: 'CATACLYSM', name: 'VOLCANIC CATACLYSM', aspect: 1, skill: 1, ult: 1 },
+      { index: 2, roman: 'III', shortName: 'BASTION', name: 'IMMORTAL IRON-BASTION', aspect: 2, skill: 2, ult: 2 }
+    ],
+    aspect: [
+      null,
+      {
+        trait: 'ASPECT II: VOLCANIC CATACLYSM (ZERO-HEAL MAGMA WAVES)',
+        name: 'CATACLYSM FORGE-BREAKER',
+        type: 'ANTI-KITE MAGMA MAUL',
+        desc: '+9% stride speed & hurls molten Forge-Waves on Beat 1 + Beat 4 (+12% maul dmg); forfeits Temper & Crouch heals.'
+      },
+      {
+        trait: 'ASPECT III: IMMORTAL IRON-BASTION (ADAMANT BARRIER & POISE)',
+        name: 'KHAZAD IRON-BULWARK MAUL',
+        type: 'ADAMANT BARRIER + RUSH',
+        desc: '+4% HP, 2.65s Bull-Rush CD, 56 HP Adamant Barrier on Bulwark & 4-Core Temper shield (-9% maul dmg).'
+      }
+    ],
+    skill: [
+      null,
+      {
+        name: 'VOLCANIC DOUBLE-RICOCHET',
+        type: 'SKILL • 5.4S CD',
+        cooldown: 5.4,
+        desc: 'Zero Temper heal; batters a supersonic Volcanic Anvil Monolith (+84/50 impact dmg) paired with a Molten Forge-Wave.'
+      },
+      {
+        name: 'KHAZAD IRON-BASTION ALTAR',
+        type: 'SKILL • 6.2S CD',
+        cooldown: 6.2,
+        desc: 'Consecrates an Iron-Bastion Altar restoring +22 HP (+22 Tag-Ally HP) + 36 HP Khazad Barrier (-30% anvil dmg).'
+      }
+    ],
+    ult: [
+      null,
+      {
+        name: 'CALDERA METEOR GRAND-SLAM',
+        type: 'OVERDRIVE ULT',
+        desc: 'Zero heal; erupts twin magma geysers & blasts foes into a +28% Molten Wall-Shatter (+12 Ult gauge).'
+      },
+      {
+        name: 'AEGIS OF THE WORLD-FORGE',
+        type: 'OVERDRIVE ULT',
+        desc: 'Restores +52 HP (+40 Tag-Ally HP) + 108 HP World-Anvil Barrier & 0.95s Jade Wall-Stun (-15% swing dmg).'
       }
     ]
   }

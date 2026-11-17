@@ -138,10 +138,10 @@ const [
   { EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER, Game },
   { HeroBuildSystem, SOVEREIGN_BUILD_HERO_IDS, HERO_BUILD_CATALOG }
 ] = await Promise.all([
-  import('../../src/entities/Fighter.js?v=30fps136'),
-  import('../../src/engine/VFXManager.js?v=30fps136'),
-  import('../../src/main.js?v=30fps136'),
-  import('../../src/combat/HeroBuildSystem.js?v=30fps136')
+  import('../../src/entities/Fighter.js?v=30fps137'),
+  import('../../src/engine/VFXManager.js?v=30fps137'),
+  import('../../src/main.js?v=30fps137'),
+  import('../../src/combat/HeroBuildSystem.js?v=30fps137')
 ]);
 
 const STAGES = ['cathedral', 'sylvan', 'boneyard', 'clocktower'];
@@ -665,7 +665,18 @@ function runDuel(
   }
 }
 
-function run2v2(ROSTER, mode, team1Idx, team2Idx, seed, stageId, groundY, isLegacy, teamBuilds = null) {
+function run2v2(
+  ROSTER,
+  mode,
+  team1Idx,
+  team2Idx,
+  seed,
+  stageId,
+  groundY,
+  isLegacy,
+  teamBuilds = null,
+  tagMeta = null
+) {
   const [i0, i1] = team1Idx;
   const [i2, i3] = team2Idx;
   const origRandom = Math.random;
@@ -727,7 +738,8 @@ function run2v2(ROSTER, mode, team1Idx, team2Idx, seed, stageId, groundY, isLega
       timedOut: !sim.isMatchOver,
       winningTeam,
       fightersCastingUlt,
-      diedWithoutTrueUlt
+      diedWithoutTrueUlt,
+      tagMeta
     };
   } finally {
     Math.random = origRandom;
@@ -765,7 +777,8 @@ function executeTaskBatch(tasks, isLegacy) {
           task.stageId,
           groundY,
           isLegacy,
-          task.teamBuilds || null
+          task.teamBuilds || null,
+          task.tagMeta || null
         )
       );
     }
@@ -809,28 +822,40 @@ if (!isMainThread) {
   parentPort.postMessage(results);
 } else if (process.argv.includes('--builds')) {
   const ROSTER = buildRoster(false);
+  const N = ROSTER.length;
   const heroIdxById = new Map(ROSTER.map((r, idx) => [r.id, idx]));
   const tasks = [];
 
   // Build canonical seed lookup matching the default 1v1 round-robin (`1001..1528`)
+  // and enqueue the 528 canonical `0/0/0` duels once (simultaneously evaluating Preset [I] for all 12 EX heroes!)
   const canonicalSeedMap = new Map();
   let canonSeed = 1001;
-  for (let i = 0; i < ROSTER.length; i++) {
-    for (let j = 0; j < ROSTER.length; j++) {
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
       if (i === j) continue;
       for (let stIdx = 0; stIdx < STAGES.length; stIdx++) {
-        canonicalSeedMap.set(`${i}:${j}:${stIdx}`, canonSeed++);
+        const seed = canonSeed++;
+        canonicalSeedMap.set(`${i}:${j}:${stIdx}`, seed);
+        tasks.push({
+          type: '1v1',
+          idx1: i,
+          idx2: j,
+          stageId: STAGES[stIdx],
+          seed,
+          p1Build: null,
+          p2Build: null,
+          tagMeta: { isCanonical000: true }
+        });
       }
     }
   }
 
-  // 1) Symmetric 1v1 Round-Robin for every Batch-1 Sovereign Hero x Preset ([I], [II], [III])
-  //    against all 11 opposing EX champions across all 4 stages (P1 + P2 = 88 matches/preset).
+  // 1) Symmetric 1v1 Round-Robin for every EX Sovereign Hero x Presets [II] & [III] (24 * 88 = 2,112 duels)
   for (const heroId of SOVEREIGN_BUILD_HERO_IDS) {
     const hIdx = heroIdxById.get(heroId);
-    for (const presetIdx of [0, 1, 2]) {
+    for (const presetIdx of [1, 2]) {
       const bSpec = { aspect: presetIdx, skill: presetIdx, ult: presetIdx };
-      for (let oppIdx = 0; oppIdx < ROSTER.length; oppIdx++) {
+      for (let oppIdx = 0; oppIdx < N; oppIdx++) {
         if (oppIdx === hIdx) continue;
         for (let stIdx = 0; stIdx < STAGES.length; stIdx++) {
           const stageId = STAGES[stIdx];
@@ -859,16 +884,73 @@ if (!isMainThread) {
     }
   }
 
-  // 2) 2v2 Tag & 2v2 Brawl Sovereign Loadout Verification (48 matches across Presets II/III & Hybrids)
+  // 2A) Canonical 480 `0/0/0` 2v2 matches (240 Brawl + 240 Tag) for Preset [I] across all 12 EX heroes
+  // 2B) Exact same canonical 2v2 lineups & seeds (`5000 + m`) with focal Preset [II] or [III] on lead (`p1` or `p2`),
+  //     giving every [II] & [III] preset 40 Brawl + 40 Tag = 80 zero-bias apples-to-apples 2v2 games!
+  for (const mode of ['2v2_brawl', '2v2_tag']) {
+    const rng = mulberry32(mode === '2v2_brawl' ? 7777 : 8888);
+    for (let c = 0; c < 20; c++) {
+      const o0 = 0;
+      const o1 = 1 + Math.floor(rng() * (N - 2));
+      let o2 = 2 + Math.floor(rng() * (N - 3));
+      while (o2 === o0 || o2 === o1) o2 = (o2 + 1) % N;
+      let o3 = 3 + Math.floor(rng() * (N - 4));
+      while (o3 === o0 || o3 === o1 || o3 === o2) o3 = (o3 + 1) % N;
+      for (let base = 0; base < N; base++) {
+        const m = c * N + base;
+        const team1 = [(base + o0) % N, (base + o1) % N];
+        const team2 = [(base + o2) % N, (base + o3) % N];
+        const stageId = STAGES[m % STAGES.length];
+        const seed = 5000 + m;
+
+        tasks.push({
+          type: '2v2',
+          mode,
+          team1,
+          team2,
+          stageId,
+          seed,
+          teamBuilds: null,
+          tagMeta: { isCanonical000: true }
+        });
+
+        const h1Id = ROSTER[team1[0]].id;
+        const h2Id = ROSTER[team2[0]].id;
+        for (const presetIdx of [1, 2]) {
+          const bSpec = { aspect: presetIdx, skill: presetIdx, ult: presetIdx };
+          tasks.push({
+            type: '2v2',
+            mode,
+            team1,
+            team2,
+            stageId,
+            seed,
+            teamBuilds: { p1: bSpec, p1b: null, p2: null, p2b: null },
+            tagMeta: { heroId: h1Id, presetIdx, side: 1 }
+          });
+          tasks.push({
+            type: '2v2',
+            mode,
+            team1,
+            team2,
+            stageId,
+            seed,
+            teamBuilds: { p1: null, p1b: null, p2: bSpec, p2b: null },
+            tagMeta: { heroId: h2Id, presetIdx, side: 2 }
+          });
+        }
+      }
+    }
+  }
+
+  // 2C) Hybrid 4-slot 2v2 cross-build smoke matches (24 matches mixing I/II/III across all 4 slots)
   const buildIdxList = SOVEREIGN_BUILD_HERO_IDS.map((id) => heroIdxById.get(id));
   for (const mode of ['2v2_tag', '2v2_brawl']) {
-    for (let m = 0; m < 24; m++) {
+    for (let m = 0; m < 12; m++) {
       const i0 = buildIdxList[m % buildIdxList.length];
-      const i1 = buildIdxList[(m + 1) % buildIdxList.length];
-      const i2 = buildIdxList[(m + 2) % buildIdxList.length];
-      const i3 = buildIdxList[(m + 3) % buildIdxList.length];
-      const tierA = (m % 2) + 1;
-      const tierB = ((m + 1) % 2) + 1;
+      const i1 = buildIdxList[(m + 3) % buildIdxList.length];
+      const i2 = buildIdxList[(m + 6) % buildIdxList.length];
+      const i3 = buildIdxList[(m + 9) % buildIdxList.length];
       tasks.push({
         type: '2v2',
         mode,
@@ -877,10 +959,10 @@ if (!isMainThread) {
         stageId: STAGES[m % STAGES.length],
         seed: 9100 + m,
         teamBuilds: {
-          p1: { aspect: tierA, skill: tierA, ult: tierA },
-          p1b: { aspect: tierB, skill: tierB, ult: tierB },
-          p2: { aspect: tierB, skill: tierA, ult: tierB },
-          p2b: { aspect: tierA, skill: tierB, ult: tierA }
+          p1: { aspect: 1, skill: 1, ult: 1 },
+          p1b: { aspect: 2, skill: 0, ult: 2 },
+          p2: { aspect: 0, skill: 2, ult: 1 },
+          p2b: { aspect: 1, skill: 2, ult: 0 }
         }
       });
     }
@@ -907,7 +989,11 @@ if (!isMainThread) {
         overdrives: 0,
         trueUlts: 0,
         dmgDealt: 0,
-        healing: 0
+        healing: 0,
+        brawlWins: 0,
+        brawlGames: 0,
+        tagWins: 0,
+        tagGames: 0
       });
     }
   }
@@ -921,28 +1007,90 @@ if (!isMainThread) {
   let timeoutsTag = 0;
 
   for (const res of allResults) {
-    if (res.type === '1v1' && res.tagMeta) {
+    if (res.type === '1v1') {
       total1v1++;
       if (res.timedOut) timeouts1v1++;
       if (res.f1Overdrives + res.f2Overdrives >= 1) odMatches++;
       if (res.f1TrueUlts + res.f2TrueUlts >= 1) tuMatches++;
 
-      const key = `${res.tagMeta.heroId}:${res.tagMeta.presetIdx}`;
-      const st = presetStats.get(key);
-      const isSide1 = res.tagMeta.side === 1;
-      st.games++;
-      if (res.winner === res.tagMeta.side) st.wins++;
-      if (res.timedOut) st.timeouts++;
-      st.totalDuration += res.duration;
-      st.overdrives += isSide1 ? res.f1Overdrives : res.f2Overdrives;
-      st.trueUlts += isSide1 ? res.f1TrueUlts : res.f2TrueUlts;
-      st.dmgDealt += isSide1 ? res.f1Dmg : res.f2Dmg;
-      st.healing += isSide1 ? res.f1Heal : res.f2Heal;
+      if (res.tagMeta?.isCanonical000) {
+        const id1 = ROSTER[res.idx1].id;
+        const id2 = ROSTER[res.idx2].id;
+        const s1 = presetStats.get(`${id1}:0`);
+        const s2 = presetStats.get(`${id2}:0`);
+        if (s1) {
+          s1.games++;
+          if (res.winner === 1) s1.wins++;
+          if (res.timedOut) s1.timeouts++;
+          s1.totalDuration += res.duration;
+          s1.overdrives += res.f1Overdrives;
+          s1.trueUlts += res.f1TrueUlts;
+          s1.dmgDealt += res.f1Dmg;
+          s1.healing += res.f1Heal;
+        }
+        if (s2) {
+          s2.games++;
+          if (res.winner === 2) s2.wins++;
+          if (res.timedOut) s2.timeouts++;
+          s2.totalDuration += res.duration;
+          s2.overdrives += res.f2Overdrives;
+          s2.trueUlts += res.f2TrueUlts;
+          s2.dmgDealt += res.f2Dmg;
+          s2.healing += res.f2Heal;
+        }
+      } else if (res.tagMeta?.heroId) {
+        const key = `${res.tagMeta.heroId}:${res.tagMeta.presetIdx}`;
+        const st = presetStats.get(key);
+        const isSide1 = res.tagMeta.side === 1;
+        st.games++;
+        if (res.winner === res.tagMeta.side) st.wins++;
+        if (res.timedOut) st.timeouts++;
+        st.totalDuration += res.duration;
+        st.overdrives += isSide1 ? res.f1Overdrives : res.f2Overdrives;
+        st.trueUlts += isSide1 ? res.f1TrueUlts : res.f2TrueUlts;
+        st.dmgDealt += isSide1 ? res.f1Dmg : res.f2Dmg;
+        st.healing += isSide1 ? res.f1Heal : res.f2Heal;
+      }
     } else if (res.type === '2v2') {
       total2v2++;
       if (res.timedOut) {
         if (res.mode === '2v2_brawl') timeoutsBrawl++;
         else timeoutsTag++;
+      }
+      if (res.tagMeta?.isCanonical000) {
+        for (const hIdx of res.team1) {
+          const st = presetStats.get(`${ROSTER[hIdx].id}:0`);
+          if (!st) continue;
+          if (res.mode === '2v2_brawl') {
+            st.brawlGames++;
+            if (res.winningTeam === 1) st.brawlWins++;
+          } else {
+            st.tagGames++;
+            if (res.winningTeam === 1) st.tagWins++;
+          }
+        }
+        for (const hIdx of res.team2) {
+          const st = presetStats.get(`${ROSTER[hIdx].id}:0`);
+          if (!st) continue;
+          if (res.mode === '2v2_brawl') {
+            st.brawlGames++;
+            if (res.winningTeam === 2) st.brawlWins++;
+          } else {
+            st.tagGames++;
+            if (res.winningTeam === 2) st.tagWins++;
+          }
+        }
+      } else if (res.tagMeta?.heroId) {
+        const st = presetStats.get(`${res.tagMeta.heroId}:${res.tagMeta.presetIdx}`);
+        if (st) {
+          if (res.mode === '2v2_brawl') {
+            st.brawlGames++;
+            if (res.winningTeam === res.tagMeta.side) st.brawlWins++;
+          } else {
+            st.tagGames++;
+            if (res.winningTeam === res.tagMeta.side) st.tagWins++;
+          }
+        }
       }
     }
   }
@@ -950,19 +1098,19 @@ if (!isMainThread) {
   const odPct = (odMatches / total1v1) * 100;
   const tuPct = (tuMatches / total1v1) * 100;
 
-  console.log('============================================================================================================');
+  console.log('======================================================================================================================');
   console.log(
-    `SOVEREIGN LOADOUTS BENCHMARK [BATCH 1: 6 EX HEROES x 3 PRESETS] (${total1v1} 1v1 + ${total2v2} 2v2 | ${workerCount} workers in ${elapsedSec}s)`
+    `SOVEREIGN LOADOUTS BENCHMARK [ALL 12 EX HEROES x 3 PRESETS = 36 BUILDS] (${total1v1} 1v1 + ${total2v2} 2v2 | ${workerCount} workers in ${elapsedSec}s)`
   );
-  console.log('============================================================================================================');
+  console.log('======================================================================================================================');
   console.log(
     `1v1 Timeouts@180s: ${timeouts1v1} | 2v2 Brawl Timeouts: ${timeoutsBrawl} | 2v2 Tag Timeouts: ${timeoutsTag} | OD: ${odPct.toFixed(1)}% | TrueUlt: ${tuPct.toFixed(1)}%`
   );
-  console.log('------------------------------------------------------------------------------------------------------------');
+  console.log('----------------------------------------------------------------------------------------------------------------------');
   console.log(
-    'Hero           | Preset         | WinRate | AvgDur | OD/gm | TrueUlt/gm | AvgDPS | AvgHeal/gm'
+    'Hero           | Preset          | 1v1 WR  | 2v2 WR  | AvgDur | OD/gm | TrueUlt/gm | AvgDPS | AvgHeal/gm'
   );
-  console.log('------------------------------------------------------------------------------------------------------------');
+  console.log('----------------------------------------------------------------------------------------------------------------------');
 
   const failures = [];
   if (timeouts1v1 !== 0) failures.push(`1v1 timeouts expected 0, got ${timeouts1v1}`);
@@ -972,21 +1120,27 @@ if (!isMainThread) {
 
   for (const st of presetStats.values()) {
     const wrNum = (st.wins / st.games) * 100;
+    const total2v2Games = st.brawlGames + st.tagGames;
+    const wr2v2Num = total2v2Games > 0 ? ((st.brawlWins + st.tagWins) / total2v2Games) * 100 : 50.0;
     const wr = wrNum.toFixed(1).padStart(5);
+    const wr2v2 = wr2v2Num.toFixed(1).padStart(5);
     const avgDur = st.totalDuration / st.games;
     const dps = (st.dmgDealt / st.totalDuration).toFixed(1).padStart(6);
     const od = (st.overdrives / st.games).toFixed(2).padStart(5);
     const tu = (st.trueUlts / st.games).toFixed(2).padStart(10);
     const hl = (st.healing / st.games).toFixed(0).padStart(10);
-    const pTag = `[${st.roman}] ${st.presetName}`.padEnd(14);
+    const pTag = `[${st.roman}] ${st.presetName}`.padEnd(15);
     console.log(
-      `${st.heroName.padEnd(14)} | ${pTag} |  ${wr}% | ${avgDur.toFixed(1).padStart(5)}s | ${od} | ${tu} | ${dps} | ${hl}`
+      `${st.heroName.padEnd(14)} | ${pTag} |  ${wr}% |  ${wr2v2}% | ${avgDur.toFixed(1).padStart(5)}s | ${od} | ${tu} | ${dps} | ${hl}`
     );
     if (wrNum < 40.0 || wrNum > 60.0) {
-      failures.push(`${st.heroName} [${st.roman}] ${st.presetName} WR ${wrNum.toFixed(1)}% outside [40.0%, 60.0%]`);
+      failures.push(`${st.heroName} [${st.roman}] ${st.presetName} 1v1 WR ${wrNum.toFixed(1)}% outside [40.0%, 60.0%]`);
+    }
+    if (wr2v2Num < 38.0 || wr2v2Num > 62.0) {
+      failures.push(`${st.heroName} [${st.roman}] ${st.presetName} 2v2 WR ${wr2v2Num.toFixed(1)}% outside [38.0%, 62.0%]`);
     }
   }
-  console.log('============================================================================================================');
+  console.log('======================================================================================================================');
 
   if (failures.length > 0) {
     console.error('[SOVEREIGN BUILDS BALANCE GATE FAILED]');
@@ -994,7 +1148,7 @@ if (!isMainThread) {
     process.exit(1);
   } else {
     console.log(
-      `[SOVEREIGN BUILDS BALANCE GATES PASSED] All 18 Presets within [40.0%, 60.0%] WR, 0 timeouts, OD=${odPct.toFixed(1)}%, TrueUlt=${tuPct.toFixed(1)}%`
+      `[SOVEREIGN BUILDS BALANCE GATES PASSED] All 36 Presets within [40.0%, 60.0%] 1v1 WR & [38.0%, 62.0%] 2v2 WR, 0 timeouts, OD=${odPct.toFixed(1)}%, TrueUlt=${tuPct.toFixed(1)}%`
     );
   }
 } else {

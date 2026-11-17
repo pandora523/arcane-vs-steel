@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps136';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps136';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { Fighter } from './Fighter.js?v=30fps137';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps137';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps137';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps136';
+} from '../engine/shaders/chronoShaders.js?v=30fps137';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -58,6 +58,17 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.36, 0.34, 0.38, 0.52];
 const INTRA_COMBO_LINK = 0.015;
+
+const PARADOX_CRIMSON_PALETTE = [
+  '#18061c',
+  '#4a044e',
+  '#86198f',
+  '#be185d',
+  '#e879f9',
+  '#f472b6',
+  '#fde047',
+  '#ffffff'
+];
 
 /**
  * Crisp 4x4 Bayer-stippled pixel floor/rim halo (`lighter`, luminous colors, alpha <= 0.13, zero blurry radial blobs, zero ellipse primitives!).
@@ -300,6 +311,21 @@ export class ChronomancerEx extends Fighter {
     };
   }
 
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.maxHp = 3670;
+      this.hp = this.maxHp;
+      this.moveSpeed = 235;
+      this._postFlurryInterval = 1.28;
+    } else if (aspect === 2) {
+      this.maxHp = 3800;
+      this.hp = this.maxHp;
+      this.moveSpeed = 209;
+      this.dodgeMaxCooldown = 2.88;
+      this._postFlurryInterval = 1.42;
+    }
+  }
+
   isHackAndSlashMelee() {
     return true;
   }
@@ -527,12 +553,19 @@ export class ChronomancerEx extends Fighter {
   ensureAstrolabeAura() {
     if (!this.fx || this.isDead) return;
     if (!this.fx.active.some((s) => s.key === 'chronoAstrolabeAura')) {
+      const vsAspect = this.game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+      const auraPal =
+        vsAspect === 1
+          ? PARADOX_CRIMSON_PALETTE
+          : vsAspect === 2
+            ? CHRONO_BRASS_PALETTE
+            : CHRONO_TEAL_PALETTE;
       this.fx.spawn('chronoAstrolabeAura', this._safeFxX(this.x), this._safeFxY(this.y - 102), {
         follow: this,
         offsetX: 0,
         offsetY: -102,
         flip: this.facing < 0,
-        palette: CHRONO_TEAL_PALETTE,
+        palette: auraPal,
         light: 1.12
       });
     }
@@ -876,18 +909,22 @@ export class ChronomancerEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
     this.crouchCooldown = 3.1;
     this.crouchDuration = 0.90;
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isDeflecting = true;
     this.vx = 0;
+    if (vsAspect === 2) {
+      this.grantBuildShield(48, 2.3, 'CHRONO BARRIER!', '#2dd4bf');
+    }
     this.fx?.spawn('warpPortalPairRift', this._safeFxX(this.x + this.facing * 36, game), this._safeFxY(this.y - 90), {
       follow: this,
       offsetX: 36,
       offsetY: -90,
       flip: this.facing < 0,
-      palette: CHRONO_BRASS_PALETTE,
+      palette: vsAspect === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_BRASS_PALETTE,
       light: 1.18,
       extra: { isArrival: true }
     });
@@ -952,12 +989,16 @@ export class ChronomancerEx extends Fighter {
     if (game?.audio) game.audio.play('time_rewind', this.x);
 
     if (enemy && !enemy.isDead && (dist < 195 || nearWall)) {
+      const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
       this.isChronoWarp = true;
       this.didChronoWarp = false;
       this.dashDuration = 0.38;
       this.warpPortalTimer = 0.48;
       this.warpOriginX = this.x;
       this.vx = 0;
+      if (vsAspect === 2) {
+        this.grantBuildShield(38, 2.0, 'ASTROLABE SLIP!', '#facc15');
+      }
 
       const crossSign = this.x < enemy.x ? 1 : -1;
       let targetX = enemy.x + crossSign * 120;
@@ -969,14 +1010,20 @@ export class ChronomancerEx extends Fighter {
 
       this.fx?.spawn('warpPortalPairRift', this._safeFxX(this.warpOriginX, game), this._safeFxY(this.groundY - 94), {
         flip: this.facing < 0,
-        palette: CHRONO_TEAL_PALETTE,
+        palette: vsAspect === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_TEAL_PALETTE,
         light: 1.20,
         extra: { isArrival: false }
       });
-      this.spawnPhantomClone(this.warpOriginX, this.groundY, this.facing, 'past', {
-        frameIdx: 184,
-        maxLife: 0.34
-      });
+      this.spawnPhantomClone(
+        this.warpOriginX,
+        this.groundY,
+        this.facing,
+        vsAspect === 1 ? 'future_violet' : 'past',
+        {
+          frameIdx: 184,
+          maxLife: 0.34
+        }
+      );
 
       game?.vfx?.spawnShockwave?.(this.x, this.groundY, 112, '#2dd4bf', 0.30, true);
       game?.vfx?.spawnDamageText?.(this.x, this.y - 156, 0, false, 'PARADOX SLIP!', '#facc15');
@@ -1474,15 +1521,27 @@ export class ChronomancerEx extends Fighter {
       this.vy = 0;
     }
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const dmgMult = vsAspect === 1 ? 1.09 : vsAspect === 2 ? 0.88 : 1.0;
+    const slashPal = vsAspect === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_TEAL_PALETTE;
+
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.10) {
         this._beatHitMask |= 1;
         const slashX = this.x + this.facing * 72;
         const slashY = this.y - 92;
-        game?.vfx?.spawnShockwave?.(this.x + this.facing * 42, this.groundY - 4, 58, '#2dd4bf', 0.20, false, true);
+        if (vsAspect === 1) {
+          this.spawnPhantomClone(this.clampArenaX(this.x - this.facing * 26, game, 80), this.groundY, this.facing, 'future_violet', {
+            startFrame: 60,
+            endFrame: 66,
+            maxLife: 0.34,
+            inFront: false
+          });
+        }
+        game?.vfx?.spawnShockwave?.(this.x + this.facing * 42, this.groundY - 4, 58, vsAspect === 1 ? '#e879f9' : '#2dd4bf', 0.20, false, true);
         this.fx?.spawn('chronoTimeRiftSlash', this._safeFxX(slashX, game), this._safeFxY(slashY), {
           flip: this.facing < 0,
-          palette: CHRONO_TEAL_PALETTE,
+          palette: slashPal,
           light: 1.18,
           extra: { cross: false, angle: 0.30, radius: 32 }
         });
@@ -1492,7 +1551,7 @@ export class ChronomancerEx extends Fighter {
           inFront: true
         });
         this._applyChronoExStrike(enemy, game, {
-          damage: 28,
+          damage: vsAspect === 0 ? 28 : Math.round(28 * dmgMult),
           reachFront: 216,
           hitStop: 0.044,
           shakeDur: 0.056,
@@ -1513,21 +1572,27 @@ export class ChronomancerEx extends Fighter {
         const strikeY = inRangeEnemy ? inRangeEnemy.groundY || inRangeEnemy.y : this.groundY;
         const cloneX = this.clampArenaX(strikeX + this.facing * 78, game, 82);
 
-        this.spawnPhantomClone(cloneX, strikeY, -this.facing, 'future', {
-          startFrame: 68,
-          endFrame: 74,
-          maxLife: 0.42,
-          inFront: false
-        });
+        this.spawnPhantomClone(
+          cloneX,
+          strikeY,
+          -this.facing,
+          vsAspect === 1 ? 'future_violet' : 'future',
+          {
+            startFrame: 68,
+            endFrame: 74,
+            maxLife: 0.42,
+            inFront: false
+          }
+        );
         this.fx?.spawn('warpPortalPairRift', this._safeFxX(cloneX, game), this._safeFxY(strikeY - 94), {
           flip: this.facing > 0,
-          palette: CHRONO_TEAL_PALETTE,
+          palette: slashPal,
           light: 1.16,
           extra: { isArrival: true }
         });
         this.fx?.spawn('chronoTimeRiftSlash', this._safeFxX(strikeX, game), this._safeFxY(strikeY - 94), {
           flip: this.facing < 0,
-          palette: CHRONO_TEAL_PALETTE,
+          palette: slashPal,
           light: 1.22,
           extra: { cross: true, radius: 32 }
         });
@@ -1537,12 +1602,12 @@ export class ChronomancerEx extends Fighter {
           0,
           false,
           'PARADOX PINCER!',
-          '#2dd4bf'
+          vsAspect === 1 ? '#e879f9' : '#2dd4bf'
         );
         if (game?.audio) game.audio.play('time_rewind', cloneX);
 
         this._applyChronoExStrike(enemy, game, {
-          damage: 30,
+          damage: vsAspect === 0 ? 30 : Math.round(30 * dmgMult),
           reachFront: 228,
           hitStop: 0.046,
           shakeDur: 0.060,
@@ -1560,12 +1625,12 @@ export class ChronomancerEx extends Fighter {
         this._beatHitMask |= 1;
         this.fx?.spawn('chronoTimeRiftSlash', this._safeFxX(this.x + this.facing * 72, game), this._safeFxY(this.y - 88), {
           flip: this.facing < 0,
-          palette: CHRONO_TEAL_PALETTE,
+          palette: slashPal,
           light: 1.18,
           extra: { cross: false, angle: -0.05, radius: 34 }
         });
         this._applyChronoExStrike(enemy, game, {
-          damage: 20,
+          damage: vsAspect === 0 ? 20 : Math.round(20 * dmgMult),
           reachFront: 218,
           hitStop: 0.042,
           shakeDur: 0.048,
@@ -1583,12 +1648,12 @@ export class ChronomancerEx extends Fighter {
         this.gainMana(4.5);
         this.fx?.spawn('chronoTimeRiftSlash', this._safeFxX(this.x + this.facing * 76, game), this._safeFxY(this.y - 92), {
           flip: this.facing > 0,
-          palette: CHRONO_BRASS_PALETTE,
+          palette: vsAspect === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_BRASS_PALETTE,
           light: 1.20,
           extra: { cross: true, radius: 34 }
         });
         this._applyChronoExStrike(enemy, game, {
-          damage: 22,
+          damage: vsAspect === 0 ? 22 : Math.round(22 * dmgMult),
           reachFront: 220,
           hitStop: 0.044,
           shakeDur: 0.054,
@@ -1602,6 +1667,7 @@ export class ChronomancerEx extends Fighter {
         });
       }
     } else {
+      const slowDurV3 = vsAspect === 2 ? 1.65 : 1.20;
       if ((this._beatHitMask & 1) === 0 && t >= 0.16) {
         this._beatHitMask |= 1;
         const slamX = this.x + this.facing * 84;
@@ -1614,7 +1680,7 @@ export class ChronomancerEx extends Fighter {
 
         this.fx?.spawn('chronoTimeRiftSlash', this._safeFxX(slamX, game), this._safeFxY(slamY), {
           flip: this.facing < 0,
-          palette: CHRONO_BRASS_PALETTE,
+          palette: vsAspect === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_BRASS_PALETTE,
           light: 1.24,
           extra: { cross: true, radius: 36 }
         });
@@ -1623,8 +1689,23 @@ export class ChronomancerEx extends Fighter {
           glowColor: 'gold',
           inFront: true
         });
+        if (vsAspect === 1) {
+          game?.vfx?.spawnProjectile?.({
+            x: slamX,
+            y: this.groundY - 78,
+            vx: this.facing * 720,
+            vy: 0,
+            radius: 18,
+            damage: 18,
+            color: '#e879f9',
+            coreColor: '#fde047',
+            owner: this,
+            type: 'clock_gear',
+            pierce: true
+          });
+        }
         this._applyChronoExStrike(enemy, game, {
-          damage: 26,
+          damage: vsAspect === 0 ? 26 : Math.round(26 * dmgMult),
           reachFront: 224,
           hitStop: 0.058,
           shakeDur: 0.082,
@@ -1634,7 +1715,7 @@ export class ChronomancerEx extends Fighter {
           scarDx: 26,
           scarDy: 136,
           isGold: true,
-          slowDur: 1.20,
+          slowDur: slowDurV3,
           vfxRow: 5,
           sfx: 'heavy_cleave'
         });
@@ -1642,7 +1723,7 @@ export class ChronomancerEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.21) {
         this._beatHitMask |= 2;
         this._applyChronoExStrike(enemy, game, {
-          damage: 18,
+          damage: vsAspect === 0 ? 18 : Math.round(18 * dmgMult),
           reachFront: 226,
           hitStop: 0,
           shakeDur: 0.046,
@@ -1658,7 +1739,7 @@ export class ChronomancerEx extends Fighter {
       if ((this._beatHitMask & 4) === 0 && t >= 0.26) {
         this._beatHitMask |= 4;
         this._applyChronoExStrike(enemy, game, {
-          damage: 24,
+          damage: vsAspect === 0 ? 24 : Math.round(24 * dmgMult),
           reachFront: 228,
           hitStop: 0,
           shakeDur: 0.056,
@@ -1668,7 +1749,7 @@ export class ChronomancerEx extends Fighter {
           scarDx: 102,
           scarDy: -84,
           isGold: true,
-          slowDur: 1.20,
+          slowDur: slowDurV3,
           vfxRow: 5,
           sfx: 'slash'
         });
@@ -1733,6 +1814,7 @@ export class ChronomancerEx extends Fighter {
    */
   updateSkill(_dt, enemy, game) {
     const t = this.stateTimer;
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
     this.vx *= 0.82;
 
     const foes = this.getActiveEnemies(enemy, game);
@@ -1744,12 +1826,12 @@ export class ChronomancerEx extends Fighter {
       this.anchorX = this.x;
       this.anchorY = this.groundY;
       this.anchorHp = this.hp;
-      this.anchorActive = true;
+      this.anchorActive = vsSkill !== 1;
 
       if (game?.audio) game.audio.play('time_rewind', this.x);
       this.fx?.spawn('warpPortalPairRift', this._safeFxX(this.anchorX, game), this._safeFxY(this.groundY - 88), {
         flip: this.facing < 0,
-        palette: CHRONO_BRASS_PALETTE,
+        palette: vsSkill === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_BRASS_PALETTE,
         light: 1.22,
         extra: { isArrival: false }
       });
@@ -1757,15 +1839,26 @@ export class ChronomancerEx extends Fighter {
         glowColor: 'gold',
         inFront: false
       });
-      this.spawnClockworkBurst(this.anchorX, this.groundY - 12, 6, 'gold');
-      game?.vfx?.spawnShockwave?.(this.anchorX, this.groundY - 2, 96, '#facc15', 0.28, true);
+      this.spawnClockworkBurst(this.anchorX, this.groundY - 12, 6, vsSkill === 1 ? 'violet' : 'gold');
+      game?.vfx?.spawnShockwave?.(
+        this.anchorX,
+        this.groundY - 2,
+        96,
+        vsSkill === 1 ? '#e879f9' : '#facc15',
+        0.28,
+        true
+      );
       game?.vfx?.spawnDamageText?.(
         this.anchorX,
         this.y - 148,
         0,
         false,
-        'CHRONO-SCHISM ANCHOR!',
-        '#facc15'
+        vsSkill === 1
+          ? 'PARADOX SCISSOR RIFT!'
+          : vsSkill === 2
+            ? 'HOROLOGIUM SANCTUM!'
+            : 'CHRONO-SCHISM ANCHOR!',
+        vsSkill === 1 ? '#e879f9' : '#facc15'
       );
     }
 
@@ -1783,13 +1876,19 @@ export class ChronomancerEx extends Fighter {
       this.facing = targetX >= this.x ? 1 : -1;
       this.vx = 0;
 
-      // Opposite-flank Teal Mirage + Twin Clock-Hand Spears (`Row 6`) converging on targetX!
-      this.spawnPhantomClone(pincerCloneX, this.groundY, -this.facing, 'future', {
-        startFrame: 68,
-        endFrame: 80,
-        maxLife: 0.48,
-        inFront: true
-      });
+      // Opposite-flank Mirage + Twin Clock-Hand Spears (`Row 6`) converging on targetX!
+      this.spawnPhantomClone(
+        pincerCloneX,
+        this.groundY,
+        -this.facing,
+        vsSkill === 1 ? 'future_violet' : 'future',
+        {
+          startFrame: 68,
+          endFrame: 80,
+          maxLife: 0.48,
+          inFront: true
+        }
+      );
       this.spawnVfxAnim(6, warpX + this.facing * 28, this.groundY - 96, 192, 192, 0.36, {
         vx: this.facing * 185,
         flipX: this.facing < 0,
@@ -1802,7 +1901,15 @@ export class ChronomancerEx extends Fighter {
         glowColor: 'teal',
         inFront: true
       });
-      this.spawnTemporalThread(warpX, this.groundY - 110, pincerCloneX, this.groundY - 56, 0.34, '#2dd4bf', 2);
+      this.spawnTemporalThread(
+        warpX,
+        this.groundY - 110,
+        pincerCloneX,
+        this.groundY - 56,
+        0.34,
+        vsSkill === 1 ? '#e879f9' : '#2dd4bf',
+        2
+      );
       this.spawnTemporalThread(pincerCloneX, this.groundY - 110, warpX, this.groundY - 56, 0.34, '#facc15', 2);
 
       if (game?.audio) {
@@ -1810,54 +1917,77 @@ export class ChronomancerEx extends Fighter {
         game.audio.play('chrono_hit', targetX);
       }
 
+      const stage2Pal =
+        vsSkill === 1
+          ? PARADOX_CRIMSON_PALETTE
+          : vsSkill === 2
+            ? CHRONO_BRASS_PALETTE
+            : CHRONO_TEAL_PALETTE;
       this.fx?.spawn('chronoTimeRiftSlash', this._safeFxX(targetX, game), this._safeFxY(this.groundY - 96), {
         flip: this.facing < 0,
-        palette: CHRONO_TEAL_PALETTE,
+        palette: stage2Pal,
         light: 1.24,
         extra: { cross: true, radius: 36 }
       });
       this.spawnVfxAnim(5, targetX, this.groundY - 96, 224, 224, 0.36, {
         flipX: this.facing < 0,
-        glowColor: 'teal',
+        glowColor: vsSkill === 2 ? 'gold' : 'teal',
         inFront: true
       });
 
+      const fieldRadius = vsSkill === 2 ? 195 : 165;
+      const fieldDur = vsSkill === 2 ? 4.4 : 3.8;
       this.stasisField = {
         x: targetX,
         y: this.groundY,
-        radius: 165,
+        radius: fieldRadius,
         life: 0,
-        maxLife: 3.8
+        maxLife: fieldDur
       };
       this.fx?.spawn('chronoStasisField', this._safeFxX(targetX, game), this._safeFxY(this.groundY), {
         useGroundY: true,
-        palette: CHRONO_TEAL_PALETTE,
+        palette: stage2Pal,
         light: 1.20,
-        maxDuration: 3.8,
-        extra: { customDuration: 3.8, radius: 56 }
+        maxDuration: fieldDur,
+        extra: { customDuration: fieldDur, radius: vsSkill === 2 ? 64 : 56 }
       });
 
-      this.spawnClockworkBurst(targetX, this.groundY - 92, 8, 'teal');
-      game?.vfx?.spawnShockwave?.(targetX, this.groundY - 2, 165, '#2dd4bf', 0.36, true);
+      this.spawnClockworkBurst(targetX, this.groundY - 92, 8, vsSkill === 1 ? 'violet' : 'teal');
+      game?.vfx?.spawnShockwave?.(
+        targetX,
+        this.groundY - 2,
+        fieldRadius,
+        vsSkill === 1 ? '#e879f9' : '#2dd4bf',
+        0.36,
+        true
+      );
       game?.vfx?.spawnDamageText?.(
         targetX,
         this.groundY - 166,
         0,
         true,
-        'CHRONO-SCHISM: TWIN SPEARS!',
-        '#2dd4bf'
+        vsSkill === 1
+          ? 'PARADOX SCISSOR EXECUTION!'
+          : vsSkill === 2
+            ? 'HOROLOGIUM REWIND SANCTUM!'
+            : 'CHRONO-SCHISM: TWIN SPEARS!',
+        vsSkill === 1 ? '#e879f9' : vsSkill === 2 ? '#facc15' : '#2dd4bf'
       );
       game?.renderer?.triggerShake?.(12, 0.20);
 
+      const hitRange2 = vsSkill === 2 ? 200 : 175;
+      const slowDur2 = vsSkill === 2 ? 2.1 : 1.6;
+      const primDmg2 = vsSkill === 1 ? 116 : vsSkill === 2 ? 80 : 105;
+      const splashDmg2 = vsSkill === 1 ? 80 : vsSkill === 2 ? 55 : 72;
       for (const foe of foes) {
-        if (Math.abs(foe.x - targetX) <= 175 || Math.abs(foe.x - this.x) <= 175) {
-          foe.chronoSlowTimer = Math.max(foe.chronoSlowTimer || 0, 1.6);
-          foe.takeDamage(foe === primary ? 105 : 72, this, true, 45, -65);
+        if (Math.abs(foe.x - targetX) <= hitRange2 || Math.abs(foe.x - this.x) <= hitRange2) {
+          foe.chronoSlowTimer = Math.max(foe.chronoSlowTimer || 0, slowDur2);
+          foe.takeDamage(foe === primary ? primDmg2 : splashDmg2, this, true, 45, -65);
         }
       }
     }
 
-    // Stage 3 (t >= 0.76s): Golden Rewind Echo back to Roman Astrolabe Anchor!
+    // Stage 3 (t >= 0.76s): Golden Rewind Echo or Aggressive Flank Execution!
     if (t >= 0.76 && this._skillStage === 2) {
       this._skillStage = 3;
       this.isDeflecting = false;
@@ -1870,12 +2000,18 @@ export class ChronomancerEx extends Fighter {
           ? this.stasisField.x
           : riftCloneX + riftCloneFacing * 86;
 
-      this.spawnPhantomClone(riftCloneX, this.groundY, riftCloneFacing, 'past', {
-        startFrame: 68,
-        endFrame: 82,
-        maxLife: 0.52,
-        inFront: false
-      });
+      this.spawnPhantomClone(
+        riftCloneX,
+        this.groundY,
+        riftCloneFacing,
+        vsSkill === 1 ? 'future_violet' : 'past',
+        {
+          startFrame: 68,
+          endFrame: 82,
+          maxLife: 0.52,
+          inFront: false
+        }
+      );
       this.spawnVfxAnim(4, echoTargetX, this.groundY - 94, 216, 216, 0.36, {
         flipX: riftCloneFacing < 0,
         glowColor: 'gold',
@@ -1892,15 +2028,32 @@ export class ChronomancerEx extends Fighter {
         maxLife: 0.36
       };
       this.spawnTemporalThread(riftCloneX, this.groundY - 88, this.anchorX, this.groundY - 88, 0.32, '#facc15', 2);
-      this.spawnTemporalThread(riftCloneX, this.groundY - 102, this.anchorX, this.groundY - 102, 0.32, '#2dd4bf', 1);
+      this.spawnTemporalThread(
+        riftCloneX,
+        this.groundY - 102,
+        this.anchorX,
+        this.groundY - 102,
+        0.32,
+        vsSkill === 1 ? '#e879f9' : '#2dd4bf',
+        1
+      );
 
+      const primDmg3 = vsSkill === 1 ? 60 : vsSkill === 2 ? 40 : 54;
+      const splashDmg3 = vsSkill === 1 ? 43 : vsSkill === 2 ? 28 : 38;
       for (const foe of foes) {
         if (Math.abs(foe.x - echoTargetX) <= 165 || Math.abs(foe.x - riftCloneX) <= 175) {
-          foe.takeDamage(foe === primary ? 54 : 38, this, false, 70, -45);
+          foe.takeDamage(foe === primary ? primDmg3 : splashDmg3, this, false, 70, -45);
+          if (vsSkill === 1) {
+            foe.applyBuildRoot?.(0.32, 'TIME PIN!', '#e879f9');
+          }
         }
       }
 
-      this.x = this.anchorX;
+      if (vsSkill === 1) {
+        this.x = this.clampArenaX(echoTargetX - riftCloneFacing * 108, game, 95);
+      } else {
+        this.x = this.anchorX;
+      }
       this.y = this.groundY;
       this.vx = 0;
       this.anchorActive = false;
@@ -1910,16 +2063,25 @@ export class ChronomancerEx extends Fighter {
 
       if (game?.audio) game.audio.play('time_rewind', this.x);
       this.spawnRewindRibbons(riftCloneX, this.groundY - 92);
-      this.spawnClockworkBurst(this.x, this.groundY - 88, 8, 'gold');
+      this.spawnClockworkBurst(this.x, this.groundY - 88, 8, vsSkill === 1 ? 'violet' : 'gold');
       this.fx?.spawn('warpPortalPairRift', this._safeFxX(this.x, game), this._safeFxY(this.groundY - 92), {
         flip: this.facing < 0,
-        palette: CHRONO_BRASS_PALETTE,
+        palette: vsSkill === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_BRASS_PALETTE,
         light: 1.24,
         extra: { isArrival: true }
       });
 
-      const rewindHeal = Math.max(32, Math.min(88, Math.round(Math.max(0, this.anchorHp - this.hp) * 0.40)));
-      this.heal(rewindHeal, 'TEMPORAL REWIND');
+      if (vsSkill === 0) {
+        const rewindHeal = Math.max(32, Math.min(88, Math.round(Math.max(0, this.anchorHp - this.hp) * 0.40)));
+        this.heal(rewindHeal, 'TEMPORAL REWIND');
+      } else if (vsSkill === 1) {
+        this.gainMana(7);
+      } else {
+        const rewindHeal = Math.max(44, Math.min(78, Math.round(Math.max(0, this.anchorHp - this.hp) * 0.45)));
+        this.heal(rewindHeal, 'HOROLOGIUM REWIND');
+        this.grantBuildShield(50, 2.4, 'ASTROLABE BARRIER!', '#facc15');
+        this.healTeammateTagGrace(18, 'TEMPORAL MEND', 20, 2.2);
+      }
     }
 
     if (t >= (this.skillDuration || 1.08)) {
@@ -1938,6 +2100,7 @@ export class ChronomancerEx extends Fighter {
   updateUltimate(_dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.ultDuration || 1.72;
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
     this.vx = 0;
     this.vy = 0;
     this.isInvulnerable = true;
@@ -1976,9 +2139,15 @@ export class ChronomancerEx extends Fighter {
         maxLife: 1.62
       };
 
+      const dialPal =
+        vsUlt === 1
+          ? PARADOX_CRIMSON_PALETTE
+          : vsUlt === 2
+            ? CHRONO_BRASS_PALETTE
+            : CHRONO_TEAL_PALETTE;
       this.fx?.spawn('doomsdayGrandHorologium', this._safeFxX(targetX, game), this._safeFxY(this.groundY), {
         useGroundY: true,
-        palette: CHRONO_TEAL_PALETTE,
+        palette: dialPal,
         light: 1.24,
         maxDuration: 1.64,
         extra: { customDuration: 1.64, radius: 70 }
@@ -1986,7 +2155,7 @@ export class ChronomancerEx extends Fighter {
 
       const leftPastX = this.clampArenaX(targetX - 152, game, 85);
       const rightFutureX = this.clampArenaX(targetX + 152, game, 85);
-      // Past Gold Mirage converging rightward + Future Teal Mirage converging leftward!
+      // Past Gold Mirage converging rightward + Future Teal/Violet Mirage converging leftward!
       this.spawnPhantomClone(leftPastX, this.groundY, 1, 'past', {
         startFrame: 60,
         endFrame: 88,
@@ -1994,21 +2163,40 @@ export class ChronomancerEx extends Fighter {
         maxLife: 1.36,
         inFront: true
       });
-      this.spawnPhantomClone(rightFutureX, this.groundY, -1, 'future', {
-        startFrame: 60,
-        endFrame: 88,
-        vx: -72,
-        maxLife: 1.36,
-        inFront: true
-      });
+      this.spawnPhantomClone(
+        rightFutureX,
+        this.groundY,
+        -1,
+        vsUlt === 1 ? 'future_violet' : 'future',
+        {
+          startFrame: 60,
+          endFrame: 88,
+          vx: -72,
+          maxLife: 1.36,
+          inFront: true
+        }
+      );
+      if (vsUlt === 1) {
+        this.spawnPhantomClone(targetX, this.groundY, this.facing, 'future_violet', {
+          startFrame: 68,
+          endFrame: 88,
+          vx: 0,
+          maxLife: 1.32,
+          inFront: true
+        });
+      }
 
       game?.vfx?.spawnDamageText?.(
         targetX,
         this.groundY - 228,
         0,
         true,
-        'PARADOX CONVERGENCE: TWIN-CLONE SHATTER!',
-        '#2dd4bf'
+        vsUlt === 1
+          ? 'SHATTERED TIMELINE BLITZ!'
+          : vsUlt === 2
+            ? 'ETERNAL PENDULUM AEGIS!'
+            : 'PARADOX CONVERGENCE: TWIN-CLONE SHATTER!',
+        vsUlt === 1 ? '#e879f9' : vsUlt === 2 ? '#facc15' : '#2dd4bf'
       );
     }
 
@@ -2030,30 +2218,42 @@ export class ChronomancerEx extends Fighter {
       });
       this.spawnClockworkBurst(targetX, this.groundY - 96, 7, 'gold');
 
+      const p1 = vsUlt === 1 ? 82 : vsUlt === 2 ? 58 : 78;
+      const s1 = vsUlt === 1 ? 58 : vsUlt === 2 ? 40 : 54;
       for (const foe of foes) {
         if (Math.abs(foe.x - targetX) <= 185) {
-          foe.takeDamage(foe === primary ? 78 : 54, this, true, -16, -35);
+          foe.takeDamage(foe === primary ? p1 : s1, this, true, -16, -35);
         }
       }
     }
 
-    // Beat 2 (t = 0.84s): Future Teal Mirage Convergence Slash
+    // Beat 2 (t = 0.84s): Future Teal/Violet Mirage Convergence Slash
     if (t >= 0.84 && this._ultStage === 2) {
       this._ultStage = 3;
       if (game?.audio) game.audio.play('clock_gear', targetX);
       game?.renderer?.triggerShake?.(13, 0.20);
 
-      this.spawnTemporalThread(targetX + 118, this.groundY - 142, targetX - 94, this.groundY - 46, 0.36, '#2dd4bf', 2);
+      this.spawnTemporalThread(
+        targetX + 118,
+        this.groundY - 142,
+        targetX - 94,
+        this.groundY - 46,
+        0.36,
+        vsUlt === 1 ? '#e879f9' : '#2dd4bf',
+        2
+      );
       this.spawnVfxAnim(5, targetX, this.groundY - 98, 236, 236, 0.34, {
         flipX: true,
         glowColor: 'teal',
         inFront: true
       });
-      this.spawnClockworkBurst(targetX, this.groundY - 98, 7, 'teal');
+      this.spawnClockworkBurst(targetX, this.groundY - 98, 7, vsUlt === 1 ? 'violet' : 'teal');
 
+      const p2 = vsUlt === 1 ? 88 : vsUlt === 2 ? 62 : 84;
+      const s2 = vsUlt === 1 ? 60 : vsUlt === 2 ? 44 : 58;
       for (const foe of foes) {
         if (Math.abs(foe.x - targetX) <= 185) {
-          foe.takeDamage(foe === primary ? 84 : 58, this, true, 16, -45);
+          foe.takeDamage(foe === primary ? p2 : s2, this, true, 16, -45);
         }
       }
     }
@@ -2072,11 +2272,11 @@ export class ChronomancerEx extends Fighter {
       const rightX = targetX + 112;
       const baseY = this.groundY - 34;
       this.spawnTemporalThread(leftX, baseY, topX, topY, 0.42, '#facc15', 2);
-      this.spawnTemporalThread(topX, topY, rightX, baseY, 0.42, '#2dd4bf', 2);
+      this.spawnTemporalThread(topX, topY, rightX, baseY, 0.42, vsUlt === 1 ? '#e879f9' : '#2dd4bf', 2);
       this.spawnTemporalThread(rightX, baseY, leftX, baseY, 0.42, '#fde047', 2);
 
       this.fx?.spawn('eternalZeroClockPulse', this._safeFxX(targetX, game), this._safeFxY(this.groundY - 98), {
-        palette: CHRONO_BRASS_PALETTE,
+        palette: vsUlt === 1 ? PARADOX_CRIMSON_PALETTE : CHRONO_BRASS_PALETTE,
         light: 1.28,
         extra: { isShatter: true }
       });
@@ -2094,9 +2294,17 @@ export class ChronomancerEx extends Fighter {
       });
 
       this.spawnClockworkBurst(targetX, this.groundY - 98, 8, 'gold');
-      this.spawnClockworkBurst(targetX, this.groundY - 98, 8, 'teal');
+      this.spawnClockworkBurst(targetX, this.groundY - 98, 8, vsUlt === 1 ? 'violet' : 'teal');
 
-      this.heal(44, 'PARADOX MEND');
+      if (vsUlt === 0) {
+        this.heal(44, 'PARADOX MEND');
+      } else if (vsUlt === 1) {
+        this.gainFinisher(10);
+      } else {
+        this.heal(46, 'PENDULUM AEGIS');
+        this.grantBuildShield(72, 2.6, 'HOROLOGIUM BARRIER!', '#facc15');
+        this.healTeammateTagGrace(20, 'HOROLOGIUM GRACE', 22, 2.4);
+      }
       game?.vfx?.spawnDamageText?.(
         targetX,
         this.groundY - 240,
@@ -2106,9 +2314,14 @@ export class ChronomancerEx extends Fighter {
         '#fde047'
       );
 
+      const p3 = vsUlt === 1 ? 154 : vsUlt === 2 ? 110 : 140;
+      const s3 = vsUlt === 1 ? 106 : vsUlt === 2 ? 78 : 98;
       for (const foe of foes) {
         if (Math.abs(foe.x - targetX) <= 215) {
-          foe.takeDamage(foe === primary ? 140 : 98, this, true, 165, -185);
+          foe.takeDamage(foe === primary ? p3 : s3, this, true, 165, -185);
+          if (vsUlt === 2) {
+            foe.applyBuildRoot?.(0.42, 'TIME-LOCK!', '#2dd4bf');
+          }
         }
       }
     }

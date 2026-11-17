@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps136';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps136';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps136';
+import { Fighter } from './Fighter.js?v=30fps137';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps137';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps136';
+} from '../engine/shaders/forgeShaders.js?v=30fps137';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)
@@ -16,6 +16,17 @@ const AUTO_SLICES_EX = [
 
 const BEAT_DURATIONS = [0.42, 0.40, 0.44, 0.58];
 const INTRA_COMBO_LINK = 0.015;
+
+const CATACLYSM_MAGMA_PALETTE = [
+  '#1a0606',
+  '#450a0a',
+  '#991b1b',
+  '#dc2626',
+  '#f97316',
+  '#fbbf24',
+  '#fef08a',
+  '#ffffff'
+];
 
 // 4x4 Bayer ordered stipple matrix for pixel-pure Neo-Vision molten/jade floor halos (zero radial blur!)
 const BAYER_4X4 = [
@@ -159,6 +170,21 @@ export class TitanEx extends Fighter {
 
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('titan_ex');
+    }
+  }
+
+  applySovereignAspectStats(aspect) {
+    if (aspect === 1) {
+      this.maxHp = 3840;
+      this.hp = this.maxHp;
+      this.moveSpeed = 198;
+      this._postFlurryInterval = 1.56;
+    } else if (aspect === 2) {
+      this.maxHp = 3730;
+      this.hp = this.maxHp;
+      this.moveSpeed = 179;
+      this.dashMaxCooldown = 2.88;
+      this._postFlurryInterval = 1.76;
     }
   }
 
@@ -319,17 +345,28 @@ export class TitanEx extends Fighter {
   }
 
   triggerWorldBreakerTemper(targetX, enemy, game) {
+    const g = game || this.game;
+    const isAdv = Boolean(g?.isAdventureMode?.());
+    const vsAspect = isAdv ? 0 : this.buildAspect || 0;
     if (this.crucibleStacks < this.maxCrucibleStacks) return false;
     this.crucibleStacks = 0;
-    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.58);
+    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, vsAspect === 2 ? 0.68 : 0.58);
     this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.95);
-    this.heal(19, 'WORLD-BREAKER TEMPER');
 
-    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const suppressHeal =
+      !isAdv &&
+      (vsAspect === 1 ||
+        (this.state === 'SKILL' && (this.buildSkill || 0) === 1) ||
+        (this.state === 'ULTIMATE' && (this.buildUlt || 0) === 1));
+    if (!suppressHeal) {
+      this.heal(19, 'WORLD-BREAKER TEMPER');
+    }
+
+    const ww = g?.renderer ? g.renderer.worldWidth : 1200;
     const obeliskX = Math.max(75, Math.min(ww - 75, targetX));
     this.fx?.spawn('tectonicCraterSlam', obeliskX, this.groundY - 4, {
       flip: this.facing < 0,
-      palette: FORGE_JADE_PALETTE,
+      palette: vsAspect === 1 ? CATACLYSM_MAGMA_PALETTE : FORGE_JADE_PALETTE,
       light: 1.32,
       extra: { maxRx: 136 }
     });
@@ -338,15 +375,23 @@ export class TitanEx extends Fighter {
       h: 232,
       maxLife: 0.54,
       flipX: this.facing < 0,
-      glowColor: 'emerald',
+      glowColor: vsAspect === 1 ? 'gold' : 'emerald',
       inFront: false
     });
-    this.spawnForgeShockRing(obeliskX, this.groundY - 2, 128, true, 0.36);
-    game?.vfx?.spawnDamageText?.(this.x, this.y - 172, 0, true, 'WORLD-BREAKER TEMPER!', '#34d399');
+    this.spawnForgeShockRing(obeliskX, this.groundY - 2, 128, vsAspect !== 1, 0.36);
+    g?.vfx?.spawnDamageText?.(
+      this.x,
+      this.y - 172,
+      0,
+      true,
+      'WORLD-BREAKER TEMPER!',
+      vsAspect === 1 ? '#fbbf24' : '#34d399'
+    );
 
-    for (const t of this.getActiveEnemies(enemy, game)) {
+    const temperDmg = vsAspect === 1 ? 28 : vsAspect === 2 ? 18 : 24;
+    for (const t of this.getActiveEnemies(enemy, g)) {
       if (Math.abs(t.x - obeliskX) <= 156) {
-        t.takeDamage(24, this, true, 110 * this.facing, -185);
+        t.takeDamage(temperDmg, this, true, 110 * this.facing, -185);
       }
     }
     return true;
@@ -794,12 +839,18 @@ export class TitanEx extends Fighter {
     const isFortified = this.forgeArmorTimer > 0 || this.crucibleStacks >= this.maxCrucibleStacks;
     let slot = this.fx.active.find((s) => s.key === 'forgeMagmaMantle');
     if (!slot) {
+      const vsAspect = this.game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
       slot = this.fx.spawn('forgeMagmaMantle', this.x, this.y - 78, {
         follow: this,
         offsetX: 0,
         offsetY: -78,
         flip: false,
-        palette: FORGE_GOLD_PALETTE,
+        palette:
+          vsAspect === 1
+            ? CATACLYSM_MAGMA_PALETTE
+            : vsAspect === 2
+              ? FORGE_JADE_PALETTE
+              : FORGE_GOLD_PALETTE,
         light: 1.14,
         extra: { fortified: isFortified }
       });
@@ -820,6 +871,7 @@ export class TitanEx extends Fighter {
   }
 
   startCrouch(_enemy, game) {
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
     this.crouchDuration = 0.80;
     this.setState('CROUCH');
     this.isCrouching = true;
@@ -827,7 +879,12 @@ export class TitanEx extends Fighter {
     this.forgeArmorTimer = 1.15;
     this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.90);
     this.gainCrucibleCore(1, game);
-    this.heal(14, 'FORGE TEMPER');
+    if (vsAspect !== 1) {
+      this.heal(14, 'FORGE TEMPER');
+      if (vsAspect === 2) {
+        this.grantBuildShield(16, 2.0, 'ADAMANT BARRIER!', '#10b981');
+      }
+    }
     this.vx = 0;
     const frontX = this.x + this.facing * 118;
 
@@ -836,7 +893,12 @@ export class TitanEx extends Fighter {
       offsetX: 0,
       offsetY: -78,
       flip: this.facing < 0,
-      palette: FORGE_GOLD_PALETTE,
+      palette:
+        vsAspect === 1
+          ? CATACLYSM_MAGMA_PALETTE
+          : vsAspect === 2
+            ? FORGE_JADE_PALETTE
+            : FORGE_GOLD_PALETTE,
       light: 1.18
     });
     this.spawnForgeShockRing(this.x, this.groundY - 2, 86, true, 0.28);
@@ -1153,6 +1215,9 @@ export class TitanEx extends Fighter {
       this.vy = 0;
     }
 
+    const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
+    const dmgMult = vsAspect === 1 ? 1.05 : vsAspect === 2 ? 0.81 : 1.0;
+
     if (v === 0) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.12) {
         this._beatHitMask |= 1;
@@ -1162,15 +1227,24 @@ export class TitanEx extends Fighter {
 
         this.fx?.spawn('tectonicCraterSlam', impactX, this.groundY - 4, {
           flip: dir < 0,
-          palette: FORGE_GOLD_PALETTE,
+          palette: vsAspect === 1 ? CATACLYSM_MAGMA_PALETTE : FORGE_GOLD_PALETTE,
           light: 1.28,
           extra: { maxRx: 132 }
         });
         this.spawnForgeShockRing(impactX, this.groundY - 2, 86, false, 0.26);
         this.spawnFissureWave(this.x + dir * 94, dir);
+        if (vsAspect === 1) {
+          this.fireWorldForgeWave(game, {
+            x: impactX,
+            y: this.groundY - 68,
+            damage: 18,
+            speed: 700,
+            maxRange: 460
+          });
+        }
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
-          damage: 46,
+          damage: vsAspect === 0 ? 46 : Math.round(46 * dmgMult),
           reachFront: 238,
           hitStop: 0.054,
           shakeDur: 0.078,
@@ -1206,7 +1280,7 @@ export class TitanEx extends Fighter {
         this.spawnForgeShockRing(pillarX, this.groundY - 2, 92, true, 0.28);
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
-          damage: 50,
+          damage: vsAspect === 0 ? 50 : Math.round(50 * dmgMult),
           reachFront: 240,
           hitStop: 0.056,
           shakeDur: 0.082,
@@ -1229,7 +1303,7 @@ export class TitanEx extends Fighter {
       if ((this._beatHitMask & 1) === 0 && t >= 0.09) {
         this._beatHitMask |= 1;
         this._applyWorldMaulCrush(enemy, game, {
-          damage: 32,
+          damage: vsAspect === 0 ? 32 : Math.round(32 * dmgMult),
           reachFront: 242,
           hitStop: 0.052,
           shakeDur: 0.074,
@@ -1249,13 +1323,13 @@ export class TitanEx extends Fighter {
         game?.renderer?.triggerShake?.(12, 0.22);
         this.fx?.spawn('tectonicCraterSlam', impactX, this.groundY - 4, {
           flip: dir < 0,
-          palette: FORGE_JADE_PALETTE,
+          palette: vsAspect === 1 ? CATACLYSM_MAGMA_PALETTE : FORGE_JADE_PALETTE,
           light: 1.32,
           extra: { maxRx: 146 }
         });
         this.spawnForgeShockRing(impactX, this.groundY - 2, 108, true, 0.30);
         const landed = this._applyWorldMaulCrush(enemy, game, {
-          damage: 38,
+          damage: vsAspect === 0 ? 38 : Math.round(38 * dmgMult),
           reachFront: 246,
           hitStop: 0.056,
           shakeDur: 0.084,
@@ -1294,7 +1368,7 @@ export class TitanEx extends Fighter {
 
         this.fx?.spawn('tectonicCraterSlam', slamX, this.groundY - 4, {
           flip: dir < 0,
-          palette: FORGE_GOLD_PALETTE,
+          palette: vsAspect === 1 ? CATACLYSM_MAGMA_PALETTE : FORGE_GOLD_PALETTE,
           light: 1.36,
           extra: { maxRx: 152 }
         });
@@ -1310,7 +1384,7 @@ export class TitanEx extends Fighter {
         this.triggerSoilRockSplash(slamX, this.groundY, ww, 'leap');
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
-          damage: 30,
+          damage: vsAspect === 0 ? 30 : Math.round(30 * dmgMult),
           reachFront: 248,
           hitStop: 0.068,
           shakeDur: 0.096,
@@ -1328,7 +1402,7 @@ export class TitanEx extends Fighter {
         this.fireWorldForgeWave(game, {
           x: slamX,
           y: this.groundY - 68,
-          damage: 26,
+          damage: vsAspect === 0 ? 26 : Math.round(26 * dmgMult),
           speed: 660,
           maxRange: 440
         });
@@ -1344,7 +1418,7 @@ export class TitanEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.23) {
         this._beatHitMask |= 2;
         this._applyWorldMaulCrush(enemy, game, {
-          damage: 18,
+          damage: vsAspect === 0 ? 18 : Math.round(18 * dmgMult),
           reachFront: 250,
           hitStop: 0,
           shakeDur: 0.052,
@@ -1360,7 +1434,7 @@ export class TitanEx extends Fighter {
       if ((this._beatHitMask & 4) === 0 && t >= 0.29) {
         this._beatHitMask |= 4;
         this._applyWorldMaulCrush(enemy, game, {
-          damage: 24,
+          damage: vsAspect === 0 ? 24 : Math.round(24 * dmgMult),
           reachFront: 252,
           hitStop: 0,
           shakeDur: 0.064,
@@ -1430,30 +1504,38 @@ export class TitanEx extends Fighter {
     const t = this.stateTimer;
     const dir = this.facing;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
 
     if (t >= 0.06 && !this.didActionFrame) {
       this.didActionFrame = true;
       this.vx = dir * 95;
-      this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.75);
+      this.forgeArmorTimer = Math.max(this.forgeArmorTimer, vsSkill === 2 ? 0.95 : 0.75);
       this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 1.0);
       this.gainCrucibleCore(1, game);
+      if (vsSkill === 2) {
+        this.heal(22, 'KHAZAD BASTION');
+        this.grantBuildShield(36, 2.2, 'KHAZAD BARRIER!', '#10b981');
+        this.healTeammateTagGrace(22, 'FORGE GRACE', 24, 2.2);
+      }
 
       const anvilX = Math.max(98, Math.min(ww - 98, this.x + dir * 120));
+      const altarLife = vsSkill === 2 ? 4.5 : 3.8;
       this.worldAnvilAltar = {
         x: anvilX,
         y: this.groundY,
         dir,
         age: 0,
-        life: 3.8,
-        maxLife: 3.8,
+        life: altarLife,
+        maxLife: altarLife,
         pulseTimer: 1.35,
         resonanceCd: 0.45,
         dashBoostCd: 0
       };
 
+      const slamPal1 = vsSkill === 1 ? CATACLYSM_MAGMA_PALETTE : FORGE_JADE_PALETTE;
       this.fx?.spawn('tectonicCraterSlam', anvilX, this.groundY - 4, {
         flip: dir < 0,
-        palette: FORGE_JADE_PALETTE,
+        palette: slamPal1,
         light: 1.28,
         extra: { maxRx: 132 }
       });
@@ -1463,7 +1545,7 @@ export class TitanEx extends Fighter {
         offsetY: -32,
         useGroundY: true,
         flip: dir < 0,
-        palette: FORGE_JADE_PALETTE,
+        palette: slamPal1,
         light: 1.22
       });
       game?.vfx?.spawnSkyStrike?.({
@@ -1476,23 +1558,44 @@ export class TitanEx extends Fighter {
         flightDuration: 0.14,
         impactDuration: 0.42,
         type: 'runic_anvil',
-        color: '#10b981',
+        color: vsSkill === 1 ? '#f97316' : '#10b981',
         scale: 1.18,
         isUltimate: false
       });
       game?.vfx?.spawnDecal?.(anvilX, this.groundY, 'fissure', 92);
-      game?.vfx?.spawnShockwave?.(anvilX, this.groundY - 2, '#10b981', 124, 0.32);
-      this.spawnForgeShockRing(anvilX, this.groundY - 2, 118, true, 0.34);
-      this.spawnMagmaFissureNode(anvilX, this.groundY, true, 0.85);
-      this.spawnForgeParticles(anvilX, this.groundY - 48, 8, { isJade: true });
+      game?.vfx?.spawnShockwave?.(anvilX, this.groundY - 2, vsSkill === 1 ? '#f97316' : '#10b981', 124, 0.32);
+      this.spawnForgeShockRing(anvilX, this.groundY - 2, 118, vsSkill !== 1, 0.34);
+      this.spawnMagmaFissureNode(anvilX, this.groundY, vsSkill !== 1, 0.85);
+      this.spawnForgeParticles(anvilX, this.groundY - 48, 8, { isJade: vsSkill !== 1 });
 
       if (game?.audio) {
         game.audio.play('skill_cast', anvilX);
         game.audio.play('clang', anvilX);
       }
       game?.renderer?.triggerShake?.(8, 0.16);
-      game?.vfx?.spawnSpecialCastAura?.(this, this.skillName, 'TECTONIC ANVIL RICOCHET', 'forge', false);
-      game?.vfx?.spawnDamageText?.(anvilX, this.groundY - 126, 0, false, 'RUNIC ANVIL MONOLITH!', '#10b981');
+      game?.vfx?.spawnSpecialCastAura?.(
+        this,
+        this.skillName,
+        vsSkill === 1
+          ? 'DOUBLE ANVIL RICOCHET'
+          : vsSkill === 2
+            ? 'KHAZAD IRON-BASTION'
+            : 'TECTONIC ANVIL RICOCHET',
+        'forge',
+        false
+      );
+      game?.vfx?.spawnDamageText?.(
+        anvilX,
+        this.groundY - 126,
+        0,
+        false,
+        vsSkill === 1
+          ? 'VOLCANIC DOUBLE-RICOCHET!'
+          : vsSkill === 2
+            ? 'KHAZAD IRON-BASTION ALTAR!'
+            : 'RUNIC ANVIL MONOLITH!',
+        vsSkill === 1 ? '#fbbf24' : '#10b981'
+      );
 
       const advSkillBounds =
         game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
@@ -1500,13 +1603,15 @@ export class TitanEx extends Fighter {
           : null;
       const pullMin = advSkillBounds ? advSkillBounds.minX + 24 : 70;
       const pullMax = advSkillBounds ? advSkillBounds.maxX - 24 : ww - 70;
+      const pullStep = vsSkill === 2 ? 52 : 38;
+      const dropDmg = vsSkill === 1 ? 40 : vsSkill === 2 ? 28 : 38;
       for (const foe of this.getActiveEnemies(enemy, game)) {
         if (Math.abs(foe.x - anvilX) <= 208) {
           const pullSign = anvilX >= foe.x ? 1 : -1;
           if (!foe.isColossalBoss) {
-            foe.x = Math.max(pullMin, Math.min(pullMax, foe.x + pullSign * 38));
+            foe.x = Math.max(pullMin, Math.min(pullMax, foe.x + pullSign * pullStep));
           }
-          foe.takeDamage(38, this, false, pullSign * 55, -125);
+          foe.takeDamage(dropDmg, this, false, pullSign * 55, -125);
         }
       }
     }
@@ -1526,53 +1631,70 @@ export class TitanEx extends Fighter {
       this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.058);
       game?.renderer?.triggerHitStop?.(0.048);
 
+      const slamPal2 =
+        vsSkill === 1
+          ? CATACLYSM_MAGMA_PALETTE
+          : vsSkill === 2
+            ? FORGE_JADE_PALETTE
+            : FORGE_GOLD_PALETTE;
       this.fx?.spawn('tectonicCraterSlam', impactX, impactY, {
         flip: dir < 0,
-        palette: FORGE_GOLD_PALETTE,
+        palette: slamPal2,
         light: 1.30,
         extra: { maxRx: 134 }
       });
       this.fx?.spawn('moltenAnvilSparks', impactX, impactY - 48, {
         flip: dir < 0,
-        palette: FORGE_GOLD_PALETTE,
+        palette: slamPal2,
         light: 1.26
       });
-      game?.vfx?.spawnShockwave?.(impactX, this.groundY - 2, '#f59e0b', 136, 0.34);
+      game?.vfx?.spawnShockwave?.(impactX, this.groundY - 2, vsSkill === 2 ? '#10b981' : '#f59e0b', 136, 0.34);
       this.spawnSheetBurst(4, impactX, impactY - 58, {
         w: 212,
         h: 212,
         maxLife: 0.36,
         flipX: dir < 0,
-        glowColor: 'gold',
+        glowColor: vsSkill === 2 ? 'emerald' : 'gold',
         inFront: true
       });
-      this.spawnAnvilShockBurst(impactX, impactY - 58, 66, 22, 0.26, false);
-      this.spawnForgeShockRing(impactX, this.groundY - 2, 132, false, 0.34);
+      this.spawnAnvilShockBurst(impactX, impactY - 58, 66, 22, 0.26, vsSkill === 2);
+      this.spawnForgeShockRing(impactX, this.groundY - 2, 132, vsSkill === 2, 0.34);
       this.spawnForgeParticles(impactX, impactY - 48, 12, {
         dirBias: dir > 0 ? 0 : Math.PI,
         spread: 0.85,
-        isJade: false
+        isJade: vsSkill === 2
       });
 
       this.triggerWorldBreakerTemper(impactX + dir * 64, enemy, game);
+      if (vsSkill === 1) {
+        this.fireWorldForgeWave(game, {
+          x: impactX,
+          y: this.groundY - 68,
+          damage: 18,
+          speed: 700,
+          maxRange: 460
+        });
+      }
       game?.vfx?.spawnDamageText?.(impactX, this.y - 158, 0, true, 'ANVIL RICOCHET LAUNCH!', '#fbbf24');
 
       this.activeAnvil = {
         x: impactX + dir * 18,
         y: this.groundY,
-        vx: dir * 940,
+        vx: dir * (vsSkill === 1 ? 1020 : 940),
         dir,
         age: 0,
         trailAccum: 0,
         state: 'flying',
         bouncesLeft: 1,
+        tier: vsSkill,
         rebounded: false,
         hitTargets: new Set()
       };
 
+      const launchSplashDmg = vsSkill === 1 ? 38 : vsSkill === 2 ? 26 : 36;
       for (const foe of this.getActiveEnemies(enemy, game)) {
         if (Math.abs(foe.x - impactX) < 134) {
-          foe.takeDamage(36, this, true, dir * 155, -130);
+          foe.takeDamage(launchSplashDmg, this, true, dir * 155, -130);
         }
       }
     }
@@ -1593,11 +1715,12 @@ export class TitanEx extends Fighter {
     const t = this.stateTimer;
     const dur = this.ultDuration || 1.54;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
 
     this.mana = 0;
     this.giantScale = 1.0;
     this.isInvulnerable = t < 0.94;
-    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.60);
+    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, vsUlt === 2 ? 0.95 : 0.60);
     this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.45);
     this.vx = 0;
     this.vy = 0;
@@ -1621,6 +1744,11 @@ export class TitanEx extends Fighter {
       this._ultWaveStep = 0;
       this._homeRunFlights = [];
       this.gainCrucibleCore(1, game);
+      if (vsUlt === 2) {
+        this.heal(30, 'WORLD-FORGE AEGIS');
+        this.grantBuildShield(52, 2.4, 'WORLD-ANVIL BARRIER!', '#10b981');
+        this.healTeammateTagGrace(24, 'ANVIL GRACE', 28, 2.4);
+      }
 
       const refX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x;
       if (leadFoe?.isColossalBoss) {
@@ -1640,11 +1768,21 @@ export class TitanEx extends Fighter {
         game.audio.play('clang', this.x);
       }
       if (game?.vfx) {
-        game.vfx.spawnSpecialCastAura(this, this.ultName, 'RAGNAROK GRAND-SLAM!', 'forge', true);
+        game.vfx.spawnSpecialCastAura(
+          this,
+          this.ultName,
+          vsUlt === 1
+            ? 'CALDERA METEOR GRAND-SLAM!'
+            : vsUlt === 2
+              ? 'AEGIS OF THE WORLD-FORGE!'
+              : 'RAGNAROK GRAND-SLAM!',
+          'forge',
+          true
+        );
         game.vfx.spawnDamageText(this.x, this.y - 168, 0, true, 'CRUCIBLE HALO IGNITE!', '#fde047');
       }
       game?.renderer?.triggerShake?.(9, 0.16);
-      this.spawnForgeShockRing(this.x, this.groundY - 2, 112, false, 0.32);
+      this.spawnForgeShockRing(this.x, this.groundY - 2, 112, vsUlt === 2, 0.32);
     }
 
     const batDir = this._homeRunDir || this.facing;
@@ -1657,27 +1795,28 @@ export class TitanEx extends Fighter {
       if (game?.audio) game.audio.play('thunder_slam', eruptX);
       game?.renderer?.triggerShake?.(12, 0.20);
       game?.vfx?.spawnFlamePillar?.(eruptX, this.groundY, this, null, {
-        theme: 'emerald',
+        theme: vsUlt === 1 ? 'fire' : 'emerald',
         damage: 0,
         width: 112,
         height: 244,
         delay: 0.02,
         maxLife: 0.46
       });
-      game?.vfx?.spawnShockwave?.(eruptX, this.groundY - 2, '#10b981', 128, 0.32);
+      game?.vfx?.spawnShockwave?.(eruptX, this.groundY - 2, vsUlt === 1 ? '#f97316' : '#10b981', 128, 0.32);
       this.spawnSheetBurst(2, eruptX, this.groundY - 86, {
         w: 228,
         h: 228,
         maxLife: 0.44,
         flipX: batDir < 0,
-        glowColor: 'emerald',
+        glowColor: vsUlt === 1 ? 'gold' : 'emerald',
         inFront: false
       });
-      this.spawnForgeShockRing(eruptX, this.groundY - 2, 108, true, 0.30);
-      this.spawnForgeParticles(eruptX, this.groundY - 48, 8, { isJade: true });
+      this.spawnForgeShockRing(eruptX, this.groundY - 2, 108, vsUlt !== 1, 0.30);
+      this.spawnForgeParticles(eruptX, this.groundY - 48, 8, { isJade: vsUlt !== 1 });
+      const eruptDmg = vsUlt === 1 ? 20 : vsUlt === 2 ? 12 : 16;
       for (const f of foes) {
         if (f === leadFoe || Math.abs(f.x - eruptX) <= 185) {
-          f.takeDamage(16, this, false, 0, -95);
+          f.takeDamage(eruptDmg, this, false, 0, -95);
           this.mana = 0;
         }
       }
@@ -1738,7 +1877,7 @@ export class TitanEx extends Fighter {
 
       this.fx?.spawn('moltenAnvilSparks', contactX, contactY, {
         flip: batDir < 0,
-        palette: FORGE_JADE_PALETTE,
+        palette: vsUlt === 1 ? CATACLYSM_MAGMA_PALETTE : FORGE_JADE_PALETTE,
         light: 1.32
       });
       game?.vfx?.spawnBeam?.({
@@ -1747,12 +1886,12 @@ export class TitanEx extends Fighter {
         x2: this._homeRunTargetWallX,
         y2: contactY,
         width: 24,
-        color: '#10b981',
+        color: vsUlt === 1 ? '#f97316' : '#10b981',
         coreColor: '#fde047',
         maxLife: 0.28,
         owner: this
       });
-      this.spawnAnvilShockBurst(contactX, contactY, 76, 26, 0.28, true);
+      this.spawnAnvilShockBurst(contactX, contactY, 76, 26, 0.28, vsUlt !== 1);
       this.spawnSheetBurst(4, contactX, contactY, {
         w: 224,
         h: 224,
@@ -1766,8 +1905,19 @@ export class TitanEx extends Fighter {
         spread: 0.65,
         speedMin: 95,
         speedMax: 260,
-        isJade: true
+        isJade: vsUlt !== 1
       });
+      if (vsUlt === 1) {
+        this.fireWorldForgeWave(game, {
+          x: contactX,
+          y: this.groundY - 68,
+          damage: 22,
+          speed: 740,
+          maxRange: 520,
+          isUltimate: true
+        });
+        this.gainFinisher(8);
+      }
 
       this._homeRunSwingStreak = {
         startX: contactX,
@@ -1778,8 +1928,20 @@ export class TitanEx extends Fighter {
         maxLife: 0.52
       };
 
-      game?.vfx?.spawnDamageText?.(contactX, this.groundY - 178, 0, true, 'RAGNAROK GRAND-SLAM!', '#fde047');
+      game?.vfx?.spawnDamageText?.(
+        contactX,
+        this.groundY - 178,
+        0,
+        true,
+        vsUlt === 1
+          ? 'CALDERA METEOR GRAND-SLAM!'
+          : vsUlt === 2
+            ? 'AEGIS OF THE WORLD-FORGE!'
+            : 'RAGNAROK GRAND-SLAM!',
+        '#fde047'
+      );
 
+      const swingDmg = vsUlt === 1 ? 40 : vsUlt === 2 ? 24 : 34;
       for (const foe of foes) {
         if (foe !== leadFoe && Math.abs(foe.x - contactX) > 195) continue;
         const distRight = wallMaxX - foe.x;
@@ -1787,13 +1949,14 @@ export class TitanEx extends Fighter {
         const targetWallX = foe.isColossalBoss
           ? foe.anchorX || foe.x
           : this._homeRunTargetWallX || (distRight >= distLeft ? wallMaxX : wallMinX);
-        foe.takeDamage(34, this, true, batDir * 680, -110);
+        foe.takeDamage(swingDmg, this, true, batDir * 680, -110);
         this.mana = 0;
         this._homeRunFlights.push({
           foe,
           startX: foe.x,
           targetWallX,
           dir: batDir,
+          tier: vsUlt,
           elapsed: 0,
           duration: 0.38,
           sparkAccum: 0,
@@ -1839,7 +2002,9 @@ export class TitanEx extends Fighter {
           fl.foe.vx = 0;
           fl.foe.vy = 0;
 
-          fl.foe.takeDamage(36, this, true, -fl.dir * 35, -110);
+          const crashDmg = fl.tier === 1 ? 42 : fl.tier === 2 ? 24 : 36;
+          const crashStun = fl.tier === 2 ? 0.85 : 0.80;
+          fl.foe.takeDamage(crashDmg, this, true, -fl.dir * 35, -110);
           this.mana = 0;
           if (!fl.foe.isColossalBoss) {
             fl.foe.x = wallX;
@@ -1848,7 +2013,7 @@ export class TitanEx extends Fighter {
           fl.foe.vx = 0;
           fl.foe.vy = 0;
 
-          fl.foe.stunTimer = Math.max(fl.foe.stunTimer || 0, 0.80);
+          fl.foe.stunTimer = Math.max(fl.foe.stunTimer || 0, crashStun);
           fl.foe.hurtTimer = 0.28;
 
           if (game?.audio) {
@@ -1861,7 +2026,7 @@ export class TitanEx extends Fighter {
 
           this.fx?.spawn('tectonicCraterSlam', wallX, this.groundY - 4, {
             flip: fl.dir < 0,
-            palette: FORGE_JADE_PALETTE,
+            palette: fl.tier === 1 ? CATACLYSM_MAGMA_PALETTE : FORGE_JADE_PALETTE,
             light: 1.38,
             extra: { maxRx: 165 }
           });
@@ -1875,12 +2040,12 @@ export class TitanEx extends Fighter {
             flightDuration: 0.12,
             impactDuration: 0.42,
             type: 'runic_anvil',
-            color: '#10b981',
+            color: fl.tier === 1 ? '#f97316' : '#10b981',
             scale: 1.28,
             isUltimate: true
           });
           game?.vfx?.spawnDecal?.(wallX, this.groundY, 'fissure', 112);
-          game?.vfx?.spawnShockwave?.(wallX, this.groundY - 2, '#10b981', 148, 0.36);
+          game?.vfx?.spawnShockwave?.(wallX, this.groundY - 2, fl.tier === 1 ? '#f97316' : '#10b981', 148, 0.36);
           this.spawnSheetBurst(4, wallX, this.groundY - 78, {
             w: 216,
             h: 216,
@@ -1889,17 +2054,24 @@ export class TitanEx extends Fighter {
             glowColor: 'gold',
             inFront: true
           });
-          this.spawnForgeShockRing(wallX, this.groundY - 2, 138, true, 0.38);
+          this.spawnForgeShockRing(wallX, this.groundY - 2, 138, fl.tier !== 1, 0.38);
           this.spawnForgeParticles(wallX, this.groundY - 68, 12, {
             dirBias: fl.dir >= 0 ? Math.PI : 0,
             spread: 1.1,
             speedMin: 68,
             speedMax: 210,
-            isJade: true
+            isJade: fl.tier !== 1
           });
           this.triggerSoilRockSplash(wallX, this.groundY, ww, 'leap');
 
-          game?.vfx?.spawnDamageText?.(wallX, this.groundY - 176, 0, true, 'TECTONIC WALL-STUN 0.8S!', '#34d399');
+          game?.vfx?.spawnDamageText?.(
+            wallX,
+            this.groundY - 176,
+            0,
+            true,
+            fl.tier === 2 ? 'TECTONIC WALL-STUN 0.95S!' : 'TECTONIC WALL-STUN 0.8S!',
+            '#34d399'
+          );
           this.triggerAnvilResonance(enemy, game, 34);
         }
       }
@@ -2676,7 +2848,18 @@ export class TitanEx extends Fighter {
             (t.isColossalBoss || Math.abs(t.y - a.y) < 110)
           ) {
             a.hitTargets.add(t);
-            const hitDmg = a.rebounded ? 54 : 82;
+            const hitDmg =
+              a.tier === 1
+                ? a.rebounded
+                  ? 50
+                  : 84
+                : a.tier === 2
+                  ? a.rebounded
+                    ? 36
+                    : 55
+                  : a.rebounded
+                    ? 54
+                    : 82;
             t.takeDamage(hitDmg, this, true, a.dir * 265, -155);
             this.gainCrucibleCore(1, game);
             if (game.audio) game.audio.play('thunder_slam', t.x);

@@ -1,9 +1,9 @@
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps136';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps137';
 import fs from 'node:fs';
 import {
   ArcaneShaderFX,
   ShaderPen
-} from '../../src/engine/ArcaneShaderFX.js?v=30fps136';
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps137';
 import {
   ShaderPen as ShaderPen114
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps114';
@@ -14,29 +14,29 @@ import {
   ShaderPen as ShaderPen112
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
 import { Warrior } from '../../src/entities/Warrior.js';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps136';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps137';
 import { Titan } from '../../src/entities/Titan.js';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps136';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps137';
 import { Ronin } from '../../src/entities/Ronin.js';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps136';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps137';
 import { FireMage } from '../../src/entities/FireMage.js';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps136';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps137';
 import { Archer } from '../../src/entities/Archer.js';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps136';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps137';
 import { Priestess } from '../../src/entities/Priestess.js';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps136';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps137';
 import { Valkyrie } from '../../src/entities/Valkyrie.js';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps136';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps137';
 import { IceMage } from '../../src/entities/IceMage.js';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps136';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps137';
 import { Reaper } from '../../src/entities/Reaper.js';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps136';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps137';
 import { Chronomancer } from '../../src/entities/Chronomancer.js';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps136';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps137';
 import { Android } from '../../src/entities/Android.js';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps136';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps136';
-import { HeroBuildSystem } from '../../src/combat/HeroBuildSystem.js?v=30fps136';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps137';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps137';
+import { HeroBuildSystem } from '../../src/combat/HeroBuildSystem.js?v=30fps137';
 
 const HEROES = [
   ['warrior', Warrior],
@@ -240,14 +240,20 @@ for (const [id, Cls] of HEROES) {
   }
 }
 
-// Also verify Sovereign Loadout Presets [II] (1/1/1) & [III] (2/2/2) SKILL + ULTIMATE shaders across Batch-1 EX Heroes
+// Also verify Sovereign Loadout Presets [II] (1/1/1) & [III] (2/2/2) SKILL + ULTIMATE shaders across all 12 EX Heroes
 const SOVEREIGN_SHADER_HEROES = [
   ['priestess_ex', PriestessEx],
   ['warrior_ex', WarriorEx],
   ['mage_ex', FireMageEx],
   ['nyx_ex', NyxEx],
   ['ronin_ex', RoninEx],
-  ['reaper_ex', ReaperEx]
+  ['reaper_ex', ReaperEx],
+  ['valkyrie_ex', ValkyrieEx],
+  ['icemage_ex', IceMageEx],
+  ['archer_ex', ArcherEx],
+  ['android_ex', AndroidEx],
+  ['chronomancer_ex', ChronomancerEx],
+  ['titan_ex', TitanEx]
 ];
 for (const [id, Cls] of SOVEREIGN_SHADER_HEROES) {
   for (const tier of [1, 2]) {
