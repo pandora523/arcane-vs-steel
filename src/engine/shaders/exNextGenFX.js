@@ -107,6 +107,14 @@ export const EX_HERO_PALETTES = {
     shadow: '#083344',
     ambientShapes: ['rune', 'bolt', 'diamond'],
     hitShapes: ['bolt', 'diamond', 'star4']
+  },
+  nyx_ex: {
+    primary: '#c084fc',
+    accent: '#22d3ee',
+    core: '#ffffff',
+    shadow: '#1e1038',
+    ambientShapes: ['star4', 'diamond', 'rune'],
+    hitShapes: ['star4', 'bolt', 'diamond']
   }
 };
 

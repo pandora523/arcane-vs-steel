@@ -487,6 +487,10 @@ html, body {
   background: linear-gradient(180deg, #7df9ff 0%, #00f0ff 48%, #ff2e93 100%);
 }
 
+.fill-nebula {
+  background: linear-gradient(180deg, #a5f3fc 0%, #c084fc 48%, #d946ef 100%);
+}
+
 .frame-steel {
   border-color: #38bdf8;
 }
@@ -533,6 +537,10 @@ html, body {
 
 .frame-cyber {
   border-color: #00f0ff;
+}
+
+.frame-nebula {
+  border-color: #c084fc;
 }
 
 /* 10% Segmented Tick Notches */
@@ -2473,6 +2481,7 @@ html, body {
 .halo-crimson { background: radial-gradient(circle, #f43f5e 0%, #fbbf24 45%, transparent 72%); }
 .halo-glacial { background: radial-gradient(circle, #67e8f9 0%, #38bdf8 45%, transparent 72%); }
 .halo-cyber { background: radial-gradient(circle, #00f0ff 0%, #fb7185 45%, transparent 72%); }
+.halo-nebula { background: radial-gradient(circle, #c084fc 0%, #22d3ee 45%, transparent 72%); }
 
 .profile-identity {
   display: flex;

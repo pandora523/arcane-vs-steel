@@ -1,33 +1,34 @@
-import { Renderer } from './engine/Renderer.js?v=30fps125';
-import { VFXManager } from './engine/VFXManager.js?v=30fps125';
-import { PixelForge } from './engine/PixelForge.js?v=30fps125';
-import { AudioManager } from './engine/AudioManager.js?v=30fps125';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps125';
-import { Fighter } from './entities/Fighter.js?v=30fps125';
-import { Warrior } from './entities/Warrior.js?v=30fps125';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps125';
-import { FireMage } from './entities/FireMage.js?v=30fps125';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps125';
-import { Archer } from './entities/Archer.js?v=30fps125';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps125';
-import { Priestess } from './entities/Priestess.js?v=30fps125';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps125';
-import { Reaper } from './entities/Reaper.js?v=30fps125';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps125';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps125';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps125';
-import { Titan } from './entities/Titan.js?v=30fps125';
-import { TitanEx } from './entities/TitanEx.js?v=30fps125';
-import { Ronin } from './entities/Ronin.js?v=30fps125';
-import { RoninEx } from './entities/RoninEx.js?v=30fps125';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps125';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps125';
-import { IceMage } from './entities/IceMage.js?v=30fps125';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps125';
-import { Android } from './entities/Android.js?v=30fps125';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps125';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps125';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps125';
+import { Renderer } from './engine/Renderer.js?v=30fps126';
+import { VFXManager } from './engine/VFXManager.js?v=30fps126';
+import { PixelForge } from './engine/PixelForge.js?v=30fps126';
+import { AudioManager } from './engine/AudioManager.js?v=30fps126';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps126';
+import { Fighter } from './entities/Fighter.js?v=30fps126';
+import { Warrior } from './entities/Warrior.js?v=30fps126';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps126';
+import { FireMage } from './entities/FireMage.js?v=30fps126';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps126';
+import { Archer } from './entities/Archer.js?v=30fps126';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps126';
+import { Priestess } from './entities/Priestess.js?v=30fps126';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps126';
+import { Reaper } from './entities/Reaper.js?v=30fps126';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps126';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps126';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps126';
+import { Titan } from './entities/Titan.js?v=30fps126';
+import { TitanEx } from './entities/TitanEx.js?v=30fps126';
+import { Ronin } from './entities/Ronin.js?v=30fps126';
+import { RoninEx } from './entities/RoninEx.js?v=30fps126';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps126';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps126';
+import { IceMage } from './entities/IceMage.js?v=30fps126';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps126';
+import { Android } from './entities/Android.js?v=30fps126';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps126';
+import { NyxEx } from './entities/NyxEx.js?v=30fps126';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps126';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps126';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -40,7 +41,8 @@ export const EX_HERO_KEYS = [
   'reaper_ex',
   'titan_ex',
   'icemage_ex',
-  'android_ex'
+  'android_ex',
+  'nyx_ex'
 ];
 
 export const LEGACY_HERO_KEYS = [
@@ -475,6 +477,41 @@ export const CHAMPION_ROSTER = {
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Hovers on twin plasma wing-thrusters with a HUD target reticle, sweeping a Neon-Cyan & Hot-Magenta Visor Hyper-Laser + 6 Funnel strikes.'
+      }
+    ]
+  },
+  nyx_ex: {
+    id: 'nyx_ex',
+    name: 'NYX EX',
+    role: 'NEBULA AI ASSISTANT',
+    style: 'HOLO-UI & COB CREATOR SEAL',
+    trait: 'PASSIVE: CTRL+Z GLITCH BLINK & AUTO-PATCH',
+    cls: NyxEx,
+    theme: 'nebula',
+    color: '#c084fc',
+    selectSfx: 'clock_gear',
+    victoryLine: 'Prompt executed — Nyx & the Cob Creator Core render victory across the cosmos!',
+    trueUltName: 'GENESIS PROMPT: POWERED BY COB',
+    trueUltDesc:
+      'Boots a colossal Cob Creator Core & cosmic sanctuary overhead before firing a horizon-piercing Nebula Supernova Beam!',
+    skills: [
+      {
+        name: 'HOLO-PROMPT QUARTET',
+        type: '4-BEAT HOLO ARTILLERY',
+        vfxCell: 0,
+        desc: '4-beat Star-Packet tap, Holo-Window fling, Pose-B 404 pop-up & [ENTER] Neko-AI Orb Nebula Laser + Ctrl+Z AFK Blink.'
+      },
+      {
+        name: '404 POP-UP CASCADE',
+        type: 'SKILL • 4.4S CD',
+        vfxCell: 1,
+        desc: 'Drags a Selection Box stacking 3 404 Pop-Up Windows, then stamps a glowing Cob Creator Seal (+Auto-Patch Holo-Shield).'
+      },
+      {
+        name: 'COB-OS: STARLIGHT OVERCLOCK',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Summons a 6-Window Orbital Hologram Ring firing converging prism lasers into a central Cob Creator Holo-Crest burst.'
       }
     ]
   },
@@ -1880,6 +1917,7 @@ export class Game {
       titan_ex: document.getElementById('card-titan_ex'),
       icemage_ex: document.getElementById('card-icemage_ex'),
       android_ex: document.getElementById('card-android_ex'),
+      nyx_ex: document.getElementById('card-nyx_ex'),
       warrior: document.getElementById('card-warrior'),
       mage: document.getElementById('card-mage'),
       priestess: document.getElementById('card-priestess'),
@@ -1904,6 +1942,7 @@ export class Game {
       titan_ex: document.getElementById('ribbon-titan_ex'),
       icemage_ex: document.getElementById('ribbon-icemage_ex'),
       android_ex: document.getElementById('ribbon-android_ex'),
+      nyx_ex: document.getElementById('ribbon-nyx_ex'),
       warrior: document.getElementById('ribbon-warrior'),
       mage: document.getElementById('ribbon-mage'),
       priestess: document.getElementById('ribbon-priestess'),
@@ -1928,6 +1967,7 @@ export class Game {
       titan_ex: document.getElementById('preview-titan_ex'),
       icemage_ex: document.getElementById('preview-icemage_ex'),
       android_ex: document.getElementById('preview-android_ex'),
+      nyx_ex: document.getElementById('preview-nyx_ex'),
       warrior: document.getElementById('preview-warrior'),
       mage: document.getElementById('preview-mage'),
       priestess: document.getElementById('preview-priestess'),
@@ -4099,9 +4139,11 @@ export class Game {
                             ? 'cryo_shard'
                             : baseAllyId === 'android'
                               ? 'cyber_disc'
-                              : baseAllyId === 'warrior'
-                                ? 'blade_wave'
-                                : 'fireball'
+                              : baseAllyId === 'nyx'
+                                ? 'nebula_packet'
+                                : baseAllyId === 'warrior'
+                                  ? 'blade_wave'
+                                  : 'fireball'
       });
       if (!point.isDead) {
         point.heal(35, 'TAG GRACE');
@@ -4678,6 +4720,8 @@ export class Game {
             } else if (p.type === 'cyber_disc') {
               this.vfx.spawnSlash(p.x, p.y, 70, -1.1, 1.1, '#00f0ff', 0.24);
               this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'cyber');
+            } else if (p.type === 'nebula_packet') {
+              this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'nebula');
             } else if (p.type === 'forge_wave') {
               this.vfx.spawnSlash(p.x, p.y, 78, -1.1, 1.1, '#f59e0b', 0.26);
               this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'forge');
@@ -4706,7 +4750,9 @@ export class Game {
                         ? 'ice_shatter'
                         : p.type === 'cyber_disc'
                           ? 'cyber_slash'
-                          : p.type === 'forge_wave'
+                          : p.type === 'nebula_packet'
+                            ? 'clock_gear'
+                            : p.type === 'forge_wave'
                             ? 'thunder_slam'
                             : p.type === 'blade_wave'
                               ? 'clang'

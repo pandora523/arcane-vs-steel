@@ -532,6 +532,24 @@ export const HERO_SKILL_TREE_THEMES = {
       aegis_2: 'TWIN-PYLON BOOST',
       aegis_3: 'QUANTUM REBOOT'
     }
+  },
+  nyx_ex: {
+    branches: {
+      wrath: { title: 'NEBULA PROMPT', sub: 'STAR-PACKET & ORB', iconSlot: 'attack' },
+      astral: { title: 'COB GENESIS CORE', sub: '404-SEAL & SUPERNOVA', iconSlot: 'ultimate' },
+      aegis: { title: 'AUTO-PATCH OS', sub: 'HOLO-SHIELD & CTRL-Z', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'TWIN STAR-PACKETS',
+      wrath_2: 'NEBULA LASER SYNC',
+      wrath_3: 'CONTEXT OVERFLOW',
+      astral_1: 'POP-UP DETONATOR',
+      astral_2: 'ORBITAL WINDOW RING',
+      astral_3: 'POWERED BY COB',
+      aegis_1: 'AUTO-PATCH BARRIER',
+      aegis_2: 'CTRL+Z AFK DECOY',
+      aegis_3: 'COSMIC KERNEL LOCK'
+    }
   }
 };
 
@@ -1032,7 +1050,8 @@ export class AdventureProgression {
       ronin: { type: 'ronin_slash', color: '#38bdf8', coreColor: '#ffffff', radius: 18, pierce: true },
       ronin_ex: { type: 'ronin_slash', color: '#38bdf8', coreColor: '#fef08a', radius: 18, pierce: true },
       mage: { type: 'fireball', color: '#fb923c', coreColor: '#fef08a', radius: 12, pierce: false },
-      mage_ex: { type: 'fireball', color: '#fb923c', coreColor: '#ffffff', radius: 14, pierce: false }
+      mage_ex: { type: 'fireball', color: '#fb923c', coreColor: '#ffffff', radius: 14, pierce: false },
+      nyx_ex: { type: 'nebula_packet', color: '#c084fc', coreColor: '#22d3ee', radius: 14, pierce: true }
     };
     const cfg = HERO_SEEKER_CONFIG[player.heroId] || HERO_SEEKER_CONFIG.mage;
     const isGroundWave = cfg.type === 'blade_wave' || cfg.type === 'forge_wave' || cfg.type === 'phantom_scythe' || cfg.type === 'cyber_disc';

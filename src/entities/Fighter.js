@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps125';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps126';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -7,7 +7,8 @@ const RANGED_EX_HERO_IDS = new Set([
   'priestess_ex',
   'icemage_ex',
   'valkyrie_ex',
-  'archer_ex'
+  'archer_ex',
+  'nyx_ex'
 ]);
 
 export class Fighter {
@@ -128,6 +129,7 @@ export class Fighter {
     switch (baseHeroId) {
       case 'mage':
       case 'icemage':
+      case 'nyx':
         return {
           role: 'artillery_mage',
           baseHeroId,
@@ -359,6 +361,17 @@ export class Fighter {
           midLeapMax: 0,
           midLeapChance: 0,
           postStyle: 'pyromancer'
+        };
+      case 'nyx_ex':
+        return {
+          comboGoal: 4,
+          sweetMin: 315,
+          sweetMax: 440,
+          counterCrouchBias: 0.52,
+          midLeapMin: 0,
+          midLeapMax: 0,
+          midLeapChance: 0,
+          postStyle: 'nebula_ai'
         };
       default:
         return {
@@ -1031,6 +1044,7 @@ export class Fighter {
       case 'marksman':
       case 'cryo_artillery':
       case 'sanctuary':
+      case 'nebula_ai':
       case 'pyromancer': {
         // Ranged & Aerial Champions: weave Kneeling Trick-Shot / Frost-Mirror / Backflip / Prayer (`CROUCH`) & Sky-Step / Ascent (`JUMP`)!
         if (canCrouch && this._aiManueverSeq % 2 === 0 && (this.jumpCooldown || 0) <= 0.4) {

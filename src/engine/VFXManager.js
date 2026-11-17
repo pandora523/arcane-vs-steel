@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps125';
-import { PixelForge } from './PixelForge.js?v=30fps125';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps125';
+import { PixelFont } from './PixelFont.js?v=30fps126';
+import { PixelForge } from './PixelForge.js?v=30fps126';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps126';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -163,7 +163,9 @@ export class VFXManager {
                         ? '#e879f9'
                         : theme === 'cyber'
                           ? '#ff2e93'
-                          : '#ea580c';
+                          : theme === 'nebula'
+                            ? '#22d3ee'
+                            : '#ea580c';
     const dir = attacker ? Math.sign(x - attacker.x) || 1 : 1;
     if (this.hitImpacts.length > 22) this.hitImpacts.shift();
     this.hitImpacts.push({
@@ -293,6 +295,7 @@ export class VFXManager {
       crimson: { shape: 'star', col: '#e11d48', core: '#fbbf24' },
       glacial: { shape: 'star', col: '#0284c7', core: '#67e8f9' },
       cyber: { shape: 'cog', col: '#ff2e93', core: '#00f0ff' },
+      nebula: { shape: 'star', col: '#c084fc', core: '#22d3ee' },
       heal: { shape: 'cross', col: '#16a34a', core: '#facc15' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -1273,6 +1276,24 @@ export class VFXManager {
         const ly = f.y - 94;
         pushLight(lx, ly, emRadius, 'emerald', emInt, 98, fGy, f, false);
         pushLight(lx + f.facing * (isArrowFlight ? 64 : 18), ly, goldRadius, 'gold', goldInt, 98, fGy, f, false);
+      }
+      if (f.heroId === 'nyx_ex' && (f.state === 'TRUE_ULTIMATE' || f._supernovaBeamTimer > 0)) {
+        const uCharge =
+          f._supernovaBeamTimer > 0 ? 1 : Math.min(1, Math.max(0, (f.stateTimer || 0) / 2.24));
+        const nebRad = f._supernovaBeamTimer > 0 ? 540 : Math.round(280 + 200 * uCharge);
+        const cyRad = f._supernovaBeamTimer > 0 ? 480 : Math.round(220 + 160 * uCharge);
+        pushLight(f.x, f.y - 96, nebRad, 'violet', 1.55 + 0.35 * uCharge, 98, fGy, f, false);
+        pushLight(
+          f._supernovaTargetX || f.x + f.facing * 260,
+          fGy - 64,
+          cyRad,
+          'cyan',
+          1.45 + 0.30 * uCharge,
+          98,
+          fGy,
+          f,
+          false
+        );
       }
       // Harvest up to 6 active lights from f.fx.active (ArcaneShaderFX) & f.activeVfxAnims!
       let harvestedCount = 0;
@@ -3061,6 +3082,42 @@ export class VFXManager {
           ctx.fillRect(-14, -6, 28, 12);
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(-10, -3, 20, 6);
+        }
+        ctx.restore();
+      } else if (proj.type === 'nebula_packet') {
+        const nyxVfx = this.resolveHeroVfx(assets, 'nyx', projHeroId);
+        const dir = (proj.vx || 1) >= 0 ? 1 : -1;
+        const qx = Math.round(px / 4) * 4;
+        const qy = Math.round(py / 4) * 4;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(qx, qy);
+        ctx.scale(dir, 1);
+        if (nyxVfx && nyxVfx.complete && nyxVfx.naturalWidth) {
+          const pktSize = 112;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            nyxVfx,
+            pCol * 208,
+            0,
+            208,
+            208,
+            -pktSize * 0.5,
+            -pktSize * 0.5,
+            pktSize,
+            pktSize,
+            '#22d3ee',
+            0.98,
+            isReflection
+          );
+        } else {
+          ctx.fillStyle = '#d946ef';
+          ctx.fillRect(-16, -12, 32, 24);
+          ctx.fillStyle = '#22d3ee';
+          ctx.fillRect(-12, -8, 24, 16);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-6, -2, 12, 4);
         }
         ctx.restore();
       } else if (proj.type === 'arrow') {

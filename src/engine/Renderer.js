@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps125';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps125';
+import { PixelForge } from './PixelForge.js?v=30fps126';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps126';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps125';
+} from './shaders/exNextGenFX.js?v=30fps126';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -16,6 +16,7 @@ const FORGE_FIRE_PAL = ['#78350f', '#d97706', '#f59e0b', '#34d399'];
 const STORM_FIRE_PAL = ['#312e81', '#4f46e5', '#818cf8', '#38bdf8'];
 const CRIMSON_FIRE_PAL = ['#881337', '#be123c', '#f43f5e', '#fbbf24'];
 const GLACIAL_FIRE_PAL = ['#0369a1', '#0284c7', '#67e8f9', '#e879f9'];
+const NEBULA_FIRE_PAL = ['#3b1f6e', '#a855f7', '#d946ef', '#22d3ee'];
 const GLACIAL_WIPE_BAYER_4X4 = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -4656,11 +4657,13 @@ export class Renderer {
     const isBlue = !isStorm && (f.primaryColor === '#38bdf8' || isCyber);
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
+    const isNebula = f.heroId === 'nyx_ex' || f.theme === 'nebula';
     const isAbyssal =
-      f.primaryColor === '#c084fc' ||
-      f.primaryColor === '#d946ef' ||
-      f.heroId === 'reaper' ||
-      f.heroId === 'reaper_ex';
+      !isNebula &&
+      (f.primaryColor === '#c084fc' ||
+        f.primaryColor === '#d946ef' ||
+        f.heroId === 'reaper' ||
+        f.heroId === 'reaper_ex');
     const isChrono = f.primaryColor === '#2dd4bf';
     const isForge = f.primaryColor === '#f59e0b';
     const isCrimson = f.primaryColor === '#f43f5e';
@@ -4671,7 +4674,9 @@ export class Renderer {
         ? EMERALD_FIRE_PAL
         : isRadiant
           ? RADIANT_FIRE_PAL
-          : isAbyssal
+          : isNebula
+            ? NEBULA_FIRE_PAL
+            : isAbyssal
             ? ABYSSAL_FIRE_PAL
             : isChrono
               ? CHRONO_FIRE_PAL
@@ -4720,11 +4725,13 @@ export class Renderer {
     const isBlue = !isStorm && (f.primaryColor === '#38bdf8' || isCyber);
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
+    const isNebula = f.heroId === 'nyx_ex' || f.theme === 'nebula';
     const isAbyssal =
-      f.primaryColor === '#c084fc' ||
-      f.primaryColor === '#d946ef' ||
-      f.heroId === 'reaper' ||
-      f.heroId === 'reaper_ex';
+      !isNebula &&
+      (f.primaryColor === '#c084fc' ||
+        f.primaryColor === '#d946ef' ||
+        f.heroId === 'reaper' ||
+        f.heroId === 'reaper_ex');
     const isChrono = f.primaryColor === '#2dd4bf';
     const isForge = f.primaryColor === '#f59e0b';
     const isCrimson = f.primaryColor === '#f43f5e';
@@ -4735,7 +4742,9 @@ export class Renderer {
         ? EMERALD_FIRE_PAL
         : isRadiant
           ? RADIANT_FIRE_PAL
-          : isAbyssal
+          : isNebula
+            ? NEBULA_FIRE_PAL
+            : isAbyssal
             ? ABYSSAL_FIRE_PAL
             : isChrono
               ? CHRONO_FIRE_PAL
@@ -5050,6 +5059,25 @@ export class Renderer {
             26,
             0.52,
             this.glowGlacial
+          );
+        }
+      } else if (isNebula) {
+        // NYX EX: 3 Orbiting Cosmic Cyan & Magenta Holo-Star Sparks around her galaxy hoodie
+        for (let orb = 0; orb < 3; orb++) {
+          const oa = t * 3.8 + (orb * Math.PI * 2) / 3;
+          const ox = Math.round((f.x + Math.cos(oa) * 44) / 2) * 2;
+          const oy = Math.round((f.y - 84 + Math.sin(oa) * 16) / 2) * 2;
+          const isCyan = orb % 2 === 0;
+          emitGlowingParticle(
+            ox,
+            oy,
+            6,
+            6,
+            isCyan ? '#22d3ee' : '#d946ef',
+            '#ffffff',
+            24,
+            0.46,
+            isCyan ? this.glowCyan : this.glowViolet
           );
         }
       } else {

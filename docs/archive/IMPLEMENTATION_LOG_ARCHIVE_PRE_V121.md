@@ -272,3 +272,13 @@
 ### `2b0d1b1`..`ef4fe7f` — `?v=30fps85..95` — Seamless `9600px` 4-Realm Adventure Campaign, 11-Hero `64x64` Skill Icons, Portals, Monuments, Pixel-Grid Bloom & Right-Side Colossal Boss
 - **Status**: `[COMPLETED & PUSHED]`
 - **Summary**: Full 11-champion playable 2.5D Adventure Mode (`AdventureManager.js`, `AdventureMapRenderer.js`, `AdventureSkillSets.js`, `AdventureDestructibles.js`, `AdventureProgression.js`), `mage_icons.png` + `hero_icons_sheet.png` (`64x64` HD-2D icons), 5-plane quilted panoramas + animated HD-2D pixel-grid bloom, 20 biome monuments (`8` total drops), 3-layer summoning portals, 8 realm monsters, and 16-cell Right-Side Colossal Boss `BEHEMOTH MALPHAS`.
+
+---
+
+## Batch `?v=30fps121` — Web-Only Focus: Sylvara EX `TRUE_ULTIMATE` 10-Frame Dynamic Bow-Pull, Slash-Circle Purge, Slender Glowing Celestial Great-Arrow, Particle Shower, Dynamic Lighting & `Suite 36.10`
+
+| Milestone | Status | Summary | Key Files |
+| :--- | :--- | :--- | :--- |
+| **1. Pre-Change Snapshot & Protected Purity** | `[COMPLETED]` | Captured `fallback_backups/20261117_013846_78019c0_pre_sylvara_ult_refinement_v30fps121`, keeping `0` diff on protected Legacy/Apple files. | `fallback_backups/20261117_013846_78019c0_pre_sylvara_ult_refinement_v30fps121` |
+| **2. Sylvara EX `Row 4 F15..F26` 10-Frame Bow-Pull** | `[COMPLETED]` | Rebuilt `Row 4 F15..F24` (`frames 135..144`) with `archer_draw_mode=True` (`0/300` clips, `[29]*10` transitions, `Row 4 maxX = 233`). | `scripts/build_archer_ex_nextgen_sheet.py`, `assets/sprites/archer_ex_sheet.png` |
+| **3. Circle Purge, Slender Radiant Great-Arrow & `Suite 36.10`** | `[COMPLETED]` | Purged circle/slash overlays from `TRUE_ULTIMATE`, redesigned `drawTransformedGreatArrow`, added `_arrowStarParticles` & dynamic lights, and verified `Suite 36.10` + Chrome E2E. | `src/entities/ArcherEx.js`, `src/engine/VFXManager.js`, `scripts/tests/test_all_heroes_gameloop.mjs` |

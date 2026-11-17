@@ -134,6 +134,16 @@ export const ADVENTURE_HERO_KITS = {
       ultimate: 'GUNG-09'
     }
   },
+  nyx_ex: {
+    id: 'nyx_ex',
+    tags: {
+      attack: 'PROMPT',
+      dodge: 'CTRL-Z',
+      skill: '404-COB',
+      overdrive: '6-WINDO',
+      ultimate: 'COB-OS'
+    }
+  },
   mage: {
     id: 'mage',
     tags: {
