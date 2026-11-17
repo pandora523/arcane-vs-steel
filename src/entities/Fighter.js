@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps134';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps135';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -1348,6 +1348,10 @@ export class Fighter {
       this.vy = 0;
       this.facing = isLeftTeam ? 1 : -1;
       this.state = 'IDLE';
+      this.isFlipVault = false;
+      this.isCrouching = false;
+      this.isDeflecting = false;
+      this.isInvulnerable = false;
       this._overrideFrameIdx = null;
       this.trueUltFrameOverride = null;
       this.walkPhase += dt * 2.5;

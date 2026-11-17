@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps134';
-import { PixelForge } from './PixelForge.js?v=30fps134';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps134';
+import { PixelFont } from './PixelFont.js?v=30fps135';
+import { PixelForge } from './PixelForge.js?v=30fps135';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps135';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -436,7 +436,8 @@ export class VFXManager {
       theme: opts.theme || 'arcane',
       erupted: false,
       tickTimer: 0,
-      isUltimate: !!opts.isUltimate
+      isUltimate: !!opts.isUltimate,
+      tickDamage: opts.tickDamage
     });
   }
 
@@ -1070,7 +1071,8 @@ export class VFXManager {
               Math.abs(foe.x - pil.x) < hitWidth &&
               (foe.isColossalBoss || pilGy - foe.y < 155)
             ) {
-              foe.takeDamage(Math.round(28 * pil.scaleWidth), pil.owner, false, 35, -55);
+              const pDmg = Number.isFinite(pil.tickDamage) ? pil.tickDamage : Math.round(28 * pil.scaleWidth);
+              if (pDmg > 0) foe.takeDamage(pDmg, pil.owner, false, 35, -55);
             }
           }
         }

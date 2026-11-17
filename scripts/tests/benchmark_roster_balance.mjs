@@ -1,21 +1,9 @@
-globalThis.Image = class MockImage {
-  constructor() {
-    this.complete = true;
-    this.naturalWidth = 6240;
-    this.naturalHeight = 2080;
-    this.src = '';
-  }
-  addEventListener() {}
-};
-globalThis.window = {
-  innerWidth: 1200,
-  innerHeight: 600,
-  devicePixelRatio: 1,
-  addEventListener() {}
-};
+import os from 'node:os';
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
+
+const noop = () => {};
 
 function createMockCtx() {
-  const noop = () => {};
   return {
     save: noop,
     restore: noop,
@@ -42,6 +30,7 @@ function createMockCtx() {
     fillText: noop,
     strokeText: noop,
     setLineDash: noop,
+    measureText: () => ({ width: 20 }),
     createRadialGradient() {
       return { addColorStop: noop };
     },
@@ -62,47 +51,106 @@ function createMockCtx() {
   };
 }
 
-globalThis.document = {
-  createElement() {
-    return {
-      width: 256,
-      height: 256,
-      getContext() {
-        return createMockCtx();
+function installHeadlessGlobals() {
+  globalThis.Image = class MockImage {
+    constructor() {
+      this.complete = true;
+      this.naturalWidth = 6400;
+      this.naturalHeight = 3072;
+      this.src = '';
+    }
+    addEventListener() {}
+    removeEventListener() {}
+  };
+
+  const makeClassList = () => ({
+    add: noop,
+    remove: noop,
+    toggle: noop,
+    contains: () => false
+  });
+
+  const mockStorage = {
+    getItem: () => null,
+    setItem: noop,
+    removeItem: noop
+  };
+
+  globalThis.localStorage = mockStorage;
+  globalThis.requestAnimationFrame = () => 0;
+  globalThis.cancelAnimationFrame = noop;
+
+  globalThis.window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    devicePixelRatio: 1,
+    location: { search: '', href: 'http://localhost/' },
+    localStorage: mockStorage,
+    addEventListener: noop,
+    removeEventListener: noop
+  };
+
+  globalThis.document = {
+    documentElement: {
+      classList: makeClassList(),
+      style: { setProperty: noop }
+    },
+    body: {
+      classList: makeClassList(),
+      style: {},
+      appendChild: noop,
+      removeChild: noop
+    },
+    head: { appendChild: noop },
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: noop,
+    removeEventListener: noop,
+    createElement(tag) {
+      if (tag === 'canvas') {
+        return {
+          width: 256,
+          height: 256,
+          style: {},
+          getContext() {
+            return createMockCtx();
+          }
+        };
       }
-    };
-  }
-};
+      return {
+        style: {},
+        classList: makeClassList(),
+        appendChild: noop,
+        addEventListener: noop,
+        setAttribute: noop,
+        remove: noop
+      };
+    }
+  };
+}
 
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps113';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps113';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps113';
-import { Archer } from '../../src/entities/Archer.js?v=30fps113';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps113';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps113';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps113';
-import { Titan } from '../../src/entities/Titan.js?v=30fps113';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps113';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps113';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps113';
-import { Android } from '../../src/entities/Android.js?v=30fps113';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps113';
+installHeadlessGlobals();
 
-const ROSTER = [
-  { id: 'titan', name: 'Torgar', Cls: Titan },
-  { id: 'warrior', name: 'Aethelgard', Cls: Warrior },
-  { id: 'reaper', name: 'Malakor', Cls: Reaper },
-  { id: 'valkyrie', name: 'Freyja', Cls: Valkyrie },
-  { id: 'android', name: 'VEX-09', Cls: Android },
-  { id: 'chronomancer', name: 'Chronos', Cls: Chronomancer },
-  { id: 'ronin', name: 'Kaze-Maru', Cls: Ronin },
-  { id: 'priestess', name: 'Seraphina', Cls: Priestess },
-  { id: 'icemage', name: 'Lyra', Cls: IceMage },
-  { id: 'archer', name: 'Sylvara', Cls: Archer },
-  { id: 'mage', name: 'Ignis Sol', Cls: FireMage }
-];
+const [{ Fighter }, { VFXManager }, { EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER, Game }] =
+  await Promise.all([
+    import('../../src/entities/Fighter.js?v=30fps135'),
+    import('../../src/engine/VFXManager.js?v=30fps135'),
+    import('../../src/main.js?v=30fps135')
+  ]);
 
 const STAGES = ['cathedral', 'sylvan', 'boneyard', 'clocktower'];
+const PERMANENT_STAGE_KEYS = new Set([
+  'inferno',
+  'glacial',
+  'shogunate',
+  'sanctuary',
+  'cob_monitor',
+  'shogunate_inferno',
+  'shogunate_glacial',
+  'cob_monitor_inferno',
+  'cob_monitor_glacial'
+]);
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -115,9 +163,220 @@ function mulberry32(seed) {
   };
 }
 
+function buildRoster(isLegacy) {
+  const keys = isLegacy ? LEGACY_HERO_KEYS : EX_HERO_KEYS;
+  return keys.map((id) => {
+    const cfg = CHAMPION_ROSTER[id];
+    if (!cfg || !cfg.cls) {
+      throw new Error(`Missing CHAMPION_ROSTER entry for hero "${id}"`);
+    }
+    return {
+      id,
+      name: cfg.name,
+      Cls: cfg.cls
+    };
+  });
+}
+
+function attachFighterToSim(f, sim, heroId, team, role, isPoint, isBenched, isLegacy) {
+  if (!f.heroId) f.heroId = heroId;
+  f.game = sim;
+  f.team = team;
+  f.slotRole = role;
+  f.isPoint = isPoint;
+  f.isBenched = isBenched;
+  f.benchX = team === 1 ? 76 : sim.renderer.worldWidth - 76;
+  f.isPlayer = false;
+  f.isPlayerControlled = false;
+  f.isCPU = true;
+
+  if (typeof f._ensureExParticles === 'function') {
+    f._ensureExParticles();
+  }
+  if (f.fx) {
+    f.fx.spawn = noop;
+    f.fx.burst = noop;
+  }
+
+  // Legacy Reaper.js:431 reads this.severedSoul.x after target.takeDamage inside strikeWithSoulResonance,
+  // which can null out severedSoul if a counter-kill clears state. Guard without touching Reaper.js.
+  if (isLegacy && heroId === 'reaper') {
+    let currentSoul = f.severedSoul ?? null;
+    let lastNonNullSoul = null;
+    Object.defineProperty(f, 'severedSoul', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        return currentSoul || (this._inResonanceEcho ? lastNonNullSoul : null);
+      },
+      set(val) {
+        if (val) lastNonNullSoul = val;
+        currentSoul = val;
+      }
+    });
+  }
+}
+
+class HeadlessRenderer {
+  constructor(stageId, groundY, worldWidth = 1200) {
+    this.worldWidth = worldWidth;
+    this.groundY = groundY;
+    this.stageId = stageId;
+    this.hitStopTimer = 0;
+    this.trueUltStageOverride = null;
+    this.trueUltStageAlpha = 0;
+    this.trueUltStageTimer = 0;
+    this.permanentStageOverride = null;
+    this.stageSliceTimer = 0;
+    this.stageSliceFromId = null;
+    this.stageSliceToId = null;
+    this.glacialWipeTimer = 0;
+    this.glacialWipeFromId = null;
+    this.cobWipeTimer = 0;
+    this.cobWipeFromId = null;
+    this.cobAssistTimer = 0;
+    this.impactFrameTimer = 0;
+    this.whiteoutTimer = 0;
+  }
+
+  getActiveStageId() {
+    if (this.permanentStageOverride) return this.permanentStageOverride;
+    if (this.trueUltStageAlpha > 0.35 && this.trueUltStageOverride) return this.trueUltStageOverride;
+    return this.stageId;
+  }
+
+  setStageTransformation(stageKey, alpha = 1.0, permanent = false, holdDuration = 0) {
+    let resolvedKey = stageKey;
+    const isCurShogunate =
+      this.permanentStageOverride === 'shogunate' ||
+      this.permanentStageOverride === 'shogunate_inferno' ||
+      this.permanentStageOverride === 'shogunate_glacial' ||
+      this.stageId === 'shogunate' ||
+      this.stageId === 'shogunate_inferno' ||
+      this.stageId === 'shogunate_glacial';
+    const isCurCobMonitor =
+      this.permanentStageOverride === 'cob_monitor' ||
+      this.permanentStageOverride === 'cob_monitor_inferno' ||
+      this.permanentStageOverride === 'cob_monitor_glacial' ||
+      this.stageId === 'cob_monitor' ||
+      this.stageId === 'cob_monitor_inferno' ||
+      this.stageId === 'cob_monitor_glacial';
+    const isCurInferno =
+      this.permanentStageOverride === 'inferno' ||
+      this.permanentStageOverride === 'shogunate_inferno' ||
+      this.permanentStageOverride === 'cob_monitor_inferno' ||
+      this.trueUltStageOverride === 'inferno' ||
+      this.stageId === 'inferno' ||
+      this.stageId === 'shogunate_inferno' ||
+      this.stageId === 'cob_monitor_inferno';
+    const isCurGlacial =
+      this.permanentStageOverride === 'glacial' ||
+      this.permanentStageOverride === 'shogunate_glacial' ||
+      this.permanentStageOverride === 'cob_monitor_glacial' ||
+      this.trueUltStageOverride === 'glacial' ||
+      this.stageId === 'glacial' ||
+      this.stageId === 'shogunate_glacial' ||
+      this.stageId === 'cob_monitor_glacial';
+
+    if (resolvedKey === 'inferno' && isCurShogunate) {
+      resolvedKey = 'shogunate_inferno';
+    } else if (resolvedKey === 'glacial' && isCurShogunate) {
+      resolvedKey = 'shogunate_glacial';
+    } else if (resolvedKey === 'inferno' && isCurCobMonitor) {
+      resolvedKey = 'cob_monitor_inferno';
+    } else if (resolvedKey === 'glacial' && isCurCobMonitor) {
+      resolvedKey = 'cob_monitor_glacial';
+    } else if (resolvedKey === 'shogunate' && isCurInferno) {
+      resolvedKey = 'shogunate_inferno';
+    } else if (resolvedKey === 'shogunate' && isCurGlacial) {
+      resolvedKey = 'shogunate_glacial';
+    } else if (resolvedKey === 'cob_monitor' && isCurInferno) {
+      resolvedKey = 'cob_monitor_inferno';
+    } else if (resolvedKey === 'cob_monitor' && isCurGlacial) {
+      resolvedKey = 'cob_monitor_glacial';
+    }
+
+    if (permanent && PERMANENT_STAGE_KEYS.has(resolvedKey)) {
+      this.permanentStageOverride = resolvedKey;
+      this.trueUltStageOverride = resolvedKey;
+      this.trueUltStageAlpha = 1.0;
+      this.trueUltStageTimer = Math.max(this.trueUltStageTimer, holdDuration);
+      return;
+    }
+    if (!resolvedKey) {
+      this.trueUltStageOverride = null;
+      this.trueUltStageAlpha = 0;
+      this.trueUltStageTimer = 0;
+      return;
+    }
+    this.trueUltStageOverride = resolvedKey;
+    this.trueUltStageAlpha = Math.max(0, Math.min(1, alpha));
+    if (holdDuration > 0) {
+      this.trueUltStageTimer = Math.max(this.trueUltStageTimer, holdDuration);
+    }
+  }
+
+  setPermanentStageOverride(stageKey) {
+    if (stageKey) {
+      this.setStageTransformation(stageKey, 1.0, true, 0);
+    } else {
+      this.permanentStageOverride = null;
+    }
+  }
+
+  setTrueUltStageOverride(stageKey, alpha = 1.0, holdDuration = 0) {
+    this.setStageTransformation(stageKey, alpha, false, holdDuration);
+  }
+
+  clearTrueUltStageOverride() {
+    this.trueUltStageOverride = null;
+    this.trueUltStageAlpha = 0;
+    this.trueUltStageTimer = 0;
+  }
+
+  triggerDimensionalStageSlice(opts = {}) {
+    this.stageSliceFromId = opts.fromStageId || this.getActiveStageId() || this.stageId;
+    this.stageSliceToId = opts.toStageId || 'shogunate';
+    this.stageSliceTimer = Math.max(0.35, opts.duration || 1.08);
+  }
+
+  triggerGlacialStageTransition(opts = {}) {
+    this.glacialWipeFromId =
+      (typeof opts.fromStageId === 'string' && opts.fromStageId) ||
+      this.getActiveStageId() ||
+      this.stageId;
+    this.glacialWipeTimer = Math.max(0.35, opts.duration || 1.38);
+  }
+
+  triggerCobMonitorTransition(opts = {}) {
+    this.cobWipeFromId =
+      (typeof opts.fromStageId === 'string' && opts.fromStageId) ||
+      this.getActiveStageId() ||
+      this.stageId;
+    this.cobWipeTimer = Math.max(0.35, opts.duration || 1.28);
+  }
+
+  triggerCobAssistPulse(_nyxX, _targetX, duration = 0.90) {
+    this.cobAssistTimer = Math.max(0.25, duration);
+  }
+
+  triggerInfernoStage() {}
+  triggerGlacialStage() {}
+  triggerShogunateStage() {}
+  triggerShake() {}
+  triggerAberration() {}
+  triggerHitStop() {}
+  triggerImpactFrame() {}
+  triggerWhiteoutDeletion() {}
+  triggerUltimateCamera() {}
+  triggerUltimateCutIn() {}
+  triggerClashCamera() {}
+  triggerStageEvent() {}
+  triggerKOFinisher() {}
+}
+
 class HeadlessArenaSim {
-  constructor(mode = '1v1', stageId = 'cathedral') {
-    const noop = () => {};
+  constructor(mode = '1v1', stageId = 'cathedral', groundY = 520) {
     this.gameMode = mode;
     this.testModeUnlimitedHp = false;
     this.matchTime = 0;
@@ -131,8 +390,10 @@ class HeadlessArenaSim {
     this.team2TagCd = 2.8;
     this.team1AssistCd = 2.8;
     this.team2AssistCd = 3.4;
+    this.ultSlowTimer = 0;
+    this.koSlowTimer = 0;
+    this.userSlowMo = false;
 
-    // Fast VFXManager with particle cap so 440+ matches finish in ~3s while preserving all combat hitboxes!
     this.vfx = new VFXManager();
     this.vfx.spawnParticle = noop;
     this.vfx.spawnBurst = noop;
@@ -146,82 +407,18 @@ class HeadlessArenaSim {
     this.vfx.spawnHitImpact = noop;
 
     this.audio = { play: noop };
-    this.hudEls = { stageBadge: { textContent: 'GOTHIC SANCTUARY' } };
-    this.renderer = {
-      worldWidth: 1200,
-      groundY: 460,
-      stageId,
-      hitStopTimer: 0,
-      trueUltStageOverride: null,
-      permanentStageOverride: null,
-      triggerShake: noop,
-      triggerAberration: noop,
-      triggerHitStop: noop,
-      triggerImpactFrame: noop,
-      triggerUltimateCamera: noop,
-      triggerUltimateCutIn: noop,
-      triggerClashCamera: noop,
-      triggerStageEvent: noop,
-      triggerKOFinisher: noop,
-      setPermanentStageOverride: noop,
-      setTrueUltStageOverride: noop,
-      clearTrueUltStageOverride: noop
-    };
+    this.hudEls = { left: {}, right: {}, stageBadge: { textContent: '' } };
+    this.applySideHUDTheme = noop;
+    this.renderer = new HeadlessRenderer(stageId, groundY, 1200);
     this.fighters = [];
+  }
+
+  isAdventureMode() {
+    return false;
   }
 
   is2v2Mode() {
     return this.gameMode === '2v2_brawl' || this.gameMode === '2v2_tag';
-  }
-
-  getTeamFighters(team) {
-    return this.fighters.filter((f) => f && f.team === team);
-  }
-
-  getTeammateOf(fighter) {
-    if (!fighter || !this.is2v2Mode()) return null;
-    return this.fighters.find((f) => f && f !== fighter && f.team === fighter.team) || null;
-  }
-
-  getEnemiesOf(fighter) {
-    const active = this.fighters.filter((f) => f && f.team !== fighter.team && !f.isDead && !f.isBenched);
-    if (active.length > 0) return active;
-    const living = this.fighters.filter((f) => f && f.team !== fighter.team && !f.isDead);
-    if (living.length > 0) return living;
-    const fb = fighter.team === 1 ? this.rightFighter : this.leftFighter;
-    return fb ? [fb] : [];
-  }
-
-  getTargetFor(fighter) {
-    const enemies = this.getEnemiesOf(fighter);
-    if (enemies.length <= 1) return enemies[0] || (fighter.team === 1 ? this.rightFighter : this.leftFighter);
-    let best = enemies[0];
-    let bestScore = Infinity;
-    for (const e of enemies) {
-      const dist = Math.abs(e.x - fighter.x);
-      const hpRatio = e.hp / Math.max(1, e.maxHp);
-      const roleBias = fighter.slotRole === 'partner' && e.slotRole === 'partner' ? -55 : 0;
-      const score = dist + hpRatio * 95 + roleBias;
-      if (score < bestScore) {
-        bestScore = score;
-        best = e;
-      }
-    }
-    return best;
-  }
-
-  getPointFighter(team) {
-    const members = this.getTeamFighters(team);
-    return (
-      members.find((f) => f.isPoint && !f.isDead && !f.isBenched) ||
-      members.find((f) => !f.isDead && !f.isBenched) ||
-      members[0]
-    );
-  }
-
-  getReserveFighter(team) {
-    const point = this.getPointFighter(team);
-    return this.getTeamFighters(team).find((f) => f !== point) || null;
   }
 
   triggerUltimateCinematic() {}
@@ -240,77 +437,6 @@ class HeadlessArenaSim {
     }
   }
 
-  triggerTeamTagSwap(team) {
-    if (this.gameMode !== '2v2_tag' || this.isMatchOver) return false;
-    const cdKey = team === 1 ? 'team1TagCd' : 'team2TagCd';
-    if (this[cdKey] > 0) return false;
-    const point = this.getPointFighter(team);
-    const reserve = this.getReserveFighter(team);
-    if (!point || !reserve || reserve.isDead || !reserve.isBenched) return false;
-    this[cdKey] = 11.0;
-    const gy = this.renderer.groundY;
-    const incomingX = Math.max(130, Math.min(1070, point.x + (team === 1 ? 34 : -34)));
-    if (!point.isDead) {
-      point.isBenched = true;
-      point.isPoint = false;
-      point.x = point.benchX || (team === 1 ? 76 : 1124);
-      point.y = gy;
-      point.vx = 0;
-      point.vy = 0;
-      point.setState('IDLE');
-    }
-    reserve.isBenched = false;
-    reserve.isPoint = true;
-    reserve.x = incomingX;
-    reserve.y = gy - 28;
-    reserve.vx = (team === 1 ? 1 : -1) * 260;
-    reserve.vy = -180;
-    reserve.gainMana(18);
-    reserve.skillCooldown = Math.min(reserve.skillCooldown, 0.35);
-    reserve.setState('SKILL');
-    return true;
-  }
-
-  triggerTeamAssist(team) {
-    if (!this.is2v2Mode() || this.isMatchOver) return false;
-    const cdKey = team === 1 ? 'team1AssistCd' : 'team2AssistCd';
-    if (this[cdKey] > 0) return false;
-    const point = this.getPointFighter(team);
-    const ally = this.getReserveFighter(team);
-    if (!point || !ally || ally.isDead) return false;
-    this[cdKey] = 5.2;
-    const target = this.getTargetFor(point);
-    if (!target || target.isDead) return false;
-    if (this.gameMode === '2v2_tag' && ally.isBenched) {
-      const dir = target.x >= ally.x ? 1 : -1;
-      ally.facing = dir;
-      this.vfx.spawnProjectile({
-        x: ally.x + dir * 48,
-        y: ally.y - 102,
-        vx: dir * 780,
-        vy: 0,
-        radius: 28,
-        color: ally.primaryColor,
-        coreColor: '#ffffff',
-        damage: 215,
-        owner: ally,
-        type: 'blade_wave'
-      });
-      if (!point.isDead) {
-        point.heal(35, 'TAG GRACE');
-        point.gainMana(12);
-      }
-      return true;
-    }
-    point.gainMana(20);
-    ally.gainMana(20);
-    ally.skillCooldown = 0;
-    if (ally.state === 'IDLE' || ally.state === 'WALK') {
-      ally.setState('SKILL');
-    }
-    return true;
-  }
-
   onFighterDeath(deadFighter) {
     if (this.isMatchOver) return;
     const survivingAlly = this.getTeammateOf(deadFighter);
@@ -319,7 +445,10 @@ class HeadlessArenaSim {
       survivingAlly.isPoint = true;
       if (survivingAlly.isBenched) {
         survivingAlly.isBenched = false;
-        survivingAlly.x = Math.max(130, Math.min(1070, deadFighter.x + (survivingAlly.team === 1 ? -40 : 40)));
+        survivingAlly.x = Math.max(
+          130,
+          Math.min(this.renderer.worldWidth - 130, deadFighter.x + (survivingAlly.team === 1 ? -40 : 40))
+        );
         survivingAlly.y = this.renderer.groundY;
       }
       survivingAlly.heal(Math.round(survivingAlly.maxHp * 0.18), 'AVENGER GRACE');
@@ -331,82 +460,6 @@ class HeadlessArenaSim {
     this.winningTeam = deadFighter.team === 1 ? 2 : 1;
   }
 
-  updateProjectiles(dt) {
-    const gy = this.renderer.groundY;
-    const ww = this.renderer.worldWidth;
-
-    for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
-      const p = this.vfx.projectiles[i];
-      if (!p) continue;
-      for (let j = i - 1; j >= 0; j--) {
-        const q = this.vfx.projectiles[j];
-        if (!q || p.owner === q.owner || (p.owner && q.owner && p.owner.team === q.owner.team)) continue;
-        const dist = Math.hypot(p.x - q.x, p.y - q.y);
-        if (dist < (p.radius || 18) + (q.radius || 18) + 28) {
-          this.triggerClashSpark();
-          if (!p.isMeteor && !q.isMeteor) {
-            this.vfx.projectiles.splice(i, 1);
-            this.vfx.projectiles.splice(j, 1);
-            break;
-          } else if (p.isMeteor && !q.isMeteor) {
-            this.vfx.projectiles.splice(j, 1);
-            i--;
-          } else if (!p.isMeteor && q.isMeteor) {
-            this.vfx.projectiles.splice(i, 1);
-            break;
-          }
-        }
-      }
-    }
-
-    for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
-      const p = this.vfx.projectiles[i];
-      if (p.owner && p.owner.chronoTimeStopTimer > 0) continue;
-      p.age = (p.age || 0) + dt;
-      p.ringTimer = (p.ringTimer || 0) + dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-
-      const enemies = p.owner ? this.getEnemiesOf(p.owner) : [this.rightFighter];
-      let hitTarget = null;
-      for (const cand of enemies) {
-        if (
-          cand &&
-          !cand.isDead &&
-          !cand.isBenched &&
-          Math.abs(p.x - cand.x) < p.radius + 36 &&
-          Math.abs(p.y - (cand.y - 108)) < p.radius + 68
-        ) {
-          hitTarget = cand;
-          break;
-        }
-      }
-      const hitGround = p.y >= gy - 4;
-      if (hitTarget || hitGround) {
-        if (p.isMeteor) {
-          p.owner?.onProjectileHit?.(p, hitTarget, true, this);
-          for (const cand of enemies) {
-            if (cand && !cand.isDead && !cand.isBenched && Math.abs(cand.x - p.x) < 230) {
-              cand.takeDamage(p.damage, p.owner, true, 160, -240);
-            }
-          }
-        } else if (hitTarget) {
-          const isCrit = Math.random() < 0.28;
-          hitTarget.takeDamage(isCrit ? p.damage * 1.38 : p.damage, p.owner, isCrit, 100, 0);
-          if (p.type === 'phantom_scythe' && p.owner && typeof p.owner.leechLife === 'function') {
-            p.owner.leechLife(p.leechAmt || 18, hitTarget, this, 'SOUL LEECH');
-          } else if (p.type === 'cryo_shard' && p.owner && typeof p.owner.applyBrittleFrost === 'function') {
-            p.owner.applyBrittleFrost(hitTarget, 1, this, p.x, p.y);
-          }
-          p.owner?.onProjectileHit?.(p, hitTarget, isCrit, this);
-        }
-        this.vfx.projectiles.splice(i, 1);
-      } else if (p.x < -300 || p.x > ww + 300) {
-        this.vfx.projectiles.splice(i, 1);
-      }
-    }
-  }
-
   step(dt) {
     if (this.isMatchOver) return;
     this.matchTime += dt;
@@ -415,6 +468,13 @@ class HeadlessArenaSim {
     if (this.team2TagCd > 0) this.team2TagCd = Math.max(0, this.team2TagCd - dt);
     if (this.team1AssistCd > 0) this.team1AssistCd = Math.max(0, this.team1AssistCd - dt);
     if (this.team2AssistCd > 0) this.team2AssistCd = Math.max(0, this.team2AssistCd - dt);
+    if (this.renderer.trueUltStageTimer > 0) {
+      this.renderer.trueUltStageTimer = Math.max(0, this.renderer.trueUltStageTimer - dt);
+      if (this.renderer.trueUltStageTimer === 0 && !this.renderer.permanentStageOverride) {
+        this.renderer.trueUltStageAlpha = 0;
+        this.renderer.trueUltStageOverride = null;
+      }
+    }
 
     const activeFighters = this.fighters.filter((f) => f && !f.isDead && !f.isBenched);
 
@@ -433,17 +493,19 @@ class HeadlessArenaSim {
       this.stageEventTickTimer += dt;
       if (this.stageEventTickTimer >= 2.0) {
         this.stageEventTickTimer = 0;
-        if (this.renderer.stageId === 'sylvan') {
+        const activeStg = this.renderer.getActiveStageId();
+        if (activeStg === 'sylvan' || activeStg === 'sanctuary') {
           activeFighters.forEach((f) => f.heal(84, 'STARLIGHT'));
         }
       }
     }
 
-    if (this.is2v2Mode()) {
+    if (this.is2v2Mode() && !this.isMatchOver) {
       for (const team of [1, 2]) {
         const point = this.getPointFighter(team);
         const reserve = this.getReserveFighter(team);
         if (!point || !reserve || point.isDead || reserve.isDead) continue;
+
         if (this.gameMode === '2v2_tag' && reserve.isBenched) {
           const pointHpRatio = point.hp / point.maxHp;
           const reserveHpRatio = reserve.hp / reserve.maxHp;
@@ -451,12 +513,12 @@ class HeadlessArenaSim {
             (pointHpRatio <= 0.40 && reserveHpRatio > pointHpRatio + 0.08) ||
             (reserveHpRatio - pointHpRatio >= 0.28 && this.matchTime > 5.0)
           ) {
-            this.triggerTeamTagSwap(team);
+            this.triggerTeamTagSwap(team, false);
           } else {
-            this.triggerTeamAssist(team);
+            this.triggerTeamAssist(team, false);
           }
         } else if (this.gameMode === '2v2_brawl') {
-          this.triggerTeamAssist(team);
+          this.triggerTeamAssist(team, false);
         }
       }
     }
@@ -511,25 +573,33 @@ class HeadlessArenaSim {
   }
 }
 
-function runDuel(h1, h2, seed, stageId) {
+HeadlessArenaSim.prototype.getTeamFighters = Game.prototype.getTeamFighters;
+HeadlessArenaSim.prototype.getTeammateOf = Game.prototype.getTeammateOf;
+HeadlessArenaSim.prototype.getEnemiesOf = Game.prototype.getEnemiesOf;
+HeadlessArenaSim.prototype.getTargetFor = Game.prototype.getTargetFor;
+HeadlessArenaSim.prototype.getPointFighter = Game.prototype.getPointFighter;
+HeadlessArenaSim.prototype.getReserveFighter = Game.prototype.getReserveFighter;
+HeadlessArenaSim.prototype.triggerTeamTagSwap = Game.prototype.triggerTeamTagSwap;
+HeadlessArenaSim.prototype.triggerTeamAssist = Game.prototype.triggerTeamAssist;
+HeadlessArenaSim.prototype.updateProjectiles = Game.prototype.updateProjectiles;
+
+function runDuel(ROSTER, idx1, idx2, seed, stageId, groundY, isLegacy) {
+  const h1 = ROSTER[idx1];
+  const h2 = ROSTER[idx2];
   const origRandom = Math.random;
   Math.random = mulberry32(seed);
   try {
-    const sim = new HeadlessArenaSim('1v1', stageId);
-    const f1 = new h1.Cls(240, 460, 1);
-    const f2 = new h2.Cls(960, 460, -1);
-    f1.game = sim;
-    f2.game = sim;
-    f1.team = 1;
-    f2.team = 2;
-    f1.isPoint = true;
-    f2.isPoint = true;
+    const sim = new HeadlessArenaSim('1v1', stageId, groundY);
+    const f1 = new h1.Cls(240, groundY, 1);
+    const f2 = new h2.Cls(960, groundY, -1);
+    attachFighterToSim(f1, sim, h1.id, 1, 'lead', true, false, isLegacy);
+    attachFighterToSim(f2, sim, h2.id, 2, 'lead', true, false, isLegacy);
     sim.leftFighter = f1;
     sim.rightFighter = f2;
     sim.fighters = [f1, f2];
 
     const dt = 1 / 30;
-    const maxSteps = 180 * 30; // 180s hard timeout
+    const maxSteps = 180 * 30;
     for (let s = 0; s < maxSteps && !sim.isMatchOver; s++) {
       sim.step(dt);
     }
@@ -541,6 +611,9 @@ function runDuel(h1, h2, seed, stageId) {
       winner = f1.hp / f1.maxHp >= f2.hp / f2.maxHp ? 1 : 2;
     }
     return {
+      type: '1v1',
+      idx1,
+      idx2,
       duration: sim.matchTime,
       timedOut,
       winner,
@@ -558,131 +631,26 @@ function runDuel(h1, h2, seed, stageId) {
   }
 }
 
-// Run 11 x 10 x 4 stages = 440 directed 1v1 matches!
-const heroStats = new Map();
-for (const r of ROSTER) {
-  const sample = new r.Cls(240, 460, 1);
-  heroStats.set(r.id, {
-    id: r.id,
-    name: r.name,
-    maxHp: sample.maxHp,
-    moveSpeed: sample.moveSpeed,
-    attackRange: sample.attackRange,
-    wins: 0,
-    games: 0,
-    timeouts: 0,
-    totalDuration: 0,
-    overdrives: 0,
-    trueUlts: 0,
-    dmgDealt: 0,
-    healing: 0
-  });
-}
-
-let totalMatches = 0;
-let totalDuration = 0;
-let matchesWithAnyOverdrive = 0;
-let matchesWithAnyTrueUlt = 0;
-let matchesWithBothTrueUlt = 0;
-let totalTimeouts = 0;
-let minDur = Infinity;
-let maxDur = 0;
-
-let seedCounter = 1001;
-for (let i = 0; i < ROSTER.length; i++) {
-  for (let j = 0; j < ROSTER.length; j++) {
-    if (i === j) continue;
-    const h1 = ROSTER[i];
-    const h2 = ROSTER[j];
-    for (let stIdx = 0; stIdx < STAGES.length; stIdx++) {
-      const res = runDuel(h1, h2, seedCounter++, STAGES[stIdx]);
-      totalMatches++;
-      totalDuration += res.duration;
-      if (res.timedOut) totalTimeouts++;
-      minDur = Math.min(minDur, res.duration);
-      maxDur = Math.max(maxDur, res.duration);
-      if (res.f1Overdrives + res.f2Overdrives >= 1) matchesWithAnyOverdrive++;
-      if (res.f1TrueUlts + res.f2TrueUlts >= 1) matchesWithAnyTrueUlt++;
-      if (res.f1TrueUlts >= 1 && res.f2TrueUlts >= 1) matchesWithBothTrueUlt++;
-
-      const s1 = heroStats.get(h1.id);
-      const s2 = heroStats.get(h2.id);
-      s1.games++;
-      s2.games++;
-      if (res.winner === 1) s1.wins++;
-      else s2.wins++;
-      if (res.timedOut) {
-        s1.timeouts++;
-        s2.timeouts++;
-      }
-      s1.totalDuration += res.duration;
-      s2.totalDuration += res.duration;
-      s1.overdrives += res.f1Overdrives;
-      s2.overdrives += res.f2Overdrives;
-      s1.trueUlts += res.f1TrueUlts;
-      s2.trueUlts += res.f2TrueUlts;
-      s1.dmgDealt += res.f1Dmg;
-      s2.dmgDealt += res.f2Dmg;
-      s1.healing += res.f1Heal;
-      s2.healing += res.f2Heal;
-    }
-  }
-}
-
-console.log('====================================================================================================');
-console.log(`1V1 ROUND-ROBIN BENCHMARK (${totalMatches} Mortal-HP Matches across all 4 Stages)`);
-console.log('====================================================================================================');
-console.log(
-  `Avg Duration: ${(totalDuration / totalMatches).toFixed(1)}s (min ${minDur.toFixed(1)}s, max ${maxDur.toFixed(1)}s, timeouts@180s: ${totalTimeouts})`
-);
-console.log(
-  `Matches w/ >=1 Overdrive: ${((matchesWithAnyOverdrive / totalMatches) * 100).toFixed(1)}%`
-);
-console.log(
-  `Matches w/ >=1 Supreme TRUE_ULTIMATE: ${((matchesWithAnyTrueUlt / totalMatches) * 100).toFixed(1)}% (Both cast TRUE_ULT: ${((matchesWithBothTrueUlt / totalMatches) * 100).toFixed(1)}%)`
-);
-console.log('----------------------------------------------------------------------------------------------------');
-console.log(
-  'Hero          | HP   | WinRate | AvgDur | OD/gm | TrueUlt/gm | AvgDPS | AvgHeal/gm'
-);
-console.log('----------------------------------------------------------------------------------------------------');
-const sorted = [...heroStats.values()].sort((a, b) => b.wins / b.games - a.wins / a.games);
-for (const s of sorted) {
-  const wr = ((s.wins / s.games) * 100).toFixed(1).padStart(5);
-  const avgDur = s.totalDuration / s.games;
-  const dps = (s.dmgDealt / s.totalDuration).toFixed(1).padStart(6);
-  const od = (s.overdrives / s.games).toFixed(2).padStart(5);
-  const tu = (s.trueUlts / s.games).toFixed(2).padStart(10);
-  const hl = (s.healing / s.games).toFixed(0).padStart(10);
-  console.log(
-    `${s.name.padEnd(13)} | ${String(s.maxHp).padStart(4)} |  ${wr}% | ${avgDur.toFixed(1).padStart(5)}s | ${od} | ${tu} | ${dps} | ${hl}`
-  );
-}
-console.log('====================================================================================================');
-
-function run2v2(mode, team1Pair, team2Pair, seed, stageId) {
+function run2v2(ROSTER, mode, team1Idx, team2Idx, seed, stageId, groundY, isLegacy) {
+  const [i0, i1] = team1Idx;
+  const [i2, i3] = team2Idx;
   const origRandom = Math.random;
   Math.random = mulberry32(seed);
   try {
-    const sim = new HeadlessArenaSim(mode, stageId);
+    const sim = new HeadlessArenaSim(mode, stageId, groundY);
     const isTag = mode === '2v2_tag';
-    const f1 = new team1Pair[0].Cls(300, 460, 1);
-    const f2 = new team2Pair[0].Cls(900, 460, -1);
-    const f1b = new team1Pair[1].Cls(isTag ? 76 : 168, 460, 1);
-    const f2b = new team2Pair[1].Cls(isTag ? 1124 : 1032, 460, -1);
-    for (const [f, team, role, pt, bench] of [
-      [f1, 1, 'lead', true, false],
-      [f2, 2, 'lead', true, false],
-      [f1b, 1, 'partner', false, isTag],
-      [f2b, 2, 'partner', false, isTag]
-    ]) {
-      f.game = sim;
-      f.team = team;
-      f.slotRole = role;
-      f.isPoint = pt;
-      f.isBenched = bench;
-      f.benchX = team === 1 ? 76 : 1124;
-    }
+    const h0 = ROSTER[i0];
+    const h1 = ROSTER[i1];
+    const h2 = ROSTER[i2];
+    const h3 = ROSTER[i3];
+    const f1 = new h0.Cls(300, groundY, 1);
+    const f2 = new h2.Cls(900, groundY, -1);
+    const f1b = new h1.Cls(isTag ? 76 : 168, groundY, 1);
+    const f2b = new h3.Cls(isTag ? 1124 : 1032, groundY, -1);
+    attachFighterToSim(f1, sim, h0.id, 1, 'lead', true, false, isLegacy);
+    attachFighterToSim(f2, sim, h2.id, 2, 'lead', true, false, isLegacy);
+    attachFighterToSim(f1b, sim, h1.id, 1, 'partner', false, isTag, isLegacy);
+    attachFighterToSim(f2b, sim, h3.id, 2, 'partner', false, isTag, isLegacy);
     sim.leftFighter = f1;
     sim.rightFighter = f2;
     sim.fighters = [f1b, f2b, f1, f2];
@@ -710,6 +678,10 @@ function run2v2(mode, team1Pair, team2Pair, seed, stageId) {
       winningTeam = t1Hp >= t2Hp ? 1 : 2;
     }
     return {
+      type: '2v2',
+      mode,
+      team1: team1Idx,
+      team2: team2Idx,
       duration: sim.matchTime,
       firstDeathTime: firstDeathTime ?? sim.matchTime,
       timedOut: !sim.isMatchOver,
@@ -722,42 +694,183 @@ function run2v2(mode, team1Pair, team2Pair, seed, stageId) {
   }
 }
 
-const hero2v2Stats = new Map();
-for (const h of ROSTER) {
-  hero2v2Stats.set(h.id, { name: h.name, brawlWins: 0, brawlGames: 0, tagWins: 0, tagGames: 0 });
+function executeTaskBatch(tasks, isLegacy) {
+  const ROSTER = buildRoster(isLegacy);
+  const groundY = isLegacy ? 460 : 520;
+  const results = [];
+  for (const task of tasks) {
+    if (task.type === '1v1') {
+      results.push(runDuel(ROSTER, task.idx1, task.idx2, task.seed, task.stageId, groundY, isLegacy));
+    } else {
+      results.push(
+        run2v2(ROSTER, task.mode, task.team1, task.team2, task.seed, task.stageId, groundY, isLegacy)
+      );
+    }
+  }
+  return results;
 }
 
-for (const mode of ['2v2_brawl', '2v2_tag']) {
-  let n = 0;
-  let sumDur = 0;
-  let sumFirstDeath = 0;
-  let sumFightersCast = 0;
-  let sumDiedNoUlt = 0;
-  let timeouts = 0;
-  const rng = mulberry32(mode === '2v2_brawl' ? 7777 : 8888);
-  for (let c = 0; c < 20; c++) {
-    const o0 = 0;
-    const o1 = 1 + Math.floor(rng() * 9);
-    let o2 = 2 + Math.floor(rng() * 8);
-    while (o2 === o0 || o2 === o1) o2 = (o2 + 1) % ROSTER.length;
-    let o3 = 3 + Math.floor(rng() * 7);
-    while (o3 === o0 || o3 === o1 || o3 === o2) o3 = (o3 + 1) % ROSTER.length;
-    for (let base = 0; base < ROSTER.length; base++) {
-      const m = c * ROSTER.length + base;
-      const h0 = ROSTER[(base + o0) % ROSTER.length];
-      const h1 = ROSTER[(base + o1) % ROSTER.length];
-      const h2 = ROSTER[(base + o2) % ROSTER.length];
-      const h3 = ROSTER[(base + o3) % ROSTER.length];
-      const res = run2v2(mode, [h0, h1], [h2, h3], 5000 + m, STAGES[m % STAGES.length]);
-      n++;
-      sumDur += res.duration;
-      sumFirstDeath += res.firstDeathTime;
-      sumFightersCast += res.fightersCastingUlt;
-      sumDiedNoUlt += res.diedWithoutTrueUlt;
-      if (res.timedOut) timeouts++;
-      for (const h of [h0, h1]) {
-        const st = hero2v2Stats.get(h.id);
-        if (mode === '2v2_brawl') {
+if (!isMainThread) {
+  const results = executeTaskBatch(workerData.tasks, workerData.isLegacy);
+  parentPort.postMessage(results);
+} else {
+  const isLegacy = process.argv.includes('--legacy');
+  const ROSTER = buildRoster(isLegacy);
+  const groundY = isLegacy ? 460 : 520;
+
+  const tasks = [];
+  let seedCounter = 1001;
+  for (let i = 0; i < ROSTER.length; i++) {
+    for (let j = 0; j < ROSTER.length; j++) {
+      if (i === j) continue;
+      for (let stIdx = 0; stIdx < STAGES.length; stIdx++) {
+        tasks.push({
+          type: '1v1',
+          idx1: i,
+          idx2: j,
+          stageId: STAGES[stIdx],
+          seed: seedCounter++
+        });
+      }
+    }
+  }
+
+  for (const mode of ['2v2_brawl', '2v2_tag']) {
+    const rng = mulberry32(mode === '2v2_brawl' ? 7777 : 8888);
+    const N = ROSTER.length;
+    for (let c = 0; c < 20; c++) {
+      const o0 = 0;
+      const o1 = 1 + Math.floor(rng() * (N - 2));
+      let o2 = 2 + Math.floor(rng() * (N - 3));
+      while (o2 === o0 || o2 === o1) o2 = (o2 + 1) % N;
+      let o3 = 3 + Math.floor(rng() * (N - 4));
+      while (o3 === o0 || o3 === o1 || o3 === o2) o3 = (o3 + 1) % N;
+      for (let base = 0; base < N; base++) {
+        const m = c * N + base;
+        tasks.push({
+          type: '2v2',
+          mode,
+          team1: [(base + o0) % N, (base + o1) % N],
+          team2: [(base + o2) % N, (base + o3) % N],
+          stageId: STAGES[m % STAGES.length],
+          seed: 5000 + m
+        });
+      }
+    }
+  }
+
+  const workerCount = Math.min(8, Math.max(1, os.cpus().length));
+  const buckets = Array.from({ length: workerCount }, () => []);
+  for (let i = 0; i < tasks.length; i++) {
+    buckets[i % workerCount].push(tasks[i]);
+  }
+
+  const startMs = Date.now();
+  const batches = await Promise.all(
+    buckets
+      .filter((b) => b.length > 0)
+      .map(
+        (chunk) =>
+          new Promise((resolve, reject) => {
+            const w = new Worker(new URL(import.meta.url), {
+              workerData: { tasks: chunk, isLegacy }
+            });
+            w.once('message', resolve);
+            w.once('error', reject);
+            w.once('exit', (code) => {
+              if (code !== 0) reject(new Error(`Benchmark worker exited with code ${code}`));
+            });
+          })
+      )
+  );
+  const allResults = batches.flat();
+  const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(2);
+
+  const heroStats = ROSTER.map((r) => {
+    const sample = new r.Cls(240, groundY, 1);
+    return {
+      id: r.id,
+      name: r.name,
+      maxHp: sample.maxHp,
+      moveSpeed: sample.moveSpeed,
+      attackRange: sample.attackRange,
+      wins: 0,
+      games: 0,
+      timeouts: 0,
+      totalDuration: 0,
+      overdrives: 0,
+      trueUlts: 0,
+      dmgDealt: 0,
+      healing: 0
+    };
+  });
+
+  const hero2v2Stats = ROSTER.map((r) => ({
+    id: r.id,
+    name: r.name,
+    brawlWins: 0,
+    brawlGames: 0,
+    tagWins: 0,
+    tagGames: 0
+  }));
+
+  let totalMatches = 0;
+  let totalDuration = 0;
+  let matchesWithAnyOverdrive = 0;
+  let matchesWithAnyTrueUlt = 0;
+  let matchesWithBothTrueUlt = 0;
+  let totalTimeouts = 0;
+  let minDur = Infinity;
+  let maxDur = 0;
+
+  const mode2v2Totals = {
+    '2v2_brawl': { n: 0, sumDur: 0, sumFirstDeath: 0, sumFightersCast: 0, sumDiedNoUlt: 0, timeouts: 0 },
+    '2v2_tag': { n: 0, sumDur: 0, sumFirstDeath: 0, sumFightersCast: 0, sumDiedNoUlt: 0, timeouts: 0 }
+  };
+
+  for (const res of allResults) {
+    if (res.type === '1v1') {
+      totalMatches++;
+      totalDuration += res.duration;
+      if (res.timedOut) totalTimeouts++;
+      minDur = Math.min(minDur, res.duration);
+      maxDur = Math.max(maxDur, res.duration);
+      if (res.f1Overdrives + res.f2Overdrives >= 1) matchesWithAnyOverdrive++;
+      if (res.f1TrueUlts + res.f2TrueUlts >= 1) matchesWithAnyTrueUlt++;
+      if (res.f1TrueUlts >= 1 && res.f2TrueUlts >= 1) matchesWithBothTrueUlt++;
+
+      const s1 = heroStats[res.idx1];
+      const s2 = heroStats[res.idx2];
+      s1.games++;
+      s2.games++;
+      if (res.winner === 1) s1.wins++;
+      else s2.wins++;
+      if (res.timedOut) {
+        s1.timeouts++;
+        s2.timeouts++;
+      }
+      s1.totalDuration += res.duration;
+      s2.totalDuration += res.duration;
+      s1.overdrives += res.f1Overdrives;
+      s2.overdrives += res.f2Overdrives;
+      s1.trueUlts += res.f1TrueUlts;
+      s2.trueUlts += res.f2TrueUlts;
+      s1.dmgDealt += res.f1Dmg;
+      s2.dmgDealt += res.f2Dmg;
+      s1.healing += res.f1Heal;
+      s2.healing += res.f2Heal;
+    } else {
+      const mt = mode2v2Totals[res.mode];
+      mt.n++;
+      mt.sumDur += res.duration;
+      mt.sumFirstDeath += res.firstDeathTime;
+      mt.sumFightersCast += res.fightersCastingUlt;
+      mt.sumDiedNoUlt += res.diedWithoutTrueUlt;
+      if (res.timedOut) mt.timeouts++;
+
+      for (const idx of res.team1) {
+        const st = hero2v2Stats[idx];
+        if (res.mode === '2v2_brawl') {
           st.brawlGames++;
           if (res.winningTeam === 1) st.brawlWins++;
         } else {
@@ -765,9 +878,9 @@ for (const mode of ['2v2_brawl', '2v2_tag']) {
           if (res.winningTeam === 1) st.tagWins++;
         }
       }
-      for (const h of [h2, h3]) {
-        const st = hero2v2Stats.get(h.id);
-        if (mode === '2v2_brawl') {
+      for (const idx of res.team2) {
+        const st = hero2v2Stats[idx];
+        if (res.mode === '2v2_brawl') {
           st.brawlGames++;
           if (res.winningTeam === 2) st.brawlWins++;
         } else {
@@ -777,20 +890,96 @@ for (const mode of ['2v2_brawl', '2v2_tag']) {
       }
     }
   }
+
+  const odMatchPct = (matchesWithAnyOverdrive / totalMatches) * 100;
+  const tuMatchPct = (matchesWithAnyTrueUlt / totalMatches) * 100;
+  const bothTuPct = (matchesWithBothTrueUlt / totalMatches) * 100;
+
+  console.log('====================================================================================================');
   console.log(
-    `[${mode.toUpperCase()}] (${n} matches) AvgDur=${(sumDur / n).toFixed(1)}s | FirstKO=${(sumFirstDeath / n).toFixed(1)}s | FightersCastingTrueUlt=${((sumFightersCast / (n * 4)) * 100).toFixed(1)}% | DiedBeforeTrueUlt=${(sumDiedNoUlt / n).toFixed(2)}/match | Timeouts=${timeouts}`
+    `1V1 ROUND-ROBIN BENCHMARK [${isLegacy ? 'LEGACY 11' : 'EX 12'}] (${totalMatches} Matches across 4 Stages | ${workerCount} workers in ${elapsedSec}s)`
   );
+  console.log('====================================================================================================');
+  console.log(
+    `Avg Duration: ${(totalDuration / totalMatches).toFixed(1)}s (min ${minDur.toFixed(1)}s, max ${maxDur.toFixed(1)}s, timeouts@180s: ${totalTimeouts})`
+  );
+  console.log(`Matches w/ >=1 Overdrive: ${odMatchPct.toFixed(1)}%`);
+  console.log(
+    `Matches w/ >=1 Supreme TRUE_ULTIMATE: ${tuMatchPct.toFixed(1)}% (Both cast TRUE_ULT: ${bothTuPct.toFixed(1)}%)`
+  );
+  console.log('----------------------------------------------------------------------------------------------------');
+  console.log(
+    'Hero           | HP   | WinRate | AvgDur | OD/gm | TrueUlt/gm | AvgDPS | AvgHeal/gm'
+  );
+  console.log('----------------------------------------------------------------------------------------------------');
+  const sorted = [...heroStats].sort((a, b) => b.wins / b.games - a.wins / a.games);
+  for (const s of sorted) {
+    const wr = ((s.wins / s.games) * 100).toFixed(1).padStart(5);
+    const avgDur = s.totalDuration / s.games;
+    const dps = (s.dmgDealt / s.totalDuration).toFixed(1).padStart(6);
+    const od = (s.overdrives / s.games).toFixed(2).padStart(5);
+    const tu = (s.trueUlts / s.games).toFixed(2).padStart(10);
+    const hl = (s.healing / s.games).toFixed(0).padStart(10);
+    console.log(
+      `${s.name.padEnd(14)} | ${String(s.maxHp).padStart(4)} |  ${wr}% | ${avgDur.toFixed(1).padStart(5)}s | ${od} | ${tu} | ${dps} | ${hl}`
+    );
+  }
+  console.log('====================================================================================================');
+
+  for (const mode of ['2v2_brawl', '2v2_tag']) {
+    const mt = mode2v2Totals[mode];
+    console.log(
+      `[${mode.toUpperCase()}] (${mt.n} matches) AvgDur=${(mt.sumDur / mt.n).toFixed(1)}s | FirstKO=${(mt.sumFirstDeath / mt.n).toFixed(1)}s | FightersCastingTrueUlt=${((mt.sumFightersCast / (mt.n * 4)) * 100).toFixed(1)}% | DiedBeforeTrueUlt=${(mt.sumDiedNoUlt / mt.n).toFixed(2)}/match | Timeouts=${mt.timeouts}`
+    );
+  }
+  console.log('----------------------------------------------------------------------------------------------------');
+  console.log('Hero           | 2v2 Brawl WR | 2v2 Tag WR | Combined 2v2 WR');
+  console.log('----------------------------------------------------------------------------------------------------');
+  const sorted2v2 = [...hero2v2Stats].sort(
+    (a, b) =>
+      (b.brawlWins + b.tagWins) / (b.brawlGames + b.tagGames) -
+      (a.brawlWins + a.tagWins) / (a.brawlGames + a.tagGames)
+  );
+  for (const s of sorted2v2) {
+    const bWr = ((s.brawlWins / s.brawlGames) * 100).toFixed(1).padStart(5);
+    const tWr = ((s.tagWins / s.tagGames) * 100).toFixed(1).padStart(5);
+    const cWr = (((s.brawlWins + s.tagWins) / (s.brawlGames + s.tagGames)) * 100).toFixed(1).padStart(5);
+    console.log(`${s.name.padEnd(14)} |      ${bWr}%  |    ${tWr}%  |         ${cWr}%`);
+  }
+  console.log('====================================================================================================');
+
+  if (!isLegacy) {
+    const failures = [];
+    if (totalTimeouts !== 0) {
+      failures.push(`1v1 timeouts expected 0, got ${totalTimeouts}`);
+    }
+    if (odMatchPct < 90.0) {
+      failures.push(`Overdrive match rate ${odMatchPct.toFixed(1)}% < 90.0%`);
+    }
+    if (tuMatchPct < 90.0) {
+      failures.push(`TRUE_ULTIMATE match rate ${tuMatchPct.toFixed(1)}% < 90.0%`);
+    }
+    for (const s of heroStats) {
+      const wr = (s.wins / s.games) * 100;
+      if (wr < 40.0 || wr > 60.0) {
+        failures.push(`${s.name} 1v1 WR ${wr.toFixed(1)}% outside [40.0%, 60.0%]`);
+      }
+    }
+    for (const s of hero2v2Stats) {
+      const combWr = ((s.brawlWins + s.tagWins) / (s.brawlGames + s.tagGames)) * 100;
+      if (combWr < 38.0 || combWr > 62.0) {
+        failures.push(`${s.name} Combined 2v2 WR ${combWr.toFixed(1)}% outside [38.0%, 62.0%]`);
+      }
+    }
+
+    if (failures.length > 0) {
+      console.error('[EX BALANCE GATE FAILED]');
+      for (const msg of failures) console.error(` - ${msg}`);
+      process.exit(1);
+    } else {
+      console.log(
+        `[EX BALANCE GATES PASSED] 1v1 [40.0%, 60.0%], Combined 2v2 [38.0%, 62.0%], 0 timeouts, OD=${odMatchPct.toFixed(1)}%, TrueUlt=${tuMatchPct.toFixed(1)}%`
+      );
+    }
+  }
 }
-console.log('----------------------------------------------------------------------------------------------------');
-console.log('Hero          | 2v2 Brawl WR | 2v2 Tag WR | Combined 2v2 WR');
-console.log('----------------------------------------------------------------------------------------------------');
-const sorted2v2 = [...hero2v2Stats.values()].sort(
-  (a, b) => (b.brawlWins + b.tagWins) / (b.brawlGames + b.tagGames) - (a.brawlWins + a.tagWins) / (a.brawlGames + a.tagGames)
-);
-for (const s of sorted2v2) {
-  const bWr = ((s.brawlWins / s.brawlGames) * 100).toFixed(1).padStart(5);
-  const tWr = ((s.tagWins / s.tagGames) * 100).toFixed(1).padStart(5);
-  const cWr = (((s.brawlWins + s.tagWins) / (s.brawlGames + s.tagGames)) * 100).toFixed(1).padStart(5);
-  console.log(`${s.name.padEnd(13)} |      ${bWr}%  |    ${tWr}%  |         ${cWr}%`);
-}
-console.log('====================================================================================================');

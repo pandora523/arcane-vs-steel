@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
-import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps134';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
+import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps135';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Grounded Rose-Window Magic Circle + Sanctum Light-Ray -> snaps at F03 (63)
@@ -27,7 +27,7 @@ export class PriestessEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Seraphina EX',
-      maxHp: 3720,
+      maxHp: 3630,
       attackRange: 512,
       moveSpeed: 164,
       autoInterval: 1.02,
@@ -45,10 +45,10 @@ export class PriestessEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.50;
+    this._postFlurryInterval = 1.55;
 
     this.skillName = 'STAINED-GLASS BENEDICTION';
-    this.skillMaxCooldown = 4.80;
+    this.skillMaxCooldown = 5.08;
     this.skillCooldown = 1.20;
     this.skillDuration = 1.02;
     this.skillTriggerRange = 512;
@@ -732,7 +732,7 @@ export class PriestessEx extends Fighter {
     this.vx = 0;
     this.vy = 0;
     if (game?.audio) game.audio.play('holy_heal', this.x);
-    this.heal(8, 'WINGS OF GRACE');
+    this.heal(6, 'WINGS OF GRACE');
     this.ensureSlipstream();
     this.ensureSanctuarySeal(false);
     this.spawnSanctumCluster(this.x, this.y - 96, 8, 130, true);
@@ -856,7 +856,7 @@ export class PriestessEx extends Fighter {
       light: 1.18
     });
     if (game?.audio) game.audio.play('holy_heal', this.x);
-    this.heal(10, 'BENEDICTION');
+    this.heal(7, 'BENEDICTION');
     this.spawnPrismSeal(this.x, this.groundY, 68, 0.65);
   }
 
@@ -930,7 +930,7 @@ export class PriestessEx extends Fighter {
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 50,
+        damage: 43,
         type: 'holy_light',
         isMeteor: false
       });
@@ -1064,7 +1064,7 @@ export class PriestessEx extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: 44,
+          damage: 39,
           type: 'holy_light',
           isMeteor: false
         });
@@ -1097,7 +1097,7 @@ export class PriestessEx extends Fighter {
             color: '#fde047',
             coreColor: '#ffffff',
             owner: this,
-            damage: 26,
+            damage: 23,
             type: 'holy_light',
             isMeteor: false
           });
@@ -1111,7 +1111,7 @@ export class PriestessEx extends Fighter {
             color: '#fb7185',
             coreColor: '#fef9c3',
             owner: this,
-            damage: 24,
+            damage: 21,
             type: 'holy_light',
             isMeteor: false
           });
@@ -1150,7 +1150,8 @@ export class PriestessEx extends Fighter {
           theme: 'radiant',
           delay: 0.02,
           maxLife: 0.80,
-          scaleWidth: 0.90
+          scaleWidth: 0.90,
+          tickDamage: 0
         });
         this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
           light: 1.24,
@@ -1185,7 +1186,7 @@ export class PriestessEx extends Fighter {
           game.audio.play('holy_bolt', spawnX);
           game.audio.play('holy_heal', this.x);
         }
-        this.heal(16, 'DAWN GRACE');
+        this.heal(12, 'DAWN GRACE');
         this.fx?.spawn('graceHealBloom', this.x, this.groundY, {
           follow: this,
           offsetX: 0,
@@ -1210,13 +1211,13 @@ export class PriestessEx extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: 34,
+          damage: 29,
           type: 'holy_light',
           isMeteor: false
         });
 
         this.spawnPrismSeal(this._v3RemoteX, this.groundY, 82, 0.44);
-        this._applyRemoteSanctumJudgment(this._v3RemoteX, 90, 22, game, aimFoe || enemy, {
+        this._applyRemoteSanctumJudgment(this._v3RemoteX, 90, 19, game, aimFoe || enemy, {
           knockX: 20,
           knockY: -28,
           hitStop: 0.034
@@ -1230,7 +1231,8 @@ export class PriestessEx extends Fighter {
           theme: 'radiant',
           delay: 0.02,
           maxLife: 0.84,
-          scaleWidth: 0.96
+          scaleWidth: 0.96,
+          tickDamage: 0
         });
         this.fx?.spawn('cathedralSanctumPillar', px, this.groundY, {
           light: 1.28,
@@ -1240,7 +1242,7 @@ export class PriestessEx extends Fighter {
           flipX: false,
           inFront: true
         });
-        this._applyRemoteSanctumJudgment(px, 96, 26, game, aimFoe || enemy, {
+        this._applyRemoteSanctumJudgment(px, 96, 23, game, aimFoe || enemy, {
           isCrit: true,
           knockX: 62,
           knockY: -56,
@@ -1319,7 +1321,7 @@ export class PriestessEx extends Fighter {
       this.didSanctuaryHeal = true;
       if (game?.audio) game.audio.play('holy_heal', this.x);
       game?.vfx?.spawnSpecialCastAura(this, this.skillName, 'SERAPHIC SOVEREIGN', 'radiant', false);
-      this.heal(42, 'SANCTUARY');
+      this.heal(30, 'SANCTUARY');
       this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
         follow: this,
         offsetX: 0,
@@ -1362,7 +1364,8 @@ export class PriestessEx extends Fighter {
           theme: 'radiant',
           delay: isCenter ? 0.01 : 0.05,
           maxLife: isCenter ? 0.86 : 0.68,
-          scaleWidth: isCenter ? 1.04 : 0.74
+          scaleWidth: isCenter ? 1.04 : 0.74,
+          tickDamage: 10
         });
         game?.vfx?.spawnSkyStrike({
           x: rx,
@@ -1375,7 +1378,7 @@ export class PriestessEx extends Fighter {
           coreColor: '#ffffff',
           owner: this,
           target: enemy,
-          damage: isCenter ? 34 : 22,
+          damage: isCenter ? 28 : 18,
           delay: isCenter ? 0 : 0.05,
           isUltimate: false
         });
@@ -1394,7 +1397,7 @@ export class PriestessEx extends Fighter {
         inFront: false
       });
 
-      this._applyRemoteSanctumJudgment(targetX, 118, 72, game, enemy, {
+      this._applyRemoteSanctumJudgment(targetX, 118, 55, game, enemy, {
         isCrit: true,
         knockX: 60,
         knockY: -48,
@@ -1416,7 +1419,7 @@ export class PriestessEx extends Fighter {
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 46,
+        damage: 38,
         type: 'holy_light',
         isMeteor: false
       });
@@ -1465,7 +1468,7 @@ export class PriestessEx extends Fighter {
       this.ultOrganStep = 0;
       if (game?.audio) game.audio.play('holy_heal', this.x);
       game?.vfx?.spawnSpecialCastAura(this, this.ultName, 'NEO-VISION OVERDRIVE', 'radiant', true);
-      this.heal(48, 'MIRACLE');
+      this.heal(32, 'MIRACLE');
       this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
         follow: this,
         offsetX: 0,
@@ -1508,7 +1511,8 @@ export class PriestessEx extends Fighter {
         delay: 0.01,
         maxLife: isCenter ? 0.96 : 0.80,
         scaleWidth: isCenter ? 1.22 : 0.86,
-        isUltimate: isCenter
+        isUltimate: isCenter,
+        tickDamage: 0
       });
       game?.vfx?.spawnBeam({
         x1: px,
@@ -1526,7 +1530,7 @@ export class PriestessEx extends Fighter {
       });
       this.spawnSanctumCluster(px, this.groundY - 92, isCenter ? 10 : 6, 150, true);
       if (enemy && !enemy.isDead && Math.abs(enemy.x - px) <= 135) {
-        enemy.takeDamage(26, this, false, 24, 0);
+        enemy.takeDamage(22, this, false, 24, 0);
       }
     }
 
@@ -1548,7 +1552,7 @@ export class PriestessEx extends Fighter {
       });
       this.spawnSanctumCluster(targetX, this.groundY - 118, 16, 195, true);
 
-      this._applyRemoteSanctumJudgment(targetX, 195, 162, game, enemy, {
+      this._applyRemoteSanctumJudgment(targetX, 195, 136, game, enemy, {
         isCrit: true,
         knockX: 145,
         knockY: -195,
@@ -1633,7 +1637,7 @@ export class PriestessEx extends Fighter {
 
       if (t >= 0.55 && !this.finalGraceDidHeal) {
         this.finalGraceDidHeal = true;
-        const healAmt = Math.round(this.maxHp * 0.30);
+        const healAmt = Math.round(this.maxHp * 0.16);
         if (game?.audio) game.audio.play('holy_heal', this.x);
         this.heal(healAmt, 'GENESIS LUMEN');
         this.fx?.spawn('graceHealBloom', this._safeFxX(this.x, game), this.groundY, {
@@ -1686,7 +1690,7 @@ export class PriestessEx extends Fighter {
       this.finalGraceBeamY = beamY;
 
       const rawTanked = Math.round(this.tankedDamage || 0);
-      const counterDmg = Math.min(1260, Math.max(740, rawTanked));
+      const counterDmg = Math.min(790, Math.max(640, Math.round(rawTanked * 0.55)));
       this.tankedDamage = 0;
 
       if (game?.audio) game.audio.play('final_grace_beam', this.x);
@@ -1731,7 +1735,8 @@ export class PriestessEx extends Fighter {
             delay: 0.02,
             maxLife: 0.92,
             scaleWidth: 1.12,
-            isUltimate: true
+            isUltimate: true,
+            tickDamage: 0
           });
           this.spawnHitStarburst(foe.x, beamY, '#fde047', '#fb7185', 1.45);
           this.spawnSanctumCluster(foe.x, beamY, 14, 210, true);
@@ -1871,6 +1876,7 @@ export class PriestessEx extends Fighter {
 
     const inMidCombo = (this._aiComboCount || 0) > 0 && (this._aiComboChainTimer || 0) > 0;
     if (
+      !this.isBenched &&
       !this.isPlayerControlled &&
       !inMidCombo &&
       enemy &&
@@ -1919,10 +1925,10 @@ export class PriestessEx extends Fighter {
         return img;
       };
       assets.priestess_ex = {
-        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps134'),
-        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps134'),
-        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps134'),
-        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps134'),
+        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps135'),
+        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps135'),
+        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps135'),
+        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps135'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

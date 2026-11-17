@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps134';
+} from '../engine/shaders/abyssalShaders.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Wide Downward Reaping Crescent Smear -> snaps at F03 (63)
@@ -46,7 +46,7 @@ export class ReaperEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Malakor EX',
-      maxHp: 3960,
+      maxHp: 3680,
       attackRange: 204,
       moveSpeed: 204,
       autoInterval: 0.96,
@@ -66,8 +66,8 @@ export class ReaperEx extends Fighter {
     this.isDeflecting = false;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.48;
-    this.skillMaxCooldown = 4.80;
+    this._postFlurryInterval = 1.62;
+    this.skillMaxCooldown = 5.35;
     this.skillTriggerRange = 450;
     this.skillDuration = 0.98;
     this.ultDuration = 1.88;
@@ -479,14 +479,14 @@ export class ReaperEx extends Fighter {
       Array.isArray(this.deathCompanions) &&
       this.deathCompanions.some((c) => c && !c.isDead && c.life > 0 && c.hp > 0);
     if (hasLivingCovenant) {
-      drMult *= 0.88;
+      drMult *= 0.94;
     }
     if ((this.graveWardTimer || 0) > 0) {
-      drMult *= 0.84;
+      drMult *= 0.92;
       finalKbX *= 0.45;
       finalKbY *= 0.50;
     }
-    finalAmount *= Math.max(0.75, drMult);
+    finalAmount *= Math.max(0.86, drMult);
 
     return super.takeDamage(finalAmount, attacker, isCrit, finalKbX, finalKbY);
   }
@@ -772,13 +772,15 @@ export class ReaperEx extends Fighter {
     ) {
       this._inResonanceEcho = true;
       this.severedSoul.echoCooldown = 0.28;
+      const soulX = this.severedSoul.x;
+      const soulY = this.severedSoul.y;
       const echoDmg = Math.max(7, Math.round(dmg * 0.27));
       target.takeDamage(echoDmg, this, false, -28, 0);
-      this.spawnSoulThread(this.severedSoul.x, this.severedSoul.y, target.x, target.y - 96, 0.30, true);
+      this.spawnSoulThread(soulX, soulY, target.x, target.y - 96, 0.30, true);
       if (game?.vfx) {
         game.vfx.spawnDamageText(
-          this.severedSoul.x,
-          this.severedSoul.y - 44,
+          soulX,
+          soulY - 44,
           0,
           false,
           `SOUL ECHO +${echoDmg}`,
@@ -886,6 +888,7 @@ export class ReaperEx extends Fighter {
 
   leechLife(amount, sourceEntity, game, label = 'SOUL HARVEST') {
     if (this.isDead || amount <= 0) return 0;
+    if (!game?.isAdventureMode?.()) amount = Math.max(1, Math.round(amount * 0.52));
     const prevHp = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
     const actual = Math.max(1, Math.round(amount));
@@ -2796,7 +2799,7 @@ export class ReaperEx extends Fighter {
    * NEWLY-BORN SUPREME ULTIMATE (`TRUE_ULTIMATE`, `4.50s` + `12.5s` Living Covenant):
    * `MEMENTO MORI: CATHEDRAL OF OBLIVION`
    * - Unseals twin Gothic Oblivion Gates (`Row 5`),
-   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps134`),
+   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps135`),
    * - Drops a colossal 6-Pillar Violet-Crimson Scythe Guillotine across reality (`720` Crit)!
    */
   updateTrueUltimate(dt, enemy, game) {
@@ -3093,13 +3096,13 @@ export class ReaperEx extends Fighter {
       let hitCount = 0;
       for (const tgt of targets) {
         if (tgt && !tgt.isDead && !tgt.isBenched) {
-          const burstDmg = hitCount === 0 ? 720 : Math.round(720 * 0.76);
+          const burstDmg = hitCount === 0 ? 635 : Math.round(635 * 0.76);
           tgt.takeDamage(burstDmg, this, true, 295, -265);
           hitCount++;
         }
       }
       this.mana = manaBeforeExec;
-      this.heal(Math.round(this.maxHp * 0.12), 'OBLIVION HARVEST');
+      this.heal(Math.round(this.maxHp * 0.09), 'OBLIVION HARVEST');
     }
 
     const cleaveSpan = Math.min(1, Math.max(0, (elapsed - 3.15) / 0.55));

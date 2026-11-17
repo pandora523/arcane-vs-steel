@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps134';
+} from '../engine/shaders/sylvanShaders.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -125,7 +125,7 @@ export class ArcherEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Sylvara EX',
-      maxHp: 3680,
+      maxHp: 3840,
       attackRange: 520,
       moveSpeed: 192,
       autoInterval: 0.88,
@@ -143,7 +143,7 @@ export class ArcherEx extends Fighter {
     this.skillMaxCooldown = 4.00;
     this.skillDuration = 1.06;
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.24;
+    this._postFlurryInterval = 1.18;
 
     this.skillName = 'STARWOOD CONSTELLATION VOLLEY';
     this.ultName = 'ZEPHYR STARLOCK: TWELVE-STAR RAIN';
@@ -264,9 +264,9 @@ export class ArcherEx extends Fighter {
         return img;
       };
       assets.archer_ex = {
-        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps134'),
-        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps134'),
-        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps134'),
+        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps135'),
+        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps135'),
+        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps135'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -762,7 +762,7 @@ export class ArcherEx extends Fighter {
 
     this.vx = 0;
     this.vy = 0;
-    this.heal(13, 'SYLVAN BREEZE');
+    this.heal(18, 'SYLVAN BREEZE');
     this.spawnLeafRuneBurst(this.x, this.groundY - 64, 6, 130, true);
     if (game?.audio) game.audio.play('zephyr_flip', this.x);
 
@@ -1109,7 +1109,7 @@ export class ArcherEx extends Fighter {
     const isManualPlayer = Boolean(
       (this.isPlayerControlled && !this.adventureAutoPlay) || this.isManualAdventureControl
     );
-    if (!isManualPlayer && enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+    if (!this.isBenched && !isManualPlayer && enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const ww = game?.renderer ? game.renderer.worldWidth : 1200;
       const dist = Math.abs(enemy.x - this.x);
       const pinnedLeft = this.x < 240 && enemy.x > this.x;
@@ -1559,7 +1559,7 @@ export class ArcherEx extends Fighter {
             color: '#10b981',
             coreColor: '#fef08a',
             owner: this,
-            damage: 24,
+            damage: 28,
             type: 'arrow'
           });
         }
@@ -1570,7 +1570,7 @@ export class ArcherEx extends Fighter {
     if (t >= 0.36 && !this.didActionFrame) {
       this.didActionFrame = true;
       this.vx -= this.facing * 58;
-      this.heal(22, 'STARLIGHT GRACE');
+      this.heal(34, 'STARLIGHT GRACE');
       if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
       const bowX = this.x + this.facing * 48;
@@ -1597,7 +1597,7 @@ export class ArcherEx extends Fighter {
             color: '#34d399',
             coreColor: '#fef08a',
             owner: this,
-            damage: 32,
+            damage: 36,
             type: 'arrow'
           });
         });
@@ -1664,7 +1664,7 @@ export class ArcherEx extends Fighter {
             coreColor: '#fef08a',
             owner: this,
             target: enemy,
-            damage: 26,
+            damage: 30,
             delay: i * 0.055,
             maxLinger: 0.55
           });
@@ -2082,7 +2082,7 @@ export class ArcherEx extends Fighter {
         tFoe.isCrouching = false;
         tFoe.isDeflecting = false;
         tFoe.stunTimer = 0;
-        tFoe.takeDamage(700, this, true, 210, -210);
+        tFoe.takeDamage(720, this, true, 210, -210);
         const impY = (tFoe.groundY || this.groundY) - 96;
         this.spawnVfxAnim(4, tFoe.x, impY, 220, 220, 0.42, {
           flipX: false,
@@ -2101,7 +2101,7 @@ export class ArcherEx extends Fighter {
       primaryTarget.isCrouching = false;
       primaryTarget.isDeflecting = false;
       primaryTarget.stunTimer = 0;
-      primaryTarget.takeDamage(700, this, true, 210, -210);
+      primaryTarget.takeDamage(720, this, true, 210, -210);
     }
     this.releaseRootedTargets();
   }

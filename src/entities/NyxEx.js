@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
-import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps134';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
+import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps135';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Coil + Forward lunge + finger-tap -> Twin Star-Packet Bolts
@@ -26,7 +26,7 @@ export class NyxEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Nyx EX',
-      maxHp: 3740,
+      maxHp: 3640,
       attackRange: 516,
       moveSpeed: 170,
       autoInterval: 1.00,
@@ -44,10 +44,10 @@ export class NyxEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.42;
+    this._postFlurryInterval = 1.47;
 
     this.skillName = '404 POP-UP CASCADE';
-    this.skillMaxCooldown = 4.40;
+    this.skillMaxCooldown = 4.65;
     this.skillCooldown = 1.10;
     this.skillDuration = 1.02;
     this.skillTriggerRange = 516;
@@ -183,9 +183,9 @@ export class NyxEx extends Fighter {
         return im;
       };
       assets.nyx_ex = {
-        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps134'),
-        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps134'),
-        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps134'),
+        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps135'),
+        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps135'),
+        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps135'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -364,13 +364,13 @@ export class NyxEx extends Fighter {
 
     this._corneredTimer = 0;
     this._corneredThreshold = 1.5 + Math.random() * 1.0;
-    this._cornerTeleportCd = 5.50;
+    this._cornerTeleportCd = 6.20;
     return true;
   }
 
   _triggerCtrlZGlitchBlink(enemy, game) {
     if (this._advPureDodge || this.isDead) return false;
-    this._ctrlZCd = 4.2;
+    this._ctrlZCd = 4.8;
     const oldX = this.x;
     const dirAway = enemy ? (this.x >= enemy.x ? 1 : -1) : -this.facing;
     let targetX = this._clampArenaX(oldX + dirAway * 210, game);
@@ -394,6 +394,7 @@ export class NyxEx extends Fighter {
       this.facing = enemy.x >= this.x ? 1 : -1;
     }
     this.isInvulnerable = true;
+    this._farTeleportInvulnTimer = Math.max(this._farTeleportInvulnTimer || 0, 0.28);
     this.spawnAfterimage(oldX, this.groundY, this.facing, 6, 8, 0.28);
     this.fx?.spawn('nebulaPromptBurst', this._safeFxX(oldX, game), this.groundY - 84, { light: 1.16 });
     this.fx?.spawn('nebulaPromptBurst', this._safeFxX(this.x, game), this.groundY - 84, { light: 1.18 });
@@ -421,9 +422,9 @@ export class NyxEx extends Fighter {
     if (isDeploy) {
       this.spawnNebulaFloorSeal(this.x, this.groundY, 108, 0.64);
       this.spawnExParticle({ x: this.x, y: this.y - 84, shape: 'ring', size: 88, color: '#05ffa1', coreColor: '#fde047', maxLife: 0.34 });
-      this.heal(Math.round(this.maxHp * 0.14), 'COB GENESIS');
-      this.holoPatchShield = Math.max(this.holoPatchShield, 180);
-      this.holoPatchTimer = Math.max(this.holoPatchTimer, 5.5);
+      this.heal(Math.round(this.maxHp * 0.12), 'COB GENESIS');
+      this.holoPatchShield = Math.max(this.holoPatchShield, 136);
+      this.holoPatchTimer = Math.max(this.holoPatchTimer, 4.0);
       game?.vfx?.spawnDamageText?.(this.x, this.y - 168, 0, true, 'COB ASSIST: CREATOR LINK!', '#fde047');
 
       // Twin flanking Creator Command Galaxy Bursts framing targetX!
@@ -435,8 +436,8 @@ export class NyxEx extends Fighter {
     } else {
       if (game?.audio) game.audio.play('holy_bolt', aimX);
       // Silent sustain + Holo-Patch shield so ZERO burst/text appears over Nyx during periodic Cob Strikes!
-      this.hp = Math.min(this.maxHp, this.hp + 14);
-      this.holoPatchShield = Math.max(this.holoPatchShield, 45);
+      this.hp = Math.min(this.maxHp, this.hp + 10);
+      this.holoPatchShield = Math.max(this.holoPatchShield, 32);
       this.holoPatchTimer = Math.max(this.holoPatchTimer, 2.8);
       game?.vfx?.spawnDamageText?.(aimX, this.groundY - 172, 0, false, 'COB STRIKE!', '#ff2a6d');
 
@@ -455,7 +456,7 @@ export class NyxEx extends Fighter {
           maxLife: 0.38
         });
       }
-      this._applyRemoteNebulaStrike(aimX, 118, 34, game, enemy, {
+      this._applyRemoteNebulaStrike(aimX, 118, 29, game, enemy, {
         isCrit: false,
         knockX: 28,
         knockY: -36,
@@ -971,7 +972,7 @@ export class NyxEx extends Fighter {
     this.isDeflecting = true;
     this.vx = 0;
     this.y = this.groundY;
-    this.holoPatchShield = Math.max(this.holoPatchShield, 65);
+    this.holoPatchShield = Math.max(this.holoPatchShield, 46);
     this.holoPatchTimer = Math.max(this.holoPatchTimer, 2.2);
     this.spawnNebulaFloorSeal(this.x, this.groundY, 82, 0.60);
     this.fx?.spawn('nebulaPromptBurst', this._safeFxX(this.x, game), this.groundY - 76, { light: 1.15 });
@@ -1337,9 +1338,9 @@ export class NyxEx extends Fighter {
         vx: 72,
         vy: -78
       });
-      this.heal(42, 'AUTO-PATCH');
-      this.holoPatchShield = 110;
-      this.holoPatchTimer = 3.5;
+      this.heal(31, 'AUTO-PATCH');
+      this.holoPatchShield = 106;
+      this.holoPatchTimer = 2.9;
       this.spawnNebulaCluster(this.x, this.y - 96, 10, 145);
     }
 
@@ -1855,6 +1856,7 @@ export class NyxEx extends Fighter {
     if (
       isCobStageActive &&
       !this.isDead &&
+      !this.isBenched &&
       !this._advPureDodge &&
       this.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DEATH'
@@ -1863,7 +1865,7 @@ export class NyxEx extends Fighter {
       if (this._cobAssistCd <= 0) {
         const assistFoe = this._resolveRangedTarget(enemy, game, 920) || (enemy && !enemy.isDead ? enemy : null);
         if (assistFoe) {
-          this._cobAssistCd = 3.20;
+          this._cobAssistCd = 3.55;
           this._triggerCobCreatorAssist(assistFoe, game, false);
         }
       }
@@ -1886,6 +1888,7 @@ export class NyxEx extends Fighter {
     if (
       !this._advPureDodge &&
       !this.isDead &&
+      !this.isBenched &&
       this.state !== 'ULTIMATE' &&
       this.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DEATH' &&

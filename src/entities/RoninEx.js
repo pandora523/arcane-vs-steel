@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps135';
 
 const wrapStormPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -218,7 +218,7 @@ export class RoninEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Kaze-Maru EX',
-      maxHp: 3680,
+      maxHp: 3820,
       moveSpeed: 238,
       attackRange: 162,
       autoInterval: 0.88,
@@ -243,11 +243,11 @@ export class RoninEx extends Fighter {
     this.hasPoise = false;
 
     this.skillTriggerRange = 445;
-    this.skillMaxCooldown = 4.70;
+    this.skillMaxCooldown = 4.52;
     this.dodgeMaxCooldown = 3.40;
     this.dashMaxCooldown = 3.30;
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.48;
+    this._postFlurryInterval = 1.33;
     this.skillDuration = 0.94;
     this.ultDuration = 1.84;
     this.crouchDuration = 0.62;
@@ -1789,7 +1789,7 @@ export class RoninEx extends Fighter {
       if (!hitAny && enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 360) {
         enemy.takeDamage(102, this, true, 165 * dir, -205);
       }
-      this.heal(18, 'RAIJIN FOCUS');
+      this.heal(24, 'RAIJIN FOCUS');
     }
 
     if (t >= this.skillDuration) {
@@ -2006,7 +2006,7 @@ export class RoninEx extends Fighter {
         '#38bdf8'
       );
 
-      this.heal(22, 'SUSANOO FOCUS');
+      this.heal(28, 'SUSANOO FOCUS');
       const foes = this._gatherBattoTargets(enemy, game, 340, 340);
       let hitAny = false;
       for (const foe of foes) {
@@ -2452,12 +2452,12 @@ export class RoninEx extends Fighter {
       let hitFinisher = false;
       for (const foe of foes) {
         if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 265) {
-          foe.takeDamage(foe === focusEnemy ? 560 : 425, this, true, 255 * dashDir, -285);
+          foe.takeDamage(foe === focusEnemy ? 615 : 465, this, true, 255 * dashDir, -285);
           hitFinisher = true;
         }
       }
       if (!hitFinisher && focusEnemy && !focusEnemy.isDead) {
-        focusEnemy.takeDamage(560, this, true, 255 * dashDir, -285);
+        focusEnemy.takeDamage(615, this, true, 255 * dashDir, -285);
       }
     }
 

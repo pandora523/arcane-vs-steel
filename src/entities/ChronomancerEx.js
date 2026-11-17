@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps134';
+} from '../engine/shaders/chronoShaders.js?v=30fps135';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -170,7 +170,7 @@ export class ChronomancerEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Chronos EX',
-      maxHp: 3820,
+      maxHp: 3900,
       attackRange: 178,
       moveSpeed: 224,
       autoInterval: 0.92,
@@ -188,7 +188,7 @@ export class ChronomancerEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.44;
+    this._postFlurryInterval = 1.33;
     this.skillMaxCooldown = 4.58;
     this.skillCooldown = 1.25;
     this.skillDuration = 1.08;
@@ -1345,6 +1345,7 @@ export class ChronomancerEx extends Fighter {
     const inMidCombo =
       (this._aiComboCount || 0) > 0 && (this._aiComboChainTimer || 0) > 0;
     if (
+      !this.isBenched &&
       !this.isPlayerControlled &&
       !inMidCombo &&
       enemy &&
@@ -2095,7 +2096,7 @@ export class ChronomancerEx extends Fighter {
       this.spawnClockworkBurst(targetX, this.groundY - 98, 8, 'gold');
       this.spawnClockworkBurst(targetX, this.groundY - 98, 8, 'teal');
 
-      this.heal(38, 'PARADOX MEND');
+      this.heal(44, 'PARADOX MEND');
       game?.vfx?.spawnDamageText?.(
         targetX,
         this.groundY - 240,

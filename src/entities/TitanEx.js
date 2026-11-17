@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps134';
+} from '../engine/shaders/forgeShaders.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)
@@ -51,7 +51,7 @@ export class TitanEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Torgar EX',
-      maxHp: 4200,
+      maxHp: 4060,
       moveSpeed: 190,
       attackRange: 208,
       autoInterval: 0.99,
@@ -78,10 +78,10 @@ export class TitanEx extends Fighter {
     this.trueUltDuration = 3.80;
 
     this.skillTriggerRange = 465;
-    this.skillMaxCooldown = 5.25;
+    this.skillMaxCooldown = 5.50;
     this.dashMaxCooldown = 2.95;
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.50;
+    this._postFlurryInterval = 1.58;
     this.skillDuration = 0.96;
     this.ultDuration = 1.54;
     this.crouchDuration = 0.80;
@@ -323,7 +323,7 @@ export class TitanEx extends Fighter {
     this.crucibleStacks = 0;
     this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.58);
     this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.95);
-    this.heal(28, 'WORLD-BREAKER TEMPER');
+    this.heal(19, 'WORLD-BREAKER TEMPER');
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const obeliskX = Math.max(75, Math.min(ww - 75, targetX));
@@ -2334,7 +2334,7 @@ export class TitanEx extends Fighter {
           foe.vx = 0;
           foe.vy = 0;
         }
-        foe.takeDamage(735, this, true, ultDir * 120, 0);
+        foe.takeDamage(680, this, true, ultDir * 120, 0);
         if (!foe.isDead && !foe.isColossalBoss) {
           foe.y = foe.groundY;
           foe.vx = 0;

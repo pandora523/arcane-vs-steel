@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps134';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)
@@ -47,10 +47,10 @@ export class WarriorEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Aethelgard EX',
-      maxHp: 4060,
+      maxHp: 4020,
       attackRange: 178,
-      moveSpeed: 192,
-      autoInterval: 1.04,
+      moveSpeed: 195,
+      autoInterval: 1.01,
       lightColor: 'rgba(125, 211, 252, 1)',
       primaryColor: '#38bdf8',
       hasTrueUltimate: true,
@@ -65,10 +65,10 @@ export class WarriorEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.38;
+    this._postFlurryInterval = 1.35;
 
     this.skillName = 'DAWN-BREAKER TRINITY RUSH';
-    this.skillMaxCooldown = 4.6;
+    this.skillMaxCooldown = 4.52;
     this.skillCooldown = 1.2;
     this.skillDuration = 1.04;
     this.skillTriggerRange = 380;
@@ -687,6 +687,7 @@ export class WarriorEx extends Fighter {
     this.vx = 0;
     this.setState('CROUCH');
     if (game?.audio) game.audio.play('parry_clang', this.x);
+    if (!game?.isAdventureMode?.()) this.heal(13, 'AEGIS VOW');
     this.spawnVfxAnim(1, this.x + this.facing * 20, this.y - 78, 188, 188, 0.38, {
       flipX: this.facing < 0,
       glowColor: 'gold',
@@ -721,6 +722,7 @@ export class WarriorEx extends Fighter {
           if (game?.audio) game.audio.play('clang', proj.x);
           this.gainMana(14);
           this.gainFinisher(8);
+          if (!game?.isAdventureMode?.()) this.heal(11, 'SPELL PARRY');
           this.spawnHitStarburst(proj.x, proj.y, true, 1.15);
           this.spawnExParticles(proj.x, proj.y, 7, {
             shapes: ['star4', 'diamond'],
@@ -964,7 +966,7 @@ export class WarriorEx extends Fighter {
           extra: { radius: 34, width: 11, isGold: false }
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 28,
+          damage: 31,
           reachFront: 214,
           hitStop: 0.042,
           shakeDur: 0.055,
@@ -991,7 +993,7 @@ export class WarriorEx extends Fighter {
           foreground: false
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 30,
+          damage: 34,
           reachFront: 216,
           hitStop: 0.042,
           shakeDur: 0.058,
@@ -1010,7 +1012,7 @@ export class WarriorEx extends Fighter {
           extra: { radius: 34, width: 10.5, eccentricity: 0.34, isGold: false }
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 19,
+          damage: 21,
           reachFront: 214,
           hitStop: 0.032,
           shakeDur: 0.046,
@@ -1029,7 +1031,7 @@ export class WarriorEx extends Fighter {
           extra: { radius: 35, width: 11, eccentricity: 0.34, isGold: true }
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 22,
+          damage: 25,
           reachFront: 216,
           hitStop: 0.038,
           shakeDur: 0.052,
@@ -1057,7 +1059,7 @@ export class WarriorEx extends Fighter {
           foreground: false
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 24,
+          damage: 27,
           reachFront: 222,
           hitStop: 0.058,
           shakeDur: 0.082,
@@ -1070,7 +1072,7 @@ export class WarriorEx extends Fighter {
         this.fireDawnBladeWave(game, {
           x: slamX,
           y: this.groundY - 76,
-          damage: 26,
+          damage: 29,
           speed: 680,
           maxRange: 430,
           pierce: true,
@@ -1080,7 +1082,7 @@ export class WarriorEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.21) {
         this._beatHitMask |= 2;
         this._applyExviusStrike(enemy, game, {
-          damage: 16,
+          damage: 18,
           reachFront: 224,
           hitStop: 0,
           shakeDur: 0.045,
@@ -1093,7 +1095,7 @@ export class WarriorEx extends Fighter {
       if ((this._beatHitMask & 4) === 0 && t >= 0.26) {
         this._beatHitMask |= 4;
         this._applyExviusStrike(enemy, game, {
-          damage: 22,
+          damage: 24,
           reachFront: 226,
           hitStop: 0,
           shakeDur: 0.055,
@@ -1186,6 +1188,7 @@ export class WarriorEx extends Fighter {
       });
       game?.vfx?.spawnShockwave?.(this.x, this.groundY - 2, '#38bdf8', 96, 0.28);
       this.spawnPixelShockRing(this.x, this.groundY - 2, 86, true, 0.30);
+      if (!game?.isAdventureMode?.()) this.heal(20, 'DAWN SWORD-SEAL');
       game?.vfx?.spawnDamageText?.(this.x, this.y - 154, 0, false, 'DAWN SWORD-SEAL!', '#fde047');
     }
 
@@ -1253,7 +1256,7 @@ export class WarriorEx extends Fighter {
       });
       this.spawnPixelShockRing(p1X, this.groundY - 2, 68, false, 0.24);
       this._applyExviusStrike(enemy, game, {
-        damage: 24,
+        damage: 27,
         reachFront: 218,
         hitStop: 0.032,
         shakeDur: 0.048,
@@ -1276,7 +1279,7 @@ export class WarriorEx extends Fighter {
       });
       this.spawnPixelShockRing(p2X, this.groundY - 2, 76, true, 0.26);
       this._applyExviusStrike(enemy, game, {
-        damage: 26,
+        damage: 29,
         reachFront: 220,
         hitStop: 0.032,
         shakeDur: 0.048,
@@ -1298,7 +1301,7 @@ export class WarriorEx extends Fighter {
         foreground: true
       });
       this._applyExviusStrike(enemy, game, {
-        damage: 28,
+        damage: 31,
         reachFront: 222,
         hitStop: 0.036,
         shakeDur: 0.052,
@@ -1385,7 +1388,7 @@ export class WarriorEx extends Fighter {
       game?.vfx?.spawnDamageText?.(pillarX, this.groundY - 178, 0, true, 'SOVEREIGN SKY-PILLAR!', '#fde047');
 
       this._applyExviusStrike(enemy, game, {
-        damage: 46,
+        damage: 52,
         reachFront: 232,
         hitStop: 0.052,
         shakeDur: 0.075,
@@ -1398,7 +1401,7 @@ export class WarriorEx extends Fighter {
       this.fireDawnBladeWave(game, {
         x: pillarX,
         y: this.groundY - 78,
-        damage: 28,
+        damage: 31,
         speed: 700,
         maxRange: 460,
         isGold: true
@@ -1523,7 +1526,7 @@ export class WarriorEx extends Fighter {
         extra: { radius: 38, width: 12, isGold: cut.gold }
       });
       this._applyExviusStrike(enemy, game, {
-        damage: 30,
+        damage: 32,
         reachFront: 245,
         reachBack: 145,
         hitStop: 0.028,
@@ -1558,6 +1561,7 @@ export class WarriorEx extends Fighter {
 
       if (!this._ultDidPlunge) {
         this._ultDidPlunge = true;
+        if (!game?.isAdventureMode?.()) this.heal(22, 'SANCTUARY GRACE');
         const impactX = this._clampArenaX(tx, game);
         if (game?.audio) game.audio.play('thunder_slam', impactX);
         game?.renderer?.triggerShake?.(18, 0.36);
@@ -1626,7 +1630,7 @@ export class WarriorEx extends Fighter {
         });
 
         this._applyExviusStrike(enemy, game, {
-          damage: 78,
+          damage: 90,
           reachFront: 265,
           reachBack: 150,
           hitStop: 0.056,
@@ -1640,7 +1644,7 @@ export class WarriorEx extends Fighter {
         this.fireDawnBladeWave(game, {
           x: impactX,
           y: this.groundY - 80,
-          damage: 38,
+          damage: 40,
           speed: 740,
           maxRange: 540,
           isUltimate: true,
@@ -1799,7 +1803,7 @@ export class WarriorEx extends Fighter {
           extra: { radius: 40, width: 12.5, isGold: s.gold }
         });
         this._applyExviusStrike(enemy, game, {
-          damage: 24,
+          damage: 25,
           reachFront: 280,
           reachBack: 180,
           hitStop: 0.022,
@@ -1859,6 +1863,7 @@ export class WarriorEx extends Fighter {
 
     if (this._trueUltStage < 4) {
       this._trueUltStage = 4;
+      this.heal(Math.round(this.maxHp * 0.11), 'EXVIUS DAWN');
       const beamX = this._clampArenaX(tx, game);
       if (game?.audio) game.audio.play('thunder_slam', beamX);
       game?.renderer?.triggerShake?.(24, 0.48);
@@ -1936,7 +1941,7 @@ export class WarriorEx extends Fighter {
         foreground: true
       });
       this._applyExviusStrike(enemy, game, {
-        damage: 142,
+        damage: 355,
         reachFront: 340,
         reachBack: 240,
         hitStop: 0.065,
@@ -2151,6 +2156,7 @@ export class WarriorEx extends Fighter {
 
     const inMidCombo = (this._aiComboCount || 0) > 0 && (this._aiComboChainTimer || 0) > 0;
     if (
+      !this.isBenched &&
       !this.isPlayerControlled &&
       !inMidCombo &&
       enemy &&

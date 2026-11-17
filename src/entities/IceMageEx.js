@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
 import {
   GLACIAL_EFFECT_REGISTRY,
   GLACIAL_CRYO_PALETTE,
   BOREALIS_PRISM_PALETTE
-} from '../engine/shaders/glacialShaders.js?v=30fps134';
+} from '../engine/shaders/glacialShaders.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.35s): Borealis Snowflake Circle -> 'cryo_shard' Diamond Comet -> snaps at F03 (63)
@@ -126,7 +126,7 @@ export class IceMageEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Lyra EX',
-      maxHp: 3820,
+      maxHp: 3810,
       attackRange: 510,
       moveSpeed: 196,
       autoInterval: 0.96,
@@ -145,10 +145,10 @@ export class IceMageEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.32;
+    this._postFlurryInterval = 1.28;
 
     this.skillName = 'BOREALIS PRISM JAWS';
-    this.skillMaxCooldown = 4.65;
+    this.skillMaxCooldown = 4.55;
     this.skillCooldown = 1.10;
     this.skillDuration = 1.06;
     this.skillTriggerRange = 520;
@@ -266,9 +266,9 @@ export class IceMageEx extends Fighter {
         return img;
       };
       assets.icemage_ex = {
-        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps134'),
-        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps134'),
-        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps134'),
+        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps135'),
+        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps135'),
+        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps135'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -608,16 +608,24 @@ export class IceMageEx extends Fighter {
    * Stacks Hoarfrost Rime on ranged cryo hits; at 4 stacks encases foe in a translucent Row-6
    * Crystal Sarcophagus (`0.44s` solid freeze stun), deals crit shatter damage, and heals `+14 HP`!
    */
-  applyBrittleFrost(enemy, game, stacksToAdd = 1) {
+  applyBrittleFrost(enemy, arg2, arg3 = 1) {
     if (!enemy || enemy.isDead) return;
-    enemy.brittleStacks = (enemy.brittleStacks || 0) + stacksToAdd;
+    const isArg2Num = typeof arg2 === 'number';
+    const game = isArg2Num ? arg3 : arg2;
+    const stacksToAdd = isArg2Num ? arg2 : typeof arg3 === 'number' ? arg3 : 1;
+    const activeG = game || this.game;
+    const isAdv = Boolean(activeG?.isAdventureMode?.());
+    const now = activeG?.matchTime || 0;
+    if (!isAdv && now > 0 && enemy._nextBrittleAt && now < enemy._nextBrittleAt) return;
+    const curStacks = Number.isFinite(enemy.brittleStacks) ? enemy.brittleStacks : 0;
+    enemy.brittleStacks = curStacks + stacksToAdd;
     enemy.brittleDecayTimer = 5.6;
 
     if (enemy.brittleStacks >= 4) {
-      this.triggerBrittleShatter(enemy, game || this.game, enemy.x, enemy.y - 88);
-    } else if (game?.vfx) {
+      this.triggerBrittleShatter(enemy, activeG, enemy.x, enemy.y - 88);
+    } else if (activeG?.vfx) {
       const sCount = Math.min(3, enemy.brittleStacks);
-      game.vfx.spawnDamageText(
+      activeG.vfx.spawnDamageText(
         enemy.x,
         enemy.y - 148,
         0,
@@ -630,11 +638,17 @@ export class IceMageEx extends Fighter {
 
   triggerBrittleShatter(enemy, game, _originX, _originY) {
     if (!enemy || enemy.isDead) return;
+    const activeG = game || this.game;
+    const isAdv = Boolean(activeG?.isAdventureMode?.());
+    const is2v2 = Boolean(activeG?.is2v2Mode?.());
+    if (!isAdv && (activeG?.matchTime || 0) > 0) {
+      enemy._nextBrittleAt = activeG.matchTime + (is2v2 ? 3.20 : 1.50);
+    }
     enemy.brittleStacks = 0;
     enemy.brittleDecayTimer = 0;
 
     const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
-    const shatterDmg = isVanguard ? 46 : 52;
+    const shatterDmg = isAdv ? (isVanguard ? 46 : 52) : (isVanguard ? 34 : 38);
     enemy.takeDamage(shatterDmg, this, true, 68, -82);
 
     if (
@@ -643,7 +657,7 @@ export class IceMageEx extends Fighter {
       !enemy.isDead &&
       !enemy.isColossalBoss
     ) {
-      enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.44);
+      enemy.stunTimer = Math.max(enemy.stunTimer || 0, isAdv ? 0.44 : 0.34);
       enemy.vx *= 0.15;
     }
 
@@ -656,7 +670,7 @@ export class IceMageEx extends Fighter {
       maxLife: 0.50
     });
 
-    this.heal(14, 'CRYO MIRROR SHIELD');
+    this.heal(isAdv ? 19 : 13, 'CRYO MIRROR SHIELD');
     this.spawnDiamondShardBurst(enemy.x, enemy.y - 96, 12, 210, true);
 
     if (game) {
@@ -1261,7 +1275,7 @@ export class IceMageEx extends Fighter {
         this.fireCryoShardBurst(game, {
           x: castX,
           y: this.y - 92,
-          damage: 34,
+          damage: 38,
           speed: 760,
           maxRange: 590,
           frostStacks: 1,
@@ -1288,7 +1302,7 @@ export class IceMageEx extends Fighter {
         this._beatHitMask |= 2;
         game?.audio?.play?.('prism_beam', enemy ? enemy.x : this.x + this.facing * 320);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
-          enemy.takeDamage(18, this, false, 16, -28);
+          enemy.takeDamage(21, this, false, 16, -28);
           enemy._hitShakeTimer = Math.max(enemy._hitShakeTimer || 0, 0.048);
           this.spawnDiamondShardBurst(enemy.x, enemy.y - 88, 6, 150, true);
         }
@@ -1302,7 +1316,7 @@ export class IceMageEx extends Fighter {
         this.fireCryoShardBurst(game, {
           x: this.x + this.facing * 72,
           y: Math.min(this.groundY - 82, this.y - 62),
-          damage: 28,
+          damage: 31,
           speed: 780,
           maxRange: 595,
           frostStacks: 1,
@@ -1407,13 +1421,14 @@ export class IceMageEx extends Fighter {
       const cx = this.glacierJaws ? this.glacierJaws.centerX : targetCenter;
       const foes = this._gatherZoneTargets(enemy, game, cx, 195);
       for (const foe of foes) {
+        const isPrimary = foe === enemy || Boolean(game?.isAdventureMode?.());
         if (!foe.isColossalBoss) {
           foe.x += (cx - foe.x) * 0.28;
           foe.vx *= 0.2;
         }
-        foe.takeDamage(24, this, false, 12, -24);
+        foe.takeDamage(isPrimary ? 27 : 19, this, false, 12, -24);
         foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.048);
-        this.applyBrittleFrost(foe, game, 1);
+        if (isPrimary) this.applyBrittleFrost(foe, game, 1);
       }
       this.spawnAuroraGlint(cx, this.groundY - 96, 10, '#67e8f9', 0.24);
     }
@@ -1436,6 +1451,7 @@ export class IceMageEx extends Fighter {
     // Step 3 (t = 0.60s): Twin Monoliths SLAM Inward -> Shattering Diamond-Lotus Nova!
     if ((this._skillStepMask & 4) === 0 && t >= 0.60) {
       this._skillStepMask |= 4;
+      if (!game?.isAdventureMode?.()) this.heal(15, 'BOREALIS PRISM');
       const slamX = this.glacierJaws ? this.glacierJaws.centerX : targetCenter;
       if (this.glacierJaws) this.glacierJaws.slammed = true;
 
@@ -1451,9 +1467,10 @@ export class IceMageEx extends Fighter {
       const foes = this._gatherZoneTargets(enemy, game, slamX, 205);
       let hitAny = false;
       for (const foe of foes) {
-        foe.takeDamage(62, this, true, 88, -142);
+        const isPrimary = foe === enemy || Boolean(game?.isAdventureMode?.());
+        foe.takeDamage(isPrimary ? 74 : 52, this, true, 88, -142);
         foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.075);
-        this.applyBrittleFrost(foe, game, 2);
+        this.applyBrittleFrost(foe, game, isPrimary ? 2 : 1);
         hitAny = true;
       }
       if (hitAny) {
@@ -1589,10 +1606,11 @@ export class IceMageEx extends Fighter {
           this.spawnSnowflakeBurst(sw.x, this.groundY - 28, 4, 110, sw.isAurora);
           const foes = this._gatherZoneTargets(enemy, game, cx, 225);
           for (const foe of foes) {
+            const isPrimary = foe === enemy || Boolean(game?.isAdventureMode?.());
             if (!foe.isColossalBoss) {
               foe.x += (cx - foe.x) * 0.18;
             }
-            foe.takeDamage(18, this, i % 2 === 1, 8, -18);
+            foe.takeDamage(isPrimary ? 20 : 15, this, i % 2 === 1, 8, -18);
             foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.044);
           }
         }
@@ -1622,8 +1640,9 @@ export class IceMageEx extends Fighter {
 
       const foes = this._gatherZoneTargets(enemy, game, cx, 250);
       for (const foe of foes) {
-        foe.takeDamage(96, this, true, 148, -168);
-        this.applyBrittleFrost(foe, game, 2);
+        const isPrimary = foe === enemy || Boolean(game?.isAdventureMode?.());
+        foe.takeDamage(isPrimary ? 108 : 76, this, true, 148, -168);
+        this.applyBrittleFrost(foe, game, isPrimary ? 2 : 1);
       }
     }
 
@@ -2022,9 +2041,10 @@ export class IceMageEx extends Fighter {
 
       for (const foe of targets) {
         if (foe && !foe.isDead) {
+          const isPrimary = foe === enemy || Boolean(game?.isAdventureMode?.());
           foe.chronoTimeStopTimer = 0;
           foe.brittleStacks = 0;
-          foe.takeDamage(675, this, true, 320, -250);
+          foe.takeDamage(isPrimary ? 690 : 535, this, true, 320, -250);
         }
       }
     }
@@ -2108,7 +2128,7 @@ export class IceMageEx extends Fighter {
         ch.y = ch.startY + (ch.apexY - ch.startY) * ease - Math.sin(uOut * Math.PI) * 26;
         if (!ch.hitOut && enemy && !enemy.isDead && Math.abs(enemy.x - ch.x) <= 78) {
           ch.hitOut = true;
-          enemy.takeDamage(26, this, false, 20, 0);
+          enemy.takeDamage(29, this, false, 20, 0);
           enemy._hitShakeTimer = Math.max(enemy._hitShakeTimer || 0, 0.052);
           this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.036);
           this.applyBrittleFrost(enemy, game, 1);
@@ -2120,12 +2140,12 @@ export class IceMageEx extends Fighter {
         ch.y = ch.apexY + (this.y - 88 - ch.apexY) * uBack + Math.sin(uBack * Math.PI) * 22;
         if (!ch.hitBack && enemy && !enemy.isDead && Math.abs(enemy.x - ch.x) <= 78) {
           ch.hitBack = true;
-          enemy.takeDamage(20, this, false, -16, 0);
+          enemy.takeDamage(22, this, false, -16, 0);
           this.spawnSnowflakeBurst(ch.x, ch.y, 5, 120, true);
         }
         if (!ch.caught && uBack >= 0.88) {
           ch.caught = true;
-          this.heal(7, 'CHAKRAM RETURN');
+          this.heal(9, 'CHAKRAM RETURN');
         }
       }
       if (ch.moteAcc >= 0.055) {
@@ -2314,6 +2334,7 @@ export class IceMageEx extends Fighter {
     );
     if (
       !this.isDead &&
+      !this.isBenched &&
       !isManualPlayer &&
       enemy &&
       !enemy.isDead &&

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps134';
+} from '../engine/shaders/cyberShaders.js?v=30fps135';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -169,7 +169,7 @@ export class AndroidEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'VEX-09 EX',
-      maxHp: 3920,
+      maxHp: 3980,
       moveSpeed: 232,
       attackRange: 178,
       autoInterval: 0.94,
@@ -189,10 +189,10 @@ export class AndroidEx extends Fighter {
     this.allowV2Cross = false;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.42;
+    this._postFlurryInterval = 1.25;
 
     this.skillName = 'SINGULARITY FUNNEL OVERDRIVE';
-    this.skillMaxCooldown = 4.35;
+    this.skillMaxCooldown = 4.08;
     this.skillCooldown = 1.15;
     this.skillDuration = 0.98;
     this.skillTriggerRange = 450;
@@ -287,9 +287,9 @@ export class AndroidEx extends Fighter {
         return img;
       };
       assets.android_ex = {
-        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps134'),
-        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps134'),
-        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps134'),
+        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps135'),
+        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps135'),
+        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps135'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -665,6 +665,12 @@ export class AndroidEx extends Fighter {
       return;
     }
 
+    if ((this.shieldHp || 0) > 0 && amount > 0 && !this.game?.isAdventureMode?.()) {
+      const abs = Math.min(this.shieldHp, Math.round(amount));
+      this.shieldHp -= abs;
+      amount = Math.max(0, amount - abs);
+      if (amount <= 0) return;
+    }
     super.takeDamage(amount, attacker, isCrit, knockX, knockY);
 
     if (this.isDead && !this._deathSparksTriggered) {
@@ -1111,7 +1117,7 @@ export class AndroidEx extends Fighter {
           light: 1.12
         });
         this._applyOdachiStrike(enemy, game, {
-          damage: 28,
+          damage: 37,
           reachFront: 218,
           hitStop: 0.044,
           shakeDur: 0.056,
@@ -1135,7 +1141,7 @@ export class AndroidEx extends Fighter {
         });
         this.fireFinFunnelVolley(enemy, game, 1, 10);
         this._applyOdachiStrike(enemy, game, {
-          damage: 28,
+          damage: 37,
           reachFront: 220,
           hitStop: 0.046,
           shakeDur: 0.058,
@@ -1157,7 +1163,7 @@ export class AndroidEx extends Fighter {
           light: 1.12
         });
         this._applyOdachiStrike(enemy, game, {
-          damage: 20,
+          damage: 27,
           reachFront: 218,
           hitStop: 0.044,
           shakeDur: 0.048,
@@ -1173,7 +1179,7 @@ export class AndroidEx extends Fighter {
         this._beatHitMask |= 2;
         this.fireFinFunnelVolley(enemy, game, 2, 12);
         this._applyOdachiStrike(enemy, game, {
-          damage: 22,
+          damage: 29,
           reachFront: 220,
           hitStop: 0.046,
           shakeDur: 0.054,
@@ -1197,7 +1203,7 @@ export class AndroidEx extends Fighter {
           foreground: false
         });
         this._applyOdachiStrike(enemy, game, {
-          damage: 25,
+          damage: 33,
           reachFront: 224,
           hitStop: 0.060,
           shakeDur: 0.084,
@@ -1212,7 +1218,7 @@ export class AndroidEx extends Fighter {
         this.fireCyberDiscChakram(game, {
           x: slamX,
           y: this.groundY - 78,
-          damage: 26,
+          damage: 35,
           speed: 700,
           maxRange: 460,
           pierce: true
@@ -1221,7 +1227,7 @@ export class AndroidEx extends Fighter {
       if ((this._beatHitMask & 2) === 0 && t >= 0.21) {
         this._beatHitMask |= 2;
         this._applyOdachiStrike(enemy, game, {
-          damage: 16,
+          damage: 22,
           reachFront: 226,
           hitStop: 0,
           shakeDur: 0.046,
@@ -1236,7 +1242,7 @@ export class AndroidEx extends Fighter {
       if ((this._beatHitMask & 4) === 0 && t >= 0.26) {
         this._beatHitMask |= 4;
         this._applyOdachiStrike(enemy, game, {
-          damage: 22,
+          damage: 29,
           reachFront: 228,
           hitStop: 0,
           shakeDur: 0.056,
@@ -1382,7 +1388,7 @@ export class AndroidEx extends Fighter {
         });
       }
       this._applyOdachiStrike(enemy, game, {
-        damage: 28,
+        damage: 37,
         reachFront: 222,
         hitStop: 0.036,
         shakeDur: 0.050,
@@ -1435,7 +1441,7 @@ export class AndroidEx extends Fighter {
         }
       );
       this._applyOdachiStrike(enemy, game, {
-        damage: 28,
+        damage: 37,
         reachFront: 224,
         hitStop: 0.038,
         shakeDur: 0.054,
@@ -1468,10 +1474,10 @@ export class AndroidEx extends Fighter {
         foreground: true
       });
       this.spawnCyberHexBurst(empX, this.groundY - 86, 10, true);
-      this.shieldHp = Math.min(260, (this.shieldHp || 0) + 32);
-      this.heal(32, 'SINGULARITY SHIELD');
+      this.shieldHp = Math.min(260, (this.shieldHp || 0) + 46);
+      this.heal(38, 'SINGULARITY SHIELD');
       this._applyOdachiStrike(enemy, game, {
-        damage: 48,
+        damage: 66,
         reachFront: 236,
         hitStop: 0.052,
         shakeDur: 0.076,
@@ -1664,7 +1670,7 @@ export class AndroidEx extends Fighter {
           if (!foe.isColossalBoss) {
             foe.x += (this._ultFocusX - foe.x) * 0.28;
           }
-          foe.takeDamage(34, this, false, 24, 0);
+          foe.takeDamage(43, this, false, 24, 0);
           foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.05);
         }
       }
@@ -1726,7 +1732,7 @@ export class AndroidEx extends Fighter {
       const foes = this.getEnemyTargets(enemy, game);
       for (const foe of foes) {
         if (Math.abs(foe.x - this._ultFocusX) <= 370 || foe === enemy) {
-          foe.takeDamage(148, this, true, 200, -180);
+          foe.takeDamage(176, this, true, 200, -180);
           this.spawnHitStarburst(foe.x, foe.y - 94, true, 0.24);
         }
       }
@@ -2030,7 +2036,7 @@ export class AndroidEx extends Fighter {
 
       for (const foe of targets) {
         if (!foe.isDead) {
-          foe.takeDamage(705, this, true, 330, -270);
+          foe.takeDamage(740, this, true, 330, -270);
           this.fx?.spawn('rgbGlitchTear', this._safeFxX(foe.x, game), this._safeFxY(foe.groundY || this.groundY), {
             follow: foe,
             offsetX: 0,
@@ -2168,6 +2174,7 @@ export class AndroidEx extends Fighter {
 
     if (
       !this.isDead &&
+      !this.isBenched &&
       !this.isPlayerControlled &&
       this.crouchCooldown <= 0 &&
       (this.state === 'IDLE' || this.state === 'WALK') &&

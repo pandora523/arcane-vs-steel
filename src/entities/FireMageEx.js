@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps134';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps134';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps134';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps134';
+import { Fighter } from './Fighter.js?v=30fps135';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps135';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps135';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps135';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps135';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -54,7 +54,7 @@ export class FireMageEx extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Ignis Sol EX',
-      maxHp: 3780,
+      maxHp: 3690,
       attackRange: 520,
       moveSpeed: 168,
       autoInterval: 0.98,
@@ -72,10 +72,10 @@ export class FireMageEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.48;
+    this._postFlurryInterval = 1.52;
 
     this.skillName = 'SOLAR TRINITY CATACLYSM';
-    this.skillMaxCooldown = 4.20;
+    this.skillMaxCooldown = 4.48;
     this.skillCooldown = 1.10;
     this.skillDuration = 1.08;
     this.skillTriggerRange = 520;
@@ -1222,7 +1222,8 @@ export class FireMageEx extends Fighter {
           theme: 'arcane',
           delay: 0.02,
           maxLife: 0.82,
-          scaleWidth: 0.88
+          scaleWidth: 0.88,
+          tickDamage: 10
         });
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
           light: 1.26,
@@ -1430,7 +1431,8 @@ export class FireMageEx extends Fighter {
           theme: 'arcane',
           delay: delays[i],
           maxLife: i === 1 ? 1.44 : 1.24,
-          scaleWidth: widths[i]
+          scaleWidth: widths[i],
+          tickDamage: 17
         });
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
           light: i === 1 ? 1.34 : 1.20,
@@ -1476,7 +1478,7 @@ export class FireMageEx extends Fighter {
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 56,
+          damage: 50,
           type: 'fireball',
           isMeteor: false
         });
@@ -1645,7 +1647,8 @@ export class FireMageEx extends Fighter {
           delay: idx === 1 ? 0.02 : 0.10,
           maxLife: 1.08,
           scaleWidth: idx === 1 ? 1.14 : 0.80,
-          isUltimate: true
+          isUltimate: true,
+          tickDamage: 18
         });
         this.fx?.spawn('hellfireSolarPillar', px, this.groundY - 4, {
           light: idx === 1 ? 1.36 : 1.22,
@@ -1996,11 +1999,11 @@ export class FireMageEx extends Fighter {
         game?.vfx?.spawnBurst(targetX, this.groundY - 24, 44, '#ea580c', 420, { upBias: 185, size: 9 });
         game?.vfx?.spawnGlyphBurst?.(targetX, this.groundY - 72, 16, 'arcane');
 
-        this.heal(Math.round(this.maxHp * 0.14), 'ASTRAL LEY-WARD');
+        this.heal(Math.round(this.maxHp * 0.12), 'ASTRAL LEY-WARD');
         const enemies = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
         for (const cand of enemies) {
           if (cand && !cand.isDead && !cand.isBenched) {
-            cand.takeDamage(760, this, true, 320, -380);
+            cand.takeDamage(725, this, true, 320, -380);
           }
         }
 
@@ -2110,6 +2113,7 @@ export class FireMageEx extends Fighter {
 
     const inMidCombo = (this._aiComboCount || 0) > 0 && (this._aiComboChainTimer || 0) > 0;
     if (
+      !this.isBenched &&
       !this.isPlayerControlled &&
       !inMidCombo &&
       enemy &&
@@ -2151,9 +2155,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps134'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps134'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps134'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps135'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps135'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps135'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
