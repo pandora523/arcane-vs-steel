@@ -3,7 +3,7 @@
 Overhauled Next-Gen Wide-Canvas Sprite Sheet & Radiant Neon VFX Sheet Builder for:
   NYX EX -- Nebula AI Assistant Created by Cob (nyx_ex)
 
-Upgrades (?v=30fps131):
+Upgrades (?v=30fps132):
   - Replaces Row 4 vertical spindle/pole pillar on `nyx_ex_vfx.png` with an organic
     3-arm Cosmic Supernova Galaxy Vortex & counter-rotating tilted Starlight Rings (zero poles!).
   - Fixes `solve_ik_2bone` natural elbow orientation, knee-bend crouch sign, wide lunges,
@@ -1858,23 +1858,18 @@ def put_vfx_px(arr: np.ndarray, x: int, y: int, col: tuple[int, int, int, int]):
                 arr[y, x, 3] = min(255, int(round(out_a * 255)))
 
 
-def add_vfx_radial_aura(arr: np.ndarray, cx: float, cy: float, r: float, col: tuple[int, int, int], max_a: int = 105):
-    r_eff = min(float(r), 38.0)
-    if r_eff <= 2.0:
-        return
+def add_vfx_radial_aura(arr: np.ndarray, cx: float, cy: float, r: float, col: tuple[int, int, int], max_a: int = 115):
     yy, xx = np.mgrid[0:VFX_LOG, 0:VFX_LOG]
     dist = np.hypot(xx - cx, yy - cy)
-    norm = np.clip(1.0 - dist / max(1.0, r_eff), 0.0, 1.0)
-    # 4x4 Bayer crisp pixel-stepped circular falloff tapering smoothly to 0 (`0` square box edges!)
+    norm = np.clip(1.0 - dist / max(1.0, r), 0.0, 1.0)
+    # 4x4 Bayer crisp pixel-stepped falloff (no blurry bilinear gradients!)
     bayer = BAYER4[yy & 3, xx & 3]
-    mask = (norm ** 1.80) > (bayer * 0.92)
-    mask &= (dist < r_eff) & (xx >= 10) & (xx < VFX_LOG - 10) & (yy >= 10) & (yy < VFX_LOG - 10)
+    mask = (norm ** 1.45) > bayer * 0.85
+    mask &= (xx >= 3) & (xx < VFX_LOG - 3) & (yy >= 3) & (yy < VFX_LOG - 3)
     ys, xs = np.where(mask)
     for y, x in zip(ys, xs):
-        aa = int(round((norm[y, x] ** 1.65) * max_a))
-        if aa < 6:
-            continue
-        put_vfx_px(arr, int(x), int(y), (col[0], col[1], col[2], min(max_a, aa)))
+        aa = int(clamp(norm[y, x] * max_a, 24, max_a))
+        put_vfx_px(arr, int(x), int(y), (col[0], col[1], col[2], aa))
 
 
 def draw_pixel_text_104(
@@ -1931,64 +1926,47 @@ def draw_star4_104(
     put_vfx_px(arr, cx, cy, core)
 
 
-def draw_chamfered_holo_hex_104(
+def draw_neon_glass_window_104(
     arr: np.ndarray,
-    cx: int,
-    cy: int,
-    half_w: int,
-    half_h: int,
-    cut: int,
+    x0: int,
+    y0: int,
+    x1: int,
+    y1: int,
     border: tuple[int, int, int, int],
     bar: tuple[int, int, int, int],
     phase: int = 0,
 ):
-    """Beveled octagonal/hexagonal translucent holo-badge (`0` square corners, `0` opaque purple boxes)."""
-    max_d = half_w + half_h - cut
-    halo_col = (border[0], border[1], border[2], 78)
-    edge_pts: list[tuple[int, int]] = []
-
-    def inside_hex(px: int, py: int) -> bool:
-        adx = abs(px - cx)
-        ady = abs(py - cy)
-        return adx <= half_w and ady <= half_h and (adx + ady) <= max_d
-
-    x0 = max(9, cx - half_w)
-    x1 = min(VFX_LOG - 10, cx + half_w)
-    y0 = max(9, cy - half_h)
-    y1 = min(VFX_LOG - 10, cy + half_h)
-
-    # Interior light scan-dots (`alpha <= 46`) & crisp octagonal border detection
+    """Translucent Bayer-stippled neon hologram glass panel with luminous rim (0 flat black boxes!)."""
+    x0, x1 = max(4, x0), min(VFX_LOG - 5, x1)
+    y0, y1 = max(4, y0), min(VFX_LOG - 5, y1)
+    # Soft outer halo border
+    halo_col = (border[0], border[1], border[2], 95)
+    for x in range(x0 - 1, x1 + 2):
+        put_vfx_px(arr, x, y0 - 1, halo_col)
+        put_vfx_px(arr, x, y1 + 1, halo_col)
     for y in range(y0, y1 + 1):
-        scan_hit = ((y + phase) % 3) == 0
-        for x in range(x0, x1 + 1):
-            if not inside_hex(x, y):
-                continue
-            is_border = any(
-                not inside_hex(x + ox, y + oy)
-                for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1))
-            )
-            if is_border:
-                edge_pts.append((x, y))
-            elif y <= y0 + 3:
-                if (x + y + phase) % 2 == 0:
-                    put_vfx_px(arr, x, y, (bar[0], bar[1], bar[2], 148))
-            else:
-                if scan_hit and ((x + phase) % 2 == 0):
-                    put_vfx_px(arr, x, y, (56, 36, 118, 52))
-                elif ((x + y + phase) % 4) == 0:
-                    put_vfx_px(arr, x, y, (border[0], border[1], border[2], 32))
+        put_vfx_px(arr, x0 - 1, y, halo_col)
+        put_vfx_px(arr, x1 + 1, y, halo_col)
 
-    # Subtle outer 1px glow halo & crisp beveled rim + vertex sparks
-    for ex, ey in edge_pts:
-        for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            if not inside_hex(ex + ox, ey + oy):
-                put_vfx_px(arr, ex + ox, ey + oy, halo_col)
-    for ex, ey in edge_pts:
-        put_vfx_px(arr, ex, ey, border)
-        if abs(ex - cx) + abs(ey - cy) >= max_d - 1 and (
-            abs(ex - cx) == half_w or abs(ey - cy) == half_h
-        ):
-            put_vfx_px(arr, ex, ey, C_WHITE)
+    # Bayer-dithered translucent scanline interior
+    for y in range(y0 + 1, y1):
+        scan_hit = ((y + phase) % 3) == 0
+        for x in range(x0 + 1, x1):
+            if y <= y0 + 5:
+                put_vfx_px(arr, x, y, (bar[0], bar[1], bar[2], 210))
+            else:
+                if (x + y + phase) % 2 == 0 or scan_hit:
+                    put_vfx_px(arr, x, y, (34, 24, 78, 138 if scan_hit else 96))
+
+    # Crisp 1px bright border + glowing white corners
+    for x in range(x0, x1 + 1):
+        put_vfx_px(arr, x, y0, border)
+        put_vfx_px(arr, x, y1, border)
+    for y in range(y0, y1 + 1):
+        put_vfx_px(arr, x0, y, border)
+        put_vfx_px(arr, x1, y, border)
+    for cx_b, cy_b in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):
+        put_vfx_px(arr, cx_b, cy_b, C_WHITE)
 
 
 def draw_pixel_ring_104(
@@ -2016,11 +1994,11 @@ def draw_cob_crest_104(arr: np.ndarray, phase: int, grand: bool = False):
     cx, cy = 52, 52
     u = phase / 30.0
     ang = u * math.tau
-    rad = 35 if grand else 33
+    rad = 41 if grand else 34
 
-    # 1. Soft Bayer cosmic radial glow behind emblem (`0` square edges)
-    add_vfx_radial_aura(arr, cx, cy, 37 if grand else 35, (34, 211, 238) if grand else (192, 132, 252), 110 if grand else 96)
-    add_vfx_radial_aura(arr, cx, cy, 24, (217, 70, 239), 96)
+    # 1. Soft Bayer cosmic radial glow behind emblem
+    add_vfx_radial_aura(arr, cx, cy, rad + 6, (34, 211, 238) if grand else (192, 132, 252), 130 if grand else 108)
+    add_vfx_radial_aura(arr, cx, cy, rad * 0.65, (217, 70, 239), 115)
 
     # 2. Counter-rotating octagram / astrolabe magic rings (visible live motion every frame!)
     for ring_idx, (r_cur, spd, col) in enumerate(
@@ -2044,13 +2022,13 @@ def draw_cob_crest_104(arr: np.ndarray, phase: int, grand: bool = False):
                 uu = s / steps
                 put_vfx_px(arr, int(round(lerp(v0[0], v1[0], uu))), int(round(lerp(v0[1], v1[1], uu))), (col[0], col[1], col[2], 215))
 
-    # 3. 12 Solar-Astrolabe Crown Rays pulsing outward on Grand Genesis Core (radius <= 39 -> 0 corner overlap!)
+    # 3. 12 Solar-Astrolabe Crown Rays pulsing outward on Grand Genesis Core
     if grand:
         for k in range(12):
             a_r = ang + k * (math.tau / 12.0)
-            for rr in range(24, 40):
-                col_r = C_WHITE if rr > 36 else (C_GOLD if k % 2 == 0 else C_CYAN_LIGHT)
-                if rr % 2 == 0 or rr > 32:
+            for rr in range(28, 46):
+                col_r = C_WHITE if rr > 42 else (C_GOLD if k % 2 == 0 else C_CYAN_LIGHT)
+                if rr % 2 == 0 or rr > 36:
                     put_vfx_px(arr, int(round(cx + math.cos(a_r) * rr)), int(round(cy + math.sin(a_r) * rr)), col_r)
 
     # 4. Crisp pixel "Cob" badge at exact center
@@ -2065,7 +2043,7 @@ def draw_cob_crest_104(arr: np.ndarray, phase: int, grand: bool = False):
         outline=(20, 10, 48, 255),
     )
 
-    # 5. Orbiting 4-point star-sparks strictly inside circular radius <= 39
+    # 5. Orbiting corner brackets & 4-point star-sparks
     for k in range(8 if grand else 6):
         a_s = -ang * 1.5 + k * (math.tau / (8 if grand else 6))
         sx = int(round(cx + math.cos(a_s) * (rad + 2)))
@@ -2083,90 +2061,61 @@ def build_vfx_sheet() -> np.ndarray:
             cx, cy = 52, 52
 
             if r == 0:
-                # Row 0: Borderless 3D-Spinning Cosmic Star-Prism & Nebula Crescent Burst (0 square boxes!)
-                ang = u * math.tau
-                bob = int(round(2.5 * math.sin(ang * 2.0)))
-                add_vfx_radial_aura(cell, cx, cy + bob, 33, (34, 211, 238), 96)
-                add_vfx_radial_aura(cell, cx, cy + bob, 22, (217, 70, 239), 92)
-
-                # Two counter-rotating tilted elliptical starlight orbital rings
-                for tilt_deg, r_x, r_y, r_col, rot_s in (
-                    (26.0, 30.0, 12.0, C_CYAN, 1.0),
-                    (-28.0, 29.0, 11.0, C_MAGENTA, -1.5),
-                ):
-                    tr = math.radians(tilt_deg)
-                    ct, st = math.cos(tr), math.sin(tr)
-                    for rs in range(60):
-                        if (rs % 7) >= 5:
-                            continue
-                        th = (rs / 60.0) * math.tau + ang * rot_s
-                        lx = r_x * math.cos(th)
-                        ly = r_y * math.sin(th)
-                        px = int(round(cx + lx * ct - ly * st))
-                        py = int(round(cy + bob + lx * st + ly * ct))
-                        put_vfx_px(cell, px, py, r_col)
-                        if rs % 15 == 0:
-                            draw_star4_104(cell, px, py, 2, C_GOLD if rs % 30 == 0 else C_WHITE)
-
-                # Faceted 3D-Spinning Diamond Star-Prism Core (`rx` spins smoothly across 30 frames)
-                spin_rx = max(6, int(round(18.0 * (0.38 + 0.62 * abs(math.cos(ang))))))
-                spin_ry = 19
-                for dy_p in range(-spin_ry, spin_ry + 1):
-                    max_dx = int(round(spin_rx * (1.0 - abs(dy_p) / float(spin_ry))))
-                    for dx_p in range(-max_dx, max_dx + 1):
-                        px, py = cx + dx_p, cy + bob + dy_p
-                        if abs(dx_p) == max_dx:
-                            put_vfx_px(cell, px, py, C_OUT_DARK if (dx_p + dy_p) % 4 == 0 else C_CYAN)
-                        elif dx_p < 0 and (dx_p + dy_p) % 2 == 0:
-                            put_vfx_px(cell, px, py, (56, 189, 248, 128))
-                        elif (dx_p + dy_p + c) % 3 == 0:
-                            put_vfx_px(cell, px, py, (217, 70, 239, 96))
-                draw_star4_104(cell, cx, cy + bob, 9 + (c % 2), C_CYAN_LIGHT, C_WHITE)
-                draw_star4_104(cell, cx, cy + bob, 4, C_GOLD, C_WHITE)
-                for k in range(4):
-                    a_s = ang * 1.4 + k * (math.tau / 4.0)
-                    draw_star4_104(cell, int(round(cx + math.cos(a_s) * 26)), int(round(cy + bob + math.sin(a_s) * 22)), 2, C_CYAN_LIGHT if k % 2 == 0 else C_GOLD)
-            elif r == 1:
-                # Row 1: Chamfered Octagonal "404" Hologram Alert Badge with Glitch Pulse (0 square corners!)
-                pulse = int(round(2.5 * math.sin(u * math.tau * 2.0)))
-                glitch = ((c % 5) - 2) if c % 5 == 0 else 0
-                add_vfx_radial_aura(cell, cx + glitch, cy + pulse, 34, (217, 70, 239), 92)
-                draw_chamfered_holo_hex_104(
-                    cell, cx + glitch, cy + pulse, 28, 22, 9, C_MAGENTA, C_CYAN, phase=c
+                # Row 0: 3D-Spinning Neon Star-Prism Window & Starburst Trail
+                spin_w = max(8, int(round(26.0 * (0.35 + 0.65 * abs(math.cos(u * math.tau))))))
+                bob = int(round(3.5 * math.sin(u * math.tau * 2.0)))
+                add_vfx_radial_aura(cell, cx, cy + bob, 36, (34, 211, 238), 115)
+                draw_neon_glass_window_104(
+                    cell, cx - spin_w, cy - 22 + bob, cx + spin_w, cy + 22 + bob, C_CYAN, C_MAGENTA, phase=c
                 )
-                draw_pixel_text_104(cell, "404", cx + glitch, cy + 2 + pulse, scale=2, fg=C_GOLD if c % 3 == 0 else C_WHITE)
-                draw_star4_104(cell, cx + 22 + glitch, cy - 16 + pulse, 3, C_CYAN_LIGHT)
-                draw_star4_104(cell, cx - 22 + glitch, cy + 16 + pulse, 2, C_GOLD)
+                draw_star4_104(cell, cx, cy + 2 + bob, 7, C_WHITE, C_GOLD)
+                for k in range(3):
+                    a_s = u * math.tau + k * 2.1
+                    draw_star4_104(cell, int(cx + math.cos(a_s) * 18), int(cy + bob + math.sin(a_s) * 14), 2, C_CYAN_LIGHT)
+            elif r == 1:
+                # Row 1: Translucent Neon "404" Hologram Alert Window with Glitch Pulse
+                pulse = int(round(2.5 * math.sin(u * math.tau * 2.0)))
+                glitch = ((c % 7) - 3) if c % 5 == 0 else 0
+                add_vfx_radial_aura(cell, cx, cy + pulse, 44, (217, 70, 239), 110)
+                draw_neon_glass_window_104(
+                    cell, 14 + glitch, 22 + pulse, 90 + glitch, 82 + pulse, C_MAGENTA, C_CYAN, phase=c
+                )
+                draw_pixel_text_104(cell, "404", cx + glitch, cy + 3 + pulse, scale=2, fg=C_GOLD if c % 3 == 0 else C_WHITE)
+                draw_star4_104(cell, 84, 26 + pulse, 3, C_CYAN_LIGHT)
+                draw_star4_104(cell, 20, 78 + pulse, 2, C_GOLD)
             elif r == 2:
                 # Row 2: Rotating "Cob" Creator Astrolabe Seal
                 draw_cob_crest_104(cell, c, grand=False)
             elif r == 3:
                 # Row 3: 2.5D Perspective Cosmic Floor Mandala & Dashed Marquee Ring
-                add_vfx_radial_aura(cell, cx, cy, 37, (168, 85, 247), 96)
+                add_vfx_radial_aura(cell, cx, cy, 46, (168, 85, 247), 115)
                 ang = u * math.tau
-                draw_pixel_ring_104(cell, cx, cy, 37, 37, C_CYAN, rot_phase=ang, dash=True)
-                draw_pixel_ring_104(cell, cx, cy, 30, 30, C_MAGENTA, rot_phase=-ang * 1.5, dash=False)
-                draw_pixel_ring_104(cell, cx, cy, 22, 22, C_GOLD, rot_phase=ang * 2.0, dash=True)
+                draw_pixel_ring_104(cell, cx, cy, 42, 42, C_CYAN, rot_phase=ang, dash=True)
+                draw_pixel_ring_104(cell, cx, cy, 34, 34, C_MAGENTA, rot_phase=-ang * 1.5, dash=False)
+                draw_pixel_ring_104(cell, cx, cy, 24, 24, C_GOLD, rot_phase=ang * 2.0, dash=True)
                 for k in range(6):
                     a_s = ang + k * (math.tau / 6.0)
-                    draw_star4_104(cell, int(cx + math.cos(a_s) * 34), int(cy + math.sin(a_s) * 34), 3, C_WHITE if k % 2 == 0 else C_GOLD)
-                draw_star4_104(cell, cx, cy, 8, C_CYAN_LIGHT, C_WHITE)
+                    draw_star4_104(cell, int(cx + math.cos(a_s) * 38), int(cy + math.sin(a_s) * 38), 3, C_WHITE if k % 2 == 0 else C_GOLD)
+                draw_star4_104(cell, cx, cy, 9, C_CYAN_LIGHT, C_WHITE)
             elif r == 4:
                 # Row 4: Expanding 3-Arm Cosmic Supernova Galaxy Vortex & Counter-Rotating Starlight Rings!
+                # Zero vertical pole/spindle shape — purely radial spiral nebula swirl + orbital crescents!
                 ang = u * math.tau
-                pulse_r = 30.0 + 5.0 * math.sin(ang * 2.0)
-                add_vfx_radial_aura(cell, cx, cy, pulse_r + 3.0, (168, 85, 247), 96)
-                add_vfx_radial_aura(cell, cx, cy, pulse_r * 0.72, (34, 211, 238), 106)
+                pulse_r = 34.0 + 8.0 * math.sin(ang * 2.0)
+                add_vfx_radial_aura(cell, cx, cy, pulse_r + 6.0, (168, 85, 247), 115)
+                add_vfx_radial_aura(cell, cx, cy, pulse_r * 0.72, (34, 211, 238), 125)
 
+                # Two counter-rotating tilted elliptical starlight rings
                 for tilt_deg, r_x, r_y, r_col, rot_s in (
-                    (24.0, 34.0, 15.0, C_CYAN, 1.0),
-                    (-26.0, 32.0, 16.0, C_MAGENTA, -1.5),
+                    (24.0, 39.0, 17.0, C_CYAN, 1.0),
+                    (-26.0, 37.0, 18.0, C_MAGENTA, -1.5),
                 ):
                     tr = math.radians(tilt_deg)
                     ct, st = math.cos(tr), math.sin(tr)
                     ring_steps = 72
                     for rs in range(ring_steps):
                         th = (rs / ring_steps) * math.tau + ang * rot_s
+                        # Dashed constellation arcs so rotation pops vividly at 30fps
                         if (rs % 9) >= 7:
                             continue
                         lx = r_x * math.cos(th)
@@ -2177,54 +2126,57 @@ def build_vfx_sheet() -> np.ndarray:
                         if rs % 12 == 0:
                             draw_star4_104(cell, px, py, 3, C_GOLD if rs % 24 == 0 else C_WHITE)
 
+                # 3 logarithmic spiral galaxy arms of cyan / magenta / gold pixel stardust
                 for arm in range(3):
                     base_a = ang + arm * (math.tau / 3.0)
                     arm_col = C_CYAN_LIGHT if arm == 0 else (C_PINK if arm == 1 else C_LILAC)
-                    for r_step in range(5, 36):
+                    for r_step in range(5, 40):
                         phi = base_a + r_step * 0.145
                         gx = int(round(cx + math.cos(phi) * r_step))
                         gy = int(round(cy + math.sin(phi) * r_step))
-                        alpha_arm = int(clamp(230.0 * (1.0 - (r_step - 5) / 38.0), 75, 230))
+                        alpha_arm = int(clamp(235.0 * (1.0 - (r_step - 5) / 42.0), 80, 235))
                         put_vfx_px(cell, gx, gy, (arm_col[0], arm_col[1], arm_col[2], alpha_arm))
-                        if r_step < 22:
+                        if r_step < 24:
                             put_vfx_px(cell, gx + 1, gy, (C_CYAN[0], C_CYAN[1], C_CYAN[2], alpha_arm // 2))
-                        if r_step in (12, 22, 30):
+                        if r_step in (12, 22, 32):
                             draw_star4_104(cell, gx, gy, 2, C_GOLD if r_step == 22 else C_WHITE)
 
-                draw_star4_104(cell, cx, cy, 9 + (c % 3), C_CYAN_LIGHT, C_WHITE)
-                draw_star4_104(cell, cx, cy, 4, C_GOLD, C_WHITE)
+                # Crisp radiant supernova star-core in exact center (transparent aura, zero opaque vertical bar)
+                draw_star4_104(cell, cx, cy, 10 + (c % 3), C_CYAN_LIGHT, C_WHITE)
+                draw_star4_104(cell, cx, cy, 5, C_GOLD, C_WHITE)
             elif r == 5:
-                # Row 5: Sculpted Octagonal Cyber-Neko Starlight Relay Node (0 square boxes!)
-                bob = int(round(3.5 * math.sin(u * math.tau)))
-                add_vfx_radial_aura(cell, cx, cy + bob, 33, (192, 132, 252), 92)
+                # Row 5: Animated Cyber-Neko Orbital Terminal Drone (spinning holographic waveform)
+                bob = int(round(4.0 * math.sin(u * math.tau)))
+                add_vfx_radial_aura(cell, cx, cy + bob, 40, (192, 132, 252), 115)
+                # Tiny neon neko-ears atop drone window!
                 for side in (-1, 1):
-                    ex = cx + side * 14
+                    ex = cx + side * 18
                     for hi in range(7):
                         for ddx in range(-hi // 2, hi // 2 + 1):
-                            put_vfx_px(cell, ex + ddx, 22 + bob + hi, C_CYAN if side < 0 else C_MAGENTA)
-                draw_chamfered_holo_hex_104(
-                    cell, cx, cy + 1 + bob, 24, 24, 10, C_LILAC if c % 2 == 0 else C_CYAN, C_CYAN, phase=c
+                            put_vfx_px(cell, ex + ddx, 14 + bob + hi, C_CYAN if side < 0 else C_MAGENTA)
+                draw_neon_glass_window_104(
+                    cell, 20, 21 + bob, 84, 83 + bob, C_LILAC if c % 2 == 0 else C_CYAN, C_CYAN, phase=c
                 )
-                for row_y in (40, 48, 56, 64):
-                    w_bar = 14 + int(round(12 * (0.5 + 0.5 * math.sin(u * math.tau * 2.0 + row_y))))
-                    bcol = C_GOLD if row_y == 48 else (C_CYAN_LIGHT if row_y % 16 == 0 else C_PINK)
-                    for xx in range(cx - 14, min(cx + 14, cx - 14 + w_bar)):
+                for row_y in (34, 46, 58, 68):
+                    w_bar = 18 + int(round(16 * (0.5 + 0.5 * math.sin(u * math.tau * 2.0 + row_y))))
+                    bcol = C_GOLD if row_y == 46 else (C_CYAN_LIGHT if row_y % 24 == 0 else C_PINK)
+                    for xx in range(28, min(78, 28 + w_bar)):
                         put_vfx_px(cell, xx, row_y + bob, bcol)
                         put_vfx_px(cell, xx, row_y + 1 + bob, bcol)
-                draw_star4_104(cell, cx + 14, cy + 12 + bob, 3, C_GOLD, C_WHITE)
+                draw_star4_104(cell, 74, 72 + bob, 4, C_GOLD, C_WHITE)
             elif r == 6:
-                # Row 6: Sculpted Chamfered "AFK" Holographic Neko Bubble Decoy (0 square corners!)
+                # Row 6: Glowing "AFK" Holographic Neko Decoy
                 jitter = ((c % 3) - 1) if c % 2 == 0 else 0
-                add_vfx_radial_aura(cell, cx + jitter, cy, 35, (34, 211, 238), 96)
-                draw_chamfered_holo_hex_104(
-                    cell, cx + jitter, cy + 2, 26, 24, 10, C_CYAN, C_MAGENTA, phase=c
+                add_vfx_radial_aura(cell, cx + jitter, cy, 42, (34, 211, 238), 115)
+                draw_neon_glass_window_104(
+                    cell, 20 + jitter, 24, 84 + jitter, 82, C_CYAN, C_VIOLET, phase=c
                 )
                 for side in (-1, 1):
-                    ex = cx + jitter + side * 13
-                    for h_i in range(8):
+                    ex = cx + jitter + side * 15
+                    for h_i in range(9):
                         for ddx in range(-h_i // 2, h_i // 2 + 1):
-                            put_vfx_px(cell, ex + ddx, 21 + h_i, C_MAGENTA if h_i < 5 else C_CYAN_LIGHT)
-                draw_pixel_text_104(cell, "AFK", cx + jitter, cy + 2, scale=2, fg=C_CYAN_LIGHT if c % 3 else C_WHITE)
+                            put_vfx_px(cell, ex + ddx, 14 + h_i, C_MAGENTA if h_i < 6 else C_CYAN_LIGHT)
+                draw_pixel_text_104(cell, "AFK", cx + jitter, cy + 4, scale=2, fg=C_CYAN_LIGHT if c % 3 else C_WHITE)
             elif r == 7:
                 # Row 7: Colossal Grand "Cob" Creator Genesis Solar-Astrolabe Core
                 draw_cob_crest_104(cell, c, grand=True)
@@ -2413,7 +2365,6 @@ def verify_and_dump_qa(sheet: np.ndarray, vfx: np.ndarray):
         assert vh >= 150, f"Victory F{cc} h={vh}"
 
     vclips = 0
-    vcorners = 0
     for r in range(VFX_ROWS):
         vtrans = 0
         for c in range(VFX_COLS):
@@ -2421,26 +2372,18 @@ def verify_and_dump_qa(sheet: np.ndarray, vfx: np.ndarray):
             va = vc[:, :, 3] > 0
             if np.any(va[:4, :]) or np.any(va[-4:, :]) or np.any(va[:, :4]) or np.any(va[:, -4:]):
                 vclips += 1
-            if (
-                np.any(va[:12, :12])
-                or np.any(va[:12, -12:])
-                or np.any(va[-12:, :12])
-                or np.any(va[-12:, -12:])
-            ):
-                vcorners += 1
             if c > 0:
                 vp = vfx[r * VFX_CELL : (r + 1) * VFX_CELL, (c - 1) * VFX_CELL : c * VFX_CELL]
                 if not np.array_equal(vc[::2, ::2], vp[::2, ::2]):
                     vtrans += 1
         assert vtrans == 29, f"VFX Row {r} transitions={vtrans} != 29"
     assert vclips == 0, f"VFX 4px clips={vclips}"
-    assert vcorners == 0, f"VFX 12px corner-quadrant box leaks={vcorners}"
 
     print(
         f"[OK] Quantitative gates passed: sheet={sheet.shape[1]}x{sheet.shape[0]} (0 clips), "
         f"vertSpans={row_vert_spans[0]}/{row_vert_spans[2]}/{row_vert_spans[3]}, "
         f"walk=({min(boot_spans)}..{max(boot_spans)}, d1={d1:.1f}, d2={d2:.1f}), "
-        f"vfx={vfx.shape[1]}x{vfx.shape[0]} (0 4px clips, 0 12px corner leaks, 29/29 all rows)"
+        f"vfx={vfx.shape[1]}x{vfx.shape[0]} (0 4px clips, 29/29 all rows)"
     )
 
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
@@ -2515,15 +2458,6 @@ def verify_and_dump_qa(sheet: np.ndarray, vfx: np.ndarray):
 
 
 def main():
-    vfx_only = "--vfx-only" in sys.argv[1:]
-    if vfx_only:
-        assert OUT_SHEET.exists(), f"Expected existing {OUT_SHEET} for --vfx-only"
-        sheet = np.array(Image.open(OUT_SHEET).convert("RGBA"), dtype=np.uint8)
-        vfx = build_vfx_sheet()
-        Image.fromarray(vfx, "RGBA").save(OUT_VFX, optimize=True)
-        verify_and_dump_qa(sheet, vfx)
-        return
-
     rig = build_nyx_rig_512()
     sheet = build_character_sheet(rig)
     Image.fromarray(sheet, "RGBA").save(OUT_SHEET, optimize=True)

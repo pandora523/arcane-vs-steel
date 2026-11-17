@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps131';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps131';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps131';
-import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps131';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps131';
+import { Fighter } from './Fighter.js?v=30fps132';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps132';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps132';
+import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps132';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps132';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Coil + Forward lunge + finger-tap -> Twin Star-Packet Bolts
@@ -137,10 +137,9 @@ export class NyxEx extends Fighter {
     this._exParticles = new ExParticleSystem('nyx_ex', '#c084fc');
 
     this.fx = new ArcaneShaderFX(NEBULA_EFFECT_REGISTRY, {
-      pixelScale: 3,
-      viewW: 720,
-      viewH: 460,
-      topRatio: 0.78
+      pixelScale: 2,
+      viewW: 960,
+      viewH: 560
     });
 
     if (typeof Image !== 'undefined') {
@@ -184,9 +183,9 @@ export class NyxEx extends Fighter {
         return im;
       };
       assets.nyx_ex = {
-        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps131'),
-        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps131'),
-        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps131'),
+        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps132'),
+        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps132'),
+        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps132'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -350,7 +349,7 @@ export class NyxEx extends Fighter {
     this.spawnAfterimage(oldX, this.groundY, this.facing, 6, 8, 0.34);
     this.fx?.spawn('nebulaPromptBurst', this._safeFxX(oldX, game), this.groundY - 84, { light: 1.18 });
     this.fx?.spawn('nebulaPromptBurst', this._safeFxX(destX, game), this.groundY - 84, { light: 1.24 });
-    this.spawnVfxAnim(0, destX, this.groundY - 96, 112, 112, 0.42, { inFront: false });
+    this.spawnVfxAnim(0, destX, this.groundY - 96, 136, 136, 0.44, { inFront: true });
     this.spawnNebulaFloorSeal(destX, this.groundY, 96, 0.64);
     this.spawnNebulaCluster(destX, this.groundY - 88, 14, 185);
     this._farTeleportFx = {
@@ -1114,7 +1113,7 @@ export class NyxEx extends Fighter {
         this.contextTokens = Math.min(3, this.contextTokens + 1);
         if (game?.audio) game.audio.play('clock_gear', spawnX);
         this.fx?.spawn('nebulaPromptBurst', this._safeFxX(spawnX, game), spawnY, { light: 1.18 });
-        this.spawnVfxAnim(0, spawnX, spawnY, 96, 96, 0.20, { inFront: true });
+        this.spawnVfxAnim(0, spawnX, spawnY, 128, 128, 0.24, { inFront: true });
         this._spawnProj(game, {
           x: spawnX,
           y: spawnY - 12,
@@ -1331,12 +1330,12 @@ export class NyxEx extends Fighter {
       this.spawnAfterimage(this.x, this.y, this.facing, 3, 6, 0.24);
       this.spawnNebulaFloorSeal(this.x, this.groundY, 84, 0.78);
       this.spawnNebulaFloorSeal(targetX, this.groundY, 128, 0.88);
-      // Rising Marquee Seal (Row 3) + Spaced Chamfered 404 Badges (Row 1) + Auto-Patch Holo-Shield
-      this.spawnVfxAnim(3, targetX, this.groundY - 96, 196, 196, 0.78, { inFront: false });
-      this.spawnVfxAnim(1, targetX - 66, this.groundY - 98, 128, 128, 0.56, {
+      // Rising Marquee Seal (Row 3) + Converging 404 Windows (Row 1) + Auto-Patch Holo-Shield
+      this.spawnVfxAnim(3, targetX, this.groundY - 96, 212, 212, 0.78, { inFront: false });
+      this.spawnVfxAnim(1, targetX - 58, this.groundY - 92, 148, 148, 0.56, {
         inFront: true,
-        vx: 46,
-        vy: -58
+        vx: 72,
+        vy: -78
       });
       this.heal(42, 'AUTO-PATCH');
       this.holoPatchShield = 110;
@@ -1346,18 +1345,18 @@ export class NyxEx extends Fighter {
 
     if (this._skillPhase === 1 && t >= 0.24) {
       this._skillPhase = 2;
-      this.spawnVfxAnim(1, targetX + 66, this.groundY - 104, 128, 128, 0.48, {
+      this.spawnVfxAnim(1, targetX + 58, this.groundY - 104, 152, 152, 0.48, {
         inFront: true,
-        vx: -48,
-        vy: -54
+        vx: -76,
+        vy: -72
       });
-      this.spawnVfxAnim(1, targetX, this.groundY - 138, 132, 132, 0.44, {
+      this.spawnVfxAnim(1, targetX, this.groundY - 84, 168, 168, 0.44, {
         inFront: true,
-        vy: -42
+        vy: -88
       });
-      // Twin Flanking Converging Holographic Star-Prisms (0 vertical poles, 0 boxy edges!)
-      this.spawnVfxAnim(0, targetX - 70, this.groundY - 108, 116, 116, 0.46, { inFront: false, vx: 60 });
-      this.spawnVfxAnim(0, targetX + 70, this.groundY - 108, 116, 116, 0.46, { inFront: false, vx: -60 });
+      // Twin Flanking Converging Holographic Star-Prisms (0 vertical poles!)
+      this.spawnVfxAnim(0, targetX - 68, this.groundY - 108, 144, 144, 0.48, { inFront: false, vx: 64 });
+      this.spawnVfxAnim(0, targetX + 68, this.groundY - 108, 144, 144, 0.48, { inFront: false, vx: -64 });
       this._applyRemoteNebulaStrike(targetX, 114, 34, game, enemy, {
         knockX: 18,
         knockY: -22,
@@ -1987,28 +1986,28 @@ export class NyxEx extends Fighter {
       const glowTex = renderer.getGlowForColor?.(glowCol);
       if (glowTex) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.14, alpha * 0.14);
-        ctx.drawImage(glowTex, Math.round(dx - dw * 0.22), Math.round(dy - dh * 0.22), Math.round(dw * 1.44), Math.round(dh * 1.44));
+        ctx.globalAlpha = Math.min(0.22, alpha * 0.22);
+        ctx.drawImage(glowTex, Math.round(dx - dw * 0.25), Math.round(dy - dh * 0.25), Math.round(dw * 1.5), Math.round(dh * 1.5));
       }
     }
     ctx.globalCompositeOperation = isReflection ? 'lighter' : 'source-over';
-    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.28 : 0.96));
+    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.30 : 1.0));
     ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     if (!isReflection) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.12, alpha * 0.12);
+      ctx.globalAlpha = Math.min(0.20, alpha * 0.20);
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     }
     ctx.globalCompositeOperation = prevComp;
     ctx.globalAlpha = prevAlpha;
   }
 
-  _drawNebulaOrb(ctx, _renderer = null, isReflection = false) {
+  _drawNebulaOrb(ctx, renderer = null, isReflection = false) {
     if (!this.nekoOrb) return;
     const ox = Math.round(this.nekoOrb.x / 2) * 2;
     const oy = Math.round(this.nekoOrb.y / 2) * 2;
     const sc = this.nekoOrb.scale || 1.0;
-    const r = Math.max(10, Math.round((12 * sc) / 2) * 2);
+    const r = Math.round(12 * sc);
     const colFrame = Math.floor(this.haloPhase * 30) % 30;
     const mode = this.nekoOrb.eyeMode;
     const rimCol = mode === 'overclock' ? '#fde047' : mode === 'laser' ? '#22d3ee' : colFrame % 2 === 0 ? '#22d3ee' : '#d946ef';
@@ -2016,60 +2015,36 @@ export class NyxEx extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     if (!isReflection) {
-      drawExBayerHalo(ctx, ox, oy, r * 1.6, r * 1.6, rimCol, '#c084fc', mode === 'overclock' ? 0.16 : 0.12);
+      drawExBayerHalo(ctx, ox, oy, r * 1.9, r * 1.9, rimCol, '#c084fc', mode === 'overclock' ? 0.20 : 0.14);
     }
 
-    // Crisp spherical scanline pixel-art Cosmic Neko-AI Orb + tapered ears + orbiting motes (`0` square block / `0` arc!)
+    // Crisp pixel Cosmic Neko-AI Orb body + cat ears (`0` Canvas2D arc/ellipse/rotate calls!)
     ctx.globalCompositeOperation = isReflection ? 'lighter' : 'source-over';
     ctx.globalAlpha = isReflection ? 0.28 : 0.98;
-
-    // 1. Stepped triangular pixel cat ears atop spherical brow
+    // Left & right pixel cat ears
     for (const side of [-1, 1]) {
-      const earCx = ox + side * Math.round((r * 0.56) / 2) * 2;
-      const earBaseY = oy - r + 2;
-      const earCol = side < 0 ? '#22d3ee' : '#d946ef';
-      ctx.fillStyle = '#090b1c';
-      ctx.fillRect(earCx - 4, earBaseY - 4, 8, 4);
-      ctx.fillRect(earCx - 2, earBaseY - 6, 4, 2);
-      ctx.fillRect(earCx - 2, earBaseY - 8, 2, 2);
-      ctx.fillStyle = earCol;
-      ctx.fillRect(earCx - 2, earBaseY - 4, 4, 4);
-      ctx.fillRect(earCx - 1, earBaseY - 6, 2, 2);
+      const ex = ox + side * Math.round(r * 0.62);
+      const ey = oy - r - 2;
+      ctx.fillStyle = '#0f1029';
+      ctx.fillRect(ex - 4, ey - 5, 8, 8);
+      ctx.fillStyle = side < 0 ? '#22d3ee' : '#d946ef';
+      ctx.fillRect(ex - 2, ey - 3, 4, 5);
     }
-
-    // 2. Stepped `2px` spherical silhouette (outer dark selout -> luminous rim -> cosmic-indigo visor core)
-    const rOuter = r + 2;
-    const rInner = Math.max(6, r - 2);
-    ctx.fillStyle = '#090b1c';
-    for (let dy = -rOuter; dy <= rOuter; dy += 2) {
-      const hw = Math.max(2, Math.round(Math.sqrt(Math.max(0, rOuter * rOuter - dy * dy)) / 2) * 2);
-      ctx.fillRect(ox - hw, oy + dy, hw * 2, 2);
-    }
+    // Dark outline + glowing bevel rim + obsidian visor
+    ctx.fillStyle = '#0f1029';
+    ctx.fillRect(ox - r - 2, oy - r - 2, r * 2 + 4, r * 2 + 4);
     ctx.fillStyle = rimCol;
-    for (let dy = -r; dy <= r; dy += 2) {
-      const hw = Math.max(2, Math.round(Math.sqrt(Math.max(0, r * r - dy * dy)) / 2) * 2);
-      ctx.fillRect(ox - hw, oy + dy, hw * 2, 2);
-    }
+    ctx.fillRect(ox - r, oy - r, r * 2, r * 2);
     ctx.fillStyle = '#181438';
-    for (let dy = -rInner; dy <= rInner; dy += 2) {
-      const hw = Math.max(2, Math.round(Math.sqrt(Math.max(0, rInner * rInner - dy * dy)) / 2) * 2);
-      ctx.fillRect(ox - hw, oy + dy, hw * 2, 2);
-    }
+    ctx.fillRect(ox - r + 3, oy - r + 3, r * 2 - 6, r * 2 - 6);
 
-    // Top-left spherical pixel specular crescent
-    ctx.fillStyle = '#a5f3fc';
-    ctx.fillRect(ox - rInner + 2, oy - rInner + 2, 4, 2);
-    ctx.fillRect(ox - rInner + 2, oy - rInner + 4, 2, 2);
-
-    // 3. Expressive glowing pixel visor faces (`happy`, `laser`, `overclock`, `sleep`)
+    // Expressive glowing pixel visor LEDs inside orb
     if (mode === 'sleep') {
       ctx.fillStyle = '#c084fc';
-      ctx.fillRect(ox - 5, oy, 4, 2);
-      ctx.fillRect(ox + 1, oy, 4, 2);
+      ctx.fillRect(ox - 5, oy, 10, 2);
     } else if (mode === 'overclock') {
       ctx.fillStyle = '#fde047';
-      ctx.fillRect(ox - 6, oy - 2, 12, 4);
-      ctx.fillRect(ox - 2, oy - 4, 4, 8);
+      ctx.fillRect(ox - 6, oy - 3, 12, 6);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(ox - 4, oy - 1, 8, 2);
     } else if (mode === 'laser') {
@@ -2078,28 +2053,12 @@ export class NyxEx extends Fighter {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(ox - 3, oy - 1, 6, 2);
     } else {
-      // Cute happy `^ ^` arched neko pixel eyes
       ctx.fillStyle = '#a5f3fc';
-      ctx.fillRect(ox - 6, oy - 1, 2, 2);
-      ctx.fillRect(ox - 4, oy - 3, 2, 2);
-      ctx.fillRect(ox - 2, oy - 1, 2, 2);
-      ctx.fillRect(ox + 1, oy - 1, 2, 2);
-      ctx.fillRect(ox + 3, oy - 3, 2, 2);
-      ctx.fillRect(ox + 5, oy - 1, 2, 2);
+      ctx.fillRect(ox - 5, oy - 3, 3, 4);
+      ctx.fillRect(ox + 2, oy - 3, 3, 4);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(ox - 4, oy - 3, 2, 2);
-      ctx.fillRect(ox + 3, oy - 3, 2, 2);
-    }
-
-    // 4. Subtle 4-mote orbital starlight ring
-    if (!isReflection) {
-      for (let k = 0; k < 4; k++) {
-        const ang = (k / 4) * Math.PI * 2 + this.haloPhase * 3.8;
-        const mx = Math.round((ox + Math.cos(ang) * (r + 6)) / 2) * 2;
-        const my = Math.round((oy + Math.sin(ang) * 5) / 2) * 2;
-        ctx.fillStyle = k % 2 === 0 ? '#fde047' : rimCol;
-        ctx.fillRect(mx - 1, my - 1, 2, 2);
-      }
+      ctx.fillRect(ox - 4, oy - 2, 2, 2);
+      ctx.fillRect(ox + 3, oy - 2, 2, 2);
     }
     ctx.restore();
   }
@@ -2488,8 +2447,7 @@ export class NyxEx extends Fighter {
 
   drawForegroundOverlay(ctx, renderer = null) {
     const arenaCenterX = this._resolveShaderCenterX(renderer);
-    const hasFullRenderer = Boolean(renderer && typeof renderer.drawExGroundRimReflection === 'function');
-    if (!this.isDead && !hasFullRenderer) {
+    if (!this.isDead) {
       drawExBayerHalo(ctx, Math.round(this.x), Math.round(this.groundY - 4), 52, 16, '#c084fc', '#22d3ee', 0.16);
     }
 
@@ -2514,9 +2472,7 @@ export class NyxEx extends Fighter {
     }
 
     this.drawNebulaFloorSeals(ctx, renderer);
-    if (!hasFullRenderer) {
-      this._exParticles?.renderBack(ctx);
-    }
+    this._exParticles?.renderBack(ctx);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
     }
@@ -2573,26 +2529,21 @@ export class NyxEx extends Fighter {
       ctx.restore();
     }
 
-    // Holo-Patch Organic 2.5D Orbiting Hex-Starlight Aegis Ring when `holoPatchTimer > 0` (0 square brackets!)
+    // Holo-Patch Shimmering Pixel Bracket Ward when `holoPatchTimer > 0`
     if (!this.isDead && this.holoPatchTimer > 0 && this.holoPatchShield > 0) {
-      const wAlpha = Math.min(0.56, this.holoPatchTimer * 0.32);
+      const wAlpha = Math.min(0.62, this.holoPatchTimer * 0.35);
       const hx = Math.round(this.x);
-      const hy = Math.round(this.y - 88);
+      const hy = Math.round(this.y - 92);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.globalCompositeOperation = 'source-over';
-      for (let k = 0; k < 8; k++) {
-        const ang = (k / 8) * Math.PI * 2 + this.haloPhase * 4.2;
-        const frontMod = Math.sin(ang) >= 0 ? 1.0 : 0.45;
-        const mx = Math.round((hx + Math.cos(ang) * 44) / 2) * 2;
-        const my = Math.round((hy + Math.sin(ang) * 14) / 2) * 2;
-        ctx.globalAlpha = wAlpha * frontMod;
-        ctx.fillStyle = k % 2 === 0 ? '#22d3ee' : '#c084fc';
-        ctx.fillRect(mx - 3, my - 1, 6, 2);
-        ctx.fillRect(mx - 1, my - 3, 2, 6);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(mx - 1, my - 1, 2, 2);
-      }
+      ctx.globalAlpha = wAlpha;
+      ctx.fillStyle = '#22d3ee';
+      ctx.fillRect(hx - 48, hy - 54, 16, 4);
+      ctx.fillRect(hx - 48, hy - 54, 4, 22);
+      ctx.fillRect(hx + 32, hy - 54, 16, 4);
+      ctx.fillRect(hx + 44, hy - 54, 4, 22);
+      ctx.fillRect(hx - 48, hy + 50, 16, 4);
+      ctx.fillRect(hx + 32, hy + 50, 16, 4);
       ctx.restore();
     }
 
@@ -2620,15 +2571,12 @@ export class NyxEx extends Fighter {
     const sprites = this.getExSprites();
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx);
 
-    const hasFullRenderer = Boolean(renderer && typeof renderer.drawExGroundRimReflection === 'function');
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
     this._drawOverclockGalaxyVortex(ctx, renderer);
     this._drawVfxAnims(ctx, true, renderer);
-    if (!hasFullRenderer) {
-      this._exParticles?.renderFront(ctx);
-    }
+    this._exParticles?.renderFront(ctx);
 
     if (this.nekoOrb && this.nekoOrb.inFront) {
       this._drawNebulaOrb(ctx, renderer, false);
@@ -2668,27 +2616,25 @@ export class NyxEx extends Fighter {
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.globalCompositeOperation = 'source-over';
-        // Departure & arrival stepped vertical elliptical pixel-starlight warp portals (0 square brackets!)
+        // Departure & arrival translucent `[ ]` neon warp gates (`alpha <= 0.44`)
         for (const [gx, col] of [[fx.fromX, '#d946ef'], [fx.toX, '#22d3ee']]) {
           const px = Math.round(gx);
           ctx.globalAlpha = Math.min(0.44, fFade * 0.44);
-          for (let k = 0; k < 16; k++) {
-            const ang = (k / 16) * Math.PI * 2 + this.haloPhase * 9.0;
-            const ox = Math.round((px + Math.cos(ang) * (26 + fu * 8)) / 2) * 2;
-            const oy = Math.round((fY + Math.sin(ang) * 46) / 2) * 2;
-            ctx.fillStyle = k % 4 === 0 ? '#fde047' : col;
-            ctx.fillRect(ox - 2, oy - 2, 4, 4);
-            if (k % 4 === 0) {
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(ox - 1, oy - 1, 2, 2);
+          ctx.fillStyle = col;
+          for (const sx of [-1, 1]) {
+            for (const sy of [-1, 1]) {
+              const bx = px + sx * 38;
+              const by = fY + sy * 44;
+              ctx.fillRect(sx < 0 ? bx : bx - 14, by - 2, 14, 4);
+              ctx.fillRect(bx - 2, sy < 0 ? by : by - 14, 4, 14);
             }
           }
           for (let k = 0; k < 8; k++) {
-            const ang = (k / 8) * Math.PI * 2 - this.haloPhase * 11.0;
-            const ox = Math.round((px + Math.cos(ang) * 16) / 2) * 2;
-            const oy = Math.round((fY + Math.sin(ang) * 28) / 2) * 2;
-            ctx.fillStyle = k % 2 === 0 ? '#ffffff' : '#fde047';
-            ctx.fillRect(ox - 1, oy - 1, 2, 2);
+            const ang = (k / 8) * Math.PI * 2 + this.haloPhase * 9.0;
+            const ox = Math.round(px + Math.cos(ang) * (28 + fu * 18));
+            const oy = Math.round(fY + Math.sin(ang) * (48 * 0.45));
+            ctx.fillStyle = k % 2 === 0 ? '#fde047' : col;
+            ctx.fillRect(ox - 2, oy - 2, 4, 4);
           }
         }
         // Horizontal cross-stage neon starlight ribbon zipping from `fromX` to `toX` (`alpha <= 0.40`)

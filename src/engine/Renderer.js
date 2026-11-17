@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps131';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps131';
+import { PixelForge } from './PixelForge.js?v=30fps132';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps132';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps131';
+} from './shaders/exNextGenFX.js?v=30fps132';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -4867,9 +4867,21 @@ export class Renderer {
       ctx.fillRect(px - 2, py - 2, 5, 5);
     }
 
-    // 5. Target Translucent Neon Cyber-Octagon Lock Ring, X-Slash (`step=3px`), & Floor Pulse at `cobAssistTargetX` (`0` square brackets!)
+    // 5. Target Translucent Neon Reticle, Cyber-Octagon Lock Ring, X-Slash (`step=3px`), & Floor Pulse at `cobAssistTargetX`
     const lockPad = Math.round(48 + (1 - env) * 16);
     ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.min(0.44, env * 0.44);
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        const bx = tgtX + sx * lockPad;
+        const by = tgtY + sy * lockPad;
+        ctx.fillStyle = colSec;
+        ctx.fillRect(sx < 0 ? bx : bx - 20, by - 2, 20, 4);
+        ctx.fillRect(bx - 2, sy < 0 ? by : by - 20, 4, 20);
+        ctx.fillStyle = colAcc;
+        ctx.fillRect(bx - 2, by - 2, 4, 4);
+      }
+    }
     // Cyber-Octagon Lock Ring + 4 Cardinal Star-Pings around target (`alpha <= 0.38`)
     ctx.globalAlpha = Math.min(0.38, env * 0.38);
     for (let k = 0; k < 24; k++) {

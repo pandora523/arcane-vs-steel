@@ -40,59 +40,59 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps131';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps131';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps131';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps131';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps131';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps131';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps131';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps131';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps131';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps131';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps131';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps131';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps131';
-import { Archer } from '../../src/entities/Archer.js?v=30fps131';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps131';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps131';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps131';
-import { Titan } from '../../src/entities/Titan.js?v=30fps131';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps131';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps131';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps131';
-import { Android } from '../../src/entities/Android.js?v=30fps131';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps131';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps131';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps131';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps131';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps132';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps132';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps132';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps132';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps132';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps132';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps132';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps132';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps132';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps132';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps132';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps132';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps132';
+import { Archer } from '../../src/entities/Archer.js?v=30fps132';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps132';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps132';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps132';
+import { Titan } from '../../src/entities/Titan.js?v=30fps132';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps132';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps132';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps132';
+import { Android } from '../../src/entities/Android.js?v=30fps132';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps132';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps132';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps132';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps132';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps131';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps131';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps131';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps131';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps131';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps131';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps132';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps132';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps132';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps132';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps132';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps132';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps131';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps131';
+} from '../../src/adventure/AdventureManager.js?v=30fps132';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps132';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps131';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps131';
+} from '../../src/adventure/AdventureProgression.js?v=30fps132';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps132';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps131';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps132';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -696,7 +696,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps131');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps132');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11232,8 +11232,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps131');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps131');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps132');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps132');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12034,7 +12034,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps131'
+        src: 'assets/sprites/arena_bg.png?v=30fps132'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12078,13 +12078,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps131`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps132`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps131'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps132'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -13862,7 +13862,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.8: Batch ?v=30fps131 Parity:
+  // 36.8: Batch ?v=30fps132 Parity:
   //   (A) Chronos EX Zero Dark Flood Disks + Sol EX >= 580px Meteor & Stationary Single Overdrive Sun
   //   (B) Kaze-Maru EX Smear/Circle Purge + Freyja EX Non-Squared War-Spear VFX & Spinning Pass-Through Glide + Sylvara EX Fast Ult
   //   (C) VEX-09 EX Fast Backflip + Tactical Charge + Triple-Column Buster & Malakor EX Back-of-Enemy Shadow Emerge
@@ -14213,7 +14213,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.9: Batch ?v=30fps131 Parity:
+  // 36.9: Batch ?v=30fps132 Parity:
   //   (A) Lyra EX (`icemage_ex`) Non-Creepy Natural `Row 1 WALK`
   //   (B) Freyja EX (`valkyrie_ex`) `+56 deg` Diagonal `TRUE_ULTIMATE` Raining Spears (`0` Straight 90 deg)
   //   (C) Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Glowing Great-Arrow Transformation (`0` Humanoid Draws)
@@ -14456,7 +14456,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.10: Batch ?v=30fps131 Parity:
+  // 36.10: Batch ?v=30fps132 Parity:
   //   Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Refinement:
   //     - Full 10-frame Bow-Pull Progression (`frames 135..144`, `>= 8` unique frames hit)
   //     - `0` Slash-Like Circle Effects (`sylvanBowDrawVortex`, `sonicBowReleaseWave`, `Row 3/5/6`)
@@ -14569,7 +14569,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.11: Batch ?v=30fps131 Parity:
+  // 36.11: Batch ?v=30fps132 Parity:
   //   Sylvara EX (`archer_ex`) Pixel-by-Pixel Sculpted Elven Hands/Vambraces +
   //   Fixed Feet During & After `ULTIMATE` and `TRUE_ULTIMATE` (Zero `135/136` Hover/Club-Foot)
   // --------------------------------------------------------------------------
@@ -14673,7 +14673,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.12: Batch ?v=30fps131 Parity:
+  // 36.12: Batch ?v=30fps132 Parity:
   //   All-6 EX Sculpted Hands/Gauntlets (0 circle/3x3 blobs), Clean Row 4 Ultimate
   //   Feet/Skirts (`android_ex`, `icemage_ex`, `ronin_ex`, `chronomancer_ex`) &
   //   All-11 EX `setState()` Mid-Ultimate Ground-Snap Resets
@@ -14766,7 +14766,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps131';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps132';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -14801,7 +14801,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps131';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps132';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -14889,12 +14889,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps131') ||
-      !manifestSrc.includes('?v=30fps131') ||
-      manifestSrc.includes('30fps130') ||
-      indexHtmlSrc.includes('30fps130')
+      !indexHtmlSrc.includes('?v=30fps132') ||
+      !manifestSrc.includes('?v=30fps132') ||
+      manifestSrc.includes('30fps131') ||
+      indexHtmlSrc.includes('30fps131')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps131 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps132 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -15302,22 +15302,21 @@ if (!RUN_SUITE36_ONLY) {
 
       const nyxVfxBuf = fs.readFileSync(path.join(REPO_ROOT, 'assets/sprites/nyx_ex_vfx.png'));
       const nyxVfxDec = decodePngRgba36(nyxVfxBuf);
-      let vfxCornerBoxLeaks = 0;
+      let vfxBorderClips = 0;
       for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 30; c++) {
           for (let ly = 0; ly < 208; ly++) {
-            if (ly >= 12 && ly < 196) continue;
             const rowBase = (r * 208 + ly) * nyxVfxDec.stride + c * 208 * 4;
             for (let lx = 0; lx < 208; lx++) {
-              if (lx >= 12 && lx < 196) continue;
-              if (nyxVfxDec.rgba[rowBase + lx * 4 + 3] > 0) vfxCornerBoxLeaks++;
+              if (ly >= 4 && ly < 204 && lx >= 4 && lx < 204) continue;
+              if (nyxVfxDec.rgba[rowBase + lx * 4 + 3] > 0) vfxBorderClips++;
             }
           }
         }
       }
-      if (vfxCornerBoxLeaks !== 0) {
+      if (vfxBorderClips !== 0) {
         throw new Error(
-          `[Suite 36.16] Expected 0 12px corner-quadrant box leaks in nyx_ex_vfx.png, got ${vfxCornerBoxLeaks}`
+          `[Suite 36.16] Expected 0 4px border clips in nyx_ex_vfx.png, got ${vfxBorderClips}`
         );
       }
     }
@@ -15356,9 +15355,14 @@ if (!RUN_SUITE36_ONLY) {
     };
 
     const nyx = new NyxEx({ x: 360, groundY: 560, facing: 1, team: 'left' });
-    if (nyx.fx?.viewW !== 720 || nyx.fx?.pixelScale !== 3 || nyx.fx?.computeViewport?.(600, 560)?.worldW !== 2160) {
+    if (
+      nyx.fx?.viewW !== 960 ||
+      nyx.fx?.viewH !== 560 ||
+      nyx.fx?.pixelScale !== 2 ||
+      nyx.fx?.computeViewport?.(600, 560)?.worldW !== 1920
+    ) {
       throw new Error(
-        `[Suite 36.16] Expected 2160x1380 (viewW=720, pixelScale=3) shader viewport on NyxEx, got ${nyx.fx?.viewW}x${nyx.fx?.viewH} @ ${nyx.fx?.pixelScale}`
+        `[Suite 36.16] Expected 1920x1120 (viewW=960, viewH=560, pixelScale=2) shader viewport on NyxEx, got ${nyx.fx?.viewW}x${nyx.fx?.viewH} @ ${nyx.fx?.pixelScale}`
       );
     }
     try {
