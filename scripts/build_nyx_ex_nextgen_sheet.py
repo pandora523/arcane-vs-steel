@@ -3,7 +3,7 @@
 Overhauled Next-Gen Wide-Canvas Sprite Sheet & Radiant Neon VFX Sheet Builder for:
   NYX EX -- Nebula AI Assistant Created by Cob (nyx_ex)
 
-Upgrades (?v=30fps128):
+Upgrades (?v=30fps129):
   - Replaces Row 4 vertical spindle/pole pillar on `nyx_ex_vfx.png` with an organic
     3-arm Cosmic Supernova Galaxy Vortex & counter-rotating tilted Starlight Rings (zero poles!).
   - Fixes `solve_ik_2bone` natural elbow orientation, knee-bend crouch sign, wide lunges,

@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps128';
+} from '../ArcaneShaderFX.js?v=30fps129';
 
 export const NEBULA_CYBER_PALETTE = [
   '#0f1029', // 0: Deep cosmic hoodie navy
@@ -299,33 +299,35 @@ export const nebulaOrbitalMatrix = {
         const u = clamp01(t / 1.76);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const r = 74 * smoothStep(0, 0.22, u);
-        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 2.8, 0.90 * env, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, -52, r * 0.78, 0.30, 2.0, 0.76 * env, band4, BACK_HALF, u > 0.55);
-        renderNebulaGalaxySwirl(pen, 0, -46, 62 * smoothStep(0, 0.26, u), 44 * smoothStep(0, 0.26, u), 4, u * 1.8, env * 0.94, pal, cob);
+        const r = 96 * smoothStep(0, 0.20, u);
+        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 3.0, 0.90 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -56, r * 0.82, 0.30, 2.2, 0.78 * env, band4, BACK_HALF, u > 0.55);
+        drawSafeOctagonRing(pen, 0, -48, 66 * smoothStep(0, 0.24, u), pal[5], env * 0.54, u * 2.2);
+        renderNebulaGalaxySwirl(pen, 0, -46, 78 * smoothStep(0, 0.24, u), 54 * smoothStep(0, 0.24, u), 4, u * 2.1, env * 0.94, pal, cob);
       },
       renderFront(pen) {
         const u = clamp01(t / 1.76);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const r = 74 * smoothStep(0, 0.22, u);
-        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 2.8, 0.95 * env, band4, FRONT_HALF, false);
-        drawTiltedOrbitBand(pen, 0, -52, r * 0.78, 0.30, 2.0, 0.82 * env, band4, FRONT_HALF, u > 0.55);
+        const r = 96 * smoothStep(0, 0.20, u);
+        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 3.0, 0.95 * env, band4, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -56, r * 0.82, 0.30, 2.2, 0.84 * env, band4, FRONT_HALF, u > 0.55);
+        drawSafeOctagonRing(pen, 0, -48, 48 * smoothStep(0, 0.22, u), cob[2], env * 0.68, -u * 3.0);
 
-        const spinR = 64 * (1 - 0.55 * smoothStep(0.58, 0.88, u));
+        const spinR = u < 0.68 ? 86 : 86 * (1 - 0.62 * smoothStep(0.68, 0.94, u));
         for (let k = 0; k < 6; k++) {
-          const ang = u * Math.PI * 3.0 + (k * Math.PI) / 3;
+          const ang = u * Math.PI * 3.2 + (k * Math.PI) / 3;
           const nx = Math.cos(ang) * spinR;
-          const ny = -44 + Math.sin(ang) * 32;
-          drawNebulaStar4(pen, nx, ny, 9.5 * env, k % 2 === 0 ? pal[6] : pal[5], cob[5], env);
-          if (u > 0.24 && u < 0.90) {
-            const chain = buildLightningChain(rng, nx, ny, 0, -40, 0.16, 2);
+          const ny = -44 + Math.sin(ang) * 38;
+          drawNebulaStar4(pen, nx, ny, 10.5 * env, k % 2 === 0 ? pal[6] : pal[5], cob[5], env);
+          if (u > 0.16 && u < 0.92) {
+            const chain = buildLightningChain(rng, nx, ny, 0, -42, 0.18, 2);
             for (let j = 0; j < chain.length - 1; j++) {
               pen.line(chain[j][0], chain[j][1], chain[j + 1][0], chain[j + 1][1], k % 2 === 0 ? pal[6] : cob[5], env * 0.90);
             }
           }
         }
-        drawStarburstFlare(pen, 0, -42, 19 * env, 8, pal[6], pal[5], env);
+        drawStarburstFlare(pen, 0, -42, (u > 0.58 ? 28 : 19) * env, 8, pal[6], pal[5], env);
         motes.render(pen);
       }
     };
