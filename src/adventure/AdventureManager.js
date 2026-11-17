@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps132';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps132';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps132';
+import { Fighter } from '../entities/Fighter.js?v=30fps134';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps134';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps132';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps132';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps132';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps132';
+} from './AdventureProgression.js?v=30fps134';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps134';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps134';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps134';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -120,6 +120,7 @@ export class AdventureManager {
 
     this.pickups = [];
     this.portals = [];
+    this.monsterPlumes = [];
     this.monstersKilled = 0;
     this.totalWaveLabel = 'WAVE 1 / 8';
     this.score = 0;
@@ -989,6 +990,7 @@ export class AdventureManager {
     this.zonesCleared = [false, false, false, false];
     this.pickups = [];
     this.portals = [];
+    this.monsterPlumes = [];
     this.monstersKilled = 0;
     this.score = 0;
     this.comboHits = 0;
@@ -1103,6 +1105,7 @@ export class AdventureManager {
     this.bossEntity = null;
     this.pickups = [];
     this.portals = [];
+    this.monsterPlumes = [];
     this.clearHeldInputs();
     if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
       document.getElementById('victory-overlay')?.classList?.remove('is-defeat-plaque');
@@ -1187,6 +1190,34 @@ export class AdventureManager {
     return m;
   }
 
+  spawnMonsterPlume(
+    x,
+    groundY,
+    vfxRow = 10,
+    color = '#38bdf8',
+    scale = 1.6,
+    maxLife = 0.48,
+    essenceSparks = 6
+  ) {
+    if (!this.monsterPlumes) this.monsterPlumes = [];
+    while (this.monsterPlumes.length >= 28) {
+      this.monsterPlumes.shift();
+    }
+    const fallbackGy = this.game?.leftFighter?.groundY || ADVENTURE_DEPTH_MID_Y;
+    const gy = Number.isFinite(groundY) ? groundY : fallbackGy;
+    this.monsterPlumes.push({
+      x,
+      groundY: gy,
+      vfxRow: Math.max(0, Math.min(11, vfxRow | 0)),
+      color: color || '#38bdf8',
+      scale: Number.isFinite(scale) ? scale : 1.6,
+      age: 0,
+      maxLife: Math.max(0.18, maxLife || 0.48),
+      essenceSparks: Math.max(0, Math.min(16, essenceSparks | 0)),
+      seed: ((Math.abs(x) * 0.13) % 6.28)
+    });
+  }
+
   spawnPickup(type, x, groundY = null, extra = {}) {
     const fallbackGy = this.game.leftFighter?.groundY || ADVENTURE_DEPTH_MID_Y;
     const gy = Math.max(
@@ -1210,7 +1241,7 @@ export class AdventureManager {
     const z = ADVENTURE_ZONES[zoneIdx];
     if (!z) return;
     PixelForge.ensureAdventureLoaded?.(zoneIdx);
-    if (subWave >= 2 && zoneIdx < 3) {
+    if (subWave >= 1 && zoneIdx < 3) {
       const nextZone = zoneIdx + 1;
       const schedulePrewarm = () => PixelForge.ensureAdventureLoaded?.(nextZone);
       if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
@@ -1356,15 +1387,11 @@ export class AdventureManager {
   onBossPhaseShift(_boss, phase) {
     if (!this.active || this.game.isMatchOver) return;
     if (phase === 2) {
-      // Summon 2 flanking Shackled Pit-Fiends through Hell-Maw Portals + drop Elixir & Soul Ember!
+      // Summon 2 flanking Shackled Pit-Fiends through Hell-Maw Portals
       this.spawnMonster('fiend', 8620, { groundY: 484 });
       this.spawnMonster('fiend', 8780, { groundY: 638 });
-      this.spawnPickup('hp', 8880, 502);
-      this.spawnPickup('ember', 8980, 622, { ultAmt: 20 });
     } else if (phase === 3) {
-      this.spawnPickup('hp', 8860, 496);
-      this.spawnPickup('relic', 8980, 626, { relicAmt: 18 });
-      this.spawnPickup('ember', 9080, 558, { ultAmt: 22 });
+      this.spawnPickup('relic', 9000, 622, { relicAmt: 18 });
     }
   }
 
@@ -1408,14 +1435,44 @@ export class AdventureManager {
     this.progression.gainXp(xpGain, player);
 
     if (!deadMonster.isBoss) {
-      // Slain monsters drop magnetic Soul Embers to fuel Overdrive; ONLY Realm Mini-Boss Wardens drop a Relic Seal!
-      this.spawnPickup('ember', deadMonster.x, deadMonster.groundY, {
-        ultAmt: deadMonster.isMiniBoss ? 24 : deadMonster.isElite ? 18 : 13
-      });
       if (deadMonster.isMiniBoss) {
+        // Realm Mini-Boss Wardens drop Ember + Relic Seal + Solar Elixir!
+        this.spawnPickup('ember', deadMonster.x, deadMonster.groundY, { ultAmt: 24 });
         this.spawnPickup('relic', deadMonster.x + 48, deadMonster.groundY, { relicAmt: 18 });
         this.spawnPickup('hp', deadMonster.x - 48, deadMonster.groundY);
+      } else if (deadMonster.isElite) {
+        // Non-Warden Elites drop strictly 1 magnetic Soul Ember (0 HP / 0 Relic)
+        this.spawnPickup('ember', deadMonster.x, deadMonster.groundY, { ultAmt: 18 });
+      } else {
+        // Regular monsters infuse essence directly into gauges with 0 floor drop clutter!
+        this.progression.gainAdventureUlt(9, player);
+        this.progression.gainSpirit(7);
       }
+
+      const glyphTheme =
+        deadMonster.theme === 'forge'
+          ? 'forge'
+          : deadMonster.theme === 'sanctuary'
+            ? 'arcane'
+            : deadMonster.theme === 'sylvan'
+              ? 'emerald'
+              : 'abyssal';
+      const vfxRow = deadMonster.getMonsterStageVfxRow?.() ?? 10;
+      this.spawnMonsterPlume(
+        deadMonster.x,
+        deadMonster.groundY,
+        vfxRow,
+        deadMonster.primaryColor || '#38bdf8',
+        deadMonster.isMiniBoss ? 2.4 : deadMonster.isElite ? 1.95 : 1.55,
+        deadMonster.isMiniBoss ? 0.62 : 0.48,
+        deadMonster.isMiniBoss ? 10 : deadMonster.isElite ? 7 : 5
+      );
+      this.game.vfx?.spawnGlyphBurst?.(
+        deadMonster.x,
+        deadMonster.groundY - 64,
+        deadMonster.isMiniBoss ? 9 : 5,
+        glyphTheme
+      );
     }
 
     if (player && !player.isDead && this.game.vfx) {
@@ -1655,15 +1712,11 @@ export class AdventureManager {
 
     const p = this.game.leftFighter;
     this.progression.gainXp(25, p);
-
-    const dropX = p ? Math.min(this.lockMaxX - 180, p.x + 125) : z.minX + 1040;
-    this.spawnPickup('ember', dropX, 558, { ultAmt: 22 });
-    if (zoneIdx >= 2) {
-      this.spawnPickup('hp', dropX + 66, 504);
-    }
+    this.progression.gainAdventureUlt(12, p);
+    this.progression.gainSpirit(14);
 
     if (this.game.audio) {
-      this.game.audio.play('reflect', dropX);
+      this.game.audio.play('reflect', p ? p.x : z.minX + 1040);
     }
   }
 
@@ -1688,18 +1741,14 @@ export class AdventureManager {
 
     const dropBaseX = p ? Math.min(this.lockMaxX - 180, p.x + 140) : zoneIdx * 2400 + 2020;
     if (zoneIdx === 0) {
-      this.spawnPickup('hp', dropBaseX, 514);
-      this.spawnPickup('ember', dropBaseX + 68, 566, { ultAmt: 16 });
-      this.spawnPickup('relic', dropBaseX + 136, 614, { relicAmt: 12 });
+      this.spawnPickup('ember', dropBaseX, 548, { ultAmt: 16 });
+      this.spawnPickup('relic', dropBaseX + 72, 598, { relicAmt: 12 });
     } else if (zoneIdx === 1) {
-      this.spawnPickup('hp', dropBaseX, 512);
-      this.spawnPickup('ember', dropBaseX + 68, 564, { ultAmt: 16 });
-      this.spawnPickup('relic', dropBaseX + 136, 612, { relicAmt: 12 });
+      this.spawnPickup('relic', dropBaseX + 40, 586, { relicAmt: 12 });
     } else if (zoneIdx === 2) {
       // Sanctuary Boss-Prep Cache staggered across the 3D road before Throne of the Black Pit!
-      this.spawnPickup('hp', 6920, 498);
-      this.spawnPickup('ember', 7000, 562, { ultAmt: 18 });
-      this.spawnPickup('relic', 7080, 626, { relicAmt: 12 });
+      this.spawnPickup('ember', 6960, 548, { ultAmt: 16 });
+      this.spawnPickup('relic', 7048, 608, { relicAmt: 12 });
     }
 
     if (this.game.audio) {
@@ -1752,7 +1801,7 @@ export class AdventureManager {
         this.score += 150;
         if (this.game.audio) this.game.audio.play('holy_hit', pk.x);
         if (pk.type === 'hp') {
-          player.heal(Math.round(player.maxHp * 0.34), 'SOLAR ELIXIR +HP!');
+          player.heal(Math.round(player.maxHp * 0.18), 'SOLAR ELIXIR +HP!');
           this.game.vfx?.spawnBurst(pk.x, pk.y - 24, 14, '#4ade80', 190, { upBias: 120, size: 5 });
         } else if (pk.type === 'ember' || pk.type === 'mana') {
           const gainAmt = pk.ultAmt || 16;
@@ -3662,13 +3711,20 @@ export class AdventureManager {
       }
     }
 
-    // 4. Update Pickups & Dimensional Summoning Portals
+    // 4. Update Pickups, Dimensional Summoning Portals & Monster Plumes
     this.updatePickups(dt, player);
     for (let i = this.portals.length - 1; i >= 0; i--) {
       const p = this.portals[i];
       p.age += dt;
       if (p.age >= p.maxLife) {
         this.portals.splice(i, 1);
+      }
+    }
+    for (let i = (this.monsterPlumes?.length || 0) - 1; i >= 0; i--) {
+      const plume = this.monsterPlumes[i];
+      plume.age += dt;
+      if (plume.age >= plume.maxLife) {
+        this.monsterPlumes.splice(i, 1);
       }
     }
 
@@ -4039,6 +4095,65 @@ export class AdventureManager {
           ctx.fillRect(sx - 3, sy - 3, 6, 6);
           ctx.fillStyle = cols[s & 1];
           ctx.fillRect(sx - 2, sy - 2, 4, 4);
+        }
+      }
+      ctx.restore();
+    }
+
+    if (this.monsterPlumes?.length > 0) {
+      const assets = PixelForge.initAssets();
+      const stageVfx = PixelForge.ensureImage?.(assets?.advStageVfx) || assets?.advStageVfx;
+      const stageReady =
+        Boolean(stageVfx) &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(stageVfx instanceof HTMLImageElement) ||
+          (stageVfx.complete && stageVfx.naturalWidth > 0));
+      const pHasBounds = Boolean(
+        renderer && Number.isFinite(renderer.camX) && Number.isFinite(renderer.width) && renderer.width > 0
+      );
+      const pHalfSpan = pHasBounds
+        ? (renderer.width * 0.5) / Math.max(0.1, renderer.zoom || 1) + 260
+        : Infinity;
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const p of this.monsterPlumes) {
+        if (pHasBounds && Math.abs(p.x - renderer.camX) > pHalfSpan) continue;
+        const u = Math.max(0, Math.min(1, p.age / Math.max(0.05, p.maxLife || 0.48)));
+        const alpha = u < 0.15 ? u / 0.15 : Math.max(0, 1 - (u - 0.15) / 0.85);
+        if (alpha <= 0.01) continue;
+
+        if (stageReady && ctx.drawImage) {
+          const frame = Math.min(15, Math.max(0, Math.floor(u * 16)));
+          const drawSz = Math.round(128 * (p.scale || 1.6));
+          const dx = Math.round(p.x - drawSz * 0.5);
+          const dy = Math.round(p.groundY - drawSz * 0.844);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.min(0.92, alpha * 0.88);
+          ctx.drawImage(stageVfx, frame * 128, (p.vfxRow | 0) * 128, 128, 128, dx, dy, drawSz, drawSz);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.16, alpha * 0.16);
+          ctx.drawImage(stageVfx, frame * 128, (p.vfxRow | 0) * 128, 128, 128, dx, dy, drawSz, drawSz);
+        }
+
+        const sparkCnt = p.essenceSparks || 0;
+        if (sparkCnt > 0 && ctx.fillRect) {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.min(0.95, alpha * 0.92);
+          const spreadR = 26 * (p.scale || 1.6);
+          for (let s = 0; s < sparkCnt; s++) {
+            const frac = (s + 0.5) / sparkCnt;
+            const ang = p.seed + frac * Math.PI * 2 + u * 1.4;
+            const lift = u * (54 + (s % 3) * 18);
+            const sx = Math.round((p.x + Math.cos(ang) * spreadR * (0.35 + u * 0.65)) / 2) * 2;
+            const sy = Math.round((p.groundY - 10 - lift) / 2) * 2;
+            ctx.fillStyle = '#0d0f1c';
+            ctx.fillRect(sx - 3, sy - 3, 6, 6);
+            ctx.fillStyle = p.color || '#38bdf8';
+            ctx.fillRect(sx - 2, sy - 2, 4, 4);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(sx - 1, sy - 1, 2, 2);
+          }
         }
       }
       ctx.restore();

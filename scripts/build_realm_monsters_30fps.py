@@ -53,14 +53,14 @@ from hd2d_rig_core import (
     draw_slash_arc_104,
 )
 
-ART_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1"
+ART_DIR = os.environ.get("AVS_SCRATCH_DIR", "/tmp/avs_monster_debug")
 SPRITE_DIR = os.path.join(ROOT_DIR, "assets", "sprites")
 
-SRC_TEMPLAR = os.path.join(ART_DIR, "monster_templar_base_1794570255646.jpg")
-SRC_ASTROLOGER = os.path.join(ART_DIR, "monster_astrologer_base_1794570242396.jpg")
-SRC_TREANT = os.path.join(ART_DIR, "monster_treant_base_1794570243679.jpg")
-SRC_DRYAD = os.path.join(ART_DIR, "monster_dryad_base_1794570248772.jpg")
-SRC_FIEND = os.path.join(ART_DIR, "monster_fiend_base_1794570254740.jpg")
+SRC_TEMPLAR = os.path.join(SPRITE_DIR, "monster_templar_base.jpg")
+SRC_ASTROLOGER = os.path.join(SPRITE_DIR, "monster_astrologer_base.jpg")
+SRC_TREANT = os.path.join(SPRITE_DIR, "monster_treant_base.jpg")
+SRC_DRYAD = os.path.join(SPRITE_DIR, "monster_dryad_base.jpg")
+SRC_FIEND = os.path.join(SPRITE_DIR, "monster_fiend_base.jpg")
 
 ROWS_MONSTER = 7
 
@@ -723,33 +723,138 @@ def render_monster_cell(
     return Image.fromarray(q104, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
-def draw_eclipse_orb_104(arr, cx, cy, r, phase):
-    """Solar-Gold & Astral-Cyan Eclipse Orb for Zone I Eclipse Acolyte."""
+def draw_spark_plus_104(arr, cx, cy, core_col, rim_col, big=False):
+    put_px(arr, cx, cy, core_col)
+    if big:
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            put_px(arr, cx + dx, cy + dy, rim_col)
+
+
+def draw_cel_smear_arc_104(
+    arr,
+    cx,
+    cy,
+    r_main,
+    a_start_deg,
+    a_end_deg,
+    col_selout,
+    col_outer,
+    col_mid,
+    col_core,
+    intensity=1.0,
+    max_thick=6.4,
+    spark_col=None,
+):
+    """Multi-band 4-tone HD-2D cel crescent smear (Selout spine -> outer -> mid -> razor white edge + wake sparks)."""
+    if intensity <= 0.05:
+        return
+    a0 = math.radians(a_start_deg)
+    a1 = math.radians(a_end_deg)
+    steps = 96
+    pts_outer = []
+    pts_mid = []
+    pts_core = []
+    pts_selout = []
+
+    for i in range(steps + 1):
+        t = i / steps
+        ang = a0 + (a1 - a0) * t
+        env = math.sin(t * math.pi)
+        thick = max(1.4, max_thick * (0.30 + 0.70 * env) * intensity)
+        c, s = math.cos(ang), math.sin(ang)
+        n_samples = max(4, int(thick * 3.0) + 2)
+        for dr in np.linspace(-thick, thick * 0.85, n_samples):
+            rr = r_main + dr
+            px = cx + c * rr
+            py = cy + s * rr
+            if px > 96 or px < 6 or py > 96 or py < 6:
+                continue
+            rel = dr / max(0.5, thick)
+            if rel < -0.62:
+                pts_selout.append((px, py))
+            elif rel < 0.0:
+                pts_outer.append((px, py))
+            elif rel < 0.44:
+                pts_mid.append((px, py))
+            else:
+                pts_core.append((px, py))
+
+    # Paint in strict painter order so bright razor edge never gets overwritten by selout!
+    for px, py in pts_selout:
+        put_px(arr, px, py, col_selout)
+    for px, py in pts_outer:
+        put_px(arr, px, py, col_outer)
+    for px, py in pts_mid:
+        put_px(arr, px, py, col_mid)
+    for px, py in pts_core:
+        put_px(arr, px, py, col_core)
+
+    # Trailing pixel sparks behind the arc
+    s_col = spark_col or col_mid
+    for k in range(5):
+        ut = 0.14 + k * 0.18
+        ang = a0 + (a1 - a0) * ut
+        rr = r_main - max_thick * (0.85 + 0.35 * (k % 2))
+        sx = cx + math.cos(ang) * rr
+        sy = cy + math.sin(ang) * rr
+        if 8 <= sx <= 94 and 8 <= sy <= 94:
+            draw_spark_plus_104(arr, sx, sy, col_core, s_col, big=(k % 2 == 0 and intensity > 0.55))
+
+
+def draw_templar_idle_runes_104(arr, phase, is_walk=False):
+    C_OUT = [8, 11, 18, 255]
+    C_CYAN = [96, 234, 255, 255]
+    C_GOLD = [242, 206, 116, 255]
+    C_WHT = [255, 255, 255, 255]
+    bob = math.sin(phase) * (2.2 if is_walk else 1.5)
+    gx, gy = 67.0 + (2.0 * math.cos(phase) if is_walk else 0.0), 42.0 + bob
+    draw_spark_plus_104(arr, gx, gy, C_WHT, C_CYAN, big=(math.sin(phase * 2.0) > 0.0))
+    for k in range(3):
+        ang = phase * 1.4 + k * 2.094
+        rx = gx + math.cos(ang) * 5.2
+        ry = gy + math.sin(ang) * 4.2 - k * 2.5
+        put_px(arr, rx - 1, ry, C_OUT)
+        put_px(arr, rx, ry, C_GOLD if k == 0 else C_CYAN)
+
+
+def draw_eclipse_orb_104(arr, cx, cy, r, phase, cast_burst=0.0):
+    """Enlarged Solar-Gold & Astral-Cyan Double-Ring Astrolabe Orb for Zone I Eclipse Acolyte."""
     if r <= 0.6:
         return
     C_VOID = [7, 10, 18, 255]
     C_GOLD = [240, 204, 118, 255]
     C_CYAN = [32, 192, 234, 255]
     C_HOT = [214, 252, 255, 255]
+    C_WHT = [255, 255, 255, 255]
     ir = int(math.ceil(r + 2))
     for dy in range(-ir, ir + 1):
         for dx in range(-ir, ir + 1):
             d = math.hypot(dx, dy)
-            if d > r + 0.9:
+            if d > r + 1.0:
                 continue
-            if d > r - 0.35:
-                put_px(arr, cx + dx, cy + dy, C_GOLD if (dx + dy) % 2 == 0 else C_CYAN)
-            elif d > r * 0.52:
-                put_px(arr, cx + dx, cy + dy, C_HOT if d > r * 0.72 else C_VOID)
-            else:
+            if d > r - 0.15:
                 put_px(arr, cx + dx, cy + dy, C_VOID)
-    for k in range(3):
-        ang = phase * 2.1 + k * (2.0 * math.pi / 3.0)
-        put_px(arr, cx + math.cos(ang) * (r + 2.2), cy + math.sin(ang) * (r + 1.5), C_GOLD if k == 0 else C_HOT)
+            elif d > r - 1.1:
+                put_px(arr, cx + dx, cy + dy, C_GOLD if (dx + dy) % 2 == 0 else C_CYAN)
+            elif d > r * 0.45:
+                put_px(arr, cx + dx, cy + dy, C_HOT if d > r * 0.68 else C_CYAN)
+            else:
+                put_px(arr, cx + dx, cy + dy, C_WHT if cast_burst > 0.2 else C_GOLD)
+    for k in range(4):
+        ang = phase * 2.1 + k * (math.pi * 0.5)
+        put_px(arr, cx + math.cos(ang) * (r + 2.4), cy + math.sin(ang) * (r + 1.8), C_GOLD if k % 2 == 0 else C_HOT)
+    if cast_burst > 0.18:
+        ray = int(round(3 + 5 * cast_burst))
+        for d in range(2, ray + 1):
+            col = C_WHT if d < ray * 0.55 else C_GOLD
+            put_px(arr, cx + d + r * 0.5, cy, col)
+            put_px(arr, cx - d - r * 0.5, cy, col)
+            put_px(arr, cx, cy + d + r * 0.5, C_CYAN)
+            put_px(arr, cx, cy - d - r * 0.5, C_CYAN)
 
 
-def draw_sylvan_wisp_104(arr, cx, cy, r, phase):
-    """Mint-Emerald Sylvan Star-Wisp & Briar Sparks for Zone II Thorn-Wraith."""
+def draw_sylvan_wisp_104(arr, cx, cy, r, phase, cast_burst=0.0, orbit_twin=False):
+    """Mint-Emerald Sylvan Star-Wisp + Optional Orbiting Secondary Briar-Wisp for Zone II Thorn-Wraith."""
     if r <= 0.6:
         return
     C_OUT = [7, 12, 12, 255]
@@ -761,17 +866,158 @@ def draw_sylvan_wisp_104(arr, cx, cy, r, phase):
     for dy in range(-ir, ir + 1):
         for dx in range(-ir, ir + 1):
             d = math.hypot(dx, dy)
-            if d > r + 0.85:
+            if d > r + 0.9:
                 continue
-            if d > r - 0.25:
-                put_px(arr, cx + dx, cy + dy, C_OUT if (dx + dy) % 2 else C_DEEP)
-            elif d > r * 0.45:
+            if d > r - 0.15:
+                put_px(arr, cx + dx, cy + dy, C_OUT)
+            elif d > r - 1.0:
+                put_px(arr, cx + dx, cy + dy, C_DEEP if (dx + dy) % 2 else C_LEAF)
+            elif d > r * 0.42:
                 put_px(arr, cx + dx, cy + dy, C_MINT)
             else:
                 put_px(arr, cx + dx, cy + dy, C_WHT)
     for k in range(3):
         ang = -phase * 2.0 + k * (2.0 * math.pi / 3.0)
-        put_px(arr, cx + math.cos(ang) * (r + 2.3), cy + math.sin(ang) * (r + 1.6), C_LEAF if k % 2 else C_MINT)
+        put_px(arr, cx + math.cos(ang) * (r + 2.5), cy + math.sin(ang) * (r + 1.8), C_LEAF if k % 2 else C_MINT)
+    if orbit_twin:
+        tx = 32.0 + math.cos(phase) * 9.0
+        ty = 40.0 + math.sin(phase * 1.5) * 4.5
+        draw_spark_plus_104(arr, tx, ty, C_WHT, C_MINT, big=True)
+        put_px(arr, tx - 2, ty + 1, C_LEAF)
+    if cast_burst > 0.18:
+        ray = int(round(3 + 5 * cast_burst))
+        for d in range(2, ray + 1):
+            col = C_WHT if d < ray * 0.5 else C_MINT
+            put_px(arr, cx + d + r * 0.5, cy, col)
+            put_px(arr, cx - d - r * 0.5, cy, col)
+            put_px(arr, cx, cy + d + r * 0.5, C_LEAF)
+            put_px(arr, cx, cy - d - r * 0.5, C_LEAF)
+
+
+def draw_treant_spores_104(arr, phase):
+    C_OUT = [8, 12, 12, 255]
+    C_MINT = [108, 248, 216, 255]
+    C_LEAF = [148, 232, 174, 255]
+    C_WHT = [255, 255, 255, 255]
+    # Pulsing chest crystal center
+    draw_spark_plus_104(arr, 56, 44, C_WHT, C_MINT, big=(math.sin(phase * 2.0) > -0.1))
+    for k in range(3):
+        u_s = (phase / (2.0 * math.pi) + k * 0.33) % 1.0
+        sx = 38.0 + k * 14.0 + math.sin(phase * 1.8 + k) * 3.0
+        sy = 54.0 - u_s * 24.0
+        put_px(arr, sx, sy + 1, C_OUT)
+        put_px(arr, sx, sy, C_LEAF if k % 2 else C_MINT)
+
+
+def draw_fiend_embers_104(arr, phase):
+    C_OUT = [8, 7, 12, 255]
+    C_ORG = [250, 128, 22, 255]
+    C_GLD = [254, 198, 54, 255]
+    C_WHT = [255, 255, 255, 255]
+    # Twin crackling hellfire claw sparks + rising brimstone motes
+    for cx, cy, ph_off in ((38, 52, 0.0), (70, 50, 1.6)):
+        draw_spark_plus_104(arr, cx, cy + math.sin(phase + ph_off) * 2.0, C_WHT, C_ORG, big=(math.sin(phase * 2 + ph_off) > 0))
+    for k in range(3):
+        u_s = (phase / (2.0 * math.pi) + k * 0.34) % 1.0
+        sx = 40.0 + k * 12.0 + math.cos(phase * 2.0 + k) * 3.2
+        sy = 58.0 - u_s * 26.0
+        put_px(arr, sx, sy + 1, C_OUT)
+        put_px(arr, sx, sy, C_GLD if k == 1 else C_ORG)
+
+
+def draw_lance_thrust_104(arr, ox, oy, intensity):
+    """Horizontal Solar-Cyan Eclipse Lance-Thrust with twin shock-rings for Templar Row 3 SKILL."""
+    if intensity <= 0.12:
+        return
+    C_OUT = [8, 11, 18, 255]
+    C_GOLD = [242, 206, 116, 255]
+    C_CYAN = [26, 184, 226, 255]
+    C_HOT = [96, 234, 255, 255]
+    C_WHT = [255, 255, 255, 255]
+    length = int(round(18 + 30 * intensity))
+    x_end = min(94, ox + length)
+    # Cross hilt flare
+    for dy in range(-5, 6):
+        put_px(arr, ox + 2, oy + dy, C_OUT if abs(dy) == 5 else C_GOLD)
+    # Lance beam body
+    for x in range(ox, x_end + 1):
+        u = (x - ox) / max(1, x_end - ox)
+        half_h = 3 if u < 0.72 else (2 if u < 0.90 else 1)
+        put_px(arr, x, oy - half_h - 1, C_OUT)
+        put_px(arr, x, oy + half_h + 1, C_OUT)
+        for dy in range(-half_h, half_h + 1):
+            col = C_WHT if abs(dy) == 0 else (C_HOT if abs(dy) == 1 else C_CYAN)
+            put_px(arr, x, oy + dy, col)
+    # Twin vertical shock rings
+    for rx, ry_rad in ((ox + int(length * 0.35), 9), (ox + int(length * 0.68), 6)):
+        if rx <= 93:
+            for dy in range(-ry_rad, ry_rad + 1):
+                put_px(arr, rx - 1, oy + dy, C_GOLD if abs(dy) > ry_rad - 2 else C_HOT)
+
+
+def draw_ground_slam_crest_104(arr, cx, cy, col_selout, col_outer, col_mid, col_core, intensity):
+    """Earthshaker ground shock-bar + 3 erupting crystal/magma spire teeth inside [14..94]."""
+    if intensity <= 0.12:
+        return
+    half_w = int(round(14 + 18 * intensity))
+    for dx in range(-half_w, half_w + 1):
+        px = cx + dx
+        if 8 <= px <= 94:
+            put_px(arr, px, cy + 2, col_selout)
+            put_px(arr, px, cy + 1, col_outer)
+            put_px(arr, px, cy, col_core if abs(dx) < half_w * 0.45 else col_mid)
+    for sp_off, sp_h in ((-14, 10), (0, 14), (14, 11)):
+        sx = cx + sp_off
+        h = max(3, int(round(sp_h * intensity)))
+        for row in range(1, h + 1):
+            w_row = max(1, int(round((1.0 - row / (h + 1.0)) * 3.5)))
+            for wx in range(-w_row, w_row + 1):
+                px = sx + wx
+                py = cy - row
+                if 8 <= px <= 94 and 8 <= py <= 95:
+                    if abs(wx) == w_row:
+                        put_px(arr, px, py, col_selout)
+                    elif abs(wx) <= 1 and row > 2:
+                        put_px(arr, px, py, col_core)
+                    else:
+                        put_px(arr, px, py, col_mid if row > h * 0.35 else col_outer)
+
+
+def draw_twin_rake_104(arr, cx, cy, col_selout, col_outer, col_mid, col_core, intensity):
+    """Twin parallel Hellfire Claw Rake smears for Zone IV Fiend Row 3 SKILL."""
+    if intensity <= 0.12:
+        return
+    draw_cel_smear_arc_104(arr, cx, cy - 6, 26, -54, 42, col_selout, col_outer, col_mid, col_core, intensity, 4.6)
+    draw_cel_smear_arc_104(arr, cx + 3, cy + 6, 25, -48, 52, col_selout, col_outer, col_mid, col_core, intensity, 4.4)
+
+
+def draw_caster_mandala_104(arr, cx, cy, r, col_selout, col_ring, col_mid, col_core, phase, intensity):
+    """Concentric Crown Sigil Mandala + 4 cardinal pixel rays for Casters Row 3/4."""
+    if intensity <= 0.12:
+        return
+    rr = r * (0.65 + 0.35 * intensity)
+    ir = int(math.ceil(rr + 2))
+    for dy in range(-ir, ir + 1):
+        for dx in range(-ir, ir + 1):
+            d = math.hypot(dx, dy)
+            if d > rr + 0.9:
+                continue
+            if d > rr - 0.3:
+                put_px(arr, cx + dx, cy + dy, col_selout)
+            elif d > rr - 1.5:
+                ang = math.atan2(dy, dx) + phase * 1.8
+                put_px(arr, cx + dx, cy + dy, col_ring if int(ang * 4) % 2 == 0 else col_mid)
+            elif d > rr * 0.42:
+                put_px(arr, cx + dx, cy + dy, col_mid)
+            else:
+                put_px(arr, cx + dx, cy + dy, col_core)
+    ray_len = int(round(4 + 5 * intensity))
+    for k in range(4):
+        ang = phase * 1.2 + k * (math.pi * 0.5)
+        for s in range(1, ray_len + 1):
+            px = cx + math.cos(ang) * (rr + s)
+            py = cy + math.sin(ang) * (rr + s)
+            put_px(arr, px, py, col_core if s < ray_len * 0.5 else col_ring)
 
 
 # ==============================================================================
@@ -785,94 +1031,106 @@ def generate_realm_pose(kind, row, f):
     is_caster = kind in ("astrologer", "dryad")
 
     # ------------------------------------------------------------------
-    # ROW 0: IDLE
+    # ROW 0: IDLE (Expressive Breathing Stance & Living Biome Focal Glows)
     # ------------------------------------------------------------------
     if row == 0:
         b = math.sin(ph)
         b2 = math.sin(ph - 0.7)
         if kind == "astrologer":
             cfg.update(
-                pelvis_dy=-3.5 + 3.8 * b,
-                torso_deg=1.6 * b,
-                head_rel_deg=-1.4 * b2,
-                r_arm_deg=-10.0 + 6.0 * b2,
-                l_arm_deg=-8.0 - 5.5 * b,
-                skirt_wave_amp=3.2,
+                pelvis_dy=-6.0 + 7.8 * b,
+                torso_deg=4.2 * b,
+                head_rel_deg=-3.2 * b2,
+                r_arm_deg=-12.0 + 13.5 * b2,
+                l_arm_deg=-10.0 - 12.5 * b,
+                skirt_wave_amp=6.4,
             )
-            fx_fn = lambda a, bl=b, pl=ph: draw_eclipse_orb_104(a, 74, 48 + bl * 1.4, 3.2, pl)
+            fx_fn = lambda a, bl=b, pl=ph: draw_eclipse_orb_104(a, 74, 48 + bl * 2.2, 4.2, pl)
         elif kind == "dryad":
             cfg.update(
-                pelvis_dy=-4.5 + 4.2 * b,
-                torso_deg=2.0 * b,
-                head_rel_deg=-1.6 * b2,
-                r_arm_deg=-6.0 + 6.5 * b2,
-                l_arm_deg=-6.0 - 6.0 * b,
-                skirt_wave_amp=3.6,
+                pelvis_dy=-6.5 + 8.4 * b,
+                torso_deg=4.4 * b,
+                head_rel_deg=-3.4 * b2,
+                r_arm_deg=-8.0 + 14.0 * b2,
+                l_arm_deg=-8.0 - 12.0 * b,
+                skirt_wave_amp=6.8,
             )
-            fx_fn = lambda a, bl=b, pl=ph: draw_sylvan_wisp_104(a, 73, 40 + bl * 1.5, 3.1, pl)
+            fx_fn = lambda a, bl=b, pl=ph: draw_sylvan_wisp_104(a, 73, 40 + bl * 2.2, 4.0, pl, orbit_twin=True)
         elif kind == "treant":
             cfg.update(
-                pelvis_dy=1.8 * b,
-                torso_deg=2.2 + 1.8 * b,
-                head_rel_deg=-1.4 * b2,
-                r_arm_deg=-5.0 + 4.5 * b2,
-                l_arm_deg=4.0 - 4.0 * b,
+                pelvis_dy=7.0 * b,
+                torso_deg=3.0 + 5.2 * b,
+                head_rel_deg=-3.4 * b2,
+                r_arm_deg=-6.0 + 12.5 * b2,
+                l_arm_deg=5.0 - 11.5 * b,
             )
+            fx_fn = lambda a, pl=ph: draw_treant_spores_104(a, pl)
         elif kind == "fiend":
             cfg.update(
-                pelvis_dy=2.4 * b,
-                torso_deg=3.5 + 2.4 * b,
-                head_rel_deg=-2.0 + 2.6 * b2,
-                r_arm_deg=6.0 + 6.5 * b2,
-                l_arm_deg=4.0 - 5.5 * b,
+                pelvis_dy=8.2 * b,
+                torso_deg=4.5 + 6.4 * b,
+                head_rel_deg=-3.0 + 4.2 * b2,
+                r_arm_deg=8.0 + 16.0 * b2,
+                l_arm_deg=6.0 - 14.0 * b,
             )
+            fx_fn = lambda a, pl=ph: draw_fiend_embers_104(a, pl)
         else:  # templar
             cfg.update(
-                pelvis_dy=1.8 * b,
-                torso_deg=2.0 + 1.8 * b,
-                head_rel_deg=-1.5 + 2.0 * b2,
-                r_arm_deg=-6.0 + 5.0 * b2,
-                l_arm_deg=5.0 - 4.5 * b,
+                pelvis_dy=7.2 * b,
+                torso_deg=2.8 + 5.4 * b,
+                head_rel_deg=-2.4 + 3.8 * b2,
+                r_arm_deg=-8.0 + 13.0 * b2,
+                l_arm_deg=6.0 - 11.5 * b,
             )
+            fx_fn = lambda a, pl=ph: draw_templar_idle_runes_104(a, pl, is_walk=False)
 
     # ------------------------------------------------------------------
-    # ROW 1: WALK
+    # ROW 1: WALK (Energetic Bipedal Stride & Billowing Caster Glide)
     # ------------------------------------------------------------------
     elif row == 1:
         s = math.sin(ph)
-        bounce = -abs(math.cos(ph)) * 5.2
+        bounce = -abs(math.cos(ph)) * 8.5
         if is_caster:
             cfg.update(
-                pelvis_dx=3.5,
-                pelvis_dy=-6.5 + 3.8 * s,
-                torso_deg=7.5 + 2.0 * s,
-                head_rel_deg=-4.0,
-                r_arm_deg=-18.0 + 9.0 * s,
-                l_arm_deg=-12.0 - 8.0 * s,
-                skirt_deg=5.5 + 1.8 * s,
-                skirt_wave_amp=4.8,
+                pelvis_dx=4.5,
+                pelvis_dy=-7.5 + 6.8 * s,
+                torso_deg=9.5 + 3.5 * s,
+                head_rel_deg=-4.8,
+                r_arm_deg=-22.0 + 14.0 * s,
+                l_arm_deg=-14.0 - 12.0 * s,
+                skirt_deg=7.5 + 3.2 * s,
+                skirt_wave_amp=7.6,
             )
             if kind == "astrologer":
-                fx_fn = lambda a, pl=ph: draw_eclipse_orb_104(a, 76, 46, 3.3, pl)
+                fx_fn = lambda a, sl=s, pl=ph: (
+                    draw_eclipse_orb_104(a, 76, 46 + sl * 1.5, 4.3, pl),
+                    draw_spark_plus_104(a, 24 + (int(pl * 4) % 8), 72 - (int(pl * 6) % 10), [214, 252, 255, 255], [240, 204, 118, 255], True),
+                )
             else:
-                fx_fn = lambda a, pl=ph: draw_sylvan_wisp_104(a, 75, 38, 3.2, pl)
+                fx_fn = lambda a, sl=s, pl=ph: draw_sylvan_wisp_104(a, 75, 38 + sl * 1.5, 4.1, pl, orbit_twin=True)
         else:
-            leg_amp = 23.0 if kind == "fiend" else (19.0 if kind == "templar" else 17.0)
-            arm_amp = 20.0 if kind == "fiend" else 16.0
-            lean = 9.5 if kind == "fiend" else (6.5 if kind == "templar" else 6.0)
-            r_base = 8.0 if kind == "fiend" else -10.0
+            leg_amp = 30.0 if kind == "fiend" else (26.0 if kind == "templar" else 24.0)
+            arm_amp = 26.0 if kind == "fiend" else 22.0
+            lean = 12.5 if kind == "fiend" else (9.0 if kind == "templar" else 8.0)
+            r_base = 10.0 if kind == "fiend" else -10.0
             cfg.update(
                 pelvis_dy=bounce,
-                torso_deg=lean + 1.8 * math.sin(ph * 2),
+                torso_deg=lean + 3.2 * math.sin(ph * 2),
                 head_rel_deg=-lean * 0.45,
                 r_leg_deg=leg_amp * s,
                 l_leg_deg=-leg_amp * s,
                 r_arm_deg=r_base - arm_amp * s,
                 l_arm_deg=-6.0 + arm_amp * s,
             )
+            if kind == "templar":
+                fx_fn = lambda a, pl=ph: draw_templar_idle_runes_104(a, pl, is_walk=True)
+            elif kind == "treant":
+                fx_fn = lambda a, pl=ph: draw_treant_spores_104(a, pl)
+            else:
+                fx_fn = lambda a, pl=ph: draw_fiend_embers_104(a, pl)
 
     # ------------------------------------------------------------------
-    # ROW 2: AUTO_ATTACK
+    # ROW 2: AUTO_ATTACK (Deep Coil -> Strike Lunge -> Multi-Tone Cel Smear)
     # ------------------------------------------------------------------
     elif row == 2:
         if f < 9:
@@ -880,37 +1138,37 @@ def generate_realm_pose(kind, row, f):
             e = t * t * (3 - 2 * t)
             if is_caster:
                 cfg.update(
-                    pelvis_dy=-5.5 - 3.5 * e,
-                    torso_deg=-6.0 * e,
-                    r_arm_deg=-38.0 * e,
-                    l_arm_deg=-28.0 * e,
-                    skirt_wave_amp=4.2,
+                    pelvis_dy=-6.5 - 5.5 * e,
+                    torso_deg=-8.5 * e,
+                    r_arm_deg=-46.0 * e,
+                    l_arm_deg=-34.0 * e,
+                    skirt_wave_amp=5.8,
                 )
                 if kind == "astrologer":
-                    fx_fn = lambda a, el=e, pl=ph: draw_eclipse_orb_104(a, 70, 42 - 4 * el, 2.6 + 3.0 * el, pl)
+                    fx_fn = lambda a, el=e, pl=ph: draw_eclipse_orb_104(a, 70, 42 - 5 * el, 3.2 + 3.4 * el, pl)
                 else:
-                    fx_fn = lambda a, el=e, pl=ph: draw_sylvan_wisp_104(a, 69, 36 - 4 * el, 2.6 + 3.0 * el, pl)
+                    fx_fn = lambda a, el=e, pl=ph: draw_sylvan_wisp_104(a, 69, 36 - 5 * el, 3.2 + 3.2 * el, pl)
             elif kind == "fiend":
                 cfg.update(
-                    pelvis_dx=-10.0 * e,
-                    pelvis_dy=3.0 * e,
-                    torso_deg=-12.0 * e,
-                    head_rel_deg=6.0 * e,
-                    r_arm_deg=-28.0 * e,
-                    l_arm_deg=-24.0 * e,
-                    r_leg_deg=12.0 * e,
-                    l_leg_deg=-10.0 * e,
+                    pelvis_dx=-15.0 * e,
+                    pelvis_dy=5.0 * e,
+                    torso_deg=-16.0 * e,
+                    head_rel_deg=8.0 * e,
+                    r_arm_deg=-36.0 * e,
+                    l_arm_deg=-30.0 * e,
+                    r_leg_deg=15.0 * e,
+                    l_leg_deg=-13.0 * e,
                 )
             else:
                 cfg.update(
-                    pelvis_dx=-10.0 * e,
-                    pelvis_dy=3.0 * e,
-                    torso_deg=-12.0 * e,
-                    head_rel_deg=6.0 * e,
-                    r_arm_deg=-58.0 * e,
-                    l_arm_deg=-36.0 * e,
-                    r_leg_deg=12.0 * e,
-                    l_leg_deg=-10.0 * e,
+                    pelvis_dx=-15.0 * e,
+                    pelvis_dy=5.0 * e,
+                    torso_deg=-16.0 * e,
+                    head_rel_deg=8.0 * e,
+                    r_arm_deg=-68.0 * e,
+                    l_arm_deg=-44.0 * e,
+                    r_leg_deg=15.0 * e,
+                    l_leg_deg=-13.0 * e,
                 )
         elif f < 19:
             t = (f - 9) / 10.0
@@ -918,193 +1176,293 @@ def generate_realm_pose(kind, row, f):
             arc_int = math.sin(t * math.pi)
             if is_caster:
                 cfg.update(
-                    pelvis_dx=9.0 * snap,
-                    pelvis_dy=-7.5,
-                    torso_deg=11.0 * snap,
-                    head_rel_deg=-5.5 * snap,
-                    r_arm_deg=-38.0 + 20.0 * snap,
-                    l_arm_deg=-28.0 + 16.0 * snap,
-                    skirt_wave_amp=5.5,
+                    pelvis_dx=12.0 * snap,
+                    pelvis_dy=-9.0,
+                    torso_deg=14.0 * snap,
+                    head_rel_deg=-6.5 * snap,
+                    r_arm_deg=-46.0 + 26.0 * snap,
+                    l_arm_deg=-34.0 + 20.0 * snap,
+                    skirt_wave_amp=6.8,
                 )
                 if kind == "astrologer":
-                    fx_fn = lambda a, sl=snap, tl=t, pl=ph: draw_eclipse_orb_104(a, 74 + 8 * sl, 44, 5.5 - 1.4 * tl, pl)
+                    fx_fn = lambda a, sl=snap, tl=t, ai=arc_int, pl=ph: draw_eclipse_orb_104(
+                        a, 74 + 9 * sl, 44, 6.4 - 1.5 * tl, pl, cast_burst=ai
+                    )
                 else:
-                    fx_fn = lambda a, sl=snap, tl=t, pl=ph: draw_sylvan_wisp_104(a, 73 + 8 * sl, 38, 5.4 - 1.4 * tl, pl)
+                    fx_fn = lambda a, sl=snap, tl=t, ai=arc_int, pl=ph: draw_sylvan_wisp_104(
+                        a, 73 + 9 * sl, 38, 6.4 - 1.5 * tl, pl, cast_burst=ai
+                    )
             elif kind == "fiend":
                 cfg.update(
-                    pelvis_dx=-10.0 + 26.0 * snap,
-                    pelvis_dy=-2.0 * snap,
-                    torso_deg=-12.0 + 28.0 * snap,
-                    head_rel_deg=-10.0 * snap,
-                    r_arm_deg=-28.0 + 78.0 * snap,
-                    l_arm_deg=-24.0 + 58.0 * snap,
-                    r_leg_deg=12.0 - 24.0 * snap,
-                    l_leg_deg=-10.0 + 20.0 * snap,
+                    pelvis_dx=-15.0 + 32.0 * snap,
+                    pelvis_dy=-3.0 * snap,
+                    torso_deg=-16.0 + 34.0 * snap,
+                    head_rel_deg=-12.0 * snap,
+                    r_arm_deg=-36.0 + 92.0 * snap,
+                    l_arm_deg=-30.0 + 68.0 * snap,
+                    r_leg_deg=15.0 - 30.0 * snap,
+                    l_leg_deg=-13.0 + 24.0 * snap,
                 )
-                if arc_int > 0.15:
-                    fx_fn = lambda a, ai=arc_int: draw_slash_arc_104(
-                        a, 58, 52, 28, -58, 50, [255, 240, 148, 255], [250, 128, 22, 255], [168, 32, 16, 255], ai
+                if arc_int > 0.14:
+                    fx_fn = lambda a, ai=arc_int: draw_cel_smear_arc_104(
+                        a, 58, 52, 29, -62, 54, [8, 7, 12, 255], [168, 32, 16, 255], [250, 128, 22, 255], [255, 255, 255, 255], ai, 6.4, [254, 198, 54, 255]
                     )
             else:
                 cfg.update(
-                    pelvis_dx=-10.0 + 24.0 * snap,
-                    pelvis_dy=-2.0 * snap,
-                    torso_deg=-12.0 + 26.0 * snap,
-                    head_rel_deg=-9.0 * snap,
-                    r_arm_deg=-58.0 + 86.0 * snap,
-                    l_arm_deg=-36.0 + 62.0 * snap,
-                    r_leg_deg=12.0 - 24.0 * snap,
-                    l_leg_deg=-10.0 + 20.0 * snap,
+                    pelvis_dx=-15.0 + 32.0 * snap,
+                    pelvis_dy=-3.0 * snap,
+                    torso_deg=-16.0 + 34.0 * snap,
+                    head_rel_deg=-11.0 * snap,
+                    r_arm_deg=-68.0 + 102.0 * snap,
+                    l_arm_deg=-44.0 + 74.0 * snap,
+                    r_leg_deg=15.0 - 30.0 * snap,
+                    l_leg_deg=-13.0 + 24.0 * snap,
                 )
-                if arc_int > 0.15:
+                if arc_int > 0.14:
                     if kind == "templar":
-                        fx_fn = lambda a, ai=arc_int: draw_slash_arc_104(
-                            a, 58, 50, 29, -64, 52, [204, 250, 255, 255], [26, 184, 226, 255], [198, 154, 68, 255], ai
+                        fx_fn = lambda a, ai=arc_int: draw_cel_smear_arc_104(
+                            a, 58, 50, 31, -68, 54, [8, 11, 18, 255], [198, 154, 68, 255], [26, 184, 226, 255], [255, 255, 255, 255], ai, 6.4, [242, 206, 116, 255]
                         )
                     else:  # treant
-                        fx_fn = lambda a, ai=arc_int: draw_slash_arc_104(
-                            a, 58, 54, 30, -66, 52, [196, 255, 240, 255], [38, 218, 182, 255], [48, 92, 54, 255], ai
+                        fx_fn = lambda a, ai=arc_int: draw_cel_smear_arc_104(
+                            a, 58, 54, 31, -68, 54, [8, 12, 12, 255], [18, 156, 134, 255], [38, 218, 182, 255], [255, 255, 255, 255], ai, 6.8, [148, 232, 174, 255]
                         )
         else:
             t = (f - 19) / 11.0
             r = 1.0 - (t * t * (3 - 2 * t))
             if is_caster:
                 cfg.update(
-                    pelvis_dx=9.0 * r,
-                    pelvis_dy=-4.0 - 3.5 * r,
-                    torso_deg=11.0 * r,
-                    r_arm_deg=-8.0 - 10.0 * r,
-                    l_arm_deg=-6.0 - 8.0 * r,
+                    pelvis_dx=12.0 * r,
+                    pelvis_dy=-5.0 - 4.0 * r,
+                    torso_deg=14.0 * r,
+                    r_arm_deg=-10.0 - 10.0 * r,
+                    l_arm_deg=-8.0 - 8.0 * r,
                 )
             elif kind == "fiend":
                 cfg.update(
-                    pelvis_dx=16.0 * r,
-                    torso_deg=16.0 * r,
-                    head_rel_deg=-10.0 * r,
-                    r_arm_deg=6.0 + 44.0 * r,
-                    l_arm_deg=4.0 + 30.0 * r,
-                    r_leg_deg=-12.0 * r,
-                    l_leg_deg=10.0 * r,
+                    pelvis_dx=17.0 * r,
+                    torso_deg=18.0 * r,
+                    head_rel_deg=-12.0 * r,
+                    r_arm_deg=8.0 + 48.0 * r,
+                    l_arm_deg=5.0 + 33.0 * r,
+                    r_leg_deg=-15.0 * r,
+                    l_leg_deg=11.0 * r,
                 )
             else:
                 cfg.update(
-                    pelvis_dx=14.0 * r,
-                    torso_deg=14.0 * r,
-                    head_rel_deg=-9.0 * r,
-                    r_arm_deg=-6.0 + 34.0 * r,
-                    l_arm_deg=24.0 * r,
-                    r_leg_deg=-12.0 * r,
-                    l_leg_deg=10.0 * r,
+                    pelvis_dx=17.0 * r,
+                    torso_deg=18.0 * r,
+                    head_rel_deg=-11.0 * r,
+                    r_arm_deg=-8.0 + 42.0 * r,
+                    l_arm_deg=30.0 * r,
+                    r_leg_deg=-15.0 * r,
+                    l_leg_deg=11.0 * r,
                 )
 
     # ------------------------------------------------------------------
-    # ROW 3: SKILL
+    # ROW 3: SKILL (Archetype-Distinct Signature Choreography!)
     # ------------------------------------------------------------------
     elif row == 3:
         if f < 10:
-            e = (f / 10.0) ** 1.5
-            cfg.update(
-                pelvis_dy=-9.0 * e if is_caster else 5.0 * e,
-                torso_deg=-14.0 * e,
-                head_rel_deg=-7.0 * e,
-                r_arm_deg=(-46.0 if kind == "fiend" else -68.0) * e,
-                l_arm_deg=(-42.0 if kind == "fiend" else -62.0) * e,
-                r_leg_deg=14.0 * e,
-                l_leg_deg=-14.0 * e,
-            )
-            if kind == "astrologer":
-                fx_fn = lambda a, el=e, pl=ph: draw_eclipse_orb_104(a, 56, 22, 3.0 + 3.8 * el, pl)
-            elif kind == "dryad":
-                fx_fn = lambda a, el=e, pl=ph: draw_sylvan_wisp_104(a, 56, 22, 3.0 + 3.8 * el, pl)
+            e = (f / 10.0) ** 1.4
+            if kind == "templar":
+                cfg.update(
+                    pelvis_dx=-16.0 * e,
+                    pelvis_dy=7.0 * e,
+                    torso_deg=-18.0 * e,
+                    head_rel_deg=8.0 * e,
+                    r_arm_deg=-52.0 * e,
+                    l_arm_deg=-42.0 * e,
+                    r_leg_deg=16.0 * e,
+                    l_leg_deg=-16.0 * e,
+                )
+            elif kind == "treant":
+                cfg.update(
+                    pelvis_dy=-12.0 * e,
+                    torso_deg=-16.0 * e,
+                    head_rel_deg=-9.0 * e,
+                    r_arm_deg=-88.0 * e,
+                    l_arm_deg=-82.0 * e,
+                    r_leg_deg=15.0 * e,
+                    l_leg_deg=10.0 * e,
+                )
+            elif kind == "fiend":
+                cfg.update(
+                    pelvis_dx=-14.0 * e,
+                    pelvis_dy=10.0 * e,
+                    torso_deg=-18.0 * e,
+                    head_rel_deg=6.0 * e,
+                    r_arm_deg=-64.0 * e,
+                    l_arm_deg=-58.0 * e,
+                    r_leg_deg=18.0 * e,
+                    l_leg_deg=-14.0 * e,
+                )
+            else:  # astrologer / dryad invocation
+                cfg.update(
+                    pelvis_dy=-11.0 * e,
+                    torso_deg=-12.0 * e,
+                    head_rel_deg=-7.0 * e,
+                    r_arm_deg=-82.0 * e,
+                    l_arm_deg=-76.0 * e,
+                    skirt_wave_amp=6.2,
+                )
+                if kind == "astrologer":
+                    fx_fn = lambda a, el=e, pl=ph: draw_caster_mandala_104(
+                        a, 58, 22, 5.2, [7, 10, 18, 255], [240, 204, 118, 255], [32, 192, 234, 255], [255, 255, 255, 255], pl, el
+                    )
+                else:
+                    fx_fn = lambda a, el=e, pl=ph: draw_caster_mandala_104(
+                        a, 58, 22, 5.2, [7, 12, 12, 255], [132, 196, 116, 255], [54, 232, 186, 255], [255, 255, 255, 255], pl, el
+                    )
         elif f < 22:
             t = (f - 10) / 12.0
             snap = min(1.0, t * 3.0)
             burst = math.sin(t * math.pi)
-            cfg.update(
-                pelvis_dx=20.0 * snap if not is_caster else 4.0 * snap,
-                pelvis_dy=-11.0 if is_caster else 7.0 * snap,
-                torso_deg=-14.0 + 34.0 * snap if not is_caster else 8.0 * snap,
-                head_rel_deg=-10.0 * snap,
-                r_arm_deg=((-46.0 + 98.0 * snap) if kind == "fiend" else (-68.0 + 98.0 * snap)) if not is_caster else -50.0,
-                l_arm_deg=((-42.0 + 82.0 * snap) if kind == "fiend" else (-62.0 + 86.0 * snap)) if not is_caster else -46.0,
-                r_leg_deg=-18.0 * snap,
-                l_leg_deg=18.0 * snap,
-            )
-            if kind == "astrologer":
-                fx_fn = lambda a, bl=burst, pl=ph: draw_eclipse_orb_104(a, 64, 24, 5.2 + 2.0 * bl, pl)
-            elif kind == "dryad":
-                fx_fn = lambda a, bl=burst, pl=ph: draw_sylvan_wisp_104(a, 64, 24, 5.2 + 2.0 * bl, pl)
-            elif burst > 0.15:
-                if kind == "templar":
-                    ca, cb, cc = [204, 250, 255, 255], [26, 184, 226, 255], [242, 206, 116, 255]
-                elif kind == "treant":
-                    ca, cb, cc = [196, 255, 240, 255], [38, 218, 182, 255], [18, 156, 134, 255]
-                else:
-                    ca, cb, cc = [255, 240, 148, 255], [250, 128, 22, 255], [168, 32, 16, 255]
-                fx_fn = lambda a, bl=burst, c1=ca, c2=cb, c3=cc: draw_slash_arc_104(
-                    a, 59, 53, 30, -70, 62, c1, c2, c3, bl
+            if kind == "templar":
+                cfg.update(
+                    pelvis_dx=-16.0 + 38.0 * snap,
+                    pelvis_dy=2.0 * snap,
+                    torso_deg=-18.0 + 40.0 * snap,
+                    head_rel_deg=-12.0 * snap,
+                    r_arm_deg=-52.0 + 68.0 * snap,
+                    l_arm_deg=-42.0 + 54.0 * snap,
+                    r_leg_deg=-22.0 * snap,
+                    l_leg_deg=20.0 * snap,
                 )
+                if burst > 0.14:
+                    fx_fn = lambda a, bl=burst: draw_lance_thrust_104(a, 50, 50, bl)
+            elif kind == "treant":
+                cfg.update(
+                    pelvis_dx=14.0 * snap,
+                    pelvis_dy=-12.0 * (1.0 - snap) + 11.0 * snap,
+                    torso_deg=-16.0 + 44.0 * snap,
+                    head_rel_deg=-8.0 * snap,
+                    r_arm_deg=-88.0 + 132.0 * snap,
+                    l_arm_deg=-82.0 + 124.0 * snap,
+                    r_leg_deg=-18.0 * snap,
+                    l_leg_deg=18.0 * snap,
+                )
+                if burst > 0.14:
+                    fx_fn = lambda a, bl=burst: draw_ground_slam_crest_104(
+                        a, 62, 89, [8, 12, 12, 255], [18, 156, 134, 255], [38, 218, 182, 255], [255, 255, 255, 255], bl
+                    )
+            elif kind == "fiend":
+                cfg.update(
+                    pelvis_dx=-14.0 + 36.0 * snap,
+                    pelvis_dy=-12.0 * burst + 4.0 * snap,
+                    torso_deg=-18.0 + 42.0 * snap,
+                    head_rel_deg=-12.0 * snap,
+                    r_arm_deg=-64.0 + 116.0 * snap,
+                    l_arm_deg=-58.0 + 104.0 * snap,
+                    r_leg_deg=-22.0 * snap,
+                    l_leg_deg=22.0 * snap,
+                )
+                if burst > 0.14:
+                    fx_fn = lambda a, bl=burst: draw_twin_rake_104(
+                        a, 58, 52, [8, 7, 12, 255], [168, 32, 16, 255], [250, 128, 22, 255], [255, 255, 255, 255], bl
+                    )
+            else:  # astrologer / dryad
+                cfg.update(
+                    pelvis_dx=6.0 * snap,
+                    pelvis_dy=-13.0,
+                    torso_deg=10.0 * snap,
+                    head_rel_deg=-8.0 * snap,
+                    r_arm_deg=-68.0,
+                    l_arm_deg=-62.0,
+                    skirt_wave_amp=7.2,
+                )
+                if kind == "astrologer":
+                    fx_fn = lambda a, bl=burst, pl=ph: draw_caster_mandala_104(
+                        a, 60, 22, 6.6, [7, 10, 18, 255], [240, 204, 118, 255], [32, 192, 234, 255], [255, 255, 255, 255], pl, 0.55 + 0.45 * bl
+                    )
+                else:
+                    fx_fn = lambda a, bl=burst, pl=ph: draw_caster_mandala_104(
+                        a, 60, 22, 6.6, [7, 12, 12, 255], [132, 196, 116, 255], [54, 232, 186, 255], [255, 255, 255, 255], pl, 0.55 + 0.45 * bl
+                    )
         else:
             r = 1.0 - ((f - 22) / 8.0)
             cfg.update(
-                pelvis_dx=20.0 * r if not is_caster else 4.0 * r,
-                pelvis_dy=-6.0 * r if is_caster else 7.0 * r,
-                torso_deg=20.0 * r if not is_caster else 8.0 * r,
-                r_arm_deg=28.0 * r if not is_caster else -32.0 * r,
-                l_arm_deg=22.0 * r if not is_caster else -28.0 * r,
+                pelvis_dx=(22.0 if not is_caster else 6.0) * r,
+                pelvis_dy=(-7.0 if is_caster else 7.0) * r,
+                torso_deg=(22.0 if not is_caster else 10.0) * r,
+                r_arm_deg=(24.0 if not is_caster else -40.0) * r,
+                l_arm_deg=(18.0 if not is_caster else -36.0) * r,
                 r_leg_deg=-18.0 * r,
                 l_leg_deg=18.0 * r,
             )
 
     # ------------------------------------------------------------------
-    # ROW 4: ULTIMATE / ELITE OVERDRIVE
+    # ROW 4: ULTIMATE / EMPOWERED WARDEN-ELITE SURGE
     # ------------------------------------------------------------------
     elif row == 4:
         if f < 12:
             e = math.sin((f / 12.0) * math.pi * 0.5)
             cfg.update(
-                pelvis_dy=-18.0 * e,
-                torso_deg=-12.0 * e,
-                head_rel_deg=-9.0 * e,
-                r_arm_deg=(-54.0 if kind == "fiend" else -76.0) * e,
-                l_arm_deg=(-50.0 if kind == "fiend" else -70.0) * e,
+                pelvis_dy=-20.0 * e,
+                torso_deg=-14.0 * e,
+                head_rel_deg=-10.0 * e,
+                r_arm_deg=(-64.0 if kind == "fiend" else -82.0) * e,
+                l_arm_deg=(-58.0 if kind == "fiend" else -76.0) * e,
                 r_leg_deg=16.0 * e,
-                l_leg_deg=10.0 * e,
+                l_leg_deg=12.0 * e,
+                skirt_wave_amp=6.6,
             )
+            if kind == "astrologer":
+                fx_fn = lambda a, el=e, pl=ph: draw_caster_mandala_104(
+                    a, 58, 22, 5.8, [7, 10, 18, 255], [240, 204, 118, 255], [32, 192, 234, 255], [255, 255, 255, 255], pl, el
+                )
+            elif kind == "dryad":
+                fx_fn = lambda a, el=e, pl=ph: draw_caster_mandala_104(
+                    a, 58, 22, 5.8, [7, 12, 12, 255], [132, 196, 116, 255], [54, 232, 186, 255], [255, 255, 255, 255], pl, el
+                )
         elif f < 22:
             t = (f - 12) / 10.0
             snap = min(1.0, t * 2.8)
             burst = math.sin(t * math.pi)
             cfg.update(
-                pelvis_dx=14.0 * snap,
-                pelvis_dy=-18.0 * (1.0 - snap) + 6.0 * snap,
-                torso_deg=-12.0 + 32.0 * snap,
-                head_rel_deg=-9.0 + 4.0 * snap,
-                r_arm_deg=(-54.0 if kind == "fiend" else -76.0) + 108.0 * snap,
-                l_arm_deg=(-50.0 if kind == "fiend" else -70.0) + 96.0 * snap,
-                r_leg_deg=16.0 - 30.0 * snap,
-                l_leg_deg=10.0 + 12.0 * snap,
+                pelvis_dx=16.0 * snap,
+                pelvis_dy=-20.0 * (1.0 - snap) + 7.0 * snap,
+                torso_deg=-14.0 + 36.0 * snap,
+                head_rel_deg=-10.0 + 4.0 * snap,
+                r_arm_deg=(-64.0 if kind == "fiend" else -82.0) + 114.0 * snap,
+                l_arm_deg=(-58.0 if kind == "fiend" else -76.0) + 102.0 * snap,
+                r_leg_deg=16.0 - 32.0 * snap,
+                l_leg_deg=12.0 + 14.0 * snap,
             )
-            if burst > 0.15:
-                if kind in ("templar", "astrologer"):
-                    ca, cb, cc = [255, 255, 255, 255], [96, 234, 255, 255], [198, 154, 68, 255]
-                elif kind in ("treant", "dryad"):
-                    ca, cb, cc = [255, 255, 255, 255], [108, 248, 216, 255], [26, 178, 144, 255]
-                else:
-                    ca, cb, cc = [255, 255, 255, 255], [254, 198, 54, 255], [224, 68, 16, 255]
-                fx_fn = lambda a, bl=burst, c1=ca, c2=cb, c3=cc: draw_slash_arc_104(
-                    a, 58, 52, 32, -74, 64, c1, c2, c3, bl
-                )
+            if burst > 0.14:
+                if kind == "templar":
+                    fx_fn = lambda a, bl=burst: (
+                        draw_cel_smear_arc_104(a, 58, 50, 32, -74, 62, [8, 11, 18, 255], [198, 154, 68, 255], [96, 234, 255, 255], [255, 255, 255, 255], bl, 6.8),
+                        draw_cel_smear_arc_104(a, 60, 52, 24, 54, -48, [8, 11, 18, 255], [26, 184, 226, 255], [242, 206, 116, 255], [255, 255, 255, 255], bl * 0.85, 5.0),
+                    )
+                elif kind == "astrologer":
+                    fx_fn = lambda a, bl=burst, pl=ph: draw_caster_mandala_104(
+                        a, 62, 24, 7.2, [7, 10, 18, 255], [240, 204, 118, 255], [110, 238, 255, 255], [255, 255, 255, 255], pl, bl
+                    )
+                elif kind == "treant":
+                    fx_fn = lambda a, bl=burst: (
+                        draw_cel_smear_arc_104(a, 58, 52, 32, -74, 62, [8, 12, 12, 255], [18, 156, 134, 255], [108, 248, 216, 255], [255, 255, 255, 255], bl, 7.0),
+                        draw_ground_slam_crest_104(a, 62, 89, [8, 12, 12, 255], [18, 156, 134, 255], [38, 218, 182, 255], [255, 255, 255, 255], bl),
+                    )
+                elif kind == "dryad":
+                    fx_fn = lambda a, bl=burst, pl=ph: draw_caster_mandala_104(
+                        a, 62, 24, 7.2, [7, 12, 12, 255], [132, 196, 116, 255], [124, 252, 218, 255], [255, 255, 255, 255], pl, bl
+                    )
+                else:  # fiend
+                    fx_fn = lambda a, bl=burst: (
+                        draw_cel_smear_arc_104(a, 58, 50, 32, -74, 62, [8, 7, 12, 255], [224, 68, 16, 255], [254, 198, 54, 255], [255, 255, 255, 255], bl, 6.8),
+                        draw_twin_rake_104(a, 58, 54, [8, 7, 12, 255], [168, 32, 16, 255], [250, 128, 22, 255], [255, 255, 255, 255], bl * 0.9),
+                    )
         else:
             r = 1.0 - ((f - 22) / 8.0)
             cfg.update(
-                pelvis_dx=14.0 * r,
-                pelvis_dy=6.0 * r,
-                torso_deg=20.0 * r,
-                r_arm_deg=30.0 * r,
+                pelvis_dx=16.0 * r,
+                pelvis_dy=7.0 * r,
+                torso_deg=22.0 * r,
+                r_arm_deg=32.0 * r,
                 l_arm_deg=26.0 * r,
-                r_leg_deg=-14.0 * r,
-                l_leg_deg=22.0 * r,
+                r_leg_deg=-16.0 * r,
+                l_leg_deg=24.0 * r,
             )
 
     # ------------------------------------------------------------------
@@ -1214,13 +1572,19 @@ def audit_sheet_bounds(sheet_im, name):
 def main():
     t0 = time.time()
     os.makedirs(SPRITE_DIR, exist_ok=True)
+    os.makedirs(ART_DIR, exist_ok=True)
 
-    # Save reference bases cleanly into assets/sprites/ for reproducibility
-    shutil.copyfile(SRC_TEMPLAR, os.path.join(SPRITE_DIR, "monster_templar_base.jpg"))
-    shutil.copyfile(SRC_ASTROLOGER, os.path.join(SPRITE_DIR, "monster_astrologer_base.jpg"))
-    shutil.copyfile(SRC_TREANT, os.path.join(SPRITE_DIR, "monster_treant_base.jpg"))
-    shutil.copyfile(SRC_DRYAD, os.path.join(SPRITE_DIR, "monster_dryad_base.jpg"))
-    shutil.copyfile(SRC_FIEND, os.path.join(SPRITE_DIR, "monster_fiend_base.jpg"))
+    # Save reference bases cleanly into assets/sprites/ when building from external art dir
+    for src_p, dst_name in (
+        (SRC_TEMPLAR, "monster_templar_base.jpg"),
+        (SRC_ASTROLOGER, "monster_astrologer_base.jpg"),
+        (SRC_TREANT, "monster_treant_base.jpg"),
+        (SRC_DRYAD, "monster_dryad_base.jpg"),
+        (SRC_FIEND, "monster_fiend_base.jpg"),
+    ):
+        dst_p = os.path.join(SPRITE_DIR, dst_name)
+        if os.path.exists(src_p) and os.path.abspath(src_p) != os.path.abspath(dst_p):
+            shutil.copyfile(src_p, dst_p)
 
     creatures = [
         {

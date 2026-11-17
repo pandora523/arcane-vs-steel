@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps132';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
 
 /**
  * Interactive Front-Facing Orthogonal 16-Bit HD-2D Destructible Shrines & Braziers (`AdventureDestructibles`)
@@ -201,35 +201,35 @@ const PROP_ARCHETYPES = {
 //  - Every `x` coordinate clears all sub-wave arcane barrier gates (`1184/1236`, `2376/2404`,
 //    `3584/3596`, `4776/4804`, `5984/5996`, `7176/7204`, `8364/8376`) and keeps `max x <= 8800`
 //    clear of Behemoth Malphas (`9335`) & Boss Sanctuary Seal (`8920`).
-//  - Preserves exact RPG drop economy: `8` single-item caches (`4` `'relic'` + `4` `'hp'`) + `12` Spirit braziers.
+//  - Preserves exact RPG drop economy: `4` `'relic'` caches (`0` `'hp'` cures) + `12` Spirit braziers.
 const CURATED_PROP_LAYOUT = [
   // Zone I: Eclipse Cathedral Outskirts (`0..2400`) — Gothic Pedestal Braziers, Reliquary Coffers & Astral Orrery
   { kind: 'eclipse_brazier', zone: 0, x: 360, groundY: 452, dropType: null },
   { kind: 'eclipse_reliquary', zone: 0, x: 780, groundY: 450, dropType: null },
   { kind: 'eclipse_astrolabe', zone: 0, x: 1320, groundY: 454, dropType: 'relic', relicAmt: 12 },
   { kind: 'eclipse_brazier', zone: 0, x: 1740, groundY: 452, dropType: null },
-  { kind: 'eclipse_reliquary', zone: 0, x: 2140, groundY: 450, dropType: 'hp' },
+  { kind: 'eclipse_reliquary', zone: 0, x: 2140, groundY: 450, dropType: null },
 
   // Zone II: Cursed Starwood Crossing (`2400..4800`) — Symmetrical Sylvan Shrine Lanterns & Moon-Crystal Cairns
   { kind: 'starwood_lantern', zone: 1, x: 2640, groundY: 452, dropType: null },
   { kind: 'starwood_lantern', zone: 1, x: 3060, groundY: 450, dropType: null },
   { kind: 'starwood_crystal', zone: 1, x: 3440, groundY: 454, dropType: 'relic', relicAmt: 12 },
   { kind: 'starwood_lantern', zone: 1, x: 4020, groundY: 452, dropType: null },
-  { kind: 'starwood_crystal', zone: 1, x: 4480, groundY: 454, dropType: 'hp' },
+  { kind: 'starwood_crystal', zone: 1, x: 4480, groundY: 454, dropType: null },
 
   // Zone III: Abyssal Bone-Gate (`4800..7200`) — Necropolis Soul-Braziers & Ossuary Reliquary Altars
   { kind: 'soul_brazier', zone: 2, x: 5040, groundY: 452, dropType: null },
   { kind: 'soul_brazier', zone: 2, x: 5460, groundY: 450, dropType: null },
   { kind: 'ossuary_obelisk', zone: 2, x: 5840, groundY: 454, dropType: 'relic', relicAmt: 14 },
   { kind: 'soul_brazier', zone: 2, x: 6420, groundY: 452, dropType: null },
-  { kind: 'ossuary_obelisk', zone: 2, x: 6880, groundY: 454, dropType: 'hp' },
+  { kind: 'ossuary_obelisk', zone: 2, x: 6880, groundY: 454, dropType: null },
 
   // Zone IV: Throne of the Black Pit (`7200..9600`, Boss at `9335`) — Obsidian Cauldrons & Chained Soul-Crucibles
   { kind: 'blackpit_brazier', zone: 3, x: 7420, groundY: 452, dropType: null },
   { kind: 'blackpit_brazier', zone: 3, x: 7780, groundY: 450, dropType: null },
   { kind: 'hellfire_pylon', zone: 3, x: 8160, groundY: 454, dropType: 'relic', relicAmt: 14 },
   { kind: 'blackpit_brazier', zone: 3, x: 8520, groundY: 452, dropType: null },
-  { kind: 'hellfire_pylon', zone: 3, x: 8800, groundY: 454, dropType: 'hp' }
+  { kind: 'hellfire_pylon', zone: 3, x: 8800, groundY: 454, dropType: null }
 ];
 
 // =============================================================================

@@ -40,59 +40,59 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps132';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps132';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps132';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps132';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps132';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps132';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps132';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps132';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps132';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps132';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps132';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps132';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps132';
-import { Archer } from '../../src/entities/Archer.js?v=30fps132';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps132';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps132';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps132';
-import { Titan } from '../../src/entities/Titan.js?v=30fps132';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps132';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps132';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps132';
-import { Android } from '../../src/entities/Android.js?v=30fps132';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps132';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps132';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps132';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps132';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps134';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps134';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps134';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps134';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps134';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps134';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps134';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps134';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps134';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps134';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps134';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps134';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps134';
+import { Archer } from '../../src/entities/Archer.js?v=30fps134';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps134';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps134';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps134';
+import { Titan } from '../../src/entities/Titan.js?v=30fps134';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps134';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps134';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps134';
+import { Android } from '../../src/entities/Android.js?v=30fps134';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps134';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps134';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps134';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps134';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps132';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps132';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps132';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps132';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps132';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps132';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps134';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps134';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps134';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps134';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps134';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps134';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps132';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps132';
+} from '../../src/adventure/AdventureManager.js?v=30fps134';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps134';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps132';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps132';
+} from '../../src/adventure/AdventureProgression.js?v=30fps134';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps134';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps132';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps134';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -696,7 +696,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps132');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps134');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -4218,7 +4218,7 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // Verify controlled campaign-wide drop economy: smashing ALL 20 monuments across 9600px yields strictly 8 single-item pickups (4 relic + 4 hp)!
+  // Verify controlled campaign-wide drop economy: smashing ALL 20 monuments across 9600px yields strictly 4 single-item pickups (4 relic + 0 hp)!
   destAdv.pickups.length = 0;
   destAdv.destructibles.resetForCampaign();
   for (const mp of destAdv.destructibles.props) {
@@ -4226,9 +4226,9 @@ for (const [name, Cls] of CLASSES) {
   }
   const relicDrops = destAdv.pickups.filter((pk) => pk.type === 'relic').length;
   const hpDrops = destAdv.pickups.filter((pk) => pk.type === 'hp').length;
-  if (destAdv.pickups.length !== 8 || relicDrops !== 4 || hpDrops !== 4) {
+  if (destAdv.pickups.length !== 4 || relicDrops !== 4 || hpDrops !== 0) {
     throw new Error(
-      `Expected smashing all 20 monuments to spawn strictly 8 pickups (4 relic + 4 hp), got total=${destAdv.pickups.length} (relic=${relicDrops}, hp=${hpDrops})`
+      `Expected smashing all 20 monuments to spawn strictly 4 pickups (4 relic + 0 hp), got total=${destAdv.pickups.length} (relic=${relicDrops}, hp=${hpDrops})`
     );
   }
   destAdv.stopCampaign();
@@ -11232,8 +11232,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps132');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps132');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps134');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps134');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12034,7 +12034,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps132'
+        src: 'assets/sprites/arena_bg.png?v=30fps134'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12078,13 +12078,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps132`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps134`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps132'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps134'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -12251,11 +12251,16 @@ if (!RUN_SUITE36_ONLY) {
   // 36.3 (Row 5 DEATH Prone & Row 9 VICTORY Upright) & 36.4 (4px Sheet/VFX Margin + Chrono 192px Box)
   // --------------------------------------------------------------------------
   const pngAuditResults36 = new Map();
+  const monsterAuditResults36 = new Map();
+  let monsterVfxAudit36 = null;
   {
     const exIds36 = EX_HERO_CLASSES_36.map(([id]) => id);
+    const monsterIds36 = ['templar', 'astrologer', 'treant', 'dryad', 'ghoul', 'cultist', 'brute', 'fiend'];
     const workerCount36 = Math.min(6, Math.max(4, os.cpus()?.length || 4));
     const shards36 = Array.from({ length: workerCount36 }, () => []);
+    const monsterShards36 = Array.from({ length: workerCount36 }, () => []);
     exIds36.forEach((id, idx) => shards36[idx % workerCount36].push(id));
+    monsterIds36.forEach((id, idx) => monsterShards36[idx % workerCount36].push(id));
 
     const workerCode36 = `
       const { parentPort, workerData } = require('node:worker_threads');
@@ -12268,6 +12273,8 @@ if (!RUN_SUITE36_ONLY) {
       const sheetU32 = new Uint32Array(sheetArr.buffer);
       const vfxArr = new Uint8Array(6240 * 1664 * 4);
       const vfxU32 = new Uint32Array(vfxArr.buffer);
+      const monArr = new Uint8Array(6240 * 1456 * 4);
+      const monU32 = new Uint32Array(monArr.buffer);
 
       function decodePng(pngBytes, out, expW, expH, label) {
         if (pngBytes.length < 29 || pngBytes.readUInt32BE(0) !== 0x89504e47) {
@@ -12891,19 +12898,168 @@ if (!RUN_SUITE36_ONLY) {
           mageRow7H: mageRows ? mageRows[7][3] - mageRows[7][1] + 1 : 0
         });
       }
-      parentPort.postMessage({ ok: true, reports });
+
+      const monsterReports = [];
+      for (const mKind of workerData.monsters || []) {
+        decodePng(
+          fs.readFileSync(path.join(workerData.repoRoot, 'assets/sprites', 'monster_' + mKind + '_sheet.png')),
+          monArr,
+          6240,
+          1456,
+          'monster_' + mKind + '_sheet.png'
+        );
+        let emptyCells = 0;
+        let clip4px = 0;
+        let idleTransitions = 0;
+        let walkTransitions = 0;
+        for (let r = 0; r < 7; r++) {
+          const oy = r * 208;
+          for (let c = 0; c < 30; c++) {
+            const ox = c * 208;
+            let nonZero = 0;
+            for (let y = 0; y < 208; y++) {
+              const rb = (oy + y) * 6240 + ox;
+              for (let x = 0; x < 208; x++) {
+                if (monU32[rb + x] >= 0x01000000) {
+                  nonZero++;
+                  break;
+                }
+              }
+              if (nonZero > 0) break;
+            }
+            if (nonZero === 0) emptyCells++;
+
+            let clipped = false;
+            for (let m = 0; m < 4 && !clipped; m++) {
+              const topR = (oy + m) * 6240 + ox;
+              const botR = (oy + 207 - m) * 6240 + ox;
+              for (let x = 0; x < 208; x++) {
+                if (monU32[topR + x] >= 0x01000000 || monU32[botR + x] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+              for (let y = 0; y < 208 && !clipped; y++) {
+                const rowOff = (oy + y) * 6240 + ox;
+                if (monU32[rowOff + m] >= 0x01000000 || monU32[rowOff + 207 - m] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+            }
+            if (clipped) clip4px++;
+          }
+          if (r === 0 || r === 1) {
+            let trans = 0;
+            for (let c = 0; c < 29; c++) {
+              const ox0 = c * 208;
+              const ox1 = (c + 1) * 208;
+              let diff = false;
+              for (let y = 0; y < 208 && !diff; y++) {
+                const rb0 = (oy + y) * 6240 + ox0;
+                const rb1 = (oy + y) * 6240 + ox1;
+                for (let x = 0; x < 208; x++) {
+                  if (monU32[rb0 + x] !== monU32[rb1 + x]) {
+                    diff = true;
+                    break;
+                  }
+                }
+              }
+              if (diff) trans++;
+            }
+            if (r === 0) idleTransitions = trans;
+            else walkTransitions = trans;
+          }
+        }
+        monsterReports.push({ mKind, emptyCells, clip4px, idleTransitions, walkTransitions });
+      }
+
+      let monsterVfxReport = null;
+      if (workerData.auditMonsterVfx) {
+        decodePng(
+          fs.readFileSync(path.join(workerData.repoRoot, 'assets/sprites/monster_vfx.png')),
+          vfxArr,
+          6240,
+          1664,
+          'monster_vfx.png'
+        );
+        let mvEmpty = 0;
+        let mvClips = 0;
+        const mvTrans = [];
+        for (let r = 0; r < 8; r++) {
+          const oy = r * 208;
+          for (let c = 0; c < 30; c++) {
+            const ox = c * 208;
+            let nz = 0;
+            for (let y = 0; y < 208 && !nz; y++) {
+              const rb = (oy + y) * 6240 + ox;
+              for (let x = 0; x < 208; x++) {
+                if (vfxU32[rb + x] >= 0x01000000) {
+                  nz = 1;
+                  break;
+                }
+              }
+            }
+            if (!nz) mvEmpty++;
+            let clipped = false;
+            for (let m = 0; m < 4 && !clipped; m++) {
+              const topR = (oy + m) * 6240 + ox;
+              const botR = (oy + 207 - m) * 6240 + ox;
+              for (let x = 0; x < 208; x++) {
+                if (vfxU32[topR + x] >= 0x01000000 || vfxU32[botR + x] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+              for (let y = 0; y < 208 && !clipped; y++) {
+                const rowOff = (oy + y) * 6240 + ox;
+                if (vfxU32[rowOff + m] >= 0x01000000 || vfxU32[rowOff + 207 - m] >= 0x01000000) {
+                  clipped = true;
+                  break;
+                }
+              }
+            }
+            if (clipped) mvClips++;
+          }
+          let tr = 0;
+          for (let c = 0; c < 29; c++) {
+            const ox0 = c * 208;
+            const ox1 = (c + 1) * 208;
+            let diff = false;
+            for (let y = 0; y < 208 && !diff; y++) {
+              const rb0 = (oy + y) * 6240 + ox0;
+              const rb1 = (oy + y) * 6240 + ox1;
+              for (let x = 0; x < 208; x++) {
+                if (vfxU32[rb0 + x] !== vfxU32[rb1 + x]) {
+                  diff = true;
+                  break;
+                }
+              }
+            }
+            if (diff) tr++;
+          }
+          mvTrans.push(tr);
+        }
+        monsterVfxReport = { emptyCells: mvEmpty, clip4px: mvClips, transitions: mvTrans };
+      }
+      parentPort.postMessage({ ok: true, reports, monsterReports, monsterVfxReport });
     `;
 
     const shardResults = await Promise.all(
       shards36.map(
-        (ids) =>
+        (ids, idx) =>
           new Promise((resolve, reject) => {
             const w = new Worker36(workerCode36, {
               eval: true,
-              workerData: { repoRoot: REPO_ROOT, ids }
+              workerData: {
+                repoRoot: REPO_ROOT,
+                ids,
+                monsters: monsterShards36[idx],
+                auditMonsterVfx: idx === 0
+              }
             });
             w.once('message', (msg) =>
-              msg?.ok ? resolve(msg.reports) : reject(new Error('[Suite 36] Worker failed'))
+              msg?.ok ? resolve(msg) : reject(new Error('[Suite 36] Worker failed'))
             );
             w.once('error', reject);
             w.once('exit', (code) => {
@@ -12913,8 +13069,14 @@ if (!RUN_SUITE36_ONLY) {
       )
     );
     for (const batch of shardResults) {
-      for (const rep of batch) {
+      for (const rep of batch.reports) {
         pngAuditResults36.set(rep.id, rep);
+      }
+      for (const mRep of batch.monsterReports || []) {
+        monsterAuditResults36.set(mRep.mKind, mRep);
+      }
+      if (batch.monsterVfxReport) {
+        monsterVfxAudit36 = batch.monsterVfxReport;
       }
     }
   }
@@ -14766,7 +14928,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps132';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps134';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -14801,7 +14963,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps132';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps134';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -14818,6 +14980,23 @@ if (!RUN_SUITE36_ONLY) {
         ) {
           throw new Error('[Suite 36.13A] Expected areMatchAssetsReady=false while warrior_ex sheet is pending!');
         }
+        assets3613.warrior_ex.sheet = prevWarriorSheet;
+        const prevMonsterVfx3613 = assets3613.monsterVfx;
+        assets3613.monsterVfx = pendingSheet;
+        try {
+          if (
+            PixelForge.areMatchAssetsReady({
+              heroIds: ['warrior_ex'],
+              isAdventure: true,
+              zoneIdx: 0
+            })
+          ) {
+            throw new Error('[Suite 36.13A] Expected areMatchAssetsReady=false while monsterVfx is pending in Adventure!');
+          }
+        } finally {
+          assets3613.monsterVfx = prevMonsterVfx3613;
+        }
+        assets3613.warrior_ex.sheet = pendingSheet;
 
         let silhouetteRects = 0;
         const silCtx = createMockCtx();
@@ -14889,12 +15068,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps132') ||
-      !manifestSrc.includes('?v=30fps132') ||
-      manifestSrc.includes('30fps131') ||
-      indexHtmlSrc.includes('30fps131')
+      !indexHtmlSrc.includes('?v=30fps134') ||
+      !manifestSrc.includes('?v=30fps134') ||
+      manifestSrc.includes('30fps133') ||
+      indexHtmlSrc.includes('30fps133')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps132 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps134 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -15769,6 +15948,361 @@ if (!RUN_SUITE36_ONLY) {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 36.17: Batch ?v=30fps134 Parity — Curbed Adventure HP Cures & Healing +
+  //        Dedicated 30fps `monster_vfx.png`, Preloading & Zero Placeholder Attack FX
+  // --------------------------------------------------------------------------
+  {
+    // (A) All 8 non-boss monster sheets + dedicated 6240x1664 monster_vfx.png audit
+    const expectedMonKinds = ['templar', 'astrologer', 'treant', 'dryad', 'ghoul', 'cultist', 'brute', 'fiend'];
+    for (const mKind of expectedMonKinds) {
+      const mRep = monsterAuditResults36.get(mKind);
+      if (
+        !mRep ||
+        mRep.emptyCells !== 0 ||
+        mRep.clip4px !== 0 ||
+        mRep.idleTransitions < 28 ||
+        mRep.walkTransitions < 28
+      ) {
+        throw new Error(
+          `[Suite 36.17A] Monster sheet ${mKind} failed audit: ${JSON.stringify(mRep)}`
+        );
+      }
+    }
+    if (
+      !monsterVfxAudit36 ||
+      monsterVfxAudit36.emptyCells !== 0 ||
+      monsterVfxAudit36.clip4px !== 0 ||
+      !Array.isArray(monsterVfxAudit36.transitions) ||
+      monsterVfxAudit36.transitions.length !== 8 ||
+      monsterVfxAudit36.transitions.some((tr, row) => tr < (row === 6 ? 27 : 28))
+    ) {
+      throw new Error(
+        `[Suite 36.17A] monster_vfx.png failed pixel/clip/cadence audit: ${JSON.stringify(monsterVfxAudit36)}`
+      );
+    }
+
+    // (B) Adventure Drop Economy & Healing Reductions + Monster Combat FX Zero-Vector/Alpha Gate
+    const baseMock3617 = createMockGame();
+    const vfx3617 = baseMock3617.vfx;
+    const renderer3617 = baseMock3617.renderer;
+    renderer3617.time = 1.25;
+    renderer3617.camX = 600;
+    const advGame36 = {
+      ...baseMock3617,
+      fighters: [],
+      leftFighter: null,
+      isMatchOver: false,
+      matchTime: 10,
+      isAdventureMode: () => true,
+      getEnemiesOf: (f) => (f?.isMonster && advGame36.leftFighter ? [advGame36.leftFighter] : [])
+    };
+    const adv36 = new AdventureManager(advGame36);
+    advGame36.adventure = adv36;
+    advGame36.onFighterDeath = (df) => {
+      if (df?.isMonster) adv36.onMonsterDeath(df);
+    };
+
+    const player36 = new WarriorEx(300, 561, 1);
+    player36.game = advGame36;
+    advGame36.leftFighter = player36;
+    adv36.startCampaign(player36);
+
+    // 1. Regular monster death: 0 floor pickups, Ult +9, Spirit +7, pushes monsterPlumes
+    adv36.pickups.length = 0;
+    adv36.monsterPlumes.length = 0;
+    adv36.progression.ultCharge = 0;
+    adv36.progression.spirit = 20;
+    const regTemplar = new Monster('templar', 520, 561, -1, { skipPortal: true });
+    regTemplar.game = advGame36;
+    advGame36.fighters = [player36, regTemplar];
+    const ultBeforeReg = adv36.progression.ultCharge;
+    const spiritBeforeReg = adv36.progression.spirit;
+    regTemplar.takeDamage(99999, player36, true, 90, 0);
+    if (
+      adv36.pickups.length !== 0 ||
+      adv36.progression.ultCharge <= ultBeforeReg ||
+      adv36.progression.spirit <= spiritBeforeReg ||
+      adv36.monsterPlumes.length < 1
+    ) {
+      throw new Error(
+        `[Suite 36.17B] Regular monster death invariant failed: pickups=${adv36.pickups.length}, ult=${adv36.progression.ultCharge}, spirit=${adv36.progression.spirit}, plumes=${adv36.monsterPlumes.length}`
+      );
+    }
+
+    // 2. Non-warden Elite death: strictly 1 ember (0 hp, 0 relic)
+    adv36.pickups.length = 0;
+    const eliteGhoul = new Monster('ghoul', 560, 561, -1, { isElite: true, skipPortal: true });
+    eliteGhoul.game = advGame36;
+    advGame36.fighters = [player36, eliteGhoul];
+    eliteGhoul.takeDamage(99999, player36, true, 90, 0);
+    if (adv36.pickups.length !== 1 || adv36.pickups[0].type !== 'ember') {
+      throw new Error(
+        `[Suite 36.17B] Non-warden Elite expected 1 ember, got ${adv36.pickups.map((p) => p.type).join(',')}`
+      );
+    }
+
+    // 3. Mini-Boss Warden death: ember + relic + hp
+    adv36.pickups.length = 0;
+    const warden36 = new Monster('treant', 600, 561, -1, { isMiniBoss: true, skipPortal: true });
+    warden36.game = advGame36;
+    advGame36.fighters = [player36, warden36];
+    warden36.takeDamage(99999, player36, true, 90, 0);
+    if (
+      !adv36.pickups.some((p) => p.type === 'ember') ||
+      !adv36.pickups.some((p) => p.type === 'relic') ||
+      !adv36.pickups.some((p) => p.type === 'hp')
+    ) {
+      throw new Error(
+        `[Suite 36.17B] Mini-Boss Warden expected ember+relic+hp, got ${adv36.pickups.map((p) => p.type).join(',')}`
+      );
+    }
+
+    // 4. unlockSubWave: 0 pickups, grants Ult + Spirit
+    adv36.pickups.length = 0;
+    adv36.progression.ultCharge = 10;
+    adv36.progression.spirit = 20;
+    const ultBeforeSub = adv36.progression.ultCharge;
+    const spBeforeSub = adv36.progression.spirit;
+    adv36.unlockSubWave(0);
+    if (
+      adv36.pickups.length !== 0 ||
+      adv36.progression.ultCharge <= ultBeforeSub ||
+      adv36.progression.spirit <= spBeforeSub
+    ) {
+      throw new Error(
+        `[Suite 36.17B] unlockSubWave expected 0 pickups & Ult/Spirit gain, got pickups=${adv36.pickups.length}`
+      );
+    }
+
+    // 5. unlockCurrentZone(0): ember + relic, 0 hp
+    adv36.pickups.length = 0;
+    adv36.unlockCurrentZone(0);
+    if (
+      !adv36.pickups.some((p) => p.type === 'ember') ||
+      !adv36.pickups.some((p) => p.type === 'relic') ||
+      adv36.pickups.some((p) => p.type === 'hp')
+    ) {
+      throw new Error(
+        `[Suite 36.17B] unlockCurrentZone(0) expected ember+relic with 0 hp, got ${adv36.pickups.map((p) => p.type).join(',')}`
+      );
+    }
+
+    // 6. onBossPhaseShift(boss, 2): 0 pickups; phase 3: 1 relic only (0 hp, 0 ember)
+    adv36.pickups.length = 0;
+    const fakeBoss = { isBoss: true, isColossalBoss: true };
+    adv36.onBossPhaseShift(fakeBoss, 2);
+    if (adv36.pickups.length !== 0) {
+      throw new Error(
+        `[Suite 36.17B] Boss Phase 2 expected 0 pickups, got ${adv36.pickups.map((p) => p.type).join(',')}`
+      );
+    }
+    adv36.onBossPhaseShift(fakeBoss, 3);
+    if (
+      adv36.pickups.filter((p) => p.type === 'hp').length !== 0 ||
+      adv36.pickups.filter((p) => p.type === 'relic').length !== 1 ||
+      adv36.pickups.some((p) => p.type === 'ember')
+    ) {
+      throw new Error(
+        `[Suite 36.17B] Boss Phase 3 expected 1 relic + 0 hp/ember, got ${adv36.pickups.map((p) => p.type).join(',')}`
+      );
+    }
+
+    // 7. SOLAR ELIXIR heal (<= 0.14*maxHp), level-up deltaMaxHp only (0 bonusHeal), aegis_3 rank 1 (18 / 0 / 4)
+    adv36.pickups.length = 0;
+    player36.hp = 100;
+    adv36.spawnPickup('hp', player36.x, player36.groundY);
+    adv36.updatePickups(1 / 60, player36);
+    const elixirGained = player36.hp - 100;
+    if (elixirGained <= 0 || elixirGained > Math.ceil(player36.maxHp * 0.14)) {
+      throw new Error(
+        `[Suite 36.17B] SOLAR ELIXIR heal out of reduced bounds: gained=${elixirGained}, maxHp=${player36.maxHp}`
+      );
+    }
+
+    const hpBeforeLv = 200;
+    const prevMaxHpLv = player36.maxHp;
+    player36.hp = hpBeforeLv;
+    adv36.progression.gainXp(adv36.progression.xpToNext, player36);
+    const lvHealed = player36.hp - hpBeforeLv;
+    const expectedLvHeal = player36.maxHp - prevMaxHpLv;
+    if (Math.abs(lvHealed - expectedLvHeal) > 1) {
+      throw new Error(
+        `[Suite 36.17B] Level-up expected deltaMaxHp only (${expectedLvHeal}), got ${lvHealed}`
+      );
+    }
+
+    adv36.progression.ranks.aegis_3 = 1;
+    const aegisStats = adv36.progression.getComputedStats();
+    if (
+      aegisStats.evasiveHealBonus !== 18 ||
+      aegisStats.emberHealPct !== 0 ||
+      aegisStats.evasiveSpiritBonus !== 4
+    ) {
+      throw new Error(
+        `[Suite 36.17B] aegis_3 rank 1 mismatch: ${JSON.stringify({
+          evasiveHealBonus: aegisStats.evasiveHealBonus,
+          emberHealPct: aegisStats.emberHealPct,
+          evasiveSpiritBonus: aegisStats.evasiveSpiritBonus
+        })}`
+      );
+    }
+
+    // 8. Monster orb / wave / ArchfiendBoss fireballs & cataclysm pillars via monster_vfx.png (`0` rotate,arc,ellipse)
+    const astro36 = new Monster('astrologer', 680, 561, -1, { skipPortal: true });
+    astro36.game = advGame36;
+    astro36.setState('AUTO_ATTACK');
+    vfx3617.projectiles.length = 0;
+    for (let f = 0; f < 16; f++) {
+      astro36.update(1 / 30, player36, advGame36);
+    }
+    const orbProj = vfx3617.projectiles.find((pr) => pr.type === 'monster_orb' && pr.zone === 0);
+    if (!orbProj) {
+      throw new Error('[Suite 36.17C] Expected astrologer monster_orb (zone 0)!');
+    }
+
+    const boss36 = new ArchfiendBoss(9335, 561, -1);
+    boss36.game = advGame36;
+    boss36.emergeTimer = 0;
+    boss36.skillVariant = 0;
+    boss36.setState('SKILL');
+    for (let f = 0; f < 16; f++) {
+      boss36.update(1 / 30, player36, advGame36);
+    }
+    const bossOrb = vfx3617.projectiles.find((pr) => pr.owner === boss36 && pr.type === 'monster_orb');
+    const bossFireballLeak = vfx3617.projectiles.find((pr) => pr.owner === boss36 && pr.type === 'fireball');
+    if (!bossOrb || bossOrb.zone !== 3 || bossFireballLeak) {
+      throw new Error(
+        `[Suite 36.17C] Expected ArchfiendBoss Variant 0 to emit monster_orb (zone 3) with 0 fireball, got orb=${bossOrb?.zone}, leak=${bossFireballLeak?.type}`
+      );
+    }
+    boss36.setState('ULTIMATE');
+    boss36.update(1 / 30, player36, advGame36);
+    const bossPil = vfx3617.pillars.find((pl) => pl.owner === boss36);
+    if (!bossPil) {
+      throw new Error('[Suite 36.17C] Expected ArchfiendBoss ULTIMATE to spawn CATACLYSM flamePillar!');
+    }
+    bossPil.erupted = true;
+    bossPil.life = bossPil.delay + 0.18;
+
+    const treantBoss36 = new Monster('treant', 740, 561, -1, { isMiniBoss: true, skipPortal: true });
+    treantBoss36.game = advGame36;
+    treantBoss36.setState('SKILL');
+    let sawRow4Override = false;
+    for (let f = 0; f < 22; f++) {
+      treantBoss36.update(1 / 30, player36, advGame36);
+      if (
+        Number.isInteger(treantBoss36._overrideFrameIdx) &&
+        treantBoss36._overrideFrameIdx >= 120 &&
+        treantBoss36._overrideFrameIdx <= 149
+      ) {
+        sawRow4Override = true;
+      }
+    }
+    const waveProj = vfx3617.projectiles.find((pr) => pr.type === 'monster_wave');
+    if (!waveProj || waveProj.zone !== 1 || waveProj.vfxRow !== 2 || !sawRow4Override) {
+      throw new Error(
+        `[Suite 36.17C] Expected treant MiniBoss monster_wave (zone 1, row 2) + Row 4 override (${sawRow4Override}), got ${JSON.stringify(
+          waveProj ? { type: waveProj.type, zone: waveProj.zone, vfxRow: waveProj.vfxRow } : null
+        )}`
+      );
+    }
+
+    // Spawn monster crescent slash + afterimages and verify real monster_vfx.png 208x208 blits across all paths
+    const fAng36 = -Math.PI;
+    vfx3617.spawnSlash(620, 480, 72, fAng36 - 0.9, fAng36 + 0.9, '#38bdf8', 0.24, { owner: treantBoss36 });
+    vfx3617.particles.length = 0;
+    vfx3617.glyphs.length = 0;
+    vfx3617.shockwaves.length = 0;
+    vfx3617.texts.length = 0;
+    treantBoss36.afterimages.push({
+      x: 752,
+      y: 561,
+      groundY: 561,
+      facing: -1,
+      walkPhase: 0,
+      scale: 1.28,
+      frameIdx: 125,
+      alpha: 0.24,
+      life: 0.16,
+      maxLife: 0.22
+    });
+    treantBoss36.hitFlash = 0;
+    treantBoss36.portalSpawnTimer = 0;
+    treantBoss36.setState('SKILL');
+    treantBoss36.telegraphRings.push({ x: 420, y: 561, radius: 78, timer: 0.55, maxTimer: 0.72, color: '#34d399', damage: 20 });
+
+    const baseAssets3617 = PixelForge.initAssets();
+    const prevTreantAsset = baseAssets3617.treant;
+    const prevReaperAsset3617 = baseAssets3617.reaper;
+    const prevFxImg = baseAssets3617.advFxSheet;
+    const prevStageVfxImg = baseAssets3617.advStageVfx;
+    const prevMonsterVfxImg = baseAssets3617.monsterVfx;
+    const fakeSheet = { complete: true, naturalWidth: 6240, naturalHeight: 1456, width: 6240, height: 1456 };
+    const fakeMonsterVfx = { complete: true, naturalWidth: 6240, naturalHeight: 1664, width: 6240, height: 1664 };
+    baseAssets3617.treant = { ...prevTreantAsset, sheet: fakeSheet, vfx: fakeMonsterVfx, cols: 30, rows: 7 };
+    baseAssets3617.reaper = { ...prevReaperAsset3617, vfx: { complete: false, naturalWidth: 0, naturalHeight: 0 } };
+    baseAssets3617.advFxSheet = { complete: true, naturalWidth: 1024, naturalHeight: 640, width: 1024, height: 640 };
+    baseAssets3617.advStageVfx = { complete: true, naturalWidth: 2048, naturalHeight: 1536, width: 2048, height: 1536 };
+    baseAssets3617.monsterVfx = fakeMonsterVfx;
+
+    const mTrack = { rotateCalls: 0, quadCalls: 0, arcCalls: 0, ellipseCalls: 0, maxLighterAlpha: 0 };
+    const monsterVfxBlitSys = new Set();
+    const mCtx = createMockCtx(mTrack);
+    mCtx.arc = () => { mTrack.arcCalls++; };
+    mCtx.ellipse = () => { mTrack.ellipseCalls++; };
+    const trackAlpha = (fn) => (...args) => {
+      if (mCtx.globalCompositeOperation === 'lighter' && mCtx.globalAlpha > mTrack.maxLighterAlpha) {
+        mTrack.maxLighterAlpha = mCtx.globalAlpha;
+      }
+      return fn(...args);
+    };
+    mCtx.fillRect = trackAlpha(() => {});
+    mCtx.drawImage = trackAlpha((img, _sx, sy, sw, sh) => {
+      if (img === fakeMonsterVfx && sw === 208 && sh === 208 && Number.isFinite(sy)) {
+        monsterVfxBlitSys.add(sy);
+      }
+    });
+    mCtx.strokeRect = trackAlpha(() => {});
+    mCtx.fillText = trackAlpha(() => {});
+
+    try {
+      vfx3617.renderMainPass(mCtx, false, renderer3617, false);
+      renderer3617.camX = bossPil.x;
+      vfx3617.renderMainPass(mCtx, false, renderer3617, true);
+      renderer3617.camX = 600;
+      adv36.renderWorldForeground(mCtx, renderer3617);
+      treantBoss36.drawTelegraphRings(mCtx);
+      treantBoss36.drawForegroundOverlay(mCtx, renderer3617);
+      treantBoss36.draw(mCtx, false, renderer3617);
+    } finally {
+      baseAssets3617.treant = prevTreantAsset;
+      baseAssets3617.reaper = prevReaperAsset3617;
+      baseAssets3617.advFxSheet = prevFxImg;
+      baseAssets3617.advStageVfx = prevStageVfxImg;
+      baseAssets3617.monsterVfx = prevMonsterVfxImg;
+    }
+
+    const expectedBlitRows = [0, 624, 832, 1248, 1456];
+    const missingBlitRows = expectedBlitRows.filter((ry) => !monsterVfxBlitSys.has(ry));
+    if (
+      missingBlitRows.length > 0 ||
+      mTrack.rotateCalls !== 0 ||
+      mTrack.arcCalls !== 0 ||
+      mTrack.ellipseCalls !== 0 ||
+      mTrack.quadCalls !== 0 ||
+      mTrack.maxLighterAlpha > 0.201 ||
+      mCtx._stateStack.length !== 0
+    ) {
+      throw new Error(
+        `[Suite 36.17C] Monster VFX render invariant failed: missingRows=${missingBlitRows.join(',')}, seen=${Array.from(monsterVfxBlitSys).join(',')}, track=${JSON.stringify({
+          ...mTrack,
+          stackDepth: mCtx._stateStack.length
+        })}`
+      );
+    }
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -15777,7 +16311,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15) & Champion #12 NYX EX Full Suite (36.16) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16) & Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

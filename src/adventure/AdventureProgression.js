@@ -127,7 +127,7 @@ export const ADVENTURE_SKILL_TREE = [
     iconSlot: 'jump',
     name: 'UNDYING PHOENIX',
     summary: (r) =>
-      `Evade & Ward heal +${(r || 1) * 45} bonus HP • Soul Embers restore +${(r || 1) * 5}% Max HP`
+      `Evade & Ward heal +${(r || 1) * 18} bonus HP • +${(r || 1) * 4} Solar Spirit on Evade`
   }
 ];
 
@@ -684,8 +684,9 @@ export class AdventureProgression {
     const wardReduction = Math.min(0.42, 0.04 + (lv - 1) * 0.015 + rAegis1 * 0.07);
     const moveSpeedMult = 1.0 + rAegis2 * 0.12;
     const mobilityCdMult = Math.max(0.52, 1.0 - rAegis2 * 0.20);
-    const evasiveHealBonus = rAegis3 * 45;
-    const emberHealPct = rAegis3 * 0.05;
+    const evasiveHealBonus = rAegis3 * 18;
+    const emberHealPct = 0;
+    const evasiveSpiritBonus = rAegis3 * 4;
 
     return {
       maxHp,
@@ -704,6 +705,7 @@ export class AdventureProgression {
       mobilityCdMult,
       evasiveHealBonus,
       emberHealPct,
+      evasiveSpiritBonus,
       hasHomingSeeker: rWrath1 >= 2
     };
   }
@@ -738,6 +740,7 @@ export class AdventureProgression {
       let scaledAmt = Math.max(8, Math.round(amount * 0.72));
       if (player.state === 'DODGE' || player.state === 'CROUCH' || label.includes('WARD') || label.includes('BLINK') || label.includes('PARRY') || label.includes('GUARD') || label.includes('AEGIS')) {
         scaledAmt += curStats.evasiveHealBonus;
+        if (curStats.evasiveSpiritBonus > 0) this.gainSpirit(curStats.evasiveSpiritBonus);
       }
       return player._advOrig.heal(scaledAmt, label);
     };
@@ -841,8 +844,6 @@ export class AdventureProgression {
 
       if (player && !player.isDead) {
         this.applyStatsToFighter(player, prevMaxHp);
-        const bonusHeal = Math.round(player.maxHp * 0.22);
-        player.hp = Math.min(player.maxHp, player.hp + bonusHeal);
         if (g?.audio) g.audio.play('holy_hit', player.x);
         if (g?.vfx) {
           g.vfx.spawnShockwave(player.x, player.groundY - 8, 175, '#facc15', 0.45, true);

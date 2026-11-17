@@ -1,5 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps132';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps132';
+import { Fighter } from './Fighter.js?v=30fps134';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps134';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps134';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -285,6 +286,9 @@ export class Monster extends Fighter {
     this.pounceVelZ = 0;
     this.flankOffsetZ = ((Math.round(x) % 5) - 2) * 14;
     this.bruteAltSkill = 0;
+    this.afterimages = [];
+    this._skillCastCount = 0;
+    this._skillStarted = false;
   }
 
   shiftMonsterDepth(dz, game) {
@@ -316,9 +320,48 @@ export class Monster extends Fighter {
     } else if (next === 'VICTORY') {
       next = 'IDLE';
     }
+    this._overrideFrameIdx = null;
+    this._skillStarted = false;
     super.setState(next);
     this.didActionFrame = false;
     this.didSecondaryAction = false;
+  }
+
+  getMonsterBiomeZone() {
+    if (this.kind === 'templar' || this.kind === 'astrologer') return 0;
+    if (this.kind === 'treant' || this.kind === 'dryad') return 1;
+    if (this.kind === 'ghoul' || this.kind === 'cultist') return 2;
+    return 3;
+  }
+
+  getMonsterStageVfxRow() {
+    if (this.kind === 'templar' || this.kind === 'astrologer') return 10;
+    if (this.kind === 'treant' || this.kind === 'dryad') return 2;
+    if (this.kind === 'ghoul' || this.kind === 'cultist') return 4;
+    return 6;
+  }
+
+  getMonsterStageAccentRow() {
+    if (this.kind === 'templar' || this.kind === 'astrologer') return 5;
+    if (this.kind === 'treant' || this.kind === 'dryad') return 1;
+    if (this.kind === 'ghoul' || this.kind === 'cultist') return 8;
+    return 9;
+  }
+
+  clampMonsterX(targetX, game) {
+    const adv = game?.adventure;
+    const colossalAlive = Boolean(
+      adv?.bossEntity && !adv.bossEntity.isDead && adv.bossEntity.isColossalBoss
+    );
+    const mMin = adv?.lockActive ? adv.lockMinX + 24 : 95;
+    const rawMax = adv?.lockActive
+      ? adv.lockMaxX - 24
+      : (game?.renderer?.worldWidth || 9600) - 95;
+    const mMax = Math.max(
+      mMin + 60,
+      colossalAlive ? Math.min(rawMax, (adv.bossEntity.anchorX || 9335) - 95) : rawMax
+    );
+    return Math.max(mMin, Math.min(mMax, targetX));
   }
 
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
@@ -407,9 +450,38 @@ export class Monster extends Fighter {
         if (game?.audio) game.audio.play('flame_pillar', ring.x);
         if (game?.renderer) game.renderer.triggerShake(7, 0.16);
         if (game?.vfx) {
+          const glyphTheme =
+            this.theme === 'forge'
+              ? 'forge'
+              : this.theme === 'sanctuary'
+                ? 'arcane'
+                : this.theme === 'sylvan'
+                  ? 'emerald'
+                  : 'abyssal';
           game.vfx.spawnShockwave(ring.x, ring.y - 6, ring.radius * 1.35, ring.color, 0.34, true);
           game.vfx.spawnBurst(ring.x, ring.y - 18, 18, ring.color, 250, { upBias: 155, size: 6 });
-          game.vfx.spawnGlyphBurst(ring.x, ring.y - 42, 6, this.theme === 'forge' ? 'forge' : 'abyssal');
+          game.vfx.spawnGlyphBurst(ring.x, ring.y - 42, 6, glyphTheme);
+          game.vfx.spawnDecal?.(ring.x, Math.round(ring.radius * 0.95), 'fissure', ring.color, 2.8, ring.y);
+        }
+        game?.adventure?.spawnMonsterPlume?.(
+          ring.x,
+          ring.y,
+          this.getMonsterStageVfxRow(),
+          ring.color,
+          this.isMiniBoss ? 2.45 : this.isElite ? 2.1 : 1.75,
+          0.56,
+          this.isMiniBoss ? 12 : 8
+        );
+        if (this.isElite || this.isMiniBoss) {
+          game?.adventure?.spawnMonsterPlume?.(
+            ring.x,
+            ring.y - 8,
+            this.getMonsterStageAccentRow(),
+            this.secondaryColor || ring.color,
+            this.isMiniBoss ? 1.85 : 1.5,
+            0.46,
+            6
+          );
         }
         const enemies = game?.getEnemiesOf ? game.getEnemiesOf(this) : [];
         const maxDepthDelta = Math.max(54, ring.radius * 0.56);
@@ -431,6 +503,14 @@ export class Monster extends Fighter {
   }
 
   update(dt, enemy, game) {
+    if (this.afterimages?.length) {
+      for (let i = this.afterimages.length - 1; i >= 0; i--) {
+        this.afterimages[i].life -= dt;
+        if (this.afterimages[i].life <= 0) {
+          this.afterimages.splice(i, 1);
+        }
+      }
+    }
     this.updateTelegraphRings(dt, game);
     if (this.telegraphTimer > 0) {
       this.telegraphTimer = Math.max(0, this.telegraphTimer - dt);
@@ -785,6 +865,33 @@ export class Monster extends Fighter {
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
   }
 
+  recordAfterimage(alpha = 0.24, life = 0.22) {
+    if (this.isColossalBoss || this.isDead) return;
+    if (!this.afterimages) this.afterimages = [];
+    const last = this.afterimages[this.afterimages.length - 1];
+    if (last && Math.abs(last.x - this.x) < 10 && Math.abs(last.y - this.y) < 6) return;
+    const frameIdx =
+      Number.isInteger(this._overrideFrameIdx) && this._overrideFrameIdx >= 0
+        ? this._overrideFrameIdx
+        : PixelForge.getFrameIndex
+          ? PixelForge.getFrameIndex(this, this.walkPhase)
+          : 0;
+    this.afterimages.push({
+      x: this.x,
+      y: this.y,
+      groundY: this.groundY,
+      facing: this.facing,
+      walkPhase: this.walkPhase,
+      scale: this.spriteScale || 1.0,
+      frameIdx,
+      alpha,
+      life,
+      maxLife: life,
+      color: this.primaryColor || '#38bdf8'
+    });
+    if (this.afterimages.length > 3) this.afterimages.shift();
+  }
+
   updateDashOrDodge(_dt, enemy, game) {
     const dur = this.dashDuration || 0.45;
     const t = this.stateTimer;
@@ -796,6 +903,7 @@ export class Monster extends Fighter {
         this.vx = 0;
         return;
       }
+      this.recordAfterimage(0.24, 0.20);
       const chargeU = Math.min(1, (t - 0.20) / Math.max(0.15, dur - 0.20));
       this.x = this.dashStartX + (this.dashTargetX - this.dashStartX) * chargeU;
       this.setMonsterGroundY(
@@ -818,6 +926,7 @@ export class Monster extends Fighter {
         }
       }
     } else {
+      this.recordAfterimage(0.26, 0.22);
       const ease = 1 - Math.pow(1 - u, 2);
       this.x = this.dashStartX + (this.dashTargetX - this.dashStartX) * ease;
       this.setMonsterGroundY(
@@ -828,13 +937,32 @@ export class Monster extends Fighter {
 
     if (t >= dur) {
       this.y = this.groundY;
+      game?.adventure?.spawnMonsterPlume?.(
+        this.x,
+        this.groundY,
+        this.getMonsterStageVfxRow(),
+        this.primaryColor || '#38bdf8',
+        this.isHeavyArchetype ? 1.5 : 1.15,
+        0.36,
+        4
+      );
       this.setState('IDLE');
     }
   }
 
-  updateAutoAttack(_dt, enemy, game) {
+  updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
     const hitTime = this.isHeavyArchetype ? 0.38 : this.isCasterArchetype ? 0.34 : 0.26;
+
+    if (!this.isCasterArchetype && dt > 0) {
+      if (t < hitTime * 0.55) {
+        const coilSpd = this.isHeavyArchetype ? 28 : 42;
+        this.x = this.clampMonsterX(this.x - this.facing * coilSpd * dt, game);
+      } else if (t < hitTime && (!enemy || Math.abs(enemy.x - this.x) > 68)) {
+        const stepSpd = this.isHeavyArchetype ? 108 : 142;
+        this.x = this.clampMonsterX(this.x + this.facing * stepSpd * dt, game);
+      }
+    }
 
     if (t >= hitTime && !this.didActionFrame) {
       this.didActionFrame = true;
@@ -860,20 +988,24 @@ export class Monster extends Fighter {
               ? '#ecfdf5'
               : '#f3e8ff';
         if (game?.audio) game.audio.play('skill_cast', sx);
+        game?.vfx?.spawnBurst?.(sx, sy, 8, projCol, 130, { upBias: 45, size: 4 });
         game?.vfx?.spawnProjectile({
           x: sx,
           y: sy,
           vx: (dx / len) * spd,
           vy: (dy / len) * spd,
-          radius: 14,
+          radius: 15,
           color: projCol,
           coreColor: coreCol,
           damage: Math.round(34 * this.dmgScale),
           owner: this,
-          type: 'phantom_scythe'
+          type: 'monster_orb',
+          theme: this.theme,
+          zone: this.getMonsterBiomeZone()
         });
       } else if (this.isHeavyArchetype) {
         const isTreant = this.kind === 'treant';
+        const slamCol = isTreant ? '#34d399' : '#f59e0b';
         if (game?.audio) game.audio.play('heavy_cleave', this.x);
         if (game?.renderer) game.renderer.triggerShake(9, 0.18);
         const fAng = this.facing === 1 ? 0 : Math.PI;
@@ -883,8 +1015,9 @@ export class Monster extends Fighter {
           86,
           fAng - 1.1,
           fAng + 1.1,
-          isTreant ? '#34d399' : '#f59e0b',
-          0.26
+          slamCol,
+          0.26,
+          { owner: this }
         );
         game?.vfx?.spawnShockwave(
           this.x + this.facing * 64,
@@ -893,6 +1026,15 @@ export class Monster extends Fighter {
           isTreant ? '#10b981' : '#ea580c',
           0.26,
           true
+        );
+        game?.adventure?.spawnMonsterPlume?.(
+          this.x + this.facing * 56,
+          this.groundY,
+          this.getMonsterStageVfxRow(),
+          slamCol,
+          1.45,
+          0.42,
+          6
         );
         if (
           enemy &&
@@ -919,8 +1061,13 @@ export class Monster extends Fighter {
           fAng - 0.9,
           fAng + 0.9,
           slashCol,
-          0.20
+          0.20,
+          { owner: this }
         );
+        game?.vfx?.spawnBurst?.(this.x + this.facing * 48, this.y - 76, 6, slashCol, 120, {
+          upBias: 50,
+          size: 4
+        });
         if (
           enemy &&
           !enemy.isDead &&
@@ -939,6 +1086,15 @@ export class Monster extends Fighter {
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
+    if (!this._skillStarted) {
+      this._skillStarted = true;
+      this._skillCastCount = (this._skillCastCount || 0) + 1;
+    }
+    if (this.isMiniBoss || (this.isElite && this._skillCastCount % 2 === 0)) {
+      const skillDur = this.skillDuration || 0.88;
+      const step = Math.min(29, Math.max(0, Math.floor((t / Math.max(0.1, skillDur)) * 30)));
+      this._overrideFrameIdx = 120 + step;
+    }
 
     if (this.isCasterArchetype) {
       if (t >= 0.18 && !this.didActionFrame) {
@@ -959,6 +1115,15 @@ export class Monster extends Fighter {
               ? 'BRIAR SNARE'
               : 'SOUL SIGIL';
         this.spawnFloorTelegraph(targetX, 84, 0.72, 54, sigilCol, sigilLbl, targetGy);
+        game?.adventure?.spawnMonsterPlume?.(
+          this.x,
+          this.groundY,
+          this.getMonsterStageVfxRow(),
+          sigilCol,
+          1.35,
+          0.44,
+          5
+        );
         if (this.isMiniBoss && this.kind === 'cultist') {
           // ARCH-LICH MORVATH: Tri-Sigil Ossuary Cataclysm bracketing 3D lanes + twin void-soul bolts!
           const upperGy = Math.max(458, Math.min(664, targetGy > 540 ? 478 : 562));
@@ -987,11 +1152,14 @@ export class Monster extends Fighter {
               y: this.y - 88,
               vx: this.facing * 320,
               vy: vyOff,
-              radius: 15,
+              radius: 16,
               color: '#a855f7',
               coreColor: '#f3e8ff',
               damage: Math.round(36 * this.dmgScale),
-              owner: this
+              owner: this,
+              type: 'monster_orb',
+              theme: this.theme,
+              zone: this.getMonsterBiomeZone()
             });
           }
           if (game?.renderer) game.renderer.triggerShake(9, 0.20);
@@ -1013,6 +1181,7 @@ export class Monster extends Fighter {
       if (t >= 0.44 && !this.didActionFrame) {
         this.didActionFrame = true;
         const isTreant = this.kind === 'treant';
+        const waveCol = isTreant ? '#10b981' : '#f59e0b';
         const sx = this.x + this.facing * 62;
         if (game?.audio) game.audio.play('thunder_slam', sx);
         if (game?.renderer) game.renderer.triggerShake(this.isMiniBoss ? 15 : 13, 0.26);
@@ -1032,17 +1201,28 @@ export class Monster extends Fighter {
           240,
           { upBias: 150, size: 6 }
         );
+        game?.adventure?.spawnMonsterPlume?.(
+          sx,
+          this.groundY,
+          this.getMonsterStageVfxRow(),
+          waveCol,
+          this.isMiniBoss ? 2.25 : 1.75,
+          0.52,
+          8
+        );
         game?.vfx?.spawnProjectile({
           x: sx,
           y: this.groundY - 48,
           vx: this.facing * 510,
           vy: 0,
           radius: 22,
-          color: isTreant ? '#10b981' : '#f59e0b',
+          color: waveCol,
           coreColor: isTreant ? '#d1fae5' : '#fef08a',
           damage: Math.round(54 * this.dmgScale),
           owner: this,
-          type: 'forge_wave'
+          type: 'monster_wave',
+          zone: this.getMonsterBiomeZone(),
+          vfxRow: this.getMonsterStageVfxRow()
         });
         if (this.isMiniBoss && isTreant) {
           // ELDER BRIAR-KING: 3-Lane Staggered Briar-Root Eruption across Upper, Mid & Lower causeway lanes!
@@ -1056,9 +1236,27 @@ export class Monster extends Fighter {
     } else {
       // Vanguard 3D Lunge (`templar` Eclipse Thrust / `ghoul` Crypt Pounce / `fiend` Hellfire Leap)
       if (t >= 0.22 && t < 0.56) {
-        this.x += this.facing * 410 * dt;
+        this.recordAfterimage(0.24, 0.22);
+        this.x = this.clampMonsterX(this.x + this.facing * 410 * dt, game);
         this.shiftMonsterDepth((this.pounceVelZ || 0) * dt, game);
         this.y = this.groundY - Math.sin(((t - 0.22) / 0.34) * Math.PI) * 34;
+        if (t >= 0.28 && this.isElite && this.kind === 'templar' && !this.didSecondaryAction) {
+          this.didSecondaryAction = true;
+          game?.vfx?.spawnProjectile?.({
+            x: this.x + this.facing * 42,
+            y: this.groundY - 52,
+            vx: this.facing * 440,
+            vy: 0,
+            radius: 18,
+            color: '#38bdf8',
+            coreColor: '#fef08a',
+            damage: Math.round(32 * this.dmgScale),
+            owner: this,
+            type: 'monster_wave',
+            zone: 0,
+            vfxRow: 10
+          });
+        }
         if (
           !this.didActionFrame &&
           enemy &&
@@ -1082,7 +1280,17 @@ export class Monster extends Fighter {
             fAng - 1.0,
             fAng + 1.0,
             slashCol,
-            0.22
+            0.22,
+            { owner: this }
+          );
+          game?.adventure?.spawnMonsterPlume?.(
+            this.x + this.facing * 36,
+            this.groundY,
+            this.getMonsterStageVfxRow(),
+            slashCol,
+            1.45,
+            0.44,
+            6
           );
           enemy.takeDamage(Math.round(46 * this.dmgScale), this, true, 145, -80);
         }
@@ -1098,7 +1306,17 @@ export class Monster extends Fighter {
 
   drawTelegraphRings(ctx) {
     if (!this.telegraphRings.length || !ctx) return;
+    const assets = PixelForge.initAssets();
+    const fxSheet = PixelForge.ensureImage?.(assets?.advFxSheet) || assets?.advFxSheet;
+    const fxReady =
+      Boolean(fxSheet) &&
+      (typeof HTMLImageElement === 'undefined' ||
+        !(fxSheet instanceof HTMLImageElement) ||
+        (fxSheet.complete && fxSheet.naturalWidth > 0));
+    const zone = this.getMonsterBiomeZone();
+
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     for (const r of this.telegraphRings) {
       const u = Math.max(0, Math.min(1, r.timer / Math.max(0.05, r.maxTimer)));
       const rx = Math.round(r.x / 2) * 2;
@@ -1108,7 +1326,28 @@ export class Monster extends Fighter {
       const fillRx = Math.max(4, Math.round((radX * u) / 4) * 4);
       const fillRy = Math.max(4, Math.round((radY * u) / 4) * 4);
 
+      drawExBayerHalo(ctx, rx, ry, radX, radY, r.color, '#ffffff', Math.min(0.16, 0.08 + u * 0.08));
+
+      if (fxReady && ctx.drawImage) {
+        const sealW = radX * 2;
+        const sealH = radY * 2;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.28 + u * 0.44;
+        ctx.drawImage(
+          fxSheet,
+          (4 + zone) * 128,
+          512,
+          128,
+          128,
+          Math.round(rx - sealW * 0.5),
+          Math.round(ry - sealH * 0.5),
+          sealW,
+          sealH
+        );
+      }
+
       // Quantized 4px-stepped pixel-art foreshortened ground fill (0 vector .ellipse calls)
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.22 + u * 0.28;
       ctx.fillStyle = r.color;
       for (let dy = -fillRy; dy <= fillRy; dy += 4) {
@@ -1134,11 +1373,32 @@ export class Monster extends Fighter {
         prevSpan = span;
       }
 
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(rx - radX - 2, ry - 2, 4, 4);
-      ctx.fillRect(rx + radX - 2, ry - 2, 4, 4);
-      ctx.fillRect(rx - 2, ry - radY - 2, 4, 4);
-      ctx.fillRect(rx - 2, ry + radY - 2, 4, 4);
+      // 4 inward-sliding Selout lock-brackets converging as detonation nears
+      const off = Math.round(((1 - u) * 14) / 2) * 2;
+      const brCol = u > 0.78 ? '#fef08a' : '#ffffff';
+      ctx.fillStyle = '#0d0f1c';
+      ctx.fillRect(rx - radX - off - 3, ry - 5, 6, 10);
+      ctx.fillRect(rx + radX + off - 3, ry - 5, 6, 10);
+      ctx.fillRect(rx - 5, ry - radY - off - 3, 10, 6);
+      ctx.fillRect(rx - 5, ry + radY + off - 3, 10, 6);
+      ctx.fillStyle = brCol;
+      ctx.fillRect(rx - radX - off - 2, ry - 4, 4, 8);
+      ctx.fillRect(rx + radX + off - 2, ry - 4, 4, 8);
+      ctx.fillRect(rx - 4, ry - radY - off - 2, 8, 4);
+      ctx.fillRect(rx - 4, ry + radY + off - 2, 8, 4);
+
+      if (u > 0.62) {
+        const su = (u - 0.62) / 0.38;
+        for (let s = 0; s < 4; s++) {
+          const sx = Math.round(rx + Math.cos(s * 1.57 + su * 2.4) * radX * 0.55);
+          const sy = Math.round(ry - 6 - su * 28 - (s % 2) * 8);
+          ctx.globalAlpha = Math.max(0.15, (1 - su * 0.5) * 0.9);
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(sx - 3, sy - 3, 6, 6);
+          ctx.fillStyle = s % 2 === 0 ? '#fef08a' : r.color;
+          ctx.fillRect(sx - 2, sy - 2, 4, 4);
+        }
+      }
     }
     ctx.restore();
   }
@@ -1226,6 +1486,77 @@ export class Monster extends Fighter {
     ctx.restore();
   }
 
+  drawForegroundOverlay(ctx, renderer) {
+    if (!ctx || this.isDead || this.isColossalBoss) return;
+    const assets = PixelForge.initAssets();
+    const zone = this.getMonsterBiomeZone();
+
+    if (this.isElite || this.isMiniBoss) {
+      drawExBayerHalo(
+        ctx,
+        this.x,
+        this.groundY - 2,
+        this.isMiniBoss ? 68 : 52,
+        this.isMiniBoss ? 18 : 14,
+        this.primaryColor || '#38bdf8',
+        this.secondaryColor || '#fef08a',
+        this.isMiniBoss ? 0.16 : 0.12
+      );
+      const fxSheet = PixelForge.ensureImage?.(assets?.advFxSheet) || assets?.advFxSheet;
+      const fxReady =
+        Boolean(fxSheet) &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(fxSheet instanceof HTMLImageElement) ||
+          (fxSheet.complete && fxSheet.naturalWidth > 0));
+      if (fxReady && ctx.drawImage) {
+        const sealW = this.isMiniBoss ? 148 : 116;
+        const sealH = this.isMiniBoss ? 52 : 40;
+        const pulse = 0.5 + 0.5 * Math.sin((renderer?.time || 0) * 5.2 + (this.x % 7));
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.36 + 0.14 * pulse;
+        ctx.drawImage(
+          fxSheet,
+          (4 + zone) * 128,
+          512,
+          128,
+          128,
+          Math.round(this.x - sealW * 0.5),
+          Math.round(this.groundY - sealH * 0.5),
+          sealW,
+          sealH
+        );
+        ctx.restore();
+      }
+    }
+
+    if (this.state === 'SKILL') {
+      const stageVfx = PixelForge.ensureImage?.(assets?.advStageVfx) || assets?.advStageVfx;
+      const stageReady =
+        Boolean(stageVfx) &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(stageVfx instanceof HTMLImageElement) ||
+          (stageVfx.complete && stageVfx.naturalWidth > 0));
+      if (stageReady && ctx.drawImage) {
+        const vRow = this.isMiniBoss ? 11 : this.getMonsterStageVfxRow();
+        const sCol = Math.floor((this.stateTimer || 0) * 24) & 15;
+        const auraSz = Math.round(144 * (this.spriteScale || 1.0));
+        const ax = Math.round(this.x - auraSz * 0.5);
+        const ay = Math.round(this.y - auraSz * 0.844);
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.58;
+        ctx.drawImage(stageVfx, sCol * 128, vRow * 128, 128, 128, ax, ay, auraSz, auraSz);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.14;
+        ctx.drawImage(stageVfx, sCol * 128, vRow * 128, 128, 128, ax, ay, auraSz, auraSz);
+        ctx.restore();
+      }
+    }
+  }
+
   draw(ctx, isReflection = false, renderer = null) {
     const assets = PixelForge.initAssets();
     const charKey = this.heroId || this.kind;
@@ -1260,6 +1591,35 @@ export class Monster extends Fighter {
       const shakeX =
         !isReflection && this.hurtTimer > 0 ? Math.round(Math.sin(this.hurtTimer * 55) * 4) : 0;
 
+      if (!isReflection && this.afterimages?.length && PixelForge.resolveSheetMetrics && ctx.drawImage) {
+        const metrics = PixelForge.resolveSheetMetrics(charSet, sheet, drawW, drawH);
+        const { cellW, cellH, cols, rows, baseX, baseY } = metrics;
+        for (const ghost of this.afterimages) {
+          const gu = Math.max(0, Math.min(1, ghost.life / Math.max(0.05, ghost.maxLife || 0.22)));
+          const fIdx = Math.max(0, Math.min(cols * rows - 1, ghost.frameIdx || 0));
+          const col = fIdx % cols;
+          const row = Math.min(rows - 1, Math.max(0, (fIdx / cols) | 0));
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.18, (ghost.alpha || 0.24) * gu);
+          ctx.translate(Math.round(ghost.x), Math.round(ghost.y));
+          ctx.scale(ghost.facing || 1, 1);
+          ctx.drawImage(
+            sheet,
+            col * cellW,
+            row * cellH,
+            cellW,
+            cellH,
+            Math.round(baseX),
+            Math.round(baseY),
+            metrics.drawW,
+            metrics.drawH
+          );
+          ctx.restore();
+        }
+      }
+
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.translate(Math.round(this.x + shakeX), Math.round(this.y));
@@ -1282,6 +1642,30 @@ export class Monster extends Fighter {
         PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, true, renderer);
       }
       ctx.restore();
+
+      if (!isReflection && !this.isDead && !this.isColossalBoss && (this.isElite || this.isMiniBoss) && ctx?.fillRect) {
+        const moteCount = this.isMiniBoss ? 3 : 2;
+        const scaleM = this.spriteScale || 1.0;
+        const centerY = this.y - 84 * scaleM;
+        const tMote = renderer?.time || this.walkPhase || 0;
+        const orbRx = this.isMiniBoss ? 44 : 36;
+        const orbRy = this.isMiniBoss ? 20 : 16;
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        for (let m = 0; m < moteCount; m++) {
+          const ang = tMote * 2.8 + (m / moteCount) * Math.PI * 2;
+          const mx = Math.round((this.x + Math.cos(ang) * orbRx) / 2) * 2;
+          const my = Math.round((centerY + Math.sin(ang) * orbRy) / 2) * 2;
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(mx - 3, my - 3, 6, 6);
+          ctx.fillStyle =
+            m % 2 === 0 ? this.primaryColor || '#38bdf8' : this.secondaryColor || '#fde047';
+          ctx.fillRect(mx - 2, my - 2, 4, 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(mx - 1, my - 1, 2, 2);
+        }
+        ctx.restore();
+      }
     }
 
     if (!isReflection) {
@@ -2517,7 +2901,8 @@ export class ArchfiendBoss extends Monster {
           coreColor: '#fef08a',
           damage: isCenter ? 54 : 42,
           owner: this,
-          type: 'fireball'
+          type: 'monster_orb',
+          zone: 3
         });
       });
 

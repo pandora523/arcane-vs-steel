@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps132';
-import { PixelForge } from './PixelForge.js?v=30fps132';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps132';
+import { PixelFont } from './PixelFont.js?v=30fps134';
+import { PixelForge } from './PixelForge.js?v=30fps134';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps134';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -13,6 +13,15 @@ const LIGHT_RGB_ORANGE = { nr: 1.0, ng: 0.52, nb: 0.16 };
 
 function baseHeroKey(id) {
   return typeof id === 'string' && id.endsWith('_ex') ? id.slice(0, -3) : id || '';
+}
+
+function resolveMonsterBiomeZone(owner, explicitZone = null, colorHex = '') {
+  if (typeof owner?.getMonsterBiomeZone === 'function') return owner.getMonsterBiomeZone();
+  if (Number.isInteger(explicitZone) && explicitZone >= 0 && explicitZone <= 3) return explicitZone;
+  if (colorHex === '#38bdf8' || colorHex === '#0ea5e9' || colorHex === '#fde047') return 0;
+  if (colorHex === '#34d399' || colorHex === '#10b981') return 1;
+  if (colorHex === '#a855f7' || colorHex === '#c084fc' || colorHex === '#e879f9') return 2;
+  return 3;
 }
 
 export class VFXManager {
@@ -586,6 +595,9 @@ export class VFXManager {
       heroId: opts.heroId || opts.owner?.heroId || null,
       damage: opts.damage || 60,
       type: opts.type || (opts.isMeteor ? 'meteor' : 'fireball'),
+      theme: opts.theme || opts.owner?.theme || null,
+      zone: Number.isFinite(opts.zone) ? opts.zone : null,
+      vfxRow: Number.isFinite(opts.vfxRow) ? opts.vfxRow : null,
       isMeteor: !!opts.isMeteor,
       isUltimate: !!opts.isUltimate,
       isTwinSlash: !!opts.isTwinSlash,
@@ -1523,6 +1535,15 @@ export class VFXManager {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     const assets = PixelForge.initAssets();
+    const getMonsterVfxSheet = () => {
+      const sheet = PixelForge.ensureImage?.(assets?.monsterVfx) || assets?.monsterVfx;
+      const ready =
+        Boolean(sheet) &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(sheet instanceof HTMLImageElement) ||
+          (sheet.complete && sheet.naturalWidth > 0));
+      return ready ? sheet : null;
+    };
     const hasBounds = Boolean(
       renderer &&
         Number.isFinite(renderer.camX) &&
@@ -1706,7 +1727,7 @@ export class VFXManager {
         ctx.save();
         if (renderer && !isReflection) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.42;
+          ctx.globalAlpha = pil.owner?.isMonster ? Math.min(0.18, fade * 0.18) : fade * 0.42;
           const glow = renderer.getGlowForColor(sigilCol);
           ctx.drawImage(glow, baseX - 190, baseY - 340, 380, 380);
         }
@@ -1718,8 +1739,45 @@ export class VFXManager {
         const flipWave = Math.floor(pil.life * 15) % 2 === 0 ? 1 : -1;
         const pilFrac = Math.min(1, Math.max(0, (pil.life - pil.delay) / Math.max(0.1, pil.maxLife - pil.delay)));
         const pilCol = Math.min(29, Math.floor(pilFrac * 30));
+        const monsterPilSheet = pil.owner?.isMonster ? getMonsterVfxSheet() : null;
 
-        if (!isRadiant && !isEmerald && !isSteel && !isAbyssal && mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
+        if (monsterPilSheet && ctx.drawImage) {
+          const pilW = Math.round((236 * pil.scaleWidth) / 4) * 4;
+          const pilH = Math.round((312 * pil.scaleWidth * (0.38 + 0.62 * pop)) / 4) * 4;
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.translate(baseX, baseY + 14);
+          ctx.scale(flipWave, 1);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = fade * (isReflection ? 0.45 : 0.96);
+          ctx.drawImage(
+            monsterPilSheet,
+            pilCol * 208,
+            1456,
+            208,
+            208,
+            Math.round(-pilW * 0.5),
+            Math.round(-pilH),
+            pilW,
+            pilH
+          );
+          if (!isReflection) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = Math.min(0.18, fade * 0.18);
+            ctx.drawImage(
+              monsterPilSheet,
+              pilCol * 208,
+              1456,
+              208,
+              208,
+              Math.round(-pilW * 0.5),
+              Math.round(-pilH),
+              pilW,
+              pilH
+            );
+          }
+          ctx.restore();
+        } else if (!isRadiant && !isEmerald && !isSteel && !isAbyssal && mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
           const pilW = Math.round((252 * pil.scaleWidth) / 4) * 4;
           const pilH = Math.round((344 * pil.scaleWidth * (0.38 + 0.62 * pop)) / 4) * 4;
           const pilDir = Math.round(pil.x / 8) % 2 === 0 ? 1 : -1;
@@ -2610,32 +2668,97 @@ export class VFXManager {
           sheet = this.resolveHeroVfx(assets, 'warrior', slashPrefHeroId);
         }
 
-        PixelForge.ensureImage?.(sheet);
-        if (sheet && sheet.complete && sheet.naturalWidth) {
+        if (s.owner?.isMonster) {
+          const monsterVfx = getMonsterVfxSheet();
+          const dir = Math.cos(midAng) < 0 ? -1 : 1;
+          const flipY = Math.sin(midAng) < -0.35 ? -1 : 1;
+          const mCol = s.color || '#38bdf8';
+          const biomeZone = resolveMonsterBiomeZone(s.owner, null, mCol);
+          const slashRow = biomeZone <= 1 ? 4 : 5;
           ctx.save();
           ctx.translate(sx, sy);
-          if (slashPrefHeroId && slashPrefHeroId.endsWith('_ex')) {
-            ctx.scale(Math.cos(midAng) < 0 ? -1 : 1, Math.sin(midAng) < -0.35 ? -1 : 1);
+          ctx.scale(dir, flipY);
+          ctx.imageSmoothingEnabled = false;
+          if (monsterVfx && ctx.drawImage) {
+            const slashSz = Math.round(
+              Math.min(208, Math.max(132, (s.radius || 64) * 1.7)) * (1.06 - t * 0.14)
+            );
+            const half = Math.round(slashSz * 0.5);
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = Math.min(1, alpha * 0.96);
+            ctx.drawImage(monsterVfx, slashCol * 208, slashRow * 208, 208, 208, -half, -half, slashSz, slashSz);
+            if (!isReflection) {
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.globalAlpha = Math.min(0.18, alpha * 0.18);
+              ctx.drawImage(
+                monsterVfx,
+                slashCol * 208,
+                slashRow * 208,
+                208,
+                208,
+                -half,
+                -half,
+                slashSz,
+                slashSz
+              );
+            }
           } else {
-            ctx.rotate(midAng);
+            const mMaxR = 18;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = Math.min(1, alpha * 0.96);
+            ctx.fillStyle = '#0d0f1c';
+            for (let r = -mMaxR; r <= mMaxR; r++) {
+              const yy = r * 2;
+              const u = r / mMaxR;
+              const leadX = Math.round((20 * (1 - u * u * 0.86)) / 2) * 2;
+              const chord = Math.max(4, Math.round((12 * (1 - u * u) * (1 - u * u * 0.35)) / 2) * 2);
+              ctx.fillRect(leadX - chord - 2, yy, 2, 2);
+            }
+            ctx.fillStyle = mCol;
+            for (let r = -mMaxR; r <= mMaxR; r++) {
+              const yy = r * 2;
+              const u = r / mMaxR;
+              const leadX = Math.round((20 * (1 - u * u * 0.86)) / 2) * 2;
+              const chord = Math.max(4, Math.round((12 * (1 - u * u) * (1 - u * u * 0.35)) / 2) * 2);
+              ctx.fillRect(leadX - chord, yy, Math.max(2, chord - 2), 2);
+            }
+            ctx.fillStyle = '#ffffff';
+            for (let r = -mMaxR; r <= mMaxR; r++) {
+              const yy = r * 2;
+              const u = r / mMaxR;
+              const leadX = Math.round((20 * (1 - u * u * 0.86)) / 2) * 2;
+              ctx.fillRect(leadX - 2, yy, Math.abs(r) <= 6 ? 4 : 2, 2);
+            }
           }
-          this.drawBloomedSprite(
-            ctx,
-            renderer,
-            sheet,
-            cropX,
-            cropY,
-            208,
-            208,
-            Math.round(-slashSize * 0.5),
-            Math.round(-slashSize * 0.5),
-            slashSize,
-            slashSize,
-            s.color,
-            Math.min(1, alpha * 1.05),
-            isReflection
-          );
           ctx.restore();
+        } else {
+          PixelForge.ensureImage?.(sheet);
+          if (sheet && sheet.complete && sheet.naturalWidth) {
+            ctx.save();
+            ctx.translate(sx, sy);
+            if ((slashPrefHeroId && slashPrefHeroId.endsWith('_ex')) || s.owner?.isMonster) {
+              ctx.scale(Math.cos(midAng) < 0 ? -1 : 1, Math.sin(midAng) < -0.35 ? -1 : 1);
+            } else {
+              ctx.rotate(midAng);
+            }
+            this.drawBloomedSprite(
+              ctx,
+              renderer,
+              sheet,
+              cropX,
+              cropY,
+              208,
+              208,
+              Math.round(-slashSize * 0.5),
+              Math.round(-slashSize * 0.5),
+              slashSize,
+              slashSize,
+              s.color,
+              Math.min(1, alpha * 1.05),
+              isReflection
+            );
+            ctx.restore();
+          }
         }
       }
     }
@@ -2693,7 +2816,13 @@ export class VFXManager {
       const px = Math.round(proj.x / 4) * 4;
       const py = Math.round(proj.y / 4) * 4;
       const pCol = Math.floor((proj.age || 0) * 30) % 30;
-      if (renderer && proj.type !== 'ronin_slash' && proj.type !== 'storm_wave') {
+      if (
+        renderer &&
+        proj.type !== 'ronin_slash' &&
+        proj.type !== 'storm_wave' &&
+        proj.type !== 'monster_orb' &&
+        proj.type !== 'monster_wave'
+      ) {
         const tex = renderer.getGlowForColor
           ? renderer.getGlowForColor(proj.color)
           : renderer.glowOrange;
@@ -3118,6 +3247,153 @@ export class VFXManager {
           ctx.fillRect(-12, -8, 24, 16);
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(-6, -2, 12, 4);
+        }
+        ctx.restore();
+      } else if (proj.type === 'monster_orb') {
+        const monsterVfx = getMonsterVfxSheet();
+        const dir = (proj.vx || 1) >= 0 ? 1 : -1;
+        const pColHex = proj.color || '#a855f7';
+        const pCoreHex = proj.coreColor || '#ffffff';
+        const biomeRow = resolveMonsterBiomeZone(proj.owner, proj.zone, pColHex);
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(px, py);
+        ctx.scale(dir, 1);
+
+        if (monsterVfx && ctx.drawImage) {
+          const orbSz = Math.round(Math.max(92, (proj.radius || 14) * 6.2));
+          const half = Math.round(orbSz * 0.5);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = isReflection ? 0.38 : 0.96;
+          ctx.drawImage(monsterVfx, pCol * 208, biomeRow * 208, 208, 208, -half, -half, orbSz, orbSz);
+          if (!isReflection) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.18;
+            ctx.drawImage(monsterVfx, pCol * 208, biomeRow * 208, 208, 208, -half, -half, orbSz, orbSz);
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = isReflection ? 0.32 : 0.85;
+          for (let w = 0; w < 3; w++) {
+            const wx = -18 - w * 8;
+            const wy = Math.round(Math.sin((proj.age || 0) * 20 + w * 2.1) * 4);
+            ctx.fillStyle = w === 0 ? '#ffffff' : pCoreHex;
+            ctx.fillRect(wx, wy, 4 - (w >> 1), 2);
+          }
+        } else {
+          // Rounded diamond star-bolt fallback only while loading
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = isReflection ? 0.38 : 0.94;
+          const bands = [
+            [-6, 4],
+            [-4, 8],
+            [-2, 12],
+            [0, 14],
+            [2, 12],
+            [4, 8],
+            [6, 4]
+          ];
+          ctx.fillStyle = '#0d0f1c';
+          for (const [dy, span] of bands) ctx.fillRect(-Math.round(span * 0.5) - 2, dy - 1, span + 4, 4);
+          ctx.fillStyle = pColHex;
+          for (const [dy, span] of bands) ctx.fillRect(-Math.round(span * 0.5), dy, span, 2);
+          ctx.fillStyle = pCoreHex;
+          ctx.fillRect(-4, -2, 8, 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-2, -1, 4, 2);
+          for (let w = 0; w < 3; w++) {
+            const wx = -14 - w * 7;
+            const wy = Math.round(Math.sin((proj.age || 0) * 18 + w * 1.9) * 4);
+            ctx.fillStyle = pColHex;
+            ctx.fillRect(wx, wy, 4, 2);
+          }
+        }
+        ctx.restore();
+      } else if (proj.type === 'monster_wave') {
+        const monsterVfx = getMonsterVfxSheet();
+        const dir = (proj.vx || 1) >= 0 ? 1 : -1;
+        const pColHex = proj.color || '#10b981';
+        const pCoreHex = proj.coreColor || '#fef08a';
+        const biomeZone = resolveMonsterBiomeZone(proj.owner, proj.zone, pColHex);
+        const baseCol = biomeZone === 0 ? 0 : biomeZone === 1 ? 10 : 20;
+        const wCol = baseCol + (pCol % 10);
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(px, py);
+        ctx.scale(dir, 1);
+
+        if (monsterVfx && ctx.drawImage) {
+          const waveSz = Math.round(Math.max(136, (proj.radius || 22) * 6.4));
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = isReflection ? 0.38 : 0.96;
+          ctx.drawImage(
+            monsterVfx,
+            wCol * 208,
+            1248,
+            208,
+            208,
+            Math.round(-waveSz * 0.5),
+            Math.round(-waveSz * 0.56),
+            waveSz,
+            waveSz
+          );
+          if (!isReflection) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.16;
+            ctx.drawImage(
+              monsterVfx,
+              wCol * 208,
+              1248,
+              208,
+              208,
+              Math.round(-waveSz * 0.5),
+              Math.round(-waveSz * 0.56),
+              waveSz,
+              waveSz
+            );
+          }
+        } else {
+          // Ground-hugging 3-pass stepped pixel shock-crescent + 3 tiny trailing streaks
+          const maxRow = 22;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = isReflection ? 0.40 : 0.96;
+          ctx.fillStyle = '#0d0f1c';
+          for (let r = -maxRow; r <= maxRow; r++) {
+            const yy = r * 2;
+            const u = r / maxRow;
+            const leadX = Math.round((24 * (1 - u * u * 0.88)) / 2) * 2;
+            const chord = Math.max(4, Math.round((16 * (1 - u * u) * (1 - u * u * 0.32)) / 2) * 2);
+            ctx.fillRect(leadX - chord - 2, yy, 2, 2);
+          }
+          ctx.fillStyle = pColHex;
+          for (let r = -maxRow; r <= maxRow; r++) {
+            const yy = r * 2;
+            const u = r / maxRow;
+            const leadX = Math.round((24 * (1 - u * u * 0.88)) / 2) * 2;
+            const chord = Math.max(4, Math.round((16 * (1 - u * u) * (1 - u * u * 0.32)) / 2) * 2);
+            ctx.fillRect(leadX - chord, yy, Math.max(2, chord - 4), 2);
+          }
+          ctx.fillStyle = pCoreHex;
+          for (let r = -maxRow; r <= maxRow; r++) {
+            const yy = r * 2;
+            const u = r / maxRow;
+            const leadX = Math.round((24 * (1 - u * u * 0.88)) / 2) * 2;
+            ctx.fillRect(leadX - 4, yy, 4, 2);
+          }
+          ctx.fillStyle = '#ffffff';
+          for (let r = -12; r <= 12; r++) {
+            const yy = r * 2;
+            const u = r / maxRow;
+            const leadX = Math.round((24 * (1 - u * u * 0.88)) / 2) * 2;
+            ctx.fillRect(leadX - 2, yy, 2, 2);
+          }
+          for (let g = 0; g < 3; g++) {
+            const gx = -18 - g * 10;
+            const gy = (g % 2 === 0 ? 18 : 26) - Math.round(Math.sin((proj.age || 0) * 16 + g) * 4);
+            ctx.fillStyle = pColHex;
+            ctx.fillRect(gx, gy, 4, 2);
+          }
         }
         ctx.restore();
       } else if (proj.type === 'arrow') {

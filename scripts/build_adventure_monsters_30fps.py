@@ -45,14 +45,14 @@ from hd2d_rig_core import (
     draw_slash_arc_104,
 )
 
-ART_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1"
+ART_DIR = os.environ.get("AVS_SCRATCH_DIR", "/tmp/avs_monster_debug")
 SPRITE_DIR = os.path.join(ROOT_DIR, "assets", "sprites")
 
-SRC_GHOUL = os.path.join(ART_DIR, "monster_ghoul_base_1794495639766.jpg")
-SRC_CULTIST = os.path.join(ART_DIR, "monster_cultist_base_1794495643935.jpg")
-SRC_BRUTE = os.path.join(ART_DIR, "monster_brute_base_1794495644404.jpg")
-SRC_BOSS = os.path.join(ART_DIR, "boss_archfiend_base_1794495643351.jpg")
-SRC_BOSS_PORTRAIT = os.path.join(ART_DIR, "boss_archfiend_portrait_1794495788152.jpg")
+SRC_GHOUL = os.path.join(SPRITE_DIR, "monster_ghoul_base.jpg")
+SRC_CULTIST = os.path.join(SPRITE_DIR, "monster_cultist_base.jpg")
+SRC_BRUTE = os.path.join(SPRITE_DIR, "monster_brute_base.jpg")
+SRC_BOSS = os.path.join(SPRITE_DIR, "boss_archfiend_base.jpg")
+SRC_BOSS_PORTRAIT = os.path.join(SPRITE_DIR, "boss_archfiend_portrait.png")
 
 ROWS_MONSTER = 7  # Row 0 IDLE, Row 1 WALK, Row 2 AUTO, Row 3 SKILL, Row 4 ULT, Row 5 DEATH/HURT, Row 6 DASH
 
@@ -524,7 +524,157 @@ def render_monster_cell(
 # ==============================================================================
 # PIXEL-ART ELEMENTAL WEAPON / CLAW / ORB OVERLAYS (104x104 Logical Space)
 # ==============================================================================
-def draw_void_orb_104(arr, cx, cy, r, phase):
+def draw_spark_plus_104(arr, cx, cy, core_col, rim_col, big=False):
+    put_px(arr, cx, cy, core_col)
+    if big:
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            put_px(arr, cx + dx, cy + dy, rim_col)
+
+
+def draw_cel_smear_arc_104(
+    arr,
+    cx,
+    cy,
+    r_main,
+    a_start_deg,
+    a_end_deg,
+    col_selout,
+    col_outer,
+    col_mid,
+    col_core,
+    intensity=1.0,
+    max_thick=6.4,
+    spark_col=None,
+):
+    """Multi-band 4-tone HD-2D cel crescent smear (Selout spine -> outer -> mid -> razor white edge + wake sparks)."""
+    if intensity <= 0.05:
+        return
+    a0 = math.radians(a_start_deg)
+    a1 = math.radians(a_end_deg)
+    steps = 96
+    pts_outer = []
+    pts_mid = []
+    pts_core = []
+    pts_selout = []
+
+    for i in range(steps + 1):
+        t = i / steps
+        ang = a0 + (a1 - a0) * t
+        env = math.sin(t * math.pi)
+        thick = max(1.4, max_thick * (0.30 + 0.70 * env) * intensity)
+        c, s = math.cos(ang), math.sin(ang)
+        n_samples = max(4, int(thick * 3.0) + 2)
+        for dr in np.linspace(-thick, thick * 0.85, n_samples):
+            rr = r_main + dr
+            px = cx + c * rr
+            py = cy + s * rr
+            if px > 96 or px < 6 or py > 96 or py < 6:
+                continue
+            rel = dr / max(0.5, thick)
+            if rel < -0.62:
+                pts_selout.append((px, py))
+            elif rel < 0.0:
+                pts_outer.append((px, py))
+            elif rel < 0.44:
+                pts_mid.append((px, py))
+            else:
+                pts_core.append((px, py))
+
+    for px, py in pts_selout:
+        put_px(arr, px, py, col_selout)
+    for px, py in pts_outer:
+        put_px(arr, px, py, col_outer)
+    for px, py in pts_mid:
+        put_px(arr, px, py, col_mid)
+    for px, py in pts_core:
+        put_px(arr, px, py, col_core)
+
+    s_col = spark_col or col_mid
+    for k in range(5):
+        ut = 0.14 + k * 0.18
+        ang = a0 + (a1 - a0) * ut
+        rr = r_main - max_thick * (0.85 + 0.35 * (k % 2))
+        sx = cx + math.cos(ang) * rr
+        sy = cy + math.sin(ang) * rr
+        if 8 <= sx <= 94 and 8 <= sy <= 94:
+            draw_spark_plus_104(arr, sx, sy, col_core, s_col, big=(k % 2 == 0 and intensity > 0.55))
+
+
+def draw_ghoul_venom_104(arr, phase):
+    C_OUT = [8, 10, 14, 255]
+    C_EM = [24, 196, 108, 255]
+    C_HOT = [98, 248, 168, 255]
+    C_WHT = [255, 255, 255, 255]
+    # Glowing emerald eye-trail + dripping necro-claw venom sparks
+    draw_spark_plus_104(arr, 60.0 + math.sin(phase) * 1.5, 28.0, C_WHT, C_HOT, big=(math.sin(phase * 2) > 0))
+    for k in range(3):
+        u_d = (phase / (2.0 * math.pi) + k * 0.34) % 1.0
+        vx = 40.0 + k * 14.0 + math.sin(phase + k) * 1.5
+        vy = 54.0 + u_d * 18.0
+        put_px(arr, vx, vy - 1, C_OUT)
+        put_px(arr, vx, vy, C_HOT if k == 1 else C_EM)
+
+
+def draw_brute_furnace_104(arr, phase):
+    C_OUT = [8, 8, 14, 255]
+    C_MAG = [250, 132, 24, 255]
+    C_GLD = [254, 202, 56, 255]
+    C_WHT = [255, 255, 255, 255]
+    # Pulsing chest furnace glint + rising molten embers
+    draw_spark_plus_104(arr, 52, 42, C_WHT, C_GLD, big=(math.sin(phase * 2) > -0.1))
+    for k in range(3):
+        u_f = (phase / (2.0 * math.pi) + k * 0.33) % 1.0
+        fx = 38.0 + k * 13.0 + math.sin(phase * 1.8 + k) * 2.5
+        fy = 48.0 - u_f * 22.0
+        put_px(arr, fx, fy + 1, C_OUT)
+        put_px(arr, fx, fy, C_GLD if k % 2 else C_MAG)
+
+
+def draw_cross_claw_rend_104(arr, cx, cy, intensity):
+    """Ferocious X-shaped necro-emerald twin claw rend for Ghoul Row 3 SKILL."""
+    if intensity <= 0.12:
+        return
+    C_OUT = [8, 10, 14, 255]
+    C_DEEP = [12, 118, 68, 255]
+    C_EM = [24, 196, 108, 255]
+    C_WHT = [255, 255, 255, 255]
+    draw_cel_smear_arc_104(arr, cx, cy, 26, -68, 42, C_OUT, C_DEEP, C_EM, C_WHT, intensity, 5.2)
+    draw_cel_smear_arc_104(arr, cx - 2, cy + 4, 24, 48, -56, C_OUT, C_DEEP, C_EM, C_WHT, intensity, 4.8)
+
+
+def draw_brute_slam_crest_104(arr, cx, cy, intensity):
+    """Earthshaker molten ground shock-bar + 3 volcanic spire teeth for Brute Row 3/4."""
+    if intensity <= 0.12:
+        return
+    C_OUT = [8, 8, 14, 255]
+    C_CRIM = [178, 32, 18, 255]
+    C_ORG = [250, 132, 24, 255]
+    C_WHT = [255, 255, 255, 255]
+    half_w = int(round(14 + 18 * intensity))
+    for dx in range(-half_w, half_w + 1):
+        px = cx + dx
+        if 8 <= px <= 94:
+            put_px(arr, px, cy + 2, C_OUT)
+            put_px(arr, px, cy + 1, C_CRIM)
+            put_px(arr, px, cy, C_WHT if abs(dx) < half_w * 0.42 else C_ORG)
+    for sp_off, sp_h in ((-14, 10), (0, 14), (14, 11)):
+        sx = cx + sp_off
+        h = max(3, int(round(sp_h * intensity)))
+        for row in range(1, h + 1):
+            w_row = max(1, int(round((1.0 - row / (h + 1.0)) * 3.5)))
+            for wx in range(-w_row, w_row + 1):
+                px = sx + wx
+                py = cy - row
+                if 8 <= px <= 94 and 8 <= py <= 95:
+                    if abs(wx) == w_row:
+                        put_px(arr, px, py, C_OUT)
+                    elif abs(wx) <= 1 and row > 2:
+                        put_px(arr, px, py, C_WHT)
+                    else:
+                        put_px(arr, px, py, C_ORG if row > h * 0.35 else C_CRIM)
+
+
+def draw_void_orb_104(arr, cx, cy, r, phase, cast_burst=0.0):
     if r <= 0.6:
         return
     C_OUT = [7, 5, 16, 255]
@@ -538,17 +688,55 @@ def draw_void_orb_104(arr, cx, cy, r, phase):
             d = math.hypot(dx, dy)
             if d > r + 0.9:
                 continue
-            if d > r - 0.2:
-                put_px(arr, cx + dx, cy + dy, C_OUT if (dx + dy) % 2 else C_MID)
-            elif d > r * 0.52:
-                put_px(arr, cx + dx, cy + dy, C_MAG)
-            elif d > r * 0.24:
+            if d > r - 0.15:
+                put_px(arr, cx + dx, cy + dy, C_OUT)
+            elif d > r - 1.0:
+                put_px(arr, cx + dx, cy + dy, C_MID if (dx + dy) % 2 else C_MAG)
+            elif d > r * 0.46:
                 put_px(arr, cx + dx, cy + dy, C_HOT)
             else:
                 put_px(arr, cx + dx, cy + dy, C_WHT)
     for k in range(3):
         ang = phase * 2.2 + k * (2.0 * math.pi / 3.0)
-        put_px(arr, cx + math.cos(ang) * (r + 2.4), cy + math.sin(ang) * (r + 1.6), C_HOT)
+        put_px(arr, cx + math.cos(ang) * (r + 2.5), cy + math.sin(ang) * (r + 1.8), C_HOT)
+    if cast_burst > 0.18:
+        ray = int(round(3 + 5 * cast_burst))
+        for d in range(2, ray + 1):
+            col = C_WHT if d < ray * 0.5 else C_HOT
+            put_px(arr, cx + d + r * 0.5, cy, col)
+            put_px(arr, cx - d - r * 0.5, cy, col)
+            put_px(arr, cx, cy + d + r * 0.5, C_MAG)
+            put_px(arr, cx, cy - d - r * 0.5, C_MAG)
+
+
+def draw_void_mandala_104(arr, cx, cy, r, phase, intensity):
+    if intensity <= 0.12:
+        return
+    C_OUT = [7, 5, 16, 255]
+    C_GOLD = [218, 174, 76, 255]
+    C_MAG = [232, 72, 216, 255]
+    C_WHT = [255, 255, 255, 255]
+    rr = r * (0.65 + 0.35 * intensity)
+    ir = int(math.ceil(rr + 2))
+    for dy in range(-ir, ir + 1):
+        for dx in range(-ir, ir + 1):
+            d = math.hypot(dx, dy)
+            if d > rr + 0.9:
+                continue
+            if d > rr - 0.3:
+                put_px(arr, cx + dx, cy + dy, C_OUT)
+            elif d > rr - 1.5:
+                ang = math.atan2(dy, dx) + phase * 1.8
+                put_px(arr, cx + dx, cy + dy, C_GOLD if int(ang * 4) % 2 == 0 else C_MAG)
+            elif d > rr * 0.42:
+                put_px(arr, cx + dx, cy + dy, C_MAG)
+            else:
+                put_px(arr, cx + dx, cy + dy, C_WHT)
+    ray_len = int(round(4 + 5 * intensity))
+    for k in range(4):
+        ang = phase * 1.2 + k * (math.pi * 0.5)
+        for s in range(1, ray_len + 1):
+            put_px(arr, cx + math.cos(ang) * (rr + s), cy + math.sin(ang) * (rr + s), C_WHT if s < ray_len * 0.5 else C_GOLD)
 
 
 def generate_creature_pose(kind, row, f):
@@ -559,37 +747,39 @@ def generate_creature_pose(kind, row, f):
     fx_fn = None
 
     # ------------------------------------------------------------------
-    # ROW 0: IDLE (Breathing combat stance + wing/robe motion)
+    # ROW 0: IDLE (Expressive Breathing combat stance + living focal FX)
     # ------------------------------------------------------------------
     if row == 0:
         b = math.sin(ph)
         b2 = math.sin(ph - 0.7)
         if kind == "ghoul":
             cfg.update(
-                pelvis_dy=2.2 * b,
-                torso_deg=3.5 + 2.4 * b,
-                head_rel_deg=-2.0 + 3.0 * b2,
-                r_arm_deg=-8.0 + 6.5 * b2,
-                l_arm_deg=6.0 - 5.5 * b,
+                pelvis_dy=8.5 * b,
+                torso_deg=4.5 + 6.4 * b,
+                head_rel_deg=-3.0 + 4.4 * b2,
+                r_arm_deg=-10.0 + 16.0 * b2,
+                l_arm_deg=8.0 - 14.0 * b,
             )
+            fx_fn = lambda a, pl=ph: draw_ghoul_venom_104(a, pl)
         elif kind == "cultist":
             cfg.update(
-                pelvis_dy=-4.5 + 4.5 * b,  # Subtle arcane levitation
-                torso_deg=1.8 * b,
-                head_rel_deg=-1.5 * b2,
-                r_arm_deg=-14.0 + 7.0 * b2,
-                l_arm_deg=-8.0 - 5.0 * b,
-                skirt_wave_amp=3.4,
+                pelvis_dy=-6.5 + 8.6 * b,
+                torso_deg=4.2 * b,
+                head_rel_deg=-3.2 * b2,
+                r_arm_deg=-14.0 + 15.0 * b2,
+                l_arm_deg=-8.0 - 13.0 * b,
+                skirt_wave_amp=6.6,
             )
-            fx_fn = lambda a, b_loc=b, ph_loc=ph: draw_void_orb_104(a, 66, 48 + b_loc * 1.5, 3.2, ph_loc)
+            fx_fn = lambda a, b_loc=b, ph_loc=ph: draw_void_orb_104(a, 66, 48 + b_loc * 2.2, 4.2, ph_loc)
         elif kind == "brute":
             cfg.update(
-                pelvis_dy=1.8 * b,
-                torso_deg=2.0 + 1.8 * b,
-                head_rel_deg=-1.5 * b2,
-                r_arm_deg=-6.0 + 4.5 * b2,
-                l_arm_deg=4.0 - 4.0 * b,
+                pelvis_dy=7.2 * b,
+                torso_deg=2.8 + 5.2 * b,
+                head_rel_deg=-2.5 * b2,
+                r_arm_deg=-7.0 + 12.5 * b2,
+                l_arm_deg=5.0 - 11.5 * b,
             )
+            fx_fn = lambda a, pl=ph: draw_brute_furnace_104(a, pl)
         else:  # archfiend boss
             cfg.update(
                 pelvis_dy=2.4 * b,
@@ -602,30 +792,33 @@ def generate_creature_pose(kind, row, f):
             )
 
     # ------------------------------------------------------------------
-    # ROW 1: WALK (2-step anatomical stride / warlock hover-glide)
+    # ROW 1: WALK (Energetic 2-step anatomical stride / billowing warlock glide)
     # ------------------------------------------------------------------
     elif row == 1:
         s = math.sin(ph)
-        bounce = -abs(math.cos(ph)) * 5.5
+        bounce = -abs(math.cos(ph)) * 8.5
         if kind == "cultist":
             cfg.update(
-                pelvis_dx=4.0,
-                pelvis_dy=-7.0 + 4.2 * s,
-                torso_deg=8.5 + 2.2 * s,
-                head_rel_deg=-4.5,
-                r_arm_deg=-26.0 + 10.0 * s,
-                l_arm_deg=-14.0 - 8.0 * s,
-                skirt_deg=6.0 + 2.0 * s,
-                skirt_wave_amp=5.0,
+                pelvis_dx=5.0,
+                pelvis_dy=-8.0 + 7.2 * s,
+                torso_deg=9.5 + 3.6 * s,
+                head_rel_deg=-4.8,
+                r_arm_deg=-26.0 + 15.0 * s,
+                l_arm_deg=-14.0 - 12.0 * s,
+                skirt_deg=7.5 + 3.2 * s,
+                skirt_wave_amp=7.8,
             )
-            fx_fn = lambda a, ph_loc=ph: draw_void_orb_104(a, 69, 46, 3.4, ph_loc)
+            fx_fn = lambda a, sl=s, ph_loc=ph: (
+                draw_void_orb_104(a, 69, 46 + sl * 1.5, 4.3, ph_loc),
+                draw_spark_plus_104(a, 24 + (int(ph_loc * 4) % 8), 72 - (int(ph_loc * 6) % 10), [255, 255, 255, 255], [232, 72, 216, 255], True),
+            )
         else:
-            leg_amp = 24.0 if kind == "ghoul" else (18.0 if kind == "brute" else 19.0)
-            arm_amp = 26.0 if kind == "ghoul" else 18.0
-            lean = 10.0 if kind == "ghoul" else (6.5 if kind == "brute" else 7.0)
+            leg_amp = 30.0 if kind == "ghoul" else (24.0 if kind == "brute" else 19.0)
+            arm_amp = 28.0 if kind == "ghoul" else (22.0 if kind == "brute" else 18.0)
+            lean = 12.5 if kind == "ghoul" else (8.5 if kind == "brute" else 7.0)
             cfg.update(
                 pelvis_dy=bounce,
-                torso_deg=lean + 2.0 * math.sin(ph * 2),
+                torso_deg=lean + 3.2 * math.sin(ph * 2),
                 head_rel_deg=-lean * 0.45,
                 r_leg_deg=leg_amp * s,
                 l_leg_deg=-leg_amp * s,
@@ -634,9 +827,13 @@ def generate_creature_pose(kind, row, f):
                 wing_deg=-4.0 + 11.0 * math.sin(ph - 0.5),
                 wing_wave_amp=5.2,
             )
+            if kind == "ghoul":
+                fx_fn = lambda a, pl=ph: draw_ghoul_venom_104(a, pl)
+            elif kind == "brute":
+                fx_fn = lambda a, pl=ph: draw_brute_furnace_104(a, pl)
 
     # ------------------------------------------------------------------
-    # ROW 2: AUTO_ATTACK (Windup F00..F08 -> Strike F09..F18 -> Recovery F19..F29)
+    # ROW 2: AUTO_ATTACK (Deep Coil -> Strike Lunge -> Multi-Tone Cel Smear)
     # ------------------------------------------------------------------
     elif row == 2:
         if f < 9:
@@ -644,23 +841,23 @@ def generate_creature_pose(kind, row, f):
             e = t * t * (3 - 2 * t)
             if kind == "cultist":
                 cfg.update(
-                    pelvis_dy=-6.0 - 4.0 * e,
-                    torso_deg=-6.0 * e,
-                    r_arm_deg=-52.0 * e,
-                    l_arm_deg=-34.0 * e,
-                    skirt_wave_amp=4.2,
+                    pelvis_dy=-6.5 - 5.5 * e,
+                    torso_deg=-8.5 * e,
+                    r_arm_deg=-56.0 * e,
+                    l_arm_deg=-38.0 * e,
+                    skirt_wave_amp=5.8,
                 )
-                fx_fn = lambda a, e_loc=e, ph_loc=ph: draw_void_orb_104(a, 60, 42 - 4 * e_loc, 2.5 + 3.2 * e_loc, ph_loc)
+                fx_fn = lambda a, e_loc=e, ph_loc=ph: draw_void_orb_104(a, 60, 42 - 5 * e_loc, 3.2 + 3.4 * e_loc, ph_loc)
             else:
                 cfg.update(
-                    pelvis_dx=-10.0 * e,
-                    pelvis_dy=3.0 * e,
-                    torso_deg=-12.0 * e,
-                    head_rel_deg=6.0 * e,
-                    r_arm_deg=-68.0 * e,
-                    l_arm_deg=-42.0 * e,
-                    r_leg_deg=12.0 * e,
-                    l_leg_deg=-10.0 * e,
+                    pelvis_dx=-15.0 * e,
+                    pelvis_dy=5.0 * e,
+                    torso_deg=-16.0 * e,
+                    head_rel_deg=8.0 * e,
+                    r_arm_deg=-72.0 * e,
+                    l_arm_deg=-48.0 * e,
+                    r_leg_deg=15.0 * e,
+                    l_leg_deg=-13.0 * e,
                     wing_deg=14.0 * e,
                 )
         elif f < 19:
@@ -669,35 +866,37 @@ def generate_creature_pose(kind, row, f):
             arc_int = math.sin(t * math.pi)
             if kind == "cultist":
                 cfg.update(
-                    pelvis_dx=10.0 * snap,
-                    pelvis_dy=-8.0,
-                    torso_deg=12.0 * snap,
-                    head_rel_deg=-6.0 * snap,
-                    r_arm_deg=-52.0 + 22.0 * snap,
-                    l_arm_deg=-34.0 + 14.0 * snap,
-                    skirt_wave_amp=5.8,
+                    pelvis_dx=12.0 * snap,
+                    pelvis_dy=-9.5,
+                    torso_deg=14.0 * snap,
+                    head_rel_deg=-7.0 * snap,
+                    r_arm_deg=-56.0 + 28.0 * snap,
+                    l_arm_deg=-38.0 + 20.0 * snap,
+                    skirt_wave_amp=7.0,
                 )
-                fx_fn = lambda a, s_loc=snap, ph_loc=ph: draw_void_orb_104(a, 68 + 10 * s_loc, 44, 5.8 - 1.5 * t, ph_loc)
+                fx_fn = lambda a, s_loc=snap, tl=t, ai=arc_int, ph_loc=ph: draw_void_orb_104(
+                    a, 68 + 10 * s_loc, 44, 6.4 - 1.5 * tl, ph_loc, cast_burst=ai
+                )
             else:
                 cfg.update(
-                    pelvis_dx=-10.0 + 26.0 * snap,
-                    pelvis_dy=-2.0 * snap,
-                    torso_deg=-12.0 + 28.0 * snap,
-                    head_rel_deg=-10.0 * snap,
-                    r_arm_deg=-68.0 + 96.0 * snap,
-                    l_arm_deg=-42.0 + 70.0 * snap,
-                    r_leg_deg=12.0 - 26.0 * snap,
-                    l_leg_deg=-10.0 + 22.0 * snap,
+                    pelvis_dx=-15.0 + 33.0 * snap,
+                    pelvis_dy=-3.0 * snap,
+                    torso_deg=-16.0 + 35.0 * snap,
+                    head_rel_deg=-12.0 * snap,
+                    r_arm_deg=-72.0 + 104.0 * snap,
+                    l_arm_deg=-48.0 + 76.0 * snap,
+                    r_leg_deg=15.0 - 30.0 * snap,
+                    l_leg_deg=-13.0 + 24.0 * snap,
                     wing_deg=14.0 - 24.0 * snap,
                 )
-                if arc_int > 0.15:
+                if arc_int > 0.14:
                     if kind == "ghoul":
-                        fx_fn = lambda a, ai=arc_int: draw_slash_arc_104(
-                            a, 58, 52, 26, -58, 48, [212, 255, 232, 255], [98, 248, 168, 255], [24, 196, 108, 255], ai
+                        fx_fn = lambda a, ai=arc_int: draw_cel_smear_arc_104(
+                            a, 58, 52, 28, -62, 52, [8, 10, 14, 255], [12, 118, 68, 255], [24, 196, 108, 255], [255, 255, 255, 255], ai, 6.2, [98, 248, 168, 255]
                         )
                     elif kind == "brute":
-                        fx_fn = lambda a, ai=arc_int: draw_slash_arc_104(
-                            a, 58, 54, 30, -68, 52, [255, 242, 156, 255], [250, 132, 24, 255], [178, 32, 18, 255], ai
+                        fx_fn = lambda a, ai=arc_int: draw_cel_smear_arc_104(
+                            a, 58, 54, 31, -70, 54, [8, 8, 14, 255], [178, 32, 18, 255], [250, 132, 24, 255], [255, 255, 255, 255], ai, 7.0, [254, 202, 56, 255]
                         )
                     else:  # boss
                         fx_fn = lambda a, ai=arc_int: draw_slash_arc_104(
@@ -708,89 +907,132 @@ def generate_creature_pose(kind, row, f):
             r = 1.0 - (t * t * (3 - 2 * t))
             if kind == "cultist":
                 cfg.update(
-                    pelvis_dx=10.0 * r,
-                    pelvis_dy=-4.5 - 3.5 * r,
-                    torso_deg=12.0 * r,
+                    pelvis_dx=12.0 * r,
+                    pelvis_dy=-5.0 - 4.5 * r,
+                    torso_deg=14.0 * r,
                     r_arm_deg=-14.0 - 16.0 * r,
                     l_arm_deg=-8.0 - 12.0 * r,
                 )
             else:
                 cfg.update(
-                    pelvis_dx=16.0 * r,
-                    torso_deg=16.0 * r,
-                    head_rel_deg=-10.0 * r,
-                    r_arm_deg=-8.0 + 36.0 * r,
+                    pelvis_dx=18.0 * r,
+                    torso_deg=19.0 * r,
+                    head_rel_deg=-12.0 * r,
+                    r_arm_deg=-8.0 + 40.0 * r,
                     l_arm_deg=28.0 * r,
-                    r_leg_deg=-14.0 * r,
-                    l_leg_deg=12.0 * r,
+                    r_leg_deg=-15.0 * r,
+                    l_leg_deg=11.0 * r,
                     wing_deg=-10.0 * r,
                 )
 
     # ------------------------------------------------------------------
-    # ROW 3: SKILL (Frenzy Double-Rend / Void Rune Summon / Seismic Quake / Hellfire Roar)
+    # ROW 3: SKILL (Cross-X Rend / Mandala Invocation / Molten Ground-Slam)
     # ------------------------------------------------------------------
     elif row == 3:
         if f < 10:
-            e = (f / 10.0) ** 1.5
-            cfg.update(
-                pelvis_dy=-10.0 * e if kind == "cultist" else 5.0 * e,
-                torso_deg=-16.0 * e,
-                head_rel_deg=-8.0 * e,
-                r_arm_deg=-82.0 * e,
-                l_arm_deg=-74.0 * e,
-                r_leg_deg=14.0 * e,
-                l_leg_deg=-14.0 * e,
-                wing_deg=22.0 * e,
-                wing_wave_amp=6.0,
-            )
+            e = (f / 10.0) ** 1.4
             if kind == "cultist":
-                fx_fn = lambda a, el=e, pl=ph: draw_void_orb_104(a, 54, 24, 3.0 + 4.2 * el, pl)
+                cfg.update(
+                    pelvis_dy=-11.5 * e,
+                    torso_deg=-13.0 * e,
+                    head_rel_deg=-8.0 * e,
+                    r_arm_deg=-84.0 * e,
+                    l_arm_deg=-78.0 * e,
+                    skirt_wave_amp=6.4,
+                )
+                fx_fn = lambda a, el=e, ph_loc=ph: draw_void_mandala_104(a, 58, 22, 5.2, ph_loc, el)
+            elif kind == "brute":
+                cfg.update(
+                    pelvis_dy=-12.0 * e,
+                    torso_deg=-16.0 * e,
+                    head_rel_deg=-9.0 * e,
+                    r_arm_deg=-88.0 * e,
+                    l_arm_deg=-82.0 * e,
+                    r_leg_deg=15.0 * e,
+                    l_leg_deg=10.0 * e,
+                )
+            else:
+                cfg.update(
+                    pelvis_dx=-14.0 * e,
+                    pelvis_dy=9.0 * e,
+                    torso_deg=-18.0 * e,
+                    head_rel_deg=6.0 * e,
+                    r_arm_deg=-80.0 * e,
+                    l_arm_deg=-72.0 * e,
+                    r_leg_deg=16.0 * e,
+                    l_leg_deg=-14.0 * e,
+                    wing_deg=22.0 * e,
+                    wing_wave_amp=6.0,
+                )
         elif f < 22:
             t = (f - 10) / 12.0
             snap = min(1.0, t * 3.0)
             burst = math.sin(t * math.pi)
-            cfg.update(
-                pelvis_dx=22.0 * snap if kind != "cultist" else 4.0 * snap,
-                pelvis_dy=-12.0 if kind == "cultist" else 8.0 * snap,
-                torso_deg=-16.0 + 38.0 * snap if kind != "cultist" else 8.0 * snap,
-                head_rel_deg=-12.0 * snap,
-                r_arm_deg=-82.0 + 114.0 * snap if kind != "cultist" else -64.0,
-                l_arm_deg=-74.0 + 98.0 * snap if kind != "cultist" else -58.0,
-                r_leg_deg=-20.0 * snap,
-                l_leg_deg=20.0 * snap,
-                wing_deg=22.0 - 38.0 * snap,
-            )
             if kind == "cultist":
-                fx_fn = lambda a, bl=burst, pl=ph: draw_void_orb_104(a, 62, 26, 5.5 + 2.2 * bl, pl)
-            elif burst > 0.15:
-                col_a = [212, 255, 232, 255] if kind == "ghoul" else [255, 242, 156, 255]
-                col_b = [24, 196, 108, 255] if kind == "ghoul" else ([250, 132, 24, 255] if kind == "brute" else [236, 58, 158, 255])
-                col_c = [12, 118, 68, 255] if kind == "ghoul" else [118, 18, 86, 255]
-                fx_fn = lambda a, bl=burst, ca=col_a, cb=col_b, cc=col_c: draw_slash_arc_104(
-                    a, 60, 54, 31, -72, 64, ca, cb, cc, bl
+                cfg.update(
+                    pelvis_dx=6.0 * snap,
+                    pelvis_dy=-13.5,
+                    torso_deg=10.0 * snap,
+                    head_rel_deg=-8.0 * snap,
+                    r_arm_deg=-70.0,
+                    l_arm_deg=-64.0,
+                    skirt_wave_amp=7.4,
                 )
+                fx_fn = lambda a, bl=burst, ph_loc=ph: draw_void_mandala_104(a, 60, 22, 6.6, ph_loc, 0.55 + 0.45 * bl)
+            elif kind == "brute":
+                cfg.update(
+                    pelvis_dx=14.0 * snap,
+                    pelvis_dy=-12.0 * (1.0 - snap) + 11.0 * snap,
+                    torso_deg=-16.0 + 44.0 * snap,
+                    head_rel_deg=-8.0 * snap,
+                    r_arm_deg=-88.0 + 132.0 * snap,
+                    l_arm_deg=-82.0 + 124.0 * snap,
+                    r_leg_deg=-18.0 * snap,
+                    l_leg_deg=18.0 * snap,
+                )
+                if burst > 0.14:
+                    fx_fn = lambda a, bl=burst: draw_brute_slam_crest_104(a, 62, 89, bl)
+            else:
+                cfg.update(
+                    pelvis_dx=-14.0 + 36.0 * snap,
+                    pelvis_dy=-11.0 * burst + 4.0 * snap,
+                    torso_deg=-18.0 + 42.0 * snap,
+                    head_rel_deg=-12.0 * snap,
+                    r_arm_deg=-80.0 + 118.0 * snap,
+                    l_arm_deg=-72.0 + 106.0 * snap,
+                    r_leg_deg=-20.0 * snap,
+                    l_leg_deg=20.0 * snap,
+                    wing_deg=22.0 - 38.0 * snap,
+                )
+                if burst > 0.14:
+                    if kind == "ghoul":
+                        fx_fn = lambda a, bl=burst: draw_cross_claw_rend_104(a, 59, 51, bl)
+                    else:
+                        fx_fn = lambda a, bl=burst: draw_slash_arc_104(
+                            a, 60, 54, 31, -72, 64, [255, 242, 156, 255], [236, 58, 158, 255], [118, 18, 86, 255], bl
+                        )
         else:
             r = 1.0 - ((f - 22) / 8.0)
             cfg.update(
-                pelvis_dx=22.0 * r if kind != "cultist" else 4.0 * r,
-                pelvis_dy=-6.0 * r if kind == "cultist" else 8.0 * r,
-                torso_deg=22.0 * r if kind != "cultist" else 8.0 * r,
-                r_arm_deg=28.0 * r if kind != "cultist" else -40.0 * r,
-                l_arm_deg=24.0 * r if kind != "cultist" else -35.0 * r,
+                pelvis_dx=(22.0 if kind != "cultist" else 6.0) * r,
+                pelvis_dy=(-7.0 if kind == "cultist" else 8.0) * r,
+                torso_deg=(22.0 if kind != "cultist" else 10.0) * r,
+                r_arm_deg=(28.0 if kind != "cultist" else -40.0) * r,
+                l_arm_deg=(24.0 if kind != "cultist" else -35.0) * r,
                 r_leg_deg=-20.0 * r,
                 l_leg_deg=20.0 * r,
                 wing_deg=-16.0 * r,
             )
 
     # ------------------------------------------------------------------
-    # ROW 4: ULTIMATE (Boss Cataclysm Sky-Ascent & Slam / Elite Enrage Roar)
+    # ROW 4: ULTIMATE (Empowered Warden / Elite Surge & Cataclysm)
     # ------------------------------------------------------------------
     elif row == 4:
         if f < 12:
             t = f / 12.0
             e = math.sin(t * math.pi * 0.5)
             cfg.update(
-                pelvis_dy=-22.0 * e,
+                pelvis_dy=-21.0 * e,
                 torso_deg=-14.0 * e,
                 head_rel_deg=-10.0 * e,
                 r_arm_deg=-92.0 * e,
@@ -799,14 +1041,17 @@ def generate_creature_pose(kind, row, f):
                 l_leg_deg=10.0 * e,
                 wing_deg=26.0 * e,
                 wing_wave_amp=7.5,
+                skirt_wave_amp=6.6,
             )
+            if kind == "cultist":
+                fx_fn = lambda a, el=e, ph_loc=ph: draw_void_mandala_104(a, 58, 22, 5.8, ph_loc, el)
         elif f < 22:
             t = (f - 12) / 10.0
             snap = min(1.0, t * 2.8)
             burst = math.sin(t * math.pi)
             cfg.update(
-                pelvis_dx=14.0 * snap,
-                pelvis_dy=-22.0 * (1.0 - snap) + 6.0 * snap,
+                pelvis_dx=16.0 * snap,
+                pelvis_dy=-21.0 * (1.0 - snap) + 7.0 * snap,
                 torso_deg=-14.0 + 36.0 * snap,
                 head_rel_deg=-10.0 + 4.0 * snap,
                 r_arm_deg=-92.0 + 126.0 * snap,
@@ -815,15 +1060,25 @@ def generate_creature_pose(kind, row, f):
                 l_leg_deg=10.0 + 14.0 * snap,
                 wing_deg=26.0 - 44.0 * snap,
             )
-            if burst > 0.15:
-                fx_fn = lambda a, bl=burst: draw_slash_arc_104(
-                    a, 58, 52, 34, -78, 68, [255, 255, 255, 255], [254, 214, 92, 255], [236, 58, 158, 255], bl
-                )
+            if burst > 0.14:
+                if kind == "ghoul":
+                    fx_fn = lambda a, bl=burst: draw_cross_claw_rend_104(a, 59, 51, bl)
+                elif kind == "cultist":
+                    fx_fn = lambda a, bl=burst, ph_loc=ph: draw_void_mandala_104(a, 62, 24, 7.2, ph_loc, bl)
+                elif kind == "brute":
+                    fx_fn = lambda a, bl=burst: (
+                        draw_cel_smear_arc_104(a, 58, 52, 32, -74, 62, [8, 8, 14, 255], [178, 32, 18, 255], [250, 132, 24, 255], [255, 255, 255, 255], bl, 7.2),
+                        draw_brute_slam_crest_104(a, 62, 89, bl),
+                    )
+                else:
+                    fx_fn = lambda a, bl=burst: draw_slash_arc_104(
+                        a, 58, 52, 34, -78, 68, [255, 255, 255, 255], [254, 214, 92, 255], [236, 58, 158, 255], bl
+                    )
         else:
             r = 1.0 - ((f - 22) / 8.0)
             cfg.update(
-                pelvis_dx=14.0 * r,
-                pelvis_dy=6.0 * r,
+                pelvis_dx=16.0 * r,
+                pelvis_dy=7.0 * r,
                 torso_deg=22.0 * r,
                 r_arm_deg=34.0 * r,
                 l_arm_deg=30.0 * r,
@@ -960,16 +1215,27 @@ def audit_sheet_bounds(sheet_im, name):
 def main():
     t0 = time.time()
     os.makedirs(SPRITE_DIR, exist_ok=True)
+    os.makedirs(ART_DIR, exist_ok=True)
+    monsters_only = "--monsters-only" in sys.argv or not os.path.exists(
+        os.path.join(os.path.dirname(SRC_BOSS_PORTRAIT), "boss_archfiend_portrait_1794570253987.jpg")
+    )
 
-    # Save reference bases cleanly into assets/sprites/ for reproducibility
-    shutil.copyfile(SRC_GHOUL, os.path.join(SPRITE_DIR, "monster_ghoul_base.jpg"))
-    shutil.copyfile(SRC_CULTIST, os.path.join(SPRITE_DIR, "monster_cultist_base.jpg"))
-    shutil.copyfile(SRC_BRUTE, os.path.join(SPRITE_DIR, "monster_brute_base.jpg"))
-    shutil.copyfile(SRC_BOSS, os.path.join(SPRITE_DIR, "boss_archfiend_base.jpg"))
+    # Save reference bases cleanly into assets/sprites/ when building from external art dir
+    for src_p, dst_name in (
+        (SRC_GHOUL, "monster_ghoul_base.jpg"),
+        (SRC_CULTIST, "monster_cultist_base.jpg"),
+        (SRC_BRUTE, "monster_brute_base.jpg"),
+        (SRC_BOSS, "boss_archfiend_base.jpg"),
+    ):
+        dst_p = os.path.join(SPRITE_DIR, dst_name)
+        if os.path.exists(src_p) and os.path.abspath(src_p) != os.path.abspath(dst_p):
+            shutil.copyfile(src_p, dst_p)
 
-    print("1. Building Boss Portrait (128x128 quantized NEAREST)...")
-    port_im, port_path = build_boss_portrait()
-    print(f"   -> {port_path}")
+    port_im = Image.open(SRC_BOSS_PORTRAIT).convert("RGBA")
+    if not monsters_only:
+        print("1. Building Boss Portrait (128x128 quantized NEAREST)...")
+        port_im, port_path = build_boss_portrait()
+        print(f"   -> {port_path}")
 
     creatures = [
         {
@@ -1005,18 +1271,21 @@ def main():
             "win_S": 592,
             "cx_off": -2.0,
         },
-        {
-            "kind": "archfiend",
-            "title": "MALPHAS, ARCHFIEND OF THE BLACK PIT (FINAL BOSS)",
-            "out": os.path.join(SPRITE_DIR, "boss_archfiend_sheet.png"),
-            "segment": segment_boss,
-            "palette": BOSS_PALETTE,
-            "protect": (12, 13, 15, 16, 17, 18, 19),
-            "y_bot": 492.0,
-            "win_S": 598,
-            "cx_off": -16.0,
-        },
     ]
+    if not monsters_only:
+        creatures.append(
+            {
+                "kind": "archfiend",
+                "title": "MALPHAS, ARCHFIEND OF THE BLACK PIT (FINAL BOSS)",
+                "out": os.path.join(SPRITE_DIR, "boss_archfiend_sheet.png"),
+                "segment": segment_boss,
+                "palette": BOSS_PALETTE,
+                "protect": (12, 13, 15, 16, 17, 18, 19),
+                "y_bot": 492.0,
+                "win_S": 598,
+                "cx_off": -16.0,
+            }
+        )
 
     built_sheets = {}
     parts_preview = Image.new("RGBA", (1400, 380), (18, 22, 34, 255))
@@ -1087,25 +1356,26 @@ def main():
     showcase_path = os.path.join(ART_DIR, "debug_adventure_monsters_showcase.png")
     showcase.save(showcase_path)
 
-    # Build Debug Contact Sheets 2 & 3: Full 30-frame Left (F00..F14) & Right (F15..F29) for Final Boss Malphas!
-    boss_sh = built_sheets["archfiend"]
-    for half_name, c_start in [("left_F00_F14", 0), ("right_F15_F29", 15)]:
-        half_im = Image.new("RGBA", (15 * 116 + 96, ROWS_MONSTER * 124 + 44), (14, 16, 26, 255))
-        hdraw = ImageDraw.Draw(half_im)
-        hdraw.text((12, 10), f"FINAL BOSS MALPHAS 30FPS AUDIT ({half_name})", fill=(254, 214, 92, 255))
-        for r in range(ROWS_MONSTER):
-            by = 38 + r * 122
-            hdraw.line([(0, by + 114), (half_im.size[0], by + 114)], fill=(60, 44, 78, 255))
-            hdraw.text((8, by + 48), row_names[r], fill=(244, 114, 182, 255))
-            for ci in range(15):
-                fc = c_start + ci
-                bx = 88 + ci * 116
-                crop = boss_sh.crop((fc * CELL, r * CELL, (fc + 1) * CELL, (r + 1) * CELL)).resize(
-                    (112, 112), Image.Resampling.NEAREST
-                )
-                half_im.alpha_composite(crop, (bx, by))
-                hdraw.text((bx + 2, by + 2), f"F{fc:02d}", fill=(190, 195, 215, 190))
-        half_im.save(os.path.join(ART_DIR, f"debug_boss_archfiend_{half_name}.png"))
+    # Build Debug Contact Sheets 2 & 3: Full 30-frame Left (F00..F14) & Right (F15..F29) for Final Boss Malphas when rebuilt!
+    if "archfiend" in built_sheets:
+        boss_sh = built_sheets["archfiend"]
+        for half_name, c_start in [("left_F00_F14", 0), ("right_F15_F29", 15)]:
+            half_im = Image.new("RGBA", (15 * 116 + 96, ROWS_MONSTER * 124 + 44), (14, 16, 26, 255))
+            hdraw = ImageDraw.Draw(half_im)
+            hdraw.text((12, 10), f"FINAL BOSS MALPHAS 30FPS AUDIT ({half_name})", fill=(254, 214, 92, 255))
+            for r in range(ROWS_MONSTER):
+                by = 38 + r * 122
+                hdraw.line([(0, by + 114), (half_im.size[0], by + 114)], fill=(60, 44, 78, 255))
+                hdraw.text((8, by + 48), row_names[r], fill=(244, 114, 182, 255))
+                for ci in range(15):
+                    fc = c_start + ci
+                    bx = 88 + ci * 116
+                    crop = boss_sh.crop((fc * CELL, r * CELL, (fc + 1) * CELL, (r + 1) * CELL)).resize(
+                        (112, 112), Image.Resampling.NEAREST
+                    )
+                    half_im.alpha_composite(crop, (bx, by))
+                    hdraw.text((bx + 2, by + 2), f"F{fc:02d}", fill=(190, 195, 215, 190))
+            half_im.save(os.path.join(ART_DIR, f"debug_boss_archfiend_{half_name}.png"))
 
     print(f"Done in {time.time() - t0:.1f}s! Debug sheets saved to {ART_DIR}")
 
