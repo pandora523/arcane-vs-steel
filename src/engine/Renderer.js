@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps126';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps126';
+import { PixelForge } from './PixelForge.js?v=30fps127';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps127';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps126';
+} from './shaders/exNextGenFX.js?v=30fps127';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -51,6 +51,11 @@ export const ULTIMATE_STAGE_MAP = {
     id: 'shogunate_glacial',
     name: 'FROZEN SAKURA SHOGUNATE',
     assetKey: 'arenaShogunateGlacial'
+  },
+  cob_monitor: {
+    id: 'cob_monitor',
+    name: 'COB-OS: FOURTH WALL TERMINAL',
+    assetKey: 'arenaCobMonitor'
   }
 };
 
@@ -116,6 +121,14 @@ export class Renderer {
     this.glacialWipeMaxTimer = 1.38;
     this.glacialWipeFromId = null;
     this.glacialWipeFocusX = 600;
+    this.cobWipeTimer = 0;
+    this.cobWipeMaxTimer = 1.28;
+    this.cobWipeFromId = null;
+    this.cobWipeFocusX = 600;
+    this.cobAssistTimer = 0;
+    this.cobAssistMaxTimer = 0.90;
+    this.cobAssistNyxX = 400;
+    this.cobAssistTargetX = 800;
     this.impactFrameTimer = 0;
     this.impactFrameMaxTimer = 0.15;
     this.impactFrameFocusX = 600;
@@ -201,6 +214,9 @@ export class Renderer {
     this.stageSliceToId = null;
     this.glacialWipeTimer = 0;
     this.glacialWipeFromId = null;
+    this.cobWipeTimer = 0;
+    this.cobWipeFromId = null;
+    this.cobAssistTimer = 0;
     this.impactFrameTimer = 0;
     this.whiteoutTimer = 0;
   }
@@ -291,6 +307,24 @@ export class Renderer {
     this.glacialWipeFocusX = Number.isFinite(opts.focusX) ? opts.focusX : this.worldWidth * 0.5;
     this.glacialWipeMaxTimer = Math.max(0.35, opts.duration || 1.38);
     this.glacialWipeTimer = this.glacialWipeMaxTimer;
+  }
+
+  triggerCobMonitorTransition(opts = {}) {
+    const rawFrom =
+      typeof opts.fromStageId === 'string' && opts.fromStageId ? opts.fromStageId : null;
+    this.cobWipeFromId = rawFrom || this.getActiveStageId() || this.stageId || 'cathedral';
+    PixelForge.ensureStageLoaded?.(this.cobWipeFromId);
+    PixelForge.ensureStageLoaded?.('cob_monitor');
+    this.cobWipeFocusX = Number.isFinite(opts.focusX) ? opts.focusX : this.worldWidth * 0.5;
+    this.cobWipeMaxTimer = Math.max(0.35, opts.duration || 1.28);
+    this.cobWipeTimer = this.cobWipeMaxTimer;
+  }
+
+  triggerCobAssistPulse(nyxX, targetX, duration = 0.90) {
+    this.cobAssistNyxX = Number.isFinite(nyxX) ? nyxX : this.worldWidth * 0.4;
+    this.cobAssistTargetX = Number.isFinite(targetX) ? targetX : this.worldWidth * 0.65;
+    this.cobAssistMaxTimer = Math.max(0.25, duration);
+    this.cobAssistTimer = this.cobAssistMaxTimer;
   }
 
   getStageMetaById(id) {
@@ -695,6 +729,15 @@ export class Renderer {
         this.glacialWipeFromId = null;
       }
     }
+    if (this.cobWipeTimer > 0) {
+      this.cobWipeTimer = Math.max(0, this.cobWipeTimer - rawDt);
+      if (this.cobWipeTimer === 0) {
+        this.cobWipeFromId = null;
+      }
+    }
+    if (this.cobAssistTimer > 0) {
+      this.cobAssistTimer = Math.max(0, this.cobAssistTimer - rawDt);
+    }
     if (this.trueUltStageTimer > 0) {
       this.trueUltStageTimer = Math.max(0, this.trueUltStageTimer - rawDt);
       if (!this.permanentStageOverride) {
@@ -991,7 +1034,9 @@ export class Renderer {
         ? 0.16
         : activeStageForRefl === 'glacial' || activeStageForRefl === 'shogunate_glacial'
           ? 0.32
-          : activeStageForRefl === 'sylvan' ||
+          : activeStageForRefl === 'cob_monitor'
+            ? 0.30
+            : activeStageForRefl === 'sylvan' ||
               activeStageForRefl === 'sanctuary' ||
               activeStageForRefl === 'cathedral' ||
               activeStageForRefl === 'shogunate'
@@ -1278,6 +1323,10 @@ export class Renderer {
     // 7.22. Sweeping Crystalline Freeze-Wave Frozen Stage Transition
     if (this.glacialWipeTimer > 0) {
       this.drawGlacialFreezeWaveWorld(ctx, ww, gy);
+    }
+    // 7.23. Sweeping Fourth-Wall Cyber Digital Wipe Transition (`cob_monitor`)
+    if (this.cobWipeTimer > 0) {
+      this.drawCobDigitalWipeWorld(ctx, ww, gy);
     }
 
     // 7.25. Supreme Finisher High-Contrast Anime Impact Frame & Full-Stage White-Out Deletion Screen!
@@ -1927,6 +1976,16 @@ export class Renderer {
             ? `rgba(103, 232, 249, ${iceSeamAlpha})`
             : `rgba(232, 121, 249, ${iceSeamAlpha})`;
         ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+      } else if (seamStage === 'cob_monitor') {
+        ctx.fillStyle = 'rgba(6, 8, 22, 0.44)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        const pulseAlpha = (0.14 + 0.07 * Math.sin(this.time * 5.0 + r * 1.6)).toFixed(3);
+        ctx.fillStyle = r % 2 === 0 ? `rgba(34, 211, 238, ${pulseAlpha})` : `rgba(217, 70, 239, ${pulseAlpha})`;
+        ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        const busX = Math.round((((this.time * (260 + r * 40) + r * 320) % 1800) - 300) / 4) * 4;
+        ctx.fillStyle = r % 2 === 0 ? 'rgba(165, 243, 252, 0.42)' : 'rgba(253, 224, 71, 0.36)';
+        ctx.fillRect(busX, ry, 52, 2);
+        ctx.fillRect(busX - 240, ry, 28, 2);
       } else if (seamStage === 'shogunate') {
         ctx.fillStyle = 'rgba(8, 12, 26, 0.36)';
         ctx.fillRect(-800, ry, ww + 1600, 3);
@@ -1992,6 +2051,8 @@ export class Renderer {
       this.drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'shogunate_glacial') {
       this.drawShogunateGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
+    } else if (baseStageId === 'cob_monitor') {
+      this.drawCobMonitorStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'sanctuary') {
       this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'sylvan') {
@@ -2020,6 +2081,8 @@ export class Renderer {
         this.drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       } else if (this.trueUltStageOverride === 'shogunate_glacial') {
         this.drawShogunateGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      } else if (this.trueUltStageOverride === 'cob_monitor') {
+        this.drawCobMonitorStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       } else if (this.trueUltStageOverride === 'sanctuary') {
         this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       }
@@ -2056,6 +2119,56 @@ export class Renderer {
           const bh = Math.max(1, y1 - y0);
           const cutL = originX - (frontRadius + GLACIAL_WIPE_TOOTH_L[b] * 16);
           const cutR = originX + (frontRadius + GLACIAL_WIPE_TOOTH_R[b] * 16);
+          if (cutL > leftBound) {
+            ctx.rect(leftBound, y0, cutL - leftBound, bh);
+            hasClipRect = true;
+          }
+          if (rightBound > cutR) {
+            ctx.rect(cutR, y0, rightBound - cutR, bh);
+            hasClipRect = true;
+          }
+        }
+        if (hasClipRect) {
+          ctx.clip();
+          drawStageImageWithWings(fromImg, fadeAlpha);
+        }
+        ctx.restore();
+      }
+    }
+
+    // Sweeping Cyber Digital Wipe for Fourth-Wall `cob_monitor` Stage Transition (`0` ctx.rotate!)
+    if (this.cobWipeTimer > 0 && this.cobWipeFromId && !this.adventureMode) {
+      const fromMeta = this.getStageMetaById(this.cobWipeFromId);
+      const fromImg = PixelForge.ensureImage(
+        (fromMeta && assets[fromMeta.assetKey]) || assets.arenaBg
+      );
+      const maxDur = Math.max(0.1, this.cobWipeMaxTimer || 1.28);
+      const p = Math.max(0, Math.min(1, 1 - this.cobWipeTimer / maxDur));
+      const easeP = 1 - Math.pow(1 - p, 2.2);
+      const frontRadius = Math.round((easeP * 1460) / 4) * 4;
+      const fadeAlpha = p < 0.78 ? 1.0 : Math.max(0, 1 - (p - 0.78) / 0.22);
+      if (fadeAlpha > 0.01 && fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
+        const originX =
+          Math.round(
+            (Number.isFinite(this.cobWipeFocusX) ? this.cobWipeFocusX : ww * 0.5) / 4
+          ) * 4;
+        const leftBound = drawX - drawW - 600;
+        const rightBound = drawX + drawW * 2 + 600;
+        const bandTop = Math.round(gy - 1020);
+        const bandBot = Math.round(gy + 420);
+        const stepH = Math.round((bandBot - bandTop) / 16);
+
+        ctx.save();
+        ctx.beginPath();
+        let hasClipRect = false;
+        for (let b = 0; b < 16; b++) {
+          const y0 = b === 0 ? -2600 : bandTop + b * stepH;
+          const y1 = b === 15 ? gy + 2200 : bandTop + (b + 1) * stepH;
+          const bh = Math.max(1, y1 - y0);
+          const staggerL = ((b * 3 + 1) % 6) * 18;
+          const staggerR = ((b * 5 + 2) % 6) * 18;
+          const cutL = originX - (frontRadius + staggerL);
+          const cutR = originX + (frontRadius + staggerR);
           if (cutL > leftBound) {
             ctx.rect(leftBound, y0, cutL - leftBound, bh);
             hasClipRect = true;
@@ -4056,6 +4169,190 @@ export class Renderer {
   }
 
   /**
+   * COB-OS: FOURTH WALL TERMINAL (`arena_cob_monitor.png` + `cob_creator_anim.png`):
+   *   - Animates Creator Cob beyond the monitor glass (8-frame breathing, wings wave shimmer, crimson eye blink/flare)
+   *   - Scrolls neon code lines & bouncing equalizer bars inside both flanking `COB-OS` hologram windows
+   *   - Fires the "Cob Helping Nyx" Creator Uplink Conduit & target reticle flare when `this.cobAssistTimer > 0` (`0` ctx.rotate!)
+   */
+  drawCobMonitorStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
+    if (alpha <= 0.01) return;
+    const t = this.time;
+    const assets = PixelForge.initAssets();
+    const animSheet = PixelForge.ensureImage?.(assets?.cobCreatorAnim);
+    const assistActive = this.cobAssistTimer > 0;
+    const assistProg = assistActive
+      ? Math.max(0, Math.min(1, 1 - this.cobAssistTimer / Math.max(0.1, this.cobAssistMaxTimer || 0.9)))
+      : 0;
+    const assistEnv = assistActive ? Math.sin(assistProg * Math.PI) : 0;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Live 8-frame Animated Cob Beyond the Glass Monitor (`0.33125, 0.02222, 0.3750, 0.5000`)
+    if (animSheet && animSheet.complete && animSheet.naturalWidth >= 1920) {
+      const frame = Math.floor(t * (assistActive ? 8.5 : 5.5)) % 8;
+      const destX = Math.round(drawX + drawW * 0.33125);
+      const destY = Math.round(drawY + drawH * 0.02222);
+      const destW = Math.round(drawW * 0.3750);
+      const destH = Math.round(drawH * 0.5000);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(animSheet, frame * 240, 0, 240, 180, destX, destY, destW, destH);
+    }
+
+    // 2. Crimson Eye Glow & Dual Cyan/Violet Monitor Ambient Light (`'lighter'` capped <= 0.16)
+    const eyeX = Math.round(drawX + drawW * 0.4539);
+    const eyeY = Math.round(drawY + drawH * 0.2167);
+    const eyePulse = 0.72 + 0.28 * Math.sin(t * 4.4);
+    if (this.glowCrimson) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.16, (0.09 * eyePulse + 0.07 * assistEnv) * alpha);
+      const er = Math.round(130 + 60 * assistEnv);
+      ctx.drawImage(this.glowCrimson, eyeX - er, eyeY - er, er * 2, er * 2);
+    }
+    if (this.glowCyan) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.14, (0.09 + 0.04 * assistEnv) * alpha);
+      ctx.drawImage(this.glowCyan, drawX + drawW * 0.50 - 320, drawY + drawH * 0.34 - 200, 640, 400);
+    }
+    if (this.glowViolet) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.12, 0.085 * alpha);
+      ctx.drawImage(this.glowViolet, drawX + drawW * 0.50 - 360, drawY + drawH * 0.26 - 180, 720, 360);
+    }
+
+    // 3. Outer Monitor Pillar Pulsing Status LEDs (`x = 0.054` & `0.946`)
+    for (const pxNorm of [0.054, 0.946]) {
+      const lx = Math.round(drawX + drawW * pxNorm);
+      const ledA = (0.55 + 0.45 * Math.sin(t * 5.6 + pxNorm * 10)) * alpha;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = ledA;
+      ctx.fillStyle = assistActive ? '#fde047' : '#22d3ee';
+      ctx.fillRect(lx - 4, Math.round(drawY + drawH * 0.375), 8, 22);
+      ctx.fillStyle = '#d946ef';
+      ctx.fillRect(lx - 4, Math.round(drawY + drawH * 0.445), 8, 12);
+    }
+
+    // 4. Two Animated Flanking `COB-OS` Code & Waveform Windows (`Left: 0.112..0.232`, `Right: 0.752..0.885`)
+    const scrollTick = Math.floor(t * 7.5);
+    const codeCols = ['#22d3ee', '#c084fc', '#d946ef', '#a5f3fc', '#fde047'];
+    for (let wIdx = 0; wIdx < 2; wIdx++) {
+      const winL = Math.round(drawX + drawW * (wIdx === 0 ? 0.116 : 0.758));
+      const winR = Math.round(drawX + drawW * (wIdx === 0 ? 0.228 : 0.878));
+      const winT = Math.round(drawY + drawH * 0.175);
+      const winW = Math.max(60, winR - winL);
+
+      // Header pulse bar
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = (0.48 + 0.35 * assistEnv) * alpha;
+      ctx.fillStyle = assistActive ? '#fde047' : '#22d3ee';
+      ctx.fillRect(winL, winT - 14, Math.round(winW * 0.72), 4);
+
+      // Scrolling live pixel code lines
+      for (let ln = 0; ln < 9; ln++) {
+        const lineSeed = ln + scrollTick + wIdx * 13;
+        const barW = 24 + ((lineSeed * 29) % Math.max(24, winW - 36));
+        const indent = ((ln % 3) * 10);
+        const ly = winT + ln * 16;
+        ctx.globalAlpha = (0.38 + (ln % 3 === 0 ? 0.24 : 0) + 0.30 * assistEnv) * alpha;
+        ctx.fillStyle = assistActive && ln % 2 === 0 ? '#fde047' : codeCols[lineSeed % codeCols.length];
+        ctx.fillRect(winL + indent, ly, Math.min(winW - indent, barW), 4);
+      }
+
+      // Blinking terminal cursor
+      if (Math.floor(t * 4) % 2 === 0) {
+        ctx.globalAlpha = 0.82 * alpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(winL + 12, winT + 9 * 16 + 2, 10, 6);
+      }
+
+      // Bouncing 8-bar audio/uplink waveform equalizer at bottom of monitor window
+      const eqBaseY = Math.round(drawY + drawH * 0.455);
+      for (let b = 0; b < 8; b++) {
+        const barH =
+          6 +
+          Math.round(
+            Math.abs(Math.sin(t * (assistActive ? 14 : 6.2) + b * 0.9 + wIdx * 2.1)) *
+              (assistActive ? 28 : 16)
+          );
+        const bx = winL + b * Math.max(10, Math.floor(winW / 9));
+        ctx.globalAlpha = (0.56 + 0.34 * assistEnv) * alpha;
+        ctx.fillStyle = assistActive ? (b % 2 === 0 ? '#fde047' : '#22d3ee') : b % 2 === 0 ? '#22d3ee' : '#d946ef';
+        ctx.fillRect(bx, eqBaseY - barH, 6, barH);
+      }
+    }
+
+    // 5. Traveling Monitor Scan-Bar & Perspective Floor Circuit Packets (`y = gy - 20..gy + 95`)
+    const scanY = Math.round((drawY + ((t * 95) % (drawH * 0.68))) / 4) * 4;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(0.11, 0.08 * alpha);
+    ctx.fillStyle = '#22d3ee';
+    ctx.fillRect(drawX + Math.round(drawW * 0.10), scanY, Math.round(drawW * 0.80), 4);
+
+    ctx.globalCompositeOperation = 'source-over';
+    for (let p = 0; p < 8; p++) {
+      const cyc = (t * (0.52 + (p % 3) * 0.14) + p * 0.125) % 1;
+      const laneFrac = -0.38 + (p / 7) * 0.76;
+      const px = Math.round((drawX + drawW * 0.50 + laneFrac * (380 + cyc * 620)) / 4) * 4;
+      const py = Math.round((gy - 18 + cyc * 110) / 2) * 2;
+      ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.75 * alpha;
+      ctx.fillStyle = p % 2 === 0 ? '#22d3ee' : '#d946ef';
+      ctx.fillRect(px - 8, py, 16, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - 2, py, 4, 2);
+    }
+
+    // 6. "COB HELPING NYX" LIVE DEPLOY ASSIST CONDUIT & CRIMSON EYE COMMAND FLARE (`this.cobAssistTimer > 0`)
+    if (assistActive && assistEnv > 0.02) {
+      // Crimson-gold 4-point starflare at Cob's crimson eye behind the glass!
+      const starSpan = Math.round((18 + 16 * assistEnv) / 2) * 2;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = assistEnv * alpha;
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(eyeX - starSpan, eyeY - 2, starSpan * 2, 4);
+      ctx.fillRect(eyeX - 2, eyeY - starSpan, 4, starSpan * 2);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(eyeX - Math.round(starSpan * 0.5), eyeY - 2, starSpan, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(eyeX - 3, eyeY - 3, 6, 6);
+
+      // Creator Uplink Conduit cascading down from Cob (`drawX + drawW*0.48, gy - 260`) into `cobAssistNyxX`
+      const cobOriginX = drawX + drawW * 0.48;
+      const cobOriginY = Math.round(gy - 256);
+      const nyxX = Math.round(this.cobAssistNyxX / 4) * 4;
+      const nyxDestY = Math.round(gy - 84);
+      for (let s = 0; s < 14; s++) {
+        const uStep = (s / 13 + t * 2.8) % 1;
+        const px = Math.round((cobOriginX + (nyxX - cobOriginX) * uStep) / 4) * 4;
+        const py = Math.round((cobOriginY + (nyxDestY - cobOriginY) * uStep) / 4) * 4;
+        ctx.fillStyle = s % 2 === 0 ? '#22d3ee' : '#fde047';
+        ctx.globalAlpha = assistEnv * Math.sin(uStep * Math.PI) * 0.94 * alpha;
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+      }
+
+      // Target Lock Command Drop from top monitor bezel onto `cobAssistTargetX`
+      const tgtX = Math.round(this.cobAssistTargetX / 4) * 4;
+      const topY = Math.round(gy - 420);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.16, 0.15 * assistEnv * alpha);
+      ctx.fillStyle = '#d946ef';
+      ctx.fillRect(tgtX - 18, topY, 36, Math.max(120, gy - topY));
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = assistEnv * 0.92 * alpha;
+      ctx.fillStyle = '#22d3ee';
+      ctx.fillRect(tgtX - 4, topY, 8, Math.max(120, gy - topY));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(tgtX - 2, topY, 4, Math.max(120, gy - topY));
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
    * World-Space Full-Viewport Diagonal Katana Dimensional Rift Seam (`this.stageSliceTimer > 0`):
    *   - Blazing diagonal katana cut line across the entire viewport (`0` ctx.rotate!)
    *   - High-voltage jagged lightning surge bolts racing along & branching off the dimensional seam
@@ -4422,6 +4719,56 @@ export class Renderer {
   }
 
   /**
+   * World-Space Fourth-Wall Cyber Digital Curtain Wipe (`this.cobWipeTimer > 0`):
+   *   - Expanding cyan/magenta/gold pixel shutter walls revealing `COB-OS: FOURTH WALL TERMINAL` (`0` ctx.rotate!)
+   */
+  drawCobDigitalWipeWorld(ctx, ww, gy) {
+    const maxDur = Math.max(0.1, this.cobWipeMaxTimer || 1.28);
+    const p = Math.max(0, Math.min(1, 1 - this.cobWipeTimer / maxDur));
+    const fade = p < 0.72 ? 1.0 : Math.max(0, 1 - (p - 0.72) / 0.28);
+    if (fade <= 0.01) return;
+
+    const easeP = 1 - Math.pow(1 - p, 2.2);
+    const frontRadius = Math.round((easeP * 1460) / 4) * 4;
+    const originX =
+      Math.round(
+        (Number.isFinite(this.cobWipeFocusX) ? this.cobWipeFocusX : ww * 0.5) / 4
+      ) * 4;
+    const bandTop = Math.round(gy - 1020);
+    const bandBot = Math.round(gy + 420);
+    const stepH = Math.round((bandBot - bandTop) / 16);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let side = -1; side <= 1; side += 2) {
+      for (let b = 0; b < 16; b++) {
+        const y0 = bandTop + b * stepH;
+        const stagger = side < 0 ? ((b * 3 + 1) % 6) * 18 : ((b * 5 + 2) % 6) * 18;
+        const edgeX = Math.round(originX + side * (frontRadius + stagger));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.72;
+        ctx.fillStyle = b % 2 === 0 ? '#22d3ee' : '#d946ef';
+        ctx.fillRect(side < 0 ? edgeX - 18 : edgeX, y0, 18, stepH);
+        ctx.globalAlpha = fade * 0.94;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(edgeX - 2, y0, 4, stepH);
+      }
+    }
+    for (let i = 0; i < 36; i++) {
+      const dir = i % 2 === 0 ? -1 : 1;
+      const stagger = ((i * 5 + 1) % 6) * 18;
+      const px = Math.round((originX + dir * (frontRadius + stagger) - dir * ((i * 29) % 110)) / 4) * 4;
+      const py = Math.round((gy - 480 + ((i * 67) % 500)) / 4) * 4;
+      ctx.globalAlpha = fade * 0.88;
+      ctx.fillStyle = i % 3 === 0 ? '#fde047' : i % 2 === 0 ? '#22d3ee' : '#d946ef';
+      ctx.fillRect(px - 3, py - 3, 6, 6);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
    * Renders a High-Contrast Anime / FF14 Limit Break 3 Impact Frame (`this.impactFrameTimer > 0`):
    *   - Alternates stark inverted White-on-Black / Black-on-White high-contrast flash
    *   - 48 razor-sharp radial speed-spikes bursting from `(impactFrameFocusX, impactFrameFocusY)`
@@ -4443,7 +4790,8 @@ export class Renderer {
       abyssal: { accent: '#c084fc', alt: '#f43f5e', bg: '#08020d' },
       forge: { accent: '#f59e0b', alt: '#34d399', bg: '#0b0502' },
       glacial: { accent: '#67e8f9', alt: '#ecfeff', bg: '#082f49' },
-      cyber: { accent: '#00f0ff', alt: '#f43f5e', bg: '#02060c' }
+      cyber: { accent: '#00f0ff', alt: '#f43f5e', bg: '#02060c' },
+      nebula: { accent: '#22d3ee', alt: '#d946ef', bg: '#050214' }
     };
     const pal = IMPACT_STYLE_PALETTES[this.impactFrameStyle] || IMPACT_STYLE_PALETTES.inferno;
     const accentCol = pal.accent;
@@ -5125,7 +5473,8 @@ export class Renderer {
             : activeStage === 'sanctuary' ||
                 activeStage === 'shogunate' ||
                 activeStage === 'glacial' ||
-                activeStage === 'shogunate_glacial'
+                activeStage === 'shogunate_glacial' ||
+                activeStage === 'cob_monitor'
               ? this.glowCyan
               : activeStage === 'inferno' || activeStage === 'shogunate_inferno'
                 ? this.glowOrange
@@ -5187,6 +5536,12 @@ export class Renderer {
         topRgb = s === 2 ? '254, 240, 138' : '125, 211, 252';
         midRgb = s % 2 === 0 ? '56, 189, 248' : '250, 204, 21';
         baseAlpha = 0.095;
+      } else if (activeStage === 'cob_monitor') {
+        topX = viewCenterX + idx * 124 + parX;
+        botX = viewCenterX + idx * 178 + sway + parX * 1.15;
+        topRgb = s % 2 === 0 ? '34, 211, 238' : '217, 70, 239';
+        midRgb = s % 2 === 0 ? '168, 85, 247' : '56, 189, 248';
+        baseAlpha = 0.072;
       } else if (activeStage === 'sylvan') {
         topX = viewCenterX - 40 + idx * 135 + parX;
         botX = viewCenterX + 30 + idx * 178 + sway + parX * 1.15;
@@ -5261,7 +5616,9 @@ export class Renderer {
         ? ['#fb923c', '#fde047']
         : activeStage === 'glacial' || activeStage === 'shogunate_glacial'
           ? ['#67e8f9', '#e879f9']
-          : activeStage === 'shogunate'
+          : activeStage === 'cob_monitor'
+            ? ['#22d3ee', '#d946ef']
+            : activeStage === 'shogunate'
             ? ['#fda4af', '#fbcfe8']
             : activeStage === 'sanctuary'
               ? ['#7dd3fc', '#fef08a']
@@ -5563,6 +5920,43 @@ export class Renderer {
           pCol,
           '#ffffff'
         );
+      }
+    } else if (activeStage === 'cob_monitor') {
+      // COB-OS FOURTH WALL TERMINAL PHENOMENON: RISING CREATOR DATA-PACKETS & NEBULA STARS (`0` ctx.rotate / stroke!)
+      const originX = ww * 0.50;
+      const originY = gy - 320;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.22 * fade;
+      if (this.glowCyan) ctx.drawImage(this.glowCyan, originX - 380, originY - 220, 760, 440);
+      ctx.globalAlpha = 0.18 * fade;
+      if (this.glowViolet) ctx.drawImage(this.glowViolet, ww * 0.5 - 440, gy - 300, 880, 320);
+
+      for (let d = 0; d < 42; d++) {
+        const cyc = (t * (0.28 + (d % 4) * 0.06) + d * 0.17) % 1;
+        const baseX = 75 + ((d * 83) % Math.max(240, ww - 150));
+        const dx = Math.round((baseX + Math.sin(t * 2.8 + d * 1.4) * 18) / 2) * 2;
+        const dy = Math.round((gy + 8 - cyc * 490) / 2) * 2;
+        const dAlpha = fade * Math.sin(cyc * Math.PI);
+        if (dAlpha <= 0.03) continue;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = dAlpha * 0.90;
+        if (d % 3 === 0) {
+          this.drawDiamondCrystalPixel(
+            ctx,
+            dx,
+            dy,
+            (Math.floor(t * 5.0 + d) + d) & 1,
+            d % 6 === 0 ? 1.8 : 1,
+            d % 6 === 0 ? '#fde047' : '#22d3ee',
+            '#ffffff',
+            '#3b1f6e'
+          );
+        } else {
+          ctx.fillStyle = d % 2 === 0 ? '#22d3ee' : '#d946ef';
+          ctx.fillRect(dx - 2, dy - 4, 4, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(dx - 1, dy - 2, 2, 4);
+        }
       }
     } else if (activeStage === 'sanctuary') {
       // SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER
@@ -5871,6 +6265,18 @@ export class Renderer {
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * 0.90;
         ctx.fillStyle = i % 2 === 0 ? '#fde047' : '#5eead4';
+        ctx.fillRect(px - 3, py - 1, 6, 2);
+        ctx.fillRect(px - 1, py - 3, 2, 6);
+      } else if (activeStage === 'cob_monitor') {
+        const gTex = i % 2 === 0 ? this.glowCyan : this.glowViolet;
+        if (gTex) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.16, alpha * 0.24);
+          ctx.drawImage(gTex, px - 16, py - 16, 32, 32);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.90;
+        ctx.fillStyle = i % 3 === 0 ? '#fde047' : i % 2 === 0 ? '#22d3ee' : '#d946ef';
         ctx.fillRect(px - 3, py - 1, 6, 2);
         ctx.fillRect(px - 1, py - 3, 2, 6);
       } else if (activeStage === 'sanctuary') {

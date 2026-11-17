@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps126';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps126';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps126';
+import { Fighter } from './Fighter.js?v=30fps127';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps127';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps127';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps126';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps127';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)

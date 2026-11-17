@@ -2,20 +2,24 @@
  * Nebula AI Assistant & Cob Creator Core Shader Suite (`nebulaShaders.js`)
  * First-party 120Hz 2.5D pixel-shader & particle effects for Nyx EX (`nyx_ex` / `NyxEx.js`).
  *
- * Strictly padded `shadeBox` bounds & viewport-safe radii (`0` shadeBox clips, `0` viewport clips).
+ * Strictly padded `shadeBox` bounds (zero alpha/glow within 2.5px of box border) &
+ * viewport-safe bounds (`y in [-142..+50]`, `x in [-140..+140]` -> `0` shadeBox or viewport clips).
  */
 
 import {
   PURE_WHITE,
   buildColorRamp,
   clamp01,
+  clampRange,
   smoothStep,
+  Easing,
+  fbmNoise2D,
   DeterministicRng,
   MotePool,
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps126';
+} from '../ArcaneShaderFX.js?v=30fps127';
 
 export const NEBULA_CYBER_PALETTE = [
   '#0f1029', // 0: Deep cosmic hoodie navy
@@ -39,7 +43,6 @@ export const NEBULA_COB_PALETTE = [
   '#ffffff'  // 7: Pure white core
 ];
 
-const ALL_ANGLES = () => true;
 const BACK_HALF = (th) => Math.sin(th) < 0;
 const FRONT_HALF = (th) => Math.sin(th) >= 0;
 
@@ -55,7 +58,7 @@ function drawNebulaStar4(pen, cx, cy, arm, mainCol, accentCol = PURE_WHITE, alph
   pen.fillCircle(cx, cy, Math.max(1.1, arm * 0.22), PURE_WHITE, alpha);
 }
 
-function drawSafeHexOctagon(pen, cx, cy, r, col, alpha, rot = 0) {
+function drawSafeOctagonRing(pen, cx, cy, r, col, alpha, rot = 0) {
   if (r <= 2 || alpha <= 0.02) return;
   const pts = [];
   for (let i = 0; i < 8; i++) {
@@ -69,16 +72,63 @@ function drawSafeHexOctagon(pen, cx, cy, r, col, alpha, rot = 0) {
   }
 }
 
+/** Draw cel-stepped 2.5D Nebula Plasma Column cleanly padded inside its shadeBox (0 edge clips). */
+function renderNebulaPlasmaColumn(pen, cx, halfW, botY, topY, heightFrac, fade, pal, cob, seedShift = 0) {
+  if (fade <= 0.02 || heightFrac <= 0.05) return;
+  const x0 = cx - halfW - 6;
+  const x1 = cx + halfW + 6;
+  const y0 = topY - 6;
+  const y1 = botY + 6;
+  const colH = Math.max(12, (botY - topY) * heightFrac);
+  const activeTop = botY - colH;
+
+  pen.shadeBox(x0, y0, x1, y1, (lx, ly, out) => {
+    if (lx <= x0 + 3 || lx >= x1 - 3 || ly <= y0 + 3 || ly >= y1 - 3) return 0;
+    if (ly < activeTop || ly > botY) return 0;
+    const v = clamp01((botY - ly) / colH);
+    const tipTaper = Math.sin(Math.pow(v, 0.72) * Math.PI);
+    const ripple = Math.sin(ly * 0.14 - seedShift * 8.0) * 2.2;
+    const localHw = Math.max(0.1, halfW * (0.36 + 0.64 * tipTaper) + ripple * (1 - Math.abs(v - 0.5) * 1.4));
+    const dx = Math.abs(lx - cx);
+    if (dx > localHw) return 0;
+
+    const u = dx / localHw;
+    const edgeFade = smoothStep(1.0, 0.78, u) * smoothStep(0.0, 0.08, v) * smoothStep(1.0, 0.88, v);
+    if (edgeFade <= 0.04) return 0;
+
+    out.alpha = clamp01(fade * edgeFade * 0.94);
+    if (u < 0.24) {
+      out.glowStrength = 0.42 * fade;
+      out.glowColor = pal[6];
+      return PURE_WHITE;
+    }
+    if (u < 0.54) {
+      out.glowStrength = 0.34 * fade;
+      out.glowColor = cob[2];
+      return (Math.floor(ly * 0.25 + seedShift * 6) % 3 === 0) ? cob[5] : pal[6];
+    }
+    if (u < 0.80) {
+      out.glowStrength = 0.26 * fade;
+      out.glowColor = pal[5];
+      return pal[5];
+    }
+    out.glowStrength = 0.16 * fade;
+    out.glowColor = pal[3];
+    return pal[3];
+  });
+}
+
 // ============================================================================
-// 1. HOLO-PROMPT BURST (`nebulaPromptBurst`) — Basic Attack & Blink Sparks
+// 1. HOLO-PROMPT BURST (`nebulaPromptBurst`) — Attack Crescent Wave & Impact Ring
 // ============================================================================
 export const nebulaPromptBurst = {
-  duration: 0.34,
+  duration: 0.36,
   loop: false,
-  defaults: { palette: NEBULA_CYBER_PALETTE, seed: 29, radius: 28 },
+  defaults: { palette: NEBULA_CYBER_PALETTE, seed: 29, radius: 32 },
   create(cfg) {
     const pal = buildColorRamp(cfg.palette, 8);
     const cob = buildColorRamp(NEBULA_COB_PALETTE, 8);
+    const ramp4 = [pal[3], pal[5], pal[6], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, pal[6], pal[5], cob[5]] });
     let t = 0;
@@ -88,16 +138,16 @@ export const nebulaPromptBurst = {
       step(dt) {
         if (!burst) {
           burst = true;
-          for (let i = 0; i < 14; i++) {
-            const a = (i / 14) * Math.PI * 2 + rng.between(-0.15, 0.15);
-            const spd = rng.between(36, 98);
+          for (let i = 0; i < 18; i++) {
+            const a = (i / 18) * Math.PI * 2 + rng.between(-0.15, 0.15);
+            const spd = rng.between(48, 128);
             motes.emit(
               i % 2 === 0 ? 'glint' : 'streak',
               0,
               0,
               Math.cos(a) * spd,
               Math.sin(a) * spd,
-              rng.between(0.16, 0.28),
+              rng.between(0.18, 0.30),
               i % 3 === 0 ? pal[6] : i % 3 === 1 ? pal[5] : cob[5],
               1,
               0
@@ -108,13 +158,27 @@ export const nebulaPromptBurst = {
         motes.step(dt);
       },
       renderFront(pen) {
-        const u = clamp01(t / 0.34);
-        const fade = 1 - u;
+        const u = clamp01(t / 0.36);
+        const fade = 1 - u * u;
         if (fade <= 0.02) return;
-        const r = Math.min(26, (cfg.radius || 28) * (0.45 + 0.55 * smoothStep(0, 0.5, u)));
-        drawSafeHexOctagon(pen, 0, 0, r * 0.72, pal[6], fade * 0.9, u * 1.4);
-        drawNebulaStar4(pen, 0, 0, r * 0.65, pal[5], pal[6], fade);
-        pen.radialGlow(0, 0, r * 0.78, pal[4], 0.24 * fade);
+        const maxR = Math.min(34, (cfg.radius || 32) * (0.35 + 0.72 * Easing.outCubic(u)));
+
+        pen.shadeBox(-40, -40, 40, 40, (lx, ly, out) => {
+          if (lx <= -37 || lx >= 37 || ly <= -37 || ly >= 37) return 0;
+          const d = Math.hypot(lx, ly);
+          if (d > maxR || d < maxR * 0.48) return 0;
+          const band = 1 - Math.abs(d - maxR * 0.76) / Math.max(1.5, maxR * 0.26);
+          if (band <= 0.05) return 0;
+          out.alpha = clamp01(fade * band * 0.92);
+          out.glowStrength = 0.34 * fade * band;
+          out.glowColor = d > maxR * 0.78 ? pal[5] : pal[6];
+          return band > 0.72 ? PURE_WHITE : d > maxR * 0.78 ? pal[5] : pal[6];
+        });
+
+        drawTiltedOrbitBand(pen, 0, 0, maxR * 0.86, 0.42, 1.5, fade * 0.9, ramp4, null, false);
+        drawSafeOctagonRing(pen, 0, 0, maxR * 0.66, pal[6], fade * 0.92, u * 2.2);
+        drawNebulaStar4(pen, 0, 0, 14 * fade + 3, cob[5], pal[6], fade);
+        pen.radialGlow(0, 0, maxR * 0.9, pal[4], 0.28 * fade);
         motes.render(pen);
       }
     };
@@ -122,10 +186,10 @@ export const nebulaPromptBurst = {
 };
 
 // ============================================================================
-// 2. COB CREATOR HOLO-CREST SEAL (`cobCreatorCrestSeal`) — Skill Finisher
+// 2. COB CREATOR HOLO-CREST SEAL (`cobCreatorCrestSeal`) — Skill Towering Plume & Astrolabe
 // ============================================================================
 export const cobCreatorCrestSeal = {
-  duration: 0.92,
+  duration: 0.98,
   loop: false,
   defaults: { palette: NEBULA_COB_PALETTE, seed: 47 },
   create(cfg) {
@@ -140,19 +204,19 @@ export const cobCreatorCrestSeal = {
     return {
       step(dt) {
         t += dt;
-        acc += dt * 36;
-        while (acc >= 1 && t < 0.74) {
+        acc += dt * 44;
+        while (acc >= 1 && t < 0.80) {
           acc -= 1;
           const a = rng.between(0, Math.PI * 2);
-          const dist = rng.between(12, 34);
+          const dist = rng.between(12, 46);
           motes.emit(
             'glint',
             Math.cos(a) * dist,
-            Math.sin(a) * dist * 0.45,
-            rng.between(-18, 18),
-            rng.between(-52, -16),
-            0.26,
-            rng.chance(0.5) ? pal[2] : pal[4],
+            Math.sin(a) * dist * 0.42,
+            rng.between(-20, 20),
+            rng.between(-74, -22),
+            0.30,
+            rng.chance(0.4) ? pal[2] : rng.chance(0.5) ? pal[4] : pal[5],
             1,
             0
           );
@@ -160,23 +224,35 @@ export const cobCreatorCrestSeal = {
         motes.step(dt);
       },
       renderBack(pen) {
-        const u = clamp01(t / 0.92);
+        const u = clamp01(t / 0.98);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const rx = 44 * smoothStep(0, 0.22, u);
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.34, 2.2, 0.85 * env, band4, BACK_HALF, u < 0.18);
+        const rx = 58 * smoothStep(0, 0.22, u);
+        drawTiltedOrbitBand(pen, 0, 0, rx, 0.34, 2.4, 0.88 * env, band4, BACK_HALF, u < 0.20);
+        drawTiltedOrbitBand(pen, 0, -48, rx * 0.72, 0.30, 1.8, 0.72 * env, band4, BACK_HALF, false);
+        renderNebulaPlasmaColumn(pen, 0, 18, 6, -124, smoothStep(0, 0.24, u), env * 0.92, neb, pal, u);
       },
       renderFront(pen) {
-        const u = clamp01(t / 0.92);
+        const u = clamp01(t / 0.98);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const rx = 44 * smoothStep(0, 0.22, u);
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.34, 2.2, 0.9 * env, band4, FRONT_HALF, u < 0.18);
-        const crestR = 26 * smoothStep(0, 0.25, u);
-        drawSafeHexOctagon(pen, 0, -28, crestR, pal[2], env * 0.92, u * 1.1);
-        drawSafeHexOctagon(pen, 0, -28, crestR * 0.78, pal[4], env * 0.88, -u * 1.1);
-        drawNebulaStar4(pen, 0, -28, 12 * env, pal[5], pal[2], env);
-        pen.radialGlow(0, -18, 36 * env, neb[4], 0.22 * env);
+        const rx = 58 * smoothStep(0, 0.22, u);
+        drawTiltedOrbitBand(pen, 0, 0, rx, 0.34, 2.4, 0.94 * env, band4, FRONT_HALF, u < 0.20);
+        drawTiltedOrbitBand(pen, 0, -48, rx * 0.72, 0.30, 1.8, 0.78 * env, band4, FRONT_HALF, false);
+
+        const crestR = 32 * smoothStep(0, 0.24, u);
+        drawSafeOctagonRing(pen, 0, -42, crestR, pal[2], env * 0.95, u * 1.9);
+        drawSafeOctagonRing(pen, 0, -42, crestR * 0.74, pal[4], env * 0.90, -u * 2.2);
+        drawNebulaStar4(pen, 0, -42, 16 * env, pal[5], pal[2], env);
+
+        // Twin climbing spiral pixel helixes up the Nebula Column
+        for (let k = 0; k < 10; k++) {
+          const hk = (k / 10 + u * 1.4) % 1;
+          const hy = -6 - hk * 108;
+          const hx = Math.sin(hk * 8.0 + u * 10.0) * 20;
+          drawNebulaStar4(pen, hx, hy, 4.5 * env, k % 2 === 0 ? pal[2] : pal[4], pal[5], env);
+        }
+        pen.radialGlow(0, -32, 44 * env, neb[4], 0.28 * env);
         motes.render(pen);
       }
     };
@@ -184,10 +260,10 @@ export const cobCreatorCrestSeal = {
 };
 
 // ============================================================================
-// 3. ORBITAL HOLO-MATRIX (`nebulaOrbitalMatrix`) — Overdrive Ultimate
+// 3. ORBITAL HOLO-MATRIX (`nebulaOrbitalMatrix`) — Overdrive Singularity Spire
 // ============================================================================
 export const nebulaOrbitalMatrix = {
-  duration: 1.56,
+  duration: 1.76,
   loop: false,
   defaults: { palette: NEBULA_CYBER_PALETTE, seed: 83 },
   create(cfg) {
@@ -202,19 +278,19 @@ export const nebulaOrbitalMatrix = {
     return {
       step(dt) {
         t += dt;
-        acc += dt * 42;
-        while (acc >= 1 && t < 1.32) {
+        acc += dt * 52;
+        while (acc >= 1 && t < 1.50) {
           acc -= 1;
           const a = rng.between(0, Math.PI * 2);
-          const dist = rng.between(18, 46);
+          const dist = rng.between(20, 62);
           motes.emit(
             'glint',
             Math.cos(a) * dist,
-            -26 + Math.sin(a) * dist * 0.55,
-            -Math.cos(a) * 28,
-            -Math.sin(a) * 16,
-            0.28,
-            rng.chance(0.5) ? pal[6] : pal[5],
+            -38 + Math.sin(a) * dist * 0.55,
+            -Math.cos(a) * 36,
+            rng.between(-48, -12),
+            0.30,
+            rng.chance(0.4) ? pal[6] : rng.chance(0.5) ? pal[5] : cob[5],
             1,
             0
           );
@@ -222,33 +298,36 @@ export const nebulaOrbitalMatrix = {
         motes.step(dt);
       },
       renderBack(pen) {
-        const u = clamp01(t / 1.56);
+        const u = clamp01(t / 1.76);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const r = 52 * smoothStep(0, 0.24, u);
-        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 2.5, 0.88 * env, band4, BACK_HALF, false);
-        drawSafeHexOctagon(pen, 0, -26, r * 0.72, pal[3], env * 0.72, u * 1.8);
+        const r = 74 * smoothStep(0, 0.22, u);
+        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 2.8, 0.90 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -52, r * 0.78, 0.30, 2.0, 0.76 * env, band4, BACK_HALF, u > 0.55);
+        renderNebulaPlasmaColumn(pen, 0, 22, 8, -132, smoothStep(0, 0.28, u), env * 0.94, pal, cob, u * 1.4);
       },
       renderFront(pen) {
-        const u = clamp01(t / 1.56);
+        const u = clamp01(t / 1.76);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const r = 52 * smoothStep(0, 0.24, u);
-        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 2.5, 0.92 * env, band4, FRONT_HALF, false);
-        // 6 converging prism star nodes
+        const r = 74 * smoothStep(0, 0.22, u);
+        drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 2.8, 0.95 * env, band4, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -52, r * 0.78, 0.30, 2.0, 0.82 * env, band4, FRONT_HALF, u > 0.55);
+
+        const spinR = 64 * (1 - 0.55 * smoothStep(0.58, 0.88, u));
         for (let k = 0; k < 6; k++) {
-          const ang = u * Math.PI * 2 + (k * Math.PI) / 3;
-          const nx = Math.cos(ang) * 44;
-          const ny = -28 + Math.sin(ang) * 26;
-          drawNebulaStar4(pen, nx, ny, 7.5 * env, k % 2 === 0 ? pal[6] : pal[5], cob[5], env);
-          if (u > 0.38 && u < 0.86) {
-            const chain = buildLightningChain(rng, nx, ny, 0, -22, 0.14, 2);
+          const ang = u * Math.PI * 3.0 + (k * Math.PI) / 3;
+          const nx = Math.cos(ang) * spinR;
+          const ny = -44 + Math.sin(ang) * 32;
+          drawNebulaStar4(pen, nx, ny, 9.5 * env, k % 2 === 0 ? pal[6] : pal[5], cob[5], env);
+          if (u > 0.24 && u < 0.90) {
+            const chain = buildLightningChain(rng, nx, ny, 0, -40, 0.16, 2);
             for (let j = 0; j < chain.length - 1; j++) {
-              pen.line(chain[j][0], chain[j][1], chain[j + 1][0], chain[j + 1][1], pal[6], env * 0.85);
+              pen.line(chain[j][0], chain[j][1], chain[j + 1][0], chain[j + 1][1], k % 2 === 0 ? pal[6] : cob[5], env * 0.90);
             }
           }
         }
-        drawStarburstFlare(pen, 0, -24, 15 * env, 8, pal[6], pal[5], env);
+        drawStarburstFlare(pen, 0, -42, 19 * env, 8, pal[6], pal[5], env);
         motes.render(pen);
       }
     };
@@ -256,10 +335,10 @@ export const nebulaOrbitalMatrix = {
 };
 
 // ============================================================================
-// 4. COB GENESIS SANCTUARY CORE (`cobGenesisSanctuaryCore`) — Supreme True Ult
+// 4. COB GENESIS SANCTUARY CORE (`cobGenesisSanctuaryCore`) — Supreme True Ult Aurora & Astrolabe
 // ============================================================================
 export const cobGenesisSanctuaryCore = {
-  duration: 3.60,
+  duration: 4.10,
   loop: false,
   defaults: { palette: NEBULA_COB_PALETTE, seed: 109 },
   create(cfg) {
@@ -274,19 +353,19 @@ export const cobGenesisSanctuaryCore = {
     return {
       step(dt) {
         t += dt;
-        acc += dt * 46;
-        while (acc >= 1 && t < 3.2) {
+        acc += dt * 56;
+        while (acc >= 1 && t < 3.6) {
           acc -= 1;
           const a = rng.between(0, Math.PI * 2);
-          const dist = rng.between(18, 56);
+          const dist = rng.between(18, 72);
           motes.emit(
             'glint',
             Math.cos(a) * dist,
-            -30 + Math.sin(a) * dist * 0.45,
-            -Math.cos(a) * 22,
-            rng.between(-36, -10),
-            0.34,
-            rng.chance(0.4) ? cob[2] : rng.chance(0.5) ? cob[4] : cob[5],
+            -38 + Math.sin(a) * dist * 0.45,
+            -Math.cos(a) * 26,
+            rng.between(-54, -14),
+            0.36,
+            rng.chance(0.35) ? cob[2] : rng.chance(0.5) ? cob[4] : cob[5],
             1,
             0
           );
@@ -294,29 +373,57 @@ export const cobGenesisSanctuaryCore = {
         motes.step(dt);
       },
       renderBack(pen) {
-        const u = clamp01(t / 3.60);
+        const u = clamp01(t / 4.10);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const rFloor = 58 * smoothStep(0, 0.16, u);
-        drawTiltedOrbitBand(pen, 0, 0, rFloor, 0.30, 2.8, 0.88 * env, band4, BACK_HALF, false);
-        drawSafeHexOctagon(pen, 0, -34, 46 * env, neb[3], env * 0.78, u * 1.6);
-        pen.radialGlow(0, -28, 48 * env, neb[2], 0.22 * env);
+        const rFloor = 82 * smoothStep(0, 0.14, u);
+        drawTiltedOrbitBand(pen, 0, 0, rFloor, 0.30, 3.0, 0.92 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -56, rFloor * 0.76, 0.28, 2.2, 0.80 * env, band4, BACK_HALF, false);
+
+        // Undulating Northern-Nebula Pixel Aurora Veil strictly padded inside shadeBox (`0` edge hits!)
+        pen.shadeBox(-78, -132, 78, -24, (lx, ly, out) => {
+          if (lx <= -74 || lx >= 74 || ly <= -128 || ly >= -28) return 0;
+          const xNorm = Math.abs(lx) / 72;
+          const yNorm = clamp01((ly + 126) / 96);
+          const envBox = smoothStep(1.0, 0.72, xNorm) * smoothStep(0.0, 0.18, yNorm) * smoothStep(1.0, 0.78, yNorm);
+          if (envBox <= 0.05) return 0;
+          const n = fbmNoise2D(lx * 0.045 - u * 4.5, ly * 0.05 + u * 2.5, 19, 2);
+          if (n < -0.15) return 0;
+          out.alpha = clamp01(env * envBox * (0.48 + 0.42 * n));
+          out.glowStrength = 0.28 * env * envBox;
+          const isGold = n > 0.42;
+          const isCyan = n > 0.14;
+          out.glowColor = isGold ? cob[5] : isCyan ? cob[2] : neb[5];
+          return isGold ? cob[5] : isCyan ? cob[2] : neb[5];
+        });
+
+        drawSafeOctagonRing(pen, 0, -48, 56 * env, neb[3], env * 0.82, u * 1.8);
+        pen.radialGlow(0, -42, 62 * env, neb[2], 0.26 * env);
       },
       renderFront(pen) {
-        const u = clamp01(t / 3.60);
+        const u = clamp01(t / 4.10);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const rFloor = 58 * smoothStep(0, 0.16, u);
-        drawTiltedOrbitBand(pen, 0, 0, rFloor, 0.30, 2.8, 0.94 * env, band4, FRONT_HALF, u > 0.62 && u < 0.78);
-        drawSafeHexOctagon(pen, 0, -34, 40 * env, cob[2], env * 0.92, -u * 2.0);
-        drawSafeHexOctagon(pen, 0, -34, 30 * env, cob[4], env * 0.90, u * 2.4);
-        drawNebulaStar4(pen, 0, -34, 22 * env, cob[5], cob[2], env);
-        // Constellation starlight arcs inside safe padded radius (<= 56px from center)
+        const rFloor = 82 * smoothStep(0, 0.14, u);
+        drawTiltedOrbitBand(pen, 0, 0, rFloor, 0.30, 3.0, 0.96 * env, band4, FRONT_HALF, u > 0.54 && u < 0.74);
+        drawTiltedOrbitBand(pen, 0, -56, rFloor * 0.76, 0.28, 2.2, 0.86 * env, band4, FRONT_HALF, u > 0.54 && u < 0.74);
+
+        drawSafeOctagonRing(pen, 0, -48, 48 * env, cob[2], env * 0.94, -u * 2.4);
+        drawSafeOctagonRing(pen, 0, -48, 36 * env, cob[4], env * 0.92, u * 2.8);
+        drawSafeOctagonRing(pen, 0, -48, 22 * env, cob[5], env * 0.90, -u * 3.4);
+        drawNebulaStar4(pen, 0, -48, 24 * env, cob[5], cob[2], env);
+
         for (let k = 0; k < 8; k++) {
-          const ang = u * Math.PI * 2 + (k * Math.PI) / 4;
-          const sx = Math.cos(ang) * 48 * env;
-          const sy = -34 + Math.sin(ang) * 28 * env;
-          drawNebulaStar4(pen, sx, sy, 5.5 * env, k % 2 === 0 ? cob[2] : cob[4], cob[5], env);
+          const ang = u * Math.PI * 2.4 + (k * Math.PI) / 4;
+          const sx = Math.cos(ang) * 64 * env;
+          const sy = -48 + Math.sin(ang) * 34 * env;
+          drawNebulaStar4(pen, sx, sy, 6.5 * env, k % 2 === 0 ? cob[2] : cob[4], cob[5], env);
+          if (k % 2 === 0 && u > 0.18 && u < 0.85) {
+            const arc = buildLightningChain(rng, sx, sy, 0, -48, 0.14, 2);
+            for (let j = 0; j < arc.length - 1; j++) {
+              pen.line(arc[j][0], arc[j][1], arc[j + 1][0], arc[j + 1][1], cob[5], env * 0.72);
+            }
+          }
         }
         motes.render(pen);
       }
