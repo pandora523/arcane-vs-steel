@@ -40,58 +40,58 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps124';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps124';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps124';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps124';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps124';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps124';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps124';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps124';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps124';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps124';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps124';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps124';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps124';
-import { Archer } from '../../src/entities/Archer.js?v=30fps124';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps124';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps124';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps124';
-import { Titan } from '../../src/entities/Titan.js?v=30fps124';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps124';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps124';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps124';
-import { Android } from '../../src/entities/Android.js?v=30fps124';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps124';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps124';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps124';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps125';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps125';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps125';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps125';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps125';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps125';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps125';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps125';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps125';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps125';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps125';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps125';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps125';
+import { Archer } from '../../src/entities/Archer.js?v=30fps125';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps125';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps125';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps125';
+import { Titan } from '../../src/entities/Titan.js?v=30fps125';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps125';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps125';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps125';
+import { Android } from '../../src/entities/Android.js?v=30fps125';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps125';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps125';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps125';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps124';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps124';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps124';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps124';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps124';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps124';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps125';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps125';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps125';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps125';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps125';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps125';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps124';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps124';
+} from '../../src/adventure/AdventureManager.js?v=30fps125';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps125';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps124';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps124';
+} from '../../src/adventure/AdventureProgression.js?v=30fps125';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps125';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps124';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps125';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -681,7 +681,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps124');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps125');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -10907,22 +10907,61 @@ for (const [name, Cls] of CLASSES) {
           }
         }
 
-        for (const snapCol of [3, 9, 17, 25]) {
-          const ox = snapCol * 320;
-          const oy = 2 * 240;
-          let maxFrontX = 0;
-          let frontPx = 0;
-          for (let y = 0; y < 240; y++) {
-            const rb = (oy + y) * 9600 + ox;
-            for (let x = 201; x < 320; x++) {
-              if (sheetU32[rb + x] >= 0x01000000) {
-                frontPx++;
-                if (x > maxFrontX) maxFrontX = x;
+        const pureRangedMaxCellX34 = {
+          mage_ex: 262,
+          priestess_ex: 262,
+          valkyrie_ex: 262,
+          icemage_ex: 262
+        };
+        if (pureRangedMaxCellX34[id]) {
+          const capX = pureRangedMaxCellX34[id];
+          for (const rr of [2, 3]) {
+            const roy = rr * 240;
+            for (let cc = 0; cc < 30; cc++) {
+              const cox = cc * 320;
+              let maxCellX = 0;
+              for (let y = 0; y < 240; y++) {
+                const rb = (roy + y) * 9600 + cox;
+                for (let x = capX + 1; x < 320; x++) {
+                  if (sheetU32[rb + x] >= 0x01000000 && x > maxCellX) {
+                    maxCellX = x;
+                  }
+                }
+              }
+              if (maxCellX > capX) {
+                throw new Error(
+                  '[Suite 34.2] Leaked baked forward spell FX on pure ranged sheet ' +
+                    id +
+                    ' Row ' +
+                    rr +
+                    ' F' +
+                    String(cc).padStart(2, '0') +
+                    ': maxX=' +
+                    maxCellX +
+                    ' > ' +
+                    capX
+                );
               }
             }
           }
-          if (maxFrontX <= 200 || frontPx < 240) {
-            throw new Error('[Suite 34.2] Expected wide smear reach (x > 200, >= 240px) on ' + id + ' Row 2 F' + String(snapCol).padStart(2, '0') + ', got maxX=' + maxFrontX + ', px=' + frontPx);
+        } else {
+          for (const snapCol of [3, 9, 17, 25]) {
+            const ox = snapCol * 320;
+            const oy = 2 * 240;
+            let maxFrontX = 0;
+            let frontPx = 0;
+            for (let y = 0; y < 240; y++) {
+              const rb = (oy + y) * 9600 + ox;
+              for (let x = 201; x < 320; x++) {
+                if (sheetU32[rb + x] >= 0x01000000) {
+                  frontPx++;
+                  if (x > maxFrontX) maxFrontX = x;
+                }
+              }
+            }
+            if (maxFrontX <= 200 || frontPx < 240) {
+              throw new Error('[Suite 34.2] Expected wide smear reach (x > 200, >= 240px) on ' + id + ' Row 2 F' + String(snapCol).padStart(2, '0') + ', got maxX=' + maxFrontX + ', px=' + frontPx);
+            }
           }
         }
 
@@ -11169,8 +11208,8 @@ for (const [name, Cls] of CLASSES) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps124');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps124');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps125');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps125');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -11969,7 +12008,7 @@ for (const [name, Cls] of CLASSES) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps124'
+        src: 'assets/sprites/arena_bg.png?v=30fps125'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12011,13 +12050,13 @@ for (const [name, Cls] of CLASSES) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps124`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps125`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps124'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps125'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -12695,6 +12734,63 @@ for (const [name, Cls] of CLASSES) {
           }
         }
 
+        let rangedMaxX23 = 0;
+        let rangedDetached230 = 0;
+        if (
+          id === 'mage_ex' ||
+          id === 'priestess_ex' ||
+          id === 'valkyrie_ex' ||
+          id === 'icemage_ex'
+        ) {
+          for (const rr of [2, 3]) {
+            const roy = rr * 240;
+            for (let c = 0; c < 30; c++) {
+              const cox = c * 320;
+              for (let y = 0; y < 240; y++) {
+                const rb = (roy + y) * 9600 + cox;
+                for (let x = 0; x < 320; x++) {
+                  if (sheetU32[rb + x] >= 0x01000000 && x > rangedMaxX23) rangedMaxX23 = x;
+                }
+              }
+            }
+          }
+          const seenR = new Uint8Array(320 * 240);
+          for (const [rr, cols] of [[2, [3, 9, 17, 25]], [3, [8, 9, 10, 11, 12, 13, 14]]]) {
+            const roy = rr * 240;
+            for (const c of cols) {
+              seenR.fill(0);
+              const cox = c * 320;
+              for (let y = 0; y < 240; y++) {
+                for (let x = 230; x < 320; x++) {
+                  if (seenR[y * 320 + x] || sheetU32[(roy + y) * 9600 + cox + x] < 0x01000000) continue;
+                  const q = [[x, y]];
+                  seenR[y * 320 + x] = 1;
+                  let cnt = 0;
+                  let crossesLeft = false;
+                  while (q.length) {
+                    const [cx, cy] = q.pop();
+                    cnt++;
+                    if (cx < 230) crossesLeft = true;
+                    for (let dy = -1; dy <= 1; dy++) {
+                      for (let dx = -1; dx <= 1; dx++) {
+                        if (!dx && !dy) continue;
+                        const nx = cx + dx, ny = cy + dy;
+                        if (nx >= 0 && nx < 320 && ny >= 0 && ny < 240 && !seenR[ny * 320 + nx]) {
+                          if (sheetU32[(roy + ny) * 9600 + cox + nx] >= 0x01000000) {
+                            seenR[ny * 320 + nx] = 1;
+                            q.push([nx, ny]);
+                          }
+                        }
+                      }
+                    }
+                  }
+                  if (!crossesLeft && cnt >= 16) rangedDetached230++;
+                }
+              }
+            }
+          }
+        }
+
         reports.push({
           id,
           sheet4pxClips,
@@ -12730,6 +12826,8 @@ for (const [name, Cls] of CLASSES) {
           chronoF2229LandOk,
           archRow1MinH0,
           archRow1MinH1,
+          rangedMaxX23,
+          rangedDetached230,
           mageRow5W: mageRows ? mageRows[5][2] - mageRows[5][0] + 1 : 0,
           mageRow5H: mageRows ? mageRows[5][3] - mageRows[5][1] + 1 : 0,
           mageRow6W: mageRows ? mageRows[6][2] - mageRows[6][0] + 1 : 0,
@@ -13709,7 +13807,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.8: Batch ?v=30fps124 Parity:
+  // 36.8: Batch ?v=30fps125 Parity:
   //   (A) Chronos EX Zero Dark Flood Disks + Sol EX >= 580px Meteor & Stationary Single Overdrive Sun
   //   (B) Kaze-Maru EX Smear/Circle Purge + Freyja EX Non-Squared War-Spear VFX & Spinning Pass-Through Glide + Sylvara EX Fast Ult
   //   (C) VEX-09 EX Fast Backflip + Tactical Charge + Triple-Column Buster & Malakor EX Back-of-Enemy Shadow Emerge
@@ -13960,8 +14058,8 @@ for (const [name, Cls] of CLASSES) {
     {
       const workingWalkHashes = {
         warrior_ex: 'e0da0cbea51a48cc7a5b3219a116e469c722e5b02d092b7fa602cbae7f323ee7',
-        mage_ex: '78d36dcef571af200b6760561090f0b1b7c027d6faadedb269e52cd3535a42c5',
-        priestess_ex: '0b70210de5ac896f274f3433602a589eecb66274e556c30ce12dd3096c19bf67',
+        mage_ex: '8e0fb79dabbd5e67c601e42d5bfbd812384de3abba1be4342080824de1ae6d21',
+        priestess_ex: '2376f24d82292023892c65baab2e52982fd13879b756dc6d055aaee25755d268',
         chronomancer_ex: '980d4cd5ca4f168f21da65f131d3a83252874c1c954aa6efde9e92824cf8bff0'
       };
       for (const [wid, expectedSha] of Object.entries(workingWalkHashes)) {
@@ -14060,7 +14158,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.9: Batch ?v=30fps124 Parity:
+  // 36.9: Batch ?v=30fps125 Parity:
   //   (A) Lyra EX (`icemage_ex`) Non-Creepy Natural `Row 1 WALK`
   //   (B) Freyja EX (`valkyrie_ex`) `+56 deg` Diagonal `TRUE_ULTIMATE` Raining Spears (`0` Straight 90 deg)
   //   (C) Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Glowing Great-Arrow Transformation (`0` Humanoid Draws)
@@ -14303,7 +14401,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.10: Batch ?v=30fps124 Parity:
+  // 36.10: Batch ?v=30fps125 Parity:
   //   Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Refinement:
   //     - Full 10-frame Bow-Pull Progression (`frames 135..144`, `>= 8` unique frames hit)
   //     - `0` Slash-Like Circle Effects (`sylvanBowDrawVortex`, `sonicBowReleaseWave`, `Row 3/5/6`)
@@ -14416,7 +14514,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.11: Batch ?v=30fps124 Parity:
+  // 36.11: Batch ?v=30fps125 Parity:
   //   Sylvara EX (`archer_ex`) Pixel-by-Pixel Sculpted Elven Hands/Vambraces +
   //   Fixed Feet During & After `ULTIMATE` and `TRUE_ULTIMATE` (Zero `135/136` Hover/Club-Foot)
   // --------------------------------------------------------------------------
@@ -14520,7 +14618,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.12: Batch ?v=30fps124 Parity:
+  // 36.12: Batch ?v=30fps125 Parity:
   //   All-6 EX Sculpted Hands/Gauntlets (0 circle/3x3 blobs), Clean Row 4 Ultimate
   //   Feet/Skirts (`android_ex`, `icemage_ex`, `ronin_ex`, `chronomancer_ex`) &
   //   All-11 EX `setState()` Mid-Ultimate Ground-Snap Resets
@@ -14613,7 +14711,7 @@ for (const [name, Cls] of CLASSES) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps124';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps125';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -14648,7 +14746,7 @@ for (const [name, Cls] of CLASSES) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps124';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps125';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -14735,8 +14833,8 @@ for (const [name, Cls] of CLASSES) {
     ) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
-    if (!indexHtmlSrc.includes('?v=30fps124') || !manifestSrc.includes('?v=30fps124') || manifestSrc.includes('30fps123')) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps124 cache-bust sync!');
+    if (!indexHtmlSrc.includes('?v=30fps125') || !manifestSrc.includes('?v=30fps125') || manifestSrc.includes('30fps124') || indexHtmlSrc.includes('30fps124')) {
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps125 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -14773,6 +14871,148 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 36.14: Batch v125 4-Ranged EX Separate Target VFX (`mage_ex`, `priestess_ex`, `valkyrie_ex`, `icemage_ex`)
+  // --------------------------------------------------------------------------
+  {
+    for (const rId of ['mage_ex', 'priestess_ex', 'valkyrie_ex', 'icemage_ex']) {
+      const rep = pngAuditResults36.get(rId);
+      if (
+        !rep ||
+        rep.sheet4pxClips !== 0 ||
+        rep.rangedMaxX23 > 262 ||
+        rep.rangedDetached230 !== 0
+      ) {
+        throw new Error(
+          `[Suite 36.14 Static] ${rId} sheet must be clean of short-range baked VFX: ${JSON.stringify({
+            clips: rep?.sheet4pxClips,
+            maxX23: rep?.rangedMaxX23,
+            detached230: rep?.rangedDetached230
+          })}`
+        );
+      }
+    }
+
+    const mkFoe = (x) => {
+      const foe = new Warrior({ x, groundY: 560, facing: -1, name: 'RangedVfxDummy', team: 'right' });
+      foe.maxHp = 99999;
+      foe.hp = 99999;
+      foe.stunTimer = 999;
+      return foe;
+    };
+
+    // 1) Ignis Sol EX (`mage_ex`) SKILL spawns Row 1 Corona Pillars + Row 2 Black-Sun Eclipse Ring on foe.x
+    {
+      const g = createMockGame();
+      const sol = new FireMageEx({ x: 240, groundY: 560, facing: 1, team: 'left' });
+      const foe = mkFoe(760);
+      sol.game = g;
+      foe.game = g;
+      g.fighters = [sol, foe];
+      sol.mana = sol.maxMana;
+      sol.skillCooldown = 0;
+      sol.setState('SKILL');
+      let seenRow1 = false;
+      let seenRow2 = false;
+      for (let i = 0; i < 20; i++) {
+        sol.update(1 / 30, foe, g);
+        for (const a of sol.activeVfxAnims || []) {
+          if (Math.abs(a.x - 760) <= 120) {
+            if (a.row === 1) seenRow1 = true;
+            if (a.row === 2) seenRow2 = true;
+          }
+        }
+      }
+      if (!seenRow1 || !seenRow2) {
+        throw new Error(`[Suite 36.14 MageEX] Expected Row 1 + Row 2 target VFX near x=760, got r1=${seenRow1}, r2=${seenRow2}`);
+      }
+      sol.fx?.dispose?.();
+    }
+
+    // 2) Seraphina EX (`priestess_ex`) SKILL spawns Row 2 Cathedral Column + Row 3 Rose Mandala on foe.x
+    {
+      const g = createMockGame();
+      const sera = new PriestessEx({ x: 240, groundY: 560, facing: 1, team: 'left' });
+      const foe = mkFoe(760);
+      sera.game = g;
+      foe.game = g;
+      g.fighters = [sera, foe];
+      sera.mana = sera.maxMana;
+      sera.skillCooldown = 0;
+      sera.setState('SKILL');
+      let seenRow2 = false;
+      let seenRow3 = false;
+      for (let i = 0; i < 20; i++) {
+        sera.update(1 / 30, foe, g);
+        for (const a of sera.activeVfxAnims || []) {
+          if (Math.abs(a.x - 760) <= 120) {
+            if (a.row === 2) seenRow2 = true;
+            if (a.row === 3) seenRow3 = true;
+          }
+        }
+      }
+      if (!seenRow2 || !seenRow3) {
+        throw new Error(`[Suite 36.14 PriestessEX] Expected Row 2 + Row 3 target VFX near x=760, got r2=${seenRow2}, r3=${seenRow3}`);
+      }
+      sera.fx?.dispose?.();
+    }
+
+    // 3) Freyja EX (`valkyrie_ex`) Beat 4 V3 spawns overhead+ground Row 5 Seals + Row 1 Spear + 3 SkySpears on foe.x
+    {
+      const g = createMockGame();
+      const frey = new ValkyrieEx({ x: 240, groundY: 560, facing: 1, team: 'left' });
+      const foe = mkFoe(760);
+      frey.game = g;
+      foe.game = g;
+      g.fighters = [frey, foe];
+      frey.comboStep = 3;
+      frey.setState('AUTO_ATTACK');
+      frey._beginComboBeat?.(3, g);
+      let seenSky5 = false;
+      let seenGnd5 = false;
+      let seenRow1 = false;
+      let maxSpears = 0;
+      for (let i = 0; i < 14; i++) {
+        frey.update(1 / 30, foe, g);
+        for (const a of frey.activeVfxAnims || []) {
+          if (Math.abs(a.x - 760) <= 120) {
+            if (a.row === 5 && a.y < frey.groundY - 150) seenSky5 = true;
+            if (a.row === 5 && a.y >= frey.groundY - 40) seenGnd5 = true;
+            if (a.row === 1) seenRow1 = true;
+          }
+        }
+        const nearSpears = (frey.activeSkySpears || []).filter((s) => Math.abs((s.tx ?? s.x) - 760) <= 120).length;
+        if (nearSpears > maxSpears) maxSpears = nearSpears;
+      }
+      if (!seenSky5 || !seenGnd5 || !seenRow1 || maxSpears < 3) {
+        throw new Error(
+          `[Suite 36.14 ValkyrieEX] Expected Beat 4 target VFX near x=760: sky5=${seenSky5}, gnd5=${seenGnd5}, row1=${seenRow1}, spears=${maxSpears}`
+        );
+      }
+      frey.fx?.dispose?.();
+    }
+
+    // 4) Lyra EX (`icemage_ex`) spawnBorealisSkyIcicles spawns overhead Row 3 + ground Row 5 Seals + 3 SkyIcicles on foe.x
+    {
+      const g = createMockGame();
+      const lyra = new IceMageEx({ x: 240, groundY: 560, facing: 1, team: 'left' });
+      const foe = mkFoe(760);
+      lyra.game = g;
+      foe.game = g;
+      g.fighters = [lyra, foe];
+      lyra.spawnBorealisSkyIcicles(foe, g);
+      const seenRow3 = (lyra.activeVfxAnims || []).some((a) => a.row === 3 && Math.abs(a.x - 760) <= 120);
+      const seenRow5 = (lyra.activeVfxAnims || []).some((a) => a.row === 5 && Math.abs(a.x - 760) <= 120);
+      const nearIcicles = (lyra.activeSkyIcicles || []).filter((ic) => Math.abs(ic.tx - 760) <= 120).length;
+      if (!seenRow3 || !seenRow5 || nearIcicles < 3) {
+        throw new Error(
+          `[Suite 36.14 IceMageEX] Expected Beat 4 target VFX near x=760: r3=${seenRow3}, r5=${seenRow5}, icicles=${nearIcicles}`
+        );
+      }
+      lyra.fx?.dispose?.();
+    }
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -14781,7 +15021,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-11 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-11 Ground-Snap (36.12) & Batch v124 Asset Retry/Visibility + All-11 EX Leak/Hole/Prone Repair (36.13) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-11 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-11 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-11 EX Leak/Hole/Prone Repair (36.13) & Batch v125 4-Ranged EX Separate Target VFX (36.14) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

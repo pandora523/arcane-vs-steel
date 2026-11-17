@@ -1634,11 +1634,9 @@ def build_row_2_auto_attack(poses):
                     radiance=1.0,
                     halo_flare=0.95,
                     phase=ph,
-                    fx_spec={"kind": "v0_rose_window_ray", "x_end": 149.0, "half_h": 8.0, "dissipate": 0.0},
                 )
             )
         elif f in (4, 5):
-            diss = 0.28 if f == 4 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
@@ -1650,12 +1648,6 @@ def build_row_2_auto_attack(poses):
                     radiance=0.86 if f == 4 else 0.68,
                     halo_flare=0.70 if f == 4 else 0.45,
                     phase=ph,
-                    fx_spec={
-                        "kind": "v0_rose_window_ray",
-                        "x_end": 146.0 if f == 4 else 140.0,
-                        "half_h": 6.5 if f == 4 else 5.0,
-                        "dissipate": diss,
-                    },
                 )
             )
         elif f in (6, 7):
@@ -1703,11 +1695,9 @@ def build_row_2_auto_attack(poses):
                     radiance=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    fx_spec={"kind": "v1_twin_benediction_halos", "x_end": 149.0, "dissipate": 0.0},
                 )
             )
         elif f in (10, 11):
-            diss = 0.28 if f == 10 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
@@ -1721,11 +1711,6 @@ def build_row_2_auto_attack(poses):
                     radiance=0.85 if f == 10 else 0.65,
                     halo_flare=0.72 if f == 10 else 0.45,
                     phase=ph,
-                    fx_spec={
-                        "kind": "v1_twin_benediction_halos",
-                        "x_end": 146.0 if f == 10 else 139.0,
-                        "dissipate": diss,
-                    },
                 )
             )
         elif f in (12, 13, 14):
@@ -1776,11 +1761,9 @@ def build_row_2_auto_attack(poses):
                     radiance=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    fx_spec={"kind": "v2_choir_prism_pillar", "col_x": 135.0, "y_top": 12, "width": 13.5, "dissipate": 0.0},
                 )
             )
         elif f in (18, 19):
-            diss = 0.28 if f == 18 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
@@ -1794,13 +1777,6 @@ def build_row_2_auto_attack(poses):
                     radiance=0.86 if f == 18 else 0.68,
                     halo_flare=0.75 if f == 18 else 0.50,
                     phase=ph,
-                    fx_spec={
-                        "kind": "v2_choir_prism_pillar",
-                        "col_x": 135.0,
-                        "y_top": 16 if f == 18 else 24,
-                        "width": 11.5 if f == 18 else 9.0,
-                        "dissipate": diss,
-                    },
                 )
             )
         elif f in (20, 21, 22):
@@ -1851,11 +1827,9 @@ def build_row_2_auto_attack(poses):
                     halo_flare=1.0,
                     phase=ph,
                     ground_seal_rx=24.0,
-                    fx_spec={"kind": "v3_star_sanctuary_array", "orb_shift": 0.0, "dissipate": 0.0},
                 )
             )
         elif f in (26, 27):
-            diss = 0.28 if f == 26 else 0.58
             frames.append(
                 compose_priestess_frame(
                     poses,
@@ -1868,11 +1842,6 @@ def build_row_2_auto_attack(poses):
                     halo_flare=0.80 if f == 26 else 0.55,
                     phase=ph,
                     ground_seal_rx=20.0 if f == 26 else 14.0,
-                    fx_spec={
-                        "kind": "v3_star_sanctuary_array",
-                        "orb_shift": 2.0 if f == 26 else 4.0,
-                        "dissipate": diss,
-                    },
                 )
             )
         else:
@@ -1922,9 +1891,9 @@ def build_row_3_skill(poses):
                 compose_priestess_frame(
                     poses,
                     pose_key="K3_RISE",
-                    dx=3.5,
+                    dx=(3.0 + 0.25 * (f - 8)) if f <= 10 else (3.5 - 0.2 * (f - 10)),
                     lock_grounded=True,
-                    aim_deg=-80.0,
+                    aim_deg=-80.0 + 1.5 * (f - 8),
                     grip_offset=(5.0, -8.5),
                     two_handed=False,
                     offhand_target=(AX - 11.0, 54.0),
@@ -1932,13 +1901,6 @@ def build_row_3_skill(poses):
                     halo_flare=1.0 - 0.25 * diss,
                     phase=ph,
                     ground_seal_rx=25.0 * (1.0 - 0.45 * diss),
-                    fx_spec={
-                        "kind": "v2_choir_prism_pillar",
-                        "col_x": 132.0,
-                        "y_top": 12 + int(diss * 18),
-                        "width": 13.0 * (1.0 - 0.35 * diss),
-                        "dissipate": diss,
-                    },
                 )
             )
         else:
@@ -2001,19 +1963,17 @@ def build_row_4_ultimate(poses):
                 )
             )
         elif f <= 24:
-            diss = min(0.7, max(0.0, (f - 18) * 0.12))
             frames.append(
                 compose_priestess_frame(
                     poses,
                     pose_key="K2_LUNGE",
-                    dx=9.0,
+                    dx=9.0 - 0.22 * (f - 17),
                     dy=0.0,
-                    aim_deg=0.0,
+                    aim_deg=-1.5 + 0.6 * (f - 17),
                     grip_offset=(9.5, -2.0),
-                    radiance=1.0,
-                    halo_flare=1.0,
+                    radiance=1.0 - 0.04 * (f - 17),
+                    halo_flare=1.0 - 0.05 * (f - 17),
                     phase=ph,
-                    fx_spec={"kind": "v0_rose_window_ray", "x_end": 150.0, "half_h": 9.0, "dissipate": diss} if f <= 20 else None,
                 )
             )
         else:
@@ -2471,8 +2431,8 @@ def main():
             raise RuntimeError(f"Row 2 grounded foot_y violation: {r2_bot_ys}")
         if r_idx == 2:
             for fk, rx in snap_reaches.items():
-                if rx <= 200:
-                    raise RuntimeError(f"Row 2 {fk} forward cast reach {rx} <= 200!")
+                if rx > 262:
+                    raise RuntimeError(f"Row 2 {fk} leaked forward FX: rx={rx} > 262!")
 
     if border_clips != 0:
         raise RuntimeError(f"Border clip violation: {border_clips}/300!")

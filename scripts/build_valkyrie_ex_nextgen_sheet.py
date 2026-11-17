@@ -1304,7 +1304,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
         # === V0: F00..F07 (Supersonic Gungnir Lightning-Javelin Hurl) ===
         if f <= 2:
             u = f / 2.0
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K1_COIL" if f < 2 else "K3_RISE",
                 dx=-2.0 - u * 2.0,
@@ -1317,11 +1317,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=44.0,
                 lance_back=13.0,
             )
-            if f == 2:
-                draw_valhalla_target_rune_seal(c, cx=96.0, cy=65.0, rx=5.5, ry=15.0, rot_deg=15.0, intensity=0.65)
-            return c
         if f == 3:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K2_LUNGE",
                 dx=8.0,
@@ -1334,11 +1331,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=34.0,
                 lance_back=10.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=97.0, cy=66.0, rx=8.0, ry=22.0, rot_deg=0.0, intensity=1.0)
-            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=66.0, x1=151.0, y1=65.0, cone_half_h=11.0, intensity=1.0, phase=0.4)
-            return c
         if f == 4:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K2_LUNGE",
                 dx=7.0,
@@ -1351,12 +1345,9 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=38.0,
                 lance_back=12.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=99.0, cy=66.0, rx=7.0, ry=19.0, rot_deg=22.0, intensity=0.72)
-            draw_gungnir_lightning_javelin_cone(c, x0=106.0, y0=66.0, x1=155.0, y1=65.0, cone_half_h=8.5, intensity=0.68, phase=1.2)
-            return c
         if f <= 7:
             u = (f - 4) / 3.0
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K3_RISE",
                 dx=6.0 * (1.0 - u),
@@ -1368,13 +1359,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=8.0 + u * 6.0,
                 lance_fore=42.0 + u * 3.0,
             )
-            if f == 5:
-                draw_valhalla_target_rune_seal(c, cx=100.0, cy=66.0, rx=5.0, ry=13.0, rot_deg=40.0, intensity=0.5)
-            return c
 
         # === V1: F08..F14 (Twin Angled Valkyrie Lightning-Javelin Volley) ===
         if f == 8:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K3_RISE",
                 dx=-1.0,
@@ -1387,10 +1375,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=43.0,
                 lance_back=13.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=95.0, cy=62.0, rx=6.0, ry=16.0, rot_deg=12.0, intensity=0.7)
-            return c
         if f == 9:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K3_RISE",
                 dx=7.0,
@@ -1403,12 +1389,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=35.0,
                 lance_back=11.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=96.0, cy=61.0, rx=8.5, ry=23.0, rot_deg=22.5, intensity=1.0)
-            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=56.0, x1=153.0, y1=43.0, cone_half_h=8.5, intensity=1.0, phase=0.8)
-            draw_gungnir_lightning_javelin_cone(c, x0=94.0, y0=66.0, x1=152.0, y1=78.0, cone_half_h=8.5, intensity=0.95, phase=2.1)
-            return c
         if f == 10:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K3_RISE",
                 dx=6.0,
@@ -1420,10 +1402,6 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=-2.0,
                 lance_fore=40.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=98.0, cy=61.0, rx=6.8, ry=18.0, rot_deg=40.0, intensity=0.7)
-            draw_gungnir_lightning_javelin_cone(c, x0=110.0, y0=52.0, x1=154.0, y1=41.0, cone_half_h=6.5, intensity=0.65, phase=1.6)
-            draw_gungnir_lightning_javelin_cone(c, x0=110.0, y0=69.0, x1=153.0, y1=80.0, cone_half_h=6.5, intensity=0.65, phase=2.9)
-            return c
         if f <= 14:
             u = (f - 10) / 4.0
             return compose_keypose(
@@ -1438,10 +1416,10 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=2.0 + u * 12.0,
             )
 
-        # === V2: F15..F22 (Coaxial Double Valhalla Target-Seals + Supersonic Mach-Cone Lance) ===
+        # === V2: F15..F22 (Clean Supersonic Gungnir Lance Thrust) ===
         if f <= 16:
             u = f - 15
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K1_COIL",
                 dx=-3.0 - u * 2.5,
@@ -1454,10 +1432,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=42.0,
                 lance_back=12.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=96.0 + u * 3.0, cy=69.0, rx=6.5 + u * 1.5, ry=17.0 + u * 3.0, rot_deg=u * 20.0, intensity=0.7 + 0.15 * u)
-            return c
         if f == 17:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K2_LUNGE",
                 dx=10.0,
@@ -1469,12 +1445,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=2.0,
                 lance_fore=38.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=98.0, cy=68.0, rx=8.5, ry=23.0, rot_deg=0.0, intensity=1.0)
-            draw_valhalla_target_rune_seal(c, cx=122.0, cy=68.0, rx=6.5, ry=17.5, rot_deg=22.5, intensity=0.95)
-            draw_gungnir_lightning_javelin_cone(c, x0=95.0, y0=68.0, x1=152.0, y1=68.0, cone_half_h=11.0, intensity=1.0, phase=1.1)
-            return c
         if f == 18:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K3_RISE",
                 dx=8.0,
@@ -1486,10 +1458,6 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=0.0,
                 lance_fore=43.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=102.0, cy=68.0, rx=7.0, ry=19.0, rot_deg=30.0, intensity=0.75)
-            draw_valhalla_target_rune_seal(c, cx=126.0, cy=68.0, rx=5.5, ry=14.5, rot_deg=48.0, intensity=0.70)
-            draw_gungnir_lightning_javelin_cone(c, x0=112.0, y0=68.0, x1=151.0, y1=68.0, cone_half_h=8.0, intensity=0.68, phase=2.4)
-            return c
         if f <= 22:
             u = (f - 18) / 4.0
             return compose_keypose(
@@ -1504,7 +1472,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=8.0 + u * 8.0,
             )
 
-        # === V3: F23..F29 (6-Winged Backstep-Vault -> Sky-Gate Triple Javelin Rain) ===
+        # === V3: F23..F29 (6-Winged Backstep-Vault Cast Pose; Sky-Gate 3-Spear Rain renders on enemy.x via VFX sheet) ===
         if f == 23:
             return compose_keypose(
                 keyposes,
@@ -1522,7 +1490,7 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
             )
         if f == 24:
             # High airborne K4_LEAP backstep-vault with SOVEREIGN Twin Crimson-Gold Wings!
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K4_LEAP",
                 dx=-4.0,
@@ -1536,10 +1504,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_fore=43.0,
                 lance_back=13.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=124.0, cy=24.0, rx=20.0, ry=5.5, rot_deg=15.0, intensity=0.85)
-            return c
         if f == 25:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K4_LEAP",
                 dx=-3.0,
@@ -1552,15 +1518,8 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_angle=20.0,
                 lance_fore=38.0,
             )
-            # Overhead Valhalla Sky-Gate + Ground Target-Rune Seal + 3 Plunging Gungnir Lightning-Javelins!
-            draw_valhalla_target_rune_seal(c, cx=123.0, cy=22.0, rx=22.0, ry=6.5, rot_deg=0.0, intensity=1.0)
-            draw_valhalla_target_rune_seal(c, cx=125.0, cy=108.0, rx=20.0, ry=5.0, rot_deg=22.5, intensity=0.95)
-            draw_gungnir_lightning_javelin_cone(c, x0=106.0, y0=24.0, x1=114.0, y1=107.0, cone_half_h=6.5, intensity=0.92, phase=0.5)
-            draw_gungnir_lightning_javelin_cone(c, x0=123.0, y0=22.0, x1=130.0, y1=108.0, cone_half_h=7.8, intensity=1.0, phase=1.7)
-            draw_gungnir_lightning_javelin_cone(c, x0=138.0, y0=24.0, x1=145.0, y1=107.0, cone_half_h=6.2, intensity=0.92, phase=2.8)
-            return c
         if f == 26:
-            c = compose_keypose(
+            return compose_keypose(
                 keyposes,
                 "K4_LEAP",
                 dx=-2.0,
@@ -1572,11 +1531,6 @@ def render_frame(row: int, f: int, stand_parts, stand_meta, keyposes) -> np.ndar
                 lance_hand_offset=(17.0, 5.0),
                 lance_angle=18.0,
             )
-            draw_valhalla_target_rune_seal(c, cx=124.0, cy=23.0, rx=19.0, ry=5.0, rot_deg=25.0, intensity=0.68)
-            draw_valhalla_target_rune_seal(c, cx=125.0, cy=108.0, rx=20.0, ry=5.0, rot_deg=40.0, intensity=0.78)
-            draw_gungnir_lightning_javelin_cone(c, x0=124.0, y0=38.0, x1=131.0, y1=108.0, cone_half_h=6.0, intensity=0.65, phase=2.3)
-            draw_gungnir_lightning_javelin_cone(c, x0=139.0, y0=42.0, x1=145.0, y1=107.0, cone_half_h=5.0, intensity=0.60, phase=3.4)
-            return c
         u = (f - 26) / 3.0
         return compose_keypose(
             keyposes,
@@ -2294,7 +2248,7 @@ def main():
     print(f"[valkyrie_ex] Wrote {OUT_SHEET} ({sheet.size[0]}x{sheet.size[1]}) | portrait={OUT_PORTRAIT} ({p128.size[0]}x{p128.size[1]})")
     print(f"[valkyrie_ex] border_clips={border_clips}/300 | row_transitions={row_transitions}")
     print(f"[valkyrie_ex] Row 2 snap x_max (out of 320, anchorX=112): {snap_reach} | frontPx(>200): {snap_front_px}")
-    if border_clips > 0 or any(t < 29 for t in row_transitions) or any(v < 240 for v in snap_front_px.values()) or any(rx <= 260 for rx in snap_reach.values()):
+    if border_clips > 0 or any(t < 29 for t in row_transitions) or any(rx > 262 for rx in snap_reach.values()):
         raise SystemExit("FAILED QA invariants on valkyrie_ex_sheet.png!")
 
 

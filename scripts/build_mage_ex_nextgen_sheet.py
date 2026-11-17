@@ -1650,11 +1650,9 @@ def build_row_2_auto_attack(poses):
                     blaze=1.0,
                     halo_flare=0.95,
                     phase=ph,
-                    fx_spec={"kind": "v0_solar_circle_jet", "x_end": 149.0, "half_h": 9.5, "dissipate": 0.0},
                 )
             )
         elif f in (4, 5):
-            diss = 0.28 if f == 4 else 0.58
             frames.append(
                 compose_mage_frame(
                     poses,
@@ -1667,12 +1665,6 @@ def build_row_2_auto_attack(poses):
                     blaze=0.88 if f == 4 else 0.70,
                     halo_flare=0.70 if f == 4 else 0.45,
                     phase=ph,
-                    fx_spec={
-                        "kind": "v0_solar_circle_jet",
-                        "x_end": 146.0 if f == 4 else 140.0,
-                        "half_h": 7.5 if f == 4 else 5.5,
-                        "dissipate": diss,
-                    },
                 )
             )
         elif f in (6, 7):
@@ -1721,11 +1713,9 @@ def build_row_2_auto_attack(poses):
                     blaze=1.0,
                     halo_flare=1.0,
                     phase=ph,
-                    fx_spec={"kind": "v1_twin_helios_sigils", "x_end": 148.0, "dissipate": 0.0},
                 )
             )
         elif f in (10, 11):
-            diss = 0.28 if f == 10 else 0.58
             frames.append(
                 compose_mage_frame(
                     poses,
@@ -1738,7 +1728,6 @@ def build_row_2_auto_attack(poses):
                     blaze=0.85 if f == 10 else 0.65,
                     halo_flare=0.72 if f == 10 else 0.45,
                     phase=ph,
-                    fx_spec={"kind": "v1_twin_helios_sigils", "x_end": 145.0 if f == 10 else 138.0, "dissipate": diss},
                 )
             )
         elif f in (12, 13, 14):
@@ -1792,17 +1781,9 @@ def build_row_2_auto_attack(poses):
                     eclipse_halo=True,
                     phase=ph,
                     offhand_orb=True,
-                    fx_spec={
-                        "kind": "v2_eclipse_prominence",
-                        "col_x": 136.0,
-                        "y_top": 11,
-                        "half_w": 14.5,
-                        "dissipate": 0.0,
-                    },
                 )
             )
         elif f in (18, 19):
-            diss = 0.28 if f == 18 else 0.58
             frames.append(
                 compose_mage_frame(
                     poses,
@@ -1817,13 +1798,6 @@ def build_row_2_auto_attack(poses):
                     eclipse_halo=(f == 18),
                     phase=ph,
                     offhand_orb=(f == 18),
-                    fx_spec={
-                        "kind": "v2_eclipse_prominence",
-                        "col_x": 136.0,
-                        "y_top": 15 if f == 18 else 24,
-                        "half_w": 12.5 if f == 18 else 9.5,
-                        "dissipate": diss,
-                    },
                 )
             )
         elif f in (20, 21, 22):
@@ -1875,11 +1849,9 @@ def build_row_2_auto_attack(poses):
                     halo_flare=1.0,
                     phase=ph,
                     ground_ring_rx=24.0,
-                    fx_spec={"kind": "v3_suncrest_meteor_array", "orb_shift": 0.0, "dissipate": 0.0},
                 )
             )
         elif f in (26, 27):
-            diss = 0.28 if f == 26 else 0.58
             frames.append(
                 compose_mage_frame(
                     poses,
@@ -1893,11 +1865,6 @@ def build_row_2_auto_attack(poses):
                     halo_flare=0.82 if f == 26 else 0.55,
                     phase=ph,
                     ground_ring_rx=21.0 if f == 26 else 15.0,
-                    fx_spec={
-                        "kind": "v3_suncrest_meteor_array",
-                        "orb_shift": 2.0 if f == 26 else 4.0,
-                        "dissipate": diss,
-                    },
                 )
             )
         else:
@@ -1948,22 +1915,15 @@ def build_row_3_skill(poses):
                 compose_mage_frame(
                     poses,
                     pose_key="K2_CAST" if f >= 10 else "K3_INVOKE",
-                    dx=4.5,
+                    dx=(4.0 + 0.35 * (f - 8)) if f < 10 else (4.5 - 0.18 * (f - 10)),
                     dy=0.0,
-                    staff_deg=-8.0 if f >= 10 else 14.0,
+                    staff_deg=(16.0 - 2.0 * (f - 8)) if f < 10 else (-8.0 - 1.5 * (f - 10)),
                     butt_len=11.0,
                     shaft_len=22.5,
                     blaze=1.0 - 0.20 * diss,
                     halo_flare=1.0 - 0.25 * diss,
                     phase=ph,
                     ground_ring_rx=24.0 * (1.0 - 0.5 * diss),
-                    fx_spec={
-                        "kind": "v2_eclipse_prominence",
-                        "col_x": 134.0,
-                        "y_top": 12 + int(diss * 18),
-                        "half_w": 14.0 * (1.0 - 0.35 * diss),
-                        "dissipate": diss,
-                    },
                 )
             )
         else:
@@ -2038,17 +1998,16 @@ def build_row_4_ultimate(poses):
                 compose_mage_frame(
                     poses,
                     pose_key="K2_CAST",
-                    dx=6.0,
+                    dx=6.5 - 0.35 * (f - 18),
                     dy=0.0,
-                    staff_deg=-6.0,
+                    staff_deg=-4.0 - 2.5 * (f - 18),
                     butt_len=12.0,
                     shaft_len=22.5,
-                    blaze=1.0,
-                    halo_flare=1.0,
+                    blaze=1.0 - 0.12 * (f - 18),
+                    halo_flare=1.0 - 0.14 * (f - 18),
                     eclipse_halo=True,
                     phase=ph,
                     ground_ring_rx=28.0 * (1.0 - 0.3 * diss),
-                    fx_spec={"kind": "v3_suncrest_meteor_array", "orb_shift": (f - 18) * 1.5, "dissipate": diss},
                 )
             )
         else:
@@ -2506,8 +2465,8 @@ def main():
         elif r_idx == 2:
             extra = f" | snap max_x={snap_reaches}"
             for fk, rx in snap_reaches.items():
-                if rx <= 200:
-                    raise RuntimeError(f"Row 2 {fk} forward cast reach {rx} <= 200!")
+                if rx > 262:
+                    raise RuntimeError(f"Row 2 {fk} leaked forward FX: rx={rx} > 262!")
         elif r_idx == 5:
             max_prone_h = max(h for _, h, _, _ in death_prone_heights)
             min_px = min(x0 for _, _, x0, _ in death_prone_heights)

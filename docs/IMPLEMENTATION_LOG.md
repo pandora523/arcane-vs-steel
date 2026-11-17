@@ -6,7 +6,17 @@
 
 ---
 
-## Latest Completed Batch (`?v=30fps124` — Web-Only Focus: Delayed Asset-Loading Recovery & Visibility Gate + Shared `ex_sprite_clean_utils.py` & All-11 EX Sheet Leak/Hole/Prone Repair (`Suite 36.13`); Apple iOS/macOS Held)
+## Latest Completed Batch (`?v=30fps125` — Web-Only Focus: Separate Baked Short-Range VFX Out of 4 Ranged EX Character Sheets + Target-Position VFX Parity (`Suite 36.14`); Apple iOS/macOS Held)
+
+| Milestone | Status | Summary | Key Files |
+| :--- | :--- | :--- | :--- |
+| **1. Pre-Change Snapshot (`20261117_120451_e024743_pre_ranged_ex_separate_vfx_v30fps125`) & Protected Purity** | `[COMPLETED]` | Captured fallback snapshot `fallback_backups/20261117_120451_e024743_pre_ranged_ex_separate_vfx_v30fps125` (`401` files hashed), keeping `0` diff in `apple/**` (held at `?v=30fps117`), `0` diff on the other 7 `*_ex_sheet.png` sheets, all 11 `*_ex_vfx.png`, all 11 `*_ex_portrait.png`, all 11 Legacy entities, all 11 `*Shaders.js`, all 33 Legacy PNGs, `meteor_cataclysm.png`, `hd2d_rig_core.py`, `CHAMPION_DEVELOPMENT_PLAYBOOK.md`, and `SKILL.md` (`0` Unicode emojis). | `fallback_backups/20261117_120451_e024743_pre_ranged_ex_separate_vfx_v30fps125` |
+| **2. Clean Caster-Only Character Sheets for `mage_ex`, `priestess_ex`, `valkyrie_ex` & `icemage_ex`** | `[COMPLETED]` | Stripped baked point-blank solar pillars/jets/orbs (`mage_ex`), rose-rays/choir-pillars/orbs (`priestess_ex`), javelin cones/target-seals/3-spear rains (`valkyrie_ex`), and cryo-comets/chakrams/spires/3-icicle lasers/detached forward snowflake circles (`icemage_ex`) across `Row 2`, `Row 3`, `Row 4`, `Row 7`, `Row 8`, and `Row 9` while keeping crisp held weapons/glints and per-frame uniqueness (`0/300` `4px` clips, `[29]*10` transitions; Rows `2`/`3` `maxX = 257/253`, `241/187`, `243/243`, `261/261 <= 262`). Visually verified clean silhouettes on `#ff00ff` contact sheet (`ranged_ex_clean_sheets_v125.png`). | `scripts/build_{mage,priestess,valkyrie,icemage}_ex_nextgen_sheet.py`, `assets/sprites/{mage,priestess,valkyrie,icemage}_ex_sheet.png` |
+| **3. Target-Position `*_ex_vfx.png` Parity, `?v=30fps125`, `Suite 34.2`/`36.14` & Web Vault E2E** | `[COMPLETED]` | Enhanced target-side spawns onto `enemy.x` in `FireMageEx.js` (`Row 2` Black-Sun Eclipse Ring alongside `Row 1` Corona Pillars), `ValkyrieEx.js` (Beat 4 ground `Row 5` Valhalla Seal + center `Row 1` Descending Spear alongside overhead `Row 5` Seal & 3 `activeSkySpears`), and `IceMageEx.js` (`spawnBorealisSkyIcicles` ground `Row 5` Borealis Seal alongside overhead `Row 3` Seal & 3 `activeSkyIcicles`), matching `PriestessEx.js`. Bumped `?v=30fps124 -> ?v=30fps125` (`0` remaining `30fps124` leaks), updated `Suite 34.2` (`PURE_RANGED` `<= 262` bound on Rows 2 & 3), `Suite 36.8D` (`mage_ex` & `priestess_ex` hashes), `Suite 36.13A`, and added `Suite 36.14` (static clean-sheet check + live `x=240 vs x=760` target-VFX assertions). Verified `check_all_ult_shader_boxes.mjs` (`0` clips), `test_all_heroes_gameloop.mjs` (`Suites 1..36.14`, `Suite 36` `1422ms`), `build_web_vault.mjs` (`171` AVSV packs, `dist/boot.1a5eba5f6b0a.js`, `0` plain leaks), and `1280x720` Chrome E2E (`ranged_ex_separated_target_vfx_v125.png`, `0` console/page errors). | `src/entities/{FireMageEx,ValkyrieEx,IceMageEx}.js`, `index.html`, `manifest.json`, `scripts/tests/test_all_heroes_gameloop.mjs` |
+
+---
+
+## Previous Completed Batch (`?v=30fps124` — Web-Only Focus: Delayed Asset-Loading Recovery & Visibility Gate + Shared `ex_sprite_clean_utils.py` & All-11 EX Sheet Leak/Hole/Prone Repair (`Suite 36.13`); Apple iOS/macOS Held)
 
 | Milestone | Status | Summary | Key Files |
 | :--- | :--- | :--- | :--- |

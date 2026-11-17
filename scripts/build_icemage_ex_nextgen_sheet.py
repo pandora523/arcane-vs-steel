@@ -2218,15 +2218,12 @@ def build_row2_auto_attack(parts, sj, keyposes):
             rune_phase=sph, bend_l=-1.0, bend_r=-1.0, post_fn=post_v0_coil,
         ))
 
-    # F03: 1-FRAME SNAP SCEPTER CAST + 3D SNOWFLAKE MAGIC CIRCLE & PRISMATIC CRYO-COMET BURST!
-    def post_v0_snap(arr, _n, _g):
-        draw_snowflake_magic_circle_160(
-            arr, cx=108.0, cy=63.0, rx=11.5, ry=24.5, phase=0.25, aurora_dominant=False, double_ring=True
-        )
-        draw_borealis_cast_projection_160(
-            arr, origin_x=108.0, origin_y=63.0, reach_x=151.0, mode="comet", progress=0.0, phase=0.4
-        )
-        draw_ice_sparks_160(arr, impact_x=110.0, ground_y=114.0, spread=16.0, progress=0.2, count=6)
+    # F03: 1-FRAME SNAP SCEPTER CAST (compact scepter-tip glint; target VFX renders on enemy.x)
+    def post_v0_snap(arr, _n, grip):
+        w_rad = math.radians(4.0)
+        fx = grip[0] + math.cos(w_rad) * 32.0
+        fy = grip[1] + math.sin(w_rad) * 32.0
+        draw_star_glint_160(arr, fx, fy, arm_len=6, core_r=1.8)
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K2_LUNGE",
@@ -2236,24 +2233,14 @@ def build_row2_auto_attack(parts, sj, keyposes):
         rune_phase=2.5, post_fn=post_v0_snap,
     ))
 
-    # F04..F05: Expanding prismatic aurora ring ripples & diamond-dust dissipation
-    for e_idx, prog in enumerate((0.44, 0.78)):
-        def post_v0_erode(arr, _n, _g, pr=prog, ei=e_idx):
-            draw_snowflake_magic_circle_160(
-                arr, cx=109.0 + ei * 2.0, cy=63.0, rx=9.5 - ei * 2.0, ry=21.0 - ei * 3.5,
-                phase=0.8 + ei * 0.6, aurora_dominant=(ei == 1), double_ring=(ei == 0),
-            )
-            if ei == 0:
-                draw_borealis_cast_projection_160(
-                    arr, origin_x=110.0, origin_y=63.0, reach_x=152.0, mode="comet", progress=pr, phase=1.1
-                )
-            draw_ice_sparks_160(arr, impact_x=118.0 + ei * 8.0, ground_y=114.0, spread=18.0, progress=pr, count=5)
+    # F04..F05: Clean scepter cast follow-through
+    for e_idx in range(2):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K2_LUNGE",
             pelvis_dx=8.0 - e_idx * 0.8, pelvis_dy=1.2, body_tilt_deg=4.5 - e_idx * 0.5,
             grip_rel_sh=(13.8, 1.8), weapon_deg=6.0 + e_idx * 2.0, glaive_len=50.0,
             scarf_deg=188.0 + e_idx * 4.0, scarf_len=33.0, scarf_phase=3.3 + e_idx * 0.8, scarf_amp=4.0,
-            rune_phase=3.4 + e_idx * 0.7, post_fn=post_v0_erode,
+            rune_phase=3.4 + e_idx * 0.7,
         ))
 
     # F06..F07: Poised scepter cast follow-through priming Beat 2 (ZERO reset to IDLE!)
@@ -2276,14 +2263,12 @@ def build_row2_auto_attack(parts, sj, keyposes):
         rune_phase=5.8,
     ))
 
-    # F09: 1-FRAME SNAP ARABESQUE SCEPTER FLOURISH + PRISMATIC AURORA RINGS & SNOWFLAKE CHAKRAM!
-    def post_v1_snap(arr, _n, _g):
-        draw_snowflake_magic_circle_160(
-            arr, cx=105.0, cy=58.0, rx=10.5, ry=23.0, phase=0.6, aurora_dominant=True, double_ring=True
-        )
-        draw_borealis_cast_projection_160(
-            arr, origin_x=105.0, origin_y=58.0, reach_x=152.0, mode="chakram", progress=0.0, phase=0.7
-        )
+    # F09: 1-FRAME SNAP ARABESQUE SCEPTER FLOURISH (compact scepter-tip glint; chakram renders on enemy.x)
+    def post_v1_snap(arr, _n, grip):
+        w_rad = math.radians(-12.0)
+        fx = grip[0] + math.cos(w_rad) * 32.0
+        fy = grip[1] + math.sin(w_rad) * 32.0
+        draw_star_glint_160(arr, fx, fy, arm_len=6, core_r=1.8)
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K3_RISE",
@@ -2293,23 +2278,14 @@ def build_row2_auto_attack(parts, sj, keyposes):
         rune_phase=1.5, post_fn=post_v1_snap,
     ))
 
-    # F10..F11: Outbound Snowflake Chakram aurora wake & sparkling crystal dust
-    for e_idx, prog in enumerate((0.42, 0.78)):
-        def post_v1_erode(arr, _n, _g, pr=prog, ei=e_idx):
-            draw_snowflake_magic_circle_160(
-                arr, cx=106.0, cy=58.0, rx=8.5 - ei * 2.0, ry=18.5 - ei * 3.5,
-                phase=1.2 + ei * 0.7, aurora_dominant=True, double_ring=False,
-            )
-            if ei == 0:
-                draw_borealis_cast_projection_160(
-                    arr, origin_x=108.0, origin_y=58.0, reach_x=153.0, mode="chakram", progress=pr, phase=1.5
-                )
+    # F10..F11: Clean Arabesque scepter release follow-through
+    for e_idx in range(2):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
             pelvis_dx=7.0 - e_idx * 0.6, pelvis_dy=-1.2, body_tilt_deg=-4.5,
             grip_rel_sh=(11.8, -5.5), weapon_deg=-16.0 - e_idx * 3.0, glaive_len=49.0,
             scarf_deg=156.0 + e_idx * 5.0, scarf_len=33.0, scarf_phase=2.1 + e_idx * 0.8, scarf_amp=4.2,
-            rune_phase=2.3 + e_idx * 0.8, post_fn=post_v1_erode,
+            rune_phase=2.3 + e_idx * 0.8,
         ))
 
     # F12..F14: Regal Arabesque scepter guard priming Beat 3 pirouette
@@ -2342,57 +2318,37 @@ def build_row2_auto_attack(parts, sj, keyposes):
             rune_phase=sph, bend_l=-1.0, bend_r=-1.0, post_fn=post_v2_coil,
         ))
 
-    # F17: 1-FRAME 2.5D PIROUETTE MANDALA + 3 GROUND-MARCHING AURORA GLACIER SPIRES!
-    def pre_v2_snap(arr, _n, _g):
-        draw_pirouette_vortex_smear_160(
-            arr, cx=72.0, cy=72.0, rx=44.0, ry=13.0, tilt_deg=-6.0, front_thickness=12.0, half="back", erosion=0.18
-        )
-
-    def post_v2_snap(arr, _n, _g):
-        draw_snowflake_magic_circle_160(
-            arr, cx=98.0, cy=72.0, rx=9.0, ry=19.0, phase=1.1, aurora_dominant=False, double_ring=True
-        )
-        draw_borealis_cast_projection_160(
-            arr, origin_x=94.0, origin_y=72.0, reach_x=152.0, mode="spires", progress=0.0, phase=1.2
-        )
+    # F17: 1-FRAME SCEPTER LUNGE (compact crystal glint; glacier spires render on enemy.x via VFX sheet)
+    def post_v2_snap(arr, _n, grip):
+        w_rad = math.radians(-2.0)
+        fx = grip[0] + math.cos(w_rad) * 32.0
+        fy = grip[1] + math.sin(w_rad) * 32.0
+        draw_star_glint_160(arr, fx, fy, arm_len=6, core_r=1.8)
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K2_LUNGE",
         pelvis_dx=8.5, pelvis_dy=1.0, body_tilt_deg=5.0,
         grip_rel_sh=(14.0, 0.5), weapon_deg=-2.0, glaive_len=50.0,
         scarf_deg=184.0, scarf_len=35.0, scarf_phase=2.4, scarf_amp=4.6,
-        rune_phase=2.5, pre_fn=pre_v2_snap, post_fn=post_v2_snap,
+        rune_phase=2.5, post_fn=post_v2_snap,
     ))
 
-    # F18: Second resonance pulse across the 3 Ground-Marching Aurora Glacier Spires (2-hit!)
-    def post_v2_cross(arr, _n, _g):
-        draw_snowflake_magic_circle_160(
-            arr, cx=100.0, cy=70.0, rx=10.5, ry=21.0, phase=1.9, aurora_dominant=True, double_ring=True
-        )
-        draw_borealis_cast_projection_160(
-            arr, origin_x=96.0, origin_y=70.0, reach_x=153.0, mode="spires", progress=0.22, phase=2.0
-        )
-
+    # F18: Clean follow-through after Beat 3 spire cast
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K3_RISE",
         pelvis_dx=7.8, pelvis_dy=0.5, body_tilt_deg=2.5,
         grip_rel_sh=(13.5, 1.5), weapon_deg=6.0, glaive_len=50.0,
         scarf_deg=190.0, scarf_len=34.0, scarf_phase=3.3, scarf_amp=4.4,
-        rune_phase=3.3, post_fn=post_v2_cross,
+        rune_phase=3.3,
     ))
 
-    # F19: Dissolving spire frost sparkles
-    def post_v2_erode(arr, _n, _g):
-        draw_borealis_cast_projection_160(
-            arr, origin_x=98.0, origin_y=72.0, reach_x=150.0, mode="spires", progress=0.65, phase=2.8
-        )
-
+    # F19: Poised transition
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K3_RISE",
         pelvis_dx=6.8, pelvis_dy=0.8, body_tilt_deg=2.5,
         grip_rel_sh=(12.5, 2.5), weapon_deg=10.0, glaive_len=49.0,
         scarf_deg=194.0, scarf_len=32.0, scarf_phase=4.1, scarf_amp=4.0,
-        rune_phase=4.0, post_fn=post_v2_erode,
+        rune_phase=4.0,
     ))
 
     # F20..F22: Graceful skating knee-bend loading Axel Backstep-Kite for Beat 4!
@@ -2439,15 +2395,12 @@ def build_row2_auto_attack(parts, sj, keyposes):
             rune_phase=sph, bend_l=-1.0, bend_r=-1.0, post_fn=post_v3_leap,
         ))
 
-    # F25: 1-FRAME SOVEREIGN SKY-RIFT COMMAND + GRAND 6-POINT SNOWFLAKE CIRCLE & 3x ICICLE LANCES!
-    def post_v3_slam(arr, _n, _g):
-        draw_snowflake_magic_circle_160(
-            arr, cx=108.0, cy=58.0, rx=13.5, ry=27.0, phase=0.5, aurora_dominant=True, double_ring=True
-        )
-        draw_borealis_cast_projection_160(
-            arr, origin_x=108.0, origin_y=58.0, reach_x=153.0, mode="skyrift", progress=0.0, phase=0.9
-        )
-        draw_ice_sparks_160(arr, impact_x=134.0, ground_y=114.0, spread=24.0, progress=0.18, count=8)
+    # F25: 1-FRAME SOVEREIGN SKY-RIFT COMMAND (compact scepter-tip glint; 3x icicle rain renders on enemy.x)
+    def post_v3_slam(arr, _n, grip):
+        w_rad = math.radians(-6.0)
+        fx = grip[0] + math.cos(w_rad) * 32.0
+        fy = grip[1] + math.sin(w_rad) * 32.0
+        draw_star_glint_160(arr, fx, fy, arm_len=6, core_r=1.8)
 
     frames.append(render_keypose_frame_160(
         parts, sj, keyposes, "K3_RISE",
@@ -2457,25 +2410,14 @@ def build_row2_auto_attack(parts, sj, keyposes):
         rune_phase=2.9, post_fn=post_v3_slam,
     ))
 
-    # F26..F27: Sky-Rift diamond-dust & prismatic aurora ring dissipation
-    for e_idx, prog in enumerate((0.45, 0.80)):
-        def post_v3_erode(arr, _n, _g, pr=prog, ei=e_idx):
-            draw_snowflake_magic_circle_160(
-                arr, cx=109.0, cy=59.0, rx=11.0 - ei * 2.5, ry=22.0 - ei * 4.5,
-                phase=1.3 + ei * 0.7, aurora_dominant=(ei == 0), double_ring=(ei == 0),
-            )
-            if ei == 0:
-                draw_borealis_cast_projection_160(
-                    arr, origin_x=109.0, origin_y=59.0, reach_x=152.0, mode="skyrift", progress=pr, phase=1.7
-                )
-            draw_ice_sparks_160(arr, impact_x=134.0, ground_y=114.0, spread=26.0, progress=pr, count=7 - ei * 2)
-
+    # F26..F27: Clean Sky-Rift command follow-through
+    for e_idx in range(2):
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
             pelvis_dx=5.0 - e_idx * 0.8, pelvis_dy=-0.4 + e_idx * 0.4, body_tilt_deg=-2.0 + e_idx * 0.8,
             grip_rel_sh=(13.0, -1.0 + e_idx * 1.5), weapon_deg=-3.0 + e_idx * 4.0, glaive_len=50.0,
             scarf_deg=168.0 + e_idx * 8.0, scarf_len=33.0, scarf_phase=3.7 + e_idx * 0.8, scarf_amp=4.2,
-            rune_phase=3.7 + e_idx * 0.8, post_fn=post_v3_erode,
+            rune_phase=3.7 + e_idx * 0.8,
         ))
 
     # F28..F29: Graceful Winter Empress scepter recovery
@@ -2507,14 +2449,14 @@ def build_row3_skill(parts, sj, keyposes):
             rune_phase=f * 0.8, bend_l=-1.0, bend_r=-1.0, post_fn=post_g,
         ))
 
-    # F04..F11: Twin Aurora-Orchid & Cyan Monolith Summoning Circle
+    # F04..F11: Twin Aurora-Orchid & Cyan Monolith Summoning Stance (world-space VFX renders on enemy.x)
     for sub in range(8):
-        def post_s1(arr, _n, _g, s=sub):
-            if s <= 4:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=108.0, cy=62.0, rx=12.0 - s * 1.2, ry=24.0 - s * 2.0,
-                    phase=0.4 + s * 0.4, aurora_dominant=(s % 2 == 1), double_ring=(s <= 2),
-                )
+        def post_s1(arr, _n, grip, s=sub):
+            if s <= 3:
+                w_rad = math.radians(-16.0 - s * 1.5)
+                fx = grip[0] + math.cos(w_rad) * 32.0
+                fy = grip[1] + math.sin(w_rad) * 32.0
+                draw_star_glint_160(arr, fx, fy, arm_len=6 - s, core_r=1.6)
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
             pelvis_dx=6.5 - max(0, sub - 4) * 0.8, pelvis_dy=-1.0, body_tilt_deg=-3.0,
@@ -2533,20 +2475,14 @@ def build_row3_skill(parts, sj, keyposes):
             rune_phase=sub * 0.9, bend_l=-1.0, bend_r=-1.0,
         ))
 
-    # F16..F24: Inward Prism Jaws Shatter Command + Diamond-Lotus Nova Circle!
+    # F16..F24: Inward Prism Jaws Shatter Command (world-space VFX renders on enemy.x)
     for sub in range(9):
-        def post_slam(arr, _n, _g, s=sub):
-            if s <= 4:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=112.0, cy=62.0, rx=13.5 - s * 1.5, ry=26.0 - s * 2.5,
-                    phase=0.8 + s * 0.5, aurora_dominant=True, double_ring=(s <= 2),
-                )
-                if s <= 2:
-                    draw_borealis_cast_projection_160(
-                        arr, origin_x=110.0, origin_y=62.0, reach_x=151.0, mode="comet", progress=s * 0.35, phase=s * 0.6
-                    )
-            if s <= 4:
-                draw_ice_sparks_160(arr, impact_x=124.0, ground_y=114.0, spread=24.0, progress=s / 4.5, count=7 - s)
+        def post_slam(arr, _n, grip, s=sub):
+            if s <= 3:
+                w_rad = math.radians(4.0 + min(3, s) * 1.5)
+                fx = grip[0] + math.cos(w_rad) * 32.0
+                fy = grip[1] + math.sin(w_rad) * 32.0
+                draw_star_glint_160(arr, fx, fy, arm_len=6 - s, core_r=1.6)
 
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K2_LUNGE",
@@ -2592,20 +2528,14 @@ def build_row4_ultimate(parts, sj, keyposes):
             rune_phase=f * 0.9, bend_l=-1.0, bend_r=-1.0, post_fn=post_asc,
         ))
 
-    # F09..F16: Coronation Command + Snowflake Sanctuary Circle
+    # F09..F16: Coronation Command Pose
     for sub in range(8):
-        def post_cmd(arr, _n, _g, s=sub):
-            if s <= 4:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=108.0, cy=58.0, rx=12.5 - s * 1.2, ry=24.0 - s * 2.0,
-                    phase=0.5 + s * 0.45, aurora_dominant=(s % 2 == 0), double_ring=(s <= 2),
-                )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
             pelvis_dx=6.5 - sub * 0.4, pelvis_dy=-6.0, body_tilt_deg=-1.5,
             grip_rel_sh=(12.5, -2.0 + sub * 0.5), weapon_deg=-16.0 + sub * 3.0, glaive_len=49.0,
             scarf_deg=168.0 + sub * 2.5, scarf_len=34.0, scarf_phase=sub * 0.9, scarf_amp=4.4,
-            rune_phase=sub * 1.0, post_fn=post_cmd,
+            rune_phase=sub * 1.0,
         ))
 
     # F17..F23: Iconic Vertical Sovereign Scepter-Tap (crystal head UP at -90 deg, strictly grounded boots!)
@@ -2776,12 +2706,6 @@ def build_row7_crouch(parts, sj, keyposes):
     frames = []
     for f in range(10):
         ph = (f / 10.0) * 2.0 * math.pi
-        def post_guard(arr, _n, grip, step=f):
-            if 2 <= step <= 8:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=grip[0] + 18.0, cy=grip[1] - 4.0, rx=7.5, ry=18.5,
-                    phase=step * 0.5, aurora_dominant=(step % 2 == 0), double_ring=False,
-                )
         frames.append(render_stand_rig_frame_160(
             parts, sj,
             pelvis_dx=2.0, pelvis_dy=8.5 + math.sin(ph) * 0.8,
@@ -2794,7 +2718,7 @@ def build_row7_crouch(parts, sj, keyposes):
             weapon_deg=-68.0 + math.sin(ph) * 2.0,
             glaive_len=48.0, weapon_layer="front",
             scarf_deg=168.0 + math.sin(ph) * 4.0, scarf_len=29.0, scarf_phase=ph * 2.0, scarf_amp=3.2,
-            rune_phase=f * 0.7, lock_lowest_to_ground=True, post_fn=post_guard,
+            rune_phase=f * 0.7, lock_lowest_to_ground=True,
         ))
 
     for sub in range(3):
@@ -2807,18 +2731,12 @@ def build_row7_crouch(parts, sj, keyposes):
         ))
 
     for sub in range(10):
-        def post_riposte(arr, _n, _g, s=sub):
-            if s <= 3:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=108.0, cy=62.0, rx=11.0 - s * 1.5, ry=22.0 - s * 2.5,
-                    phase=0.4 + s * 0.5, aurora_dominant=True, double_ring=(s <= 1),
-                )
-                if s <= 1:
-                    draw_borealis_cast_projection_160(
-                        arr, origin_x=108.0, origin_y=62.0, reach_x=150.0, mode="comet", progress=s * 0.45, phase=s * 0.7
-                    )
         pose_nm = "K2_LUNGE" if sub == 0 else "K3_RISE"
         wdeg = 2.0 if sub == 0 else (-8.0 - max(0, sub - 4) * 5.0)
+        def post_riposte(arr, _n, grip, s=sub, wd=wdeg):
+            if s <= 2:
+                w_rad = math.radians(wd)
+                draw_star_glint_160(arr, grip[0] + math.cos(w_rad) * 32.0, grip[1] + math.sin(w_rad) * 32.0, arm_len=5 - s, core_r=1.5)
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, pose_nm,
             pelvis_dx=7.5 - max(0, sub - 5) * 0.8, pelvis_dy=0.5, body_tilt_deg=-2.0 + sub * 0.4,
@@ -2876,18 +2794,12 @@ def build_row8_jump(parts, sj, keyposes):
 
     for sub in range(8):
         pdy = -20.0 + sub * 2.4
-        def post_air(arr, _n, _g, s=sub):
-            if s <= 3:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=108.0, cy=54.0 + s * 2.5, rx=10.5 - s * 1.5, ry=20.0 - s * 2.5,
-                    phase=0.5 + s * 0.5, aurora_dominant=(s % 2 == 1), double_ring=(s <= 1),
-                )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K4_LEAP",
             pelvis_dx=7.0, pelvis_dy=pdy, body_tilt_deg=4.5,
             grip_rel_sh=(13.5, 2.0), weapon_deg=12.0 + min(3, sub) * 2.0, glaive_len=49.0,
             scarf_deg=142.0 + sub * 5.0, scarf_len=33.0, scarf_phase=2.0 + sub * 0.8, scarf_amp=4.4,
-            rune_phase=sub * 0.9, post_fn=post_air,
+            rune_phase=sub * 0.9,
         ))
 
     for sub in range(9):
@@ -2919,18 +2831,12 @@ def build_row9_victory(parts, sj, keyposes):
     frames = []
     for f in range(7):
         wdeg = -18.0 - f * 14.0
-        def post_fl(arr, _n, _g, s=f):
-            if 2 <= s <= 5:
-                draw_snowflake_magic_circle_160(
-                    arr, cx=96.0, cy=56.0, rx=9.0, ry=17.0,
-                    phase=s * 0.55, aurora_dominant=(s % 2 == 0), double_ring=False,
-                )
         frames.append(render_keypose_frame_160(
             parts, sj, keyposes, "K3_RISE",
             pelvis_dx=4.0 - f * 0.4, pelvis_dy=-f * 0.3, body_tilt_deg=-f * 0.5,
             grip_rel_sh=(10.0 - f * 0.6, 2.0 - f * 1.4), weapon_deg=wdeg, glaive_len=49.0,
             scarf_deg=164.0 - f * 3.0, scarf_len=32.0, scarf_phase=f * 0.8, scarf_amp=3.8,
-            rune_phase=f * 0.9, bend_l=-1.0, bend_r=-1.0, post_fn=post_fl,
+            rune_phase=f * 0.9, bend_l=-1.0, bend_r=-1.0,
         ))
 
     for sub in range(6):
@@ -3044,15 +2950,14 @@ def assemble_and_verify_sheet(all_rows_160):
     if clip_details:
         print("  Clip details:", clip_details[:10])
     print(f"[QA] Row frame transitions: {row_transitions} (expected [29]*10)")
-    print(f"[QA] Row 2 snap-frame front reach x_320 (must be > 200): {row2_snap_reaches_320}")
-    print(f"[QA] Row 2 snap-frame front px > 200 (must be >= 240): {row2_snap_front_px}")
+    print(f"[QA] Row 2 snap-frame front reach x_320 (must be <= 262): {row2_snap_reaches_320}")
+    print(f"[QA] Row 2 snap-frame front px > 200: {row2_snap_front_px}")
 
     assert sheet.size == (9600, 2400), f"Invalid sheet size: {sheet.size}"
     assert clip_count == 0, f"Border clips detected: {clip_details}"
     assert all(t == 29 for t in row_transitions), f"Static duplicate frames detected: {row_transitions}"
     for snap_f, max_x320 in row2_snap_reaches_320.items():
-        assert max_x320 >= 285, f"Row 2 F{snap_f:02d} spell reach too narrow: {max_x320}"
-        assert row2_snap_front_px[snap_f] >= 320, f"Row 2 F{snap_f:02d} front px too sparse: {row2_snap_front_px[snap_f]}"
+        assert max_x320 <= 262, f"Row 2 F{snap_f:02d} leaked forward spell FX: {max_x320}"
 
     # Quantitative Row 1 Walk Crossover & Stance Progression Gate (#124 / Suite 36)
     foot_spans = []

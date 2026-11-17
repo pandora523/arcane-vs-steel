@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps124';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps124';
+import { Fighter } from './Fighter.js?v=30fps125';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps125';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps125';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps124';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps125';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Gungnir Lightning-Javelin + Valhalla Rune Seal -> snaps at F03 (63)
@@ -335,9 +335,9 @@ export class ValkyrieEx extends Fighter {
         return img;
       };
       assets.valkyrie_ex = {
-        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps124'),
-        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps124'),
-        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps124'),
+        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps125'),
+        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps125'),
+        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps125'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -1495,8 +1495,18 @@ export class ValkyrieEx extends Fighter {
         this.gainMana(6.5);
         this.spawnFeatherBurst(this.x, this.y - 96, 8, 155, true);
 
-        // Overhead Valhalla Sky-Gate Seal above targetX
+        // Overhead Valhalla Sky-Gate Seal + Ground Target Seal + Center Descending Spear at targetX
         this.spawnVfxAnim(5, targetX, this.groundY - 252, 232, 76, 0.38, {
+          flipX: this.facing < 0,
+          glowColor: 'gold',
+          inFront: true
+        });
+        this.spawnVfxAnim(5, targetX, this.groundY - 12, 224, 72, 0.38, {
+          flipX: this.facing < 0,
+          glowColor: 'gold',
+          inFront: false
+        });
+        this.spawnVfxAnim(1, targetX, this.groundY - 92, 168, 176, 0.34, {
           flipX: this.facing < 0,
           glowColor: 'gold',
           inFront: true

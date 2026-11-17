@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps124';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps124';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps124';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps124';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps124';
+import { Fighter } from './Fighter.js?v=30fps125';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps125';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps125';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps125';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps125';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -1446,6 +1446,10 @@ export class FireMageEx extends Fighter {
         flipX: false,
         inFront: true
       });
+      this.spawnVfxAnim(2, centerSealX, this.groundY - 124, 184, 184, 0.42, {
+        flipX: false,
+        inFront: true
+      });
     } else if (t >= 0.56 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       if (game?.audio) game.audio.play('fireball', this.x);
@@ -2147,9 +2151,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps124'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps124'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps124'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps125'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps125'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps125'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
