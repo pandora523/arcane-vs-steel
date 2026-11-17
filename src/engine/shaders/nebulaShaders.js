@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps130';
+} from '../ArcaneShaderFX.js?v=30fps131';
 
 export const NEBULA_CYBER_PALETTE = [
   '#0f1029', // 0: Deep cosmic hoodie navy
@@ -377,8 +377,9 @@ export const cobGenesisSanctuaryCore = {
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
         const rFloor = 82 * smoothStep(0, 0.14, u);
-        drawTiltedOrbitBand(pen, 0, 0, rFloor, 0.30, 3.0, 0.92 * env, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, -56, rFloor * 0.76, 0.28, 2.2, 0.80 * env, band4, BACK_HALF, false);
+        const hot = u > 0.54 && u < 0.74;
+        drawTiltedOrbitBand(pen, 0, 0, rFloor, 0.30, 3.0, 0.92 * env, band4, BACK_HALF, hot);
+        drawTiltedOrbitBand(pen, 0, -56, rFloor * 0.76, 0.28, 2.2, 0.80 * env, band4, BACK_HALF, hot);
 
         // Undulating Northern-Nebula Pixel Aurora Veil strictly padded inside shadeBox (`0` edge hits!)
         pen.shadeBox(-78, -132, 78, -24, (lx, ly, out) => {

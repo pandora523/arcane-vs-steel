@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps130';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps130';
+import { PixelForge } from './PixelForge.js?v=30fps131';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps131';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps130';
+} from './shaders/exNextGenFX.js?v=30fps131';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -4576,10 +4576,10 @@ export class Renderer {
         id: sp.id,
         x,
         y,
-        muzzleX: x + aimDir * 10,
-        muzzleY: y + 14,
+        muzzleX: x + aimDir * 16,
+        muzzleY: y + 22,
         antennaX: x,
-        antennaY: y - 13,
+        antennaY: y - 32,
         aimDir,
         lockBlend,
         eyeX,
@@ -4589,9 +4589,9 @@ export class Renderer {
   }
 
   /**
-   * Animated Pixel-Art Flying Cob Command Drones (`cob_monitor*` & active Cob Assists):
-   *   - Matte-obsidian hex armor pod + flapping 3-feather silver spread-wings echoing Cob's motif
-   *   - Top uplink antenna + glowing crimson optic eye + twin thruster plumes + prism barrel (`0` ctx.rotate!)
+   * Animated Pixel-by-Pixel Flying Cob Command Drones (`assets/sprites/cob_drone_anim.png`):
+   *   - 8x4 sprite atlas of 96x96 sculpted mecha-seraph drones (`Row 0` Idle Patrol, `Row 1` Strike Lock,
+   *     `Row 2` Inferno, `Row 3` Glacial) facing `+X` & mirrored cleanly via `ctx.scale(aimDir, 1)` (`0` ctx.rotate!)
    */
   drawCobFlyingDronesWorld(ctx, ww, gy) {
     const drones = this._getCobDronePositions(ww, gy);
@@ -4607,112 +4607,54 @@ export class Renderer {
       isInf ? '#fb923c' : '#22d3ee'
     ];
     const assistActive = this.cobAssistTimer > 0;
-    const glowBase = isInf ? this.glowOrange : isGlac ? this.glowCyan : this.glowCyan;
+    const glowBase = isInf ? this.glowOrange : this.glowCyan;
+    const droneSheet = PixelForge.ensureImage?.(PixelForge.initAssets()?.cobDroneAnim);
+    const hasSheet = Boolean(
+      droneSheet && droneSheet.complete && droneSheet.naturalWidth >= 768 && droneSheet.naturalHeight >= 384
+    );
+    const rowIdx = assistActive ? 1 : isInf ? 2 : isGlac ? 3 : 0;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
     for (const d of drones) {
       const trimCol = droneCols[d.id % droneCols.length];
-      const wingBob = Math.round(Math.sin(t * (assistActive ? 16 : 9) + d.id * 2.1) * 2);
-      const thrH = 6 + ((Math.floor(t * 22) + d.id * 2) % 4) * 2;
       const dir = d.aimDir;
       const dx = d.x;
       const dy = d.y;
 
-      // Subtle localized drone aura (`'lighter'` capped <= 0.12)
+      // Subtle localized drone aura (`'lighter'` capped <= 0.10)
       if (glowBase) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.12, (0.06 + d.lockBlend * 0.05));
-        ctx.drawImage(glowBase, dx - 38, dy - 38, 76, 76);
+        ctx.globalAlpha = Math.min(0.10, 0.05 + d.lockBlend * 0.04);
+        ctx.drawImage(glowBase, dx - 40, dy - 40, 80, 80);
       }
 
-      // Twin vertical thruster plumes beneath nacelles
+      if (hasSheet) {
+        const frame = (Math.floor(t * (assistActive ? 16 : 11)) + d.id * 4) % 8;
+        ctx.save();
+        ctx.translate(dx, dy);
+        ctx.scale(dir, 1);
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.98;
+        ctx.drawImage(droneSheet, frame * 96, rowIdx * 96, 96, 96, -48, -48, 96, 96);
+        ctx.restore();
+        continue;
+      }
+
+      // Compact fallback if sheet image is still streaming
       ctx.globalCompositeOperation = 'source-over';
-      for (const nx of [-9, 7]) {
-        ctx.globalAlpha = 0.72;
-        ctx.fillStyle = trimCol;
-        ctx.fillRect(dx + nx, dy + 9, 4, thrH);
-        ctx.globalAlpha = 0.92;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(dx + nx + 1, dy + 9, 2, Math.max(2, thrH - 4));
-      }
-
-      // 3-Feather Silver-White Mechanical Spread-Wings (`+-24px`, matching Cob's winged crest)
-      for (const side of [-1, 1]) {
-        const w1x = side < 0 ? dx - 24 : dx + 12;
-        const w2x = side < 0 ? dx - 20 : dx + 12;
-        const w3x = side < 0 ? dx - 16 : dx + 10;
-        const wy1 = dy - 5 + wingBob;
-        const wy2 = dy - 1 + wingBob;
-        const wy3 = dy + 3 + Math.round(wingBob * 0.5);
-
-        ctx.globalAlpha = 0.96;
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(w1x - 1, wy1 - 1, 14, 5);
-        ctx.fillRect(w2x - 1, wy2 - 1, 10, 5);
-        ctx.fillRect(w3x - 1, wy3 - 1, 8, 4);
-
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(w1x, wy1, 12, 3);
-        ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(w2x, wy2, 8, 3);
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(w3x, wy3, 6, 2);
-
-        // Neon wingtip chevron strobe
-        const tipX = side < 0 ? w1x : w1x + 10;
-        ctx.fillStyle = trimCol;
-        ctx.fillRect(tipX, wy1, 3, 3);
-      }
-
-      // Top command-uplink antenna mast + beacon at `(antennaX, antennaY)`
-      ctx.globalAlpha = 0.95;
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(d.antennaX - 1, d.antennaY + 2, 2, 6);
-      ctx.fillStyle = assistActive ? colRed : trimCol;
-      ctx.fillRect(d.antennaX - 2, d.antennaY - 2, 4, 4);
-      if (assistActive || Math.floor(t * 6 + d.id) % 2 === 0) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(d.antennaX - 1, d.antennaY - 1, 2, 2);
-      }
-
-      // Matte-obsidian armored hex chassis pod
-      ctx.globalAlpha = 0.98;
-      ctx.fillStyle = '#090d1a';
-      ctx.fillRect(dx - 8, dy - 8, 16, 2);
-      ctx.fillRect(dx - 12, dy - 6, 24, 12);
-      ctx.fillRect(dx - 9, dy + 6, 18, 4);
-
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(dx - 10, dy - 5, 20, 4);
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(dx - 7, dy - 7, 14, 2);
-      ctx.fillStyle = trimCol;
-      ctx.fillRect(dx - 11, dy - 2, 3, 4);
-      ctx.fillRect(dx + 8, dy - 2, 3, 4);
-
-      // Crimson command optic visor & eye (`always #ff2a6d/#ff2a55`)
-      const vx = dx + dir * 2;
-      ctx.fillStyle = '#05070e';
-      ctx.fillRect(vx - 5, dy - 3, 10, 5);
+      ctx.globalAlpha = 0.96;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(dx - 12, dy - 8, 24, 16);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(dx - 22, dy - 4, 10, 4);
+      ctx.fillRect(dx + 12, dy - 4, 10, 4);
       ctx.fillStyle = colRed;
-      ctx.fillRect(vx + dir * 1 - 2, dy - 2, 5, 3);
-      ctx.fillStyle = assistActive ? '#fde047' : '#ffffff';
-      ctx.fillRect(vx + dir * 2 - 1, dy - 1, 2, 2);
-
-      // Under-slung prism cannon turret at `(muzzleX, muzzleY)`
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(dx + dir * 4 - 2, dy + 7, 6, 5);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(d.muzzleX - 3, d.muzzleY - 4, 6, 5);
+      ctx.fillRect(dx + dir * 2 - 2, dy - 2, 5, 3);
       ctx.fillStyle = trimCol;
       ctx.fillRect(d.muzzleX - 2, d.muzzleY - 2, 4, 4);
-      if (d.lockBlend > 0.25) {
-        ctx.globalAlpha = Math.min(0.95, 0.45 + d.lockBlend * 0.5);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(d.muzzleX - 2, d.muzzleY - 2, 4, 4);
-      }
     }
 
     ctx.globalCompositeOperation = 'source-over';
@@ -4890,22 +4832,18 @@ export class Renderer {
     ctx.fillStyle = colSec;
     ctx.fillRect(cmdX + 8, cmdY + 23, 88, 3);
 
-    // 2B. Cob-to-Drone Command Uplink Tethers + Drone Sync Lock Brackets
+    // 2B. Cob-to-Drone Command Uplink Tethers + Antenna Pulse Node (`0` square brackets!)
     drawCommandUplink(eyeX, eyeY, d0.antennaX, d0.antennaY, colSec, 0.05);
     drawCommandUplink(eyeX, eyeY, d1.antennaX, d1.antennaY, colAcc, 0.42);
     for (const dr of [d0, d1]) {
       const drCol = dr.id === 0 ? colSec : colAcc;
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(0.40, env * 0.40);
+      ctx.globalAlpha = Math.min(0.42, env * 0.42);
       ctx.fillStyle = drCol;
-      for (const sx of [-1, 1]) {
-        for (const sy of [-1, 1]) {
-          const cx = dr.x + sx * 28;
-          const cy = dr.y + sy * 18;
-          ctx.fillRect(sx < 0 ? cx : cx - 8, cy - 1, 8, 2);
-          ctx.fillRect(cx - 1, sy < 0 ? cy : cy - 8, 2, 8);
-        }
-      }
+      ctx.fillRect(dr.antennaX - 5, dr.antennaY - 1, 10, 2);
+      ctx.fillRect(dr.antennaX - 1, dr.antennaY - 5, 2, 10);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(dr.antennaX - 1, dr.antennaY - 1, 2, 2);
     }
 
     // 3. Coordinated Tri-Beam Attack: Cob's Crimson-Red Eye Beam + Twin Flying Drone Beams onto Target!
@@ -4929,22 +4867,10 @@ export class Renderer {
       ctx.fillRect(px - 2, py - 2, 5, 5);
     }
 
-    // 5. Target Translucent Neon Cyber-Octagon Lock Ring, X-Slash (`step=3px`), & Floor Pulse at `cobAssistTargetX`
+    // 5. Target Translucent Neon Cyber-Octagon Lock Ring, X-Slash (`step=3px`), & Floor Pulse at `cobAssistTargetX` (`0` square brackets!)
     const lockPad = Math.round(48 + (1 - env) * 16);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(0.44, env * 0.44);
-    for (const sx of [-1, 1]) {
-      for (const sy of [-1, 1]) {
-        const bx = tgtX + sx * lockPad;
-        const by = tgtY + sy * lockPad;
-        ctx.fillStyle = colSec;
-        ctx.fillRect(sx < 0 ? bx : bx - 20, by - 2, 20, 4);
-        ctx.fillRect(bx - 2, sy < 0 ? by : by - 20, 4, 20);
-        ctx.fillStyle = colAcc;
-        ctx.fillRect(bx - 2, by - 2, 4, 4);
-      }
-    }
-    // Cyber-Octagon Lock Ring around target (`alpha <= 0.38`)
+    // Cyber-Octagon Lock Ring + 4 Cardinal Star-Pings around target (`alpha <= 0.38`)
     ctx.globalAlpha = Math.min(0.38, env * 0.38);
     for (let k = 0; k < 24; k++) {
       const th = (k / 24) * Math.PI * 2 + prog * 3.0;
@@ -4952,6 +4878,11 @@ export class Renderer {
       const oy = Math.round((tgtY + Math.sin(th) * 62) / 2) * 2;
       ctx.fillStyle = k % 2 === 0 ? colPri : colSec;
       ctx.fillRect(ox - 2, oy - 2, 4, 4);
+      if (k % 6 === 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ox - 4, oy - 1, 8, 2);
+        ctx.fillRect(ox - 1, oy - 4, 2, 8);
+      }
     }
     // Crisp continuous Translucent Neon Diagonal X-Slash centered over target (`step = 3px`, `alpha <= 0.42`)
     const slashHalf = Math.round(44 + 24 * prog);

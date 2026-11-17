@@ -18,9 +18,13 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 import math
+import sys
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ex_sprite_clean_utils import _fill_enclosed_holes_rgba
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RAW_SRC = REPO_ROOT / "assets" / "sprites" / "arena_cob_monitor_raw.jpg"
@@ -28,9 +32,15 @@ OUT_STAGE = REPO_ROOT / "assets" / "sprites" / "arena_cob_monitor.png"
 OUT_STAGE_INFERNO = REPO_ROOT / "assets" / "sprites" / "arena_cob_monitor_inferno.png"
 OUT_STAGE_GLACIAL = REPO_ROOT / "assets" / "sprites" / "arena_cob_monitor_glacial.png"
 OUT_ANIM = REPO_ROOT / "assets" / "sprites" / "cob_creator_anim.png"
+OUT_DRONE_ANIM = REPO_ROOT / "assets" / "sprites" / "cob_drone_anim.png"
 SCRATCH_DIR = Path(
     "/Users/rei/.gemini/antigravity/brain/239311b7-74c9-4bb0-b057-16821639c080/scratch"
 )
+
+DRONE_LOG = 48
+DRONE_CELL = 96
+DRONE_COLS = 8
+DRONE_ROWS = 4
 
 # Uniform 0.56x centered framing so Cob's full cap crown, crimson eye, spread-wings,
 # BOTH COB-OS windows, and BOTH neon side pillars stay 100% below top HUD even at 1.12x zoom!
@@ -540,7 +550,353 @@ def _render_cob_row_into_strip(
         strip[y_dst0 : y_dst0 + COB_H, f * COB_W : (f + 1) * COB_W] = rgba
 
 
+def build_cob_drone_cell_48(row_idx: int, frame_idx: int) -> np.ndarray:
+    """
+    Sculpts a crisp 48x48 logical (+X facing) Flying Cob Command Drone pixel-by-pixel:
+      - Faceted obsidian-titanium stealth hull with top uplink spire (tip at (24, 8) -> offset (0, -32) in 96x96)
+      - Articulated 4-feather silver-white spread-wings echoing Cob's hoodie crest with 8-frame flap kinematics
+      - Glowing Crimson Cob Command Eye optic + side intakes + twin plasma thrusters
+      - Under-slung twin-prong prism railgun muzzle converging cleanly at (32, 35) -> offset (+16, +22) in 96x96
+      Row 0: Idle Patrol | Row 1: Active Strike Lock | Row 2: Inferno Fusion | Row 3: Glacial Fusion
+    """
+    cell = np.zeros((DRONE_LOG, DRONE_LOG, 4), dtype=np.uint8)
+    u = frame_idx / float(DRONE_COLS)
+    ang = u * math.tau
+    is_strike = row_idx == 1
+    is_inf = row_idx == 2
+    is_glac = row_idx == 3
+
+    C_SELOUT = (7, 10, 20, 255)
+    C_HULL_DARK = (15, 22, 42, 255)
+    C_HULL_MID = (30, 41, 59, 255)
+    C_HULL_TOP = (58, 74, 98, 255)
+    C_HULL_SPEC = (108, 128, 152, 255)
+    C_VISOR_BG = (5, 7, 15, 255)
+    C_WHITE = (255, 255, 255, 255)
+
+    C_EYE_DARK = (159, 18, 57, 255)
+    C_EYE_MID = (255, 42, 109, 255) if not is_inf else (255, 42, 85, 255)
+    C_EYE_HOT = (253, 224, 71, 255) if (is_strike or is_inf) else (255, 240, 245, 255)
+
+    if is_inf:
+        C_TRIM_PRI = (251, 146, 60, 255)
+        C_TRIM_SEC = (253, 224, 71, 255)
+        C_TRIM_DIM = (180, 83, 9, 255)
+        W_SHAD = (120, 113, 128, 255)
+        W_MID = (214, 204, 212, 255)
+        W_BRIGHT = (248, 232, 216, 255)
+        W_TIP = C_TRIM_SEC
+    elif is_glac:
+        C_TRIM_PRI = (103, 232, 249, 255)
+        C_TRIM_SEC = (232, 121, 249, 255)
+        C_TRIM_DIM = (14, 116, 144, 255)
+        W_SHAD = (100, 146, 188, 255)
+        W_MID = (186, 224, 248, 255)
+        W_BRIGHT = (236, 250, 255, 255)
+        W_TIP = C_TRIM_PRI
+    else:
+        C_TRIM_PRI = (5, 255, 161, 255) if (frame_idx % 2 == 0 or is_strike) else (34, 211, 238, 255)
+        C_TRIM_SEC = (34, 211, 238, 255)
+        C_TRIM_DIM = (14, 116, 144, 255)
+        W_SHAD = (116, 134, 160, 255)
+        W_MID = (198, 212, 228, 255)
+        W_BRIGHT = (241, 245, 249, 255)
+        W_TIP = C_TRIM_PRI if is_strike else C_WHITE
+
+    def put(px: int, py: int, col: tuple[int, int, int, int]):
+        if 3 <= px < DRONE_LOG - 3 and 3 <= py < DRONE_LOG - 3:
+            cell[py, px] = col
+
+    def blend_px(px: int, py: int, col: tuple[int, int, int, int]):
+        if 3 <= px < DRONE_LOG - 3 and 3 <= py < DRONE_LOG - 3:
+            if col[3] >= 250 or cell[py, px, 3] == 0:
+                cell[py, px] = col
+            else:
+                a = col[3] / 255.0
+                dst = cell[py, px]
+                da = dst[3] / 255.0
+                out_a = a + da * (1.0 - a)
+                if out_a > 1e-4:
+                    cell[py, px, 0] = int(round((col[0] * a + dst[0] * da * (1 - a)) / out_a))
+                    cell[py, px, 1] = int(round((col[1] * a + dst[1] * da * (1 - a)) / out_a))
+                    cell[py, px, 2] = int(round((col[2] * a + dst[2] * da * (1 - a)) / out_a))
+                    cell[py, px, 3] = min(255, int(round(out_a * 255)))
+
+    pitch = 1 if is_strike else 0
+    bob_y = int(round(math.sin(ang) * (1.0 if is_strike else 1.5)))
+    wing_phase = math.sin(ang * (2.0 if is_strike else 1.0))
+    tip_phase = math.sin(ang * (2.0 if is_strike else 1.0) - 0.85)
+    flap_root = int(round(wing_phase * (1.8 if is_strike else 2.2)))
+    flap_tip = int(round(tip_phase * (2.5 if is_strike else 3.0)))
+
+    # 1. Rear Back-Wing (`x = 5..18`, darker cool-slate value for 3D depth separation!)
+    def draw_feather_wing(is_front: bool):
+        side = 1 if is_front else -1
+        # Shoulder joint arm anchored to hull `(20 or 28, 22 + bob_y)`
+        root_x = 29 if is_front else 19
+        root_y = 21 + bob_y + (pitch if is_front else 0)
+        c_hi = W_BRIGHT if is_front else W_MID
+        c_md = W_MID if is_front else W_SHAD
+        c_lo = W_SHAD
+
+        # Articulated titanium wing pylon
+        for s in range(5):
+            wx = root_x + side * s
+            wy = root_y - (s // 2) + int(round((s / 4.0) * flap_root))
+            put(wx, wy, C_HULL_TOP if is_front else C_HULL_MID)
+            put(wx, wy + 1, C_HULL_MID)
+        # Shoulder servo node
+        put(root_x + side * 2, root_y, C_TRIM_PRI)
+
+        # 4 stepped diagonal mecha feathers sweeping outward from the wrist spar!
+        sheen_u = ((frame_idx * 1.3 + (0 if is_front else 2.5)) % 8.0) / 8.0
+        for f_idx, (f_len, f_rise, f_drop, f_thick) in enumerate(
+            (
+                (11, -5, 1, 2),   # Primary outer pin-feather (longest crest)
+                (9, -2, 2, 2),    # Upper secondary feather
+                (7, 1, 3, 2),     # Mid trailing feather
+                (5, 4, 3, 1),     # Lower tertiary feather
+            )
+        ):
+            sx0 = root_x + side * (3 - f_idx // 2)
+            sy0 = root_y + f_rise + int(round(flap_root * (0.65 - f_idx * 0.1)))
+            prev_fy = None
+            for step in range(f_len):
+                frac = step / float(max(1, f_len - 1))
+                fx = sx0 + side * step
+                # Crisp upward arch at wrist, graceful downward taper toward feather tip (strictly connected)
+                arch = -int(round(math.sin(frac * math.pi) * (2.2 if f_idx == 0 else 1.2)))
+                fy = sy0 + arch + int(round(frac * f_drop + frac * flap_tip))
+                if prev_fy is not None and abs(fy - prev_fy) > 1:
+                    fy = prev_fy + (1 if fy > prev_fy else -1)
+                prev_fy = fy
+                shimmer = abs(frac - sheen_u) < 0.16
+                main_c = (
+                    (C_WHITE if is_front else W_BRIGHT)
+                    if shimmer
+                    else (W_TIP if (step >= f_len - 2 and f_idx == 0) else (c_hi if step < f_len - 3 else c_md))
+                )
+                put(fx, fy, main_c)
+                if f_thick >= 2 and step < f_len - 1:
+                    put(fx, fy + 1, c_md if step < f_len - 3 else c_lo)
+                if f_idx == 0 and step == f_len - 1:
+                    put(fx, fy, W_TIP if (is_strike or frame_idx % 2 == 0) else C_WHITE)
+
+    draw_feather_wing(is_front=False)
+
+    # 2. Twin Angled Hover Thruster Pods & Animated Plasma Exhaust (`y = 29..39`)
+    thr_pulse = (frame_idx + (1 if is_strike else 0)) % 4
+    plume_len = (5 if is_strike else 4) + (thr_pulse % 2)
+    for pod_idx, tx0 in enumerate((19, 26)):
+        ty0 = 28 + bob_y + (pitch if pod_idx == 1 else 0)
+        for dy in range(3):
+            for dx in range(-1, 2):
+                put(tx0 + dx, ty0 + dy, C_HULL_MID if dy < 2 else C_HULL_TOP)
+        put(tx0, ty0 + 2, C_TRIM_DIM)
+        # Animated tapered thruster flame (`alpha < 200` on tip so selout skips the flame!)
+        for k in range(1, plume_len + 1):
+            py = ty0 + 2 + k
+            a_fl = int(215 - (k / float(plume_len + 1)) * 110)
+            fl_col = C_WHITE if k == 1 else (C_TRIM_PRI[0], C_TRIM_PRI[1], C_TRIM_PRI[2], a_fl)
+            blend_px(tx0, py, fl_col)
+            if k <= 2:
+                blend_px(tx0 - 1, py, (C_TRIM_SEC[0], C_TRIM_SEC[1], C_TRIM_SEC[2], min(185, a_fl)))
+
+    # 3. Top Command Uplink Spire Mast + Beacon Gem (`(24, 8)` -> upscaled `(0, -32)` in `96x96`!)
+    # Keep anchor tip crisp at `(24, 8)` with bright beacon pixel!
+    for my in range(9, 17):
+        put(23, my + (bob_y // 2 if my > 12 else 0), C_HULL_MID)
+        put(24, my + (bob_y // 2 if my > 12 else 0), C_HULL_TOP)
+    put(23, 15, C_HULL_SPEC)
+    # Spire tip cluster centered cleanly on `(24, 8)`
+    beacon_col = C_EYE_MID if (is_strike or frame_idx % 2 == 0) else C_TRIM_PRI
+    put(24, 8, C_WHITE if (is_strike or frame_idx in (0, 3, 6)) else beacon_col)
+    put(23, 8, beacon_col)
+    put(25, 8, beacon_col)
+    put(24, 7, beacon_col)
+    put(24, 9, C_EYE_HOT if is_strike else C_TRIM_SEC)
+
+    # 4. Sculpted Faceted Stealth Armor Chassis Pod (`x = 17..31, y = 16..29`)
+    hull_spans = {
+        -7: (-4, 5),
+        -6: (-6, 6),
+        -5: (-7, 7),
+        -4: (-7, 7),
+        -3: (-8, 8),
+        -2: (-8, 8),
+        -1: (-7, 8),
+        0: (-7, 8),
+        1: (-7, 7),
+        2: (-6, 7),
+        3: (-5, 6),
+        4: (-4, 5),
+        5: (-3, 4),
+    }
+    cx_hull, cy_hull = 24, 23 + bob_y
+    for rdy, (lx0, lx1) in hull_spans.items():
+        py = cy_hull + rdy
+        for rdx in range(lx0, lx1 + 1):
+            px = cx_hull + rdx
+            if rdy <= -5:
+                col = C_HULL_SPEC if -2 <= rdx <= 3 else C_HULL_TOP
+            elif rdy <= -2:
+                col = C_HULL_TOP if rdx >= -3 else C_HULL_MID
+            elif rdy <= 2:
+                col = C_HULL_MID
+            else:
+                col = C_HULL_DARK
+            put(px, py, col)
+
+    # Side cyber-trim air intakes & dorsal crest ridge
+    put(18, cy_hull - 1, C_TRIM_PRI)
+    put(18, cy_hull, C_TRIM_SEC)
+    put(20, cy_hull - 6, C_HULL_SPEC)
+    put(21, cy_hull - 6, C_HULL_SPEC)
+    put(27, cy_hull - 4, C_TRIM_PRI)
+    put(28, cy_hull - 3, C_TRIM_SEC)
+
+    # Front Armor Visor Channel (`x = 22..30, y = cy_hull-2 .. cy_hull+2`) & Crimson Command Optic!
+    for vy in range(cy_hull - 2 + pitch, cy_hull + 2 + pitch):
+        for vx in range(22, 31):
+            put(vx, vy, C_VISOR_BG)
+    # Sleek eyebrow armor highlight over visor
+    for vx in range(22, 30):
+        put(vx, cy_hull - 3 + pitch, C_HULL_SPEC)
+
+    # Cob Signature Crimson Optic Iris (glowing scan glint shifts cleanly across frames)
+    eye_cx = 26 + (1 if (is_strike or (frame_idx in (2, 3, 4))) else 0)
+    eye_cy = cy_hull - 1 + pitch
+    for ey in range(eye_cy, eye_cy + 3):
+        for ex in range(eye_cx - 2, eye_cx + 3):
+            if 22 <= ex <= 30:
+                put(ex, ey, C_EYE_DARK if abs(ex - eye_cx) == 2 else C_EYE_MID)
+    put(eye_cx, eye_cy + 1, C_EYE_HOT)
+    put(eye_cx + 1, eye_cy, C_WHITE)
+
+    # 5. Under-Slung Twin-Prong Prism Rail-Emitter -> Exact Nozzle Core at `(32, 35)`!
+    # Connects cleanly under chin `(25..33, 29..36)` so beam originates seamlessly from prism mouth `(32, 35)`!
+    mount_x, mount_y = 25, 29 + bob_y
+    for step in range(7):
+        rx = mount_x + step
+        ry = mount_y + int(round(step * 0.72))
+        put(rx, ry, C_HULL_TOP)
+        put(rx + 1, ry, C_HULL_SPEC if step >= 4 else C_HULL_MID)
+        # Upper & lower accelerator fork tines flare open by 1px on Strike Row
+        spread = 2 if is_strike else 1
+        put(rx + 1, ry - spread, C_HULL_TOP)
+        put(rx, ry + 1, C_HULL_DARK)
+    # Charged prism crystal muzzle at exact `(32, 35)` (`+16, +22` upscaled in `96x96`)
+    muzzle_col = C_TRIM_SEC if (is_strike or frame_idx % 2 == 0) else C_TRIM_PRI
+    put(31, 34, C_HULL_SPEC)
+    put(30, 35, muzzle_col)
+    put(31, 35, muzzle_col)
+    put(32, 34, muzzle_col)
+    put(32, 36, muzzle_col)
+    put(33, 35, muzzle_col)
+    put(32, 35, C_WHITE if (is_strike or frame_idx % 2 == 0) else C_EYE_HOT)
+
+    # 6. Fore Wing drawn cleanly OVER dorsal shoulder mount for true layered mecha depth!
+    draw_feather_wing(is_front=True)
+
+    # 7. Seal tiny enclosed interior chassis pinholes & apply crisp 1px dark exterior Selout (`alpha >= 200`)
+    cell = _fill_enclosed_holes_rgba(cell, max_hole_area=6, safe_border=4)
+    solid = cell[:, :, 3] >= 200
+    selout_pts: list[tuple[int, int]] = []
+    sy_idx, sx_idx = np.where(solid)
+    for py_i, px_i in zip(sy_idx, sx_idx):
+        py, px = int(py_i), int(px_i)
+        for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = px + ox, py + oy
+            if 2 <= nx < DRONE_LOG - 2 and 2 <= ny < DRONE_LOG - 2 and cell[ny, nx, 3] == 0:
+                selout_pts.append((nx, ny))
+    for nx, ny in selout_pts:
+        cell[ny, nx] = C_SELOUT
+
+    # Enforce strict >= 2px logical (>= 4px upscaled `96x96`) transparent margin on every cell
+    cell[:2, :] = 0
+    cell[DRONE_LOG - 2 :, :] = 0
+    cell[:, :2] = 0
+    cell[:, DRONE_LOG - 2 :] = 0
+    return cell
+
+
+def build_cob_drone_sheet() -> np.ndarray:
+    sheet = np.zeros(
+        (DRONE_ROWS * DRONE_CELL, DRONE_COLS * DRONE_CELL, 4), dtype=np.uint8
+    )
+    for r in range(DRONE_ROWS):
+        trans = 0
+        prev_up = None
+        for c in range(DRONE_COLS):
+            c48 = build_cob_drone_cell_48(r, c)
+            up = np.array(
+                Image.fromarray(c48, "RGBA").resize(
+                    (DRONE_CELL, DRONE_CELL), Image.Resampling.NEAREST
+                ),
+                dtype=np.uint8,
+            )
+            va = up[:, :, 3] > 0
+            assert not (
+                np.any(va[:4, :])
+                or np.any(va[-4:, :])
+                or np.any(va[:, :4])
+                or np.any(va[:, -4:])
+            ), f"Cob drone Row {r} F{c} 4px border clip!"
+            if prev_up is not None and not np.array_equal(up, prev_up):
+                trans += 1
+            prev_up = up
+            sheet[
+                r * DRONE_CELL : (r + 1) * DRONE_CELL,
+                c * DRONE_CELL : (c + 1) * DRONE_CELL,
+            ] = up
+        assert trans == DRONE_COLS - 1, f"Cob drone Row {r} transitions={trans} != {DRONE_COLS - 1}"
+
+    Image.fromarray(sheet, "RGBA").save(OUT_DRONE_ANIM, optimize=True)
+    print(
+        f"Saved {OUT_DRONE_ANIM}: {DRONE_COLS * DRONE_CELL}x{DRONE_ROWS * DRONE_CELL} RGBA "
+        f"({DRONE_COLS}x{DRONE_ROWS} of {DRONE_CELL}x{DRONE_CELL}, 0 4px clips, 7/7 transitions)"
+    )
+
+    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    qa_w = 4 * DRONE_CELL * 2
+    qa_h = (2 * DRONE_CELL + 24) * 2
+    qa = Image.new("RGBA", (qa_w, qa_h), (12, 16, 32, 255))
+    dr = ImageDraw.Draw(qa)
+    labels = [
+        ("R0 IDLE F0", 0, 0),
+        ("R0 IDLE F3", 0, 3),
+        ("R1 STRIKE F2", 1, 2),
+        ("R1 STRIKE F6", 1, 6),
+        ("R2 INFERNO F1", 2, 1),
+        ("R2 INFERNO F5", 2, 5),
+        ("R3 GLACIAL F1", 3, 1),
+        ("R3 GLACIAL F5", 3, 5),
+    ]
+    for idx, (lbl, rr, cc) in enumerate(labels):
+        gx = (idx % 4) * DRONE_CELL * 2
+        gy = (idx // 4) * (DRONE_CELL * 2 + 48)
+        tile = Image.fromarray(
+            sheet[
+                rr * DRONE_CELL : (rr + 1) * DRONE_CELL,
+                cc * DRONE_CELL : (cc + 1) * DRONE_CELL,
+            ],
+            "RGBA",
+        ).resize((DRONE_CELL * 2, DRONE_CELL * 2), Image.Resampling.NEAREST)
+        qa.alpha_composite(tile, (gx, gy + 24))
+        dr.rectangle(
+            [gx, gy, gx + DRONE_CELL * 2 - 1, gy + DRONE_CELL * 2 + 23],
+            outline=(71, 85, 105, 255),
+        )
+        dr.text((gx + 8, gy + 6), lbl, fill=(34, 211, 238, 255))
+    qa.save(SCRATCH_DIR / "cob_drone_anim_qa.png")
+    return sheet
+
+
 def main():
+    build_cob_drone_sheet()
+    if "--drones-only" in sys.argv[1:]:
+        return
+
     base_rgb = build_reframed_base_canvas()
     inferno_rgb = build_inferno_variant_canvas(base_rgb)
     glacial_rgb = build_glacial_variant_canvas(base_rgb)

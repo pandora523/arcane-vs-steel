@@ -981,6 +981,13 @@ export function instantiateShaderEffect(def, userCfg = {}) {
  * ArcaneShaderFX — Arena-wide 2.5D (`back` + `front`) pixel-shader VFX runtime for Arcane vs. Steel.
  */
 export class ArcaneShaderFX {
+  static _getInstances() {
+    if (!globalThis.__avsArcaneShaderInstances) {
+      globalThis.__avsArcaneShaderInstances = new Set();
+    }
+    return globalThis.__avsArcaneShaderInstances;
+  }
+
   static get _sharedScratch() {
     return globalThis.__avsArcaneShaderSharedScratch || null;
   }
@@ -989,14 +996,78 @@ export class ArcaneShaderFX {
     globalThis.__avsArcaneShaderSharedScratch = v;
   }
 
-  static _acquireSharedScratch(minW, minH) {
+  static releaseSharedCanvases() {
+    const instances = globalThis.__avsArcaneShaderInstances;
+    if (instances && typeof instances.forEach === 'function') {
+      instances.forEach((inst) => {
+        inst?._releaseScratchCanvases?.();
+      });
+      instances.clear();
+    }
+    const s = ArcaneShaderFX._sharedScratch;
+    if (s) {
+      if (s.normCanvas) {
+        s.normCanvas.width = 0;
+        s.normCanvas.height = 0;
+      }
+      if (s.glowCanvas) {
+        s.glowCanvas.width = 0;
+        s.glowCanvas.height = 0;
+      }
+      ArcaneShaderFX._sharedScratch = null;
+    }
+    if (ArcaneShaderFX._sharedWorkCanvas) {
+      ArcaneShaderFX._sharedWorkCanvas.width = 0;
+      ArcaneShaderFX._sharedWorkCanvas.height = 0;
+      ArcaneShaderFX._sharedWorkCanvas = null;
+    }
+  }
+
+  constructor(registry = {}, { pixelScale = 3, viewW = 640, viewH = 420, topRatio = 0.72 } = {}) {
+    this.registry = registry;
+    this.pixelScale = pixelScale;
+    this.viewW = Math.max(640, viewW);
+    this.viewH = Math.max(420, viewH);
+    this.topRatio = Math.min(0.74, Math.max(0.68, topRatio));
+
+    this._surfaceBack = null;
+    this._surfaceFront = null;
+    this._penBack = null;
+    this._penFront = null;
+    this._scratchBack = null;
+    this._scratchFront = null;
+    this._rgbaBack = null;
+    this._rgbaFront = null;
+    this._albedoRgbaBack = null;
+    this._emissiveRgbaBack = null;
+    this._albedoRgbaFront = null;
+    this._emissiveRgbaFront = null;
+
+    this.active = [];
+    this.worldMotes = [];
+    this.rng = new DeterministicRng(733);
+    this.seedSeq = 211;
+    this.arenaCenterX = 600;
+    this.groundWorldY = 580;
+  }
+
+  _acquirePassScratch(passName) {
     if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
       return null;
     }
-    let s = ArcaneShaderFX._sharedScratch;
-    if (!s || s.w < minW || s.h < minH) {
-      const w = Math.max(720, minW, s ? s.w : 0);
-      const h = Math.max(460, minH, s ? s.h : 0);
+    const isBack = passName === 'back';
+    let s = isBack ? this._scratchBack : this._scratchFront;
+    const w = this.viewW;
+    const h = this.viewH;
+    if (
+      !s ||
+      s.w !== w ||
+      s.h !== h ||
+      !s.normCanvas ||
+      !s.glowCanvas ||
+      s.normCanvas.width !== w ||
+      s.glowCanvas.width !== w
+    ) {
       const normCanvas = s?.normCanvas || document.createElement('canvas');
       const glowCanvas = s?.glowCanvas || document.createElement('canvas');
       normCanvas.width = w;
@@ -1020,49 +1091,31 @@ export class ArcaneShaderFX {
         glowImg,
         glowData: glowImg.data
       };
-      ArcaneShaderFX._sharedScratch = s;
+      if (isBack) {
+        this._scratchBack = s;
+      } else {
+        this._scratchFront = s;
+      }
+      ArcaneShaderFX._getInstances().add(this);
     }
     return s;
   }
 
-  static releaseSharedCanvases() {
-    const s = ArcaneShaderFX._sharedScratch;
-    if (!s) return;
-    if (s.normCanvas) {
-      s.normCanvas.width = 0;
-      s.normCanvas.height = 0;
+  _releaseScratchCanvases() {
+    for (const slotKey of ['_scratchBack', '_scratchFront']) {
+      const s = this[slotKey];
+      if (!s) continue;
+      if (s.normCanvas) {
+        s.normCanvas.width = 0;
+        s.normCanvas.height = 0;
+      }
+      if (s.glowCanvas) {
+        s.glowCanvas.width = 0;
+        s.glowCanvas.height = 0;
+      }
+      this[slotKey] = null;
     }
-    if (s.glowCanvas) {
-      s.glowCanvas.width = 0;
-      s.glowCanvas.height = 0;
-    }
-    ArcaneShaderFX._sharedScratch = null;
-  }
-
-  constructor(registry = {}, { pixelScale = 3, viewW = 640, viewH = 420, topRatio = 0.72 } = {}) {
-    this.registry = registry;
-    this.pixelScale = pixelScale;
-    this.viewW = Math.max(640, viewW);
-    this.viewH = Math.max(420, viewH);
-    this.topRatio = Math.min(0.74, Math.max(0.68, topRatio));
-
-    this._surfaceBack = null;
-    this._surfaceFront = null;
-    this._penBack = null;
-    this._penFront = null;
-    this._rgbaBack = null;
-    this._rgbaFront = null;
-    this._albedoRgbaBack = null;
-    this._emissiveRgbaBack = null;
-    this._albedoRgbaFront = null;
-    this._emissiveRgbaFront = null;
-
-    this.active = [];
-    this.worldMotes = [];
-    this.rng = new DeterministicRng(733);
-    this.seedSeq = 211;
-    this.arenaCenterX = 600;
-    this.groundWorldY = 580;
+    globalThis.__avsArcaneShaderInstances?.delete(this);
   }
 
   get surfaceBack() {
@@ -1123,6 +1176,7 @@ export class ArcaneShaderFX {
   }
 
   dispose() {
+    this._releaseScratchCanvases();
     this.active.length = 0;
     this.worldMotes.length = 0;
     this._penBack = null;
@@ -1436,16 +1490,18 @@ export class ArcaneShaderFX {
     const rast = this._rasterizePassToSurface(passName, centerWorldX, groundWorldY);
     if (!rast) return;
 
-    const scratch = ArcaneShaderFX._acquireSharedScratch(this.viewW, this.viewH);
+    const scratch = this._acquirePassScratch(passName);
     if (!scratch) return;
 
     const { surface, scale, worldW, worldH, worldLeft, worldTop } = rast;
+    if (surface.dirtyMaxX < surface.dirtyMinX || surface.dirtyMaxY < surface.dirtyMinY) return;
     const w = this.viewW;
     const h = this.viewH;
-    const minX = Math.max(0, surface.dirtyMinX);
-    const minY = Math.max(0, surface.dirtyMinY);
-    const maxX = Math.min(w - 1, surface.dirtyMaxX);
-    const maxY = Math.min(h - 1, surface.dirtyMaxY);
+    // 1px transparent guard ring around dirty upload rect prevents GPU sub-rect edge bleed on WebKit/Metal
+    const minX = Math.max(0, surface.dirtyMinX - 1);
+    const minY = Math.max(0, surface.dirtyMinY - 1);
+    const maxX = Math.min(w - 1, surface.dirtyMaxX + 1);
+    const maxY = Math.min(h - 1, surface.dirtyMaxY + 1);
     const bw = maxX - minX + 1;
     const bh = maxY - minY + 1;
     if (bw <= 0 || bh <= 0) return;
