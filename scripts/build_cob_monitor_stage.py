@@ -179,13 +179,13 @@ def build_reframed_base_canvas() -> np.ndarray:
 
 
 def _cob_silhouette_mask(base_rgb: np.ndarray) -> np.ndarray:
-    """Returns a boolean mask of Cob's silhouette inside the 640x360 canvas (excluding glass sky)."""
+    """Returns a boolean mask of Cob's silhouette inside the 640x360 canvas (excluding glass sky & bezels)."""
     r = base_rgb[:, :, 0].astype(np.int32)
     g = base_rgb[:, :, 1].astype(np.int32)
     b = base_rgb[:, :, 2].astype(np.int32)
     lum = (r * 30 + g * 59 + b * 11) // 100
     yy, xx = np.mgrid[0:360, 0:640]
-    in_glass = (xx >= 246) & (xx <= 398) & (yy >= 142) & (yy <= 278)
+    in_glass = (xx >= 256) & (xx <= 394) & (yy >= 149) & (yy <= 271)
     # In the center monitor glass, the sky behind Cob is dark bluish-navy `(b - r >= 6, lum < 55)` whereas
     # Cob has dark black hoodie/cap `(max(r,g,b) < 38 and b - r <= 7)`, skin/hair/wings `(lum >= 58)`, or cyan/crimson rim!
     is_glass_sky = (b - r >= 7) & (lum < 56) & ~((r > 110) & (g < 85))
@@ -199,10 +199,12 @@ def _cob_silhouette_mask(base_rgb: np.ndarray) -> np.ndarray:
         | padded[2:-2, 4:]
         | raw_fg
     )
-    # Fill core torso & head interiors robustly (`y>=192, x=262..376` is dark charcoal hoodie interior!)
-    hoodie_box = (yy >= 192) & (yy <= 276) & (xx >= 262) & (xx <= 376) & ((r + g + b) < 88) & ((b - r) <= 8)
-    cap_box = (yy >= 145) & (yy <= 185) & (xx >= 274) & (xx <= 354) & ((r + g + b) < 92) & ((b - r) <= 9)
-    return closed | hoodie_box | cap_box
+    # Fill core torso & head interiors robustly (`y>=192, x=268..384` is dark charcoal hoodie interior!)
+    hoodie_box = (yy >= 192) & (yy <= 271) & (xx >= 268) & (xx <= 384) & ((r + g + b) < 88) & ((b - r) <= 8)
+    cap_box = (yy >= 148) & (yy <= 185) & (xx >= 292) & (xx <= 358) & ((r + g + b) < 92) & ((b - r) <= 9)
+    cap_apex = (yy == 148) & (xx >= 313) & (xx <= 325)
+    # Hard clamp out static top monitor bars/mullion (`yy <= 147`) and bottom sill (`yy >= 273`)
+    return (closed | hoodie_box | cap_box | cap_apex) & (yy >= 148) & (yy <= 272)
 
 
 def build_inferno_variant_canvas(base_rgb: np.ndarray) -> np.ndarray:
@@ -340,43 +342,34 @@ def _render_cob_row_into_strip(
     ly_eye = EYE_GY - COB_Y0
 
     yy, xx = np.mgrid[0:COB_H, 0:COB_W]
-    hair_roi = (
-        cob_fg_crop
-        & (r0 >= 105)
-        & (g0 >= 105)
-        & (b0 >= 105)
-        & (np.abs(r0 - b0) < 38)
-        & (yy >= 48)
-        & (yy <= 102)
-        & (xx >= 78)
-        & (xx <= 154)
-    )
-    wing_roi = (
-        cob_fg_crop
-        & (r0 >= 135)
-        & (g0 >= 135)
-        & (b0 >= 135)
-        & (np.abs(r0 - b0) < 48)
-        & (yy >= 106)
-        & (yy <= 174)
-        & (xx >= 94)
-        & (xx <= 188)
-    )
-    rim_roi = (
-        (cob_fg_crop & (b0 - r0 > 24) & (g0 > 80))
-        if mode in ("normal", "attack", "glacial")
-        else (cob_fg_crop & (r0 - b0 > 55) & (g0 > 60))
-    )
 
-    # Mask alpha strictly around Cob's figure (dilated 5px for breathing lift, bottom sill feathered cleanly)
-    pad = np.pad(cob_fg_crop, 5, mode="constant", constant_values=False)
+    # Clean row-matched glass sky background plate for vacated edges when Cob shifts inside monitor glass
+    sky_cols = (~cob_fg_crop) & (((xx >= 46) & (xx <= 88)) | ((xx >= 162) & (xx <= 198)))
+    sky_plate = np.zeros_like(base_crop)
+    for y in range(COB_H):
+        y0_band = max(46, y - 2)
+        y1_band = min(173, y + 3)
+        band_mask = sky_cols[y0_band:y1_band]
+        if band_mask.any():
+            sky_cols_px = base_crop[y0_band:y1_band][band_mask]
+            sky_plate[y, :] = np.median(sky_cols_px, axis=0).astype(np.uint8)
+        else:
+            sky_plate[y, :] = base_crop[min(170, max(46, y)), 52]
+
+    # Mask alpha strictly around Cob's figure inside glass (`ly = 46..172`; `0` alpha on all bezels/mullion/sill!)
+    pad = np.pad(cob_fg_crop, 4, mode="constant", constant_values=False)
     dil = np.zeros_like(cob_fg_crop)
-    for dy_s in range(-4, 5):
-        for dx_s in range(-4, 5):
-            if abs(dy_s) + abs(dx_s) <= 5:
-                dil |= pad[5 + dy_s : 5 + dy_s + COB_H, 5 + dx_s : 5 + dx_s + COB_W]
-    ay_bot = np.clip((COB_H - 3 - yy) / 8.0, 0.0, 1.0)
-    feather_alpha = (np.where(dil, 1.0, 0.0) * ay_bot * 255.0).astype(np.uint8)
+    for dy_s in range(-3, 4):
+        for dx_s in range(-3, 4):
+            if abs(dy_s) + abs(dx_s) <= 4:
+                dil |= pad[4 + dy_s : 4 + dy_s + COB_H, 4 + dx_s : 4 + dx_s + COB_W]
+    dil &= (yy >= 46) & (yy <= 172)
+    ay_bot = np.clip((173 - yy) / 6.0, 0.0, 1.0)
+    feather_alpha = np.where(
+        (yy <= 45) | (yy >= 173),
+        0,
+        np.round(np.where(dil, 1.0, 0.0) * ay_bot * 255.0),
+    ).astype(np.uint8)
 
     skin_patch = base_crop[ly_eye + 3 : ly_eye + 8, lx_eye + 1 : lx_eye + 6]
     skin_col = tuple(int(v) for v in np.median(skin_patch.reshape(-1, 3), axis=0))
@@ -385,50 +378,90 @@ def _render_cob_row_into_strip(
     for f in range(NUM_FRAMES):
         u = f / float(NUM_FRAMES)
         if mode == "attack":
-            # Command surge posture: sharper over-shoulder glare + assertive lift
-            head_dy = -3 if f in (2, 3, 4) else (-2 if f in (1, 5) else -1)
-            shoulder_dy = -2 if f in (2, 3, 4, 5) else -1
-            head_dx = 2 if f in (3, 4, 5) else 1
+            # Command surge posture: assertive over-shoulder lean + command lift
+            head_dy = -2 if f in (2, 3, 4) else (-1 if f in (1, 5) else 0)
+            shoulder_dy = -1 if f in (1, 2, 3, 4, 5) else 0
+            head_dx = 2 if f in (3, 4) else (1 if f in (2, 5) else 0)
         else:
-            head_dy = -2 if f in (3, 4) else (-1 if f in (2, 5) else 0)
+            head_dy = -1 if f in (2, 3, 4, 5) else 0
             shoulder_dy = -1 if f in (2, 3, 4, 5) else 0
             head_dx = 1 if f in (4, 5) else (-1 if f in (1, 2) else 0)
 
         frame_rgb = base_crop.copy()
+        fg_frame = cob_fg_crop.copy()
 
-        # 1. Upper-body / shoulder breathing shift (strictly anchored bottom rows >=162!)
-        if shoulder_dy != 0:
-            y_s0, y_s1 = 100, 162
-            frame_rgb[y_s0 + shoulder_dy : y_s1 + shoulder_dy] = base_crop[y_s0:y_s1]
+        # Shift ONLY verified Cob silhouette pixels (`cob_fg_crop`), filling vacated pixels with clean `sky_plate`
+        if head_dy != 0 or head_dx != 0 or shoulder_dy != 0:
+            shift_region = (yy >= 46) & (yy < 164) & cob_fg_crop
+            frame_rgb[shift_region] = sky_plate[shift_region]
+            fg_frame[46:164, :] = False
 
-        # 2. Head & cap motion shift inside crop (`y = 36..116, x = 62..174`)
-        if head_dy != 0 or head_dx != 0:
-            for y in range(36, 116):
+            # 1. Upper-body / shoulder breathing shift (`ly = 104..164`, tapered dx across collar to avoid seams)
+            for y in range(104, 164):
+                sy = y - shoulder_dy
+                row_dx = (round(head_dx * 0.5) if y < 112 else 0) if abs(head_dx) >= 1 else 0
+                if 46 <= sy < 171:
+                    for x in range(44, 198):
+                        sx = x - row_dx
+                        if 0 <= sx < COB_W and cob_fg_crop[sy, sx]:
+                            frame_rgb[y, x] = base_crop[sy, sx]
+                            fg_frame[y, x] = True
+
+            # 2. Head & cap motion shift (`ly = 46..105`, strictly masked by `cob_fg_crop`, never touching bezel!)
+            for y in range(46, 106):
                 sy = y - head_dy
-                if 0 <= sy < COB_H:
-                    for x in range(60, 176):
+                if 46 <= sy < 171:
+                    for x in range(62, 178):
                         sx = x - head_dx
-                        if 0 <= sx < COB_W:
-                            px_val = base_crop[sy, sx]
-                            is_fg = (
-                                int(px_val[0]) + int(px_val[1]) + int(px_val[2]) > 54
-                                or (74 <= x <= 158 and int(px_val[2]) < 18)
-                            )
-                            if is_fg:
-                                frame_rgb[y, x] = px_val
+                        if 0 <= sx < COB_W and cob_fg_crop[sy, sx]:
+                            frame_rgb[y, x] = base_crop[sy, sx]
+                            fg_frame[y, x] = True
+
+        r_f = frame_rgb[:, :, 0].astype(np.int32)
+        g_f = frame_rgb[:, :, 1].astype(np.int32)
+        b_f = frame_rgb[:, :, 2].astype(np.int32)
+        not_face_profile = ~((xx < 118) & (yy > 64))
+        hair_roi = (
+            fg_frame
+            & not_face_profile
+            & (r_f >= 92)
+            & (g_f >= 92)
+            & (b_f >= 92)
+            & (np.abs(r_f - b_f) < 38)
+            & (yy >= 48)
+            & (yy <= 92)
+            & (xx >= 88)
+            & (xx <= 156)
+        )
+        wing_roi = (
+            fg_frame
+            & (r_f >= 135)
+            & (g_f >= 135)
+            & (b_f >= 135)
+            & (np.abs(r_f - b_f) < 48)
+            & (yy >= 106)
+            & (yy <= 172)
+            & (xx >= 92)
+            & (xx <= 190)
+        )
+        rim_roi = (
+            (fg_frame & (b_f - r_f > 24) & (g_f > 80))
+            if mode in ("normal", "attack", "glacial")
+            else (fg_frame & (r_f - b_f > 55) & (g_f > 60))
+        )
 
         ex = lx_eye + head_dx
         ey = ly_eye + head_dy
 
-        # 3. Animated hair shimmer & mode-specific glass rim pulse
-        shimmer_band_y = int(round(46 + ((f * 13) % 48)))
-        hair_shimmer = hair_roi & (np.abs(yy - shimmer_band_y) <= 8)
+        # 3. Animated hair shimmer (hair-only, subtle diagonal sheen — never bands across face skin!)
+        shimmer_band_y = 54.0 + ((f * 7) % 30)
+        hair_shimmer = hair_roi & (np.abs((yy + (xx - 120) * 0.25) - shimmer_band_y) <= 4.5)
         hair_delta = (
-            np.array([34, 16, -6])
+            np.array([22, 10, -4])
             if mode == "inferno"
-            else np.array([10, 32, 46])
+            else np.array([8, 20, 30])
             if mode == "glacial"
-            else np.array([18, 36, 44])
+            else np.array([12, 24, 30])
         )
         frame_rgb[hair_shimmer] = np.clip(
             frame_rgb[hair_shimmer].astype(np.int32) + hair_delta, 0, 255

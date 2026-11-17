@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps129';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps130';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
