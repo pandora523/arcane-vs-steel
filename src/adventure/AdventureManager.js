@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps127';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps127';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps127';
+import { Fighter } from '../entities/Fighter.js?v=30fps128';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps128';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps128';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps127';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps127';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps127';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps127';
+} from './AdventureProgression.js?v=30fps128';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps128';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps128';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps128';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;

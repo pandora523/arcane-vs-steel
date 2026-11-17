@@ -40,59 +40,59 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps127';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps127';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps127';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps127';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps127';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps127';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps127';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps127';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps127';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps127';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps127';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps127';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps127';
-import { Archer } from '../../src/entities/Archer.js?v=30fps127';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps127';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps127';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps127';
-import { Titan } from '../../src/entities/Titan.js?v=30fps127';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps127';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps127';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps127';
-import { Android } from '../../src/entities/Android.js?v=30fps127';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps127';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps127';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps127';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps127';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps128';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps128';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps128';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps128';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps128';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps128';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps128';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps128';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps128';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps128';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps128';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps128';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps128';
+import { Archer } from '../../src/entities/Archer.js?v=30fps128';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps128';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps128';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps128';
+import { Titan } from '../../src/entities/Titan.js?v=30fps128';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps128';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps128';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps128';
+import { Android } from '../../src/entities/Android.js?v=30fps128';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps128';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps128';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps128';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps128';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps127';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps127';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps127';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps127';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps127';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps127';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps128';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps128';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps128';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps128';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps128';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps128';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps127';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps127';
+} from '../../src/adventure/AdventureManager.js?v=30fps128';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps128';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps127';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps127';
+} from '../../src/adventure/AdventureProgression.js?v=30fps128';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps128';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps127';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps128';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -696,7 +696,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps127');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps128');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11232,8 +11232,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps127');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps127');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps128');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps128');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12034,7 +12034,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps127'
+        src: 'assets/sprites/arena_bg.png?v=30fps128'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12078,13 +12078,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps127`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps128`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps127'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps128'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -13862,7 +13862,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.8: Batch ?v=30fps127 Parity:
+  // 36.8: Batch ?v=30fps128 Parity:
   //   (A) Chronos EX Zero Dark Flood Disks + Sol EX >= 580px Meteor & Stationary Single Overdrive Sun
   //   (B) Kaze-Maru EX Smear/Circle Purge + Freyja EX Non-Squared War-Spear VFX & Spinning Pass-Through Glide + Sylvara EX Fast Ult
   //   (C) VEX-09 EX Fast Backflip + Tactical Charge + Triple-Column Buster & Malakor EX Back-of-Enemy Shadow Emerge
@@ -14213,7 +14213,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.9: Batch ?v=30fps127 Parity:
+  // 36.9: Batch ?v=30fps128 Parity:
   //   (A) Lyra EX (`icemage_ex`) Non-Creepy Natural `Row 1 WALK`
   //   (B) Freyja EX (`valkyrie_ex`) `+56 deg` Diagonal `TRUE_ULTIMATE` Raining Spears (`0` Straight 90 deg)
   //   (C) Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Glowing Great-Arrow Transformation (`0` Humanoid Draws)
@@ -14456,7 +14456,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.10: Batch ?v=30fps127 Parity:
+  // 36.10: Batch ?v=30fps128 Parity:
   //   Sylvara EX (`archer_ex`) `TRUE_ULTIMATE` Refinement:
   //     - Full 10-frame Bow-Pull Progression (`frames 135..144`, `>= 8` unique frames hit)
   //     - `0` Slash-Like Circle Effects (`sylvanBowDrawVortex`, `sonicBowReleaseWave`, `Row 3/5/6`)
@@ -14569,7 +14569,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.11: Batch ?v=30fps127 Parity:
+  // 36.11: Batch ?v=30fps128 Parity:
   //   Sylvara EX (`archer_ex`) Pixel-by-Pixel Sculpted Elven Hands/Vambraces +
   //   Fixed Feet During & After `ULTIMATE` and `TRUE_ULTIMATE` (Zero `135/136` Hover/Club-Foot)
   // --------------------------------------------------------------------------
@@ -14673,7 +14673,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.12: Batch ?v=30fps127 Parity:
+  // 36.12: Batch ?v=30fps128 Parity:
   //   All-6 EX Sculpted Hands/Gauntlets (0 circle/3x3 blobs), Clean Row 4 Ultimate
   //   Feet/Skirts (`android_ex`, `icemage_ex`, `ronin_ex`, `chronomancer_ex`) &
   //   All-11 EX `setState()` Mid-Ultimate Ground-Snap Resets
@@ -14766,7 +14766,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps127';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps128';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -14801,7 +14801,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps127';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps128';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -14889,12 +14889,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps127') ||
-      !manifestSrc.includes('?v=30fps127') ||
-      manifestSrc.includes('30fps126') ||
-      indexHtmlSrc.includes('30fps126')
+      !indexHtmlSrc.includes('?v=30fps128') ||
+      !manifestSrc.includes('?v=30fps128') ||
+      manifestSrc.includes('30fps127') ||
+      indexHtmlSrc.includes('30fps127')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps127 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps128 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -15227,11 +15227,46 @@ if (!RUN_SUITE36_ONLY) {
       g.getEnemiesOf = (f) => (f === nyx ? [foe] : [nyx]);
       g.getTargetFor = (f) => (f === nyx ? foe : nyx);
 
+      // Verify live IDLE, AUTO_ATTACK Beat 1, & SKILL frame progression + 0 tall pole VFX on `nyx_ex`
+      const prevManual3616 = nyx.isPlayerControlled;
+      nyx.isPlayerControlled = true;
+      nyx.setState('IDLE');
+      const idleFrames = new Set();
+      for (let i = 0; i < 15; i++) {
+        nyx.update(1 / 30, foe, g);
+        idleFrames.add(PixelForge.getFrameIndex(nyx, nyx.walkPhase));
+      }
+      nyx.isPlayerControlled = prevManual3616;
+
+      nyx.comboStep = 0;
+      nyx.setState('AUTO_ATTACK');
+      const beat1Frames = new Set();
+      for (let i = 0; i < 22 && nyx.state === 'AUTO_ATTACK' && nyx._autoVariant === 0; i++) {
+        nyx.update(1 / 60, foe, g);
+        beat1Frames.add(PixelForge.getFrameIndex(nyx, nyx.walkPhase));
+      }
+
       nyx.skillCooldown = 0;
       nyx.setState('SKILL');
-      for (let i = 0; i < 36 && nyx.state === 'SKILL'; i++) nyx.update(1 / 30, foe, g);
-      if (nyx.holoPatchShield < 100) {
-        throw new Error(`[Suite 36.16] Expected SKILL Auto-Patch Holo-Shield >= 100, got ${nyx.holoPatchShield}`);
+      const skillFrames = new Set();
+      let tallPoleAnimSeen = false;
+      for (let i = 0; i < 36 && nyx.state === 'SKILL'; i++) {
+        nyx.update(1 / 30, foe, g);
+        skillFrames.add(PixelForge.getFrameIndex(nyx, nyx.walkPhase));
+        if ((nyx.activeVfxAnims || []).some((a) => a.h > a.w * 1.15)) {
+          tallPoleAnimSeen = true;
+        }
+      }
+      if (
+        idleFrames.size < 6 ||
+        beat1Frames.size < 5 ||
+        skillFrames.size < 15 ||
+        tallPoleAnimSeen ||
+        nyx.holoPatchShield < 100
+      ) {
+        throw new Error(
+          `[Suite 36.16] Animation/pole/shield check failed: idle=${idleFrames.size}, b1=${beat1Frames.size}, skill=${skillFrames.size}, pole=${tallPoleAnimSeen}, shield=${nyx.holoPatchShield}`
+        );
       }
       const hpPreHit = nyx.hp;
       const oldX = nyx.x;
@@ -15249,19 +15284,20 @@ if (!RUN_SUITE36_ONLY) {
       let ultOrbitalCount = 0;
       let ultCobCrest = false;
       let sawOverclockVisual = false;
-      let sawRow4Column = false;
+      let sawRow4Galaxy = false;
       for (let i = 0; i < 60 && nyx.state === 'ULTIMATE'; i++) {
         nyx.update(1 / 30, foe, g);
         g.vfx.update(1 / 30, 560, g.renderer, g.audio);
         const nodes = (nyx.activeVfxAnims || []).filter((a) => a.row === 5).length;
         if (nodes > ultOrbitalCount) ultOrbitalCount = nodes;
         if ((nyx.activeVfxAnims || []).some((a) => a.row === 2)) ultCobCrest = true;
-        if ((nyx.activeVfxAnims || []).some((a) => a.row === 4)) sawRow4Column = true;
+        if ((nyx.activeVfxAnims || []).some((a) => a.row === 4)) sawRow4Galaxy = true;
+        if ((nyx.activeVfxAnims || []).some((a) => a.h > a.w * 1.15)) tallPoleAnimSeen = true;
         if (nyx._overclockVisual?.active) sawOverclockVisual = true;
       }
-      if (ultOrbitalCount < 6 || !ultCobCrest || !sawOverclockVisual || !sawRow4Column || nyx.y !== nyx.groundY) {
+      if (ultOrbitalCount < 6 || !ultCobCrest || !sawOverclockVisual || !sawRow4Galaxy || tallPoleAnimSeen || nyx.y !== nyx.groundY) {
         throw new Error(
-          `[Suite 36.16] Expected 6 Row 5 Orbital Windows + Row 2 Cob Crest + 5-Pipe Organ Overclock + Row 4 Climax + ground settle: nodes=${ultOrbitalCount}, cob=${ultCobCrest}, oc=${sawOverclockVisual}, r4=${sawRow4Column}, y=${nyx.y}`
+          `[Suite 36.16] Expected 6 Row 5 Orbital Windows + Row 2 Cob Crest + Overclock Galaxy Vortex + Row 4 Galaxy Burst + 0 vertical poles + ground settle: nodes=${ultOrbitalCount}, cob=${ultCobCrest}, oc=${sawOverclockVisual}, r4=${sawRow4Galaxy}, pole=${tallPoleAnimSeen}, y=${nyx.y}`
         );
       }
 
@@ -15277,6 +15313,7 @@ if (!RUN_SUITE36_ONLY) {
         g.renderer.update(1 / 30, [nyx, foe]);
         g.vfx.update(1 / 30, 560, g.renderer, g.audio);
         if ((nyx.activeVfxAnims || []).some((a) => a.row === 7)) sawRow7Core = true;
+        if ((nyx.activeVfxAnims || []).some((a) => a.h > a.w * 1.15)) tallPoleAnimSeen = true;
         if (nyx._supernovaBeamTimer > 0) sawBeam = true;
         if (g.renderer.permanentStageOverride === 'cob_monitor' && nyx._cobCreatorLinkActive === true) {
           sawCobDeploy = true;
@@ -15287,9 +15324,9 @@ if (!RUN_SUITE36_ONLY) {
           g.renderer.render([nyx, foe], g.vfx, 1 / 60);
         }
       }
-      if (!sawRow7Core || !sawBeam || !sawCobDeploy || !sawCobAssistTimer || !sawLiveWipeAssistRender || nyx.y !== nyx.groundY) {
+      if (!sawRow7Core || !sawBeam || !sawCobDeploy || !sawCobAssistTimer || !sawLiveWipeAssistRender || tallPoleAnimSeen || nyx.y !== nyx.groundY) {
         throw new Error(
-          `[Suite 36.16] Expected TRUE_ULTIMATE Row 7 Cob Core + Supernova Beam + cob_monitor deploy + Cob Assist + ground settle: r7=${sawRow7Core}, beam=${sawBeam}, deploy=${sawCobDeploy}, assist=${sawCobAssistTimer}, wipeRender=${sawLiveWipeAssistRender}, y=${nyx.y}`
+          `[Suite 36.16] Expected TRUE_ULTIMATE Row 7 Cob Core + Supernova Beam + cob_monitor deploy + Cob Assist + 0 vertical poles + ground settle: r7=${sawRow7Core}, beam=${sawBeam}, deploy=${sawCobDeploy}, assist=${sawCobAssistTimer}, wipeRender=${sawLiveWipeAssistRender}, pole=${tallPoleAnimSeen}, y=${nyx.y}`
         );
       }
 

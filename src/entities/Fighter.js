@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps127';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps128';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 

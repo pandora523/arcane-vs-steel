@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps127';
+} from '../ArcaneShaderFX.js?v=30fps128';
 
 export const NEBULA_CYBER_PALETTE = [
   '#0f1029', // 0: Deep cosmic hoodie navy
@@ -72,47 +72,45 @@ function drawSafeOctagonRing(pen, cx, cy, r, col, alpha, rot = 0) {
   }
 }
 
-/** Draw cel-stepped 2.5D Nebula Plasma Column cleanly padded inside its shadeBox (0 edge clips). */
-function renderNebulaPlasmaColumn(pen, cx, halfW, botY, topY, heightFrac, fade, pal, cob, seedShift = 0) {
-  if (fade <= 0.02 || heightFrac <= 0.05) return;
-  const x0 = cx - halfW - 6;
-  const x1 = cx + halfW + 6;
-  const y0 = topY - 6;
-  const y1 = botY + 6;
-  const colH = Math.max(12, (botY - topY) * heightFrac);
-  const activeTop = botY - colH;
+/** Draw cel-stepped 2.5D Elliptical Cosmic Galaxy Swirl cleanly padded inside its shadeBox (0 edge clips, 0 vertical poles). */
+function renderNebulaGalaxySwirl(pen, cx, cy, rx, ry, arms, phaseShift, fade, pal, cob) {
+  if (fade <= 0.02 || rx <= 6 || ry <= 6) return;
+  const x0 = Math.round(cx - rx - 8);
+  const x1 = Math.round(cx + rx + 8);
+  const y0 = Math.round(cy - ry - 8);
+  const y1 = Math.round(cy + ry + 8);
 
   pen.shadeBox(x0, y0, x1, y1, (lx, ly, out) => {
     if (lx <= x0 + 3 || lx >= x1 - 3 || ly <= y0 + 3 || ly >= y1 - 3) return 0;
-    if (ly < activeTop || ly > botY) return 0;
-    const v = clamp01((botY - ly) / colH);
-    const tipTaper = Math.sin(Math.pow(v, 0.72) * Math.PI);
-    const ripple = Math.sin(ly * 0.14 - seedShift * 8.0) * 2.2;
-    const localHw = Math.max(0.1, halfW * (0.36 + 0.64 * tipTaper) + ripple * (1 - Math.abs(v - 0.5) * 1.4));
-    const dx = Math.abs(lx - cx);
-    if (dx > localHw) return 0;
+    const nx = (lx - cx) / rx;
+    const ny = (ly - cy) / ry;
+    const r = Math.hypot(nx, ny);
+    if (r >= 0.96 || r <= 0.08) return 0;
 
-    const u = dx / localHw;
-    const edgeFade = smoothStep(1.0, 0.78, u) * smoothStep(0.0, 0.08, v) * smoothStep(1.0, 0.88, v);
-    if (edgeFade <= 0.04) return 0;
+    const theta = Math.atan2(ny, nx);
+    const spiral = 0.5 + 0.5 * Math.sin(theta * arms - r * 7.5 + phaseShift * 8.0);
+    const radialBand = smoothStep(0.08, 0.24, r) * smoothStep(0.96, 0.58, r);
+    const ringBoost = 1.0 - Math.min(1.0, Math.abs(r - 0.56) * 2.4);
+    const strength = radialBand * (0.28 + 0.52 * spiral + 0.35 * ringBoost);
+    if (strength <= 0.14) return 0;
 
-    out.alpha = clamp01(fade * edgeFade * 0.94);
-    if (u < 0.24) {
-      out.glowStrength = 0.42 * fade;
-      out.glowColor = pal[6];
+    out.alpha = clamp01(fade * strength * 0.90);
+    if (spiral > 0.84 && ringBoost > 0.55) {
+      out.glowStrength = 0.38 * fade;
+      out.glowColor = cob[5];
       return PURE_WHITE;
     }
-    if (u < 0.54) {
-      out.glowStrength = 0.34 * fade;
-      out.glowColor = cob[2];
-      return (Math.floor(ly * 0.25 + seedShift * 6) % 3 === 0) ? cob[5] : pal[6];
+    if (spiral > 0.62) {
+      out.glowStrength = 0.30 * fade;
+      out.glowColor = pal[6];
+      return r < 0.50 ? pal[6] : cob[2];
     }
-    if (u < 0.80) {
-      out.glowStrength = 0.26 * fade;
+    if (spiral > 0.38) {
+      out.glowStrength = 0.22 * fade;
       out.glowColor = pal[5];
       return pal[5];
     }
-    out.glowStrength = 0.16 * fade;
+    out.glowStrength = 0.14 * fade;
     out.glowColor = pal[3];
     return pal[3];
   });
@@ -230,7 +228,7 @@ export const cobCreatorCrestSeal = {
         const rx = 58 * smoothStep(0, 0.22, u);
         drawTiltedOrbitBand(pen, 0, 0, rx, 0.34, 2.4, 0.88 * env, band4, BACK_HALF, u < 0.20);
         drawTiltedOrbitBand(pen, 0, -48, rx * 0.72, 0.30, 1.8, 0.72 * env, band4, BACK_HALF, false);
-        renderNebulaPlasmaColumn(pen, 0, 18, 6, -124, smoothStep(0, 0.24, u), env * 0.92, neb, pal, u);
+        renderNebulaGalaxySwirl(pen, 0, -42, 54 * smoothStep(0, 0.24, u), 40 * smoothStep(0, 0.24, u), 3, u * 1.4, env * 0.92, neb, pal);
       },
       renderFront(pen) {
         const u = clamp01(t / 0.98);
@@ -240,19 +238,19 @@ export const cobCreatorCrestSeal = {
         drawTiltedOrbitBand(pen, 0, 0, rx, 0.34, 2.4, 0.94 * env, band4, FRONT_HALF, u < 0.20);
         drawTiltedOrbitBand(pen, 0, -48, rx * 0.72, 0.30, 1.8, 0.78 * env, band4, FRONT_HALF, false);
 
-        const crestR = 32 * smoothStep(0, 0.24, u);
+        const crestR = 34 * smoothStep(0, 0.24, u);
         drawSafeOctagonRing(pen, 0, -42, crestR, pal[2], env * 0.95, u * 1.9);
         drawSafeOctagonRing(pen, 0, -42, crestR * 0.74, pal[4], env * 0.90, -u * 2.2);
         drawNebulaStar4(pen, 0, -42, 16 * env, pal[5], pal[2], env);
 
-        // Twin climbing spiral pixel helixes up the Nebula Column
+        // Orbiting elliptical starlight constellations around the galaxy swirl
         for (let k = 0; k < 10; k++) {
-          const hk = (k / 10 + u * 1.4) % 1;
-          const hy = -6 - hk * 108;
-          const hx = Math.sin(hk * 8.0 + u * 10.0) * 20;
+          const ang = (k / 10) * Math.PI * 2 + u * Math.PI * 2.4;
+          const hx = Math.cos(ang) * (42 * smoothStep(0, 0.24, u));
+          const hy = -42 + Math.sin(ang) * (24 * smoothStep(0, 0.24, u));
           drawNebulaStar4(pen, hx, hy, 4.5 * env, k % 2 === 0 ? pal[2] : pal[4], pal[5], env);
         }
-        pen.radialGlow(0, -32, 44 * env, neb[4], 0.28 * env);
+        pen.radialGlow(0, -42, 46 * env, neb[4], 0.28 * env);
         motes.render(pen);
       }
     };
@@ -304,7 +302,7 @@ export const nebulaOrbitalMatrix = {
         const r = 74 * smoothStep(0, 0.22, u);
         drawTiltedOrbitBand(pen, 0, 0, r, 0.34, 2.8, 0.90 * env, band4, BACK_HALF, false);
         drawTiltedOrbitBand(pen, 0, -52, r * 0.78, 0.30, 2.0, 0.76 * env, band4, BACK_HALF, u > 0.55);
-        renderNebulaPlasmaColumn(pen, 0, 22, 8, -132, smoothStep(0, 0.28, u), env * 0.94, pal, cob, u * 1.4);
+        renderNebulaGalaxySwirl(pen, 0, -46, 62 * smoothStep(0, 0.26, u), 44 * smoothStep(0, 0.26, u), 4, u * 1.8, env * 0.94, pal, cob);
       },
       renderFront(pen) {
         const u = clamp01(t / 1.76);

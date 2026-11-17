@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps127';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps127';
+import { PixelForge } from './PixelForge.js?v=30fps128';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps128';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps127';
+} from './shaders/exNextGenFX.js?v=30fps128';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -4316,35 +4316,46 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(eyeX - 3, eyeY - 3, 6, 6);
 
-      // Creator Uplink Conduit cascading down from Cob (`drawX + drawW*0.48, gy - 260`) into `cobAssistNyxX`
-      const cobOriginX = drawX + drawW * 0.48;
-      const cobOriginY = Math.round(gy - 256);
+      // Sweeping Parabolic Pixel Star-Packet Arc from Cob's Eye into Nyx (`0` vertical pole!)
       const nyxX = Math.round(this.cobAssistNyxX / 4) * 4;
-      const nyxDestY = Math.round(gy - 84);
-      for (let s = 0; s < 14; s++) {
-        const uStep = (s / 13 + t * 2.8) % 1;
-        const px = Math.round((cobOriginX + (nyxX - cobOriginX) * uStep) / 4) * 4;
-        const py = Math.round((cobOriginY + (nyxDestY - cobOriginY) * uStep) / 4) * 4;
+      const nyxDestY = Math.round(gy - 92);
+      for (let s = 0; s < 12; s++) {
+        const uStep = (s / 11 + t * 2.6) % 1;
+        const arcLift = -54 * Math.sin(uStep * Math.PI);
+        const px = Math.round((eyeX + (nyxX - eyeX) * uStep) / 2) * 2;
+        const py = Math.round((eyeY + (nyxDestY - eyeY) * uStep + arcLift) / 2) * 2;
         ctx.fillStyle = s % 2 === 0 ? '#22d3ee' : '#fde047';
         ctx.globalAlpha = assistEnv * Math.sin(uStep * Math.PI) * 0.94 * alpha;
-        ctx.fillRect(px - 4, py - 4, 8, 8);
+        ctx.fillRect(px - 3, py - 3, 6, 6);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px - 2, py - 2, 4, 4);
+        ctx.fillRect(px - 1, py - 1, 2, 2);
       }
 
-      // Target Lock Command Drop from top monitor bezel onto `cobAssistTargetX`
-      const tgtX = Math.round(this.cobAssistTargetX / 4) * 4;
-      const topY = Math.round(gy - 420);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.16, 0.15 * assistEnv * alpha);
-      ctx.fillStyle = '#d946ef';
-      ctx.fillRect(tgtX - 18, topY, 36, Math.max(120, gy - topY));
+      // Holographic Fourth-Wall Target Lock Reticle (`[ ]` corner brackets) & Floor Pulse at `cobAssistTargetX`
+      const tgtX = Math.round(this.cobAssistTargetX / 2) * 2;
+      const tgtY = Math.round(gy - 96);
+      const lockPad = Math.round(52 + (1 - assistEnv) * 18);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = assistEnv * 0.92 * alpha;
+      ctx.globalAlpha = assistEnv * 0.94 * alpha;
+      for (const sx of [-1, 1]) {
+        for (const sy of [-1, 1]) {
+          const bx = tgtX + sx * lockPad;
+          const by = tgtY + sy * lockPad;
+          ctx.fillStyle = '#22d3ee';
+          ctx.fillRect(sx < 0 ? bx : bx - 18, by - 2, 18, 4);
+          ctx.fillRect(bx - 2, sy < 0 ? by : by - 18, 4, 18);
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(bx - 2, by - 2, 4, 4);
+        }
+      }
+      // Subtle horizontal reticle crosshairs + floor circuit ring pulse (`0` tall vertical drop-pole!)
+      ctx.fillStyle = '#d946ef';
+      ctx.fillRect(tgtX - lockPad - 12, tgtY - 2, 14, 4);
+      ctx.fillRect(tgtX + lockPad - 2, tgtY - 2, 14, 4);
       ctx.fillStyle = '#22d3ee';
-      ctx.fillRect(tgtX - 4, topY, 8, Math.max(120, gy - topY));
+      ctx.fillRect(tgtX - Math.round(lockPad * 0.9), gy - 6, Math.round(lockPad * 1.8), 4);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(tgtX - 2, topY, 4, Math.max(120, gy - topY));
+      ctx.fillRect(tgtX - Math.round(lockPad * 0.5), gy - 5, Math.round(lockPad), 2);
     }
 
     ctx.globalCompositeOperation = 'source-over';

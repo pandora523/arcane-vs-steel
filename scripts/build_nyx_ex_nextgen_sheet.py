@@ -3,17 +3,14 @@
 Overhauled Next-Gen Wide-Canvas Sprite Sheet & Radiant Neon VFX Sheet Builder for:
   NYX EX -- Nebula AI Assistant Created by Cob (nyx_ex)
 
-Upgrades (?v=30fps127):
-  - Replaces straight tube-stripes & dot hands with billowing oversized bell/lantern galaxy hoodie
-    sleeves (coherent nebula swirl, gravity drape, dark ribbed cuff, 1px selout) + pixel-sculpted
-    anatomical 3-finger + thumb hands ('relaxed_open', 'finger_tap', 'open_cast', 'enter_press', 'paw_boop').
-  - Fixes `lock_ground` ordering bug (ground-normalize first, THEN apply dy_160 bounce/hop!) so
-    full-body bobs, walk strides, Pose-B knee-tuck hops, Skill leaps & Victory bounces visibly animate.
-  - Multi-part expressive 512x512 rig: independent perking cat ears, sinuous S-wave tail deformation,
-    squash-stretch torso, facial expressions ('smile', 'happy_fang', 'focused_glow', 'blink', 'wink'),
-    depth-shaded back leg/sleeve, and unbaked orb on combat rows (animated live by NyxEx.js).
-  - Rebuilds `nyx_ex_vfx.png` (6240x1664, 8x30 @ 208x208) with Bayer-stippled translucent neon glass,
-    radial glow halos, Row 4 spinning Nebula Plasma Pillar/Beam segment, & Row 7 Cob Genesis Astrolabe Core.
+Upgrades (?v=30fps128):
+  - Replaces Row 4 vertical spindle/pole pillar on `nyx_ex_vfx.png` with an organic
+    3-arm Cosmic Supernova Galaxy Vortex & counter-rotating tilted Starlight Rings (zero poles!).
+  - Fixes `solve_ik_2bone` natural elbow orientation, knee-bend crouch sign, wide lunges,
+    hoodie/torso lean, multi-part perking cat ears, big sinuous S-wave tail, expressive faces,
+    and unmistakable anime cast arcs across IDLE, WALK, 4-beat AUTO_ATTACK, SKILL, ULT, & TRUE_ULT.
+  - Preserves sculpted 3-finger+thumb hands, ex_sprite_clean_utils.py hole/leak cleanup,
+    0/300 & 0/240 4px border clips, 29/29 transitions, grounded Row 5 DEATH, & Row 2/3 maxX <= 262.
 """
 
 from __future__ import annotations
@@ -550,8 +547,16 @@ def solve_ik_2bone(
     cos_a = clamp((l1 * l1 + dist * dist - l2 * l2) / max(1e-4, 2.0 * l1 * dist), -1.0, 1.0)
     a = math.acos(cos_a)
     base_ang = math.atan2(ty - sy, tx - sx)
-    ex = sx + l1 * math.cos(base_ang + bend_dir * a)
-    ey = sy + l1 * math.sin(base_ang + bend_dir * a)
+    if bend_dir == 0:
+        # Auto-pick natural gravity-drape elbow (`max ey` in screen space where +Y is down)
+        ex_p = sx + l1 * math.cos(base_ang + a)
+        ey_p = sy + l1 * math.sin(base_ang + a)
+        ex_m = sx + l1 * math.cos(base_ang - a)
+        ey_m = sy + l1 * math.sin(base_ang - a)
+        ex, ey = (ex_p, ey_p) if ey_p >= ey_m else (ex_m, ey_m)
+    else:
+        ex = sx + l1 * math.cos(base_ang + bend_dir * a)
+        ey = sy + l1 * math.sin(base_ang + bend_dir * a)
     return (ex, ey, tx, ty)
 
 
@@ -851,6 +856,49 @@ def draw_neko_ai_orb_160(
     put_px(arr, ox + 1, oy, C_LILAC)
 
 
+def draw_nebula_cast_arc_160(
+    arr: np.ndarray,
+    cx: float,
+    cy: float,
+    rx: float,
+    ry: float,
+    ang0_deg: float,
+    ang1_deg: float,
+    phase: int = 0,
+    style: str = "cyan",
+    anchor_pt: tuple[float, float] | None = None,
+):
+    """Crisp pixel-art cosmic sleeve smear arc hugged tightly to Nyx's hand (x_160 <= 122 -> x_320 <= 244 <= 262)."""
+    col_outer = C_CYAN if style == "cyan" else (C_MAGENTA if style == "magenta" else C_AMBER)
+    col_mid = C_CYAN_LIGHT if style == "cyan" else (C_PINK if style == "magenta" else C_GOLD)
+    steps = 26
+    for i in range(steps + 1):
+        u = i / steps
+        ang = math.radians(lerp(ang0_deg, ang1_deg, u))
+        env = math.sin(u * math.pi)
+        px = cx + math.cos(ang) * rx
+        py = cy + math.sin(ang) * ry
+        px = clamp(px, 6.0, 121.0)
+        py = clamp(py, 6.0, 113.0)
+        ix, iy = int(round(px)), int(round(py))
+        put_px(arr, ix, iy, C_WHITE if env > 0.65 else col_mid)
+        if env > 0.30:
+            put_px(arr, ix - 1, iy, col_outer)
+            put_px(arr, ix, iy - 1, col_mid if i % 2 == 0 else col_outer)
+        if env > 0.72:
+            put_px(arr, min(121, ix + 1), iy + 1, col_outer)
+    # Connect tail cleanly toward hand/cuff if needed so cast arc is contiguous with Nyx silhouette
+    if anchor_pt is not None:
+        a_mid = math.radians(ang0_deg)
+        sx0 = clamp(cx + math.cos(a_mid) * rx, 6.0, 118.0)
+        sy0 = clamp(cy + math.sin(a_mid) * ry, 6.0, 113.0)
+        for s in range(10):
+            tu = s / 9.0
+            bx = int(round(lerp(anchor_pt[0], sx0, tu)))
+            by = int(round(lerp(anchor_pt[1], sy0, tu)))
+            put_px(arr, bx, by, col_outer if s % 2 == 0 else col_mid)
+
+
 def draw_mini_holo_prompt_160(
     arr: np.ndarray, cx: int, cy: int, kind: str = "panel", phase: int = 0
 ):
@@ -912,6 +960,7 @@ def render_pose_512_to_160(
     paw_tuck: bool = False,
     tap_spark: bool = False,
     mini_prompt: tuple[str, int, int] | None = None,
+    cast_arc: tuple[str, float, float, float, float, float, float] | None = None,
     crouch_drop_512: float = 0.0,
     prone_deg: float | None = None,
     phase: int = 0,
@@ -1096,7 +1145,7 @@ def render_pose_512_to_160(
         r_hand_160 = (r_hand_160[0], r_hand_160[1] + actual_pelvis_shift_160)
 
     lex, ley, lwx, lwy = solve_ik_2bone(
-        l_sh_160[0], l_sh_160[1], l_hand_160[0], l_hand_160[1], 10.6, 10.2, bend_dir=-1
+        l_sh_160[0], l_sh_160[1], l_hand_160[0], l_hand_160[1], 11.4, 10.8, bend_dir=0
     )
     l_cuff = draw_galaxy_sleeve_arm_160(
         out160, l_sh_160, (lex, ley), (lwx, lwy), phase=phase, is_front=False, paw_tuck=paw_tuck
@@ -1106,7 +1155,7 @@ def render_pose_512_to_160(
     )
 
     rex, rey, rwx, rwy = solve_ik_2bone(
-        r_sh_160[0], r_sh_160[1], r_hand_160[0], r_hand_160[1], 10.6, 10.2, bend_dir=1
+        r_sh_160[0], r_sh_160[1], r_hand_160[0], r_hand_160[1], 11.4, 10.8, bend_dir=0
     )
     r_cuff = draw_galaxy_sleeve_arm_160(
         out160, r_sh_160, (rex, rey), (rwx, rwy), phase=phase + 3, is_front=True, paw_tuck=paw_tuck
@@ -1115,7 +1164,21 @@ def render_pose_512_to_160(
         out160, r_cuff, (rex, rey), pose=r_pose, is_front=True, tap_spark=tap_spark
     )
 
-    # 5. Close-to-hand mini holo prompt / [ENTER] key strictly x_160 <= 112 (224 in 320px!)
+    # 5. Close-to-hand mini holo prompt / pixel cast arc strictly x_160 <= 121 (<= 242 in 320px <= 262!)
+    if cast_arc is not None:
+        ca_style, ca_ox, ca_oy, ca_rx, ca_ry, ca_a0, ca_a1 = cast_arc
+        draw_nebula_cast_arc_160(
+            out160,
+            rwx + ca_ox,
+            rwy + ca_oy,
+            ca_rx,
+            ca_ry,
+            ca_a0,
+            ca_a1,
+            phase=phase,
+            style=ca_style,
+            anchor_pt=(rwx, rwy),
+        )
     if mini_prompt is not None:
         mp_kind, mx_off, my_off = mini_prompt
         draw_mini_holo_prompt_160(
@@ -1164,37 +1227,38 @@ def build_character_sheet(rig: dict) -> np.ndarray:
         y0, x0 = row * CELL_H, col * CELL_W
         sheet[y0 : y0 + CELL_H, x0 : x0 + CELL_W] = up2
 
-    # ROW 0: IDLE (F00..F29) — Expressive double-beat idol-caster bounce, swaying bell-sleeves,
-    #        cat ear twitches (F07..F10, F21..F24), blink (F14..F15), & sinuous S-wave tail!
+    # ROW 0: IDLE (F00..F29) — Grounded double-beat knee-flex idol bounce, wide torso/head sway,
+    #        perking cat ears (F06..F10, F20..F24), blink (F14..F15), wink (F22..F24), expressive conducting hands, & big S-wave tail!
     for c in range(COLS):
         t = (c / COLS) * math.tau
-        bounce = -1.6 * abs(math.sin(t))
-        knee_flex = 6.0 * (1.0 - math.cos(t * 2.0)) * 0.5
+        k = (1.0 - math.cos(t * 2.0)) * 0.5
         sway = math.sin(t)
-        ear_l_t = -12.0 * math.sin(((c - 7) / 3.0) * math.pi) if 7 <= c <= 10 else 0.0
-        ear_r_t = 12.0 * math.sin(((c - 21) / 3.0) * math.pi) if 21 <= c <= 24 else 0.0
-        expr = "blink" if c in (14, 15) else ("wink" if 22 <= c <= 24 else "smile")
+        ear_l_t = -18.0 * math.sin(((c - 6) / 4.0) * math.pi) if 6 <= c <= 10 else 0.0
+        ear_r_t = 18.0 * math.sin(((c - 20) / 4.0) * math.pi) if 20 <= c <= 24 else 0.0
+        expr = "blink" if c in (14, 15) else ("wink" if 22 <= c <= 24 else ("happy_fang" if 7 <= c <= 10 else "smile"))
         f = render_pose_512_to_160(
             rig,
-            dx_160=1.2 * sway,
-            dy_160=bounce,
-            torso_deg=3.5 * sway + 1.5,
-            torso_sy=1.0 - 0.015 * math.sin(t * 2.0),
-            head_deg=-3.2 * sway + 2.0 * math.cos(t),
+            dx_160=2.6 * sway,
+            dy_160=0.0,
+            torso_deg=7.0 * sway + 1.5,
+            torso_sy=1.0 - 0.025 * k,
+            head_deg=-6.2 * sway + 2.6 * math.cos(t),
             expr=expr,
-            l_ear_deg=ear_l_t - 3.0 * sway,
-            r_ear_deg=ear_r_t + 3.0 * sway,
-            tail_deg=-6.0 + 16.0 * math.sin(t - 0.4),
+            l_ear_deg=ear_l_t - 5.0 * sway,
+            r_ear_deg=ear_r_t + 5.0 * sway,
+            tail_deg=-8.0 + 24.0 * math.sin(t - 0.45),
             tail_wave_phase=t * 2.0,
-            tail_wave_amp=13.0,
-            l_thigh_deg=-5.0 - knee_flex,
-            l_shin_deg=knee_flex * 1.4,
-            r_thigh_deg=6.0 + knee_flex * 0.8,
-            r_shin_deg=-knee_flex * 1.2,
-            l_hand_160=(43.0 + 3.0 * sway, 68.0 - 3.5 * math.sin(t)),
-            r_hand_160=(74.0 + 3.5 * math.cos(t), 63.0 + 4.0 * sway),
-            l_pose="relaxed_open",
-            r_pose="open_cast" if c % 15 < 8 else "relaxed_open",
+            tail_wave_amp=22.0,
+            l_thigh_deg=-6.0 - 11.0 * k,
+            l_shin_deg=15.0 * k,
+            r_thigh_deg=5.0 - 9.0 * k,
+            r_shin_deg=13.0 * k,
+            l_hand_160=(41.0 + 4.5 * sway, 62.0 - 7.5 * math.sin(t)),
+            r_hand_160=(76.0 + 5.5 * math.cos(t), 54.0 + 8.5 * sway),
+            l_pose="paw_boop" if 6 <= c <= 11 else "relaxed_open",
+            r_pose="open_cast" if c % 15 < 9 else "relaxed_open",
+            tap_spark=(c % 15) in (3, 4, 5, 6),
+            crouch_drop_512=24.0 * k,
             phase=c,
             lock_ground=True,
         )
@@ -1205,34 +1269,34 @@ def build_character_sheet(rig: dict) -> np.ndarray:
         phi = ((c - 1.0) / COLS) * math.tau
         c_p = math.cos(phi)
         s_p = math.sin(phi)
-        r_th = -26.0 * c_p + 16.0 * s_p + 2.0
-        l_th = 26.0 * c_p - 16.0 * s_p - 4.0
+        r_th = -28.0 * c_p + 16.0 * s_p + 1.0
+        l_th = 28.0 * c_p - 16.0 * s_p - 3.0
         lift_bias = math.cos(phi - 0.45)
-        l_sh = l_th + 13.5 + 11.5 * lift_bias
-        r_sh = r_th + 13.5 - 11.5 * lift_bias
+        l_sh = l_th + 14.5 + 12.0 * lift_bias
+        r_sh = r_th + 14.5 - 12.0 * lift_bias
 
-        bounce = -1.5 * abs(math.sin(((c % 15) / 15.0) * math.pi))
-        arm_sw = 11.0 * c_p
+        bounce = -1.4 * abs(math.sin(((c % 15) / 15.0) * math.pi))
+        arm_sw = 15.0 * c_p
         f = render_pose_512_to_160(
             rig,
             dx_160=0.0,
             dy_160=bounce,
-            torso_deg=7.5 + 1.5 * math.sin(phi * 2.0),
-            head_deg=2.5 + 2.2 * s_p,
+            torso_deg=12.5 + 2.5 * math.sin(phi * 2.0),
+            head_deg=4.2 + 2.8 * s_p,
             expr="smile",
-            l_ear_deg=-4.0 * s_p,
-            r_ear_deg=4.0 * s_p,
-            tail_deg=-12.0 + 12.0 * math.sin(phi * 2.0),
+            l_ear_deg=-7.0 * s_p,
+            r_ear_deg=7.0 * s_p,
+            tail_deg=-15.0 + 16.0 * math.sin(phi * 2.0),
             tail_wave_phase=phi * 2.0,
-            tail_wave_amp=12.0,
+            tail_wave_amp=18.0,
             l_thigh_deg=l_th,
             l_shin_deg=l_sh,
             l_boot_deg=clamp((l_sh - l_th) * 0.4, -8.0, 14.0),
             r_thigh_deg=r_th,
             r_shin_deg=r_sh,
             r_boot_deg=clamp((r_sh - r_th) * 0.4, -8.0, 14.0),
-            l_hand_160=(45.0 + arm_sw, 72.0 - abs(arm_sw) * 0.28),
-            r_hand_160=(71.0 - arm_sw, 71.0 - abs(arm_sw) * 0.28),
+            l_hand_160=(45.0 + arm_sw, 69.0 - abs(arm_sw) * 0.35),
+            r_hand_160=(71.0 - arm_sw, 68.0 - abs(arm_sw) * 0.35),
             l_pose="relaxed_open",
             r_pose="relaxed_open",
             phase=c,
@@ -1244,155 +1308,176 @@ def build_character_sheet(rig: dict) -> np.ndarray:
     # Pure ranged caster constraint: maxCellX <= 262 (x_160 <= 131), 0 detached >=16px at x >= 230!
     for c in range(COLS):
         if c < 8:
-            # Beat 1 (F00..F07, snap F03): Forward caster lunge + swift fingertip holographic tap!
+            # Beat 1 (F00..F07, snap F03): Deep back-coil -> explosive forward finger-tap lunge + cyan arc!
             u = c / 7.0
-            snap = smoothstep(min(1.0, c / 3.0)) * (1.0 - max(0.0, (c - 3.0) / 4.0) * 0.45)
+            coil = max(0.0, 1.0 - c / 1.8)
+            snap = smoothstep(clamp((c - 0.5) / 2.2, 0.0, 1.0)) * (1.0 - max(0.0, (c - 3.5) / 4.0) * 0.45)
             f = render_pose_512_to_160(
                 rig,
-                dx_160=3.5 * snap,
-                dy_160=-2.0 * math.sin(u * math.pi),
-                torso_deg=11.0 * snap - 3.0 * (1.0 - snap),
-                head_deg=4.0 * snap,
-                expr="focused_glow" if c in (2, 3, 4) else "smile",
-                l_ear_deg=-8.0 * snap,
-                r_ear_deg=8.0 * snap,
-                tail_deg=-16.0 + 24.0 * snap,
-                tail_wave_phase=u * math.tau,
-                tail_wave_amp=14.0,
-                l_thigh_deg=-12.0 * snap,
-                l_shin_deg=14.0 * snap,
-                r_thigh_deg=14.0 * snap,
-                r_shin_deg=-8.0 * snap,
-                l_hand_160=(38.0 - 4.0 * snap, 64.0 - 3.0 * snap),
-                r_hand_160=(73.0 + 12.0 * snap, 61.0 - 6.0 * snap),
+                dx_160=-3.5 * coil + 5.5 * snap,
+                dy_160=-2.2 * math.sin(u * math.pi),
+                torso_deg=-11.0 * coil + 19.0 * snap,
+                head_deg=-5.0 * coil + 7.0 * snap,
+                expr="focused_glow" if c >= 2 else "smile",
+                l_ear_deg=-12.0 * snap,
+                r_ear_deg=12.0 * snap,
+                tail_deg=16.0 * coil - 24.0 * snap,
+                tail_wave_phase=u * math.tau * 1.4,
+                tail_wave_amp=20.0,
+                l_thigh_deg=24.0 * snap,
+                l_shin_deg=24.0 * snap,
+                r_thigh_deg=-24.0 * snap,
+                r_shin_deg=10.0 * snap,
+                l_hand_160=(44.0 * coil + 32.0 * (1.0 - coil) - 4.0 * snap, 64.0),
+                r_hand_160=(54.0 * coil + (86.0 * snap + 70.0 * (1.0 - snap)) * (1.0 - coil), 58.0 - 6.0 * snap),
                 l_pose="open_cast",
                 r_pose="finger_tap",
-                tap_spark=c in (2, 3, 4),
-                mini_prompt=("panel", 9, -2) if 1 <= c <= 5 else None,
+                tap_spark=2 <= c <= 5,
+                cast_arc=("cyan", -6.0, 0.0, 12.0, 16.0, -72.0, 42.0) if 2 <= c <= 4 else None,
+                mini_prompt=("panel", 6, -2) if 2 <= c <= 5 else None,
+                crouch_drop_512=24.0 * snap,
                 phase=c,
             )
         elif c < 15:
-            # Beat 2 (F08..F14, snap F09): Coil back (-7 deg) -> Explosive baggy bell-sleeve swipe (+13 deg)!
+            # Beat 2 (F08..F14, snap F09): Low cross-body windup -> wide upward cosmic bell-sleeve swipe!
             lc = c - 8
             u = lc / 6.0
-            coil = max(0.0, 1.0 - lc / 1.5)
-            snap = smoothstep(clamp((lc - 0.3) / 1.7, 0.0, 1.0)) * (1.0 - max(0.0, (lc - 2.5) / 4.0) * 0.45)
+            coil = max(0.0, 1.0 - lc / 1.3)
+            snap = smoothstep(clamp((lc - 0.3) / 1.5, 0.0, 1.0)) * (1.0 - max(0.0, (lc - 2.6) / 3.8) * 0.45)
             f = render_pose_512_to_160(
                 rig,
-                dx_160=-2.5 * coil + 4.5 * snap,
-                dy_160=-2.5 * math.sin(u * math.pi),
-                torso_deg=-8.0 * coil + 13.5 * snap,
-                head_deg=5.0 * snap - 4.0 * coil,
-                expr="happy_fang" if lc in (1, 2, 3) else "smile",
-                tail_deg=14.0 * coil - 18.0 * snap,
-                tail_wave_phase=u * math.tau * 1.3,
-                tail_wave_amp=16.0,
-                l_thigh_deg=-14.0 * snap,
-                l_shin_deg=18.0 * snap,
-                r_thigh_deg=16.0 * snap,
-                r_shin_deg=-6.0 * snap,
-                l_hand_160=(42.0 - 5.0 * snap, 66.0 + 4.0 * snap),
-                r_hand_160=(60.0 + 26.0 * snap, 68.0 - 14.0 * snap),
+                dx_160=-4.0 * coil + 6.0 * snap,
+                dy_160=-2.6 * math.sin(u * math.pi),
+                torso_deg=-14.0 * coil + 20.0 * snap,
+                head_deg=-6.0 * coil + 7.5 * snap,
+                expr="happy_fang" if 1 <= lc <= 4 else "smile",
+                l_ear_deg=-13.0 * snap,
+                r_ear_deg=13.0 * snap,
+                tail_deg=18.0 * coil - 26.0 * snap,
+                tail_wave_phase=u * math.tau * 1.5,
+                tail_wave_amp=22.0,
+                l_thigh_deg=26.0 * snap - 10.0 * coil,
+                l_shin_deg=28.0 * snap + 12.0 * coil,
+                r_thigh_deg=-26.0 * snap + 8.0 * coil,
+                r_shin_deg=8.0 * snap,
+                l_hand_160=(42.0 - 9.0 * snap, 66.0 + 4.0 * coil),
+                r_hand_160=(48.0 * coil + (86.0 * snap + 72.0 * (1.0 - snap)) * (1.0 - coil), 70.0 * coil + (42.0 * snap + 56.0 * (1.0 - snap)) * (1.0 - coil)),
                 l_pose="relaxed_open",
                 r_pose="open_cast",
-                tap_spark=lc in (1, 2, 3),
-                mini_prompt=("panel", 9, -2) if lc in (1, 2) else None,
+                tap_spark=1 <= lc <= 4,
+                cast_arc=("magenta", -8.0, 4.0, 14.0, 18.0, -110.0, 18.0) if 1 <= lc <= 3 else None,
+                mini_prompt=("panel", 6, -1) if lc in (2, 3) else None,
+                crouch_drop_512=20.0 * snap + 16.0 * coil,
                 phase=c,
             )
         elif c < 23:
-            # Beat 3 (F15..F22, snap F17): Authentic POSE-B buoyant knee-tuck hop + double paw cuffs!
+            # Beat 3 (F15..F22, snap F17): High Pose-B cat-pounce knee-tuck hop + double paw cuffs!
             lc = c - 15
             u = lc / 7.0
             hop = math.sin(clamp(u, 0.0, 1.0) * math.pi)
             f = render_pose_512_to_160(
                 rig,
-                dx_160=2.0 * hop,
-                dy_160=-5.2 * hop,
-                torso_deg=-8.0 * hop,
-                head_deg=-7.0 * hop,
+                dx_160=3.2 * hop,
+                dy_160=-8.2 * hop,
+                torso_deg=-14.0 * hop,
+                head_deg=-10.0 * hop,
                 expr="happy_fang",
-                l_ear_deg=-10.0 * hop,
-                r_ear_deg=10.0 * hop,
-                tail_deg=24.0 * hop,
-                tail_wave_phase=u * math.tau * 1.4,
-                tail_wave_amp=18.0,
-                l_thigh_deg=-26.0 * hop,
-                l_shin_deg=34.0 * hop,
-                l_boot_deg=18.0 * hop,
-                r_thigh_deg=-12.0 * hop,
-                r_shin_deg=30.0 * hop,
-                r_boot_deg=16.0 * hop,
-                l_hand_160=(56.0 + 5.0 * hop, 63.0 - 6.0 * hop),
-                r_hand_160=(69.0 + 7.0 * hop, 60.0 - 7.0 * hop),
+                l_ear_deg=-16.0 * hop,
+                r_ear_deg=16.0 * hop,
+                tail_deg=30.0 * hop,
+                tail_wave_phase=u * math.tau * 1.6,
+                tail_wave_amp=24.0,
+                l_thigh_deg=-36.0 * hop,
+                l_shin_deg=46.0 * hop,
+                l_boot_deg=22.0 * hop,
+                r_thigh_deg=-24.0 * hop,
+                r_shin_deg=42.0 * hop,
+                r_boot_deg=20.0 * hop,
+                l_hand_160=(54.0 + 5.0 * hop, 56.0 - 9.0 * hop),
+                r_hand_160=(70.0 + 7.0 * hop, 50.0 - 10.0 * hop),
                 l_pose="paw_boop",
                 r_pose="paw_boop",
                 paw_tuck=True,
+                cast_arc=("cyan", -4.0, 2.0, 9.0, 12.0, -85.0, 35.0) if 2 <= lc <= 4 else None,
                 phase=c,
                 lock_ground=True,
             )
         else:
-            # Beat 4 (F23..F29, snap F25): Backstep hop -> Fierce forward [ENTER] command slam!
+            # Beat 4 (F23..F29, snap F25): High overhead backstep coil -> fierce [ENTER] command slam!
             lc = c - 23
             u = lc / 6.0
-            snap = math.sin(clamp(u, 0.0, 1.0) * math.pi)
-            slam = 1.0 if lc in (2, 3) else max(0.0, 1.0 - abs(lc - 2.5) / 3.0)
+            coil = max(0.0, 1.0 - lc / 1.4)
+            slam = smoothstep(clamp((lc - 0.5) / 1.8, 0.0, 1.0)) * (1.0 - max(0.0, (lc - 3.0) / 3.5) * 0.55)
             f = render_pose_512_to_160(
                 rig,
-                dx_160=-4.0 * snap,
-                dy_160=-4.2 * math.sin(min(1.0, u * 1.3) * math.pi),
-                torso_deg=-6.0 if lc <= 1 else 12.0 * slam,
-                head_deg=4.0 * slam,
+                dx_160=-5.0 * coil + 3.5 * slam,
+                dy_160=-4.6 * math.sin(min(1.0, u * 1.25) * math.pi),
+                torso_deg=-14.0 * coil + 21.0 * slam,
+                head_deg=-7.0 * coil + 7.0 * slam,
                 expr="focused_glow",
-                l_ear_deg=-9.0 * slam,
-                r_ear_deg=9.0 * slam,
-                tail_deg=-20.0 * slam,
-                tail_wave_phase=u * math.tau * 1.5,
-                tail_wave_amp=15.0,
-                l_thigh_deg=-16.0 * slam,
-                l_shin_deg=20.0 * slam,
-                r_thigh_deg=16.0 * slam,
-                l_hand_160=(42.0 - 4.0 * slam, 62.0 - 4.0 * slam),
-                r_hand_160=(74.0 + 10.0 * slam, 56.0 + 13.0 * slam),
+                l_ear_deg=-14.0 * slam,
+                r_ear_deg=14.0 * slam,
+                tail_deg=-24.0 * slam + 14.0 * coil,
+                tail_wave_phase=u * math.tau * 1.6,
+                tail_wave_amp=22.0,
+                l_thigh_deg=24.0 * slam - 12.0 * coil,
+                l_shin_deg=24.0 * slam + 18.0 * coil,
+                r_thigh_deg=-24.0 * slam,
+                r_shin_deg=12.0 * slam,
+                l_hand_160=(38.0 - 6.0 * slam, 58.0 - 4.0 * coil),
+                r_hand_160=(62.0 * coil + (86.0 * slam + 70.0 * (1.0 - slam)) * (1.0 - coil), 36.0 * coil + (65.0 * slam + 62.0 * (1.0 - slam)) * (1.0 - coil)),
                 l_pose="open_cast",
                 r_pose="enter_press",
-                mini_prompt=("enter", 6, 5) if 1 <= lc <= 4 else None,
+                tap_spark=2 <= lc <= 4,
+                cast_arc=("gold", -4.0, -6.0, 12.0, 14.0, -45.0, 75.0) if 2 <= lc <= 4 else None,
+                mini_prompt=("enter", 5, 4) if 1 <= lc <= 4 else None,
+                crouch_drop_512=24.0 * slam,
                 phase=c,
                 lock_ground=True,
             )
         put_cell(2, c, f)
 
     # ROW 3: SKILL (404 POP-UP CASCADE & COB CREATOR SEAL STAMP, F00..F29, maxX <= 262!)
-    # Buoyant conductor leap (F00..F11) -> dynamic Creator Seal slam (F12..F22) -> cushioned A-landing (F23..F29)!
+    # Seamless lock_ground=True throughout: deep coil (F00..F04) -> wide-armed summon leap (F05..F12) -> Cob Seal Slam (F13..F22) -> landing (F23..F29)
     for c in range(COLS):
         u = c / 29.0
         env = math.sin(u * math.pi)
-        lift = -6.0 * math.sin(min(1.0, u * 1.25) * math.pi)
-        stamp = 12 <= c <= 23
-        stamp_u = smoothstep((c - 12) / 6.0) if stamp else 0.0
+        lift = -5.5 * math.sin((c / 22.0) * math.pi) if c <= 22 else 0.0
+        coil_u = math.sin(min(1.0, c / 4.0) * math.pi * 0.5) * max(0.0, 1.0 - max(0, c - 4) / 3.0)
+        raise_u = smoothstep((c - 3.0) / 6.0) * max(0.0, 1.0 - max(0, c - 12) / 3.0)
+        stamp_u = smoothstep((c - 12.0) / 4.0) * (1.0 - max(0.0, (c - 20.0) / 8.0))
         f = render_pose_512_to_160(
             rig,
-            dx_160=-2.0 if c < 10 else 3.5 * env,
+            dx_160=-3.0 * coil_u + 5.0 * stamp_u,
             dy_160=lift,
-            torso_deg=-10.0 * (1.0 - smoothstep(c / 11.0)) if c < 12 else (11.5 * math.sin(min(1.0, (c - 12) / 10.0) * math.pi)),
-            head_deg=-6.0 if c < 11 else 4.0 * env,
+            torso_deg=-15.0 * coil_u - 12.0 * raise_u + 20.0 * stamp_u,
+            head_deg=-9.0 * (coil_u + raise_u * 0.8) + 6.5 * stamp_u,
             expr="focused_glow",
-            l_ear_deg=-10.0 * env,
-            r_ear_deg=10.0 * env,
-            tail_deg=22.0 * math.sin(u * math.tau),
-            tail_wave_phase=u * math.tau * 2.0,
-            tail_wave_amp=17.0,
-            l_thigh_deg=-16.0 * env,
-            l_shin_deg=24.0 * env,
-            r_thigh_deg=14.0 * env,
-            r_shin_deg=16.0 * env,
-            l_hand_160=(42.0 - 5.0 * env, 54.0 - 8.0 * env),
-            r_hand_160=(76.0 + 10.0 * env, 50.0 + (18.0 * stamp_u if stamp else -8.0 * env)),
+            l_ear_deg=-14.0 * env,
+            r_ear_deg=14.0 * env,
+            tail_deg=26.0 * math.sin(u * math.tau * 1.2),
+            tail_wave_phase=u * math.tau * 2.2,
+            tail_wave_amp=22.0,
+            l_thigh_deg=-22.0 * coil_u + 24.0 * stamp_u - 16.0 * raise_u,
+            l_shin_deg=28.0 * coil_u + 26.0 * stamp_u + 26.0 * raise_u,
+            r_thigh_deg=-18.0 * coil_u - 24.0 * stamp_u + 14.0 * raise_u,
+            r_shin_deg=26.0 * coil_u + 10.0 * stamp_u + 20.0 * raise_u,
+            l_hand_160=(
+                46.0 * (1.0 - raise_u - stamp_u) + 32.0 * raise_u + 34.0 * stamp_u,
+                64.0 * (1.0 - raise_u) + 40.0 * raise_u + 18.0 * stamp_u,
+            ),
+            r_hand_160=(
+                58.0 * coil_u + 84.0 * raise_u + 86.0 * stamp_u + 72.0 * max(0.0, 1.0 - coil_u - raise_u - stamp_u),
+                62.0 * coil_u + 38.0 * raise_u + 64.0 * stamp_u + 64.0 * max(0.0, 1.0 - coil_u - raise_u - stamp_u),
+            ),
             l_pose="open_cast",
-            r_pose="enter_press" if stamp else "open_cast",
-            tap_spark=6 <= c <= 21,
-            mini_prompt=("panel", 9, -2) if 4 <= c <= 11 else (("enter", 6, 5) if 14 <= c <= 22 else None),
+            r_pose="enter_press" if c >= 13 and c <= 23 else "open_cast",
+            tap_spark=5 <= c <= 22,
+            cast_arc=("cyan", -6.0, -4.0, 13.0, 17.0, -65.0, 55.0) if 13 <= c <= 20 else None,
+            mini_prompt=("panel", 6, -2) if 6 <= c <= 12 else (("enter", 5, 4) if 14 <= c <= 22 else None),
+            crouch_drop_512=38.0 * coil_u + 26.0 * stamp_u,
             phase=c,
-            lock_ground=c >= 23,
+            lock_ground=True,
         )
         put_cell(3, c, f)
 
@@ -1402,48 +1487,48 @@ def build_character_sheet(rig: dict) -> np.ndarray:
         if c < 15:
             if c <= 10:
                 lu = c / 10.0
-                fl = -7.5 * math.sin(lu * math.pi)
+                fl = -7.2 * math.sin(lu * math.pi)
                 arm_raise = math.sin(lu * math.pi)
                 f = render_pose_512_to_160(
                     rig,
                     dy_160=fl,
-                    torso_deg=-9.0 * arm_raise,
-                    head_deg=-7.0 * arm_raise,
+                    torso_deg=-15.0 * arm_raise,
+                    head_deg=-10.0 * arm_raise,
                     expr="focused_glow",
-                    l_ear_deg=-12.0 * arm_raise,
-                    r_ear_deg=12.0 * arm_raise,
-                    tail_deg=24.0 * math.sin(lu * math.tau),
-                    tail_wave_phase=lu * math.tau * 2.2,
-                    tail_wave_amp=18.0,
-                    l_thigh_deg=-18.0 * arm_raise,
-                    l_shin_deg=32.0 * arm_raise,
-                    l_boot_deg=16.0 * arm_raise,
-                    r_thigh_deg=10.0 * arm_raise,
-                    r_shin_deg=20.0 * arm_raise,
-                    l_hand_160=(38.0 - 6.0 * arm_raise, 52.0 - 10.0 * arm_raise),
-                    r_hand_160=(77.0 + 8.0 * arm_raise, 50.0 - 10.0 * arm_raise),
+                    l_ear_deg=-16.0 * arm_raise,
+                    r_ear_deg=16.0 * arm_raise,
+                    tail_deg=28.0 * math.sin(lu * math.tau),
+                    tail_wave_phase=lu * math.tau * 2.4,
+                    tail_wave_amp=24.0,
+                    l_thigh_deg=-26.0 * arm_raise,
+                    l_shin_deg=42.0 * arm_raise,
+                    l_boot_deg=18.0 * arm_raise,
+                    r_thigh_deg=-12.0 * arm_raise,
+                    r_shin_deg=30.0 * arm_raise,
+                    l_hand_160=(44.0 - 13.0 * arm_raise, 64.0 - 27.0 * arm_raise),
+                    r_hand_160=(70.0 + 14.0 * arm_raise, 62.0 - 27.0 * arm_raise),
                     l_pose="open_cast",
                     r_pose="open_cast",
-                    tap_spark=True,
+                    tap_spark=arm_raise > 0.3,
                     phase=c,
-                    lock_ground=False,
+                    lock_ground=True,
                 )
             else:
                 lu = (c - 11) / 3.0
                 f = render_pose_512_to_160(
                     rig,
-                    torso_deg=4.0 * (1.0 - lu),
-                    head_deg=2.0 * (1.0 - lu),
+                    torso_deg=5.0 * (1.0 - lu),
+                    head_deg=2.5 * (1.0 - lu),
                     expr="focused_glow" if c <= 12 else "smile",
-                    tail_deg=6.0 * (1.0 - lu),
+                    tail_deg=8.0 * (1.0 - lu),
                     tail_wave_phase=lu * 2.5,
-                    tail_wave_amp=10.0,
-                    l_thigh_deg=-12.0 + 4.0 * lu,
+                    tail_wave_amp=14.0,
+                    l_thigh_deg=12.0 - 4.0 * lu,
                     l_shin_deg=-6.0 + 3.0 * lu,
-                    r_thigh_deg=12.0 - 4.0 * lu,
+                    r_thigh_deg=-12.0 + 4.0 * lu,
                     r_shin_deg=7.0 - 3.0 * lu,
-                    l_hand_160=(44.0, 68.0 + 3.0 * lu),
-                    r_hand_160=(73.0, 66.0 + 4.0 * lu),
+                    l_hand_160=(42.0, 66.0 + 3.0 * lu),
+                    r_hand_160=(74.0, 64.0 + 4.0 * lu),
                     l_pose="open_cast",
                     r_pose="relaxed_open",
                     phase=c,
@@ -1454,54 +1539,58 @@ def build_character_sheet(rig: dict) -> np.ndarray:
             if lc <= 9:
                 # F15..F24: 2-stage Astral Ascension (heart gather -> sovereign cross-spread!)
                 cu = lc / 9.0
-                fl = -8.0 * smoothstep(min(1.0, lc / 3.5))
                 gather = max(0.0, 1.0 - lc / 4.0)
                 spread = smoothstep(clamp((lc - 3.0) / 5.0, 0.0, 1.0))
+                fl = -7.6 * spread
                 f = render_pose_512_to_160(
                     rig,
                     dy_160=fl,
-                    torso_deg=4.0 * gather - 10.0 * spread,
-                    head_deg=3.0 * gather - 7.0 * spread,
+                    torso_deg=7.0 * gather - 16.0 * spread,
+                    head_deg=4.5 * gather - 10.0 * spread,
                     expr="focused_glow",
-                    l_ear_deg=-12.0 * spread,
-                    r_ear_deg=12.0 * spread,
-                    tail_deg=26.0 * math.sin(cu * math.tau * 1.4),
+                    l_ear_deg=-16.0 * spread,
+                    r_ear_deg=16.0 * spread,
+                    tail_deg=30.0 * math.sin(cu * math.tau * 1.4),
                     tail_wave_phase=cu * math.tau * 2.5,
-                    tail_wave_amp=19.0,
-                    l_thigh_deg=-20.0 * spread - 8.0 * gather,
-                    l_shin_deg=34.0 * spread + 14.0 * gather,
-                    r_thigh_deg=12.0 * spread,
-                    r_shin_deg=18.0 * spread,
-                    l_hand_160=(50.0 * gather + 34.0 * spread, 60.0 * gather + 44.0 * spread),
-                    r_hand_160=(62.0 * gather + 80.0 * spread, 60.0 * gather + 42.0 * spread),
+                    tail_wave_amp=24.0,
+                    l_thigh_deg=-26.0 * spread - 12.0 * gather,
+                    l_shin_deg=42.0 * spread + 22.0 * gather,
+                    r_thigh_deg=-12.0 * spread - 8.0 * gather,
+                    r_shin_deg=26.0 * spread + 18.0 * gather,
+                    l_hand_160=(52.0 * gather + 30.0 * spread, 58.0 * gather + 36.0 * spread),
+                    r_hand_160=(62.0 * gather + 86.0 * spread, 56.0 * gather + 34.0 * spread),
                     l_pose="open_cast",
                     r_pose="open_cast",
                     tap_spark=True,
+                    crouch_drop_512=26.0 * gather,
                     phase=c,
-                    lock_ground=False,
+                    lock_ground=lc <= 4,
                 )
             elif lc == 10:
                 # F25: Explosive full-extension Supernova Command Strike!
                 f = render_pose_512_to_160(
                     rig,
-                    dx_160=4.0,
+                    dx_160=5.5,
                     dy_160=-2.0,
-                    torso_deg=13.0,
-                    head_deg=5.0,
+                    torso_deg=22.0,
+                    head_deg=8.0,
                     expr="focused_glow",
-                    l_ear_deg=-10.0,
-                    r_ear_deg=10.0,
-                    tail_deg=-22.0,
+                    l_ear_deg=-14.0,
+                    r_ear_deg=14.0,
+                    tail_deg=-26.0,
                     tail_wave_phase=3.2,
-                    tail_wave_amp=18.0,
-                    l_thigh_deg=-16.0,
-                    l_shin_deg=16.0,
-                    r_thigh_deg=18.0,
-                    l_hand_160=(38.0, 62.0),
-                    r_hand_160=(85.0, 56.0),
+                    tail_wave_amp=22.0,
+                    l_thigh_deg=26.0,
+                    l_shin_deg=24.0,
+                    r_thigh_deg=-26.0,
+                    r_shin_deg=10.0,
+                    l_hand_160=(32.0, 60.0),
+                    r_hand_160=(88.0, 50.0),
                     l_pose="open_cast",
                     r_pose="open_cast",
                     tap_spark=True,
+                    cast_arc=("gold", -6.0, 0.0, 14.0, 18.0, -80.0, 50.0),
+                    crouch_drop_512=26.0,
                     phase=c,
                     lock_ground=True,
                 )
@@ -1510,18 +1599,18 @@ def build_character_sheet(rig: dict) -> np.ndarray:
                 ru = (lc - 11) / 3.0
                 f = render_pose_512_to_160(
                     rig,
-                    torso_deg=5.0 * (1.0 - ru),
-                    head_deg=2.5 * (1.0 - ru),
+                    torso_deg=6.0 * (1.0 - ru),
+                    head_deg=3.0 * (1.0 - ru),
                     expr="smile",
-                    tail_deg=6.0 * (1.0 - ru),
+                    tail_deg=8.0 * (1.0 - ru),
                     tail_wave_phase=ru * 2.0,
-                    tail_wave_amp=10.0,
-                    l_thigh_deg=-12.0 + 4.0 * ru,
-                    l_shin_deg=-8.0 + 3.0 * ru,
-                    r_thigh_deg=13.0 - 4.0 * ru,
-                    r_shin_deg=8.0 - 3.0 * ru,
-                    l_hand_160=(45.0, 69.0 + 3.0 * ru),
-                    r_hand_160=(74.0, 67.0 + 4.0 * ru),
+                    tail_wave_amp=14.0,
+                    l_thigh_deg=12.0 - 4.0 * ru,
+                    l_shin_deg=-6.0 + 3.0 * ru,
+                    r_thigh_deg=-12.0 + 4.0 * ru,
+                    r_shin_deg=7.0 - 3.0 * ru,
+                    l_hand_160=(44.0, 68.0 + 3.0 * ru),
+                    r_hand_160=(74.0, 66.0 + 4.0 * ru),
                     l_pose="relaxed_open",
                     r_pose="relaxed_open",
                     phase=c,
@@ -1595,25 +1684,25 @@ def build_character_sheet(rig: dict) -> np.ndarray:
     # ROW 6: DASH / CTRL+Z GLITCH BLINK (Sleek aerodynamic hover-glide with swept sleeves & S-tail)
     for c in range(COLS):
         u = c / 29.0
-        tilt = 16.0 + 2.5 * math.sin(u * math.tau)
+        tilt = 21.0 + 3.0 * math.sin(u * math.tau)
         f = render_pose_512_to_160(
             rig,
-            dx_160=4.0,
-            dy_160=-2.6 + 0.8 * math.sin(u * math.tau),
+            dx_160=5.0,
+            dy_160=-3.4 + 1.0 * math.sin(u * math.tau),
             torso_deg=tilt,
-            head_deg=6.0,
+            head_deg=8.0,
             expr="focused_glow",
-            l_ear_deg=-12.0,
-            r_ear_deg=12.0,
-            tail_deg=-24.0 + 6.0 * math.sin(u * math.tau),
-            tail_wave_phase=u * math.tau * 2.0,
-            tail_wave_amp=14.0,
-            l_thigh_deg=-22.0,
-            l_shin_deg=18.0,
-            r_thigh_deg=18.0,
-            r_shin_deg=10.0,
-            l_hand_160=(34.0, 62.0),
-            r_hand_160=(78.0, 60.0),
+            l_ear_deg=-14.0,
+            r_ear_deg=14.0,
+            tail_deg=-28.0 + 8.0 * math.sin(u * math.tau),
+            tail_wave_phase=u * math.tau * 2.2,
+            tail_wave_amp=18.0,
+            l_thigh_deg=26.0,
+            l_shin_deg=24.0,
+            r_thigh_deg=-18.0,
+            r_shin_deg=12.0,
+            l_hand_160=(31.0, 56.0),
+            r_hand_160=(82.0, 54.0),
             l_pose="open_cast",
             r_pose="open_cast",
             tap_spark=True,
@@ -1629,23 +1718,24 @@ def build_character_sheet(rig: dict) -> np.ndarray:
         cast = 10 <= c <= 22
         f = render_pose_512_to_160(
             rig,
-            torso_deg=10.0,
-            head_deg=2.5,
+            torso_deg=13.0,
+            head_deg=4.0,
             expr="focused_glow" if cast else "smile",
-            tail_deg=12.0 * math.sin(u * math.tau),
+            tail_deg=14.0 * math.sin(u * math.tau),
             tail_wave_phase=u * math.tau,
-            tail_wave_amp=12.0,
+            tail_wave_amp=15.0,
             l_thigh_deg=-34.0,
             l_shin_deg=34.0,
             r_thigh_deg=32.0,
             r_shin_deg=36.0,
             crouch_drop_512=drop,
-            l_hand_160=(48.0, 80.0),
-            r_hand_160=(79.0 if cast else 73.0, 74.0 if cast else 78.0),
+            l_hand_160=(48.0, 78.0),
+            r_hand_160=(83.0 if cast else 73.0, 68.0 if cast else 78.0),
             l_pose="paw_boop",
             r_pose="finger_tap" if cast else "open_cast",
             tap_spark=cast,
             paw_tuck=not cast,
+            cast_arc=("cyan", -4.0, 0.0, 9.0, 11.0, -70.0, 45.0) if 12 <= c <= 20 else None,
             mini_prompt=("panel", 4, -2) if cast else None,
             phase=c,
             lock_ground=True,
@@ -1664,8 +1754,8 @@ def build_character_sheet(rig: dict) -> np.ndarray:
         elif c < 23:
             au = (c - 4) / 18.0
             drop = 0.0
-            dy = -9.0 * math.sin(au * math.pi)
-            th_l, sh_l, th_r, sh_r = -22.0, 34.0, 14.0, 26.0
+            dy = -9.5 * math.sin(au * math.pi)
+            th_l, sh_l, th_r, sh_r = -26.0, 38.0, -14.0, 30.0
             lock_g = False
             expr_j = "happy_fang"
         else:
@@ -1679,21 +1769,21 @@ def build_character_sheet(rig: dict) -> np.ndarray:
         f = render_pose_512_to_160(
             rig,
             dy_160=dy,
-            torso_deg=6.0,
-            head_deg=-3.0 if c < 23 else 2.0,
+            torso_deg=9.0 if c < 23 else 3.0,
+            head_deg=-5.0 if c < 23 else 2.0,
             expr=expr_j,
-            l_ear_deg=-8.0,
-            r_ear_deg=8.0,
-            tail_deg=18.0 * math.sin(u * math.tau),
+            l_ear_deg=-12.0,
+            r_ear_deg=12.0,
+            tail_deg=22.0 * math.sin(u * math.tau),
             tail_wave_phase=u * math.tau * 2.0,
-            tail_wave_amp=15.0,
+            tail_wave_amp=18.0,
             l_thigh_deg=th_l,
             l_shin_deg=sh_l,
             r_thigh_deg=th_r,
             r_shin_deg=sh_r,
             crouch_drop_512=drop,
-            l_hand_160=(40.0, 58.0 + dy * 0.4),
-            r_hand_160=(77.0, 56.0 + dy * 0.4),
+            l_hand_160=(36.0, 50.0 + dy * 0.4),
+            r_hand_160=(81.0, 48.0 + dy * 0.4),
             l_pose="open_cast",
             r_pose="open_cast",
             phase=c,
@@ -1704,23 +1794,25 @@ def build_character_sheet(rig: dict) -> np.ndarray:
     # ROW 9: VICTORY (Bouncy Pose-B Happy Fang Celebration, Waving Holo Hand & Happy Wagging Tail, minVictoryH >= 150)
     for c in range(COLS):
         u = c / 29.0
-        hop = -3.4 * abs(math.sin(u * math.tau))
+        hop = -5.4 * abs(math.sin(u * math.tau))
         wave = math.sin(u * math.tau * 2.0)
         f = render_pose_512_to_160(
             rig,
             dy_160=hop,
-            torso_deg=-4.5 + 3.0 * wave,
-            head_deg=-5.0 + 3.0 * wave,
+            torso_deg=-6.5 + 5.0 * wave,
+            head_deg=-7.0 + 4.5 * wave,
             expr="happy_fang" if c % 20 < 10 else "wink",
-            l_ear_deg=-10.0 * abs(wave),
-            r_ear_deg=10.0 * abs(wave),
-            tail_deg=20.0 * wave,
-            tail_wave_phase=u * math.tau * 2.5,
-            tail_wave_amp=18.0,
-            l_thigh_deg=-6.0,
-            r_thigh_deg=8.0,
-            l_hand_160=(49.0, 62.0 - 3.0 * abs(wave)),
-            r_hand_160=(76.0 + 4.0 * wave, 52.0 - 5.0 * abs(wave)),
+            l_ear_deg=-14.0 * abs(wave),
+            r_ear_deg=14.0 * abs(wave),
+            tail_deg=24.0 * wave,
+            tail_wave_phase=u * math.tau * 2.6,
+            tail_wave_amp=22.0,
+            l_thigh_deg=-10.0 * abs(wave),
+            l_shin_deg=16.0 * abs(wave),
+            r_thigh_deg=10.0,
+            r_shin_deg=14.0 * abs(wave),
+            l_hand_160=(46.0 - 4.0 * wave, 58.0 - 6.0 * abs(wave)),
+            r_hand_160=(78.0 + 7.0 * wave, 39.0 - 6.0 * abs(wave)),
             l_pose="paw_boop",
             r_pose="open_cast",
             tap_spark=True,
@@ -2006,29 +2098,52 @@ def build_vfx_sheet() -> np.ndarray:
                     draw_star4_104(cell, int(cx + math.cos(a_s) * 38), int(cy + math.sin(a_s) * 38), 3, C_WHITE if k % 2 == 0 else C_GOLD)
                 draw_star4_104(cell, cx, cy, 9, C_CYAN_LIGHT, C_WHITE)
             elif r == 4:
-                # Row 4: Luminous Spindle-Tapered Nebula Plasma Pillar & Supernova Ray Segment!
-                # Taper cleanly toward top & bottom (y=4..100) so single pillars erupt high AND segments chain cleanly
-                add_vfx_radial_aura(cell, cx, cy, 46, (34, 211, 238), 118)
-                for y in range(6, 98):
-                    yv = (y - 6) / 92.0
-                    taper = math.sin(yv * math.pi)
-                    hw = 3.0 + 18.0 * (taper ** 0.72) + 2.5 * math.sin(yv * 14.0 - u * math.tau * 2.0)
-                    for dx in range(-int(hw), int(hw) + 1):
-                        nx = abs(dx) / max(1.0, hw)
-                        if nx < 0.28:
-                            col = C_WHITE
-                        elif nx < 0.56:
-                            col = C_CYAN_LIGHT if ((y + c) % 4 != 0) else C_GOLD
-                        elif nx < 0.80:
-                            col = C_MAGENTA if (y % 6 < 3) else C_CYAN
-                        else:
-                            col = (168, 85, 247, 165)
-                        put_vfx_px(cell, cx + dx, y, col)
-                # Spiraling double-helix energy beads ascending the pillar
-                for k in range(8):
-                    yk = int(round(12 + ((k / 8.0 - u) % 1.0) * 78))
-                    xk = cx + int(round(math.sin(yk * 0.14 + u * math.tau) * 18))
-                    draw_star4_104(cell, xk, yk, 3, C_GOLD if k % 2 == 0 else C_WHITE)
+                # Row 4: Expanding 3-Arm Cosmic Supernova Galaxy Vortex & Counter-Rotating Starlight Rings!
+                # Zero vertical pole/spindle shape — purely radial spiral nebula swirl + orbital crescents!
+                ang = u * math.tau
+                pulse_r = 34.0 + 8.0 * math.sin(ang * 2.0)
+                add_vfx_radial_aura(cell, cx, cy, pulse_r + 6.0, (168, 85, 247), 115)
+                add_vfx_radial_aura(cell, cx, cy, pulse_r * 0.72, (34, 211, 238), 125)
+
+                # Two counter-rotating tilted elliptical starlight rings
+                for tilt_deg, r_x, r_y, r_col, rot_s in (
+                    (24.0, 39.0, 17.0, C_CYAN, 1.0),
+                    (-26.0, 37.0, 18.0, C_MAGENTA, -1.5),
+                ):
+                    tr = math.radians(tilt_deg)
+                    ct, st = math.cos(tr), math.sin(tr)
+                    ring_steps = 72
+                    for rs in range(ring_steps):
+                        th = (rs / ring_steps) * math.tau + ang * rot_s
+                        # Dashed constellation arcs so rotation pops vividly at 30fps
+                        if (rs % 9) >= 7:
+                            continue
+                        lx = r_x * math.cos(th)
+                        ly = r_y * math.sin(th)
+                        px = int(round(cx + lx * ct - ly * st))
+                        py = int(round(cy + lx * st + ly * ct))
+                        put_vfx_px(cell, px, py, r_col)
+                        if rs % 12 == 0:
+                            draw_star4_104(cell, px, py, 3, C_GOLD if rs % 24 == 0 else C_WHITE)
+
+                # 3 logarithmic spiral galaxy arms of cyan / magenta / gold pixel stardust
+                for arm in range(3):
+                    base_a = ang + arm * (math.tau / 3.0)
+                    arm_col = C_CYAN_LIGHT if arm == 0 else (C_PINK if arm == 1 else C_LILAC)
+                    for r_step in range(5, 40):
+                        phi = base_a + r_step * 0.145
+                        gx = int(round(cx + math.cos(phi) * r_step))
+                        gy = int(round(cy + math.sin(phi) * r_step))
+                        alpha_arm = int(clamp(235.0 * (1.0 - (r_step - 5) / 42.0), 80, 235))
+                        put_vfx_px(cell, gx, gy, (arm_col[0], arm_col[1], arm_col[2], alpha_arm))
+                        if r_step < 24:
+                            put_vfx_px(cell, gx + 1, gy, (C_CYAN[0], C_CYAN[1], C_CYAN[2], alpha_arm // 2))
+                        if r_step in (12, 22, 32):
+                            draw_star4_104(cell, gx, gy, 2, C_GOLD if r_step == 22 else C_WHITE)
+
+                # Crisp radiant supernova star-core in exact center (transparent aura, zero opaque vertical bar)
+                draw_star4_104(cell, cx, cy, 10 + (c % 3), C_CYAN_LIGHT, C_WHITE)
+                draw_star4_104(cell, cx, cy, 5, C_GOLD, C_WHITE)
             elif r == 5:
                 # Row 5: Animated Cyber-Neko Orbital Terminal Drone (spinning holographic waveform)
                 bob = int(round(4.0 * math.sin(u * math.tau)))
@@ -2303,7 +2418,7 @@ def verify_and_dump_qa(sheet: np.ndarray, vfx: np.ndarray):
 
     v_strip = Image.new("RGBA", (8 * VFX_CELL, VFX_CELL + 24), (16, 14, 34, 255))
     vdr = ImageDraw.Draw(v_strip)
-    v_labels = ["R0 PRISM", "R1 404", "R2 Cob", "R3 SEAL", "R4 PILLAR", "R5 ORB", "R6 AFK", "R7 CORE"]
+    v_labels = ["R0 PRISM", "R1 404", "R2 Cob", "R3 SEAL", "R4 GALAXY", "R5 ORB", "R6 AFK", "R7 CORE"]
     for vr in range(8):
         cell_im = Image.fromarray(
             vfx[vr * VFX_CELL : (vr + 1) * VFX_CELL, 10 * VFX_CELL : 11 * VFX_CELL], "RGBA"
@@ -2311,6 +2426,35 @@ def verify_and_dump_qa(sheet: np.ndarray, vfx: np.ndarray):
         v_strip.alpha_composite(cell_im, (vr * VFX_CELL, 24))
         vdr.text((vr * VFX_CELL + 8, 6), v_labels[vr], fill=(34, 211, 238, 255))
     v_strip.save(SCRATCH_DIR / "nyx_ex_vfx_check.png")
+
+    # Compact multi-frame IDLE & Combat action progression strip for motion audit
+    seq_picks = [
+        ("IDLE F00", 0, 0),
+        ("IDLE F08", 0, 8),
+        ("IDLE F15", 0, 15),
+        ("IDLE F22", 0, 22),
+        ("B1 COIL F00", 2, 0),
+        ("B1 TAP F03", 2, 3),
+        ("B2 COIL F08", 2, 8),
+        ("B2 SWIPE F10", 2, 10),
+        ("B3 HOP F18", 2, 18),
+        ("B4 COIL F23", 2, 23),
+        ("B4 SLAM F25", 2, 25),
+        ("SK COIL F02", 3, 2),
+        ("SK RISE F09", 3, 9),
+        ("SK SLAM F16", 3, 16),
+    ]
+    m_strip = Image.new("RGBA", (7 * CELL_W, 2 * CELL_H), (24, 16, 44, 255))
+    mdr = ImageDraw.Draw(m_strip)
+    for idx, (lbl, rr, cc) in enumerate(seq_picks):
+        gx, gy = (idx % 7) * CELL_W, (idx // 7) * CELL_H
+        cell_im = Image.fromarray(
+            sheet[rr * CELL_H : (rr + 1) * CELL_H, cc * CELL_W : (cc + 1) * CELL_W], "RGBA"
+        )
+        m_strip.alpha_composite(cell_im, (gx, gy))
+        mdr.rectangle([gx, gy, gx + CELL_W - 1, gy + CELL_H - 1], outline=(100, 116, 139, 255))
+        mdr.text((gx + 6, gy + 4), lbl, fill=(34, 211, 238, 255))
+    m_strip.save(SCRATCH_DIR / "nyx_ex_motion_strip_v128.png")
 
 
 def main():
