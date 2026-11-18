@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps150';
-import { VFXManager } from './engine/VFXManager.js?v=30fps150';
-import { PixelForge } from './engine/PixelForge.js?v=30fps150';
-import { AudioManager } from './engine/AudioManager.js?v=30fps150';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps150';
-import { Fighter } from './entities/Fighter.js?v=30fps150';
-import { Warrior } from './entities/Warrior.js?v=30fps150';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps150';
-import { FireMage } from './entities/FireMage.js?v=30fps150';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps150';
-import { Archer } from './entities/Archer.js?v=30fps150';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps150';
-import { Priestess } from './entities/Priestess.js?v=30fps150';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps150';
-import { Reaper } from './entities/Reaper.js?v=30fps150';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps150';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps150';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps150';
-import { Titan } from './entities/Titan.js?v=30fps150';
-import { TitanEx } from './entities/TitanEx.js?v=30fps150';
-import { Ronin } from './entities/Ronin.js?v=30fps150';
-import { RoninEx } from './entities/RoninEx.js?v=30fps150';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps150';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps150';
-import { IceMage } from './entities/IceMage.js?v=30fps150';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps150';
-import { Android } from './entities/Android.js?v=30fps150';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps150';
-import { NyxEx } from './entities/NyxEx.js?v=30fps150';
+import { Renderer } from './engine/Renderer.js?v=30fps151';
+import { VFXManager } from './engine/VFXManager.js?v=30fps151';
+import { PixelForge } from './engine/PixelForge.js?v=30fps151';
+import { AudioManager } from './engine/AudioManager.js?v=30fps151';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps151';
+import { Fighter } from './entities/Fighter.js?v=30fps151';
+import { Warrior } from './entities/Warrior.js?v=30fps151';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps151';
+import { FireMage } from './entities/FireMage.js?v=30fps151';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps151';
+import { Archer } from './entities/Archer.js?v=30fps151';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps151';
+import { Priestess } from './entities/Priestess.js?v=30fps151';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps151';
+import { Reaper } from './entities/Reaper.js?v=30fps151';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps151';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps151';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps151';
+import { Titan } from './entities/Titan.js?v=30fps151';
+import { TitanEx } from './entities/TitanEx.js?v=30fps151';
+import { Ronin } from './entities/Ronin.js?v=30fps151';
+import { RoninEx } from './entities/RoninEx.js?v=30fps151';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps151';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps151';
+import { IceMage } from './entities/IceMage.js?v=30fps151';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps151';
+import { Android } from './entities/Android.js?v=30fps151';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps151';
+import { NyxEx } from './entities/NyxEx.js?v=30fps151';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps150';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps150';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps150';
+} from './adventure/AdventureManager.js?v=30fps151';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps151';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps151';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -3479,7 +3479,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps150');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps151');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3575,7 +3575,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps150'
+          'v=30fps151'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4179,19 +4179,22 @@ export class Game {
 
     if (canSpeak) {
       for (const spk of voicedQueue) {
+        const pfx = this.audio.getVoicePackPrefix?.(spk.heroId);
+        if (pfx) this.audio.loadVoiceKey?.(`${pfx}_intro`);
         this.audio.preloadHeroVoicePack?.(spk.heroId);
         PixelForge.ensureIntroBustLoaded?.(spk.heroId);
       }
       this.audio.preDuckSfxForVoice?.(3, 550);
     }
 
-    const act1Dur = voicedQueue.length >= 2 ? 1.15 : 1.25;
-    const slotDur = voicedQueue.length >= 2 ? 3.35 : 2.90;
+    const act1Dur = voicedQueue.length >= 2 ? (forceInTest ? 1.25 : 1.65) : 1.25;
+    const slotDur = voicedQueue.length >= 2 ? (forceInTest ? 3.50 : 4.75) : 2.90;
     this._roundIntroAct1Dur = act1Dur;
     this._roundIntroSlotDur = slotDur;
     this._roundIntroQueue = voicedQueue;
     this._roundIntroSpeakerIdx = 0;
     this._introSpeakerElapsed = 0;
+    this._introVoiceHeardBusy = false;
     this._introPostVoiceSilenceSec = 0;
     this._introMouthStage = undefined;
     this._introMouthHoldSec = 0;
@@ -6302,24 +6305,26 @@ export class Game {
       if (isDualIntro && this.roundIntroElapsed >= act1Dur) {
         this._introSpeakerElapsed = (this._introSpeakerElapsed || 0) + rawDt;
 
-        // Check dynamic voice-end advance (so P1 -> P2 & P2 -> ENGAGE! feel tight with zero dead air)
+        // Wait until the speaker's MP3 actually starts playing, then hold a calm 0.62s post-line smirk/blink beat after it finishes!
         const hasVoiceProbe = typeof this.audio?.isHeroVoiceBusy === 'function';
-        if (this._roundIntroVoiceFired && this._introSpeakerElapsed >= 1.55 && hasVoiceProbe) {
-          if (!this.audio.isHeroVoiceBusy()) {
-            this._introPostVoiceSilenceSec = (this._introPostVoiceSilenceSec || 0) + rawDt;
-          } else {
+        if (this._roundIntroVoiceFired && hasVoiceProbe) {
+          if (this.audio.isHeroVoiceBusy()) {
+            this._introVoiceHeardBusy = true;
             this._introPostVoiceSilenceSec = 0;
+          } else if (this._introVoiceHeardBusy || this._introSpeakerElapsed >= 2.2) {
+            this._introPostVoiceSilenceSec = (this._introPostVoiceSilenceSec || 0) + rawDt;
           }
         }
 
         const slotExpired =
           this._introSpeakerElapsed >= slotDur ||
-          (this._introPostVoiceSilenceSec || 0) >= 0.24;
+          (this._introPostVoiceSilenceSec || 0) >= 0.62;
 
         if (slotExpired && (this._roundIntroSpeakerIdx || 0) + 1 < queue.length) {
           this._roundIntroSpeakerIdx = (this._roundIntroSpeakerIdx || 0) + 1;
           this._roundIntroFighter = queue[this._roundIntroSpeakerIdx];
           this._introSpeakerElapsed = 0;
+          this._introVoiceHeardBusy = false;
           this._introPostVoiceSilenceSec = 0;
           this._introMouthStage = 0;
           this._introMouthHoldSec = 0;
@@ -6328,7 +6333,7 @@ export class Game {
           const remSpeakers = queue.length - this._roundIntroSpeakerIdx;
           this.roundIntroTimer = Math.max(0.2, remSpeakers * slotDur);
         } else if (
-          (this._introPostVoiceSilenceSec || 0) >= 0.24 &&
+          (this._introPostVoiceSilenceSec || 0) >= 0.62 &&
           (this._roundIntroSpeakerIdx || 0) + 1 >= queue.length
         ) {
           this.roundIntroTimer = Math.min(this.roundIntroTimer, rawDt * 0.5);
@@ -6666,15 +6671,16 @@ export class Game {
 
   _stepIntroTalkArticulation(dt, amp) {
     const a = Math.max(0, Math.min(1, Number(amp) || 0));
-    const rawTarget = a <= 0.14 ? 0 : a <= 0.44 ? 1 : 2;
+    // 4-stage natural vowel envelope: 0=Closed(F0), 1=Small(F3), 2=Mid(F4), 3=Wide(F5)
+    const rawTarget = a <= 0.07 ? 0 : a <= 0.30 ? 1 : a <= 0.62 ? 2 : 3;
     if (this._introMouthStage === undefined || this._introMouthStage === null) {
       this._introMouthStage = 0;
       this._introMouthHoldSec = 0;
     }
     this._introMouthHoldSec = (this._introMouthHoldSec || 0) + Math.max(0.001, dt || 0.016);
     if (rawTarget !== this._introMouthStage) {
-      // Hold half-open F3 (`stage === 1`) for >= 55ms whenever opening `0 -> 2` or closing `2 -> 0` so lips never snap!
-      const minHold = this._introMouthStage === 1 ? 0.055 : 0.04;
+      // Natural human syllable cadence (~65ms crisp vowel attack, ~85ms cushioned close — zero 22Hz strobe!)
+      const minHold = rawTarget > this._introMouthStage ? 0.065 : 0.085;
       if (this._introMouthHoldSec >= minHold) {
         this._introMouthStage += rawTarget > this._introMouthStage ? 1 : -1;
         this._introMouthHoldSec = 0;
@@ -6687,26 +6693,34 @@ export class Game {
     const a = Math.max(0, Math.min(1, Number(amp) || 0));
     const t = Math.max(0, Number(elapsed) || 0);
     const stage =
-      forcedStage === 0 || forcedStage === 1 || forcedStage === 2
+      forcedStage === 0 || forcedStage === 1 || forcedStage === 2 || forcedStage === 3
         ? forcedStage
-        : a <= 0.14
+        : a <= 0.07
           ? 0
-          : a <= 0.44
+          : a <= 0.30
             ? 1
-            : 2;
+            : a <= 0.62
+              ? 2
+              : 3;
+
     if (stage === 0) {
-      // Inject sculpted closed Eye-Blink (F2) for 0.11s every 1.8s during breath pauses
-      const blinkPhase = ((t % 1.8) + 1.8) % 1.8;
-      if (blinkPhase >= 1.69) return 2;
-      // Otherwise cycle Neutral Idle A (F0) <-> Sway/Breath B (F1) smoothly
-      return Math.floor(t * 7.0) % 2 === 0 ? 0 : 1;
+      // 4-beat cushioned anime blink every 2.5s: F0 -> F1 (half-lid 55ms) -> F2 (closed 110ms) -> F1 (half-lid 55ms) -> F0!
+      const blinkPhase = ((t % 2.5) + 2.5) % 2.5;
+      if (blinkPhase >= 2.28 && blinkPhase < 2.335) return 1;
+      if (blinkPhase >= 2.335 && blinkPhase < 2.445) return 2;
+      if (blinkPhase >= 2.445) return 1;
+      return 0;
     }
     if (stage === 1) {
-      // Half-Open Transition / Soft Syllable -> F3
+      // Small / Soft Syllable ('m/s/i/e') -> F3
       return 3;
     }
-    // Wide-Open Syllable -> alternate Wide Speak (F4) <-> Peak Emphasis / Aura Surge (F5)
-    return 4 + (Math.floor(t * 22.0) % 2);
+    if (stage === 2) {
+      // Medium Rounded Vowel ('o/u/eh') -> F4
+      return 4;
+    }
+    // Wide Accented Vowel ('a!') -> F5, gently articulating F5 <-> F4 at natural ~5.5Hz (180ms/beat) on sustained shouts!
+    return Math.floor(t * 5.5) % 4 === 3 ? 4 : 5;
   }
 
   _renderRoundIntroOverlay(ctx) {
@@ -7128,9 +7142,9 @@ export class Game {
             ? Math.max(0, Math.min(this.roundIntroTimer || slotDur, slotDur - spkElapsed))
             : Math.max(0, this.roundIntroTimer || 0);
 
-        const inSlideT = Math.min(1, spkElapsed / 0.22);
+        const inSlideT = Math.min(1, spkElapsed / 0.30);
         const inEase = 1 - Math.pow(1 - inSlideT, 3);
-        const outSlideT = spkRem < 0.20 ? Math.max(0, spkRem / 0.20) : 1;
+        const outSlideT = spkRem < 0.28 ? Math.max(0, spkRem / 0.28) : 1;
         const outEase = 1 - Math.pow(1 - outSlideT, 2);
         const slideEase = Math.min(inEase, outEase);
 
@@ -7199,49 +7213,37 @@ export class Game {
         }
         ctx.globalAlpha = turnAlpha;
 
-        // 2. Giant Half-Screen Animated Talking Bust (`bustSize x bustSize`)
+        // 2. Giant Half-Screen Animated Talking Bust (`bustSize x bustSize` — rock-steady once settled, 0 buoy-bobbing!)
         const sideMargin = cw >= 960 ? 28 : cw >= 520 ? 16 : Math.max(12, (cw - bustSize) >> 1);
-        const poiseDx = Math.round(Math.cos(elapsed * 2.8) * 2) * (isRightSpeaker ? -1 : 1);
-        const targetBustX =
-          (isPortraitNarrow
-            ? isRightSpeaker
-              ? cw - 16 - bustSize
-              : 16
-            : isRightSpeaker
-              ? cw - sideMargin - bustSize
-              : sideMargin) + poiseDx;
-        const bustSlideDx = Math.round((1 - slideEase) * (isRightSpeaker ? 92 : -92));
+        const targetBustX = isPortraitNarrow
+          ? isRightSpeaker
+            ? cw - 16 - bustSize
+            : 16
+          : isRightSpeaker
+            ? cw - sideMargin - bustSize
+            : sideMargin;
+        const bustSlideDx = Math.round((1 - slideEase) * (isRightSpeaker ? 108 : -108));
         const bustX = Math.max(4, Math.min(cw - bustSize - 4, targetBustX + bustSlideDx));
-        const baseBustY = isPortraitNarrow
+        const bustY = isPortraitNarrow
           ? bandY + 14
           : Math.max(8, Math.min(ch - bustSize - 8, Math.round(ch * 0.5 - bustSize * 0.5)));
 
         const amp = Math.max(0, Math.min(1, Number(this.audio?.getVoiceAmplitude?.() || 0)));
         const activeMouthStage =
-          this._introMouthStage === 0 || this._introMouthStage === 1 || this._introMouthStage === 2
+          this._introMouthStage === 0 ||
+          this._introMouthStage === 1 ||
+          this._introMouthStage === 2 ||
+          this._introMouthStage === 3
             ? this._introMouthStage
             : null;
         const talkFrameIdx = Game.computeIntroTalkFrameIndex(amp, elapsed, activeMouthStage);
-        const breathWaveDy = Math.round(Math.sin(elapsed * 4.2) * 3);
-        const syllableLiftDy = amp > 0.44 ? -2 : amp > 0.14 ? -1 : 0;
-        const bustY = Math.max(
-          4,
-          Math.min(ch - bustSize - 4, baseBustY + breathWaveDy + syllableLiftDy)
-        );
 
-        // Pulsing hero-aura rim glow + crisp obsidian bust stage
-        const auraPad = amp > 0.44 ? 8 : 5;
-        ctx.globalAlpha = turnAlpha * (amp > 0.44 ? 0.55 : 0.32);
+        // Soft obsidian shadow drop + sleek subtle hero-accent edge (no heavy white triple-box!)
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+        fillRectClamped(bustX - 4, bustY - 4, bustSize + 8, bustSize + 10);
         ctx.fillStyle = spkCol;
-        fillRectClamped(bustX - auraPad, bustY - auraPad, bustSize + auraPad * 2, bustSize + auraPad * 2);
-        ctx.globalAlpha = turnAlpha;
-
-        ctx.fillStyle = '#020617';
-        fillRectClamped(bustX - 5, bustY - 5, bustSize + 10, bustSize + 10);
-        ctx.fillStyle = spkCol;
-        fillRectClamped(bustX - 3, bustY - 3, bustSize + 6, bustSize + 6);
-        ctx.fillStyle = '#fef08a';
-        fillRectClamped(bustX - 1, bustY - 1, bustSize + 2, bustSize + 2);
+        fillRectClamped(bustX - 2, bustY + bustSize, bustSize + 4, 3);
+        fillRectClamped(isRightSpeaker ? bustX - 3 : bustX + bustSize, bustY, 3, bustSize + 3);
         ctx.fillStyle = '#050816';
         fillRectClamped(bustX, bustY, bustSize, bustSize);
 

@@ -15,7 +15,7 @@ const DEFAULT_VOICE_VOLUME = 1.0;
 const DEFAULT_BGM_VOLUME = 0.38;
 const VOICE_PRESENCE_TRIM = 1.42;
 const BGM_CROSSFADE_SEC = 0.65;
-const AUDIO_ASSET_CACHE_BUST = 'v=30fps150';
+const AUDIO_ASSET_CACHE_BUST = 'v=30fps151';
 const MAX_CACHED_BGM_BUFFERS = 4;
 
 export class AudioManager {
@@ -1769,6 +1769,7 @@ export class AudioManager {
   stopAllHeroVoices(fadeSec = 0.03) {
     this.clearPendingDeathVoice();
     this._preDuckUntilMs = 0;
+    this._smoothedVoiceAmp = 0;
     for (const speakerKey of Array.from(this.activeHeroVoices.keys())) {
       this.stopSpeakerVoice(speakerKey, fadeSec);
     }
@@ -1839,6 +1840,7 @@ export class AudioManager {
 
   getVoiceAmplitude(nowOverrideMs = null) {
     if (!this.isHeroVoiceBusy(nowOverrideMs)) {
+      this._smoothedVoiceAmp = 0;
       return 0;
     }
     if (
@@ -1861,12 +1863,18 @@ export class AudioManager {
           if (absD > peak) peak = absD;
         }
         const rms = buf.length > 0 ? Math.sqrt(sumSq / buf.length) : 0;
-        const liveEnergy = Math.min(1, Math.max(rms * 3.4, peak * 1.85));
-        if (liveEnergy > 0.015) {
-          return Math.max(0.05, Math.min(1, liveEnergy));
-        }
+        // Noise-gate ambient reverb/breath tail so inter-word pauses return TRUE 0 (closed mouth)!
+        const gatedRms = Math.max(0, rms - 0.026);
+        const gatedPeak = Math.max(0, peak - 0.052);
+        const rawEnergy = Math.min(1, Math.max(gatedRms * 3.2, gatedPeak * 1.48));
+        const prev = Number(this._smoothedVoiceAmp) || 0;
+        const smoothing = rawEnergy >= prev ? 0.65 : 0.42;
+        const nextAmp = prev + (rawEnergy - prev) * smoothing;
+        this._smoothedVoiceAmp = nextAmp < 0.028 ? 0 : Math.min(1, nextAmp);
+        return this._smoothedVoiceAmp;
       } catch (_) {}
     }
+    // Headless/mock fallback ONLY when no WebAudio AnalyserNode exists
     const fb = 0.38 + 0.42 * Math.abs(Math.sin(Date.now() * 0.016));
     return Math.max(0, Math.min(1, fb));
   }

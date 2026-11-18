@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps150';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps150';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps150';
+import { Fighter } from '../entities/Fighter.js?v=30fps151';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps151';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps151';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps150';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps150';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps150';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps150';
+} from './AdventureProgression.js?v=30fps151';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps151';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps151';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps151';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -1455,7 +1455,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps150') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps151') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -1465,7 +1465,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps150') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps151') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;

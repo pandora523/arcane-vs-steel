@@ -41,67 +41,67 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps150';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps150';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps150';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps150';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps150';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps150';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps150';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps150';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps150';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps150';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps150';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps150';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps150';
-import { Archer } from '../../src/entities/Archer.js?v=30fps150';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps150';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps150';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps150';
-import { Titan } from '../../src/entities/Titan.js?v=30fps150';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps150';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps150';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps150';
-import { Android } from '../../src/entities/Android.js?v=30fps150';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps150';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps150';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps150';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps150';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps151';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps151';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps151';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps151';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps151';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps151';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps151';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps151';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps151';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps151';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps151';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps151';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps151';
+import { Archer } from '../../src/entities/Archer.js?v=30fps151';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps151';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps151';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps151';
+import { Titan } from '../../src/entities/Titan.js?v=30fps151';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps151';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps151';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps151';
+import { Android } from '../../src/entities/Android.js?v=30fps151';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps151';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps151';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps151';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps151';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps150';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps150';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps150';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps150';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps150';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps150';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps151';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps151';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps151';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps151';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps151';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps151';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps150';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps150';
+} from '../../src/adventure/AdventureManager.js?v=30fps151';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps151';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps150';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps150';
+} from '../../src/adventure/AdventureProgression.js?v=30fps151';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps151';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps150';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps151';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps150';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps151';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -792,7 +792,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps150');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps151');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11406,8 +11406,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps150');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps150');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps151');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps151');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12208,7 +12208,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps150'
+        src: 'assets/sprites/arena_bg.png?v=30fps151'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12252,13 +12252,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps150`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps151`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps150'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps151'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -15116,7 +15116,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps150';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps151';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -15151,7 +15151,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps150';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps151';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15256,12 +15256,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps150') ||
-      !manifestSrc.includes('?v=30fps150') ||
+      !indexHtmlSrc.includes('?v=30fps151') ||
+      !manifestSrc.includes('?v=30fps151') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps150 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps151 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16857,7 +16857,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps150 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps151 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17389,7 +17389,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.21: Batch ?v=30fps150 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // 36.21: Batch ?v=30fps151 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
   // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
   // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
   // --------------------------------------------------------------------------
@@ -18394,16 +18394,16 @@ if (!RUN_SUITE36_ONLY) {
       audio24.bgmDuckGain = makeGainMock24(1.0);
       audio24.master = audio24.sfxBus;
 
-      // Lazy BGM + Voice cache-bust ?v=30fps150 check
+      // Lazy BGM + Voice cache-bust ?v=30fps151 check
       await audio24.loadVoiceKey('nyx_select', 'en');
       await audio24.loadBgmTrack('bgm_title_select');
       if (
-        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps150')) ||
-        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps150')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps151')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps151')) ||
         fetchedUrls24.filter((u) => u.includes('assets/bgm/')).length !== 1
       ) {
         throw new Error(
-          `[Suite 36.24] Expected ?v=30fps150 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
+          `[Suite 36.24] Expected ?v=30fps151 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
         );
       }
 
@@ -19645,7 +19645,7 @@ if (!RUN_SUITE36_ONLY) {
 
   // ============================================================================
   // Suite 36.27: Grounded Lyra EX Ults, Blink/Warp AI Non-Starvation, De-Twitched AI,
-  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps150`)
+  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps151`)
   // ============================================================================
   {
     const g27 = createMockGame();
@@ -20018,7 +20018,7 @@ if (!RUN_SUITE36_ONLY) {
   // Suite 36.28: 3-Act Match Intro Overhaul — Real-Time Voice Envelope Analyzer
   // (`AudioManager.getVoiceAmplitude`), Act 1 Colossal Split-Wing `NAME VS. NAME` Clash,
   // Act 2 Live Voice-Synced Close-Up Talking Portrait Cut-In & Stage Taunt Flourish,
-  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps150`)
+  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps151`)
   // ============================================================================
   {
     const created28 = [];
@@ -20104,6 +20104,17 @@ if (!RUN_SUITE36_ONLY) {
       const pcmAmp = ampAudio.getVoiceAmplitude();
       if (!(pcmAmp > 0.5 && pcmAmp <= 1.0)) {
         throw new Error(`[Suite 36.28] Expected live PCM getVoiceAmplitude() > 0.5, got ${pcmAmp}`);
+      }
+      // Verify true inter-word silence (`buf[i] = 128`) decays cleanly to 0 instead of falling through to sin()!
+      ampAudio.voiceAnalyser.getByteTimeDomainData = (buf) => {
+        buf.fill(128);
+      };
+      let silenceAmp = 1;
+      for (let k = 0; k < 10; k++) silenceAmp = ampAudio.getVoiceAmplitude();
+      if (silenceAmp !== 0) {
+        throw new Error(
+          `[Suite 36.28] Expected silent PCM pause to decay to 0, got ${silenceAmp}`
+        );
       }
       ampAudio.stopAllHeroVoices(0);
       if (ampAudio.getVoiceAmplitude() !== 0) {
@@ -20275,8 +20286,8 @@ if (!RUN_SUITE36_ONLY) {
         return true;
       };
       const dualDur = g28.beginLiveRoundIntro({ forceInTest: true });
-      if (Math.abs(dualDur - 7.85) > 0.05 || g28._roundIntroQueue?.length !== 2) {
-        throw new Error(`[Suite 36.28] Expected 7.85s Dual P1->P2 intro queue, got dur=${dualDur}, len=${g28._roundIntroQueue?.length}`);
+      if (Math.abs(dualDur - 8.25) > 0.05 || g28._roundIntroQueue?.length !== 2) {
+        throw new Error(`[Suite 36.28] Expected 8.25s Dual P1->P2 intro queue, got dur=${dualDur}, len=${g28._roundIntroQueue?.length}`);
       }
       for (let i = 0; i < 40; i++) {
         g28.stepSimulation(0.05); // advances to roundIntroElapsed = 2.0s (Act 2A: P1 speaking)
@@ -20296,21 +20307,28 @@ if (!RUN_SUITE36_ONLY) {
         );
       }
 
-      // Verify smooth `0 <-> 1 (F3) <-> 2` mouth transition gate (never jumps 0->2 or 2->0 directly!)
+      // Verify smooth 4-stage `0 <-> 1 (F3) <-> 2 (F4) <-> 3 (F5)` mouth progression gate!
       g28._introMouthStage = 0;
       g28._introMouthHoldSec = 0;
       const openSeq = [];
-      for (let s = 0; s < 4; s++) openSeq.push(g28._stepIntroTalkArticulation(0.06, 0.85));
+      for (let s = 0; s < 5; s++) openSeq.push(g28._stepIntroTalkArticulation(0.07, 0.85));
       const closeSeq = [];
-      for (let s = 0; s < 4; s++) closeSeq.push(g28._stepIntroTalkArticulation(0.06, 0.0));
-      if (!openSeq.includes(1) || openSeq[openSeq.length - 1] !== 2 || !closeSeq.includes(1) || closeSeq[closeSeq.length - 1] !== 0) {
+      for (let s = 0; s < 5; s++) closeSeq.push(g28._stepIntroTalkArticulation(0.09, 0.0));
+      if (
+        !openSeq.includes(1) ||
+        !openSeq.includes(2) ||
+        openSeq[openSeq.length - 1] !== 3 ||
+        !closeSeq.includes(2) ||
+        !closeSeq.includes(1) ||
+        closeSeq[closeSeq.length - 1] !== 0
+      ) {
         throw new Error(
-          `[Suite 36.28] Smooth F3 mouth transition gate failed: open=${JSON.stringify(openSeq)}, close=${JSON.stringify(closeSeq)}`
+          `[Suite 36.28] Smooth 4-stage vowel mouth gate failed: open=${JSON.stringify(openSeq)}, close=${JSON.stringify(closeSeq)}`
         );
       }
 
-      // Advance to Act 2B (`roundIntroElapsed = 5.0s` -> P2 `nyx_ex` speaking, P1 returned to IDLE!)
-      for (let i = 0; i < 60; i++) {
+      // Advance to Act 2B (`roundIntroElapsed = 5.5s` -> P2 `nyx_ex` speaking, P1 returned to IDLE!)
+      for (let i = 0; i < 70; i++) {
         g28.stepSimulation(0.05);
       }
       if (
@@ -20321,11 +20339,11 @@ if (!RUN_SUITE36_ONLY) {
         !introFiredIds.includes('nyx_ex')
       ) {
         throw new Error(
-          `[Suite 36.28] Act 2B P2 turn handoff failed at 5.0s: spk=${g28._roundIntroFighter?.heroId}, p1State=${p1Hero.state}, p2State=${p2Hero.state}, voices=${JSON.stringify(introFiredIds)}`
+          `[Suite 36.28] Act 2B P2 turn handoff failed at 5.5s: spk=${g28._roundIntroFighter?.heroId}, p1State=${p1Hero.state}, p2State=${p2Hero.state}, voices=${JSON.stringify(introFiredIds)}`
         );
       }
 
-      // Verify 6-frame `0..5` frame selection across `amp = 0 / blink / 0.30 / 0.75` for BOTH `warrior_ex` (P1) & `nyx_ex` (P2)!
+      // Verify all 6 anime cel frames `F0..F5` across silent/half-blink/full-blink/small/mid/wide vowel states!
       g28._introMouthStage = undefined;
       for (const [spkHero, isRight] of [
         [p1Hero, false],
@@ -20335,14 +20353,13 @@ if (!RUN_SUITE36_ONLY) {
         g28._introSpeakerElapsed = 1.0;
         const spkUpper = spkHero.name.toUpperCase();
 
-        // Check all 6 frames via live `_renderRoundIntroOverlay` drawImage `sx = frameIdx * 320`
         const cases = [
-          { amp: 0, elapsed: 2.0, expectedFrames: [0] },     // floor(2.0 * 7) = 14 (even) -> F0
-          { amp: 0, elapsed: 2.15, expectedFrames: [1] },    // floor(2.15 * 7) = 15 (odd) -> F1
-          { amp: 0, elapsed: 1.72, expectedFrames: [2] },    // 1.72 % 1.8 = 1.72 >= 1.69 -> F2 (Eye-Blink)
-          { amp: 0.3, elapsed: 2.0, expectedFrames: [3] },   // 0.14 < 0.30 <= 0.44 -> F3 (Half Speak)
-          { amp: 0.75, elapsed: 2.0, expectedFrames: [4] },  // floor(2.0 * 22) = 44 (even) -> F4 (Wide Speak)
-          { amp: 0.75, elapsed: 2.05, expectedFrames: [5] }  // floor(2.05 * 22) = 45 (odd) -> F5 (Peak Surge)
+          { amp: 0, elapsed: 1.5, expectedFrames: [0] },     // Open calm eyes + closed mouth -> F0
+          { amp: 0, elapsed: 2.30, expectedFrames: [1] },    // 2.28 <= blinkPhase < 2.335 -> F1 (Half-Blink Cushion)
+          { amp: 0, elapsed: 2.38, expectedFrames: [2] },    // 2.335 <= blinkPhase < 2.445 -> F2 (Full Closed Blink)
+          { amp: 0.18, elapsed: 2.0, expectedFrames: [3] },  // 0.07 < 0.18 <= 0.30 -> F3 (Small Vowel)
+          { amp: 0.45, elapsed: 2.0, expectedFrames: [4] },  // 0.30 < 0.45 <= 0.62 -> F4 (Mid Vowel)
+          { amp: 0.82, elapsed: 2.2, expectedFrames: [5] }   // amp > 0.62 -> F5 (Wide Accented Vowel)
         ];
 
         for (const c of cases) {
@@ -20376,26 +20393,35 @@ if (!RUN_SUITE36_ONLY) {
         }
       }
 
-      // Verify Borderless 2-Line Kinetic Slash Ultimate / Supreme Callout (`Renderer.js`, >= 28px Desktop)
+      // Verify Lower, Truly Borderless, All-12-Hero-Themed 2-Line Kinetic Ultimate/Supreme Popup (`Renderer.js`)
       {
-        const { ctx: ctxUlt, rec: recUlt } = makeTraceCtx28(1280, 720);
-        const ultRen = new Renderer({ width: 1280, height: 720, getContext: () => ctxUlt });
-        ultRen.triggerUltimateCutIn(p2Hero, true);
-        ultRen.cutInTimer = 0.75; // settled post-slam
-        ultRen.drawExUltimateCutIn(ctxUlt, 1280, 96);
-        const [splitL1, splitL2] = ultRen._splitUltCalloutLines(ultRen.cutInUltName);
-        const mainUltEntry = recUlt.texts.find((t) => t.text === splitL2);
-        if (
-          !splitL1 ||
-          !mainUltEntry ||
-          !(mainUltEntry.px >= 28) ||
-          recUlt.drawImages.length !== 0 ||
-          recUlt.rotateCalls !== 0 ||
-          recUlt.arcCalls !== 0
-        ) {
-          throw new Error(
-            `[Suite 36.28] Borderless 2-line Supreme Cut-In failed: lines=[${splitL1}, ${splitL2}], mainPx=${mainUltEntry?.px}`
-          );
+        const ultRen = new Renderer({ width: 1280, height: 800, getContext: () => createMockCtx() });
+        for (const hid of PixelForge.EX_HERO_KEYS) {
+          const { ctx: ctxUlt, rec: recUlt } = makeTraceCtx28(1280, 800);
+          ultRen.cutInHeroId = hid;
+          ultRen.cutInIsEx = true;
+          ultRen.cutInIsTrueUlt = true;
+          ultRen.cutInSide = hid === 'nyx_ex' ? 'right' : 'left';
+          ultRen.cutInName = hid.toUpperCase();
+          ultRen.cutInUltName = 'GENESIS PROMPT: POWERED BY COB';
+          ultRen.cutInMaxTimer = 1.75;
+          ultRen.cutInTimer = 1.10; // settled post-slam (`p ~= 0.37`)
+          ultRen.drawExUltimateCutIn(ctxUlt, 1280, 96);
+          const [splitL1, splitL2] = ultRen._splitUltCalloutLines(ultRen.cutInUltName);
+          const mainUltEntry = recUlt.texts.find((t) => t.text === splitL2);
+          if (
+            !splitL1 ||
+            !mainUltEntry ||
+            !(mainUltEntry.px >= 28) ||
+            recUlt.drawImages.length !== 0 ||
+            recUlt.rotateCalls !== 0 ||
+            recUlt.arcCalls !== 0 ||
+            recUlt.ellipseCalls !== 0
+          ) {
+            throw new Error(
+              `[Suite 36.28] Hero-themed borderless Supreme Cut-In failed for ${hid}: mainPx=${mainUltEntry?.px}`
+            );
+          }
         }
       }
 
