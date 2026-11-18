@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps144';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps144';
+import { PixelForge } from './PixelForge.js?v=30fps145';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps145';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps144';
+} from './shaders/exNextGenFX.js?v=30fps145';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -120,6 +120,7 @@ export class Renderer {
     this.trueUltStageAlpha = 0;
     this.trueUltStageTimer = 0;
     this.permanentStageOverride = null;
+    this.cutInSide = 'left';
     this.stageSliceTimer = 0;
     this.stageSliceMaxTimer = 1.08;
     this.stageSliceFromId = null;
@@ -219,6 +220,7 @@ export class Renderer {
     this.trueUltStageAlpha = 0;
     this.trueUltStageTimer = 0;
     this.permanentStageOverride = null;
+    this.cutInSide = 'left';
     this.stageSliceTimer = 0;
     this.stageSliceFromId = null;
     this.stageSliceToId = null;
@@ -702,6 +704,12 @@ export class Renderer {
         : `${(caster.name || 'CHAMPION').toUpperCase()} • OVERDRIVE ART`;
     this.cutInColor = caster.primaryColor || '#38bdf8';
     this.cutInFacing = caster.facing || 1;
+    this.cutInSide =
+      caster?.team === 2 ||
+      caster?.team === 'right' ||
+      (!caster?.team && (caster?.facing || 1) < 0)
+        ? 'right'
+        : 'left';
   }
 
   triggerKOFinisher(x, y, color = '#facc15', winnerName = '', winnerHeroId = 'warrior') {
@@ -7371,124 +7379,62 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 2. Clean Top-Center Overdrive Awakening Callout with Circular Hero Medallion Portrait (Below `.hud-top` / Strip!)
+    // 2. Portrait-Free, Caster-Side Anchored Overdrive / Supreme Callout (Below `.hud-top` / Strip!)
     if (this.cutInTimer > 0) {
       if (this.cutInIsEx) {
         this.drawExUltimateCutIn(ctx, w, safeTopY);
       } else {
         const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
         const alpha = p < 0.07 ? p / 0.07 : p > 0.80 ? (1 - p) / 0.20 : 1;
-        const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.24;
-        const cx = Math.round(w * 0.5);
-        const ry = this.isMobileLandscape ? 24 : this.isMobile ? 28 : 38;
-        const rx = Math.min(Math.round(w * 0.47), this.isMobile ? 216 : 365);
-        const cy = Math.max(
-          Math.round(safeTopY + ry * 1.22),
-          this.isMobileLandscape ? 116 : this.isMobile ? 168 : 158
-        );
-        const elemCol = this.cutInColor || '#38bdf8';
-        const assets = PixelForge.initAssets();
-        const cutPort = PixelForge.ensureImage(assets[this.cutInHeroId || 'warrior']?.portrait);
+        const clampedAlpha = Math.max(0, Math.min(1, alpha));
+        if (clampedAlpha > 0.01) {
+          const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.24;
+          const isTrue = Boolean(this.cutInIsTrueUlt);
+          const elemCol = this.cutInColor || '#38bdf8';
+          const accCol = isTrue ? '#fde047' : '#fbbf24';
+          const { side, slideDir, halfW, halfH, cx, cy, slidePx } = this._getCutInLayout(
+            w,
+            safeTopY,
+            p
+          );
 
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-        ctx.translate(cx, cy);
-        ctx.scale(slamScale, slamScale);
-
-        // Subtle feathered obsidian backdrop cushion strictly behind the text for 100% legibility (Zero screen wash-out!)
-        ctx.save();
-        ctx.scale(rx, ry);
-        if (!ctx.__avsCutInVeilGrad) {
-          const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-          veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
-          veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
-          veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
-          ctx.__avsCutInVeilGrad = veil;
-        }
-        ctx.fillStyle = ctx.__avsCutInVeilGrad;
-        ctx.beginPath();
-        ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        // Razor-thin 2px tapered elemental divider glint
-        const lineG = ctx.createLinearGradient(-rx * 0.76, 0, rx * 0.76, 0);
-        lineG.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        lineG.addColorStop(0.28, elemCol);
-        lineG.addColorStop(0.5, '#ffffff');
-        lineG.addColorStop(0.72, elemCol);
-        lineG.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = lineG;
-        ctx.fillRect(-rx * 0.76, -3, rx * 1.52, 2);
-
-        const eyebrow = String(
-          this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART`
-        );
-        const ultStr = String(this.cutInUltName || 'ULTIMATE ART');
-        const hasPort = Boolean(cutPort && cutPort.complete && cutPort.naturalWidth);
-        const pR = this.isMobile ? 16 : 24;
-        const maxTotalW = Math.max(180, Math.round((w - 24) / slamScale));
-        const cutMaxTextW = hasPort ? Math.max(140, maxTotalW - (pR * 2 + 12)) : maxTotalW;
-        const eyeFontPx = Math.max(
-          6,
-          Math.min(this.isMobile ? 7 : 10, Math.floor(cutMaxTextW / Math.max(1, eyebrow.length * 1.02)))
-        );
-        const ultFontPx = Math.max(
-          9,
-          Math.min(this.isMobile ? 12 : 19, Math.floor(cutMaxTextW / Math.max(1, ultStr.length * 1.02)))
-        );
-        const estTextW = Math.min(
-          cutMaxTextW,
-          Math.max(ultStr.length * ultFontPx, eyebrow.length * eyeFontPx)
-        );
-        const textShiftX = hasPort ? Math.round(pR + 5) : 0;
-        const pCx = hasPort
-          ? Math.max(
-              -Math.round(maxTotalW * 0.5) + pR + 2,
-              Math.min(-Math.round(rx * 0.46), textShiftX - Math.round(estTextW * 0.5) - pR - 8)
-            )
-          : -Math.round(rx * 0.56);
-        const pCy = 2;
-
-        // Circular Hero Portrait Medallion on the left of the Cut-In Callout
-        if (hasPort) {
           ctx.save();
-          const pGlow = ctx.createRadialGradient(pCx, pCy, pR * 0.35, pCx, pCy, pR * 1.32);
-          pGlow.addColorStop(0, '#fde047');
-          pGlow.addColorStop(0.65, elemCol);
-          pGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = pGlow;
-          ctx.beginPath();
-          ctx.arc(pCx, pCy, pR * 1.32, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.beginPath();
-          ctx.arc(pCx, pCy, pR, 0, Math.PI * 2);
-          ctx.clip();
           ctx.imageSmoothingEnabled = false;
-          ctx.drawImage(cutPort, pCx - pR, pCy - pR, pR * 2, pR * 2);
+          ctx.globalAlpha = clampedAlpha;
+          ctx.translate(cx + slidePx, cy);
+          ctx.scale(slamScale, slamScale);
+
+          // Feathered obsidian backdrop cushion behind stepped plaque (preserves legibility & Suite 30.4 probe)
+          ctx.save();
+          ctx.scale(halfW, halfH);
+          if (!ctx.__avsCutInVeilGrad) {
+            const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+            veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
+            veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
+            veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
+            ctx.__avsCutInVeilGrad = veil;
+          }
+          ctx.fillStyle = ctx.__avsCutInVeilGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          this._drawCutInCalloutContent(ctx, {
+            p,
+            alpha: clampedAlpha,
+            isTrue,
+            elemCol,
+            accCol,
+            halfW,
+            halfH,
+            side,
+            slideDir,
+            eyebrowFallback: isTrue ? 'SUPREME ULTIMATE FINISHER' : 'OVERDRIVE ART'
+          });
+
           ctx.restore();
         }
-
-        ctx.textAlign = 'center';
-        ctx.font = `${eyeFontPx}px "Press Start 2P", monospace`;
-        ctx.fillStyle = '#020617';
-        ctx.fillText(eyebrow, textShiftX + 2, -9, cutMaxTextW);
-        ctx.fillText(eyebrow, textShiftX - 2, -9, cutMaxTextW);
-        ctx.fillStyle = '#fde047';
-        ctx.fillText(eyebrow, textShiftX, -11, cutMaxTextW);
-
-        ctx.font = `${ultFontPx}px "Press Start 2P", monospace`;
-        ctx.fillStyle = '#020617';
-        ctx.fillText(ultStr, textShiftX + 3, 20, cutMaxTextW);
-        ctx.fillText(ultStr, textShiftX - 2, 19, cutMaxTextW);
-        ctx.fillText(ultStr, textShiftX, 21, cutMaxTextW);
-        ctx.fillStyle = elemCol;
-        ctx.fillText(ultStr, textShiftX + 2, 18, cutMaxTextW);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(ultStr, textShiftX, 17, cutMaxTextW);
-
-        ctx.restore();
       }
     }
 
@@ -7757,34 +7703,36 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawExUltimateCutIn(ctx, w, safeTopY) {
-    const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
-    const alpha = p < 0.06 ? p / 0.06 : p > 0.82 ? (1 - p) / 0.18 : 1;
-    if (alpha <= 0.01) return;
-
-    const isTrue = Boolean(this.cutInIsTrueUlt);
-    const exPal = getExHeroPalette(this.cutInHeroId, this.cutInColor);
-    const elemCol = exPal.primary || this.cutInColor || '#38bdf8';
-    const accCol = isTrue ? '#fde047' : exPal.accent || '#fde047';
-    const cx = Math.round(w * 0.5);
-    const halfH = this.isMobileLandscape ? 23 : this.isMobile ? 27 : 34;
-    const halfW = Math.min(Math.round(w * 0.46), this.isMobile ? 214 : 362);
-    const cy = Math.max(
-      Math.round(safeTopY + halfH + 14),
-      this.isMobileLandscape ? 114 : this.isMobile ? 166 : 156
+  _getCutInLayout(w, safeTopY, p) {
+    const side =
+      this.cutInSide === 'right'
+        ? 'right'
+        : !this.cutInSide && (this.cutInFacing || 1) < 0
+          ? 'right'
+          : 'left';
+    const slideDir = side === 'right' ? 1 : -1;
+    const halfH = this.isMobileLandscape ? 25 : this.isMobile ? 29 : 38;
+    const halfW = Math.min(
+      Math.floor((w - 20) * 0.5),
+      this.isMobileLandscape ? 210 : w <= 440 ? 166 : this.isMobile ? 196 : 276
     );
-    const slidePx = p < 0.09 ? Math.round((1 - p / 0.09) * 26) * (this.cutInFacing >= 0 ? -1 : 1) : 0;
+    const rawCx =
+      side === 'right'
+        ? Math.min(w - halfW - 14, Math.round(w * 0.71))
+        : Math.max(halfW + 14, Math.round(w * 0.29));
+    const cx = Math.max(halfW + 10, Math.min(w - halfW - 10, rawCx));
+    const cy = Math.max(
+      Math.round(safeTopY + halfH + 16),
+      this.isMobileLandscape ? 118 : this.isMobile ? 170 : 160
+    );
+    const slidePx = p < 0.10 ? Math.round((1 - p / 0.10) * 32) * slideDir : 0;
+    return { side, slideDir, halfW, halfH, cx, cy, slidePx };
+  }
 
-    const assets = PixelForge.initAssets();
-    const cutPort = PixelForge.ensureImage(assets[this.cutInHeroId || 'warrior_ex']?.portrait);
-    const hasPort = Boolean(cutPort && cutPort.complete && cutPort.naturalWidth > 0);
+  _drawCutInCalloutContent(ctx, cfg) {
+    const { p, alpha, isTrue, elemCol, accCol, halfW, halfH, side, slideDir, eyebrowFallback } = cfg;
 
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-    ctx.translate(cx + slidePx, cy);
-
-    // 1. Chamfered Obsidian-Prism Neo-Vision Plaque (100% crisp stepped pixel geometry, zero arc/ellipse!)
+    // 1. Chamfered Obsidian-Prism Plaque (100% crisp stepped pixel geometry, 0 portrait drawImage!)
     const cham = 10;
     ctx.fillStyle = 'rgba(3, 6, 15, 0.90)';
     ctx.fillRect(-halfW + cham, -halfH, (halfW - cham) * 2, halfH * 2);
@@ -7794,33 +7742,43 @@ export class Renderer {
       ctx.fillRect(halfW - (cham - s) - 2, -(stripH >> 1), 2, stripH);
     }
 
-    // 2. Stepped Diagonal Pixel Speed-Lines Inside Plaque
+    // 2. Stepped Diagonal Pixel Speed-Lines Scrolling from Caster Side (`lighter` <= 0.18)
     const speedScroll = Math.round(p * 120) & 31;
+    ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = elemCol;
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha)) * (isTrue ? 0.24 : 0.17);
-    for (let sx = -halfW + 18 - speedScroll; sx < halfW - 18; sx += 28) {
+    ctx.globalAlpha = alpha * (isTrue ? 0.18 : 0.13);
+    for (let sx = -halfW + 16 - speedScroll * slideDir; sx < halfW - 16; sx += 28) {
       for (let row = -halfH + 4; row <= halfH - 6; row += 4) {
-        const shift = ((row + halfH) >> 1);
+        const shift = (row + halfH) >> 1;
         const px = sx + shift;
         if (px > -halfW + cham + 2 && px < halfW - cham - 10) {
           ctx.fillRect(px, row, isTrue ? 10 : 6, 2);
         }
       }
     }
+    ctx.globalCompositeOperation = 'source-over';
 
-    // 3. Forged Top & Bottom Pixel Rim Borders + Corner Facet Studs
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    // 3. Forged Double-Trim Elemental & Gold Borders + Caster-Side Anchor Bracket + Corner Studs
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = elemCol;
     ctx.fillRect(-halfW + cham, -halfH, (halfW - cham) * 2, 2);
     ctx.fillRect(-halfW + cham, halfH - 2, (halfW - cham) * 2, 2);
     ctx.fillStyle = accCol;
-    ctx.fillRect(-Math.round(halfW * 0.56), -halfH, Math.round(halfW * 1.12), 2);
-    ctx.fillRect(-Math.round(halfW * 0.56), halfH - 2, Math.round(halfW * 1.12), 2);
+    ctx.fillRect(-Math.round(halfW * 0.62), -halfH, Math.round(halfW * 1.24), 2);
+    ctx.fillRect(-Math.round(halfW * 0.62), halfH - 2, Math.round(halfW * 1.24), 2);
+
+    // Caster-side vertical pixel anchor bracket
+    const bracketX = side === 'right' ? halfW - cham - 2 : -halfW + cham - 1;
+    ctx.fillStyle = accCol;
+    ctx.fillRect(bracketX, -halfH + 6, 3, halfH * 2 - 12);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(bracketX + (side === 'right' ? -2 : 3), -halfH + 10, 2, halfH * 2 - 20);
+
     // Center divider hairline with white-hot core
     ctx.fillStyle = elemCol;
-    ctx.fillRect(-Math.round(halfW * 0.74), -3, Math.round(halfW * 1.48), 2);
+    ctx.fillRect(-Math.round(halfW * 0.78), -4, Math.round(halfW * 1.56), 2);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-Math.round(halfW * 0.34), -3, Math.round(halfW * 0.68), 2);
+    ctx.fillRect(-Math.round(halfW * 0.36), -4, Math.round(halfW * 0.72), 2);
 
     // Corner pixel diamonds
     const studOffsets = [
@@ -7834,7 +7792,7 @@ export class Renderer {
       ctx.fillRect(studOffsets[i][0], studOffsets[i][1], 4, 4);
     }
 
-    // 4. Crisp 4-Point Pixel Star-Glints Flanking Plaque
+    // 4. Flanking 4-Point Pixel Star-Glints & Rim Energy Sparks
     const drawStar4 = (gx, gy, arm, col) => {
       ctx.fillStyle = col;
       ctx.fillRect(gx - arm, gy - 1, arm * 2 + 2, 2);
@@ -7842,74 +7800,91 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(gx - 2, gy - 2, 4, 4);
     };
-    const glintArm = isTrue ? 8 : 6;
+    const glintArm = isTrue ? 9 : 7;
     drawStar4(-halfW + 6, 0, glintArm, accCol);
     drawStar4(halfW - 8, 0, glintArm, accCol);
     if (isTrue) {
       drawStar4(0, -halfH, 5, '#ffffff');
     }
 
+    const sparkCount = isTrue ? 6 : 4;
+    for (let s = 0; s < sparkCount; s++) {
+      const cyc = (p * 1.8 + s * 0.27) % 1;
+      const sx = Math.round((-halfW + 24 + ((s * 67 + Math.round(cyc * 44)) % Math.max(40, halfW * 2 - 52))));
+      const sy = s % 2 === 0 ? -halfH - 3 - Math.round(cyc * 4) : halfH + 2 + Math.round(cyc * 4);
+      ctx.globalAlpha = alpha * (1 - cyc) * 0.85;
+      ctx.fillStyle = s % 2 === 0 ? '#ffffff' : accCol;
+      ctx.fillRect(sx, sy, 4, 2);
+    }
+    ctx.globalAlpha = alpha;
+
+    // 5. Larger Portrait-Free Multi-Layer Pixel Typography
     const eyebrow = String(
-      this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • NEO-VISION AWAKENING`
+      this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • ${eyebrowFallback}`
     );
-    const ultStr = String(this.cutInUltName || 'ULTIMATE ART');
-    const pHalf = this.isMobile ? 16 : 22;
-    const maxTotalW = Math.max(180, halfW * 2 - 28);
-    const cutMaxTextW = hasPort ? Math.max(136, maxTotalW - (pHalf * 2 + 14)) : maxTotalW;
+    const ultStr = String(this.cutInUltName || this.cutInText || 'ULTIMATE ART');
+    const cutMaxTextW = Math.max(176, halfW * 2 - 28);
     const eyeFontPx = Math.max(
-      6,
-      Math.min(this.isMobile ? 7 : 9, Math.floor(cutMaxTextW / Math.max(1, eyebrow.length * 1.02)))
+      7,
+      Math.min(this.isMobile ? 8 : 10, Math.floor(cutMaxTextW / Math.max(1, eyebrow.length * 0.92)))
     );
     const ultFontPx = Math.max(
-      9,
-      Math.min(this.isMobile ? 12 : 18, Math.floor(cutMaxTextW / Math.max(1, ultStr.length * 1.02)))
+      this.isMobile ? 12 : 16,
+      Math.min(
+        this.isMobile ? (isTrue ? 15 : 14) : isTrue ? 22 : 20,
+        Math.floor(cutMaxTextW / Math.max(1, ultStr.length * 0.80))
+      )
     );
-    const estTextW = Math.min(
-      cutMaxTextW,
-      Math.max(ultStr.length * ultFontPx, eyebrow.length * eyeFontPx)
-    );
-    const textShiftX = hasPort ? Math.round(pHalf + 6) : 0;
-    const pCx = hasPort
-      ? Math.max(
-          -halfW + cham + pHalf + 4,
-          Math.min(-Math.round(halfW * 0.44), textShiftX - Math.round(estTextW * 0.5) - pHalf - 8)
-        )
-      : -Math.round(halfW * 0.54);
-    const pCy = 0;
 
-    // 5. Chamfered Forged Pixel Portrait Bezel (Zero circular arc clip!)
-    if (hasPort) {
-      ctx.fillStyle = accCol;
-      ctx.fillRect(pCx - pHalf - 2, pCy - pHalf - 2, pHalf * 2 + 4, pHalf * 2 + 4);
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(pCx - pHalf, pCy - pHalf, pHalf * 2, pHalf * 2);
-      ctx.drawImage(cutPort, pCx - pHalf + 2, pCy - pHalf + 2, pHalf * 2 - 4, pHalf * 2 - 4);
-      // Pixel corner bevels on portrait bezel
-      ctx.fillStyle = elemCol;
-      ctx.fillRect(pCx - pHalf - 2, pCy - pHalf - 2, 4, 2);
-      ctx.fillRect(pCx + pHalf - 2, pCy - pHalf - 2, 4, 2);
-      ctx.fillRect(pCx - pHalf - 2, pCy + pHalf, 4, 2);
-      ctx.fillRect(pCx + pHalf - 2, pCy + pHalf, 4, 2);
-    }
-
-    // 6. Crisp Pixel Typography
     ctx.textAlign = 'center';
-    ctx.font = `${eyeFontPx}px "Press Start 2P", monospace`;
+    ctx.font = `bold ${eyeFontPx}px "Press Start 2P", monospace`;
     ctx.fillStyle = '#020617';
-    ctx.fillText(eyebrow, textShiftX + 2, -9, cutMaxTextW);
-    ctx.fillText(eyebrow, textShiftX - 2, -9, cutMaxTextW);
+    ctx.fillText(eyebrow, 2, -11, cutMaxTextW);
+    ctx.fillText(eyebrow, -2, -11, cutMaxTextW);
     ctx.fillStyle = accCol;
-    ctx.fillText(eyebrow, textShiftX, -11, cutMaxTextW);
+    ctx.fillText(eyebrow, 0, -13, cutMaxTextW);
 
-    ctx.font = `${ultFontPx}px "Press Start 2P", monospace`;
+    ctx.font = `bold ${ultFontPx}px "Press Start 2P", monospace`;
     ctx.fillStyle = '#020617';
-    ctx.fillText(ultStr, textShiftX + 3, 19, cutMaxTextW);
-    ctx.fillText(ultStr, textShiftX - 2, 18, cutMaxTextW);
-    ctx.fillText(ultStr, textShiftX, 20, cutMaxTextW);
+    ctx.fillText(ultStr, 3, 20, cutMaxTextW);
+    ctx.fillText(ultStr, -2, 19, cutMaxTextW);
+    ctx.fillText(ultStr, 0, 21, cutMaxTextW);
     ctx.fillStyle = elemCol;
-    ctx.fillText(ultStr, textShiftX + 2, 17, cutMaxTextW);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(ultStr, textShiftX, 16, cutMaxTextW);
+    ctx.fillText(ultStr, 2, 18, cutMaxTextW);
+    ctx.fillText(ultStr, -1, 18, cutMaxTextW);
+    ctx.fillStyle = isTrue ? '#fde047' : '#ffffff';
+    ctx.fillText(ultStr, 0, 16, cutMaxTextW);
+  }
+
+  drawExUltimateCutIn(ctx, w, safeTopY) {
+    const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
+    const alpha = p < 0.06 ? p / 0.06 : p > 0.82 ? (1 - p) / 0.18 : 1;
+    const clampedAlpha = Math.max(0, Math.min(1, alpha));
+    if (clampedAlpha <= 0.01) return;
+
+    const isTrue = Boolean(this.cutInIsTrueUlt);
+    const exPal = getExHeroPalette(this.cutInHeroId, this.cutInColor);
+    const elemCol = exPal.primary || this.cutInColor || '#38bdf8';
+    const accCol = isTrue ? '#fde047' : exPal.accent || '#fde047';
+    const { side, slideDir, halfW, halfH, cx, cy, slidePx } = this._getCutInLayout(w, safeTopY, p);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = clampedAlpha;
+    ctx.translate(cx + slidePx, cy);
+
+    this._drawCutInCalloutContent(ctx, {
+      p,
+      alpha: clampedAlpha,
+      isTrue,
+      elemCol,
+      accCol,
+      halfW,
+      halfH,
+      side,
+      slideDir,
+      eyebrowFallback: isTrue ? 'EX SUPREME FINISHER' : 'NEO-VISION AWAKENING'
+    });
 
     ctx.restore();
   }

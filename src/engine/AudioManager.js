@@ -15,7 +15,7 @@ const DEFAULT_VOICE_VOLUME = 1.0;
 const DEFAULT_BGM_VOLUME = 0.38;
 const VOICE_PRESENCE_TRIM = 1.42;
 const BGM_CROSSFADE_SEC = 0.65;
-const AUDIO_ASSET_CACHE_BUST = 'v=30fps144';
+const AUDIO_ASSET_CACHE_BUST = 'v=30fps145';
 const MAX_CACHED_BGM_BUFFERS = 4;
 
 export class AudioManager {
@@ -33,6 +33,8 @@ export class AudioManager {
     this._nextSpeakerObjId = 1;
     this.ctx = null;
     this.master = null;
+    this.limiter = null;
+    this.masterGain = null;
     this.sfxBus = null;
     this.sfxDuckGain = null;
     this.voiceBus = null;
@@ -241,6 +243,9 @@ export class AudioManager {
     this.lastVoicePlayed = {};
     this._attackVoiceAlt = 0;
     this._pendingVoicePlays = [];
+    this._pendingDeathVoiceTimer = null;
+    this._pendingDeathVoiceUntilMs = 0;
+    this._deathVoiceLoadingUntilMs = 0;
 
     // Original Soundtrack BGM Subsystem (11 Mastered Loopable MP3s in `assets/bgm/`, loaded strictly on demand)
     this.bgmTracks = {
@@ -457,6 +462,8 @@ export class AudioManager {
     const deadCtx = this.ctx;
     this.ctx = null;
     this.master = null;
+    this.limiter = null;
+    this.masterGain = null;
     this.sfxBus = null;
     this.sfxDuckGain = null;
     this.voiceBus = null;
@@ -599,11 +606,13 @@ export class AudioManager {
       hpf.connect(lpf);
       lpf.connect(limiter);
       bgmBus.connect(bgmDuckGain);
-      bgmDuckGain.connect(limiter);
+      bgmDuckGain.connect(masterGain);
       voiceBus.connect(limiter);
       limiter.connect(masterGain);
       masterGain.connect(ctx.destination);
 
+      this.limiter = limiter;
+      this.masterGain = masterGain;
       this.sfxBus = sfxBus;
       this.sfxDuckGain = sfxDuckGain;
       this.voiceBus = voiceBus;
@@ -632,6 +641,8 @@ export class AudioManager {
       if (ctx.destination && typeof masterGain.connect === 'function') {
         masterGain.connect(ctx.destination);
       }
+      this.limiter = null;
+      this.masterGain = masterGain;
       this.sfxBus = sfxBus;
       this.sfxDuckGain = sfxDuckGain;
       this.voiceBus = voiceBus;
@@ -639,6 +650,8 @@ export class AudioManager {
       this.bgmDuckGain = bgmDuckGain;
       this.master = sfxBus;
     } else {
+      this.limiter = null;
+      this.masterGain = null;
       this.sfxBus = null;
       this.sfxDuckGain = null;
       this.voiceBus = null;
@@ -1712,12 +1725,111 @@ export class AudioManager {
     } catch (_) {}
   }
 
+  clearPendingDeathVoice() {
+    if (this._pendingDeathVoiceTimer) {
+      clearTimeout(this._pendingDeathVoiceTimer);
+      this._pendingDeathVoiceTimer = null;
+    }
+    this._pendingDeathVoiceUntilMs = 0;
+    this._deathVoiceLoadingUntilMs = 0;
+  }
+
+  stopLowPriorityHeroVoices(maxPriority = 1, fadeSec = 0.03) {
+    for (const [speakerKey, entry] of Array.from(this.activeHeroVoices.entries())) {
+      if ((entry?.priority || 1) <= maxPriority) {
+        this.stopSpeakerVoice(speakerKey, fadeSec);
+      }
+    }
+  }
+
   stopAllHeroVoices(fadeSec = 0.03) {
+    this.clearPendingDeathVoice();
     this._preDuckUntilMs = 0;
     for (const speakerKey of Array.from(this.activeHeroVoices.keys())) {
       this.stopSpeakerVoice(speakerKey, fadeSec);
     }
     this._syncSfxSidechainDuck();
+  }
+
+  getOtherSpeakerActiveVoice(excludeSpeakerKey, nowOverrideMs = null) {
+    const now = Number.isFinite(nowOverrideMs)
+      ? nowOverrideMs
+      : typeof performance !== 'undefined'
+        ? performance.now()
+        : Date.now();
+    let best = null;
+    for (const [spkKey, entry] of this.activeHeroVoices.entries()) {
+      if (!entry || spkKey === excludeSpeakerKey) continue;
+      const endMs = Number.isFinite(entry.endTimeMs)
+        ? entry.endTimeMs
+        : (entry.startedAtMs || entry.startTimeMs || 0) + (entry.durationSec || 0) * 1000;
+      if (now >= endMs) continue;
+      const remainingSec = Math.max(0, (endMs - now) / 1000);
+      const prio = entry.priority || 1;
+      if (
+        !best ||
+        prio > best.priority ||
+        (prio === best.priority && remainingSec > best.remainingSec)
+      ) {
+        best = {
+          speakerKey: spkKey,
+          entry,
+          priority: prio,
+          cue: entry.cue || null,
+          voiceKey: entry.voiceKey || null,
+          startedAtMs: entry.startedAtMs ?? entry.startTimeMs ?? 0,
+          durationSec: entry.durationSec ?? 0,
+          remainingSec
+        };
+      }
+    }
+    return best;
+  }
+
+  getActiveVoiceRemainingMs(speakerFilter = null, nowOverrideMs = null) {
+    const now = Number.isFinite(nowOverrideMs)
+      ? nowOverrideMs
+      : typeof performance !== 'undefined'
+        ? performance.now()
+        : Date.now();
+    let maxRem = 0;
+    for (const [speakerKey, entry] of this.activeHeroVoices.entries()) {
+      if (!entry) continue;
+      const endMs = Number.isFinite(entry.endTimeMs)
+        ? entry.endTimeMs
+        : (entry.startedAtMs || entry.startTimeMs || 0) + (entry.durationSec || 0) * 1000;
+      if (now >= endMs) continue;
+      if (speakerFilter && !speakerFilter(speakerKey, entry)) continue;
+      const rem = Math.max(0, Math.round(endMs - now));
+      if (rem > maxRem) maxRem = rem;
+    }
+    return maxRem;
+  }
+
+  isDeathOrMatchEndVoiceBusy(nowOverrideMs = null) {
+    const now = Number.isFinite(nowOverrideMs)
+      ? nowOverrideMs
+      : typeof performance !== 'undefined'
+        ? performance.now()
+        : Date.now();
+    if (
+      this._pendingDeathVoiceTimer !== null ||
+      now < (this._pendingDeathVoiceUntilMs || 0) ||
+      now < (this._deathVoiceLoadingUntilMs || 0)
+    ) {
+      return true;
+    }
+    for (const entry of this.activeHeroVoices.values()) {
+      if (!entry) continue;
+      const endMs = Number.isFinite(entry.endTimeMs)
+        ? entry.endTimeMs
+        : (entry.startedAtMs || entry.startTimeMs || 0) + (entry.durationSec || 0) * 1000;
+      if (now >= endMs) continue;
+      if (entry.cue === 'death' || String(entry.voiceKey || '').endsWith('_death')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   playHeroVoice(heroId, cue, opts = {}) {
@@ -1774,9 +1886,46 @@ export class AudioManager {
     return `${heroId}_default`;
   }
 
-  _selectContextualVoicePlan(prefix, cue, opts, now, cdOwner) {
+  _resolveContextualVoiceKey(prefix, cue, opts = {}, now = null, cdOwner = null) {
+    const effNow = Number.isFinite(now)
+      ? now
+      : Number.isFinite(opts.nowMs)
+        ? opts.nowMs
+        : typeof performance !== 'undefined'
+          ? performance.now()
+          : Date.now();
+    const effOwner =
+      cdOwner || this._getSpeakerCooldownOwner(opts.heroId || prefix, opts.speakerKey || prefix);
+    const otherVoice =
+      opts.otherVoice !== undefined
+        ? opts.otherVoice
+        : this.getOtherSpeakerActiveVoice(opts.speakerKey, effNow);
+    const plan = this._selectContextualVoicePlan(prefix, cue, opts, effNow, effOwner, otherVoice);
+    return plan ? plan.primaryKey : null;
+  }
+
+  _selectContextualVoicePlan(prefix, cue, opts, now, cdOwner, otherVoice = null) {
     const fullKey = this._resolveVoiceKey(prefix, cue);
     if (!fullKey) return null;
+
+    const forceShortByOtherSpeaker = Boolean(
+      otherVoice && (otherVoice.priority >= 2 || otherVoice.remainingSec > 0.75)
+    );
+    if (forceShortByOtherSpeaker) {
+      if (cue === 'hurt') {
+        const shortKey = this._resolveVoiceKey(prefix, 'hurt_short');
+        return { primaryKey: shortKey || fullKey, fallbackKey: fullKey, gateStampKey: null };
+      }
+      if (cue === 'skill_std' || cue === 'skill_alt' || cue === 'skill_crimson') {
+        const shortCue = cue === 'skill_std' ? 'skill_short' : 'skill_alt_short';
+        const shortKey = this._resolveVoiceKey(prefix, shortCue);
+        return { primaryKey: shortKey || fullKey, fallbackKey: fullKey, gateStampKey: null };
+      }
+      if (cue === 'ult_std' || cue === 'ult_alt' || cue === 'ult_crimson') {
+        const shortKey = this._resolveVoiceKey(prefix, 'ult_short');
+        return { primaryKey: shortKey || fullKey, fallbackKey: fullKey, gateStampKey: null };
+      }
+    }
 
     const pace = (opts.pace || this.voicePace) === 'full' ? 'full' : 'snappy';
     if (pace === 'full') {
@@ -1859,16 +2008,29 @@ export class AudioManager {
       return false;
     }
 
+    const otherVoice = this.getOtherSpeakerActiveVoice(speakerKey, now);
+    if (
+      otherVoice &&
+      otherVoice.priority >= 3 &&
+      priority === 1 &&
+      (cue === 'attack' || cue === 'attack_1' || cue === 'attack_2')
+    ) {
+      return false;
+    }
+
     const cdOwner = this._getSpeakerCooldownOwner(heroId, speakerKey);
     const cdId = `${cdOwner}:${cue}`;
     if (this.lastVoicePlayed[cdId] !== undefined && now - this.lastVoicePlayed[cdId] < cooldownMs) {
       return false;
     }
 
-    const plan = this._selectContextualVoicePlan(prefix, cue, opts, now, cdOwner);
+    const plan = this._selectContextualVoicePlan(prefix, cue, opts, now, cdOwner, otherVoice);
     if (!plan) return false;
 
     const startBufferPlayback = (buf, activeKey) => {
+      if (cue === 'death') {
+        this._deathVoiceLoadingUntilMs = 0;
+      }
       if (
         !buf ||
         !this.enabled ||
@@ -1921,15 +2083,19 @@ export class AudioManager {
         }
         src.connect(voiceGain);
 
-        const durMs = Math.max(200, ((buf.duration || 1.2) * 1000) | 0);
+        const durationSec = Math.max(0.2, Number(buf.duration) || 1.2);
+        const durMs = Math.max(200, Math.round(durationSec * 1000));
         let cleaned = false;
         const entry = {
           src,
           gainNode: voiceGain,
           priority,
+          cue,
           duckSfx,
           voiceKey: activeKey,
+          startedAtMs: playNow,
           startTimeMs: playNow,
+          durationSec,
           endTimeMs: playNow + durMs - 40,
           recoverTimer: null,
           cleanup: () => {
@@ -1984,22 +2150,31 @@ export class AudioManager {
       return startBufferPlayback(cachedFallback, plan.fallbackKey);
     }
 
+    if (cue === 'death') {
+      this._deathVoiceLoadingUntilMs = now + maxAsyncDelayMs;
+    }
     if (duckSfx) {
       this.preDuckSfxForVoice(priority, maxAsyncDelayMs + 80);
     }
     const reqStart = now;
     (async () => {
-      let decoded = await this.loadVoiceKey(plan.primaryKey, lang);
-      let activeKey = plan.primaryKey;
-      if (!decoded && plan.fallbackKey && plan.fallbackKey !== plan.primaryKey) {
-        decoded = await this.loadVoiceKey(plan.fallbackKey, lang);
-        activeKey = plan.fallbackKey;
-      }
-      if (!decoded) return;
-      if (!opts.lang && this.voiceLang !== lang) return;
-      const doneAt = getNowMs();
-      if (doneAt - reqStart <= maxAsyncDelayMs) {
-        startBufferPlayback(decoded, activeKey);
+      try {
+        let decoded = await this.loadVoiceKey(plan.primaryKey, lang);
+        let activeKey = plan.primaryKey;
+        if (!decoded && plan.fallbackKey && plan.fallbackKey !== plan.primaryKey) {
+          decoded = await this.loadVoiceKey(plan.fallbackKey, lang);
+          activeKey = plan.fallbackKey;
+        }
+        if (!decoded) return;
+        if (!opts.lang && this.voiceLang !== lang) return;
+        const doneAt = getNowMs();
+        if (doneAt - reqStart <= maxAsyncDelayMs) {
+          startBufferPlayback(decoded, activeKey);
+        }
+      } finally {
+        if (cue === 'death') {
+          this._deathVoiceLoadingUntilMs = 0;
+        }
       }
     })().catch(() => {});
     this.preloadHeroVoicePack(heroId, lang);

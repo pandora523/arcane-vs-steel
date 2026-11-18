@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps144';
-import { VFXManager } from './engine/VFXManager.js?v=30fps144';
-import { PixelForge } from './engine/PixelForge.js?v=30fps144';
-import { AudioManager } from './engine/AudioManager.js?v=30fps144';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps144';
-import { Fighter } from './entities/Fighter.js?v=30fps144';
-import { Warrior } from './entities/Warrior.js?v=30fps144';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps144';
-import { FireMage } from './entities/FireMage.js?v=30fps144';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps144';
-import { Archer } from './entities/Archer.js?v=30fps144';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps144';
-import { Priestess } from './entities/Priestess.js?v=30fps144';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps144';
-import { Reaper } from './entities/Reaper.js?v=30fps144';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps144';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps144';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps144';
-import { Titan } from './entities/Titan.js?v=30fps144';
-import { TitanEx } from './entities/TitanEx.js?v=30fps144';
-import { Ronin } from './entities/Ronin.js?v=30fps144';
-import { RoninEx } from './entities/RoninEx.js?v=30fps144';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps144';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps144';
-import { IceMage } from './entities/IceMage.js?v=30fps144';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps144';
-import { Android } from './entities/Android.js?v=30fps144';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps144';
-import { NyxEx } from './entities/NyxEx.js?v=30fps144';
+import { Renderer } from './engine/Renderer.js?v=30fps145';
+import { VFXManager } from './engine/VFXManager.js?v=30fps145';
+import { PixelForge } from './engine/PixelForge.js?v=30fps145';
+import { AudioManager } from './engine/AudioManager.js?v=30fps145';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './entities/Fighter.js?v=30fps145';
+import { Warrior } from './entities/Warrior.js?v=30fps145';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps145';
+import { FireMage } from './entities/FireMage.js?v=30fps145';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps145';
+import { Archer } from './entities/Archer.js?v=30fps145';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps145';
+import { Priestess } from './entities/Priestess.js?v=30fps145';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps145';
+import { Reaper } from './entities/Reaper.js?v=30fps145';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps145';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps145';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps145';
+import { Titan } from './entities/Titan.js?v=30fps145';
+import { TitanEx } from './entities/TitanEx.js?v=30fps145';
+import { Ronin } from './entities/Ronin.js?v=30fps145';
+import { RoninEx } from './entities/RoninEx.js?v=30fps145';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps145';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps145';
+import { IceMage } from './entities/IceMage.js?v=30fps145';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps145';
+import { Android } from './entities/Android.js?v=30fps145';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps145';
+import { NyxEx } from './entities/NyxEx.js?v=30fps145';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps144';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps144';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps144';
+} from './adventure/AdventureManager.js?v=30fps145';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps145';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps145';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -3418,7 +3418,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps144');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps145');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3514,7 +3514,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps144'
+          'v=30fps145'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4740,6 +4740,9 @@ export class Game {
     this._roundIntroFighter = null;
     this._roundIntroVoiceFired = false;
     this._roundEngageBannerTimer = 0;
+    this._deathVoiceWasBusy = false;
+    this._postDeathVoiceBreathRemaining = 0;
+    this.audio?.clearPendingDeathVoice?.();
 
     this.testModeUnlimitedHp = this.isAdventureMode()
       ? Boolean(this.explicitAdvUnlimitedHp)
@@ -5328,14 +5331,52 @@ export class Game {
       this.audio.play(deadFighter.deathSfx, deadFighter.x);
     }
     if (this.audio && !deadFighter.isMonster) {
-      this.audio.playHeroVoice?.(deadFighter.heroId, 'death', {
-        worldX: deadFighter.x,
-        speakerKey: deadFighter,
-        priority: 4,
-        cooldownMs: 200,
-        duckSfx: true,
-        maxAsyncDelayMs: 650
-      });
+      this._deathVoiceWasBusy = false;
+      this._postDeathVoiceBreathRemaining = 0;
+      this.audio.stopLowPriorityHeroVoices?.(1, 0.03);
+      this.audio.stopSpeakerVoice?.(deadFighter, 0.03);
+      const killerRemainingMs =
+        this.audio.getActiveVoiceRemainingMs?.(
+          (key, entry) => key !== deadFighter && (entry?.priority || 1) >= 2
+        ) || 0;
+      const fireDefeatedDeathVoice = () => {
+        this.audio?.playHeroVoice?.(deadFighter.heroId, 'death', {
+          worldX: deadFighter.x,
+          speakerKey: deadFighter,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true,
+          maxAsyncDelayMs: 650
+        });
+      };
+      if (killerRemainingMs > 0) {
+        const delayMs = Math.min(1350, Math.max(0, Math.round(killerRemainingMs + 140)));
+        this.audio.clearPendingDeathVoice?.();
+        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        this.audio._pendingDeathVoiceUntilMs = nowMs + delayMs;
+        this.audio._pendingDeathVoiceTimer = setTimeout(() => {
+          this.audio._pendingDeathVoiceTimer = null;
+          this.audio._pendingDeathVoiceUntilMs = 0;
+          if (
+            this.isLandingOpen ||
+            !deadFighter.isDead ||
+            (this.isMatchOver && !this.victoryRevealPending)
+          ) {
+            return;
+          }
+          this.audio.stopAllHeroVoices?.(0.04);
+          fireDefeatedDeathVoice();
+        }, delayMs);
+        if (
+          this.audio._pendingDeathVoiceTimer &&
+          typeof this.audio._pendingDeathVoiceTimer.unref === 'function'
+        ) {
+          this.audio._pendingDeathVoiceTimer.unref();
+        }
+      } else {
+        this.audio.clearPendingDeathVoice?.();
+        fireDefeatedDeathVoice();
+      }
     }
 
     if (this.isAdventureMode() && this.adventure?.active) {
@@ -5524,8 +5565,11 @@ export class Game {
     this.setPaused(false, false);
     this.victoryRevealPending = false;
     this.matchOverSafetyTimer = 0;
+    this._deathVoiceWasBusy = false;
+    this._postDeathVoiceBreathRemaining = 0;
     this.victoryOverlay.classList.remove('hidden');
     if (this.audio) {
+      this.audio.stopAllHeroVoices?.(0.06);
       const isDefeat = Boolean(this.victoryOverlay?.classList?.contains('is-defeat-plaque'));
       const victorHeroId = !isDefeat
         ? this.isAdventureMode()
@@ -6139,8 +6183,14 @@ export class Game {
           f.moveDir = 0;
           f.vx = 0;
           f.vy = 0;
+          f._overrideFrameIdx = null;
+          f.trueUltFrameOverride = null;
           f.stateTimer = (f.stateTimer || 0) + rawDt;
           f.walkPhase = (f.walkPhase || 0) + rawDt * 2.8;
+          f.haloPhase = (f.haloPhase || 0) + rawDt * 2.8;
+          f.runeOrbit = (f.runeOrbit || 0) + rawDt * 2.6;
+          f.windPhase = (f.windPhase || 0) + rawDt * 3.0;
+          f.chronoPhase = (f.chronoPhase || 0) + rawDt * 2.8;
           f.headBob = Math.sin(f.walkPhase) * 2.0;
           f.updateCape?.(rawDt);
           f.fx?.update?.(rawDt);
@@ -6301,17 +6351,40 @@ export class Game {
           : this.renderer.groundY;
       const onFloor = !fallen || fallen.isColossalBoss || fallen.y >= targetFloorY - 4;
       const holdNeeded = this.isAdventureMode() && fallen && !fallen.isMonster ? 0.65 : 1.35;
+      const canGateOnDeathVoice =
+        Boolean(this._enforceLiveVoiceQueueInTest) ||
+        (!this.simMode && typeof HTMLImageElement !== 'undefined');
+      const deathVoiceBusy =
+        canGateOnDeathVoice && Boolean(this.audio?.isDeathOrMatchEndVoiceBusy?.());
+      if (deathVoiceBusy) {
+        this._deathVoiceWasBusy = true;
+        this._postDeathVoiceBreathRemaining = 0.40;
+      } else if (this._deathVoiceWasBusy && (this._postDeathVoiceBreathRemaining || 0) > 0) {
+        this._postDeathVoiceBreathRemaining = Math.max(
+          0,
+          this._postDeathVoiceBreathRemaining - rawDt
+        );
+      }
+      const holdForDeathVoice =
+        canGateOnDeathVoice &&
+        (deathVoiceBusy ||
+          (this._deathVoiceWasBusy && (this._postDeathVoiceBreathRemaining || 0) > 0));
+      const safetyCeiling =
+        canGateOnDeathVoice && (deathVoiceBusy || this._deathVoiceWasBusy) ? 10.5 : 3.4;
+
       if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
         this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
-        if (this.postDeathHoldTimer >= holdNeeded) {
+        if (this.postDeathHoldTimer >= holdNeeded && !holdForDeathVoice) {
           this.revealVictoryOverlay();
         }
       }
-      if (this.victoryRevealPending && this.matchOverSafetyTimer >= 3.4) {
+      if (this.victoryRevealPending && this.matchOverSafetyTimer >= safetyCeiling) {
         this.revealVictoryOverlay();
       }
     } else if (!this.isMatchOver || !this.victoryRevealPending) {
       this.matchOverSafetyTimer = 0;
+      this._deathVoiceWasBusy = false;
+      this._postDeathVoiceBreathRemaining = 0;
     }
 
     // Check Simultaneous Melee / Skill Blade Clash across opposing active fighters
@@ -6396,69 +6469,219 @@ export class Game {
 
     const cw = ctx.canvas?.width || 1280;
     const ch = ctx.canvas?.height || 720;
+    const cx = Math.round(cw * 0.5);
+    const cy = Math.round(ch * 0.46);
+
+    const drawStar4 = (gx, gy, arm, col) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(gx - arm, gy - 1, arm * 2 + 2, 2);
+      ctx.fillRect(gx - 1, gy - arm, 2, arm * 2 + 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(gx - 2, gy - 2, 4, 4);
+    };
+
+    const drawChamferPlaque = (bx, by, boxW, boxH, borderCol, accentCol, baseAlpha, speedLines) => {
+      const cham = 10;
+      const halfW = Math.round(boxW * 0.5);
+      const halfH = Math.round(boxH * 0.5);
+      const px = bx + halfW;
+      const py = by + halfH;
+
+      ctx.globalAlpha = baseAlpha;
+      ctx.fillStyle = 'rgba(4, 7, 16, 0.91)';
+      ctx.fillRect(bx + cham, by, boxW - cham * 2, boxH);
+      for (let s = 2; s <= cham; s += 2) {
+        const stripH = boxH - (cham - s) * 2;
+        const sy = py - (stripH >> 1);
+        ctx.fillRect(bx + (cham - s), sy, 2, stripH);
+        ctx.fillRect(bx + boxW - (cham - s) - 2, sy, 2, stripH);
+      }
+
+      if (speedLines) {
+        const scroll = Math.round((this.roundIntroElapsed || 0) * 140) & 31;
+        ctx.fillStyle = borderCol;
+        ctx.globalAlpha = baseAlpha * 0.16;
+        for (let sx = -halfW + 16 - scroll; sx < halfW - 16; sx += 26) {
+          for (let row = -halfH + 8; row <= halfH - 10; row += 6) {
+            const lx = px + sx + ((row + halfH) >> 1);
+            if (lx > bx + cham + 4 && lx < bx + boxW - cham - 12) {
+              ctx.fillRect(lx, py + row, 8, 2);
+            }
+          }
+        }
+      }
+
+      ctx.globalAlpha = baseAlpha;
+      ctx.fillStyle = borderCol;
+      ctx.fillRect(bx + cham, by, boxW - cham * 2, 2);
+      ctx.fillRect(bx + cham, by + boxH - 2, boxW - cham * 2, 2);
+      ctx.fillStyle = accentCol;
+      const crestW = Math.round(boxW * 0.58);
+      ctx.fillRect(px - Math.round(crestW * 0.5), by, crestW, 2);
+      ctx.fillRect(px - Math.round(crestW * 0.5), by + boxH - 2, crestW, 2);
+
+      // Corner pixel studs
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(bx + cham + 3, by + 3, 4, 4);
+      ctx.fillRect(bx + boxW - cham - 7, by + 3, 4, 4);
+      ctx.fillRect(bx + cham + 3, by + boxH - 7, 4, 4);
+      ctx.fillRect(bx + boxW - cham - 7, by + boxH - 7, 4, 4);
+
+      drawStar4(bx + 6, py, 7, accentCol);
+      drawStar4(bx + boxW - 8, py, 7, accentCol);
+    };
+
+    const fitFontPx = (text, maxPx, minPx, maxW) => {
+      const len = Math.max(1, String(text || '').length);
+      return Math.max(minPx, Math.min(maxPx, Math.floor(maxW / (len * 0.96))));
+    };
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     if (inIntro) {
-      const boxW = Math.min(340, Math.max(240, cw - 28));
-      const boxH = 54;
-      const bx = Math.round((cw - boxW) * 0.5);
-      const by = Math.max(88, Math.round(ch * 0.165));
+      const boxW = Math.min(cw - 20, Math.min(640, Math.max(340, Math.round(cw * 0.64))));
+      const boxH = cw < 520 ? 104 : 122;
+      const bx = cx - Math.round(boxW * 0.5);
+      const by = cy - Math.round(boxH * 0.5);
       const total = Math.max(0.2, this.roundIntroDuration || 1.35);
       const ratio = Math.max(0, Math.min(1, 1 - (this.roundIntroTimer || 0) / total));
 
-      const f1 = this.getPointFighter(1);
-      const f2 = this.isAdventureMode() ? null : this.getPointFighter(2);
+      const f1 = this.getPointFighter?.(1) || this.leftFighter;
+      const f2 = this.isAdventureMode?.() ? null : this.getPointFighter?.(2) || this.rightFighter;
       const n1 = (f1?.name || 'CHAMPION').toUpperCase();
       const n2 = (f2?.name || 'CHALLENGER').toUpperCase();
-      const headline = this.isAdventureMode() ? `${n1} • PILGRIMAGE` : `${n1} VS. ${n2}`;
+      const p1Col = f1?.primaryColor || '#f59e0b';
+      const p2Col = f2?.primaryColor || '#38bdf8';
 
-      ctx.fillStyle = 'rgba(7, 10, 18, 0.88)';
-      ctx.fillRect(bx, by, boxW, boxH);
-      ctx.strokeStyle = '#d4af37';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(bx + 1, by + 1, boxW - 2, boxH - 2);
+      drawChamferPlaque(bx, by, boxW, boxH, '#d4af37', '#fef08a', 1, true);
 
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 8px "Press Start 2P", monospace';
-      ctx.fillText(
-        this.isAdventureMode() ? 'REALM STANDOFF • PREPARE' : 'SANCTUARY DUEL • STANDOFF',
-        bx + Math.round(boxW * 0.5),
-        by + 14
-      );
+      const narrowStack = cw < 480;
+      const eyebrow = this.isAdventureMode?.()
+        ? 'REALM STANDOFF • PREPARE'
+        : 'SANCTUARY DUEL • STANDOFF';
+      const eyeY = narrowStack ? by + 10 : by + 16;
+      const eyePx = narrowStack ? 7 : cw < 720 ? 8 : 9;
+      ctx.font = `bold ${eyePx}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(eyebrow, cx + 1, eyeY + 1, boxW - 36);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(eyebrow, cx, eyeY, boxW - 36);
 
-      ctx.fillStyle = '#fef08a';
-      ctx.font = 'bold 11px "Press Start 2P", monospace';
-      ctx.fillText(headline, bx + Math.round(boxW * 0.5), by + 30);
+      if (this.isAdventureMode?.()) {
+        const advMaxW = boxW - 44;
+        const advPx = fitFontPx(n1, cw < 520 ? 15 : 20, 11, advMaxW);
+        const advY = cy - 4;
+        ctx.font = `bold ${advPx}px "Press Start 2P", monospace`;
+        ctx.fillStyle = '#020617';
+        ctx.fillText(n1, cx + 3, advY + 3, advMaxW);
+        ctx.fillStyle = p1Col;
+        ctx.fillText(n1, cx + 1, advY + 2, advMaxW);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText(n1, cx, advY, advMaxW);
 
-      const barW = boxW - 36;
-      const barX = bx + 18;
-      const barY = by + 42;
+        ctx.font = 'bold 9px "Press Start 2P", monospace';
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('PILGRIMAGE', cx, advY + 22, advMaxW);
+      } else {
+        const vsPx = cw < 520 ? 26 : cw < 960 ? 28 : 32;
+        const vsY = narrowStack ? cy - 1 : cy + 2;
+        ctx.font = `bold ${vsPx}px "Press Start 2P", monospace`;
+        ctx.fillStyle = '#020617';
+        ctx.fillText('VS.', cx + 3, vsY + 4);
+        ctx.fillText('VS.', cx - 2, vsY + 2);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillText('VS.', cx + 2, vsY + 3);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText('VS.', cx, vsY);
+        drawStar4(cx - (narrowStack ? 46 : 54), vsY - 2, 5, '#fef08a');
+        drawStar4(cx + (narrowStack ? 46 : 54), vsY - 2, 5, '#fef08a');
+
+        if (narrowStack) {
+          const stackMaxW = boxW - 36;
+          const n1Px = fitFontPx(n1, 14, 10, stackMaxW);
+          const n2Px = fitFontPx(n2, 14, 10, stackMaxW);
+          const y1 = by + 26;
+          const y2 = by + 76;
+
+          ctx.font = `bold ${n1Px}px "Press Start 2P", monospace`;
+          ctx.fillStyle = '#020617';
+          ctx.fillText(n1, cx + 2, y1 + 2, stackMaxW);
+          ctx.fillStyle = p1Col;
+          ctx.fillText(n1, cx + 1, y1 + 1, stackMaxW);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillText(n1, cx, y1, stackMaxW);
+
+          ctx.font = `bold ${n2Px}px "Press Start 2P", monospace`;
+          ctx.fillStyle = '#020617';
+          ctx.fillText(n2, cx + 2, y2 + 2, stackMaxW);
+          ctx.fillStyle = p2Col;
+          ctx.fillText(n2, cx + 1, y2 + 1, stackMaxW);
+          ctx.fillStyle = '#bae6fd';
+          ctx.fillText(n2, cx, y2, stackMaxW);
+        } else {
+          const sideMaxW = Math.max(92, Math.round(boxW * 0.5) - 76);
+          const sideOffset = Math.round((boxW * 0.5 + 48) * 0.5);
+          const leftCx = cx - sideOffset;
+          const rightCx = cx + sideOffset;
+          const nameMax = cw < 720 ? 15 : 18;
+          const n1Px = fitFontPx(n1, nameMax, 11, sideMaxW);
+          const n2Px = fitFontPx(n2, nameMax, 11, sideMaxW);
+
+          ctx.font = `bold ${n1Px}px "Press Start 2P", monospace`;
+          ctx.fillStyle = '#020617';
+          ctx.fillText(n1, leftCx + 2, vsY + 2, sideMaxW);
+          ctx.fillStyle = p1Col;
+          ctx.fillText(n1, leftCx + 1, vsY + 1, sideMaxW);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillText(n1, leftCx, vsY, sideMaxW);
+
+          ctx.font = `bold ${n2Px}px "Press Start 2P", monospace`;
+          ctx.fillStyle = '#020617';
+          ctx.fillText(n2, rightCx + 2, vsY + 2, sideMaxW);
+          ctx.fillStyle = p2Col;
+          ctx.fillText(n2, rightCx + 1, vsY + 1, sideMaxW);
+          ctx.fillStyle = '#bae6fd';
+          ctx.fillText(n2, rightCx, vsY, sideMaxW);
+        }
+      }
+
+      const barW = boxW - 40;
+      const barX = cx - Math.round(barW * 0.5);
+      const barY = by + boxH - 13;
+      const fillW = Math.round(barW * ratio);
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(barX, barY, barW, 5);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(barX, barY, Math.round(barW * ratio), 5);
+      if (fillW > 0) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(barX, barY, fillW, 5);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(barX, barY, fillW, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(barX + Math.max(0, fillW - 3), barY, Math.min(3, fillW), 5);
+      }
     } else if (inEngage) {
       const alpha = Math.max(0, Math.min(1, (this._roundEngageBannerTimer || 0) / 0.5));
-      const boxW = 212;
-      const boxH = 38;
-      const bx = Math.round((cw - boxW) * 0.5);
-      const by = Math.max(92, Math.round(ch * 0.17));
+      const boxW = Math.min(340, cw - 32);
+      const boxH = 64;
+      const bx = cx - Math.round(boxW * 0.5);
+      const by = cy - Math.round(boxH * 0.5);
+
+      drawChamferPlaque(bx, by, boxW, boxH, '#f59e0b', '#ffffff', alpha, false);
+
+      const engagePx = cw < 420 ? 22 : 26;
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
-      ctx.fillRect(bx, by, boxW, boxH);
-      ctx.strokeStyle = '#fde047';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(bx + 1, by + 1, boxW - 2, boxH - 2);
+      ctx.font = `bold ${engagePx}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText('ENGAGE!', cx + 3, cy + 5, boxW - 32);
+      ctx.fillText('ENGAGE!', cx - 2, cy + 2, boxW - 32);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('ENGAGE!', cx + 2, cy + 4, boxW - 32);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px "Press Start 2P", monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('ENGAGE!', bx + Math.round(boxW * 0.5), by + Math.round(boxH * 0.5) + 1);
+      ctx.fillText('ENGAGE!', cx, cy + 2, boxW - 32);
     }
 
     ctx.restore();

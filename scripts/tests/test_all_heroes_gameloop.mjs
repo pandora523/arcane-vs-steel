@@ -41,67 +41,67 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps144';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps144';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps144';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps144';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps144';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps144';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps144';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps144';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps144';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps144';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps144';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps144';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps144';
-import { Archer } from '../../src/entities/Archer.js?v=30fps144';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps144';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps144';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps144';
-import { Titan } from '../../src/entities/Titan.js?v=30fps144';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps144';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps144';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps144';
-import { Android } from '../../src/entities/Android.js?v=30fps144';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps144';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps144';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps144';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps144';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps145';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps145';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps145';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps145';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps145';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps145';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps145';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps145';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps145';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps145';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps145';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps145';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps145';
+import { Archer } from '../../src/entities/Archer.js?v=30fps145';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps145';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps145';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps145';
+import { Titan } from '../../src/entities/Titan.js?v=30fps145';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps145';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps145';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps145';
+import { Android } from '../../src/entities/Android.js?v=30fps145';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps145';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps145';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps145';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps145';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps144';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps144';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps144';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps144';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps144';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps144';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps145';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps145';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps145';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps145';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps145';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps145';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps144';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps144';
+} from '../../src/adventure/AdventureManager.js?v=30fps145';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps145';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps144';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps144';
+} from '../../src/adventure/AdventureProgression.js?v=30fps145';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps145';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps144';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps145';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps144';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps145';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -705,7 +705,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps144');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps145');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -8296,7 +8296,7 @@ for (const [name, Cls] of CLASSES) {
         };
         const veilTops = [];
         bCtx.arc = (_ax, _ay, r) => {
-          if (Math.abs(r - 1.0) < 0.01 && Math.abs(tx - 195) < 4 && sy >= 18) {
+          if (Math.abs(r - 1.0) < 0.01 && tx >= 20 && tx <= 370 && sy >= 18) {
             veilTops.push(ty - sy);
           }
         };
@@ -11257,8 +11257,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps144');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps144');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps145');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps145');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12059,7 +12059,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps144'
+        src: 'assets/sprites/arena_bg.png?v=30fps145'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12103,13 +12103,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps144`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps145`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps144'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps145'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -14953,7 +14953,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps144';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps145';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -14988,7 +14988,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps144';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps145';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15093,12 +15093,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps144') ||
-      !manifestSrc.includes('?v=30fps144') ||
+      !indexHtmlSrc.includes('?v=30fps145') ||
+      !manifestSrc.includes('?v=30fps145') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps144 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps145 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16694,7 +16694,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps144 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps145 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17226,7 +17226,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.21: Batch ?v=30fps144 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // 36.21: Batch ?v=30fps145 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
   // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
   // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
   // --------------------------------------------------------------------------
@@ -18231,16 +18231,16 @@ if (!RUN_SUITE36_ONLY) {
       audio24.bgmDuckGain = makeGainMock24(1.0);
       audio24.master = audio24.sfxBus;
 
-      // Lazy BGM + Voice cache-bust ?v=30fps144 check
+      // Lazy BGM + Voice cache-bust ?v=30fps145 check
       await audio24.loadVoiceKey('nyx_select', 'en');
       await audio24.loadBgmTrack('bgm_title_select');
       if (
-        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps144')) ||
-        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps144')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps145')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps145')) ||
         fetchedUrls24.filter((u) => u.includes('assets/bgm/')).length !== 1
       ) {
         throw new Error(
-          `[Suite 36.24] Expected ?v=30fps144 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
+          `[Suite 36.24] Expected ?v=30fps145 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
         );
       }
 
@@ -18837,6 +18837,649 @@ if (!RUN_SUITE36_ONLY) {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 36.26: True Zero-Dip BGM Compressor Bypass (`bgmDuckGain -> masterGain`),
+  //        All-23-Hero Intro Idle + Center `VS.`/`ENGAGE!`, Portrait-Free Left/Right
+  //        Cut-Ins, Cross-Speaker Anti-Overlap & Sequential End-of-Match Queue
+  // --------------------------------------------------------------------------
+  {
+    const prevStorageDesc26 = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const prevWinStorageDesc26 = globalThis.window
+      ? Object.getOwnPropertyDescriptor(globalThis.window, 'localStorage')
+      : null;
+    const prevAudioCtx = globalThis.window?.AudioContext;
+    const prevWebkitAudioCtx = globalThis.window?.webkitAudioContext;
+    const prevGetEl26 = globalThis.document.getElementById;
+    const memStore26 = new Map();
+    const mockStore26 = {
+      getItem: (k) => (memStore26.has(k) ? memStore26.get(k) : null),
+      setItem: (k, v) => memStore26.set(k, String(v)),
+      removeItem: (k) => memStore26.delete(k)
+    };
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: mockStore26,
+      configurable: true,
+      writable: true
+    });
+    if (globalThis.window) {
+      Object.defineProperty(globalThis.window, 'localStorage', {
+        value: mockStore26,
+        configurable: true,
+        writable: true
+      });
+    }
+
+    const spawnedHeroes26 = [];
+    try {
+      // (A) True Zero-Dip BGM Compressor Bypass: bgmDuckGain -> masterGain (bypassing limiter)
+      const makeGraphNode = (extra = {}) => {
+        const node = {
+          connectedTo: [],
+          connect(dest) {
+            this.connectedTo.push(dest);
+            return dest;
+          },
+          disconnect() {},
+          ...extra
+        };
+        return node;
+      };
+      const makeParam = (val = 0) => ({
+        value: val,
+        setValueAtTime(v) {
+          this.value = v;
+        },
+        linearRampToValueAtTime(v) {
+          this.value = v;
+        },
+        exponentialRampToValueAtTime(v) {
+          this.value = v;
+        },
+        cancelScheduledValues() {}
+      });
+      class MockGraphAudioContext {
+        constructor() {
+          this.state = 'running';
+          this.currentTime = 1.0;
+          this.sampleRate = 44100;
+          this.destination = { _isDest: true };
+          this.onstatechange = null;
+        }
+        createGain() {
+          return makeGraphNode({ gain: makeParam(1) });
+        }
+        createBiquadFilter() {
+          return makeGraphNode({ type: 'lowpass', frequency: makeParam(1000), Q: makeParam(0.7) });
+        }
+        createDynamicsCompressor() {
+          return makeGraphNode({
+            threshold: makeParam(0),
+            knee: makeParam(0),
+            ratio: makeParam(1),
+            attack: makeParam(0),
+            release: makeParam(0)
+          });
+        }
+        createStereoPanner() {
+          return makeGraphNode({ pan: makeParam(0) });
+        }
+        createBuffer(ch, len) {
+          return { numberOfChannels: ch, length: len, duration: 0.25, getChannelData: () => new Float32Array(len) };
+        }
+        createBufferSource() {
+          return makeGraphNode({
+            buffer: null,
+            playbackRate: makeParam(1),
+            onended: null,
+            start() {},
+            stop() {}
+          });
+        }
+      }
+      if (globalThis.window) {
+        globalThis.window.AudioContext = MockGraphAudioContext;
+        globalThis.window.webkitAudioContext = MockGraphAudioContext;
+      }
+
+      const graphAudio = new AudioManager();
+      if (
+        !graphAudio.bgmBus?.connectedTo.includes(graphAudio.bgmDuckGain) ||
+        !graphAudio.bgmDuckGain?.connectedTo.includes(graphAudio.masterGain) ||
+        graphAudio.bgmDuckGain?.connectedTo.includes(graphAudio.limiter) ||
+        !graphAudio.voiceBus?.connectedTo.includes(graphAudio.limiter) ||
+        !graphAudio.limiter?.connectedTo.includes(graphAudio.masterGain) ||
+        !graphAudio.masterGain?.connectedTo.includes(graphAudio.ctx.destination) ||
+        Math.abs((graphAudio.bgmDuckGain?.gain?.value ?? 0) - 1.0) > 1e-6
+      ) {
+        throw new Error(
+          '[Suite 36.26] BGM compressor bypass failed: bgmDuckGain must connect directly to masterGain (bypassing limiter) with gain=1.0!'
+        );
+      }
+
+      // (B) All-23-Hero Intro Standoff Idle Animation + Center-Screen `VS.` & `ENGAGE!` Banner
+      const allRosterEntries = Object.entries(CHAMPION_ROSTER);
+      if (allRosterEntries.length !== 23) {
+        throw new Error(`[Suite 36.26] Expected 23 champions in CHAMPION_ROSTER, got ${allRosterEntries.length}`);
+      }
+      const introHeroes = allRosterEntries.map(([hid, cfg]) => {
+        const inst = new cfg.cls(300, 560, 1);
+        inst.heroId = hid;
+        inst._overrideFrameIdx = 128;
+        inst.trueUltFrameOverride = 132;
+        spawnedHeroes26.push(inst);
+        return inst;
+      });
+      const introSeenFrames = introHeroes.map(() => new Set());
+      const introGame26 = Object.create(Game.prototype);
+      introGame26.fighters = introHeroes;
+      introGame26.isMatchOver = false;
+      introGame26.roundIntroTimer = 4.15;
+      introGame26.roundIntroDuration = 4.15;
+      introGame26.roundIntroElapsed = 0;
+      introGame26._roundIntroFighter = null;
+      introGame26._roundIntroVoiceFired = true;
+      introGame26._roundEngageBannerTimer = 0;
+      introGame26.renderer = { groundY: 560, worldWidth: 1200, hitStopTimer: 0, update() {} };
+      introGame26.vfx = { update() {} };
+      introGame26.audio = null;
+      introGame26.hudTimer = 0;
+      introGame26.updateHUD = () => {};
+      introGame26.isAdventureMode = () => false;
+      introGame26.getPointFighter = (team) => (team === 2 ? introHeroes[1] : introHeroes[0]);
+
+      for (let tick = 0; tick < 12; tick++) {
+        introGame26.stepSimulation(1 / 12);
+        for (let i = 0; i < introHeroes.length; i++) {
+          const h = introHeroes[i];
+          const phaseIdx = PixelForge.getFrameIndex(h, 0);
+          const haloIdx = PixelForge.getFrameIndex(h, h.haloPhase || h.runeOrbit || h.windPhase || h.walkPhase || 0);
+          introSeenFrames[i].add(phaseIdx);
+          if (phaseIdx !== haloIdx && phaseIdx < 0) {
+            throw new Error(`[Suite 36.26] Invalid intro frameIdx=${phaseIdx} on ${h.heroId}`);
+          }
+        }
+      }
+      for (let i = 0; i < introHeroes.length; i++) {
+        const h = introHeroes[i];
+        const frames = Array.from(introSeenFrames[i]);
+        if (
+          frames.length < 4 ||
+          !frames.some((fr) => fr > 0 && fr <= 29) ||
+          h._overrideFrameIdx !== null ||
+          h.trueUltFrameOverride !== null
+        ) {
+          throw new Error(
+            `[Suite 36.26] ${h.heroId} froze or failed Row 0 IDLE during intro standoff: frames=${JSON.stringify(frames)}, override=${h._overrideFrameIdx}`
+          );
+        }
+      }
+
+      for (const [vw, vh] of [
+        [1280, 720],
+        [390, 844]
+      ]) {
+        const introDraws = { texts: [], rects: [], rotateCalls: 0 };
+        const introCtx = createMockCtx(introDraws);
+        introCtx.canvas = { width: vw, height: vh };
+        introCtx.fillText = (txt, x, y, maxW) => {
+          introDraws.texts.push({ text: String(txt), x, y, maxW });
+        };
+        introCtx.fillRect = (x, y, rw, rh) => {
+          introDraws.rects.push({ x, y, w: rw, h: rh });
+        };
+        introGame26.roundIntroTimer = 2.4;
+        introGame26._roundEngageBannerTimer = 0;
+        introGame26._renderRoundIntroOverlay(introCtx);
+
+        const vsCalls = introDraws.texts.filter((t) => t.text === 'VS.');
+        const n1 = introHeroes[0].name.toUpperCase();
+        const n2 = introHeroes[1].name.toUpperCase();
+        const hasBothNames =
+          introDraws.texts.some((t) => t.text === n1) &&
+          introDraws.texts.some((t) => t.text === n2);
+        const minRectX = Math.min(...introDraws.rects.map((r) => r.x));
+        const maxRectX = Math.max(...introDraws.rects.map((r) => r.x + r.w));
+        if (
+          introDraws.rotateCalls !== 0 ||
+          vsCalls.length === 0 ||
+          Math.abs(vsCalls[vsCalls.length - 1].y - vh * 0.46) > 12 ||
+          !hasBothNames ||
+          minRectX < 0 ||
+          maxRectX > vw
+        ) {
+          throw new Error(
+            `[Suite 36.26] Center VS. intro overlay failed on ${vw}x${vh}: vsY=${vsCalls[0]?.y}, names=${hasBothNames}, x=[${minRectX},${maxRectX}]`
+          );
+        }
+
+        introDraws.texts.length = 0;
+        introGame26.roundIntroTimer = 0;
+        introGame26._roundEngageBannerTimer = 0.45;
+        introGame26._renderRoundIntroOverlay(introCtx);
+        const engCalls = introDraws.texts.filter((t) => t.text === 'ENGAGE!');
+        if (
+          engCalls.length === 0 ||
+          Math.abs(engCalls[engCalls.length - 1].y - vh * 0.46) > 12
+        ) {
+          throw new Error(
+            `[Suite 36.26] Center ENGAGE! overlay failed on ${vw}x${vh}: engY=${engCalls[0]?.y}`
+          );
+        }
+      }
+
+      // (C) Portrait-Free Left/Right Ultimate & Supreme Cut-Ins
+      const leftCasterEx = introHeroes.find((h) => h.heroId === 'warrior_ex');
+      const rightCasterEx = introHeroes.find((h) => h.heroId === 'mage_ex');
+      const leftCasterLeg = introHeroes.find((h) => h.heroId === 'mage');
+      const rightCasterLeg = introHeroes.find((h) => h.heroId === 'warrior');
+      leftCasterEx.team = 1;
+      rightCasterEx.team = 2;
+      leftCasterLeg.team = 'left';
+      rightCasterLeg.team = 'right';
+
+      const prevWinW = globalThis.window?.innerWidth;
+      const prevWinH = globalThis.window?.innerHeight;
+      try {
+        for (const [vw, vh] of [
+          [1280, 720],
+          [390, 844]
+        ]) {
+          if (globalThis.window) {
+            globalThis.window.innerWidth = vw;
+            globalThis.window.innerHeight = vh;
+          }
+          const cutTrack = { rotateCalls: 0 };
+          const cutCtx = createMockCtx(cutTrack);
+          let curTx = 0;
+          const stTx = [];
+          const oSaveC = cutCtx.save.bind(cutCtx);
+          const oRestC = cutCtx.restore.bind(cutCtx);
+          cutCtx.save = () => {
+            stTx.push(curTx);
+            oSaveC();
+          };
+          cutCtx.restore = () => {
+            if (stTx.length) curTx = stTx.pop();
+            oRestC();
+          };
+          cutCtx.setTransform = () => {
+            curTx = 0;
+          };
+          cutCtx.translate = (dx) => {
+            curTx += dx || 0;
+          };
+          let drawImgCalls = 0;
+          let portraitImgCalls = 0;
+          let arcCalls = 0;
+          let ellipseCalls = 0;
+          const cutTextTx = [];
+          cutCtx.drawImage = (img) => {
+            drawImgCalls++;
+            const src = String(img?.src || img?._origSrc || img?._deferredSrc || '');
+            if (src.includes('portrait')) portraitImgCalls++;
+          };
+          cutCtx.arc = () => {
+            arcCalls++;
+          };
+          cutCtx.ellipse = () => {
+            ellipseCalls++;
+          };
+          cutCtx.fillText = (txt) => {
+            cutTextTx.push({ text: String(txt), tx: curTx });
+          };
+
+          const cutRen = new Renderer({ width: vw, height: vh, getContext: () => cutCtx });
+
+          // EX Left vs Right
+          cutRen.triggerUltimateCutIn(leftCasterEx, true);
+          if (cutRen.cutInSide !== 'left') {
+            throw new Error(`[Suite 36.26] Expected Team 1 cutInSide='left', got '${cutRen.cutInSide}'`);
+          }
+          cutRen.cutInTimer = 0.7;
+          cutTextTx.length = 0;
+          cutRen.drawExUltimateCutIn(cutCtx, vw, 96);
+          const leftExTx = cutTextTx[cutTextTx.length - 1]?.tx;
+
+          cutRen.triggerUltimateCutIn(rightCasterEx, false);
+          if (cutRen.cutInSide !== 'right') {
+            throw new Error(`[Suite 36.26] Expected Team 2 cutInSide='right', got '${cutRen.cutInSide}'`);
+          }
+          cutRen.cutInTimer = 0.55;
+          cutTextTx.length = 0;
+          cutRen.drawExUltimateCutIn(cutCtx, vw, 96);
+          const rightExTx = cutTextTx[cutTextTx.length - 1]?.tx;
+
+          if (
+            drawImgCalls !== 0 ||
+            cutTrack.rotateCalls !== 0 ||
+            arcCalls !== 0 ||
+            ellipseCalls !== 0 ||
+            cutCtx._stateStack.length !== 0
+          ) {
+            throw new Error(
+              `[Suite 36.26] EX cut-in violated portrait-free/zero-vector rule on ${vw}x${vh}: imgs=${drawImgCalls}, rot=${cutTrack.rotateCalls}, arc=${arcCalls}, ell=${ellipseCalls}`
+            );
+          }
+
+          if (vw === 1280) {
+            if (!(leftExTx < vw * 0.40) || !(rightExTx > vw * 0.60)) {
+              throw new Error(
+                `[Suite 36.26] Desktop left/right EX cut-in anchoring mismatch: leftTx=${leftExTx}, rightTx=${rightExTx}`
+              );
+            }
+          } else {
+            if (!(leftExTx < rightExTx) || leftExTx < 10 || rightExTx > vw - 10) {
+              throw new Error(
+                `[Suite 36.26] Mobile portrait left/right EX cut-in bounds mismatch: leftTx=${leftExTx}, rightTx=${rightExTx}`
+              );
+            }
+          }
+
+          // Legacy Left vs Right (`0` portrait drawImage & `0` cut-in drawImage)
+          const cutVfx = new VFXManager();
+          let cutInCalloutDraws = 0;
+          const origCutContent = cutRen._drawCutInCalloutContent.bind(cutRen);
+          cutRen._drawCutInCalloutContent = (...args) => {
+            const beforeImgs = drawImgCalls;
+            origCutContent(...args);
+            cutInCalloutDraws += drawImgCalls - beforeImgs;
+          };
+          portraitImgCalls = 0;
+          cutRen.triggerUltimateCutIn(leftCasterLeg, false);
+          if (cutRen.cutInSide !== 'left') {
+            throw new Error(`[Suite 36.26] Expected Legacy Team 'left' cutInSide='left', got '${cutRen.cutInSide}'`);
+          }
+          cutRen.cutInTimer = 0.55;
+          cutTextTx.length = 0;
+          cutRen.render([], cutVfx);
+          const leftLegTx = cutTextTx[cutTextTx.length - 1]?.tx;
+
+          cutRen.triggerUltimateCutIn(rightCasterLeg, true);
+          if (cutRen.cutInSide !== 'right') {
+            throw new Error(`[Suite 36.26] Expected Legacy Team 'right' cutInSide='right', got '${cutRen.cutInSide}'`);
+          }
+          cutRen.cutInTimer = 0.7;
+          cutTextTx.length = 0;
+          cutRen.render([], cutVfx);
+          const rightLegTx = cutTextTx[cutTextTx.length - 1]?.tx;
+
+          if (
+            portraitImgCalls !== 0 ||
+            cutInCalloutDraws !== 0 ||
+            (vw === 1280 && (!(leftLegTx < vw * 0.40) || !(rightLegTx > vw * 0.60))) ||
+            !(leftLegTx < rightLegTx)
+          ) {
+            throw new Error(
+              `[Suite 36.26] Legacy portrait-free cut-in anchoring failed on ${vw}x${vh}: portImgs=${portraitImgCalls}, cutImgs=${cutInCalloutDraws}, leftTx=${leftLegTx}, rightTx=${rightLegTx}`
+            );
+          }
+        }
+      } finally {
+        if (globalThis.window) {
+          globalThis.window.innerWidth = prevWinW;
+          globalThis.window.innerHeight = prevWinH;
+        }
+      }
+
+      // (D) Cross-Speaker Anti-Overlap & Sequential End-of-Match Dialogue Queue
+      const playedVoiceLog26 = [];
+      const activeSrcNodes26 = [];
+      const qAudio = new AudioManager();
+      qAudio.ctx = {
+        state: 'running',
+        currentTime: 0,
+        destination: {},
+        createGain: () => makeGraphNode({ gain: makeParam(1) }),
+        createStereoPanner: () => makeGraphNode({ pan: makeParam(0) }),
+        createBufferSource: () => {
+          const src = makeGraphNode({
+            buffer: null,
+            playbackRate: makeParam(1),
+            onended: null,
+            start() {
+              playedVoiceLog26.push(src.buffer?.tag || 'unknown');
+            },
+            stop() {}
+          });
+          activeSrcNodes26.push(src);
+          return src;
+        }
+      };
+      qAudio.sfxBus = makeGraphNode({ gain: makeParam(0.55) });
+      qAudio.sfxDuckGain = makeGraphNode({ gain: makeParam(1.0) });
+      qAudio.voiceBus = makeGraphNode({ gain: makeParam(1.42) });
+      qAudio.bgmBus = makeGraphNode({ gain: makeParam(0.38) });
+      qAudio.bgmDuckGain = makeGraphNode({ gain: makeParam(1.0) });
+      qAudio.master = qAudio.sfxBus;
+
+      for (const [vk, dur] of [
+        ['aethelgard_ult_std', 0.22],
+        ['aethelgard_victory', 0.8],
+        ['seraphina_attack_1', 0.4],
+        ['seraphina_attack_2', 0.4],
+        ['seraphina_hurt', 1.1],
+        ['seraphina_hurt_short', 0.45],
+        ['seraphina_skill_std', 1.6],
+        ['seraphina_skill_short', 0.8],
+        ['seraphina_skill_crimson', 1.8],
+        ['seraphina_skill_alt_short', 0.85],
+        ['seraphina_ult_std', 2.4],
+        ['seraphina_ult_short', 1.1],
+        ['seraphina_death', 0.5]
+      ]) {
+        qAudio.voiceBuffers[`en:${vk}`] = { tag: vk, duration: dur };
+      }
+
+      const killerSpeaker = leftCasterEx;
+      const victimSpeaker = introHeroes.find((h) => h.heroId === 'priestess_ex');
+      qAudio.setVoicePace('full', false);
+      qAudio.playHeroVoice('warrior_ex', 'ult_std', {
+        speakerKey: killerSpeaker,
+        priority: 3,
+        cooldownMs: 10
+      });
+
+      const atkSkipped = qAudio.playHeroVoice('priestess_ex', 'attack', {
+        speakerKey: victimSpeaker,
+        priority: 1,
+        cooldownMs: 10
+      });
+      qAudio.playHeroVoice('priestess_ex', 'hurt', {
+        speakerKey: victimSpeaker,
+        priority: 1,
+        cooldownMs: 10,
+        heavyHurt: true
+      });
+      qAudio.playHeroVoice('priestess_ex', 'skill_std', {
+        speakerKey: victimSpeaker,
+        priority: 2,
+        cooldownMs: 10,
+        fullChant: true
+      });
+      qAudio.playHeroVoice('priestess_ex', 'skill_crimson', {
+        speakerKey: victimSpeaker,
+        priority: 2,
+        cooldownMs: 10,
+        fullChant: true
+      });
+      victimSpeaker.hp = 100;
+      victimSpeaker.maxHp = 3000;
+      qAudio.playHeroVoice('priestess_ex', 'ult_std', {
+        speakerKey: victimSpeaker,
+        priority: 3,
+        cooldownMs: 10,
+        hpFrac: 0.2
+      });
+
+      const antiOverlapSlice = playedVoiceLog26.slice(-4);
+      if (
+        atkSkipped !== false ||
+        antiOverlapSlice[0] !== 'seraphina_hurt_short' ||
+        antiOverlapSlice[1] !== 'seraphina_skill_short' ||
+        antiOverlapSlice[2] !== 'seraphina_skill_alt_short' ||
+        antiOverlapSlice[3] !== 'seraphina_ult_short'
+      ) {
+        throw new Error(
+          `[Suite 36.26] Cross-speaker anti-overlap mismatch: atkSkipped=${atkSkipped}, slice=${JSON.stringify(antiOverlapSlice)}`
+        );
+      }
+
+      // Sequential End-of-Match Queue: Killer Move -> Defeated Death -> 0.40s Breath -> Winner Victory
+      qAudio.stopAllHeroVoices(0);
+      qAudio.lastVoicePlayed = {};
+      playedVoiceLog26.length = 0;
+      activeSrcNodes26.length = 0;
+
+      const makeMockEl26 = () => {
+        const cls = new Set(['hidden']);
+        return {
+          textContent: '',
+          classList: {
+            add: (...cs) => cs.forEach((c) => cls.add(c)),
+            remove: (...cs) => cs.forEach((c) => cls.delete(c)),
+            contains: (c) => cls.has(c)
+          }
+        };
+      };
+      const dom26 = new Map([
+        ['victory-overlay', makeMockEl26()],
+        ['victory-eyebrow', makeMockEl26()],
+        ['victory-winner', makeMockEl26()],
+        ['victory-stats', makeMockEl26()],
+        ['victory-auto-next', makeMockEl26()]
+      ]);
+      globalThis.document.getElementById = (id) => dom26.get(id) || makeMockEl26();
+
+      let stopAllBeforeVictoryCalls = 0;
+      const origStopAll = qAudio.stopAllHeroVoices.bind(qAudio);
+      qAudio.stopAllHeroVoices = (...args) => {
+        stopAllBeforeVictoryCalls++;
+        return origStopAll(...args);
+      };
+
+      const qGame = Object.create(Game.prototype);
+      qGame._enforceLiveVoiceQueueInTest = true;
+      qGame.simMode = true;
+      qGame.isLandingOpen = false;
+      qGame.isMatchOver = false;
+      qGame.isSimPaused = false;
+      qGame.autoTourney = false;
+      qGame.victoryRevealPending = false;
+      qGame._activeFightersScratch = [];
+      qGame.matchTime = 20;
+      qGame.hudTimer = 0;
+      qGame.slot1Hero = 'warrior_ex';
+      qGame.slot2Hero = 'priestess_ex';
+      qGame.leftFighter = killerSpeaker;
+      qGame.rightFighter = victimSpeaker;
+      qGame.fighters = [killerSpeaker, victimSpeaker];
+      qGame.victoryOverlay = dom26.get('victory-overlay');
+      qGame.renderer = {
+        groundY: 560,
+        worldWidth: 1200,
+        hitStopTimer: 0,
+        update() {},
+        triggerShake() {},
+        triggerAberration() {},
+        triggerHitStop() {},
+        triggerKOFinisher() {}
+      };
+      qGame.vfx = new VFXManager();
+      qGame.audio = qAudio;
+      qGame.setPaused = () => {};
+      qGame.updateHUD = () => {};
+      qGame.updateProjectiles = () => {};
+      qGame.getTeamFighters = (t) => [t === 1 ? killerSpeaker : victimSpeaker];
+      qGame.getTeammateOf = () => null;
+      qGame.getPointFighter = (t) => (t === 1 ? killerSpeaker : victimSpeaker);
+      qGame.isAdventureMode = () => false;
+      qGame.is2v2Mode = () => false;
+
+      killerSpeaker.team = 1;
+      killerSpeaker.isDead = false;
+      killerSpeaker.isPlayerControlled = true;
+      killerSpeaker.game = qGame;
+      victimSpeaker.team = 2;
+      victimSpeaker.isDead = true;
+      victimSpeaker.y = 560;
+      victimSpeaker.deathTimer = 2.0;
+      victimSpeaker.game = qGame;
+
+      // 1. Killer fires priority-3 move line
+      qAudio.playHeroVoice('warrior_ex', 'ult_std', {
+        speakerKey: killerSpeaker,
+        priority: 3,
+        cooldownMs: 10
+      });
+      // 2. Victim dies -> death line deferred while killer finishes!
+      qGame.onFighterDeath(victimSpeaker);
+      if (
+        qAudio._pendingDeathVoiceTimer === null ||
+        !qAudio.isDeathOrMatchEndVoiceBusy() ||
+        JSON.stringify(playedVoiceLog26) !== '["aethelgard_ult_std"]'
+      ) {
+        throw new Error(
+          `[Suite 36.26] Expected death voice queued behind killer ult_std, got timer=${Boolean(qAudio._pendingDeathVoiceTimer)}, log=${JSON.stringify(playedVoiceLog26)}`
+        );
+      }
+
+      // Step past normal holdNeeded (1.35s): victory screen MUST stay hidden while death voice is pending!
+      for (let i = 0; i < 4; i++) qGame.stepSimulation(0.45);
+      if (!qGame.victoryRevealPending) {
+        throw new Error('[Suite 36.26] Expected revealVictoryOverlay to hold while death voice is pending!');
+      }
+
+      // Wait for scheduled death timer (~320ms) to trigger `seraphina_death`
+      await new Promise((r) => setTimeout(r, 420));
+      if (
+        !playedVoiceLog26.includes('seraphina_death') ||
+        !qAudio.isDeathOrMatchEndVoiceBusy() ||
+        !qGame.victoryRevealPending
+      ) {
+        throw new Error(
+          `[Suite 36.26] Expected seraphina_death active after killer finished, got log=${JSON.stringify(playedVoiceLog26)}, busy=${qAudio.isDeathOrMatchEndVoiceBusy()}`
+        );
+      }
+
+      // End `seraphina_death` playback -> 0.40s breath hold -> Winner Victory fires with stopAllHeroVoices!
+      const deathSrcNode = activeSrcNodes26[activeSrcNodes26.length - 1];
+      deathSrcNode?.onended?.();
+      qGame.stepSimulation(0.20);
+      if (!qGame.victoryRevealPending) {
+        throw new Error('[Suite 36.26] Expected 0.40s post-death breath pause before revealing victory!');
+      }
+      const stopCountBeforeVictory = stopAllBeforeVictoryCalls;
+      qGame.stepSimulation(0.25);
+
+      if (
+        qGame.victoryRevealPending ||
+        stopAllBeforeVictoryCalls <= stopCountBeforeVictory ||
+        JSON.stringify(playedVoiceLog26) !==
+          '["aethelgard_ult_std","seraphina_death","aethelgard_victory"]'
+      ) {
+        throw new Error(
+          `[Suite 36.26] Sequential end-of-match dialogue order failed! pending=${qGame.victoryRevealPending}, stopCalls=${stopAllBeforeVictoryCalls}/${stopCountBeforeVictory}, log=${JSON.stringify(playedVoiceLog26)}`
+        );
+      }
+      qAudio.stopAllHeroVoices(0);
+    } finally {
+      for (const h of spawnedHeroes26) {
+        h.fx?.dispose?.();
+      }
+      globalThis.document.getElementById = prevGetEl26;
+      if (globalThis.window) {
+        globalThis.window.AudioContext = prevAudioCtx;
+        globalThis.window.webkitAudioContext = prevWebkitAudioCtx;
+      }
+      if (prevStorageDesc26) {
+        Object.defineProperty(globalThis, 'localStorage', prevStorageDesc26);
+      }
+      if (globalThis.window && prevWinStorageDesc26) {
+        Object.defineProperty(globalThis.window, 'localStorage', prevWinStorageDesc26);
+      }
+    }
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -18845,7 +19488,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-12 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19), Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20), Dual Voice/SFX Mixer + Sidechain Ducking + Pre-Round Intro Standoff + 9s Victory Hold Parity (36.21), Batch-1 6-Champion + Seraphina JP Voice Packs + EN/JP Toggle Parity (36.22), Batch-2 Final 5-Champion Full-Roster 312-MP3 EN/JP Voice Parity (36.23), Cute Nyx Recast + 11-Track Lyria 3 OST + Steady Non-Dipping BGM 3-Bus Mixer Parity (36.24) & Kawaii JP Nyx + 96-Clip Snappy Arcade Barks + Contextual Layering Parity (36.25) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-12 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19), Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20), Dual Voice/SFX Mixer + Sidechain Ducking + Pre-Round Intro Standoff + 9s Victory Hold Parity (36.21), Batch-1 6-Champion + Seraphina JP Voice Packs + EN/JP Toggle Parity (36.22), Batch-2 Final 5-Champion Full-Roster 312-MP3 EN/JP Voice Parity (36.23), Cute Nyx Recast + 11-Track Lyria 3 OST + Steady Non-Dipping BGM 3-Bus Mixer Parity (36.24), Kawaii JP Nyx + 96-Clip Snappy Arcade Barks + Contextual Layering Parity (36.25) & True Zero-Dip BGM Compressor Bypass + Center VS Intro / All-23 Idle + Portrait-Free Side Cut-Ins + Cross-Speaker Anti-Overlap & Sequential End-of-Match Queue Parity (36.26) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

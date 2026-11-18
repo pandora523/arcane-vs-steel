@@ -507,20 +507,20 @@ export class PixelForge {
       return img;
     };
 
-    const sharedSeraphimWings = loadDeferredImg('assets/sprites/seraphim_wings.png?v=30fps144');
-    const sharedMageMeteor = loadDeferredImg('assets/sprites/meteor_cataclysm.png?v=30fps144');
-    const sharedMageIcons = loadEagerImg('assets/sprites/mage_icons.png?v=30fps144');
+    const sharedSeraphimWings = loadDeferredImg('assets/sprites/seraphim_wings.png?v=30fps145');
+    const sharedMageMeteor = loadDeferredImg('assets/sprites/meteor_cataclysm.png?v=30fps145');
+    const sharedMageIcons = loadEagerImg('assets/sprites/mage_icons.png?v=30fps145');
     const sharedReaperCompanions = loadDeferredImg('assets/sprites/reaper_companions.png?v=30fps113');
     const sharedBossPortrait = loadDeferredImg(
-      'assets/sprites/boss_archfiend_portrait.png?v=30fps144',
+      'assets/sprites/boss_archfiend_portrait.png?v=30fps145',
       () => this.refreshPortraits()
     );
-    const sharedMonsterVfx = loadDeferredImg('assets/sprites/monster_vfx.png?v=30fps144');
+    const sharedMonsterVfx = loadDeferredImg('assets/sprites/monster_vfx.png?v=30fps145');
 
     const makeExHeroEntry = (id, extra = {}) => ({
-      sheet: loadDeferredImg(`assets/sprites/${id}_sheet.png?v=30fps144`),
-      vfx: loadDeferredImg(`assets/sprites/${id}_vfx.png?v=30fps144`),
-      portrait: loadDeferredImg(`assets/sprites/${id}_portrait.png?v=30fps144`, () =>
+      sheet: loadDeferredImg(`assets/sprites/${id}_sheet.png?v=30fps145`),
+      vfx: loadDeferredImg(`assets/sprites/${id}_vfx.png?v=30fps145`),
+      portrait: loadDeferredImg(`assets/sprites/${id}_portrait.png?v=30fps145`, () =>
         this.refreshPortraits()
       ),
       cellW: 320,
@@ -531,30 +531,30 @@ export class PixelForge {
     });
 
     this.assets = {
-      arenaBg: loadDeferredImg('assets/sprites/arena_bg.png?v=30fps144'),
-      arenaSylvan: loadDeferredImg('assets/sprites/arena_sylvan.png?v=30fps144'),
-      arenaBoneyard: loadDeferredImg('assets/sprites/arena_boneyard.png?v=30fps144'),
-      arenaClocktower: loadDeferredImg('assets/sprites/arena_clocktower.png?v=30fps144'),
-      arenaInferno: loadDeferredImg('assets/sprites/arena_inferno.png?v=30fps144'),
-      arenaSanctuary: loadDeferredImg('assets/sprites/arena_sanctuary.png?v=30fps144'),
-      arenaShogunate: loadDeferredImg('assets/sprites/arena_shogunate.png?v=30fps144'),
-      arenaShogunateInferno: loadDeferredImg('assets/sprites/arena_shogunate_inferno.png?v=30fps144'),
-      arenaGlacial: loadDeferredImg('assets/sprites/arena_glacial.png?v=30fps144'),
-      arenaShogunateGlacial: loadDeferredImg('assets/sprites/arena_shogunate_glacial.png?v=30fps144'),
-      arenaCobMonitor: loadDeferredImg('assets/sprites/arena_cob_monitor.png?v=30fps144'),
-      arenaCobMonitorInferno: loadDeferredImg('assets/sprites/arena_cob_monitor_inferno.png?v=30fps144'),
-      arenaCobMonitorGlacial: loadDeferredImg('assets/sprites/arena_cob_monitor_glacial.png?v=30fps144'),
-      cobCreatorAnim: loadDeferredImg('assets/sprites/cob_creator_anim.png?v=30fps144'),
-      cobDroneAnim: loadDeferredImg('assets/sprites/cob_drone_anim.png?v=30fps144'),
-      advVistaPano: loadDeferredImg('assets/sprites/adv_vista_pano.png?v=30fps144'),
-      advArchPano: loadDeferredImg('assets/sprites/adv_arch_pano.png?v=30fps144'),
-      advFloorPano: loadDeferredImg('assets/sprites/adv_floor_pano.png?v=30fps144'),
-      advInfernoPano: loadDeferredImg('assets/sprites/adv_inferno_pano.png?v=30fps144'),
-      advPropsSheet: loadDeferredImg('assets/sprites/adv_props_sheet.png?v=30fps144'),
-      advFxSheet: loadDeferredImg('assets/sprites/adv_fx_sheet.png?v=30fps144'),
-      advStageVfx: loadDeferredImg('assets/sprites/adv_stage_vfx.png?v=30fps144'),
+      arenaBg: loadDeferredImg('assets/sprites/arena_bg.png?v=30fps145'),
+      arenaSylvan: loadDeferredImg('assets/sprites/arena_sylvan.png?v=30fps145'),
+      arenaBoneyard: loadDeferredImg('assets/sprites/arena_boneyard.png?v=30fps145'),
+      arenaClocktower: loadDeferredImg('assets/sprites/arena_clocktower.png?v=30fps145'),
+      arenaInferno: loadDeferredImg('assets/sprites/arena_inferno.png?v=30fps145'),
+      arenaSanctuary: loadDeferredImg('assets/sprites/arena_sanctuary.png?v=30fps145'),
+      arenaShogunate: loadDeferredImg('assets/sprites/arena_shogunate.png?v=30fps145'),
+      arenaShogunateInferno: loadDeferredImg('assets/sprites/arena_shogunate_inferno.png?v=30fps145'),
+      arenaGlacial: loadDeferredImg('assets/sprites/arena_glacial.png?v=30fps145'),
+      arenaShogunateGlacial: loadDeferredImg('assets/sprites/arena_shogunate_glacial.png?v=30fps145'),
+      arenaCobMonitor: loadDeferredImg('assets/sprites/arena_cob_monitor.png?v=30fps145'),
+      arenaCobMonitorInferno: loadDeferredImg('assets/sprites/arena_cob_monitor_inferno.png?v=30fps145'),
+      arenaCobMonitorGlacial: loadDeferredImg('assets/sprites/arena_cob_monitor_glacial.png?v=30fps145'),
+      cobCreatorAnim: loadDeferredImg('assets/sprites/cob_creator_anim.png?v=30fps145'),
+      cobDroneAnim: loadDeferredImg('assets/sprites/cob_drone_anim.png?v=30fps145'),
+      advVistaPano: loadDeferredImg('assets/sprites/adv_vista_pano.png?v=30fps145'),
+      advArchPano: loadDeferredImg('assets/sprites/adv_arch_pano.png?v=30fps145'),
+      advFloorPano: loadDeferredImg('assets/sprites/adv_floor_pano.png?v=30fps145'),
+      advInfernoPano: loadDeferredImg('assets/sprites/adv_inferno_pano.png?v=30fps145'),
+      advPropsSheet: loadDeferredImg('assets/sprites/adv_props_sheet.png?v=30fps145'),
+      advFxSheet: loadDeferredImg('assets/sprites/adv_fx_sheet.png?v=30fps145'),
+      advStageVfx: loadDeferredImg('assets/sprites/adv_stage_vfx.png?v=30fps145'),
       monsterVfx: sharedMonsterVfx,
-      heroIconsSheet: loadEagerImg('assets/sprites/hero_icons_sheet.png?v=30fps144'),
+      heroIconsSheet: loadEagerImg('assets/sprites/hero_icons_sheet.png?v=30fps145'),
       warrior: {
         sheet: loadDeferredImg('assets/sprites/warrior_sheet.png?v=30fps112'),
         wings: sharedSeraphimWings,
@@ -628,49 +628,49 @@ export class PixelForge {
         portrait: loadDeferredImg('assets/sprites/android_portrait.png?v=30fps113', () => this.refreshPortraits())
       },
       templar: {
-        sheet: loadDeferredImg('assets/sprites/monster_templar_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_templar_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       astrologer: {
-        sheet: loadDeferredImg('assets/sprites/monster_astrologer_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_astrologer_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       treant: {
-        sheet: loadDeferredImg('assets/sprites/monster_treant_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_treant_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       dryad: {
-        sheet: loadDeferredImg('assets/sprites/monster_dryad_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_dryad_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       ghoul: {
-        sheet: loadDeferredImg('assets/sprites/monster_ghoul_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_ghoul_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       cultist: {
-        sheet: loadDeferredImg('assets/sprites/monster_cultist_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_cultist_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       brute: {
-        sheet: loadDeferredImg('assets/sprites/monster_brute_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_brute_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       fiend: {
-        sheet: loadDeferredImg('assets/sprites/monster_fiend_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/monster_fiend_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
         portrait: sharedBossPortrait
       },
       archfiend: {
-        sheet: loadDeferredImg('assets/sprites/boss_archfiend_sheet.png?v=30fps144'),
+        sheet: loadDeferredImg('assets/sprites/boss_archfiend_sheet.png?v=30fps145'),
         vfx: sharedMonsterVfx,
-        colossus: loadDeferredImg('assets/sprites/boss_colossus_sheet.png?v=30fps144'),
+        colossus: loadDeferredImg('assets/sprites/boss_colossus_sheet.png?v=30fps145'),
         portrait: sharedBossPortrait
       }
     };
@@ -859,7 +859,17 @@ export class PixelForge {
       return 30 + walkStep;
     }
 
-    const idleStep = Math.floor(Math.abs(phase) * 8.0) % 30;
+    const effectivePhase =
+      Math.abs(phase) > 0
+        ? phase
+        : fighter?.walkPhase ||
+          fighter?.haloPhase ||
+          fighter?.runeOrbit ||
+          fighter?.windPhase ||
+          fighter?.chronoPhase ||
+          fighter?.stateTimer ||
+          0;
+    const idleStep = Math.floor(Math.abs(effectivePhase) * 8.0) % 30;
     return idleStep;
   }
 
