@@ -128,11 +128,14 @@ function rotateMemoryDocs(maxBatches = 5) {
     const sec1 = memTxt.slice(0, sec2Idx);
     const rest = memTxt.slice(sec2Idx);
     const batchEntryRe = /^- \*\*(?:Batch `\?v=30fps\d+`|Previous Live Batch \(`\?v=30fps\d+)/gm;
-    // Group by unique batch version numbers in order of appearance
-    const versionMatches = [...sec1.matchAll(/`\?v=(30fps\d+)`/g)];
+    // Group by unique top-level batch heading version numbers in order of appearance
+    const versionMatches = [
+      ...sec1.matchAll(/^- \*\*(?:Batch `\?v=(30fps\d+)`|Previous Live Batch \(`\?v=(30fps\d+)`)/gm)
+    ];
     const seenVersions = [];
     for (const vm of versionMatches) {
-      if (!seenVersions.includes(vm[1])) seenVersions.push(vm[1]);
+      const v = vm[1] || vm[2];
+      if (v && !seenVersions.includes(v)) seenVersions.push(v);
     }
     if (seenVersions.length > maxBatches) {
       const oldestKeepVer = seenVersions[maxBatches];

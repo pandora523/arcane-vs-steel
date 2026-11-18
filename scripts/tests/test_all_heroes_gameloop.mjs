@@ -41,67 +41,67 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps148';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps148';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps148';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps148';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps148';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps148';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps148';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps148';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps148';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps148';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps148';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps148';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps148';
-import { Archer } from '../../src/entities/Archer.js?v=30fps148';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps148';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps148';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps148';
-import { Titan } from '../../src/entities/Titan.js?v=30fps148';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps148';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps148';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps148';
-import { Android } from '../../src/entities/Android.js?v=30fps148';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps148';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps148';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps148';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps148';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps149';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps149';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps149';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps149';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps149';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps149';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps149';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps149';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps149';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps149';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps149';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps149';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps149';
+import { Archer } from '../../src/entities/Archer.js?v=30fps149';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps149';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps149';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps149';
+import { Titan } from '../../src/entities/Titan.js?v=30fps149';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps149';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps149';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps149';
+import { Android } from '../../src/entities/Android.js?v=30fps149';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps149';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps149';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps149';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps149';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps148';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps148';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps148';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps148';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps148';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps148';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps149';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps149';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps149';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps149';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps149';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps149';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps148';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps148';
+} from '../../src/adventure/AdventureManager.js?v=30fps149';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps149';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps148';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps148';
+} from '../../src/adventure/AdventureProgression.js?v=30fps149';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps149';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps148';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps149';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps148';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps149';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -792,7 +792,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps148');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps149');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -9756,7 +9756,7 @@ for (const [name, Cls] of CLASSES) {
       walkDist(distDir);
 
       const leakedPlainFiles = allDistFiles.filter(
-        (rel) => /\.(png|wav|ttf|css)$/i.test(rel) || (rel !== 'manifest.json' && /\.json$/i.test(rel))
+        (rel) => /\.(png|jpg|wav|ttf|css)$/i.test(rel) || (rel !== 'manifest.json' && /\.json$/i.test(rel))
       );
       if (leakedPlainFiles.length !== 0) {
         throw new Error(`[Suite 32.2] Found leaked unencrypted assets in dist/: ${leakedPlainFiles.join(', ')}`);
@@ -9845,7 +9845,9 @@ for (const [name, Cls] of CLASSES) {
         ttfVerified < 1 ||
         jsonVerified < 2 ||
         !codeVault.assets['assets/campaigns/index.json'] ||
-        !codeVault.assets['assets/campaigns/celestial_gauntlet.json']
+        !codeVault.assets['assets/campaigns/celestial_gauntlet.json'] ||
+        !codeVault.assets['assets/sprites/intro_talk/nyx_talk_sheet.png'] ||
+        !codeVault.assets['assets/sprites/intro_talk/warrior_talk_sheet.png']
       ) {
         throw new Error(
           `[Suite 32.2] Unexpected asset counts in AVSV vault: png=${pngVerified}, wav=${wavVerified}, ttf=${ttfVerified}, json=${jsonVerified}`
@@ -11404,8 +11406,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps148');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps148');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps149');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps149');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12206,7 +12208,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps148'
+        src: 'assets/sprites/arena_bg.png?v=30fps149'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12250,13 +12252,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps148`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps149`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps148'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps149'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -15114,7 +15116,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps148';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps149';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -15149,7 +15151,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps148';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps149';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15254,12 +15256,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps148') ||
-      !manifestSrc.includes('?v=30fps148') ||
+      !indexHtmlSrc.includes('?v=30fps149') ||
+      !manifestSrc.includes('?v=30fps149') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps148 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps149 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16855,7 +16857,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps148 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps149 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17387,7 +17389,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.21: Batch ?v=30fps148 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // 36.21: Batch ?v=30fps149 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
   // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
   // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
   // --------------------------------------------------------------------------
@@ -18392,16 +18394,16 @@ if (!RUN_SUITE36_ONLY) {
       audio24.bgmDuckGain = makeGainMock24(1.0);
       audio24.master = audio24.sfxBus;
 
-      // Lazy BGM + Voice cache-bust ?v=30fps148 check
+      // Lazy BGM + Voice cache-bust ?v=30fps149 check
       await audio24.loadVoiceKey('nyx_select', 'en');
       await audio24.loadBgmTrack('bgm_title_select');
       if (
-        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps148')) ||
-        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps148')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps149')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps149')) ||
         fetchedUrls24.filter((u) => u.includes('assets/bgm/')).length !== 1
       ) {
         throw new Error(
-          `[Suite 36.24] Expected ?v=30fps148 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
+          `[Suite 36.24] Expected ?v=30fps149 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
         );
       }
 
@@ -19643,7 +19645,7 @@ if (!RUN_SUITE36_ONLY) {
 
   // ============================================================================
   // Suite 36.27: Grounded Lyra EX Ults, Blink/Warp AI Non-Starvation, De-Twitched AI,
-  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps148`)
+  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps149`)
   // ============================================================================
   {
     const g27 = createMockGame();
@@ -20016,7 +20018,7 @@ if (!RUN_SUITE36_ONLY) {
   // Suite 36.28: 3-Act Match Intro Overhaul — Real-Time Voice Envelope Analyzer
   // (`AudioManager.getVoiceAmplitude`), Act 1 Colossal Split-Wing `NAME VS. NAME` Clash,
   // Act 2 Live Voice-Synced Close-Up Talking Portrait Cut-In & Stage Taunt Flourish,
-  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps148`)
+  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps149`)
   // ============================================================================
   {
     const created28 = [];
@@ -20110,10 +20112,30 @@ if (!RUN_SUITE36_ONLY) {
         );
       }
 
-      // (B) 3-Act Intro Choreography: Act 1 Wing Clash, Act 2 Stage Taunt Flourish + Talking Portrait Cut-In, Act 3 ENGAGE! Slash-Burst
+      // (B) Verify 1920x320 (6 x 320x320) lossless PNG talking bust sheets for Nyx & Warrior
+      for (const talkRel of [
+        'assets/sprites/intro_talk/nyx_talk_sheet.png',
+        'assets/sprites/intro_talk/warrior_talk_sheet.png'
+      ]) {
+        const buf = fs.readFileSync(path.join(REPO_ROOT, talkRel));
+        if (buf.length < 32 || buf.readUInt32BE(0) !== 0x89504e47) {
+          throw new Error(`[Suite 36.28] Invalid PNG header on ${talkRel}`);
+        }
+        const pw = buf.readUInt32BE(16);
+        const ph = buf.readUInt32BE(20);
+        if (pw !== 1920 || ph !== 320) {
+          throw new Error(`[Suite 36.28] Expected 1920x320 on ${talkRel}, got ${pw}x${ph}`);
+        }
+      }
+
+      // (C) 3-Act Giant Arcade Intro Choreography:
+      // Act 1 Staggered Giant Names (52-64px) + VS. (76-90px),
+      // Act 2 Giant Half-Screen 6-Frame Talking Bust (480px+) + 48-60px Speaker Name Slam,
+      // Act 3 Colossal ENGAGE! Detonation (68-84px)
       const p1Hero = new WarriorEx({ x: 300, groundY: 560, facing: 1, team: 1 });
-      const p2Hero = new PriestessEx({ x: 900, groundY: 560, facing: -1, team: 2 });
-      reg28(p1Hero, p2Hero);
+      const p2Hero = new NyxEx({ x: 900, groundY: 560, facing: -1, team: 2 });
+      const fbHero = new ValkyrieEx({ x: 300, groundY: 560, facing: 1, team: 1 });
+      reg28(p1Hero, p2Hero, fbHero);
 
       let mockVoiceAmp = 0.68;
       const g28 = Object.create(Game.prototype);
@@ -20125,7 +20147,7 @@ if (!RUN_SUITE36_ONLY) {
       g28.matchTime = 0;
       g28.hudTimer = 0;
       g28.slot1Hero = 'warrior_ex';
-      g28.slot2Hero = 'priestess_ex';
+      g28.slot2Hero = 'nyx_ex';
       g28.leftFighter = p1Hero;
       g28.rightFighter = p2Hero;
       g28.fighters = [p1Hero, p2Hero];
@@ -20152,6 +20174,7 @@ if (!RUN_SUITE36_ONLY) {
           texts: [],
           rects: [],
           drawImages: [],
+          scales: [],
           rotateCalls: 0,
           arcCalls: 0,
           ellipseCalls: 0
@@ -20173,6 +20196,9 @@ if (!RUN_SUITE36_ONLY) {
         };
         ctx.drawImage = (img, ...args) => {
           rec.drawImages.push({ img, args });
+        };
+        ctx.scale = (sx, sy) => {
+          rec.scales.push([sx, sy]);
         };
         ctx.arc = () => {
           rec.arcCalls++;
@@ -20198,6 +20224,7 @@ if (!RUN_SUITE36_ONLY) {
         g28.roundIntroElapsed = 0.05;
         g28._renderRoundIntroOverlay(ctxEarly);
         const earlyP1X = recEarly.texts.find((t) => t.text === n1Upper)?.x ?? 0;
+        const earlyP2X = recEarly.texts.find((t) => t.text === n2Upper)?.x ?? 0;
 
         const { ctx: ctxAct1, rec: recAct1 } = makeTraceCtx28(vw, vh);
         g28.roundIntroTimer = 3.95;
@@ -20215,6 +20242,7 @@ if (!RUN_SUITE36_ONLY) {
           !p1Entry ||
           !p2Entry ||
           Math.abs(vsEntry.y - vh * 0.46) > 12 ||
+          !(p1Entry.y < vsEntry.y && p2Entry.y > vsEntry.y) ||
           recAct1.rotateCalls !== 0 ||
           recAct1.arcCalls !== 0 ||
           recAct1.ellipseCalls !== 0 ||
@@ -20222,19 +20250,25 @@ if (!RUN_SUITE36_ONLY) {
           maxX1 > vw
         ) {
           throw new Error(
-            `[Suite 36.28] Act 1 clash overlay failed on ${vw}x${vh}: vsY=${vsEntry?.y}, rects=[${minX1},${maxX1}]`
+            `[Suite 36.28] Act 1 staggered clash overlay failed on ${vw}x${vh}: vsY=${vsEntry?.y}, p1Y=${p1Entry?.y}, p2Y=${p2Entry?.y}, rects=[${minX1},${maxX1}]`
           );
         }
         if (vw === 1280) {
-          if (!(vsEntry.px >= 44) || !(p1Entry.px >= 24) || !(p2Entry.px >= 24) || !(p1Entry.x > earlyP1X)) {
+          if (
+            !(vsEntry.px >= 72) ||
+            !(p1Entry.px >= 48) ||
+            !(p2Entry.px >= 48) ||
+            !(p1Entry.x > earlyP1X) ||
+            !(p2Entry.x < earlyP2X)
+          ) {
             throw new Error(
-              `[Suite 36.28] Act 1 Desktop typography/wing-slam check failed: vsPx=${vsEntry.px}, p1Px=${p1Entry.px}, p2Px=${p2Entry.px}, p1X=${earlyP1X}->${p1Entry.x}`
+              `[Suite 36.28] Act 1 Giant Desktop typography/slam check failed: vsPx=${vsEntry.px}, p1Px=${p1Entry.px}, p2Px=${p2Entry.px}, p1X=${earlyP1X}->${p1Entry.x}, p2X=${earlyP2X}->${p2Entry.x}`
             );
           }
         }
       }
 
-      // 2. Act 2 (`_roundIntroFighter` set, `roundIntroElapsed = 2.0`): Stage flourish + Close-Up Talking Portrait Cut-In
+      // 2. Act 2 (`_roundIntroFighter` set, `roundIntroElapsed >= 1.25`): Stage flourish + Giant 6-Frame Talking Bust Cut-In
       g28.beginLiveRoundIntro({ forceInTest: true });
       for (let i = 0; i < 40; i++) {
         g28.stepSimulation(0.05); // advances to roundIntroElapsed = 2.0s
@@ -20252,6 +20286,85 @@ if (!RUN_SUITE36_ONLY) {
         );
       }
 
+      // Verify 6-frame `0..5` frame selection across `amp = 0 / blink / 0.30 / 0.75` for BOTH `warrior_ex` (P1) & `nyx_ex` (P2)!
+      for (const [spkHero, isRight] of [
+        [p1Hero, false],
+        [p2Hero, true]
+      ]) {
+        g28._roundIntroFighter = spkHero;
+        const spkUpper = spkHero.name.toUpperCase();
+
+        // Check all 6 frames via live `_renderRoundIntroOverlay` drawImage `sx = frameIdx * 320`
+        const cases = [
+          { amp: 0, elapsed: 2.0, expectedFrames: [0] },     // floor(2.0 * 7) = 14 (even) -> F0
+          { amp: 0, elapsed: 2.15, expectedFrames: [1] },    // floor(2.15 * 7) = 15 (odd) -> F1
+          { amp: 0, elapsed: 1.72, expectedFrames: [2] },    // 1.72 % 1.8 = 1.72 >= 1.69 -> F2 (Eye-Blink)
+          { amp: 0.3, elapsed: 2.0, expectedFrames: [3] },   // 0.14 < 0.30 <= 0.44 -> F3 (Half Speak)
+          { amp: 0.75, elapsed: 2.0, expectedFrames: [4] },  // floor(2.0 * 22) = 44 (even) -> F4 (Wide Speak)
+          { amp: 0.75, elapsed: 2.05, expectedFrames: [5] }  // floor(2.05 * 22) = 45 (odd) -> F5 (Peak Surge)
+        ];
+
+        for (const c of cases) {
+          mockVoiceAmp = c.amp;
+          g28.roundIntroElapsed = c.elapsed;
+          const { ctx: ctxF, rec: recF } = makeTraceCtx28(1280, 720);
+          g28._renderRoundIntroOverlay(ctxF);
+          const di = recF.drawImages[0];
+          const sx = di?.args?.[0];
+          const sw = di?.args?.[2];
+          const sh = di?.args?.[3];
+          const dw = di?.args?.[6];
+          const dh = di?.args?.[7];
+          const gotFrame = typeof sx === 'number' ? Math.round(sx / 320) : -1;
+          const spkEntry = recF.texts.find((t) => t.text === spkUpper);
+          const hasFlip = recF.scales.some(([sxScale]) => sxScale === -1);
+          if (
+            !di ||
+            sw !== 320 ||
+            sh !== 320 ||
+            !(dw >= 420 && dh >= 420) ||
+            !c.expectedFrames.includes(gotFrame) ||
+            !spkEntry ||
+            !(spkEntry.px >= 48) ||
+            hasFlip !== isRight
+          ) {
+            throw new Error(
+              `[Suite 36.28] 6-frame talking bust check failed for ${spkHero.heroId} (amp=${c.amp}, t=${c.elapsed}): gotFrame=${gotFrame} (sx=${sx}), size=${dw}x${dh}, spkPx=${spkEntry?.px}, flip=${hasFlip}/${isRight}`
+            );
+          }
+        }
+      }
+
+      // Check fallback inner 888x888 crop on `valkyrie_ex` at giant Desktop scale (>= 420px)
+      {
+        const assets28 = PixelForge.initAssets();
+        if (assets28?.introRawBusts?.valkyrie) {
+          assets28.introRawBusts.valkyrie.naturalWidth = 1024;
+          assets28.introRawBusts.valkyrie.naturalHeight = 1024;
+        }
+        g28._roundIntroFighter = fbHero;
+        mockVoiceAmp = 0.65;
+        g28.roundIntroElapsed = 2.0;
+        const { ctx: ctxFb, rec: recFb } = makeTraceCtx28(1280, 720);
+        g28._renderRoundIntroOverlay(ctxFb);
+        const fbDi = recFb.drawImages[0];
+        if (
+          !fbDi ||
+          fbDi.args[0] !== 68 ||
+          fbDi.args[1] !== 68 ||
+          fbDi.args[2] !== 888 ||
+          fbDi.args[3] !== 888 ||
+          !(fbDi.args[6] >= 420 && fbDi.args[7] >= 420)
+        ) {
+          throw new Error(
+            `[Suite 36.28] Fallback valkyrie_ex 888x888 giant bust crop failed: args=${JSON.stringify(fbDi?.args)}`
+          );
+        }
+      }
+
+      // Restore P1 speaker (`warrior_ex`) & verify viewport clamping across 1280x720, 390x844, 844x390
+      g28._roundIntroFighter = p1Hero;
+      g28.roundIntroElapsed = 2.0;
       for (const [vw, vh] of [
         [1280, 720],
         [390, 844],
@@ -20261,32 +20374,25 @@ if (!RUN_SUITE36_ONLY) {
         const { ctx: ctxTalk, rec: recTalk } = makeTraceCtx28(vw, vh);
         g28._renderRoundIntroOverlay(ctxTalk);
 
-        mockVoiceAmp = 0;
-        const { ctx: ctxSilent, rec: recSilent } = makeTraceCtx28(vw, vh);
-        g28._renderRoundIntroOverlay(ctxSilent);
-
         const minX2 = Math.min(...recTalk.rects.map((r) => r.x));
         const maxX2 = Math.max(...recTalk.rects.map((r) => r.x + r.w));
-        const talkHeadDy = recTalk.drawImages[0]?.args?.[5];
-        const talkJawDy = recTalk.drawImages[1]?.args?.[5];
-        const silentHeadDy = recSilent.drawImages[0]?.args?.[5];
-        const silentJawDy = recSilent.drawImages[1]?.args?.[5];
         const hasResonanceTag = recTalk.texts.some((t) => t.text === 'INTRO • VOICE RESONANCE');
         const hasTopVsHeader = recTalk.texts.some((t) => t.text === 'VS.');
+        const di = recTalk.drawImages[0];
 
         if (
-          recTalk.drawImages.length < 2 ||
-          talkHeadDy === silentHeadDy ||
-          talkJawDy === silentJawDy ||
+          !di ||
           !hasResonanceTag ||
           !hasTopVsHeader ||
-          recTalk.rects.length < 28 ||
+          recTalk.rects.length < 32 ||
           recTalk.rotateCalls !== 0 ||
+          recTalk.arcCalls !== 0 ||
+          recTalk.ellipseCalls !== 0 ||
           minX2 < 0 ||
           maxX2 > vw
         ) {
           throw new Error(
-            `[Suite 36.28] Act 2 Close-Up Talking Portrait Cut-In failed on ${vw}x${vh}: imgs=${recTalk.drawImages.length}, headDy=${talkHeadDy}/${silentHeadDy}, jawDy=${talkJawDy}/${silentJawDy}, rects=[${minX2},${maxX2}]`
+            `[Suite 36.28] Act 2 Giant Talking Bust Cut-In failed on ${vw}x${vh}: di=${Boolean(di)}, rects=[${minX2},${maxX2}]`
           );
         }
       }
@@ -20306,7 +20412,7 @@ if (!RUN_SUITE36_ONLY) {
         );
       }
 
-      // 3. Act 3 (`_roundEngageBannerTimer = 0.80 -> 0.45 -> 0.10`): 3-Phase Explosive ENGAGE! across 1280x720, 390x844, 844x390
+      // 3. Act 3 (`_roundEngageBannerTimer = 0.80 -> 0.45 -> 0.10`): Colossal 68-84px ENGAGE! across 1280x720, 390x844, 844x390
       for (const [vw, vh] of [
         [1280, 720],
         [390, 844],
@@ -20334,9 +20440,9 @@ if (!RUN_SUITE36_ONLY) {
               `[Suite 36.28] Act 3 ENGAGE! phase (${timerVal}s) failed on ${vw}x${vh}: engY=${engEntry?.y}, rects=[${minX3},${maxX3}]`
             );
           }
-          if (vw === 1280 && !(engEntry.px >= 44 && engEntry.px <= 54)) {
+          if (vw === 1280 && !(engEntry.px >= 68 && engEntry.px <= 84)) {
             throw new Error(
-              `[Suite 36.28] Act 3 Desktop ENGAGE! font size out of 44..54px at t=${timerVal}s: got ${engEntry.px}px`
+              `[Suite 36.28] Act 3 Desktop ENGAGE! font size out of 68..84px at t=${timerVal}s: got ${engEntry.px}px`
             );
           }
         }

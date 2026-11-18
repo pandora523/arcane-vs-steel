@@ -29,6 +29,7 @@ const TRANSPARENT_GIF_DATA_URI =
 
 const MIME_BY_EXT = {
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
   '.wav': 'audio/wav',
   '.mp3': 'audio/mpeg',
   '.ttf': 'font/ttf',
@@ -375,7 +376,12 @@ function buildModuleGraph(rootDir, entryRelPath = 'src/main.js') {
  */
 function collectVaultAssets(rootDir) {
   const assetDirs = [
-    { dir: 'assets/sprites', exts: new Set(['.png']) },
+    {
+      dir: 'assets/sprites',
+      exts: new Set(['.png', '.jpg']),
+      filter: (name, ext) => ext === '.png' || /_ex_portrait_raw\.jpg$/i.test(name)
+    },
+    { dir: 'assets/sprites/intro_talk', exts: new Set(['.png']) },
     { dir: 'assets/sfx', exts: new Set(['.wav']) },
     { dir: 'assets/voices', exts: new Set(['.mp3']) },
     { dir: 'assets/voices/ja', exts: new Set(['.mp3']) },
@@ -384,7 +390,7 @@ function collectVaultAssets(rootDir) {
     { dir: 'assets/campaigns', exts: new Set(['.json']) }
   ];
   const list = [];
-  for (const { dir, exts } of assetDirs) {
+  for (const { dir, exts, filter } of assetDirs) {
     const absDir = path.join(rootDir, dir);
     if (!fs.existsSync(absDir)) continue;
     const entries = fs.readdirSync(absDir, { withFileTypes: true });
@@ -393,6 +399,7 @@ function collectVaultAssets(rootDir) {
       if (!ent.isFile()) continue;
       const ext = path.extname(ent.name).toLowerCase();
       if (!exts.has(ext)) continue;
+      if (filter && !filter(ent.name, ext)) continue;
       const relPath = `${dir}/${ent.name}`;
       list.push({
         relPath,
