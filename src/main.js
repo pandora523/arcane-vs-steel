@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps149';
-import { VFXManager } from './engine/VFXManager.js?v=30fps149';
-import { PixelForge } from './engine/PixelForge.js?v=30fps149';
-import { AudioManager } from './engine/AudioManager.js?v=30fps149';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps149';
-import { Fighter } from './entities/Fighter.js?v=30fps149';
-import { Warrior } from './entities/Warrior.js?v=30fps149';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps149';
-import { FireMage } from './entities/FireMage.js?v=30fps149';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps149';
-import { Archer } from './entities/Archer.js?v=30fps149';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps149';
-import { Priestess } from './entities/Priestess.js?v=30fps149';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps149';
-import { Reaper } from './entities/Reaper.js?v=30fps149';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps149';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps149';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps149';
-import { Titan } from './entities/Titan.js?v=30fps149';
-import { TitanEx } from './entities/TitanEx.js?v=30fps149';
-import { Ronin } from './entities/Ronin.js?v=30fps149';
-import { RoninEx } from './entities/RoninEx.js?v=30fps149';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps149';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps149';
-import { IceMage } from './entities/IceMage.js?v=30fps149';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps149';
-import { Android } from './entities/Android.js?v=30fps149';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps149';
-import { NyxEx } from './entities/NyxEx.js?v=30fps149';
+import { Renderer } from './engine/Renderer.js?v=30fps150';
+import { VFXManager } from './engine/VFXManager.js?v=30fps150';
+import { PixelForge } from './engine/PixelForge.js?v=30fps150';
+import { AudioManager } from './engine/AudioManager.js?v=30fps150';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps150';
+import { Fighter } from './entities/Fighter.js?v=30fps150';
+import { Warrior } from './entities/Warrior.js?v=30fps150';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps150';
+import { FireMage } from './entities/FireMage.js?v=30fps150';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps150';
+import { Archer } from './entities/Archer.js?v=30fps150';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps150';
+import { Priestess } from './entities/Priestess.js?v=30fps150';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps150';
+import { Reaper } from './entities/Reaper.js?v=30fps150';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps150';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps150';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps150';
+import { Titan } from './entities/Titan.js?v=30fps150';
+import { TitanEx } from './entities/TitanEx.js?v=30fps150';
+import { Ronin } from './entities/Ronin.js?v=30fps150';
+import { RoninEx } from './entities/RoninEx.js?v=30fps150';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps150';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps150';
+import { IceMage } from './entities/IceMage.js?v=30fps150';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps150';
+import { Android } from './entities/Android.js?v=30fps150';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps150';
+import { NyxEx } from './entities/NyxEx.js?v=30fps150';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps149';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps149';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps149';
+} from './adventure/AdventureManager.js?v=30fps150';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps150';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps150';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -3479,7 +3479,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps149');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps150');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3575,7 +3575,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps149'
+          'v=30fps150'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4166,27 +4166,43 @@ export class Game {
       : opts.preferChallenger
         ? [p2, p1]
         : [p1, p2];
-    const voicedIntroFighter = introCandidates.find(
-      (f) => f && !f.isDead && this.audio?.hasVoicePack?.(f.heroId)
-    );
-    const canSpeak = Boolean(
-      voicedIntroFighter &&
-        this.audio &&
+    const audioReady = Boolean(
+      this.audio &&
         this.audio.enabled &&
         this.audio.voiceEnabled &&
         (this.audio.getVoiceVolume?.() ?? 1) > 0.01
     );
+    const voicedQueue = audioReady
+      ? introCandidates.filter((f) => f && !f.isDead && this.audio?.hasVoicePack?.(f.heroId))
+      : [];
+    const canSpeak = voicedQueue.length > 0;
 
     if (canSpeak) {
-      this.audio.preloadHeroVoicePack?.(voicedIntroFighter.heroId);
+      for (const spk of voicedQueue) {
+        this.audio.preloadHeroVoicePack?.(spk.heroId);
+        PixelForge.ensureIntroBustLoaded?.(spk.heroId);
+      }
       this.audio.preDuckSfxForVoice?.(3, 550);
-      PixelForge.ensureIntroBustLoaded?.(voicedIntroFighter.heroId);
     }
 
-    this.roundIntroDuration = canSpeak ? 4.15 : 1.35;
+    const act1Dur = voicedQueue.length >= 2 ? 1.15 : 1.25;
+    const slotDur = voicedQueue.length >= 2 ? 3.35 : 2.90;
+    this._roundIntroAct1Dur = act1Dur;
+    this._roundIntroSlotDur = slotDur;
+    this._roundIntroQueue = voicedQueue;
+    this._roundIntroSpeakerIdx = 0;
+    this._introSpeakerElapsed = 0;
+    this._introPostVoiceSilenceSec = 0;
+    this._introMouthStage = undefined;
+    this._introMouthHoldSec = 0;
+    this.roundIntroDuration = canSpeak
+      ? voicedQueue.length >= 2
+        ? act1Dur + voicedQueue.length * slotDur
+        : 4.15
+      : 1.35;
     this.roundIntroTimer = this.roundIntroDuration;
     this.roundIntroElapsed = 0;
-    this._roundIntroFighter = canSpeak ? voicedIntroFighter : null;
+    this._roundIntroFighter = canSpeak ? voicedQueue[0] : null;
     this._roundIntroVoiceFired = false;
     this._roundEngageBannerTimer = 0;
     return this.roundIntroTimer;
@@ -4207,6 +4223,10 @@ export class Game {
       }
     }
     this.roundIntroTimer = 0;
+    this._roundIntroQueue = [];
+    this._roundIntroSpeakerIdx = 0;
+    this._introSpeakerElapsed = 0;
+    this._introMouthStage = undefined;
     this._roundIntroFighter = null;
     this._roundIntroVoiceFired = true;
     this._roundEngageBannerTimer = 0.75;
@@ -4811,6 +4831,10 @@ export class Game {
     this.roundIntroTimer = 0;
     this.roundIntroDuration = 0;
     this.roundIntroElapsed = 0;
+    this._roundIntroQueue = [];
+    this._roundIntroSpeakerIdx = 0;
+    this._introSpeakerElapsed = 0;
+    this._introMouthStage = undefined;
     this._roundIntroFighter = null;
     this._roundIntroVoiceFired = false;
     this._roundEngageBannerTimer = 0;
@@ -6269,14 +6293,64 @@ export class Game {
 
     if (this.roundIntroTimer > 0 && !this.isMatchOver) {
       this.roundIntroElapsed = (this.roundIntroElapsed || 0) + rawDt;
+      const queue = Array.isArray(this._roundIntroQueue) ? this._roundIntroQueue : [];
+      const isDualIntro = queue.length >= 2;
+      const act1Dur = Number(this._roundIntroAct1Dur) || (isDualIntro ? 1.15 : 1.25);
+      const slotDur = Number(this._roundIntroSlotDur) || (isDualIntro ? 3.35 : 2.90);
       const introTotalDur = Math.max(1.35, this.roundIntroDuration || 4.15);
+
+      if (isDualIntro && this.roundIntroElapsed >= act1Dur) {
+        this._introSpeakerElapsed = (this._introSpeakerElapsed || 0) + rawDt;
+
+        // Check dynamic voice-end advance (so P1 -> P2 & P2 -> ENGAGE! feel tight with zero dead air)
+        const hasVoiceProbe = typeof this.audio?.isHeroVoiceBusy === 'function';
+        if (this._roundIntroVoiceFired && this._introSpeakerElapsed >= 1.55 && hasVoiceProbe) {
+          if (!this.audio.isHeroVoiceBusy()) {
+            this._introPostVoiceSilenceSec = (this._introPostVoiceSilenceSec || 0) + rawDt;
+          } else {
+            this._introPostVoiceSilenceSec = 0;
+          }
+        }
+
+        const slotExpired =
+          this._introSpeakerElapsed >= slotDur ||
+          (this._introPostVoiceSilenceSec || 0) >= 0.24;
+
+        if (slotExpired && (this._roundIntroSpeakerIdx || 0) + 1 < queue.length) {
+          this._roundIntroSpeakerIdx = (this._roundIntroSpeakerIdx || 0) + 1;
+          this._roundIntroFighter = queue[this._roundIntroSpeakerIdx];
+          this._introSpeakerElapsed = 0;
+          this._introPostVoiceSilenceSec = 0;
+          this._introMouthStage = 0;
+          this._introMouthHoldSec = 0;
+          this._roundIntroVoiceFired = false;
+          this.audio?.stopAllHeroVoices?.(0.04);
+          const remSpeakers = queue.length - this._roundIntroSpeakerIdx;
+          this.roundIntroTimer = Math.max(0.2, remSpeakers * slotDur);
+        } else if (
+          (this._introPostVoiceSilenceSec || 0) >= 0.24 &&
+          (this._roundIntroSpeakerIdx || 0) + 1 >= queue.length
+        ) {
+          this.roundIntroTimer = Math.min(this.roundIntroTimer, rawDt * 0.5);
+        }
+      } else if (!isDualIntro && this._roundIntroFighter && this.roundIntroElapsed >= act1Dur) {
+        this._introSpeakerElapsed = Math.max(0, this.roundIntroElapsed - act1Dur);
+      }
+
       const speaker = this._roundIntroFighter;
+      const inAct2Window = Boolean(speaker && !speaker.isDead && this.roundIntroElapsed >= (isDualIntro ? act1Dur : 0.25));
       const inTauntWindow = Boolean(
-        speaker &&
-          !speaker.isDead &&
-          this.roundIntroElapsed >= 0.25 &&
-          this.roundIntroElapsed < introTotalDur - 0.45
+        inAct2Window &&
+          (isDualIntro
+            ? (this._introSpeakerElapsed || 0) < slotDur - 0.35
+            : this.roundIntroElapsed < introTotalDur - 0.45)
       );
+
+      if (inAct2Window) {
+        const liveAmp = Math.max(0, Math.min(1, Number(this.audio?.getVoiceAmplitude?.() || 0)));
+        this._stepIntroTalkArticulation(rawDt, liveAmp);
+      }
+
       if (Array.isArray(this.fighters)) {
         for (let i = 0; i < this.fighters.length; i++) {
           const f = this.fighters[i];
@@ -6288,7 +6362,9 @@ export class Game {
             f.y = f.groundY;
           }
           if (inTauntWindow && f === speaker) {
-            const tauntElapsed = Math.max(0, this.roundIntroElapsed - 0.25);
+            const tauntElapsed = isDualIntro
+              ? Math.max(0, this._introSpeakerElapsed || 0)
+              : Math.max(0, this.roundIntroElapsed - 0.25);
             f.state = 'SKILL';
             f._overrideFrameIdx = 90 + (Math.floor(tauntElapsed * 10) % 8);
             f.trueUltFrameOverride = null;
@@ -6309,14 +6385,16 @@ export class Game {
         }
       }
 
-      if (!this._roundIntroVoiceFired && this.roundIntroElapsed >= 0.08) {
+      // Fire speaker's intro voice: at Act 2 start for Dual P1->P2 (so 100% of line syncs to talking bust), or 0.08s for single-speaker
+      const voiceTriggerTime = isDualIntro ? act1Dur : 0.08;
+      if (!this._roundIntroVoiceFired && this.roundIntroElapsed >= voiceTriggerTime) {
         this._roundIntroVoiceFired = true;
         if (speaker && !speaker.isDead) {
           this.audio?.playHeroVoice?.(speaker.heroId, 'intro', {
             worldX: speaker.x,
             speakerKey: speaker,
             priority: 3,
-            cooldownMs: 300,
+            cooldownMs: 120,
             duckSfx: true,
             maxAsyncDelayMs: 1400
           });
@@ -6338,6 +6416,8 @@ export class Game {
             f.trueUltFrameOverride = null;
           }
         }
+        this._roundIntroQueue = [];
+        this._introMouthStage = undefined;
         this._roundEngageBannerTimer = 0.85;
         this.audio?.play?.('slash', 600);
       }
@@ -6584,21 +6664,48 @@ export class Game {
     ctx.restore();
   }
 
-  static computeIntroTalkFrameIndex(amp, elapsed) {
+  _stepIntroTalkArticulation(dt, amp) {
+    const a = Math.max(0, Math.min(1, Number(amp) || 0));
+    const rawTarget = a <= 0.14 ? 0 : a <= 0.44 ? 1 : 2;
+    if (this._introMouthStage === undefined || this._introMouthStage === null) {
+      this._introMouthStage = 0;
+      this._introMouthHoldSec = 0;
+    }
+    this._introMouthHoldSec = (this._introMouthHoldSec || 0) + Math.max(0.001, dt || 0.016);
+    if (rawTarget !== this._introMouthStage) {
+      // Hold half-open F3 (`stage === 1`) for >= 55ms whenever opening `0 -> 2` or closing `2 -> 0` so lips never snap!
+      const minHold = this._introMouthStage === 1 ? 0.055 : 0.04;
+      if (this._introMouthHoldSec >= minHold) {
+        this._introMouthStage += rawTarget > this._introMouthStage ? 1 : -1;
+        this._introMouthHoldSec = 0;
+      }
+    }
+    return this._introMouthStage;
+  }
+
+  static computeIntroTalkFrameIndex(amp, elapsed, forcedStage = null) {
     const a = Math.max(0, Math.min(1, Number(amp) || 0));
     const t = Math.max(0, Number(elapsed) || 0);
-    if (a <= 0.14) {
+    const stage =
+      forcedStage === 0 || forcedStage === 1 || forcedStage === 2
+        ? forcedStage
+        : a <= 0.14
+          ? 0
+          : a <= 0.44
+            ? 1
+            : 2;
+    if (stage === 0) {
       // Inject sculpted closed Eye-Blink (F2) for 0.11s every 1.8s during breath pauses
       const blinkPhase = ((t % 1.8) + 1.8) % 1.8;
       if (blinkPhase >= 1.69) return 2;
-      // Otherwise cycle Neutral Idle A (F0) <-> Sway/Breath B (F1) at ~3.5Hz
+      // Otherwise cycle Neutral Idle A (F0) <-> Sway/Breath B (F1) smoothly
       return Math.floor(t * 7.0) % 2 === 0 ? 0 : 1;
     }
-    if (a <= 0.44) {
-      // Low-mid syllable -> Half-Open Speak (F3)
+    if (stage === 1) {
+      // Half-Open Transition / Soft Syllable -> F3
       return 3;
     }
-    // Loud syllable -> alternate Wide Speak (F4) <-> Peak Emphasis / Aura Surge (F5) at ~11Hz
+    // Wide-Open Syllable -> alternate Wide Speak (F4) <-> Peak Emphasis / Aura Surge (F5)
     return 4 + (Math.floor(t * 22.0) % 2);
   }
 
@@ -6775,7 +6882,9 @@ export class Game {
       const p1Col = f1?.primaryColor || '#f59e0b';
       const p2Col = f2?.primaryColor || '#38bdf8';
       const speaker = this._roundIntroFighter;
-      const inAct2CutIn = Boolean(speaker && elapsed >= 1.25);
+      const introQueue = Array.isArray(this._roundIntroQueue) ? this._roundIntroQueue : [];
+      const act1Gate = Number(this._roundIntroAct1Dur) || (introQueue.length >= 2 ? 1.15 : 1.25);
+      const inAct2CutIn = Boolean(speaker && elapsed >= act1Gate);
 
       if (!inAct2CutIn) {
         // ====================================================================
@@ -7006,13 +7115,24 @@ export class Game {
         }
       } else {
         // ====================================================================
-        // ACT 2: Giant Half-Screen Animated Talking Bust Cut-In (`elapsed >= 1.25s`)
-        //        `bustSize = min(round(ch * 0.68), 496/310/296)` + 6-Frame Lip-Sync/Blink
-        //        + Giant `48-60px` Speaker Name Slam + 16-Bar Tall Voice Equalizer
+        // ACT 2: Giant Half-Screen Animated Talking Bust Cut-In (`P1 -> P2`)
+        //        Smooth Slide-In/Out + Smooth `F3` Mouth Gate + Livelier Bust Poise
         // ====================================================================
-        const act2Elapsed = Math.max(0, elapsed - 1.25);
-        const slideT = Math.min(1, act2Elapsed / 0.18);
-        const slideEase = 1 - Math.pow(1 - slideT, 3);
+        const slotDur = Number(this._roundIntroSlotDur) || (introQueue.length >= 2 ? 3.35 : 2.90);
+        const spkElapsed =
+          Number.isFinite(this._introSpeakerElapsed) && this._introSpeakerElapsed > 0
+            ? this._introSpeakerElapsed
+            : Math.max(0, elapsed - act1Gate);
+        const spkRem =
+          introQueue.length >= 2
+            ? Math.max(0, Math.min(this.roundIntroTimer || slotDur, slotDur - spkElapsed))
+            : Math.max(0, this.roundIntroTimer || 0);
+
+        const inSlideT = Math.min(1, spkElapsed / 0.22);
+        const inEase = 1 - Math.pow(1 - inSlideT, 3);
+        const outSlideT = spkRem < 0.20 ? Math.max(0, spkRem / 0.20) : 1;
+        const outEase = 1 - Math.pow(1 - outSlideT, 2);
+        const slideEase = Math.min(inEase, outEase);
 
         const isRightSpeaker = Boolean(
           speaker &&
@@ -7037,6 +7157,7 @@ export class Game {
           cw >= 960 ? 496 : cw >= 520 ? 310 : 296
         );
         const isPortraitNarrow = cw < 520;
+        const turnAlpha = Math.max(0.18, slideEase);
 
         // 1. Bold Full-Width Atmospheric Dark-Vignette + Hero-Colored Speed-Streak Cinema Band
         const bandH = isPortraitNarrow
@@ -7046,6 +7167,7 @@ export class Game {
           ? Math.max(48, Math.round(ch * 0.17))
           : Math.max(12, Math.round(ch * 0.5 - bandH * 0.5));
 
+        ctx.globalAlpha = turnAlpha;
         ctx.fillStyle = 'rgba(2, 6, 23, 0.84)';
         fillRectClamped(0, bandY, cw, bandH);
         ctx.fillStyle = 'rgba(9, 14, 34, 0.92)';
@@ -7060,7 +7182,7 @@ export class Game {
         fillRectClamped(0, bandY + bandH - 6, cw, 2);
 
         // Scrolling hero-colored speed-streaks across the cinema band
-        const streakScroll = Math.round(elapsed * 310) % 96;
+        const streakScroll = Math.round(elapsed * 330) % 96;
         const streakDir = isRightSpeaker ? -1 : 1;
         for (let row = 0; row < 8; row++) {
           const sy = bandY + 18 + Math.round((row * (bandH - 36)) / 7);
@@ -7069,39 +7191,57 @@ export class Game {
               ((row * 173 + k * 240 + streakDir * streakScroll * 3) % (cw + 120) + (cw + 120)) %
                 (cw + 120) -
               60;
-            const swLen = 28 + ((row + k) % 3) * 22;
-            ctx.globalAlpha = (row + k) % 2 === 0 ? 0.28 : 0.18;
+            const swLen = 30 + ((row + k) % 3) * 24;
+            ctx.globalAlpha = turnAlpha * ((row + k) % 2 === 0 ? 0.30 : 0.18);
             ctx.fillStyle = (row + k) % 3 === 0 ? '#fef08a' : spkCol;
             fillRectClamped(rawX, sy, swLen, 3);
           }
         }
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = turnAlpha;
 
         // 2. Giant Half-Screen Animated Talking Bust (`bustSize x bustSize`)
         const sideMargin = cw >= 960 ? 28 : cw >= 520 ? 16 : Math.max(12, (cw - bustSize) >> 1);
-        const targetBustX = isPortraitNarrow
-          ? isRightSpeaker
-            ? cw - 16 - bustSize
-            : 16
-          : isRightSpeaker
-            ? cw - sideMargin - bustSize
-            : sideMargin;
-        const bustSlideDx = Math.round((1 - slideEase) * (isRightSpeaker ? 56 : -56));
+        const poiseDx = Math.round(Math.cos(elapsed * 2.8) * 2) * (isRightSpeaker ? -1 : 1);
+        const targetBustX =
+          (isPortraitNarrow
+            ? isRightSpeaker
+              ? cw - 16 - bustSize
+              : 16
+            : isRightSpeaker
+              ? cw - sideMargin - bustSize
+              : sideMargin) + poiseDx;
+        const bustSlideDx = Math.round((1 - slideEase) * (isRightSpeaker ? 92 : -92));
         const bustX = Math.max(4, Math.min(cw - bustSize - 4, targetBustX + bustSlideDx));
-        const bustY = isPortraitNarrow
+        const baseBustY = isPortraitNarrow
           ? bandY + 14
           : Math.max(8, Math.min(ch - bustSize - 8, Math.round(ch * 0.5 - bustSize * 0.5)));
 
         const amp = Math.max(0, Math.min(1, Number(this.audio?.getVoiceAmplitude?.() || 0)));
-        const talkFrameIdx = Game.computeIntroTalkFrameIndex(amp, elapsed);
+        const activeMouthStage =
+          this._introMouthStage === 0 || this._introMouthStage === 1 || this._introMouthStage === 2
+            ? this._introMouthStage
+            : null;
+        const talkFrameIdx = Game.computeIntroTalkFrameIndex(amp, elapsed, activeMouthStage);
+        const breathWaveDy = Math.round(Math.sin(elapsed * 4.2) * 3);
+        const syllableLiftDy = amp > 0.44 ? -2 : amp > 0.14 ? -1 : 0;
+        const bustY = Math.max(
+          4,
+          Math.min(ch - bustSize - 4, baseBustY + breathWaveDy + syllableLiftDy)
+        );
 
-        // Double-chamfered hero-aura + gold giant bust frame
-        ctx.fillStyle = '#020617';
-        fillRectClamped(bustX - 6, bustY - 6, bustSize + 12, bustSize + 12);
+        // Pulsing hero-aura rim glow + crisp obsidian bust stage
+        const auraPad = amp > 0.44 ? 8 : 5;
+        ctx.globalAlpha = turnAlpha * (amp > 0.44 ? 0.55 : 0.32);
         ctx.fillStyle = spkCol;
-        fillRectClamped(bustX - 4, bustY - 4, bustSize + 8, bustSize + 8);
+        fillRectClamped(bustX - auraPad, bustY - auraPad, bustSize + auraPad * 2, bustSize + auraPad * 2);
+        ctx.globalAlpha = turnAlpha;
+
+        ctx.fillStyle = '#020617';
+        fillRectClamped(bustX - 5, bustY - 5, bustSize + 10, bustSize + 10);
+        ctx.fillStyle = spkCol;
+        fillRectClamped(bustX - 3, bustY - 3, bustSize + 6, bustSize + 6);
         ctx.fillStyle = '#fef08a';
-        fillRectClamped(bustX - 2, bustY - 2, bustSize + 4, bustSize + 4);
+        fillRectClamped(bustX - 1, bustY - 1, bustSize + 2, bustSize + 2);
         ctx.fillStyle = '#050816';
         fillRectClamped(bustX, bustY, bustSize, bustSize);
 
@@ -7110,12 +7250,11 @@ export class Game {
 
         if (talkSheetImg && typeof ctx.drawImage === 'function') {
           const sx = talkFrameIdx * 320;
-          const bobDy = amp > 0.44 ? -2 : amp > 0.14 ? -1 : 0;
           const flipX = 1 !== desiredFacing;
           try {
             if (flipX && typeof ctx.translate === 'function' && typeof ctx.scale === 'function') {
               ctx.save();
-              ctx.translate(bustX + bustSize, bustY + bobDy);
+              ctx.translate(bustX + bustSize, bustY);
               ctx.scale(-1, 1);
               ctx.drawImage(talkSheetImg, sx, 0, 320, 320, 0, 0, bustSize, bustSize);
               ctx.restore();
@@ -7127,7 +7266,7 @@ export class Game {
                 320,
                 320,
                 bustX,
-                bustY + bobDy,
+                bustY,
                 bustSize,
                 bustSize
               );
@@ -7136,17 +7275,11 @@ export class Game {
         } else if (typeof ctx.drawImage === 'function') {
           const fb = PixelForge.getIntroFallbackBust?.(heroKey);
           if (fb?.img) {
-            const bobDy =
-              amp > 0.18
-                ? -Math.max(1, Math.min(3, Math.round(amp * 3)))
-                : Math.floor(elapsed * 4.0) % 2 === 0
-                  ? 0
-                  : -1;
             const flipX = fb.naturalFacing !== desiredFacing;
             try {
               if (flipX && typeof ctx.translate === 'function' && typeof ctx.scale === 'function') {
                 ctx.save();
-                ctx.translate(bustX + bustSize, bustY + bobDy);
+                ctx.translate(bustX + bustSize, bustY);
                 ctx.scale(-1, 1);
                 ctx.drawImage(fb.img, fb.sx, fb.sy, fb.sw, fb.sh, 0, 0, bustSize, bustSize);
                 ctx.restore();
@@ -7158,7 +7291,7 @@ export class Game {
                   fb.sw,
                   fb.sh,
                   bustX,
-                  bustY + bobDy,
+                  bustY,
                   bustSize,
                   bustSize
                 );
@@ -7167,12 +7300,12 @@ export class Game {
           }
         }
 
-        // Rising pixel aura sparks around the giant bust
-        const sparkCount = amp > 0.44 ? 8 : 5;
+        // Livelier rising pixel aura ribbons & sparks around the giant bust
+        const sparkCount = amp > 0.44 ? 10 : 6;
         for (let sp = 0; sp < sparkCount; sp++) {
-          const spProg = (elapsed * (1.2 + (sp % 3) * 0.35) + sp * 0.21) % 1;
-          const spX = bustX + 14 + ((sp * 73) % Math.max(24, bustSize - 28));
-          const spY = bustY + bustSize - 12 - Math.round(spProg * (bustSize * 0.88));
+          const spProg = (elapsed * (1.35 + (sp % 3) * 0.4) + sp * 0.17) % 1;
+          const spX = bustX + 12 + ((sp * 67) % Math.max(24, bustSize - 24));
+          const spY = bustY + bustSize - 10 - Math.round(spProg * (bustSize * 0.92));
           drawStar4(spX, spY, sp % 2 === 0 ? 4 : 3, sp % 2 === 0 ? '#fef08a' : spkCol);
         }
 

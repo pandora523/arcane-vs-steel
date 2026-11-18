@@ -175,18 +175,27 @@ def apply_nyx_sway_and_breath(base: np.ndarray, drone_dy: int = -2, ear_dx: int 
             is_sky = (r >= 8) & (r <= 34) & (g >= 12) & (g <= 44) & (b >= 38) & (b <= 92) & ((b - r) >= 20)
             return ~is_sky
 
-        # Restore sky cleanly behind ahoge & ear tips first, then paste shifted hair/ears
+        # Shift ahoge & cat-ear silhouettes cleanly, filling ONLY true outer sky-vacated fringe pixels!
         sky_col = np.array([11, 17, 46, 255], dtype=np.uint8)
-        for (x0, y0, x1, y1) in [(148, 10, 188, 56), (102, 20, 148, 66), (192, 26, 236, 72)]:
+        for (x0, y0, x1, y1) in [(146, 10, 190, 54), (100, 20, 152, 66), (188, 24, 238, 68)]:
             reg = base[y0:y1, x0:x1]
             m = is_hair_ear(reg)
-            f[y0:y1, x0:x1][m] = sky_col
+            shifted_m = np.zeros_like(m)
+            if ear_dx > 0:
+                shifted_m[:, ear_dx:] = m[:, :-ear_dx]
+            else:
+                shifted_m[:, :ear_dx] = m[:, -ear_dx:]
+            # Only fill vacated pixels whose left neighbor in `base` was sky (never cut interior hair!)
+            left_nb = base[y0:y1, max(0, x0 - abs(ear_dx)) : max(0, x1 - abs(ear_dx))]
+            nb_sky = ~is_hair_ear(left_nb)
+            vacated = m & (~shifted_m) & nb_sky
+            f[y0:y1, x0:x1][vacated] = sky_col
             shift_patch(f, base, x0, y0, x1, y1, ear_dx, 0, is_hair_ear)
 
         # Subtle lower hair-lock sway alongside cheeks/neck
         shift_patch(f, base, 114, 156, 146, 224, ear_dx, 0, is_hair_ear)
 
-    # 3. Floating Cob cyber-drone hover (x=232..290, y=112..176)
+    # 3. Floating Cob cyber-drone hover (x=230..292, y=108..180)
     if drone_dy != 0:
         def is_drone(p: np.ndarray) -> np.ndarray:
             r = p[:, :, 0].astype(np.int16)
@@ -195,12 +204,11 @@ def apply_nyx_sway_and_breath(base: np.ndarray, drone_dy: int = -2, ear_dx: int 
             is_sky = (r <= 38) & (g <= 48) & (b <= 96) & (g < 80)
             return ~is_sky
 
-        # Clean background behind drone using nearby dark nebula tone
-        bg_sample = base[110:178, 230:292].copy()
+        bg_sample = base[108:180, 228:294].copy()
         dr_mask = is_drone(bg_sample)
         bg_fill = np.array([16, 24, 58, 255], dtype=np.uint8)
-        f[110:178, 230:292][dr_mask] = bg_fill
-        shift_patch(f, base, 230, 110, 292, 178, 0, drone_dy, is_drone)
+        f[108:180, 228:294][dr_mask] = bg_fill
+        shift_patch(f, base, 228, 108, 294, 180, 0, drone_dy, is_drone)
 
     return f
 
@@ -478,20 +486,36 @@ def add_nyx_glow_and_surge(frame: np.ndarray, peak: bool = False) -> np.ndarray:
     return f
 
 
+def add_nyx_ambient_stars(frame: np.ndarray, phase: int) -> np.ndarray:
+    """Adds subtle multi-frame twinkling starlight & cosmic dust motion across all 6 frames."""
+    f = frame.copy()
+    star_sets = [
+        [(30, 34, (34, 211, 238)), (298, 42, (244, 114, 182)), (44, 214, (192, 132, 252))],
+        [(30, 33, (165, 243, 252)), (298, 40, (255, 255, 255)), (58, 128, (34, 211, 238))],
+        [(46, 86, (244, 114, 182)), (286, 62, (34, 211, 238)), (36, 176, (165, 243, 252))],
+        [(62, 108, (34, 211, 238)), (248, 86, (192, 132, 252)), (300, 148, (34, 211, 238))],
+        [(64, 102, (165, 243, 252)), (248, 80, (244, 114, 182)), (300, 142, (165, 243, 252)), (78, 62, (34, 211, 238))],
+        [(66, 94, (255, 255, 255)), (248, 72, (34, 211, 238)), (300, 134, (244, 114, 182)), (80, 52, (244, 114, 182))],
+    ]
+    for sx, sy, col in star_sets[phase % len(star_sets)]:
+        draw_star_sparkle(f, sx, sy, 2, col)
+    return f
+
+
 def build_nyx_talk_sheet() -> np.ndarray:
-    f0 = quantize_crisp_320(SPRITES_DIR / "nyx_ex_portrait_raw.jpg", is_warrior=False)
-    f1 = apply_nyx_sway_and_breath(f0, drone_dy=-2, ear_dx=1, breath_dy=-1)
-    f2_base = apply_nyx_sway_and_breath(f0, drone_dy=-1, ear_dx=1, breath_dy=0)
-    f2 = sculpt_nyx_blink(f2_base, f0)
+    f0 = add_nyx_ambient_stars(quantize_crisp_320(SPRITES_DIR / "nyx_ex_portrait_raw.jpg", is_warrior=False), 0)
+    f1 = add_nyx_ambient_stars(apply_nyx_sway_and_breath(f0, drone_dy=-4, ear_dx=2, breath_dy=-2), 1)
+    f2_base = apply_nyx_sway_and_breath(f0, drone_dy=-2, ear_dx=1, breath_dy=-1)
+    f2 = add_nyx_ambient_stars(sculpt_nyx_blink(f2_base, f0), 2)
 
-    f3_base = apply_nyx_sway_and_breath(f0, drone_dy=-1, ear_dx=0, breath_dy=0)
-    f3 = sculpt_nyx_mouth(f3_base, f0, mode="half")
+    f3_base = apply_nyx_sway_and_breath(f0, drone_dy=-2, ear_dx=1, breath_dy=-1)
+    f3 = add_nyx_ambient_stars(sculpt_nyx_mouth(f3_base, f0, mode="half"), 3)
 
-    f4_base = apply_nyx_sway_and_breath(f0, drone_dy=-1, ear_dx=1, breath_dy=-1)
-    f4 = add_nyx_glow_and_surge(sculpt_nyx_mouth(f4_base, f0, mode="wide"), peak=False)
+    f4_base = apply_nyx_sway_and_breath(f0, drone_dy=-3, ear_dx=2, breath_dy=-2)
+    f4 = add_nyx_ambient_stars(add_nyx_glow_and_surge(sculpt_nyx_mouth(f4_base, f0, mode="wide"), peak=False), 4)
 
-    f5_base = apply_nyx_sway_and_breath(f0, drone_dy=-2, ear_dx=1, breath_dy=-1)
-    f5 = add_nyx_glow_and_surge(sculpt_nyx_mouth(f5_base, f0, mode="surge"), peak=True)
+    f5_base = apply_nyx_sway_and_breath(f0, drone_dy=-5, ear_dx=3, breath_dy=-2)
+    f5 = add_nyx_ambient_stars(add_nyx_glow_and_surge(sculpt_nyx_mouth(f5_base, f0, mode="surge"), peak=True), 5)
 
     frames = [f0, f1, f2, f3, f4, f5]
     sheet = np.zeros((SHEET_H, SHEET_W, 4), dtype=np.uint8)
@@ -504,7 +528,7 @@ def build_nyx_talk_sheet() -> np.ndarray:
 # 2. AETHELGARD (WARRIOR) TALKING BUST SHEET (6 x 320x320)
 # ==============================================================================
 
-def apply_warrior_sway_and_breath(base: np.ndarray, mane_dx: int = 1, breath_dy: int = -1) -> np.ndarray:
+def apply_warrior_sway_and_breath(base: np.ndarray, mane_dx: int = 2, breath_dy: int = -1) -> np.ndarray:
     f = base.copy()
 
     def is_not_dark_cathedral(p: np.ndarray) -> np.ndarray:
@@ -512,17 +536,29 @@ def apply_warrior_sway_and_breath(base: np.ndarray, mane_dx: int = 1, breath_dy:
         g = p[:, :, 1].astype(np.int16)
         b = p[:, :, 2].astype(np.int16)
         lum = (r * 2 + g * 5 + b * 3) // 10
-        # Cathedral background has lum <= 28 and low red
         return ~((lum <= 28) & (r <= 24))
 
-    # 1. Flowing white mane wind sway on left (x=6..126, y=82..282)
+    # 1. Two-tier flowing white mane parallax wind-billow on left (zero interior seam!)
     if mane_dx != 0:
-        shift_patch(f, base, 6, 82, 124, 282, mane_dx, 0, is_not_dark_cathedral)
+        bg_dark = np.array([2, 8, 24, 255], dtype=np.uint8)
+        for (x0, y0, x1, y1, dx_cur) in [
+            (6, 72, 124, 168, mane_dx),
+            (4, 168, 108, 286, mane_dx + (1 if mane_dx > 0 else -1)),
+        ]:
+            reg = base[y0:y1, x0:x1]
+            m = is_not_dark_cathedral(reg)
+            shifted_m = np.zeros_like(m)
+            if dx_cur > 0:
+                shifted_m[:, dx_cur:] = m[:, :-dx_cur]
+            else:
+                shifted_m[:, :dx_cur] = m[:, -dx_cur:]
+            vacated = m & (~shifted_m)
+            f[y0:y1, x0:x1][vacated] = bg_dark
+            shift_patch(f, base, x0, y0, x1, y1, dx_cur, 0, is_not_dark_cathedral)
 
-    # 2. Subtle pauldron + greatsword breathing lift
+    # 2. Pauldron + Dawn-Breaker greatsword breathing lift
     if breath_dy != 0:
         shift_patch(f, base, 34, 198, 318, 320, 0, breath_dy, is_not_dark_cathedral)
-        # Upper diagonal Dawn-Breaker blade (x=236..320, y=10..198)
         shift_patch(f, base, 236, 10, 320, 198, 0, breath_dy, is_not_dark_cathedral)
 
     return f
@@ -706,20 +742,36 @@ def add_warrior_glow_and_surge(frame: np.ndarray, peak: bool = False) -> np.ndar
     return f
 
 
+def add_warrior_ambient_aura(frame: np.ndarray, phase: int) -> np.ndarray:
+    """Adds subtle traveling fuller shimmer & rising cathedral gold/cyan embers across all 6 frames."""
+    f = frame.copy()
+    ember_sets = [
+        [(46, 90, (252, 226, 104)), (258, 70, (56, 208, 252))],
+        [(46, 84, (255, 251, 230)), (258, 64, (110, 234, 255)), (28, 152, (240, 178, 54))],
+        [(48, 78, (240, 178, 54)), (260, 58, (56, 208, 252)), (296, 232, (56, 208, 252))],
+        [(44, 104, (252, 226, 104)), (242, 196, (110, 234, 255)), (294, 224, (252, 226, 104))],
+        [(42, 96, (255, 251, 230)), (256, 174, (255, 255, 255)), (296, 214, (110, 234, 255))],
+        [(40, 88, (252, 226, 104)), (270, 150, (255, 255, 255)), (298, 204, (56, 208, 252))],
+    ]
+    for ex, ey, col in ember_sets[phase % len(ember_sets)]:
+        draw_star_sparkle(f, ex, ey, 2, col)
+    return f
+
+
 def build_warrior_talk_sheet() -> np.ndarray:
-    f0 = quantize_crisp_320(SPRITES_DIR / "warrior_ex_portrait_raw.jpg", is_warrior=True)
-    f1 = apply_warrior_sway_and_breath(f0, mane_dx=1, breath_dy=-1)
-    f2_base = apply_warrior_sway_and_breath(f0, mane_dx=1, breath_dy=0)
-    f2 = sculpt_warrior_blink(f2_base, f0)
+    f0 = add_warrior_ambient_aura(quantize_crisp_320(SPRITES_DIR / "warrior_ex_portrait_raw.jpg", is_warrior=True), 0)
+    f1 = add_warrior_ambient_aura(apply_warrior_sway_and_breath(f0, mane_dx=2, breath_dy=-2), 1)
+    f2_base = apply_warrior_sway_and_breath(f0, mane_dx=1, breath_dy=-1)
+    f2 = add_warrior_ambient_aura(sculpt_warrior_blink(f2_base, f0), 2)
 
-    f3_base = apply_warrior_sway_and_breath(f0, mane_dx=0, breath_dy=0)
-    f3 = sculpt_warrior_mouth(f3_base, f0, mode="half")
+    f3_base = apply_warrior_sway_and_breath(f0, mane_dx=1, breath_dy=-1)
+    f3 = add_warrior_ambient_aura(sculpt_warrior_mouth(f3_base, f0, mode="half"), 3)
 
-    f4_base = apply_warrior_sway_and_breath(f0, mane_dx=1, breath_dy=-1)
-    f4 = add_warrior_glow_and_surge(sculpt_warrior_mouth(f4_base, f0, mode="wide"), peak=False)
+    f4_base = apply_warrior_sway_and_breath(f0, mane_dx=2, breath_dy=-2)
+    f4 = add_warrior_ambient_aura(add_warrior_glow_and_surge(sculpt_warrior_mouth(f4_base, f0, mode="wide"), peak=False), 4)
 
-    f5_base = apply_warrior_sway_and_breath(f0, mane_dx=2, breath_dy=-1)
-    f5 = add_warrior_glow_and_surge(sculpt_warrior_mouth(f5_base, f0, mode="surge"), peak=True)
+    f5_base = apply_warrior_sway_and_breath(f0, mane_dx=3, breath_dy=-3)
+    f5 = add_warrior_ambient_aura(add_warrior_glow_and_surge(sculpt_warrior_mouth(f5_base, f0, mode="surge"), peak=True), 5)
 
     frames = [f0, f1, f2, f3, f4, f5]
     sheet = np.zeros((SHEET_H, SHEET_W, 4), dtype=np.uint8)

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps149';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps149';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps149';
+import { Fighter } from './Fighter.js?v=30fps150';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps150';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps150';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps149';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps150';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Gungnir Lightning-Javelin + Valhalla Rune Seal -> snaps at F03 (63)
@@ -372,9 +372,9 @@ export class ValkyrieEx extends Fighter {
         return img;
       };
       assets.valkyrie_ex = {
-        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps149'),
-        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps149'),
-        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps149'),
+        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps150'),
+        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps150'),
+        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps150'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

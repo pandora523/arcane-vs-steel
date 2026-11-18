@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps149';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps149';
+import { PixelForge } from './PixelForge.js?v=30fps150';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps150';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps149';
+} from './shaders/exNextGenFX.js?v=30fps150';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -7502,8 +7502,12 @@ export class Renderer {
         const alpha = p < 0.07 ? p / 0.07 : p > 0.80 ? (1 - p) / 0.20 : 1;
         const clampedAlpha = Math.max(0, Math.min(1, alpha));
         if (clampedAlpha > 0.01) {
-          const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.24;
           const isTrue = Boolean(this.cutInIsTrueUlt);
+          const slamScale =
+            p < 0.13 ? 1 + Math.pow(1 - p / 0.13, 2) * (isTrue ? 0.44 : 0.34) : 1;
+          const shakeMag = p >= 0.03 && p < 0.16 ? (1 - p / 0.16) * 3 : 0;
+          const shakeDx = shakeMag > 0.2 ? Math.round(Math.sin(p * 190) * shakeMag) : 0;
+          const shakeDy = shakeMag > 0.2 ? Math.round(Math.cos(p * 230) * shakeMag * 0.7) : 0;
           const elemCol = this.cutInColor || '#38bdf8';
           const accCol = isTrue ? '#fde047' : '#fbbf24';
           const { side, slideDir, halfW, halfH, cx, cy, slidePx } = this._getCutInLayout(
@@ -7515,16 +7519,16 @@ export class Renderer {
           ctx.save();
           ctx.imageSmoothingEnabled = false;
           ctx.globalAlpha = clampedAlpha;
-          ctx.translate(cx + slidePx, cy);
+          ctx.translate(cx + slidePx + shakeDx, cy + shakeDy);
           ctx.scale(slamScale, slamScale);
 
-          // Feathered obsidian backdrop cushion behind stepped plaque (preserves legibility & Suite 30.4 probe)
+          // Feathered obsidian radial backdrop cushion (100% borderless & preserves Suite 30.4 HUD probe)
           ctx.save();
           ctx.scale(halfW, halfH);
           if (!ctx.__avsCutInVeilGrad) {
             const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-            veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
-            veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
+            veil.addColorStop(0, 'rgba(3, 6, 15, 0.86)');
+            veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.48)');
             veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
             ctx.__avsCutInVeilGrad = veil;
           }
@@ -7825,88 +7829,54 @@ export class Renderer {
           ? 'right'
           : 'left';
     const slideDir = side === 'right' ? 1 : -1;
-    const halfH = this.isMobileLandscape ? 25 : this.isMobile ? 29 : 38;
+    const halfH = this.isMobileLandscape ? 44 : this.isMobile ? 50 : 68;
     const halfW = Math.min(
       Math.floor((w - 20) * 0.5),
-      this.isMobileLandscape ? 210 : w <= 440 ? 166 : this.isMobile ? 196 : 276
+      this.isMobileLandscape ? 256 : w <= 440 ? 168 : this.isMobile ? 204 : 364
     );
     const rawCx =
       side === 'right'
-        ? Math.min(w - halfW - 14, Math.round(w * 0.71))
-        : Math.max(halfW + 14, Math.round(w * 0.29));
+        ? Math.min(w - halfW - 14, Math.round(w * 0.70))
+        : Math.max(halfW + 14, Math.round(w * 0.30));
     const cx = Math.max(halfW + 10, Math.min(w - halfW - 10, rawCx));
     const cy = Math.max(
       Math.round(safeTopY + halfH + 16),
-      this.isMobileLandscape ? 118 : this.isMobile ? 170 : 160
+      this.isMobileLandscape ? 132 : this.isMobile ? 186 : 188
     );
-    const slidePx = p < 0.10 ? Math.round((1 - p / 0.10) * 32) * slideDir : 0;
+    const slidePx = p < 0.11 ? Math.round(Math.pow(1 - p / 0.11, 2) * 56) * slideDir : 0;
     return { side, slideDir, halfW, halfH, cx, cy, slidePx };
   }
 
-  _drawCutInCalloutContent(ctx, cfg) {
-    const { p, alpha, isTrue, elemCol, accCol, halfW, halfH, side, slideDir, eyebrowFallback } = cfg;
-
-    // 1. Chamfered Obsidian-Prism Plaque (100% crisp stepped pixel geometry, 0 portrait drawImage!)
-    const cham = 10;
-    ctx.fillStyle = 'rgba(3, 6, 15, 0.90)';
-    ctx.fillRect(-halfW + cham, -halfH, (halfW - cham) * 2, halfH * 2);
-    for (let s = 2; s <= cham; s += 2) {
-      const stripH = (halfH - (cham - s)) * 2;
-      ctx.fillRect(-halfW + (cham - s), -(stripH >> 1), 2, stripH);
-      ctx.fillRect(halfW - (cham - s) - 2, -(stripH >> 1), 2, stripH);
+  _splitUltCalloutLines(rawText) {
+    const clean = String(rawText || 'ULTIMATE ART').trim().toUpperCase();
+    const colonIdx = clean.indexOf(':');
+    if (colonIdx > 1 && colonIdx < clean.length - 2) {
+      return [clean.slice(0, colonIdx + 1).trim(), clean.slice(colonIdx + 1).trim()];
     }
-
-    // 2. Stepped Diagonal Pixel Speed-Lines Scrolling from Caster Side (`lighter` <= 0.18)
-    const speedScroll = Math.round(p * 120) & 31;
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = elemCol;
-    ctx.globalAlpha = alpha * (isTrue ? 0.18 : 0.13);
-    for (let sx = -halfW + 16 - speedScroll * slideDir; sx < halfW - 16; sx += 28) {
-      for (let row = -halfH + 4; row <= halfH - 6; row += 4) {
-        const shift = (row + halfH) >> 1;
-        const px = sx + shift;
-        if (px > -halfW + cham + 2 && px < halfW - cham - 10) {
-          ctx.fillRect(px, row, isTrue ? 10 : 6, 2);
+    if (clean.length <= 15) {
+      return [null, clean];
+    }
+    const mid = clean.length >> 1;
+    let bestIdx = -1;
+    let bestDist = 999;
+    for (let i = 3; i < clean.length - 3; i++) {
+      if (clean[i] === ' ') {
+        const d = Math.abs(i - mid);
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
         }
       }
     }
-    ctx.globalCompositeOperation = 'source-over';
-
-    // 3. Forged Double-Trim Elemental & Gold Borders + Caster-Side Anchor Bracket + Corner Studs
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = elemCol;
-    ctx.fillRect(-halfW + cham, -halfH, (halfW - cham) * 2, 2);
-    ctx.fillRect(-halfW + cham, halfH - 2, (halfW - cham) * 2, 2);
-    ctx.fillStyle = accCol;
-    ctx.fillRect(-Math.round(halfW * 0.62), -halfH, Math.round(halfW * 1.24), 2);
-    ctx.fillRect(-Math.round(halfW * 0.62), halfH - 2, Math.round(halfW * 1.24), 2);
-
-    // Caster-side vertical pixel anchor bracket
-    const bracketX = side === 'right' ? halfW - cham - 2 : -halfW + cham - 1;
-    ctx.fillStyle = accCol;
-    ctx.fillRect(bracketX, -halfH + 6, 3, halfH * 2 - 12);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(bracketX + (side === 'right' ? -2 : 3), -halfH + 10, 2, halfH * 2 - 20);
-
-    // Center divider hairline with white-hot core
-    ctx.fillStyle = elemCol;
-    ctx.fillRect(-Math.round(halfW * 0.78), -4, Math.round(halfW * 1.56), 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-Math.round(halfW * 0.36), -4, Math.round(halfW * 0.72), 2);
-
-    // Corner pixel diamonds
-    const studOffsets = [
-      [-halfW + cham + 2, -halfH + 2],
-      [halfW - cham - 6, -halfH + 2],
-      [-halfW + cham + 2, halfH - 6],
-      [halfW - cham - 6, halfH - 6]
-    ];
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < studOffsets.length; i++) {
-      ctx.fillRect(studOffsets[i][0], studOffsets[i][1], 4, 4);
+    if (bestIdx !== -1) {
+      return [clean.slice(0, bestIdx).trim(), clean.slice(bestIdx + 1).trim()];
     }
+    return [null, clean];
+  }
 
-    // 4. Flanking 4-Point Pixel Star-Glints & Rim Energy Sparks
+  _drawCutInCalloutContent(ctx, cfg) {
+    const { p, alpha, isTrue, elemCol, accCol, halfW, halfH, slideDir, eyebrowFallback } = cfg;
+
     const drawStar4 = (gx, gy, arm, col) => {
       ctx.fillStyle = col;
       ctx.fillRect(gx - arm, gy - 1, arm * 2 + 2, 2);
@@ -7914,60 +7884,199 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(gx - 2, gy - 2, 4, 4);
     };
-    const glintArm = isTrue ? 9 : 7;
-    drawStar4(-halfW + 6, 0, glintArm, accCol);
-    drawStar4(halfW - 8, 0, glintArm, accCol);
-    if (isTrue) {
-      drawStar4(0, -halfH, 5, '#ffffff');
+
+    const drawArcade3DLine = (txt, ty, fontPx, maxW, bevelCol, rimCol, faceCol) => {
+      const dDeep = Math.max(3, Math.round(fontPx * 0.13));
+      const dMid = Math.max(2, Math.round(fontPx * 0.07));
+      ctx.font = `bold ${fontPx}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(txt, dDeep, ty + dDeep + 1, maxW);
+      ctx.fillText(txt, -2, ty + 2, maxW);
+      ctx.fillText(txt, 0, ty - 2, maxW);
+      ctx.fillText(txt, 2, ty - 1, maxW);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(txt, dDeep - 1, ty + dDeep - 1, maxW);
+      ctx.fillStyle = bevelCol;
+      ctx.fillText(txt, dMid, ty + dMid, maxW);
+      ctx.fillStyle = rimCol;
+      ctx.fillText(txt, 1, ty + 1, maxW);
+      ctx.fillStyle = faceCol;
+      ctx.fillText(txt, 0, ty, maxW);
+    };
+
+    // 1. 100% Borderless Feathered Stepped Dark Ink-Slash Cushion (0 hard rectangle edges, 0 arc/ellipse!)
+    const strips = 11;
+    const stripH = Math.max(6, Math.ceil((halfH * 2) / strips));
+    for (let i = 0; i < strips; i++) {
+      const norm = (i - (strips - 1) * 0.5) / ((strips - 1) * 0.5);
+      const falloff = Math.max(0, 1 - norm * norm);
+      const jag = ((i * 23) % 5) * 8;
+      const spanRatio = 0.44 + 0.54 * falloff;
+      const wStrip = Math.max(64, Math.round(halfW * 2 * spanRatio) - jag);
+      const skewX = Math.round(norm * -14 * slideDir) + (((i % 2) * 2 - 1) * 6);
+      const sy = -halfH + i * stripH;
+      ctx.globalAlpha = alpha * (0.10 + 0.72 * falloff * falloff);
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(skewX - (wStrip >> 1), sy, wStrip, stripH + 1);
     }
 
-    const sparkCount = isTrue ? 6 : 4;
+    // 2. Impact Horizon Detonation Flash (`p < 0.22`)
+    if (p < 0.22) {
+      const flashT = 1 - p / 0.22;
+      const beamH = Math.max(3, Math.round(flashT * 18));
+      const beamW = Math.round(halfW * (2.05 + flashT * 0.25));
+      ctx.globalAlpha = alpha * flashT * 0.88;
+      ctx.fillStyle = elemCol;
+      ctx.fillRect(-(beamW >> 1), 8 - beamH, beamW, beamH * 2);
+      ctx.fillStyle = accCol;
+      ctx.fillRect(-(beamW >> 1) + 18, 8 - (beamH >> 1), Math.max(32, beamW - 36), Math.max(4, beamH));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-(beamW >> 1) + 36, 6, Math.max(24, beamW - 72), 4);
+    }
+
+    // 3. High-Velocity Elemental Speed-Streaks (`lighter` <= 0.18 alpha)
+    const speedScroll = Math.round(p * 180) & 31;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = elemCol;
+    ctx.globalAlpha = alpha * (isTrue ? 0.18 : 0.14);
+    for (let sx = -halfW + 18 - speedScroll * slideDir; sx < halfW - 18; sx += 32) {
+      for (let row = -halfH + 8; row <= halfH - 8; row += 8) {
+        const px = sx + ((row + halfH) >> 1);
+        if (px > -halfW + 14 && px < halfW - 24) {
+          ctx.fillRect(px, row, isTrue ? 22 : 14, 2);
+        }
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = alpha;
+
+    // 4. Tapered Razor Energy Slash Spine (between Eyebrow & Move Name — ZERO outer box!)
+    const spineY = -Math.round(halfH * 0.48);
+    const outerSpan = Math.round(halfW * 1.84);
+    const midSpan = Math.round(halfW * 1.32);
+    const coreSpan = Math.round(halfW * 0.76);
+    ctx.fillStyle = elemCol;
+    ctx.fillRect(-(outerSpan >> 1), spineY, outerSpan, 3);
+    ctx.fillStyle = accCol;
+    ctx.fillRect(-(midSpan >> 1), spineY, midSpan, 3);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-(coreSpan >> 1), spineY + 1, coreSpan, 2);
+
+    // Supreme Ultimate stepped lightning crackle along the slash spine
+    if (isTrue) {
+      const boltStep = Math.max(12, Math.round(halfW * 0.09));
+      for (let b = -6; b <= 6; b++) {
+        const bx = b * boltStep;
+        const by = spineY + ((Math.abs(b + Math.round(p * 24)) % 3) - 1) * 4;
+        ctx.fillStyle = b % 2 === 0 ? '#fde047' : elemCol;
+        ctx.fillRect(bx - 4, by, 8, 2);
+      }
+    }
+
+    // Outward-flying pixel sparks & flanking star flares
+    const glintArm = isTrue ? 11 : 8;
+    drawStar4(-Math.round(halfW * 0.88), spineY + 1, glintArm, accCol);
+    drawStar4(Math.round(halfW * 0.88), spineY + 1, glintArm, elemCol);
+
+    const sparkCount = isTrue ? 10 : 6;
     for (let s = 0; s < sparkCount; s++) {
-      const cyc = (p * 1.8 + s * 0.27) % 1;
-      const sx = Math.round((-halfW + 24 + ((s * 67 + Math.round(cyc * 44)) % Math.max(40, halfW * 2 - 52))));
-      const sy = s % 2 === 0 ? -halfH - 3 - Math.round(cyc * 4) : halfH + 2 + Math.round(cyc * 4);
-      ctx.globalAlpha = alpha * (1 - cyc) * 0.85;
-      ctx.fillStyle = s % 2 === 0 ? '#ffffff' : accCol;
-      ctx.fillRect(sx, sy, 4, 2);
+      const cyc = (p * 2.2 + s * 0.19) % 1;
+      const dir = s % 2 === 0 ? -1 : 1;
+      const sx = dir * Math.round(36 + cyc * (halfW * 0.92) + ((s * 29) % 34));
+      const sy = ((s % 5) - 2) * Math.round(halfH * 0.32);
+      ctx.globalAlpha = alpha * (1 - cyc * 0.85);
+      ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? accCol : elemCol;
+      ctx.fillRect(sx - 6, sy, 12, 2);
+      ctx.fillRect(sx + dir * 7, sy - 1, 3, 3);
     }
     ctx.globalAlpha = alpha;
 
-    // 5. Larger Portrait-Free Multi-Layer Pixel Typography
+    // 5. Giant Borderless 2-Line 6-Layer 3D Extruded Typography (`28-38px` Desktop!)
     const eyebrow = String(
       this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • ${eyebrowFallback}`
     );
     const ultStr = String(this.cutInUltName || this.cutInText || 'ULTIMATE ART');
-    const cutMaxTextW = Math.max(176, halfW * 2 - 28);
-    const eyeFontPx = Math.max(
-      7,
-      Math.min(this.isMobile ? 8 : 10, Math.floor(cutMaxTextW / Math.max(1, eyebrow.length * 0.92)))
-    );
-    const ultFontPx = Math.max(
-      this.isMobile ? 12 : 16,
-      Math.min(
-        this.isMobile ? (isTrue ? 15 : 14) : isTrue ? 22 : 20,
-        Math.floor(cutMaxTextW / Math.max(1, ultStr.length * 0.80))
-      )
-    );
+    const [line1, line2] = this._splitUltCalloutLines(ultStr);
+    const cutMaxTextW = Math.max(196, halfW * 2 - 16);
 
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const eyeMaxPx = this.isMobileLandscape ? 9 : this.isMobile ? 9 : 12;
+    const eyeFontPx = Math.max(
+      7,
+      Math.min(eyeMaxPx, Math.floor(cutMaxTextW / Math.max(1, eyebrow.length * 0.94)))
+    );
+    const eyeY = -Math.round(halfH * 0.74);
     ctx.font = `bold ${eyeFontPx}px "Press Start 2P", monospace`;
     ctx.fillStyle = '#020617';
-    ctx.fillText(eyebrow, 2, -11, cutMaxTextW);
-    ctx.fillText(eyebrow, -2, -11, cutMaxTextW);
+    ctx.fillText(eyebrow, 2, eyeY + 2, cutMaxTextW);
+    ctx.fillText(eyebrow, -2, eyeY + 1, cutMaxTextW);
     ctx.fillStyle = accCol;
-    ctx.fillText(eyebrow, 0, -13, cutMaxTextW);
+    ctx.fillText(eyebrow, 0, eyeY, cutMaxTextW);
 
-    ctx.font = `bold ${ultFontPx}px "Press Start 2P", monospace`;
-    ctx.fillStyle = '#020617';
-    ctx.fillText(ultStr, 3, 20, cutMaxTextW);
-    ctx.fillText(ultStr, -2, 19, cutMaxTextW);
-    ctx.fillText(ultStr, 0, 21, cutMaxTextW);
-    ctx.fillStyle = elemCol;
-    ctx.fillText(ultStr, 2, 18, cutMaxTextW);
-    ctx.fillText(ultStr, -1, 18, cutMaxTextW);
-    ctx.fillStyle = isTrue ? '#fde047' : '#ffffff';
-    ctx.fillText(ultStr, 0, 16, cutMaxTextW);
+    const maxMainPx = this.isMobileLandscape
+      ? isTrue ? 24 : 22
+      : this.isMobile
+        ? isTrue ? 20 : 18
+        : isTrue ? 38 : 34;
+    const minMainPx = this.isMobileLandscape ? 16 : this.isMobile ? 14 : 26;
+
+    if (line1) {
+      const maxSubPx = this.isMobileLandscape ? 15 : this.isMobile ? 13 : isTrue ? 22 : 20;
+      const minSubPx = this.isMobileLandscape ? 11 : this.isMobile ? 10 : 16;
+      const line1Px = Math.max(
+        minSubPx,
+        Math.min(maxSubPx, Math.floor(cutMaxTextW / Math.max(1, line1.length * 0.95)))
+      );
+      const line2Px = Math.max(
+        minMainPx,
+        Math.min(maxMainPx, Math.floor(cutMaxTextW / Math.max(1, line2.length * 0.95)))
+      );
+      const y1 = -Math.round(halfH * 0.14);
+      const y2 = Math.round(halfH * 0.48);
+
+      drawArcade3DLine(line1, y1, line1Px, cutMaxTextW, elemCol, '#f59e0b', '#fef08a');
+      drawArcade3DLine(
+        line2,
+        y2,
+        line2Px,
+        cutMaxTextW,
+        elemCol,
+        '#f59e0b',
+        isTrue ? '#fde047' : '#ffffff'
+      );
+
+      // Traveling white-hot glint star sweeping across the main line
+      const sweepSpan = Math.min(cutMaxTextW, Math.max(64, line2.length * Math.round(line2Px * 0.85)));
+      const glintX = Math.round(((p * 2.4) % 1 - 0.5) * sweepSpan);
+      const glintY = y2 - Math.round(line2Px * 0.42);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(glintX - 16, glintY, 32, 2);
+      drawStar4(glintX, glintY + 1, 6, accCol);
+    } else {
+      const singleMaxPx = this.isMobileLandscape ? 26 : this.isMobile ? 22 : isTrue ? 42 : 38;
+      const singlePx = Math.max(
+        minMainPx,
+        Math.min(singleMaxPx, Math.floor(cutMaxTextW / Math.max(1, line2.length * 0.95)))
+      );
+      const yMid = Math.round(halfH * 0.24);
+      drawArcade3DLine(
+        line2,
+        yMid,
+        singlePx,
+        cutMaxTextW,
+        elemCol,
+        '#f59e0b',
+        isTrue ? '#fde047' : '#ffffff'
+      );
+      const sweepSpan = Math.min(cutMaxTextW, Math.max(64, line2.length * Math.round(singlePx * 0.85)));
+      const glintX = Math.round(((p * 2.4) % 1 - 0.5) * sweepSpan);
+      const glintY = yMid - Math.round(singlePx * 0.42);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(glintX - 16, glintY, 32, 2);
+      drawStar4(glintX, glintY + 1, 6, accCol);
+    }
   }
 
   drawExUltimateCutIn(ctx, w, safeTopY) {
@@ -7977,6 +8086,11 @@ export class Renderer {
     if (clampedAlpha <= 0.01) return;
 
     const isTrue = Boolean(this.cutInIsTrueUlt);
+    const slamScale =
+      p < 0.13 ? 1 + Math.pow(1 - p / 0.13, 2) * (isTrue ? 0.46 : 0.36) : 1;
+    const shakeMag = p >= 0.03 && p < 0.16 ? (1 - p / 0.16) * 3 : 0;
+    const shakeDx = shakeMag > 0.2 ? Math.round(Math.sin(p * 190) * shakeMag) : 0;
+    const shakeDy = shakeMag > 0.2 ? Math.round(Math.cos(p * 230) * shakeMag * 0.7) : 0;
     const exPal = getExHeroPalette(this.cutInHeroId, this.cutInColor);
     const elemCol = exPal.primary || this.cutInColor || '#38bdf8';
     const accCol = isTrue ? '#fde047' : exPal.accent || '#fde047';
@@ -7985,7 +8099,8 @@ export class Renderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = clampedAlpha;
-    ctx.translate(cx + slidePx, cy);
+    ctx.translate(cx + slidePx + shakeDx, cy + shakeDy);
+    ctx.scale(slamScale, slamScale);
 
     this._drawCutInCalloutContent(ctx, {
       p,
