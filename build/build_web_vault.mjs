@@ -379,6 +379,7 @@ function collectVaultAssets(rootDir) {
     { dir: 'assets/sfx', exts: new Set(['.wav']) },
     { dir: 'assets/voices', exts: new Set(['.mp3']) },
     { dir: 'assets/voices/ja', exts: new Set(['.mp3']) },
+    { dir: 'assets/bgm', exts: new Set(['.mp3']) },
     { dir: 'assets/fonts', exts: new Set(['.ttf']) },
     { dir: 'assets/campaigns', exts: new Set(['.json']) }
   ];

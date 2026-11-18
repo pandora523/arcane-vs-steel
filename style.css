@@ -5450,6 +5450,10 @@ html.is-mobile-landscape .adv-st-grid {
   border-top: 1px solid rgba(148, 163, 184, 0.22);
 }
 
+.pause-audio-mixer > .audio-mix-channel:first-child {
+  grid-column: 1 / -1;
+}
+
 .audio-mix-channel {
   display: flex;
   align-items: center;
@@ -5499,6 +5503,11 @@ html.is-mobile-landscape .adv-st-grid {
   accent-color: #facc15;
 }
 
+.audio-vol-slider.slider-bgm {
+  border-color: rgba(52, 211, 153, 0.55);
+  accent-color: #34d399;
+}
+
 .audio-vol-slider.slider-sfx {
   border-color: rgba(56, 189, 248, 0.52);
   accent-color: #38bdf8;
@@ -5516,6 +5525,10 @@ html.is-mobile-landscape .adv-st-grid {
   cursor: pointer;
 }
 
+.audio-vol-slider.slider-bgm::-webkit-slider-thumb {
+  background: linear-gradient(180deg, #a7f3d0 0%, #10b981 100%);
+}
+
 .audio-vol-slider.slider-sfx::-webkit-slider-thumb {
   background: linear-gradient(180deg, #bae6fd 0%, #38bdf8 100%);
 }
@@ -5528,6 +5541,10 @@ html.is-mobile-landscape .adv-st-grid {
   border: 1px solid #090c14;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
   cursor: pointer;
+}
+
+.audio-vol-slider.slider-bgm::-moz-range-thumb {
+  background: linear-gradient(180deg, #a7f3d0 0%, #10b981 100%);
 }
 
 .audio-vol-slider.slider-sfx::-moz-range-thumb {
@@ -5766,6 +5783,9 @@ html.is-mobile-landscape .adv-st-grid {
     gap: 6px;
     padding-top: 7px;
   }
+  .pause-audio-mixer > .audio-mix-channel:first-child {
+    grid-column: auto;
+  }
   .pause-shared-row {
     justify-content: center;
     text-align: center;
@@ -5789,40 +5809,44 @@ html.is-mobile-landscape .adv-st-grid {
 }
 
 html.is-mobile-landscape .pause-plaque {
-  width: min(92%, 620px);
+  width: min(94%, 640px);
   padding: 8px 12px;
   gap: 6px;
 }
 
 html.is-mobile-landscape .pause-audio-mixer {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 5px;
   padding-top: 6px;
 }
 
+html.is-mobile-landscape .pause-audio-mixer > .audio-mix-channel:first-child {
+  grid-column: auto;
+}
+
 html.is-mobile-landscape .audio-mix-channel {
-  padding: 4px 6px;
-  gap: 5px;
+  padding: 4px 5px;
+  gap: 4px;
 }
 
 html.is-mobile-landscape .audio-vol-slider {
-  min-width: 42px;
+  min-width: 34px;
 }
 
 html.is-mobile-landscape .audio-vol-pct {
-  min-width: 28px;
-  font-size: 0.25rem;
-}
-
-html.is-mobile-landscape .voice-lang-btn {
-  padding: 3px 5px;
+  min-width: 26px;
   font-size: 0.24rem;
 }
 
+html.is-mobile-landscape .voice-lang-btn {
+  padding: 3px 4px;
+  font-size: 0.23rem;
+}
+
 html.is-mobile-landscape .audio-chan-btn {
-  min-width: 58px;
-  padding: 4px 6px;
-  font-size: 0.27rem;
+  min-width: 48px;
+  padding: 4px 5px;
+  font-size: 0.25rem;
 }
 
 html.is-mobile-landscape .step-nav-audio-btn {
@@ -5833,8 +5857,8 @@ html.is-mobile-landscape .step-nav-audio-btn {
 html.is-mobile-landscape .nav-audio-popover {
   top: 34px;
   right: 8px;
-  padding: 8px;
-  gap: 5px;
+  padding: 6px 8px;
+  gap: 4px;
 }
 
 html.is-mobile-landscape .pause-header {

@@ -12,23 +12,32 @@
 const AUDIO_MIX_STORAGE_KEY = 'avs_audio_mix_v1';
 const DEFAULT_SFX_VOLUME = 0.55;
 const DEFAULT_VOICE_VOLUME = 1.0;
+const DEFAULT_BGM_VOLUME = 0.38;
 const VOICE_PRESENCE_TRIM = 1.42;
+const BGM_CROSSFADE_SEC = 0.65;
+const AUDIO_ASSET_CACHE_BUST = 'v=30fps143';
+const MAX_CACHED_BGM_BUFFERS = 4;
 
 export class AudioManager {
   constructor() {
     this.enabled = true;
     this.sfxEnabled = true;
     this.voiceEnabled = true;
+    this.bgmEnabled = true;
     this.sfxVolume = DEFAULT_SFX_VOLUME;
     this.voiceVolume = DEFAULT_VOICE_VOLUME;
+    this.bgmVolume = DEFAULT_BGM_VOLUME;
     this.voiceLang = 'en';
     this.ctx = null;
     this.master = null;
     this.sfxBus = null;
     this.sfxDuckGain = null;
     this.voiceBus = null;
+    this.bgmBus = null;
+    this.bgmDuckGain = null;
     this._preDuckUntilMs = 0;
     this._preDuckTarget = 1.0;
+    this._preDuckBgmTarget = 1.0;
     this._duckRecoverTimer = null;
     this.pinkNoiseBuffer = null;
     this.buffers = {};
@@ -222,6 +231,29 @@ export class AudioManager {
     this._attackVoiceAlt = 0;
     this._pendingVoicePlays = [];
 
+    // Original Soundtrack BGM Subsystem (11 Mastered Loopable MP3s in `assets/bgm/`, loaded strictly on demand)
+    this.bgmTracks = {
+      bgm_title_select: 'assets/bgm/bgm_title_select.mp3',
+      bgm_cathedral: 'assets/bgm/bgm_cathedral.mp3',
+      bgm_sanctuary: 'assets/bgm/bgm_sanctuary.mp3',
+      bgm_sylvan: 'assets/bgm/bgm_sylvan.mp3',
+      bgm_boneyard: 'assets/bgm/bgm_boneyard.mp3',
+      bgm_clocktower: 'assets/bgm/bgm_clocktower.mp3',
+      bgm_inferno: 'assets/bgm/bgm_inferno.mp3',
+      bgm_shogunate: 'assets/bgm/bgm_shogunate.mp3',
+      bgm_cob_monitor: 'assets/bgm/bgm_cob_monitor.mp3',
+      bgm_adventure_pilgrimage: 'assets/bgm/bgm_adventure_pilgrimage.mp3',
+      bgm_boss_malphas: 'assets/bgm/bgm_boss_malphas.mp3'
+    };
+    this.bgmBuffers = {};
+    this._bgmBufferOrder = [];
+    this._bgmLoadPromises = new Map();
+    this.desiredBgmKey = null;
+    this.currentBgmKey = null;
+    this._activeBgmEntry = null;
+    this._fadingBgmEntries = new Set();
+    this._bgmPlaySeq = 0;
+
     this._loadAudioMixSettings();
     this.initContext();
     this.preloadWavFiles();
@@ -316,10 +348,14 @@ export class AudioManager {
   }
 
   _flushPendingPlays() {
-    if ((!this._pendingPlays.length && !this._pendingVoicePlays.length) || !this.enabled || this._bgSuspended) {
+    if (!this.enabled || this._bgSuspended) {
       return;
     }
     if (!this.ctx || this.ctx.state !== 'running') return;
+    this._syncPendingBgmPlayback();
+    if (!this._pendingPlays.length && !this._pendingVoicePlays.length) {
+      return;
+    }
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const pending = this._pendingPlays.splice(0, this._pendingPlays.length);
     for (let i = 0; i < pending.length; i++) {
@@ -380,6 +416,7 @@ export class AudioManager {
       this._playSilentUnlockTick();
       this._scheduleStalledClockCheck(250);
     }
+    this._syncPendingBgmPlayback();
   }
 
   rebuildContext() {
@@ -403,6 +440,7 @@ export class AudioManager {
       } catch (_) {}
     }
     this.stopAllHeroVoices(0);
+    this._stopAllBgmSources(0);
     this.pinkNoiseBuffer = null;
 
     const deadCtx = this.ctx;
@@ -411,6 +449,8 @@ export class AudioManager {
     this.sfxBus = null;
     this.sfxDuckGain = null;
     this.voiceBus = null;
+    this.bgmBus = null;
+    this.bgmDuckGain = null;
     if (deadCtx) {
       try {
         deadCtx.onstatechange = null;
@@ -512,6 +552,13 @@ export class AudioManager {
       const voiceBus = ctx.createGain();
       voiceBus.gain.value = this._getEffectiveVoiceBusGain();
 
+      // Dedicated Original Soundtrack BGM Bus + Sidechain Ducking Node
+      const bgmBus = ctx.createGain();
+      bgmBus.gain.value = this._getEffectiveBgmBusGain();
+
+      const bgmDuckGain = ctx.createGain();
+      bgmDuckGain.gain.value = 1.0;
+
       // 1. Clean 36Hz High-Pass Filter on SFX (preserves 38-55Hz cinematic sub-drops while blocking DC/rumble)
       const hpf = ctx.createBiquadFilter();
       hpf.type = 'highpass';
@@ -540,6 +587,8 @@ export class AudioManager {
       sfxDuckGain.connect(hpf);
       hpf.connect(lpf);
       lpf.connect(limiter);
+      bgmBus.connect(bgmDuckGain);
+      bgmDuckGain.connect(limiter);
       voiceBus.connect(limiter);
       limiter.connect(masterGain);
       masterGain.connect(ctx.destination);
@@ -547,6 +596,8 @@ export class AudioManager {
       this.sfxBus = sfxBus;
       this.sfxDuckGain = sfxDuckGain;
       this.voiceBus = voiceBus;
+      this.bgmBus = bgmBus;
+      this.bgmDuckGain = bgmDuckGain;
       this.master = sfxBus;
     } else if (typeof ctx.createGain === 'function') {
       const sfxBus = ctx.createGain();
@@ -555,11 +606,17 @@ export class AudioManager {
       if (sfxDuckGain.gain) sfxDuckGain.gain.value = 1.0;
       const voiceBus = ctx.createGain();
       if (voiceBus.gain) voiceBus.gain.value = this._getEffectiveVoiceBusGain();
+      const bgmBus = ctx.createGain();
+      if (bgmBus.gain) bgmBus.gain.value = this._getEffectiveBgmBusGain();
+      const bgmDuckGain = ctx.createGain();
+      if (bgmDuckGain.gain) bgmDuckGain.gain.value = 1.0;
       const masterGain = ctx.createGain();
       if (masterGain.gain) masterGain.gain.value = 0.92;
 
       if (typeof sfxBus.connect === 'function') sfxBus.connect(sfxDuckGain);
       if (typeof sfxDuckGain.connect === 'function') sfxDuckGain.connect(masterGain);
+      if (typeof bgmBus.connect === 'function') bgmBus.connect(bgmDuckGain);
+      if (typeof bgmDuckGain.connect === 'function') bgmDuckGain.connect(masterGain);
       if (typeof voiceBus.connect === 'function') voiceBus.connect(masterGain);
       if (ctx.destination && typeof masterGain.connect === 'function') {
         masterGain.connect(ctx.destination);
@@ -567,11 +624,15 @@ export class AudioManager {
       this.sfxBus = sfxBus;
       this.sfxDuckGain = sfxDuckGain;
       this.voiceBus = voiceBus;
+      this.bgmBus = bgmBus;
+      this.bgmDuckGain = bgmDuckGain;
       this.master = sfxBus;
     } else {
       this.sfxBus = null;
       this.sfxDuckGain = null;
       this.voiceBus = null;
+      this.bgmBus = null;
+      this.bgmDuckGain = null;
       this.master = ctx.destination || null;
     }
   }
@@ -615,16 +676,22 @@ export class AudioManager {
       if (Number.isFinite(parsed.voiceVolume)) {
         this.voiceVolume = Math.max(0, Math.min(1, Number(parsed.voiceVolume)));
       }
+      if (Number.isFinite(parsed.bgmVolume)) {
+        this.bgmVolume = Math.max(0, Math.min(1, Number(parsed.bgmVolume)));
+      }
       if (typeof parsed.sfxEnabled === 'boolean') {
         this.sfxEnabled = parsed.sfxEnabled;
       }
       if (typeof parsed.voiceEnabled === 'boolean') {
         this.voiceEnabled = parsed.voiceEnabled;
       }
+      if (typeof parsed.bgmEnabled === 'boolean') {
+        this.bgmEnabled = parsed.bgmEnabled;
+      }
       if (parsed.voiceLang === 'ja' || parsed.voiceLang === 'en') {
         this.voiceLang = parsed.voiceLang;
       }
-      this.enabled = Boolean(this.sfxEnabled || this.voiceEnabled);
+      this.enabled = Boolean(this.sfxEnabled || this.voiceEnabled || this.bgmEnabled);
     } catch (_) {}
   }
 
@@ -637,8 +704,10 @@ export class AudioManager {
         JSON.stringify({
           sfxVolume: Math.round(this.sfxVolume * 100) / 100,
           voiceVolume: Math.round(this.voiceVolume * 100) / 100,
+          bgmVolume: Math.round(this.bgmVolume * 100) / 100,
           sfxEnabled: Boolean(this.sfxEnabled),
           voiceEnabled: Boolean(this.voiceEnabled),
+          bgmEnabled: Boolean(this.bgmEnabled),
           voiceLang: this.voiceLang === 'ja' ? 'ja' : 'en'
         })
       );
@@ -651,6 +720,10 @@ export class AudioManager {
 
   _getEffectiveVoiceBusGain() {
     return this.enabled && this.voiceEnabled ? this.voiceVolume * VOICE_PRESENCE_TRIM : 0;
+  }
+
+  _getEffectiveBgmBusGain() {
+    return this.enabled && this.bgmEnabled ? this.bgmVolume : 0;
   }
 
   _applyGainParam(gainNode, targetVal, rampSec = 0) {
@@ -707,6 +780,7 @@ export class AudioManager {
   _syncBusVolumes(rampSec = 0.02) {
     this._applyGainParam(this.sfxBus, this._getEffectiveSfxBusGain(), rampSec);
     this._applyGainParam(this.voiceBus, this._getEffectiveVoiceBusGain(), rampSec);
+    this._applyGainParam(this.bgmBus, this._getEffectiveBgmBusGain(), rampSec);
   }
 
   getSfxVolume() {
@@ -715,6 +789,10 @@ export class AudioManager {
 
   getVoiceVolume() {
     return this.voiceVolume;
+  }
+
+  getBgmVolume() {
+    return this.bgmVolume;
   }
 
   getVoiceLang() {
@@ -763,6 +841,24 @@ export class AudioManager {
     return this.voiceVolume;
   }
 
+  setBgmVolume(vol, persist = true) {
+    const next = Math.max(0, Math.min(1, Number(vol) || 0));
+    this.bgmVolume = next;
+    if (next > 0) {
+      this.bgmEnabled = true;
+      this.enabled = true;
+      this._ensureContextRunningForMix();
+    } else {
+      this.stopBgm(0.08, false);
+    }
+    this._syncBusVolumes(0.02);
+    if (next > 0 && this.desiredBgmKey && !this._activeBgmEntry) {
+      this._syncPendingBgmPlayback();
+    }
+    if (persist) this._saveAudioMixSettings();
+    return this.bgmVolume;
+  }
+
   toggleSfx(persist = true) {
     this.sfxEnabled = !this.sfxEnabled;
     if (!this.sfxEnabled) {
@@ -793,11 +889,29 @@ export class AudioManager {
     return Boolean(this.enabled && this.voiceEnabled);
   }
 
+  toggleBgm(persist = true) {
+    this.bgmEnabled = !this.bgmEnabled;
+    if (!this.bgmEnabled) {
+      this.stopBgm(0.08, false);
+    } else {
+      if (this.bgmVolume <= 0.01) this.bgmVolume = DEFAULT_BGM_VOLUME;
+      this.enabled = true;
+      this._ensureContextRunningForMix();
+    }
+    this._syncBusVolumes(0.02);
+    if (this.bgmEnabled && this.desiredBgmKey && !this._activeBgmEntry) {
+      this._syncPendingBgmPlayback();
+    }
+    if (persist) this._saveAudioMixSettings();
+    return Boolean(this.enabled && this.bgmEnabled);
+  }
+
   preDuckSfxForVoice(priority = 3, holdMs = 360) {
     if (!this.enabled || !this.voiceEnabled || this.voiceVolume <= 0.01) return;
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     this._preDuckUntilMs = Math.max(this._preDuckUntilMs || 0, now + holdMs);
     this._preDuckTarget = priority >= 3 ? 0.26 : priority >= 2 ? 0.34 : 0.55;
+    this._preDuckBgmTarget = priority >= 3 ? 0.42 : 0.68;
     this._syncSfxSidechainDuck(null, 0.015);
     if (this._duckRecoverTimer) clearTimeout(this._duckRecoverTimer);
     this._duckRecoverTimer = setTimeout(() => {
@@ -810,7 +924,9 @@ export class AudioManager {
   }
 
   _syncSfxSidechainDuck(overrideTarget = null, rampSec = null) {
-    if (!this.sfxDuckGain || !this.sfxDuckGain.gain) return 1.0;
+    if ((!this.sfxDuckGain || !this.sfxDuckGain.gain) && (!this.bgmDuckGain || !this.bgmDuckGain.gain)) {
+      return 1.0;
+    }
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     let maxPrio = 0;
     if (this.enabled && this.voiceEnabled && this.voiceVolume > 0.01) {
@@ -826,21 +942,39 @@ export class AudioManager {
     }
 
     let target = 1.0;
+    let bgmTarget = 1.0;
     if (overrideTarget !== null) {
       target = overrideTarget;
+      bgmTarget = overrideTarget;
     } else {
-      if (maxPrio >= 3) target = 0.26;
-      else if (maxPrio >= 2) target = 0.34;
-      else if (maxPrio >= 1) target = 0.55;
+      if (maxPrio >= 3) {
+        target = 0.26;
+        bgmTarget = 0.42;
+      } else if (maxPrio >= 2) {
+        target = 0.34;
+        bgmTarget = 0.68;
+      } else if (maxPrio >= 1) {
+        target = 0.55;
+        bgmTarget = 0.68;
+      }
       if (now < (this._preDuckUntilMs || 0)) {
         target = Math.min(target, this._preDuckTarget || 0.34);
+        bgmTarget = Math.min(bgmTarget, this._preDuckBgmTarget || 0.68);
       }
     }
 
-    const cur = Number.isFinite(this.sfxDuckGain.gain.value) ? this.sfxDuckGain.gain.value : 1.0;
-    const effectiveRamp =
-      rampSec !== null ? rampSec : target < cur - 0.01 ? 0.025 : 0.22;
-    this._applyGainParam(this.sfxDuckGain, target, effectiveRamp);
+    if (this.sfxDuckGain && this.sfxDuckGain.gain) {
+      const cur = Number.isFinite(this.sfxDuckGain.gain.value) ? this.sfxDuckGain.gain.value : 1.0;
+      const effectiveRamp =
+        rampSec !== null ? rampSec : target < cur - 0.01 ? 0.025 : 0.22;
+      this._applyGainParam(this.sfxDuckGain, target, effectiveRamp);
+    }
+    if (this.bgmDuckGain && this.bgmDuckGain.gain) {
+      const curBgm = Number.isFinite(this.bgmDuckGain.gain.value) ? this.bgmDuckGain.gain.value : 1.0;
+      const bgmRamp =
+        rampSec !== null ? rampSec : bgmTarget < curBgm - 0.01 ? 0.04 : 0.30;
+      this._applyGainParam(this.bgmDuckGain, bgmTarget, bgmRamp);
+    }
     return target;
   }
 
@@ -913,6 +1047,7 @@ export class AudioManager {
       this._pendingPlays.length = 0;
       this._pendingVoicePlays.length = 0;
       this.stopAllHeroVoices(0.02);
+      this._stopAllBgmSources(0.02);
       this._syncBusVolumes(0.01);
       if (this.ctx && this.ctx.state === 'running' && typeof this.ctx.suspend === 'function') {
         try {
@@ -920,9 +1055,10 @@ export class AudioManager {
         } catch (_) {}
       }
     } else if (!this._bgSuspended) {
-      if (!this.sfxEnabled && !this.voiceEnabled) {
+      if (!this.sfxEnabled && !this.voiceEnabled && !this.bgmEnabled) {
         this.sfxEnabled = true;
         this.voiceEnabled = true;
+        this.bgmEnabled = true;
       }
       if (!this.ctx || this.ctx.state === 'closed') {
         this.rebuildContext();
@@ -940,6 +1076,8 @@ export class AudioManager {
             .catch(() => {});
         } catch (_) {}
         this._scheduleStalledClockCheck(250);
+      } else {
+        this._syncPendingBgmPlayback();
       }
       this._syncBusVolumes(0.02);
     }
@@ -953,6 +1091,7 @@ export class AudioManager {
     this._pendingPlays.length = 0;
     this._pendingVoicePlays.length = 0;
     this.stopAllHeroVoices(0.02);
+    this._stopAllBgmSources(0.02);
     if (this._stalledCheckTimer) {
       clearTimeout(this._stalledCheckTimer);
       this._stalledCheckTimer = null;
@@ -1014,6 +1153,7 @@ export class AudioManager {
       }
       this._scheduleStalledClockCheck(250);
     } else {
+      this._syncPendingBgmPlayback();
       this._scheduleStalledClockCheck(250);
     }
   }
@@ -1453,10 +1593,10 @@ export class AudioManager {
         const urls =
           lang === 'ja'
             ? [
-                `assets/voices/ja/${voiceKey}.mp3?v=30fps142`,
-                `assets/voices/${voiceKey}.mp3?v=30fps142`
+                `assets/voices/ja/${voiceKey}.mp3?${AUDIO_ASSET_CACHE_BUST}`,
+                `assets/voices/${voiceKey}.mp3?${AUDIO_ASSET_CACHE_BUST}`
               ]
-            : [`assets/voices/${voiceKey}.mp3?v=30fps142`];
+            : [`assets/voices/${voiceKey}.mp3?${AUDIO_ASSET_CACHE_BUST}`];
         for (const url of urls) {
           try {
             const res = await fetch(url);
@@ -1748,6 +1888,324 @@ export class AudioManager {
       })
       .catch(() => {});
     this.preloadHeroVoicePack(heroId, lang);
+    return true;
+  }
+
+  normalizeBgmKey(rawKey) {
+    if (!rawKey || typeof rawKey !== 'string') return null;
+    const key = rawKey.trim().toLowerCase();
+    if (!key) return null;
+    if (key in this.bgmTracks) return key;
+    const aliasMap = {
+      title: 'bgm_title_select',
+      roster: 'bgm_title_select',
+      title_select: 'bgm_title_select',
+      cathedral: 'bgm_cathedral',
+      sanctuary: 'bgm_sanctuary',
+      glacial: 'bgm_sanctuary',
+      sylvan: 'bgm_sylvan',
+      boneyard: 'bgm_boneyard',
+      clocktower: 'bgm_clocktower',
+      inferno: 'bgm_inferno',
+      shogunate: 'bgm_shogunate',
+      shogunate_inferno: 'bgm_shogunate',
+      shogunate_glacial: 'bgm_shogunate',
+      cob_monitor: 'bgm_cob_monitor',
+      cob_monitor_inferno: 'bgm_cob_monitor',
+      cob_monitor_glacial: 'bgm_cob_monitor',
+      adventure: 'bgm_adventure_pilgrimage',
+      adventure_pilgrimage: 'bgm_adventure_pilgrimage',
+      boss_malphas: 'bgm_boss_malphas',
+      malphas: 'bgm_boss_malphas'
+    };
+    return aliasMap[key] || null;
+  }
+
+  async loadBgmTrack(trackKey) {
+    const normKey = this.normalizeBgmKey(trackKey);
+    if (!this.ctx || !normKey) return null;
+    if (this.bgmBuffers[normKey]) {
+      const idx = this._bgmBufferOrder.indexOf(normKey);
+      if (idx !== -1) this._bgmBufferOrder.splice(idx, 1);
+      this._bgmBufferOrder.push(normKey);
+      return this.bgmBuffers[normKey];
+    }
+    if (this._bgmLoadPromises.has(normKey)) {
+      return this._bgmLoadPromises.get(normKey);
+    }
+    if (typeof fetch !== 'function' || typeof this.ctx.decodeAudioData !== 'function') {
+      return null;
+    }
+    const baseRel = this.bgmTracks[normKey];
+    const url = `${baseRel}?${AUDIO_ASSET_CACHE_BUST}`;
+    const loadPromise = (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res || !res.ok) return null;
+        const arr = await res.arrayBuffer();
+        if (!this.ctx || typeof this.ctx.decodeAudioData !== 'function') return null;
+        const decoded = await this.ctx.decodeAudioData(arr);
+        if (decoded) {
+          this.bgmBuffers[normKey] = decoded;
+          const idx = this._bgmBufferOrder.indexOf(normKey);
+          if (idx !== -1) this._bgmBufferOrder.splice(idx, 1);
+          this._bgmBufferOrder.push(normKey);
+          while (this._bgmBufferOrder.length > MAX_CACHED_BGM_BUFFERS) {
+            const victim = this._bgmBufferOrder[0];
+            if (victim === this.currentBgmKey || victim === this.desiredBgmKey) break;
+            this._bgmBufferOrder.shift();
+            delete this.bgmBuffers[victim];
+          }
+          return decoded;
+        }
+        return null;
+      } catch (_) {
+        return null;
+      } finally {
+        this._bgmLoadPromises.delete(normKey);
+      }
+    })();
+    this._bgmLoadPromises.set(normKey, loadPromise);
+    return loadPromise;
+  }
+
+  _stopBgmEntry(entry, fadeSec = 0.2) {
+    if (!entry || entry.stopped) return;
+    entry.stopped = true;
+    if (this._activeBgmEntry === entry) {
+      this._activeBgmEntry = null;
+      this.currentBgmKey = null;
+    }
+    if (entry.fadeTimer) {
+      clearTimeout(entry.fadeTimer);
+      entry.fadeTimer = null;
+    }
+    if (fadeSec > 0 && this.ctx && entry.gainNode?.gain && entry.src) {
+      this._fadingBgmEntries.add(entry);
+      this._applyGainParam(entry.gainNode, 0.0001, fadeSec);
+      try {
+        const t = this.ctx.currentTime || 0;
+        if (typeof entry.src.stop === 'function') {
+          entry.src.stop(t + fadeSec + 0.02);
+        }
+      } catch (_) {}
+      entry.fadeTimer = setTimeout(() => {
+        entry.fadeTimer = null;
+        entry.cleanup?.();
+      }, Math.round((fadeSec + 0.04) * 1000));
+      if (entry.fadeTimer && typeof entry.fadeTimer.unref === 'function') {
+        entry.fadeTimer.unref();
+      }
+      return;
+    }
+    entry.cleanup?.();
+  }
+
+  _stopAllBgmSources(fadeSec = 0) {
+    if (this._activeBgmEntry) {
+      this._stopBgmEntry(this._activeBgmEntry, fadeSec);
+    }
+    for (const oldEntry of Array.from(this._fadingBgmEntries)) {
+      if (fadeSec <= 0) {
+        oldEntry.cleanup?.();
+      } else {
+        this._stopBgmEntry(oldEntry, fadeSec);
+      }
+    }
+    this.currentBgmKey = null;
+  }
+
+  _startBgmCrossfade(normKey, buf, fadeSec = BGM_CROSSFADE_SEC) {
+    if (
+      !buf ||
+      !this.ctx ||
+      !this.enabled ||
+      !this.bgmEnabled ||
+      this.bgmVolume <= 0.001 ||
+      this._bgSuspended
+    ) {
+      return false;
+    }
+    if (this._activeBgmEntry && this._activeBgmEntry.trackKey === normKey && !this._activeBgmEntry.stopped) {
+      return true;
+    }
+
+    const prevEntry = this._activeBgmEntry;
+    if (prevEntry) {
+      this._stopBgmEntry(prevEntry, fadeSec);
+    }
+
+    const bgmDest = this.bgmBus || this.master;
+    const trackGain = typeof this.ctx.createGain === 'function' ? this.ctx.createGain() : null;
+    if (trackGain?.gain) {
+      const startGain = fadeSec > 0 ? 0.0001 : 1.0;
+      if (typeof trackGain.gain.setValueAtTime === 'function') {
+        trackGain.gain.setValueAtTime(startGain, this.ctx.currentTime || 0);
+      } else {
+        trackGain.gain.value = startGain;
+      }
+    }
+    if (trackGain && bgmDest && typeof trackGain.connect === 'function') {
+      trackGain.connect(bgmDest);
+    }
+
+    try {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      if (Number.isFinite(buf.duration) && buf.duration > 4.0) {
+        src.loopStart = 0.026;
+        src.loopEnd = Math.max(1.0, buf.duration - 0.026);
+      }
+      if (src.playbackRate) {
+        src.playbackRate.value = 1.0;
+      }
+      if (trackGain && typeof src.connect === 'function') {
+        src.connect(trackGain);
+      } else if (bgmDest && typeof src.connect === 'function') {
+        src.connect(bgmDest);
+      }
+
+      let cleaned = false;
+      const entry = {
+        trackKey: normKey,
+        src,
+        gainNode: trackGain,
+        stopped: false,
+        fadeTimer: null,
+        cleanup: () => {
+          if (cleaned) return;
+          cleaned = true;
+          entry.stopped = true;
+          src.onended = null;
+          if (entry.fadeTimer) {
+            clearTimeout(entry.fadeTimer);
+            entry.fadeTimer = null;
+          }
+          this._fadingBgmEntries.delete(entry);
+          if (this._activeBgmEntry === entry) {
+            this._activeBgmEntry = null;
+            this.currentBgmKey = null;
+          }
+          try {
+            src.stop?.();
+          } catch (_) {}
+          this._disconnectChain(src, trackGain);
+        }
+      };
+
+      this._activeBgmEntry = entry;
+      this.currentBgmKey = normKey;
+      src.onended = entry.cleanup;
+      src.start(0);
+      if (trackGain && fadeSec > 0) {
+        this._applyGainParam(trackGain, 1.0, fadeSec);
+      }
+      return true;
+    } catch (_) {
+      this._disconnectChain(trackGain);
+      return false;
+    }
+  }
+
+  _syncPendingBgmPlayback() {
+    if (
+      !this.desiredBgmKey ||
+      !this.enabled ||
+      !this.bgmEnabled ||
+      this.bgmVolume <= 0.001 ||
+      this._bgSuspended ||
+      !this.ctx ||
+      this.ctx.state !== 'running'
+    ) {
+      return false;
+    }
+    if (this._activeBgmEntry && this._activeBgmEntry.trackKey === this.desiredBgmKey && !this._activeBgmEntry.stopped) {
+      return true;
+    }
+    return this.playBgm(this.desiredBgmKey, { crossfadeSec: BGM_CROSSFADE_SEC });
+  }
+
+  stopBgm(fadeSec = 0.25, clearDesired = false) {
+    if (clearDesired) {
+      this.desiredBgmKey = null;
+    }
+    this._bgmPlaySeq++;
+    this._stopAllBgmSources(fadeSec);
+  }
+
+  playBgm(rawTrackKey, opts = {}) {
+    const normKey = this.normalizeBgmKey(rawTrackKey);
+    if (!normKey) return false;
+    this.desiredBgmKey = normKey;
+
+    if (opts.deferUntilGesture && !this._unlockedByGesture) {
+      return false;
+    }
+    if (!this.enabled || !this.bgmEnabled || this.bgmVolume <= 0.001 || this._bgSuspended) {
+      return false;
+    }
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this.rebuildContext();
+    }
+    if (!this.ctx) return false;
+
+    if (this.ctx.state !== 'running') {
+      const ctxBefore = this.ctx;
+      try {
+        if (typeof ctxBefore.resume === 'function') {
+          Promise.resolve(ctxBefore.resume())
+            .then(() => {
+              if (this.ctx === ctxBefore && ctxBefore.state === 'running') {
+                this._playSilentUnlockTick();
+                this._flushPendingPlays();
+              }
+            })
+            .catch(() => {});
+        }
+      } catch (_) {}
+      return true;
+    }
+
+    if (
+      this._activeBgmEntry &&
+      this._activeBgmEntry.trackKey === normKey &&
+      !this._activeBgmEntry.stopped &&
+      !opts.restart
+    ) {
+      return true;
+    }
+
+    const fadeSec = Number.isFinite(opts.crossfadeSec)
+      ? Math.max(0, opts.crossfadeSec)
+      : BGM_CROSSFADE_SEC;
+    if (opts.restart && this._activeBgmEntry?.trackKey === normKey) {
+      this._stopBgmEntry(this._activeBgmEntry, Math.min(0.15, fadeSec));
+    }
+
+    const seq = ++this._bgmPlaySeq;
+    const cachedBuf = this.bgmBuffers[normKey];
+    if (cachedBuf) {
+      return this._startBgmCrossfade(normKey, cachedBuf, fadeSec);
+    }
+
+    this.loadBgmTrack(normKey)
+      .then((decoded) => {
+        if (!decoded) return;
+        if (seq !== this._bgmPlaySeq || this.desiredBgmKey !== normKey) return;
+        if (
+          !this.enabled ||
+          !this.bgmEnabled ||
+          this.bgmVolume <= 0.001 ||
+          this._bgSuspended ||
+          !this.ctx ||
+          this.ctx.state !== 'running'
+        ) {
+          return;
+        }
+        this._startBgmCrossfade(normKey, decoded, fadeSec);
+      })
+      .catch(() => {});
     return true;
   }
 }

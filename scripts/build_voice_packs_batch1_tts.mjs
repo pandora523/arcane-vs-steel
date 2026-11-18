@@ -25,8 +25,9 @@ const ENV_LOCAL_PATH = path.join(REPO_ROOT, '.env.local');
 const OUT_DIR_EN = path.join(REPO_ROOT, 'assets', 'voices');
 const OUT_DIR_JA = path.join(OUT_DIR_EN, 'ja');
 
-// HARD-LOCKED MODEL GUARD — DO NOT CHANGE TO ANY NON-TTS MODEL
+// HARD-LOCKED MODEL GUARD & CIRCUIT BREAKER — DO NOT CHANGE TO ANY NON-TTS MODEL
 const LOCKED_TTS_MODEL = 'models/gemini-3.8-flash-tts';
+const MAX_VOICE_REQUESTS_PER_RUN = 40;
 
 const CHAMPION_PROFILES = {
   seraphina: {
@@ -138,16 +139,17 @@ const CHAMPION_PROFILES = {
     }
   },
   nyx: {
-    voiceName: 'Zephyr',
+    voiceName: 'Laomedeia',
     enPrefix:
-      'sleek lethal anime Phantom Kernel Cyber-Assassin operative with cool razor-sharp precision in a fighting game, ',
+      'cute youthful high-pitched bubbly-yet-cheeky teenage anime neko cyber-hacker girl in a fighting game, bright energetic girlish anime voice, ',
     jaPrefix:
-      'Japanese anime fighting game voice acting, sleek lethal Phantom Kernel Cyber-Assassin operative, cool razor-sharp Japanese seiyuu delivery, ',
+      'Japanese anime fighting game voice acting, cute youthful high-pitched bubbly-yet-cheeky teenage anime neko cyber-hacker girl, bright kawaii energetic young female seiyuu delivery, ',
     eqComp: [
-      'highpass=f=92',
-      'equalizer=f=265:t=q:w=1.3:g=-1.6',
-      'equalizer=f=4350:t=q:w=1.0:g=2.5',
-      'acompressor=threshold=-16dB:ratio=2.7:attack=5:release=82:makeup=2.6dB'
+      'highpass=f=98',
+      'equalizer=f=255:t=q:w=1.3:g=-1.8',
+      'equalizer=f=3950:t=q:w=1.1:g=2.5',
+      'equalizer=f=6900:t=q:w=1.2:g=1.5',
+      'acompressor=threshold=-16dB:ratio=2.6:attack=5:release=82:makeup=2.6dB'
     ],
     spaces: {
       big: 'afade=t=in:st=0:d=0.005,apad=pad_dur=0.06,aecho=0.90:0.88:11|23:0.15|0.06',
@@ -1103,61 +1105,61 @@ export const VOICE_CLIP_CATALOG = [
     }
   ]),
 
-  // 6. Nyx (EN + JP)
+  // 6. Nyx (EN + JP — Cute Youthful Teenage Anime Neko Cyber-Hacker Girl)
   ...makePack('nyx', 'en', [
     {
       cue: 'select',
-      text: 'Nyx online. Cob Creator kernel synchronized.',
-      style: 'sleek cool cyber-assassin AI operative booting up on select, crisp, confident',
+      text: 'Nyx online! Cob Creator kernel synced — ready to play!',
+      style: 'bubbly cheeky teenage anime neko cyber-hacker girl giggling brightly on select, super cute, high-pitched, energetic',
       space: 'big'
     },
     {
       cue: 'intro',
-      text: 'Target locked. Combat prompt executing now!',
-      style: 'cool lethal cyber operative before duel, sleek, brisk',
+      text: 'Target locked! Combat prompt executing right now, nya!',
+      style: 'playful youthful anime neko cyber-hacker girl bouncing into a duel, cute, brisk, cheeky grin',
       space: 'mid',
       maxSec: 3.75
     },
     {
       cue: 'attack_1',
       text: 'Packet sent!',
-      style: 'fast crisp cyber-strike attack call, sharp, playful yet lethal',
+      style: 'bright cute high-pitched anime neko girl attack chirp, crisp, super playful',
       space: 'tight'
     },
     {
       cue: 'attack_2',
-      text: 'Execute!',
-      style: 'sleek razor-sharp finisher command, instantaneous, cool',
+      text: 'Execute, nya!',
+      style: 'cheeky bubbly anime cyber-girl combo finisher shout, snappy, youthful, energetic',
       space: 'tight'
     },
     {
       cue: 'skill_std',
       text: 'Error four-oh-four — Pop-Up Cascade!',
-      style: 'confident cyber-operative deploying glitch pop-up trap, brisk, sharp',
+      style: 'mischievous cute anime hacker girl tossing holographic pop-ups, bubbly, brisk, playful',
       space: 'mid'
     },
     {
       cue: 'skill_alt',
-      text: 'Fatal exception — blue screen!',
-      style: 'intense overclocked cyber-assassin crash command, fierce, fast',
+      text: 'Fatal exception — blue screen for you!',
+      style: 'sassy youthful anime neko cyber-girl teasing the enemy with a crash trap, bright, fast',
       space: 'mid'
     },
     {
       cue: 'ult_std',
       text: 'Cob-OS — Starlight Overclock!',
-      style: 'soaring digital nebula overdrive activation shout, brisk, radiant',
+      style: 'excited sparkly teenage anime heroine launching digital nebula overdrive, bright, soaring, brisk',
       space: 'big'
     },
     {
       cue: 'ult_alt',
-      text: 'Root access — Hyper-Laser!',
-      style: 'fierce root-override hyper-beam overdrive shout, brisk, lethal',
+      text: 'Root access — Hyper-Laser, go!',
+      style: 'fierce-yet-adorable anime cyber-girl firing a hyper-laser overdrive, energetic, high-pitched, brisk',
       space: 'big'
     },
     {
       cue: 'true_ult_charge',
       text: 'Creator uplink — boot Genesis!',
-      style: 'urgent rapid cyber uplink countdown into supernova fire, very brisk, crisp',
+      style: 'urgent bubbly anime neko hacker counting down super uplink fast, very brisk, crisp, excited',
       space: 'big',
       atempo: 1.12,
       maxSec: 2.02
@@ -1165,83 +1167,83 @@ export const VOICE_CLIP_CATALOG = [
     {
       cue: 'true_ult_fire',
       text: 'Genesis Prompt — Powered by Cob!',
-      style: 'climactic fourth-wall supernova beam release shout at full power, iconic, electric',
+      style: 'climactic ecstatic fourth-wall supernova beam shout at full cute idol energy, radiant, iconic',
       space: 'big'
     },
     {
       cue: 'hurt',
-      text: 'Ghh! Glitch detected!',
-      style: 'cyber operative snapping back after taking damage, fast, reactive',
+      text: 'Nyaha?! Glitch detected!',
+      style: 'startled cute teenage anime neko girl yelping and snapping back on hit, fast, reactive',
       space: 'tight'
     },
     {
       cue: 'death',
-      text: '<gasp> Kernel... panic... <breath> system... offline...',
-      style: 'cyber AI operative powering down in defeat, breathless, fading',
+      text: '<gasp> Kernel... panic... <breath> battery... sleepy... offline...',
+      style: 'cute anime cyber-girl powering down weakly in defeat, breathless, soft youthful sigh',
       space: 'big'
     },
     {
       cue: 'victory',
-      text: 'Prompt executed — Nyx and the Cob Creator Core render victory across the cosmos!',
-      style: 'sleek victorious cyber-assassin celebratory sign-off, bright, confident',
+      text: 'Prompt executed! Nyx and the Cob Creator Core just rendered total victory, nya!',
+      style: 'sparkling victorious teenage anime neko cyber-hacker girl cheering happily, super cute, cheeky, bright',
       space: 'big',
-      maxSec: 7.1
+      maxSec: 7.05
     }
   ]),
   ...makePack('nyx', 'ja', [
     {
       cue: 'select',
-      text: 'ニクス、オンライン。コブ・クリエイター・カーネル、同期完了。',
-      style: 'sleek cool cyber-assassin AI operative booting up on select, crisp, composed',
+      text: 'ニクス、オンラインだよ！コブ・クリエイター・カーネル、同期バッチリ！',
+      style: 'super cute bubbly teenage anime neko cyber-hacker girl on character select, high-pitched kawaii Japanese seiyuu energy',
       space: 'big'
     },
     {
       cue: 'intro',
-      text: 'ターゲット捕捉。戦闘プロンプト、起動！',
-      style: 'cool lethal cyber-operative duel start, sleek, brisk',
+      text: 'ターゲットロック！バトルプロンプト、今すぐ起動しちゃうよ！',
+      style: 'cheeky cheerful young anime neko cyber-girl before duel, bright, brisk, energetic',
       space: 'mid',
       maxSec: 3.75
     },
     {
       cue: 'attack_1',
-      text: 'パケット送信！',
-      style: 'fast crisp cyber attack bark, sharp, energetic',
+      text: 'パケット送信っ！',
+      style: 'cute bright high-pitched anime girl attack shout, crisp, snappy, playful',
       space: 'tight'
     },
     {
       cue: 'attack_2',
-      text: '実行！',
-      style: 'razor-sharp cyber finisher command, instant, cool',
+      text: 'ていっ、実行！',
+      style: 'energetic cute anime neko girl finisher bark, bouncy, quick',
       space: 'tight'
     },
     {
       cue: 'skill_std',
       text: 'エラー404――ポップアップ・カスケード！',
-      style: 'confident cyber-operative deploying holographic trap, brisk, bright',
+      style: 'mischievous bubbly anime hacker girl tossing hologram pop-ups, brisk, bright',
       space: 'mid'
     },
     {
       cue: 'skill_alt',
-      text: '致命的例外――ブルースクリーン！',
-      style: 'intense overclocked cyber-strike command, fierce, swift',
+      text: '致命的例外――ブルースクリーンだよっ！',
+      style: 'sassy cute anime cyber-girl teasing the enemy with a crash skill, bright, swift',
       space: 'mid'
     },
     {
       cue: 'ult_std',
       text: 'コブOS――スターライト・オーバークロック！',
-      style: 'soaring digital nebula overdrive activation shout, brisk, electric',
+      style: 'excited sparkling young anime heroine overdrive shout, high-pitched, brisk, radiant',
       space: 'big'
     },
     {
       cue: 'ult_alt',
-      text: 'ルート権限――ハイパーレーザー！',
-      style: 'fierce hyper-laser overdrive shout, brisk, lethal',
+      text: 'ルート権限――ハイパーレーザー、発射！',
+      style: 'fierce-yet-cute teenage anime cyber-girl hyper-laser overdrive shout, brisk, energetic',
       space: 'big'
     },
     {
       cue: 'true_ult_charge',
-      text: '創造核接続――ジェネシス起動！',
-      style: 'urgent rapid cyber uplink countdown before supernova fire, very brisk, crisp',
+      text: '創造核リンク――ジェネシス起動っ！',
+      style: 'urgent bubbly anime neko hacker uplink countdown before supernova fire, very brisk, crisp',
       space: 'big',
       atempo: 1.14,
       maxSec: 2.02
@@ -1249,42 +1251,79 @@ export const VOICE_CLIP_CATALOG = [
     {
       cue: 'true_ult_fire',
       text: 'ジェネシス・プロンプト――パワード・バイ・コブ！',
-      style: 'climactic fourth-wall supernova beam shout at full power, iconic, soaring',
+      style: 'climactic ecstatic fourth-wall supernova beam shout at full kawaii idol power, bright, soaring',
       space: 'big'
     },
     {
       cue: 'hurt',
-      text: 'くっ！グリッチ検知！',
-      style: 'cyber operative snapping back on impact, fast, reactive',
+      text: 'にゃあっ！？グリッチ検知！',
+      style: 'startled cute anime neko girl yelping sharply on hit, fast, reactive',
       space: 'tight'
     },
     {
       cue: 'death',
-      text: '<gasp> カーネル……パニック…… <breath> システム……シャットダウン……',
-      style: 'cyber AI operative powering down in defeat, breathless, fading',
+      text: '<gasp> カーネル……パニック…… <breath> バッテリー切れ……シャットダウン……',
+      style: 'cute young anime cyber-girl powering down weakly in defeat, breathless, soft fading sigh',
       space: 'big'
     },
     {
       cue: 'victory',
-      text: 'プロンプト実行完了――ニクスとコブの創造核が、全宇宙に勝利を描き出す！',
-      style: 'sleek victorious cyber-assassin celebratory sign-off, bright, confident',
+      text: 'プロンプト実行完了！ニクスとコブの創造核で、宇宙まるごと大勝利だね！',
+      style: 'sparkling victorious teenage anime neko cyber-hacker girl celebrating happily, super cute, bright',
       space: 'big',
-      maxSec: 7.1
+      maxSec: 7.05
     }
   ])
 ];
 
-function readApiKey() {
+function readVertexOrGeminiConfig() {
   if (!fs.existsSync(ENV_LOCAL_PATH)) {
     throw new Error('Missing .env.local in repository root.');
   }
   const raw = fs.readFileSync(ENV_LOCAL_PATH, 'utf8');
-  const match = raw.match(/^GEMINI_API_KEY=(.+)$/m);
-  const key = match ? match[1].trim().replace(/^['"]|['"]$/g, '') : '';
-  if (!key) {
-    throw new Error('GEMINI_API_KEY is empty or missing in .env.local.');
+  const readVar = (name) => {
+    const match = raw.match(new RegExp(`^${name}=(.+)$`, 'm'));
+    return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : '';
+  };
+  const vertexApiKey = readVar('VERTEX_API_KEY');
+  const projectId = readVar('VERTEX_PROJECT_ID');
+  if (vertexApiKey && projectId) {
+    return { mode: 'vertex', apiKey: vertexApiKey, projectId };
   }
-  return key;
+  const geminiApiKey = readVar('GEMINI_API_KEY');
+  if (geminiApiKey) {
+    return { mode: 'gemini', apiKey: geminiApiKey, projectId: '' };
+  }
+  throw new Error('Missing VERTEX_API_KEY/VERTEX_PROJECT_ID (or GEMINI_API_KEY) in .env.local.');
+}
+
+function scrubSecrets(text, cfg) {
+  let out = String(text || '');
+  if (cfg?.apiKey) out = out.split(cfg.apiKey).join('[REDACTED]');
+  if (cfg?.projectId) out = out.split(cfg.projectId).join('[REDACTED]');
+  return out;
+}
+
+function ensureRiffWavBuffer(rawBuf, sampleRate = 24000) {
+  if (rawBuf.length >= 12 && rawBuf.subarray(0, 4).toString('ascii') === 'RIFF') {
+    return rawBuf;
+  }
+  const dataBytes = rawBuf.length;
+  const header = Buffer.allocUnsafe(44);
+  header.write('RIFF', 0, 'ascii');
+  header.writeUInt32LE(36 + dataBytes, 4);
+  header.write('WAVE', 8, 'ascii');
+  header.write('fmt ', 12, 'ascii');
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(1, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(sampleRate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36, 'ascii');
+  header.writeUInt32LE(dataBytes, 40);
+  return Buffer.concat([header, rawBuf]);
 }
 
 function parseRetryWaitMs(res, bodyText, attempt) {
@@ -1304,7 +1343,7 @@ function parseRetryWaitMs(res, bodyText, attempt) {
 
 let lastRequestStartMs = 0;
 
-async function waitForRequestPace(minIntervalMs = 6400) {
+async function waitForRequestPace(minIntervalMs = 450) {
   if (lastRequestStartMs > 0) {
     const elapsed = Date.now() - lastRequestStartMs;
     const waitMs = minIntervalMs - elapsed;
@@ -1315,11 +1354,15 @@ async function waitForRequestPace(minIntervalMs = 6400) {
   lastRequestStartMs = Date.now();
 }
 
-async function requestTtsWav(apiKey, { voiceName, text, style, label, minIntervalMs = 6400, stats = null }) {
+async function requestTtsWav(authCfg, { voiceName, text, style, label, minIntervalMs = 450, stats = null }) {
   if (LOCKED_TTS_MODEL !== 'models/gemini-3.8-flash-tts') {
     throw new Error('Policy violation: model must be models/gemini-3.8-flash-tts');
   }
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/${LOCKED_TTS_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const cfg = typeof authCfg === 'string' ? { mode: 'gemini', apiKey: authCfg, projectId: '' } : authCfg;
+  const endpoint =
+    cfg.mode === 'vertex'
+      ? `https://aiplatform.googleapis.com/v1beta1/projects/${encodeURIComponent(cfg.projectId)}/locations/global/publishers/google/models/gemini-3.8-flash-tts:generateContent`
+      : `https://generativelanguage.googleapis.com/v1beta/${LOCKED_TTS_MODEL}:generateContent`;
   const payload = {
     contents: [
       {
@@ -1342,12 +1385,22 @@ async function requestTtsWav(apiKey, { voiceName, text, style, label, minInterva
     }
   };
 
-  for (let attempt = 1; attempt <= 8; attempt++) {
+  for (let attempt = 1; attempt <= 6; attempt++) {
     await waitForRequestPace(minIntervalMs);
-    if (stats) stats.httpRequestsUsed++;
+    if (stats) {
+      if (stats.httpRequestsUsed >= MAX_VOICE_REQUESTS_PER_RUN) {
+        throw new Error(
+          `Circuit breaker tripped: reached MAX_VOICE_REQUESTS_PER_RUN (${MAX_VOICE_REQUESTS_PER_RUN})`
+        );
+      }
+      stats.httpRequestsUsed++;
+    }
     const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': cfg.apiKey
+      },
       body: JSON.stringify(payload)
     });
     const bodyText = await res.text();
@@ -1358,15 +1411,15 @@ async function requestTtsWav(apiKey, { voiceName, text, style, label, minInterva
         throw new Error(`No audio inlineData returned for ${label}`);
       }
       return {
-        wavBuffer: Buffer.from(inline.data, 'base64'),
+        wavBuffer: ensureRiffWavBuffer(Buffer.from(inline.data, 'base64')),
         tokens: parsed.usageMetadata?.totalTokenCount || 0
       };
     }
-    const scrubbed = bodyText.split(apiKey).join('[REDACTED]').slice(0, 260);
-    if ((res.status === 429 || res.status >= 500) && attempt < 8) {
+    const scrubbed = scrubSecrets(bodyText, cfg).slice(0, 260);
+    if ((res.status === 429 || res.status >= 500) && attempt < 6) {
       const waitMs = parseRetryWaitMs(res, bodyText, attempt);
       console.warn(
-        `[RETRY] ${label} HTTP ${res.status} (attempt ${attempt}/8), waiting ${waitMs}ms...`
+        `[RETRY] ${label} HTTP ${res.status} (attempt ${attempt}/6), waiting ${waitMs}ms...`
       );
       await new Promise((r) => setTimeout(r, waitMs));
       continue;
@@ -1642,11 +1695,13 @@ function masterVoiceToMp3(rawWavPath, outMp3Path, clip) {
   let atempo = clip.atempo || 1.0;
   let result = runFfmpegMaster(rawWavPath, outMp3Path, profile, clip.space, atempo);
 
-  if (clip.maxSec && result.durationSec > clip.maxSec) {
+  for (let pass = 0; pass < 3 && clip.maxSec && result.durationSec > clip.maxSec; pass++) {
+    const targetSec = Math.max(0.4, clip.maxSec - 0.05);
     const neededAtempo = Math.min(
-      1.65,
-      Math.max(atempo + 0.05, (atempo * result.durationSec) / Math.max(0.4, clip.maxSec - 0.06))
+      1.85,
+      Math.max(atempo + 0.04, (atempo * result.durationSec) / targetSec)
     );
+    if (Math.abs(neededAtempo - atempo) < 0.01) break;
     atempo = neededAtempo;
     result = runFfmpegMaster(rawWavPath, outMp3Path, profile, clip.space, atempo);
   }
@@ -1711,10 +1766,10 @@ async function main() {
     1,
     Math.min(8, Number.parseInt(batchArg ? batchArg.slice('--batch-size='.length) : '4', 10) || 4)
   );
-  const minIntervalMs = 6400;
+  const authCfg = readVertexOrGeminiConfig();
+  const minIntervalMs = authCfg.mode === 'vertex' ? 450 : 6400;
   const force = process.argv.includes('--force');
 
-  const apiKey = readApiKey();
   fs.mkdirSync(OUT_DIR_EN, { recursive: true });
   fs.mkdirSync(OUT_DIR_JA, { recursive: true });
 
@@ -1750,14 +1805,14 @@ async function main() {
     for (let gIdx = 0; gIdx < groups.length; gIdx++) {
       const group = groups[gIdx];
       if (group.length === 1) {
-        await generateSingleClip(apiKey, group[0], tmpDir, { minIntervalMs }, stats);
+        await generateSingleClip(authCfg, group[0], tmpDir, { minIntervalMs }, stats);
         continue;
       }
 
       const { hero, lang } = group[0];
       const cuesLabel = group.map((c) => c.cue).join(',');
       const batchRawWavPath = path.join(tmpDir, `${lang}_${hero}_batch_${gIdx}.raw.wav`);
-      const { wavBuffer, tokens } = await synthesizeBatchRawWav(apiKey, group, {
+      const { wavBuffer, tokens } = await synthesizeBatchRawWav(authCfg, group, {
         minIntervalMs,
         stats
       });
@@ -1775,7 +1830,7 @@ async function main() {
           `[FALLBACK] Split ambiguous for ${hero}/${lang} [${cuesLabel}]; synthesizing individually`
         );
         for (const clip of group) {
-          await generateSingleClip(apiKey, clip, tmpDir, { minIntervalMs }, stats);
+          await generateSingleClip(authCfg, clip, tmpDir, { minIntervalMs }, stats);
         }
         continue;
       }
@@ -1790,7 +1845,7 @@ async function main() {
           console.warn(
             `[RETRY-SOLO] ${label} batch slice exceeded maxSec (${durationSec.toFixed(2)}s > ${clip.maxSec.toFixed(2)}s); regenerating solo`
           );
-          await generateSingleClip(apiKey, clip, tmpDir, { minIntervalMs }, stats);
+          await generateSingleClip(authCfg, clip, tmpDir, { minIntervalMs }, stats);
           continue;
         }
         stats.generatedCount++;
@@ -1801,7 +1856,7 @@ async function main() {
       }
     }
     console.log(
-      `Done! httpRequestsUsed=${stats.httpRequestsUsed}, Generated=${stats.generatedCount}, Skipped=${stats.skippedCount}, Total tokens used: ${stats.totalTokens}`
+      `Done! httpRequestsUsed=${stats.httpRequestsUsed}/${MAX_VOICE_REQUESTS_PER_RUN}, Generated=${stats.generatedCount}, Skipped=${stats.skippedCount}, Total tokens used: ${stats.totalTokens}`
     );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

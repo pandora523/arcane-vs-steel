@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps142';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps142';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps142';
+import { Fighter } from '../entities/Fighter.js?v=30fps143';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps143';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps143';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps142';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps142';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps142';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps142';
+} from './AdventureProgression.js?v=30fps143';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps143';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps143';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps143';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -1455,7 +1455,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps142') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps143') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -1465,7 +1465,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps142') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps143') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
@@ -1649,6 +1649,9 @@ export class AdventureManager {
     this.renderSkillTreeModal();
     this.refreshActionIcons(playerFighter.heroId || 'mage');
     this.spawnZoneEncounter(0, 1);
+    if (!this.game?.isLandingOpen && !this.game?.simMode && !this.bossWarningTimer && !this.bossSpawnPending) {
+      this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
+    }
     this.syncStageBadge();
     this.syncRightHUD();
     this.syncControlDeckUI();
@@ -1877,7 +1880,12 @@ export class AdventureManager {
           else if (player.x > bossMaxWalkX) player.x = bossMaxWalkX;
           player.facing = 1;
         }
-        if (this.game.audio) this.game.audio.play('eclipse_charge', bossAnchorX);
+        if (this.game.audio) {
+          this.game.audio.play('eclipse_charge', bossAnchorX);
+          if (!this.game.isLandingOpen && !this.game.simMode) {
+            this.game.audio.playBgm?.('bgm_boss_malphas');
+          }
+        }
         if (this.game.renderer) {
           this.game.renderer.triggerShake(16, 0.72);
           this.game.renderer.triggerStageEvent?.(
@@ -2050,7 +2058,12 @@ export class AdventureManager {
         else if (player.x > ADVENTURE_BOSS_MAX_WALK_X) player.x = ADVENTURE_BOSS_MAX_WALK_X;
         player.facing = 1;
       }
-      if (this.game.audio) this.game.audio.play('eclipse_charge', ADVENTURE_BOSS_ANCHOR_X);
+      if (this.game.audio) {
+        this.game.audio.play('eclipse_charge', ADVENTURE_BOSS_ANCHOR_X);
+        if (!this.game.isLandingOpen && !this.game.simMode) {
+          this.game.audio.playBgm?.('bgm_boss_malphas');
+        }
+      }
       if (this.game.renderer) {
         this.game.renderer.triggerShake(16, 0.72);
         this.game.renderer.triggerStageEvent?.(

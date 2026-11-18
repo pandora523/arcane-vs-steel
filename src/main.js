@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps142';
-import { VFXManager } from './engine/VFXManager.js?v=30fps142';
-import { PixelForge } from './engine/PixelForge.js?v=30fps142';
-import { AudioManager } from './engine/AudioManager.js?v=30fps142';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps142';
-import { Fighter } from './entities/Fighter.js?v=30fps142';
-import { Warrior } from './entities/Warrior.js?v=30fps142';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps142';
-import { FireMage } from './entities/FireMage.js?v=30fps142';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps142';
-import { Archer } from './entities/Archer.js?v=30fps142';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps142';
-import { Priestess } from './entities/Priestess.js?v=30fps142';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps142';
-import { Reaper } from './entities/Reaper.js?v=30fps142';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps142';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps142';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps142';
-import { Titan } from './entities/Titan.js?v=30fps142';
-import { TitanEx } from './entities/TitanEx.js?v=30fps142';
-import { Ronin } from './entities/Ronin.js?v=30fps142';
-import { RoninEx } from './entities/RoninEx.js?v=30fps142';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps142';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps142';
-import { IceMage } from './entities/IceMage.js?v=30fps142';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps142';
-import { Android } from './entities/Android.js?v=30fps142';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps142';
-import { NyxEx } from './entities/NyxEx.js?v=30fps142';
+import { Renderer } from './engine/Renderer.js?v=30fps143';
+import { VFXManager } from './engine/VFXManager.js?v=30fps143';
+import { PixelForge } from './engine/PixelForge.js?v=30fps143';
+import { AudioManager } from './engine/AudioManager.js?v=30fps143';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps143';
+import { Fighter } from './entities/Fighter.js?v=30fps143';
+import { Warrior } from './entities/Warrior.js?v=30fps143';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps143';
+import { FireMage } from './entities/FireMage.js?v=30fps143';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps143';
+import { Archer } from './entities/Archer.js?v=30fps143';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps143';
+import { Priestess } from './entities/Priestess.js?v=30fps143';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps143';
+import { Reaper } from './entities/Reaper.js?v=30fps143';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps143';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps143';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps143';
+import { Titan } from './entities/Titan.js?v=30fps143';
+import { TitanEx } from './entities/TitanEx.js?v=30fps143';
+import { Ronin } from './entities/Ronin.js?v=30fps143';
+import { RoninEx } from './entities/RoninEx.js?v=30fps143';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps143';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps143';
+import { IceMage } from './entities/IceMage.js?v=30fps143';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps143';
+import { Android } from './entities/Android.js?v=30fps143';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps143';
+import { NyxEx } from './entities/NyxEx.js?v=30fps143';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps142';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps142';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps142';
+} from './adventure/AdventureManager.js?v=30fps143';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps143';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps143';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -878,6 +878,11 @@ export class Game {
     this.renderer = new Renderer(this.canvas);
     this.vfx = new VFXManager();
     this.audio = new AudioManager();
+    this.renderer.onStageDomainBgm = (bgmKey) => {
+      if (!this.isLandingOpen && !this.isAdventureMode() && (!this.simMode || this._allowBgmInSim)) {
+        this.audio?.playBgm?.(bgmKey);
+      }
+    };
     PixelForge.initAssets();
     this.adventure = new AdventureManager(this);
 
@@ -1248,6 +1253,9 @@ export class Game {
 
     this.lastTime = 0;
     this.startLoop();
+    if (!this.simMode && this.isLandingOpen) {
+      this.syncActiveBgm({ deferUntilGesture: true });
+    }
     if (typeof window !== 'undefined' && typeof HTMLImageElement !== 'undefined' && !this.simMode) {
       setTimeout(() => this.prewarmSelectedAssets(), 160);
     }
@@ -1540,12 +1548,36 @@ export class Game {
     }
   }
 
+  syncActiveBgm(opts = {}) {
+    if (!this.audio?.playBgm) return false;
+    if (this.simMode && !opts.forceInSim) return false;
+    if (this.isLandingOpen) {
+      return this.audio.playBgm('bgm_title_select', opts);
+    }
+    if (this.isAdventureMode()) {
+      const inBossEncounter = Boolean(
+        this.adventure?.bossWarningTimer > 0 ||
+          this.adventure?.bossSpawnPending ||
+          (this.adventure?.bossEntity && !this.adventure.bossEntity.isDead)
+      );
+      return this.audio.playBgm(
+        inBossEncounter ? 'bgm_boss_malphas' : 'bgm_adventure_pilgrimage',
+        opts
+      );
+    }
+    const activeStage = this.renderer?.permanentStageOverride || this.renderer?.stageId || 'cathedral';
+    return this.audio.playBgm(activeStage, opts);
+  }
+
   syncAudioMixerUI() {
     const voiceVol = Math.max(0, Math.min(1, Number(this.audio?.getVoiceVolume?.() ?? 1)));
+    const bgmVol = Math.max(0, Math.min(1, Number(this.audio?.getBgmVolume?.() ?? 0.38)));
     const sfxVol = Math.max(0, Math.min(1, Number(this.audio?.getSfxVolume?.() ?? 0.55)));
     const voicePct = Math.round(voiceVol * 100);
+    const bgmPct = Math.round(bgmVol * 100);
     const sfxPct = Math.round(sfxVol * 100);
     const voiceOn = Boolean(this.audio?.enabled && this.audio?.voiceEnabled && voicePct > 0);
+    const bgmOn = Boolean(this.audio?.enabled && this.audio?.bgmEnabled && bgmPct > 0);
     const sfxOn = Boolean(this.audio?.enabled && this.audio?.sfxEnabled && sfxPct > 0);
 
     const syncChan = (btnEl, lblEl, sliderEl, valEl, isOn, pct, activeText) => {
@@ -1558,6 +1590,7 @@ export class Game {
     };
 
     syncChan(this.btnVoice, this.voiceLabel, this.inputVoiceVol, this.voiceVolVal, voiceOn, voicePct, 'VOICE');
+    syncChan(this.btnBgm, this.bgmLabel, this.inputBgmVol, this.bgmVolVal, bgmOn, bgmPct, 'BGM');
     syncChan(this.btnSfx, this.sfxLabel, this.inputSfxVol, this.sfxVolVal, sfxOn, sfxPct, 'SFX');
     syncChan(
       this.btnNavVoice,
@@ -1568,6 +1601,7 @@ export class Game {
       voicePct,
       'VOICE'
     );
+    syncChan(this.btnNavBgm, this.navBgmLabel, this.inputNavBgmVol, this.navBgmVolVal, bgmOn, bgmPct, 'BGM');
     syncChan(this.btnNavSfx, this.navSfxLabel, this.inputNavSfxVol, this.navSfxVolVal, sfxOn, sfxPct, 'SFX');
 
     const vLang = this.audio?.getVoiceLang?.() === 'ja' ? 'ja' : 'en';
@@ -1924,6 +1958,10 @@ export class Game {
     this.inputVoiceVol = document.getElementById('input-voice-vol');
     this.voiceVolVal = document.getElementById('voice-vol-val');
     this.btnVoiceLang = document.getElementById('btn-voice-lang');
+    this.btnBgm = document.getElementById('btn-bgm');
+    this.bgmLabel = document.getElementById('bgm-label');
+    this.inputBgmVol = document.getElementById('input-bgm-vol');
+    this.bgmVolVal = document.getElementById('bgm-vol-val');
     this.btnSfx = document.getElementById('btn-sfx');
     this.sfxLabel = document.getElementById('sfx-label');
     this.inputSfxVol = document.getElementById('input-sfx-vol');
@@ -1937,6 +1975,10 @@ export class Game {
     this.inputNavVoiceVol = document.getElementById('input-nav-voice-vol');
     this.navVoiceVolVal = document.getElementById('nav-voice-vol-val');
     this.btnNavVoiceLang = document.getElementById('btn-nav-voice-lang');
+    this.btnNavBgm = document.getElementById('btn-nav-bgm');
+    this.navBgmLabel = document.getElementById('nav-bgm-label');
+    this.inputNavBgmVol = document.getElementById('input-nav-bgm-vol');
+    this.navBgmVolVal = document.getElementById('nav-bgm-vol-val');
     this.btnNavSfx = document.getElementById('btn-nav-sfx');
     this.navSfxLabel = document.getElementById('nav-sfx-label');
     this.inputNavSfxVol = document.getElementById('input-nav-sfx-vol');
@@ -2618,6 +2660,15 @@ export class Game {
         if (on) this.audio.play('clock_gear', 600);
       });
     };
+    const bindBgmToggle = (btn) => {
+      if (!btn) return;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const on = this.audio.toggleBgm?.();
+        this.syncAudioMixerUI();
+        if (on) this.syncActiveBgm();
+      });
+    };
     const bindVoiceSlider = (slider) => {
       if (!slider) return;
       slider.addEventListener('input', (e) => {
@@ -2638,6 +2689,16 @@ export class Game {
         }
       });
     };
+    const bindBgmSlider = (slider) => {
+      if (!slider) return;
+      slider.addEventListener('input', (e) => {
+        this.audio.setBgmVolume?.(Number(e.target.value) / 100);
+        this.syncAudioMixerUI();
+        if (this.audio?.bgmEnabled && (this.audio?.getBgmVolume?.() ?? 0) > 0.01) {
+          this.syncActiveBgm();
+        }
+      });
+    };
     const bindSfxSlider = (slider) => {
       if (!slider) return;
       slider.addEventListener('input', (e) => {
@@ -2655,10 +2716,14 @@ export class Game {
     bindVoiceLangToggle(this.btnNavVoiceLang);
     bindVoiceToggle(this.btnVoice);
     bindVoiceToggle(this.btnNavVoice);
+    bindBgmToggle(this.btnBgm);
+    bindBgmToggle(this.btnNavBgm);
     bindSfxToggle(this.btnSfx);
     bindSfxToggle(this.btnNavSfx);
     bindVoiceSlider(this.inputVoiceVol);
     bindVoiceSlider(this.inputNavVoiceVol);
+    bindBgmSlider(this.inputBgmVol);
+    bindBgmSlider(this.inputNavBgmVol);
     bindSfxSlider(this.inputSfxVol);
     bindSfxSlider(this.inputNavSfxVol);
 
@@ -3311,7 +3376,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps142');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps143');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3407,7 +3472,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps142'
+          'v=30fps143'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4091,6 +4156,7 @@ export class Game {
     if (targetStep) {
       this.setLandingStep(targetStep, false);
     }
+    this.syncActiveBgm?.({ deferUntilGesture: !this.audio?._unlockedByGesture });
     if (typeof window !== 'undefined' && typeof HTMLImageElement !== 'undefined' && !this.simMode) {
       setTimeout(() => this.prewarmSelectedAssets(), 80);
     }
@@ -4720,6 +4786,9 @@ export class Game {
         }
       }
       this.updateHUD();
+      if (!this.isLandingOpen && !this.simMode) {
+        this.syncActiveBgm?.();
+      }
       return;
     }
 
@@ -4914,6 +4983,9 @@ export class Game {
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.updateHUD();
+    if (!this.isLandingOpen && !this.simMode) {
+      this.syncActiveBgm?.();
+    }
   }
 
   syncFighterBuildBadge(badgeEl, fighter, isAdv = false) {

@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps142';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps142';
+import { PixelForge } from './PixelForge.js?v=30fps143';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps143';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps142';
+} from './shaders/exNextGenFX.js?v=30fps143';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -298,6 +298,21 @@ export class Renderer {
       if (!this.adventureMode && typeof document !== 'undefined') {
         const badgeEl = document.getElementById('hud-stage-badge');
         if (badgeEl) badgeEl.textContent = ULTIMATE_STAGE_MAP[resolvedKey].name;
+      }
+      if (!this.adventureMode && typeof this.onStageDomainBgm === 'function') {
+        const domainBgmKey =
+          stageKey === 'inferno'
+            ? 'bgm_inferno'
+            : String(stageKey).startsWith('shogunate')
+              ? 'bgm_shogunate'
+              : String(stageKey).startsWith('cob_monitor')
+                ? 'bgm_cob_monitor'
+                : stageKey === 'glacial' && !isCurShogunate && !isCurCobMonitor
+                  ? 'bgm_sanctuary'
+                  : null;
+        if (domainBgmKey) {
+          this.onStageDomainBgm(domainBgmKey, stageKey, resolvedKey);
+        }
       }
       return;
     }
