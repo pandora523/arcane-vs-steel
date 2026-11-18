@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps147';
-import { PixelForge } from './PixelForge.js?v=30fps147';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps147';
+import { PixelFont } from './PixelFont.js?v=30fps148';
+import { PixelForge } from './PixelForge.js?v=30fps148';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps148';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -570,6 +570,15 @@ export class VFXManager {
   }
 
   spawnProjectile(opts) {
+    const MAX_ACTIVE_PROJECTILES = 96;
+    if (this.projectiles.length >= MAX_ACTIVE_PROJECTILES) {
+      const evictIdx = this.projectiles.findIndex((p) => !p.isMeteor && !p.isUltimate);
+      if (evictIdx >= 0) {
+        this.projectiles.splice(evictIdx, 1);
+      } else {
+        this.projectiles.shift();
+      }
+    }
     const ignoreSet = new Set();
     if (opts.ignoreTargets) {
       if (typeof opts.ignoreTargets[Symbol.iterator] === 'function') {
@@ -609,6 +618,7 @@ export class VFXManager {
       hitSet,
       _hitTargets: hitSet,
       age: 0,
+      _vfxAge: 0,
       ringTimer: 0
     });
   }
@@ -1097,12 +1107,13 @@ export class VFXManager {
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
+      p._vfxAge = (p._vfxAge || 0) + dt;
       if (Number.isFinite(p.startX) && Number.isFinite(p.startY)) {
         p.travelDist = Math.hypot(p.x - p.startX, p.y - p.startY);
       } else {
         p.travelDist = (p.travelDist || 0) + Math.hypot(p.vx || 0, p.vy || 0) * dt;
       }
-      if (p.maxRange > 0 && p.travelDist >= p.maxRange) {
+      if ((p.maxRange > 0 && p.travelDist >= p.maxRange) || (!p.isMeteor && p._vfxAge > 6.0)) {
         this.projectiles.splice(i, 1);
       }
     }

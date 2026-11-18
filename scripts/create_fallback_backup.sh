@@ -16,6 +16,12 @@ SHORT_SHA="$(git -C "${REPO_ROOT}" rev-parse --short HEAD 2>/dev/null || echo "n
 BACKUP_ROOT="${REPO_ROOT}/fallback_backups"
 mkdir -p "${BACKUP_ROOT}"
 
+PREV_SNAPSHOT="$(find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' | LC_ALL=C sort | tail -n 1 || true)"
+LINK_DEST_ARGS=()
+if [[ -n "${PREV_SNAPSHOT}" && -d "${PREV_SNAPSHOT}" ]]; then
+  LINK_DEST_ARGS=(--link-dest="${PREV_SNAPSHOT}")
+fi
+
 SNAPSHOT_NAME="${TIMESTAMP}_${SHORT_SHA}_${SAFE_LABEL}"
 SNAPSHOT_DIR="${BACKUP_ROOT}/${SNAPSHOT_NAME}"
 SUFFIX=2
@@ -42,16 +48,19 @@ for f in "${TOP_FILES[@]}"; do
 done
 
 rsync -a \
+  ${LINK_DEST_ARGS[@]+"${LINK_DEST_ARGS[@]}/src"} \
   --exclude='.DS_Store' \
   --exclude='__pycache__' \
   --exclude='*.pyc' \
   "${REPO_ROOT}/src/" "${SNAPSHOT_DIR}/src/"
 
 rsync -a \
+  ${LINK_DEST_ARGS[@]+"${LINK_DEST_ARGS[@]}/assets"} \
   --exclude='.DS_Store' \
   "${REPO_ROOT}/assets/" "${SNAPSHOT_DIR}/assets/"
 
 rsync -a \
+  ${LINK_DEST_ARGS[@]+"${LINK_DEST_ARGS[@]}/apple"} \
   --exclude='/build' \
   --exclude='/.build' \
   --exclude='DerivedData' \
@@ -61,6 +70,7 @@ rsync -a \
   "${REPO_ROOT}/apple/" "${SNAPSHOT_DIR}/apple/"
 
 rsync -a \
+  ${LINK_DEST_ARGS[@]+"${LINK_DEST_ARGS[@]}/scripts"} \
   --exclude='.DS_Store' \
   --exclude='__pycache__' \
   --exclude='*.pyc' \
@@ -68,6 +78,7 @@ rsync -a \
 
 if [[ -d "${REPO_ROOT}/build" ]]; then
   rsync -a \
+    ${LINK_DEST_ARGS[@]+"${LINK_DEST_ARGS[@]}/build"} \
     --exclude='.DS_Store' \
     --exclude='__pycache__' \
     --exclude='*.pyc' \
@@ -172,3 +183,23 @@ chmod +x "${SNAPSHOT_DIR}/RESTORE_THIS_BACKUP.sh"
 
 FILE_COUNT="$(wc -l < "${SNAPSHOT_DIR}/SHA256SUMS.txt" | tr -d ' ')"
 echo "[OK] Fallback backup created: ${SNAPSHOT_DIR} (${FILE_COUNT} files hashed)"
+
+# Auto-prune older rolling snapshots while keeping the latest 6 + pinned milestone baselines
+ALL_SNAPS=()
+while IFS= read -r d; do
+  [[ -n "${d}" ]] && ALL_SNAPS+=("${d}")
+done < <(find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' | LC_ALL=C sort)
+
+TOTAL_SNAPS="${#ALL_SNAPS[@]}"
+KEEP_RECENT=6
+if (( TOTAL_SNAPS > KEEP_RECENT )); then
+  CUTOFF=$(( TOTAL_SNAPS - KEEP_RECENT ))
+  for (( idx = 0; idx < CUTOFF; idx++ )); do
+    CAND="${ALL_SNAPS[$idx]}"
+    BASE="$(basename "${CAND}")"
+    if [[ "${BASE}" == *"_pre_aethelgard_ex_overhaul" || "${BASE}" == *"_pre_11hero_ex_roster_overhaul" ]]; then
+      continue
+    fi
+    rm -rf "${CAND}"
+  done
+fi

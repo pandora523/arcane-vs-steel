@@ -1,9 +1,13 @@
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps147';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps148';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import {
   ArcaneShaderFX,
   ShaderPen
-} from '../../src/engine/ArcaneShaderFX.js?v=30fps147';
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps148';
 import {
   ShaderPen as ShaderPen114
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps114';
@@ -14,29 +18,29 @@ import {
   ShaderPen as ShaderPen112
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
 import { Warrior } from '../../src/entities/Warrior.js';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps147';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps148';
 import { Titan } from '../../src/entities/Titan.js';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps147';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps148';
 import { Ronin } from '../../src/entities/Ronin.js';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps147';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps148';
 import { FireMage } from '../../src/entities/FireMage.js';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps147';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps148';
 import { Archer } from '../../src/entities/Archer.js';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps147';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps148';
 import { Priestess } from '../../src/entities/Priestess.js';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps147';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps148';
 import { Valkyrie } from '../../src/entities/Valkyrie.js';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps147';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps148';
 import { IceMage } from '../../src/entities/IceMage.js';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps147';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps148';
 import { Reaper } from '../../src/entities/Reaper.js';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps147';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps148';
 import { Chronomancer } from '../../src/entities/Chronomancer.js';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps147';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps148';
 import { Android } from '../../src/entities/Android.js';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps147';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps147';
-import { HeroBuildSystem } from '../../src/combat/HeroBuildSystem.js?v=30fps147';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps148';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps148';
+import { HeroBuildSystem } from '../../src/combat/HeroBuildSystem.js?v=30fps148';
 
 const HEROES = [
   ['warrior', Warrior],
@@ -167,7 +171,89 @@ function makeMockGame(hero, dummy) {
   }, { get(t, k) { return k in t ? t[k] : nop; } });
 }
 
+const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
+const FULL_SHADER_AUDIT =
+  process.argv.includes('--full') || process.env.AVS_FULL_AUDIT === '1';
+const SHADER_CACHE_PATH = path.join(os.tmpdir(), 'avs-shaderbox-sha-cache-v1.json');
+
+const HERO_CLASS_FILE = {
+  warrior: 'src/entities/Warrior.js',
+  warrior_ex: 'src/entities/WarriorEx.js',
+  titan: 'src/entities/Titan.js',
+  titan_ex: 'src/entities/TitanEx.js',
+  ronin: 'src/entities/Ronin.js',
+  ronin_ex: 'src/entities/RoninEx.js',
+  mage: 'src/entities/FireMage.js',
+  mage_ex: 'src/entities/FireMageEx.js',
+  archer: 'src/entities/Archer.js',
+  archer_ex: 'src/entities/ArcherEx.js',
+  priestess: 'src/entities/Priestess.js',
+  priestess_ex: 'src/entities/PriestessEx.js',
+  valkyrie: 'src/entities/Valkyrie.js',
+  valkyrie_ex: 'src/entities/ValkyrieEx.js',
+  icemage: 'src/entities/IceMage.js',
+  icemage_ex: 'src/entities/IceMageEx.js',
+  reaper: 'src/entities/Reaper.js',
+  reaper_ex: 'src/entities/ReaperEx.js',
+  chronomancer: 'src/entities/Chronomancer.js',
+  chronomancer_ex: 'src/entities/ChronomancerEx.js',
+  android: 'src/entities/Android.js',
+  android_ex: 'src/entities/AndroidEx.js',
+  nyx_ex: 'src/entities/NyxEx.js'
+};
+
+function hashNormalizedJs(relPath) {
+  const txt = fs
+    .readFileSync(path.join(REPO_ROOT, relPath), 'utf8')
+    .replace(/\?v=30fps\d+/g, '?v=30fpsX');
+  return crypto.createHash('sha256').update(txt).digest('hex');
+}
+
+const shaderDirFiles = fs
+  .readdirSync(path.join(REPO_ROOT, 'src/engine/shaders'))
+  .filter((f) => f.endsWith('.js'))
+  .sort()
+  .map((f) => `src/engine/shaders/${f}`);
+
+const sharedShaderHash = (() => {
+  const h = crypto.createHash('sha256');
+  for (const rel of [
+    'src/engine/ArcaneShaderFX.js',
+    'src/entities/Fighter.js',
+    'src/combat/HeroBuildSystem.js',
+    ...shaderDirFiles
+  ]) {
+    h.update(rel + ':' + hashNormalizedJs(rel) + '\n');
+  }
+  return h.digest('hex');
+})();
+
+let shaderCache = {};
+if (!FULL_SHADER_AUDIT && fs.existsSync(SHADER_CACHE_PATH)) {
+  try {
+    shaderCache = JSON.parse(fs.readFileSync(SHADER_CACHE_PATH, 'utf8')) || {};
+  } catch (_) {
+    shaderCache = {};
+  }
+}
+
+function getHeroShaderDigest(id, salt) {
+  const heroRel = HERO_CLASS_FILE[id];
+  return crypto
+    .createHash('sha256')
+    .update(`${salt}|${sharedShaderHash}|${id}|${hashNormalizedJs(heroRel)}`)
+    .digest('hex');
+}
+
 for (const [id, Cls] of HEROES) {
+  const heroDigest = getHeroShaderDigest(id, 'base_ult_v1');
+  if (!FULL_SHADER_AUDIT && shaderCache[`base:${id}`] === heroDigest) {
+    continue;
+  }
+  const countTargetClips = () =>
+    [...shadeBoxClips.keys()].filter((k) => k.startsWith('reaper:') || k.includes('_ex:')).length +
+    viewportClips.size;
+  const beforeFatal = countTargetClips();
   const isReaperFamily = id === 'reaper' || id === 'reaper_ex';
   const modes = isReaperFamily ? ['CROUCH', 'ULTIMATE', 'TRUE_ULTIMATE'] : ['ULTIMATE', 'TRUE_ULTIMATE'];
   for (const mode of modes) {
@@ -238,6 +324,9 @@ for (const [id, Cls] of HEROES) {
       }
     }
   }
+  if (countTargetClips() === beforeFatal) {
+    shaderCache[`base:${id}`] = heroDigest;
+  }
 }
 
 // Also verify Sovereign Loadout Presets [II] (1/1/1) & [III] (2/2/2) SKILL + ULTIMATE shaders across all 12 EX Heroes
@@ -256,6 +345,12 @@ const SOVEREIGN_SHADER_HEROES = [
   ['titan_ex', TitanEx]
 ];
 for (const [id, Cls] of SOVEREIGN_SHADER_HEROES) {
+  const sovDigest = getHeroShaderDigest(id, 'sovereign_ult_v1');
+  if (!FULL_SHADER_AUDIT && shaderCache[`sov:${id}`] === sovDigest) {
+    continue;
+  }
+  const beforeShadeSov = shadeBoxClips.size;
+  const beforeVpSov = viewportClips.size;
   for (const tier of [1, 2]) {
     for (const mode of ['SKILL', 'ULTIMATE']) {
       currentHero = `${id}_tier${tier}`;
@@ -322,7 +417,14 @@ for (const [id, Cls] of SOVEREIGN_SHADER_HEROES) {
       }
     }
   }
+  if (shadeBoxClips.size === beforeShadeSov && viewportClips.size === beforeVpSov) {
+    shaderCache[`sov:${id}`] = sovDigest;
+  }
 }
+
+try {
+  fs.writeFileSync(SHADER_CACHE_PATH, JSON.stringify(shaderCache));
+} catch (_) {}
 
 const targetShadeClips = [...shadeBoxClips.keys()].filter(
   (k) => k.startsWith('reaper:') || k.includes('_ex:')
