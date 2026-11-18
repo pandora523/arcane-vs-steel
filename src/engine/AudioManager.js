@@ -9,11 +9,26 @@
 // - ABYSSAL, HOROLOGY, WORLD-FORGE & CYBER: Iron chain whip-cracks, warped 'Eternal Zero'
 //   time-stop tape plunges, stained-glass clockface shatters, anvil slams, and plasma railguns.
 
+const AUDIO_MIX_STORAGE_KEY = 'avs_audio_mix_v1';
+const DEFAULT_SFX_VOLUME = 0.55;
+const DEFAULT_VOICE_VOLUME = 1.0;
+const VOICE_PRESENCE_TRIM = 1.42;
+
 export class AudioManager {
   constructor() {
     this.enabled = true;
+    this.sfxEnabled = true;
+    this.voiceEnabled = true;
+    this.sfxVolume = DEFAULT_SFX_VOLUME;
+    this.voiceVolume = DEFAULT_VOICE_VOLUME;
     this.ctx = null;
     this.master = null;
+    this.sfxBus = null;
+    this.sfxDuckGain = null;
+    this.voiceBus = null;
+    this._preDuckUntilMs = 0;
+    this._preDuckTarget = 1.0;
+    this._duckRecoverTimer = null;
     this.pinkNoiseBuffer = null;
     this.buffers = {};
     this.lastPlayed = {};
@@ -129,25 +144,24 @@ export class AudioManager {
     this._pendingPlays = [];
 
     // Champion Studio Voice Pack Subsystem (24kHz->44.1kHz 96kbps MP3s in `assets/voices/`)
-    this.voiceEnabled = true;
     this.heroVoiceMap = {
       priestess_ex: 'seraphina',
       priestess: 'seraphina'
     };
     this.voiceVolumes = {
       seraphina_select: 0.94,
-      seraphina_intro: 0.94,
-      seraphina_attack_1: 0.84,
-      seraphina_attack_2: 0.84,
-      seraphina_skill_std: 0.92,
-      seraphina_skill_crimson: 0.92,
-      seraphina_ult_std: 0.96,
-      seraphina_ult_crimson: 0.96,
-      seraphina_true_ult_charge: 0.96,
+      seraphina_intro: 0.96,
+      seraphina_attack_1: 0.86,
+      seraphina_attack_2: 0.86,
+      seraphina_skill_std: 0.94,
+      seraphina_skill_crimson: 0.94,
+      seraphina_ult_std: 0.98,
+      seraphina_ult_crimson: 0.98,
+      seraphina_true_ult_charge: 0.98,
       seraphina_true_ult_fire: 1.0,
-      seraphina_hurt: 0.86,
-      seraphina_death: 0.96,
-      seraphina_victory: 0.96
+      seraphina_hurt: 0.88,
+      seraphina_death: 0.98,
+      seraphina_victory: 0.98
     };
     this.voiceBuffers = {};
     this._voiceLoadPromises = new Map();
@@ -157,6 +171,7 @@ export class AudioManager {
     this._attackVoiceAlt = 0;
     this._pendingVoicePlays = [];
 
+    this._loadAudioMixSettings();
     this.initContext();
     this.preloadWavFiles();
 
@@ -325,6 +340,10 @@ export class AudioManager {
       clearTimeout(this._stalledCheckTimer);
       this._stalledCheckTimer = null;
     }
+    if (this._duckRecoverTimer) {
+      clearTimeout(this._duckRecoverTimer);
+      this._duckRecoverTimer = null;
+    }
 
     while (this.activeVoices.length > 0) {
       const v = this.activeVoices.pop();
@@ -338,6 +357,9 @@ export class AudioManager {
     const deadCtx = this.ctx;
     this.ctx = null;
     this.master = null;
+    this.sfxBus = null;
+    this.sfxDuckGain = null;
+    this.voiceBus = null;
     if (deadCtx) {
       try {
         deadCtx.onstatechange = null;
@@ -428,13 +450,24 @@ export class AudioManager {
       typeof ctx.createDynamicsCompressor === 'function' &&
       typeof ctx.createGain === 'function'
     ) {
-      // 1. Clean 36Hz High-Pass Filter (preserves 38-55Hz cinematic sub-drops while blocking DC/rumble)
+      // Dedicated SFX User Bus + Continuous Sidechain Ducking Node (ducks ALL active & newly-spawned SFX while voices speak)
+      const sfxBus = ctx.createGain();
+      sfxBus.gain.value = this._getEffectiveSfxBusGain();
+
+      const sfxDuckGain = ctx.createGain();
+      sfxDuckGain.gain.value = 1.0;
+
+      // Dedicated Champion Voice Bus (connects straight into studio limiter above SFX sidechain ducking)
+      const voiceBus = ctx.createGain();
+      voiceBus.gain.value = this._getEffectiveVoiceBusGain();
+
+      // 1. Clean 36Hz High-Pass Filter on SFX (preserves 38-55Hz cinematic sub-drops while blocking DC/rumble)
       const hpf = ctx.createBiquadFilter();
       hpf.type = 'highpass';
       hpf.frequency.value = 36;
       hpf.Q.value = 0.707;
 
-      // 2. Wide 16.5kHz Studio Low-Pass Filter (preserves crisp katana shing, crystal shatter & electric arcs)
+      // 2. Wide 16.5kHz Studio Low-Pass Filter on SFX (preserves crisp katana shing, crystal shatter & electric arcs)
       const lpf = ctx.createBiquadFilter();
       lpf.type = 'lowpass';
       lpf.frequency.value = 16500;
@@ -442,31 +475,299 @@ export class AudioManager {
 
       // 3. Transparent Studio Peak Limiter (gentle ratio, fast transient catch, zero pumping)
       const limiter = ctx.createDynamicsCompressor();
-      limiter.threshold.value = -3.5;
+      limiter.threshold.value = -3.0;
       limiter.knee.value = 6;
       limiter.ratio.value = 4.0;
       limiter.attack.value = 0.003;
-      limiter.release.value = 0.11;
+      limiter.release.value = 0.10;
 
       // 4. Master Output Gain
       const masterGain = ctx.createGain();
-      masterGain.gain.value = 0.90;
+      masterGain.gain.value = 0.92;
 
+      sfxBus.connect(sfxDuckGain);
+      sfxDuckGain.connect(hpf);
       hpf.connect(lpf);
       lpf.connect(limiter);
+      voiceBus.connect(limiter);
       limiter.connect(masterGain);
       masterGain.connect(ctx.destination);
-      this.master = hpf;
+
+      this.sfxBus = sfxBus;
+      this.sfxDuckGain = sfxDuckGain;
+      this.voiceBus = voiceBus;
+      this.master = sfxBus;
     } else if (typeof ctx.createGain === 'function') {
+      const sfxBus = ctx.createGain();
+      if (sfxBus.gain) sfxBus.gain.value = this._getEffectiveSfxBusGain();
+      const sfxDuckGain = ctx.createGain();
+      if (sfxDuckGain.gain) sfxDuckGain.gain.value = 1.0;
+      const voiceBus = ctx.createGain();
+      if (voiceBus.gain) voiceBus.gain.value = this._getEffectiveVoiceBusGain();
       const masterGain = ctx.createGain();
-      if (masterGain.gain) masterGain.gain.value = 0.90;
+      if (masterGain.gain) masterGain.gain.value = 0.92;
+
+      if (typeof sfxBus.connect === 'function') sfxBus.connect(sfxDuckGain);
+      if (typeof sfxDuckGain.connect === 'function') sfxDuckGain.connect(masterGain);
+      if (typeof voiceBus.connect === 'function') voiceBus.connect(masterGain);
       if (ctx.destination && typeof masterGain.connect === 'function') {
         masterGain.connect(ctx.destination);
       }
-      this.master = masterGain;
+      this.sfxBus = sfxBus;
+      this.sfxDuckGain = sfxDuckGain;
+      this.voiceBus = voiceBus;
+      this.master = sfxBus;
     } else {
+      this.sfxBus = null;
+      this.sfxDuckGain = null;
+      this.voiceBus = null;
       this.master = ctx.destination || null;
     }
+  }
+
+  _getStorageHandle() {
+    const resolveStore = (target) => {
+      if (!target) return null;
+      const desc = Object.getOwnPropertyDescriptor(target, 'localStorage');
+      if (desc && 'value' in desc) {
+        return desc.value && typeof desc.value.getItem === 'function' ? desc.value : null;
+      }
+      if (typeof process !== 'undefined' && process.versions?.node) {
+        return null;
+      }
+      const ls = target.localStorage;
+      return ls && typeof ls.getItem === 'function' ? ls : null;
+    };
+    try {
+      if (typeof window !== 'undefined') {
+        const ws = resolveStore(window);
+        if (ws) return ws;
+      }
+      if (typeof globalThis !== 'undefined') {
+        return resolveStore(globalThis);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  _loadAudioMixSettings() {
+    try {
+      const store = this._getStorageHandle();
+      if (!store) return;
+      const raw = store.getItem(AUDIO_MIX_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return;
+      if (Number.isFinite(parsed.sfxVolume)) {
+        this.sfxVolume = Math.max(0, Math.min(1, Number(parsed.sfxVolume)));
+      }
+      if (Number.isFinite(parsed.voiceVolume)) {
+        this.voiceVolume = Math.max(0, Math.min(1, Number(parsed.voiceVolume)));
+      }
+      if (typeof parsed.sfxEnabled === 'boolean') {
+        this.sfxEnabled = parsed.sfxEnabled;
+      }
+      if (typeof parsed.voiceEnabled === 'boolean') {
+        this.voiceEnabled = parsed.voiceEnabled;
+      }
+      this.enabled = Boolean(this.sfxEnabled || this.voiceEnabled);
+    } catch (_) {}
+  }
+
+  _saveAudioMixSettings() {
+    try {
+      const store = this._getStorageHandle();
+      if (!store || typeof store.setItem !== 'function') return;
+      store.setItem(
+        AUDIO_MIX_STORAGE_KEY,
+        JSON.stringify({
+          sfxVolume: Math.round(this.sfxVolume * 100) / 100,
+          voiceVolume: Math.round(this.voiceVolume * 100) / 100,
+          sfxEnabled: Boolean(this.sfxEnabled),
+          voiceEnabled: Boolean(this.voiceEnabled)
+        })
+      );
+    } catch (_) {}
+  }
+
+  _getEffectiveSfxBusGain() {
+    return this.enabled && this.sfxEnabled ? this.sfxVolume : 0;
+  }
+
+  _getEffectiveVoiceBusGain() {
+    return this.enabled && this.voiceEnabled ? this.voiceVolume * VOICE_PRESENCE_TRIM : 0;
+  }
+
+  _applyGainParam(gainNode, targetVal, rampSec = 0) {
+    if (!gainNode || !gainNode.gain) return;
+    const g = gainNode.gain;
+    const clamped = Math.max(0, Number.isFinite(targetVal) ? targetVal : 0);
+    if (this.ctx && rampSec > 0 && typeof g.setValueAtTime === 'function' && typeof g.linearRampToValueAtTime === 'function') {
+      try {
+        const t = this.ctx.currentTime || 0;
+        if (typeof g.cancelScheduledValues === 'function') {
+          g.cancelScheduledValues(t);
+        }
+        g.setValueAtTime(g.value, t);
+        g.linearRampToValueAtTime(clamped, t + rampSec);
+        return;
+      } catch (_) {}
+    }
+    try {
+      if (this.ctx && typeof g.cancelScheduledValues === 'function') {
+        g.cancelScheduledValues(this.ctx.currentTime || 0);
+      }
+      if (this.ctx && typeof g.setValueAtTime === 'function') {
+        g.setValueAtTime(clamped, this.ctx.currentTime || 0);
+      } else {
+        g.value = clamped;
+      }
+    } catch (_) {
+      g.value = clamped;
+    }
+  }
+
+  _ensureContextRunningForMix() {
+    if (!this.enabled || this._bgSuspended) return;
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this.rebuildContext();
+      return;
+    }
+    if (this.isContextPaused() || this.ctx.state !== 'running') {
+      const ctxRef = this.ctx;
+      this._playSilentUnlockTick();
+      try {
+        Promise.resolve(ctxRef.resume())
+          .then(() => {
+            if (this.ctx === ctxRef) {
+              this._playSilentUnlockTick();
+              this._flushPendingPlays();
+            }
+          })
+          .catch(() => {});
+      } catch (_) {}
+    }
+  }
+
+  _syncBusVolumes(rampSec = 0.02) {
+    this._applyGainParam(this.sfxBus, this._getEffectiveSfxBusGain(), rampSec);
+    this._applyGainParam(this.voiceBus, this._getEffectiveVoiceBusGain(), rampSec);
+  }
+
+  getSfxVolume() {
+    return this.sfxVolume;
+  }
+
+  getVoiceVolume() {
+    return this.voiceVolume;
+  }
+
+  setSfxVolume(vol, persist = true) {
+    const next = Math.max(0, Math.min(1, Number(vol) || 0));
+    this.sfxVolume = next;
+    if (next > 0) {
+      this.sfxEnabled = true;
+      this.enabled = true;
+      this._ensureContextRunningForMix();
+    }
+    this._syncBusVolumes(0.02);
+    if (persist) this._saveAudioMixSettings();
+    return this.sfxVolume;
+  }
+
+  setVoiceVolume(vol, persist = true) {
+    const next = Math.max(0, Math.min(1, Number(vol) || 0));
+    this.voiceVolume = next;
+    if (next > 0) {
+      this.voiceEnabled = true;
+      this.enabled = true;
+      this._ensureContextRunningForMix();
+    }
+    this._syncBusVolumes(0.02);
+    this._syncSfxSidechainDuck();
+    if (persist) this._saveAudioMixSettings();
+    return this.voiceVolume;
+  }
+
+  toggleSfx(persist = true) {
+    this.sfxEnabled = !this.sfxEnabled;
+    if (!this.sfxEnabled) {
+      this._pendingPlays.length = 0;
+    } else {
+      if (this.sfxVolume <= 0.01) this.sfxVolume = DEFAULT_SFX_VOLUME;
+      this.enabled = true;
+      this._ensureContextRunningForMix();
+    }
+    this._syncBusVolumes(0.02);
+    if (persist) this._saveAudioMixSettings();
+    return Boolean(this.enabled && this.sfxEnabled);
+  }
+
+  toggleVoice(persist = true) {
+    this.voiceEnabled = !this.voiceEnabled;
+    if (!this.voiceEnabled) {
+      this._pendingVoicePlays.length = 0;
+      this.stopAllHeroVoices(0.02);
+    } else {
+      if (this.voiceVolume <= 0.01) this.voiceVolume = DEFAULT_VOICE_VOLUME;
+      this.enabled = true;
+      this._ensureContextRunningForMix();
+    }
+    this._syncBusVolumes(0.02);
+    this._syncSfxSidechainDuck();
+    if (persist) this._saveAudioMixSettings();
+    return Boolean(this.enabled && this.voiceEnabled);
+  }
+
+  preDuckSfxForVoice(priority = 3, holdMs = 360) {
+    if (!this.enabled || !this.voiceEnabled || this.voiceVolume <= 0.01) return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    this._preDuckUntilMs = Math.max(this._preDuckUntilMs || 0, now + holdMs);
+    this._preDuckTarget = priority >= 3 ? 0.26 : priority >= 2 ? 0.34 : 0.55;
+    this._syncSfxSidechainDuck(null, 0.015);
+    if (this._duckRecoverTimer) clearTimeout(this._duckRecoverTimer);
+    this._duckRecoverTimer = setTimeout(() => {
+      this._duckRecoverTimer = null;
+      this._syncSfxSidechainDuck();
+    }, holdMs + 30);
+    if (this._duckRecoverTimer && typeof this._duckRecoverTimer.unref === 'function') {
+      this._duckRecoverTimer.unref();
+    }
+  }
+
+  _syncSfxSidechainDuck(overrideTarget = null, rampSec = null) {
+    if (!this.sfxDuckGain || !this.sfxDuckGain.gain) return 1.0;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    let maxPrio = 0;
+    if (this.enabled && this.voiceEnabled && this.voiceVolume > 0.01) {
+      for (const [speakerKey, entry] of this.activeHeroVoices.entries()) {
+        if (!entry || now >= entry.endTimeMs + 120) {
+          this.activeHeroVoices.delete(speakerKey);
+          continue;
+        }
+        if (entry.duckSfx !== false && (entry.priority || 1) > maxPrio) {
+          maxPrio = entry.priority || 1;
+        }
+      }
+    }
+
+    let target = 1.0;
+    if (overrideTarget !== null) {
+      target = overrideTarget;
+    } else {
+      if (maxPrio >= 3) target = 0.26;
+      else if (maxPrio >= 2) target = 0.34;
+      else if (maxPrio >= 1) target = 0.55;
+      if (now < (this._preDuckUntilMs || 0)) {
+        target = Math.min(target, this._preDuckTarget || 0.34);
+      }
+    }
+
+    const cur = Number.isFinite(this.sfxDuckGain.gain.value) ? this.sfxDuckGain.gain.value : 1.0;
+    const effectiveRamp =
+      rampSec !== null ? rampSec : target < cur - 0.01 ? 0.025 : 0.22;
+    this._applyGainParam(this.sfxDuckGain, target, effectiveRamp);
+    return target;
   }
 
   createPinkNoiseBuffer() {
@@ -538,12 +839,17 @@ export class AudioManager {
       this._pendingPlays.length = 0;
       this._pendingVoicePlays.length = 0;
       this.stopAllHeroVoices(0.02);
+      this._syncBusVolumes(0.01);
       if (this.ctx && this.ctx.state === 'running' && typeof this.ctx.suspend === 'function') {
         try {
           Promise.resolve(this.ctx.suspend()).catch(() => {});
         } catch (_) {}
       }
     } else if (!this._bgSuspended) {
+      if (!this.sfxEnabled && !this.voiceEnabled) {
+        this.sfxEnabled = true;
+        this.voiceEnabled = true;
+      }
       if (!this.ctx || this.ctx.state === 'closed') {
         this.rebuildContext();
       } else if (this.isContextPaused() || this.ctx.state !== 'running') {
@@ -561,7 +867,9 @@ export class AudioManager {
         } catch (_) {}
         this._scheduleStalledClockCheck(250);
       }
+      this._syncBusVolumes(0.02);
     }
+    this._saveAudioMixSettings();
     return this.enabled;
   }
 
@@ -647,7 +955,7 @@ export class AudioManager {
   }
 
   play(rawName, worldX = null) {
-    if (!this.enabled || this._bgSuspended) return;
+    if (!this.enabled || !this.sfxEnabled || this.sfxVolume <= 0.001 || this._bgSuspended) return;
 
     if (!this.ctx || this.ctx.state === 'closed') {
       this.rebuildContext();
@@ -690,7 +998,12 @@ export class AudioManager {
   }
 
   _playNow(rawName, worldX = null) {
-    if (!this.enabled || this._bgSuspended || !this.ctx) return;
+    if (!this.enabled || !this.sfxEnabled || this.sfxVolume <= 0.001 || this._bgSuspended || !this.ctx) {
+      return;
+    }
+    if (this.activeHeroVoices.size > 0 || (this._preDuckUntilMs || 0) > 0) {
+      this._syncSfxSidechainDuck();
+    }
 
     const aliasMap = {
       death_knight: 'death_warrior'
@@ -1022,7 +1335,7 @@ export class AudioManager {
     }
     const loadPromise = (async () => {
       try {
-        const res = await fetch(`assets/voices/${voiceKey}.mp3?v=30fps139`);
+        const res = await fetch(`assets/voices/${voiceKey}.mp3?v=30fps140`);
         if (!res.ok) return null;
         const arr = await res.arrayBuffer();
         const decoded = await this.ctx.decodeAudioData(arr);
@@ -1075,7 +1388,12 @@ export class AudioManager {
     if (!speakerKey || !this.activeHeroVoices.has(speakerKey)) return;
     const active = this.activeHeroVoices.get(speakerKey);
     this.activeHeroVoices.delete(speakerKey);
+    this._syncSfxSidechainDuck();
     if (!active) return;
+    if (active.recoverTimer) {
+      clearTimeout(active.recoverTimer);
+      active.recoverTimer = null;
+    }
     if (fadeSec > 0 && this.ctx && active.gainNode?.gain && active.src) {
       try {
         const t = this.ctx.currentTime || 0;
@@ -1093,13 +1411,17 @@ export class AudioManager {
   }
 
   stopAllHeroVoices(fadeSec = 0.03) {
+    this._preDuckUntilMs = 0;
     for (const speakerKey of Array.from(this.activeHeroVoices.keys())) {
       this.stopSpeakerVoice(speakerKey, fadeSec);
     }
+    this._syncSfxSidechainDuck();
   }
 
   playHeroVoice(heroId, cue, opts = {}) {
-    if (!this.enabled || !this.voiceEnabled || this._bgSuspended) return false;
+    if (!this.enabled || !this.voiceEnabled || this.voiceVolume <= 0.001 || this._bgSuspended) {
+      return false;
+    }
     const prefix = this.getVoicePackPrefix(heroId);
     if (!prefix || !cue) return false;
 
@@ -1138,7 +1460,15 @@ export class AudioManager {
   }
 
   _playHeroVoiceNow(heroId, cue, opts = {}) {
-    if (!this.enabled || !this.voiceEnabled || this._bgSuspended || !this.ctx) return false;
+    if (
+      !this.enabled ||
+      !this.voiceEnabled ||
+      this.voiceVolume <= 0.001 ||
+      this._bgSuspended ||
+      !this.ctx
+    ) {
+      return false;
+    }
     const prefix = this.getVoicePackPrefix(heroId);
     if (!prefix) return false;
 
@@ -1155,8 +1485,8 @@ export class AudioManager {
     const priority = opts.priority ?? 1;
     const cooldownMs = opts.cooldownMs ?? 120;
     const worldX = opts.worldX ?? null;
-    const duckSfx = Boolean(opts.duckSfx);
-    const maxAsyncDelayMs = opts.maxAsyncDelayMs ?? 320;
+    const duckSfx = opts.duckSfx !== false;
+    const maxAsyncDelayMs = opts.maxAsyncDelayMs ?? 450;
 
     // Never let a low-priority bark (attack/hurt) interrupt an active Skill/Ultimate/Victory/KO line
     const currentVoice = this.activeHeroVoices.get(speakerKey);
@@ -1172,7 +1502,16 @@ export class AudioManager {
     }
 
     const startBufferPlayback = (buf) => {
-      if (!buf || !this.enabled || !this.voiceEnabled || this._bgSuspended || !this.ctx) return false;
+      if (
+        !buf ||
+        !this.enabled ||
+        !this.voiceEnabled ||
+        this.voiceVolume <= 0.001 ||
+        this._bgSuspended ||
+        !this.ctx
+      ) {
+        return false;
+      }
       const playNow = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const curAfterLoad = this.activeHeroVoices.get(speakerKey);
       if (curAfterLoad && playNow < curAfterLoad.endTimeMs && curAfterLoad.priority > priority) {
@@ -1183,22 +1522,8 @@ export class AudioManager {
       this.stopSpeakerVoice(speakerKey, 0.03);
       this.lastVoicePlayed[cdId] = playNow;
 
-      if (duckSfx && this.ctx) {
-        const t = this.ctx.currentTime || 0;
-        const duckFactor = priority >= 3 ? 0.56 : 0.74;
-        for (const v of this.activeVoices) {
-          if (v?.gainNode?.gain) {
-            try {
-              const cur = v.gainNode.gain.value;
-              v.gainNode.gain.setValueAtTime(cur, t);
-              v.gainNode.gain.linearRampToValueAtTime(cur * duckFactor, t + 0.035);
-            } catch (_) {}
-          }
-        }
-      }
-
       const voiceGain = this.ctx.createGain();
-      const baseVol = this.voiceVolumes[voiceKey] ?? 0.92;
+      const baseVol = this.voiceVolumes[voiceKey] ?? 0.94;
       if (voiceGain.gain) {
         if (typeof voiceGain.gain.setValueAtTime === 'function') {
           voiceGain.gain.setValueAtTime(baseVol, this.ctx.currentTime || 0);
@@ -1207,14 +1532,15 @@ export class AudioManager {
         }
       }
 
+      const voiceDest = this.voiceBus || this.master;
       let panner = null;
       if (worldX !== null && typeof this.ctx.createStereoPanner === 'function') {
         panner = this.ctx.createStereoPanner();
-        panner.pan.value = Math.max(-0.30, Math.min(0.30, (worldX - 600) / 800));
+        panner.pan.value = Math.max(-0.28, Math.min(0.28, (worldX - 600) / 850));
         voiceGain.connect(panner);
-        if (this.master) panner.connect(this.master);
-      } else if (this.master && typeof voiceGain.connect === 'function') {
-        voiceGain.connect(this.master);
+        if (voiceDest) panner.connect(voiceDest);
+      } else if (voiceDest && typeof voiceGain.connect === 'function') {
+        voiceGain.connect(voiceDest);
       }
 
       try {
@@ -1231,23 +1557,41 @@ export class AudioManager {
           src,
           gainNode: voiceGain,
           priority,
+          duckSfx,
           voiceKey,
           startTimeMs: playNow,
           endTimeMs: playNow + durMs - 40,
+          recoverTimer: null,
           cleanup: () => {
             if (cleaned) return;
             cleaned = true;
             src.onended = null;
+            if (entry.recoverTimer) {
+              clearTimeout(entry.recoverTimer);
+              entry.recoverTimer = null;
+            }
             if (this.activeHeroVoices.get(speakerKey) === entry) {
               this.activeHeroVoices.delete(speakerKey);
             }
+            this._syncSfxSidechainDuck();
             try {
               src.stop?.();
             } catch (_) {}
             this._disconnectChain(src, voiceGain, panner);
           }
         };
+        entry.recoverTimer = setTimeout(() => {
+          entry.recoverTimer = null;
+          if (this.activeHeroVoices.get(speakerKey) === entry) {
+            this.activeHeroVoices.delete(speakerKey);
+            this._syncSfxSidechainDuck();
+          }
+        }, durMs + 60);
+        if (entry.recoverTimer && typeof entry.recoverTimer.unref === 'function') {
+          entry.recoverTimer.unref();
+        }
         this.activeHeroVoices.set(speakerKey, entry);
+        this._syncSfxSidechainDuck();
         src.onended = entry.cleanup;
         src.start(0);
         return true;
@@ -1262,6 +1606,9 @@ export class AudioManager {
       return startBufferPlayback(cachedBuf);
     }
 
+    if (duckSfx) {
+      this.preDuckSfxForVoice(priority, maxAsyncDelayMs + 80);
+    }
     const reqStart = now;
     this.loadVoiceKey(voiceKey)
       .then((decoded) => {

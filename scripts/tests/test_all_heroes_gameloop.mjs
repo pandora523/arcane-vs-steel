@@ -41,67 +41,67 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps139';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps139';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps139';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps139';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps139';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps139';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps139';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps139';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps139';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps139';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps139';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps139';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps139';
-import { Archer } from '../../src/entities/Archer.js?v=30fps139';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps139';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps139';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps139';
-import { Titan } from '../../src/entities/Titan.js?v=30fps139';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps139';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps139';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps139';
-import { Android } from '../../src/entities/Android.js?v=30fps139';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps139';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps139';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps139';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps139';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps140';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps140';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps140';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps140';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps140';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps140';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps140';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps140';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps140';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps140';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps140';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps140';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps140';
+import { Archer } from '../../src/entities/Archer.js?v=30fps140';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps140';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps140';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps140';
+import { Titan } from '../../src/entities/Titan.js?v=30fps140';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps140';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps140';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps140';
+import { Android } from '../../src/entities/Android.js?v=30fps140';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps140';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps140';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps140';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps140';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps139';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps139';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps139';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps139';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps139';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps139';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps140';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps140';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps140';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps140';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps140';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps140';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps139';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps139';
+} from '../../src/adventure/AdventureManager.js?v=30fps140';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps140';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps139';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps139';
+} from '../../src/adventure/AdventureProgression.js?v=30fps140';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps140';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps139';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps140';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps139';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps140';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -705,7 +705,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps139');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps140');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11257,8 +11257,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps139');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps139');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps140');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps140');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12059,7 +12059,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps139'
+        src: 'assets/sprites/arena_bg.png?v=30fps140'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12103,13 +12103,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps139`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps140`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps139'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps140'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -14953,7 +14953,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps139';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps140';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -14988,7 +14988,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps139';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps140';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15093,12 +15093,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps139') ||
-      !manifestSrc.includes('?v=30fps139') ||
+      !indexHtmlSrc.includes('?v=30fps140') ||
+      !manifestSrc.includes('?v=30fps140') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps139 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps140 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16694,7 +16694,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps139 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps140 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17222,6 +17222,250 @@ if (!RUN_SUITE36_ONLY) {
       seraStd.fx?.dispose?.();
       dummyFoe.fx?.dispose?.();
     }
+    audio3620.stopAllHeroVoices(0);
+  }
+
+  // --------------------------------------------------------------------------
+  // 36.21: Batch ?v=30fps140 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
+  // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
+  // --------------------------------------------------------------------------
+  {
+    const prevStorageDesc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const prevWinDesc = globalThis.window
+      ? Object.getOwnPropertyDescriptor(globalThis.window, 'localStorage')
+      : null;
+    const mixMemStore = new Map();
+    const mockStore3621 = {
+      getItem: (k) => (mixMemStore.has(k) ? mixMemStore.get(k) : null),
+      setItem: (k, v) => mixMemStore.set(k, String(v)),
+      removeItem: (k) => mixMemStore.delete(k)
+    };
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: mockStore3621,
+      configurable: true,
+      writable: true
+    });
+    if (globalThis.window) {
+      Object.defineProperty(globalThis.window, 'localStorage', {
+        value: mockStore3621,
+        configurable: true,
+        writable: true
+      });
+    }
+    try {
+      const mixAudio = new AudioManager();
+      const makeGainMock = (initVal = 1) => ({
+        gain: {
+          value: initVal,
+          setValueAtTime(v) {
+            this.value = v;
+          },
+          linearRampToValueAtTime(v) {
+            this.value = v;
+          },
+          exponentialRampToValueAtTime(v) {
+            this.value = v;
+          }
+        },
+        connect() {},
+        disconnect() {}
+      });
+      mixAudio.ctx = {
+        state: 'running',
+        currentTime: 1.0,
+        destination: {},
+        createGain: () => makeGainMock(1),
+        createStereoPanner: () => ({ pan: { value: 0 }, connect() {}, disconnect() {} }),
+        createBufferSource: () => ({
+          buffer: null,
+          playbackRate: { value: 1 },
+          onended: null,
+          connect() {},
+          disconnect() {},
+          start() {},
+          stop() {}
+        })
+      };
+      mixAudio.sfxBus = makeGainMock(mixAudio.getSfxVolume());
+      mixAudio.sfxDuckGain = makeGainMock(1.0);
+      mixAudio.voiceBus = makeGainMock(mixAudio.getVoiceVolume() * 1.42);
+      mixAudio.master = mixAudio.sfxBus;
+      mixAudio.voiceBuffers.seraphina_ult_std = { duration: 3.5 };
+      mixAudio.buffers.holy_bolt = { duration: 0.4 };
+
+      // 1. Default balance puts Voice (100% * 1.42 trim) cleanly above SFX (55%), and persists edits
+      if (Math.abs(mixAudio.getVoiceVolume() - 1.0) > 1e-6 || Math.abs(mixAudio.getSfxVolume() - 0.55) > 1e-6) {
+        throw new Error(
+          `[Suite 36.21] Unexpected default audio mix: voice=${mixAudio.getVoiceVolume()}, sfx=${mixAudio.getSfxVolume()}`
+        );
+      }
+      mixAudio.setVoiceVolume(0.85);
+      mixAudio.setSfxVolume(0.35);
+      mixAudio.toggleSfx();
+      const restoredAudio = new AudioManager();
+      if (
+        Math.abs(restoredAudio.getVoiceVolume() - 0.85) > 1e-6 ||
+        Math.abs(restoredAudio.getSfxVolume() - 0.35) > 1e-6 ||
+        restoredAudio.sfxEnabled !== false ||
+        restoredAudio.voiceEnabled !== true
+      ) {
+        throw new Error(
+          `[Suite 36.21] localStorage mix persistence failed: voice=${restoredAudio.getVoiceVolume()}, sfx=${restoredAudio.getSfxVolume()}, sfxEnabled=${restoredAudio.sfxEnabled}`
+        );
+      }
+      mixAudio.toggleSfx(); // restore sfxEnabled = true
+
+      // 2. Continuous sidechain ducking ducks sfxDuckGain while voice is active (including newly-spawned SFX)
+      mixAudio.playHeroVoice('priestess_ex', 'ult_std', {
+        speakerKey: 'sera_duck_test',
+        priority: 3,
+        cooldownMs: 10
+      });
+      if (!(mixAudio.sfxDuckGain.gain.value <= 0.30)) {
+        throw new Error(
+          `[Suite 36.21] Expected sfxDuckGain <= 0.30 during priority-3 voice, got ${mixAudio.sfxDuckGain.gain.value}`
+        );
+      }
+      mixAudio.play('holy_bolt', 500);
+      if (!(mixAudio.sfxDuckGain.gain.value <= 0.30)) {
+        throw new Error(
+          `[Suite 36.21] Expected newly-spawned SFX to remain sidechain-ducked <= 0.30, got ${mixAudio.sfxDuckGain.gain.value}`
+        );
+      }
+      mixAudio.stopAllHeroVoices(0);
+      if (Math.abs(mixAudio.sfxDuckGain.gain.value - 1.0) > 1e-6) {
+        throw new Error(
+          `[Suite 36.21] Expected sfxDuckGain to recover to 1.0 after voice ends, got ${mixAudio.sfxDuckGain.gain.value}`
+        );
+      }
+
+      // 3. Verify Pre-Round Intro Standoff holds combat & fires 'intro' voice, plus 9000ms Victory Hold
+      const introGame = Object.create(Game.prototype);
+      const seraP1 = new PriestessEx({ x: 240, groundY: 580, facing: 1 });
+      const warP2 = new WarriorEx({ x: 960, groundY: 580, facing: -1 });
+      try {
+        seraP1.team = 1;
+        seraP1.isPoint = true;
+        warP2.team = 2;
+        warP2.isPoint = true;
+        introGame.gameMode = '1v1';
+        introGame.simMode = true;
+        introGame.isLandingOpen = false;
+        introGame.isMatchOver = false;
+        introGame.isSimPaused = false;
+        introGame.matchTime = 0;
+        introGame.hudTimer = 0;
+        introGame.slot1Hero = 'priestess_ex';
+        introGame.slot2Hero = 'warrior_ex';
+        introGame.leftFighter = seraP1;
+        introGame.rightFighter = warP2;
+        introGame.fighters = [seraP1, warP2];
+        introGame.renderer = {
+          groundY: 580,
+          worldWidth: 1200,
+          hitStopTimer: 0,
+          update() {}
+        };
+        introGame.vfx = { update() {} };
+        introGame.victoryOverlay = {
+          classList: {
+            remove() {},
+            add() {},
+            contains: () => false
+          }
+        };
+        introGame.setPaused = () => {};
+        introGame.updateHUD = () => {};
+        const introVoiceLog = [];
+        introGame.audio = {
+          enabled: true,
+          voiceEnabled: true,
+          getVoiceVolume: () => 1.0,
+          hasVoicePack: (hid) => hid === 'priestess_ex',
+          preloadHeroVoicePack() {},
+          preDuckSfxForVoice() {},
+          stopAllHeroVoices() {},
+          play() {},
+          playHeroVoice(hid, cue, opts) {
+            introVoiceLog.push({ hid, cue, priority: opts?.priority });
+            return true;
+          }
+        };
+        const introDur = introGame.beginLiveRoundIntro({ forceInTest: true });
+        if (Math.abs(introDur - 4.15) > 0.05) {
+          throw new Error(`[Suite 36.21] Expected 4.15s voiced standoff duration, got ${introDur}`);
+        }
+        const startX1 = introGame.leftFighter.x;
+        const startX2 = introGame.rightFighter.x;
+        for (let i = 0; i < 12; i++) {
+          introGame.stepSimulation(1 / 60);
+        }
+        if (
+          introGame.matchTime !== 0 ||
+          introGame.leftFighter.x !== startX1 ||
+          introGame.rightFighter.x !== startX2 ||
+          introGame.leftFighter.state !== 'IDLE' ||
+          !introVoiceLog.some((v) => v.hid === 'priestess_ex' && v.cue === 'intro' && v.priority >= 3)
+        ) {
+          throw new Error(
+            `[Suite 36.21] Pre-round standoff failed to hold combat or fire intro voice! matchTime=${introGame.matchTime}, voices=${JSON.stringify(introVoiceLog)}`
+          );
+        }
+        introGame.skipRoundIntro();
+        if (introGame.roundIntroTimer !== 0 || !(introGame._roundEngageBannerTimer > 0)) {
+          throw new Error('[Suite 36.21] skipRoundIntro() failed to clear roundIntroTimer and show ENGAGE!');
+        }
+
+        // Verify 9.0s Auto-Tourney Victory Screen hold
+        introGame.autoTourney = true;
+        introGame.isMatchOver = true;
+        introGame.victoryRevealPending = true;
+        introGame.lastMatchWinnerHeroId = 'priestess_ex';
+        const nowBeforeReveal = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        introGame.revealVictoryOverlay();
+        const holdSpanMs = (introGame._autoNextDeadlineMs || 0) - nowBeforeReveal;
+        introGame._clearAutoNextTimers();
+        if (
+          !(holdSpanMs >= 8800) ||
+          !introVoiceLog.some((v) => v.hid === 'priestess_ex' && v.cue === 'victory' && v.priority === 4)
+        ) {
+          throw new Error(
+            `[Suite 36.21] Expected Victory Screen Auto-Tourney hold >= 8800ms & priority-4 victory voice, got holdSpanMs=${holdSpanMs}`
+          );
+        }
+      } finally {
+        introGame._clearAutoNextTimers?.();
+        seraP1.fx?.dispose?.();
+        warP2.fx?.dispose?.();
+      }
+
+      // 4. Verify HTML/CSS Audio Mixer hooks exist cleanly
+      const html3621 = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+      const css3621 = fs.readFileSync(path.join(REPO_ROOT, 'style.css'), 'utf8');
+      for (const hook of [
+        'id="btn-voice"',
+        'id="input-voice-vol"',
+        'id="input-sfx-vol"',
+        'id="btn-nav-audio"',
+        'id="nav-audio-popover"',
+        'NEXT CHALLENGER IN 9S...'
+      ]) {
+        if (!html3621.includes(hook)) {
+          throw new Error(`[Suite 36.21] index.html missing expected Audio Mixer / Victory hook: ${hook}`);
+        }
+      }
+      if (!css3621.includes('.pause-audio-mixer') || !css3621.includes('.nav-audio-popover')) {
+        throw new Error('[Suite 36.21] style.css missing .pause-audio-mixer or .nav-audio-popover styles!');
+      }
+    } finally {
+      if (prevStorageDesc) {
+        Object.defineProperty(globalThis, 'localStorage', prevStorageDesc);
+      }
+      if (globalThis.window && prevWinDesc) {
+        Object.defineProperty(globalThis.window, 'localStorage', prevWinDesc);
+      }
+    }
   }
 
   const suite36ElapsedMs = performance.now() - suite36StartMs;
@@ -17232,7 +17476,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-12 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19) & Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-12 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19), Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20) & Dual Voice/SFX Mixer + Sidechain Ducking + Pre-Round Intro Standoff + 9s Victory Hold Parity (36.21) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps139';
-import { VFXManager } from './engine/VFXManager.js?v=30fps139';
-import { PixelForge } from './engine/PixelForge.js?v=30fps139';
-import { AudioManager } from './engine/AudioManager.js?v=30fps139';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps139';
-import { Fighter } from './entities/Fighter.js?v=30fps139';
-import { Warrior } from './entities/Warrior.js?v=30fps139';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps139';
-import { FireMage } from './entities/FireMage.js?v=30fps139';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps139';
-import { Archer } from './entities/Archer.js?v=30fps139';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps139';
-import { Priestess } from './entities/Priestess.js?v=30fps139';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps139';
-import { Reaper } from './entities/Reaper.js?v=30fps139';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps139';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps139';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps139';
-import { Titan } from './entities/Titan.js?v=30fps139';
-import { TitanEx } from './entities/TitanEx.js?v=30fps139';
-import { Ronin } from './entities/Ronin.js?v=30fps139';
-import { RoninEx } from './entities/RoninEx.js?v=30fps139';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps139';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps139';
-import { IceMage } from './entities/IceMage.js?v=30fps139';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps139';
-import { Android } from './entities/Android.js?v=30fps139';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps139';
-import { NyxEx } from './entities/NyxEx.js?v=30fps139';
+import { Renderer } from './engine/Renderer.js?v=30fps140';
+import { VFXManager } from './engine/VFXManager.js?v=30fps140';
+import { PixelForge } from './engine/PixelForge.js?v=30fps140';
+import { AudioManager } from './engine/AudioManager.js?v=30fps140';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps140';
+import { Fighter } from './entities/Fighter.js?v=30fps140';
+import { Warrior } from './entities/Warrior.js?v=30fps140';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps140';
+import { FireMage } from './entities/FireMage.js?v=30fps140';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps140';
+import { Archer } from './entities/Archer.js?v=30fps140';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps140';
+import { Priestess } from './entities/Priestess.js?v=30fps140';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps140';
+import { Reaper } from './entities/Reaper.js?v=30fps140';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps140';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps140';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps140';
+import { Titan } from './entities/Titan.js?v=30fps140';
+import { TitanEx } from './entities/TitanEx.js?v=30fps140';
+import { Ronin } from './entities/Ronin.js?v=30fps140';
+import { RoninEx } from './entities/RoninEx.js?v=30fps140';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps140';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps140';
+import { IceMage } from './entities/IceMage.js?v=30fps140';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps140';
+import { Android } from './entities/Android.js?v=30fps140';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps140';
+import { NyxEx } from './entities/NyxEx.js?v=30fps140';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps139';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps139';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps139';
+} from './adventure/AdventureManager.js?v=30fps140';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps140';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps140';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1307,13 +1307,64 @@ export class Game {
     this._rafId = 0;
   }
 
-  _scheduleAutoNext(delayMs = 4200) {
+  _clearAutoNextTimers() {
     clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    if (this._autoNextTickInterval) {
+      clearInterval(this._autoNextTickInterval);
+      this._autoNextTickInterval = null;
+    }
+  }
+
+  _updateVictoryCountdownLabel() {
+    if (this.isAdventureMode() || typeof document === 'undefined') return;
+    const autoLabel = document.getElementById('victory-auto-next');
+    if (!autoLabel) return;
+    if (!this.autoTourney) {
+      autoLabel.textContent = 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
+      return;
+    }
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const remMs =
+      this._autoNextDeadlineMs > nowMs
+        ? this._autoNextDeadlineMs - nowMs
+        : this._autoNextRemainingMs > 0
+          ? this._autoNextRemainingMs
+          : 9000;
+    const secs = Math.max(1, Math.ceil(remMs / 1000));
+    const nextText = `AUTO-TOURNEY: NEXT CHALLENGER IN ${secs}S...`;
+    if (autoLabel.textContent !== nextText) {
+      autoLabel.textContent = nextText;
+    }
+  }
+
+  _scheduleAutoNext(delayMs = 9000) {
+    clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
     this._autoNextRemainingMs = 0;
     const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     this._autoNextDeadlineMs = nowMs + delayMs;
+    this._updateVictoryCountdownLabel?.();
+    if (typeof window !== 'undefined' && !this.simMode) {
+      this._autoNextTickInterval = setInterval(() => {
+        if (!this.isMatchOver || !this.autoTourney || this.isLandingOpen) {
+          if (this._autoNextTickInterval) {
+            clearInterval(this._autoNextTickInterval);
+            this._autoNextTickInterval = null;
+          }
+          return;
+        }
+        this._updateVictoryCountdownLabel?.();
+      }, 250);
+      if (this._autoNextTickInterval && typeof this._autoNextTickInterval.unref === 'function') {
+        this._autoNextTickInterval.unref();
+      }
+    }
     this.autoNextTimeout = setTimeout(() => {
+      clearTimeout(this.autoNextTimeout);
       this.autoNextTimeout = null;
+      this._clearAutoNextTimers?.();
       this._autoNextDeadlineMs = 0;
       if (
         !this._appSuspended &&
@@ -1326,6 +1377,9 @@ export class Game {
         this.advanceTourneyChallenger();
       }
     }, delayMs);
+    if (this.autoNextTimeout && typeof this.autoNextTimeout.unref === 'function') {
+      this.autoNextTimeout.unref();
+    }
   }
 
   setAppForegroundState(active) {
@@ -1344,6 +1398,7 @@ export class Game {
         this._autoNextRemainingMs = Math.max(250, (this._autoNextDeadlineMs || nowMs + 1000) - nowMs);
         clearTimeout(this.autoNextTimeout);
         this.autoNextTimeout = null;
+        this._clearAutoNextTimers?.();
       }
       return;
     }
@@ -1468,6 +1523,50 @@ export class Game {
     this.setMobileFullZoomOut(!cur, playSound);
   }
 
+  setNavAudioOpen(open, playSound = false) {
+    const nextOpen = Boolean(open && this.isLandingOpen);
+    this._navAudioOpen = nextOpen;
+    this.navAudioPopover?.classList.toggle('hidden', !nextOpen);
+    this.btnNavAudio?.setAttribute('aria-expanded', String(nextOpen));
+    if (nextOpen) {
+      this.syncAudioMixerUI();
+    }
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+  }
+
+  syncAudioMixerUI() {
+    const voiceVol = Math.max(0, Math.min(1, Number(this.audio?.getVoiceVolume?.() ?? 1)));
+    const sfxVol = Math.max(0, Math.min(1, Number(this.audio?.getSfxVolume?.() ?? 0.55)));
+    const voicePct = Math.round(voiceVol * 100);
+    const sfxPct = Math.round(sfxVol * 100);
+    const voiceOn = Boolean(this.audio?.enabled && this.audio?.voiceEnabled && voicePct > 0);
+    const sfxOn = Boolean(this.audio?.enabled && this.audio?.sfxEnabled && sfxPct > 0);
+
+    const syncChan = (btnEl, lblEl, sliderEl, valEl, isOn, pct, activeText) => {
+      if (btnEl) btnEl.setAttribute('aria-pressed', String(isOn));
+      if (lblEl) lblEl.textContent = isOn ? activeText : 'MUTE';
+      if (sliderEl && String(sliderEl.value) !== String(pct)) {
+        sliderEl.value = String(pct);
+      }
+      if (valEl) valEl.textContent = isOn ? `${pct}%` : 'OFF';
+    };
+
+    syncChan(this.btnVoice, this.voiceLabel, this.inputVoiceVol, this.voiceVolVal, voiceOn, voicePct, 'VOICE');
+    syncChan(this.btnSfx, this.sfxLabel, this.inputSfxVol, this.sfxVolVal, sfxOn, sfxPct, 'SFX');
+    syncChan(
+      this.btnNavVoice,
+      this.navVoiceLabel,
+      this.inputNavVoiceVol,
+      this.navVoiceVolVal,
+      voiceOn,
+      voicePct,
+      'VOICE'
+    );
+    syncChan(this.btnNavSfx, this.navSfxLabel, this.inputNavSfxVol, this.navSfxVolVal, sfxOn, sfxPct, 'SFX');
+  }
+
   syncPauseMenuUI() {
     const isAdv = this.isAdventureMode();
     const subtitleEl = document.getElementById('pause-mode-subtitle');
@@ -1482,7 +1581,8 @@ export class Game {
     }
     this.pauseVsSection?.classList.toggle('hidden', isAdv);
     this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
-    this.syncMobileFullZoomUI();
+    this.syncMobileFullZoomUI?.();
+    this.syncAudioMixerUI?.();
     const showPause = Boolean(this.isPaused && !this.isLandingOpen);
     this.pauseModal?.classList.toggle('hidden', !showPause);
     this.btnGamePause?.setAttribute('aria-expanded', String(showPause));
@@ -1802,8 +1902,26 @@ export class Game {
     this.pauseAdvSection = document.getElementById('pause-adv-section');
     this.btnVsPauseLandscape = document.getElementById('btn-vs-pause-landscape');
 
+    this.btnVoice = document.getElementById('btn-voice');
+    this.voiceLabel = document.getElementById('voice-label');
+    this.inputVoiceVol = document.getElementById('input-voice-vol');
+    this.voiceVolVal = document.getElementById('voice-vol-val');
     this.btnSfx = document.getElementById('btn-sfx');
     this.sfxLabel = document.getElementById('sfx-label');
+    this.inputSfxVol = document.getElementById('input-sfx-vol');
+    this.sfxVolVal = document.getElementById('sfx-vol-val');
+
+    this.navAudioWrap = document.getElementById('nav-audio-wrap');
+    this.btnNavAudio = document.getElementById('btn-nav-audio');
+    this.navAudioPopover = document.getElementById('nav-audio-popover');
+    this.btnNavVoice = document.getElementById('btn-nav-voice');
+    this.navVoiceLabel = document.getElementById('nav-voice-label');
+    this.inputNavVoiceVol = document.getElementById('input-nav-voice-vol');
+    this.navVoiceVolVal = document.getElementById('nav-voice-vol-val');
+    this.btnNavSfx = document.getElementById('btn-nav-sfx');
+    this.navSfxLabel = document.getElementById('nav-sfx-label');
+    this.inputNavSfxVol = document.getElementById('input-nav-sfx-vol');
+    this.navSfxVolVal = document.getElementById('nav-sfx-vol-val');
     this.btnSlowMo = document.getElementById('btn-slowmo');
     this.btnModeCycle = document.getElementById('btn-mode-cycle');
     this.modeCycleLabel = document.getElementById('mode-cycle-label');
@@ -1849,8 +1967,26 @@ export class Game {
       });
     }
     window.addEventListener('keydown', (e) => {
+      if (
+        (e.code === 'Space' || e.code === 'Enter') &&
+        !this.isLandingOpen &&
+        !this.isPaused &&
+        !this.isMatchOver &&
+        this.roundIntroTimer > 0 &&
+        (this.roundIntroElapsed || 0) >= 0.45
+      ) {
+        e.preventDefault();
+        this.skipRoundIntro();
+        return;
+      }
       if (e.code !== 'Escape') return;
-      if (this.isLandingOpen) return;
+      if (this.isLandingOpen) {
+        if (this._navAudioOpen) {
+          e.preventDefault();
+          this.setNavAudioOpen(false, true);
+        }
+        return;
+      }
       if (this.victoryOverlay && !this.victoryOverlay.classList.contains('hidden')) return;
       if (this.isAdventureMode() && this.adventure?.isSkillTreeOpen) {
         e.preventDefault();
@@ -2406,13 +2542,91 @@ export class Game {
     this.landingBtnAutoTourney = document.getElementById('landing-btn-auto-tourney');
     this.landingAutoTourneyTag = document.getElementById('landing-auto-tourney-tag');
 
-    if (this.btnSfx) {
-      this.btnSfx.addEventListener('click', () => {
-        const on = this.audio.toggle();
-        this.btnSfx.setAttribute('aria-pressed', String(on));
-        this.sfxLabel.textContent = on ? 'SFX' : 'MUTE';
+    const bindVoiceToggle = (btn) => {
+      if (!btn) return;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const on = this.audio.toggleVoice?.();
+        this.syncAudioMixerUI();
+        if (on && this.audio.activeHeroVoices?.size === 0) {
+          this.audio.playHeroVoice?.('priestess_ex', 'attack_1', {
+            speakerKey: 'mixer_preview',
+            priority: 2,
+            cooldownMs: 180
+          });
+        }
+      });
+    };
+    const bindSfxToggle = (btn) => {
+      if (!btn) return;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const on = this.audio.toggleSfx?.();
+        this.syncAudioMixerUI();
+        if (on) this.audio.play('clock_gear', 600);
+      });
+    };
+    const bindVoiceSlider = (slider) => {
+      if (!slider) return;
+      slider.addEventListener('input', (e) => {
+        this.audio.setVoiceVolume?.(Number(e.target.value) / 100);
+        this.syncAudioMixerUI();
+      });
+      slider.addEventListener('change', () => {
+        if (
+          this.audio?.voiceEnabled &&
+          (this.audio?.getVoiceVolume?.() ?? 0) > 0.01 &&
+          this.audio.activeHeroVoices?.size === 0
+        ) {
+          this.audio.playHeroVoice?.('priestess_ex', 'attack_1', {
+            speakerKey: 'mixer_preview',
+            priority: 2,
+            cooldownMs: 180
+          });
+        }
+      });
+    };
+    const bindSfxSlider = (slider) => {
+      if (!slider) return;
+      slider.addEventListener('input', (e) => {
+        this.audio.setSfxVolume?.(Number(e.target.value) / 100);
+        this.syncAudioMixerUI();
+      });
+      slider.addEventListener('change', () => {
+        if (this.audio?.sfxEnabled && (this.audio?.getSfxVolume?.() ?? 0) > 0.01) {
+          this.audio.play('holy_bolt', 600);
+        }
+      });
+    };
+
+    bindVoiceToggle(this.btnVoice);
+    bindVoiceToggle(this.btnNavVoice);
+    bindSfxToggle(this.btnSfx);
+    bindSfxToggle(this.btnNavSfx);
+    bindVoiceSlider(this.inputVoiceVol);
+    bindVoiceSlider(this.inputNavVoiceVol);
+    bindSfxSlider(this.inputSfxVol);
+    bindSfxSlider(this.inputNavSfxVol);
+
+    if (this.btnNavAudio) {
+      this.btnNavAudio.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.setNavAudioOpen(!this._navAudioOpen, true);
       });
     }
+    if (this.navAudioPopover) {
+      this.navAudioPopover.addEventListener('click', (e) => e.stopPropagation());
+    }
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('click', (e) => {
+        if (!this._navAudioOpen) return;
+        if (this.navAudioWrap && typeof this.navAudioWrap.contains === 'function' && this.navAudioWrap.contains(e.target)) {
+          return;
+        }
+        this.setNavAudioOpen(false, false);
+      });
+    }
+    this.syncAudioMixerUI();
 
     this.btnSlowMo.addEventListener('click', () => {
       this.userSlowMo = !this.userSlowMo;
@@ -2447,15 +2661,19 @@ export class Game {
         this.landingAutoTourneyTag.textContent = this.autoTourney ? 'ON' : 'OFF';
       }
       if (!this.isAdventureMode()) {
-        const autoLabel = document.getElementById('victory-auto-next');
-        if (autoLabel) {
-          autoLabel.textContent = this.autoTourney
-            ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 4S...'
-            : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
+        if (!this.autoTourney) {
+          this._clearAutoNextTimers();
+          this._updateVictoryCountdownLabel();
+        } else if (
+          this.isMatchOver &&
+          !this.isLandingOpen &&
+          this.victoryOverlay &&
+          !this.victoryOverlay.classList.contains('hidden')
+        ) {
+          this._scheduleAutoNext(9000);
+        } else {
+          this._updateVictoryCountdownLabel();
         }
-      }
-      if (!this.autoTourney) {
-        clearTimeout(this.autoNextTimeout);
       }
       if (this.audio) {
         this.audio.play('reflect', 600);
@@ -2475,9 +2693,15 @@ export class Game {
 
     this.btnReset.addEventListener('click', () => {
       this.setPaused(false, false);
+      this.audio?.stopAllHeroVoices?.(0.03);
       this.resetMatch();
+      this.beginLiveRoundIntro();
     });
-    this.btnPlayAgain.addEventListener('click', () => this.resetMatch());
+    this.btnPlayAgain.addEventListener('click', () => {
+      this.audio?.stopAllHeroVoices?.(0.03);
+      this.resetMatch();
+      this.beginLiveRoundIntro();
+    });
 
     // Adventure Mode Mobile Action-RPG HUD: Independent Multi-Touch Joystick + Simultaneous Right-Side Skill Cluster
     const joyZone = document.getElementById('adv-joystick-zone');
@@ -2944,6 +3168,9 @@ export class Game {
 
   advanceTourneyChallenger() {
     clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
+    this.audio?.stopAllHeroVoices?.(0.03);
     const keys = this.getActiveRosterPool();
     const fallbackA = this.rosterVersion === 'legacy' ? 'archer' : 'archer_ex';
     const fallbackB = this.rosterVersion === 'legacy' ? 'reaper' : 'reaper_ex';
@@ -2978,6 +3205,7 @@ export class Game {
     }
     this.syncRosterSelectionUI(false);
     this.resetMatch();
+    this.beginLiveRoundIntro?.({ preferChallenger: true });
   }
 
   setActiveSlot(slotNum) {
@@ -3029,7 +3257,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps139');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps140');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3125,7 +3353,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps139'
+          'v=30fps140'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -3693,7 +3921,66 @@ export class Game {
     }
   }
 
+  beginLiveRoundIntro(opts = {}) {
+    const forceInTest = Boolean(opts.forceInTest);
+    if (
+      !forceInTest &&
+      (this.simMode ||
+        typeof window === 'undefined' ||
+        typeof HTMLImageElement === 'undefined' ||
+        this.isLandingOpen)
+    ) {
+      this.roundIntroTimer = 0;
+      this.roundIntroDuration = 0;
+      this._roundIntroFighter = null;
+      this._roundIntroVoiceFired = false;
+      return 0;
+    }
+
+    const p1 = this.getPointFighter(1);
+    const p2 = this.isAdventureMode() ? null : this.getPointFighter(2);
+    const introCandidates = this.isAdventureMode()
+      ? [p1]
+      : opts.preferChallenger
+        ? [p2, p1]
+        : [p1, p2];
+    const voicedIntroFighter = introCandidates.find(
+      (f) => f && !f.isDead && this.audio?.hasVoicePack?.(f.heroId)
+    );
+    const canSpeak = Boolean(
+      voicedIntroFighter &&
+        this.audio &&
+        this.audio.enabled &&
+        this.audio.voiceEnabled &&
+        (this.audio.getVoiceVolume?.() ?? 1) > 0.01
+    );
+
+    if (canSpeak) {
+      this.audio.preloadHeroVoicePack?.(voicedIntroFighter.heroId);
+      this.audio.preDuckSfxForVoice?.(3, 550);
+    }
+
+    this.roundIntroDuration = canSpeak ? 4.15 : 1.35;
+    this.roundIntroTimer = this.roundIntroDuration;
+    this.roundIntroElapsed = 0;
+    this._roundIntroFighter = canSpeak ? voicedIntroFighter : null;
+    this._roundIntroVoiceFired = false;
+    this._roundEngageBannerTimer = 0;
+    return this.roundIntroTimer;
+  }
+
+  skipRoundIntro() {
+    if (!(this.roundIntroTimer > 0)) return false;
+    this.roundIntroTimer = 0;
+    this._roundIntroFighter = null;
+    this._roundIntroVoiceFired = true;
+    this._roundEngageBannerTimer = 0.5;
+    this.audio?.stopAllHeroVoices?.(0.05);
+    return true;
+  }
+
   startDuel(playSound = true) {
+    this.setNavAudioOpen?.(false, false);
     this.isLandingOpen = false;
     this.setPaused(false, false);
     this._pausedFrameRendered = false;
@@ -3717,36 +4004,25 @@ export class Game {
       this.audio?.ensureCombatWavFiles?.();
     }
     this.adventure?.syncControlDeckUI();
-    this.syncPauseMenuUI();
-    if (playSound && this.audio) {
-      this.audio.play('ult_cast', 600);
-      if (!this.simMode && typeof window !== 'undefined') {
-        const introCandidates = this.isAdventureMode()
-          ? [this.getPointFighter(1)]
-          : [this.getPointFighter(1), this.getPointFighter(2)];
-        const voicedIntroFighter = introCandidates.find(
-          (f) => f && !f.isDead && this.audio?.hasVoicePack?.(f.heroId)
-        );
-        if (voicedIntroFighter) {
-          this._introVoiceTimeout = setTimeout(() => {
-            if (this.isLandingOpen || this.isMatchOver || voicedIntroFighter.isDead) return;
-            this.audio?.playHeroVoice?.(voicedIntroFighter.heroId, 'intro', {
-              worldX: voicedIntroFighter.x,
-              speakerKey: voicedIntroFighter,
-              priority: 2,
-              cooldownMs: 400,
-              maxAsyncDelayMs: 950
-            });
-          }, 190);
-        }
+    this.syncPauseMenuUI?.();
+    if (playSound) {
+      this.beginLiveRoundIntro?.();
+      if (this.audio) {
+        this.audio.play('ult_cast', 600);
       }
     }
   }
 
   openLanding(targetStep = 'roster') {
     this.setPaused(false, false);
+    this.setNavAudioOpen?.(false, false);
     this.isLandingOpen = true;
+    this.roundIntroTimer = 0;
+    this._roundIntroFighter = null;
+    this._roundEngageBannerTimer = 0;
     clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
     clearTimeout(this._introVoiceTimeout);
     this.audio?.stopAllHeroVoices?.(0.03);
     this.victoryOverlay.classList.add('hidden');
@@ -4291,10 +4567,17 @@ export class Game {
     this.vfx.clear();
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.autoNextTimeout);
-    clearTimeout(this.ultBannerTimeout);
     this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
+    clearTimeout(this.ultBannerTimeout);
     this._autoNextRemainingMs = 0;
     this._autoNextDeadlineMs = 0;
+    this.roundIntroTimer = 0;
+    this.roundIntroDuration = 0;
+    this.roundIntroElapsed = 0;
+    this._roundIntroFighter = null;
+    this._roundIntroVoiceFired = false;
+    this._roundEngageBannerTimer = 0;
 
     this.testModeUnlimitedHp = this.isAdventureMode()
       ? Boolean(this.explicitAdvUnlimitedHp)
@@ -5058,12 +5341,14 @@ export class Game {
     if (autoLabel) {
       autoLabel.classList.remove('hidden');
       autoLabel.textContent = this.autoTourney
-        ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 4S...'
+        ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 9S...'
         : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
     }
 
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
   }
 
   revealVictoryOverlay() {
@@ -5073,23 +5358,28 @@ export class Game {
     this.matchOverSafetyTimer = 0;
     this.victoryOverlay.classList.remove('hidden');
     if (this.audio) {
-      this.audio.play('victory_fanfare');
       const isDefeat = Boolean(this.victoryOverlay?.classList?.contains('is-defeat-plaque'));
-      if (!isDefeat) {
-        const victorHeroId = this.isAdventureMode() ? this.slot1Hero : this.lastMatchWinnerHeroId;
-        if (victorHeroId) {
-          this.audio.playHeroVoice?.(victorHeroId, 'victory', {
-            speakerKey: 'victory_ui',
-            priority: 4,
-            cooldownMs: 300,
-            duckSfx: true,
-            maxAsyncDelayMs: 950
-          });
-        }
+      const victorHeroId = !isDefeat
+        ? this.isAdventureMode()
+          ? this.slot1Hero
+          : this.lastMatchWinnerHeroId
+        : null;
+      if (victorHeroId && this.audio.hasVoicePack?.(victorHeroId)) {
+        this.audio.preDuckSfxForVoice?.(4, 550);
+      }
+      this.audio.play('victory_fanfare');
+      if (victorHeroId) {
+        this.audio.playHeroVoice?.(victorHeroId, 'victory', {
+          speakerKey: 'victory_ui',
+          priority: 4,
+          cooldownMs: 300,
+          duckSfx: true,
+          maxAsyncDelayMs: 1200
+        });
       }
     }
     if (this.autoTourney && !this.isAdventureMode() && !this.isSimPaused) {
-      this._scheduleAutoNext(4200);
+      this._scheduleAutoNext(9000);
     }
   }
 
@@ -5667,6 +5957,58 @@ export class Game {
   stepSimulation(rawDt) {
     this.renderer.update(rawDt, this.fighters);
 
+    if (this._roundEngageBannerTimer > 0) {
+      this._roundEngageBannerTimer = Math.max(0, this._roundEngageBannerTimer - rawDt);
+    }
+
+    if (this.roundIntroTimer > 0 && !this.isMatchOver) {
+      this.roundIntroElapsed = (this.roundIntroElapsed || 0) + rawDt;
+      if (Array.isArray(this.fighters)) {
+        for (let i = 0; i < this.fighters.length; i++) {
+          const f = this.fighters[i];
+          if (!f || f.isDead || f.isBenched) continue;
+          f.state = 'IDLE';
+          f.moveDir = 0;
+          f.vx = 0;
+          f.vy = 0;
+          f.stateTimer = (f.stateTimer || 0) + rawDt;
+          f.walkPhase = (f.walkPhase || 0) + rawDt * 2.8;
+          f.headBob = Math.sin(f.walkPhase) * 2.0;
+          f.updateCape?.(rawDt);
+          f.fx?.update?.(rawDt);
+        }
+      }
+
+      if (!this._roundIntroVoiceFired && this.roundIntroElapsed >= 0.08) {
+        this._roundIntroVoiceFired = true;
+        const speaker = this._roundIntroFighter;
+        if (speaker && !speaker.isDead) {
+          this.audio?.playHeroVoice?.(speaker.heroId, 'intro', {
+            worldX: speaker.x,
+            speakerKey: speaker,
+            priority: 3,
+            cooldownMs: 300,
+            duckSfx: true,
+            maxAsyncDelayMs: 1400
+          });
+        }
+      }
+
+      this.vfx.update(rawDt, this.renderer.groundY, this.renderer, this.audio);
+      this.roundIntroTimer = Math.max(0, this.roundIntroTimer - rawDt);
+      if (this.roundIntroTimer <= 0) {
+        this._roundEngageBannerTimer = 0.65;
+        this.audio?.play?.('slash', 600);
+      }
+
+      this.hudTimer += rawDt;
+      if (this.hudTimer >= 0.05) {
+        this.hudTimer = 0;
+        this.updateHUD();
+      }
+      return;
+    }
+
     if (this.renderer.hitStopTimer > 0) return;
 
     let timeScale = 1.0;
@@ -5878,6 +6220,82 @@ export class Game {
     ctx.restore();
   }
 
+  _renderRoundIntroOverlay(ctx) {
+    if (!ctx?.fillRect || !ctx?.fillText || this.isMatchOver) return;
+    const inIntro = (this.roundIntroTimer || 0) > 0;
+    const inEngage = !inIntro && (this._roundEngageBannerTimer || 0) > 0;
+    if (!inIntro && !inEngage) return;
+
+    const cw = ctx.canvas?.width || 1280;
+    const ch = ctx.canvas?.height || 720;
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+
+    if (inIntro) {
+      const boxW = Math.min(340, Math.max(240, cw - 28));
+      const boxH = 54;
+      const bx = Math.round((cw - boxW) * 0.5);
+      const by = Math.max(88, Math.round(ch * 0.165));
+      const total = Math.max(0.2, this.roundIntroDuration || 1.35);
+      const ratio = Math.max(0, Math.min(1, 1 - (this.roundIntroTimer || 0) / total));
+
+      const f1 = this.getPointFighter(1);
+      const f2 = this.isAdventureMode() ? null : this.getPointFighter(2);
+      const n1 = (f1?.name || 'CHAMPION').toUpperCase();
+      const n2 = (f2?.name || 'CHALLENGER').toUpperCase();
+      const headline = this.isAdventureMode() ? `${n1} • PILGRIMAGE` : `${n1} VS. ${n2}`;
+
+      ctx.fillStyle = 'rgba(7, 10, 18, 0.88)';
+      ctx.fillRect(bx, by, boxW, boxH);
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx + 1, by + 1, boxW - 2, boxH - 2);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 8px "Press Start 2P", monospace';
+      ctx.fillText(
+        this.isAdventureMode() ? 'REALM STANDOFF • PREPARE' : 'SANCTUARY DUEL • STANDOFF',
+        bx + Math.round(boxW * 0.5),
+        by + 14
+      );
+
+      ctx.fillStyle = '#fef08a';
+      ctx.font = 'bold 11px "Press Start 2P", monospace';
+      ctx.fillText(headline, bx + Math.round(boxW * 0.5), by + 30);
+
+      const barW = boxW - 36;
+      const barX = bx + 18;
+      const barY = by + 42;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(barX, barY, barW, 5);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(barX, barY, Math.round(barW * ratio), 5);
+    } else if (inEngage) {
+      const alpha = Math.max(0, Math.min(1, (this._roundEngageBannerTimer || 0) / 0.5));
+      const boxW = 212;
+      const boxH = 38;
+      const bx = Math.round((cw - boxW) * 0.5);
+      const by = Math.max(92, Math.round(ch * 0.17));
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+      ctx.fillRect(bx, by, boxW, boxH);
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx + 1, by + 1, boxW - 2, boxH - 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('ENGAGE!', bx + Math.round(boxW * 0.5), by + Math.round(boxH * 0.5) + 1);
+    }
+
+    ctx.restore();
+  }
+
   loop(now) {
     this._rafId = 0;
     if (this._appSuspended || (typeof document !== 'undefined' && document.hidden)) {
@@ -5943,8 +6361,10 @@ export class Game {
       this._pausedFrameRendered = false;
       this.stepSimulation(rawDt);
       this.renderer.render(this.fighters, this.vfx);
+      this._renderRoundIntroOverlay?.(this.renderer?.ctx);
     } else if (!this._pausedFrameRendered) {
       this.renderer.render(this.fighters, this.vfx);
+      this._renderRoundIntroOverlay?.(this.renderer?.ctx);
       this._pausedFrameRendered = true;
     }
   }
