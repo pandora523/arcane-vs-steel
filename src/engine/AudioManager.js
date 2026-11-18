@@ -21,6 +21,7 @@ export class AudioManager {
     this.voiceEnabled = true;
     this.sfxVolume = DEFAULT_SFX_VOLUME;
     this.voiceVolume = DEFAULT_VOICE_VOLUME;
+    this.voiceLang = 'en';
     this.ctx = null;
     this.master = null;
     this.sfxBus = null;
@@ -143,10 +144,21 @@ export class AudioManager {
     this._rebuildCount = 0;
     this._pendingPlays = [];
 
-    // Champion Studio Voice Pack Subsystem (24kHz->44.1kHz 96kbps MP3s in `assets/voices/`)
+    // Champion Studio Voice Pack Subsystem (24kHz->44.1kHz 96kbps EN + JP MP3s in `assets/voices/`)
     this.heroVoiceMap = {
       priestess_ex: 'seraphina',
-      priestess: 'seraphina'
+      priestess: 'seraphina',
+      warrior_ex: 'aethelgard',
+      warrior: 'aethelgard',
+      ronin_ex: 'kazemaru',
+      ronin: 'kazemaru',
+      mage_ex: 'ignissol',
+      mage: 'ignissol',
+      valkyrie_ex: 'freyja',
+      valkyrie: 'freyja',
+      reaper_ex: 'malakor',
+      reaper: 'malakor',
+      nyx_ex: 'nyx'
     };
     this.voiceVolumes = {
       seraphina_select: 0.94,
@@ -163,6 +175,23 @@ export class AudioManager {
       seraphina_death: 0.98,
       seraphina_victory: 0.98
     };
+    for (const prefix of ['aethelgard', 'kazemaru', 'ignissol', 'freyja', 'malakor', 'nyx']) {
+      Object.assign(this.voiceVolumes, {
+        [`${prefix}_select`]: 0.94,
+        [`${prefix}_intro`]: 0.96,
+        [`${prefix}_attack_1`]: 0.86,
+        [`${prefix}_attack_2`]: 0.86,
+        [`${prefix}_skill_std`]: 0.94,
+        [`${prefix}_skill_alt`]: 0.94,
+        [`${prefix}_ult_std`]: 0.98,
+        [`${prefix}_ult_alt`]: 0.98,
+        [`${prefix}_true_ult_charge`]: 0.98,
+        [`${prefix}_true_ult_fire`]: 1.0,
+        [`${prefix}_hurt`]: 0.88,
+        [`${prefix}_death`]: 0.98,
+        [`${prefix}_victory`]: 0.98
+      });
+    }
     this.voiceBuffers = {};
     this._voiceLoadPromises = new Map();
     this._preloadedVoicePacks = new Set();
@@ -570,6 +599,9 @@ export class AudioManager {
       if (typeof parsed.voiceEnabled === 'boolean') {
         this.voiceEnabled = parsed.voiceEnabled;
       }
+      if (parsed.voiceLang === 'ja' || parsed.voiceLang === 'en') {
+        this.voiceLang = parsed.voiceLang;
+      }
       this.enabled = Boolean(this.sfxEnabled || this.voiceEnabled);
     } catch (_) {}
   }
@@ -584,7 +616,8 @@ export class AudioManager {
           sfxVolume: Math.round(this.sfxVolume * 100) / 100,
           voiceVolume: Math.round(this.voiceVolume * 100) / 100,
           sfxEnabled: Boolean(this.sfxEnabled),
-          voiceEnabled: Boolean(this.voiceEnabled)
+          voiceEnabled: Boolean(this.voiceEnabled),
+          voiceLang: this.voiceLang === 'ja' ? 'ja' : 'en'
         })
       );
     } catch (_) {}
@@ -660,6 +693,25 @@ export class AudioManager {
 
   getVoiceVolume() {
     return this.voiceVolume;
+  }
+
+  getVoiceLang() {
+    return this.voiceLang === 'ja' ? 'ja' : 'en';
+  }
+
+  setVoiceLang(lang, persist = true) {
+    const nextLang = lang === 'ja' ? 'ja' : 'en';
+    if (this.voiceLang !== nextLang) {
+      this._pendingVoicePlays.length = 0;
+      this.stopAllHeroVoices(0.02);
+      this.voiceLang = nextLang;
+    }
+    if (persist) this._saveAudioMixSettings();
+    return this.voiceLang;
+  }
+
+  toggleVoiceLang(persist = true) {
+    return this.setVoiceLang(this.getVoiceLang() === 'ja' ? 'en' : 'ja', persist);
   }
 
   setSfxVolume(vol, persist = true) {
@@ -1324,40 +1376,93 @@ export class AudioManager {
     return (heroId && this.heroVoiceMap[heroId]) || null;
   }
 
-  async loadVoiceKey(voiceKey) {
+  _getVoiceCacheKey(voiceKey, lang = this.voiceLang) {
+    const normLang = lang === 'ja' ? 'ja' : 'en';
+    return `${normLang}:${voiceKey}`;
+  }
+
+  _getCachedVoiceBuffer(voiceKey, lang = this.voiceLang) {
+    const normLang = lang === 'ja' ? 'ja' : 'en';
+    const scoped = this.voiceBuffers[this._getVoiceCacheKey(voiceKey, normLang)];
+    if (scoped) return scoped;
+    if (normLang === 'en' && this.voiceBuffers[voiceKey]) {
+      return this.voiceBuffers[voiceKey];
+    }
+    return null;
+  }
+
+  _resolveVoiceKey(prefix, cue) {
+    let resolvedCue = cue;
+    if (cue === 'attack') {
+      this._attackVoiceAlt = (this._attackVoiceAlt + 1) % 2;
+      resolvedCue = this._attackVoiceAlt === 0 ? 'attack_1' : 'attack_2';
+    }
+    const candidate = `${prefix}_${resolvedCue}`;
+    if (candidate in this.voiceVolumes) return candidate;
+    if (resolvedCue === 'skill_alt' && `${prefix}_skill_crimson` in this.voiceVolumes) {
+      return `${prefix}_skill_crimson`;
+    }
+    if (resolvedCue === 'skill_crimson' && `${prefix}_skill_alt` in this.voiceVolumes) {
+      return `${prefix}_skill_alt`;
+    }
+    if (resolvedCue === 'ult_alt' && `${prefix}_ult_crimson` in this.voiceVolumes) {
+      return `${prefix}_ult_crimson`;
+    }
+    if (resolvedCue === 'ult_crimson' && `${prefix}_ult_alt` in this.voiceVolumes) {
+      return `${prefix}_ult_alt`;
+    }
+    return null;
+  }
+
+  async loadVoiceKey(voiceKey, langOverride = null) {
+    const lang = (langOverride || this.voiceLang) === 'ja' ? 'ja' : 'en';
     if (!this.ctx || !voiceKey || !(voiceKey in this.voiceVolumes)) return null;
-    if (this.voiceBuffers[voiceKey]) return this.voiceBuffers[voiceKey];
-    if (this._voiceLoadPromises.has(voiceKey)) {
-      return this._voiceLoadPromises.get(voiceKey);
+    const existing = this._getCachedVoiceBuffer(voiceKey, lang);
+    if (existing) return existing;
+    const cacheKey = this._getVoiceCacheKey(voiceKey, lang);
+    if (this._voiceLoadPromises.has(cacheKey)) {
+      return this._voiceLoadPromises.get(cacheKey);
     }
     if (typeof fetch !== 'function' || typeof this.ctx.decodeAudioData !== 'function') {
       return null;
     }
     const loadPromise = (async () => {
       try {
-        const res = await fetch(`assets/voices/${voiceKey}.mp3?v=30fps140`);
-        if (!res.ok) return null;
-        const arr = await res.arrayBuffer();
-        const decoded = await this.ctx.decodeAudioData(arr);
-        if (decoded) {
-          this.voiceBuffers[voiceKey] = decoded;
+        const urls =
+          lang === 'ja'
+            ? [
+                `assets/voices/ja/${voiceKey}.mp3?v=30fps141`,
+                `assets/voices/${voiceKey}.mp3?v=30fps141`
+              ]
+            : [`assets/voices/${voiceKey}.mp3?v=30fps141`];
+        for (const url of urls) {
+          try {
+            const res = await fetch(url);
+            if (!res || !res.ok) continue;
+            const arr = await res.arrayBuffer();
+            const decoded = await this.ctx.decodeAudioData(arr);
+            if (decoded) {
+              this.voiceBuffers[cacheKey] = decoded;
+              return decoded;
+            }
+          } catch (_) {}
         }
-        return decoded || null;
-      } catch (_) {
         return null;
       } finally {
-        this._voiceLoadPromises.delete(voiceKey);
+        this._voiceLoadPromises.delete(cacheKey);
       }
     })();
-    this._voiceLoadPromises.set(voiceKey, loadPromise);
+    this._voiceLoadPromises.set(cacheKey, loadPromise);
     return loadPromise;
   }
 
-  preloadHeroVoicePack(heroId) {
+  preloadHeroVoicePack(heroId, langOverride = null) {
     if (!this.ctx) return;
     const prefix = this.getVoicePackPrefix(heroId);
-    if (!prefix || this._preloadedVoicePacks.has(prefix)) return;
-    this._preloadedVoicePacks.add(prefix);
+    const lang = (langOverride || this.voiceLang) === 'ja' ? 'ja' : 'en';
+    const packKey = `${lang}:${prefix}`;
+    if (!prefix || this._preloadedVoicePacks.has(packKey)) return;
+    this._preloadedVoicePacks.add(packKey);
 
     const matchingKeys = Object.keys(this.voiceVolumes).filter((k) => k.startsWith(`${prefix}_`));
     if (!matchingKeys.length) return;
@@ -1367,14 +1472,18 @@ export class AudioManager {
     const queue = [
       ...priorityOrder.filter((k) => matchingKeys.includes(k)),
       ...matchingKeys.filter((k) => !priorityOrder.includes(k))
-    ].filter((k) => !this.voiceBuffers[k] && !this._voiceLoadPromises.has(k));
+    ].filter(
+      (k) =>
+        !this._getCachedVoiceBuffer(k, lang) &&
+        !this._voiceLoadPromises.has(this._getVoiceCacheKey(k, lang))
+    );
 
     const VOICE_LOAD_CONCURRENCY = 2;
     let cursor = 0;
     const worker = async () => {
       while (cursor < queue.length) {
         const key = queue[cursor++];
-        await this.loadVoiceKey(key);
+        await this.loadVoiceKey(key, lang);
       }
     };
     const workers = [];
@@ -1472,13 +1581,9 @@ export class AudioManager {
     const prefix = this.getVoicePackPrefix(heroId);
     if (!prefix) return false;
 
-    let resolvedCue = cue;
-    if (cue === 'attack') {
-      this._attackVoiceAlt = (this._attackVoiceAlt + 1) % 2;
-      resolvedCue = this._attackVoiceAlt === 0 ? 'attack_1' : 'attack_2';
-    }
-    const voiceKey = `${prefix}_${resolvedCue}`;
-    if (!(voiceKey in this.voiceVolumes)) return false;
+    const lang = (opts.lang || this.voiceLang) === 'ja' ? 'ja' : 'en';
+    const voiceKey = this._resolveVoiceKey(prefix, cue);
+    if (!voiceKey) return false;
 
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const speakerKey = opts.speakerKey || heroId;
@@ -1601,7 +1706,7 @@ export class AudioManager {
       }
     };
 
-    const cachedBuf = this.voiceBuffers[voiceKey];
+    const cachedBuf = this._getCachedVoiceBuffer(voiceKey, lang);
     if (cachedBuf) {
       return startBufferPlayback(cachedBuf);
     }
@@ -1610,16 +1715,17 @@ export class AudioManager {
       this.preDuckSfxForVoice(priority, maxAsyncDelayMs + 80);
     }
     const reqStart = now;
-    this.loadVoiceKey(voiceKey)
+    this.loadVoiceKey(voiceKey, lang)
       .then((decoded) => {
         if (!decoded) return;
+        if (!opts.lang && this.voiceLang !== lang) return;
         const doneAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
         if (doneAt - reqStart <= maxAsyncDelayMs) {
           startBufferPlayback(decoded);
         }
       })
       .catch(() => {});
-    this.preloadHeroVoicePack(heroId);
+    this.preloadHeroVoicePack(heroId, lang);
     return true;
   }
 }

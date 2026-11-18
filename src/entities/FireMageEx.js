@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps140';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps140';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps140';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps140';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps140';
+import { Fighter } from './Fighter.js?v=30fps141';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps141';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps141';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -266,6 +266,9 @@ export class FireMageEx extends Fighter {
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
+    this._skillVoiceFired = false;
+    this._ultVoiceFired = false;
+    this._trueUltChargeVoiced = false;
 
     if (
       (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
@@ -1327,6 +1330,12 @@ export class FireMageEx extends Fighter {
           : this.x + this.facing * 380;
         this._v3RemoteTargetX = this._clampArenaX(rawRemoteX, game);
         if (game?.audio) game.audio.play('fireball', spawnX);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         this.spawnVfxAnim(4, spawnX + this.facing * 8, spawnY, 174, 174, 0.30, {
           flipX: this.facing < 0,
           inFront: true
@@ -1486,6 +1495,16 @@ export class FireMageEx extends Fighter {
 
     if (!this.didSkillAura) {
       this.didSkillAura = true;
+      if (!this._skillVoiceFired) {
+        this._skillVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 2,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       if (vsSkill === 2) {
         this.heal(20, 'CORONA AEGIS');
         this.grantBuildShield(44, 2.4, 'SOLAR BARRIER!', '#fde047');
@@ -1648,6 +1667,16 @@ export class FireMageEx extends Fighter {
 
     if (!this.spawnedEclipse) {
       this.spawnedEclipse = true;
+      if (!this._ultVoiceFired) {
+        this._ultVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       this._ultLanceStep = 0;
       this._ultLockedTargetX = initTargetX;
       this._ultLockedEclipseX = initEclipseX;
@@ -1887,6 +1916,16 @@ export class FireMageEx extends Fighter {
       this.cameraAirLift = 280;
 
       if (game?.audio) game.audio.play('eclipse_charge', this.x);
+      if (!this._trueUltChargeVoiced) {
+        this._trueUltChargeVoiced = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       game?.renderer?.triggerShake?.(14, 0.55);
       game?.renderer?.triggerAberration?.(10);
 
@@ -2090,6 +2129,13 @@ export class FireMageEx extends Fighter {
           game.audio.play('meteor_impact', targetX);
           game.audio.play('supernova_detonate', targetX);
         }
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
 
         if (game?.renderer) {
           game.renderer.triggerImpactFrame?.(targetX, this.groundY - 90, 0.16, 'inferno');
@@ -2308,9 +2354,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps140'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps140'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps140'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps141'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps141'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps141'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

@@ -5599,13 +5599,45 @@ html.is-mobile-landscape .adv-st-grid {
 }
 
 .nav-audio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-family: var(--font-pixel);
   font-size: 0.29rem;
   letter-spacing: 0.06em;
   color: #fef08a;
-  text-align: center;
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(212, 175, 55, 0.26);
+}
+
+.voice-lang-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex-shrink: 0;
+  padding: 4px 7px;
+  font-family: var(--font-pixel);
+  font-size: 0.26rem;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  border-color: rgba(212, 175, 55, 0.55);
+  white-space: nowrap;
+}
+
+.voice-lang-btn .vlang-opt {
+  color: #64748b;
+  transition: color 0.14s ease;
+}
+
+.voice-lang-btn .vlang-opt.is-active {
+  color: #fef08a;
+  text-shadow: 0 0 6px rgba(250, 204, 21, 0.45);
+}
+
+.voice-lang-btn .vlang-sep {
+  color: rgba(148, 163, 184, 0.5);
 }
 
 .pause-shared-row {
@@ -5771,6 +5803,20 @@ html.is-mobile-landscape .pause-audio-mixer {
 html.is-mobile-landscape .audio-mix-channel {
   padding: 4px 6px;
   gap: 5px;
+}
+
+html.is-mobile-landscape .audio-vol-slider {
+  min-width: 42px;
+}
+
+html.is-mobile-landscape .audio-vol-pct {
+  min-width: 28px;
+  font-size: 0.25rem;
+}
+
+html.is-mobile-landscape .voice-lang-btn {
+  padding: 3px 5px;
+  font-size: 0.24rem;
 }
 
 html.is-mobile-landscape .audio-chan-btn {

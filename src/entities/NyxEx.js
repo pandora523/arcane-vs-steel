@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps140';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps140';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps140';
-import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps140';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps140';
+import { Fighter } from './Fighter.js?v=30fps141';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps141';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps141';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Coil + Forward lunge + finger-tap -> Twin Star-Packet Bolts
@@ -212,9 +212,9 @@ export class NyxEx extends Fighter {
         return im;
       };
       assets.nyx_ex = {
-        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps140'),
-        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps140'),
-        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps140'),
+        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps141'),
+        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps141'),
+        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps141'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -499,6 +499,9 @@ export class NyxEx extends Fighter {
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
+    this._skillVoiceFired = false;
+    this._ultVoiceFired = false;
+    this._trueUltChargeVoiced = false;
 
     if (
       (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
@@ -1309,6 +1312,7 @@ export class NyxEx extends Fighter {
           maxLife: 0.30
         };
         if (game?.audio) game.audio.play('cyber_slash', this._v3RemoteX);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', { worldX: this.x, speakerKey: this, priority: 1, cooldownMs: 3600 });
         this.spawnNebulaFloorSeal(this._v3RemoteX, this.groundY, 96, 0.46);
         this.spawnVfxAnim(3, this._v3RemoteX, this.groundY - 88, 196, 196, 0.32, { inFront: false });
         this.spawnVfxAnim(4, this._v3RemoteX, this.groundY - 98, 188, 188, 0.36, { inFront: true });
@@ -1425,6 +1429,16 @@ export class NyxEx extends Fighter {
     this._skillTargetX = targetX;
 
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const skillPal =
       vsSkill === 1
         ? KERNEL_OVERCLOCK_PALETTE
@@ -1610,6 +1624,16 @@ export class NyxEx extends Fighter {
     }
 
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const ultPal =
       vsUlt === 1
         ? KERNEL_OVERCLOCK_PALETTE
@@ -1848,6 +1872,17 @@ export class NyxEx extends Fighter {
     this.trueUltFrameOverride = 135 + localCol;
     this._overrideFrameIdx = 135 + localCol;
 
+    if (!this._trueUltChargeVoiced) {
+      this._trueUltChargeVoiced = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
+
     if (this._trueUltStep === 0 && t >= 0.06) {
       this._trueUltStep = 1;
       if (game?.audio) game.audio.play('ult_cast', this.x);
@@ -1888,6 +1923,13 @@ export class NyxEx extends Fighter {
     // Act III (t >= 2.32s): Deploy `cob_monitor` Stage + "Cob Helping Nyx" Creator Intervention + Supernova Beam!
     if (t >= 2.32 && !this._supernovaFired) {
       this._supernovaFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 4,
+        cooldownMs: 200,
+        duckSfx: true
+      });
       this.didActionFrame = true;
       this._supernovaBeamTimer = 0.01;
       this._supernovaMuzzleX = this.x + this.facing * 48;

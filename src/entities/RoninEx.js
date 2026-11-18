@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps140';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps140';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps140';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps140';
+import { Fighter } from './Fighter.js?v=30fps141';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps141';
 
 const wrapStormPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -440,6 +440,9 @@ export class RoninEx extends Fighter {
     }
 
     super.setState(newState);
+    this._skillVoiceFired = false;
+    this._ultVoiceFired = false;
+    this._trueUltChargeVoiced = false;
 
     if (
       (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
@@ -1564,6 +1567,12 @@ export class RoninEx extends Fighter {
     } else {
       if ((this._beatHitMask & 1) === 0 && t >= 0.14) {
         this._beatHitMask |= 1;
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         const cleaveX = this.x + this.facing * 78;
         this.spawnSayaGlint(true);
         game?.renderer?.triggerShake?.(11, 0.22);
@@ -1689,6 +1698,16 @@ export class RoninEx extends Fighter {
     const dashTargetX = clampX(center + dir * 136);
 
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
 
     // Phase 0 (0.00..0.15s): Deep Iaido Coil + Ignite 5 Raijin Taiko Drums & Thunder Crest
     if (t < 0.15) {
@@ -1908,6 +1927,18 @@ export class RoninEx extends Fighter {
       );
     }
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
+
     if (t < 0.26) {
       if (this._omniStep === 0) {
         this._omniStep = 1;
@@ -1952,8 +1983,6 @@ export class RoninEx extends Fighter {
       { x: clampX(targetX + dir * 146), y: this.groundY - 196 },
       { x: landX, y: this.groundY }
     ];
-
-    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
 
     if (t >= 0.26 && t < 1.30) {
       const segDur = (1.30 - 0.26) / 6;
@@ -2151,6 +2180,16 @@ export class RoninEx extends Fighter {
       this._trueUltStep = 0;
       this._trueUltCutsDone = 0;
       this._trueUltAfterimageAcc = 0;
+      if (!this._trueUltChargeVoiced) {
+        this._trueUltChargeVoiced = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
 
       const rawEnemyX = focusEnemy ? focusEnemy.x : this.x + (this.facing || 1) * 280;
       const dashDir =
@@ -2471,6 +2510,13 @@ export class RoninEx extends Fighter {
         game.audio.play('raijin_slash', targetX);
         game.audio.play('thunder_slam', targetX);
         game.audio.play('hit_crit', targetX);
+        game.audio.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
       }
       if (game?.renderer) {
         game.renderer.triggerShogunateStage?.(destStageKey);

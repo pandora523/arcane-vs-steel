@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps140';
-import { VFXManager } from './engine/VFXManager.js?v=30fps140';
-import { PixelForge } from './engine/PixelForge.js?v=30fps140';
-import { AudioManager } from './engine/AudioManager.js?v=30fps140';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps140';
-import { Fighter } from './entities/Fighter.js?v=30fps140';
-import { Warrior } from './entities/Warrior.js?v=30fps140';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps140';
-import { FireMage } from './entities/FireMage.js?v=30fps140';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps140';
-import { Archer } from './entities/Archer.js?v=30fps140';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps140';
-import { Priestess } from './entities/Priestess.js?v=30fps140';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps140';
-import { Reaper } from './entities/Reaper.js?v=30fps140';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps140';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps140';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps140';
-import { Titan } from './entities/Titan.js?v=30fps140';
-import { TitanEx } from './entities/TitanEx.js?v=30fps140';
-import { Ronin } from './entities/Ronin.js?v=30fps140';
-import { RoninEx } from './entities/RoninEx.js?v=30fps140';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps140';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps140';
-import { IceMage } from './entities/IceMage.js?v=30fps140';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps140';
-import { Android } from './entities/Android.js?v=30fps140';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps140';
-import { NyxEx } from './entities/NyxEx.js?v=30fps140';
+import { Renderer } from './engine/Renderer.js?v=30fps141';
+import { VFXManager } from './engine/VFXManager.js?v=30fps141';
+import { PixelForge } from './engine/PixelForge.js?v=30fps141';
+import { AudioManager } from './engine/AudioManager.js?v=30fps141';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps141';
+import { Fighter } from './entities/Fighter.js?v=30fps141';
+import { Warrior } from './entities/Warrior.js?v=30fps141';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps141';
+import { FireMage } from './entities/FireMage.js?v=30fps141';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps141';
+import { Archer } from './entities/Archer.js?v=30fps141';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps141';
+import { Priestess } from './entities/Priestess.js?v=30fps141';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps141';
+import { Reaper } from './entities/Reaper.js?v=30fps141';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps141';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps141';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps141';
+import { Titan } from './entities/Titan.js?v=30fps141';
+import { TitanEx } from './entities/TitanEx.js?v=30fps141';
+import { Ronin } from './entities/Ronin.js?v=30fps141';
+import { RoninEx } from './entities/RoninEx.js?v=30fps141';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps141';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps141';
+import { IceMage } from './entities/IceMage.js?v=30fps141';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps141';
+import { Android } from './entities/Android.js?v=30fps141';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps141';
+import { NyxEx } from './entities/NyxEx.js?v=30fps141';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps140';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps140';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps140';
+} from './adventure/AdventureManager.js?v=30fps141';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps141';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps141';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -929,6 +929,10 @@ export class Game {
     this._pendingMatchPackId = null;
 
     const params = new URLSearchParams(window.location.search);
+    const vlangParam = params.get('vlang');
+    if (vlangParam === 'ja' || vlangParam === 'en') {
+      this.audio?.setVoiceLang?.(vlangParam, false);
+    }
     const campaignParamRaw = params.get('campaign');
     const campaignParam =
       typeof campaignParamRaw === 'string' && campaignParamRaw.trim()
@@ -1565,6 +1569,18 @@ export class Game {
       'VOICE'
     );
     syncChan(this.btnNavSfx, this.navSfxLabel, this.inputNavSfxVol, this.navSfxVolVal, sfxOn, sfxPct, 'SFX');
+
+    const vLang = this.audio?.getVoiceLang?.() === 'ja' ? 'ja' : 'en';
+    for (const langBtn of [this.btnVoiceLang, this.btnNavVoiceLang]) {
+      if (!langBtn) continue;
+      langBtn.setAttribute('data-voice-lang', vLang);
+      langBtn.setAttribute('aria-pressed', String(vLang === 'ja'));
+      if (typeof langBtn.querySelectorAll === 'function') {
+        langBtn.querySelectorAll('.vlang-opt').forEach((optEl) => {
+          optEl.classList.toggle('is-active', optEl.getAttribute('data-lang') === vLang);
+        });
+      }
+    }
   }
 
   syncPauseMenuUI() {
@@ -1708,7 +1724,8 @@ export class Game {
   prewarmSelectedAssets() {
     if (typeof HTMLImageElement === 'undefined') return;
     if (this.isLandingOpen) {
-      this.audio?.loadVoiceKey?.('seraphina_select');
+      const bootPrefix = this.audio?.getVoicePackPrefix?.(this.slot1Hero) || 'seraphina';
+      this.audio?.loadVoiceKey?.(`${bootPrefix}_select`);
     }
     if (this.isAdventureMode()) {
       const advHero = this.slot1Hero || 'warrior_ex';
@@ -1906,6 +1923,7 @@ export class Game {
     this.voiceLabel = document.getElementById('voice-label');
     this.inputVoiceVol = document.getElementById('input-voice-vol');
     this.voiceVolVal = document.getElementById('voice-vol-val');
+    this.btnVoiceLang = document.getElementById('btn-voice-lang');
     this.btnSfx = document.getElementById('btn-sfx');
     this.sfxLabel = document.getElementById('sfx-label');
     this.inputSfxVol = document.getElementById('input-sfx-vol');
@@ -1918,6 +1936,7 @@ export class Game {
     this.navVoiceLabel = document.getElementById('nav-voice-label');
     this.inputNavVoiceVol = document.getElementById('input-nav-voice-vol');
     this.navVoiceVolVal = document.getElementById('nav-voice-vol-val');
+    this.btnNavVoiceLang = document.getElementById('btn-nav-voice-lang');
     this.btnNavSfx = document.getElementById('btn-nav-sfx');
     this.navSfxLabel = document.getElementById('nav-sfx-label');
     this.inputNavSfxVol = document.getElementById('input-nav-sfx-vol');
@@ -2542,6 +2561,39 @@ export class Game {
     this.landingBtnAutoTourney = document.getElementById('landing-btn-auto-tourney');
     this.landingAutoTourneyTag = document.getElementById('landing-auto-tourney-tag');
 
+    const getPreviewVoiceHeroId = () => {
+      const candidates = [
+        !this.isLandingOpen ? this.leftFighter?.heroId : null,
+        !this.isLandingOpen ? this.rightFighter?.heroId : null,
+        this.slot1Hero,
+        this.slot2Hero,
+        'priestess_ex'
+      ];
+      for (const cid of candidates) {
+        if (cid && this.audio?.hasVoicePack?.(cid)) return cid;
+      }
+      return 'priestess_ex';
+    };
+
+    const bindVoiceLangToggle = (btn) => {
+      if (!btn) return;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.audio.toggleVoiceLang?.();
+        this.syncAudioMixerUI();
+        this.prewarmSelectedAssets();
+        this.audio.play('clock_gear', 600);
+        if (this.audio?.voiceEnabled && (this.audio?.getVoiceVolume?.() ?? 0) > 0.01) {
+          this.audio.playHeroVoice?.(getPreviewVoiceHeroId(), 'select', {
+            speakerKey: 'mixer_preview',
+            priority: 2,
+            cooldownMs: 120,
+            maxAsyncDelayMs: 950
+          });
+        }
+      });
+    };
+
     const bindVoiceToggle = (btn) => {
       if (!btn) return;
       btn.addEventListener('click', (e) => {
@@ -2549,7 +2601,7 @@ export class Game {
         const on = this.audio.toggleVoice?.();
         this.syncAudioMixerUI();
         if (on && this.audio.activeHeroVoices?.size === 0) {
-          this.audio.playHeroVoice?.('priestess_ex', 'attack_1', {
+          this.audio.playHeroVoice?.(getPreviewVoiceHeroId(), 'attack_1', {
             speakerKey: 'mixer_preview',
             priority: 2,
             cooldownMs: 180
@@ -2578,7 +2630,7 @@ export class Game {
           (this.audio?.getVoiceVolume?.() ?? 0) > 0.01 &&
           this.audio.activeHeroVoices?.size === 0
         ) {
-          this.audio.playHeroVoice?.('priestess_ex', 'attack_1', {
+          this.audio.playHeroVoice?.(getPreviewVoiceHeroId(), 'attack_1', {
             speakerKey: 'mixer_preview',
             priority: 2,
             cooldownMs: 180
@@ -2599,6 +2651,8 @@ export class Game {
       });
     };
 
+    bindVoiceLangToggle(this.btnVoiceLang);
+    bindVoiceLangToggle(this.btnNavVoiceLang);
     bindVoiceToggle(this.btnVoice);
     bindVoiceToggle(this.btnNavVoice);
     bindSfxToggle(this.btnSfx);
@@ -3257,7 +3311,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps140');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps141');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3353,7 +3407,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps140'
+          'v=30fps141'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);

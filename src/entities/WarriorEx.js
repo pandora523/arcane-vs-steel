@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps140';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps140';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps140';
+import { Fighter } from './Fighter.js?v=30fps141';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps140';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps141';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)
@@ -169,6 +169,9 @@ export class WarriorEx extends Fighter {
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
+    this._skillVoiceFired = false;
+    this._ultVoiceFired = false;
+    this._trueUltChargeVoiced = false;
 
     if (
       (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
@@ -1087,6 +1090,12 @@ export class WarriorEx extends Fighter {
         const slamX = this.x + this.facing * 82;
         game?.renderer?.triggerShake?.(13, 0.26);
         if (game?.audio) game.audio.play('thunder_slam', slamX);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         this.spawnPixelShockRing(slamX, this.groundY - 2, 102, true, 0.30);
         this.fx?.spawn('earthshatterJudgmentWave', slamX, this.groundY - 2, {
           flip: this.facing < 0,
@@ -1207,6 +1216,16 @@ export class WarriorEx extends Fighter {
     this.isDeflecting = t < 0.56;
 
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
 
     // Beat 0 (t = 0.02s): Consecrate Golden-Cyan Runic Sword-Seal Underfoot!
     if ((this._skillSlashMask & 16) === 0 && t >= 0.02) {
@@ -1527,6 +1546,8 @@ export class WarriorEx extends Fighter {
     this.vx = 0;
     this.vy = 0;
 
+    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+
     if (!this._ultInit) {
       this._ultInit = true;
       this._ultSlashStep = 0;
@@ -1536,6 +1557,16 @@ export class WarriorEx extends Fighter {
           ? enemy.x
           : this._clampArenaX(this.x + this.facing * 180, game);
       if (game?.audio) game.audio.play('ult_cast', this.x);
+      if (!this._ultVoiceFired) {
+        this._ultVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       this.fx?.spawn('blinkTeleportPillar', this.x, this.groundY - 4, {
         flip: this.facing < 0,
         light: 1.30
@@ -1570,8 +1601,6 @@ export class WarriorEx extends Fighter {
       { time: 0.84, ox: 96, oy: -12, face: -1, frame: 138, txOff: -124, tyOff: -68, gold: true },
       { time: 1.06, ox: 0, oy: -136, face: this.facing, frame: 142, txOff: 0, tyOff: -14, gold: true }
     ];
-
-    const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
 
     while (this._ultSlashStep < 5 && t >= cutSchedule[this._ultSlashStep].time) {
       const cut = cutSchedule[this._ultSlashStep];
@@ -1825,6 +1854,16 @@ export class WarriorEx extends Fighter {
 
     // Phase 1 (0.00..1.20s): Unfurl Luminous Seraphim Dawn-Wings & Consecrate Stained-Glass Sanctuary
     if (t < 1.20) {
+      if (!this._trueUltChargeVoiced) {
+        this._trueUltChargeVoiced = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       const vowFrame = 120 + Math.min(5, Math.floor((t / 1.20) * 6));
       this.trueUltFrameOverride = vowFrame;
       this._overrideFrameIdx = vowFrame;
@@ -1975,6 +2014,13 @@ export class WarriorEx extends Fighter {
       this.heal(Math.round(this.maxHp * 0.11), 'EXVIUS DAWN');
       const beamX = this._clampArenaX(tx, game);
       if (game?.audio) game.audio.play('thunder_slam', beamX);
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 4,
+        cooldownMs: 200,
+        duckSfx: true
+      });
       game?.renderer?.triggerShake?.(24, 0.48);
       game?.renderer?.triggerImpactFrame?.(beamX, this.groundY - 118, 0.12, 'exvius');
       game?.renderer?.triggerHitStop?.(0.085);

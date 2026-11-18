@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps140';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps140';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps140';
+import { Fighter } from './Fighter.js?v=30fps141';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps140';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps141';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Gungnir Lightning-Javelin + Valhalla Rune Seal -> snaps at F03 (63)
@@ -372,9 +372,9 @@ export class ValkyrieEx extends Fighter {
         return img;
       };
       assets.valkyrie_ex = {
-        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps140'),
-        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps140'),
-        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps140'),
+        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps141'),
+        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps141'),
+        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps141'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -420,6 +420,9 @@ export class ValkyrieEx extends Fighter {
     }
 
     super.setState(newState);
+    this._skillVoiceFired = false;
+    this._ultVoiceFired = false;
+    this._trueUltChargeVoiced = false;
 
     if (
       (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
@@ -1591,6 +1594,7 @@ export class ValkyrieEx extends Fighter {
         this._beatHitMask |= 1;
         game?.renderer?.triggerShake?.(12, 0.22);
         if (game?.audio) game.audio.play('dragon_dive', targetX);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', { worldX: this.x, speakerKey: this, priority: 1, cooldownMs: 3600 });
         this.gainMana(6.5);
         this.spawnFeatherBurst(this.x, this.y - 96, 8, 155, true);
 
@@ -1705,6 +1709,16 @@ export class ValkyrieEx extends Fighter {
       this._skillOriginX = this.x;
       this._skillJavelinsFired = 0;
       this._skillStep = 0;
+      if (!this._skillVoiceFired) {
+        this._skillVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 2,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
 
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
@@ -2003,6 +2017,16 @@ export class ValkyrieEx extends Fighter {
       this._ultPassCone1 = false;
       this._ultPassCone3 = false;
       this.sanctuarySkyLances = [];
+      if (!this._ultVoiceFired) {
+        this._ultVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
 
       this.facing = enemyX >= this.x ? 1 : -1;
 
@@ -2546,6 +2570,16 @@ export class ValkyrieEx extends Fighter {
 
     // PHASE 1 (0.00s..1.10s): Ascend 410px to the Approach Flank & Open Multi-Band Bifrost Sky-Gate
     if (t < 1.10) {
+      if (!this._trueUltChargeVoiced) {
+        this._trueUltChargeVoiced = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       if (t < 0.22) {
         const uPrep = t / 0.22;
         this.y = this.groundY;
@@ -2726,6 +2760,13 @@ export class ValkyrieEx extends Fighter {
         game.audio.play('thunder_slam', targetX);
         game.audio.play('hit_crit', targetX);
       }
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 4,
+        cooldownMs: 200,
+        duckSfx: true
+      });
       if (game?.renderer) {
         game.renderer.triggerImpactFrame?.(targetX, this.groundY - 90, 0.15, 'crimson');
         game.renderer.triggerShake(22, 0.38);

@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps140';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps141';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -10,6 +10,15 @@ const RANGED_EX_HERO_IDS = new Set([
   'archer_ex',
   'nyx_ex'
 ]);
+
+const LEGACY_TRUE_ULT_FIRE_SEC = {
+  warrior: 3.74,
+  ronin: 1.95,
+  mage: 3.22,
+  valkyrie: 3.10,
+  reaper: 3.15,
+  priestess: 3.00
+};
 
 export class Fighter {
   static [Symbol.hasInstance](instance) {
@@ -539,6 +548,9 @@ export class Fighter {
       }
     }
     this._overrideFrameIdx = null;
+    if (newState !== 'TRUE_ULTIMATE' || prevState !== 'TRUE_ULTIMATE') {
+      this._legacyTrueUltFireVoiced = false;
+    }
     if (newState !== 'TRUE_ULTIMATE') {
       this.trueUltFrameOverride = null;
     }
@@ -567,6 +579,43 @@ export class Fighter {
         exSys?.clear();
       } else {
         exSys?.emitStateFlourish(this, newState);
+      }
+    } else if (
+      typeof this.heroId === 'string' &&
+      !this.heroId.endsWith('_ex') &&
+      this.game?.audio?.hasVoicePack?.(this.heroId)
+    ) {
+      if (newState === 'AUTO_ATTACK' && this._aiComboCount === 0 && this._aiComboReadyFinisher > 0) {
+        this.game.audio.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
+      } else if (newState === 'SKILL') {
+        this.game.audio.playHeroVoice?.(this.heroId, 'skill_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 2,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      } else if (newState === 'ULTIMATE') {
+        this.game.audio.playHeroVoice?.(this.heroId, 'ult_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      } else if (newState === 'TRUE_ULTIMATE') {
+        this.game.audio.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
       }
     }
   }
@@ -2406,6 +2455,22 @@ export class Fighter {
     } else if (this.state === 'ULTIMATE') {
       this.updateUltimate(dt, enemy, game);
     } else if (this.state === 'TRUE_ULTIMATE') {
+      if (
+        !this._legacyTrueUltFireVoiced &&
+        typeof this.heroId === 'string' &&
+        !this.heroId.endsWith('_ex') &&
+        game?.audio?.hasVoicePack?.(this.heroId) &&
+        this.stateTimer >= (LEGACY_TRUE_ULT_FIRE_SEC[this.heroId] ?? 3.10)
+      ) {
+        this._legacyTrueUltFireVoiced = true;
+        game.audio.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
+      }
       if (typeof this.updateTrueUltimate === 'function') {
         this.updateTrueUltimate(dt, enemy, game);
       } else {

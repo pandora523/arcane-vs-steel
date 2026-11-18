@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps140';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps140';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps140';
+import { Fighter } from './Fighter.js?v=30fps141';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps140';
+} from '../engine/shaders/abyssalShaders.js?v=30fps141';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Wide Downward Reaping Crescent Smear -> snaps at F03 (63)
@@ -301,6 +301,9 @@ export class ReaperEx extends Fighter {
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
+    this._skillVoiceFired = false;
+    this._ultVoiceFired = false;
+    this._trueUltChargeVoiced = false;
 
     if (
       (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE' || prevState === 'SKILL') &&
@@ -2219,6 +2222,7 @@ export class ReaperEx extends Fighter {
     } else {
       if ((this._beatHitMask & 1) === 0 && t >= 0.16) {
         this._beatHitMask |= 1;
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', { worldX: this.x, speakerKey: this, priority: 1, cooldownMs: 3600 });
         const slamX =
           enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 242
             ? enemy.x
@@ -2352,6 +2356,16 @@ export class ReaperEx extends Fighter {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
 
     if (t < 0.08) {
       this.didChainPull = false;
@@ -2601,6 +2615,16 @@ export class ReaperEx extends Fighter {
     }
 
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const lockX = Number.isFinite(this._ultTargetLockX) ? this._ultTargetLockX : targetX;
 
     // Stage 1 (t = 0.04s): Unfurl Blood-Moon Eclipse Seal & Manifest Towering Skeletal Thanatos Stand!
@@ -2895,7 +2919,7 @@ export class ReaperEx extends Fighter {
    * NEWLY-BORN SUPREME ULTIMATE (`TRUE_ULTIMATE`, `4.50s` + `12.5s` Living Covenant):
    * `MEMENTO MORI: CATHEDRAL OF OBLIVION`
    * - Unseals twin Gothic Oblivion Gates (`Row 5`),
-   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps140`),
+   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps141`),
    * - Drops a colossal 6-Pillar Violet-Crimson Scythe Guillotine across reality (`720` Crit)!
    */
   updateTrueUltimate(dt, enemy, game) {
@@ -2949,6 +2973,16 @@ export class ReaperEx extends Fighter {
 
     // Phase 1 (0.00s .. 1.25s): Unsealing Twin Gothic Oblivion Gates & Summoning Death-Mage + Soul-Healer!
     if (elapsed < 1.25) {
+      if (!this._trueUltChargeVoiced) {
+        this._trueUltChargeVoiced = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       if (elapsed >= 0.04 && this._trueUltStep < 1) {
         this._trueUltStep = 1;
         this._trueUltAltarX = computeAltarX();
@@ -3104,6 +3138,13 @@ export class ReaperEx extends Fighter {
     // Phase 3 (t >= 3.15s): Colossal 6-Pillar Violet-Crimson Scythe Guillotine Across Reality (`720` Crit)!
     if (elapsed >= 3.15 && this._trueUltStep < 3) {
       this._trueUltStep = 3;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 4,
+        cooldownMs: 200,
+        duckSfx: true
+      });
       this._trueUltSlashFlash = 0.88;
       this.soulStacks = this.maxSoulStacks;
       this.graveWardTimer = Math.max(this.graveWardTimer || 0, 2.20);
