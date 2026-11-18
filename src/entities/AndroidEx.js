@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps146';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
+import { Fighter } from './Fighter.js?v=30fps147';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps147';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps147';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps146';
+} from '../engine/shaders/cyberShaders.js?v=30fps147';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -324,9 +324,9 @@ export class AndroidEx extends Fighter {
         return img;
       };
       assets.android_ex = {
-        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps146'),
-        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps146'),
-        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps146'),
+        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps147'),
+        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps147'),
+        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps147'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

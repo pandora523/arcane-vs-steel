@@ -15,7 +15,7 @@ const DEFAULT_VOICE_VOLUME = 1.0;
 const DEFAULT_BGM_VOLUME = 0.38;
 const VOICE_PRESENCE_TRIM = 1.42;
 const BGM_CROSSFADE_SEC = 0.65;
-const AUDIO_ASSET_CACHE_BUST = 'v=30fps146';
+const AUDIO_ASSET_CACHE_BUST = 'v=30fps147';
 const MAX_CACHED_BGM_BUFFERS = 4;
 
 export class AudioManager {
@@ -38,6 +38,8 @@ export class AudioManager {
     this.sfxBus = null;
     this.sfxDuckGain = null;
     this.voiceBus = null;
+    this.voiceAnalyser = null;
+    this._voiceAnalyserBuf = null;
     this.bgmBus = null;
     this.bgmDuckGain = null;
     this._preDuckUntilMs = 0;
@@ -467,6 +469,7 @@ export class AudioManager {
     this.sfxBus = null;
     this.sfxDuckGain = null;
     this.voiceBus = null;
+    this.voiceAnalyser = null;
     this.bgmBus = null;
     this.bgmDuckGain = null;
     if (deadCtx) {
@@ -658,6 +661,27 @@ export class AudioManager {
       this.bgmBus = null;
       this.bgmDuckGain = null;
       this.master = ctx.destination || null;
+    }
+
+    this.voiceAnalyser = null;
+    if (this.voiceBus && typeof ctx.createAnalyser === 'function') {
+      try {
+        const analyser = ctx.createAnalyser();
+        if (analyser) {
+          try {
+            analyser.fftSize = 128;
+            analyser.smoothingTimeConstant = 0.65;
+          } catch (_) {}
+          if (typeof this.voiceBus.connect === 'function') {
+            this.voiceBus.connect(analyser);
+          }
+          const binLen = Number(analyser.frequencyBinCount) || 64;
+          this._voiceAnalyserBuf = new Uint8Array(binLen);
+          this.voiceAnalyser = analyser;
+        }
+      } catch (_) {
+        this.voiceAnalyser = null;
+      }
     }
   }
 
@@ -1804,6 +1828,47 @@ export class AudioManager {
       if (rem > maxRem) maxRem = rem;
     }
     return maxRem;
+  }
+
+  isHeroVoiceBusy(nowOverrideMs = null) {
+    if (!this.enabled || !this.voiceEnabled || this.voiceVolume <= 0.001 || this._bgSuspended) {
+      return false;
+    }
+    return this.getActiveVoiceRemainingMs(null, nowOverrideMs) > 0;
+  }
+
+  getVoiceAmplitude(nowOverrideMs = null) {
+    if (!this.isHeroVoiceBusy(nowOverrideMs)) {
+      return 0;
+    }
+    if (
+      this.voiceAnalyser &&
+      typeof this.voiceAnalyser.getByteTimeDomainData === 'function'
+    ) {
+      try {
+        const binLen = Number(this.voiceAnalyser.frequencyBinCount) || 64;
+        if (!this._voiceAnalyserBuf || this._voiceAnalyserBuf.length !== binLen) {
+          this._voiceAnalyserBuf = new Uint8Array(binLen);
+        }
+        this.voiceAnalyser.getByteTimeDomainData(this._voiceAnalyserBuf);
+        let sumSq = 0;
+        let peak = 0;
+        const buf = this._voiceAnalyserBuf;
+        for (let i = 0; i < buf.length; i++) {
+          const d = (buf[i] - 128) / 128;
+          const absD = d < 0 ? -d : d;
+          sumSq += d * d;
+          if (absD > peak) peak = absD;
+        }
+        const rms = buf.length > 0 ? Math.sqrt(sumSq / buf.length) : 0;
+        const liveEnergy = Math.min(1, Math.max(rms * 3.4, peak * 1.85));
+        if (liveEnergy > 0.015) {
+          return Math.max(0.05, Math.min(1, liveEnergy));
+        }
+      } catch (_) {}
+    }
+    const fb = 0.38 + 0.42 * Math.abs(Math.sin(Date.now() * 0.016));
+    return Math.max(0, Math.min(1, fb));
   }
 
   isDeathOrMatchEndVoiceBusy(nowOverrideMs = null) {
