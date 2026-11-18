@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps138';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps138';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps138';
-import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps138';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps138';
+import { Fighter } from './Fighter.js?v=30fps139';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps139';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps139';
+import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps139';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps139';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Grounded Rose-Window Magic Circle + Sanctum Light-Ray -> snaps at F03 (63)
@@ -1285,6 +1285,12 @@ export class PriestessEx extends Fighter {
         if (game?.audio) {
           game.audio.play('holy_bolt', spawnX);
           if (vsAspect !== 1) game.audio.play('holy_heal', this.x);
+          game.audio.playHeroVoice?.(this.heroId, 'attack', {
+            worldX: this.x,
+            speakerKey: this,
+            priority: 1,
+            cooldownMs: 3600
+          });
         }
         if (vsAspect !== 1) {
           this.heal(12, 'DAWN GRACE');
@@ -1469,7 +1475,20 @@ export class PriestessEx extends Fighter {
 
     if (t >= 0.16 && !this.didSanctuaryHeal) {
       this.didSanctuaryHeal = true;
-      if (game?.audio) game.audio.play(vsSkill === 1 ? 'holy_bolt' : 'holy_heal', this.x);
+      if (game?.audio) {
+        game.audio.play(vsSkill === 1 ? 'holy_bolt' : 'holy_heal', this.x);
+        game.audio.playHeroVoice?.(
+          this.heroId,
+          vsSkill === 1 ? 'skill_crimson' : 'skill_std',
+          {
+            worldX: this.x,
+            speakerKey: this,
+            priority: 2,
+            cooldownMs: 400,
+            duckSfx: true
+          }
+        );
+      }
       game?.vfx?.spawnSpecialCastAura(this, this.skillName, 'SERAPHIC SOVEREIGN', 'radiant', false);
       if (vsSkill === 1) {
         // Skill II (Crimson Spear-Tribunal): Zero self-heal!
@@ -1659,7 +1678,20 @@ export class PriestessEx extends Fighter {
     if (t >= 0.14 && !this.didUltMiracle) {
       this.didUltMiracle = true;
       this.ultOrganStep = 0;
-      if (game?.audio) game.audio.play(vsUlt === 1 ? 'holy_bolt' : 'holy_heal', this.x);
+      if (game?.audio) {
+        game.audio.play(vsUlt === 1 ? 'holy_bolt' : 'holy_heal', this.x);
+        game.audio.playHeroVoice?.(
+          this.heroId,
+          vsUlt === 1 ? 'ult_crimson' : 'ult_std',
+          {
+            worldX: this.x,
+            speakerKey: this,
+            priority: 3,
+            cooldownMs: 400,
+            duckSfx: true
+          }
+        );
+      }
       game?.vfx?.spawnSpecialCastAura(this, this.ultName, 'NEO-VISION OVERDRIVE', 'radiant', true);
       if (vsUlt === 1) {
         // Ult II (Crimson Inquisitor Crucible): Zero Miracle heal!
@@ -1853,7 +1885,16 @@ export class PriestessEx extends Fighter {
 
     if (!this._finalGracePlayedChargeSfx) {
       this._finalGracePlayedChargeSfx = true;
-      if (game?.audio) game.audio.play('final_grace_charge', this.x);
+      if (game?.audio) {
+        game.audio.play('final_grace_charge', this.x);
+        game.audio.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
     }
 
     if (t < 3.03) {
@@ -1932,7 +1973,16 @@ export class PriestessEx extends Fighter {
       const counterDmg = Math.min(790, Math.max(640, Math.round(rawTanked * 0.55)));
       this.tankedDamage = 0;
 
-      if (game?.audio) game.audio.play('final_grace_beam', this.x);
+      if (game?.audio) {
+        game.audio.play('final_grace_beam', this.x);
+        game.audio.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
+      }
       game?.renderer?.triggerImpactFrame?.(this._safeFxX(this.x + this.facing * 260, game), beamY, 0.16, 'radiant');
       game?.renderer?.triggerShake?.(24, 0.52);
       game?.renderer?.triggerAberration?.(9);
@@ -2164,10 +2214,10 @@ export class PriestessEx extends Fighter {
         return img;
       };
       assets.priestess_ex = {
-        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps138'),
-        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps138'),
-        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps138'),
-        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps138'),
+        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps139'),
+        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps139'),
+        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps139'),
+        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps139'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

@@ -30,6 +30,7 @@ const TRANSPARENT_GIF_DATA_URI =
 const MIME_BY_EXT = {
   '.png': 'image/png',
   '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
   '.ttf': 'font/ttf',
   '.json': 'application/json'
 };
@@ -370,12 +371,13 @@ function buildModuleGraph(rootDir, entryRelPath = 'src/main.js') {
 
 /**
  * Collects all runtime game assets under `assets/sprites/*.png`, `assets/sfx/*.wav`,
- * `assets/fonts/*.ttf`, and `assets/campaigns/*.json`.
+ * `assets/voices/*.mp3`, `assets/fonts/*.ttf`, and `assets/campaigns/*.json`.
  */
 function collectVaultAssets(rootDir) {
   const assetDirs = [
     { dir: 'assets/sprites', exts: new Set(['.png']) },
     { dir: 'assets/sfx', exts: new Set(['.wav']) },
+    { dir: 'assets/voices', exts: new Set(['.mp3']) },
     { dir: 'assets/fonts', exts: new Set(['.ttf']) },
     { dir: 'assets/campaigns', exts: new Set(['.json']) }
   ];

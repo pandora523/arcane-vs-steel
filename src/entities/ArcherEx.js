@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps138';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps138';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps138';
+import { Fighter } from './Fighter.js?v=30fps139';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps139';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps139';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps138';
+} from '../engine/shaders/sylvanShaders.js?v=30fps139';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -290,9 +290,9 @@ export class ArcherEx extends Fighter {
         return img;
       };
       assets.archer_ex = {
-        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps138'),
-        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps138'),
-        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps138'),
+        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps139'),
+        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps139'),
+        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps139'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

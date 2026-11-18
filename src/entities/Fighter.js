@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps138';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps139';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -841,6 +841,19 @@ export class Fighter {
         (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit && !this.hasHackAndSlashCombo()))
     ) {
       this.setState('HURT');
+    }
+
+    if (
+      this.hp > 0 &&
+      !this.isBenched &&
+      (this.state === 'HURT' || isCrit || dealt >= 95)
+    ) {
+      this.game?.audio?.playHeroVoice?.(this.heroId, 'hurt', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 1,
+        cooldownMs: 2600
+      });
     }
 
     if (this.game) {
