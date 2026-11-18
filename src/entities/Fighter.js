@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps145';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps146';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -23,6 +23,22 @@ const LEGACY_TRUE_ULT_FIRE_SEC = {
   android: 3.05,
   chronomancer: 3.50,
   titan: 2.36
+};
+
+const TRUE_ULT_IMPACT_SEC = {
+  ...LEGACY_TRUE_ULT_FIRE_SEC,
+  warrior_ex: 3.56,
+  ronin_ex: 1.95,
+  mage_ex: 3.22,
+  valkyrie_ex: 3.10,
+  reaper_ex: 3.15,
+  priestess_ex: 3.03,
+  icemage_ex: 3.28,
+  archer_ex: 2.20,
+  android_ex: 1.68,
+  chronomancer_ex: 3.53,
+  titan_ex: 2.36,
+  nyx_ex: 2.32
 };
 
 export class Fighter {
@@ -125,6 +141,10 @@ export class Fighter {
     this._aiOutstepTimer = 0;
     this._aiOutstepDir = -1;
     this._aiManueverSeq = Math.floor(Math.random() * 6);
+    this.jumpCooldown = 0;
+    this._aiDefenseBreather = 0;
+    this._aiFootsieMode = 'idle';
+    this._aiFootsieHoldTimer = 0;
     this._hnsPhaseThrough = false;
     this._phaseThroughEnemy = false;
     this._hnsStreaks = [];
@@ -194,6 +214,22 @@ export class Fighter {
     return id.endsWith('_ex') ? id.slice(0, -3) : id;
   }
 
+  isBlinkWarpHero() {
+    const baseHeroId = this.getBaseHeroId();
+    return (
+      baseHeroId === 'mage' ||
+      baseHeroId === 'chronomancer' ||
+      baseHeroId === 'reaper' ||
+      this.heroId === 'nyx_ex'
+    );
+  }
+
+  isTrueUltPreImpact() {
+    if (this.state !== 'TRUE_ULTIMATE') return false;
+    const impactSec = TRUE_ULT_IMPACT_SEC[this.heroId] ?? (this.trueUltDuration || 4.0) * 0.78;
+    return (this.stateTimer || 0) < impactSec;
+  }
+
   getRoleTacticalProfile() {
     const baseHeroId = this.getBaseHeroId();
     switch (baseHeroId) {
@@ -206,7 +242,7 @@ export class Fighter {
           isRanged: true,
           idealMin: 360,
           idealMax: 460,
-          dashMinDist: 540,
+          dashMinDist: 440,
           crouchMaxDist: 250,
           jumpEscapeDist: 225,
           ultMaxDist: Infinity
@@ -218,7 +254,7 @@ export class Fighter {
           isRanged: true,
           idealMin: 355,
           idealMax: 455,
-          dashMinDist: 560,
+          dashMinDist: 460,
           pressuredDist: 260,
           healHpFrac: 0.82,
           ultHpFrac: 0.85,
@@ -233,7 +269,7 @@ export class Fighter {
           isRanged: true,
           idealMin: 320,
           idealMax: 445,
-          dashMinDist: 530,
+          dashMinDist: 450,
           pressuredDist: 255,
           ultMaxDist: baseHeroId === 'valkyrie' ? 620 : Infinity
         };
@@ -328,8 +364,8 @@ export class Fighter {
       case 'ronin_ex':
         return {
           comboGoal: 4,
-          sweetMin: isEx ? 112 : 78,
-          sweetMax: isEx ? 140 : 106,
+          sweetMin: 112,
+          sweetMax: isEx ? 140 : 128,
           counterCrouchBias: 0.66,
           midLeapMin: 175,
           midLeapMax: 285,
@@ -352,7 +388,7 @@ export class Fighter {
       case 'reaper_ex':
         return {
           comboGoal: 4,
-          sweetMin: isEx ? 118 : 118,
+          sweetMin: 118,
           sweetMax: isEx ? 150 : 160,
           counterCrouchBias: 0.62,
           midLeapMin: 185,
@@ -364,8 +400,8 @@ export class Fighter {
       case 'chronomancer_ex':
         return {
           comboGoal: 4,
-          sweetMin: isEx ? 112 : 98,
-          sweetMax: isEx ? 142 : 142,
+          sweetMin: 112,
+          sweetMax: 142,
           counterCrouchBias: 0.56,
           midLeapMin: 175,
           midLeapMax: 285,
@@ -562,6 +598,22 @@ export class Fighter {
     if (newState !== 'DODGE' && newState !== 'JUMP' && newState !== 'TRUE_ULTIMATE') {
       this.isInvulnerable = false;
     }
+    if (newState === 'ULTIMATE' || newState === 'TRUE_ULTIMATE') {
+      this.isInvulnerable = true;
+      this.unstoppablePoise = true;
+    } else if (prevState === 'ULTIMATE' || prevState === 'TRUE_ULTIMATE') {
+      this.unstoppablePoise = false;
+      if (newState === 'IDLE' || newState === 'WALK') {
+        this.autoCooldown = Math.max(this.autoCooldown || 0, 0.55);
+        this.skillCooldown = Math.max(this.skillCooldown || 0, 0.65);
+        this.jumpCooldown = Math.max(this.jumpCooldown || 0, 0.55);
+        this._aiDefenseBreather = Math.max(this._aiDefenseBreather || 0, 0.55);
+      }
+    }
+    if ((newState === 'IDLE' || newState === 'WALK') && prevState !== 'IDLE' && prevState !== 'WALK') {
+      this._aiFootsieMode = 'idle';
+      this._aiFootsieHoldTimer = 0;
+    }
     if (newState !== 'CROUCH') {
       this.isCrouching = false;
     }
@@ -690,23 +742,68 @@ export class Fighter {
 
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
     if (this.isDead || this.isBenched) return;
-    // Kaze-Maru's Iaido Serene Mind Counter-Blink: teleports behind the attacker on incoming hit!
-    if (this.iaidoCounterActive && typeof this.triggerIaidoCounterBlink === 'function' && attacker && !attacker.isDead) {
-      this.triggerIaidoCounterBlink(attacker, this.game);
-      return;
-    }
-    // Malakor's Abyssal Grave-Submerge: untargetable while sliding underground as a shadow puddle!
-    if (this.isSubmerged) {
-      if (this.game && this.game.vfx) {
-        this.game.vfx.spawnDamageText(this.x, this.groundY - 76, 0, false, 'GRAVE PHASE!', '#c084fc');
+    const isHeroAtk = Boolean(attacker && !attacker.isMonster);
+    const atkTier = !isHeroAtk
+      ? null
+      : attacker.state === 'TRUE_ULTIMATE' || attacker._activeHitTier === 'TRUE_ULTIMATE'
+        ? 'TRUE_ULTIMATE'
+        : attacker.state === 'ULTIMATE' || attacker._activeHitTier === 'ULTIMATE'
+          ? 'ULTIMATE'
+          : null;
+
+    // Caster Startup Protection + Unstoppable Super Armor sync during ULTIMATE & TRUE_ULTIMATE
+    if (this.state === 'TRUE_ULTIMATE') {
+      if (this.isInvulnerable && (this.stateTimer || 0) < 0.35) {
+        return;
       }
-      if ((this._evadeManaCd || 0) <= 0) {
-        this._evadeManaCd = 0.55;
-        this.gainMana(5);
+      this.isInvulnerable = false;
+      this.unstoppablePoise = true;
+    } else if (this.state === 'ULTIMATE') {
+      if (this.isInvulnerable && (this.stateTimer || 0) < 0.22) {
+        return;
       }
-      return;
+      this.isInvulnerable = false;
+      this.unstoppablePoise = true;
     }
-    if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {
+
+    const inCounter = Boolean(
+      this.iaidoCounterActive &&
+        typeof this.triggerIaidoCounterBlink === 'function' &&
+        attacker &&
+        !attacker.isDead
+    );
+    const inSubmerge = Boolean(this.isSubmerged || this.isFullyBurrowed);
+    const inBasicEvade = Boolean(this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36));
+
+    if (!atkTier) {
+      // Kaze-Maru's Iaido Serene Mind Counter-Blink: teleports behind the attacker on incoming basic/skill hit!
+      if (inCounter) {
+        this.triggerIaidoCounterBlink(attacker, this.game);
+        return;
+      }
+      // Malakor's Abyssal Grave-Submerge: untargetable while sliding underground against basic/skill hits!
+      if (inSubmerge) {
+        if (this.game && this.game.vfx) {
+          this.game.vfx.spawnDamageText(this.x, this.groundY - 76, 0, false, 'GRAVE PHASE!', '#c084fc');
+        }
+        if ((this._evadeManaCd || 0) <= 0) {
+          this._evadeManaCd = 0.55;
+          this.gainMana(5);
+        }
+        return;
+      }
+      if (inBasicEvade) {
+        if (this.game) {
+          this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 196, 0, false, 'EVADED!', this.primaryColor);
+          this.game.vfx.spawnShockwave(this.x, this.y - 95, 68, this.primaryColor, 0.24);
+        }
+        if ((this._evadeManaCd || 0) <= 0) {
+          this._evadeManaCd = 0.55;
+          this.gainMana(5);
+        }
+        return;
+      }
+    } else if (this._advPureDodge) {
       if (this.game) {
         this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 196, 0, false, 'EVADED!', this.primaryColor);
         this.game.vfx.spawnShockwave(this.x, this.y - 95, 68, this.primaryColor, 0.24);
@@ -716,6 +813,34 @@ export class Fighter {
         this.gainMana(5);
       }
       return;
+    } else if (inCounter || inSubmerge || inBasicEvade) {
+      this.iaidoCounterActive = false;
+      if (atkTier === 'TRUE_ULTIMATE') {
+        amount *= 0.75;
+        knockX *= 0.65;
+        knockY *= 0.65;
+        this.game?.vfx?.spawnDamageText?.(
+          this.x - this.facing * 24,
+          this.y - 198,
+          0,
+          true,
+          'PIERCED!',
+          '#fb7185'
+        );
+      } else {
+        amount *= 0.50;
+        knockX *= 0.35;
+        knockY *= 0.35;
+        isCrit = false;
+        this.game?.vfx?.spawnDamageText?.(
+          this.x - this.facing * 24,
+          this.y - 198,
+          0,
+          false,
+          'GRAZED!',
+          '#fde047'
+        );
+      }
     }
 
     // 2v2 Twin-Soul Cross-Combo: when both teammates strike the same target within 0.95s!
@@ -782,7 +907,19 @@ export class Fighter {
     if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'boneyard') {
       amount *= 1.18;
     }
-    if (this.forgeArmorTimer > 0) {
+    if (this.state === 'TRUE_ULTIMATE') {
+      // Sovereign Super Armor: 65% DR, 0 knockback/interrupt
+      amount *= 0.35;
+      knockX = 0;
+      knockY = 0;
+      this.unstoppablePoise = true;
+    } else if (this.state === 'ULTIMATE') {
+      // Unstoppable Super Armor: 45% DR, 0 knockback/interrupt
+      amount *= 0.55;
+      knockX = 0;
+      knockY = 0;
+      this.unstoppablePoise = true;
+    } else if (this.forgeArmorTimer > 0) {
       // Torgar's Magma Armor Fortify: 44% damage reduction, unstoppable super-armor, and molten thorn reflection!
       amount *= 0.56;
       knockX *= 0.12;
@@ -835,13 +972,21 @@ export class Fighter {
       }
     }
     const unlimitedHp = Boolean(this.game && this.game.testModeUnlimitedHp && !this.isMonster);
+    const clampTrueUltFloor = this.state === 'TRUE_ULTIMATE' && this.isTrueUltPreImpact();
     const prevHp = this.hp;
-    this.hp = unlimitedHp ? Math.max(1, this.hp - amount) : Math.max(0, this.hp - amount);
+    this.hp =
+      unlimitedHp || clampTrueUltFloor
+        ? Math.max(1, this.hp - amount)
+        : Math.max(0, this.hp - amount);
     this.timeSinceLastHit = 0;
     if (unlimitedHp && this.hp <= Math.max(2, this.maxHp * 0.08)) {
       this._testModeRefillTimer = 0.55;
     }
-    const dealt = Math.max(1, Math.round(unlimitedHp ? amount : prevHp - this.hp));
+    const dealt = unlimitedHp
+      ? Math.max(1, Math.round(amount))
+      : clampTrueUltFloor && prevHp <= 1
+        ? 0
+        : Math.max(1, Math.round(prevHp - this.hp));
     this.tankedDamage = (this.tankedDamage || 0) + dealt;
     if (attacker && attacker.stats) {
       attacker.stats.damageDealt += dealt;
@@ -1033,7 +1178,7 @@ export class Fighter {
       if (
         dist < windupReach &&
         (enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL') &&
-        enemy.stateTimer > 0.08 &&
+        enemy.stateTimer >= 0.12 &&
         enemy.stateTimer < 0.46
       ) {
         return 'melee_windup';
@@ -1058,33 +1203,56 @@ export class Fighter {
       (this._aiSignatureCd || 0) <= 0 &&
       (this.crouchCooldown || 0) <= 0;
     const canJump =
-      typeof this.startJump === 'function' && (this._aiSignatureCd || 0) <= 0;
+      typeof this.startJump === 'function' &&
+      (this._aiSignatureCd || 0) <= 0 &&
+      (this.jumpCooldown || 0) <= 0 &&
+      (this.vaultCooldown || 0) <= 0;
+    const canDodge = this.dodgeCooldown <= 0;
 
-    // Ground hazards & crowded ranged champions prefer aerial escape vaults (`JUMP`) or `DODGE`
+    // Ground hazards & crowded ranged champions prefer blink/dodge (`DODGE`) or aerial escape vaults (`JUMP`)
     if (threatType === 'ground_hazard' || threatType === 'crowded_ranged') {
+      if (this.isBlinkWarpHero() && canDodge) {
+        this._aiSignatureCd = 2.6 + Math.random() * 0.8;
+        this._aiDefenseBreather = 0.36;
+        this.startDodge(enemy, game);
+        return true;
+      }
       if (canJump && Math.random() < 0.58) {
         let awayDir = -this.facing;
         if (this.x < 195) awayDir = 1;
         else if (this.x > ww - 195) awayDir = -1;
         this._aiSignatureCd = 3.2 + Math.random() * 1.1;
-        this.dodgeCooldown = this.dodgeMaxCooldown * (0.82 + Math.random() * 0.24);
+        this._aiDefenseBreather = 0.36;
+        this.jumpCooldown = 2.8;
+        const prevDodgeCd = this.dodgeCooldown;
         this.startJump(enemy, game, awayDir);
+        this.dodgeCooldown = prevDodgeCd;
         return true;
       }
+      if (canDodge) {
+        this._aiDefenseBreather = 0.36;
+        this.startDodge(enemy, game);
+        return true;
+      }
+      return false;
+    }
+
+    // Projectile or melee windup: route to signature Parry / Shield / Hex-Deflect / Frost-Mirror / Shadow-Burrow (`CROUCH`) or Blink/Dodge!
+    if (canCrouch && Math.random() < profile.counterCrouchBias) {
+      this._aiSignatureCd = 3.4 + Math.random() * 1.2;
+      this._aiDefenseBreather = 0.36;
+      const prevDodgeCd = this.dodgeCooldown;
+      this.startCrouch(enemy, game);
+      this.dodgeCooldown = prevDodgeCd;
+      return true;
+    }
+
+    if (canDodge) {
+      this._aiDefenseBreather = 0.36;
       this.startDodge(enemy, game);
       return true;
     }
-
-    // Projectile or melee windup: route to signature Parry / Shield / Hex-Deflect / Frost-Mirror / Shadow-Burrow (`CROUCH`)!
-    if (canCrouch && Math.random() < profile.counterCrouchBias) {
-      this._aiSignatureCd = 3.4 + Math.random() * 1.2;
-      this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.35);
-      this.startCrouch(enemy, game);
-      return true;
-    }
-
-    this.startDodge(enemy, game);
-    return true;
+    return false;
   }
 
   triggerPostComboSignature(enemy, game, dist) {
@@ -1093,6 +1261,27 @@ export class Fighter {
     this._aiComboReadyFinisher = 0;
     this._aiManueverSeq = ((this._aiManueverSeq || 0) + 1) % 6;
 
+    if (
+      !enemy ||
+      enemy.isDead ||
+      this.dodgeCooldown > 50 ||
+      enemy.state === 'HURT' ||
+      (enemy.stunTimer || 0) > 0 ||
+      (enemy.chronoTimeStopTimer || 0) > 0 ||
+      enemy.isRooted ||
+      enemy.isFullyBurrowed
+    ) {
+      return false;
+    }
+
+    const hasProjThreat = this.hasIncomingProjectile(game, 220);
+    const foeSwinging =
+      (enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL') &&
+      (enemy.stateTimer || 0) >= 0.12 &&
+      dist < 245;
+    const activeThreat = hasProjThreat || foeSwinging;
+    const cornerPressured = (this.x < 195 || this.x > ww - 195) && dist < 245;
+
     const canCrouch =
       typeof this.startCrouch === 'function' &&
       (this._aiSignatureCd || 0) <= 0 &&
@@ -1100,25 +1289,41 @@ export class Fighter {
     const canJump =
       typeof this.startJump === 'function' &&
       (this._aiSignatureCd || 0) <= 0 &&
-      this.dodgeCooldown <= 0.85;
+      (this.jumpCooldown || 0) <= 0 &&
+      (this.vaultCooldown || 0) <= 0;
+    const canDodge = this.dodgeCooldown <= 0;
     const canDash = this.dashCooldown <= 0;
+
+    const safeCrouch = (cdMin = 3.6) => {
+      this._aiSignatureCd = cdMin + Math.random() * 1.1;
+      this._aiDefenseBreather = 0.36;
+      const prevDodgeCd = this.dodgeCooldown;
+      this.startCrouch(enemy, game);
+      this.dodgeCooldown = prevDodgeCd;
+      return true;
+    };
+    const safeJump = (dir, cdMin = 3.6) => {
+      this._aiSignatureCd = cdMin + Math.random() * 1.0;
+      this._aiDefenseBreather = 0.36;
+      this.jumpCooldown = 2.8;
+      const prevDodgeCd = this.dodgeCooldown;
+      this.startJump(enemy, game, dir);
+      this.dodgeCooldown = prevDodgeCd;
+      return true;
+    };
 
     switch (profile.postStyle) {
       case 'vanguard': {
-        // Aethelgard: hold relentless Runic Vanguard pressure — only raise Aegis Shield (`CROUCH`) if foe is actively swinging back!
-        const foeSwinging =
-          enemy && (enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL');
-        if (canCrouch && foeSwinging && dist <= 235) {
-          this._aiSignatureCd = 4.0 + Math.random() * 1.1;
-          this.startCrouch(enemy, game);
-          return true;
+        if (canCrouch && activeThreat && dist <= 235) {
+          return safeCrouch(4.0);
         }
         if (
           canDash &&
           dist > 255 &&
-          enemy?.state !== 'SKILL' &&
-          !enemy?.iaidoCounterActive &&
-          !enemy?.isInvulnerable
+          enemy.state !== 'SKILL' &&
+          !enemy.iaidoCounterActive &&
+          !enemy.isInvulnerable &&
+          !hasProjThreat
         ) {
           this.startDash(enemy, game);
           return true;
@@ -1127,73 +1332,64 @@ export class Fighter {
       }
 
       case 'juggernaut': {
-        // Torgar: plant Forge-Bulwark (`CROUCH`) after 4-hit Maul combo to armor through retaliation, or Meteor-Leap (`JUMP`)!
-        if (canCrouch && this._aiManueverSeq % 2 === 0 && dist <= 235) {
-          this._aiSignatureCd = 4.2 + Math.random() * 1.2;
-          this.startCrouch(enemy, game);
-          return true;
+        if (canCrouch && activeThreat && dist <= 235) {
+          return safeCrouch(4.2);
         }
-        if (canJump && dist > 175 && dist < 305) {
-          this._aiSignatureCd = 3.8 + Math.random() * 1.0;
-          this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.6);
-          this.startJump(enemy, game, this.facing);
-          return true;
+        if (canJump && cornerPressured && dist > 165) {
+          return safeJump(this.facing, 3.8);
         }
-        this._aiOutstepTimer = 0.24;
-        this._aiOutstepDir = -1;
         return false;
       }
 
       case 'iaido':
       case 'cyber_valkyrie':
       case 'chrono': {
-        // Kaze-Maru, VEX-09 & Chronos: agile hit-and-run Vault (`JUMP`), Cross-Dash (`DASH`), Parry/Deflect (`CROUCH`), or Suriashi Out-Step!
-        const pick = this._aiManueverSeq % 3;
-        if (pick === 0 && canJump) {
-          const crossDir =
-            this.x > 210 && this.x < ww - 210 && dist < 165 ? this.facing : -this.facing;
-          this._aiSignatureCd = 3.4 + Math.random() * 1.0;
-          this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.5);
-          this.startJump(enemy, game, crossDir);
-          return true;
-        }
-        if (pick === 1 && canCrouch && dist <= 240) {
-          this._aiSignatureCd = 3.6 + Math.random() * 1.1;
-          this.startCrouch(enemy, game);
-          return true;
+        if (cornerPressured || (activeThreat && dist < 215)) {
+          if (this.isBlinkWarpHero() && canDodge) {
+            this._aiSignatureCd = 2.8 + Math.random() * 0.8;
+            this._aiDefenseBreather = 0.36;
+            this.startDodge(enemy, game);
+            return true;
+          }
+          if (canCrouch && activeThreat && dist <= 220) {
+            return safeCrouch(3.6);
+          }
+          if (canJump && cornerPressured) {
+            const crossDir =
+              this.x > 210 && this.x < ww - 210 && dist < 165 ? this.facing : -this.facing;
+            return safeJump(crossDir, 3.4);
+          }
         }
         const safeDuelistDash =
           canDash &&
-          dist > 140 &&
-          enemy?.state !== 'AUTO_ATTACK' &&
-          enemy?.state !== 'SKILL' &&
-          !enemy?.iaidoCounterActive &&
-          !enemy?.isDeflecting &&
-          !this.hasIncomingProjectile(game, 220);
-        if (pick === 2 && safeDuelistDash) {
+          dist > 175 &&
+          enemy.state !== 'AUTO_ATTACK' &&
+          enemy.state !== 'SKILL' &&
+          !enemy.iaidoCounterActive &&
+          !enemy.isDeflecting &&
+          !hasProjThreat;
+        if (safeDuelistDash) {
           this.startDash(enemy, game);
           return true;
         }
-        this._aiOutstepTimer = 0.34;
-        this._aiOutstepDir = -1;
         return false;
       }
 
       case 'harvester': {
-        // Malakor: dive into Abyssal Shadow-Burrow (`CROUCH`) or Wraith Reap (`JUMP`) after 3-hit Scythe Cleave!
-        if (canCrouch && this._aiManueverSeq % 2 === 0) {
-          this._aiSignatureCd = 4.0 + Math.random() * 1.2;
-          this.startCrouch(enemy, game);
+        const enemyIsRanged =
+          (enemy.attackRange || 0) >= 250 || Boolean(enemy.isHackAndSlashCaster?.());
+        if (canDodge && (cornerPressured || (activeThreat && dist < 210))) {
+          this._aiSignatureCd = 2.8 + Math.random() * 0.8;
+          this._aiDefenseBreather = 0.36;
+          this.startDodge(enemy, game);
           return true;
         }
-        if (canJump && this._aiManueverSeq % 2 === 1) {
-          this._aiSignatureCd = 3.6 + Math.random() * 1.0;
-          this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.6);
-          this.startJump(enemy, game, this.facing);
-          return true;
+        if (canCrouch && (foeSwinging || (enemyIsRanged && hasProjThreat))) {
+          return safeCrouch(4.0);
         }
-        this._aiOutstepTimer = 0.26;
-        this._aiOutstepDir = -1;
+        if (canJump && cornerPressured) {
+          return safeJump(this.facing, 3.6);
+        }
         return false;
       }
 
@@ -1203,18 +1399,18 @@ export class Fighter {
       case 'sanctuary':
       case 'nebula_ai':
       case 'pyromancer': {
-        // Ranged & Aerial Champions: weave Kneeling Trick-Shot / Frost-Mirror / Backflip / Prayer (`CROUCH`) & Sky-Step / Ascent (`JUMP`)!
-        if (canCrouch && this._aiManueverSeq % 2 === 0 && (this.jumpCooldown || 0) <= 0.4) {
-          this._aiSignatureCd = 3.8 + Math.random() * 1.2;
-          this.startCrouch(enemy, game);
+        if (this.isBlinkWarpHero() && canDodge && (cornerPressured || (dist < 235 && activeThreat))) {
+          this._aiSignatureCd = 2.6 + Math.random() * 0.8;
+          this._aiDefenseBreather = 0.36;
+          this.startDodge(enemy, game);
           return true;
         }
-        if (canJump && (this.jumpCooldown || 0) <= 0 && (dist < profile.sweetMin + 35 || this.x < 195 || this.x > ww - 195)) {
+        if (canCrouch && activeThreat && dist <= 240) {
+          return safeCrouch(3.8);
+        }
+        if (canJump && (cornerPressured || (activeThreat && dist < (profile.sweetMin || 280) - 60))) {
           const kiteDir = this.x < 210 ? 1 : this.x > ww - 210 ? -1 : -this.facing;
-          this._aiSignatureCd = 3.6 + Math.random() * 1.1;
-          this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.6);
-          this.startJump(enemy, game, kiteDir);
-          return true;
+          return safeJump(kiteDir, 3.6);
         }
         return false;
       }
@@ -1225,9 +1421,13 @@ export class Fighter {
   }
 
   _tryRoleDefense(enemy, game, dist, roleProfile, minArenaX, maxArenaX) {
-    if (!enemy || !game || !roleProfile || this.dodgeCooldown > 0) return false;
+    if (!enemy || !game || !roleProfile || (this._aiDefenseBreather || 0) > 0 || this.dodgeCooldown > 50) return false;
+    if (enemy.state === 'HURT' || (enemy.stunTimer || 0) > 0 || (enemy.chronoTimeStopTimer || 0) > 0) {
+      return false;
+    }
     const hasProjThreat = this.hasIncomingProjectile(game, 220);
-    const enemyMidAttack = enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL';
+    const enemyMidAttack =
+      (enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL') && (enemy.stateTimer || 0) >= 0.12;
     const canCrouch =
       typeof this.startCrouch === 'function' &&
       (this._aiSignatureCd || 0) <= 0 &&
@@ -1237,26 +1437,42 @@ export class Fighter {
       (this._aiSignatureCd || 0) <= 0 &&
       (this.jumpCooldown || 0) <= 0 &&
       (this.vaultCooldown || 0) <= 0;
+    const canDodge = this.dodgeCooldown <= 0;
     const nearLeft = this.x < minArenaX + 95;
     const nearRight = this.x > maxArenaX - 95;
     const awayDir = nearLeft ? 1 : nearRight ? -1 : -this.facing;
 
     const invokeCrouch = () => {
       this._aiSignatureCd = 3.2 + Math.random() * 1.0;
-      this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.35);
+      this._aiDefenseBreather = 0.36;
       if (this.getBaseHeroId() === 'valkyrie') this.backflipKiteTimer = 1.65;
+      const prevDodgeCd = this.dodgeCooldown;
       this.startCrouch(enemy, game);
+      this.dodgeCooldown = prevDodgeCd;
       return true;
     };
     const invokeJump = (dir) => {
       this._aiSignatureCd = 3.2 + Math.random() * 1.0;
-      this.dodgeCooldown = this.dodgeMaxCooldown * (0.82 + Math.random() * 0.24);
+      this._aiDefenseBreather = 0.36;
+      this.jumpCooldown = 2.8;
+      const prevDodgeCd = this.dodgeCooldown;
       this.startJump(enemy, game, dir);
+      this.dodgeCooldown = prevDodgeCd;
+      return true;
+    };
+    const invokeDodge = (cdMin = 2.2) => {
+      if (!canDodge) return false;
+      this._aiSignatureCd = cdMin + Math.random() * 0.7;
+      this._aiDefenseBreather = 0.36;
+      this.startDodge(enemy, game);
       return true;
     };
 
     switch (roleProfile.role) {
       case 'artillery_mage': {
+        if (this.isBlinkWarpHero() && canDodge && (dist < 250 || nearLeft || nearRight || hasProjThreat)) {
+          if (dist < 250 || nearLeft || nearRight || !canCrouch) return invokeDodge();
+        }
         if (hasProjThreat && canCrouch) return invokeCrouch();
         if (dist < (roleProfile.jumpEscapeDist || 225) && canJump) return invokeJump(awayDir);
         if (
@@ -1273,6 +1489,7 @@ export class Fighter {
         if (dist < (roleProfile.pressuredDist || 260)) {
           if (canJump && (nearLeft || nearRight || !canCrouch)) return invokeJump(awayDir);
           if (canCrouch) return invokeCrouch();
+          if (canDodge && (nearLeft || nearRight || enemyMidAttack || dist < 190)) return invokeDodge();
         }
         if (
           canCrouch &&
@@ -1287,20 +1504,26 @@ export class Fighter {
         if (dist < (roleProfile.pressuredDist || 255) || hasProjThreat) {
           if (canCrouch && (this.backflipKiteTimer || 0) <= 0) return invokeCrouch();
           if (dist < (roleProfile.pressuredDist || 255) && canJump) return invokeJump(awayDir);
+          if (canDodge && dist < 210) return invokeDodge();
         }
         break;
       }
       case 'counter_duelist': {
-        if (hasProjThreat || (enemyMidAttack && dist < 215)) {
+        if (this.isBlinkWarpHero() && canDodge && dist < 250 && (nearLeft || nearRight || dist < 175)) {
+          return invokeDodge();
+        }
+        if (hasProjThreat || (enemyMidAttack && dist < 250)) {
+          if (this.isBlinkWarpHero() && canDodge) {
+            return invokeDodge();
+          }
           if (
             canCrouch &&
-            (hasProjThreat || (enemy.stateTimer > 0.06 && enemy.stateTimer < 0.46))
+            (hasProjThreat || (enemy.stateTimer >= 0.12 && enemy.stateTimer < 0.46))
           ) {
             return invokeCrouch();
           }
+          if (canDodge) return invokeDodge();
           if (canJump) return invokeJump(nearLeft || nearRight ? awayDir : this.facing);
-          this.startDodge(enemy, game);
-          return true;
         }
         break;
       }
@@ -1312,9 +1535,19 @@ export class Fighter {
         ) {
           return invokeCrouch();
         }
+        if (canDodge && dist < 195 && (hasProjThreat || enemyMidAttack)) {
+          return invokeDodge();
+        }
         break;
       }
       case 'abyssal_stalker': {
+        if (
+          canDodge &&
+          dist < 250 &&
+          (enemyMidAttack || nearLeft || nearRight || dist < 185 || hasProjThreat)
+        ) {
+          return invokeDodge();
+        }
         const enemyIsRanged =
           (enemy.attackRange || 0) >= 250 || Boolean(enemy.isHackAndSlashCaster?.());
         if (
@@ -1333,8 +1566,7 @@ export class Fighter {
 
     const threatType = this.detectIncomingThreatType(enemy, game);
     if (threatType) {
-      this.triggerSignatureDefense(enemy, game, threatType);
-      return true;
+      return this.triggerSignatureDefense(enemy, game, threatType);
     }
     return false;
   }
@@ -1349,7 +1581,7 @@ export class Fighter {
       enemy.state === 'HURT' || (enemy.stunTimer || 0) > 0 || (enemy.chronoTimeStopTimer || 0) > 0;
     const enemyCommitted =
       (enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL' || enemy.state === 'CROUCH') &&
-      (enemy.stateTimer || 0) > 0.05;
+      (enemy.stateTimer || 0) >= 0.12;
     const midComboHold =
       (this._aiComboCount || 0) > 0 && dist <= atkRange && (this._aiSkillReadyTime || 0) < 0.72;
     if (midComboHold) return false;
@@ -1381,7 +1613,13 @@ export class Fighter {
           this.autoCooldown > 0.15
         );
       case 'counter_duelist':
-        return false;
+        return (
+          readyTime >= 0.85 &&
+          dist <= 235 &&
+          !enemy.isInvulnerable &&
+          !enemy.isDeflecting &&
+          !enemy.iaidoCounterActive
+        );
       case 'vanguard_juggernaut':
         return readyTime >= 0.55 && dist <= 225 && this.autoCooldown > 0.10;
       case 'abyssal_stalker':
@@ -1392,7 +1630,7 @@ export class Fighter {
   }
 
   _shouldRoleDash(enemy, game, dist, roleProfile, ww) {
-    if (!roleProfile || !enemy || enemy.isDead) return false;
+    if (!roleProfile || !enemy || enemy.isDead || (this._aiDefenseBreather || 0) > 0) return false;
     if (
       enemy.isInvulnerable ||
       enemy.isDeflecting ||
@@ -1403,14 +1641,18 @@ export class Fighter {
     }
     const enemySwinging = enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL';
     const hasProj = this.hasIncomingProjectile(game, 220);
+    const cornered = this.x < 190 || this.x > ww - 190;
     switch (roleProfile.role) {
       case 'artillery_mage':
-        return dist > (roleProfile.dashMinDist || 540);
+        return (
+          dist > (roleProfile.dashMinDist || 440) ||
+          (this.isBlinkWarpHero() && cornered && dist < 175 && !hasProj)
+        );
       case 'sanctum_support':
-        return dist > (roleProfile.dashMinDist || 560);
+        return dist > (roleProfile.dashMinDist || 460);
       case 'mobile_marksman':
         return (
-          dist > (roleProfile.dashMinDist || 530) ||
+          dist > (roleProfile.dashMinDist || 450) ||
           ((this.x < 210 || this.x > ww - 210) && dist < 245)
         );
       case 'counter_duelist':
@@ -1430,6 +1672,14 @@ export class Fighter {
     this.setState('DODGE');
     this.isInvulnerable = true;
     const ww = game.renderer.worldWidth;
+    if (
+      this.getBaseHeroId() === 'reaper' &&
+      !this.hasIncomingProjectile(game, 220) &&
+      enemy &&
+      Math.abs(enemy.x - this.x) < 250
+    ) {
+      this.crouchCooldown = Math.max(this.crouchCooldown || 0, 0.35);
+    }
     // Choose smart evasion direction with arena boundary awareness
     let dir = -this.facing;
     if (this.x < 180) dir = 1;
@@ -1437,6 +1687,61 @@ export class Fighter {
     this.dashDir = dir;
     if (this.onStartDodge) {
       this.onStartDodge(enemy, game, dir);
+    }
+  }
+
+  _applyFootsieBand(dt, dist, minDist, maxDist, opts = {}) {
+    const nearWall = Boolean(opts.nearWall);
+    const approachMult = opts.approachSpeedMult ?? 0.85;
+    const retreatMult = opts.retreatSpeedMult ?? 0.55;
+    const approachFreq = opts.approachFreq ?? 4.3;
+    const retreatFreq = opts.retreatFreq ?? 4.0;
+    const bobAmp = opts.bobAmp ?? 1.4;
+    const absBob = Boolean(opts.absBob);
+    const hyst = opts.hyst ?? 8;
+    const holdSec = opts.holdSec ?? 0.30;
+
+    let mode = this._aiFootsieMode || 'idle';
+    const holdActive = (this._aiFootsieHoldTimer || 0) > 0;
+
+    if (mode === 'approach') {
+      if (dist <= minDist || (dist <= Math.max(minDist, maxDist - hyst) && !holdActive)) {
+        mode = 'idle';
+        this._aiFootsieHoldTimer = holdSec;
+      }
+    } else if (mode === 'retreat') {
+      if (nearWall || dist >= maxDist || (dist >= Math.min(maxDist, minDist + hyst) && !holdActive)) {
+        mode = 'idle';
+        this._aiFootsieHoldTimer = holdSec;
+      }
+    } else {
+      if (dist > maxDist && (!holdActive || dist > maxDist + hyst)) {
+        mode = 'approach';
+        this._aiFootsieHoldTimer = holdSec;
+      } else if (!nearWall && dist < minDist && (!holdActive || dist < minDist - hyst)) {
+        mode = 'retreat';
+        this._aiFootsieHoldTimer = holdSec;
+      }
+    }
+    this._aiFootsieMode = mode;
+
+    if (mode === 'approach') {
+      this.state = 'WALK';
+      this.moveDir = 1;
+      this.walkPhase += dt * approachFreq;
+      this.x += this.facing * this.moveSpeed * approachMult * dt;
+      const s = Math.sin((this.walkPhase * Math.PI) / 2.0);
+      this.headBob = (absBob ? Math.abs(s) : s) * bobAmp;
+    } else if (mode === 'retreat') {
+      this.state = 'WALK';
+      this.moveDir = -1;
+      this.walkPhase += dt * retreatFreq;
+      this.x -= this.facing * this.moveSpeed * retreatMult * dt;
+      const s = Math.sin((this.walkPhase * Math.PI) / 2.0);
+      this.headBob = (absBob ? Math.abs(s) : s) * bobAmp;
+    } else {
+      this.state = 'IDLE';
+      this.moveDir = 0;
     }
   }
 
@@ -1575,6 +1880,10 @@ export class Fighter {
       enemy.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DASH' &&
       this.state !== 'DODGE' &&
+      this.state !== 'JUMP' &&
+      enemy.state !== 'JUMP' &&
+      !this.isFlipVault &&
+      !enemy.isFlipVault &&
       !this._phaseThroughEnemy &&
       !enemy._phaseThroughEnemy &&
       !this._hnsPhaseThrough &&
@@ -1624,6 +1933,8 @@ export class Fighter {
       this.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DASH' &&
       this.state !== 'DODGE' &&
+      this.state !== 'JUMP' &&
+      !this.isFlipVault &&
       !this._phaseThroughEnemy &&
       !this._hnsPhaseThrough
     ) {
@@ -1732,22 +2043,31 @@ export class Fighter {
     const isManualPlayer = Boolean(
       (this.isPlayerControlled && !this.adventureAutoPlay) || this.isManualAdventureControl
     );
+    const committedFacingLock =
+      this.state === 'JUMP' ||
+      this.state === 'DASH' ||
+      this.state === 'DODGE' ||
+      this.state === 'SKILL' ||
+      this.state === 'CROUCH' ||
+      this.state === 'ULTIMATE' ||
+      this.state === 'TRUE_ULTIMATE';
+    const facingDx = enemy ? enemy.x - this.x : 0;
     if (
       enemy &&
       !enemy.isFullyBurrowed &&
       !this._advPureDodge &&
-      this.state !== 'ULTIMATE' &&
-      this.state !== 'TRUE_ULTIMATE' &&
+      !committedFacingLock &&
+      Math.abs(facingDx) > 14 &&
       (!isManualPlayer || (this.state !== 'IDLE' && this.state !== 'WALK')) &&
       !(
         this.state === 'AUTO_ATTACK' &&
         this.hasHackAndSlashCombo() &&
         (enemy.isDestructibleProp ||
           enemy.isDummyFocal ||
-          Math.abs(enemy.x - this.x) > this.getHackAndSlashLockRange())
+          Math.abs(facingDx) > this.getHackAndSlashLockRange())
       )
     ) {
-      this.facing = enemy.x >= this.x ? 1 : -1;
+      this.facing = facingDx >= 0 ? 1 : -1;
     }
 
     let cdMult = this.isBerserk ? 1.25 : 1.0;
@@ -1758,8 +2078,11 @@ export class Fighter {
     this.skillCooldown = Math.max(0, this.skillCooldown - dt * cdMult);
     this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt * cdMult);
     this.dashCooldown = Math.max(0, this.dashCooldown - dt * cdMult);
+    if (this.jumpCooldown > 0) this.jumpCooldown = Math.max(0, this.jumpCooldown - dt * cdMult);
     if (this._aiSignatureCd > 0) this._aiSignatureCd = Math.max(0, this._aiSignatureCd - dt * cdMult);
+    if (this._aiDefenseBreather > 0) this._aiDefenseBreather = Math.max(0, this._aiDefenseBreather - dt);
     if (this._aiOutstepTimer > 0) this._aiOutstepTimer = Math.max(0, this._aiOutstepTimer - dt);
+    if (this._aiFootsieHoldTimer > 0) this._aiFootsieHoldTimer = Math.max(0, this._aiFootsieHoldTimer - dt);
     if (this._aiComboReadyFinisher > 0) {
       this._aiComboReadyFinisher = Math.max(0, this._aiComboReadyFinisher - dt);
     }
@@ -1853,7 +2176,7 @@ export class Fighter {
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
 
     // Stun / Root Lock (e.g., Torgar's Home-Run Stun, Lyra's Absolute Zero Freeze, Sylvara's Yggdrasil Roots)
-    if ((this.stunTimer > 0 || this.isRooted) && this.state !== 'TRUE_ULTIMATE') {
+    if ((this.stunTimer > 0 || this.isRooted) && this.state !== 'TRUE_ULTIMATE' && this.state !== 'ULTIMATE') {
       if (this.stunTimer > 0) {
         this.stunTimer = Math.max(0, this.stunTimer - dt);
       }
@@ -1890,7 +2213,8 @@ export class Fighter {
         const isAdvMode = Boolean(game?.isAdventureMode?.());
         const aiProfile = this.getAiStyleProfile();
         const roleProfile = !isAdvMode ? this.getRoleTacticalProfile() : null;
-        const atkRange = this.getEffectiveAttackRange ? this.getEffectiveAttackRange() : this.attackRange;
+        const rawAtkRange = this.getEffectiveAttackRange ? this.getEffectiveAttackRange() : this.attackRange;
+        const atkRange = this.heroId === 'ronin' ? Math.max(rawAtkRange, 134) : rawAtkRange;
         if (this.backflipKiteTimer > 0) {
           this.backflipKiteTimer = Math.max(0, this.backflipKiteTimer - dt);
         }
@@ -1903,6 +2227,15 @@ export class Fighter {
               enemy.iaidoCounterActive ||
               enemy.isFullyBurrowed
             );
+        const enemyUltProtected = isAdvMode
+          ? Boolean(enemy.isInvulnerable)
+          : Boolean(
+              enemy.isDeflecting ||
+              enemy.iaidoCounterActive ||
+              enemy.isFullyBurrowed ||
+              (enemy.isInvulnerable &&
+                (enemy.state === 'ULTIMATE' || enemy.state === 'TRUE_ULTIMATE' || enemy.state === 'REVIVE'))
+            );
         const enemyStaggered = Boolean(
           enemy.state === 'HURT' ||
           (enemy.stunTimer || 0) > 0 ||
@@ -1910,7 +2243,7 @@ export class Fighter {
         );
         const enemyCommitted = Boolean(
           (enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL' || enemy.state === 'CROUCH') &&
-          (enemy.stateTimer || 0) > 0.05
+          (enemy.stateTimer || 0) >= 0.12
         );
         const isLegacyUnitTestTick0 =
           !this.heroId?.endsWith('_ex') &&
@@ -1937,7 +2270,7 @@ export class Fighter {
         if (
           this.hasTrueUltimate &&
           this.finisherGauge >= this.maxFinisherGauge &&
-          !enemyProtected &&
+          !enemyUltProtected &&
           finisherRangeOk &&
           finisherTimingOk &&
           typeof this.updateTrueUltimate === 'function'
@@ -1945,6 +2278,7 @@ export class Fighter {
           this.finisherGauge = 0;
           this._aiFinisherReadyTime = 0;
           if (this.stats) this.stats.ultsUsed++;
+          if (Math.abs(enemy.x - this.x) > 4) this.facing = enemy.x >= this.x ? 1 : -1;
           this.setState('TRUE_ULTIMATE');
           if (typeof game.triggerTrueUltimateCinematic === 'function') {
             game.triggerTrueUltimateCinematic(this);
@@ -1954,7 +2288,7 @@ export class Fighter {
           return;
         }
 
-        // 1. Smart Archetype Overdrive Timing (don't waste Overdrive into parries/burrow/invuln or from out of range!)
+        // 1. Smart Archetype Overdrive Timing (don't waste Overdrive into ult startup/revive invuln or out of range!)
         const baseHeroId = this.getBaseHeroId();
         const ultRangeOk = isAdvMode
           ? baseHeroId === 'warrior'
@@ -1980,13 +2314,14 @@ export class Fighter {
                     ? 360
                     : (atkRange || 180) * 1.75)) ||
               (this._aiUltReadyTime || 0) >= 1.05;
-        if (this.mana >= this.maxMana && !enemyProtected && ultRangeOk && ultTimingOk) {
+        if (this.mana >= this.maxMana && !enemyUltProtected && ultRangeOk && ultTimingOk) {
           this.mana = 0;
           this._aiUltReadyTime = 0;
           if (this.hasTrueUltimate) {
             this.gainFinisher(24);
           }
           if (this.stats) this.stats.ultsUsed++;
+          if (Math.abs(enemy.x - this.x) > 4) this.facing = enemy.x >= this.x ? 1 : -1;
           this.setState('ULTIMATE');
           game.triggerUltimateCinematic(this);
           return;
@@ -1994,10 +2329,9 @@ export class Fighter {
 
         // Shadow-Burrow Ambush Awareness: keep back turned & hold cautious guard without wasting cooldowns into empty ground
         if (!isAdvMode && enemy.isFullyBurrowed) {
-          if (this.dodgeCooldown <= 0) {
+          if ((this._aiDefenseBreather || 0) <= 0 && this.dodgeCooldown <= 50) {
             const hazardThreat = this.detectIncomingThreatType(enemy, game);
-            if (hazardThreat) {
-              this.triggerSignatureDefense(enemy, game, hazardThreat);
+            if (hazardThreat && this.triggerSignatureDefense(enemy, game, hazardThreat)) {
               return;
             }
           }
@@ -2017,7 +2351,7 @@ export class Fighter {
           (this.comboStep || 0) !== 0 &&
           (this._aiComboChainTimer || 0) > 0 &&
           dist <= hnsChainRange;
-        if (!isAdvMode && !inHackSlashChain && this.dodgeCooldown <= 0) {
+        if (!isAdvMode && !inHackSlashChain) {
           if (this._tryRoleDefense(enemy, game, dist, roleProfile, minArenaX, maxArenaX)) {
             return;
           }
@@ -2060,6 +2394,7 @@ export class Fighter {
             this._aiSkillPatience = 1.55 + Math.random() * 0.55;
             this._aiComboReadyFinisher = 0;
             if (this.stats) this.stats.skillsUsed++;
+            if (Math.abs(enemy.x - this.x) > 4) this.facing = enemy.x >= this.x ? 1 : -1;
             this.setState('SKILL');
             if (game.vfx && game.vfx.spawnSpecialCastAura) {
               game.vfx.spawnSpecialCastAura(
@@ -2085,19 +2420,23 @@ export class Fighter {
         if (
           !inHackSlashChain &&
           !isAdvMode &&
+          this.dodgeCooldown <= 50 &&
+          (this._aiDefenseBreather || 0) <= 0 &&
           aiProfile.midLeapChance > 0 &&
           dist >= aiProfile.midLeapMin &&
           dist <= aiProfile.midLeapMax &&
           (this._aiSignatureCd || 0) <= 0 &&
-          this.dodgeCooldown <= 0.35 &&
           (this.jumpCooldown || 0) <= 0 &&
           (this.vaultCooldown || 0) <= 0 &&
           typeof this.startJump === 'function' &&
           Math.random() < aiProfile.midLeapChance * 0.35
         ) {
           this._aiSignatureCd = 3.5 + Math.random() * 1.1;
-          this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.5);
+          this._aiDefenseBreather = 0.36;
+          this.jumpCooldown = 2.8;
+          const prevDodgeCd = this.dodgeCooldown;
           this.startJump(enemy, game, this.facing);
+          this.dodgeCooldown = prevDodgeCd;
           return;
         }
 
@@ -2112,7 +2451,7 @@ export class Fighter {
           return;
         }
 
-        // 6. Disciplined Combo Strings & Expressive Per-Champion Neutral Footsies
+        // 6. Disciplined Combo Strings & Smooth Hysteretic Neutral Footsies
         const effAtkRange = inHackSlashChain ? Math.max(atkRange, hnsChainRange) : atkRange;
         if (dist <= effAtkRange) {
           const bossColossalAlive = Boolean(
@@ -2122,8 +2461,9 @@ export class Fighter {
           const effBackMaxWall = bossColossalAlive ? maxArenaX + 400 : maxArenaX;
           const outstepMargin = 85;
           const rangeWallMargin = 95;
-          // Brief martial out-step feint right after completing a full combo string so fighters breathe & bait whiffs!
-          if (!inHackSlashChain && (this._aiOutstepTimer || 0) > 0 && dist < atkRange * 0.94) {
+          const sweetMinBound = (!isAdvMode && roleProfile?.idealMin) || aiProfile.sweetMin || 116;
+          // Measured out-step only when genuinely crowded inside sweet-spot min
+          if (!inHackSlashChain && (this._aiOutstepTimer || 0) > 0 && dist < sweetMinBound - 4) {
             const nearWall = this.x < effMinWall + outstepMargin || this.x > effBackMaxWall - outstepMargin;
             const stepSign = nearWall ? 1 : this._aiOutstepDir || -1;
             this.state = 'WALK';
@@ -2142,7 +2482,7 @@ export class Fighter {
               } else {
                 const postInt = this._postFlurryInterval || 1.65;
                 this.autoCooldown = postInt * (0.90 + Math.random() * 0.20);
-                this._aiOutstepTimer = 0.22;
+                this._aiOutstepTimer = dist < sweetMinBound - 6 ? 0.32 : 0;
                 this._aiOutstepDir = -1;
               }
             } else {
@@ -2157,216 +2497,158 @@ export class Fighter {
             return;
           }
 
-          // Between attacks (autoCooldown > 0), each champion exhibits their authentic martial spacing & footwork!
+          // Between attacks (autoCooldown > 0), smooth hysteretic martial spacing & footwork
           const isRangedArchetype = this.attackRange >= 300 || isRangedEx;
           if (isRangedArchetype) {
             if (this.heroId === 'valkyrie' || this.heroId === 'valkyrie_ex') {
               if (
                 !isAdvMode &&
-                dist < 325 &&
+                this.dodgeCooldown <= 50 &&
+                (this._aiDefenseBreather || 0) <= 0 &&
+                !enemyStaggered &&
+                dist < 310 &&
+                (enemyCommitted || dist < 235) &&
                 (this.backflipKiteTimer || 0) <= 0 &&
                 (this.crouchCooldown || 0) <= 0 &&
                 this.startCrouch
               ) {
                 this.backflipKiteTimer = 1.65;
+                this._aiDefenseBreather = 0.36;
+                const prevDodgeCd = this.dodgeCooldown;
                 this.startCrouch(enemy, game);
+                this.dodgeCooldown = prevDodgeCd;
                 return;
               }
               const nearWall = this.x < effMinWall + rangeWallMargin || this.x > effBackMaxWall - rangeWallMargin;
               const vSweetMin = (!isAdvMode && roleProfile?.idealMin) || aiProfile.sweetMin || 310;
               const vSweetMax = (!isAdvMode && roleProfile?.idealMax) || aiProfile.sweetMax || 375;
-              if (dist < vSweetMin && !nearWall) {
-                this.state = 'WALK';
-                this.moveDir = -1;
-                this.walkPhase += dt * 4.2;
-                this.x -= this.facing * this.moveSpeed * 0.72 * dt;
-                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-              } else if (dist > vSweetMax) {
-                this.state = 'WALK';
-                this.moveDir = 1;
-                this.walkPhase += dt * 4.2;
-                this.x += this.facing * this.moveSpeed * 0.70 * dt;
-                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-              } else {
-                this.state = 'IDLE';
-                this.moveDir = 0;
-              }
+              this._applyFootsieBand(dt, dist, vSweetMin, vSweetMax, {
+                nearWall,
+                retreatSpeedMult: 0.72,
+                approachSpeedMult: 0.70,
+                approachFreq: 4.2,
+                retreatFreq: 4.2,
+                bobAmp: 1.4
+              });
             } else {
               const sweetSpotMin = (!isAdvMode && roleProfile?.idealMin) || aiProfile.sweetMin || 350;
               const sweetSpotMax = (!isAdvMode && roleProfile?.idealMax) || aiProfile.sweetMax || 455;
               const nearLeft = this.x < effMinWall + rangeWallMargin;
               const nearRight = this.x > effBackMaxWall - rangeWallMargin;
 
-              // Corner-escape aerial vault for trapped ranged champions (VS Modes only)
-              if (
-                !isAdvMode &&
-                (nearLeft || nearRight) &&
-                dist < 250 &&
-                (this._aiSignatureCd || 0) <= 0 &&
-                (this.jumpCooldown || 0) <= 0 &&
-                (this.vaultCooldown || 0) <= 0 &&
-                typeof this.startJump === 'function'
-              ) {
-                this._aiSignatureCd = 3.8;
-                this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.5);
-                this.startJump(enemy, game, nearLeft ? 1 : -1);
-                return;
+              // Corner-escape blink/vault for trapped ranged champions (VS Modes only)
+              if (!isAdvMode && this.dodgeCooldown <= 50 && (nearLeft || nearRight) && dist < 250 && (this._aiDefenseBreather || 0) <= 0) {
+                if (this.isBlinkWarpHero() && this.dodgeCooldown <= 0) {
+                  this._aiSignatureCd = 2.8;
+                  this._aiDefenseBreather = 0.36;
+                  this.startDodge(enemy, game);
+                  return;
+                }
+                if (
+                  (this._aiSignatureCd || 0) <= 0 &&
+                  (this.jumpCooldown || 0) <= 0 &&
+                  (this.vaultCooldown || 0) <= 0 &&
+                  typeof this.startJump === 'function'
+                ) {
+                  this._aiSignatureCd = 3.8;
+                  this._aiDefenseBreather = 0.36;
+                  this.jumpCooldown = 2.8;
+                  const prevDodgeCd = this.dodgeCooldown;
+                  this.startJump(enemy, game, nearLeft ? 1 : -1);
+                  this.dodgeCooldown = prevDodgeCd;
+                  return;
+                }
               }
 
-              if (dist < sweetSpotMin && !nearLeft && !nearRight) {
-                this.state = 'WALK';
-                this.moveDir = -1;
-                this.walkPhase += dt * 4.2;
-                this.x -= this.facing * this.moveSpeed * 0.80 * dt;
-                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-              } else if (dist > sweetSpotMax) {
-                this.state = 'WALK';
-                this.moveDir = 1;
-                this.walkPhase += dt * 4.0;
-                this.x += this.facing * this.moveSpeed * 0.65 * dt;
-                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-              } else {
-                // Hold poised ranged kamae inside the sweet-spot band instead of crab-oscillating in place
-                this.state = 'IDLE';
-                this.moveDir = 0;
-              }
+              this._applyFootsieBand(dt, dist, sweetSpotMin, sweetSpotMax, {
+                nearWall: nearLeft || nearRight,
+                retreatSpeedMult: 0.80,
+                approachSpeedMult: 0.65,
+                approachFreq: 4.0,
+                retreatFreq: 4.2,
+                bobAmp: 1.4
+              });
             }
           } else if (this.heroId === 'ronin' || this.heroId === 'ronin_ex') {
-            // Iaido Samurai (Kaze-Maru / Kaze-Maru EX): close-quarters katana maai with >= 28px deadband above minSep=110 on EX!
             const nearSpacingWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
-            const roninMin = isExFighter ? 112 : 76;
-            const roninMax = isExFighter ? 140 : 106;
-            if (dist > roninMax) {
-              this.state = 'WALK';
-              this.moveDir = 1;
-              this.walkPhase += dt * 4.4;
-              this.x += this.facing * this.moveSpeed * 0.84 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else if (dist < roninMin && !nearSpacingWall) {
-              this.state = 'WALK';
-              this.moveDir = -1;
-              this.walkPhase += dt * 3.8;
-              this.x -= this.facing * this.moveSpeed * 0.42 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.2;
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
-            }
+            const roninMin = 112;
+            const roninMax = isExFighter ? 140 : 128;
+            this._applyFootsieBand(dt, dist, roninMin, roninMax, {
+              nearWall: nearSpacingWall,
+              approachSpeedMult: 0.84,
+              retreatSpeedMult: 0.42,
+              approachFreq: 4.4,
+              retreatFreq: 3.8,
+              bobAmp: 1.3
+            });
           } else if (this.heroId === 'android' || this.heroId === 'android_ex') {
-            // Cyber-Valkyrie (VEX-09 / VEX-09 EX): disciplined blade-tip spacing (>= 30px deadband above minSep=110)
             const nearSpacingWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
             const andMin = isExFighter ? 116 : 118;
             const andMax = 148;
-            if (dist > andMax) {
-              this.state = 'WALK';
-              this.moveDir = 1;
-              this.walkPhase += dt * 4.4;
-              this.x += this.facing * this.moveSpeed * 0.76 * 0.85 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else if (dist < andMin && !nearSpacingWall) {
-              this.state = 'WALK';
-              this.moveDir = -1;
-              this.walkPhase += dt * 4.0;
-              this.x -= this.facing * this.moveSpeed * 0.76 * 0.60 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
-            }
+            this._applyFootsieBand(dt, dist, andMin, andMax, {
+              nearWall: nearSpacingWall,
+              approachSpeedMult: 0.76 * 0.85,
+              retreatSpeedMult: 0.76 * 0.60,
+              approachFreq: 4.4,
+              retreatFreq: 4.0,
+              bobAmp: 1.3
+            });
           } else if (this.heroId === 'chronomancer' || this.heroId === 'chronomancer_ex') {
-            // Sovereign of Time (Chronos / Chronos EX): close-quarters Twin Clock-Blade duelist spacing (>= 30px deadband on EX)
             const nearChronoWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
-            const chrMin = isExFighter ? 112 : 98;
-            const chrMax = isExFighter ? 142 : 136;
-            if (dist > chrMax) {
-              this.state = 'WALK';
-              this.moveDir = 1;
-              this.walkPhase += dt * 4.4;
-              this.x += this.facing * this.moveSpeed * 0.88 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < chrMin && !nearChronoWall) {
-              this.state = 'WALK';
-              this.moveDir = -1;
-              this.walkPhase += dt * 4.0;
-              this.x -= this.facing * this.moveSpeed * 0.62 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
-            }
+            const chrMin = 112;
+            const chrMax = isExFighter ? 142 : 138;
+            this._applyFootsieBand(dt, dist, chrMin, chrMax, {
+              nearWall: nearChronoWall,
+              approachSpeedMult: 0.88,
+              retreatSpeedMult: 0.62,
+              approachFreq: 4.4,
+              retreatFreq: 4.0,
+              bobAmp: 1.4
+            });
           } else if (this.heroId === 'titan' || this.heroId === 'titan_ex') {
-            // Unstoppable Mountain Juggernaut (Torgar / Torgar EX): heavy march into maul range (140px on EX = 30px deadband above minSep=110)
-            const titanMax = isExFighter ? 140 : 124;
-            if (dist > titanMax) {
-              this.state = 'WALK';
-              this.moveDir = 1;
-              this.walkPhase += dt * 3.4;
-              this.x += this.facing * this.moveSpeed * 0.90 * dt;
-              this.headBob = Math.abs(Math.sin((this.walkPhase * Math.PI) / 2.0)) * 1.6;
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
-            }
+            const titanMax = isExFighter ? 140 : 132;
+            this._applyFootsieBand(dt, dist, 0, titanMax, {
+              nearWall: true,
+              approachSpeedMult: 0.90,
+              approachFreq: 3.4,
+              bobAmp: 1.6,
+              absBob: true
+            });
           } else if (this.heroId === 'reaper' || this.heroId === 'reaper_ex') {
-            // Abyssal Harvester (Malakor / Malakor EX): predatory scythe-hook stalking (118..150px = 32px deadband above minSep=110)
             const nearReaperWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
-            if (dist > 150) {
-              this.state = 'WALK';
-              this.moveDir = 1;
-              this.walkPhase += dt * 4.3;
-              this.x += this.facing * this.moveSpeed * 0.86 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < 118 && (!isExFighter || !nearReaperWall)) {
-              this.state = 'WALK';
-              this.moveDir = -1;
-              this.walkPhase += dt * 4.0;
-              this.x -= this.facing * this.moveSpeed * 0.45 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
-            }
+            this._applyFootsieBand(dt, dist, 118, 150, {
+              nearWall: isExFighter && nearReaperWall,
+              approachSpeedMult: 0.86,
+              retreatSpeedMult: 0.45,
+              approachFreq: 4.3,
+              retreatFreq: 4.0,
+              bobAmp: 1.4
+            });
           } else if (isExFighter) {
-            // Next-Gen Wide-Canvas (320x240, anchorX=112) Exvius Sovereign sweet-spot (>= 30px deadband above minSep=110 so zero crab jitter!)
             const exSweetMin = Math.max(112, aiProfile.sweetMin || 112);
             const exSweetMax = Math.max(exSweetMin + 30, aiProfile.sweetMax || 142);
             const nearExWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
-            if (dist > exSweetMax) {
-              this.state = 'WALK';
-              this.moveDir = 1;
-              this.walkPhase += dt * 4.5;
-              this.x += this.facing * this.moveSpeed * 0.88 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < exSweetMin && !nearExWall) {
-              this.state = 'WALK';
-              this.moveDir = -1;
-              this.walkPhase += dt * 4.0;
-              this.x -= this.facing * this.moveSpeed * 0.55 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
-            }
+            this._applyFootsieBand(dt, dist, exSweetMin, exSweetMax, {
+              nearWall: nearExWall,
+              approachSpeedMult: 0.88,
+              retreatSpeedMult: 0.55,
+              approachFreq: 4.5,
+              retreatFreq: 4.0,
+              bobAmp: 1.4
+            });
           } else {
-            // Runic Vanguard (Aethelgard): disciplined greatsword-tip pressure & measured micro-step guard
-            if (dist > 136) {
-              this.state = 'WALK';
-              this.moveDir = 1;
-              this.walkPhase += dt * 4.3;
-              this.x += this.facing * this.moveSpeed * 0.85 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < 116) {
-              this.state = 'WALK';
-              this.moveDir = -1;
-              this.walkPhase += dt * 3.8;
-              this.x -= this.facing * this.moveSpeed * 0.42 * dt;
-              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
-            }
+            const nearVanWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
+            this._applyFootsieBand(dt, dist, 116, 136, {
+              nearWall: nearVanWall,
+              approachSpeedMult: 0.85,
+              retreatSpeedMult: 0.42,
+              approachFreq: 4.3,
+              retreatFreq: 3.8,
+              bobAmp: 1.4
+            });
           }
         } else {
+          this._aiFootsieMode = 'approach';
           this.state = 'WALK';
           this.moveDir = 1;
           this.walkPhase += dt * 4.2;
@@ -2461,6 +2743,10 @@ export class Fighter {
       this.updateSkill(dt, enemy, game);
     } else if (this.state === 'ULTIMATE') {
       this.updateUltimate(dt, enemy, game);
+      if (this.state === 'ULTIMATE') {
+        this.unstoppablePoise = true;
+        this.isInvulnerable = this.stateTimer < 0.22;
+      }
     } else if (this.state === 'TRUE_ULTIMATE') {
       if (
         !this._legacyTrueUltFireVoiced &&
@@ -2482,6 +2768,10 @@ export class Fighter {
         this.updateTrueUltimate(dt, enemy, game);
       } else {
         this.updateUltimate(dt, enemy, game);
+      }
+      if (this.state === 'TRUE_ULTIMATE') {
+        this.unstoppablePoise = true;
+        this.isInvulnerable = this.stateTimer < 0.35;
       }
     }
 

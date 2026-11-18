@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps146';
 
 const wrapStormPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -1273,6 +1273,7 @@ export class RoninEx extends Fighter {
 
   startJump(enemy, game) {
     this.vaultCooldown = 2.8;
+    this.jumpCooldown = 2.8;
     this.dashDuration = 0.56;
     this.setState('JUMP');
     this.isInvulnerable = true;
@@ -1663,7 +1664,7 @@ export class RoninEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.90;
-        this._aiOutstepTimer = 0.20;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 108 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.05 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -1893,7 +1894,8 @@ export class RoninEx extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     if (!this._omniStep) this._omniStep = 0;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const clampX = (xVal) => this._clampArenaX(xVal, game, 85);
     const originX = this._ultOriginX !== undefined ? this._ultOriginX : this.x;
@@ -2136,6 +2138,7 @@ export class RoninEx extends Fighter {
       this.y = this.groundY;
       this.divePitchRad = 0;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.stormGodMask = null;
       this.setState('IDLE');
     }
@@ -2152,7 +2155,7 @@ export class RoninEx extends Fighter {
     const t = this.stateTimer;
     const ww = game?.renderer?.worldWidth || 1200;
 
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.isFlipVault = false;
     this.isCrouching = false;

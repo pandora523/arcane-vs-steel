@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps145';
+} from '../engine/shaders/abyssalShaders.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Wide Downward Reaping Crescent Smear -> snaps at F03 (63)
@@ -468,7 +468,12 @@ export class ReaperEx extends Fighter {
   }
 
   takeDamage(rawAmount, attacker, isCrit = false, knockbackX = 0, knockbackY = 0) {
-    if (this.isFullyBurrowed) {
+    const incomingTier =
+      attacker?._activeHitTier ||
+      (attacker && !attacker.isMonster && (attacker.state === 'ULTIMATE' || attacker.state === 'TRUE_ULTIMATE')
+        ? attacker.state
+        : null);
+    if (this.isFullyBurrowed && !incomingTier) {
       if (this.deathCompanions?.length && rawAmount > 0) {
         const refX = attacker && Number.isFinite(attacker.x) ? attacker.x : this.x;
         for (const comp of this.deathCompanions) {
@@ -490,19 +495,21 @@ export class ReaperEx extends Fighter {
     let finalKbX = knockbackX;
     let finalKbY = knockbackY;
 
-    let drMult = 1.0;
-    const hasLivingCovenant =
-      Array.isArray(this.deathCompanions) &&
-      this.deathCompanions.some((c) => c && !c.isDead && c.life > 0 && c.hp > 0);
-    if (hasLivingCovenant) {
-      drMult *= 0.94;
+    if (!incomingTier && this.state !== 'ULTIMATE' && this.state !== 'TRUE_ULTIMATE') {
+      let drMult = 1.0;
+      const hasLivingCovenant =
+        Array.isArray(this.deathCompanions) &&
+        this.deathCompanions.some((c) => c && !c.isDead && c.life > 0 && c.hp > 0);
+      if (hasLivingCovenant) {
+        drMult *= 0.94;
+      }
+      if ((this.graveWardTimer || 0) > 0) {
+        drMult *= 0.92;
+        finalKbX *= 0.45;
+        finalKbY *= 0.50;
+      }
+      finalAmount *= Math.max(0.86, drMult);
     }
-    if ((this.graveWardTimer || 0) > 0) {
-      drMult *= 0.92;
-      finalKbX *= 0.45;
-      finalKbY *= 0.50;
-    }
-    finalAmount *= Math.max(0.86, drMult);
 
     return super.takeDamage(finalAmount, attacker, isCrit, finalKbX, finalKbY);
   }
@@ -743,8 +750,9 @@ export class ReaperEx extends Fighter {
     const isAdv = Boolean(game?.isAdventureMode?.() && game?.adventure?.active);
     const myGy = this.groundY || this.y;
 
+    const canHitBurrowed = this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE';
     const consider = (foe) => {
-      if (!foe || foe === this || foe.isDead || foe.isBenched || foe.isFullyBurrowed || seen.has(foe)) return;
+      if (!foe || foe === this || foe.isDead || foe.isBenched || (foe.isFullyBurrowed && !canHitBurrowed) || seen.has(foe)) return;
       const relX = (foe.x - this.x) * this.facing;
       const hitPad = foe.isColossalBoss ? 82 : 0;
       if (relX < -reachBack - hitPad || relX > reachFront + hitPad) return;
@@ -1041,7 +1049,7 @@ export class ReaperEx extends Fighter {
   }
 
   startJump(enemy, game, customDir = null) {
-    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
+    this.jumpCooldown = 2.8;
     this.setState('JUMP');
     this.isInvulnerable = true;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
@@ -1634,12 +1642,13 @@ export class ReaperEx extends Fighter {
       return;
     }
 
-    if (enemy && !enemy.isDead && dist <= 235 && this.crouchCooldown <= 0) {
+    const hasProjThreat = this.hasIncomingProjectile?.(game, 220);
+    if (enemy && !enemy.isDead && hasProjThreat && dist <= 235 && this.crouchCooldown <= 0) {
       this.startCrouch(enemy, game);
       return;
     }
 
-    if (enemy && !enemy.isDead && dist <= 235) {
+    if (enemy && !enemy.isDead && dist <= 250) {
       this.isFlipVault = false;
       this.isWraithPhase = true;
       this.isSubmerged = false;
@@ -1718,10 +1727,6 @@ export class ReaperEx extends Fighter {
       this.y = this.groundY - liftFrac * 96;
       this.wraithAlpha = u < 0.58 ? 0.52 : 0.98;
 
-      if (enemy && !enemy.isDead) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-      }
-
       if (u < 0.60 && Math.random() < 0.16) {
         this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(29, Math.floor(u * 29)), 0.18);
       }
@@ -1781,9 +1786,6 @@ export class ReaperEx extends Fighter {
       const p = Math.min(1, t / this.dashDuration);
       const ease = 0.5 - 0.5 * Math.cos(p * Math.PI);
       this.x = this.phaseStartX + (this.phaseTargetX - this.phaseStartX) * ease;
-      if (enemy) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-      }
       if (Math.random() < 0.18) {
         this.spawnAfterimage(this.x, this.groundY, this.facing, 6, 12, 0.16);
       }
@@ -2333,7 +2335,7 @@ export class ReaperEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = 0.22;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 114 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -2597,8 +2599,9 @@ export class ReaperEx extends Fighter {
     this.vy = 0;
     this.mana = 0;
     this.giantScale = 1.0;
-    this.isDeflecting = t < 1.66;
-    this.isInvulnerable = t < 1.50;
+    this.isDeflecting = false;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
 
     if (game?.renderer && t < 1.82) {
       const dimTarget = t <= 1.38 ? 0.36 : 0.36 * Math.max(0, 1 - (t - 1.38) / 0.44);
@@ -2905,6 +2908,7 @@ export class ReaperEx extends Fighter {
       this.giantScale = 1.0;
       this.isDeflecting = false;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
       this._bloodMoonSeal = null;
@@ -2919,7 +2923,7 @@ export class ReaperEx extends Fighter {
    * NEWLY-BORN SUPREME ULTIMATE (`TRUE_ULTIMATE`, `4.50s` + `12.5s` Living Covenant):
    * `MEMENTO MORI: CATHEDRAL OF OBLIVION`
    * - Unseals twin Gothic Oblivion Gates (`Row 5`),
-   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps145`),
+   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps146`),
    * - Drops a colossal 6-Pillar Violet-Crimson Scythe Guillotine across reality (`720` Crit)!
    */
   updateTrueUltimate(dt, enemy, game) {
@@ -2931,7 +2935,7 @@ export class ReaperEx extends Fighter {
         : null;
     const tMin = advBounds ? advBounds.minX + 36 : 95;
     const tMax = advBounds ? advBounds.maxX - 36 : ww - 95;
-    this.isInvulnerable = true;
+    this.isInvulnerable = elapsed < 0.35;
     this.unstoppablePoise = true;
     this.isSubmerged = false;
     this.isFlipVault = false;
@@ -3254,6 +3258,7 @@ export class ReaperEx extends Fighter {
       this.y = this.groundY;
       this.giantScale = 1.0;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
       this.wraithClones = [];
@@ -3587,20 +3592,35 @@ export class ReaperEx extends Fighter {
       const pinnedLeft = this.x < 240 && enemy.x > this.x;
       const pinnedRight = this.x > ww - 240 && enemy.x < this.x;
 
-      if ((pinnedLeft || pinnedRight) && dist < 265 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
-        this.wallFlipCooldown = 3.1;
-        this.startJump(enemy, game);
-        return;
+      if ((pinnedLeft || pinnedRight) && dist < 250 && this.dodgeCooldown <= 50) {
+        if (this.dodgeCooldown <= 0) {
+          this.startDodge(enemy, game);
+          return;
+        }
+        if ((this.jumpCooldown || 0) <= 0 && this.wallFlipCooldown <= 0) {
+          this.wallFlipCooldown = 3.1;
+          this.startJump(enemy, game);
+          return;
+        }
       }
 
+      const incomingProj = this.hasIncomingProjectile?.(game, 240);
+      const enemyThreat =
+        incomingProj ||
+        ((enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL') &&
+          (enemy.stateTimer || 0) >= 0.12 &&
+          dist <= 265);
       const canDefensiveBurrow = this.hp < this.maxHp * 0.38 && dist <= 250;
       if (
+        this.dodgeCooldown <= 50 &&
         this.crouchCooldown <= 0 &&
+        (this._aiDefenseBreather || 0) <= 0 &&
         this.mana < this.maxMana &&
         (this.finisherGauge || 0) < 100 &&
-        ((dist >= 165 && dist <= 370) || canDefensiveBurrow) &&
+        (enemyThreat || canDefensiveBurrow) &&
         !game?.isAdventureMode?.()
       ) {
+        this._aiDefenseBreather = 0.36;
         this.startCrouch(enemy, game);
         return;
       }

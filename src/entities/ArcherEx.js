@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps145';
+} from '../engine/shaders/sylvanShaders.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -290,9 +290,9 @@ export class ArcherEx extends Fighter {
         return img;
       };
       assets.archer_ex = {
-        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps145'),
-        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps145'),
-        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps145'),
+        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps146'),
+        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps146'),
+        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps146'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -710,7 +710,7 @@ export class ArcherEx extends Fighter {
 
   startJump(enemy, game, customDir = null) {
     this.vaultCooldown = 2.8;
-    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
+    this.jumpCooldown = 2.8;
     this.setState('JUMP');
     this.isInvulnerable = true;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
@@ -1152,7 +1152,7 @@ export class ArcherEx extends Fighter {
       const pinnedLeft = this.x < 240 && enemy.x > this.x;
       const pinnedRight = this.x > ww - 240 && enemy.x < this.x;
 
-      if ((pinnedLeft || pinnedRight || dist < 185) && dist < 260 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
+      if ((pinnedLeft || pinnedRight || dist < 185) && dist < 260 && this.dodgeCooldown <= 50 && (this.jumpCooldown || 0) <= 0 && this.wallFlipCooldown <= 0) {
         this.wallFlipCooldown = 3.0;
         this.startJump(enemy, game);
         return;
@@ -1780,7 +1780,7 @@ export class ArcherEx extends Fighter {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
-    this.isInvulnerable = t < 1.62;
+    this.isInvulnerable = t < 0.22;
     this.unstoppablePoise = true;
     this.hurtTimer = 0;
     this.isFlipVault = false;
@@ -2279,7 +2279,7 @@ export class ArcherEx extends Fighter {
     }
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.hurtTimer = 0;
     this.isFlipVault = false;

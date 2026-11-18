@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps145';
-import { VFXManager } from './engine/VFXManager.js?v=30fps145';
-import { PixelForge } from './engine/PixelForge.js?v=30fps145';
-import { AudioManager } from './engine/AudioManager.js?v=30fps145';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps145';
-import { Fighter } from './entities/Fighter.js?v=30fps145';
-import { Warrior } from './entities/Warrior.js?v=30fps145';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps145';
-import { FireMage } from './entities/FireMage.js?v=30fps145';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps145';
-import { Archer } from './entities/Archer.js?v=30fps145';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps145';
-import { Priestess } from './entities/Priestess.js?v=30fps145';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps145';
-import { Reaper } from './entities/Reaper.js?v=30fps145';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps145';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps145';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps145';
-import { Titan } from './entities/Titan.js?v=30fps145';
-import { TitanEx } from './entities/TitanEx.js?v=30fps145';
-import { Ronin } from './entities/Ronin.js?v=30fps145';
-import { RoninEx } from './entities/RoninEx.js?v=30fps145';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps145';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps145';
-import { IceMage } from './entities/IceMage.js?v=30fps145';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps145';
-import { Android } from './entities/Android.js?v=30fps145';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps145';
-import { NyxEx } from './entities/NyxEx.js?v=30fps145';
+import { Renderer } from './engine/Renderer.js?v=30fps146';
+import { VFXManager } from './engine/VFXManager.js?v=30fps146';
+import { PixelForge } from './engine/PixelForge.js?v=30fps146';
+import { AudioManager } from './engine/AudioManager.js?v=30fps146';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps146';
+import { Fighter } from './entities/Fighter.js?v=30fps146';
+import { Warrior } from './entities/Warrior.js?v=30fps146';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps146';
+import { FireMage } from './entities/FireMage.js?v=30fps146';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps146';
+import { Archer } from './entities/Archer.js?v=30fps146';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps146';
+import { Priestess } from './entities/Priestess.js?v=30fps146';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps146';
+import { Reaper } from './entities/Reaper.js?v=30fps146';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps146';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps146';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps146';
+import { Titan } from './entities/Titan.js?v=30fps146';
+import { TitanEx } from './entities/TitanEx.js?v=30fps146';
+import { Ronin } from './entities/Ronin.js?v=30fps146';
+import { RoninEx } from './entities/RoninEx.js?v=30fps146';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps146';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps146';
+import { IceMage } from './entities/IceMage.js?v=30fps146';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps146';
+import { Android } from './entities/Android.js?v=30fps146';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps146';
+import { NyxEx } from './entities/NyxEx.js?v=30fps146';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps145';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps145';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps145';
+} from './adventure/AdventureManager.js?v=30fps146';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps146';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps146';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1510,15 +1510,49 @@ export class Game {
     }
   }
 
-  syncMobileFullZoomUI() {
-    const active = Boolean(this.renderer?.mobileFullZoomOut ?? true);
+  syncCameraZoomUI() {
+    const mode =
+      this.renderer?.zoomMode ||
+      (this.renderer?.isMobile ? (this.renderer?.mobileFullZoomOut ?? true ? 'full' : 'auto') : 'auto');
     if (this.btnPauseFullZoom) {
-      this.btnPauseFullZoom.classList.toggle('active-zoom-toggle', active);
-      this.btnPauseFullZoom.setAttribute('aria-pressed', String(active));
+      this.btnPauseFullZoom.classList.toggle('active-zoom-toggle', mode === 'full');
+      this.btnPauseFullZoom.classList.toggle('mid-zoom-toggle', mode === 'mid');
+      this.btnPauseFullZoom.setAttribute('aria-pressed', String(mode !== 'auto'));
     }
     if (this.pauseFullZoomLabel) {
-      this.pauseFullZoomLabel.textContent = active ? 'FULL ZOOM: ON' : 'FULL ZOOM: OFF';
+      this.pauseFullZoomLabel.textContent =
+        mode === 'full' ? 'ZOOM: FULL' : mode === 'mid' ? 'ZOOM: MID' : 'ZOOM: AUTO';
     }
+  }
+
+  syncMobileFullZoomUI() {
+    this.syncCameraZoomUI();
+  }
+
+  setCameraZoomMode(mode, playSound = true) {
+    const nextMode = this.renderer?.setZoomMode?.(mode, true) || mode;
+    if (this.fighters && this.renderer) {
+      this.renderer.update(0, this.fighters);
+    }
+    this._pausedFrameRendered = false;
+    this.syncCameraZoomUI();
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+    return nextMode;
+  }
+
+  cycleCameraZoomMode(playSound = true) {
+    const nextMode = this.renderer?.cycleZoomMode?.(true) || 'auto';
+    if (this.fighters && this.renderer) {
+      this.renderer.update(0, this.fighters);
+    }
+    this._pausedFrameRendered = false;
+    this.syncCameraZoomUI();
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+    return nextMode;
   }
 
   setMobileFullZoomOut(enabled, playSound = true) {
@@ -1528,15 +1562,14 @@ export class Game {
       this.renderer.update(0, this.fighters);
     }
     this._pausedFrameRendered = false;
-    this.syncMobileFullZoomUI();
+    this.syncCameraZoomUI();
     if (playSound && this.audio) {
       this.audio.play('clock_gear', 600);
     }
   }
 
   toggleMobileFullZoomOut(playSound = true) {
-    const cur = Boolean(this.renderer?.mobileFullZoomOut ?? true);
-    this.setMobileFullZoomOut(!cur, playSound);
+    return this.cycleCameraZoomMode(playSound);
   }
 
   setNavAudioOpen(open, playSound = false) {
@@ -2032,9 +2065,9 @@ export class Game {
       this.btnPauseTitle.addEventListener('click', () => this.goToTitleScreen(true));
     }
     if (this.btnPauseFullZoom) {
-      this.btnPauseFullZoom.addEventListener('click', () => this.toggleMobileFullZoomOut(true));
+      this.btnPauseFullZoom.addEventListener('click', () => this.cycleCameraZoomMode(true));
     }
-    this.syncMobileFullZoomUI();
+    this.syncCameraZoomUI();
     if (this.btnVictoryTitle) {
       this.btnVictoryTitle.addEventListener('click', () => this.goToTitleScreen(true));
     }
@@ -2056,6 +2089,33 @@ export class Game {
       ) {
         e.preventDefault();
         this.skipRoundIntro();
+        return;
+      }
+      if (
+        e.code === 'KeyZ' &&
+        !e.repeat &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !this.isLandingOpen &&
+        !this.isPaused &&
+        !this.isMatchOver &&
+        !(this.victoryOverlay && !this.victoryOverlay.classList.contains('hidden')) &&
+        !(this.isAdventureMode() && this.adventure?.isSkillTreeOpen)
+      ) {
+        e.preventDefault();
+        const nextMode = this.cycleCameraZoomMode(true);
+        const modeLbl = nextMode === 'full' ? 'ZOOM: FULL' : nextMode === 'mid' ? 'ZOOM: MID' : 'ZOOM: AUTO';
+        if (this.vfx && this.renderer) {
+          this.vfx.spawnDamageText?.(
+            this.renderer.camX || 600,
+            (this.renderer.groundY || 520) - 210,
+            0,
+            false,
+            modeLbl,
+            nextMode === 'full' ? '#38bdf8' : nextMode === 'mid' ? '#2dd4bf' : '#facc15'
+          );
+        }
         return;
       }
       if (e.code !== 'Escape') return;
@@ -3235,6 +3295,7 @@ export class Game {
 
     this._pausedFrameRendered = false;
     this.renderer?.resize();
+    this.syncCameraZoomUI();
   }
 
   toggleMobileLandscape(fromUserGesture = true) {
@@ -3418,7 +3479,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps145');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps146');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3514,7 +3575,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps145'
+          'v=30fps146'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4865,15 +4926,17 @@ export class Game {
       this.renderer.camX = 600;
       this.renderer.camY = (this.renderer.groundY || 520) - 95;
       this.renderer.zoom =
-        this.renderer.isMobileLandscape &&
-        typeof this.renderer.getMobileLandscapeFixedZoom === 'function'
-          ? this.renderer.getMobileLandscapeFixedZoom(false)
-          : this.renderer.isMobilePortrait &&
-              typeof this.renderer.getMobilePortraitFixedZoom === 'function'
-            ? this.renderer.getMobilePortraitFixedZoom(false)
-            : this.renderer.isMobile
-              ? 0.72
-              : 1.0;
+        typeof this.renderer.getInitialMatchZoom === 'function'
+          ? this.renderer.getInitialMatchZoom()
+          : this.renderer.isMobileLandscape &&
+              typeof this.renderer.getMobileLandscapeFixedZoom === 'function'
+            ? this.renderer.getMobileLandscapeFixedZoom(false)
+            : this.renderer.isMobilePortrait &&
+                typeof this.renderer.getMobilePortraitFixedZoom === 'function'
+              ? this.renderer.getMobilePortraitFixedZoom(false)
+              : this.renderer.isMobile
+                ? 0.72
+                : 1.0;
     }
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
@@ -5781,13 +5844,31 @@ export class Game {
           for (const cand of enemies) {
             const meteorRad = cand?.isColossalBoss ? 320 : 230;
             if (cand && !cand.isDead && !cand.isBenched && Math.abs(cand.x - p.x) < meteorRad) {
-              cand.takeDamage(p.damage, p.owner, true, 160, -240);
+              const owner = p.owner;
+              const prevTier = owner?._activeHitTier;
+              if ((p.isMeteor || p.isUltimate) && owner && !owner.isMonster && prevTier !== 'TRUE_ULTIMATE') {
+                owner._activeHitTier = 'ULTIMATE';
+              }
+              try {
+                cand.takeDamage(p.damage, owner, true, 160, -240);
+              } finally {
+                if (owner) owner._activeHitTier = prevTier;
+              }
               this.renderer.triggerHitStop(0.075);
             }
           }
         } else if (hitTarget) {
           const isCrit = Math.random() < 0.28;
-          hitTarget.takeDamage(isCrit ? p.damage * 1.38 : p.damage, p.owner, isCrit, 100, 0);
+          const owner = p.owner;
+          const prevTier = owner?._activeHitTier;
+          if ((p.isMeteor || p.isUltimate) && owner && !owner.isMonster && prevTier !== 'TRUE_ULTIMATE') {
+            owner._activeHitTier = 'ULTIMATE';
+          }
+          try {
+            hitTarget.takeDamage(isCrit ? p.damage * 1.38 : p.damage, owner, isCrit, 100, 0);
+          } finally {
+            if (owner) owner._activeHitTier = prevTier;
+          }
           if (this.audio) {
             const impactSfx =
               p.type === 'arrow'

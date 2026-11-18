@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   GLACIAL_EFFECT_REGISTRY,
   GLACIAL_CRYO_PALETTE,
   BOREALIS_PRISM_PALETTE
-} from '../engine/shaders/glacialShaders.js?v=30fps145';
+} from '../engine/shaders/glacialShaders.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.35s): Borealis Snowflake Circle -> 'cryo_shard' Diamond Comet -> snaps at F03 (63)
@@ -292,9 +292,9 @@ export class IceMageEx extends Fighter {
         return img;
       };
       assets.icemage_ex = {
-        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps145'),
-        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps145'),
-        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps145'),
+        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps146'),
+        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps146'),
+        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps146'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -312,9 +312,7 @@ export class IceMageEx extends Fighter {
       prevState === 'AUTO_ATTACK' &&
       newState !== 'AUTO_ATTACK' &&
       newState !== 'JUMP' &&
-      newState !== 'DODGE' &&
-      newState !== 'ULTIMATE' &&
-      newState !== 'TRUE_ULTIMATE'
+      newState !== 'DODGE'
     ) {
       this.y = this.groundY;
       this.vy = 0;
@@ -360,15 +358,25 @@ export class IceMageEx extends Fighter {
       this._ultSwordsDropped = 0;
       this._ultDidCrownPlunge = false;
       this.coronationDomain = null;
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
       this.isInvulnerable = true;
+      this.unstoppablePoise = true;
     } else {
       this._ultInit = false;
+      if (prevState === 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
+        this.unstoppablePoise = false;
+      }
     }
 
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
       this._trueUltChargeVoiceFired = false;
       this._trueUltFireVoiceFired = false;
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
       this.clearPermafrostZones();
@@ -1076,7 +1084,8 @@ export class IceMageEx extends Fighter {
     else if (this.x > ww - 220) retreatDir = -1;
 
     this.vaultCooldown = 2.8;
-    this.dodgeCooldown = Math.max(this.dodgeCooldown || 0, 1.5);
+    this.jumpCooldown = 2.8;
+    this._jumpReaimed = false;
     this.dashDuration = 0.56;
     this.isFlipVault = true;
     this.isInvulnerable = true;
@@ -1107,8 +1116,11 @@ export class IceMageEx extends Fighter {
     this.y = this.groundY - Math.sin(u * Math.PI) * 114;
     this.isInvulnerable = u < 0.68;
 
-    if (enemy && !enemy.isDead) {
-      this.facing = enemy.x >= this.x ? 1 : -1;
+    if (!this._jumpReaimed && u >= 0.48 && enemy && !enemy.isDead) {
+      this._jumpReaimed = true;
+      if (Math.abs(enemy.x - this.x) > 14) {
+        this.facing = enemy.x >= this.x ? 1 : -1;
+      }
     }
 
     const stepTarget = u >= 0.62 ? 3 : u >= 0.36 ? 2 : u >= 0.14 ? 1 : 0;
@@ -1427,7 +1439,7 @@ export class IceMageEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = 0.22;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 304 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -1625,9 +1637,12 @@ export class IceMageEx extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.ultDuration || 2.04;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
+    this.y = this.groundY;
     this.vx = 0;
     this.vy = 0;
+    this.cameraAirLift = 0;
 
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
     if (!this._ultVoiceFired) {
@@ -1708,16 +1723,15 @@ export class IceMageEx extends Fighter {
     const cx = this._ultCenterX;
     if (this.coronationDomain) this.coronationDomain.age += dt;
 
-    // Regal Scepter Levitation during Coronation Choir (`0.00..1.44s`)
+    // Grounded Scepter Coronation Choir (`0.00..1.44s`) & Touchdown Flourish (`1.44s+`)
+    this.y = this.groundY;
+    this.vy = 0;
+    this.cameraAirLift = 0;
     if (t < 1.44) {
-      const liftU = Math.min(1, t / 0.28);
-      this.y = this.groundY - 46 * Math.sin(liftU * Math.PI * 0.5);
       this.trueUltFrameOverride = 120 + Math.min(18, Math.floor((t / 1.44) * 19));
       this._overrideFrameIdx = this.trueUltFrameOverride;
     } else {
       const descU = Math.min(1, (t - 1.44) / 0.46);
-      const landFrac = Math.min(1, descU / 0.72);
-      this.y = this.groundY - Math.round(46 * (1 - landFrac));
       this.trueUltFrameOverride = 139 + Math.min(10, Math.floor(descU * 11));
       this._overrideFrameIdx = this.trueUltFrameOverride;
     }
@@ -1814,7 +1828,10 @@ export class IceMageEx extends Fighter {
 
     if (t >= dur) {
       this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.coronationDomain = null;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
@@ -2013,10 +2030,12 @@ export class IceMageEx extends Fighter {
       game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
         ? game.adventure.getActiveStageBounds()
         : null;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
+    this.y = this.groundY;
     this.vx = 0;
     this.vy = 0;
+    this.cameraAirLift = 0;
 
     const targets = this._gatherZoneTargets(enemy, game, this.x, 960);
     if (enemy && !enemy.isDead && !targets.includes(enemy)) {
@@ -2031,12 +2050,11 @@ export class IceMageEx extends Fighter {
       }
     }
 
-    // Act I (`0.00..1.12s`): Northern Lights Tapestry & 6-Pillar Borealis Snowflake Sanctuary
+    // Act I (`0.00..1.12s`): Northern Lights Tapestry & 6-Pillar Borealis Snowflake Sanctuary (regally grounded!)
     if (t < 1.12) {
-      const liftU = Math.min(1, t / 0.34);
-      const smoothLift = 1 - Math.pow(1 - liftU, 2.2);
-      this.y = this.groundY - 92 * smoothLift;
-      this.cameraAirLift = 112 * smoothLift;
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
       this.trueUltFrameOverride = 120 + Math.min(8, Math.floor((t / 1.12) * 9));
       this._overrideFrameIdx = this.trueUltFrameOverride;
 
@@ -2093,8 +2111,9 @@ export class IceMageEx extends Fighter {
     }
 
     if (t >= 1.12 && t < 3.28) {
-      this.y = this.groundY - 92 + Math.sin((t - 1.12) * 3.2) * 4;
-      this.cameraAirLift = 112;
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
 
       if (t < 2.32) {
         const uCmd = (t - 1.12) / 1.20;
@@ -2236,10 +2255,9 @@ export class IceMageEx extends Fighter {
     }
 
     const descU = Math.min(1, Math.max(0, (t - 3.28) / Math.max(0.01, this.trueUltDuration - 3.28)));
-    const landFrac = Math.min(1, descU / 0.70);
-    const smoothDesc = landFrac * landFrac * (3 - 2 * landFrac);
-    this.y = this.groundY - Math.round(92 * (1 - smoothDesc));
-    this.cameraAirLift = 112 * (1 - smoothDesc);
+    this.y = this.groundY;
+    this.vy = 0;
+    this.cameraAirLift = 0;
     this.trueUltFrameOverride = 144 + Math.min(5, Math.floor(descU * 6));
     this._overrideFrameIdx = this.trueUltFrameOverride;
 
@@ -2553,7 +2571,7 @@ export class IceMageEx extends Fighter {
       }
 
       // Long-range Winter Empress spacing: Sky-Stair kite vault when closely pressured
-      if (dist < 175 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
+      if (dist < 175 && this.dodgeCooldown <= 50 && (this.jumpCooldown || 0) <= 0 && this.wallFlipCooldown <= 0) {
         this.wallFlipCooldown = 3.0;
         this.startJump(enemy, game);
         return;
@@ -3154,9 +3172,9 @@ export class IceMageEx extends Fighter {
     const reflScale = isReflection ? 0.38 : 1.0;
 
     this.drawGrowingBluishCastAura(ctx, isReflection);
-    if ((this.state === 'TRUE_ULTIMATE' || this._trueUltShatterTimer > 0) && hasVfx && this.groundY - this.y > 12) {
+    if ((this.state === 'TRUE_ULTIMATE' || this._trueUltShatterTimer > 0) && hasVfx) {
       const col = Math.floor((this.stateTimer || 0) * 28) % 30;
-      this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, this.x, this.y + 8, 136, 48, 0.88 * reflScale, false);
+      this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, this.x, this.groundY - 4, 136, 48, 0.88 * reflScale, false);
     }
 
     ctx.save();

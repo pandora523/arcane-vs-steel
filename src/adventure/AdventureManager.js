@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps145';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
+import { Fighter } from '../entities/Fighter.js?v=30fps146';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps145';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps145';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps145';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps145';
+} from './AdventureProgression.js?v=30fps146';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps146';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps146';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps146';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -735,7 +735,7 @@ export class AdventureManager {
       this.heldDown = true;
       this.syncJoystickKnobUI();
       e.preventDefault();
-    } else if (code === 'KeyJ' || code === 'KeyZ') {
+    } else if (code === 'KeyJ') {
       this.heldAttack = true;
       this.triggerAction('attack');
       e.preventDefault();
@@ -780,7 +780,7 @@ export class AdventureManager {
     } else if (code === 'ArrowDown' || code === 'KeyS') {
       this.heldDown = false;
       this.syncJoystickKnobUI();
-    } else if (code === 'KeyJ' || code === 'KeyZ') {
+    } else if (code === 'KeyJ') {
       this.heldAttack = false;
     }
   }
@@ -1455,7 +1455,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps145') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps146') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -1465,7 +1465,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps145') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps146') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
@@ -1607,13 +1607,15 @@ export class AdventureManager {
       renderer.camX = 480;
       renderer.camY = midY - 95;
       renderer.zoom =
-        renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
-          ? renderer.getMobileLandscapeFixedZoom(false)
-          : renderer.isMobilePortrait && typeof renderer.getMobilePortraitFixedZoom === 'function'
-            ? renderer.getMobilePortraitFixedZoom(false)
-            : renderer.isMobile
-              ? 0.64
-              : 0.76;
+        typeof renderer.getInitialMatchZoom === 'function'
+          ? renderer.getInitialMatchZoom()
+          : renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
+            ? renderer.getMobileLandscapeFixedZoom(false)
+            : renderer.isMobilePortrait && typeof renderer.getMobilePortraitFixedZoom === 'function'
+              ? renderer.getMobilePortraitFixedZoom(false)
+              : renderer.isMobile
+                ? 0.64
+                : 0.76;
     }
 
     playerFighter.x = 240;
@@ -1708,13 +1710,15 @@ export class AdventureManager {
       renderer.camX = 600;
       renderer.camY = (renderer.groundY || 520) - 95;
       renderer.zoom =
-        renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
-          ? renderer.getMobileLandscapeFixedZoom(false)
-          : renderer.isMobilePortrait && typeof renderer.getMobilePortraitFixedZoom === 'function'
-            ? renderer.getMobilePortraitFixedZoom(false)
-            : renderer.isMobile
-              ? 0.72
-              : 1.0;
+        typeof renderer.getInitialMatchZoom === 'function'
+          ? renderer.getInitialMatchZoom()
+          : renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
+            ? renderer.getMobileLandscapeFixedZoom(false)
+            : renderer.isMobilePortrait && typeof renderer.getMobilePortraitFixedZoom === 'function'
+              ? renderer.getMobilePortraitFixedZoom(false)
+              : renderer.isMobile
+                ? 0.72
+                : 1.0;
     }
     this.syncControlDeckUI();
   }

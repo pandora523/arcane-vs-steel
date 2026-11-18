@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps145';
+} from '../engine/shaders/forgeShaders.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)
@@ -235,8 +235,9 @@ export class TitanEx extends Fighter {
     const raw = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
     const seen = new Set();
     const out = [];
+    const canHitBurrowed = this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE';
     const pushIfValid = (foe) => {
-      if (!foe || foe === this || foe.isDead || foe.isBenched || foe.isFullyBurrowed || seen.has(foe)) return;
+      if (!foe || foe === this || foe.isDead || foe.isBenched || (foe.isFullyBurrowed && !canHitBurrowed) || seen.has(foe)) return;
       seen.add(foe);
       out.push(foe);
     };
@@ -745,8 +746,9 @@ export class TitanEx extends Fighter {
     const isAdv = Boolean(game?.isAdventureMode?.() && game?.adventure?.active);
     const myGy = this.groundY || this.y;
 
+    const canHitBurrowed = this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE';
     const consider = (foe) => {
-      if (!foe || foe === this || foe.isDead || foe.isBenched || foe.isFullyBurrowed || seen.has(foe)) return;
+      if (!foe || foe === this || foe.isDead || foe.isBenched || (foe.isFullyBurrowed && !canHitBurrowed) || seen.has(foe)) return;
       const relX = (foe.x - this.x) * this.facing;
       const hitPad = foe.isColossalBoss ? 84 : 0;
       if (relX < -reachBack - hitPad || relX > reachFront + hitPad) return;
@@ -978,6 +980,7 @@ export class TitanEx extends Fighter {
   }
 
   startJump(enemy, game) {
+    this.jumpCooldown = 2.8;
     this.dashDuration = 0.62;
     this.setState('JUMP');
     this.isInvulnerable = true;
@@ -1493,7 +1496,7 @@ export class TitanEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.94;
-        this._aiOutstepTimer = 0.22;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 112 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -1752,7 +1755,8 @@ export class TitanEx extends Fighter {
 
     this.mana = 0;
     this.giantScale = 1.0;
-    this.isInvulnerable = t < 0.94;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
     this.forgeArmorTimer = Math.max(this.forgeArmorTimer, vsUlt === 2 ? 0.95 : 0.60);
     this._crucibleBackHaloTimer = Math.max(this._crucibleBackHaloTimer, 0.45);
     this.vx = 0;
@@ -2127,6 +2131,7 @@ export class TitanEx extends Fighter {
       this._overrideFrameIdx = null;
       this.giantScale = 1.0;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.setState('IDLE');
     }
   }
@@ -2152,7 +2157,7 @@ export class TitanEx extends Fighter {
     }
     const dur = this.trueUltDuration || 3.80;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.vx = 0;
     this.vy = 0;
     this.hasPoise = true;
@@ -2590,6 +2595,7 @@ export class TitanEx extends Fighter {
       this.cameraAirLift = 0;
       this.isFlipVault = false;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
       this._trueUltGeyserTimer = 0;

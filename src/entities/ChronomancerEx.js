@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps145';
+} from '../engine/shaders/chronoShaders.js?v=30fps146';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -864,7 +864,7 @@ export class ChronomancerEx extends Fighter {
   // ============================================================================
 
   startJump(enemy, game, customDir = null) {
-    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.26);
+    this.jumpCooldown = 2.8;
     this.setState('JUMP');
     this.isInvulnerable = true;
     this.isChronoWarp = false;
@@ -992,7 +992,7 @@ export class ChronomancerEx extends Fighter {
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
     if (game?.audio) game.audio.play('time_rewind', this.x);
 
-    if (enemy && !enemy.isDead && (dist < 195 || nearWall)) {
+    if (enemy && !enemy.isDead && (dist < 250 || nearWall)) {
       const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
       this.isChronoWarp = true;
       this.didChronoWarp = false;
@@ -1050,10 +1050,6 @@ export class ChronomancerEx extends Fighter {
       this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * (1 - Math.pow(1 - u, 1.8));
       this.y = this.groundY - Math.sin(u * Math.PI) * 92;
       this.flipAngle = 0;
-
-      if (enemy && !enemy.isDead) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-      }
 
       if (u >= 0.50 && !this.didActionFrame) {
         this.didActionFrame = true;
@@ -1409,14 +1405,15 @@ export class ChronomancerEx extends Fighter {
       const pinnedLeft = this.x < 195 && enemy.x > this.x;
       const pinnedRight = this.x > ww - 195 && enemy.x < this.x;
 
-      if (
-        (pinnedLeft || pinnedRight) &&
-        dist < 220 &&
-        this.dodgeCooldown <= 0 &&
-        this.wallFlipCooldown <= 0
-      ) {
-        this.startJump(enemy, game);
-        return;
+      if ((pinnedLeft || pinnedRight) && dist < 250 && this.dodgeCooldown <= 50) {
+        if (this.dodgeCooldown <= 0) {
+          this.startDodge(enemy, game);
+          return;
+        }
+        if ((this.jumpCooldown || 0) <= 0 && this.wallFlipCooldown <= 0) {
+          this.startJump(enemy, game);
+          return;
+        }
       }
     }
 
@@ -1797,7 +1794,7 @@ export class ChronomancerEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = 0.22;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 108 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -2133,7 +2130,8 @@ export class ChronomancerEx extends Fighter {
     }
     this.vx = 0;
     this.vy = 0;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
 
     let liftFrac = 0;
     if (t < 0.25) {
@@ -2359,6 +2357,7 @@ export class ChronomancerEx extends Fighter {
     if (t >= dur) {
       this.y = this.groundY;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.pendulumSeal = null;
       this.setState('IDLE');
     }
@@ -2385,7 +2384,7 @@ export class ChronomancerEx extends Fighter {
       });
     }
     const dur = this.trueUltDuration || 4.55;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.vx = 0;
     this.vy = 0;

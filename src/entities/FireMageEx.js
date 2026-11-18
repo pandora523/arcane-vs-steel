@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps145';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps146';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -825,7 +825,7 @@ export class FireMageEx extends Fighter {
   }
 
   startJump(enemy, game, customDir = null) {
-    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
+    this.jumpCooldown = 2.8;
     this.setState('JUMP');
     this.isInvulnerable = true;
     this.isBlinkTeleport = false;
@@ -1646,7 +1646,8 @@ export class FireMageEx extends Fighter {
     this.vx = 0;
     this.vy = 0;
     this.y = this.groundY;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const rawTarget = enemy ? enemy.x : this.x + this.facing * 360;
@@ -1776,7 +1777,8 @@ export class FireMageEx extends Fighter {
           owner: this,
           damage: vsUlt === 1 ? 20 : vsUlt === 2 ? 12 : 18,
           type: 'meteor',
-          isMeteor: true
+          isMeteor: true,
+          isUltimate: true
         });
       }
     }
@@ -1859,6 +1861,7 @@ export class FireMageEx extends Fighter {
     if (t >= this.ultDuration) {
       this.y = this.groundY;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this._ultLockedTargetX = null;
       this._ultLockedEclipseX = null;
       if (this._eclipseVisual) this._eclipseVisual.active = false;
@@ -1879,7 +1882,7 @@ export class FireMageEx extends Fighter {
     this.vx = 0;
     this.vy = 0;
     this.y = this.groundY;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.runeOrbit += dt * 11.5;
 
@@ -2354,9 +2357,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps145'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps145'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps145'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps146'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps146'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps146'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

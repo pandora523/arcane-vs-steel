@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps145';
-import { PixelForge } from './PixelForge.js?v=30fps145';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps145';
+import { PixelFont } from './PixelFont.js?v=30fps146';
+import { PixelForge } from './PixelForge.js?v=30fps146';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps146';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -613,6 +613,21 @@ export class VFXManager {
     });
   }
 
+  _dealDelayedVfxDamage(foe, dmg, owner, isUlt, isCrit, kx, ky) {
+    if (!foe || dmg <= 0) return;
+    if (!isUlt || !owner || owner.isMonster || owner._activeHitTier === 'TRUE_ULTIMATE') {
+      foe.takeDamage(dmg, owner, isCrit, kx, ky);
+      return;
+    }
+    const prevTier = owner._activeHitTier;
+    owner._activeHitTier = 'ULTIMATE';
+    try {
+      foe.takeDamage(dmg, owner, isCrit, kx, ky);
+    } finally {
+      owner._activeHitTier = prevTier;
+    }
+  }
+
   spawnDamageText(x, y, amount, isCrit = false, label = '', customColor = '') {
     if (this.texts.length >= 48) this.texts.shift();
     this.texts.push({
@@ -865,7 +880,7 @@ export class VFXManager {
             !foe.isBenched &&
             Math.abs(foe.x - cs.x) < (foe.isColossalBoss ? 145 : 76)
           ) {
-            foe.takeDamage(cs.damage, cs.owner, false, 65, -90);
+            this._dealDelayedVfxDamage(foe, cs.damage, cs.owner, cs.isUltimate, false, 65, -90);
           }
         }
       } else if (Math.random() < 0.65) {
@@ -970,7 +985,7 @@ export class VFXManager {
                 !foe.isBenched &&
                 Math.abs(foe.x - s.x) < (foe.isColossalBoss ? 155 : 92)
               ) {
-                foe.takeDamage(s.damage, s.owner, isHeavyWeapon, 55, -60);
+                this._dealDelayedVfxDamage(foe, s.damage, s.owner, s.isUltimate, isHeavyWeapon, 55, -60);
               }
             }
           }
@@ -1072,7 +1087,7 @@ export class VFXManager {
               (foe.isColossalBoss || pilGy - foe.y < 155)
             ) {
               const pDmg = Number.isFinite(pil.tickDamage) ? pil.tickDamage : Math.round(28 * pil.scaleWidth);
-              if (pDmg > 0) foe.takeDamage(pDmg, pil.owner, false, 35, -55);
+              if (pDmg > 0) this._dealDelayedVfxDamage(foe, pDmg, pil.owner, pil.isUltimate, false, 35, -55);
             }
           }
         }

@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps145';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps145';
+import { PixelForge } from './PixelForge.js?v=30fps146';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps146';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps145';
+} from './shaders/exNextGenFX.js?v=30fps146';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -83,15 +83,26 @@ export class Renderer {
     this.isMobilePortrait = this.isMobile && !this.isMobileLandscape;
 
     let savedFullZoom = true;
+    let savedZoomMode = null;
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
+        const rawMode = window.localStorage.getItem('avs_camera_zoom_mode');
+        if (rawMode === 'full' || rawMode === 'mid' || rawMode === 'auto') {
+          savedZoomMode = rawMode;
+        }
         const raw = window.localStorage.getItem('avs_mobile_full_zoom_out');
         if (raw === '0' || raw === 'false') savedFullZoom = false;
       }
     } catch {
       // Ignore storage access errors in restricted webviews
     }
-    this.mobileFullZoomOut = savedFullZoom;
+    if (savedZoomMode) {
+      this.zoomMode = savedZoomMode;
+      this.mobileFullZoomOut = savedZoomMode === 'full';
+    } else {
+      this.mobileFullZoomOut = savedFullZoom;
+      this.zoomMode = this.isMobile ? (savedFullZoom ? 'full' : 'auto') : 'auto';
+    }
     this._stageUpperVaultCache = new Map();
     this._cachedHudBottomY = 0;
     this._hudBottomCacheAt = -1;
@@ -566,6 +577,30 @@ export class Renderer {
     return this.glowCyan;
   }
 
+  getDesktopFixedZoom(colossalBoss = false) {
+    if (this.adventureMode) {
+      const minSafe = Math.max(this.width / 2200, this.height / 1180, 0.52);
+      const fit = Math.min(
+        this.width / (colossalBoss ? 2040 : 1880),
+        this.height / (colossalBoss ? 1120 : 1040)
+      );
+      return Math.max(minSafe, Math.min(0.72, fit));
+    }
+    const minSafe = Math.max(this.width / 1888, (this.height * 0.68) / 760, 0.68);
+    const fit = Math.min(this.width / 1680, this.height / 940);
+    return Math.max(minSafe, Math.min(0.84, fit));
+  }
+
+  getDesktopMidZoom(colossalBoss = false) {
+    const full = this.getDesktopFixedZoom(colossalBoss);
+    if (this.adventureMode) {
+      const fit = Math.min(this.width / 1720, this.height / 975);
+      return Math.max(full + 0.04, Math.min(0.76, fit));
+    }
+    const fit = Math.min(this.width / 1450, this.height / 810);
+    return Math.max(full + 0.08, Math.min(1.02, fit));
+  }
+
   getMobileLandscapeFixedZoom(colossalBoss = false) {
     if (this.adventureMode) {
       const fullStageW = 1760;
@@ -587,26 +622,85 @@ export class Renderer {
     return Math.max(0.26, Math.min(0.46, this.width / 1260));
   }
 
+  getMobileMidZoom(colossalBoss = false) {
+    if (this.isMobileLandscape) {
+      if (this.adventureMode) {
+        const baseMid = Math.max(0.46, Math.min(0.60, Math.min(this.width / 1580, this.height / 750)));
+        return colossalBoss ? Math.min(baseMid, 0.49) : baseMid;
+      }
+      const baseMid = Math.max(0.58, Math.min(0.76, Math.min(this.width / 1240, this.height / 580)));
+      return colossalBoss ? Math.min(baseMid, 0.62) : baseMid;
+    }
+    if (this.adventureMode) {
+      const midW = colossalBoss ? 1240 : 1145;
+      return Math.max(0.28, Math.min(0.40, this.width / midW));
+    }
+    return Math.max(0.35, Math.min(0.50, this.width / 925));
+  }
+
+  getFixedZoomForMode(mode = this.zoomMode, colossalBoss = false) {
+    if (mode === 'full') {
+      if (this.isMobileLandscape) return this.getMobileLandscapeFixedZoom(colossalBoss);
+      if (this.isMobilePortrait) return this.getMobilePortraitFixedZoom(colossalBoss);
+      return this.getDesktopFixedZoom(colossalBoss);
+    }
+    if (mode === 'mid') {
+      if (this.isMobile) return this.getMobileMidZoom(colossalBoss);
+      return this.getDesktopMidZoom(colossalBoss);
+    }
+    return null;
+  }
+
+  getInitialMatchZoom() {
+    const fixed = this.getFixedZoomForMode(this.zoomMode, false);
+    if (fixed !== null) return fixed;
+    if (this.adventureMode) {
+      return this.isMobile ? Math.max(0.46, Math.min(0.68, this.width / 980)) : 0.76;
+    }
+    return this.isMobile ? Math.max(0.58, Math.min(0.85, this.width / 780)) : 1.0;
+  }
+
+  setZoomMode(mode, persist = true) {
+    const next = mode === 'full' || mode === 'mid' || mode === 'auto' ? mode : 'auto';
+    this.zoomMode = next;
+    this.mobileFullZoomOut = next === 'full';
+    if (persist) {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('avs_camera_zoom_mode', next);
+          if (this.isMobile) {
+            window.localStorage.setItem('avs_mobile_full_zoom_out', this.mobileFullZoomOut ? '1' : '0');
+          }
+        }
+      } catch {
+        // Ignore storage access errors in restricted webviews
+      }
+    }
+    this.zoom = this.getInitialMatchZoom();
+    return this.zoomMode;
+  }
+
+  cycleZoomMode(persist = true) {
+    const order = ['full', 'mid', 'auto'];
+    const idx = order.indexOf(this.zoomMode);
+    const next = order[(idx + 1) % order.length];
+    return this.setZoomMode(next, persist);
+  }
+
   setMobileFullZoomOut(enabled) {
     this.mobileFullZoomOut = Boolean(enabled);
+    this.zoomMode = this.mobileFullZoomOut ? 'full' : 'auto';
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem('avs_mobile_full_zoom_out', this.mobileFullZoomOut ? '1' : '0');
+        if (window.localStorage.getItem('avs_camera_zoom_mode') !== null) {
+          window.localStorage.setItem('avs_camera_zoom_mode', this.zoomMode);
+        }
       }
     } catch {
       // Ignore storage access errors in restricted webviews
     }
-    if (this.mobileFullZoomOut) {
-      if (this.isMobileLandscape) {
-        this.zoom = this.getMobileLandscapeFixedZoom(false);
-      } else if (this.isMobilePortrait) {
-        this.zoom = this.getMobilePortraitFixedZoom(false);
-      }
-    } else if (this.isMobile) {
-      this.zoom = this.adventureMode
-        ? Math.max(0.42, Math.min(0.68, this.width / 980))
-        : Math.max(0.52, Math.min(0.85, this.width / 780));
-    }
+    this.zoom = this.getInitialMatchZoom();
   }
 
   getHudBottomY() {
@@ -645,15 +739,26 @@ export class Renderer {
       Boolean(document.documentElement?.classList?.contains('is-css-rotated-landscape'));
     this.width = isCssRotated ? window.innerHeight : window.innerWidth;
     this.height = isCssRotated ? window.innerWidth : window.innerHeight;
+    const wasMobile = this.isMobile;
     this.isMobile = this.width < 768 || this.height < 540;
     this.isMobileLandscape = this.isMobile && this.width > this.height;
     this.isMobilePortrait = this.isMobile && !this.isMobileLandscape;
-    if (this.mobileFullZoomOut) {
-      if (this.isMobileLandscape) {
-        this.zoom = this.getMobileLandscapeFixedZoom(false);
-      } else if (this.isMobilePortrait) {
-        this.zoom = this.getMobilePortraitFixedZoom(false);
+    if (wasMobile !== this.isMobile) {
+      let hasExplicitMode = false;
+      try {
+        hasExplicitMode =
+          typeof window !== 'undefined' &&
+          Boolean(window.localStorage?.getItem('avs_camera_zoom_mode'));
+      } catch {
+        hasExplicitMode = false;
       }
+      if (!hasExplicitMode) {
+        this.zoomMode = this.isMobile ? (this.mobileFullZoomOut ? 'full' : 'auto') : 'auto';
+      }
+    }
+    const fixedOnResize = this.getFixedZoomForMode(this.zoomMode, false);
+    if (fixedOnResize !== null) {
+      this.zoom = fixedOnResize;
     }
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     this.canvas.width = Math.round(this.width * dpr);
@@ -897,30 +1002,25 @@ export class Renderer {
         : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
-      const lockWideMobileZoom = Boolean(
-        this.mobileFullZoomOut && (this.isMobileLandscape || this.isMobilePortrait)
-      );
+      const fixedZoomVal = this.getFixedZoomForMode(this.zoomMode, Boolean(colossalBoss));
+      const isFixedZoomMode = fixedZoomVal !== null;
       let targetZoom;
-      if (lockWideMobileZoom && this.isMobileLandscape) {
-        // Mobile Landscape (Full Zoom ON): ZERO camera zoom-in — constant wide full-stage viewport fit
-        targetZoom = this.getMobileLandscapeFixedZoom(Boolean(colossalBoss));
-      } else if (lockWideMobileZoom && this.isMobilePortrait) {
-        // Mobile Portrait (Full Zoom ON): FULL stage zoom-out — fits entire arena width with zero dynamic zoom-in cropping!
-        targetZoom = this.getMobilePortraitFixedZoom(Boolean(colossalBoss));
+      if (isFixedZoomMode) {
+        targetZoom = fixedZoomVal;
       } else if (this.adventureMode) {
         const maxSpanW = 1740;
         const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
-        const fitScaleY = this.height / 940;
+        const fitScaleY = this.isMobileLandscape ? this.height / 575 : this.height / 940;
         targetZoom = Math.min(fitScaleX, fitScaleY);
-        const minZoomCap = colossalBoss ? 0.38 : 0.44;
+        const minZoomCap = colossalBoss ? 0.42 : this.isMobileLandscape ? 0.58 : 0.44;
         const maxZoomCap = this.isMobile ? 0.68 : 0.80;
         targetZoom = Math.max(minZoomCap, Math.min(maxZoomCap, targetZoom));
       } else {
         const maxSpanW = this.worldWidth;
         const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
-        const fitScaleY = this.height / 720;
+        const fitScaleY = this.isMobileLandscape ? this.height / 470 : this.height / 720;
         targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
-        const minZoomCap = colossalBoss ? 0.44 : 0.52;
+        const minZoomCap = colossalBoss ? 0.48 : this.isMobileLandscape ? 0.74 : 0.52;
         const maxZoomCap = this.isMobile ? 0.85 : 1.12;
         targetZoom = Math.max(minZoomCap, Math.min(maxZoomCap, targetZoom));
       }
@@ -938,7 +1038,7 @@ export class Renderer {
       // Wide-cosmos framing for grounded celestial finishers (e.g. Ignis Sol's Heavensfall Meteor)
       // Keeps the arena floor (`groundY`) visible near the bottom while revealing `groundY - 720+` high in the sky!
       if (maxSkyFocus > 0) {
-        if (!lockWideMobileZoom) {
+        if (!isFixedZoomMode) {
           const skyZoom = Math.max(0.66, (this.height * 0.80) / Math.max(500, maxSkyFocus + 165));
           targetZoom = Math.min(targetZoom, skyZoom);
         }
@@ -947,16 +1047,16 @@ export class Renderer {
       }
 
       if (this.koZoomTimer > 0) {
-        // Dramatic K.O. Finisher focus (skip zoom-in on mobile portrait & landscape when Full Zoom is ON)
-        if (!lockWideMobileZoom) {
+        // Dramatic K.O. Finisher focus (skip zoom-in when Zoom Mode is fixed at FULL or MID)
+        if (!isFixedZoomMode) {
           targetZoom *= 1.12;
         }
         if (Number.isFinite(this.koFocusX)) {
           targetX = midX * 0.45 + this.koFocusX * 0.55;
         }
-      } else if (this.clashZoomTimer > 0 && !lockWideMobileZoom) {
+      } else if (this.clashZoomTimer > 0 && !isFixedZoomMode) {
         targetZoom *= 1.045;
-      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0 && !lockWideMobileZoom) {
+      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0 && !isFixedZoomMode) {
         // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
         targetZoom *= 1.025;
       }
@@ -978,7 +1078,7 @@ export class Renderer {
         for (let i = 0; i < victoryFighters.length; i++) winSumX += victoryFighters[i].x;
         const winMidX = winSumX / victoryFighters.length;
         targetX = targetX * 0.20 + winMidX * 0.80;
-        if (!lockWideMobileZoom) {
+        if (!isFixedZoomMode) {
           const winZoomCap = this.isMobile ? 0.88 : 1.15;
           targetZoom = Math.max(0.52, Math.min(winZoomCap, targetZoom * 1.08));
         }
@@ -999,7 +1099,7 @@ export class Renderer {
           targetX = (camMin + camMax) * 0.5;
         }
       } else {
-        // Clamp camera X so the viewport stays comfortably inside the enlarged 1920-wide (3x integer) arena diorama
+        // Clamp camera X & Y so the viewport stays strictly inside the enlarged 1920-wide (3x integer) arena diorama
         const bgLeft = (this.worldWidth - 1920) * 0.5 + 16;
         const bgRight = (this.worldWidth + 1920) * 0.5 - 16;
         if (bgRight - bgLeft > halfViewW * 2) {
@@ -1007,11 +1107,25 @@ export class Renderer {
         } else {
           targetX = this.worldWidth * 0.5;
         }
+        const anchorFrac = this.isMobileLandscape
+          ? 0.67
+          : this.isMobilePortrait
+            ? 0.56
+            : this.isMobile
+              ? 0.64
+              : 0.68;
+        const topSpan = (this.height * anchorFrac) / targetZoom;
+        const botSpan = (this.height * (1 - anchorFrac)) / targetZoom;
+        const minCamY = this.groundY - 1180 + topSpan;
+        const maxCamY = this.groundY + 690 - botSpan;
+        if (maxCamY >= minCamY) {
+          targetY = Math.max(minCamY, Math.min(maxCamY, targetY));
+        }
       }
 
       const camSpeed = maxSkyFocus > 0 ? 7.5 : this.adventureMode ? 7.0 : 6;
       const lerpFactor = Math.min(1, Math.max(0, rawDt * camSpeed));
-      if (lockWideMobileZoom) {
+      if (isFixedZoomMode) {
         this.zoom = targetZoom;
       } else {
         this.zoom += (targetZoom - this.zoom) * lerpFactor;

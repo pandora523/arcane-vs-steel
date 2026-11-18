@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
-import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps145';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
+import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps146';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Grounded Rose-Window Magic Circle + Sanctum Light-Ray -> snaps at F03 (63)
@@ -187,11 +187,10 @@ export class PriestessEx extends Fighter {
   }
 
   takeDamage(amount, attacker, isCrit = false, knockX = 0, knockY = 0) {
-    // Unbreakable Genesis Lumen Dome: absorbs incoming strikes into tankedDamage without losing HP
-    if (this.state === 'TRUE_ULTIMATE' && !this.finalGraceDidFire) {
-      const absorbed = Math.max(0, Math.round(amount || 0));
+    // Sovereign Super Armor during Genesis Lumen Dome: accumulates sanctuary energy cleanly via super.takeDamage
+    if (this.state === 'TRUE_ULTIMATE' && !this.finalGraceDidFire && (this.stateTimer || 0) >= 0.35) {
+      const absorbed = Math.max(0, Math.round((amount || 0) * 0.65));
       this.tankedDamage = (this.tankedDamage || 0) + absorbed;
-      return 0;
     }
     return super.takeDamage(amount, attacker, isCrit, knockX, knockY);
   }
@@ -738,7 +737,7 @@ export class PriestessEx extends Fighter {
   }
 
   startJump(enemy, game, customDir = null) {
-    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
+    this.jumpCooldown = 2.8;
     this.setState('JUMP');
     this.isInvulnerable = true;
     this.isBlinkTeleport = false;
@@ -1648,7 +1647,8 @@ export class PriestessEx extends Fighter {
     this.isFlipVault = false;
     this.isBlinkTeleport = false;
     this.isAngelicAscent = false;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
     this.vx = 0;
     this.vy = 0;
 
@@ -1843,6 +1843,7 @@ export class PriestessEx extends Fighter {
     if (t >= this.ultDuration) {
       this.y = this.groundY;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       if (this._organVisual) this._organVisual.active = false;
       this.setState('IDLE');
     }
@@ -1857,7 +1858,7 @@ export class PriestessEx extends Fighter {
     const t = this.stateTimer;
     this.vx = 0;
     this.vy = 0;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.isCrouching = false;
     this.isDeflecting = false;
@@ -2214,10 +2215,10 @@ export class PriestessEx extends Fighter {
         return img;
       };
       assets.priestess_ex = {
-        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps145'),
-        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps145'),
-        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps145'),
-        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps145'),
+        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps146'),
+        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps146'),
+        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps146'),
+        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps146'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

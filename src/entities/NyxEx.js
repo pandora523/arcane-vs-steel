@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
-import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps145';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
+import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps146';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Coil + Forward lunge + finger-tap -> Twin Star-Packet Bolts
@@ -212,9 +212,9 @@ export class NyxEx extends Fighter {
         return im;
       };
       assets.nyx_ex = {
-        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps145'),
-        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps145'),
-        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps145'),
+        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps146'),
+        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps146'),
+        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps146'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -295,12 +295,22 @@ export class NyxEx extends Fighter {
   }
 
   takeDamage(amount, attacker, isCrit = false, knockX = 0, knockY = 0) {
-    if (this.isInvulnerable || this.state === 'TRUE_ULTIMATE') {
-      return 0;
-    }
     const preHp = this.hp;
     let finalAmt = Math.max(0, Math.round(amount || 0));
-    if (this.holoPatchTimer > 0 && this.holoPatchShield > 0 && finalAmt > 0) {
+    const incomingTier =
+      attacker?._activeHitTier ||
+      (attacker && !attacker.isMonster && (attacker.state === 'ULTIMATE' || attacker.state === 'TRUE_ULTIMATE')
+        ? attacker.state
+        : null);
+    if (
+      !incomingTier &&
+      !this.isInvulnerable &&
+      this.state !== 'ULTIMATE' &&
+      this.state !== 'TRUE_ULTIMATE' &&
+      this.holoPatchTimer > 0 &&
+      this.holoPatchShield > 0 &&
+      finalAmt > 0
+    ) {
       const absorbed = Math.min(this.holoPatchShield, finalAmt);
       this.holoPatchShield -= absorbed;
       finalAmt -= absorbed;
@@ -884,7 +894,8 @@ export class NyxEx extends Fighter {
   }
 
   startJump(enemy, game, customDir = null) {
-    this.dodgeCooldown = this.dodgeMaxCooldown * 0.92;
+    this.jumpCooldown = 2.8;
+    this.isBlinkTeleport = false;
     this.setState('JUMP');
     this.isInvulnerable = true;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
@@ -915,14 +926,30 @@ export class NyxEx extends Fighter {
     }
   }
 
-  onStartDodge(_enemy, game, dir) {
+  onStartDodge(enemy, game, dir) {
     if (this._advPureDodge) return;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const dist = enemy && !enemy.isDead ? Math.abs(enemy.x - this.x) : 999;
+    const nearWall = this.x < 195 || this.x > ww - 195;
+    this.isFlipVault = false;
+    this.didActionFrame = false;
+    this.vx = 0;
+    this.vy = 0;
+    if (dist < 250 || nearWall) {
+      this.isBlinkTeleport = true;
+      this.dashDuration = 0.28;
+      this._triggerCtrlZGlitchBlink(enemy, game);
+      this.dashStartX = this.x;
+      this.dashTargetX = this.x;
+      this.isInvulnerable = true;
+      return;
+    }
+    this.isBlinkTeleport = false;
     this.isInvulnerable = true;
     this.dashStartX = this.x;
     const stepDir = dir || -this.facing;
     this.dashTargetX = this._clampArenaX(this.x + stepDir * 220, game);
     this.dashDuration = 0.44;
-    this.didActionFrame = false;
   }
 
   updateJump(dt, enemy, game) {
@@ -985,6 +1012,21 @@ export class NyxEx extends Fighter {
   }
 
   updateDodge(dt, enemy, game) {
+    if (!this._advPureDodge && this.isBlinkTeleport) {
+      const t = this.stateTimer;
+      const dur = this.dashDuration || 0.28;
+      this.vx = 0;
+      this.vy = 0;
+      this.y = this.groundY;
+      this.isInvulnerable = t < dur * 0.85;
+      if (t >= dur) {
+        this.isBlinkTeleport = false;
+        this.isInvulnerable = false;
+        this.y = this.groundY;
+        this.setState('IDLE');
+      }
+      return;
+    }
     this.updateJump(dt, enemy, game);
   }
 
@@ -994,6 +1036,7 @@ export class NyxEx extends Fighter {
       return;
     }
     if (this.state === 'DASH') this.updateDash(dt, enemy, game);
+    else if (this.state === 'DODGE') this.updateDodge(dt, enemy, game);
     else this.updateJump(dt, enemy, game);
   }
 
@@ -1604,7 +1647,8 @@ export class NyxEx extends Fighter {
     const rawTarget = enemy ? enemy.x : this.x + this.facing * 350;
     const targetX = this._safeFxX(Math.max(185, Math.min(ww - 185, rawTarget)), game);
     this._ultTargetX = targetX;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
     this.vx = 0;
     this.vy = 0;
 
@@ -1783,6 +1827,7 @@ export class NyxEx extends Fighter {
       this.vx = 0;
       this.vy = 0;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this._ultNodesActive = false;
       if (this._overclockVisual) this._overclockVisual.active = false;
       this.trueUltFrameOverride = null;
@@ -1830,7 +1875,7 @@ export class NyxEx extends Fighter {
     this._supernovaMuzzleX = this.x + this.facing * 46;
     this._supernovaBeamY = this.y - 108;
 
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.vx = 0;
     this.vy = 0;

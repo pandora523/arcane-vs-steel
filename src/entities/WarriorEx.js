@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps145';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)
@@ -799,7 +799,7 @@ export class WarriorEx extends Fighter {
     const dir = dirOverride || this.facing;
     this.facing = dir;
     this.vaultCooldown = 2.8;
-    this.dodgeCooldown = Math.max(this.dodgeCooldown, 1.5);
+    this.jumpCooldown = 2.8;
     this.dashDuration = 0.54;
     this.isFlipVault = true;
     this.isInvulnerable = true;
@@ -1188,7 +1188,7 @@ export class WarriorEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = 0.22;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 112 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -1541,7 +1541,8 @@ export class WarriorEx extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.ultDuration || 1.94;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
     this.isOmnislashing = true;
     this.vx = 0;
     this.vy = 0;
@@ -1795,6 +1796,7 @@ export class WarriorEx extends Fighter {
       this.y = this.groundY;
       this.cameraAirLift = 0;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.isOmnislashing = false;
       this._pentagramSeal = null;
       this.trueUltFrameOverride = null;
@@ -1814,7 +1816,7 @@ export class WarriorEx extends Fighter {
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.trueUltDuration || 4.35;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.isOmnislashing = true;
     this.vx = 0;
@@ -2341,7 +2343,8 @@ export class WarriorEx extends Fighter {
         dist >= 245 &&
         dist <= 395 &&
         this.vaultCooldown <= 0 &&
-        this.dodgeCooldown <= 0 &&
+        this.dodgeCooldown <= 50 &&
+        (this.jumpCooldown || 0) <= 0 &&
         this.skillCooldown > 0.65 &&
         !game?.isAdventureMode?.()
       ) {

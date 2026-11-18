@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps145';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps146';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Gungnir Lightning-Javelin + Valhalla Rune Seal -> snaps at F03 (63)
@@ -372,9 +372,9 @@ export class ValkyrieEx extends Fighter {
         return img;
       };
       assets.valkyrie_ex = {
-        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps145'),
-        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps145'),
-        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps145'),
+        sheet: mkImg('assets/sprites/valkyrie_ex_sheet.png?v=30fps146'),
+        vfx: mkImg('assets/sprites/valkyrie_ex_vfx.png?v=30fps146'),
+        portrait: mkImg('assets/sprites/valkyrie_ex_portrait.png?v=30fps146'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -1036,7 +1036,15 @@ export class ValkyrieEx extends Fighter {
             if (Math.abs(tFoe.x - sp.x) < 76 && Math.abs(tFoe.y - 68 - sp.y) < 96) {
               sp.hitTargets.add(tFoe);
               hitSomeone = true;
-              tFoe.takeDamage(sp.damage, this, sp.isUlt, 52, sp.isUlt ? -95 : -38);
+              const prevTier = this._activeHitTier;
+              if (sp.isUlt && prevTier !== 'TRUE_ULTIMATE') {
+                this._activeHitTier = 'ULTIMATE';
+              }
+              try {
+                tFoe.takeDamage(sp.damage, this, sp.isUlt, 52, sp.isUlt ? -95 : -38);
+              } finally {
+                this._activeHitTier = prevTier;
+              }
               if (sp.rootDur > 0 && !tFoe.isDead) {
                 tFoe.applyBuildRoot?.(sp.rootDur, 'GUNGNIR PIN!', '#fb7185');
               }
@@ -1105,11 +1113,12 @@ export class ValkyrieEx extends Fighter {
       const dist = Math.abs(enemy.x - this.x);
       if (
         dist < 180 &&
+        this.dodgeCooldown <= 50 &&
         this.crouchCooldown <= 0 &&
-        this.dodgeCooldown <= 0 &&
+        (this._aiDefenseBreather || 0) <= 0 &&
         !(game?.is2v2Mode?.() && (this.finisherGauge || 0) >= (this.maxFinisherGauge || 100))
       ) {
-        this.dodgeCooldown = this.dodgeMaxCooldown * 0.85;
+        this._aiDefenseBreather = 0.36;
         this.startCrouch(enemy, game);
         return;
       }
@@ -1256,6 +1265,7 @@ export class ValkyrieEx extends Fighter {
   startJump(enemy, game, dirOverride = null) {
     const vsAspect = game?.isAdventureMode?.() ? 0 : this.buildAspect || 0;
     this.vaultCooldown = vsAspect === 2 ? 2.5 : 2.8;
+    this.jumpCooldown = this.vaultCooldown;
     this.dashDuration = 0.58;
     this.setState('JUMP');
     this.isInvulnerable = true;
@@ -1672,7 +1682,7 @@ export class ValkyrieEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = 0.22;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 304 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -1990,7 +2000,8 @@ export class ValkyrieEx extends Fighter {
     const t = this.stateTimer;
     const dur = this.ultDuration || 1.88;
     if (!this._spearsFired) this._spearsFired = 0;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
     this._phaseThroughEnemy = false;
     this.vx = 0;
     this.vy = 0;
@@ -2338,6 +2349,7 @@ export class ValkyrieEx extends Fighter {
       this.cameraAirLift = 0;
       this.divePitchRad = 0;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.setState('IDLE');
     }
   }
@@ -2352,7 +2364,7 @@ export class ValkyrieEx extends Fighter {
     const t = this.stateTimer;
     const ww = game?.renderer?.worldWidth || 1600;
 
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.isFlipVault = false;
     this.isCrouching = false;

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps145';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps145';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps145';
+import { Fighter } from './Fighter.js?v=30fps146';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps146';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps146';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps145';
+} from '../engine/shaders/cyberShaders.js?v=30fps146';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -324,9 +324,9 @@ export class AndroidEx extends Fighter {
         return img;
       };
       assets.android_ex = {
-        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps145'),
-        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps145'),
-        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps145'),
+        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps146'),
+        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps146'),
+        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps146'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -693,24 +693,36 @@ export class AndroidEx extends Fighter {
   }
 
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
-    if (this.isDeflecting && !this.isDead) {
-      const reduced = Math.max(1, Math.round(amount * 0.35));
-      this.fx?.spawn('cyberImpactSpark', this._safeFxX(this.x + this.facing * 42), this._safeFxY(this.y - 78), {
-        palette: CYBER_NEON_PALETTE,
-        flip: this.facing < 0,
-        light: 1.08
-      });
-      this.game?.vfx?.spawnDamageText?.(this.x, this.y - 176, 0, false, 'HEX MATRIX GUARD!', '#22d3ee');
-      this.game?.audio?.play?.('reflect', this.x);
-      super.takeDamage(reduced, attacker, false, knockX * 0.25, 0);
-      return;
-    }
+    const incomingTier =
+      attacker?._activeHitTier ||
+      (attacker && !attacker.isMonster && (attacker.state === 'ULTIMATE' || attacker.state === 'TRUE_ULTIMATE')
+        ? attacker.state
+        : null);
+    if (
+      !incomingTier &&
+      !this.isInvulnerable &&
+      this.state !== 'ULTIMATE' &&
+      this.state !== 'TRUE_ULTIMATE'
+    ) {
+      if (this.isDeflecting && !this.isDead) {
+        const reduced = Math.max(1, Math.round(amount * 0.35));
+        this.fx?.spawn('cyberImpactSpark', this._safeFxX(this.x + this.facing * 42), this._safeFxY(this.y - 78), {
+          palette: CYBER_NEON_PALETTE,
+          flip: this.facing < 0,
+          light: 1.08
+        });
+        this.game?.vfx?.spawnDamageText?.(this.x, this.y - 176, 0, false, 'HEX MATRIX GUARD!', '#22d3ee');
+        this.game?.audio?.play?.('reflect', this.x);
+        super.takeDamage(reduced, attacker, false, knockX * 0.25, 0);
+        return;
+      }
 
-    if ((this.shieldHp || 0) > 0 && amount > 0 && !this.game?.isAdventureMode?.()) {
-      const abs = Math.min(this.shieldHp, Math.round(amount));
-      this.shieldHp -= abs;
-      amount = Math.max(0, amount - abs);
-      if (amount <= 0) return;
+      if ((this.shieldHp || 0) > 0 && amount > 0 && !this.game?.isAdventureMode?.()) {
+        const abs = Math.min(this.shieldHp, Math.round(amount));
+        this.shieldHp -= abs;
+        amount = Math.max(0, amount - abs);
+        if (amount <= 0) return;
+      }
     }
     super.takeDamage(amount, attacker, isCrit, knockX, knockY);
 
@@ -936,7 +948,7 @@ export class AndroidEx extends Fighter {
     const dir = dirOverride !== null ? dirOverride : this.facing;
     this.facing = dir || 1;
     this.vaultCooldown = 2.8;
-    this.dodgeCooldown = Math.max(this.dodgeCooldown || 0, 1.5);
+    this.jumpCooldown = 2.8;
     this.dashDuration = 0.54;
     this.isFlipVault = true;
     this.isInvulnerable = true;
@@ -1360,7 +1372,7 @@ export class AndroidEx extends Fighter {
       if (v === 3) {
         this.comboStep = 0;
         this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = 0.22;
+        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 112 ? 0.32 : 0;
         this._aiOutstepDir = -1;
         this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
       } else {
@@ -1624,7 +1636,8 @@ export class AndroidEx extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.ultDuration || 1.92;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.22;
+    this.unstoppablePoise = true;
     this.vx = 0;
     this.vy = 0;
 
@@ -1888,6 +1901,7 @@ export class AndroidEx extends Fighter {
     if (t >= dur) {
       this.y = this.groundY;
       this.isInvulnerable = false;
+      this.unstoppablePoise = false;
       this.hudTargetMatrix = null;
       this.orbitalStrikeFunnels = [];
       this.trueUltFrameOverride = null;
@@ -1952,7 +1966,7 @@ export class AndroidEx extends Fighter {
       game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
         ? game.adventure.getActiveStageBounds()
         : null;
-    this.isInvulnerable = true;
+    this.isInvulnerable = t < 0.35;
     this.unstoppablePoise = true;
     this.vx = 0;
     this.vy = 0;
