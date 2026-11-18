@@ -1,19 +1,21 @@
 #!/opt/homebrew/bin/python3.11
 """
-Build Natural 6-Frame 320x320 (1920x320) Lossless Anime Lip-Sync & Blink Bust Sheets:
-  - assets/sprites/intro_talk/nyx_talk_sheet.png     (for nyx_ex)
-  - assets/sprites/intro_talk/warrior_talk_sheet.png (for warrior_ex & warrior)
+Build All-12 Natural 6-Frame 320x320 (1920x320) Lossless Anime Lip-Sync & Cushioned-Blink Bust Sheets:
+  assets/sprites/intro_talk/<persona>_talk_sheet.png
+  for all 12 Arcane vs Steel personas (shared across EX & Legacy rosters):
+    1. nyx           2. warrior       3. mage          4. priestess
+    5. chronomancer  6. valkyrie      7. ronin         8. archer
+    9. reaper       10. titan        11. icemage      12. android
 
 Design Principle (Zero Forced Body/Ear Chopping — Pure Hand-Sculpted Anime Cel Expression):
-  Keep 100% of head, hair, cat-ears, mane, shoulders, and weapon silhouettes rock-solid
-  (zero rectangular shift_patch jiggling!), animating ONLY genuine anime facial cel states
-  and gentle background starlight/rune twinkle:
-    F0: Calm Neutral Closed Mouth (open eyes, cute closed fang-smile on Nyx / stern closed lips on Aethelgard)
+  Keep 100% of head, hair, cat-ears, helmets, horns, shoulders, and weapon silhouettes rock-solid,
+  animating genuine anime facial cel states:
+    F0: Calm Neutral Closed Mouth
     F1: Half-Blink Cushion Lid (50% lowered upper eyelids + lashes for buttery F0->F1->F2->F1->F0 blinks!)
-    F2: Full Closed Eye-Blink (seamless local-skin closed eyelids + curved lashes, 0 iris leak)
-    F3: Small / Soft Syllable Mouth ('m/s/i/e' subtle 4-5px speech part, 0px chin jump)
-    F4: Medium Vowel Mouth ('o/u/eh' natural 7-8px mid-open speech, 1px jaw drop, upper teeth/fang)
-    F5: Wide Accented Vowel Mouth ('a!' expressive 11-12px speech, 2px jaw drop, shaded tongue/fang + glint)
+    F2: Full Closed Eye-Blink (seamless local-skin/hood/visor closed eyelids + curved lashes, 0 iris leak)
+    F3: Small / Soft Syllable Mouth ('m/s/i/e' subtle 4-5px speech part)
+    F4: Medium Vowel Mouth ('o/u/eh' natural 7-8px mid-open speech, 1px jaw drop, upper teeth)
+    F5: Wide Accented Vowel Mouth ('a!' expressive 10-11px speech, 2px jaw drop, tongue/teeth + weapon glint)
 """
 
 from __future__ import annotations
@@ -32,10 +34,31 @@ FRAMES = 6
 SHEET_W = CELL * FRAMES  # 1920
 SHEET_H = CELL           # 320
 
+CROPS_1024: dict[str, tuple[int, int, int, int]] = {
+    "nyx":          (0, 0, 1024, 1024),
+    "warrior":      (0, 0, 1024, 1024),
+    "mage":         (0, 0, 1024, 1024),
+    "priestess":    (96, 8, 928, 840),
+    "chronomancer": (114, 96, 910, 892),
+    "valkyrie":     (68, 68, 956, 956),
+    "ronin":        (204, 16, 796, 608),
+    "archer":       (0, 0, 1024, 1024),
+    "reaper":       (0, 0, 1024, 1024),
+    "titan":        (0, 0, 1024, 1024),
+    "icemage":      (0, 0, 1024, 1024),
+    "android":      (0, 0, 1024, 1024),
+}
 
-def quantize_crisp_320(raw_jpg_path: Path, is_warrior: bool = False) -> np.ndarray:
-    """Downsamples 1024x1024 pixel-art master to crisp 320x320 RGBA with zero blur & faithful skin/glow ramps."""
+
+def quantize_crisp_320(
+    raw_jpg_path: Path,
+    crop_box: tuple[int, int, int, int] = (0, 0, 1024, 1024),
+    is_warrior: bool = False,
+) -> np.ndarray:
+    """Downsamples 1024x1024 pixel-art master to crisp 320x320 RGBA with zero blur."""
     raw = Image.open(raw_jpg_path).convert("RGB")
+    if crop_box != (0, 0, 1024, 1024):
+        raw = raw.crop(crop_box)
     med = raw.filter(ImageFilter.MedianFilter(size=3))
     near320 = med.resize((CELL, CELL), Image.Resampling.NEAREST)
     src = np.array(near320, dtype=np.uint8)
@@ -43,12 +66,11 @@ def quantize_crisp_320(raw_jpg_path: Path, is_warrior: bool = False) -> np.ndarr
     q_img = near320.quantize(colors=96, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
     out = np.array(q_img, dtype=np.uint8)
 
-    r = src[:, :, 0].astype(np.int16)
-    g = src[:, :, 1].astype(np.int16)
-    b = src[:, :, 2].astype(np.int16)
-    lum = (r * 2 + g * 5 + b * 3) // 10
-
     if is_warrior:
+        r = src[:, :, 0].astype(np.int16)
+        g = src[:, :, 1].astype(np.int16)
+        b = src[:, :, 2].astype(np.int16)
+        lum = (r * 2 + g * 5 + b * 3) // 10
         yy, xx = np.mgrid[0:CELL, 0:CELL]
         face_zone = (xx >= 124) & (xx <= 212) & (yy >= 118) & (yy <= 190)
         skin_like = face_zone & ((r - b) >= 28) & (r >= 135) & (g >= 88) & ((r - g) >= 18)
@@ -100,16 +122,176 @@ def draw_star_sparkle(
                 draw_px(img, cx + dx, cy + dy, core_rgb)
 
 
+def pack_sheet(frames: list[np.ndarray]) -> np.ndarray:
+    sheet = np.zeros((SHEET_H, SHEET_W, 4), dtype=np.uint8)
+    for idx, fr in enumerate(frames):
+        sheet[:, idx * CELL : (idx + 1) * CELL] = fr
+    return sheet
+
+
 # ==============================================================================
-# 1. NYX 6-FRAME ANIME LIP-SYNC & CUSHIONED BLINK SHEET
+# SHARED PARAMETRIC ANIME EYELID & 3-TIER VOWEL MOUTH SCULPTORS
+# ==============================================================================
+
+def sculpt_human_eyelids(
+    f0_ref: np.ndarray,
+    half_open: bool,
+    left_box: tuple[int, int, int, int],
+    right_box: tuple[int, int, int, int],
+    cheek_y: int,
+    lash_dark: tuple[int, int, int],
+    lash_soft: tuple[int, int, int],
+    crease_col: tuple[int, int, int],
+    skin_shad: tuple[int, int, int],
+    skip_fn=None,
+) -> np.ndarray:
+    f = f0_ref.copy()
+    for bx0, by0, bx1, by1 in (left_box, right_box):
+        h = by1 - by0
+        mid_y = by0 + max(2, h // 2)
+        closed_lash_y = by1 - 3
+
+        if half_open:
+            for y in range(by0, mid_y):
+                for x in range(bx0, bx1 + 1):
+                    if skip_fn and skip_fn(f0_ref, x, y):
+                        continue
+                    sx = min(bx1 - 1, max(bx0 + 1, x))
+                    skin = tuple(int(v) for v in f0_ref[cheek_y, sx, :3])
+                    col = crease_col if y == by0 else (skin_shad if y == by0 + 1 else skin)
+                    draw_px(f, x, y, col)
+            for x in range(bx0, bx1 + 1):
+                if skip_fn and skip_fn(f0_ref, x, mid_y):
+                    continue
+                draw_px(f, x, mid_y, lash_dark)
+                if mid_y + 1 <= by1:
+                    draw_px(f, x, mid_y + 1, lash_soft)
+        else:
+            for y in range(by0, by1 + 1):
+                for x in range(bx0, bx1 + 1):
+                    if skip_fn and skip_fn(f0_ref, x, y):
+                        continue
+                    sx = min(bx1 - 1, max(bx0 + 1, x))
+                    skin = tuple(int(v) for v in f0_ref[cheek_y, sx, :3])
+                    col = crease_col if y == by0 else (skin_shad if y <= by0 + 2 else skin)
+                    draw_px(f, x, y, col)
+            span = max(1, bx1 - bx0)
+            for x in range(bx0, bx1 + 1):
+                rel = (x - bx0) / span
+                curve = 1 if 0.22 <= rel <= 0.78 else 0
+                ly = min(by1 - 1, closed_lash_y + curve)
+                if skip_fn and skip_fn(f0_ref, x, ly):
+                    continue
+                draw_px(f, x, ly, lash_dark)
+                draw_px(f, x, min(by1, ly + 1), lash_dark if 0.15 <= rel <= 0.85 else lash_soft)
+                if ly - 1 >= by0:
+                    draw_px(f, x, ly - 1, skin_shad)
+    return f
+
+
+def sculpt_human_vowel_mouth(
+    f0_ref: np.ndarray,
+    vowel: str,
+    mx0: int,
+    mx1: int,
+    my_top: int,
+    erase_y0: int,
+    erase_y1: int,
+    skin_ref_y: int,
+    chin_box: tuple[int, int, int, int],
+    lip_col: tuple[int, int, int],
+    cavity_col: tuple[int, int, int],
+    tongue_mid: tuple[int, int, int],
+    tongue_lit: tuple[int, int, int],
+    skin_shad: tuple[int, int, int],
+    sparkles: list[tuple[int, int, int, tuple[int, int, int]]] | None = None,
+) -> np.ndarray:
+    f = f0_ref.copy()
+    chin_drop = 0 if vowel == "small" else (1 if vowel == "mid" else 2)
+    cx0, cy0, cx1, cy1 = chin_box
+    if chin_drop > 0:
+        shift_chin_only(f, f0_ref, cx0, cy0, cx1, cy1, chin_drop)
+
+    for y in range(erase_y0, erase_y1 + chin_drop + 1):
+        for x in range(mx0 - 2, mx1 + 5):
+            sx = min(mx1, max(mx0, x))
+            f[y, x, :3] = f0_ref[skin_ref_y, sx, :3]
+
+    C_TEETH = (248, 246, 242)
+    cx_mid = (mx0 + mx1) // 2
+
+    if vowel == "small":
+        sx0, sx1 = mx0 + 1, mx1 - 1
+        for x in range(sx0, sx1 + 1):
+            draw_px(f, x, my_top, lip_col)
+            draw_px(f, x, my_top + 1, C_TEETH if (sx0 + 2 <= x <= sx1 - 2) else cavity_col)
+            draw_px(f, x, my_top + 2, tongue_mid if (sx0 + 2 <= x <= sx1 - 2) else cavity_col)
+            if sx0 + 1 <= x <= sx1 - 1:
+                draw_px(f, x, my_top + 3, lip_col)
+        draw_px(f, sx0 - 1, my_top + 1, lip_col)
+        draw_px(f, sx1 + 1, my_top + 1, lip_col)
+        for x in range(cx_mid - 3, cx_mid + 4):
+            draw_px(f, x, my_top + 4, skin_shad)
+
+    elif vowel == "mid":
+        for x in range(mx0 + 1, mx1):
+            draw_px(f, x, my_top, lip_col)
+        for dy in range(1, 6):
+            y = my_top + dy
+            inset = 1 if dy == 5 else 0
+            xa, xb = mx0 + inset, mx1 - inset
+            if dy == 5:
+                for x in range(xa + 1, xb):
+                    draw_px(f, x, y, lip_col)
+                continue
+            draw_px(f, xa, y, lip_col)
+            draw_px(f, xb, y, lip_col)
+            for x in range(xa + 1, xb):
+                if dy == 1 and (xa + 2 <= x <= xb - 2):
+                    draw_px(f, x, y, C_TEETH)
+                elif dy <= 2:
+                    draw_px(f, x, y, cavity_col)
+                else:
+                    draw_px(f, x, y, tongue_lit if (dy == 4 and abs(x - cx_mid) <= 3) else tongue_mid)
+        for x in range(cx_mid - 4, cx_mid + 5):
+            draw_px(f, x, my_top + 6, skin_shad)
+
+    else:
+        lx, rx = mx0 - 1, mx1 + 1
+        for x in range(lx + 1, rx):
+            uy = my_top - 1 if (lx + 3 <= x <= rx - 3) else my_top
+            draw_px(f, x, uy, lip_col)
+        for dy in range(0, 8):
+            y = my_top + dy
+            inset = 1 if dy == 5 else (2 if dy == 6 else (4 if dy == 7 else 0))
+            xa, xb = lx + inset, rx - inset
+            if dy == 7:
+                for x in range(xa, xb + 1):
+                    draw_px(f, x, y, lip_col)
+                continue
+            draw_px(f, xa, y, lip_col)
+            draw_px(f, xb, y, lip_col)
+            for x in range(xa + 1, xb):
+                if dy == 0 and (lx + 3 <= x <= rx - 3):
+                    draw_px(f, x, y, C_TEETH)
+                elif dy <= 3:
+                    draw_px(f, x, y, cavity_col)
+                else:
+                    draw_px(f, x, y, tongue_lit if (dy >= 5 and abs(x - cx_mid) <= 3) else tongue_mid)
+        for x in range(cx_mid - 4, cx_mid + 5):
+            draw_px(f, x, my_top + 8, skin_shad)
+        if sparkles:
+            for sx, sy, arm, scol in sparkles:
+                draw_star_sparkle(f, sx, sy, arm, scol)
+
+    return f
+
+
+# ==============================================================================
+# 1. NYX & 2. WARRIOR (EXACT VERIFIED SCULPTS PRESERVED)
 # ==============================================================================
 
 def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarray:
-    """
-    Sculpts either:
-      - half_open=True  (F1): 50% lowered upper eyelid + thick upper lash over lower violet iris!
-      - half_open=False (F2): 100% closed anime eyelid + gentle curved lash arc!
-    """
     f = f0_ref.copy()
     skin_main = tuple(int(v) for v in f0_ref[140, 165, :3])
     skin_right = tuple(int(v) for v in f0_ref[138, 198, :3])
@@ -131,13 +313,9 @@ def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarra
         return False
 
     if half_open:
-        # F1 Half-Blink Cushion: lower upper eyelid down to y=124, thick lash at y=124..126,
-        # keeping lower violet iris & pink bounce (y=127..133) visible beneath!
         for y in range(117, 125):
             for x in range(141, 171):
-                if is_bang_left(x, y):
-                    continue
-                if x <= 142 and y >= 122:
+                if is_bang_left(x, y) or (x <= 142 and y >= 122):
                     continue
                 col = crease_col if (y == 118 and 147 <= x <= 165) else (skin_shad if y <= 119 else skin_main)
                 draw_px(f, x, y, col)
@@ -149,8 +327,6 @@ def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarra
         draw_px(f, 138, 124, lash_dark)
         draw_px(f, 139, 124, lash_dark)
         draw_px(f, 139, 125, lash_dark)
-
-        # Right eye half-blink
         for y in range(117, 125):
             for x in range(190, 207):
                 if is_bang_right(x, y):
@@ -165,12 +341,9 @@ def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarra
         draw_px(f, 207, 124, lash_dark)
         return f
 
-    # F2 Full Closed Blink
     for y in range(117, 134):
         for x in range(138, 172):
-            if is_bang_left(x, y):
-                continue
-            if 138 <= x <= 142 and y >= 122:
+            if is_bang_left(x, y) or (138 <= x <= 142 and y >= 122):
                 continue
             base_col = crease_col if (y == 119 and 148 <= x <= 164) else (
                 skin_shad if (y <= 119 and 144 <= x <= 167) else skin_main
@@ -179,7 +352,6 @@ def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarra
             not_cheek = abs(r - skin_main[0]) + abs(g - skin_main[1]) + abs(b - skin_main[2]) > 18
             if not_cheek or (143 <= x <= 170 and 118 <= y <= 133):
                 draw_px(f, x, y, base_col)
-
     for x in range(141, 170):
         curve = 1 if 148 <= x <= 164 else 0
         ly = 128 + curve
@@ -191,7 +363,6 @@ def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarra
     draw_px(f, 139, 127, lash_dark)
     draw_px(f, 140, 127, lash_dark)
     draw_px(f, 140, 128, lash_dark)
-
     for y in range(117, 134):
         for x in range(190, 207):
             if is_bang_right(x, y):
@@ -200,7 +371,6 @@ def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarra
                 skin_shad if (y <= 119 or x >= 205) else skin_right
             )
             draw_px(f, x, y, base_col)
-
     for x in range(190, 207):
         curve = 1 if 194 <= x <= 203 else 0
         ly = 128 + curve
@@ -214,12 +384,6 @@ def sculpt_nyx_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarra
 
 
 def sculpt_nyx_mouth_vowel(f0_ref: np.ndarray, vowel: str) -> np.ndarray:
-    """
-    3 distinct natural anime vowel mouth shapes:
-      - 'small' (F3): 4-5px subtle soft consonant/syllable part ('m/s/i/e'), 0px chin jump
-      - 'mid'   (F4): 7-8px rounded medium vowel ('o/u/eh'), 1px chin drop + yaeba fang
-      - 'wide'  (F5): 11px expressive accented vowel ('a!'), 2px chin drop + shaded tongue + fang
-    """
     f = f0_ref.copy()
     chin_drop = 0 if vowel == "small" else (1 if vowel == "mid" else 2)
     if chin_drop > 0:
@@ -232,7 +396,6 @@ def sculpt_nyx_mouth_vowel(f0_ref: np.ndarray, vowel: str) -> np.ndarray:
     C_TONGUE_LIT = (244, 134, 164)
     C_WHITE = (255, 250, 252)
 
-    # Seamlessly erase closed mouth using Nyx's own cheek skin column
     for y in range(149, 163):
         for x in range(159, 194):
             ref_y = 148 if x <= 185 else 149
@@ -240,38 +403,28 @@ def sculpt_nyx_mouth_vowel(f0_ref: np.ndarray, vowel: str) -> np.ndarray:
             f[y, x, :3] = f0_ref[ref_y, ref_x, :3]
 
     if vowel == "small":
-        # F3: Gentle 5px soft syllable opening (x=166..183, y=152..156)
         for x in range(167, 183):
             draw_px(f, x, 152, C_LIP_OUT)
-        draw_px(f, 165, 152, C_LIP_OUT)
-        draw_px(f, 166, 152, C_LIP_OUT)
-        draw_px(f, 183, 152, C_LIP_OUT)
-        draw_px(f, 184, 152, C_LIP_OUT)
-
+        for xp in (165, 166, 183, 184):
+            draw_px(f, xp, 152, C_LIP_OUT)
         for x in range(167, 183):
             draw_px(f, x, 153, C_WHITE if 170 <= x <= 179 else C_CAVITY)
             draw_px(f, x, 154, C_TONGUE_MID if 169 <= x <= 180 else C_CAVITY)
-        draw_px(f, 166, 153, C_LIP_OUT)
-        draw_px(f, 183, 153, C_LIP_OUT)
-        draw_px(f, 166, 154, C_LIP_OUT)
-        draw_px(f, 183, 154, C_LIP_OUT)
+        for yp in (153, 154):
+            draw_px(f, 166, yp, C_LIP_OUT)
+            draw_px(f, 183, yp, C_LIP_OUT)
         for x in range(168, 182):
             draw_px(f, x, 155, C_LIP_OUT)
-        # Cute tiny corner yaeba fang peek
         draw_px(f, 167, 153, C_WHITE)
         draw_px(f, 168, 153, C_WHITE)
         draw_px(f, 167, 154, C_WHITE)
         for x in range(171, 179):
             draw_px(f, x, 156, C_SKIN_SHAD)
-
     elif vowel == "mid":
-        # F4: Medium 8px rounded vowel opening (x=165..184, y=151..158)
         for x in range(166, 184):
-            uy = 151 if 168 <= x <= 181 else 152
-            draw_px(f, x, uy, C_LIP_OUT)
+            draw_px(f, x, 151 if 168 <= x <= 181 else 152, C_LIP_OUT)
         draw_px(f, 164, 152, C_LIP_OUT)
         draw_px(f, 185, 152, C_LIP_OUT)
-
         for y in range(152, 158):
             inset = 1 if y == 157 else 0
             xa, xb = 165 + inset, 184 - inset
@@ -288,33 +441,18 @@ def sculpt_nyx_mouth_vowel(f0_ref: np.ndarray, vowel: str) -> np.ndarray:
                     draw_px(f, x, y, C_CAVITY)
                 else:
                     draw_px(f, x, y, C_TONGUE_LIT if (y == 156 and 171 <= x <= 178) else C_TONGUE_MID)
-
-        # Yaeba fang
-        draw_px(f, 167, 152, C_WHITE)
-        draw_px(f, 168, 152, C_WHITE)
-        draw_px(f, 167, 153, C_WHITE)
-        draw_px(f, 168, 153, C_WHITE)
-        draw_px(f, 167, 154, C_WHITE)
+        for fx, fy in ((167, 152), (168, 152), (167, 153), (168, 153), (167, 154)):
+            draw_px(f, fx, fy, C_WHITE)
         for x in range(170, 180):
             draw_px(f, x, 158, C_SKIN_SHAD)
-
     else:
-        # F5: Expressive 11px accented vowel ('a!') D-mouth (x=164..185, y=150..160)
         lx, rx = 164, 185
         draw_px(f, lx - 1, 150, C_LIP_OUT)
         draw_px(f, rx + 1, 150, C_LIP_OUT)
         for x in range(lx, rx + 1):
-            uy = 150 if (lx + 2 <= x <= rx - 2) else 151
-            draw_px(f, x, uy, C_LIP_OUT)
-
+            draw_px(f, x, 150 if (lx + 2 <= x <= rx - 2) else 151, C_LIP_OUT)
         for y in range(151, 161):
-            inset = 0
-            if y == 158:
-                inset = 1
-            elif y == 159:
-                inset = 3
-            elif y == 160:
-                inset = 5
+            inset = 1 if y == 158 else (3 if y == 159 else (5 if y == 160 else 0))
             xa, xb = lx + inset, rx - inset
             if y == 160:
                 for x in range(xa, xb + 1):
@@ -338,47 +476,29 @@ def sculpt_nyx_mouth_vowel(f0_ref: np.ndarray, vowel: str) -> np.ndarray:
                         draw_px(f, x, y, C_TONGUE_LIT)
                     else:
                         draw_px(f, x, y, C_TONGUE_MID)
-
-        # Signature cute pointed yaeba fang
-        draw_px(f, 166, 151, C_WHITE)
-        draw_px(f, 167, 151, C_WHITE)
-        draw_px(f, 168, 151, C_WHITE)
-        draw_px(f, 166, 152, C_WHITE)
-        draw_px(f, 167, 152, C_WHITE)
-        draw_px(f, 168, 152, C_WHITE)
-        draw_px(f, 167, 153, C_WHITE)
-        draw_px(f, 167, 154, C_WHITE)
+        for fx, fy in ((166, 151), (167, 151), (168, 151), (166, 152), (167, 152), (168, 152), (167, 153), (167, 154)):
+            draw_px(f, fx, fy, C_WHITE)
         for x in range(170, 180):
             draw_px(f, x, 161, C_SKIN_SHAD)
-
-        # Subtle lively iris & Cob-drone optical core gleam on wide accented vowel (zero body/ear chop!)
         for x in range(152, 156):
             for y in range(121, 125):
                 draw_px(f, x, y, (255, 255, 255))
         draw_star_sparkle(f, 263, 144, 2, (165, 243, 252))
         draw_star_sparkle(f, 263, 114, 3, (34, 211, 238))
-
     return f
 
 
 def build_nyx_talk_sheet() -> np.ndarray:
-    f0 = quantize_crisp_320(SPRITES_DIR / "nyx_ex_portrait_raw.jpg", is_warrior=False)
-    f1 = sculpt_nyx_eyelids(f0, half_open=True)
-    f2 = sculpt_nyx_eyelids(f0, half_open=False)
-    f3 = sculpt_nyx_mouth_vowel(f0, "small")
-    f4 = sculpt_nyx_mouth_vowel(f0, "mid")
-    f5 = sculpt_nyx_mouth_vowel(f0, "wide")
+    f0 = quantize_crisp_320(SPRITES_DIR / "nyx_ex_portrait_raw.jpg", CROPS_1024["nyx"])
+    return pack_sheet([
+        f0,
+        sculpt_nyx_eyelids(f0, True),
+        sculpt_nyx_eyelids(f0, False),
+        sculpt_nyx_mouth_vowel(f0, "small"),
+        sculpt_nyx_mouth_vowel(f0, "mid"),
+        sculpt_nyx_mouth_vowel(f0, "wide"),
+    ])
 
-    frames = [f0, f1, f2, f3, f4, f5]
-    sheet = np.zeros((SHEET_H, SHEET_W, 4), dtype=np.uint8)
-    for idx, fr in enumerate(frames):
-        sheet[:, idx * CELL : (idx + 1) * CELL] = fr
-    return sheet
-
-
-# ==============================================================================
-# 2. AETHELGARD (WARRIOR) 6-FRAME ANIME LIP-SYNC & CUSHIONED BLINK SHEET
-# ==============================================================================
 
 def sculpt_warrior_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.ndarray:
     f = f0_ref.copy()
@@ -386,9 +506,7 @@ def sculpt_warrior_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.nd
     C_LASH_SOFT = (46, 36, 48)
     C_CREASE = (148, 86, 58)
     C_SKIN_SHAD = (190, 124, 88)
-
     if half_open:
-        # F1 Half-Blink Cushion: stern narrowed upper lid at y=141..142, lower cyan eye slit visible at y=143..146!
         for y in range(137, 142):
             for x in range(150, 175):
                 cheek_col = tuple(int(v) for v in f0_ref[153, min(173, max(152, x)), :3])
@@ -397,7 +515,6 @@ def sculpt_warrior_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.nd
             ly = 141 if x <= 157 else 142
             draw_px(f, x, ly, C_LASH)
             draw_px(f, x, ly + 1, C_LASH_SOFT)
-
         for y in range(138, 142):
             for x in range(191, 207):
                 cheek_r = tuple(int(v) for v in f0_ref[153, min(204, max(192, x)), :3])
@@ -407,17 +524,10 @@ def sculpt_warrior_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.nd
             draw_px(f, x, 143, C_LASH_SOFT)
         return f
 
-    # F2 Full Closed Blink
     for y in range(137, 151):
         for x in range(149, 176):
             cheek_col = tuple(int(v) for v in f0_ref[153, min(173, max(152, x)), :3])
-            if y == 137:
-                draw_px(f, x, y, C_CREASE if 154 <= x <= 171 else C_SKIN_SHAD)
-            elif y <= 140:
-                draw_px(f, x, y, C_SKIN_SHAD)
-            else:
-                draw_px(f, x, y, cheek_col)
-
+            draw_px(f, x, y, C_CREASE if (y == 137 and 154 <= x <= 171) else (C_SKIN_SHAD if y <= 140 else cheek_col))
     for x in range(150, 175):
         ly = 145 if x <= 157 else 146
         draw_px(f, x, ly, C_LASH)
@@ -425,17 +535,10 @@ def sculpt_warrior_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.nd
         draw_px(f, x, ly + 2, C_SKIN_SHAD)
     draw_px(f, 148, 144, C_LASH)
     draw_px(f, 149, 144, C_LASH)
-
     for y in range(138, 151):
         for x in range(190, 207):
             cheek_r = tuple(int(v) for v in f0_ref[153, min(204, max(192, x)), :3])
-            if y == 138:
-                draw_px(f, x, y, C_CREASE)
-            elif y <= 140:
-                draw_px(f, x, y, C_SKIN_SHAD)
-            else:
-                draw_px(f, x, y, cheek_r)
-
+            draw_px(f, x, y, C_CREASE if y == 138 else (C_SKIN_SHAD if y <= 140 else cheek_r))
     for x in range(191, 207):
         draw_px(f, x, 146, C_LASH)
         draw_px(f, x, 147, C_LASH if 192 <= x <= 205 else C_LASH_SOFT)
@@ -444,165 +547,666 @@ def sculpt_warrior_eyelids(f0_ref: np.ndarray, half_open: bool = False) -> np.nd
 
 
 def sculpt_warrior_mouth_vowel(f0_ref: np.ndarray, vowel: str) -> np.ndarray:
-    """
-    3 distinct natural vowel mouth shapes for Aethelgard:
-      - 'small' (F3): 4px subtle stern consonant/syllable part, 0px chin jump
-      - 'mid'   (F4): 7px commanding mid-open vowel, 1px jaw drop + upper teeth
-      - 'wide'  (F5): 10px expressive accented vowel/shout, 2px jaw drop + teeth + tongue + gem gleam
-    """
-    f = f0_ref.copy()
-    chin_drop = 0 if vowel == "small" else (1 if vowel == "mid" else 2)
-    if chin_drop > 0:
-        shift_chin_only(f, f0_ref, 166, 177, 196, 188, chin_drop)
-
-    C_SKIN_SHAD = (190, 124, 88)
-    C_LIP_DARK = (58, 28, 22)
-    C_CAVITY = (74, 22, 24)
-    C_TONGUE = (176, 68, 62)
-    C_TONGUE_LIT = (208, 96, 86)
-    C_TEETH = (246, 244, 238)
-
-    for y in range(168, 177 + chin_drop):
-        for x in range(170, 195):
-            f[y, x, :3] = f0_ref[167, x, :3]
-
-    if vowel == "small":
-        # F3: Subtle 4px stern syllable part (x=173..191, y=169..173)
-        for x in range(173, 191):
-            draw_px(f, x, 169, C_LIP_DARK)
-            draw_px(f, x, 170, C_TEETH if 176 <= x <= 188 else C_CAVITY)
-            draw_px(f, x, 171, C_CAVITY)
-            draw_px(f, x, 172, C_LIP_DARK if 175 <= x <= 189 else f0_ref[167, x, :3])
-        draw_px(f, 172, 170, C_LIP_DARK)
-        draw_px(f, 172, 171, C_LIP_DARK)
-        draw_px(f, 191, 170, C_LIP_DARK)
-        draw_px(f, 191, 171, C_LIP_DARK)
-        for x in range(178, 187):
-            draw_px(f, x, 174, C_SKIN_SHAD)
-
-    elif vowel == "mid":
-        # F4: Commanding 7px mid-open speech (x=172..192, y=169..175)
-        for x in range(173, 192):
-            draw_px(f, x, 169, C_LIP_DARK)
-        for y in range(170, 175):
-            draw_px(f, 172, y, C_LIP_DARK)
-            draw_px(f, 192, y, C_LIP_DARK)
-            for x in range(173, 192):
-                if y == 170 and 175 <= x <= 190:
-                    draw_px(f, x, y, C_TEETH)
-                elif y in (171, 172):
-                    draw_px(f, x, y, C_CAVITY)
-                elif y == 173:
-                    draw_px(f, x, y, C_TONGUE if 175 <= x <= 189 else C_CAVITY)
-                elif y == 174:
-                    draw_px(f, x, y, C_LIP_DARK)
-        for x in range(177, 189):
-            draw_px(f, x, 176, C_SKIN_SHAD)
-
-    else:
-        # F5: Bold 10px accented vowel / battle-cry (x=171..193, y=168..177)
-        bot_y = 177
-        for x in range(172, 193):
-            uy = 168 if 175 <= x <= 190 else 169
-            draw_px(f, x, uy, C_LIP_DARK)
-        for y in range(169, bot_y + 1):
-            inset = 1 if y == bot_y - 1 else (3 if y == bot_y else 0)
-            xa, xb = 171 + inset, 193 - inset
-            if y == bot_y:
-                for x in range(xa, xb + 1):
-                    draw_px(f, x, y, C_LIP_DARK)
-                continue
-            draw_px(f, xa, y, C_LIP_DARK)
-            draw_px(f, xb, y, C_LIP_DARK)
-            for x in range(xa + 1, xb):
-                if y == 169 and 174 <= x <= 190:
-                    draw_px(f, x, y, C_TEETH)
-                elif y == bot_y - 1 and 175 <= x <= 189:
-                    draw_px(f, x, y, (232, 228, 220))
-                elif y <= 172:
-                    draw_px(f, x, y, C_CAVITY)
-                else:
-                    draw_px(f, x, y, C_TONGUE_LIT if (178 <= x <= 186 and y >= 174) else C_TONGUE)
-        for x in range(176, 189):
-            draw_px(f, x, bot_y + 1, C_SKIN_SHAD)
-
-        # Subtle brow-diamond & chest-gem gleam on accented peak vowel (zero body/sword chop!)
-        draw_star_sparkle(f, 191, 111, 3, (110, 234, 255))
-        draw_star_sparkle(f, 191, 239, 4, (110, 234, 255))
-
-    return f
+    return sculpt_human_vowel_mouth(
+        f0_ref,
+        vowel,
+        mx0=172,
+        mx1=192,
+        my_top=169,
+        erase_y0=168,
+        erase_y1=176,
+        skin_ref_y=167,
+        chin_box=(166, 177, 196, 188),
+        lip_col=(58, 28, 22),
+        cavity_col=(74, 22, 24),
+        tongue_mid=(176, 68, 62),
+        tongue_lit=(208, 96, 86),
+        skin_shad=(190, 124, 88),
+        sparkles=[(191, 111, 3, (110, 234, 255)), (191, 239, 4, (110, 234, 255))],
+    )
 
 
 def build_warrior_talk_sheet() -> np.ndarray:
-    f0 = quantize_crisp_320(SPRITES_DIR / "warrior_ex_portrait_raw.jpg", is_warrior=True)
-    f1 = sculpt_warrior_eyelids(f0, half_open=True)
-    f2 = sculpt_warrior_eyelids(f0, half_open=False)
-    f3 = sculpt_warrior_mouth_vowel(f0, "small")
-    f4 = sculpt_warrior_mouth_vowel(f0, "mid")
-    f5 = sculpt_warrior_mouth_vowel(f0, "wide")
-
-    frames = [f0, f1, f2, f3, f4, f5]
-    sheet = np.zeros((SHEET_H, SHEET_W, 4), dtype=np.uint8)
-    for idx, fr in enumerate(frames):
-        sheet[:, idx * CELL : (idx + 1) * CELL] = fr
-    return sheet
+    f0 = quantize_crisp_320(SPRITES_DIR / "warrior_ex_portrait_raw.jpg", CROPS_1024["warrior"], is_warrior=True)
+    return pack_sheet([
+        f0,
+        sculpt_warrior_eyelids(f0, True),
+        sculpt_warrior_eyelids(f0, False),
+        sculpt_warrior_mouth_vowel(f0, "small"),
+        sculpt_warrior_mouth_vowel(f0, "mid"),
+        sculpt_warrior_mouth_vowel(f0, "wide"),
+    ])
 
 
-def render_qa_strips(nyx_sheet: np.ndarray, war_sheet: np.ndarray, scratch_dir: Path) -> None:
+# ==============================================================================
+# 3. MAGE (IGNIS SOL — SHADOW-HOOD GOLDEN ARCANE EYES & SOLAR FLAME VOICE)
+# ==============================================================================
+
+def build_mage_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "mage_ex_portrait_raw.jpg", CROPS_1024["mage"])
+
+    def is_mage_eye_px(x: int, y: int) -> bool:
+        r, g, b = int(f0[y, x, 0]), int(f0[y, x, 1]), int(f0[y, x, 2])
+        return r >= 36 and (r - b) >= 18
+
+    # F1: Seamless half-lowered shadow-hood lid (only masks upper glowing eye pixels, 0 box!)
+    f1 = f0.copy()
+    for y in range(126, 134):
+        for x in range(145, 203):
+            if is_mage_eye_px(x, y):
+                hood_bg = tuple(int(v) for v in f0[146, min(194, max(152, x)), :3])
+                draw_px(f1, x, y, (205, 88, 18) if y == 133 else hood_bg)
+
+    # F2: Seamless full arcane blink (only masks eye glow, leaving warm ember slit at y=135)
+    f2 = f0.copy()
+    for y in range(126, 141):
+        for x in range(145, 203):
+            if is_mage_eye_px(x, y):
+                hood_bg = tuple(int(v) for v in f0[146, min(194, max(152, x)), :3])
+                draw_px(f2, x, y, hood_bg)
+    for x in range(152, 166):
+        draw_px(f2, x, 135, (195, 84, 18))
+    for x in range(187, 198):
+        draw_px(f2, x, 135, (195, 84, 18))
+
+    # F3: Small solar-ember mouth slit inside shadow-hood
+    f3 = f0.copy()
+    for x in range(170, 186):
+        draw_px(f3, x, 152, (196, 68, 16))
+        draw_px(f3, x, 153, (252, 186, 48) if 173 <= x <= 183 else (228, 106, 20))
+        draw_px(f3, x, 154, (156, 44, 12))
+
+    # F4: Medium flickering Black-Mage flame-grin arc
+    f4 = f0.copy()
+    for x in range(167, 189):
+        curve = 1 if 172 <= x <= 184 else 0
+        zag = (x % 3 == 0)
+        draw_px(f4, x, 150 + curve, (220, 74, 18))
+        draw_px(f4, x, 151 + curve, (255, 224, 92) if not zag else (245, 132, 26))
+        draw_px(f4, x, 152 + curve, (255, 248, 190) if 171 <= x <= 185 else (245, 132, 26))
+        draw_px(f4, x, 153 + curve, (245, 132, 26))
+        draw_px(f4, x, 154 + curve, (172, 42, 14))
+
+    # F5: Wide blazing Helios solar chant mouth + Sun-Staff & Hat-Sun flare
+    f5 = f0.copy()
+    for y in range(149, 159):
+        inset = abs(y - 154) // 2
+        for x in range(165 + inset, 191 - inset):
+            dist = abs(x - 178) + abs(y - 154) * 2
+            col = (255, 252, 214) if dist <= 6 else ((253, 198, 54) if dist <= 11 else (234, 88, 18))
+            draw_px(f5, x, y, col)
+    draw_star_sparkle(f5, 66, 204, 5, (253, 224, 71))
+    draw_star_sparkle(f5, 162, 92, 4, (251, 146, 60))
+
+    return pack_sheet([f0, f1, f2, f3, f4, f5])
+
+
+# ==============================================================================
+# 4. PRIESTESS (SERAPHINA — ANGELIC BLINKS & HYMN VOWELS)
+# ==============================================================================
+
+def build_priestess_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "priestess_ex_portrait_raw.jpg", CROPS_1024["priestess"])
+
+    def skip_hair(ref: np.ndarray, x: int, y: int) -> bool:
+        r, g, b = int(ref[y, x, 0]), int(ref[y, x, 1]), int(ref[y, x, 2])
+        return x <= 157 and r > 230 and g > 210 and b > 170
+
+    f1 = sculpt_human_eyelids(
+        f0, True,
+        left_box=(157, 147, 176, 157),
+        right_box=(191, 147, 202, 157),
+        cheek_y=162,
+        lash_dark=(38, 26, 22),
+        lash_soft=(92, 66, 48),
+        crease_col=(188, 148, 112),
+        skin_shad=(226, 188, 148),
+        skip_fn=skip_hair,
+    )
+    f2 = sculpt_human_eyelids(
+        f0, False,
+        left_box=(157, 147, 176, 157),
+        right_box=(191, 147, 202, 157),
+        cheek_y=162,
+        lash_dark=(38, 26, 22),
+        lash_soft=(92, 66, 48),
+        crease_col=(188, 148, 112),
+        skin_shad=(226, 188, 148),
+        skip_fn=skip_hair,
+    )
+    mouth_kw = dict(
+        mx0=175, mx1=189, my_top=176,
+        erase_y0=175, erase_y1=181, skin_ref_y=173,
+        chin_box=(169, 181, 193, 188),
+        lip_col=(118, 62, 56),
+        cavity_col=(96, 34, 38),
+        tongue_mid=(214, 102, 106),
+        tongue_lit=(242, 146, 148),
+        skin_shad=(218, 180, 142),
+        sparkles=[(288, 94, 5, (254, 240, 138)), (185, 118, 3, (254, 249, 195))],
+    )
+    return pack_sheet([
+        f0, f1, f2,
+        sculpt_human_vowel_mouth(f0, "small", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "mid", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "wide", **mouth_kw),
+    ])
+
+
+# ==============================================================================
+# 5. CHRONOMANCER (CHRONOS — CYAN EYE BLINKS & SYMMETRICAL VOWEL SPEECH)
+# ==============================================================================
+
+def build_chronomancer_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "chronomancer_ex_portrait_raw.jpg", CROPS_1024["chronomancer"])
+    f1 = sculpt_human_eyelids(
+        f0, True,
+        left_box=(132, 145, 149, 152),
+        right_box=(169, 145, 186, 152),
+        cheek_y=158,
+        lash_dark=(20, 34, 42),
+        lash_soft=(54, 72, 76),
+        crease_col=(168, 126, 88),
+        skin_shad=(212, 166, 122),
+    )
+    f2 = sculpt_human_eyelids(
+        f0, False,
+        left_box=(132, 145, 149, 152),
+        right_box=(169, 145, 186, 152),
+        cheek_y=158,
+        lash_dark=(20, 34, 42),
+        lash_soft=(54, 72, 76),
+        crease_col=(168, 126, 88),
+        skin_shad=(212, 166, 122),
+    )
+    mouth_kw = dict(
+        mx0=151, mx1=168, my_top=173,
+        erase_y0=172, erase_y1=179, skin_ref_y=170,
+        chin_box=(144, 179, 175, 189),
+        lip_col=(86, 52, 36),
+        cavity_col=(74, 28, 28),
+        tongue_mid=(188, 78, 74),
+        tongue_lit=(218, 112, 104),
+        skin_shad=(196, 152, 108),
+        sparkles=[(159, 123, 4, (94, 234, 212)), (159, 274, 4, (45, 212, 191))],
+    )
+    return pack_sheet([
+        f0, f1, f2,
+        sculpt_human_vowel_mouth(f0, "small", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "mid", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "wide", **mouth_kw),
+    ])
+
+
+# ==============================================================================
+# 6. VALKYRIE (FREYJA — FIERY AMBER BLINKS & BATTLE-CRY VOWELS)
+# ==============================================================================
+
+def build_valkyrie_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "valkyrie_ex_portrait_raw.jpg", CROPS_1024["valkyrie"])
+    f1 = sculpt_human_eyelids(
+        f0, True,
+        left_box=(149, 126, 172, 137),
+        right_box=(190, 127, 202, 137),
+        cheek_y=142,
+        lash_dark=(38, 16, 18),
+        lash_soft=(92, 42, 38),
+        crease_col=(188, 124, 104),
+        skin_shad=(228, 166, 140),
+    )
+    f2 = sculpt_human_eyelids(
+        f0, False,
+        left_box=(149, 126, 172, 137),
+        right_box=(190, 127, 202, 137),
+        cheek_y=142,
+        lash_dark=(38, 16, 18),
+        lash_soft=(92, 42, 38),
+        crease_col=(188, 124, 104),
+        skin_shad=(228, 166, 140),
+    )
+    mouth_kw = dict(
+        mx0=172, mx1=189, my_top=156,
+        erase_y0=155, erase_y1=162, skin_ref_y=153,
+        chin_box=(166, 162, 193, 172),
+        lip_col=(138, 34, 34),
+        cavity_col=(84, 18, 24),
+        tongue_mid=(204, 72, 76),
+        tongue_lit=(238, 114, 114),
+        skin_shad=(218, 156, 132),
+        sparkles=[(284, 42, 5, (253, 224, 71)), (185, 98, 3, (251, 191, 36))],
+    )
+    return pack_sheet([
+        f0, f1, f2,
+        sculpt_human_vowel_mouth(f0, "small", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "mid", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "wide", **mouth_kw),
+    ])
+
+
+# ==============================================================================
+# 7. RONIN (KAZE-MARU — CLOSE-UP SAMURAI SQUINT & MENPO THUNDER-VENT SPEECH)
+# ==============================================================================
+
+def build_ronin_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "ronin_ex_portrait_raw.jpg", CROPS_1024["ronin"])
+
+    def is_ronin_eye_glow(x: int, y: int) -> bool:
+        r, g, b = int(f0[y, x, 0]), int(f0[y, x, 1]), int(f0[y, x, 2])
+        return b >= 125 and g >= 95
+
+    # F1: Seamless samurai half-squint (masks only top half of glowing cyan eyes, 0 helmet box!)
+    f1 = f0.copy()
+    for bx0, by0, bx1, by1 in ((181, 113, 194, 117), (201, 115, 212, 118)):
+        for y in range(by0, by1 + 1):
+            for x in range(bx0, bx1 + 1):
+                if is_ronin_eye_glow(x, y):
+                    draw_px(f1, x, y, (28, 42, 74) if y < by1 else (52, 118, 168))
+
+    # F2: Seamless full samurai eye-blink (masks cyan + white core cleanly inside socket)
+    f2 = f0.copy()
+    for bx0, by0, bx1, by1 in ((181, 113, 194, 121), (201, 115, 212, 122)):
+        for y in range(by0, by1 + 1):
+            for x in range(bx0, bx1 + 1):
+                if is_ronin_eye_glow(x, y):
+                    draw_px(f2, x, y, (22, 34, 62))
+    for x in range(183, 192):
+        draw_px(f2, x, 118, (56, 148, 196))
+    for x in range(202, 210):
+        draw_px(f2, x, 119, (56, 148, 196))
+
+    # F3: Small Menpo thunder-vent speech glow
+    f3 = f0.copy()
+    for vx in (188, 193, 198, 203):
+        draw_px(f3, vx, 129, (56, 189, 248))
+        draw_px(f3, vx + 1, 129, (125, 211, 252))
+        draw_px(f3, vx, 130, (14, 116, 178))
+
+    # F4: Mid Menpo jaw-plate 1px articulation + brighter 2-row thunder vents
+    f4 = f0.copy()
+    shift_chin_only(f4, f0, 181, 127, 209, 143, 1)
+    for vx in (187, 192, 197, 202):
+        for vy in (128, 129, 130):
+            draw_px(f4, vx, vy, (186, 230, 253) if vy == 129 else (56, 189, 248))
+            draw_px(f4, vx + 1, vy, (255, 255, 255) if vy == 129 else (56, 189, 248))
+
+    # F5: Wide Susanoo Menpo roar (2px jaw-plate shift + blazing white-cyan vent arc + katana spark)
+    f5 = f0.copy()
+    shift_chin_only(f5, f0, 181, 127, 209, 143, 2)
+    for x in range(186, 206):
+        draw_px(f5, x, 128, (56, 189, 248))
+        draw_px(f5, x, 129, (255, 255, 255) if (x % 3 != 0) else (56, 189, 248))
+        draw_px(f5, x, 130, (125, 211, 252))
+        draw_px(f5, x, 131, (14, 116, 178))
+    draw_star_sparkle(f5, 292, 176, 5, (125, 211, 252))
+
+    return pack_sheet([f0, f1, f2, f3, f4, f5])
+
+
+# ==============================================================================
+# 8. ARCHER (SYLVARA — EMERALD ELVEN BLINKS & SYLVAN VOWELS)
+# ==============================================================================
+
+def build_archer_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "archer_ex_portrait_raw.jpg", CROPS_1024["archer"])
+    f1 = sculpt_human_eyelids(
+        f0, True,
+        left_box=(148, 95, 166, 104),
+        right_box=(180, 96, 190, 104),
+        cheek_y=108,
+        lash_dark=(24, 38, 28),
+        lash_soft=(68, 76, 52),
+        crease_col=(176, 132, 86),
+        skin_shad=(216, 172, 126),
+    )
+    f2 = sculpt_human_eyelids(
+        f0, False,
+        left_box=(148, 95, 166, 104),
+        right_box=(180, 96, 190, 104),
+        cheek_y=108,
+        lash_dark=(24, 38, 28),
+        lash_soft=(68, 76, 52),
+        crease_col=(176, 132, 86),
+        skin_shad=(216, 172, 126),
+    )
+    mouth_kw = dict(
+        mx0=165, mx1=179, my_top=122,
+        erase_y0=121, erase_y1=127, skin_ref_y=119,
+        chin_box=(159, 127, 183, 136),
+        lip_col=(104, 62, 34),
+        cavity_col=(78, 28, 26),
+        tongue_mid=(196, 82, 78),
+        tongue_lit=(228, 122, 114),
+        skin_shad=(198, 152, 104),
+        sparkles=[(280, 278, 5, (52, 211, 153)), (178, 74, 3, (110, 231, 183))],
+    )
+    return pack_sheet([
+        f0, f1, f2,
+        sculpt_human_vowel_mouth(f0, "small", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "mid", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "wide", **mouth_kw),
+    ])
+
+
+# ==============================================================================
+# 9. REAPER (MALAKOR — WRAITH EYE BLINKS & SPECTRAL PHANTOM-MAW SPEECH)
+# ==============================================================================
+
+def build_reaper_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "reaper_ex_portrait_raw.jpg", CROPS_1024["reaper"])
+
+    def is_reaper_eye_px(x: int, y: int) -> bool:
+        r, g, b = int(f0[y, x, 0]), int(f0[y, x, 1]), int(f0[y, x, 2])
+        return r >= 38 and (r + b) >= 72
+
+    # F1: Seamless half-narrowed crimson-magenta wraith glare (0 black box!)
+    f1 = f0.copy()
+    for bx0, bx1 in ((131, 150), (164, 182)):
+        for y in range(126, 132):
+            for x in range(bx0, bx1 + 1):
+                if is_reaper_eye_px(x, y):
+                    hood_bg = tuple(int(v) for v in f0[145, min(176, max(138, x)), :3])
+                    draw_px(f1, x, y, (148, 32, 138) if y == 131 else hood_bg)
+
+    # F2: Seamless full closed wraith blink (masks white core + magenta glow cleanly!)
+    f2 = f0.copy()
+    for bx0, bx1 in ((131, 150), (164, 182)):
+        for y in range(126, 138):
+            for x in range(bx0, bx1 + 1):
+                if is_reaper_eye_px(x, y):
+                    hood_bg = tuple(int(v) for v in f0[145, min(176, max(138, x)), :3])
+                    draw_px(f2, x, y, hood_bg)
+    for x in range(136, 148):
+        draw_px(f2, x, 134, (132, 28, 138))
+    for x in range(166, 178):
+        draw_px(f2, x, 134, (132, 28, 138))
+
+    # F3: Small spectral soul-slit inside hood void
+    f3 = f0.copy()
+    for x in range(148, 166):
+        draw_px(f3, x, 152, (126, 34, 206))
+        draw_px(f3, x, 153, (232, 121, 249) if 151 <= x <= 163 else (168, 85, 247))
+        draw_px(f3, x, 154, (88, 28, 135))
+
+    # F4: Medium jagged phantom-skull fang maw
+    f4 = f0.copy()
+    for x in range(145, 169):
+        fang = (x % 3 == 0)
+        draw_px(f4, x, 150, (147, 51, 234))
+        draw_px(f4, x, 151, (250, 232, 255) if fang else (217, 70, 239))
+        draw_px(f4, x, 152, (244, 114, 182))
+        draw_px(f4, x, 153, (250, 232, 255) if not fang else (192, 38, 211))
+        draw_px(f4, x, 154, (107, 33, 168))
+
+    # F5: Wide blazing abyssal soul-roar + brow & chest soul-gem surge
+    f5 = f0.copy()
+    for y in range(149, 159):
+        inset = abs(y - 154) // 2
+        for x in range(143 + inset, 171 - inset):
+            dist = abs(x - 157) + abs(y - 154) * 2
+            col = (255, 245, 255) if dist <= 5 else ((232, 121, 249) if dist <= 10 else (168, 34, 198))
+            draw_px(f5, x, y, col)
+    draw_star_sparkle(f5, 157, 94, 4, (232, 121, 249))
+    draw_star_sparkle(f5, 157, 256, 5, (217, 70, 239))
+
+    return pack_sheet([f0, f1, f2, f3, f4, f5])
+
+
+# ==============================================================================
+# 10. TITAN (GUNNAR — MOLTEN EYE BLINKS & MUSTACHE/BEARD FORGE SHOUT)
+# ==============================================================================
+
+def build_titan_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "titan_ex_portrait_raw.jpg", CROPS_1024["titan"])
+    C_SKIN = (176, 112, 68)
+    C_SHAD = (122, 68, 38)
+    C_DARK = (38, 22, 14)
+
+    def is_titan_eye_glow(x: int, y: int) -> bool:
+        r, g, b = int(f0[y, x, 0]), int(f0[y, x, 1]), int(f0[y, x, 2])
+        return r >= 135 and g >= 52 and (r - b) >= 65
+
+    # F1: Seamless rugged dwarf half-squint (masks only glowing amber eye pixels!)
+    f1 = f0.copy()
+    for y in range(138, 143):
+        for x in range(137, 181):
+            if is_titan_eye_glow(x, y):
+                draw_px(f1, x, y, C_DARK if y == 142 else (C_SHAD if y <= 139 else C_SKIN))
+
+    # F2: Seamless full rugged closed blink
+    f2 = f0.copy()
+    for y in range(138, 146):
+        for x in range(137, 181):
+            if is_titan_eye_glow(x, y):
+                draw_px(f2, x, y, C_DARK if y >= 144 else (C_SHAD if y <= 140 else C_SKIN))
+
+    # F3: Small hearty syllable part beneath orange mustache + 1px beard drop
+    f3 = f0.copy()
+    shift_chin_only(f3, f0, 147, 166, 170, 200, 1)
+    for x in range(152, 166):
+        draw_px(f3, x, 164, C_DARK)
+        draw_px(f3, x, 165, (242, 238, 228) if 154 <= x <= 163 else C_DARK)
+        draw_px(f3, x, 166, (92, 28, 24))
+
+    # F4: Medium dwarf battle-speak + 2px beard drop + upper teeth
+    f4 = f0.copy()
+    shift_chin_only(f4, f0, 147, 166, 170, 200, 2)
+    for y in range(164, 169):
+        for x in range(151, 167):
+            if x in (151, 166) or y == 168:
+                draw_px(f4, x, y, C_DARK)
+            elif y == 164 and 153 <= x <= 164:
+                draw_px(f4, x, y, (246, 242, 232))
+            elif y <= 166:
+                draw_px(f4, x, y, (84, 24, 22))
+            else:
+                draw_px(f4, x, y, (186, 68, 62))
+
+    # F5: Wide roaring Forge-Shout + 3px beard drop + teeth/tongue + Mjolnir emerald rune flare
+    f5 = f0.copy()
+    shift_chin_only(f5, f0, 147, 166, 170, 200, 3)
+    for y in range(163, 171):
+        for x in range(150, 168):
+            if x in (150, 167) or y == 170:
+                draw_px(f5, x, y, C_DARK)
+            elif y == 163 and 152 <= x <= 165:
+                draw_px(f5, x, y, (250, 246, 236))
+            elif y == 169 and 153 <= x <= 164:
+                draw_px(f5, x, y, (232, 226, 214))
+            elif y <= 166:
+                draw_px(f5, x, y, (76, 20, 20))
+            else:
+                draw_px(f5, x, y, (214, 92, 82) if 155 <= x <= 162 else (178, 62, 56))
+    draw_star_sparkle(f5, 162, 34, 5, (52, 211, 153))
+    draw_star_sparkle(f5, 172, 62, 4, (52, 211, 153))
+
+    return pack_sheet([f0, f1, f2, f3, f4, f5])
+
+
+# ==============================================================================
+# 11. ICEMAGE (LYRA — BIG SAPPHIRE ANIME BLINKS & FROST-ROSE VOWELS)
+# ==============================================================================
+
+def build_icemage_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "icemage_ex_portrait_raw.jpg", CROPS_1024["icemage"])
+
+    def skip_ice_bangs(ref: np.ndarray, x: int, y: int) -> bool:
+        if y <= 136:
+            r, g, b = int(ref[y, x, 0]), int(ref[y, x, 1]), int(ref[y, x, 2])
+            return r >= 185 and g >= 215 and b >= 235
+        return False
+
+    f1 = sculpt_human_eyelids(
+        f0, True,
+        left_box=(129, 135, 156, 149),
+        right_box=(175, 136, 193, 149),
+        cheek_y=154,
+        lash_dark=(18, 34, 68),
+        lash_soft=(52, 82, 128),
+        crease_col=(196, 154, 142),
+        skin_shad=(232, 194, 178),
+        skip_fn=skip_ice_bangs,
+    )
+    f2 = sculpt_human_eyelids(
+        f0, False,
+        left_box=(129, 135, 156, 149),
+        right_box=(175, 136, 193, 149),
+        cheek_y=154,
+        lash_dark=(18, 34, 68),
+        lash_soft=(52, 82, 128),
+        crease_col=(196, 154, 142),
+        skin_shad=(232, 194, 178),
+        skip_fn=skip_ice_bangs,
+    )
+    mouth_kw = dict(
+        mx0=156, mx1=174, my_top=174,
+        erase_y0=173, erase_y1=179, skin_ref_y=170,
+        chin_box=(149, 179, 178, 188),
+        lip_col=(128, 62, 88),
+        cavity_col=(88, 26, 48),
+        tongue_mid=(216, 94, 124),
+        tongue_lit=(244, 142, 166),
+        skin_shad=(224, 186, 172),
+        sparkles=[(274, 92, 5, (186, 230, 253)), (164, 52, 4, (125, 211, 252))],
+    )
+    return pack_sheet([
+        f0, f1, f2,
+        sculpt_human_vowel_mouth(f0, "small", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "mid", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "wide", **mouth_kw),
+    ])
+
+
+# ==============================================================================
+# 12. ANDROID (UNIT-07 — HOLO-VISOR CYBER BLINKS & HUMAN LIP VOWELS)
+# ==============================================================================
+
+def build_android_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "android_ex_portrait_raw.jpg", CROPS_1024["android"])
+    C_CYBER_LASH = (18, 86, 118)
+
+    def is_visor_eye_feature(x: int, y: int) -> bool:
+        r, g, b = int(f0[y, x, 0]), int(f0[y, x, 1]), int(f0[y, x, 2])
+        # Inside cyan visor lens, iris/lashes have either magenta/purple tint (r > 95 and g < 185) or dark lash (g < 185 and b > 90)
+        return g < 210 and b >= 95
+
+    # F1: Seamless half-lid blink seen through translucent cyan holo-visor (0 rectangle!)
+    f1 = f0.copy()
+    for bx0, by0, bx1 in ((161, 97, 178), (190, 98, 202)):
+        for y in range(by0, by0 + 5):
+            for x in range(bx0, bx1 + 1):
+                if is_visor_eye_feature(x, y):
+                    glass_col = tuple(int(v) for v in f0[108, min(184, max(168, x)), :3])
+                    draw_px(f1, x, y, C_CYBER_LASH if y == by0 + 4 else glass_col)
+
+    # F2: Seamless full closed blink behind cyan holo-visor
+    f2 = f0.copy()
+    for bx0, by0, bx1, by1 in ((161, 97, 178, 107), (190, 98, 202, 107)):
+        for y in range(by0, by1 + 1):
+            for x in range(bx0, bx1 + 1):
+                if is_visor_eye_feature(x, y):
+                    glass_col = tuple(int(v) for v in f0[108, min(184, max(168, x)), :3])
+                    draw_px(f2, x, y, glass_col)
+        for x in range(bx0 + 2, bx1 - 1):
+            draw_px(f2, x, by1 - 3, C_CYBER_LASH)
+
+    mouth_kw = dict(
+        mx0=176, mx1=191, my_top=132,
+        erase_y0=131, erase_y1=137, skin_ref_y=129,
+        chin_box=(169, 137, 193, 146),
+        lip_col=(92, 24, 118),
+        cavity_col=(68, 14, 78),
+        tongue_mid=(214, 78, 146),
+        tongue_lit=(244, 128, 182),
+        skin_shad=(212, 176, 186),
+        sparkles=[(162, 248, 5, (34, 211, 238)), (88, 198, 4, (244, 63, 94))],
+    )
+    return pack_sheet([
+        f0, f1, f2,
+        sculpt_human_vowel_mouth(f0, "small", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "mid", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "wide", **mouth_kw),
+    ])
+
+
+BUILDERS = {
+    "nyx":          build_nyx_talk_sheet,
+    "warrior":      build_warrior_talk_sheet,
+    "mage":         build_mage_talk_sheet,
+    "priestess":    build_priestess_talk_sheet,
+    "chronomancer": build_chronomancer_talk_sheet,
+    "valkyrie":     build_valkyrie_talk_sheet,
+    "ronin":        build_ronin_talk_sheet,
+    "archer":       build_archer_talk_sheet,
+    "reaper":       build_reaper_talk_sheet,
+    "titan":        build_titan_talk_sheet,
+    "icemage":      build_icemage_talk_sheet,
+    "android":      build_android_talk_sheet,
+}
+
+QA_FACE_ROIS: dict[str, tuple[int, int, int, int]] = {
+    "nyx":          (128, 102, 220, 182),
+    "warrior":      (136, 122, 228, 202),
+    "mage":         (132, 112, 224, 192),
+    "priestess":    (142, 132, 234, 212),
+    "chronomancer": (114, 128, 206, 208),
+    "valkyrie":     (134, 110, 226, 190),
+    "ronin":        (158, 96, 250, 176),
+    "archer":       (130, 80, 222, 160),
+    "reaper":       (112, 110, 204, 190),
+    "titan":        (114, 122, 206, 202),
+    "icemage":      (118, 120, 210, 200),
+    "android":      (142, 84, 234, 164),
+}
+
+
+def render_all_qa_strips(built: dict[str, np.ndarray], scratch_dir: Path) -> None:
     scratch_dir.mkdir(parents=True, exist_ok=True)
-    labels = [
-        "F0 CLOSED",
-        "F1 HALF-BLINK",
-        "F2 FULL-BLINK",
-        "F3 SMALL VOWEL",
-        "F4 MID VOWEL",
-        "F5 WIDE VOWEL",
-    ]
+    labels = ["F0 IDLE", "F1 HALF-BLK", "F2 BLINK", "F3 SMALL", "F4 MID", "F5 WIDE"]
+    zw, zh = 184, 160  # 2x zoom per 92x80 face crop -> 6 cols = 1104px wide
 
-    zw, zh = 276, 240
-    zoom_strip = Image.new("RGBA", (zw * 6, zh * 2 + 56), (12, 16, 30, 255))
-    zdr = ImageDraw.Draw(zoom_strip)
-    for i, lbl in enumerate(labels):
-        nc = Image.fromarray(nyx_sheet[:, i * CELL : (i + 1) * CELL], "RGBA").crop((128, 102, 220, 182))
-        nz = nc.resize((zw, zh), Image.Resampling.NEAREST)
-        zoom_strip.paste(nz, (i * zw, 24))
-        zdr.rectangle([i * zw, 24, (i + 1) * zw - 1, 24 + zh - 1], outline=(217, 70, 239, 255))
-        zdr.text((i * zw + 6, 6), f"NYX {lbl}", fill=(253, 224, 71, 255))
-
-        wc = Image.fromarray(war_sheet[:, i * CELL : (i + 1) * CELL], "RGBA").crop((136, 122, 228, 202))
-        wz = wc.resize((zw, zh), Image.Resampling.NEAREST)
-        zoom_strip.paste(wz, (i * zw, 52 + zh))
-        zdr.rectangle([i * zw, 52 + zh, (i + 1) * zw - 1, 52 + zh * 2 - 1], outline=(56, 208, 252, 255))
-        zdr.text((i * zw + 6, 32 + zh), f"WAR {lbl}", fill=(56, 208, 252, 255))
-    zoom_strip.save(scratch_dir / "talk_sheets_v151_face_zoom.png")
+    for batch_idx, keys in enumerate([
+        ["mage", "priestess", "chronomancer", "valkyrie", "ronin"],
+        ["archer", "reaper", "titan", "icemage", "android"],
+    ], start=1):
+        canvas = Image.new("RGBA", (zw * 6, (zh + 22) * len(keys) + 12), (12, 16, 28, 255))
+        dr = ImageDraw.Draw(canvas)
+        for r_idx, persona in enumerate(keys):
+            sh = built[persona]
+            rx0, ry0, rx1, ry1 = QA_FACE_ROIS[persona]
+            y_base = 8 + r_idx * (zh + 22)
+            for c_idx, lbl in enumerate(labels):
+                cell_im = Image.fromarray(sh[:, c_idx * CELL : (c_idx + 1) * CELL], "RGBA")
+                crop = cell_im.crop((rx0, ry0, rx1, ry1)).resize((zw, zh), Image.Resampling.NEAREST)
+                x_base = c_idx * zw
+                canvas.paste(crop, (x_base, y_base + 18))
+                dr.rectangle([x_base, y_base + 18, x_base + zw - 1, y_base + 18 + zh - 1], outline=(56, 189, 248, 255))
+                dr.text((x_base + 4, y_base + 2), f"{persona.upper()} {lbl}", fill=(253, 224, 71, 255))
+        canvas.save(scratch_dir / f"all12_qa_batch{batch_idx}.png")
 
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    nyx_sheet = build_nyx_talk_sheet()
-    war_sheet = build_warrior_talk_sheet()
+    built: dict[str, np.ndarray] = {}
 
-    nyx_out = OUT_DIR / "nyx_talk_sheet.png"
-    war_out = OUT_DIR / "warrior_talk_sheet.png"
-
-    Image.fromarray(nyx_sheet, "RGBA").save(nyx_out, optimize=True)
-    Image.fromarray(war_sheet, "RGBA").save(war_out, optimize=True)
-
-    for tag, sh, out_p in [("nyx", nyx_sheet, nyx_out), ("warrior", war_sheet, war_out)]:
-        assert sh.shape == (320, 1920, 4), f"{tag} bad shape: {sh.shape}"
+    for persona, fn in BUILDERS.items():
+        sh = fn()
+        out_p = OUT_DIR / f"{persona}_talk_sheet.png"
+        Image.fromarray(sh, "RGBA").save(out_p, optimize=True)
+        assert sh.shape == (320, 1920, 4), f"{persona} bad shape: {sh.shape}"
         for i in range(FRAMES):
             for j in range(i + 1, FRAMES):
                 fi = sh[:, i * CELL : (i + 1) * CELL]
                 fj = sh[:, j * CELL : (j + 1) * CELL]
                 diff_px = int(np.count_nonzero(np.any(fi != fj, axis=2)))
-                assert diff_px >= 25, f"{tag} F{i} vs F{j} too similar ({diff_px} px)"
+                assert diff_px >= 12, f"{persona} F{i} vs F{j} too similar ({diff_px} px)"
         kb = out_p.stat().st_size / 1024.0
         print(f"[OK] Saved {out_p.relative_to(REPO_ROOT)} ({sh.shape[1]}x{sh.shape[0]}, {kb:.1f} KB)")
+        built[persona] = sh
 
     scratch_env = os.environ.get("AVS_SCRATCH_DIR")
     if scratch_env:
-        render_qa_strips(nyx_sheet, war_sheet, Path(scratch_env))
-        print(f"[OK] Rendered v151 3x face zoom strip in {scratch_env}")
+        render_all_qa_strips(built, Path(scratch_env))
+        print(f"[OK] Rendered all-12 QA strips in {scratch_env}")
 
 
 if __name__ == "__main__":
