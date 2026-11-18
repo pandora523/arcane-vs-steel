@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps141';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { Fighter } from './Fighter.js?v=30fps142';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps142';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps142';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps141';
+} from '../engine/shaders/forgeShaders.js?v=30fps142';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)
@@ -521,7 +521,12 @@ export class TitanEx extends Fighter {
       this._beginComboBeat(this.comboStep % 4, this.game);
     }
 
+    if (newState === 'SKILL') {
+      this._skillVoiceFired = false;
+    }
+
     if (newState === 'ULTIMATE') {
+      this._ultVoiceFired = false;
       this._ultCastTriggered = false;
       this._ultErupted = false;
       this._ultWaveStep = 0;
@@ -545,6 +550,8 @@ export class TitanEx extends Fighter {
     }
 
     if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltChargeVoiceFired = false;
+      this._trueUltFireVoiceFired = false;
       this._trueUltStep = 0;
       this._trueUltMidAirClanged = false;
       this._trueUltGeyserTimer = 0;
@@ -1365,6 +1372,12 @@ export class TitanEx extends Fighter {
           game.audio.play('thunder_slam', slamX);
           game.audio.play('clang', slamX);
         }
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
 
         this.fx?.spawn('tectonicCraterSlam', slamX, this.groundY - 4, {
           flip: dir < 0,
@@ -1505,6 +1518,16 @@ export class TitanEx extends Fighter {
     const dir = this.facing;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
 
     if (t >= 0.06 && !this.didActionFrame) {
       this.didActionFrame = true;
@@ -1716,6 +1739,16 @@ export class TitanEx extends Fighter {
     const dur = this.ultDuration || 1.54;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
 
     this.mana = 0;
     this.giantScale = 1.0;
@@ -2107,6 +2140,16 @@ export class TitanEx extends Fighter {
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    if (!this._trueUltChargeVoiceFired && t < 2.36) {
+      this._trueUltChargeVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const dur = this.trueUltDuration || 3.80;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     this.isInvulnerable = true;
@@ -2399,6 +2442,16 @@ export class TitanEx extends Fighter {
       game?.audio?.play?.('ult_cast', this._trueUltAnvilX);
       game?.audio?.play?.('earthshatter', this._trueUltAnvilX);
       game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
+      if (!this._trueUltFireVoiceFired) {
+        this._trueUltFireVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
+      }
 
       this.heal(Math.round(this.maxHp * 0.09), 'WORLD-FORGE TEMPER');
       this.forgeArmorTimer = 1.25;

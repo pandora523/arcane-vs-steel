@@ -158,7 +158,17 @@ export class AudioManager {
       valkyrie: 'freyja',
       reaper_ex: 'malakor',
       reaper: 'malakor',
-      nyx_ex: 'nyx'
+      nyx_ex: 'nyx',
+      icemage_ex: 'lyra',
+      icemage: 'lyra',
+      archer_ex: 'sylvara',
+      archer: 'sylvara',
+      android_ex: 'vex09',
+      android: 'vex09',
+      chronomancer_ex: 'chronos',
+      chronomancer: 'chronos',
+      titan_ex: 'torgar',
+      titan: 'torgar'
     };
     this.voiceVolumes = {
       seraphina_select: 0.94,
@@ -175,7 +185,19 @@ export class AudioManager {
       seraphina_death: 0.98,
       seraphina_victory: 0.98
     };
-    for (const prefix of ['aethelgard', 'kazemaru', 'ignissol', 'freyja', 'malakor', 'nyx']) {
+    for (const prefix of [
+      'aethelgard',
+      'kazemaru',
+      'ignissol',
+      'freyja',
+      'malakor',
+      'nyx',
+      'lyra',
+      'sylvara',
+      'vex09',
+      'chronos',
+      'torgar'
+    ]) {
       Object.assign(this.voiceVolumes, {
         [`${prefix}_select`]: 0.94,
         [`${prefix}_intro`]: 0.96,
@@ -1431,10 +1453,10 @@ export class AudioManager {
         const urls =
           lang === 'ja'
             ? [
-                `assets/voices/ja/${voiceKey}.mp3?v=30fps141`,
-                `assets/voices/${voiceKey}.mp3?v=30fps141`
+                `assets/voices/ja/${voiceKey}.mp3?v=30fps142`,
+                `assets/voices/${voiceKey}.mp3?v=30fps142`
               ]
-            : [`assets/voices/${voiceKey}.mp3?v=30fps141`];
+            : [`assets/voices/${voiceKey}.mp3?v=30fps142`];
         for (const url of urls) {
           try {
             const res = await fetch(url);

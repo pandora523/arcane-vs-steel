@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps141';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps141';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { Fighter } from './Fighter.js?v=30fps142';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps142';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps142';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps142';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps141';
+} from '../engine/shaders/chronoShaders.js?v=30fps142';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -431,12 +431,14 @@ export class ChronomancerEx extends Fighter {
 
     if (newState === 'SKILL') {
       this._skillStage = 0;
+      this._skillVoiceFired = false;
     } else if (prevState === 'SKILL' && this.anchorActive) {
       this.anchorActive = false;
     }
 
     if (newState === 'ULTIMATE') {
       this._ultStage = 0;
+      this._ultVoiceFired = false;
       this.isInvulnerable = true;
     } else if (prevState === 'ULTIMATE') {
       this.pendulumSeal = null;
@@ -453,6 +455,8 @@ export class ChronomancerEx extends Fighter {
       this._trueUltStage = 0;
       this._trueUltTickStage = 0;
       this._trueUltBarrageCount = 0;
+      this._trueUltChargeVoiceFired = false;
+      this._trueUltFireVoiceFired = false;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
     } else if (prevState === 'TRUE_ULTIMATE') {
@@ -1674,6 +1678,12 @@ export class ChronomancerEx extends Fighter {
         const slamY = this.groundY - 92;
         game?.renderer?.triggerShake?.(12, 0.22);
         if (game?.audio) game.audio.play('chrono_hit', slamX);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         game?.vfx?.spawnShockwave?.(slamX, this.groundY - 4, 98, '#fde047', 0.28, false, true);
         game?.vfx?.spawnDamageText?.(slamX, slamY - 62, 0, true, 'XII CHIME!', '#fde047');
         this.gainMana(6.5);
@@ -1815,6 +1825,16 @@ export class ChronomancerEx extends Fighter {
   updateSkill(_dt, enemy, game) {
     const t = this.stateTimer;
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     this.vx *= 0.82;
 
     const foes = this.getActiveEnemies(enemy, game);
@@ -2101,6 +2121,16 @@ export class ChronomancerEx extends Fighter {
     const t = this.stateTimer;
     const dur = this.ultDuration || 1.72;
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     this.vx = 0;
     this.vy = 0;
     this.isInvulnerable = true;
@@ -2344,6 +2374,16 @@ export class ChronomancerEx extends Fighter {
 
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    if (!this._trueUltChargeVoiceFired && t < 3.53) {
+      this._trueUltChargeVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const dur = this.trueUltDuration || 4.55;
     this.isInvulnerable = true;
     this.unstoppablePoise = true;
@@ -2635,6 +2675,16 @@ export class ChronomancerEx extends Fighter {
     // PHASE 4 (`t >= 3.53s`): `12` RADIAL SPEARS CONVERGE & `680` DMG `ETERNAL ZERO` SHATTER!
     if (this._trueUltStage < 3) {
       this._trueUltStage = 3;
+      if (!this._trueUltFireVoiceFired) {
+        this._trueUltFireVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
+      }
       const tx = this.eternalTargetX;
       const ty = this.eternalTargetY;
       const impactY = ty - 94;

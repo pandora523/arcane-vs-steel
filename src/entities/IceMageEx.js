@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps141';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { Fighter } from './Fighter.js?v=30fps142';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps142';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps142';
 import {
   GLACIAL_EFFECT_REGISTRY,
   GLACIAL_CRYO_PALETTE,
   BOREALIS_PRISM_PALETTE
-} from '../engine/shaders/glacialShaders.js?v=30fps141';
+} from '../engine/shaders/glacialShaders.js?v=30fps142';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.35s): Borealis Snowflake Circle -> 'cryo_shard' Diamond Comet -> snaps at F03 (63)
@@ -292,9 +292,9 @@ export class IceMageEx extends Fighter {
         return img;
       };
       assets.icemage_ex = {
-        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps141'),
-        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps141'),
-        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps141'),
+        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps142'),
+        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps142'),
+        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps142'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -347,6 +347,7 @@ export class IceMageEx extends Fighter {
 
     if (newState === 'SKILL') {
       this._skillStepMask = 0;
+      this._skillVoiceFired = false;
       this.afterimageAccum = 0;
       this.isDeflecting = false;
       this.glacierJaws = null;
@@ -355,6 +356,7 @@ export class IceMageEx extends Fighter {
 
     if (newState === 'ULTIMATE') {
       this._ultInit = false;
+      this._ultVoiceFired = false;
       this._ultSwordsDropped = 0;
       this._ultDidCrownPlunge = false;
       this.coronationDomain = null;
@@ -365,6 +367,8 @@ export class IceMageEx extends Fighter {
 
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
+      this._trueUltChargeVoiceFired = false;
+      this._trueUltFireVoiceFired = false;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
       this.clearPermafrostZones();
@@ -1370,6 +1374,12 @@ export class IceMageEx extends Fighter {
       if ((this._beatHitMask & 1) === 0 && t >= 0.16) {
         this._beatHitMask |= 1;
         game?.audio?.play?.('ice_shatter', enemy ? enemy.x : this.x + this.facing * 340);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         game?.renderer?.triggerShake?.(11, 0.22);
         this.spawnBorealisSkyIcicles(enemy, game);
         this.fireCryoShardBurst(game, {
@@ -1453,6 +1463,16 @@ export class IceMageEx extends Fighter {
       game
     );
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const skillPal =
       vsSkill === 1 ? BOREALIS_PRISM_PALETTE : vsSkill === 2 ? AURORA_AEGIS_PALETTE : undefined;
 
@@ -1610,6 +1630,16 @@ export class IceMageEx extends Fighter {
     this.vy = 0;
 
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const ultPal =
       vsUlt === 1 ? BOREALIS_PRISM_PALETTE : vsUlt === 2 ? AURORA_AEGIS_PALETTE : undefined;
 
@@ -1966,6 +1996,16 @@ export class IceMageEx extends Fighter {
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    if (!this._trueUltChargeVoiceFired && t < 3.28) {
+      this._trueUltChargeVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     if (t >= 0.04) {
       this._updateTrueUltSnowfall(dt, game);
     }
@@ -2081,6 +2121,16 @@ export class IceMageEx extends Fighter {
     // Act IV (`t >= 3.28s`): Sovereign Scepter-Tap Impact -> ZERO KELVIN CATHEDRAL SHATTER!
     if (t >= 3.28 && this._trueUltStep < 4) {
       this._trueUltStep = 4;
+      if (!this._trueUltFireVoiceFired) {
+        this._trueUltFireVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
+      }
       this._trueUltShatterTimer = 1.28;
 
       const cx = this._trueUltCoffinX;

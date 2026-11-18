@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps141';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps142';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -17,7 +17,12 @@ const LEGACY_TRUE_ULT_FIRE_SEC = {
   mage: 3.22,
   valkyrie: 3.10,
   reaper: 3.15,
-  priestess: 3.00
+  priestess: 3.00,
+  icemage: 3.28,
+  archer: 3.15,
+  android: 3.05,
+  chronomancer: 3.50,
+  titan: 2.36
 };
 
 export class Fighter {

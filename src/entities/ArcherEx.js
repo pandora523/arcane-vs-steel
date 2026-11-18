@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps141';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { Fighter } from './Fighter.js?v=30fps142';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps142';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps142';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps141';
+} from '../engine/shaders/sylvanShaders.js?v=30fps142';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Supersonic Astral Starlight Arrow + Constellation Glint -> snaps at F03 (63)
@@ -290,9 +290,9 @@ export class ArcherEx extends Fighter {
         return img;
       };
       assets.archer_ex = {
-        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps141'),
-        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps141'),
-        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps141'),
+        sheet: mkImg('assets/sprites/archer_ex_sheet.png?v=30fps142'),
+        vfx: mkImg('assets/sprites/archer_ex_vfx.png?v=30fps142'),
+        portrait: mkImg('assets/sprites/archer_ex_portrait.png?v=30fps142'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -396,11 +396,13 @@ export class ArcherEx extends Fighter {
       }
     }
     if (newState === 'SKILL') {
+      this._skillVoiceFired = false;
       this.vx = 0;
       this.vy = 0;
       this.skillCooldown = Math.max(this.skillCooldown || 0, this.skillMaxCooldown);
     }
     if (newState === 'ULTIMATE') {
+      this._ultVoiceFired = false;
       this._ultPhase = 0;
       this._ultLancesFired = 0;
       this._ultShotMask = 0;
@@ -417,6 +419,8 @@ export class ArcherEx extends Fighter {
       this.starRainLances = [];
     }
     if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltChargeVoiceFired = false;
+      this._trueUltFireVoiceFired = false;
       this._trueUltStep = 0;
       this._trueUltBeamTimer = 0;
       this._trueUltMoteTimer = 0;
@@ -1436,6 +1440,12 @@ export class ArcherEx extends Fighter {
         this.shotCombo++;
         this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.052);
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         this.spawnAfterimage(this.x, this.y, this.facing, 2, 25, 0.22);
         this.spawnLeafRuneBurst(this.x, this.y - 84, 6, 145, true);
         this.spawnStarGlint(spawnX + this.facing * 12, spawnY, 10, '#fde047', 0.24);
@@ -1537,6 +1547,16 @@ export class ArcherEx extends Fighter {
     const targetX = enemy && !enemy.isDead ? this._clampArenaX(enemy.x, game, 84) : centerTargetX;
     const groundY = enemy?.groundY || this.groundY;
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const skillEmeraldPal = vsSkill === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_EMERALD_PALETTE;
     const skillStarPal = vsSkill === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_STARLIGHT_PALETTE;
 
@@ -1771,6 +1791,16 @@ export class ArcherEx extends Fighter {
     const targets = this.getEnemyTargets(enemy, game);
     const primary = enemy && !enemy.isDead ? enemy : targets[0] || null;
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const ultEmeraldPal = vsUlt === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_EMERALD_PALETTE;
     const ultStarPal = vsUlt === 1 ? ASTRAL_DEADEYE_PALETTE : SYLVAN_STARLIGHT_PALETTE;
     const advBounds =
@@ -2162,6 +2192,16 @@ export class ArcherEx extends Fighter {
     if (game?.audio) {
       game.audio.play('arrow_hit', impX);
     }
+    if (!this._trueUltFireVoiceFired) {
+      this._trueUltFireVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 4,
+        cooldownMs: 200,
+        duckSfx: true
+      });
+    }
 
     this.spawnLeafRuneBurst(impX, impYBase, 18, 225, true);
     this.spawnStarGlint(impX, impYBase, 16, '#ffffff', 0.34);
@@ -2227,6 +2267,16 @@ export class ArcherEx extends Fighter {
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    if (!this._trueUltChargeVoiceFired && t < 1.52) {
+      this._trueUltChargeVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
     this.isInvulnerable = true;
@@ -2559,6 +2609,16 @@ export class ArcherEx extends Fighter {
         if (game?.audio) {
           game.audio.play('archer_ult', this.x);
           game.audio.play('solar_beam', this.x);
+        }
+        if (!this._trueUltFireVoiceFired) {
+          this._trueUltFireVoiceFired = true;
+          game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+            worldX: this.x,
+            speakerKey: this,
+            priority: 4,
+            cooldownMs: 200,
+            duckSfx: true
+          });
         }
         this.heal(Math.round(this.maxHp * 0.14), 'WORLD-TREE GRACE');
         const launchY = this.groundY - 184;

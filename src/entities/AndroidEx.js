@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps141';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps141';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps141';
+import { Fighter } from './Fighter.js?v=30fps142';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps142';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps142';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps141';
+} from '../engine/shaders/cyberShaders.js?v=30fps142';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -324,9 +324,9 @@ export class AndroidEx extends Fighter {
         return img;
       };
       assets.android_ex = {
-        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps141'),
-        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps141'),
-        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps141'),
+        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps142'),
+        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps142'),
+        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps142'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -442,6 +442,7 @@ export class AndroidEx extends Fighter {
 
     if (newState === 'SKILL') {
       this._skillStepMask = 0;
+      this._skillVoiceFired = false;
       this.afterimageAccum = 0;
       this.diamondFunnelGrid = null;
     } else if (prevState === 'SKILL') {
@@ -450,6 +451,7 @@ export class AndroidEx extends Fighter {
 
     if (newState === 'ULTIMATE') {
       this._ultStep = 0;
+      this._ultVoiceFired = false;
       this.isInvulnerable = true;
       this.hudTargetMatrix = null;
       this.orbitalStrikeFunnels = [];
@@ -460,6 +462,8 @@ export class AndroidEx extends Fighter {
 
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
+      this._trueUltChargeVoiceFired = false;
+      this._trueUltFireVoiceFired = false;
       this._trueUltStartX = this.x;
       this._trueUltRetreatX = this.x;
       this._busterMoteAccum = 0;
@@ -1255,6 +1259,12 @@ export class AndroidEx extends Fighter {
         const slamX = this.x + this.facing * 82;
         game?.renderer?.triggerShake?.(13, 0.26);
         game?.audio?.play?.('emp_blast', slamX);
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         game?.vfx?.spawnShockwave?.(slamX, this.groundY - 4, 98, '#ec4899', 0.28, false, true);
         this.spawnVfxAnim(2, slamX, this.groundY - 82, 208, 208, 0.34, {
           flipX: this.facing < 0,
@@ -1378,6 +1388,16 @@ export class AndroidEx extends Fighter {
     const lockX = enemy && !enemy.isDead ? enemy.x : this._clampArenaX(this.x + this.facing * 150, game);
     const lockY = this.groundY - 94;
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
+    if (!this._skillVoiceFired) {
+      this._skillVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 2,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const skillNeonPal =
       vsSkill === 1 ? POSITRON_CRIMSON_PALETTE : vsSkill === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_NEON_PALETTE;
     const skillMagPal =
@@ -1609,6 +1629,16 @@ export class AndroidEx extends Fighter {
     this.vy = 0;
 
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
+    if (!this._ultVoiceFired) {
+      this._ultVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const ultNeonPal =
       vsUlt === 1 ? POSITRON_CRIMSON_PALETTE : vsUlt === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_NEON_PALETTE;
     const ultMagPal =
@@ -1907,6 +1937,16 @@ export class AndroidEx extends Fighter {
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    if (!this._trueUltChargeVoiceFired && t < 1.68) {
+      this._trueUltChargeVoiceFired = true;
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+        worldX: this.x,
+        speakerKey: this,
+        priority: 3,
+        cooldownMs: 400,
+        duckSfx: true
+      });
+    }
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const advBounds =
       game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
@@ -2038,6 +2078,16 @@ export class AndroidEx extends Fighter {
     if (t >= 1.68 && this._trueUltStep < 3) {
       this._trueUltStep = 3;
       this._trueUltBusterTimer = 1.18;
+      if (!this._trueUltFireVoiceFired) {
+        this._trueUltFireVoiceFired = true;
+        game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 200,
+          duckSfx: true
+        });
+      }
 
       const visorX = this.x + this.facing * 20;
       const visorY = this.groundY - 124;
