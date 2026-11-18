@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0.0",
+  "defaultPackId": "celestial_gauntlet",
+  "packs": [
+    {
+      "packId": "celestial_gauntlet",
+      "title": "CELESTIAL GAUNTLET OF THE FOUR REALMS",
+      "subtitle": "Ascend through Cathedral, Starwood, Ossuary & Chrono-Citadel to vanquish Sovereign Malphas",
+      "version": "1.0.0",
+      "zoneCount": 4,
+      "worldWidth": 9600,
+      "biomes": [
+        "cathedral",
+        "sylvan",
+        "boneyard",
+        "clocktower"
+      ],
+      "totalProps": 16,
+      "totalMonsterSpawns": 25,
+      "totalWardens": 3,
+      "finalBossName": "ARCHFIEND MALPHAS OVERLORD",
+      "finalBossMaxHp": 12800,
+      "file": "celestial_gauntlet.json",
+      "sha256": "0ad4fd2da42711ee53e5504ae6b4d770d11d2d646ece11533ec42561a0355818"
+    }
+  ]
+}

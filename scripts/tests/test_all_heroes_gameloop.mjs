@@ -34,71 +34,74 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
+  encryptAvsvPack,
   parseAvsvPackHeader,
   decryptAvsvPack,
   unpackCodeVaultPayload,
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps137';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps137';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps137';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps137';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps137';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps137';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps137';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps137';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps137';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps137';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps137';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps137';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps137';
-import { Archer } from '../../src/entities/Archer.js?v=30fps137';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps137';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps137';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps137';
-import { Titan } from '../../src/entities/Titan.js?v=30fps137';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps137';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps137';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps137';
-import { Android } from '../../src/entities/Android.js?v=30fps137';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps137';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps137';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps137';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps137';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps138';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps138';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps138';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps138';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps138';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps138';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps138';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps138';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps138';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps138';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps138';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps138';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps138';
+import { Archer } from '../../src/entities/Archer.js?v=30fps138';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps138';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps138';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps138';
+import { Titan } from '../../src/entities/Titan.js?v=30fps138';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps138';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps138';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps138';
+import { Android } from '../../src/entities/Android.js?v=30fps138';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps138';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps138';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps138';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps138';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps137';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps137';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps137';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps137';
-import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps137';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps137';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps138';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps138';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps138';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps138';
+import { Game, EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER } from '../../src/main.js?v=30fps138';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps138';
 import {
   AdventureManager,
-  ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps137';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps137';
+  ADVENTURE_WORLD_WIDTH,
+  DEFAULT_ADVENTURE_CAMPAIGN_ID,
+  normalizeAdventureCampaignPack
+} from '../../src/adventure/AdventureManager.js?v=30fps138';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps138';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps137';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps137';
+} from '../../src/adventure/AdventureProgression.js?v=30fps138';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps138';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps137';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps138';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps137';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps138';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -702,7 +705,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps137');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps138');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -9638,7 +9641,9 @@ for (const [name, Cls] of CLASSES) {
       };
       walkDist(distDir);
 
-      const leakedPlainFiles = allDistFiles.filter((rel) => /\.(png|wav|ttf|css)$/i.test(rel));
+      const leakedPlainFiles = allDistFiles.filter(
+        (rel) => /\.(png|wav|ttf|css)$/i.test(rel) || (rel !== 'manifest.json' && /\.json$/i.test(rel))
+      );
       if (leakedPlainFiles.length !== 0) {
         throw new Error(`[Suite 32.2] Found leaked unencrypted assets in dist/: ${leakedPlainFiles.join(', ')}`);
       }
@@ -9698,7 +9703,8 @@ for (const [name, Cls] of CLASSES) {
       let pngVerified = 0;
       let wavVerified = 0;
       let ttfVerified = 0;
-      for (const [relAsset, [packId]] of assetEntries) {
+      let jsonVerified = 0;
+      for (const [relAsset, [packId, mime]] of assetEntries) {
         const decBytes = decryptAvsvPack(
           fs.readFileSync(path.join(distDir, `packs/${packId}.bin`)),
           masterKey
@@ -9712,10 +9718,23 @@ for (const [name, Cls] of CLASSES) {
         if (relAsset.endsWith('.png')) pngVerified++;
         else if (relAsset.endsWith('.wav')) wavVerified++;
         else if (relAsset.endsWith('.ttf')) ttfVerified++;
+        else if (relAsset.endsWith('.json')) {
+          if (mime !== 'application/json') {
+            throw new Error(`[Suite 32.2] Expected application/json MIME for ${relAsset}, got ${mime}!`);
+          }
+          jsonVerified++;
+        }
       }
-      if (pngVerified < 65 || wavVerified < 65 || ttfVerified < 1) {
+      if (
+        pngVerified < 65 ||
+        wavVerified < 65 ||
+        ttfVerified < 1 ||
+        jsonVerified < 2 ||
+        !codeVault.assets['assets/campaigns/index.json'] ||
+        !codeVault.assets['assets/campaigns/celestial_gauntlet.json']
+      ) {
         throw new Error(
-          `[Suite 32.2] Unexpected asset counts in AVSV vault: png=${pngVerified}, wav=${wavVerified}, ttf=${ttfVerified}`
+          `[Suite 32.2] Unexpected asset counts in AVSV vault: png=${pngVerified}, wav=${wavVerified}, ttf=${ttfVerified}, json=${jsonVerified}`
         );
       }
     } finally {
@@ -11238,8 +11257,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps137');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps137');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps138');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps138');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12040,7 +12059,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps137'
+        src: 'assets/sprites/arena_bg.png?v=30fps138'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12084,13 +12103,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps137`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps138`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps137'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps138'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -14934,7 +14953,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps137';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps138';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -14969,7 +14988,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps137';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps138';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15074,12 +15093,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps137') ||
-      !manifestSrc.includes('?v=30fps137') ||
+      !indexHtmlSrc.includes('?v=30fps138') ||
+      !manifestSrc.includes('?v=30fps138') ||
       manifestSrc.includes('30fps136') ||
       indexHtmlSrc.includes('30fps136')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps137 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps138 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16674,6 +16693,333 @@ if (!RUN_SUITE36_ONLY) {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 36.19: Batch ?v=30fps138 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
+  //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
+  // --------------------------------------------------------------------------
+  {
+    const indexJsonPath = path.join(REPO_ROOT, 'assets/campaigns/index.json');
+    const cgJsonPath = path.join(REPO_ROOT, 'assets/campaigns/celestial_gauntlet.json');
+    if (!fs.existsSync(indexJsonPath) || !fs.existsSync(cgJsonPath)) {
+      throw new Error('[Suite 36.19A] Missing assets/campaigns/index.json or celestial_gauntlet.json!');
+    }
+    const rawIndex = JSON.parse(fs.readFileSync(indexJsonPath, 'utf8'));
+    const rawCelestial = JSON.parse(fs.readFileSync(cgJsonPath, 'utf8'));
+    if (
+      rawIndex.schemaVersion !== '1.0.0' ||
+      !Array.isArray(rawIndex.packs) ||
+      !rawIndex.packs.some((p) => p.packId === 'celestial_gauntlet') ||
+      rawCelestial.schemaVersion !== '1.0.0' ||
+      rawCelestial.packId !== 'celestial_gauntlet'
+    ) {
+      throw new Error('[Suite 36.19A] Invalid campaign catalog or celestial_gauntlet schemaVersion!');
+    }
+
+    const prevFetch3619 = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      const clean = String(url).split('?')[0].replace(/^\/+/, '');
+      const fullPath = path.join(REPO_ROOT, clean);
+      if (!fs.existsSync(fullPath)) {
+        return { ok: false, status: 404, async json() { return {}; } };
+      }
+      const txt = fs.readFileSync(fullPath, 'utf8');
+      return {
+        ok: true,
+        status: 200,
+        async text() { return txt; },
+        async json() { return JSON.parse(txt); }
+      };
+    };
+
+    const mockBase = createMockGame();
+    const advHost = {
+      ...mockBase,
+      fighters: [],
+      leftFighter: null,
+      rightFighter: null,
+      isLandingOpen: false,
+      isMatchOver: false,
+      isPaused: false,
+      matchTime: 42,
+      updateHUD() {},
+      isAdventureMode: () => true,
+      getEnemiesOf: (f) => (f?.isMonster && advHost.leftFighter ? [advHost.leftFighter] : [])
+    };
+    const adv3619 = new AdventureManager(advHost);
+    advHost.adventure = adv3619;
+    advHost.onFighterDeath = (df) => {
+      if (df?.isMonster) adv3619.onMonsterDeath(df);
+    };
+
+    const hero3619 = new WarriorEx(240, 561, 1);
+    hero3619.game = advHost;
+    advHost.leftFighter = hero3619;
+
+    try {
+      // (A) Default Campaign Purity (`campaignId === 'default'`, 9600px, 20 props, 11,800 HP Behemoth Malphas)
+      adv3619.startCampaign(hero3619);
+      if (
+        adv3619.activeCampaignId !== DEFAULT_ADVENTURE_CAMPAIGN_ID ||
+        adv3619.activeCampaignPack !== null ||
+        adv3619.getWorldWidth() !== 9600 ||
+        AdventureMapRenderer.getActiveCampaign() !== null ||
+        adv3619.destructibles.props.length !== 20 ||
+        adv3619.getBossConfig().name !== 'BEHEMOTH MALPHAS' ||
+        adv3619.getBossConfig().maxHp !== 11800
+      ) {
+        throw new Error(
+          `[Suite 36.19A] Default campaign purity failed: id=${adv3619.activeCampaignId}, props=${adv3619.destructibles.props.length}, boss=${JSON.stringify(adv3619.getBossConfig())}`
+        );
+      }
+
+      // (B) Fetch index.json + celestial_gauntlet.json & play through all 4 Zones, 16 Props, 25 Monsters, 3 Wardens & 12,800 HP Boss
+      const catalogPacks = await adv3619.fetchCampaignIndex();
+      if (!catalogPacks.some((p) => p.packId === 'celestial_gauntlet')) {
+        throw new Error('[Suite 36.19B] fetchCampaignIndex did not return celestial_gauntlet!');
+      }
+      const cgPack = await adv3619.loadCampaignPackById('celestial_gauntlet', 'celestial_gauntlet.json');
+      adv3619.startCampaign(hero3619, cgPack);
+
+      if (
+        adv3619.activeCampaignId !== 'celestial_gauntlet' ||
+        adv3619.getWorldWidth() !== 9600 ||
+        AdventureMapRenderer.getActiveCampaign()?.packId !== 'celestial_gauntlet' ||
+        adv3619.destructibles.props.length !== 16
+      ) {
+        throw new Error(
+          `[Suite 36.19B] celestial_gauntlet failed to activate: id=${adv3619.activeCampaignId}, props=${adv3619.destructibles.props.length}`
+        );
+      }
+
+      // Render all 4 custom zones with world-space emissiveAnchors & bloomPalettes (0 rotate / 0 arc / alpha <= 0.16)
+      const renderTrack = { rotateCalls: 0, quadCalls: 0, arcCalls: 0, ellipseCalls: 0, maxLighterAlpha: 0 };
+      const rCtx = createMockCtx(renderTrack);
+      rCtx.arc = () => { renderTrack.arcCalls++; };
+      rCtx.ellipse = () => { renderTrack.ellipseCalls++; };
+      const origFillRect = rCtx.fillRect.bind(rCtx);
+      const origDrawImg = rCtx.drawImage.bind(rCtx);
+      rCtx.fillRect = (...args) => {
+        if (rCtx.globalCompositeOperation === 'lighter' && rCtx.globalAlpha > renderTrack.maxLighterAlpha) {
+          renderTrack.maxLighterAlpha = rCtx.globalAlpha;
+        }
+        return origFillRect(...args);
+      };
+      rCtx.drawImage = (...args) => {
+        if (rCtx.globalCompositeOperation === 'lighter' && rCtx.globalAlpha > renderTrack.maxLighterAlpha) {
+          renderTrack.maxLighterAlpha = rCtx.globalAlpha;
+        }
+        return origDrawImg(...args);
+      };
+      for (const testCamX of [600, 3100, 5600, 8920]) {
+        advHost.renderer.camX = testCamX;
+        advHost.renderer.time = 1.4;
+        AdventureMapRenderer.render(rCtx, advHost.renderer, 9600);
+        AdventureMapRenderer.renderForegroundDepth(rCtx, advHost.renderer);
+      }
+      // Also exercise custom archPano + world-space zones[].emissiveAnchors path
+      const customArchImg = new globalThis.Image();
+      customArchImg.naturalWidth = 1920;
+      customArchImg.naturalHeight = 272;
+      cgPack.customPanoramas.archPano = customArchImg;
+      advHost.renderer.camX = 600;
+      AdventureMapRenderer.render(rCtx, advHost.renderer, 9600);
+      cgPack.customPanoramas.archPano = null;
+      if (
+        renderTrack.rotateCalls !== 0 ||
+        renderTrack.arcCalls !== 0 ||
+        renderTrack.ellipseCalls !== 0 ||
+        renderTrack.maxLighterAlpha > 0.181 ||
+        rCtx._stateStack.length !== 0
+      ) {
+        throw new Error(`[Suite 36.19B] Custom campaign map render invariant failed: ${JSON.stringify(renderTrack)}`);
+      }
+
+      // Shatter a relic prop (`cg_prop_2`, eclipse_astrolabe, dropType: 'relic') and verify pickup spawn
+      adv3619.pickups.length = 0;
+      const orreryProp = adv3619.destructibles.props.find((p) => p.id === 'cg_prop_2');
+      if (!orreryProp || orreryProp.kind !== 'eclipse_astrolabe' || orreryProp.dropType !== 'relic') {
+        throw new Error('[Suite 36.19B] Expected cg_prop_2 (eclipse_astrolabe, dropType=relic) in destructibles!');
+      }
+      adv3619.destructibles.damageProp(orreryProp, 9999, hero3619, true, advHost);
+      if (!orreryProp.destroyed || !adv3619.pickups.some((pk) => pk.type === 'relic')) {
+        throw new Error('[Suite 36.19B] Shattering cg_prop_2 failed to drop relic pickup!');
+      }
+
+      // Step through all 8 sub-waves (25 monsters + 3 Mini-Boss Wardens) -> Final Boss (`ARCHFIEND MALPHAS OVERLORD` 12,800 HP)
+      let totalWaveMonstersSpawned = 0;
+      const seenWardens = [];
+      const seenEngineKinds = new Set();
+
+      const clearCurrentSubWave = () => {
+        const living = adv3619.getLivingMonsters();
+        totalWaveMonstersSpawned += living.length;
+        for (const m of living) {
+          seenEngineKinds.add(m.kind);
+          if (m.isMiniBoss) {
+            seenWardens.push(`${m.name}:${m.maxHp}`);
+          }
+          m.takeDamage(999999, hero3619, true, 0, 0);
+        }
+        adv3619.update(0.05);
+      };
+
+      for (let zi = 0; zi < 4; zi++) {
+        const zSpec = cgPack.zones[zi];
+        if (zi > 0) {
+          hero3619.x = zSpec.triggerX + 20;
+          adv3619.update(0.05);
+        }
+        clearCurrentSubWave(); // clears subWave 1 (subWave0)
+        hero3619.x = zSpec.midTriggerX + 20;
+        adv3619.update(0.05);
+        clearCurrentSubWave(); // clears subWave 2 (subWave1); on Zone 3 triggers Colossal Boss warning!
+      }
+
+      if (
+        totalWaveMonstersSpawned !== 25 ||
+        seenWardens.length !== 3 ||
+        !seenWardens.includes('HIGH ASTROLOGER VEYR:2650') ||
+        !seenWardens.includes('ELDER BRIAR-SOVEREIGN:3200') ||
+        !seenWardens.includes('ARCH-LICH MORVATH:3000') ||
+        !seenEngineKinds.has('dryad') ||
+        !seenEngineKinds.has('cultist') ||
+        !seenEngineKinds.has('fiend') ||
+        !seenEngineKinds.has('brute') ||
+        !adv3619.bossSpawnPending
+      ) {
+        throw new Error(
+          `[Suite 36.19B] Wave/Warden progression mismatch: spawned=${totalWaveMonstersSpawned}, wardens=${seenWardens.join(',')}, kinds=${Array.from(seenEngineKinds).join(',')}, bossPending=${adv3619.bossSpawnPending}`
+        );
+      }
+
+      // Advance past Boss Warning -> verify ARCHFIEND MALPHAS OVERLORD (12,800 HP at x=9335) spawns & can be vanquished
+      adv3619.update(2.0);
+      const overlord = adv3619.bossEntity;
+      if (
+        !overlord ||
+        !overlord.isColossalBoss ||
+        overlord.name !== 'ARCHFIEND MALPHAS OVERLORD' ||
+        overlord.maxHp !== 12800 ||
+        overlord.anchorX !== 9335
+      ) {
+        throw new Error(
+          `[Suite 36.19B] Expected ARCHFIEND MALPHAS OVERLORD (12800 HP @ 9335), got ${overlord?.name} (${overlord?.maxHp} @ ${overlord?.anchorX})`
+        );
+      }
+      overlord.takeDamage(999999, hero3619, true, 0, 0);
+      if (!advHost.isMatchOver || !adv3619.zonesCleared[3]) {
+        throw new Error('[Suite 36.19B] Slaying ARCHFIEND MALPHAS OVERLORD did not complete campaign victory!');
+      }
+
+      // (C) Custom 2-Zone (4800px) JSON Import with Schema Aliases (`destructibles`, `waves`, `boss`) & Clean Teardown
+      advHost.isMatchOver = false;
+      const custom2ZoneJson = JSON.stringify({
+        schemaVersion: '1.0.0',
+        packId: 'astral_trial_2z',
+        title: 'ASTRAL TRIAL DUO',
+        zoneCount: 2,
+        worldWidth: 4800,
+        zones: [
+          { index: 0, id: 'z0', biome: 'sylvan', bloomPalette: 'emerald', minX: 0, maxX: 2400 },
+          { index: 1, id: 'z1', biome: 'clocktower', bloomPalette: 'ember', minX: 2400, maxX: 4800, isBossZone: true }
+        ],
+        destructibles: [
+          { id: 'c_p0', zone: 0, kind: 'starwood_lantern', x: 520, groundY: 452, dropType: 'ember' },
+          { id: 'c_p1', zone: 1, kind: 'blackpit_brazier', x: 2920, groundY: 452, dropType: 'hp' }
+        ],
+        waves: [
+          { zone: 0, subWave: 0, spawns: [{ type: 'sylph', x: 760, groundY: 540 }] },
+          { zone: 0, subWave: 1, spawns: [{ type: 'treant', x: 1860, groundY: 560, isMiniBoss: true, wardenName: 'GROVE WATCHER', maxHp: 2100 }] },
+          { zone: 1, subWave: 0, spawns: [{ type: 'imp', x: 3060, groundY: 555 }] }
+        ],
+        boss: {
+          enabled: true,
+          kind: 'archfiend',
+          name: 'CINDER OVERLORD',
+          maxHp: 9400,
+          anchorX: 4535,
+          groundY: 561
+        }
+      });
+
+      const uiMockHost = {
+        selectedCampaignId: DEFAULT_ADVENTURE_CAMPAIGN_ID,
+        campaignIndexPacks: [],
+        loadedCampaignPacks: new Map(),
+        adventure: adv3619,
+        advCampaignSelect: null,
+        audio: null,
+        renderCampaignSelectorOptions() {},
+        syncRosterSelectionUI() {}
+      };
+      const importedPack = Game.prototype.importCampaignPackJsonText.call(
+        uiMockHost,
+        custom2ZoneJson,
+        'astral_trial_2z.json'
+      );
+      adv3619.startCampaign(hero3619, importedPack);
+      if (
+        adv3619.activeCampaignId !== 'astral_trial_2z' ||
+        adv3619.getWorldWidth() !== 4800 ||
+        adv3619.destructibles.props.length !== 2 ||
+        adv3619.getBossAnchorX() !== 4535 ||
+        adv3619.getBossMaxWalkX() !== 4450 ||
+        uiMockHost.selectedCampaignId !== 'astral_trial_2z'
+      ) {
+        throw new Error('[Suite 36.19C] Custom 2-Zone Stage Pack failed to normalize or start!');
+      }
+
+      // Verify stopCampaign() restores 100% of built-in defaults!
+      adv3619.stopCampaign();
+      if (
+        adv3619.activeCampaignId !== DEFAULT_ADVENTURE_CAMPAIGN_ID ||
+        adv3619.activeCampaignPack !== null ||
+        AdventureMapRenderer.getActiveCampaign() !== null ||
+        adv3619.destructibles.props.length !== 20 ||
+        adv3619.getWorldWidth() !== 9600 ||
+        adv3619.getBossConfig().name !== 'BEHEMOTH MALPHAS' ||
+        adv3619.getBossConfig().maxHp !== 11800
+      ) {
+        throw new Error('[Suite 36.19C] stopCampaign() did not cleanly restore built-in defaults!');
+      }
+
+      // (D) Roster Selector UI, Versus Mode Isolation, URL `?campaign=` Wiring & AVSV Vault JSON Round-Trip
+      const html3619 = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+      const css3619 = fs.readFileSync(path.join(REPO_ROOT, 'style.css'), 'utf8');
+      const main3619 = fs.readFileSync(path.join(REPO_ROOT, 'src/main.js'), 'utf8');
+      for (const reqNeedle of [
+        'id="adv-campaign-selector-bar"',
+        'id="adv-campaign-select"',
+        'id="btn-import-campaign-json"',
+        'id="input-import-campaign-json"',
+        'ORIGINAL PILGRIMAGE'
+      ]) {
+        if (!html3619.includes(reqNeedle)) {
+          throw new Error(`[Suite 36.19D] index.html missing Stage Pack Selector hook: ${reqNeedle}`);
+        }
+      }
+      if (
+        !css3619.includes('.landing-overlay:not([data-branch="adventure"]) .adv-campaign-selector-bar') ||
+        !main3619.includes("params.get('campaign')")
+      ) {
+        throw new Error('[Suite 36.19D] Missing Versus Mode CSS isolation or ?campaign= URL loader in main.js!');
+      }
+
+      const testVaultKey = crypto.randomBytes(32);
+      const plainCgBuf = fs.readFileSync(cgJsonPath);
+      const encCgPack = encryptAvsvPack(plainCgBuf, testVaultKey);
+      const decCgBuf = decryptAvsvPack(encCgPack, testVaultKey);
+      if (!decCgBuf.equals(plainCgBuf)) {
+        throw new Error('[Suite 36.19D] AVSV AES-256-GCM round-trip mismatch on celestial_gauntlet.json!');
+      }
+    } finally {
+      adv3619.stopCampaign();
+      hero3619.fx?.dispose?.();
+      globalThis.fetch = prevFetch3619;
+    }
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -16682,7 +17028,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17) & All-12 EX Sovereign Loadouts Parity (36.18) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-12 EX Sovereign Loadouts Parity (36.18) & Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

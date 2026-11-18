@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps137';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps137';
+import { Fighter } from './Fighter.js?v=30fps138';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps138';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps138';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -354,9 +354,8 @@ export class Monster extends Fighter {
       adv?.bossEntity && !adv.bossEntity.isDead && adv.bossEntity.isColossalBoss
     );
     const mMin = adv?.lockActive ? adv.lockMinX + 24 : 95;
-    const rawMax = adv?.lockActive
-      ? adv.lockMaxX - 24
-      : (game?.renderer?.worldWidth || 9600) - 95;
+    const worldW = adv?.getWorldWidth?.() || game?.renderer?.worldWidth || 9600;
+    const rawMax = adv?.lockActive ? adv.lockMaxX - 24 : worldW - 95;
     const mMax = Math.max(
       mMin + 60,
       colossalAlive ? Math.min(rawMax, (adv.bossEntity.anchorX || 9335) - 95) : rawMax
@@ -604,9 +603,8 @@ export class Monster extends Fighter {
       adv?.bossEntity && !adv.bossEntity.isDead && adv.bossEntity.isColossalBoss
     );
     const mMin = adv?.lockActive ? adv.lockMinX + 24 : 95;
-    const rawMax = adv?.lockActive
-      ? adv.lockMaxX - 24
-      : (game?.renderer?.worldWidth || 9600) - 95;
+    const worldW = adv?.getWorldWidth?.() || game?.renderer?.worldWidth || 9600;
+    const rawMax = adv?.lockActive ? adv.lockMaxX - 24 : worldW - 95;
     const mMax = Math.max(
       mMin + 60,
       colossalAlive ? Math.min(rawMax, (adv.bossEntity.anchorX || 9335) - 95) : rawMax
@@ -1678,16 +1676,22 @@ export class Monster extends Fighter {
  * GIANT RIGHT-SIDE COLOSSAL FINAL BOSS: BEHEMOTH MALPHAS, COLOSSUS OF THE BLACK PIT
  */
 export class ArchfiendBoss extends Monster {
-  constructor(x = 9335, groundY = 561, _facing = -1) {
+  constructor(x = 9335, groundY = 561, _facing = -1, opts = {}) {
+    const bossMaxHp =
+      Number.isFinite(opts?.maxHp) && opts.maxHp > 0 ? Math.round(opts.maxHp) : 11800;
+    const bossName =
+      typeof opts?.name === 'string' && opts.name.trim()
+        ? opts.name.trim()
+        : 'BEHEMOTH MALPHAS';
     super('brute', x, groundY, -1, {
-      maxHp: 11800,
-      spriteScale: 2.18,
-      dmgScale: 1.24,
+      maxHp: bossMaxHp,
+      spriteScale: opts?.spriteScale || 2.18,
+      dmgScale: opts?.dmgScale || 1.24,
       skipPortal: true
     });
     this.heroId = 'archfiend';
     this.kind = 'archfiend';
-    this.name = 'BEHEMOTH MALPHAS';
+    this.name = bossName;
     this.theme = 'abyssal';
     this.primaryColor = '#ef4444';
     this.secondaryColor = '#f59e0b';
@@ -1741,11 +1745,11 @@ export class ArchfiendBoss extends Monster {
     // Articulated Multi-Limb & Auto-Play Telegraph State (Zero ctx.rotate — pure 2.5D integer pixel blits!)
     this.skillVariant = 0;
     this.slamTargetX = this.anchorX - 380;
-    this.slamTargetGy = 561;
+    this.slamTargetGy = this.anchorGroundY;
     this.fistVisible = false;
     this.fistWorldX = this.anchorX - 320;
     this.fistWorldY = 260;
-    this.fistShadowGy = 561;
+    this.fistShadowGy = this.anchorGroundY;
 
     this.rakeActive = false;
     this.rakeWarnOnly = false;
@@ -1758,7 +1762,7 @@ export class ArchfiendBoss extends Monster {
     // Abyssal Siege Grab (`skillVariant === 2`) & Automatic Unavoidable Hellpit Soul-Tithe State
     this.grabWarnOnly = false;
     this.grabActive = false;
-    this.grabLaneGy = 561;
+    this.grabLaneGy = this.anchorGroundY;
     this.grabTargetX = this.anchorX - 420;
     this.grabbedTarget = null;
     this._grabCrushTicks = 0;
@@ -2175,7 +2179,7 @@ export class ArchfiendBoss extends Monster {
           game.vfx.spawnShockwave(this.anchorX - 90, 520, 290, '#ef4444', 0.55, true);
           game.vfx.spawnSpecialCastAura(
             this,
-            'BEHEMOTH MALPHAS',
+            this.name || 'BEHEMOTH MALPHAS',
             'SOVEREIGN OF THE BLACK PIT',
             'abyssal',
             true

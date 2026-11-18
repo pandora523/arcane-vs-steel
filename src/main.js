@@ -1,35 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps137';
-import { VFXManager } from './engine/VFXManager.js?v=30fps137';
-import { PixelForge } from './engine/PixelForge.js?v=30fps137';
-import { AudioManager } from './engine/AudioManager.js?v=30fps137';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps137';
-import { Fighter } from './entities/Fighter.js?v=30fps137';
-import { Warrior } from './entities/Warrior.js?v=30fps137';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps137';
-import { FireMage } from './entities/FireMage.js?v=30fps137';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps137';
-import { Archer } from './entities/Archer.js?v=30fps137';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps137';
-import { Priestess } from './entities/Priestess.js?v=30fps137';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps137';
-import { Reaper } from './entities/Reaper.js?v=30fps137';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps137';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps137';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps137';
-import { Titan } from './entities/Titan.js?v=30fps137';
-import { TitanEx } from './entities/TitanEx.js?v=30fps137';
-import { Ronin } from './entities/Ronin.js?v=30fps137';
-import { RoninEx } from './entities/RoninEx.js?v=30fps137';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps137';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps137';
-import { IceMage } from './entities/IceMage.js?v=30fps137';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps137';
-import { Android } from './entities/Android.js?v=30fps137';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps137';
-import { NyxEx } from './entities/NyxEx.js?v=30fps137';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps137';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps137';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps137';
+import { Renderer } from './engine/Renderer.js?v=30fps138';
+import { VFXManager } from './engine/VFXManager.js?v=30fps138';
+import { PixelForge } from './engine/PixelForge.js?v=30fps138';
+import { AudioManager } from './engine/AudioManager.js?v=30fps138';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps138';
+import { Fighter } from './entities/Fighter.js?v=30fps138';
+import { Warrior } from './entities/Warrior.js?v=30fps138';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps138';
+import { FireMage } from './entities/FireMage.js?v=30fps138';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps138';
+import { Archer } from './entities/Archer.js?v=30fps138';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps138';
+import { Priestess } from './entities/Priestess.js?v=30fps138';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps138';
+import { Reaper } from './entities/Reaper.js?v=30fps138';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps138';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps138';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps138';
+import { Titan } from './entities/Titan.js?v=30fps138';
+import { TitanEx } from './entities/TitanEx.js?v=30fps138';
+import { Ronin } from './entities/Ronin.js?v=30fps138';
+import { RoninEx } from './entities/RoninEx.js?v=30fps138';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps138';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps138';
+import { IceMage } from './entities/IceMage.js?v=30fps138';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps138';
+import { Android } from './entities/Android.js?v=30fps138';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps138';
+import { NyxEx } from './entities/NyxEx.js?v=30fps138';
+import {
+  AdventureManager,
+  DEFAULT_ADVENTURE_CAMPAIGN_ID,
+  normalizeAdventureCampaignPack
+} from './adventure/AdventureManager.js?v=30fps138';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps138';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps138';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -919,8 +923,17 @@ export class Game {
     this.isLandingOpen = true;
     this.isPaused = false;
     this.landingStep = 'title'; // 'title' | 'mode' | 'roster'
+    this.selectedCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
+    this.campaignIndexPacks = [];
+    this.loadedCampaignPacks = new Map();
+    this._pendingMatchPackId = null;
 
     const params = new URLSearchParams(window.location.search);
+    const campaignParamRaw = params.get('campaign');
+    const campaignParam =
+      typeof campaignParamRaw === 'string' && campaignParamRaw.trim()
+        ? campaignParamRaw.trim()
+        : null;
     const versionParam = params.get('version');
     if (versionParam === 'legacy') {
       this.rosterVersion = 'legacy';
@@ -949,11 +962,18 @@ export class Game {
       this.gameMode = '2v2_tag';
     } else if (modeParam === '2v2_brawl' || modeParam === '2v2' || modeParam === 'brawl') {
       this.gameMode = '2v2_brawl';
-    } else if (modeParam === 'adventure' || modeParam === 'campaign') {
+    } else if (
+      modeParam === 'adventure' ||
+      modeParam === 'campaign' ||
+      (!modeParam && campaignParam)
+    ) {
       this.gameMode = 'adventure';
       this.slot1Hero = this.rosterVersion === 'legacy' ? 'mage' : 'warrior_ex';
       this.activeAssignSlot = 1;
       this.testModeUnlimitedHp = Boolean(this.explicitAdvUnlimitedHp);
+    }
+    if (campaignParam) {
+      this.selectedCampaignId = campaignParam;
     }
     if (params.get('autoplay') === '1') {
       this.adventure.setAutoPlay(true, false);
@@ -1035,7 +1055,7 @@ export class Game {
     const startArena = params.get('battle') === '1';
     this.isSimPaused = params.get('pause') === '1';
     if (
-      (modeParam && this.isAdventureMode()) ||
+      (!stepParam && (modeParam || campaignParam) && this.isAdventureMode()) ||
       p1 ||
       p1b ||
       p2 ||
@@ -1183,6 +1203,9 @@ export class Game {
       }
       this.updateHUD();
     }
+
+    this._urlSimSec = simSec > 0 ? simSec : 0;
+    this.initCampaignCatalog(campaignParam).catch(() => {});
     if (killTarget) {
       const victim =
         killTarget === 'left' || killTarget === this.slot1Hero ? this.leftFighter : this.rightFighter;
@@ -2604,6 +2627,44 @@ export class Game {
       });
     });
 
+    this.advCampaignBar = document.getElementById('adv-campaign-selector-bar');
+    this.advCampaignSelect = document.getElementById('adv-campaign-select');
+    this.btnImportCampaignJson = document.getElementById('btn-import-campaign-json');
+    this.inputImportCampaignJson = document.getElementById('input-import-campaign-json');
+    if (this.advCampaignSelect) {
+      this.advCampaignSelect.addEventListener('change', (e) => {
+        const nextPackId = e.target?.value || DEFAULT_ADVENTURE_CAMPAIGN_ID;
+        this.selectCampaignPack(nextPackId, { playSound: true }).catch(() => {});
+      });
+    }
+    if (this.btnImportCampaignJson && this.inputImportCampaignJson) {
+      this.btnImportCampaignJson.addEventListener('click', () => {
+        this.inputImportCampaignJson.value = '';
+        this.inputImportCampaignJson.click();
+      });
+      this.inputImportCampaignJson.addEventListener('change', (e) => {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+        const handleText = (txt) => {
+          try {
+            this.importCampaignPackJsonText(txt, file.name);
+          } catch (err) {
+            console.warn('Campaign JSON import rejected:', err);
+          }
+        };
+        if (typeof file.text === 'function') {
+          file
+            .text()
+            .then(handleText)
+            .catch(() => {});
+        } else if (typeof FileReader !== 'undefined') {
+          const reader = new FileReader();
+          reader.onload = () => handleText(String(reader.result || ''));
+          reader.readAsText(file);
+        }
+      });
+    }
+
     const advBtnSkillTree = document.getElementById('adv-btn-skilltree');
     if (advBtnSkillTree) {
       advBtnSkillTree.addEventListener('click', () => {
@@ -2920,6 +2981,230 @@ export class Game {
     this.prewarmSelectedAssets();
   }
 
+  async initCampaignCatalog(initialCampaignParam = null) {
+    if (typeof fetch !== 'function') return;
+    try {
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps138');
+      if (Array.isArray(packs)) {
+        const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
+        this.campaignIndexPacks = [
+          ...packs.filter((p) => p && typeof p.packId === 'string' && p.packId !== DEFAULT_ADVENTURE_CAMPAIGN_ID),
+          ...importedOnly
+        ];
+      }
+    } catch (_) {
+      // Optional campaign index when running offline without packs
+    }
+    this.renderCampaignSelectorOptions();
+    if (initialCampaignParam && initialCampaignParam !== DEFAULT_ADVENTURE_CAMPAIGN_ID) {
+      await this.selectCampaignPack(initialCampaignParam, {
+        playSound: false,
+        restartActiveMatch: Boolean(!this.isLandingOpen && this.isAdventureMode())
+      });
+    } else {
+      this.syncRosterSelectionUI(false);
+    }
+  }
+
+  renderCampaignSelectorOptions() {
+    const sel =
+      this.advCampaignSelect ||
+      (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('adv-campaign-select')
+        : null);
+    if (!sel || typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      return;
+    }
+    sel.innerHTML = '';
+
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = DEFAULT_ADVENTURE_CAMPAIGN_ID;
+    defaultOpt.textContent = 'ORIGINAL PILGRIMAGE (4 REALMS • 9600PX)';
+    sel.appendChild(defaultOpt);
+
+    const seen = new Set([DEFAULT_ADVENTURE_CAMPAIGN_ID]);
+    for (let i = 0; i < this.campaignIndexPacks.length; i++) {
+      const meta = this.campaignIndexPacks[i];
+      if (!meta || !meta.packId || seen.has(meta.packId)) continue;
+      seen.add(meta.packId);
+      const opt = document.createElement('option');
+      opt.value = meta.packId;
+      const zCnt = meta.zoneCount || 4;
+      const ww = meta.worldWidth || zCnt * 2400;
+      const prefix = meta.isImported ? '[JSON] ' : '';
+      const rawTitle = String(meta.title || meta.packId).toUpperCase();
+      opt.textContent = `${prefix}${rawTitle} (${zCnt}Z • ${ww}PX)`;
+      sel.appendChild(opt);
+    }
+
+    if (
+      this.selectedCampaignId !== DEFAULT_ADVENTURE_CAMPAIGN_ID &&
+      !seen.has(this.selectedCampaignId)
+    ) {
+      const fallbackOpt = document.createElement('option');
+      fallbackOpt.value = this.selectedCampaignId;
+      fallbackOpt.textContent = `${this.selectedCampaignId.toUpperCase()} (STAGE PACK)`;
+      sel.appendChild(fallbackOpt);
+    }
+    sel.value = this.selectedCampaignId || DEFAULT_ADVENTURE_CAMPAIGN_ID;
+  }
+
+  async selectCampaignPack(packId, { playSound = true, restartActiveMatch = false } = {}) {
+    const targetId =
+      !packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID
+        ? DEFAULT_ADVENTURE_CAMPAIGN_ID
+        : String(packId).trim();
+
+    if (targetId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
+      this.selectedCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
+      this._pendingMatchPackId = null;
+      this.adventure?.clearCampaignPack();
+      this.renderCampaignSelectorOptions();
+      this.syncRosterSelectionUI(false);
+      if (playSound && this.audio) this.audio.play('clock_gear', 600);
+      if (restartActiveMatch && !this.isLandingOpen && this.isAdventureMode()) {
+        this.resetMatch();
+      }
+      return null;
+    }
+
+    this.selectedCampaignId = targetId;
+    this.renderCampaignSelectorOptions();
+    this.syncRosterSelectionUI(false);
+    if (playSound && this.audio) this.audio.play('clock_gear', 600);
+
+    let normalized = this.loadedCampaignPacks.get(targetId) || null;
+    if (!normalized) {
+      const meta = this.campaignIndexPacks.find((p) => p.packId === targetId);
+      try {
+        normalized = await this.adventure.loadCampaignPackById(
+          targetId,
+          meta?.file || null,
+          'v=30fps138'
+        );
+      } catch (err) {
+        console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
+        this.selectedCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
+        this._pendingMatchPackId = null;
+        this.adventure?.clearCampaignPack();
+        this.renderCampaignSelectorOptions();
+        this.syncRosterSelectionUI(false);
+        return null;
+      }
+      if (normalized) {
+        this.loadedCampaignPacks.set(targetId, normalized);
+        this.loadedCampaignPacks.set(normalized.packId, normalized);
+      }
+    }
+
+    if (this.selectedCampaignId !== targetId && this.selectedCampaignId !== normalized?.packId) {
+      return normalized;
+    }
+
+    this.renderCampaignSelectorOptions();
+    this.syncRosterSelectionUI(false);
+
+    if (
+      normalized &&
+      !this.isLandingOpen &&
+      this.isAdventureMode() &&
+      (restartActiveMatch || this._pendingMatchPackId === targetId)
+    ) {
+      this._pendingMatchPackId = null;
+      this.resetMatch();
+      if (this._urlSimSec > 0) {
+        const steps = Math.round(this._urlSimSec / 0.02);
+        this._urlSimSec = 0;
+        for (let i = 0; i < steps; i++) {
+          this.ultSlowTimer = 0;
+          this.renderer.hitStopTimer = 0;
+          this.stepSimulation(0.02);
+        }
+        this.updateHUD();
+      }
+    }
+    return normalized;
+  }
+
+  importCampaignPackJsonText(jsonText, filename = 'custom_pack.json') {
+    const raw = typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText;
+    if (raw && typeof raw === 'object' && !raw.packId && filename) {
+      raw.packId = String(filename)
+        .replace(/\.json$/i, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/g, '_');
+    }
+    const normalized = normalizeAdventureCampaignPack(raw);
+    this.loadedCampaignPacks.set(normalized.packId, normalized);
+    const metaEntry = {
+      packId: normalized.packId,
+      title: normalized.title,
+      subtitle: normalized.subtitle,
+      version: normalized.version,
+      zoneCount: normalized.zoneCount,
+      worldWidth: normalized.worldWidth,
+      finalBossName: normalized.finalBoss?.enabled === false ? 'NONE' : normalized.finalBoss?.name,
+      finalBossMaxHp: normalized.finalBoss?.maxHp || 11800,
+      isImported: true
+    };
+    const existingIdx = this.campaignIndexPacks.findIndex((p) => p.packId === normalized.packId);
+    if (existingIdx >= 0) {
+      this.campaignIndexPacks[existingIdx] = metaEntry;
+    } else {
+      this.campaignIndexPacks.push(metaEntry);
+    }
+    this.selectedCampaignId = normalized.packId;
+    this.adventure?.applyCampaignPack(normalized);
+    this.renderCampaignSelectorOptions();
+    this.syncRosterSelectionUI(true);
+    return normalized;
+  }
+
+  getActiveSelectedCampaignSummary() {
+    if (
+      !this.selectedCampaignId ||
+      this.selectedCampaignId === DEFAULT_ADVENTURE_CAMPAIGN_ID
+    ) {
+      return null;
+    }
+    const loaded = this.loadedCampaignPacks.get(this.selectedCampaignId);
+    if (loaded) {
+      return {
+        packId: loaded.packId,
+        title: loaded.title,
+        zoneCount: loaded.zoneCount,
+        worldWidth: loaded.worldWidth,
+        bossEnabled: loaded.finalBoss?.enabled !== false,
+        bossName:
+          loaded.finalBoss?.enabled === false
+            ? 'REALM GAUNTLET'
+            : loaded.finalBoss?.name || 'BEHEMOTH MALPHAS',
+        bossMaxHp: loaded.finalBoss?.maxHp || 11800
+      };
+    }
+    const meta = this.campaignIndexPacks.find((p) => p.packId === this.selectedCampaignId);
+    if (meta) {
+      return {
+        packId: meta.packId,
+        title: meta.title || meta.packId,
+        zoneCount: meta.zoneCount || 4,
+        worldWidth: meta.worldWidth || 9600,
+        bossEnabled: meta.finalBossName !== 'NONE',
+        bossName: meta.finalBossName && meta.finalBossName !== 'NONE' ? meta.finalBossName : 'BEHEMOTH MALPHAS',
+        bossMaxHp: meta.finalBossMaxHp || 11800
+      };
+    }
+    return {
+      packId: this.selectedCampaignId,
+      title: this.selectedCampaignId.toUpperCase().replace(/_/g, ' '),
+      zoneCount: 4,
+      worldWidth: 9600,
+      bossEnabled: true,
+      bossName: 'BEHEMOTH MALPHAS',
+      bossMaxHp: 11800
+    };
+  }
+
   syncRosterSelectionUI(playSound = false, soundHeroKey = null) {
     const is2v2 = this.is2v2Mode();
     const isAdv = this.isAdventureMode();
@@ -3004,8 +3289,26 @@ export class Game {
       cob_monitor_inferno: 'INFERNO COB-OS',
       cob_monitor_glacial: 'BOREALIS COB-OS'
     };
+    const advCampaignBarEl =
+      this.advCampaignBar || document.getElementById('adv-campaign-selector-bar');
+    if (advCampaignBarEl) {
+      advCampaignBarEl.classList.toggle('hidden', !isAdv);
+      advCampaignBarEl.hidden = !isAdv;
+    }
+    const advCampaignSelectEl =
+      this.advCampaignSelect || document.getElementById('adv-campaign-select');
+    if (advCampaignSelectEl && isAdv) {
+      if (advCampaignSelectEl.options.length <= 1 && this.campaignIndexPacks.length > 0) {
+        this.renderCampaignSelectorOptions();
+      }
+      advCampaignSelectEl.value = this.selectedCampaignId || DEFAULT_ADVENTURE_CAMPAIGN_ID;
+    }
+    const customPackSummary = isAdv ? this.getActiveSelectedCampaignSummary() : null;
+
     const stageTitleStr = isAdv
-      ? 'AUTO: 4-ZONE CAMPAIGN MAP'
+      ? customPackSummary
+        ? `PACK: ${String(customPackSummary.title).toUpperCase()}`
+        : 'AUTO: 4-ZONE CAMPAIGN MAP'
       : stageNames[this.forcedStage || 'auto'] || 'AUTO REALM';
     const hpStr = this.vsTestModeUnlimitedHp ? 'SANDBOX UNLIMITED HP: ON' : 'MORTAL HP';
     const summaryStr = isAdv
@@ -3045,7 +3348,13 @@ export class Game {
 
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
-    if (this.slotRightName) this.slotRightName.textContent = isAdv ? 'BEHEMOTH MALPHAS' : c2.name;
+    if (this.slotRightName) {
+      this.slotRightName.textContent = isAdv
+        ? customPackSummary
+          ? String(customPackSummary.bossName).toUpperCase()
+          : 'BEHEMOTH MALPHAS'
+        : c2.name;
+    }
     if (this.slotRightPartnerName) this.slotRightPartnerName.textContent = c2b.name;
 
     if (this.slotBtnLeftPartner) this.slotBtnLeftPartner.classList.toggle('hidden', !is2v2);
@@ -3072,7 +3381,9 @@ export class Game {
     }
     if (p2CornerTagEl) {
       p2CornerTagEl.textContent = isAdv
-        ? 'COLOSSAL BOSS • ZONE IV'
+        ? customPackSummary
+          ? `STAGE PACK • ${customPackSummary.zoneCount} REALM${customPackSummary.zoneCount === 1 ? '' : 'S'}`
+          : 'COLOSSAL BOSS • ZONE IV'
         : is2v2
           ? 'TEAM 2'
           : 'CHALLENGER • RIGHT SIDE';
@@ -3268,10 +3579,16 @@ export class Game {
     const leftOther = is2v2 && this.inspectLeftRole === 'partner' ? c1 : c1b;
     const rightInspected = isAdv
       ? {
-          name: 'BEHEMOTH MALPHAS',
-          role: 'COLOSSAL ABYSSAL TITAN • ZONE IV FINAL BOSS',
+          name: customPackSummary
+            ? String(customPackSummary.bossName).toUpperCase()
+            : 'BEHEMOTH MALPHAS',
+          role: customPackSummary
+            ? `${String(customPackSummary.title).toUpperCase()} • ${customPackSummary.bossMaxHp.toLocaleString('en-US')} HP`
+            : 'COLOSSAL ABYSSAL TITAN • ZONE IV FINAL BOSS',
           theme: 'abyssal',
-          style: 'LEFT-CLIFF SIEGE COLOSSUS • 3-PHASE RAID BOSS',
+          style: customPackSummary
+            ? `${customPackSummary.zoneCount}-REALM (${customPackSummary.worldWidth}PX) STAGE PACK`
+            : 'LEFT-CLIFF SIEGE COLOSSUS • 3-PHASE RAID BOSS',
           trait: 'TRAIT: EXPOSED HEART-CORE SLUMP (+45% PUNISH DMG)',
           trueUltName: 'PHASE III: HELLFIRE MAW CATACLYSM',
           trueUltDesc:
@@ -3304,7 +3621,9 @@ export class Game {
 
     if (this.startDuelText) {
       if (this.isAdventureMode()) {
-        this.startDuelText.textContent = `START ADVENTURE • ${c1.name}`;
+        this.startDuelText.textContent = customPackSummary
+          ? `START PACK • ${c1.name}`
+          : `START ADVENTURE • ${c1.name}`;
       } else if (this.gameMode === '2v2_brawl') {
         this.startDuelText.textContent = `${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
       } else if (this.gameMode === '2v2_tag') {
@@ -3962,7 +4281,26 @@ export class Game {
 
       this.syncTestModeUI();
       this.syncPauseMenuUI();
-      this.adventure.startCampaign(this.leftFighter);
+      if (
+        !this.selectedCampaignId ||
+        this.selectedCampaignId === DEFAULT_ADVENTURE_CAMPAIGN_ID
+      ) {
+        this._pendingMatchPackId = null;
+        this.adventure.startCampaign(this.leftFighter, DEFAULT_ADVENTURE_CAMPAIGN_ID);
+      } else {
+        const selectedPack = this.loadedCampaignPacks.get(this.selectedCampaignId);
+        if (selectedPack) {
+          this._pendingMatchPackId = null;
+          this.adventure.startCampaign(this.leftFighter, selectedPack);
+        } else {
+          this._pendingMatchPackId = this.selectedCampaignId;
+          this.adventure.startCampaign(this.leftFighter, DEFAULT_ADVENTURE_CAMPAIGN_ID);
+          this.selectCampaignPack(this.selectedCampaignId, {
+            playSound: false,
+            restartActiveMatch: true
+          }).catch(() => {});
+        }
+      }
       this.updateHUD();
       return;
     }
@@ -5005,13 +5343,14 @@ export class Game {
     }
 
     const isWarningOnly = warningActive && !bossAlive;
-    const maxHp = Math.max(1, Math.round(boss?.maxHp || 11800));
+    const cfgBoss = adv?.getBossConfig?.();
+    const maxHp = Math.max(1, Math.round(boss?.maxHp || cfgBoss?.maxHp || 11800));
     const curHp = isWarningOnly ? maxHp : Math.max(0, Math.ceil(boss?.hp ?? maxHp));
     const hpRatio = isWarningOnly ? 1 : Math.max(0, Math.min(1, (boss?.hp ?? maxHp) / maxHp));
     const hpPctStr = `${(hpRatio * 100).toFixed(2)}%`;
 
     if (els.name) {
-      const nextName = boss?.name || 'BEHEMOTH MALPHAS';
+      const nextName = boss?.name || cfgBoss?.name || 'BEHEMOTH MALPHAS';
       if (els.name.textContent !== nextName) els.name.textContent = nextName;
     }
 

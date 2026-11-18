@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps138';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
@@ -139,6 +139,117 @@ const ARCH_EMISSIVE_ANCHORS = [
 
 // Lazy cache for coarse pixel-grid emissive bloom canvases extracted from the painted panoramas
 const PIXEL_BLOOM_CACHE = new Map();
+const CUSTOM_PANO_CACHE = new Map();
+let ACTIVE_CAMPAIGN_PACK = null;
+
+const BIOME_SLOT_BY_ID = {
+  cathedral: 0,
+  sanctuary: 0,
+  sylvan: 1,
+  starwood: 1,
+  boneyard: 2,
+  ossuary: 2,
+  abyssal: 3,
+  forge: 3,
+  clocktower: 3
+};
+
+function getBiomeSlotForId(id) {
+  if (!id || typeof id !== 'string') return 0;
+  const key = id.trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(BIOME_SLOT_BY_ID, key) ? BIOME_SLOT_BY_ID[key] : 0;
+}
+
+function getCampaignZoneAtX(wx) {
+  const zones = ACTIVE_CAMPAIGN_PACK?.zones;
+  if (!Array.isArray(zones) || zones.length === 0) return null;
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    if (wx < z.maxX || i === zones.length - 1) return z;
+  }
+  return zones[zones.length - 1];
+}
+
+function getBiomeSlotAtX(wx) {
+  if (!ACTIVE_CAMPAIGN_PACK?.zones?.length) {
+    return wx >= 7100 ? 3 : wx >= 4700 ? 2 : wx >= 2300 ? 1 : 0;
+  }
+  const z = getCampaignZoneAtX(wx);
+  return getBiomeSlotForId(z?.biome || z?.stageId);
+}
+
+function resolveCustomPanoSpec(rawSpec) {
+  if (!rawSpec) return null;
+  if (typeof rawSpec === 'string') {
+    const trimmed = rawSpec.trim();
+    if (!trimmed) return null;
+    return { url: trimmed, key: trimmed.slice(0, 96), texW: 0 };
+  }
+  if (typeof rawSpec === 'object') {
+    const url =
+      rawSpec.dataUrl ||
+      rawSpec.src ||
+      rawSpec.assetPath ||
+      (rawSpec.filename ? `assets/sprites/${rawSpec.filename}` : '');
+    if (typeof url === 'string' && url.trim()) {
+      const cleanUrl = url.trim();
+      const key = String(rawSpec.sha256 || rawSpec.filename || cleanUrl).slice(0, 96);
+      return {
+        url: cleanUrl,
+        key,
+        texW: Number.isFinite(rawSpec.width) && rawSpec.width > 0 ? Math.round(rawSpec.width) : 0
+      };
+    }
+    if (isImageReadyForBlit(rawSpec)) {
+      return {
+        img: rawSpec,
+        key: 'direct_img',
+        texW: rawSpec.naturalWidth || rawSpec.width || 0
+      };
+    }
+  }
+  return null;
+}
+
+function getCustomPanoImage(resolved) {
+  if (!resolved) return null;
+  if (resolved.img) return isImageReadyForBlit(resolved.img) ? resolved.img : null;
+  const { url } = resolved;
+  if (!url) return null;
+  let img = CUSTOM_PANO_CACHE.get(url);
+  if (!img && typeof Image !== 'undefined') {
+    img = new Image();
+    img.decoding = 'async';
+    img.src = url;
+    CUSTOM_PANO_CACHE.set(url, img);
+  }
+  return isImageReadyForBlit(img) ? img : null;
+}
+
+function resolveActivePanorama(planeField, zoneField, camX, fallbackImg, fallbackBloomKey, fallbackTexW) {
+  if (ACTIVE_CAMPAIGN_PACK) {
+    const curZone = getCampaignZoneAtX(camX);
+    const rawCandidate =
+      curZone?.customPanoramas?.[zoneField] ?? ACTIVE_CAMPAIGN_PACK.customPanoramas?.[planeField] ?? null;
+    const spec = resolveCustomPanoSpec(rawCandidate);
+    const customImg = getCustomPanoImage(spec);
+    if (customImg) {
+      const texW = customImg.naturalWidth || customImg.width || spec.texW || fallbackTexW;
+      return {
+        img: customImg,
+        bloomKey: `custom_${planeField}_${spec.key}`,
+        texW,
+        isCustom: true
+      };
+    }
+  }
+  return {
+    img: fallbackImg,
+    bloomKey: fallbackBloomKey,
+    texW: fallbackTexW,
+    isCustom: false
+  };
+}
 
 function hash2D(ix, iy) {
   let n = (Math.imul(ix | 0, 374761393) + Math.imul(iy | 0, 668265263)) | 0;
@@ -583,6 +694,23 @@ function drawWrappedPixelBloomLayer(
 }
 
 export class AdventureMapRenderer {
+  static setActiveCampaign(pack = null) {
+    ACTIVE_CAMPAIGN_PACK = pack && typeof pack === 'object' ? pack : null;
+    if (!ACTIVE_CAMPAIGN_PACK) {
+      for (const img of CUSTOM_PANO_CACHE.values()) {
+        if (img && typeof HTMLImageElement !== 'undefined' && img instanceof HTMLImageElement) {
+          img.src = '';
+        }
+      }
+      CUSTOM_PANO_CACHE.clear();
+    }
+    AdventureMapRenderer.clearBloomCache();
+  }
+
+  static getActiveCampaign() {
+    return ACTIVE_CAMPAIGN_PACK;
+  }
+
   static clearBloomCache() {
     for (const entry of PIXEL_BLOOM_CACHE.values()) {
       if (entry?.tight?.canvas) {
@@ -598,6 +726,29 @@ export class AdventureMapRenderer {
   }
 
   static getBiomeWeights(wx) {
+    const customZones = ACTIVE_CAMPAIGN_PACK?.zones;
+    if (Array.isArray(customZones) && customZones.length > 0) {
+      const weights = [0, 0, 0, 0];
+      if (customZones.length === 1) {
+        weights[getBiomeSlotForId(customZones[0].biome || customZones[0].stageId)] = 1;
+        return weights;
+      }
+      let remaining = 1;
+      for (let i = 0; i < customZones.length; i++) {
+        const z = customZones[i];
+        const slot = getBiomeSlotForId(z.biome || z.stageId);
+        if (i === customZones.length - 1) {
+          weights[slot] += remaining;
+        } else {
+          const seamX = Number.isFinite(z.maxX) ? z.maxX : (i + 1) * 2400;
+          const blend = smoothstep(seamX - 480, seamX + 480, wx);
+          const share = remaining * (1 - blend);
+          weights[slot] += share;
+          remaining -= share;
+        }
+      }
+      return weights;
+    }
     const t01 = smoothstep(1920, 2880, wx);
     const t12 = smoothstep(4320, 5280, wx);
     const t23 = smoothstep(6720, 7680, wx);
@@ -616,14 +767,19 @@ export class AdventureMapRenderer {
     t,
     infernoAlpha,
     stageVfx = null,
-    isGlacialPerm = false
+    isGlacialPerm = false,
+    vistaResolved = null,
+    archTopY = ARCH_WORLD_TOP_Y
   ) {
     const vfxSheet = stageVfx || PixelForge.ensureImage(assets?.advStageVfx);
+    const vistaInfo =
+      vistaResolved ||
+      resolveActivePanorama('vistaPano', 'vistaPng', camX, assets?.advVistaPano, 'advVistaPano_0_272', 1620);
 
-    // 1. Coarse Pixel-Grid Panorama Bloom extracted directly from `advVistaPano` (`1620x272`)
+    // 1. Coarse Pixel-Grid Panorama Bloom extracted directly from active Vista panorama (`1620x272`)
     const vistaBloom = getEmissivePixelBloomSet(
-      assets?.advVistaPano,
-      'advVistaPano_0_272',
+      vistaInfo.img,
+      vistaInfo.bloomKey,
       0,
       272,
       175,
@@ -638,7 +794,7 @@ export class AdventureMapRenderer {
         vistaBloom.wide,
         vistaBloom.texW,
         0.26,
-        ARCH_WORLD_TOP_Y,
+        archTopY,
         ARCH_WORLD_H,
         camX,
         viewLeft,
@@ -650,7 +806,7 @@ export class AdventureMapRenderer {
         vistaBloom.tight,
         vistaBloom.texW,
         0.26,
-        ARCH_WORLD_TOP_Y,
+        archTopY,
         ARCH_WORLD_H,
         camX,
         viewLeft,
@@ -658,6 +814,7 @@ export class AdventureMapRenderer {
         0.12 * breathTight
       );
     }
+    if (vistaInfo.isCustom) return;
 
     // 2. Synchronized Per-Feature Stepped Pixel-Grid Shimmer & `ArcaneShaderFX` Pixel Overlays (`0.26x`)
     const vistaAnchor = PANO_ORIGIN_WORLD_X + (1 - 0.26) * camX;
@@ -896,14 +1053,19 @@ export class AdventureMapRenderer {
     t,
     infernoAlpha,
     stageVfx = null,
-    isGlacialPerm = false
+    isGlacialPerm = false,
+    archResolved = null,
+    archTopY = ARCH_WORLD_TOP_Y
   ) {
     const vfxSheet = stageVfx || PixelForge.ensureImage(assets?.advStageVfx);
+    const archInfo =
+      archResolved ||
+      resolveActivePanorama('archPano', 'archPng', camX, assets?.advArchPano, 'advArchPano_0_272', 3930);
 
-    // 1. Coarse Pixel-Grid Emissive Panorama Bloom extracted directly from `advArchPano` (`3930x272`)
+    // 1. Coarse Pixel-Grid Emissive Panorama Bloom extracted directly from active Arch panorama (`3930x272`)
     const archBloom = getEmissivePixelBloomSet(
-      assets?.advArchPano,
-      'advArchPano_0_272',
+      archInfo.img,
+      archInfo.bloomKey,
       0,
       272,
       182,
@@ -920,7 +1082,7 @@ export class AdventureMapRenderer {
         archBloom.wide,
         archBloom.texW,
         0.86,
-        ARCH_WORLD_TOP_Y,
+        archTopY,
         ARCH_WORLD_H,
         camX,
         viewLeft,
@@ -932,7 +1094,7 @@ export class AdventureMapRenderer {
         archBloom.tight,
         archBloom.texW,
         0.86,
-        ARCH_WORLD_TOP_Y + riseStepY,
+        archTopY + riseStepY,
         ARCH_WORLD_H,
         camX,
         viewLeft,
@@ -957,13 +1119,120 @@ export class AdventureMapRenderer {
           infBloom.wide,
           infBloom.texW,
           0.86,
-          ARCH_WORLD_TOP_Y,
+          archTopY,
           ARCH_WORLD_H,
           camX,
           viewLeft,
           viewRight,
           0.13 * Math.min(1, infernoAlpha)
         );
+      }
+    }
+
+    // 1.5. Custom Stage Pack Authored World-Space Emissive Anchors (`zones[].emissiveAnchors`)
+    //      Active whenever a custom `archPano` PNG is loaded (when `adv_arch_pano.png` is used,
+    //      flames lock 0.0px onto its painted stone bowls below, tinted by `zone.bloomPalette`).
+    if (archInfo.isCustom && Array.isArray(ACTIVE_CAMPAIGN_PACK?.zones)) {
+      let emGlobalIdx = 0;
+      for (let zi = 0; zi < ACTIVE_CAMPAIGN_PACK.zones.length; zi++) {
+        const z = ACTIVE_CAMPAIGN_PACK.zones[zi];
+        const zoneBloomPal = PIXEL_BLOOM_PALETTES[z?.bloomPalette] ? z.bloomPalette : 'cyan';
+        const anchors = z?.emissiveAnchors;
+        if (!Array.isArray(anchors)) continue;
+        for (let ai = 0; ai < anchors.length; ai++) {
+          const em = anchors[ai];
+          emGlobalIdx++;
+          if (!em || !Number.isFinite(em.x)) continue;
+          const wx = em.x;
+          const worldW = Number.isFinite(em.worldW) && em.worldW > 0 ? em.worldW : 156;
+          const worldH = Number.isFinite(em.worldH) && em.worldH > 0 ? em.worldH : 164;
+          if (wx + worldW < viewLeft || wx - worldW > viewRight) continue;
+
+          const artY = Number.isFinite(em.artY) ? em.artY : 214;
+          const wy = archTopY + artY * PANO_SCALE;
+          const mode = em.mode === 'prism' || em.mode === 'moonwell' ? em.mode : 'brazier';
+          const basePalKey = PIXEL_BLOOM_PALETTES[em.paletteKey] ? em.paletteKey : zoneBloomPal;
+          const palKey = infernoAlpha > 0.65 ? 'ember' : isGlacialPerm ? 'cyan' : basePalKey;
+          const tierSize = em.tierSize === 3 ? 3 : 2;
+          const flick =
+            0.68 +
+            0.20 * Math.sin(t * (5.2 + (emGlobalIdx % 3) * 1.1) + emGlobalIdx * 1.73) +
+            0.12 * Math.cos(t * 8.4 + emGlobalIdx * 2.41);
+
+          drawSteppedPixelBloom(ctx, wx, wy, palKey, 5, tierSize, 0.11 * flick);
+
+          const fps = 13 + (emGlobalIdx % 4) * 1.25;
+          const frameCol = Math.floor(t * fps + emGlobalIdx * 3);
+          if (mode === 'moonwell') {
+            const mwRow = infernoAlpha > 0.55 ? 9 : Number.isFinite(em.vfxRow) ? em.vfxRow : 7;
+            blitStageOverlayPixelCell(
+              ctx,
+              vfxSheet,
+              mwRow,
+              frameCol,
+              wx - worldW * 0.5,
+              wy - worldH * 0.5,
+              worldW,
+              worldH,
+              0.66,
+              0.12
+            );
+          } else if (mode === 'prism') {
+            const prRow = infernoAlpha > 0.65 ? 9 : Number.isFinite(em.vfxRow) ? em.vfxRow : 11;
+            blitStageOverlayPixelCell(
+              ctx,
+              vfxSheet,
+              prRow,
+              frameCol,
+              wx - worldW * 0.5,
+              wy - worldH * 0.5,
+              worldW,
+              worldH,
+              0.68,
+              0.13
+            );
+          } else {
+            const baseRow = Number.isFinite(em.vfxRow) ? em.vfxRow : 0;
+            const vfxRow = infernoAlpha > 0.55 ? 6 : isGlacialPerm ? 1 : baseRow;
+            blitStageOverlayPixelCell(
+              ctx,
+              vfxSheet,
+              vfxRow,
+              frameCol,
+              wx - worldW * 0.5,
+              wy - worldH * 0.844,
+              worldW,
+              worldH,
+              0.90,
+              0.14
+            );
+            const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.gold;
+            for (let sp = 0; sp < 3; sp++) {
+              const sCyc = (t * (0.56 + sp * 0.19) + emGlobalIdx * 0.31 + sp * 0.33) % 1;
+              const sx =
+                wx +
+                (sp - 1) * 16 +
+                Math.sin(t * 3.4 + emGlobalIdx + sp * 2.2) * (10 + sCyc * 12);
+              const sy = wy - 26 - sCyc * 98;
+              drawRisingPixelSparkWake(
+                ctx,
+                sx,
+                sy,
+                sCyc < 0.45 ? 4 : 2,
+                pal[2],
+                pal[1],
+                Math.sin(sCyc * Math.PI) * 0.86
+              );
+            }
+          }
+
+          const tw = 0.5 + 0.5 * Math.sin(t * 6.2 + emGlobalIdx * 2.1);
+          if (tw > 0.45) {
+            const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.cyan;
+            const glintLift = mode === 'prism' ? 0 : -18;
+            drawPixelCrossGlint(ctx, wx, wy + glintLift, pal[1], pal[2], 4, 2, 0.13 * tw);
+          }
+        }
       }
     }
 
@@ -977,97 +1246,106 @@ export class AdventureMapRenderer {
     for (let k = firstK; k <= lastK; k++) {
       const baseWx = archAnchor + k * periodWorld;
 
-      for (let i = 0; i < ARCH_EMISSIVE_ANCHORS.length; i++) {
-        const [artX, artY, basePalKey, tierSize, baseVfxRow, anchorArtY, worldW, worldH, mode] =
-          ARCH_EMISSIVE_ANCHORS[i];
-        const wx = baseWx + artX * PANO_SCALE;
-        if (wx + 160 < viewLeft || wx - 160 > viewRight) continue;
+      if (!archInfo.isCustom) {
+        for (let i = 0; i < ARCH_EMISSIVE_ANCHORS.length; i++) {
+          const [artX, artY, basePalKey, tierSize, baseVfxRow, anchorArtY, worldW, worldH, mode] =
+            ARCH_EMISSIVE_ANCHORS[i];
+          const wx = baseWx + artX * PANO_SCALE;
+          if (wx + 160 < viewLeft || wx - 160 > viewRight) continue;
 
-        const wy = ARCH_WORLD_TOP_Y + artY * PANO_SCALE;
-        const wyAnchor = ARCH_WORLD_TOP_Y + anchorArtY * PANO_SCALE;
-        const palKey = infernoAlpha > 0.65 ? 'ember' : isGlacialPerm ? 'cyan' : basePalKey;
-        const flick =
-          0.68 +
-          0.20 * Math.sin(t * (5.2 + (i % 3) * 1.1) + i * 1.73) +
-          0.12 * Math.cos(t * 8.4 + i * 2.41);
+          const wy = archTopY + artY * PANO_SCALE;
+          const wyAnchor = archTopY + anchorArtY * PANO_SCALE;
+          const customZoneAtWx = ACTIVE_CAMPAIGN_PACK ? getCampaignZoneAtX(wx) : null;
+          const zonePalOverride =
+            customZoneAtWx?.bloomPalette && PIXEL_BLOOM_PALETTES[customZoneAtWx.bloomPalette]
+              ? customZoneAtWx.bloomPalette
+              : null;
+          const effectiveBasePal =
+            zonePalOverride && i % 2 === 0 ? zonePalOverride : basePalKey;
+          const palKey = infernoAlpha > 0.65 ? 'ember' : isGlacialPerm ? 'cyan' : effectiveBasePal;
+          const flick =
+            0.68 +
+            0.20 * Math.sin(t * (5.2 + (i % 3) * 1.1) + i * 1.73) +
+            0.12 * Math.cos(t * 8.4 + i * 2.41);
 
-        drawSteppedPixelBloom(ctx, wx, wy, palKey, 5, tierSize, 0.11 * flick);
+          drawSteppedPixelBloom(ctx, wx, wy, palKey, 5, tierSize, 0.11 * flick);
 
-        const fps = 13 + (i % 4) * 1.25;
-        const frameCol = Math.floor(t * fps + i * 3 + k * 5);
+          const fps = 13 + (i % 4) * 1.25;
+          const frameCol = Math.floor(t * fps + i * 3 + k * 5);
 
-        if (mode === 'moonwell') {
-          const mwRow = infernoAlpha > 0.55 ? 9 : 7;
-          blitStageOverlayPixelCell(
-            ctx,
-            vfxSheet,
-            mwRow,
-            frameCol,
-            wx - worldW * 0.5,
-            wyAnchor - worldH * 0.58,
-            worldW,
-            worldH,
-            0.66,
-            0.12
-          );
-        } else if (mode === 'prism') {
-          // Closed hanging glass lantern or solid root crystal (`Row 11` centered, NO upward flame tongue!)
-          const prRow = infernoAlpha > 0.65 ? 9 : 11;
-          blitStageOverlayPixelCell(
-            ctx,
-            vfxSheet,
-            prRow,
-            frameCol,
-            wx - worldW * 0.5,
-            wyAnchor - worldH * 0.50,
-            worldW,
-            worldH,
-            0.68,
-            0.13
-          );
-        } else {
-          // Wide-Basin Standing Brazier / Spirit Bowl / Soul-Pyre / Hellfire Cauldron (`lip = 0.844`!)
-          const vfxRow =
-            infernoAlpha > 0.55 ? 6 : isGlacialPerm ? 1 : baseVfxRow;
-          blitStageOverlayPixelCell(
-            ctx,
-            vfxSheet,
-            vfxRow,
-            frameCol,
-            wx - worldW * 0.5,
-            wyAnchor - worldH * 0.844,
-            worldW,
-            worldH,
-            0.90,
-            0.14
-          );
-
-          // 3 character-VFX-style rising pixel sparks/embers across the full basin width
-          const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.gold;
-          for (let sp = 0; sp < 3; sp++) {
-            const sCyc = (t * (0.56 + sp * 0.19) + i * 0.31 + sp * 0.33) % 1;
-            const sx =
-              wx +
-              (sp - 1) * 16 +
-              Math.sin(t * 3.4 + i + sp * 2.2) * (10 + sCyc * 12);
-            const sy = wyAnchor - 26 - sCyc * 98;
-            drawRisingPixelSparkWake(
+          if (mode === 'moonwell') {
+            const mwRow = infernoAlpha > 0.55 ? 9 : 7;
+            blitStageOverlayPixelCell(
               ctx,
-              sx,
-              sy,
-              sCyc < 0.45 ? 4 : 2,
-              pal[2],
-              pal[1],
-              Math.sin(sCyc * Math.PI) * 0.86
+              vfxSheet,
+              mwRow,
+              frameCol,
+              wx - worldW * 0.5,
+              wyAnchor - worldH * 0.58,
+              worldW,
+              worldH,
+              0.66,
+              0.12
             );
-          }
-        }
+          } else if (mode === 'prism') {
+            // Closed hanging glass lantern or solid root crystal (`Row 11` centered, NO upward flame tongue!)
+            const prRow = infernoAlpha > 0.65 ? 9 : 11;
+            blitStageOverlayPixelCell(
+              ctx,
+              vfxSheet,
+              prRow,
+              frameCol,
+              wx - worldW * 0.5,
+              wyAnchor - worldH * 0.50,
+              worldW,
+              worldH,
+              0.68,
+              0.13
+            );
+          } else {
+            // Wide-Basin Standing Brazier / Spirit Bowl / Soul-Pyre / Hellfire Cauldron (`lip = 0.844`!)
+            const vfxRow =
+              infernoAlpha > 0.55 ? 6 : isGlacialPerm ? 1 : baseVfxRow;
+            blitStageOverlayPixelCell(
+              ctx,
+              vfxSheet,
+              vfxRow,
+              frameCol,
+              wx - worldW * 0.5,
+              wyAnchor - worldH * 0.844,
+              worldW,
+              worldH,
+              0.90,
+              0.14
+            );
 
-        const tw = 0.5 + 0.5 * Math.sin(t * 6.2 + i * 2.1);
-        if (tw > 0.45) {
-          const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.cyan;
-          const glintLift = mode === 'prism' ? 0 : -18;
-          drawPixelCrossGlint(ctx, wx, wy + glintLift, pal[1], pal[2], 4, 2, 0.13 * tw);
+            // 3 character-VFX-style rising pixel sparks/embers across the full basin width
+            const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.gold;
+            for (let sp = 0; sp < 3; sp++) {
+              const sCyc = (t * (0.56 + sp * 0.19) + i * 0.31 + sp * 0.33) % 1;
+              const sx =
+                wx +
+                (sp - 1) * 16 +
+                Math.sin(t * 3.4 + i + sp * 2.2) * (10 + sCyc * 12);
+              const sy = wyAnchor - 26 - sCyc * 98;
+              drawRisingPixelSparkWake(
+                ctx,
+                sx,
+                sy,
+                sCyc < 0.45 ? 4 : 2,
+                pal[2],
+                pal[1],
+                Math.sin(sCyc * Math.PI) * 0.86
+              );
+            }
+          }
+
+          const tw = 0.5 + 0.5 * Math.sin(t * 6.2 + i * 2.1);
+          if (tw > 0.45) {
+            const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.cyan;
+            const glintLift = mode === 'prism' ? 0 : -18;
+            drawPixelCrossGlint(ctx, wx, wy + glintLift, pal[1], pal[2], 4, 2, 0.13 * tw);
+          }
         }
       }
 
@@ -1077,7 +1355,18 @@ export class AdventureMapRenderer {
         const cx = baseWx + bayCenterPx * PANO_SCALE;
         if (cx + 760 < viewLeft || cx - 760 > viewRight) continue;
 
-        const z = infernoAlpha > 0.65 ? 3 : b <= 2 ? 0 : b <= 4 ? 1 : b <= 6 ? 2 : 3;
+        const z =
+          infernoAlpha > 0.65
+            ? 3
+            : ACTIVE_CAMPAIGN_PACK?.zones?.length
+              ? getBiomeSlotAtX(cx)
+              : b <= 2
+                ? 0
+                : b <= 4
+                  ? 1
+                  : b <= 6
+                    ? 2
+                    : 3;
         const rayBreath = 0.72 + 0.28 * Math.sin(t * 1.85 + b * 1.4);
 
         if (z === 0) {
@@ -1213,14 +1502,20 @@ export class AdventureMapRenderer {
     t,
     infernoAlpha,
     stageVfx = null,
-    isGlacialPerm = false
+    isGlacialPerm = false,
+    floorResolved = null,
+    roadTopY = ADVENTURE_ROAD_TOP_Y,
+    floorWorldH = FLOOR_WORLD_H
   ) {
     const vfxSheet = stageVfx || PixelForge.ensureImage(assets?.advStageVfx);
+    const floorInfo =
+      floorResolved ||
+      resolveActivePanorama('floorPano', 'floorPng', camX, assets?.advFloorPano, 'advFloorPano_0_96', 4570);
 
-    // 1. Coarse Pixel-Grid Emissive Floor Bloom extracted directly from `advFloorPano` (`4570x96`)
+    // 1. Coarse Pixel-Grid Emissive Floor Bloom extracted directly from active Floor panorama (`4570x96`)
     const floorBloom = getEmissivePixelBloomSet(
-      assets?.advFloorPano,
-      'advFloorPano_0_96',
+      floorInfo.img,
+      floorInfo.bloomKey,
       0,
       96,
       172,
@@ -1234,8 +1529,8 @@ export class AdventureMapRenderer {
         floorBloom.wide,
         floorBloom.texW,
         1.0,
-        ADVENTURE_ROAD_TOP_Y,
-        FLOOR_WORLD_H,
+        roadTopY,
+        floorWorldH,
         camX,
         viewLeft,
         viewRight,
@@ -1246,8 +1541,8 @@ export class AdventureMapRenderer {
         floorBloom.tight,
         floorBloom.texW,
         1.0,
-        ADVENTURE_ROAD_TOP_Y,
-        FLOOR_WORLD_H,
+        roadTopY,
+        floorWorldH,
         camX,
         viewLeft,
         viewRight,
@@ -1263,7 +1558,7 @@ export class AdventureMapRenderer {
     for (let s = firstSeg; s <= lastSeg; s++) {
       const baseX = s * segSpan;
       const midX = baseX + 240;
-      const z = infernoAlpha > 0.6 ? 3 : midX >= 7100 ? 3 : midX >= 4700 ? 2 : midX >= 2300 ? 1 : 0;
+      const z = infernoAlpha > 0.6 ? 3 : getBiomeSlotAtX(midX);
       const pulse = 0.58 + 0.42 * Math.sin(t * 3.4 + s * 1.3);
 
       if (z === 0) {
@@ -1425,6 +1720,38 @@ export class AdventureMapRenderer {
     const assets = PixelForge.initAssets();
     const stageVfx = PixelForge.ensureImage(assets?.advStageVfx);
 
+    const wc = ACTIVE_CAMPAIGN_PACK?.walkableCauseway;
+    const roadTopY = Number.isFinite(wc?.roadTopY) ? wc.roadTopY : ADVENTURE_ROAD_TOP_Y;
+    const roadBotY = Number.isFinite(wc?.roadBotY) ? wc.roadBotY : ADVENTURE_ROAD_BOT_Y;
+    const roadMidY = Number.isFinite(wc?.midY) ? wc.midY : 561;
+    const archTopY = Math.round(roadTopY - 264 * PANO_SCALE);
+    const floorWorldH = Math.max(FLOOR_WORLD_H, roadBotY - roadTopY + 2);
+
+    const vistaInfo = resolveActivePanorama(
+      'vistaPano',
+      'vistaPng',
+      camX,
+      assets?.advVistaPano,
+      'advVistaPano_0_272',
+      1620
+    );
+    const archInfo = resolveActivePanorama(
+      'archPano',
+      'archPng',
+      camX,
+      assets?.advArchPano,
+      'advArchPano_0_272',
+      3930
+    );
+    const floorInfo = resolveActivePanorama(
+      'floorPano',
+      'floorPng',
+      camX,
+      assets?.advFloorPano,
+      'advFloorPano_0_96',
+      4570
+    );
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
@@ -1462,25 +1789,25 @@ export class AdventureMapRenderer {
     const midVaultG = Math.round(5 * 0.35 + ambG * 0.65);
     const midVaultB = Math.round(10 * 0.35 + ambB * 0.65);
 
-    const skySpan = Math.max(1, ADVENTURE_ROAD_TOP_Y - skyTopY);
+    const skySpan = Math.max(1, roadTopY - skyTopY);
     const darkCeilStop = Math.max(
       0.04,
-      Math.min(0.70, (ARCH_WORLD_TOP_Y - 76 - skyTopY) / skySpan)
+      Math.min(0.70, (archTopY - 76 - skyTopY) / skySpan)
     );
     const archSeamStop = Math.max(
       darkCeilStop + 0.02,
-      Math.min(0.80, (ARCH_WORLD_TOP_Y - 6 - skyTopY) / skySpan)
+      Math.min(0.80, (archTopY - 6 - skyTopY) / skySpan)
     );
     const midVaultStop = Math.max(
       archSeamStop + 0.04,
-      Math.min(0.94, (ARCH_WORLD_TOP_Y + 320 - skyTopY) / skySpan)
+      Math.min(0.94, (archTopY + 320 - skyTopY) / skySpan)
     );
     const skyGradKey = `${ambR},${ambG},${ambB}`;
     const skyGrad = getCachedVerticalGrad(
       ctx,
       'sky',
       skyTopY,
-      ADVENTURE_ROAD_TOP_Y,
+      roadTopY,
       skyGradKey,
       (g) => {
         g.addColorStop(0, '#04050a');
@@ -1491,23 +1818,23 @@ export class AdventureMapRenderer {
       }
     );
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(viewLeft, skyTopY, viewW, ADVENTURE_ROAD_TOP_Y - skyTopY + 16);
+    ctx.fillRect(viewLeft, skyTopY, viewW, roadTopY - skyTopY + 16);
 
     // =========================================================================
     // PLANE 1 (`0.26x`): FAR ABYSSAL ECLIPSE CANYON VISTA (`advVistaPano`, `1620x272`)
     // =========================================================================
     drawWrappedPanorama(
       ctx,
-      assets?.advVistaPano,
+      vistaInfo.img,
       0,
       272,
       0.26,
-      ARCH_WORLD_TOP_Y,
+      archTopY,
       ARCH_WORLD_H,
       camX,
       viewLeft,
       viewRight,
-      1620
+      vistaInfo.texW
     );
 
     AdventureMapRenderer.renderLiveVistaEffects(
@@ -1519,16 +1846,18 @@ export class AdventureMapRenderer {
       t,
       infernoAlpha,
       stageVfx,
-      isGlacialPerm
+      isGlacialPerm,
+      vistaInfo,
+      archTopY
     );
 
-    // Top edge feather blending `advVistaPano` (`ARCH_WORLD_TOP_Y = -257`) into Plane 0 darkforge vault shadow
+    // Top edge feather blending `advVistaPano` (`archTopY = -257`) into Plane 0 darkforge vault shadow
     const topBlendKey = `${seamR},${seamG},${seamB}`;
     const topBlendGrad = getCachedVerticalGrad(
       ctx,
       'topBlend',
-      ARCH_WORLD_TOP_Y - 8,
-      ARCH_WORLD_TOP_Y + 58,
+      archTopY - 8,
+      archTopY + 58,
       topBlendKey,
       (g) => {
         g.addColorStop(0, `rgb(${seamR},${seamG},${seamB})`);
@@ -1537,7 +1866,7 @@ export class AdventureMapRenderer {
       }
     );
     ctx.fillStyle = topBlendGrad;
-    ctx.fillRect(viewLeft, ARCH_WORLD_TOP_Y - 8, viewW, 66);
+    ctx.fillRect(viewLeft, archTopY - 8, viewW, 66);
 
     // =========================================================================
     // PLANE 1.5 (`0.70x`): MID-CHASM DRIFTING CANYON MIST & STEPPED PIXEL-BAND BLOOM VEILS
@@ -1569,7 +1898,7 @@ export class AdventureMapRenderer {
       ctx,
       'canyonMist',
       175,
-      ADVENTURE_ROAD_TOP_Y + 8,
+      roadTopY + 8,
       `${mistR},${mistG},${mistB}`,
       (g) => {
         g.addColorStop(0, `rgba(${mistR},${mistG},${mistB},0)`);
@@ -1578,13 +1907,18 @@ export class AdventureMapRenderer {
       }
     );
     ctx.fillStyle = canyonMist;
-    ctx.fillRect(viewLeft, 175, viewW, ADVENTURE_ROAD_TOP_Y - 167);
+    ctx.fillRect(viewLeft, 175, viewW, roadTopY - 167);
 
     // Stepped pixel-band atmospheric horizon shimmer (`0` circular radial gradients!)
     const mistAnchor = (1 - 0.70) * camX - t * 18;
     const mistStep = 420;
     const mStart = Math.floor((viewLeft - mistAnchor) / mistStep) - 1;
     const mEnd = Math.ceil((viewRight - mistAnchor) / mistStep) + 1;
+    const activeZone = getCampaignZoneAtX(camX);
+    const customZoneMistHex =
+      activeZone?.bloomPalette && PIXEL_BLOOM_PALETTES[activeZone.bloomPalette]
+        ? PIXEL_BLOOM_PALETTES[activeZone.bloomPalette][1]
+        : null;
     const mistHex =
       infernoAlpha > 0.45 || (camWeights[3] > 0.45 && !isGlacialPerm)
         ? '#fb923c'
@@ -1592,11 +1926,13 @@ export class AdventureMapRenderer {
           ? '#67e8f9'
           : isShogunatePerm
             ? '#fda4af'
-            : camWeights[2] > 0.45
-              ? '#a855f7'
-              : camWeights[1] > 0.45
-                ? '#2dd4bf'
-                : '#38bdf8';
+            : customZoneMistHex
+              ? customZoneMistHex
+              : camWeights[2] > 0.45
+                ? '#a855f7'
+                : camWeights[1] > 0.45
+                  ? '#2dd4bf'
+                  : '#38bdf8';
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = mistHex;
@@ -1619,16 +1955,16 @@ export class AdventureMapRenderer {
     // =========================================================================
     drawWrappedPanorama(
       ctx,
-      assets?.advArchPano,
+      archInfo.img,
       0,
       272,
       0.86,
-      ARCH_WORLD_TOP_Y,
+      archTopY,
       ARCH_WORLD_H,
       camX,
       viewLeft,
       viewRight,
-      3930
+      archInfo.texW
     );
 
     if (infernoAlpha > 0.01 && assets?.advInfernoPano) {
@@ -1640,7 +1976,7 @@ export class AdventureMapRenderer {
         0,
         272,
         0.86,
-        ARCH_WORLD_TOP_Y,
+        archTopY,
         ARCH_WORLD_H,
         camX,
         viewLeft,
@@ -1659,7 +1995,9 @@ export class AdventureMapRenderer {
       t,
       infernoAlpha,
       stageVfx,
-      isGlacialPerm
+      isGlacialPerm,
+      archInfo,
+      archTopY
     );
 
     // =========================================================================
@@ -1667,20 +2005,20 @@ export class AdventureMapRenderer {
     // =========================================================================
     const floorDrawn = drawWrappedPanorama(
       ctx,
-      assets?.advFloorPano,
+      floorInfo.img,
       0,
       96,
       1.0,
-      ADVENTURE_ROAD_TOP_Y,
-      FLOOR_WORLD_H,
+      roadTopY,
+      floorWorldH,
       camX,
       viewLeft,
       viewRight,
-      4570
+      floorInfo.texW
     );
     if (!floorDrawn) {
       ctx.fillStyle = '#141926';
-      ctx.fillRect(viewLeft, ADVENTURE_ROAD_TOP_Y, viewW, ADVENTURE_ROAD_BOT_Y - ADVENTURE_ROAD_TOP_Y);
+      ctx.fillRect(viewLeft, roadTopY, viewW, roadBotY - roadTopY);
     }
 
     if (infernoAlpha > 0.01 && assets?.advInfernoPano) {
@@ -1692,8 +2030,8 @@ export class AdventureMapRenderer {
         264,
         96,
         1.0,
-        ADVENTURE_ROAD_TOP_Y,
-        FLOOR_WORLD_H,
+        roadTopY,
+        floorWorldH,
         camX,
         viewLeft,
         viewRight,
@@ -1711,15 +2049,18 @@ export class AdventureMapRenderer {
       t,
       infernoAlpha,
       stageVfx,
-      isGlacialPerm
+      isGlacialPerm,
+      floorInfo,
+      roadTopY,
+      floorWorldH
     );
 
-    // Subtle grounded contact occlusion right under the `y = 436` stone curb (`alpha <= 0.24`)
+    // Subtle grounded contact occlusion right under the stone curb (`alpha <= 0.24`)
     const curbShadow = getCachedVerticalGrad(
       ctx,
       'curbShadow',
-      ADVENTURE_ROAD_TOP_Y - 2,
-      ADVENTURE_ROAD_TOP_Y + 14,
+      roadTopY - 2,
+      roadTopY + 14,
       'curb',
       (g) => {
         g.addColorStop(0, 'rgba(4, 6, 12, 0.24)');
@@ -1728,12 +2069,15 @@ export class AdventureMapRenderer {
       }
     );
     ctx.fillStyle = curbShadow;
-    ctx.fillRect(viewLeft, ADVENTURE_ROAD_TOP_Y - 2, viewW, 16);
+    ctx.fillRect(viewLeft, roadTopY - 2, viewW, 16);
 
-    // Pixel-Stepped Boss Sanctuary Runic Floor Seal (`x: 8920`) & Fissure Surges (`0` 3D polygons / vector ellipses!)
-    const bossSealX = 8920;
-    const bossSealY = 561;
-    if (bossSealX + 260 > viewLeft && bossSealX - 260 < viewRight) {
+    // Pixel-Stepped Boss Sanctuary Runic Floor Seal (`x: 8920` default, dynamic for Stage Packs) & Fissure Surges
+    const bossCfg = ACTIVE_CAMPAIGN_PACK?.finalBoss;
+    const bossSealEnabled = bossCfg ? bossCfg.enabled !== false : true;
+    const bossAnchorX = Number.isFinite(bossCfg?.anchorX) ? bossCfg.anchorX : 9335;
+    const bossSealX = bossAnchorX - 415;
+    const bossSealY = Number.isFinite(bossCfg?.groundY) ? bossCfg.groundY : roadMidY;
+    if (bossSealEnabled && bossSealX + 260 > viewLeft && bossSealX - 260 < viewRight) {
       const sealPulse = 0.65 + 0.35 * Math.sin(t * 3.1);
       const runeHex = isGlacialPerm && infernoAlpha <= 0.4 ? '#38bdf8' : infernoAlpha > 0.4 ? '#fb923c' : '#ef4444';
       const coreHex = isGlacialPerm && infernoAlpha <= 0.4 ? '#e0f2fe' : '#fef08a';
@@ -1808,7 +2152,7 @@ export class AdventureMapRenderer {
     }
 
     // Lower cliffside stone coping & abyssal escarpment below walkable road (`y: 686 .. viewBot`)
-    const curbY = ADVENTURE_ROAD_BOT_Y;
+    const curbY = roadBotY;
     const cliffH = Math.max(140, viewBot - curbY + 40);
     const cliffTopHex = infernoAlpha > 0.45 || camWeights[3] > 0.5 ? '#1c0f14' : '#111625';
     const cliffGradEnd = curbY + Math.min(480, cliffH);
@@ -1826,9 +2170,10 @@ export class AdventureMapRenderer {
     const cLast = Math.ceil(viewRight / copingW) + 1;
     for (let c = cFirst; c <= cLast; c++) {
       const cx = c * copingW;
-      const isWarm = infernoAlpha > 0.45 || cx >= 7100;
-      const isBone = !isWarm && cx >= 4700;
-      const isSylv = !isWarm && !isBone && cx >= 2300;
+      const bSlot = getBiomeSlotAtX(cx);
+      const isWarm = infernoAlpha > 0.45 || bSlot === 3;
+      const isBone = !isWarm && bSlot === 2;
+      const isSylv = !isWarm && !isBone && bSlot === 1;
       const topCol = isWarm ? '#5c2b29' : isBone ? '#3f3159' : isSylv ? '#244f4b' : '#2d3b55';
       const bodyCol = isWarm ? '#2b1417' : isBone ? '#211932' : isSylv ? '#142d2c' : '#182132';
       seloutBlock(ctx, cx, curbY, copingW, 20, bodyCol, topCol, '#080b14');
@@ -1883,17 +2228,23 @@ export class AdventureMapRenderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
+    const wcFg = ACTIVE_CAMPAIGN_PACK?.walkableCauseway;
+    const fgRoadBotY = Number.isFinite(wcFg?.roadBotY) ? wcFg.roadBotY : ADVENTURE_ROAD_BOT_Y;
+    const fgArchTopY = Math.round(
+      (Number.isFinite(wcFg?.roadTopY) ? wcFg.roadTopY : ADVENTURE_ROAD_TOP_Y) - 264 * PANO_SCALE
+    );
+
     for (let f = firstFg; f <= lastFg; f++) {
       const fx = Math.round(fgAnchor + f * fgPeriod);
-      const z = isInferno ? 3 : fx >= 7100 ? 3 : fx >= 4700 ? 2 : fx >= 2300 ? 1 : 0;
+      const z = isInferno ? 3 : getBiomeSlotAtX(fx);
 
       // 1. Near-Camera Foreground Abyssal Cliff Buttress Silhouette (`y = 690 .. viewBot`)
       const buttW = 92;
-      const buttH = Math.max(90, viewBot - 688);
+      const buttH = Math.max(90, viewBot - (fgRoadBotY + 2));
       ctx.fillStyle = 'rgba(5, 7, 14, 0.86)';
-      ctx.fillRect(fx - 46, 692, buttW, buttH);
+      ctx.fillRect(fx - 46, fgRoadBotY + 6, buttW, buttH);
       ctx.fillStyle = 'rgba(22, 30, 48, 0.55)';
-      ctx.fillRect(fx - 42, 690, buttW - 8, 5);
+      ctx.fillRect(fx - 42, fgRoadBotY + 4, buttW - 8, 5);
 
       // 2. Near-Camera `1.24x` Parallax Pixel Wind-Wisp / Crypt-Mist / Chasm-Ember Overlay (`adv_stage_vfx.png`)
       const fgWispRow = isGlacial ? 7 : z === 3 ? 9 : z === 2 ? 8 : 7;
@@ -1904,7 +2255,7 @@ export class AdventureMapRenderer {
         fgWispRow,
         Math.floor(t * 12 + Math.abs(f) * 5),
         fgDriftX - 82,
-        636,
+        fgRoadBotY - 50,
         164,
         78,
         0.44,
@@ -1979,13 +2330,13 @@ export class AdventureMapRenderer {
         );
       }
 
-      // 4. Overhead Vaulted Chain Silhouette anchored strictly under `ARCH_WORLD_TOP_Y` (`y = -248 .. -56`)
+      // 4. Overhead Vaulted Chain Silhouette anchored strictly under `archTopY` (`y = -248 .. -56`)
       if (viewTop < -48 && z !== 1) {
         const sway = Math.round(Math.sin(t * 1.4 + f * 1.7) * 4);
-        const chainTop = Math.max(viewTop, ARCH_WORLD_TOP_Y + 10);
+        const chainTop = Math.max(viewTop, fgArchTopY + 10);
         for (let ly = chainTop; ly < -56; ly += 14) {
           const u = (ly - chainTop) / Math.max(1, -56 - chainTop);
-          const topFade = Math.min(1, (ly - (ARCH_WORLD_TOP_Y + 6)) / 42);
+          const topFade = Math.min(1, (ly - (fgArchTopY + 6)) / 42);
           const lx = fx + Math.round(sway * u);
           ctx.globalAlpha = 0.82 * topFade;
           ctx.fillStyle = '#070912';

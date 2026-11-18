@@ -399,7 +399,8 @@ export class AdventureSkillSets {
     if (!player || !m || m.isDead || m.isFullyBurrowed) return false;
     const dir = facing >= 0 ? 1 : -1;
     if (m.isColossalBoss) {
-      return dir > 0 && player.x >= 8450;
+      const bossMinReachX = Math.max(80, (m.anchorX || 9335) - 885);
+      return dir > 0 && player.x >= bossMinReachX;
     }
     const { maxForward, laneTol } = this.getFreeAimEnvelope(player);
     const signedDx = (m.x - refX) * dir;
@@ -407,9 +408,10 @@ export class AdventureSkillSets {
     const pGy = Number.isFinite(player.groundY) ? player.groundY : player.y || 561;
     const mGy = Number.isFinite(m.groundY) ? m.groundY : m.y || 561;
     if (Math.abs(mGy - pGy) > laneTol) return false;
+    const worldW = this.adventure?.getWorldWidth?.() || 9600;
     if (
       this.adventure?.lockActive &&
-      (m.x < (this.adventure.lockMinX ?? 0) - 48 || m.x > (this.adventure.lockMaxX ?? 9600) + 48)
+      (m.x < (this.adventure.lockMinX ?? 0) - 48 || m.x > (this.adventure.lockMaxX ?? worldW) + 48)
     ) {
       return false;
     }
@@ -537,7 +539,7 @@ export class AdventureSkillSets {
         (propTarget.x - player.x) * (player.facing || 1) >= -36 &&
         (!this.adventure?.lockActive ||
           (propTarget.x >= (this.adventure.lockMinX ?? 0) &&
-            propTarget.x <= (this.adventure.lockMaxX ?? 9600)))
+            propTarget.x <= (this.adventure.lockMaxX ?? (this.adventure.getWorldWidth?.() || 9600))))
       ) {
         return propTarget;
       }
@@ -573,7 +575,7 @@ export class AdventureSkillSets {
         propTarget &&
         (!this.adventure?.lockActive ||
           (propTarget.x >= (this.adventure.lockMinX ?? 0) &&
-            propTarget.x <= (this.adventure.lockMaxX ?? 9600)))
+            propTarget.x <= (this.adventure.lockMaxX ?? (this.adventure.getWorldWidth?.() || 9600))))
       ) {
         return propTarget;
       }

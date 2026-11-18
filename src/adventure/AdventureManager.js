@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps137';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps137';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { Fighter } from '../entities/Fighter.js?v=30fps138';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps138';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps138';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps137';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps137';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps137';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps137';
+} from './AdventureProgression.js?v=30fps138';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps138';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps138';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps138';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -16,6 +16,417 @@ export const ADVENTURE_BOSS_MAX_WALK_X = 9250;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
 export const ADVENTURE_DEPTH_MAX_Y = 680;
 export const ADVENTURE_DEPTH_MID_Y = 561;
+export const DEFAULT_ADVENTURE_CAMPAIGN_ID = 'default';
+
+const CAMPAIGN_MONSTER_KIND_MAP = {
+  templar: 'templar',
+  astrologer: 'astrologer',
+  treant: 'treant',
+  sylph: 'dryad',
+  dryad: 'dryad',
+  ghoul: 'ghoul',
+  lich: 'cultist',
+  cultist: 'cultist',
+  imp: 'fiend',
+  fiend: 'fiend',
+  hellhound: 'brute',
+  brute: 'brute'
+};
+
+const ZONE_DEFAULT_META = [
+  {
+    id: 'outskirts',
+    stageId: 'cathedral',
+    biome: 'cathedral',
+    bloomPalette: 'cyan',
+    title: 'ZONE I • ECLIPSE OUTSKIRTS',
+    accentHex: '#38bdf8'
+  },
+  {
+    id: 'causeway',
+    stageId: 'sylvan',
+    biome: 'sylvan',
+    bloomPalette: 'emerald',
+    title: 'ZONE II • CURSED STARWOOD',
+    accentHex: '#34d399'
+  },
+  {
+    id: 'stronghold',
+    stageId: 'boneyard',
+    biome: 'boneyard',
+    bloomPalette: 'violet',
+    title: 'ZONE III • ABYSSAL BONE-GATE',
+    accentHex: '#c084fc'
+  },
+  {
+    id: 'blackpit',
+    stageId: 'clocktower',
+    biome: 'clocktower',
+    bloomPalette: 'ember',
+    title: 'ZONE IV • THRONE OF THE BLACK PIT',
+    accentHex: '#fb923c'
+  }
+];
+
+function sanitizeCampaignText(val, fallback = '', maxLen = 84) {
+  if (typeof val !== 'string') return fallback;
+  // Strip any Unicode pictographs/dingbats so imported JSON packs always uphold zero-emoji UI purity
+  const cleaned = val
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0E}\u{FE0F}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLen);
+  return cleaned || fallback;
+}
+
+function normalizeMonsterSpawnSpec(raw, zIdx, wIdx, sIdx, minX, maxX, minGy, maxGy, midGy) {
+  if (!raw || typeof raw !== 'object') return null;
+  const rawType = String(raw.engineKind || raw.type || raw.kind || 'templar')
+    .trim()
+    .toLowerCase();
+  const engineKind = CAMPAIGN_MONSTER_KIND_MAP[rawType] || 'templar';
+  const defaultX = minX + (wIdx === 0 ? 640 : 1680) + sIdx * 180;
+  const x = Math.max(
+    minX + 60,
+    Math.min(maxX - 60, Number.isFinite(raw.x) ? Math.round(raw.x) : defaultX)
+  );
+  const groundY = Math.max(
+    minGy + 8,
+    Math.min(maxGy - 8, Number.isFinite(raw.groundY) ? Math.round(raw.groundY) : midGy)
+  );
+  const isMiniBoss = Boolean(raw.isMiniBoss);
+  const isElite = Boolean(raw.isElite || isMiniBoss);
+  const maxHp =
+    Number.isFinite(raw.maxHp) && raw.maxHp > 0 ? Math.round(raw.maxHp) : null;
+  const defaultMiniScale =
+    engineKind === 'treant' || engineKind === 'brute' ? 1.36 : 1.24;
+  const spriteScale =
+    Number.isFinite(raw.spriteScale) && raw.spriteScale > 0
+      ? raw.spriteScale
+      : isMiniBoss
+        ? defaultMiniScale
+        : null;
+  const dmgScale =
+    Number.isFinite(raw.dmgScale) && raw.dmgScale > 0
+      ? raw.dmgScale
+      : isMiniBoss
+        ? 1.16
+        : null;
+  return {
+    id: sanitizeCampaignText(raw.id, `z${zIdx}_w${wIdx}_${sIdx}`, 48),
+    type: sanitizeCampaignText(raw.type || engineKind, engineKind, 24).toLowerCase(),
+    engineKind,
+    x,
+    groundY,
+    isElite,
+    isMiniBoss,
+    wardenName: isMiniBoss ? sanitizeCampaignText(raw.wardenName || raw.name, '', 48) : null,
+    wardenTitle: isMiniBoss ? sanitizeCampaignText(raw.wardenTitle || raw.title, '', 48) : null,
+    maxHp,
+    spriteScale,
+    dmgScale
+  };
+}
+
+/**
+ * Validates and normalizes an Arcane Pixel Studio Adventure Stage Pack (`schemaVersion: "1.0.0"`),
+ * accepting both primary Studio keys (`props`, `subWave0`/`subWave1`, `finalBoss`) and schema
+ * aliases (`destructibles`, `waves`, `boss`).
+ */
+export function normalizeAdventureCampaignPack(rawPack) {
+  if (!rawPack || typeof rawPack !== 'object' || Array.isArray(rawPack)) {
+    throw new Error('Invalid campaign pack: expected a JSON object.');
+  }
+
+  const rawId = sanitizeCampaignText(rawPack.packId || rawPack.id, 'custom_pack', 64)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const packId =
+    !rawId || rawId === DEFAULT_ADVENTURE_CAMPAIGN_ID ? 'custom_pack' : rawId;
+
+  const rawWc =
+    rawPack.walkableCauseway && typeof rawPack.walkableCauseway === 'object'
+      ? rawPack.walkableCauseway
+      : {};
+  const zoneWidth =
+    Number.isFinite(rawWc.zoneWidth) && rawWc.zoneWidth >= 1200
+      ? Math.round(rawWc.zoneWidth)
+      : 2400;
+  const roadTopY = Number.isFinite(rawWc.roadTopY) ? Math.round(rawWc.roadTopY) : 436;
+  const minY = Number.isFinite(rawWc.minY) ? Math.round(rawWc.minY) : ADVENTURE_DEPTH_MIN_Y;
+  const maxY = Number.isFinite(rawWc.maxY)
+    ? Math.max(minY + 80, Math.round(rawWc.maxY))
+    : ADVENTURE_DEPTH_MAX_Y;
+  const midY = Number.isFinite(rawWc.midY)
+    ? Math.round(rawWc.midY)
+    : Math.round((minY + maxY) * 0.5);
+  const roadBotY = Number.isFinite(rawWc.roadBotY)
+    ? Math.max(maxY + 4, Math.round(rawWc.roadBotY))
+    : 686;
+
+  const walkableCauseway = {
+    zoneWidth,
+    roadTopY,
+    minY,
+    midY,
+    maxY,
+    roadBotY
+  };
+
+  const rawZones = Array.isArray(rawPack.zones) ? rawPack.zones : [];
+  const rawZoneCount = Number.isFinite(rawPack.zoneCount)
+    ? Math.round(rawPack.zoneCount)
+    : rawZones.length || 4;
+  const zoneCount = Math.max(1, Math.min(4, rawZoneCount));
+  const worldWidth =
+    Number.isFinite(rawPack.worldWidth) && rawPack.worldWidth >= zoneWidth
+      ? Math.round(rawPack.worldWidth)
+      : zoneCount * zoneWidth;
+
+  // Support optional top-level `waves` array alias (`[{ zone, subWave, spawns }]` or flat spawn list)
+  const topWaveBuckets = Array.from({ length: zoneCount }, () => [[], []]);
+  if (Array.isArray(rawPack.waves)) {
+    for (let i = 0; i < rawPack.waves.length; i++) {
+      const entry = rawPack.waves[i];
+      if (!entry || typeof entry !== 'object') continue;
+      if (Array.isArray(entry.spawns) || Array.isArray(entry.monsters)) {
+        const list = entry.spawns || entry.monsters;
+        const zIdx = Math.max(
+          0,
+          Math.min(
+            zoneCount - 1,
+            Number.isFinite(entry.zone) ? entry.zone | 0 : Math.floor(i / 2)
+          )
+        );
+        const subIdx = Number.isFinite(entry.subWave)
+          ? entry.subWave >= 2
+            ? 1
+            : Math.max(0, Math.min(1, entry.subWave | 0))
+          : i % 2;
+        topWaveBuckets[zIdx][subIdx].push(...list);
+      } else {
+        const sx = Number.isFinite(entry.x) ? entry.x : 720;
+        const zIdx = Math.max(
+          0,
+          Math.min(
+            zoneCount - 1,
+            Number.isFinite(entry.zone) ? entry.zone | 0 : Math.floor(sx / zoneWidth)
+          )
+        );
+        const localX = sx - zIdx * zoneWidth;
+        const subIdx = Number.isFinite(entry.subWave)
+          ? entry.subWave >= 2
+            ? 1
+            : Math.max(0, Math.min(1, entry.subWave | 0))
+          : localX >= zoneWidth * 0.5
+            ? 1
+            : 0;
+        topWaveBuckets[zIdx][subIdx].push(entry);
+      }
+    }
+  }
+
+  const zones = [];
+  for (let zi = 0; zi < zoneCount; zi++) {
+    const rz = rawZones[zi] && typeof rawZones[zi] === 'object' ? rawZones[zi] : {};
+    const defMeta = ZONE_DEFAULT_META[Math.min(3, zi)];
+    const zMinX = Number.isFinite(rz.minX) ? Math.round(rz.minX) : zi * zoneWidth;
+    const zMaxX = Number.isFinite(rz.maxX)
+      ? Math.round(rz.maxX)
+      : zi === zoneCount - 1
+        ? worldWidth
+        : (zi + 1) * zoneWidth;
+    const zSpan = Math.max(800, zMaxX - zMinX);
+    const biome = sanitizeCampaignText(rz.biome || rz.stageId, defMeta.biome, 24).toLowerCase();
+    const stageId = sanitizeCampaignText(rz.stageId || rz.biome, defMeta.stageId, 24).toLowerCase();
+    const bloomPalette = sanitizeCampaignText(
+      rz.bloomPalette,
+      defMeta.bloomPalette,
+      16
+    ).toLowerCase();
+
+    const rawEmissives = Array.isArray(rz.emissiveAnchors) ? rz.emissiveAnchors : [];
+    const emissiveAnchors = rawEmissives
+      .filter((em) => em && typeof em === 'object' && Number.isFinite(em.x))
+      .map((em, ei) => ({
+        id: sanitizeCampaignText(em.id, `z${zi}_em_${ei}`, 48),
+        mode: em.mode === 'prism' || em.mode === 'moonwell' ? em.mode : 'brazier',
+        x: Math.round(em.x),
+        artY: Number.isFinite(em.artY) ? Math.round(em.artY) : 214,
+        paletteKey: sanitizeCampaignText(em.paletteKey, bloomPalette, 16).toLowerCase(),
+        tierSize: em.tierSize === 3 ? 3 : 2,
+        vfxRow: Number.isFinite(em.vfxRow) ? Math.max(0, Math.min(11, em.vfxRow | 0)) : 0,
+        worldW: Number.isFinite(em.worldW) && em.worldW > 0 ? Math.round(em.worldW) : 156,
+        worldH: Number.isFinite(em.worldH) && em.worldH > 0 ? Math.round(em.worldH) : 164
+      }));
+
+    const rawW0 = Array.isArray(rz.subWave0)
+      ? rz.subWave0
+      : Array.isArray(rz.waves?.subWave0)
+        ? rz.waves.subWave0
+        : Array.isArray(rz.waves?.[0])
+          ? rz.waves[0]
+          : topWaveBuckets[zi][0];
+    const rawW1 = Array.isArray(rz.subWave1)
+      ? rz.subWave1
+      : Array.isArray(rz.waves?.subWave1)
+        ? rz.waves.subWave1
+        : Array.isArray(rz.waves?.[1])
+          ? rz.waves[1]
+          : topWaveBuckets[zi][1];
+
+    const subWave0 = rawW0
+      .map((s, si) =>
+        normalizeMonsterSpawnSpec(s, zi, 0, si, zMinX, zMaxX, minY, maxY, midY)
+      )
+      .filter(Boolean);
+    const subWave1 = rawW1
+      .map((s, si) =>
+        normalizeMonsterSpawnSpec(s, zi, 1, si, zMinX, zMaxX, minY, maxY, midY)
+      )
+      .filter(Boolean);
+
+    zones.push({
+      index: zi,
+      id: sanitizeCampaignText(rz.id, defMeta.id, 36),
+      stageId,
+      biome,
+      bloomPalette,
+      title: sanitizeCampaignText(rz.title, defMeta.title, 64),
+      minX: zMinX,
+      maxX: zMaxX,
+      triggerX: Number.isFinite(rz.triggerX)
+        ? Math.round(rz.triggerX)
+        : zi === 0
+          ? 0
+          : zMinX + 140,
+      midTriggerX: Number.isFinite(rz.midTriggerX)
+        ? Math.round(rz.midTriggerX)
+        : zMinX + Math.round(zSpan * 0.558),
+      sub1LockMinX: Number.isFinite(rz.sub1LockMinX)
+        ? Math.round(rz.sub1LockMinX)
+        : zi === 0
+          ? 80
+          : zMinX + 20,
+      sub1LockMaxX: Number.isFinite(rz.sub1LockMaxX)
+        ? Math.round(rz.sub1LockMaxX)
+        : zMinX + Math.round(zSpan * 0.508),
+      lockMinX: Number.isFinite(rz.lockMinX)
+        ? Math.round(rz.lockMinX)
+        : zMinX + Math.round(zSpan * 0.5),
+      lockMaxX: Number.isFinite(rz.lockMaxX)
+        ? Math.round(rz.lockMaxX)
+        : zMaxX - (zi === zoneCount - 1 ? 80 : 40),
+      isBossZone: rz.isBossZone !== undefined ? Boolean(rz.isBossZone) : zi === zoneCount - 1,
+      customPanoramas:
+        rz.customPanoramas && typeof rz.customPanoramas === 'object'
+          ? {
+              vistaPng: rz.customPanoramas.vistaPng || null,
+              archPng: rz.customPanoramas.archPng || null,
+              floorPng: rz.customPanoramas.floorPng || null
+            }
+          : { vistaPng: null, archPng: null, floorPng: null },
+      emissiveAnchors,
+      subWave0,
+      subWave1
+    });
+  }
+
+  const rawPropsSource = Array.isArray(rawPack.props)
+    ? rawPack.props
+    : Array.isArray(rawPack.destructibles)
+      ? rawPack.destructibles
+      : [];
+  const props = rawPropsSource
+    .filter((p) => p && typeof p === 'object')
+    .map((p, pi) => {
+      const px = Math.max(
+        90,
+        Math.min(worldWidth - 90, Number.isFinite(p.x) ? Math.round(p.x) : 420 + pi * 420)
+      );
+      const pGy = Math.max(
+        minY + 4,
+        Math.min(maxY - 4, Number.isFinite(p.groundY) ? Math.round(p.groundY) : midY)
+      );
+      const pZone = Number.isFinite(p.zone)
+        ? Math.max(0, Math.min(zoneCount - 1, p.zone | 0))
+        : Math.max(0, Math.min(zoneCount - 1, Math.floor(px / zoneWidth)));
+      const dropType =
+        p.dropType === 'hp' ||
+        p.dropType === 'ember' ||
+        p.dropType === 'relic' ||
+        p.dropType === 'mana' ||
+        p.dropType === 'ult'
+          ? p.dropType
+          : null;
+      return {
+        id: sanitizeCampaignText(p.id, `prop_${pi}`, 48),
+        zone: pZone,
+        kind: sanitizeCampaignText(p.kind, 'eclipse_brazier', 40),
+        x: px,
+        groundY: pGy,
+        dropType,
+        bonusDrop: p.bonusDrop ?? null,
+        isArtifact: Boolean(p.isArtifact),
+        maxHp: Number.isFinite(p.maxHp) && p.maxHp > 0 ? Math.round(p.maxHp) : null,
+        ultAmt: Number.isFinite(p.ultAmt) && p.ultAmt > 0 ? Math.round(p.ultAmt) : 20,
+        relicAmt: Number.isFinite(p.relicAmt) && p.relicAmt > 0 ? Math.round(p.relicAmt) : 14
+      };
+    });
+
+  const rawBoss =
+    rawPack.finalBoss && typeof rawPack.finalBoss === 'object'
+      ? rawPack.finalBoss
+      : rawPack.boss && typeof rawPack.boss === 'object'
+        ? rawPack.boss
+        : null;
+  const finalBoss = {
+    enabled: rawBoss ? rawBoss.enabled !== false : true,
+    kind: 'archfiend',
+    name: sanitizeCampaignText(rawBoss?.name, 'BEHEMOTH MALPHAS', 56),
+    maxHp:
+      Number.isFinite(rawBoss?.maxHp) && rawBoss.maxHp > 0
+        ? Math.round(rawBoss.maxHp)
+        : 11800,
+    anchorX: Number.isFinite(rawBoss?.anchorX)
+      ? Math.max(960, Math.min(worldWidth - 120, Math.round(rawBoss.anchorX)))
+      : worldWidth - 265,
+    groundY: Number.isFinite(rawBoss?.groundY)
+      ? Math.max(minY + 12, Math.min(maxY - 12, Math.round(rawBoss.groundY)))
+      : midY
+  };
+
+  const rawCustomPanos =
+    rawPack.customPanoramas && typeof rawPack.customPanoramas === 'object'
+      ? rawPack.customPanoramas
+      : {};
+  const customPanoramas = {
+    vistaPano: rawCustomPanos.vistaPano || null,
+    archPano: rawCustomPanos.archPano || null,
+    floorPano: rawCustomPanos.floorPano || null
+  };
+
+  return {
+    schemaVersion: sanitizeCampaignText(rawPack.schemaVersion, '1.0.0', 16),
+    packId,
+    title: sanitizeCampaignText(rawPack.title, packId.toUpperCase().replace(/_/g, ' '), 72),
+    subtitle: sanitizeCampaignText(
+      rawPack.subtitle,
+      `${zoneCount}-REALM CUSTOM ADVENTURE STAGE PACK`,
+      96
+    ),
+    author: sanitizeCampaignText(rawPack.author, 'Arcane Pixel Studio', 48),
+    version: sanitizeCampaignText(rawPack.version, '1.0.0', 16),
+    zoneCount,
+    worldWidth,
+    walkableCauseway,
+    customPanoramas,
+    zones,
+    props,
+    finalBoss
+  };
+}
 
 export const ADVENTURE_ZONES = [
   {
@@ -97,8 +508,13 @@ export class AdventureManager {
     this.destructibles = new AdventureDestructibles(this);
     this.isSkillTreeOpen = false;
 
+    this.activeCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
+    this.activeCampaignPack = null;
+    this._campaignPackCache = new Map();
+
     this.depthMinY = ADVENTURE_DEPTH_MIN_Y;
     this.depthMaxY = ADVENTURE_DEPTH_MAX_Y;
+    this.depthMidY = ADVENTURE_DEPTH_MID_Y;
 
     this.zoneIndex = 0;
     this.subWave = 0;
@@ -970,7 +1386,171 @@ export class AdventureManager {
     }
   }
 
-  startCampaign(playerFighter) {
+  getWorldWidth() {
+    return this.activeCampaignPack ? this.activeCampaignPack.worldWidth : ADVENTURE_WORLD_WIDTH;
+  }
+
+  getActiveZones() {
+    return this.activeCampaignPack ? this.activeCampaignPack.zones : ADVENTURE_ZONES;
+  }
+
+  getBossConfig() {
+    if (this.activeCampaignPack?.finalBoss) {
+      return this.activeCampaignPack.finalBoss;
+    }
+    return {
+      enabled: true,
+      kind: 'archfiend',
+      name: 'BEHEMOTH MALPHAS',
+      maxHp: 11800,
+      anchorX: ADVENTURE_BOSS_ANCHOR_X,
+      groundY: ADVENTURE_DEPTH_MID_Y
+    };
+  }
+
+  getBossAnchorX() {
+    return this.bossEntity?.anchorX || this.getBossConfig().anchorX || ADVENTURE_BOSS_ANCHOR_X;
+  }
+
+  getBossMaxWalkX() {
+    return this.getBossAnchorX() - 85;
+  }
+
+  getBossMinWalkX() {
+    return Math.max(80, this.getBossAnchorX() - 955);
+  }
+
+  applyCampaignPack(rawOrNormalizedPack) {
+    if (!rawOrNormalizedPack || rawOrNormalizedPack === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
+      this.clearCampaignPack();
+      return null;
+    }
+    const normalized =
+      rawOrNormalizedPack._isNormalizedCampaignPack === true
+        ? rawOrNormalizedPack
+        : normalizeAdventureCampaignPack(rawOrNormalizedPack);
+    Object.defineProperty(normalized, '_isNormalizedCampaignPack', {
+      value: true,
+      enumerable: false,
+      configurable: true
+    });
+    this.activeCampaignPack = normalized;
+    this.activeCampaignId = normalized.packId;
+    this.depthMinY = normalized.walkableCauseway.minY;
+    this.depthMaxY = normalized.walkableCauseway.maxY;
+    this.depthMidY = normalized.walkableCauseway.midY;
+    this._campaignPackCache.set(normalized.packId, normalized);
+    AdventureMapRenderer.setActiveCampaign(normalized);
+    this.destructibles.setCampaignProps(normalized.props);
+    return normalized;
+  }
+
+  clearCampaignPack() {
+    this.activeCampaignPack = null;
+    this.activeCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
+    this.depthMinY = ADVENTURE_DEPTH_MIN_Y;
+    this.depthMaxY = ADVENTURE_DEPTH_MAX_Y;
+    this.depthMidY = ADVENTURE_DEPTH_MID_Y;
+    AdventureMapRenderer.setActiveCampaign(null);
+    this.destructibles.resetToDefaultProps();
+  }
+
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps138') {
+    if (typeof fetch !== 'function') return [];
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch campaign index (${res.status})`);
+    }
+    const json = await res.json();
+    return Array.isArray(json?.packs) ? json.packs : [];
+  }
+
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps138') {
+    if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
+      this.clearCampaignPack();
+      return null;
+    }
+    const cleanId = String(packId).trim();
+    if (this._campaignPackCache.has(cleanId)) {
+      return this.applyCampaignPack(this._campaignPackCache.get(cleanId));
+    }
+    if (typeof fetch !== 'function') return null;
+    const relFile =
+      typeof fileHint === 'string' && fileHint.trim()
+        ? fileHint.trim().replace(/^\/+/, '')
+        : `${cleanId.replace(/[^a-z0-9_-]/gi, '')}.json`;
+    const baseUrl = relFile.startsWith('assets/') ? relFile : `assets/campaigns/${relFile}`;
+    const sep = baseUrl.includes('?') ? '&' : '?';
+    const res = await fetch(cacheBust ? `${baseUrl}${sep}${cacheBust}` : baseUrl);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch campaign pack "${cleanId}" (${res.status})`);
+    }
+    const rawJson = await res.json();
+    const normalized = normalizeAdventureCampaignPack(rawJson);
+    this._campaignPackCache.set(cleanId, normalized);
+    this._campaignPackCache.set(normalized.packId, normalized);
+    return this.applyCampaignPack(normalized);
+  }
+
+  _prewarmCustomZoneAssets(zoneIdx = 0) {
+    PixelForge.ensureAdventureLoaded?.(Math.min(3, Math.max(0, zoneIdx)));
+    const pack = this.activeCampaignPack;
+    if (!pack) return;
+    const z = pack.zones[zoneIdx];
+    if (z) {
+      for (const s of z.subWave0 || []) {
+        PixelForge.ensureMonsterLoaded?.(s.engineKind);
+      }
+      for (const s of z.subWave1 || []) {
+        PixelForge.ensureMonsterLoaded?.(s.engineKind);
+      }
+    }
+    if (pack.finalBoss?.enabled && zoneIdx >= Math.max(0, pack.zones.length - 2)) {
+      const assets = PixelForge.initAssets?.();
+      if (assets?.advInfernoPano) PixelForge.ensureImage?.(assets.advInfernoPano);
+      PixelForge.ensureHeroLoaded?.('archfiend');
+      PixelForge.ensureMonsterLoaded?.('fiend');
+    }
+  }
+
+  _countCustomCampaignEncounterSteps(pack) {
+    if (!pack) return 8;
+    let total = 0;
+    for (let i = 0; i < pack.zones.length; i++) {
+      const z = pack.zones[i];
+      if ((z.subWave0?.length || 0) > 0) total++;
+      if ((z.subWave1?.length || 0) > 0) total++;
+    }
+    if (pack.finalBoss?.enabled !== false) total++;
+    return Math.max(1, total);
+  }
+
+  _computeCustomWaveOrdinal(pack, zoneIdx, subWave) {
+    let ord = 0;
+    for (let i = 0; i < zoneIdx && i < pack.zones.length; i++) {
+      const pz = pack.zones[i];
+      if ((pz.subWave0?.length || 0) > 0) ord++;
+      if ((pz.subWave1?.length || 0) > 0) ord++;
+    }
+    const cz = pack.zones[zoneIdx];
+    if (subWave === 1) {
+      if ((cz?.subWave0?.length || 0) > 0) ord++;
+    } else if (subWave === 2) {
+      if ((cz?.subWave0?.length || 0) > 0) ord++;
+      if ((cz?.subWave1?.length || 0) > 0) ord++;
+    }
+    return Math.max(1, ord);
+  }
+
+  startCampaign(playerFighter, campaignPackOverride = undefined) {
+    if (campaignPackOverride !== undefined) {
+      if (!campaignPackOverride || campaignPackOverride === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
+        this.clearCampaignPack();
+      } else {
+        this.applyCampaignPack(campaignPackOverride);
+      }
+    }
+
     this.attachListeners();
     this.bindDOMControls();
     this.active = true;
@@ -984,10 +1564,14 @@ export class AdventureManager {
       document.getElementById('hud-right')?.classList?.remove?.('hidden');
     }
 
+    const activeZones = this.getActiveZones();
+    const worldW = this.getWorldWidth();
+    const midY = this.depthMidY || ADVENTURE_DEPTH_MID_Y;
+
     this.zoneIndex = 0;
     this.subWave = 0;
     this.subWaveDelay = 0;
-    this.zonesCleared = [false, false, false, false];
+    this.zonesCleared = activeZones.map(() => false);
     this.pickups = [];
     this.portals = [];
     this.monsterPlumes = [];
@@ -1013,15 +1597,15 @@ export class AdventureManager {
 
     const renderer = this.game.renderer;
     if (renderer) {
-      renderer.worldWidth = ADVENTURE_WORLD_WIDTH;
+      renderer.worldWidth = worldW;
       renderer.adventureMode = true;
       renderer.adventureHook = this;
-      renderer.stageId = 'cathedral';
+      renderer.stageId = activeZones[0]?.stageId || 'cathedral';
       renderer.permanentStageOverride = null;
       renderer.trueUltStageOverride = null;
       renderer.trueUltStageAlpha = 0;
       renderer.camX = 480;
-      renderer.camY = ADVENTURE_DEPTH_MID_Y - 95;
+      renderer.camY = midY - 95;
       renderer.zoom =
         renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
           ? renderer.getMobileLandscapeFixedZoom(false)
@@ -1033,8 +1617,8 @@ export class AdventureManager {
     }
 
     playerFighter.x = 240;
-    playerFighter.groundY = ADVENTURE_DEPTH_MID_Y;
-    playerFighter.y = ADVENTURE_DEPTH_MID_Y;
+    playerFighter.groundY = midY;
+    playerFighter.y = midY;
     playerFighter.facing = 1;
     playerFighter.team = 1;
     playerFighter.isPlayerControlled = true;
@@ -1091,8 +1675,7 @@ export class AdventureManager {
     }
     this.progression.detachFromFighter(this.game.leftFighter);
     this.skillSets.detachFromFighter(this.game.leftFighter);
-    this.destructibles.resetForCampaign();
-    AdventureMapRenderer.clearBloomCache?.();
+    this.clearCampaignPack();
     this.active = false;
     this.manualTargetLock = false;
     this.lockedMonster = null;
@@ -1137,17 +1720,17 @@ export class AdventureManager {
     const lanePool = [508, 616, 470, 646, 558];
     const defaultGy =
       kind === 'archfiend'
-        ? ADVENTURE_DEPTH_MID_Y
+        ? this.depthMidY || ADVENTURE_DEPTH_MID_Y
         : lanePool[(this.game.fighters ? this.game.fighters.length : 0) % lanePool.length];
     const rawGy = Number.isFinite(opts.groundY) ? opts.groundY : defaultGy;
     const gy = Math.max(this.depthMinY + 12, Math.min(this.depthMaxY - 12, rawGy));
     const player = this.game.leftFighter;
     const spawnX =
-      kind === 'archfiend' ? (Number.isFinite(x) ? x : ADVENTURE_BOSS_ANCHOR_X) : x;
+      kind === 'archfiend' ? (Number.isFinite(x) ? x : this.getBossAnchorX()) : x;
     const facing = kind === 'archfiend' ? -1 : player && player.x > spawnX ? 1 : -1;
     const m =
       kind === 'archfiend'
-        ? new ArchfiendBoss(spawnX, gy, facing)
+        ? new ArchfiendBoss(spawnX, gy, facing, opts)
         : new Monster(kind, spawnX, gy, facing, opts);
     m.game = this.game;
     m.team = 2;
@@ -1238,12 +1821,13 @@ export class AdventureManager {
   }
 
   spawnZoneEncounter(zoneIdx, subWave = 1) {
-    const z = ADVENTURE_ZONES[zoneIdx];
+    const activeZones = this.getActiveZones();
+    const z = activeZones[zoneIdx];
     if (!z) return;
-    PixelForge.ensureAdventureLoaded?.(zoneIdx);
-    if (subWave >= 1 && zoneIdx < 3) {
+    this._prewarmCustomZoneAssets(zoneIdx);
+    if (subWave >= 1 && zoneIdx < activeZones.length - 1) {
       const nextZone = zoneIdx + 1;
-      const schedulePrewarm = () => PixelForge.ensureAdventureLoaded?.(nextZone);
+      const schedulePrewarm = () => this._prewarmCustomZoneAssets(nextZone);
       if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
         window.requestIdleCallback(schedulePrewarm, { timeout: 600 });
       } else {
@@ -1263,6 +1847,104 @@ export class AdventureManager {
       if (!this.game.renderer.permanentStageOverride) {
         this.game.renderer.stageId = z.stageId;
       }
+    }
+
+    // Custom Stage Pack Encounter Dispatcher (`schemaVersion: "1.0.0"`)
+    if (this.activeCampaignPack) {
+      const pack = this.activeCampaignPack;
+      const lastZoneIdx = pack.zones.length - 1;
+      const bossCfg = pack.finalBoss;
+      const isBossSubWave =
+        zoneIdx === lastZoneIdx &&
+        bossCfg?.enabled !== false &&
+        (subWave >= 3 || (subWave === 2 && (z.subWave1?.length || 0) === 0));
+
+      if (isBossSubWave) {
+        this.totalWaveLabel = 'COLOSSAL BOSS';
+        this.bossWarningTimer = 1.85;
+        this._bossWarnPulseTimer = 0;
+        this.bossSpawnPending = true;
+        const bossAnchorX = bossCfg.anchorX || this.getBossAnchorX();
+        const bossMaxWalkX = bossAnchorX - 85;
+        const player = this.game.leftFighter;
+        if (player) {
+          const isRangedHero = (player.attackRange || 180) >= 320;
+          const bossEntryX = Math.max(
+            z.lockMinX + 40,
+            bossAnchorX - (isRangedHero ? 495 : 170)
+          );
+          if (player.x < bossAnchorX - 835) player.x = bossEntryX;
+          else if (player.x > bossMaxWalkX) player.x = bossMaxWalkX;
+          player.facing = 1;
+        }
+        if (this.game.audio) this.game.audio.play('eclipse_charge', bossAnchorX);
+        if (this.game.renderer) {
+          this.game.renderer.triggerShake(16, 0.72);
+          this.game.renderer.triggerStageEvent?.(
+            `WARNING: ${(bossCfg.name || 'BEHEMOTH MALPHAS').toUpperCase()}!`,
+            'COLOSSAL SOVEREIGN RISES ON THE EAST ABYSS!',
+            '#ef4444',
+            3.4
+          );
+        }
+      } else {
+        const spawns = subWave === 1 ? z.subWave0 || [] : z.subWave1 || [];
+        const totalSteps = this._countCustomCampaignEncounterSteps(pack);
+        const curStep = this._computeCustomWaveOrdinal(pack, zoneIdx, subWave);
+        this.totalWaveLabel = `WAVE ${curStep} / ${totalSteps}`;
+
+        let wardenSpawn = null;
+        for (let si = 0; si < spawns.length; si++) {
+          const sp = spawns[si];
+          if (!sp) continue;
+          const opts = {
+            groundY: sp.groundY,
+            isElite: Boolean(sp.isElite),
+            isMiniBoss: Boolean(sp.isMiniBoss)
+          };
+          if (sp.wardenName) opts.wardenName = sp.wardenName;
+          if (sp.wardenTitle) opts.wardenTitle = sp.wardenTitle;
+          if (Number.isFinite(sp.maxHp) && sp.maxHp > 0) opts.maxHp = sp.maxHp;
+          if (Number.isFinite(sp.spriteScale) && sp.spriteScale > 0) opts.spriteScale = sp.spriteScale;
+          if (Number.isFinite(sp.dmgScale) && sp.dmgScale > 0) opts.dmgScale = sp.dmgScale;
+          this.spawnMonster(sp.engineKind, sp.x, opts);
+          if (sp.isMiniBoss && !wardenSpawn) {
+            wardenSpawn = sp;
+          }
+        }
+
+        const accentHex =
+          z.bloomPalette === 'emerald' || z.biome === 'sylvan'
+            ? '#34d399'
+            : z.bloomPalette === 'violet' || z.biome === 'boneyard'
+              ? '#c084fc'
+              : z.bloomPalette === 'ember' || z.biome === 'clocktower'
+                ? '#fb923c'
+                : z.bloomPalette === 'gold'
+                  ? '#facc15'
+                  : '#38bdf8';
+        if (wardenSpawn) {
+          this.game.renderer?.triggerStageEvent?.(
+            `REALM WARDEN: ${(wardenSpawn.wardenName || 'REALM WARDEN').toUpperCase()}!`,
+            `${(wardenSpawn.wardenTitle || z.title || 'GUARDIAN OF THE REALM').toUpperCase()} AWAKENS!`,
+            accentHex,
+            2.9
+          );
+        } else if (spawns.length > 0 && (zoneIdx > 0 || subWave > 1)) {
+          this.game.renderer?.triggerStageEvent?.(
+            z.title || `ZONE ${zoneIdx + 1}`,
+            subWave === 1
+              ? 'DIMENSIONAL PORTALS TEAR OPEN ACROSS THE CAUSEWAY!'
+              : 'SANCTUM VANGUARD REINFORCEMENTS EMERGE!',
+            accentHex,
+            2.5
+          );
+        }
+      }
+
+      this.syncStageBadge();
+      this.syncRightHUD();
+      return;
     }
 
     if (zoneIdx === 0 && subWave === 1) {
@@ -1386,12 +2068,13 @@ export class AdventureManager {
 
   onBossPhaseShift(_boss, phase) {
     if (!this.active || this.game.isMatchOver) return;
+    const anchorX = _boss?.anchorX || this.getBossAnchorX();
     if (phase === 2) {
       // Summon 2 flanking Shackled Pit-Fiends through Hell-Maw Portals
-      this.spawnMonster('fiend', 8620, { groundY: 484 });
-      this.spawnMonster('fiend', 8780, { groundY: 638 });
+      this.spawnMonster('fiend', Math.max(120, anchorX - 715), { groundY: 484 });
+      this.spawnMonster('fiend', Math.max(180, anchorX - 555), { groundY: 638 });
     } else if (phase === 3) {
-      this.spawnPickup('relic', 9000, 622, { relicAmt: 18 });
+      this.spawnPickup('relic', Math.max(180, anchorX - 335), 622, { relicAmt: 18 });
     }
   }
 
@@ -1505,9 +2188,10 @@ export class AdventureManager {
   completeCampaignVictory(boss) {
     const g = this.game;
     const player = g.leftFighter;
+    const activeZones = this.getActiveZones();
     this.lockActive = false;
     this.goPromptActive = false;
-    this.zonesCleared[3] = true;
+    this.zonesCleared[Math.max(0, activeZones.length - 1)] = true;
 
     g.setPaused?.(false, false);
     g.isMatchOver = true;
@@ -1567,7 +2251,12 @@ export class AdventureManager {
       winnerEl.textContent = `${player.name.toUpperCase()} CONQUERS THE BLACK PIT`;
     }
     if (statsEl) {
-      statsEl.textContent = `Archfiend Malphas Vanquished! ${this.monstersKilled} Monsters Slain across 4 Realms in ${clearSec}s.`;
+      if (this.activeCampaignPack) {
+        const bossTitle = boss?.isBoss ? boss.name : this.getBossConfig().name || 'Archfiend Malphas';
+        statsEl.textContent = `${bossTitle} Vanquished! ${this.monstersKilled} Monsters Slain across ${activeZones.length} Realm${activeZones.length === 1 ? '' : 's'} in ${clearSec}s.`;
+      } else {
+        statsEl.textContent = `Archfiend Malphas Vanquished! ${this.monstersKilled} Monsters Slain across 4 Realms in ${clearSec}s.`;
+      }
     }
     if (autoEl) {
       autoEl.classList?.remove('hidden');
@@ -1598,7 +2287,7 @@ export class AdventureManager {
     }
 
     this.syncControlDeckUI();
-    g.updateHUD();
+    g.updateHUD?.();
   }
 
   onPlayerDeath(player) {
@@ -1692,11 +2381,12 @@ export class AdventureManager {
     }
 
     this.syncControlDeckUI();
-    g.updateHUD();
+    g.updateHUD?.();
   }
 
   unlockSubWave(zoneIdx) {
-    const z = ADVENTURE_ZONES[zoneIdx] || ADVENTURE_ZONES[0];
+    const activeZones = this.getActiveZones();
+    const z = activeZones[zoneIdx] || activeZones[0] || ADVENTURE_ZONES[0];
     this.lockActive = false;
     this.lockMinX = 80;
     this.lockMaxX = z.maxX - 40;
@@ -1707,7 +2397,7 @@ export class AdventureManager {
     }
 
     this.goPromptActive = true;
-    this.goPromptText = zoneIdx === 3 ? 'THRONE AHEAD! GO!' : 'ADVANCE! GO!';
+    this.goPromptText = zoneIdx === activeZones.length - 1 ? 'THRONE AHEAD! GO!' : 'ADVANCE! GO!';
     this.goBlinkTimer = 0;
 
     const p = this.game.leftFighter;
@@ -1721,34 +2411,54 @@ export class AdventureManager {
   }
 
   unlockCurrentZone(zoneIdx) {
+    const activeZones = this.getActiveZones();
+    const worldW = this.getWorldWidth();
     this.zonesCleared[zoneIdx] = true;
     this.lockActive = false;
-    const nextZone = ADVENTURE_ZONES[zoneIdx + 1];
+    const nextZone = activeZones[zoneIdx + 1];
     this.lockMinX = 80;
-    this.lockMaxX = nextZone ? nextZone.sub1LockMaxX : ADVENTURE_WORLD_WIDTH - 80;
+    this.lockMaxX = nextZone ? nextZone.sub1LockMaxX : worldW - 80;
 
     if (this.game.renderer) {
       this.game.renderer.adventureCamMinX = 0;
-      this.game.renderer.adventureCamMaxX = nextZone ? nextZone.maxX : ADVENTURE_WORLD_WIDTH;
+      this.game.renderer.adventureCamMaxX = nextZone ? nextZone.maxX : worldW;
     }
 
     this.goPromptActive = true;
-    this.goPromptText = zoneIdx === 2 ? 'BOSS REALM AHEAD! GO!' : 'CLEAR! GO!';
+    this.goPromptText =
+      zoneIdx === activeZones.length - 2 ? 'BOSS REALM AHEAD! GO!' : 'CLEAR! GO!';
     this.goBlinkTimer = 0;
 
     const p = this.game.leftFighter;
     this.progression.gainXp(35, p);
 
-    const dropBaseX = p ? Math.min(this.lockMaxX - 180, p.x + 140) : zoneIdx * 2400 + 2020;
-    if (zoneIdx === 0) {
-      this.spawnPickup('ember', dropBaseX, 548, { ultAmt: 16 });
-      this.spawnPickup('relic', dropBaseX + 72, 598, { relicAmt: 12 });
-    } else if (zoneIdx === 1) {
-      this.spawnPickup('relic', dropBaseX + 40, 586, { relicAmt: 12 });
-    } else if (zoneIdx === 2) {
-      // Sanctuary Boss-Prep Cache staggered across the 3D road before Throne of the Black Pit!
-      this.spawnPickup('ember', 6960, 548, { ultAmt: 16 });
-      this.spawnPickup('relic', 7048, 608, { relicAmt: 12 });
+    const curZ = activeZones[zoneIdx];
+    const dropBaseX = p
+      ? Math.min(this.lockMaxX - 180, p.x + 140)
+      : (curZ ? curZ.maxX - 380 : zoneIdx * 2400 + 2020);
+    if (!this.activeCampaignPack) {
+      if (zoneIdx === 0) {
+        this.spawnPickup('ember', dropBaseX, 548, { ultAmt: 16 });
+        this.spawnPickup('relic', dropBaseX + 72, 598, { relicAmt: 12 });
+      } else if (zoneIdx === 1) {
+        this.spawnPickup('relic', dropBaseX + 40, 586, { relicAmt: 12 });
+      } else if (zoneIdx === 2) {
+        // Sanctuary Boss-Prep Cache staggered across the 3D road before Throne of the Black Pit!
+        this.spawnPickup('ember', 6960, 548, { ultAmt: 16 });
+        this.spawnPickup('relic', 7048, 608, { relicAmt: 12 });
+      }
+    } else {
+      const midGy = this.depthMidY || 561;
+      if (zoneIdx === 0) {
+        this.spawnPickup('ember', dropBaseX, midGy - 13, { ultAmt: 16 });
+        this.spawnPickup('relic', dropBaseX + 72, midGy + 37, { relicAmt: 12 });
+      } else if (zoneIdx === activeZones.length - 2) {
+        const prepX = Math.max(160, (curZ?.maxX || 7200) - 240);
+        this.spawnPickup('ember', prepX, midGy - 13, { ultAmt: 16 });
+        this.spawnPickup('relic', prepX + 88, midGy + 47, { relicAmt: 12 });
+      } else {
+        this.spawnPickup('relic', dropBaseX + 40, midGy + 25, { relicAmt: 12 });
+      }
     }
 
     if (this.game.audio) {
@@ -1846,7 +2556,8 @@ export class AdventureManager {
     } else if (ov === 'shogunate_glacial') {
       nextText = `${zPrefix} • FROZEN SAKURA SHOGUNATE`;
     } else {
-      const z = ADVENTURE_ZONES[this.zoneIndex] || ADVENTURE_ZONES[0];
+      const activeZones = this.getActiveZones();
+      const z = activeZones[this.zoneIndex] || activeZones[0] || ADVENTURE_ZONES[0];
       nextText = z.title;
     }
     if (badge.textContent !== nextText) {
@@ -1908,7 +2619,10 @@ export class AdventureManager {
     PixelForge.setHUDPortraits(leftHeroId, leftCol, 'archfiend', '#ef4444');
 
     if (g.hudEls?.crestVs) {
-      const nextCrest = this.zoneIndex === 3 ? 'BOSS' : `Z${this.zoneIndex + 1}`;
+      const activeZones = this.getActiveZones();
+      const isFinalBossZone =
+        this.zoneIndex === activeZones.length - 1 && this.getBossConfig().enabled !== false;
+      const nextCrest = isFinalBossZone ? 'BOSS' : `Z${this.zoneIndex + 1}`;
       if (g.hudEls.crestVs.textContent !== nextCrest) {
         g.hudEls.crestVs.textContent = nextCrest;
       }
@@ -2619,15 +3333,26 @@ export class AdventureManager {
       const colossalAlive = Boolean(
         this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss
       );
-      const minWalkX = colossalAlive ? (this.lockActive ? this.lockMinX : 8380) : this.lockActive ? this.lockMinX : 80;
+      const bossAnchorX = this.getBossAnchorX();
+      const bossMinWalkX = this.getBossMinWalkX();
+      const bossMaxWalkX = this.getBossMaxWalkX();
+      const worldW = this.getWorldWidth();
+      const minWalkX = colossalAlive
+        ? this.lockActive
+          ? this.lockMinX
+          : bossMinWalkX
+        : this.lockActive
+          ? this.lockMinX
+          : 80;
       const maxWalkX = colossalAlive
-        ? ADVENTURE_BOSS_MAX_WALK_X
+        ? bossMaxWalkX
         : this.lockActive
           ? this.lockMaxX
-          : ADVENTURE_WORLD_WIDTH - 80;
+          : worldW - 80;
       const depthMin = (this.depthMinY || ADVENTURE_DEPTH_MIN_Y) + 12;
       const depthMax = (this.depthMaxY || ADVENTURE_DEPTH_MAX_Y) - 12;
-      const pGy = Number.isFinite(player.groundY) ? player.groundY : ADVENTURE_DEPTH_MID_Y;
+      const depthMid = this.depthMidY || ADVENTURE_DEPTH_MID_Y;
+      const pGy = Number.isFinite(player.groundY) ? player.groundY : depthMid;
       const aiClock = (this.goBlinkTimer || 0) + (this.game?.renderer?.time || 0) * 0.35;
       const hid = player.heroId || '';
       const isRangedEx =
@@ -2799,8 +3524,8 @@ export class AdventureManager {
                 !target.isDead &&
                 (target.isColossalBoss
                   ? isRanged
-                    ? player.x >= 8480
-                    : player.x >= 9145
+                    ? player.x >= bossAnchorX - 855
+                    : player.x >= bossAnchorX - 190
                   : Math.abs(target.x - player.x) <= effRange * 0.98)
             );
             if (targetInsideEffRange) {
@@ -2914,17 +3639,17 @@ export class AdventureManager {
             const curveGy = pkGy + Math.sin(aiClock * 2.5) * 24 * arcBlend;
             applyCurvedAutoSteer(reachablePickup.x, curveGy, 16, null);
           } else if (this.bossSpawnPending) {
-            const entryX = isRanged ? 8840 : 9165;
-            const entryGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 1.9) * 32;
+            const entryX = bossAnchorX - (isRanged ? 495 : 170);
+            const entryGy = depthMid + Math.sin(aiClock * 1.9) * 32;
             applyCurvedAutoSteer(entryX, entryGy, 28, 1);
           } else if (this.lockActive) {
             const midLockX = minWalkX + (maxWalkX - minWalkX) * 0.5;
-            const weaveGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 2.0) * 36;
+            const weaveGy = depthMid + Math.sin(aiClock * 2.0) * 36;
             applyCurvedAutoSteer(midLockX, weaveGy, 28, 1);
           } else {
-            const marchX = ADVENTURE_WORLD_WIDTH - 220;
+            const marchX = worldW - 220;
             const marchGy =
-              ADVENTURE_DEPTH_MID_Y + Math.sin(player.x * 0.0058 + aiClock * 0.85) * 48;
+              depthMid + Math.sin(player.x * 0.0058 + aiClock * 0.85) * 48;
             applyCurvedAutoSteer(marchX, marchGy, 22, 1);
           }
         } else {
@@ -2955,7 +3680,7 @@ export class AdventureManager {
           isHackSlash &&
           (player.comboStep || 0) !== 0 &&
           (this.comboResetTimer || 0) > 0 &&
-          (target.isColossalBoss ? player.x >= 8480 : absDx <= autoChainMaxDx && absDz <= 78);
+          (target.isColossalBoss ? player.x >= bossAnchorX - 855 : absDx <= autoChainMaxDx && absDz <= 78);
 
         if (player.state === 'IDLE' || player.state === 'WALK') {
           if (
@@ -3007,8 +3732,8 @@ export class AdventureManager {
             (midHackChain || Math.hypot(avoidVx, avoidVz) < 235) &&
             (target.isColossalBoss
               ? isRanged
-                ? player.x >= 8480
-                : player.x >= 9145
+                ? player.x >= bossAnchorX - 855
+                : player.x >= bossAnchorX - 190
               : absDx <= (midHackChain ? Math.max(effRange, autoChainMaxDx) : effRange * 0.98) &&
                 absDz <= (midHackChain ? 82 : isRanged ? 96 : 46))
           ) {
@@ -3055,11 +3780,11 @@ export class AdventureManager {
             return;
           } else if (target.isColossalBoss) {
             const bossGoalX = player.isHackAndSlashCaster?.()
-              ? 8895 + Math.sin(aiClock * 1.4) * 55
+              ? bossAnchorX - 440 + Math.sin(aiClock * 1.4) * 55
               : isRanged
-                ? 8865 + Math.sin(aiClock * 1.35) * 65
-                : 9226 + Math.sin(aiClock * 1.7) * 16;
-            let bossGoalGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 1.65) * 44;
+                ? bossAnchorX - 470 + Math.sin(aiClock * 1.35) * 65
+                : bossAnchorX - 109 + Math.sin(aiClock * 1.7) * 16;
+            let bossGoalGy = depthMid + Math.sin(aiClock * 1.65) * 44;
             if (target.rakeWarnOnly || target.rakeActive) {
               bossGoalGy = (target.rakeLaneGy || 561) <= ADVENTURE_DEPTH_MID_Y ? 638 : 484;
             } else if (target.grabWarnOnly || target.grabActive || target.bossAction === 'claw_grab') {
@@ -3617,15 +4342,17 @@ export class AdventureManager {
       this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss
     );
     if (colossalAlive) {
-      return { minX: 8380, maxX: ADVENTURE_BOSS_MAX_WALK_X };
+      return { minX: this.getBossMinWalkX(), maxX: this.getBossMaxWalkX() };
     }
     if (this.lockActive) {
       return { minX: this.lockMinX, maxX: this.lockMaxX };
     }
-    const z = ADVENTURE_ZONES[this.zoneIndex] || ADVENTURE_ZONES[0];
+    const activeZones = this.getActiveZones();
+    const worldW = this.getWorldWidth();
+    const z = activeZones[this.zoneIndex] || activeZones[0] || ADVENTURE_ZONES[0];
     return {
       minX: Math.max(80, z.minX + 60),
-      maxX: Math.min(ADVENTURE_WORLD_WIDTH - 80, z.maxX - 60)
+      maxX: Math.min(worldW - 80, z.maxX - 60)
     };
   }
 
@@ -3647,13 +4374,22 @@ export class AdventureManager {
     this.progression.update(dt, player);
     this.skillSets.update(dt, player);
 
-    // 1. Boss Warning Countdown -> Boil the East Abyssal Throne Rim (`x = 9265..9410`), then Spawn Colossal Behemoth Malphas (`x = 9335`, facing -1 LEFT)!
+    const activeZones = this.getActiveZones();
+    const lastZoneIdx = Math.max(0, activeZones.length - 1);
+    const worldW = this.getWorldWidth();
+    const bossCfg = this.getBossConfig();
+    const bossAnchorX = bossCfg.anchorX || ADVENTURE_BOSS_ANCHOR_X;
+    const bossGroundY = bossCfg.groundY || this.depthMidY || ADVENTURE_DEPTH_MID_Y;
+    const bossMaxWalkX = bossAnchorX - 85;
+    const bossMinWalkX = Math.max(80, bossAnchorX - 955);
+
+    // 1. Boss Warning Countdown -> Boil the East Abyssal Throne Rim, then Spawn Colossal Boss (facing -1 LEFT)!
     if (this.bossWarningTimer > 0) {
       this.bossWarningTimer = Math.max(0, this.bossWarningTimer - dt);
       this._bossWarnPulseTimer = (this._bossWarnPulseTimer || 0) - dt;
       if (this._bossWarnPulseTimer <= 0) {
         this._bossWarnPulseTimer = 0.28;
-        const gx = 9265 + Math.round(Math.random() * 145);
+        const gx = bossAnchorX - 70 + Math.round(Math.random() * 145);
         g.vfx?.spawnShockwave?.(gx, 628, 125, '#fb923c', 0.30, true);
         g.vfx?.spawnBurst?.(gx, 622, 12, '#fef08a', 215, {
           upBias: 220,
@@ -3665,13 +4401,15 @@ export class AdventureManager {
       if (this.bossWarningTimer <= 0 && this.bossSpawnPending) {
         this.bossSpawnPending = false;
         const isRangedHero = (player.attackRange || 180) >= 320;
-        const bossEntryX = isRangedHero ? 8840 : 9165;
-        if (player.x > ADVENTURE_BOSS_MAX_WALK_X) player.x = bossEntryX;
-        else if (player.x < 8480) player.x = bossEntryX;
-        else if (!isRangedHero && player.x < 9080) player.x = bossEntryX;
+        const bossEntryX = Math.max(bossMinWalkX + 60, bossAnchorX - (isRangedHero ? 495 : 170));
+        if (player.x > bossMaxWalkX) player.x = bossEntryX;
+        else if (player.x < bossAnchorX - 855) player.x = bossEntryX;
+        else if (!isRangedHero && player.x < bossAnchorX - 255) player.x = bossEntryX;
         player.facing = 1;
-        this.bossEntity = this.spawnMonster('archfiend', ADVENTURE_BOSS_ANCHOR_X, {
-          groundY: ADVENTURE_DEPTH_MID_Y
+        this.bossEntity = this.spawnMonster('archfiend', bossAnchorX, {
+          groundY: bossGroundY,
+          name: bossCfg.name,
+          maxHp: bossCfg.maxHp
         });
         this.syncRightHUD();
       }
@@ -3685,25 +4423,32 @@ export class AdventureManager {
       }
     }
 
-    // 3. 8-Wave Clear & 2-SubWave-Per-Realm Progression across 9600px
+    // 3. Wave Clear & 2-SubWave-Per-Realm Progression across built-in 9600px or custom Stage Packs
     if (!g.isMatchOver && !this.bossSpawnPending) {
       const livingMonsters = this.getLivingMonsters();
 
       if (this.lockActive && livingMonsters.length === 0) {
         if (this.subWave === 1) {
           this.unlockSubWave(this.zoneIndex);
-        } else if (this.zoneIndex < 3) {
+        } else if (this.zoneIndex < lastZoneIdx) {
           this.unlockCurrentZone(this.zoneIndex);
+        } else if (this.activeCampaignPack && this.subWave === 2) {
+          // Final zone SubWave 2 cleared on a custom Stage Pack: launch Colossal Boss (or complete pack if boss disabled)!
+          if (bossCfg.enabled !== false) {
+            this.spawnZoneEncounter(lastZoneIdx, 3);
+          } else {
+            this.completeCampaignVictory(g.rightFighter || player);
+          }
         }
       }
 
       // Check if player walked across the current zone's midTriggerX (SubWave 2) or next zone's triggerX (SubWave 1)
       if (!this.lockActive) {
-        const curZone = ADVENTURE_ZONES[this.zoneIndex];
+        const curZone = activeZones[this.zoneIndex];
         if (curZone && this.subWave === 1 && player.x >= curZone.midTriggerX) {
           this.spawnZoneEncounter(this.zoneIndex, 2);
-        } else if (this.subWave >= 2 && this.zoneIndex < 3) {
-          const nextZone = ADVENTURE_ZONES[this.zoneIndex + 1];
+        } else if (this.subWave >= 2 && this.zoneIndex < lastZoneIdx) {
+          const nextZone = activeZones[this.zoneIndex + 1];
           if (nextZone && player.x >= nextZone.triggerX) {
             this.spawnZoneEncounter(this.zoneIndex + 1, 1);
           }
@@ -3732,22 +4477,22 @@ export class AdventureManager {
     const nearestMonster = this.getNearestLivingMonster(player);
     this.processPlayerControls(dt, player, nearestMonster);
 
-    // Keep player out of the Right-Side Colossal Boss's throne parapet (`x <= 9250` so all melee heroes reach `9335` cleanly!) & inside wave locks!
+    // Keep player out of the Right-Side Colossal Boss's throne parapet & inside wave locks!
     const colossalAlive = Boolean(
       this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss
     );
     const minWalkX = colossalAlive
       ? this.lockActive
         ? this.lockMinX
-        : 8380
+        : bossMinWalkX
       : this.lockActive
         ? this.lockMinX
         : 80;
     const maxWalkX = colossalAlive
-      ? ADVENTURE_BOSS_MAX_WALK_X
+      ? bossMaxWalkX
       : this.lockActive
         ? this.lockMaxX
-        : ADVENTURE_WORLD_WIDTH - 80;
+        : worldW - 80;
     this.skillSets.endPlayerStep(dt, player, minWalkX, maxWalkX, colossalAlive);
     if (player.x < minWalkX) player.x = minWalkX;
     if (player.x > maxWalkX) player.x = maxWalkX;
@@ -3860,8 +4605,9 @@ export class AdventureManager {
     if (this.lockActive) {
       ctx.save();
       const pulse = 0.44 + 0.22 * Math.sin(t * 6.5);
+      const worldLim = this.getWorldWidth() - 70;
       for (const gateX of [this.lockMinX - 16, this.lockMaxX + 16]) {
-        if (gateX <= 70 || gateX >= ADVENTURE_WORLD_WIDTH - 70) continue;
+        if (gateX <= 70 || gateX >= worldLim) continue;
         const gx = Math.round(gateX);
         ctx.fillStyle = `rgba(251, 146, 60, ${(pulse * 0.24).toFixed(3)})`;
         ctx.fillRect(gx - 6, roadTop, 12, roadBot - roadTop);
@@ -4292,17 +5038,21 @@ export class AdventureManager {
     ctx.lineWidth = 1;
     ctx.strokeRect(stripX, stripY, stripW, stripH);
 
-    const segW = Math.floor((stripW - 14) / 4);
+    const activeZones = this.getActiveZones();
+    const zCount = Math.max(1, activeZones.length);
+    const hasBoss = this.getBossConfig().enabled !== false;
+    const segW = Math.floor((stripW - (8 + (zCount - 1) * 2)) / zCount);
     const segH = renderer.isMobileLandscape ? 9 : 10;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < zCount; i++) {
       const sx = stripX + 4 + i * (segW + 2);
       const sy = stripY + 3;
       const cleared = this.zonesCleared[i];
       const current = this.zoneIndex === i;
+      const isBossSeg = i === zCount - 1 && hasBoss;
       ctx.fillStyle = cleared
         ? '#22c55e'
         : current
-          ? i === 3
+          ? isBossSeg
             ? '#ef4444'
             : '#fb923c'
           : '#1e293b';
@@ -4310,7 +5060,7 @@ export class AdventureManager {
       ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.fillStyle = current || cleared ? '#ffffff' : '#94a3b8';
-      ctx.fillText(i === 3 ? 'BOSS' : `Z${i + 1}`, sx + Math.floor(segW * 0.5), sy + 8);
+      ctx.fillText(isBossSeg ? 'BOSS' : `Z${i + 1}`, sx + Math.floor(segW * 0.5), sy + 8);
     }
 
     // Bottom sub-row inside strip: Left = Solar Spirit (`SPIRIT`), Right = Level XP (`LV.X`)
@@ -4417,28 +5167,30 @@ export class AdventureManager {
         ctx.fillRect(cx - 1, cy + 3, 2, 2);
       };
 
+      const bossWarnName = (this.getBossConfig().name || 'BEHEMOTH MALPHAS').toUpperCase();
       const centerX = Math.round(w * 0.5);
       if (isNarrowWarn) {
         const crestOffset = Math.min(Math.round(w * 0.45), Math.max(120, Math.floor(w * 0.5) - 18));
         drawHazardCrest(centerX - crestOffset, by);
         drawHazardCrest(centerX + crestOffset, by);
 
-        const warnPx = w < 375 ? 8 : 9;
+        const warnPx = bossWarnName.length > 22 || w < 375 ? 7 : 9;
         ctx.font = `${warnPx}px "ArcanePixel", "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fef08a';
-        ctx.fillText('WARNING! BEHEMOTH MALPHAS', centerX, by - 4);
+        ctx.fillText(`WARNING! ${bossWarnName}`, centerX, by - 4);
         ctx.fillText('RISES ON THE EAST!', centerX, by + 13);
       } else {
         const crestOffset = renderer.isMobile ? Math.min(Math.round(w * 0.45), 248) : Math.min(Math.round(w * 0.45), 292);
         drawHazardCrest(centerX - crestOffset, by);
         drawHazardCrest(centerX + crestOffset, by);
 
-        const warnPx = w < 760 ? 10 : renderer.isMobile ? 10 : 14;
+        const baseWarnPx = w < 760 ? 10 : renderer.isMobile ? 10 : 14;
+        const warnPx = bossWarnName.length > 22 ? Math.min(baseWarnPx, 11) : baseWarnPx;
         ctx.font = `${warnPx}px "ArcanePixel", "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fef08a';
-        ctx.fillText('WARNING! BEHEMOTH MALPHAS RISES ON THE EAST!', centerX, by + 5);
+        ctx.fillText(`WARNING! ${bossWarnName} RISES ON THE EAST!`, centerX, by + 5);
       }
     }
 

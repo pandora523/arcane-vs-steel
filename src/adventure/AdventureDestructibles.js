@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps137';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps138';
 
 /**
  * Interactive Front-Facing Orthogonal 16-Bit HD-2D Destructible Shrines & Braziers (`AdventureDestructibles`)
@@ -1259,6 +1259,7 @@ function blitMonumentVfxSocket(
 export class AdventureDestructibles {
   constructor(adventure) {
     this.adventure = adventure;
+    this.customPropSpecs = null;
     this.props = [];
     this.debris = [];
     this._playerCastId = 0;
@@ -1269,7 +1270,24 @@ export class AdventureDestructibles {
     this.resetForCampaign();
   }
 
-  resetForCampaign() {
+  setCampaignProps(propSpecs = null) {
+    this.customPropSpecs = Array.isArray(propSpecs)
+      ? propSpecs.map((p) => (p && typeof p === 'object' ? { ...p } : {}))
+      : null;
+    this.resetForCampaign();
+  }
+
+  resetToDefaultProps() {
+    this.customPropSpecs = null;
+    this.resetForCampaign();
+  }
+
+  resetForCampaign(propSpecsOverride = undefined) {
+    if (propSpecsOverride !== undefined) {
+      this.customPropSpecs = Array.isArray(propSpecsOverride)
+        ? propSpecsOverride.map((p) => (p && typeof p === 'object' ? { ...p } : {}))
+        : null;
+    }
     this.debris = [];
     this._playerCastId = 0;
     this._prevPlayerState = 'IDLE';
@@ -1278,32 +1296,52 @@ export class AdventureDestructibles {
     this._prevAutoVariant = -1;
 
     const self = this;
-    this.props = CURATED_PROP_LAYOUT.map((spec, idx) => {
-      const arch = PROP_ARCHETYPES[spec.kind];
+    const isCustom = Array.isArray(this.customPropSpecs);
+    const sourceSpecs = isCustom ? this.customPropSpecs : CURATED_PROP_LAYOUT;
+    this.props = sourceSpecs.map((spec, idx) => {
+      const safeKind = PROP_ARCHETYPES[spec?.kind] ? spec.kind : 'eclipse_brazier';
+      const arch = PROP_ARCHETYPES[safeKind];
+      const px = Number.isFinite(spec?.x) ? Math.round(spec.x) : 440 + idx * 420;
+      const pGy = Number.isFinite(spec?.groundY) ? Math.round(spec.groundY) : 561;
+      const pZone = Number.isFinite(spec?.zone)
+        ? Math.max(0, spec.zone | 0)
+        : Math.max(0, Math.floor(px / 2400));
+      const rawDrop =
+        spec?.dropType === 'hp' ||
+        spec?.dropType === 'ember' ||
+        spec?.dropType === 'relic' ||
+        spec?.dropType === 'mana' ||
+        spec?.dropType === 'ult'
+          ? spec.dropType
+          : null;
+      const propId =
+        isCustom && typeof spec?.id === 'string' && spec.id.trim()
+          ? spec.id.trim()
+          : `adv_prop_${idx}_${safeKind}`;
       const prop = {
-        id: `adv_prop_${idx}_${spec.kind}`,
+        id: propId,
         index: idx,
-        kind: spec.kind,
+        kind: safeKind,
         sheetCol: arch.sheetCol,
         shardCol: arch.shardCol,
         drawScale: arch.drawScale || 1.12,
         hasGlow: Boolean(arch.hasGlow || arch.isArtifact),
         name: arch.label,
-        zone: spec.zone,
-        x: spec.x,
-        groundY: spec.groundY,
-        y: spec.groundY,
+        zone: pZone,
+        x: px,
+        groundY: pGy,
+        y: pGy,
         vx: 0,
         vy: 0,
         halfW: arch.halfW,
         height: arch.height,
-        maxHp: arch.maxHp,
-        hp: arch.maxHp,
-        isArtifact: Boolean(arch.isArtifact || spec.isArtifact),
-        dropType: spec.dropType ?? null,
-        bonusDrop: spec.bonusDrop ?? null,
-        ultAmt: spec.ultAmt || 20,
-        relicAmt: spec.relicAmt || 28,
+        maxHp: Number.isFinite(spec?.maxHp) && spec.maxHp > 0 ? Math.round(spec.maxHp) : arch.maxHp,
+        hp: Number.isFinite(spec?.maxHp) && spec.maxHp > 0 ? Math.round(spec.maxHp) : arch.maxHp,
+        isArtifact: Boolean(arch.isArtifact || spec?.isArtifact),
+        dropType: rawDrop,
+        bonusDrop: spec?.bonusDrop ?? null,
+        ultAmt: spec?.ultAmt || 20,
+        relicAmt: spec?.relicAmt || (isCustom ? 14 : 28),
         primaryColor: arch.primaryColor,
         accentColor: arch.accentColor,
         debrisCols: arch.debrisCols,
