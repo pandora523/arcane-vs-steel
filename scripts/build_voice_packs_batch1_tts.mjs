@@ -140,10 +140,11 @@ const CHAMPION_PROFILES = {
   },
   nyx: {
     voiceName: 'Laomedeia',
+    jaVoiceName: 'Achernar',
     enPrefix:
       'cute youthful high-pitched bubbly-yet-cheeky teenage anime neko cyber-hacker girl in a fighting game, bright energetic girlish anime voice, ',
     jaPrefix:
-      'Japanese anime fighting game voice acting, cute youthful high-pitched bubbly-yet-cheeky teenage anime neko cyber-hacker girl, bright kawaii energetic young female seiyuu delivery, ',
+      '透明感のある甘くて可愛い10代の美少女アニメ声優、高めのキュートな女の子の声、明るい小悪魔ネコミミ少女、',
     eqComp: [
       'highpass=f=98',
       'equalizer=f=255:t=q:w=1.3:g=-1.8',
@@ -151,10 +152,22 @@ const CHAMPION_PROFILES = {
       'equalizer=f=6900:t=q:w=1.2:g=1.5',
       'acompressor=threshold=-16dB:ratio=2.6:attack=5:release=82:makeup=2.6dB'
     ],
+    jaEqComp: [
+      'highpass=f=105',
+      'equalizer=f=255:t=q:w=1.3:g=-2.0',
+      'equalizer=f=4100:t=q:w=1.1:g=2.4',
+      'equalizer=f=7200:t=q:w=1.2:g=1.6',
+      'acompressor=threshold=-16dB:ratio=2.5:attack=5:release=82:makeup=2.6dB'
+    ],
     spaces: {
       big: 'afade=t=in:st=0:d=0.005,apad=pad_dur=0.06,aecho=0.90:0.88:11|23:0.15|0.06',
       mid: 'afade=t=in:st=0:d=0.005,apad=pad_dur=0.03,aecho=0.91:0.89:11:0.12',
       tight: 'afade=t=in:st=0:d=0.005,aecho=0.92:0.90:10:0.09'
+    },
+    jaSpaces: {
+      big: 'afade=t=in:st=0:d=0.005,apad=pad_dur=0.07,aecho=0.90:0.88:22|42:0.10|0.05',
+      mid: 'afade=t=in:st=0:d=0.005,apad=pad_dur=0.03,aecho=0.91:0.89:22:0.07',
+      tight: 'afade=t=in:st=0:d=0.005'
     }
   }
 };
@@ -1193,83 +1206,83 @@ export const VOICE_CLIP_CATALOG = [
   ...makePack('nyx', 'ja', [
     {
       cue: 'select',
-      text: 'ニクス、オンラインだよ！コブ・クリエイター・カーネル、同期バッチリ！',
-      style: 'super cute bubbly teenage anime neko cyber-hacker girl on character select, high-pitched kawaii Japanese seiyuu energy',
+      text: 'ニクス、オンラインだよっ！コブの創造カーネル、ばっちり同期完了ーっ！',
+      style: 'キャラクター選択画面で明るく微笑む可愛い10代の美少女アニメ声、甘くて高いキュートな女の子の声',
       space: 'big'
     },
     {
       cue: 'intro',
-      text: 'ターゲットロック！バトルプロンプト、今すぐ起動しちゃうよ！',
-      style: 'cheeky cheerful young anime neko cyber-girl before duel, bright, brisk, energetic',
+      text: 'えへへ、ターゲットロック完了！バトルプロンプト、いっくよーっ！',
+      style: 'バトル開始前に弾むような可愛い美少女アニメヒロインの声、高めで華やか、テンポよくキュートに',
       space: 'mid',
-      maxSec: 3.75
+      maxSec: 3.78
     },
     {
       cue: 'attack_1',
-      text: 'パケット送信っ！',
-      style: 'cute bright high-pitched anime girl attack shout, crisp, snappy, playful',
+      text: 'えいっ！送信っ！',
+      style: '可愛い美少女アニメキャラの軽やかで高い攻撃ボイス、キュートで歯切れよく',
       space: 'tight'
     },
     {
       cue: 'attack_2',
-      text: 'ていっ、実行！',
-      style: 'energetic cute anime neko girl finisher bark, bouncy, quick',
+      text: 'やぁっ！実行だよっ！',
+      style: '甘くて元気な10代の女の子のコンボフィニッシュ掛け声、高めで可愛くスピード感をもって',
       space: 'tight'
     },
     {
       cue: 'skill_std',
-      text: 'エラー404――ポップアップ・カスケード！',
-      style: 'mischievous bubbly anime hacker girl tossing hologram pop-ups, brisk, bright',
+      text: 'えいっ、エラー404――ポップアップ・カスケード！',
+      style: 'いたずらっぽく可愛い小悪魔美少女がホログラムを放つ技ボイス、高めの甘い女の子声でテンポよく',
       space: 'mid'
     },
     {
       cue: 'skill_alt',
-      text: '致命的例外――ブルースクリーンだよっ！',
-      style: 'sassy cute anime cyber-girl teasing the enemy with a crash skill, bright, swift',
+      text: 'やぁっ、例外発生――ブルースクリーンにしちゃうよっ！',
+      style: '小悪魔チックで可愛い美少女ハッカーのスキル掛け声、明るくて高めのキュートな声',
       space: 'mid'
     },
     {
       cue: 'ult_std',
-      text: 'コブOS――スターライト・オーバークロック！',
-      style: 'excited sparkling young anime heroine overdrive shout, high-pitched, brisk, radiant',
+      text: 'コブOS全開っ――スターライト・オーバークロック！',
+      style: 'キラキラ輝く美少女アニメヒロインの必殺技コール、透明感のある高めの可愛い声で華やかに',
       space: 'big'
     },
     {
       cue: 'ult_alt',
-      text: 'ルート権限――ハイパーレーザー、発射！',
-      style: 'fierce-yet-cute teenage anime cyber-girl hyper-laser overdrive shout, brisk, energetic',
+      text: 'ルート権限解放っ――ハイパーレーザー、いっくよーっ！',
+      style: '元気いっぱいでキュートな10代美少女のレーザー必殺技ボイス、高めの可愛い女の子の声で勢いよく',
       space: 'big'
     },
     {
       cue: 'true_ult_charge',
       text: '創造核リンク――ジェネシス起動っ！',
-      style: 'urgent bubbly anime neko hacker uplink countdown before supernova fire, very brisk, crisp',
+      style: '超必殺技の発動直前にテンポよく一気に唱える可愛い美少女アニメ声、高めで華やか、素早く',
       space: 'big',
-      atempo: 1.14,
+      atempo: 1.12,
       maxSec: 2.02
     },
     {
       cue: 'true_ult_fire',
-      text: 'ジェネシス・プロンプト――パワード・バイ・コブ！',
-      style: 'climactic ecstatic fourth-wall supernova beam shout at full kawaii idol power, bright, soaring',
+      text: 'ジェネシス・プロンプト――パワード・バイ・コブっ！',
+      style: '最高潮に輝く可愛いアイドル美少女の超必殺ビーム決め台詞、高めの甘い女の子声で華やかに',
       space: 'big'
     },
     {
       cue: 'hurt',
-      text: 'にゃあっ！？グリッチ検知！',
-      style: 'startled cute anime neko girl yelping sharply on hit, fast, reactive',
+      text: 'きゃっ！？バグっちゃうよぉ！',
+      style: '攻撃を受けて可愛く驚く10代美少女アニメキャラの被弾ボイス、高めで女の子らしく素早く',
       space: 'tight'
     },
     {
       cue: 'death',
-      text: '<gasp> カーネル……パニック…… <breath> バッテリー切れ……シャットダウン……',
-      style: 'cute young anime cyber-girl powering down weakly in defeat, breathless, soft fading sigh',
+      text: '<gasp> あぅぅ……カーネル……パニック…… <breath> もう……おやすみぃ……',
+      style: '負けてふわっと力が抜けていく可愛い美少女のダウンボイス、甘く切ない女の子の吐息で静かに',
       space: 'big'
     },
     {
       cue: 'victory',
-      text: 'プロンプト実行完了！ニクスとコブの創造核で、宇宙まるごと大勝利だね！',
-      style: 'sparkling victorious teenage anime neko cyber-hacker girl celebrating happily, super cute, bright',
+      text: 'やったぁ、プロンプト実行完了っ！ニクスとコブの創造核で、今日もキラキラ大勝利だよーっ！',
+      style: '勝利して嬉しそうに弾む10代の可愛い美少女アニメヒロインの決め台詞、甘くて高いキュートな声',
       space: 'big',
       maxSec: 7.05
     }
@@ -1287,14 +1300,10 @@ function readVertexOrGeminiConfig() {
   };
   const vertexApiKey = readVar('VERTEX_API_KEY');
   const projectId = readVar('VERTEX_PROJECT_ID');
-  if (vertexApiKey && projectId) {
-    return { mode: 'vertex', apiKey: vertexApiKey, projectId };
+  if (!vertexApiKey || !projectId) {
+    throw new Error('Missing VERTEX_API_KEY or VERTEX_PROJECT_ID in .env.local.');
   }
-  const geminiApiKey = readVar('GEMINI_API_KEY');
-  if (geminiApiKey) {
-    return { mode: 'gemini', apiKey: geminiApiKey, projectId: '' };
-  }
-  throw new Error('Missing VERTEX_API_KEY/VERTEX_PROJECT_ID (or GEMINI_API_KEY) in .env.local.');
+  return { mode: 'vertex', apiKey: vertexApiKey, projectId };
 }
 
 function scrubSecrets(text, cfg) {
@@ -1437,8 +1446,9 @@ async function synthesizeRawWav(apiKey, clip, opts = {}) {
     throw new Error(`Unknown champion profile: ${clip.hero}`);
   }
   const stylePrefix = clip.lang === 'ja' ? profile.jaPrefix : profile.enPrefix;
+  const voiceName = clip.lang === 'ja' && profile.jaVoiceName ? profile.jaVoiceName : profile.voiceName;
   return requestTtsWav(apiKey, {
-    voiceName: profile.voiceName,
+    voiceName,
     text: clip.text,
     style: `${stylePrefix}${clip.style}`,
     label: `${clip.lang}/${clip.id}`,
@@ -1465,11 +1475,12 @@ async function synthesizeBatchRawWav(apiKey, batchClips, opts = {}) {
     throw new Error(`Unknown champion profile: ${hero}`);
   }
   const stylePrefix = lang === 'ja' ? profile.jaPrefix : profile.enPrefix;
+  const voiceName = lang === 'ja' && profile.jaVoiceName ? profile.jaVoiceName : profile.voiceName;
   const joinedText = batchClips.map((c) => c.text).join(' <long pause> <long pause> ');
   const style = `${stylePrefix}energetic dramatic fighting game voice recording session delivering ${batchClips.length} distinct combat lines separated by clear silent pauses, crisp diction, brisk pacing`;
   const cueNames = batchClips.map((c) => c.cue).join(',');
   return requestTtsWav(apiKey, {
-    voiceName: profile.voiceName,
+    voiceName,
     text: joinedText,
     style,
     label: `${lang}/${hero}[${cueNames}]`,
@@ -1652,12 +1663,14 @@ function probeDurationSec(filePath) {
   return Number.parseFloat(durOut) || 0;
 }
 
-function runFfmpegMaster(rawWavPath, outMp3Path, profile, spaceKey, atempo) {
+function runFfmpegMaster(rawWavPath, outMp3Path, profile, spaceKey, atempo, lang = 'en') {
   const trimChain =
     'silenceremove=start_periods=1:start_duration=0.004:start_threshold=-54dB,areverse,silenceremove=start_periods=1:start_duration=0.02:start_threshold=-48dB,areverse';
   const tempoChain = buildAtempoChain(atempo);
-  const eqCompChain = profile.eqComp.join(',');
-  const spaceChain = profile.spaces[spaceKey] || profile.spaces.tight;
+  const eqArr = lang === 'ja' && profile.jaEqComp ? profile.jaEqComp : profile.eqComp;
+  const spacesMap = lang === 'ja' && profile.jaSpaces ? profile.jaSpaces : profile.spaces;
+  const eqCompChain = eqArr.join(',');
+  const spaceChain = spacesMap[spaceKey] || spacesMap.tight;
   const fullFilter = `${trimChain}${tempoChain},${eqCompChain},${spaceChain},alimiter=limit=0.92:attack=2:release=40`;
 
   execFileSync(
@@ -1693,7 +1706,7 @@ function runFfmpegMaster(rawWavPath, outMp3Path, profile, spaceKey, atempo) {
 function masterVoiceToMp3(rawWavPath, outMp3Path, clip) {
   const profile = CHAMPION_PROFILES[clip.hero];
   let atempo = clip.atempo || 1.0;
-  let result = runFfmpegMaster(rawWavPath, outMp3Path, profile, clip.space, atempo);
+  let result = runFfmpegMaster(rawWavPath, outMp3Path, profile, clip.space, atempo, clip.lang);
 
   for (let pass = 0; pass < 3 && clip.maxSec && result.durationSec > clip.maxSec; pass++) {
     const targetSec = Math.max(0.4, clip.maxSec - 0.05);
@@ -1703,7 +1716,7 @@ function masterVoiceToMp3(rawWavPath, outMp3Path, clip) {
     );
     if (Math.abs(neededAtempo - atempo) < 0.01) break;
     atempo = neededAtempo;
-    result = runFfmpegMaster(rawWavPath, outMp3Path, profile, clip.space, atempo);
+    result = runFfmpegMaster(rawWavPath, outMp3Path, profile, clip.space, atempo, clip.lang);
   }
   return { ...result, atempoUsed: atempo };
 }

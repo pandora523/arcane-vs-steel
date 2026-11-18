@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps143';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps144';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -902,11 +902,13 @@ export class Fighter {
       !this.isBenched &&
       (this.state === 'HURT' || isCrit || dealt >= 95)
     ) {
+      const heavyHurt = dealt >= 210 || (this.hp > 0 && this.hp <= this.maxHp * 0.24);
       this.game?.audio?.playHeroVoice?.(this.heroId, 'hurt', {
         worldX: this.x,
         speakerKey: this,
         priority: 1,
-        cooldownMs: 2600
+        cooldownMs: heavyHurt ? 900 : 1800,
+        heavyHurt
       });
     }
 

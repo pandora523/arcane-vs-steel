@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps143';
-import { VFXManager } from './engine/VFXManager.js?v=30fps143';
-import { PixelForge } from './engine/PixelForge.js?v=30fps143';
-import { AudioManager } from './engine/AudioManager.js?v=30fps143';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps143';
-import { Fighter } from './entities/Fighter.js?v=30fps143';
-import { Warrior } from './entities/Warrior.js?v=30fps143';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps143';
-import { FireMage } from './entities/FireMage.js?v=30fps143';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps143';
-import { Archer } from './entities/Archer.js?v=30fps143';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps143';
-import { Priestess } from './entities/Priestess.js?v=30fps143';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps143';
-import { Reaper } from './entities/Reaper.js?v=30fps143';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps143';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps143';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps143';
-import { Titan } from './entities/Titan.js?v=30fps143';
-import { TitanEx } from './entities/TitanEx.js?v=30fps143';
-import { Ronin } from './entities/Ronin.js?v=30fps143';
-import { RoninEx } from './entities/RoninEx.js?v=30fps143';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps143';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps143';
-import { IceMage } from './entities/IceMage.js?v=30fps143';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps143';
-import { Android } from './entities/Android.js?v=30fps143';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps143';
-import { NyxEx } from './entities/NyxEx.js?v=30fps143';
+import { Renderer } from './engine/Renderer.js?v=30fps144';
+import { VFXManager } from './engine/VFXManager.js?v=30fps144';
+import { PixelForge } from './engine/PixelForge.js?v=30fps144';
+import { AudioManager } from './engine/AudioManager.js?v=30fps144';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps144';
+import { Fighter } from './entities/Fighter.js?v=30fps144';
+import { Warrior } from './entities/Warrior.js?v=30fps144';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps144';
+import { FireMage } from './entities/FireMage.js?v=30fps144';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps144';
+import { Archer } from './entities/Archer.js?v=30fps144';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps144';
+import { Priestess } from './entities/Priestess.js?v=30fps144';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps144';
+import { Reaper } from './entities/Reaper.js?v=30fps144';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps144';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps144';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps144';
+import { Titan } from './entities/Titan.js?v=30fps144';
+import { TitanEx } from './entities/TitanEx.js?v=30fps144';
+import { Ronin } from './entities/Ronin.js?v=30fps144';
+import { RoninEx } from './entities/RoninEx.js?v=30fps144';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps144';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps144';
+import { IceMage } from './entities/IceMage.js?v=30fps144';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps144';
+import { Android } from './entities/Android.js?v=30fps144';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps144';
+import { NyxEx } from './entities/NyxEx.js?v=30fps144';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps143';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps143';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps143';
+} from './adventure/AdventureManager.js?v=30fps144';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps144';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps144';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -938,6 +938,10 @@ export class Game {
     if (vlangParam === 'ja' || vlangParam === 'en') {
       this.audio?.setVoiceLang?.(vlangParam, false);
     }
+    const vpaceParam = params.get('vpace');
+    if (vpaceParam === 'snappy' || vpaceParam === 'full' || vpaceParam === 'fast') {
+      this.audio?.setVoicePace?.(vpaceParam === 'fast' ? 'snappy' : vpaceParam, false);
+    }
     const campaignParamRaw = params.get('campaign');
     const campaignParam =
       typeof campaignParamRaw === 'string' && campaignParamRaw.trim()
@@ -1615,6 +1619,18 @@ export class Game {
         });
       }
     }
+
+    const vPace = this.audio?.getVoicePace?.() === 'full' ? 'full' : 'snappy';
+    for (const paceBtn of [this.btnVoicePace, this.btnNavVoicePace]) {
+      if (!paceBtn) continue;
+      paceBtn.setAttribute('data-voice-pace', vPace);
+      paceBtn.setAttribute('aria-pressed', String(vPace === 'full'));
+      if (typeof paceBtn.querySelectorAll === 'function') {
+        paceBtn.querySelectorAll('.vpace-opt').forEach((optEl) => {
+          optEl.classList.toggle('is-active', optEl.getAttribute('data-pace') === vPace);
+        });
+      }
+    }
   }
 
   syncPauseMenuUI() {
@@ -1958,6 +1974,7 @@ export class Game {
     this.inputVoiceVol = document.getElementById('input-voice-vol');
     this.voiceVolVal = document.getElementById('voice-vol-val');
     this.btnVoiceLang = document.getElementById('btn-voice-lang');
+    this.btnVoicePace = document.getElementById('btn-voice-pace');
     this.btnBgm = document.getElementById('btn-bgm');
     this.bgmLabel = document.getElementById('bgm-label');
     this.inputBgmVol = document.getElementById('input-bgm-vol');
@@ -1975,6 +1992,7 @@ export class Game {
     this.inputNavVoiceVol = document.getElementById('input-nav-voice-vol');
     this.navVoiceVolVal = document.getElementById('nav-voice-vol-val');
     this.btnNavVoiceLang = document.getElementById('btn-nav-voice-lang');
+    this.btnNavVoicePace = document.getElementById('btn-nav-voice-pace');
     this.btnNavBgm = document.getElementById('btn-nav-bgm');
     this.navBgmLabel = document.getElementById('nav-bgm-label');
     this.inputNavBgmVol = document.getElementById('input-nav-bgm-vol');
@@ -2636,6 +2654,28 @@ export class Game {
       });
     };
 
+    const bindVoicePaceToggle = (btn) => {
+      if (!btn) return;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pace = this.audio.toggleVoicePace?.() || 'snappy';
+        this.syncAudioMixerUI();
+        this.audio.play('clock_gear', 600);
+        if (this.audio?.voiceEnabled && (this.audio?.getVoiceVolume?.() ?? 0) > 0.01) {
+          this.audio.playHeroVoice?.(
+            getPreviewVoiceHeroId(),
+            pace === 'full' ? 'skill_std' : 'skill_short',
+            {
+              speakerKey: 'mixer_preview',
+              priority: 2,
+              cooldownMs: 120,
+              maxAsyncDelayMs: 950
+            }
+          );
+        }
+      });
+    };
+
     const bindVoiceToggle = (btn) => {
       if (!btn) return;
       btn.addEventListener('click', (e) => {
@@ -2714,6 +2754,8 @@ export class Game {
 
     bindVoiceLangToggle(this.btnVoiceLang);
     bindVoiceLangToggle(this.btnNavVoiceLang);
+    bindVoicePaceToggle(this.btnVoicePace);
+    bindVoicePaceToggle(this.btnNavVoicePace);
     bindVoiceToggle(this.btnVoice);
     bindVoiceToggle(this.btnNavVoice);
     bindBgmToggle(this.btnBgm);
@@ -3376,7 +3418,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps143');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps144');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3472,7 +3514,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps143'
+          'v=30fps144'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);

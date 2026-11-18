@@ -5619,7 +5619,7 @@ html.is-mobile-landscape .adv-st-grid {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   font-family: var(--font-pixel);
   font-size: 0.29rem;
   letter-spacing: 0.06em;
@@ -5628,21 +5628,34 @@ html.is-mobile-landscape .adv-st-grid {
   border-bottom: 1px solid rgba(212, 175, 55, 0.26);
 }
 
+.nav-audio-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.voice-pace-btn,
 .voice-lang-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
   flex-shrink: 0;
-  padding: 4px 7px;
+  padding: 4px 6px;
   font-family: var(--font-pixel);
-  font-size: 0.26rem;
+  font-size: 0.25rem;
   letter-spacing: 0.04em;
   border-radius: 4px;
   border-color: rgba(212, 175, 55, 0.55);
   white-space: nowrap;
 }
 
+.voice-pace-btn {
+  border-color: rgba(56, 189, 248, 0.52);
+}
+
+.voice-pace-btn .vpace-opt,
 .voice-lang-btn .vlang-opt {
   color: #64748b;
   transition: color 0.14s ease;
@@ -5653,6 +5666,12 @@ html.is-mobile-landscape .adv-st-grid {
   text-shadow: 0 0 6px rgba(250, 204, 21, 0.45);
 }
 
+.voice-pace-btn .vpace-opt.is-active {
+  color: #7dd3fc;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.45);
+}
+
+.voice-pace-btn .vpace-sep,
 .voice-lang-btn .vlang-sep {
   color: rgba(148, 163, 184, 0.5);
 }
@@ -5815,7 +5834,7 @@ html.is-mobile-landscape .pause-plaque {
 }
 
 html.is-mobile-landscape .pause-audio-mixer {
-  grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.68fr) minmax(0, 0.92fr) minmax(0, 0.92fr);
   gap: 5px;
   padding-top: 6px;
 }
@@ -5830,17 +5849,19 @@ html.is-mobile-landscape .audio-mix-channel {
 }
 
 html.is-mobile-landscape .audio-vol-slider {
-  min-width: 34px;
+  min-width: 28px;
 }
 
 html.is-mobile-landscape .audio-vol-pct {
-  min-width: 26px;
-  font-size: 0.24rem;
+  min-width: 24px;
+  font-size: 0.23rem;
 }
 
+html.is-mobile-landscape .voice-pace-btn,
 html.is-mobile-landscape .voice-lang-btn {
   padding: 3px 4px;
-  font-size: 0.23rem;
+  font-size: 0.21rem;
+  gap: 2px;
 }
 
 html.is-mobile-landscape .audio-chan-btn {

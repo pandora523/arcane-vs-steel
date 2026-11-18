@@ -15,7 +15,7 @@ const DEFAULT_VOICE_VOLUME = 1.0;
 const DEFAULT_BGM_VOLUME = 0.38;
 const VOICE_PRESENCE_TRIM = 1.42;
 const BGM_CROSSFADE_SEC = 0.65;
-const AUDIO_ASSET_CACHE_BUST = 'v=30fps143';
+const AUDIO_ASSET_CACHE_BUST = 'v=30fps144';
 const MAX_CACHED_BGM_BUFFERS = 4;
 
 export class AudioManager {
@@ -28,6 +28,9 @@ export class AudioManager {
     this.voiceVolume = DEFAULT_VOICE_VOLUME;
     this.bgmVolume = DEFAULT_BGM_VOLUME;
     this.voiceLang = 'en';
+    this.voicePace = 'snappy';
+    this._speakerObjIds = new WeakMap();
+    this._nextSpeakerObjId = 1;
     this.ctx = null;
     this.master = null;
     this.sfxBus = null;
@@ -191,6 +194,10 @@ export class AudioManager {
       seraphina_true_ult_charge: 0.98,
       seraphina_true_ult_fire: 1.0,
       seraphina_hurt: 0.88,
+      seraphina_hurt_short: 0.88,
+      seraphina_skill_short: 0.94,
+      seraphina_skill_alt_short: 0.94,
+      seraphina_ult_short: 0.98,
       seraphina_death: 0.98,
       seraphina_victory: 0.98
     };
@@ -219,6 +226,10 @@ export class AudioManager {
         [`${prefix}_true_ult_charge`]: 0.98,
         [`${prefix}_true_ult_fire`]: 1.0,
         [`${prefix}_hurt`]: 0.88,
+        [`${prefix}_hurt_short`]: 0.88,
+        [`${prefix}_skill_short`]: 0.94,
+        [`${prefix}_skill_alt_short`]: 0.94,
+        [`${prefix}_ult_short`]: 0.98,
         [`${prefix}_death`]: 0.98,
         [`${prefix}_victory`]: 0.98
       });
@@ -691,6 +702,9 @@ export class AudioManager {
       if (parsed.voiceLang === 'ja' || parsed.voiceLang === 'en') {
         this.voiceLang = parsed.voiceLang;
       }
+      if (parsed.voicePace === 'full' || parsed.voicePace === 'snappy') {
+        this.voicePace = parsed.voicePace;
+      }
       this.enabled = Boolean(this.sfxEnabled || this.voiceEnabled || this.bgmEnabled);
     } catch (_) {}
   }
@@ -708,7 +722,8 @@ export class AudioManager {
           sfxEnabled: Boolean(this.sfxEnabled),
           voiceEnabled: Boolean(this.voiceEnabled),
           bgmEnabled: Boolean(this.bgmEnabled),
-          voiceLang: this.voiceLang === 'ja' ? 'ja' : 'en'
+          voiceLang: this.voiceLang === 'ja' ? 'ja' : 'en',
+          voicePace: this.voicePace === 'full' ? 'full' : 'snappy'
         })
       );
     } catch (_) {}
@@ -814,6 +829,21 @@ export class AudioManager {
     return this.setVoiceLang(this.getVoiceLang() === 'ja' ? 'en' : 'ja', persist);
   }
 
+  getVoicePace() {
+    return this.voicePace === 'full' ? 'full' : 'snappy';
+  }
+
+  setVoicePace(pace, persist = true) {
+    const nextPace = pace === 'full' ? 'full' : 'snappy';
+    this.voicePace = nextPace;
+    if (persist) this._saveAudioMixSettings();
+    return this.voicePace;
+  }
+
+  toggleVoicePace(persist = true) {
+    return this.setVoicePace(this.getVoicePace() === 'full' ? 'snappy' : 'full', persist);
+  }
+
   setSfxVolume(vol, persist = true) {
     const next = Math.max(0, Math.min(1, Number(vol) || 0));
     this.sfxVolume = next;
@@ -911,7 +941,7 @@ export class AudioManager {
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     this._preDuckUntilMs = Math.max(this._preDuckUntilMs || 0, now + holdMs);
     this._preDuckTarget = priority >= 3 ? 0.26 : priority >= 2 ? 0.34 : 0.55;
-    this._preDuckBgmTarget = priority >= 3 ? 0.42 : 0.68;
+    this._preDuckBgmTarget = 1.0;
     this._syncSfxSidechainDuck(null, 0.015);
     if (this._duckRecoverTimer) clearTimeout(this._duckRecoverTimer);
     this._duckRecoverTimer = setTimeout(() => {
@@ -942,24 +972,20 @@ export class AudioManager {
     }
 
     let target = 1.0;
-    let bgmTarget = 1.0;
+    const bgmTarget = 1.0;
+    this._preDuckBgmTarget = 1.0;
     if (overrideTarget !== null) {
       target = overrideTarget;
-      bgmTarget = overrideTarget;
     } else {
       if (maxPrio >= 3) {
         target = 0.26;
-        bgmTarget = 0.42;
       } else if (maxPrio >= 2) {
         target = 0.34;
-        bgmTarget = 0.68;
       } else if (maxPrio >= 1) {
         target = 0.55;
-        bgmTarget = 0.68;
       }
       if (now < (this._preDuckUntilMs || 0)) {
         target = Math.min(target, this._preDuckTarget || 0.34);
-        bgmTarget = Math.min(bgmTarget, this._preDuckBgmTarget || 0.68);
       }
     }
 
@@ -970,9 +996,7 @@ export class AudioManager {
       this._applyGainParam(this.sfxDuckGain, target, effectiveRamp);
     }
     if (this.bgmDuckGain && this.bgmDuckGain.gain) {
-      const curBgm = Number.isFinite(this.bgmDuckGain.gain.value) ? this.bgmDuckGain.gain.value : 1.0;
-      const bgmRamp =
-        rampSec !== null ? rampSec : bgmTarget < curBgm - 0.01 ? 0.04 : 0.30;
+      const bgmRamp = rampSec !== null ? rampSec : 0.04;
       this._applyGainParam(this.bgmDuckGain, bgmTarget, bgmRamp);
     }
     return target;
@@ -1629,8 +1653,15 @@ export class AudioManager {
     const matchingKeys = Object.keys(this.voiceVolumes).filter((k) => k.startsWith(`${prefix}_`));
     if (!matchingKeys.length) return;
 
-    // Prioritize UI/opening clips first so Roster Select & Duel Intro fire with 0ms wait
-    const priorityOrder = [`${prefix}_select`, `${prefix}_intro`];
+    // Prioritize UI/opening & snappy arcade combat barks first so Select, Intro, and fast barks fire with 0ms wait
+    const priorityOrder = [
+      `${prefix}_select`,
+      `${prefix}_intro`,
+      `${prefix}_hurt_short`,
+      `${prefix}_skill_short`,
+      `${prefix}_skill_alt_short`,
+      `${prefix}_ult_short`
+    ];
     const queue = [
       ...priorityOrder.filter((k) => matchingKeys.includes(k)),
       ...matchingKeys.filter((k) => !priorityOrder.includes(k))
@@ -1730,6 +1761,70 @@ export class AudioManager {
     return this._playHeroVoiceNow(heroId, cue, opts);
   }
 
+  _getSpeakerCooldownOwner(heroId, speakerKey) {
+    if (typeof speakerKey === 'string') return speakerKey;
+    if (speakerKey && typeof speakerKey === 'object') {
+      let id = this._speakerObjIds.get(speakerKey);
+      if (!id) {
+        id = this._nextSpeakerObjId++;
+        this._speakerObjIds.set(speakerKey, id);
+      }
+      return `${heroId}_obj${id}`;
+    }
+    return `${heroId}_default`;
+  }
+
+  _selectContextualVoicePlan(prefix, cue, opts, now, cdOwner) {
+    const fullKey = this._resolveVoiceKey(prefix, cue);
+    if (!fullKey) return null;
+
+    const pace = (opts.pace || this.voicePace) === 'full' ? 'full' : 'snappy';
+    if (pace === 'full') {
+      return { primaryKey: fullKey, fallbackKey: null, gateStampKey: null };
+    }
+
+    const rng = typeof opts.rng === 'function' ? opts.rng : Math.random;
+
+    if (cue === 'hurt') {
+      const heavyGateKey = `${cdOwner}:hurt_heavy_full`;
+      const lastHeavy = this.lastVoicePlayed[heavyGateKey];
+      if (opts.heavyHurt && (lastHeavy === undefined || now - lastHeavy >= 7500)) {
+        return { primaryKey: fullKey, fallbackKey: null, gateStampKey: heavyGateKey };
+      }
+      const shortKey = this._resolveVoiceKey(prefix, 'hurt_short');
+      return { primaryKey: shortKey || fullKey, fallbackKey: fullKey, gateStampKey: null };
+    }
+
+    if (cue === 'skill_std' || cue === 'skill_alt' || cue === 'skill_crimson') {
+      const shortCue = cue === 'skill_std' ? 'skill_short' : 'skill_alt_short';
+      const shortKey = this._resolveVoiceKey(prefix, shortCue);
+      const skillGateKey = `${cdOwner}:skill_full_chant`;
+      const lastSkillFull = this.lastVoicePlayed[skillGateKey];
+      const fullReady = lastSkillFull === undefined || now - lastSkillFull >= 14000;
+      if (fullReady && rng() < 0.20) {
+        return { primaryKey: fullKey, fallbackKey: null, gateStampKey: skillGateKey };
+      }
+      return { primaryKey: shortKey || fullKey, fallbackKey: fullKey, gateStampKey: null };
+    }
+
+    if (cue === 'ult_std' || cue === 'ult_alt' || cue === 'ult_crimson') {
+      const shortKey = this._resolveVoiceKey(prefix, 'ult_short');
+      const spk = opts.speakerKey;
+      const hpFrac = Number.isFinite(opts.hpFrac)
+        ? opts.hpFrac
+        : spk && typeof spk === 'object' && Number.isFinite(spk.hp) && Number.isFinite(spk.maxHp) && spk.maxHp > 0
+          ? spk.hp / spk.maxHp
+          : 1.0;
+      const isLowHp = hpFrac > 0 && hpFrac <= 0.35;
+      if (isLowHp || rng() < 0.35) {
+        return { primaryKey: fullKey, fallbackKey: null, gateStampKey: null };
+      }
+      return { primaryKey: shortKey || fullKey, fallbackKey: fullKey, gateStampKey: null };
+    }
+
+    return { primaryKey: fullKey, fallbackKey: null, gateStampKey: null };
+  }
+
   _playHeroVoiceNow(heroId, cue, opts = {}) {
     if (
       !this.enabled ||
@@ -1744,10 +1839,13 @@ export class AudioManager {
     if (!prefix) return false;
 
     const lang = (opts.lang || this.voiceLang) === 'ja' ? 'ja' : 'en';
-    const voiceKey = this._resolveVoiceKey(prefix, cue);
-    if (!voiceKey) return false;
-
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const getNowMs = () =>
+      Number.isFinite(opts.nowMs)
+        ? opts.nowMs
+        : typeof performance !== 'undefined'
+          ? performance.now()
+          : Date.now();
+    const now = getNowMs();
     const speakerKey = opts.speakerKey || heroId;
     const priority = opts.priority ?? 1;
     const cooldownMs = opts.cooldownMs ?? 120;
@@ -1761,14 +1859,16 @@ export class AudioManager {
       return false;
     }
 
-    const cdOwner =
-      typeof speakerKey === 'string' ? speakerKey : `${heroId}_t${speakerKey?.team || 0}`;
+    const cdOwner = this._getSpeakerCooldownOwner(heroId, speakerKey);
     const cdId = `${cdOwner}:${cue}`;
-    if (this.lastVoicePlayed[cdId] && now - this.lastVoicePlayed[cdId] < cooldownMs) {
+    if (this.lastVoicePlayed[cdId] !== undefined && now - this.lastVoicePlayed[cdId] < cooldownMs) {
       return false;
     }
 
-    const startBufferPlayback = (buf) => {
+    const plan = this._selectContextualVoicePlan(prefix, cue, opts, now, cdOwner);
+    if (!plan) return false;
+
+    const startBufferPlayback = (buf, activeKey) => {
       if (
         !buf ||
         !this.enabled ||
@@ -1779,7 +1879,7 @@ export class AudioManager {
       ) {
         return false;
       }
-      const playNow = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const playNow = getNowMs();
       const curAfterLoad = this.activeHeroVoices.get(speakerKey);
       if (curAfterLoad && playNow < curAfterLoad.endTimeMs && curAfterLoad.priority > priority) {
         return false;
@@ -1788,9 +1888,12 @@ export class AudioManager {
       // Cleanly fade out previous vocal line from the same speaker (0 self-overlap!)
       this.stopSpeakerVoice(speakerKey, 0.03);
       this.lastVoicePlayed[cdId] = playNow;
+      if (plan.gateStampKey && activeKey === plan.primaryKey) {
+        this.lastVoicePlayed[plan.gateStampKey] = playNow;
+      }
 
       const voiceGain = this.ctx.createGain();
-      const baseVol = this.voiceVolumes[voiceKey] ?? 0.94;
+      const baseVol = this.voiceVolumes[activeKey] ?? 0.94;
       if (voiceGain.gain) {
         if (typeof voiceGain.gain.setValueAtTime === 'function') {
           voiceGain.gain.setValueAtTime(baseVol, this.ctx.currentTime || 0);
@@ -1825,7 +1928,7 @@ export class AudioManager {
           gainNode: voiceGain,
           priority,
           duckSfx,
-          voiceKey,
+          voiceKey: activeKey,
           startTimeMs: playNow,
           endTimeMs: playNow + durMs - 40,
           recoverTimer: null,
@@ -1868,25 +1971,37 @@ export class AudioManager {
       }
     };
 
-    const cachedBuf = this._getCachedVoiceBuffer(voiceKey, lang);
-    if (cachedBuf) {
-      return startBufferPlayback(cachedBuf);
+    const cachedPrimary = this._getCachedVoiceBuffer(plan.primaryKey, lang);
+    if (cachedPrimary) {
+      return startBufferPlayback(cachedPrimary, plan.primaryKey);
+    }
+    const cachedFallback =
+      plan.fallbackKey && plan.fallbackKey !== plan.primaryKey
+        ? this._getCachedVoiceBuffer(plan.fallbackKey, lang)
+        : null;
+    if (cachedFallback) {
+      this.loadVoiceKey(plan.primaryKey, lang).catch(() => {});
+      return startBufferPlayback(cachedFallback, plan.fallbackKey);
     }
 
     if (duckSfx) {
       this.preDuckSfxForVoice(priority, maxAsyncDelayMs + 80);
     }
     const reqStart = now;
-    this.loadVoiceKey(voiceKey, lang)
-      .then((decoded) => {
-        if (!decoded) return;
-        if (!opts.lang && this.voiceLang !== lang) return;
-        const doneAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        if (doneAt - reqStart <= maxAsyncDelayMs) {
-          startBufferPlayback(decoded);
-        }
-      })
-      .catch(() => {});
+    (async () => {
+      let decoded = await this.loadVoiceKey(plan.primaryKey, lang);
+      let activeKey = plan.primaryKey;
+      if (!decoded && plan.fallbackKey && plan.fallbackKey !== plan.primaryKey) {
+        decoded = await this.loadVoiceKey(plan.fallbackKey, lang);
+        activeKey = plan.fallbackKey;
+      }
+      if (!decoded) return;
+      if (!opts.lang && this.voiceLang !== lang) return;
+      const doneAt = getNowMs();
+      if (doneAt - reqStart <= maxAsyncDelayMs) {
+        startBufferPlayback(decoded, activeKey);
+      }
+    })().catch(() => {});
     this.preloadHeroVoicePack(heroId, lang);
     return true;
   }
