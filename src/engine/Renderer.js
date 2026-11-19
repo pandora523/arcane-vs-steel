@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps159';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps159';
+import { PixelForge } from './PixelForge.js?v=30fps160';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps160';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps159';
+} from './shaders/exNextGenFX.js?v=30fps160';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -8034,25 +8034,28 @@ export class Renderer {
     return [null, clean];
   }
 
-  _drawCutInHeroThemeFX(ctx, cfg) {
-    const { baseHero, p, alpha, isTrue, elemCol, accCol, halfW, halfH, slideDir } = cfg;
-    const popT = Math.min(1, p / 0.16);
+  _getCutInCrestMetrics(halfH, isTrue, p) {
+    const popT = Math.min(1, p / 0.14);
     const popScale =
       popT < 1
-        ? 0.45 + 0.65 * (1 - Math.pow(1 - popT, 3))
-        : p < 0.24
-          ? 1.10 - ((p - 0.16) / 0.08) * 0.10
+        ? 0.68 + 0.38 * (1 - Math.pow(1 - popT, 3))
+        : p < 0.22
+          ? 1.06 - ((p - 0.14) / 0.08) * 0.06
           : 1.0;
-    const sc = (v) => Math.round(v * popScale);
-    const bob = Math.round(Math.sin(p * 16) * 3);
-    const crestY = -halfH - 18 + bob;
+    const baseSize = this.isMobileLandscape
+      ? isTrue ? 80 : 70
+      : this.isMobile
+        ? isTrue ? 96 : 84
+        : isTrue ? 128 : 112;
+    const drawSize = Math.max(48, Math.round(baseSize * popScale));
+    const bob = Math.round(Math.sin(p * 12) * 3);
+    const crestCy = -halfH - Math.round(baseSize * 0.36) + bob;
+    return { popScale, baseSize, drawSize, bob, crestCy };
+  }
 
-    const drawSteppedDiag = (x0, y0, dx, dy, steps, wPx, hPx, col) => {
-      ctx.fillStyle = col;
-      for (let i = 0; i < steps; i++) {
-        ctx.fillRect(x0 + i * dx, y0 + i * dy, wPx, hPx);
-      }
-    };
+  _drawCutInHeroThemeFX(ctx, cfg) {
+    const { baseHero, p, alpha, isTrue, elemCol, accCol, halfW, halfH, slideDir } = cfg;
+    const { drawSize, bob, crestCy } = this._getCutInCrestMetrics(halfH, isTrue, p);
 
     const drawStar4 = (gx, gy, arm, col) => {
       ctx.fillStyle = col;
@@ -8062,711 +8065,191 @@ export class Renderer {
       ctx.fillRect(gx - 2, gy - 2, 4, 4);
     };
 
-    const drawPixelDisc = (cx, cy, r, col) => {
-      ctx.fillStyle = col;
-      for (let dy = -r; dy <= r; dy += 2) {
-        const span = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy)));
-        ctx.fillRect(cx - span, cy + dy, span * 2, 2);
-      }
-    };
-
-    const drawPixelSeg = (x0, y0, x1, y1, col, thick = 2) => {
-      const steps = Math.max(3, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / 2));
-      const half = thick >> 1;
-      ctx.fillStyle = col;
-      for (let s = 0; s <= steps; s++) {
-        const px = Math.round(x0 + ((x1 - x0) * s) / steps);
-        const py = Math.round(y0 + ((y1 - y0) * s) / steps);
-        ctx.fillRect(px - half, py - half, thick, thick);
-      }
-    };
-
-    const drawSculptedFlameTongue = (cx, baseY, halfBaseW, h, phaseOff, cInk, cOut, cMid, cCore) => {
-      // Organic S-curving tapered pixel flame tongue (ZERO rectangular "red fingers"!)
-      const rows = Math.max(6, Math.round(h / 2));
-      for (let r = 0; r < rows; r++) {
-        const t = r / (rows - 1); // 0 = base, 1 = razor tip
-        const y = baseY - r * 2;
-        const sway = Math.round(Math.sin(t * 4.4 - p * 19 + phaseOff) * (t * 7.5));
-        const taper = Math.pow(1 - t, 0.72);
-        const hw = Math.max(1, Math.round(halfBaseW * taper));
-        const rx = cx + sway;
-        // Crisp dark-crimson ink silhouette border
-        ctx.fillStyle = cInk;
-        ctx.fillRect(rx - hw - 2, y, hw * 2 + 4, 2);
-        // Outer rich crimson-red body
-        ctx.fillStyle = cOut;
-        ctx.fillRect(rx - hw, y, hw * 2, 2);
-        // Blazing orange mid-heart
-        if (hw >= 3 && t < 0.84) {
-          const mw = Math.max(2, Math.round(hw * 0.72));
-          ctx.fillStyle = cMid;
-          ctx.fillRect(rx - mw, y, mw * 2, 2);
-        }
-        // Incandescent solar-yellow & white core near the heart of the flame
-        if (hw >= 5 && t < 0.62) {
-          const cw = Math.max(2, Math.round(hw * 0.42));
-          ctx.fillStyle = t < 0.30 ? '#ffffff' : cCore;
-          ctx.fillRect(rx - cw, y, cw * 2, 2);
-        }
-      }
-    };
-
-    const drawSculptedFeatherWing = (ox, oy, dir, span, flapPx, cInk, cOut, cMid, cHi) => {
-      // Handcrafted ink-outlined layered pixel feather wing with 5 curved overlapping plumes!
-      const plumes = 5;
-      for (let i = 0; i < plumes; i++) {
-        const len = Math.round(span * (1.0 - i * 0.13));
-        const startY = oy + i * 5;
-        const lift = Math.round((-12 + i * 5) + flapPx * (1.0 - i * 0.14));
-        const segs = Math.max(6, Math.round(len / 5));
-        for (let s = 0; s <= segs; s++) {
-          const u = s / segs;
-          const px = ox + dir * Math.round(u * len);
-          const arch = Math.round(Math.sin(u * Math.PI * 0.85) * (-7 + i * 2));
-          const py = startY + Math.round(u * lift) + arch;
-          const th = Math.max(2, Math.round((6 - i * 0.5) * (1 - u * 0.55)));
-          ctx.fillStyle = cInk;
-          ctx.fillRect(px - 2, py - 2, 7, th + 4);
-          ctx.fillStyle = u > 0.68 ? cHi : u > 0.32 ? cMid : cOut;
-          ctx.fillRect(px, py, 5, th);
-          if (u < 0.72 && th >= 4) {
-            ctx.fillStyle = cHi;
-            ctx.fillRect(px, py, 4, 2);
-          }
-        }
-      }
-    };
-
-    const drawSculptedCrystal = (cx, cy, rx, ry, cInk, cOut, cMid, cHi) => {
-      // Handcrafted ink-outlined faceted pixel diamond crystal with asymmetric light/shadow sides!
-      for (let dy = -ry; dy <= ry; dy += 2) {
-        const t = Math.abs(dy) / Math.max(1, ry);
-        const hw = Math.max(1, Math.round(rx * (1 - t)));
-        ctx.fillStyle = cInk;
-        ctx.fillRect(cx - hw - 2, cy + dy, hw * 2 + 4, 2);
-        ctx.fillStyle = cOut;
-        ctx.fillRect(cx - hw, cy + dy, hw * 2, 2);
-        ctx.fillStyle = cMid;
-        ctx.fillRect(cx - hw, cy + dy, Math.max(1, hw), 2);
-        if (dy < 0 && hw >= 3) {
-          ctx.fillStyle = cHi;
-          ctx.fillRect(cx - Math.max(1, hw >> 1), cy + dy, Math.max(2, hw >> 1), 2);
-        }
-      }
-    };
-
-    const drawSculptedGear = (cx, cy, r, teeth, rot, cInk, cRim, cHi, cCore) => {
-      // Handcrafted ink-outlined meshing pixel clockwork gear (0 ctx.arc/rotate!)
-      drawPixelDisc(cx, cy, r + 2, cInk);
-      for (let t = 0; t < teeth; t++) {
-        const a = rot + (t / teeth) * Math.PI * 2;
-        const tx = cx + Math.round(Math.cos(a) * (r + 3));
-        const ty = cy + Math.round(Math.sin(a) * (r + 3));
-        ctx.fillStyle = cInk;
-        ctx.fillRect(tx - 3, ty - 3, 6, 6);
-        ctx.fillStyle = cHi;
-        ctx.fillRect(tx - 2, ty - 2, 4, 4);
-      }
-      drawPixelDisc(cx, cy, r, cRim);
-      drawPixelDisc(cx, cy, Math.max(3, r - 4), '#090d1f');
-      for (let sp = 0; sp < 4; sp++) {
-        const a = rot + (sp * Math.PI) / 2;
-        drawPixelSeg(cx, cy, cx + Math.round(Math.cos(a) * (r - 2)), cy + Math.round(Math.sin(a) * (r - 2)), cRim, 2);
-      }
-      drawPixelDisc(cx, cy, Math.max(3, Math.round(r * 0.34)), cCore);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(cx - 1, cy - 1, 2, 2);
-    };
-
-    const drawSculptedCrescent = (cx, cy, rOuter, shiftX, shiftY, cInk, cOut, cHi) => {
-      // Razor-sharp tapered crescent moon or scythe blade via scanline two-disc difference!
-      for (let dy = -rOuter; dy <= rOuter; dy += 2) {
-        const spanO = Math.round(Math.sqrt(Math.max(0, rOuter * rOuter - dy * dy)));
-        const dyI = dy - shiftY;
-        const rIn = Math.max(2, rOuter - 2);
-        const spanI = Math.abs(dyI) < rIn ? Math.round(Math.sqrt(Math.max(0, rIn * rIn - dyI * dyI))) : -1;
-        const x0 = cx - spanO;
-        const x1 = cx + spanO;
-        if (spanI < 0) {
-          ctx.fillStyle = cInk;
-          ctx.fillRect(x0 - 2, cy + dy, x1 - x0 + 4, 2);
-          ctx.fillStyle = cOut;
-          ctx.fillRect(x0, cy + dy, x1 - x0, 2);
-        } else {
-          const ix0 = cx + shiftX - spanI;
-          const ix1 = cx + shiftX + spanI;
-          if (ix0 > x0) {
-            ctx.fillStyle = cInk;
-            ctx.fillRect(x0 - 2, cy + dy, ix0 - x0 + 4, 2);
-            ctx.fillStyle = cOut;
-            ctx.fillRect(x0, cy + dy, ix0 - x0, 2);
-            if (ix0 - x0 >= 4) {
-              ctx.fillStyle = cHi;
-              ctx.fillRect(x0 + 1, cy + dy, Math.max(2, (ix0 - x0) >> 1), 2);
-            }
-          }
-          if (x1 > ix1) {
-            ctx.fillStyle = cInk;
-            ctx.fillRect(ix1 - 2, cy + dy, x1 - ix1 + 4, 2);
-            ctx.fillStyle = cOut;
-            ctx.fillRect(ix1, cy + dy, x1 - ix1, 2);
-            if (x1 - ix1 >= 4) {
-              ctx.fillStyle = cHi;
-              ctx.fillRect(x1 - Math.max(2, (x1 - ix1) >> 1) - 1, cy + dy, Math.max(2, (x1 - ix1) >> 1), 2);
-            }
-          }
-        }
-      }
-    };
-
-    const drawForkedBoltCutIn = (x0, y0, dx, dy, segs, seed, cOut, cCore) => {
-      let lx = x0;
-      let ly = y0;
-      for (let i = 0; i < segs; i++) {
-        const zig = ((i + seed) % 2 === 0 ? 1 : -1) * (5 + ((i * 7 + seed * 3) % 6));
-        const nx = lx + dx + zig;
-        const ny = ly + dy;
-        drawPixelSeg(lx, ly, nx, ny, cOut, 4);
-        drawPixelSeg(lx, ly, nx, ny, cCore, 2);
-        if (i === 1 || i === 3) {
-          drawPixelSeg(nx, ny, nx + (i === 1 ? 14 : -14), ny + Math.round(dy * 0.7), cOut, 2);
-        }
-        lx = nx;
-        ly = ny;
-      }
-    };
-
-    ctx.globalAlpha = alpha * 0.96;
-
-    if (baseHero === 'nyx') {
-      // NYX: Beloved Handcrafted COB Cyber-Neko Monitor (Bob + Wink + `w` Mouth) + 4 Wing-Bits + `>_` + Pixel Hearts!
-      const cobW = sc(58);
-      const cobH = sc(26);
-      const halfCobW = cobW >> 1;
-      const earTwitch = Math.floor(p * 12) % 6 === 2 ? 1 : 0;
-
-      for (let e = 0; e < 5; e++) {
-        const ew = (5 - e) * 3;
-        ctx.fillStyle = '#020617';
-        ctx.fillRect(-halfCobW - 1 + e, crestY - e * 3 - 2, ew + 3, 4);
-        ctx.fillRect(halfCobW - ew - 2 - e, crestY - e * 3 - 2 + earTwitch, ew + 3, 4);
-        ctx.fillStyle = '#22d3ee';
-        ctx.fillRect(-halfCobW + e, crestY - e * 3 - 1, ew, 3);
-        ctx.fillRect(halfCobW - ew - e, crestY - e * 3 - 1 + earTwitch, ew, 3);
-        if (e >= 1 && e <= 3) {
-          const pw = Math.max(2, ew - 5);
-          ctx.fillStyle = '#f472b6';
-          ctx.fillRect(-halfCobW + 3 + e, crestY - e * 3 + 1, pw, 2);
-          ctx.fillRect(halfCobW - pw - 3 - e, crestY - e * 3 + 1 + earTwitch, pw, 2);
-        }
-      }
+    const drawTinyHeart = (hx, hy, col) => {
       ctx.fillStyle = '#020617';
-      ctx.fillRect(-halfCobW - 3, crestY - 2, cobW + 6, cobH + 4);
-      ctx.fillStyle = '#22d3ee';
-      ctx.fillRect(-halfCobW - 1, crestY, cobW + 2, cobH);
-      ctx.fillStyle = '#090d1f';
-      ctx.fillRect(-halfCobW + 2, crestY + 3, cobW - 4, cobH - 6);
+      ctx.fillRect(hx - 4, hy - 1, 9, 7);
+      ctx.fillStyle = col;
+      ctx.fillRect(hx - 3, hy, 3, 2);
+      ctx.fillRect(hx + 1, hy, 3, 2);
+      ctx.fillRect(hx - 3, hy + 1, 7, 2);
+      ctx.fillRect(hx - 2, hy + 3, 5, 2);
+      ctx.fillRect(hx - 1, hy + 5, 3, 1);
+    };
 
-      const wink = Math.floor(p * 9) % 5 === 3;
-      ctx.fillStyle = '#67e8f9';
-      if (wink) {
-        ctx.fillRect(-15, crestY + 10, 9, 2);
-        ctx.fillRect(6, crestY + 8, 8, 7);
-      } else {
-        ctx.fillRect(-15, crestY + 8, 8, 7);
-        ctx.fillRect(7, crestY + 8, 8, 7);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-13, crestY + 9, 3, 3);
-        ctx.fillRect(9, crestY + 9, 3, 3);
-      }
-      ctx.fillStyle = '#f472b6';
-      ctx.fillRect(-19, crestY + 16, 6, 2);
-      ctx.fillRect(13, crestY + 16, 6, 2);
-      ctx.fillStyle = '#fde047';
-      ctx.fillRect(-5, crestY + 17, 3, 2);
-      ctx.fillRect(-2, crestY + 15, 4, 2);
-      ctx.fillRect(2, crestY + 17, 3, 2);
+    // 1. ALL 12 CHAMPIONS: Genuine 8-Frame Animated Lossless HD-2D Pixel-Art Ultimate Crest!
+    //    Zero cut-seams, zero uncanny morphing — pure 1:1 nearest-neighbor 16-bit sprite animation!
+    const sheet = PixelForge.getUltimateEmblemSheet?.();
+    const cellSz = PixelForge.ULT_EMBLEM_CELL_SIZE || 128;
+    const frameCount = PixelForge.ULT_EMBLEM_FRAME_COUNT || 8;
+    const sheetReady = Boolean(
+      sheet &&
+        (sheet.complete === undefined || sheet.complete) &&
+        (sheet.naturalWidth || sheet.width || 0) >= cellSz * frameCount
+    );
+    if (sheetReady) {
+      const rowIdx = PixelForge.getUltimateEmblemRow(baseHero);
+      const animCycles = baseHero === 'mage' || baseHero === 'ronin' ? 2.6 : 2.1;
+      const frameIdx = Math.floor(Math.max(0, p) * frameCount * animCycles) % frameCount;
+      const sx = frameIdx * cellSz;
+      const sy = rowIdx * cellSz;
+      const dx = -(drawSize >> 1);
+      const dy = crestCy - (drawSize >> 1);
 
-      for (const sx of [-1, 1]) {
-        for (let b = 0; b < 2; b++) {
-          const bx = sx * (halfCobW + sc(16 + b * 18));
-          const by = crestY + 6 + b * 8 - bob * (b === 0 ? 1 : -1);
-          ctx.fillStyle = '#020617';
-          ctx.fillRect(bx - 7, by - 4, 14, 8);
-          ctx.fillStyle = (sx < 0) === (b === 0) ? '#22d3ee' : '#f472b6';
-          ctx.fillRect(bx - 5, by - 2, 10, 4);
-          ctx.fillRect(bx - 2, by - 5, 4, 10);
-        }
-      }
-      const promptX = -sc(Math.round(halfW * 0.76));
-      drawSteppedDiag(promptX, -12, 3, 3, 4, 5, 3, '#22d3ee');
-      drawSteppedDiag(promptX, 9, 3, -3, 4, 5, 3, '#22d3ee');
-      if (Math.floor(p * 14) % 2 === 0) {
-        ctx.fillStyle = '#f472b6';
-        ctx.fillRect(promptX + 18, 8, 12, 4);
-      }
-      for (const [hx, hy, hc] of [
-        [sc(Math.round(halfW * 0.70)), -16 - bob, '#f472b6'],
-        [-sc(Math.round(halfW * 0.64)), halfH - 8 + bob, '#22d3ee']
-      ]) {
-        ctx.fillStyle = hc;
-        ctx.fillRect(hx - 5, hy, 4, 3);
-        ctx.fillRect(hx + 1, hy, 4, 3);
-        ctx.fillRect(hx - 6, hy + 2, 12, 3);
-        ctx.fillRect(hx - 4, hy + 5, 8, 2);
-        ctx.fillRect(hx - 2, hy + 7, 4, 2);
-      }
-      for (let g = 0; g < 6; g++) {
-        const gx = Math.round(Math.sin(p * 24 + g * 1.6) * halfW * 0.70);
-        const gy = ((g * 17) % (halfH * 2)) - halfH + 4;
-        const gw = 16 + (g % 3) * 12;
-        ctx.fillStyle = g % 3 === 0 ? '#fde047' : g % 2 === 0 ? '#22d3ee' : '#f472b6';
-        ctx.fillRect(gx - (gw >> 1), gy, gw, 2);
-      }
-    } else if (baseHero === 'warrior') {
-      // AETHELGARD: Handcrafted Ink-Outlined Golden Sovereign Crown + Layered Flapping Seraph Wings + Twin Sculpted Dawn-Breaker Greatswords!
-      const wingFlap = Math.round(Math.sin(p * 15) * 7);
-      drawSculptedFeatherWing(-22, crestY + 4, -1, sc(54), wingFlap, '#020617', '#d97706', '#fbbf24', '#fef9c3');
-      drawSculptedFeatherWing(22, crestY + 4, 1, sc(54), wingFlap, '#020617', '#d97706', '#fbbf24', '#fef9c3');
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(sheet, sx, sy, cellSz, cellSz, dx, dy, drawSize, drawSize);
 
-      // Sculpted Sovereign Paladin Crown with glowing cyan diamond gem!
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-24, crestY - 8, 48, 24);
-      ctx.fillStyle = '#b45309';
-      ctx.fillRect(-22, crestY + 6, 44, 8);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-22, crestY + 2, 44, 6);
-      ctx.fillRect(-18, crestY - 4, 8, 8);
-      ctx.fillRect(10, crestY - 4, 8, 8);
-      ctx.fillRect(-6, crestY - 7, 12, 12);
-      ctx.fillStyle = '#fef9c3';
-      ctx.fillRect(-20, crestY + 2, 40, 2);
-      ctx.fillRect(-4, crestY - 6, 8, 3);
-      drawSculptedCrystal(0, crestY + 4, 5, 7, '#020617', '#0284c7', '#38bdf8', '#ffffff');
+      // Rhythmic HDR additive luminescence beat locked strictly to the animated crest pixels
+      const hdrPulse =
+        (p < 0.16 ? 0.26 * (1 - p / 0.16) : 0) +
+        0.07 +
+        0.11 * (0.5 + 0.5 * Math.sin(p * 16));
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * hdrPulse;
+      ctx.drawImage(sheet, sx, sy, cellSz, cellSz, dx, dy, drawSize, drawSize);
+      ctx.restore();
+    }
 
-      // Twin Sculpted Outlined Dawn-Breaker Greatswords crossing dynamically with winged golden crossguards!
-      const clash = Math.round(Math.sin(p * 12) * 8);
-      for (const dir of [-1, 1]) {
-        const hiltX = dir * (-sc(92) - clash);
-        const hiltY = halfH - 8;
-        const tipX = dir * (sc(104) - clash);
-        const tipY = -halfH + 10;
-        drawPixelSeg(hiltX, hiltY, tipX, tipY, '#020617', 11);
-        drawPixelSeg(hiltX, hiltY, tipX, tipY, dir < 0 ? '#0284c7' : '#d97706', 7);
-        drawPixelSeg(hiltX, hiltY, tipX, tipY, dir < 0 ? '#7dd3fc' : '#fde047', 4);
-        drawPixelSeg(hiltX, hiltY, tipX, tipY, '#ffffff', 2);
-        // Sculpted Winged Crossguard + Gem Pommel
-        const gx = Math.round(hiltX + (tipX - hiltX) * 0.14);
-        const gy = Math.round(hiltY + (tipY - hiltY) * 0.14);
-        drawPixelSeg(gx - dir * 14, gy - 12, gx + dir * 14, gy + 12, '#020617', 8);
-        drawPixelSeg(gx - dir * 12, gy - 10, gx + dir * 12, gy + 10, '#fbbf24', 4);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(gx - 3, gy - 3, 6, 6);
+    // 2. Refined, Hero-Unique Living Ambient Pixel Motes flanking the crest & callout
+    //    (Delicate 16-bit particles only — zero bulky blocks, zero cut shapes!)
+    ctx.globalAlpha = alpha * 0.92;
+    if (baseHero === 'warrior') {
+      for (let r = 0; r < 7; r++) {
+        const rx = ((r * 83) % (halfW * 2 - 48)) - (halfW - 24);
+        const ry = halfH - Math.round(((p * 94 + r * 29) % (halfH * 2 + 48)));
+        ctx.fillStyle = r % 2 === 0 ? '#38bdf8' : '#fef08a';
+        ctx.fillRect(rx - 1, ry - 3, 2, 6);
+        ctx.fillRect(rx - 3, ry - 1, 6, 2);
       }
-      drawStar4(0, 0, sc(12 + Math.abs(clash >> 1)), '#38bdf8');
+      drawStar4(-Math.round(halfW * 0.66), -6 + bob, 6, '#38bdf8');
+      drawStar4(Math.round(halfW * 0.66), -6 - bob, 6, '#fef08a');
     } else if (baseHero === 'mage') {
-      // IGNIS SOL: Complete Overhaul (ZERO "red fingers"!) — Seamless Roaring S-Curving Solar Fire-Bed + Outlined Black-Sun Eclipse Crown!
-      const sunY = crestY + 4;
-      const pulseR = sc(18) + Math.round(Math.sin(p * 20) * 2);
-      // 8 sculpted blazing coronal solar flares radiating organically around the Black-Sun!
-      for (let f = 0; f < 8; f++) {
-        const ang = p * 2.2 + (f / 8) * Math.PI * 2;
-        const flareLen = sc(12) + Math.round(Math.sin(p * 18 + f * 1.3) * 4);
-        const fx0 = Math.round(Math.cos(ang) * (pulseR - 1));
-        const fy0 = sunY + Math.round(Math.sin(ang) * (pulseR - 1));
-        const fx1 = Math.round(Math.cos(ang) * (pulseR + flareLen));
-        const fy1 = sunY + Math.round(Math.sin(ang) * (pulseR + flareLen));
-        drawPixelSeg(fx0, fy0, fx1, fy1, '#7f1d1d', 8);
-        drawPixelSeg(fx0, fy0, fx1, fy1, '#f97316', 5);
-        drawPixelSeg(fx0, fy0, fx1, fy1, '#fde047', 2);
+      for (let e = 0; e < 14; e++) {
+        const prog = (p * 1.45 + e * 0.11) % 1;
+        const ex = Math.round(Math.sin(e * 2.1 + p * 7) * halfW * 0.72);
+        const ey = halfH + 10 - Math.round(prog * (halfH * 2 + 64));
+        ctx.fillStyle = e % 3 === 0 ? '#ffffff' : e % 2 === 0 ? '#fde047' : '#f97316';
+        ctx.fillRect(ex - 2, ey - 2, 4, 4);
       }
-      // 2 glowing comet-tailed fire wisps orbiting smoothly behind/in front of eclipse!
-      for (let m = 0; m < 2; m++) {
-        const ang = p * 9 + m * Math.PI;
-        const ox = Math.round(Math.cos(ang) * sc(52));
-        const oy = sunY + Math.round(Math.sin(ang) * 10);
-        const tx = Math.round(Math.cos(ang - 0.35) * sc(52));
-        const ty = sunY + Math.round(Math.sin(ang - 0.35) * 10);
-        drawPixelSeg(tx, ty, ox, oy, '#ea580c', 6);
-        drawPixelSeg(tx, ty, ox, oy, '#fde047', 3);
-        drawPixelDisc(ox, oy, 5, '#020617');
-        drawPixelDisc(ox, oy, 3, '#ffffff');
-      }
-      drawPixelDisc(0, sunY, pulseR + 4, '#020617');
-      drawPixelDisc(0, sunY, pulseR + 2, '#dc2626');
-      drawPixelDisc(0, sunY, pulseR, '#fb923c');
-      drawPixelDisc(0, sunY, pulseR - 2, '#fef08a');
-      drawPixelDisc(0, sunY, sc(11), '#090d1f');
-
-      // Continuous seamless overlapping sea of organic S-curving pixel flames (ZERO spaced-out vertical finger bars!)
-      const baseY = halfH + 18;
-      // Continuous glowing tapered magma fire-bed uniting all flame bases (softly rounded underside, 0 flat box edge!)
-      ctx.fillStyle = '#7f1d1d';
-      ctx.fillRect(-sc(126), baseY - 11, sc(252), 8);
-      ctx.fillRect(-sc(104), baseY - 3, sc(208), 4);
-      ctx.fillRect(-sc(74), baseY + 1, sc(148), 3);
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(-sc(118), baseY - 9, sc(236), 6);
-      ctx.fillRect(-sc(90), baseY - 3, sc(180), 3);
-      ctx.fillStyle = '#f97316';
-      ctx.fillRect(-sc(102), baseY - 6, sc(204), 4);
-      // Back wide overlapping flame crests
-      for (let i = 0; i < 9; i++) {
-        const fx = Math.round(((i - 4) / 4) * sc(116));
-        const edgeFade = 1.0 - Math.abs(i - 4) * 0.14;
-        const fh = Math.round((30 + Math.sin(p * 16 + i * 1.4) * 8) * edgeFade);
-        drawSculptedFlameTongue(fx, baseY, Math.round(24 * edgeFade), fh, i * 1.1, '#450a0a', '#b91c1c', '#ef4444', '#f97316');
-      }
-      // Front curling incandescent flame tongues & detached sparks!
-      for (let i = 0; i < 7; i++) {
-        const fx = Math.round(((i - 3) / 3) * sc(96)) + Math.round(Math.sin(p * 12 + i) * 4);
-        const edgeFade = 1.0 - Math.abs(i - 3) * 0.15;
-        const fh = Math.round((28 + Math.cos(p * 20 + i * 1.7) * 9) * edgeFade);
-        drawSculptedFlameTongue(fx, baseY + 2, Math.round(16 * edgeFade), fh, i * 1.9 + 0.7, '#7c2d12', '#ea580c', '#fbbf24', '#fef9c3');
-        // Rising detached solar ember spark above flame crest
-        const spY = baseY - fh - 6 - Math.round(((p * 42 + i * 13) % 24));
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(fx - 2, spY, 4, 4);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(fx - 1, spY + 1, 2, 2);
-      }
+      drawStar4(-Math.round(halfW * 0.64), crestCy + 8 + bob, 5, '#fde047');
+      drawStar4(Math.round(halfW * 0.64), crestCy + 8 - bob, 5, '#fb923c');
     } else if (baseHero === 'priestess') {
-      // SERAPHINA: Handcrafted Outlined 6-Wing Seraphim Archangel Crest + Golden Sun-Cross Halo + Curved Drifting Quill Feathers!
-      const doveY = crestY + 4;
-      const flap1 = Math.round(Math.sin(p * 13) * 6);
-      const flap2 = Math.round(Math.sin(p * 13 - 0.8) * 6);
-      // Upper & lower lush feathered archangel wings (real sculpted curved plumes!)
-      drawSculptedFeatherWing(-18, doveY - 4, -1, sc(66), flap1, '#020617', '#fbbf24', '#fef08a', '#ffffff');
-      drawSculptedFeatherWing(18, doveY - 4, 1, sc(66), flap1, '#020617', '#fbbf24', '#fef08a', '#ffffff');
-      drawSculptedFeatherWing(-14, doveY + 12, -1, sc(44), flap2 + 4, '#020617', '#f59e0b', '#fde047', '#fef9c3');
-      drawSculptedFeatherWing(14, doveY + 12, 1, sc(44), flap2 + 4, '#020617', '#f59e0b', '#fde047', '#fef9c3');
-      // Ink-outlined Golden Sun-Cross Halo Emblem
-      drawPixelDisc(0, doveY + 2, sc(16), '#020617');
-      drawPixelDisc(0, doveY + 2, sc(14), '#f59e0b');
-      drawPixelDisc(0, doveY + 2, sc(11), '#fef9c3');
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-5, doveY - 18, 10, 40);
-      ctx.fillRect(-18, doveY - 3, 36, 10);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-3, doveY - 16, 6, 36);
-      ctx.fillRect(-16, doveY - 1, 32, 6);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-1, doveY - 14, 2, 32);
-      ctx.fillRect(-14, doveY + 1, 28, 2);
-      // Graceful curved pixel angel quill feathers drifting downward!
-      for (let ft = 0; ft < 8; ft++) {
-        const fx = Math.round(Math.sin(p * 7 + ft * 1.4) * halfW * 0.78);
-        const fy = Math.round(((ft * 31 + p * 75) % (halfH * 2 + 24)) - halfH - 12);
-        const lean = Math.round(Math.sin(p * 8 + ft) * 4);
-        drawPixelSeg(fx - 6, fy - 2, fx + 6, fy + 3 + (lean >> 1), '#020617', 6);
-        drawPixelSeg(fx - 5, fy - 2, fx + 5, fy + 3 + (lean >> 1), '#fde047', 4);
-        drawPixelSeg(fx - 4, fy - 1, fx + 4, fy + 2 + (lean >> 1), '#ffffff', 2);
+      for (let m = 0; m < 10; m++) {
+        const mx = Math.round(Math.sin(p * 6 + m * 1.35) * halfW * 0.76);
+        const my = Math.round(((m * 31 + p * 68) % (halfH * 2 + 52)) - halfH - 36);
+        ctx.fillStyle = m % 2 === 0 ? '#fef9c3' : '#fde047';
+        ctx.fillRect(mx - 2, my - 1, 5, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(mx - 1, my - 2, 2, 4);
       }
+      drawStar4(-Math.round(halfW * 0.66), -8 + bob, 6, '#fef08a');
+      drawStar4(Math.round(halfW * 0.66), -8 - bob, 6, '#ffffff');
     } else if (baseHero === 'chronomancer') {
-      // CHRONOS: Handcrafted Interlocking Meshing Clockwork Gears + Ornate Roman Clockface + Twin Sculpted Flowing Hourglasses!
-      const watchY = crestY + 4;
-      // 2 Real Meshing Interlocking Brass & Cyan Cog-Gears flanking the grand clockface!
-      drawSculptedGear(-sc(36), watchY + 4, sc(15), 8, -p * 6.0, '#020617', '#d97706', '#fde047', '#2dd4bf');
-      drawSculptedGear(sc(36), watchY + 4, sc(15), 8, p * 6.0 + 0.35, '#020617', '#0d9488', '#5eead4', '#fde047');
-      // Grand Ornate Astral Clockface Emblem
-      drawPixelDisc(0, watchY + 2, sc(22), '#020617');
-      drawPixelDisc(0, watchY + 2, sc(20), '#d97706');
-      drawPixelDisc(0, watchY + 2, sc(18), '#fde047');
-      drawPixelDisc(0, watchY + 2, sc(15), '#042f2e');
-      // 12 Crisp Golden Hour Ticks around the clockface dial
-      for (let h = 0; h < 12; h++) {
-        const a = (h / 12) * Math.PI * 2;
-        const tx = Math.round(Math.cos(a) * sc(12));
-        const ty = watchY + 2 + Math.round(Math.sin(a) * sc(12));
-        ctx.fillStyle = h % 3 === 0 ? '#fef08a' : '#2dd4bf';
+      for (let t = 0; t < 10; t++) {
+        const tx = ((t * 71) % (halfW * 2 - 44)) - (halfW - 22);
+        const ty = halfH + 6 - Math.round(((p * 86 + t * 27) % (halfH * 2 + 52)));
+        ctx.fillStyle = t % 2 === 0 ? '#2dd4bf' : '#fbbf24';
+        ctx.fillRect(tx - 2, ty - 2, 4, 4);
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(tx - 1, ty - 1, 2, 2);
       }
-      const mAng = p * 16.0;
-      drawPixelSeg(0, watchY + 2, Math.round(Math.cos(mAng) * sc(12)), watchY + 2 + Math.round(Math.sin(mAng) * sc(12)), '#fde047', 2);
-      const hAng = -p * 5.0;
-      drawPixelSeg(0, watchY + 2, Math.round(Math.cos(hAng) * sc(8)), watchY + 2 + Math.round(Math.sin(hAng) * sc(8)), '#5eead4', 3);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-2, watchY, 4, 4);
-
-      // Twin Sculpted Ink-Outlined Golden Hourglasses with live falling cyan sand!
-      for (const sx of [-1, 1]) {
-        const hx = sx * sc(Math.round(halfW * 0.72));
-        const hy = sx * bob * 2;
-        ctx.fillStyle = '#020617';
-        ctx.fillRect(hx - 11, hy - 14, 22, 28);
-        ctx.fillStyle = '#d97706';
-        ctx.fillRect(hx - 9, hy - 12, 18, 4);
-        ctx.fillRect(hx - 9, hy + 8, 18, 4);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(hx - 8, hy - 11, 16, 2);
-        ctx.fillRect(hx - 8, hy + 9, 16, 2);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(hx - 7, hy - 8, 14, 16);
-        ctx.fillStyle = '#2dd4bf';
-        ctx.fillRect(hx - 6, hy - 8, 12, 4);
-        ctx.fillRect(hx - 4, hy - 4, 8, 2);
-        ctx.fillRect(hx - 1, hy - 2, 2, 6);
-        ctx.fillRect(hx - 4, hy + 4, 8, 2);
-        ctx.fillRect(hx - 6, hy + 6, 12, 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(hx - 1, hy - 2 + Math.round(((p * 18) % 1) * 8), 2, 2);
-      }
+      drawStar4(-Math.round(halfW * 0.68), -6 + bob, 6, '#5eead4');
+      drawStar4(Math.round(halfW * 0.68), -6 - bob, 6, '#fbbf24');
     } else if (baseHero === 'valkyrie') {
-      // FREYJA: Handcrafted Outlined Winged Valkyrie War-Helm + Wide Flapping Fiery Phoenix-Feather Wings + Flaming Gungnir & Forked Bifrost Bolts!
-      const flap = Math.round(Math.sin(p * 16) * 7);
-      drawSculptedFeatherWing(-18, crestY + 4, -1, sc(60), flap, '#020617', '#dc2626', '#f97316', '#fde047');
-      drawSculptedFeatherWing(18, crestY + 4, 1, sc(60), flap, '#020617', '#dc2626', '#f97316', '#fde047');
-      // Sculpted Crimson-Gold Valkyrie War-Helm with flowing crest plume
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-16, crestY - 6, 32, 24);
-      ctx.fillStyle = '#b45309';
-      ctx.fillRect(-14, crestY - 2, 28, 18);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-14, crestY - 2, 28, 10);
-      ctx.fillStyle = '#fef9c3';
-      ctx.fillRect(-12, crestY - 1, 24, 3);
-      ctx.fillStyle = '#e11d48';
-      ctx.fillRect(-4, crestY - 10, 8, 18);
-      ctx.fillStyle = '#fda4af';
-      ctx.fillRect(-2, crestY - 9, 4, 8);
-      // Sculpted Flaming Gungnir Spear streaking dynamically with ornate barbs!
-      const spearOff = Math.round(((p * 2.2) % 1 - 0.5) * sc(72)) * -slideDir;
-      const tipDir = -slideDir;
-      const sxTip = tipDir * sc(Math.round(halfW * 0.72)) + spearOff;
-      const sxTail = -tipDir * sc(Math.round(halfW * 0.72)) + spearOff;
-      drawPixelSeg(sxTail, -4, sxTip, -4, '#020617', 8);
-      drawPixelSeg(sxTail, -4, sxTip, -4, '#f59e0b', 4);
-      drawPixelSeg(sxTail, -4, sxTip, -4, '#fef9c3', 2);
-      drawSculptedCrystal(sxTip, -4, 14, 7, '#020617', '#dc2626', '#fbbf24', '#ffffff');
-      // Forked jagged crackling Bifrost golden lightning bolts!
-      const bSeed = Math.floor(p * 14);
-      drawForkedBoltCutIn(-sc(102), -halfH + 2, 11, 9, 5, bSeed, '#f59e0b', '#ffffff');
-      drawForkedBoltCutIn(sc(102), -halfH + 2, -11, 9, 5, bSeed + 3, '#fb7185', '#fef9c3');
+      for (let v = 0; v < 12; v++) {
+        const prog = (p * 1.4 + v * 0.13) % 1;
+        const vx = ((v * 73) % (halfW * 2 - 40)) - (halfW - 20);
+        const vy = halfH + 8 - Math.round(prog * (halfH * 2 + 56));
+        ctx.fillStyle = v % 3 === 0 ? '#ffffff' : v % 2 === 0 ? '#fde047' : '#f43f5e';
+        ctx.fillRect(vx - 2, vy - 2, 4, 4);
+      }
+      drawStar4(-Math.round(halfW * 0.68), -6 + bob, 6, '#fde047');
+      drawStar4(Math.round(halfW * 0.68), -6 - bob, 6, '#fb7185');
     } else if (baseHero === 'ronin') {
-      // KAZE-MARU: Handcrafted Ink-Outlined Severed Crimson Blood-Moon + Golden Samurai Kabuto Crescent + Forked Raijin Lightning & Sculpted Sakura!
-      const moonY = crestY + 6;
-      const rMoon = sc(20);
-      const slideApart = Math.round(Math.min(1, p * 1.5) * 10);
-      for (let dy = -rMoon; dy <= rMoon; dy += 2) {
-        const span = Math.round(Math.sqrt(Math.max(0, rMoon * rMoon - dy * dy)));
-        const shift = dy < 0 ? -slideApart : slideApart;
-        ctx.fillStyle = '#020617';
-        ctx.fillRect(shift - span - 2, moonY + dy, span * 2 + 4, 2);
-        ctx.fillStyle = dy < -6 ? '#fb7185' : dy < 6 ? '#e11d48' : '#9f1239';
-        ctx.fillRect(shift - span, moonY + dy, span * 2, 2);
-      }
-      // Tapered razor-sharp white-cyan Iaijutsu Severance Flash across the split Blood-Moon!
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-sc(78), moonY - 3, sc(156), 6);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(-sc(82), moonY - 2, sc(164), 4);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-sc(66), moonY - 1, sc(132), 2);
-      // Sculpted Samurai Golden Crescent Kabuto Horn gleaming at crest center!
-      drawSculptedCrescent(0, moonY - 2, sc(14), 0, -5, '#020617', '#eab308', '#fef9c3');
-      // Forked Cyan Raijin Storm Lightning Bolts cracking symmetrically across both flanks!
-      const rSeed = Math.floor(p * 15);
-      drawForkedBoltCutIn(-sc(112), -halfH + 4, 12, 10, 5, rSeed, '#38bdf8', '#ffffff');
-      drawForkedBoltCutIn(sc(112), -halfH + 4, -12, 10, 5, rSeed + 5, '#0284c7', '#e0f2fe');
-      // Sculpted 2-tone pixel Sakura Blossoms tumbling across the wind!
-      for (let pet = 0; pet < 14; pet++) {
-        const px = Math.round(((pet * 79 + p * 240 * -slideDir) % (halfW * 2) + halfW * 2) % (halfW * 2) - halfW);
-        const py = Math.round(((pet * 37 + p * 105) % (halfH * 2 + 16)) - halfH - 8);
+      for (let pet = 0; pet < 12; pet++) {
+        const px = Math.round(((pet * 79 + p * 205 * -slideDir) % (halfW * 2) + halfW * 2) % (halfW * 2) - halfW);
+        const py = Math.round(((pet * 37 + p * 92) % (halfH * 2 + 54)) - halfH - 36);
         ctx.fillStyle = '#831843';
-        ctx.fillRect(px - 1, py - 1, 9, 7);
+        ctx.fillRect(px - 1, py - 1, 7, 5);
         ctx.fillStyle = '#f472b6';
-        ctx.fillRect(px, py, 7, 5);
+        ctx.fillRect(px, py, 5, 3);
         ctx.fillStyle = '#fbcfe8';
-        ctx.fillRect(px + 2, py, 4, 3);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px + 3, py + 1, 2, 2);
+        ctx.fillRect(px + 2, py, 2, 2);
       }
+      drawStar4(-Math.round(halfW * 0.64), crestCy + 6 + bob, 6, '#38bdf8');
+      drawStar4(Math.round(halfW * 0.64), -8 - bob, 5, '#fbcfe8');
     } else if (baseHero === 'archer') {
-      // SYLVARA: Handcrafted Outlined Emerald Spirit-Falcon Emblem (Beak + Layered Wings!) + Ornate Curved Star-Bow & Fletched Arrows!
-      const flap = Math.round(Math.sin(p * 16) * 7);
-      drawSculptedFeatherWing(-12, crestY + 4, -1, sc(60), flap, '#020617', '#059669', '#34d399', '#fef08a');
-      drawSculptedFeatherWing(12, crestY + 4, 1, sc(60), flap, '#020617', '#059669', '#34d399', '#fef08a');
-      // Sculpted Emerald & Gold Falcon Crest Head
-      drawSculptedCrystal(0, crestY + 4, 10, 12, '#020617', '#047857', '#10b981', '#fef08a');
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-3, crestY + 4, 6, 5);
-      // Curved Ornate Star-Bow silhouette on leading flank + 2 sculpted fletched emerald arrows!
-      drawSculptedCrescent(-slideDir * sc(Math.round(halfW * 0.72)), 0, sc(26), slideDir * 9, 0, '#020617', '#d97706', '#fef08a');
-      for (let a = 0; a < 2; a++) {
-        const cyc = (p * 1.9 + a * 0.5) % 1;
-        const ax = Math.round((cyc - 0.5) * halfW * 1.55) * -slideDir;
-        const ay = a === 0 ? -10 : 14;
-        const dir = -slideDir;
-        drawPixelSeg(ax - 44, ay, ax + 44, ay, '#020617', 6);
-        drawPixelSeg(ax - 42, ay, ax + 42, ay, '#34d399', 3);
-        drawPixelSeg(ax - 38, ay, ax + 38, ay, '#fef9c3', 1);
-        // Sculpted diamond arrowhead + feathered fletching
-        drawSculptedCrystal(ax + dir * 46, ay, 8, 5, '#020617', '#10b981', '#fde047', '#ffffff');
-        drawPixelSeg(ax - dir * 40, ay, ax - dir * 48, ay - 5, '#bef264', 3);
-        drawPixelSeg(ax - dir * 40, ay, ax - dir * 48, ay + 5, '#bef264', 3);
+      for (let lf = 0; lf < 10; lf++) {
+        const lx = Math.round(Math.sin(p * 7 + lf * 1.25) * halfW * 0.74);
+        const ly = ((lf * 31 + Math.round(p * 74)) % (halfH * 2 + 48)) - halfH - 32;
+        ctx.fillStyle = lf % 2 === 0 ? '#10b981' : '#bef264';
+        ctx.fillRect(lx - 2, ly - 1, 5, 3);
+        ctx.fillStyle = '#fef9c3';
+        ctx.fillRect(lx - 1, ly - 1, 2, 2);
       }
+      drawStar4(-Math.round(halfW * 0.66), -6 - bob, 6, '#34d399');
+      drawStar4(Math.round(halfW * 0.66), -6 + bob, 6, '#fef08a');
     } else if (baseHero === 'reaper') {
-      // MALAKOR: Handcrafted Ink-Outlined Horned Abyssal Wraith-Skull + Curved Crescent Soul-Scythe Blades + Teardrop Soul-Flames!
-      const skullY = crestY + 2;
-      const jawDrop = Math.floor(p * 12) % 2 === 0 ? 3 : 0;
-      // Twin Curving Metallic Ram Horns framing the Wraith-Skull!
-      drawSculptedCrescent(-18, skullY - 4, 15, 6, -4, '#020617', '#6b21a8', '#e9d5ff');
-      drawSculptedCrescent(18, skullY - 4, 15, -6, -4, '#020617', '#6b21a8', '#e9d5ff');
-      // Sculpted Outlined Wraith-Skull + Forehead Soul-Gem
-      drawPixelDisc(0, skullY + 2, 16, '#020617');
-      drawPixelDisc(0, skullY + 2, 14, '#d8b4fe');
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-11, skullY + 12 + jawDrop, 22, 8);
-      ctx.fillStyle = '#c084fc';
-      ctx.fillRect(-9, skullY + 13 + jawDrop, 18, 5);
-      // Teeth slits + glowing crimson/magenta eyes!
-      ctx.fillStyle = '#090d1f';
-      ctx.fillRect(-10, skullY + 1, 7, 7);
-      ctx.fillRect(3, skullY + 1, 7, 7);
-      ctx.fillRect(-4, skullY + 14 + jawDrop, 2, 4);
-      ctx.fillRect(2, skullY + 14 + jawDrop, 2, 4);
-      const eyeCol = Math.floor(p * 16) % 3 === 0 ? '#ffffff' : '#f43f5e';
-      ctx.fillStyle = eyeCol;
-      ctx.fillRect(-8, skullY + 3, 4, 3);
-      ctx.fillRect(5, skullY + 3, 4, 3);
-      drawSculptedCrystal(0, skullY - 6, 4, 6, '#020617', '#9333ea', '#e879f9', '#ffffff');
-      // 2 Sculpted Curving Soul-Lantern Flames flanking the skull!
-      for (const sx of [-1, 1]) {
-        drawSculptedFlameTongue(sx * sc(48), skullY + 14 + sx * bob, 10, 22, sx > 0 ? 1.5 : 0, '#1e1b4b', '#7e22ce', '#e879f9', '#ffffff');
+      for (let w = 0; w < 10; w++) {
+        const prog = (p * 1.3 + w * 0.14) % 1;
+        const wx = Math.round(Math.sin(w * 2.4 + p * 6) * halfW * 0.72);
+        const wy = halfH + 8 - Math.round(prog * (halfH * 2 + 56));
+        ctx.fillStyle = w % 3 === 0 ? '#f0abfc' : w % 2 === 0 ? '#a855f7' : '#e11d48';
+        ctx.fillRect(wx - 2, wy - 2, 4, 4);
       }
-      // Twin Sculpted Curved Crescent Soul-Scythe Blades on left & right!
-      const scis = Math.round(Math.sin(p * 12) * 8);
-      drawSculptedCrescent(-sc(Math.round(halfW * 0.72)) + scis, 2, sc(26), 10, 4, '#020617', '#9333ea', '#f0abfc');
-      drawSculptedCrescent(sc(Math.round(halfW * 0.72)) - scis, 2, sc(26), -10, 4, '#020617', '#be123c', '#fda4af');
+      drawStar4(-Math.round(halfW * 0.66), -6 + bob, 6, '#c084fc');
+      drawStar4(Math.round(halfW * 0.66), -6 - bob, 6, '#f43f5e');
     } else if (baseHero === 'titan') {
-      // VULKAN (TITAN): Handcrafted Outlined Runic Mjolnir Slamming Onto Glowing Magma Anvil + Sculpted Jagged Volcanic Rocks & Sparks!
-      const strikeCyc = (p * 3.0) % 1;
-      const lift = strikeCyc < 0.62
-        ? Math.round(Math.sin((strikeCyc / 0.62) * Math.PI * 0.5) * 16)
-        : Math.round((1 - (strikeCyc - 0.62) / 0.38) * 16);
-      const anvilY = crestY + 15;
-      // Sculpted Outlined Forged Steel Anvil with Horn!
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-26, anvilY - 2, 52, 10);
-      ctx.fillRect(-14, anvilY + 6, 28, 8);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(-24, anvilY, 48, 6);
-      ctx.fillRect(-12, anvilY + 6, 24, 6);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(-22, anvilY, 44, 2);
-      // Handcrafted Outlined Runic Mjolnir War-Hammer with glowing carved emerald runes!
-      const hamY = anvilY - 16 - lift;
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-5, hamY - 14, 10, 16);
-      ctx.fillStyle = '#92400e';
-      ctx.fillRect(-3, hamY - 12, 6, 12);
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-26, hamY - 2, 52, 20);
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(-24, hamY, 48, 16);
-      ctx.fillStyle = '#64748b';
-      ctx.fillRect(-22, hamY + 1, 44, 6);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-24, hamY, 4, 16);
-      ctx.fillRect(20, hamY, 4, 16);
-      // Glowing emerald Norse runes across hammerhead
-      ctx.fillStyle = '#10b981';
-      ctx.fillRect(-14, hamY + 5, 28, 6);
-      ctx.fillStyle = '#a7f3d0';
-      ctx.fillRect(-12, hamY + 7, 24, 2);
-      if (lift <= 4) {
-        drawStar4(-26, anvilY, 10, '#fde047');
-        drawStar4(26, anvilY, 10, '#34d399');
-        drawForkedBoltCutIn(-24, anvilY, -10, -6, 3, Math.floor(p * 14), '#10b981', '#ffffff');
-        drawForkedBoltCutIn(24, anvilY, 10, -6, 3, Math.floor(p * 14) + 2, '#f97316', '#fef08a');
+      for (let sp = 0; sp < 14; sp++) {
+        const prog = (p * 1.55 + sp * 0.11) % 1;
+        const tx = Math.round(Math.cos(sp * 2.1 + p * 6) * halfW * 0.72);
+        const ty = halfH + 8 - Math.round(prog * (halfH * 2 + 56));
+        ctx.fillStyle = sp % 3 === 0 ? '#2dd4bf' : sp % 2 === 0 ? '#fde047' : '#f97316';
+        ctx.fillRect(tx - 2, ty - 2, 4, 4);
       }
-      // Sculpted jagged volcanic boulders with glowing magma veins!
-      for (const [rx, rPhase] of [[-110, 0], [-68, 1.5], [68, 2.7], [110, 4.1]]) {
-        const ry = halfH + 8 + Math.round(Math.sin(p * 13 + rPhase) * 6);
-        drawSculptedCrystal(sc(rx), ry, 12, 9, '#020617', '#451a03', '#78350f', '#f97316');
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(sc(rx) - 3, ry - 1, 6, 2);
-      }
+      drawStar4(-Math.round(halfW * 0.66), -6 + bob, 6, '#fde047');
+      drawStar4(Math.round(halfW * 0.66), -6 - bob, 6, '#2dd4bf');
     } else if (baseHero === 'icemage') {
-      // LYRA: Handcrafted Ink-Outlined 5-Spire Faceted Glacial Ice-Queen Crown + Floating Diamond Ice-Shards & Sculpted Snowflakes!
-      const crY = crestY + 8;
-      // 5 Faceted Crystal Crown Spires (center tallest, flanked by graceful angled crystal peaks!)
-      drawSculptedCrystal(-26, crY + 2, 7, 11, '#020617', '#0284c7', '#38bdf8', '#ffffff');
-      drawSculptedCrystal(26, crY + 2, 7, 11, '#020617', '#0284c7', '#38bdf8', '#ffffff');
-      drawSculptedCrystal(-14, crY - 2, 8, 15, '#020617', '#0369a1', '#7dd3fc', '#ffffff');
-      drawSculptedCrystal(14, crY - 2, 8, 15, '#020617', '#0369a1', '#7dd3fc', '#ffffff');
-      drawSculptedCrystal(0, crY - 6, 10, 20, '#020617', '#0284c7', '#bae6fd', '#ffffff');
-      // Crown base band
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-30, crY + 8, 60, 8);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(-28, crY + 10, 56, 4);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-24, crY + 10, 48, 2);
-      // Twin hovering faceted diamond Ice-Shards flanking left & right!
-      for (const sx of [-1, 1]) {
-        const shX = sx * sc(Math.round(halfW * 0.72));
-        const shY = sx * bob * 2;
-        drawSculptedCrystal(shX, shY, 10, 16, '#020617', '#0284c7', '#7dd3fc', '#ffffff');
-      }
-      // Crisp 6-point sculpted snowflakes drifting smoothly!
-      for (let s = 0; s < 8; s++) {
-        const sx = ((s * 73) % (halfW * 2 - 20)) - (halfW - 10);
-        const sy = Math.round(((s * 41 + p * 85) % (halfH * 2)) - halfH);
+      for (let s = 0; s < 9; s++) {
+        const sx = ((s * 73) % (halfW * 2 - 28)) - (halfW - 14);
+        const sy = Math.round(((s * 41 + p * 78) % (halfH * 2 + 52)) - halfH - 36);
         ctx.fillStyle = '#bae6fd';
-        ctx.fillRect(sx - 5, sy, 11, 2);
-        ctx.fillRect(sx, sy - 5, 2, 11);
-        ctx.fillRect(sx - 3, sy - 3, 2, 2);
-        ctx.fillRect(sx + 3, sy - 3, 2, 2);
-        ctx.fillRect(sx - 3, sy + 3, 2, 2);
-        ctx.fillRect(sx + 3, sy + 3, 2, 2);
+        ctx.fillRect(sx - 4, sy, 9, 2);
+        ctx.fillRect(sx, sy - 4, 2, 9);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(sx - 1, sy - 1, 3, 3);
       }
+      drawStar4(-Math.round(halfW * 0.66), -6 + bob, 6, '#7dd3fc');
+      drawStar4(Math.round(halfW * 0.66), -6 - bob, 6, '#e0f2fe');
+    } else if (baseHero === 'android') {
+      for (let d = 0; d < 10; d++) {
+        const dx = ((d * 67) % (halfW * 2 - 44)) - (halfW - 22);
+        const dy = halfH + 4 - Math.round(((p * 105 + d * 24) % (halfH * 2 + 54)));
+        ctx.fillStyle = d % 2 === 0 ? '#22d3ee' : '#f43f5e';
+        ctx.fillRect(dx - 3, dy, 6, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(dx - 1, dy, 2, 2);
+      }
+      drawStar4(-Math.round(halfW * 0.66), -6 + bob, 6, '#22d3ee');
+      drawStar4(Math.round(halfW * 0.66), -6 - bob, 6, '#f43f5e');
     } else {
-      // UNIT-07 (ANDROID): Handcrafted Ink-Outlined Cyber-Valkyrie Mecha Helmet (Swept V-Fin Antennae + Scanning Visor!) + 4 Hovering Sculpted Plasma Funnels!
-      const droneY = crestY;
-      // Swept Cyber V-Fin Antennae
-      drawPixelSeg(-16, droneY + 4, -34, droneY - 12, '#020617', 7);
-      drawPixelSeg(-16, droneY + 4, -34, droneY - 12, '#22d3ee', 3);
-      drawPixelSeg(16, droneY + 4, 34, droneY - 12, '#020617', 7);
-      drawPixelSeg(16, droneY + 4, 34, droneY - 12, '#f43f5e', 3);
-      // Sculpted Titanium Mecha Helm + Recessed Glowing Visor
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(-26, droneY - 2, 52, 24);
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(-24, droneY, 48, 20);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-22, droneY + 1, 44, 4);
-      ctx.fillStyle = '#090d1f';
-      ctx.fillRect(-20, droneY + 6, 40, 10);
-      // Sweeping holographic scanner eye + twin thruster glow vents
-      const scanX = Math.round(Math.sin(p * 16) * 13);
-      ctx.fillStyle = '#22d3ee';
-      ctx.fillRect(scanX - 7, droneY + 7, 14, 8);
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillRect(scanX - 3, droneY + 8, 6, 6);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(scanX - 1, droneY + 9, 2, 4);
-      // 4 Sculpted Ink-Outlined Hovering GUNG-09 Plasma Funnel Wing-Bits!
-      const firing = Math.floor(p * 14) % 2 === 0;
-      for (const sx of [-1, 1]) {
-        for (let f = 0; f < 2; f++) {
-          const fx = sx * sc(Math.round(halfW * 0.64) + f * 20);
-          const fy = -8 + f * 16 + (f === 0 ? bob : -bob);
-          drawSculptedCrystal(fx, fy, 12, 6, '#020617', '#334155', '#e2e8f0', f % 2 === 0 ? '#22d3ee' : '#f43f5e');
-          if (firing) {
-            drawPixelSeg(fx + sx * 10, fy, fx + sx * 26, fy, f % 2 === 0 ? '#22d3ee' : '#f43f5e', 4);
-            drawPixelSeg(fx + sx * 10, fy, fx + sx * 24, fy, '#ffffff', 2);
-          }
-        }
+      // NYX: Floating tiny cyber pixel hearts + neon cyan/pink sparkles around Cob!
+      drawTinyHeart(-Math.round(halfW * 0.62), -14 + bob, '#f472b6');
+      drawTinyHeart(Math.round(halfW * 0.62), -14 - bob, '#22d3ee');
+      drawTinyHeart(-Math.round(halfW * 0.50), crestCy + 8 - bob, '#22d3ee');
+      drawTinyHeart(Math.round(halfW * 0.50), crestCy + 8 + bob, '#f472b6');
+      for (let g = 0; g < 8; g++) {
+        const gx = Math.round(Math.sin(p * 10 + g * 1.55) * halfW * 0.72);
+        const gy = halfH + 6 - Math.round(((p * 88 + g * 29) % (halfH * 2 + 56)));
+        ctx.fillStyle = g % 3 === 0 ? '#fde047' : g % 2 === 0 ? '#22d3ee' : '#f472b6';
+        ctx.fillRect(gx - 2, gy - 2, 4, 4);
       }
     }
 
     if (isTrue) {
-      drawStar4(-sc(Math.round(halfW * 0.80)), -4, 9, accCol);
-      drawStar4(sc(Math.round(halfW * 0.80)), -4, 9, elemCol);
+      drawStar4(-Math.round(halfW * 0.78), -4, 7, accCol);
+      drawStar4(Math.round(halfW * 0.78), -4, 7, elemCol);
     }
     ctx.globalAlpha = alpha;
   }
@@ -8902,15 +8385,16 @@ export class Renderer {
       alpha * ((isTrue ? 0.36 : 0.26) + bloomPulse * 0.08),
       0.34
     );
-    // Radiant Bloom Halo Orb right behind the Living Mascot Crest!
+    // Radiant Bloom Halo Orb centered cleanly behind the Animated HD-2D Ultimate Crest!
+    const { crestCy, baseSize } = this._getCutInCrestMetrics(halfH, isTrue, p);
     drawBloomOrb(
       0,
-      -halfH - 4,
-      isTrue ? 88 : 70,
+      crestCy,
+      Math.round(baseSize * (isTrue ? 0.78 : 0.72)),
       '#ffffff',
       typo.rim,
       alpha * ((isTrue ? 0.44 : 0.34) + bloomPulse * 0.08),
-      0.86
+      0.92
     );
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = alpha;

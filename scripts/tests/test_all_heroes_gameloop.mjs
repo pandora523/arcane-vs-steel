@@ -41,73 +41,73 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps159';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps159';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps159';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps159';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps159';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps159';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps159';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps159';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps159';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps159';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps159';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps159';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps159';
-import { Archer } from '../../src/entities/Archer.js?v=30fps159';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps159';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps159';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps159';
-import { Titan } from '../../src/entities/Titan.js?v=30fps159';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps159';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps159';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps159';
-import { Android } from '../../src/entities/Android.js?v=30fps159';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps159';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps159';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps159';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps159';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps160';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps160';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps160';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps160';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps160';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps160';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps160';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps160';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps160';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps160';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps160';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps160';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps160';
+import { Archer } from '../../src/entities/Archer.js?v=30fps160';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps160';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps160';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps160';
+import { Titan } from '../../src/entities/Titan.js?v=30fps160';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps160';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps160';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps160';
+import { Android } from '../../src/entities/Android.js?v=30fps160';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps160';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps160';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps160';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps160';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps159';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps159';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps159';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps159';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps160';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps160';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps160';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps160';
 import {
   Game,
   EX_HERO_KEYS,
   LEGACY_HERO_KEYS,
   CHAMPION_ROSTER,
   INTRO_DIALOGUE_SUBTITLES
-} from '../../src/main.js?v=30fps159';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps159';
+} from '../../src/main.js?v=30fps160';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps160';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps159';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps159';
+} from '../../src/adventure/AdventureManager.js?v=30fps160';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps160';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps159';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps159';
+} from '../../src/adventure/AdventureProgression.js?v=30fps160';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps160';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps159';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps160';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps159';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps160';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -798,7 +798,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps159');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps160');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11412,8 +11412,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps159');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps159');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps160');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps160');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12214,7 +12214,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps159'
+        src: 'assets/sprites/arena_bg.png?v=30fps160'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12258,13 +12258,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps159`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps160`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps159'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps160'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -15122,7 +15122,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps159';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps160';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -15157,7 +15157,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps159';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps160';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15262,12 +15262,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps159') ||
-      !manifestSrc.includes('?v=30fps159') ||
+      !indexHtmlSrc.includes('?v=30fps160') ||
+      !manifestSrc.includes('?v=30fps160') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps159 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps160 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16863,7 +16863,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps159 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps160 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17395,7 +17395,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.21: Batch ?v=30fps159 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // 36.21: Batch ?v=30fps160 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
   // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
   // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
   // --------------------------------------------------------------------------
@@ -18400,16 +18400,16 @@ if (!RUN_SUITE36_ONLY) {
       audio24.bgmDuckGain = makeGainMock24(1.0);
       audio24.master = audio24.sfxBus;
 
-      // Lazy BGM + Voice cache-bust ?v=30fps159 check
+      // Lazy BGM + Voice cache-bust ?v=30fps160 check
       await audio24.loadVoiceKey('nyx_select', 'en');
       await audio24.loadBgmTrack('bgm_title_select');
       if (
-        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps159')) ||
-        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps159')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps160')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps160')) ||
         fetchedUrls24.filter((u) => u.includes('assets/bgm/')).length !== 1
       ) {
         throw new Error(
-          `[Suite 36.24] Expected ?v=30fps159 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
+          `[Suite 36.24] Expected ?v=30fps160 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
         );
       }
 
@@ -19278,14 +19278,17 @@ if (!RUN_SUITE36_ONLY) {
             curTx += dx || 0;
           };
           let drawImgCalls = 0;
+          let nonEmblemImgCalls = 0;
           let portraitImgCalls = 0;
           let arcCalls = 0;
           let ellipseCalls = 0;
+          const ultEmblemImg26 = PixelForge.getUltimateEmblemSheet();
           const cutTextTx = [];
           cutCtx.drawImage = (img) => {
             drawImgCalls++;
             const src = String(img?.src || img?._origSrc || img?._deferredSrc || '');
             if (src.includes('portrait')) portraitImgCalls++;
+            if (img !== ultEmblemImg26) nonEmblemImgCalls++;
           };
           cutCtx.arc = () => {
             arcCalls++;
@@ -19319,14 +19322,16 @@ if (!RUN_SUITE36_ONLY) {
           const rightExTx = cutTextTx[cutTextTx.length - 1]?.tx;
 
           if (
-            drawImgCalls !== 0 ||
+            drawImgCalls < 2 ||
+            nonEmblemImgCalls !== 0 ||
+            portraitImgCalls !== 0 ||
             cutTrack.rotateCalls !== 0 ||
             arcCalls !== 0 ||
             ellipseCalls !== 0 ||
             cutCtx._stateStack.length !== 0
           ) {
             throw new Error(
-              `[Suite 36.26] EX cut-in violated portrait-free/zero-vector rule on ${vw}x${vh}: imgs=${drawImgCalls}, rot=${cutTrack.rotateCalls}, arc=${arcCalls}, ell=${ellipseCalls}`
+              `[Suite 36.26] EX cut-in violated portrait-free/emblem-only/zero-vector rule on ${vw}x${vh}: imgs=${drawImgCalls}, nonEmblem=${nonEmblemImgCalls}, rot=${cutTrack.rotateCalls}, arc=${arcCalls}, ell=${ellipseCalls}`
             );
           }
 
@@ -19344,14 +19349,14 @@ if (!RUN_SUITE36_ONLY) {
             }
           }
 
-          // Legacy Left vs Right (`0` portrait drawImage & `0` cut-in drawImage)
+          // Legacy Left vs Right (`0` portrait drawImage & strictly emblem-only cut-in drawImage)
           const cutVfx = new VFXManager();
-          let cutInCalloutDraws = 0;
+          let cutInCalloutNonEmblemDraws = 0;
           const origCutContent = cutRen._drawCutInCalloutContent.bind(cutRen);
           cutRen._drawCutInCalloutContent = (...args) => {
-            const beforeImgs = drawImgCalls;
+            const beforeImgs = nonEmblemImgCalls;
             origCutContent(...args);
-            cutInCalloutDraws += drawImgCalls - beforeImgs;
+            cutInCalloutNonEmblemDraws += nonEmblemImgCalls - beforeImgs;
           };
           portraitImgCalls = 0;
           cutRen.triggerUltimateCutIn(leftCasterLeg, false);
@@ -19374,12 +19379,12 @@ if (!RUN_SUITE36_ONLY) {
 
           if (
             portraitImgCalls !== 0 ||
-            cutInCalloutDraws !== 0 ||
+            cutInCalloutNonEmblemDraws !== 0 ||
             (vw === 1280 && (!(leftLegTx < vw * 0.40) || !(rightLegTx > vw * 0.60))) ||
             !(leftLegTx < rightLegTx)
           ) {
             throw new Error(
-              `[Suite 36.26] Legacy portrait-free cut-in anchoring failed on ${vw}x${vh}: portImgs=${portraitImgCalls}, cutImgs=${cutInCalloutDraws}, leftTx=${leftLegTx}, rightTx=${rightLegTx}`
+              `[Suite 36.26] Legacy portrait-free cut-in anchoring failed on ${vw}x${vh}: portImgs=${portraitImgCalls}, nonEmblemCutImgs=${cutInCalloutNonEmblemDraws}, leftTx=${leftLegTx}, rightTx=${rightLegTx}`
             );
           }
         }
@@ -19651,7 +19656,7 @@ if (!RUN_SUITE36_ONLY) {
 
   // ============================================================================
   // Suite 36.27: Grounded Lyra EX Ults, Blink/Warp AI Non-Starvation, De-Twitched AI,
-  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps159`)
+  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps160`)
   // ============================================================================
   {
     const g27 = createMockGame();
@@ -20024,7 +20029,7 @@ if (!RUN_SUITE36_ONLY) {
   // Suite 36.28: 3-Act Match Intro Overhaul — Real-Time Voice Envelope Analyzer
   // (`AudioManager.getVoiceAmplitude`), Act 1 Colossal Split-Wing `NAME VS. NAME` Clash,
   // Act 2 Live Voice-Synced Close-Up Talking Portrait Cut-In & Stage Taunt Flourish,
-  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps159`)
+  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps160`)
   // ============================================================================
   {
     const created28 = [];
@@ -20411,34 +20416,65 @@ if (!RUN_SUITE36_ONLY) {
         }
       }
 
-      // Verify Lower, Truly Borderless, All-12-Hero-Themed 2-Line Kinetic Ultimate/Supreme Popup (`Renderer.js`)
+      // Verify Lower, Truly Borderless, All-12-Hero 8-Frame Animated HD-2D Ultimate Crest Popup (`Renderer.js`)
       {
+        const ultEmblemPath = path.join(REPO_ROOT, 'assets/sprites/ult_emblems_sheet.png');
+        if (!fs.existsSync(ultEmblemPath)) {
+          throw new Error('[Suite 36.28] Missing assets/sprites/ult_emblems_sheet.png');
+        }
+        const ehdr = fs.readFileSync(ultEmblemPath);
+        const ew = ehdr.readUInt32BE(16);
+        const eh = ehdr.readUInt32BE(20);
+        if (ew !== 1024 || eh !== 1536) {
+          throw new Error(`[Suite 36.28] Expected ult_emblems_sheet.png=1024x1536, got ${ew}x${eh}`);
+        }
+        const expectedEmblemSheet = PixelForge.getUltimateEmblemSheet();
         const ultRen = new Renderer({ width: 1280, height: 800, getContext: () => createMockCtx() });
         for (const hid of PixelForge.EX_HERO_KEYS) {
-          const { ctx: ctxUlt, rec: recUlt } = makeTraceCtx28(1280, 800);
-          ultRen.cutInHeroId = hid;
-          ultRen.cutInIsEx = true;
-          ultRen.cutInIsTrueUlt = true;
-          ultRen.cutInSide = hid === 'nyx_ex' ? 'right' : 'left';
-          ultRen.cutInName = hid.toUpperCase();
-          ultRen.cutInUltName = 'GENESIS PROMPT: POWERED BY COB';
-          ultRen.cutInMaxTimer = 1.75;
-          ultRen.cutInTimer = 1.10; // settled post-slam (`p ~= 0.37`)
-          ultRen.drawExUltimateCutIn(ctxUlt, 1280, 96);
-          const [splitL1, splitL2] = ultRen._splitUltCalloutLines(ultRen.cutInUltName);
-          const mainUltEntry = recUlt.texts.find((t) => t.text === splitL2);
-          if (
-            !splitL1 ||
-            !mainUltEntry ||
-            !(mainUltEntry.px >= 28) ||
-            recUlt.drawImages.length !== 0 ||
-            recUlt.rotateCalls !== 0 ||
-            recUlt.arcCalls !== 0 ||
-            recUlt.ellipseCalls !== 0
-          ) {
-            throw new Error(
-              `[Suite 36.28] Hero-themed borderless Supreme Cut-In failed for ${hid}: mainPx=${mainUltEntry?.px}`
-            );
+          const expectedRow = PixelForge.getUltimateEmblemRow(hid);
+          const seenFrames = new Set();
+          for (const timerVal of [1.42, 1.10, 0.72]) {
+            const { ctx: ctxUlt, rec: recUlt } = makeTraceCtx28(1280, 800);
+            ultRen.cutInHeroId = hid;
+            ultRen.cutInIsEx = true;
+            ultRen.cutInIsTrueUlt = true;
+            ultRen.cutInSide = hid === 'nyx_ex' ? 'right' : 'left';
+            ultRen.cutInName = hid.toUpperCase();
+            ultRen.cutInUltName = 'GENESIS PROMPT: POWERED BY COB';
+            ultRen.cutInMaxTimer = 1.75;
+            ultRen.cutInTimer = timerVal;
+            ultRen.drawExUltimateCutIn(ctxUlt, 1280, 96);
+            const [splitL1, splitL2] = ultRen._splitUltCalloutLines(ultRen.cutInUltName);
+            const mainUltEntry = recUlt.texts.find((t) => t.text === splitL2);
+            const allEmblemDraws =
+              recUlt.drawImages.length >= 1 &&
+              recUlt.drawImages.every(
+                (d) =>
+                  d.img === expectedEmblemSheet &&
+                  d.args[2] === 128 &&
+                  d.args[3] === 128 &&
+                  d.args[1] === expectedRow * 128 &&
+                  d.args[0] >= 0 &&
+                  d.args[0] < 1024 &&
+                  d.args[0] % 128 === 0
+              );
+            if (recUlt.drawImages[0]) seenFrames.add(recUlt.drawImages[0].args[0] / 128);
+            if (
+              !splitL1 ||
+              !mainUltEntry ||
+              !(mainUltEntry.px >= 28) ||
+              !allEmblemDraws ||
+              recUlt.rotateCalls !== 0 ||
+              recUlt.arcCalls !== 0 ||
+              recUlt.ellipseCalls !== 0
+            ) {
+              throw new Error(
+                `[Suite 36.28] Animated HD-2D emblem Supreme Cut-In failed for ${hid}: mainPx=${mainUltEntry?.px}, draws=${recUlt.drawImages.length}, valid=${allEmblemDraws}`
+              );
+            }
+          }
+          if (seenFrames.size < 2) {
+            throw new Error(`[Suite 36.28] Expected animated 8-frame emblem progression for ${hid}, got frames=${[...seenFrames]}`);
           }
         }
       }
