@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps168';
-import { VFXManager } from './engine/VFXManager.js?v=30fps168';
-import { PixelForge } from './engine/PixelForge.js?v=30fps168';
-import { AudioManager } from './engine/AudioManager.js?v=30fps168';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps168';
-import { Fighter } from './entities/Fighter.js?v=30fps168';
-import { Warrior } from './entities/Warrior.js?v=30fps168';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps168';
-import { FireMage } from './entities/FireMage.js?v=30fps168';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps168';
-import { Archer } from './entities/Archer.js?v=30fps168';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps168';
-import { Priestess } from './entities/Priestess.js?v=30fps168';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps168';
-import { Reaper } from './entities/Reaper.js?v=30fps168';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps168';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps168';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps168';
-import { Titan } from './entities/Titan.js?v=30fps168';
-import { TitanEx } from './entities/TitanEx.js?v=30fps168';
-import { Ronin } from './entities/Ronin.js?v=30fps168';
-import { RoninEx } from './entities/RoninEx.js?v=30fps168';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps168';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps168';
-import { IceMage } from './entities/IceMage.js?v=30fps168';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps168';
-import { Android } from './entities/Android.js?v=30fps168';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps168';
-import { NyxEx } from './entities/NyxEx.js?v=30fps168';
+import { Renderer } from './engine/Renderer.js?v=30fps169';
+import { VFXManager } from './engine/VFXManager.js?v=30fps169';
+import { PixelForge } from './engine/PixelForge.js?v=30fps169';
+import { AudioManager } from './engine/AudioManager.js?v=30fps169';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps169';
+import { Fighter } from './entities/Fighter.js?v=30fps169';
+import { Warrior } from './entities/Warrior.js?v=30fps169';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps169';
+import { FireMage } from './entities/FireMage.js?v=30fps169';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps169';
+import { Archer } from './entities/Archer.js?v=30fps169';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps169';
+import { Priestess } from './entities/Priestess.js?v=30fps169';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps169';
+import { Reaper } from './entities/Reaper.js?v=30fps169';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps169';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps169';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps169';
+import { Titan } from './entities/Titan.js?v=30fps169';
+import { TitanEx } from './entities/TitanEx.js?v=30fps169';
+import { Ronin } from './entities/Ronin.js?v=30fps169';
+import { RoninEx } from './entities/RoninEx.js?v=30fps169';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps169';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps169';
+import { IceMage } from './entities/IceMage.js?v=30fps169';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps169';
+import { Android } from './entities/Android.js?v=30fps169';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps169';
+import { NyxEx } from './entities/NyxEx.js?v=30fps169';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps168';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps168';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps168';
+} from './adventure/AdventureManager.js?v=30fps169';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps169';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps169';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1046,7 +1046,10 @@ export class Game {
     this.vsTestModeUnlimitedHp = this.testModeUnlimitedHp;
     this.forcedStage = params.get('stage') || null;
     const modeParam = params.get('mode');
-    if (modeParam === '1v1' || modeParam === 'duel') {
+    if (modeParam === 'p1_vs_ai' || modeParam === 'player_vs_ai' || modeParam === 'p1') {
+      this.gameMode = '1v1';
+      this.vsControlMode = '1p';
+    } else if (modeParam === '1v1' || modeParam === 'duel') {
       this.gameMode = '1v1';
     } else if (modeParam === '2v2_tag' || modeParam === 'tag') {
       this.gameMode = '2v2_tag';
@@ -1069,18 +1072,10 @@ export class Game {
       this.adventure.setAutoPlay(true, false);
     }
     const p1CtrlParam = params.get('p1ctrl') ?? params.get('play1p') ?? params.get('control');
-    const isAutomatedSimParam = Boolean(params.get('sim'));
     if (p1CtrlParam === '1' || p1CtrlParam === 'true' || p1CtrlParam === '1p') {
       this.vsControlMode = '1p';
     } else if (p1CtrlParam === '0' || p1CtrlParam === 'false' || p1CtrlParam === 'ai') {
       this.vsControlMode = 'ai';
-    } else if (!isAutomatedSimParam && typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const savedCtrl = window.localStorage.getItem('avs_vs_control_mode');
-        if (savedCtrl === '1p' || savedCtrl === 'ai') {
-          this.vsControlMode = savedCtrl;
-        }
-      } catch (_err) {}
     }
 
     const p1 = params.get('p1');
@@ -1764,15 +1759,25 @@ export class Game {
 
   syncPauseMenuUI() {
     const isAdv = this.isAdventureMode();
+    const isP1 = this.isVsManualP1Active();
     const subtitleEl = document.getElementById('pause-mode-subtitle');
     if (subtitleEl) {
       subtitleEl.textContent = isAdv
         ? 'SOLO ADVENTURE CAMPAIGN'
-        : this.gameMode === '2v2_brawl'
-          ? '2V2 CHAOS BRAWL'
-          : this.gameMode === '2v2_tag'
-            ? 'TAG VS'
-            : '1V1 SOVEREIGN DUEL';
+        : isP1
+          ? this.gameMode === '2v2_tag'
+            ? 'PLAYER VS AI • TAG VS'
+            : 'PLAYER VS AI • 1V1 DUEL'
+          : this.gameMode === '2v2_brawl'
+            ? '2V2 CHAOS BRAWL'
+            : this.gameMode === '2v2_tag'
+              ? 'TAG VS'
+              : '1V1 SOVEREIGN DUEL';
+    }
+    if (this.pauseVsSectionLabel) {
+      this.pauseVsSectionLabel.textContent = isP1
+        ? 'PLAYER VS AI • MATCH CONTROLS'
+        : 'ARENA SPECTATOR & SANDBOX CONTROLS';
     }
     this.pauseVsSection?.classList.toggle('hidden', isAdv);
     this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
@@ -2028,14 +2033,19 @@ export class Game {
   }
 
   formatModeBadgeText() {
+    const isP1 = this.vsControlMode === '1p' && !this.isAdventureMode();
     const base =
       this.gameMode === 'adventure'
         ? 'ADVENTURE'
-        : this.gameMode === '2v2_brawl'
-          ? 'CHAOS BRAWL'
-          : this.gameMode === '2v2_tag'
-            ? 'TAG VS'
-            : '1V1 DUEL';
+        : isP1
+          ? this.gameMode === '2v2_tag'
+            ? 'PLAYER VS AI • TAG'
+            : 'PLAYER VS AI'
+          : this.gameMode === '2v2_brawl'
+            ? 'CHAOS BRAWL'
+            : this.gameMode === '2v2_tag'
+              ? 'TAG VS'
+              : '1V1 DUEL';
     return this.testModeUnlimitedHp && !this.isAdventureMode() ? `${base} • UNLIMITED HP` : base;
   }
 
@@ -2134,15 +2144,9 @@ export class Game {
   }
 
   setVsControlMode(mode, opts = {}) {
-    const { persist = true, playSound = false, announce = false } = opts;
+    const { playSound = false } = opts;
     const nextMode = mode === '1p' ? '1p' : 'ai';
-    const changed = this.vsControlMode !== nextMode;
     this.vsControlMode = nextMode;
-    if (persist && !this.simMode && typeof window !== 'undefined' && window.localStorage) {
-      try {
-        window.localStorage.setItem('avs_vs_control_mode', nextMode);
-      } catch (_err) {}
-    }
     this.clearVsManualInputs();
     this.syncVsManualControlFlags();
     if (!this.isLandingOpen && !this.isAdventureMode() && !this.isMatchOver) {
@@ -2161,36 +2165,24 @@ export class Game {
     return this.vsControlMode;
   }
 
-  toggleVsControlMode(opts = {}) {
-    return this.setVsControlMode(this.vsControlMode === '1p' ? 'ai' : '1p', opts);
-  }
-
   syncVsControlUI() {
     const is1P = this.vsControlMode === '1p';
     const isAdv = this.isAdventureMode();
     const activeInMatch = Boolean(is1P && !isAdv && !this.isLandingOpen && !this.isMatchOver);
     const isTag = this.gameMode === '2v2_tag';
 
-    if (this.quickCtrl1pBtn) {
-      this.quickCtrl1pBtn.classList.toggle('active-quick-ctrl-1p', is1P);
-      this.quickCtrl1pBtn.setAttribute('aria-pressed', String(is1P));
+    if (this.vsModeOriginChip) {
+      this.vsModeOriginChip.textContent = is1P ? 'PLAYER VS AI' : 'AI ARENA';
+      this.vsModeOriginChip.classList.toggle('is-player-vs-ai', is1P);
+      this.vsModeOriginChip.classList.toggle('is-ai-arena', !is1P);
     }
-    if (this.quickCtrlAiBtn) {
-      this.quickCtrlAiBtn.classList.toggle('active-quick-ctrl-ai', !is1P);
-      this.quickCtrlAiBtn.setAttribute('aria-pressed', String(!is1P));
+    const stepModeLabel =
+      typeof document !== 'undefined' ? document.querySelector?.('#step-tab-mode .step-label') : null;
+    if (stepModeLabel && !isAdv) {
+      stepModeLabel.textContent = is1P ? 'P1 VS AI SETUP' : 'VS SETUP';
     }
-    if (this.btnPauseVsControl) {
-      this.btnPauseVsControl.setAttribute('aria-pressed', String(is1P));
-    }
-    if (this.pauseVsControlLabel) {
-      this.pauseVsControlLabel.textContent = is1P ? 'CONTROL: PLAY 1P' : 'CONTROL: AI SPECTATE';
-    }
-    if (this.btnHudVsControl) {
-      this.btnHudVsControl.classList.toggle('is-manual-1p', is1P);
-      this.btnHudVsControl.setAttribute('aria-pressed', String(is1P));
-    }
-    if (this.hudVsControlLabel) {
-      this.hudVsControlLabel.textContent = is1P ? '1P' : 'AI';
+    if (this.hudEls?.modeBadge && !isAdv) {
+      this.hudEls.modeBadge.textContent = this.formatModeBadgeText();
     }
     if (this.appEl) {
       this.appEl.classList.toggle('is-vs-manual-active', activeInMatch);
@@ -2203,7 +2195,7 @@ export class Game {
     }
     if (this.vsKeyHintTextEl) {
       const baseHtml =
-        '<kbd>A/D</kbd> MOVE • <kbd>W/SPC</kbd> JUMP • <kbd>S</kbd> PARRY • <kbd>J/Z</kbd> COMBO • <kbd>K/X</kbd> SKILL • <kbd>L/SHFT</kbd> DODGE • <kbd>U/Q</kbd> DRIVE • <kbd>I/E</kbd> ULT • <kbd>P</kbd> AI';
+        '<kbd>A/D</kbd> MOVE • <kbd>W/SPC</kbd> JUMP • <kbd>S</kbd> PARRY • <kbd>J/Z</kbd> COMBO • <kbd>K/X</kbd> SKILL • <kbd>L/SHFT</kbd> DODGE • <kbd>U/Q</kbd> DRIVE • <kbd>I/E</kbd> ULT';
       this.vsKeyHintTextEl.innerHTML = isTag ? `${baseHtml} • <kbd>TAB</kbd> TAG` : baseHtml;
     }
     if (activeInMatch) {
@@ -2743,12 +2735,8 @@ export class Game {
     this.btnAutoTourney = document.getElementById('btn-auto-tourney');
     this.btnNextChallenger = document.getElementById('btn-next-challenger');
     this.btnSwapSides = document.getElementById('btn-swap-sides');
-    this.quickCtrl1pBtn = document.getElementById('quick-ctrl-1p');
-    this.quickCtrlAiBtn = document.getElementById('quick-ctrl-ai');
-    this.btnPauseVsControl = document.getElementById('btn-pause-vs-control');
-    this.pauseVsControlLabel = document.getElementById('pause-vs-control-label');
-    this.btnHudVsControl = document.getElementById('btn-hud-vs-control');
-    this.hudVsControlLabel = document.getElementById('hud-vs-control-label');
+    this.vsModeOriginChip = document.getElementById('vs-mode-origin-chip');
+    this.pauseVsSectionLabel = document.getElementById('pause-vs-section-label');
     this.vsKeyHintBarEl = document.getElementById('vs-keyhint-bar');
     this.vsKeyHintTextEl = document.getElementById('vs-keyhint-text');
     this.vsTouchControlsEl = document.getElementById('vs-touch-controls');
@@ -3368,18 +3356,32 @@ export class Game {
         this.startDuel(true);
       });
     }
+    const btnTitlePlayerVsAi = document.getElementById('btn-title-player-vs-ai');
+    if (btnTitlePlayerVsAi) {
+      btnTitlePlayerVsAi.addEventListener('click', () => {
+        if (this.isAdventureMode() || this.gameMode === '2v2_brawl') {
+          this.setGameMode('1v1', false);
+        }
+        this.setVsControlMode('1p', { playSound: false });
+        this.syncRosterSelectionUI(false);
+        this.setLandingStep('roster', true);
+      });
+    }
     const btnGoMode = document.getElementById('btn-go-mode');
     if (btnGoMode) {
       btnGoMode.addEventListener('click', () => {
         if (this.isAdventureMode() || this.gameMode === '2v2_brawl') {
           this.setGameMode('1v1', false);
         }
+        this.setVsControlMode('ai', { playSound: false });
+        this.syncRosterSelectionUI(false);
         this.setLandingStep('roster', true);
       });
     }
     const btnTitleAdventure = document.getElementById('btn-title-adventure');
     if (btnTitleAdventure) {
       btnTitleAdventure.addEventListener('click', () => {
+        this.setVsControlMode('ai', { playSound: false });
         this.setGameMode('adventure', false);
         this.setLandingStep('roster', true);
       });
@@ -3644,45 +3646,16 @@ export class Game {
       this.btnSwapSides.addEventListener('click', () => this.swapSides(true));
     }
 
-    // Playable 1P vs AI Spectate Toggles (VS Character Select Quick-Bar, Pause Menu, Compact HUD Pill)
-    if (this.quickCtrl1pBtn) {
-      this.quickCtrl1pBtn.addEventListener('click', () =>
-        this.setVsControlMode('1p', { persist: true, playSound: true })
-      );
-    }
-    if (this.quickCtrlAiBtn) {
-      this.quickCtrlAiBtn.addEventListener('click', () =>
-        this.setVsControlMode('ai', { persist: true, playSound: true })
-      );
-    }
-    if (this.btnPauseVsControl) {
-      this.btnPauseVsControl.addEventListener('click', () =>
-        this.toggleVsControlMode({ persist: true, playSound: true, announce: false })
-      );
-    }
-    if (this.btnHudVsControl) {
-      this.btnHudVsControl.addEventListener('click', () => {
-        if (this.isAdventureMode() || this.isLandingOpen || this.isMatchOver) return;
-        this.toggleVsControlMode({ persist: true, playSound: true, announce: true });
-      });
-    }
     this.syncVsControlUI();
 
-    // Playable 1P Versus Mode Desktop Keyboard Router (`A/D`, `W/Space`, `S`, `J/Z`, `K/X`, `L/Shift`, `U/Q`, `I/E`, `Tab`, `P`)
+    // Official Player vs AI Mode Desktop Keyboard Router (`A/D`, `W/Space`, `S`, `J/Z`, `K/X`, `L/Shift`, `U/Q`, `I/E`, `Tab`)
     window.addEventListener('keydown', (e) => {
       if (this.isLandingOpen || this.isPaused || this.isMatchOver || this.isAdventureMode()) return;
+      if (!this.isVsManualP1Active()) return;
+      if (this.roundIntroTimer > 0) return;
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       const code = e.code;
-
-      // Instant mid-match 1P <-> AI takeover hotkey (`P`) works in BOTH PLAY 1P and AI SPECTATE
-      if (code === 'KeyP' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        this.toggleVsControlMode({ persist: true, playSound: true, announce: true });
-        return;
-      }
-      if (!this.isVsManualP1Active()) return;
-      if (this.roundIntroTimer > 0) return;
 
       const dismissHint = () => {
         if (!this.vsInput.keyHintDismissed) this.dismissVsKeyHintBar(false);
@@ -4516,7 +4489,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps168');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps169');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -4612,7 +4585,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps168'
+          'v=30fps169'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4857,7 +4830,7 @@ export class Game {
     const titleFooterEl = document.getElementById('title-status-footer');
     if (titleFooterEl) {
       titleFooterEl.textContent =
-        'SEPARATED ARENA & CAMPAIGN REALMS • INSTANT READY • LOSSLESS HD-2D';
+        'PLAYER VS AI • AI ARENA • SOLO CAMPAIGN • LOSSLESS HD-2D';
     }
     const modeSummaryEl = document.getElementById('mode-step-summary');
     if (modeSummaryEl) modeSummaryEl.textContent = summaryStr;
@@ -4886,10 +4859,11 @@ export class Game {
     }
 
     // 2. Matchup Banner 4-Slot Names, Tags & Active Slot Highlight
+    const isP1Mode = !isAdv && this.vsControlMode === '1p';
     const slotLeftTagEl = document.getElementById('slot-left-tag');
     const slotRightTagEl = document.getElementById('slot-right-tag');
-    if (slotLeftTagEl) slotLeftTagEl.textContent = isAdv ? 'HERO' : 'P1';
-    if (slotRightTagEl) slotRightTagEl.textContent = isAdv ? 'BOSS' : 'P2';
+    if (slotLeftTagEl) slotLeftTagEl.textContent = isAdv ? 'HERO' : isP1Mode ? 'YOU' : 'P1';
+    if (slotRightTagEl) slotRightTagEl.textContent = isAdv ? 'BOSS' : isP1Mode ? 'CPU' : 'P2';
 
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
@@ -4923,16 +4897,28 @@ export class Game {
     const p2SkillsHeaderEl = document.getElementById('p2-skills-header');
     const p2KitToggleLabelEl = document.getElementById('p2-kit-toggle-label');
     if (p1CornerTagEl) {
-      p1CornerTagEl.textContent = isAdv ? 'SOLO HERO' : is2v2 ? 'TEAM 1' : 'P1 LEAD';
+      p1CornerTagEl.textContent = isAdv
+        ? 'SOLO HERO'
+        : isP1Mode
+          ? is2v2
+            ? 'YOUR TEAM'
+            : 'YOU (1P)'
+          : is2v2
+            ? 'TEAM 1'
+            : 'P1 LEAD';
     }
     if (p2CornerTagEl) {
       p2CornerTagEl.textContent = isAdv
         ? customPackSummary
           ? `STAGE PACK • ${customPackSummary.zoneCount}Z`
           : 'ZONE IV BOSS'
-        : is2v2
-          ? 'TEAM 2'
-          : 'P2 LEAD';
+        : isP1Mode
+          ? is2v2
+            ? 'CPU TEAM'
+            : 'CPU'
+          : is2v2
+            ? 'TEAM 2'
+            : 'P2 LEAD';
     }
     if (p2SkillsHeaderEl) {
       p2SkillsHeaderEl.textContent = isAdv
