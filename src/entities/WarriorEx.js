@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps162';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps163';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.36s): Coiled Downward Dawn-Cleave -> snaps at F03 (63)
@@ -296,6 +296,7 @@ export class WarriorEx extends Fighter {
     this.stateTimer = 0;
     this._intraLinkTimer = 0;
     this._beatHitMask = 0;
+    this._beatLandedHit = false;
     this.didActionFrame = false;
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
@@ -313,17 +314,16 @@ export class WarriorEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    let desiredX = this.x + this.facing * (v === 0 ? 18 : v === 2 ? 16 : 10);
-
+    const baseStep = v === 0 ? 32 : v === 2 ? 24 : 18;
+    let stepDist = baseStep;
     if (enemy && !enemy.isDead) {
-      const sweetDist = v === 2 ? 108 : 114;
-      const idealStandX = enemy.x - this.facing * sweetDist;
-      const rawDelta = (idealStandX - this.x) * this.facing;
-      const maxForward = v === 0 ? 112 : v === 2 ? 44 : 32;
-      const clampedForward = Math.max(0, Math.min(maxForward, rawDelta));
-      desiredX = this.x + this.facing * clampedForward;
+      const frontDist = (enemy.x - this.x) * this.facing;
+      if (frontDist > 0) {
+        const minClear = v === 2 ? 116 : 120;
+        stepDist = Math.max(0, Math.min(baseStep, frontDist - minClear));
+      }
     }
-
+    const desiredX = this.x + this.facing * stepDist;
     this._beatTargetX = this._clampArenaX(desiredX, game);
   }
 
@@ -584,8 +584,11 @@ export class WarriorEx extends Fighter {
     }
 
     if (landedAny && hitStop > 0) {
+      this._beatLandedHit = true;
       this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
       game?.renderer?.triggerHitStop?.(hitStop * 0.65);
+    } else if (landedAny) {
+      this._beatLandedHit = true;
     }
 
     return landedAny;
@@ -642,18 +645,14 @@ export class WarriorEx extends Fighter {
   onStartDash(enemy, game, dir) {
     this.dashDuration = 0.36;
     this.dashDir = dir || this.facing;
+    this._dashStartX = this.x;
+    this._dashMaxTravel = 185;
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
     this.fx?.spawn('blinkTeleportPillar', this.x, this.groundY - 4, {
       flip: this.dashDir < 0,
       light: 1.2
     });
     this.spawnPixelShockRing(this.x, this.groundY - 2, 64, false, 0.24);
-    if (enemy && !enemy.isDead) {
-      const targetStandX = enemy.x - this.dashDir * 114;
-      this._dashStopX = this._clampArenaX(targetStandX, game);
-    } else {
-      this._dashStopX = null;
-    }
   }
 
   updateDash(dt, enemy, _game) {
@@ -664,11 +663,12 @@ export class WarriorEx extends Fighter {
     this.y = this.groundY;
 
     if (t < dur * 0.78) {
+      const traveled = (this.x - (this._dashStartX ?? this.x)) * dir;
       const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * dir : 999;
-      if (distToEnemy <= 116 && distToEnemy >= 70) {
+      if (traveled >= (this._dashMaxTravel || 185) || (distToEnemy <= 136 && distToEnemy >= 55)) {
         this.vx = 0;
       } else {
-        this.vx = dir * 640;
+        this.vx = dir * 610;
       }
       this._dragSparkAcc += dt;
       if (this._dragSparkAcc >= 0.036) {
@@ -806,10 +806,14 @@ export class WarriorEx extends Fighter {
     this.didSecondaryAction = false;
     this.flipStartX = this.x;
 
-    let desiredX = this.x + dir * 195;
+    let jumpDist = 190;
     if (enemy && !enemy.isDead && dir === (enemy.x >= this.x ? 1 : -1)) {
-      desiredX = enemy.x - dir * 114;
+      const frontDist = Math.abs(enemy.x - this.x);
+      if (frontDist > 135 && frontDist < 310) {
+        jumpDist = Math.min(190, Math.max(95, frontDist - 134));
+      }
     }
+    const desiredX = this.x + dir * jumpDist;
     this.flipTargetX = this._clampArenaX(desiredX, game);
     this.vx = 0;
     this.vy = 0;
@@ -872,7 +876,25 @@ export class WarriorEx extends Fighter {
     }
   }
 
+  onStartDodge(_enemy, game, dir) {
+    const moveDir = dir || -this.facing;
+    this.dashDir = moveDir;
+    this.dashDuration = 0.40;
+    this.isFlipVault = true;
+    this.isInvulnerable = true;
+    this.didSecondaryAction = true;
+    this.flipStartX = this.x;
+    this.flipTargetX = this._clampArenaX(this.x + moveDir * 165, game);
+    this.vx = 0;
+    this.vy = 0;
+    game?.audio?.play?.('dash_whoosh', this.x);
+    this.spawnPixelShockRing(this.x, this.groundY - 2, 54, false, 0.20);
+  }
+
   updateDodge(dt, enemy, game) {
+    if (!Number.isFinite(this.flipStartX) || !Number.isFinite(this.flipTargetX)) {
+      this.onStartDodge(enemy, game, this.dashDir);
+    }
     this.updateJump(dt, enemy, game);
   }
 
@@ -999,7 +1021,7 @@ export class WarriorEx extends Fighter {
         });
         this._applyExviusStrike(enemy, game, {
           damage: vsAspect === 0 ? 31 : Math.round(31 * autoScale),
-          reachFront: 214,
+          reachFront: 166,
           hitStop: 0.042,
           shakeDur: 0.055,
           knockX: 24,
@@ -1037,7 +1059,7 @@ export class WarriorEx extends Fighter {
         });
         this._applyExviusStrike(enemy, game, {
           damage: vsAspect === 0 ? 34 : Math.round(34 * autoScale),
-          reachFront: 216,
+          reachFront: 168,
           hitStop: 0.042,
           shakeDur: 0.058,
           knockX: 22,
@@ -1056,7 +1078,7 @@ export class WarriorEx extends Fighter {
         });
         this._applyExviusStrike(enemy, game, {
           damage: vsAspect === 0 ? 21 : Math.round(21 * autoScale),
-          reachFront: 214,
+          reachFront: 170,
           hitStop: 0.032,
           shakeDur: 0.046,
           knockX: 14,
@@ -1075,7 +1097,7 @@ export class WarriorEx extends Fighter {
         });
         this._applyExviusStrike(enemy, game, {
           damage: vsAspect === 0 ? 25 : Math.round(25 * autoScale),
-          reachFront: 216,
+          reachFront: 172,
           hitStop: 0.038,
           shakeDur: 0.052,
           knockX: 18,
@@ -1109,7 +1131,7 @@ export class WarriorEx extends Fighter {
         });
         this._applyExviusStrike(enemy, game, {
           damage: vsAspect === 0 ? 27 : Math.round(27 * autoScale),
-          reachFront: 222,
+          reachFront: 178,
           hitStop: 0.058,
           shakeDur: 0.082,
           knockX: 36,
@@ -1132,7 +1154,7 @@ export class WarriorEx extends Fighter {
         this._beatHitMask |= 2;
         this._applyExviusStrike(enemy, game, {
           damage: vsAspect === 0 ? 18 : Math.round(18 * autoScale),
-          reachFront: 224,
+          reachFront: 180,
           hitStop: 0,
           shakeDur: 0.045,
           knockX: 28,
@@ -1145,10 +1167,10 @@ export class WarriorEx extends Fighter {
         this._beatHitMask |= 4;
         this._applyExviusStrike(enemy, game, {
           damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
-          reachFront: 226,
+          reachFront: 182,
           hitStop: 0,
           shakeDur: 0.055,
-          knockX: 92,
+          knockX: 118,
           knockY: -88,
           isCrit: true,
           isGold: true,
@@ -1170,14 +1192,18 @@ export class WarriorEx extends Fighter {
             game?.adventure?.queuedAction === 'attack' ||
             this._queuedNextBeat)
       );
+      const relEnemyX = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 999;
       const aiWantsChain =
         !isManualPlayer &&
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= 245;
+        relEnemyX >= -32 &&
+        relEnemyX <= 178 &&
+        (this._beatLandedHit || (v === 0 && relEnemyX <= 140));
 
-      if (v < 3 && (aiWantsChain || advHoldingAttack)) {
+      if (v < 3 && (this._queuedNextBeat || aiWantsChain || advHoldingAttack)) {
+        this._queuedNextBeat = false;
         if (game?.adventure?.queuedAction === 'attack') {
           game.adventure.queuedAction = null;
         }
@@ -1185,12 +1211,19 @@ export class WarriorEx extends Fighter {
         return;
       }
 
-      if (v === 3) {
+      if (v === 3 || (!isManualPlayer && !this._beatLandedHit && !advHoldingAttack)) {
         this.comboStep = 0;
-        this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 112 ? 0.32 : 0;
+        this._aiComboReadyFinisher = v === 3 ? 0.92 : 0;
+        this._aiOutstepTimer =
+          !game?.isAdventureMode?.() && enemy && Math.abs(enemy.x - this.x) < 214
+            ? 0.56 + Math.random() * 0.26
+            : 0;
         this._aiOutstepDir = -1;
-        this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
+        this.autoCooldown = isManualPlayer
+          ? 0.06
+          : v === 3
+            ? this._postFlurryInterval * (0.98 + Math.random() * 0.22)
+            : 0.52 + Math.random() * 0.28;
       } else {
         this.autoCooldown = 0.015;
       }
@@ -1306,14 +1339,17 @@ export class WarriorEx extends Fighter {
       }
     }
 
-    // Advancing 3-Beat Trinity Rush bursts into 108px sweet-spot (Dragoon leaps wider; Bastion holds firmer)
+    // Advancing 3-Beat Trinity Rush committed directional pulses (capped forward travel — zero continuous enemy.x magnet!)
     if (t < 0.54) {
-      const dist = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 150;
+      const rushDir = this.facing || 1;
+      const maxAdvance = vsSkill === 1 ? 185 : vsSkill === 2 ? 115 : 155;
+      const traveled = (this.x - (this._skillStartX ?? this.x)) * rushDir;
+      const frontDist = enemy && !enemy.isDead ? (enemy.x - this.x) * rushDir : 999;
       const inBurstWindow =
         (t >= 0.04 && t < 0.13) || (t >= 0.20 && t < 0.29) || (t >= 0.36 && t < 0.45);
-      if (inBurstWindow && dist > 108) {
-        const maxRush = vsSkill === 1 ? 660 : vsSkill === 2 ? 380 : 560;
-        this.vx = this.facing * Math.min(maxRush, (dist - 104) * 9.5 + 220);
+      if (inBurstWindow && traveled < maxAdvance && !(frontDist <= 122 && frontDist >= 0)) {
+        const rushSpd = vsSkill === 1 ? 560 : vsSkill === 2 ? 360 : 490;
+        this.vx = rushDir * rushSpd;
       } else {
         this.vx = 0;
       }
@@ -2340,13 +2376,15 @@ export class WarriorEx extends Fighter {
         return;
       }
       if (
-        dist >= 245 &&
-        dist <= 395 &&
+        dist >= 295 &&
+        dist <= 425 &&
+        (this._aiOutstepTimer || 0) <= 0 &&
         this.vaultCooldown <= 0 &&
         this.dodgeCooldown <= 50 &&
         (this.jumpCooldown || 0) <= 0 &&
         this.skillCooldown > 0.65 &&
-        !game?.isAdventureMode?.()
+        !game?.isAdventureMode?.() &&
+        Math.random() < 0.035
       ) {
         this.startJump(enemy, game, this.facing);
         return;

@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps162';
+} from '../engine/shaders/abyssalShaders.js?v=30fps163';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Wide Downward Reaping Crescent Smear -> snaps at F03 (63)
@@ -425,6 +425,7 @@ export class ReaperEx extends Fighter {
     this.stateTimer = 0;
     this._intraLinkTimer = 0;
     this._beatHitMask = 0;
+    this._beatLandedHit = false;
     this.didActionFrame = false;
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
@@ -442,7 +443,8 @@ export class ReaperEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    let desiredX = this.x + this.facing * (v === 0 ? 20 : v === 2 ? 16 : 12);
+    const baseStep = v === 0 ? 34 : v === 2 ? 24 : 18;
+    let stepDist = baseStep;
 
     const anchorTarget =
       enemy && !enemy.isDead
@@ -452,14 +454,14 @@ export class ReaperEx extends Fighter {
           : null;
 
     if (anchorTarget) {
-      const sweetDist = v === 2 ? 114 : 122;
-      const idealStandX = anchorTarget.x - this.facing * sweetDist;
-      const rawDelta = (idealStandX - this.x) * this.facing;
-      const maxForward = v === 0 ? 106 : v === 2 ? 40 : 28;
-      const clampedForward = Math.max(0, Math.min(maxForward, rawDelta));
-      desiredX = this.x + this.facing * clampedForward;
+      const frontDist = (anchorTarget.x - this.x) * this.facing;
+      if (frontDist > 0) {
+        const minClear = v === 2 ? 118 : 122;
+        stepDist = Math.max(0, Math.min(baseStep, frontDist - minClear));
+      }
     }
 
+    const desiredX = this.x + this.facing * stepDist;
     this._beatTargetX = this._clampArenaX(desiredX, game);
   }
 
@@ -881,6 +883,7 @@ export class ReaperEx extends Fighter {
     }
 
     if (landedAny) {
+      this._beatLandedHit = true;
       if (gainSoul > 0) this.gainSoulStack(gainSoul);
       if (effLeech > 0) this.leechLife(effLeech, targets[0], game, 'SOUL HARVEST');
       if (vsAspect === 2) {
@@ -1580,6 +1583,8 @@ export class ReaperEx extends Fighter {
     this.submergeDepth = 0;
     this.isWraithPhase = false;
     this.dashDir = dir || this.facing;
+    this._dashStartX = this.x;
+    this._dashMaxTravel = 190;
     this.vx = this.dashDir * 505;
     this.fx?.spawn('abyssalWraithMantle', this.x, this.groundY - 4, {
       follow: this,
@@ -1614,14 +1619,23 @@ export class ReaperEx extends Fighter {
       this.dashDuration = 0.62;
 
       if (enemy && !enemy.isDead) {
-        const approachSide = this.x < enemy.x ? -96 : 96;
-        const target = nearWall
-          ? enemy.x + (enemy.x < ww * 0.5 ? 210 : -210)
-          : enemy.x + approachSide;
+        let target;
+        if (nearWall) {
+          const centerDir = this.x < ww * 0.5 ? 1 : -1;
+          target = this.x + centerDir * 240;
+        } else {
+          const jumpDir = dir || (enemy.x >= this.x ? 1 : -1);
+          const frontDist = (enemy.x - this.x) * jumpDir;
+          const jumpDist =
+            frontDist > 134 && frontDist < 310
+              ? Math.min(200, Math.max(96, frontDist - 134))
+              : 205;
+          target = this.x + jumpDir * jumpDist;
+        }
         this.flipTargetX = Math.max(125, Math.min(ww - 125, target));
         this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || dir;
       } else {
-        this.flipTargetX = Math.max(125, Math.min(ww - 125, this.x + dir * 270));
+        this.flipTargetX = Math.max(125, Math.min(ww - 125, this.x + dir * 240));
         this.dashDir = dir;
       }
 
@@ -1805,11 +1819,12 @@ export class ReaperEx extends Fighter {
     }
 
     const dir = this.dashDir || this.facing;
+    const traveled = (this.x - (this._dashStartX ?? this.x)) * dir;
     const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * dir : 999;
-    if (this.state === 'DASH' && distToEnemy <= 118 && distToEnemy >= 68) {
+    if (this.state === 'DASH' && (traveled >= (this._dashMaxTravel || 190) || (distToEnemy <= 138 && distToEnemy >= 55))) {
       this.vx = 0;
     } else {
-      const speed = this.state === 'DASH' ? 505 : 435;
+      const speed = this.state === 'DASH' ? 495 : 435;
       this.x = this._clampArenaX(this.x + dir * speed * dt, game);
     }
 
@@ -2110,7 +2125,7 @@ export class ReaperEx extends Fighter {
         }
         this._applyThanatosReap(enemy, game, {
           damage: 44,
-          reachFront: 232,
+          reachFront: 176,
           hitStop: 0.046,
           shakeDur: 0.062,
           knockX: -36,
@@ -2129,7 +2144,7 @@ export class ReaperEx extends Fighter {
         const cx = this.x + this.facing * 82;
         const chainOriginX = this.x + this.facing * 42;
         const chainOriginY = this.y - 96;
-        const hasNearFoe = enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 245;
+        const hasNearFoe = enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 210;
         this.fx?.spawn('skeletalChainTetherBeam', chainOriginX, chainOriginY, {
           light: 1.26,
           extra: {
@@ -2148,7 +2163,7 @@ export class ReaperEx extends Fighter {
         });
         this._applyThanatosReap(enemy, game, {
           damage: 48,
-          reachFront: 236,
+          reachFront: 178,
           hitStop: 0.048,
           shakeDur: 0.066,
           knockX: -44,
@@ -2174,7 +2189,7 @@ export class ReaperEx extends Fighter {
         });
         this._applyThanatosReap(enemy, game, {
           damage: 28,
-          reachFront: 238,
+          reachFront: 180,
           hitStop: 0.045,
           shakeDur: 0.060,
           knockX: -28,
@@ -2208,7 +2223,7 @@ export class ReaperEx extends Fighter {
         }
         this._applyThanatosReap(enemy, game, {
           damage: empowered ? 42 : 30,
-          reachFront: 240,
+          reachFront: 182,
           hitStop: 0.048,
           shakeDur: 0.064,
           knockX: -36,
@@ -2225,10 +2240,7 @@ export class ReaperEx extends Fighter {
       if ((this._beatHitMask & 1) === 0 && t >= 0.16) {
         this._beatHitMask |= 1;
         game?.audio?.playHeroVoice?.(this.heroId, 'attack', { worldX: this.x, speakerKey: this, priority: 1, cooldownMs: 3600 });
-        const slamX =
-          enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 242
-            ? enemy.x
-            : this.x + this.facing * 108;
+        const slamX = this.x + this.facing * 112;
         game?.renderer?.triggerShake?.(13, 0.24);
         if (game?.audio) game.audio.play('heavy_cleave', slamX);
 
@@ -2249,7 +2261,7 @@ export class ReaperEx extends Fighter {
 
         this._applyThanatosReap(enemy, game, {
           damage: 28,
-          reachFront: 244,
+          reachFront: 186,
           hitStop: 0.060,
           shakeDur: 0.088,
           knockX: 32,
@@ -2274,7 +2286,7 @@ export class ReaperEx extends Fighter {
         this._beatHitMask |= 2;
         this._applyThanatosReap(enemy, game, {
           damage: 18,
-          reachFront: 246,
+          reachFront: 188,
           hitStop: 0,
           shakeDur: 0.048,
           knockX: 28,
@@ -2290,10 +2302,10 @@ export class ReaperEx extends Fighter {
         this._beatHitMask |= 4;
         this._applyThanatosReap(enemy, game, {
           damage: 24,
-          reachFront: 248,
+          reachFront: 190,
           hitStop: 0,
           shakeDur: 0.058,
-          knockX: 94,
+          knockX: 118,
           knockY: -92,
           leech: 3,
           gainSoul: 0,
@@ -2317,14 +2329,18 @@ export class ReaperEx extends Fighter {
             game?.adventure?.queuedAction === 'attack' ||
             this._queuedNextBeat)
       );
+      const relEnemyX = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 999;
       const aiWantsChain =
         !isManualPlayer &&
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= 260;
+        relEnemyX >= -38 &&
+        relEnemyX <= 190 &&
+        (this._beatLandedHit || relEnemyX <= 166);
 
-      if (v < 3 && (aiWantsChain || advHoldingAttack)) {
+      if (v < 3 && (this._queuedNextBeat || aiWantsChain || advHoldingAttack)) {
+        this._queuedNextBeat = false;
         if (game?.adventure?.queuedAction === 'attack') {
           game.adventure.queuedAction = null;
         }
@@ -2332,12 +2348,19 @@ export class ReaperEx extends Fighter {
         return;
       }
 
-      if (v === 3) {
+      if (v === 3 || (!isManualPlayer && !this._beatLandedHit && !advHoldingAttack)) {
         this.comboStep = 0;
-        this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 114 ? 0.32 : 0;
+        this._aiComboReadyFinisher = v === 3 ? 0.92 : 0;
+        this._aiOutstepTimer =
+          !game?.isAdventureMode?.() && enemy && Math.abs(enemy.x - this.x) < 216
+            ? 0.56 + Math.random() * 0.26
+            : 0;
         this._aiOutstepDir = -1;
-        this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
+        this.autoCooldown = isManualPlayer
+          ? 0.06
+          : v === 3
+            ? this._postFlurryInterval * (0.98 + Math.random() * 0.22)
+            : 0.52 + Math.random() * 0.28;
       } else {
         this.autoCooldown = 0.015;
       }
@@ -2372,6 +2395,8 @@ export class ReaperEx extends Fighter {
     if (t < 0.08) {
       this.didChainPull = false;
       this.didReapFinisher = false;
+      this._skillHookConnected = false;
+      this._skillStepDir = this.facing || 1;
       this.torsoAngle = -this.facing * 0.18;
       this.isDeflecting = enemy ? Math.abs(enemy.x - this.x) > 190 : false;
     } else if (t < 0.46) {
@@ -2379,17 +2404,18 @@ export class ReaperEx extends Fighter {
         this.didChainPull = true;
         if (game?.audio) game.audio.play('chain_hook', this.x);
 
-        const maxHookDist = 460;
-        const rawTargetX = enemy ? enemy.x : this.x + this.facing * 340;
-        const clampedDx = Math.max(-maxHookDist, Math.min(maxHookDist, rawTargetX - this.x));
-        const targetX = this.x + clampedDx;
+        const maxHookDist = 350;
+        const hookDir = this._skillStepDir || this.facing || 1;
+        const frontDx = enemy ? (enemy.x - this.x) * hookDir : 240;
+        const clampedDist = Math.max(80, Math.min(maxHookDist, frontDx > 0 ? frontDx : 240));
+        const targetX = this._clampArenaX(this.x + hookDir * clampedDist, game);
         const targetY = enemy ? enemy.y - 96 : this.y - 96;
 
-        this.fx?.spawn('skeletalChainTetherBeam', this.x + this.facing * 56, this.y - 96, {
+        this.fx?.spawn('skeletalChainTetherBeam', this.x + hookDir * 56, this.y - 96, {
           palette: vsSkill === 2 ? NECRO_SOUL_EMERALD_PALETTE : undefined,
           light: 1.32,
           extra: {
-            dx: targetX - (this.x + this.facing * 56),
+            dx: targetX - (this.x + hookDir * 56),
             dy: targetY - (this.y - 96),
             arcH: 10,
             isCrimson: vsSkill !== 2,
@@ -2413,7 +2439,16 @@ export class ReaperEx extends Fighter {
           });
         }
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= maxHookDist + 30) {
+        const canHookEnemy = Boolean(
+          enemy &&
+            !enemy.isDead &&
+            !enemy.isInvulnerable &&
+            !enemy.isFullyBurrowed &&
+            frontDx >= -32 &&
+            frontDx <= maxHookDist + 24
+        );
+        if (canHookEnemy) {
+          const prevTanked = enemy.tankedDamage || 0;
           enemy.takeDamage(
             vsSkill === 1 ? 42 : vsSkill === 2 ? 26 : 40,
             this,
@@ -2421,29 +2456,39 @@ export class ReaperEx extends Fighter {
             -165,
             -32
           );
-          this.gainSoulStack(1);
-          const effigyX = Math.max(105, Math.min(ww - 105, this.x + this.facing * 124));
-          this.spawnSeveredSoulEffigy(enemy, effigyX, game);
-          if (game?.vfx) {
-            game.vfx.spawnDamageText(
-              effigyX,
-              this.groundY - 162,
-              0,
-              false,
-              vsSkill === 2 ? 'SOUL-LANTERN FEAST!' : 'SOUL-LANTERN TORN!',
-              vsSkill === 2 ? '#6ee7b7' : '#f43f5e'
-            );
+          if ((enemy.tankedDamage || 0) > prevTanked) {
+            this._skillHookConnected = true;
+            this.gainSoulStack(1);
+            const effigyX = Math.max(105, Math.min(ww - 105, this.x + hookDir * 124));
+            this.spawnSeveredSoulEffigy(enemy, effigyX, game);
+            if (game?.vfx) {
+              game.vfx.spawnDamageText(
+                effigyX,
+                this.groundY - 162,
+                0,
+                false,
+                vsSkill === 2 ? 'SOUL-LANTERN FEAST!' : 'SOUL-LANTERN TORN!',
+                vsSkill === 2 ? '#6ee7b7' : '#f43f5e'
+              );
+            }
+            game?.renderer?.triggerShake?.(11, 0.22);
           }
-          game?.renderer?.triggerShake?.(11, 0.22);
         }
       }
 
-      if (enemy && !enemy.isDead && !enemy.isColossalBoss && Math.abs(enemy.x - this.x) <= 480) {
-        if (Math.abs(enemy.x - this.x) > 140) {
-          this.x = this._clampArenaX(this.x + this.facing * 135 * dt, game);
+      if (
+        this._skillHookConnected &&
+        enemy &&
+        !enemy.isDead &&
+        !enemy.isColossalBoss &&
+        !enemy.isInvulnerable &&
+        Math.abs(enemy.x - this.x) <= 380
+      ) {
+        if (Math.abs(enemy.x - this.x) > 145) {
+          this.x = this._clampArenaX(this.x + this.facing * 120 * dt, game);
         }
-        const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 122));
-        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * (vsSkill === 1 ? 7.4 : 6.0));
+        const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 126));
+        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * (vsSkill === 1 ? 6.8 : 5.4));
         if (this.severedSoul) this.severedSoul.x = desiredX;
         if (this.boneCage) this.boneCage.x = desiredX;
       }
@@ -2456,20 +2501,23 @@ export class ReaperEx extends Fighter {
       }
       game?.renderer?.triggerShake?.(16, 0.30);
 
+      // Committed forward shadow-step capped at <= 115px (zero 285px enemy.x teleport snap!)
       const prevX = this.x;
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 285) {
-        const lungeX = enemy.x - this.facing * 112;
-        this.x = this._clampArenaX(lungeX, game);
+      const stepDir = this._skillStepDir || this.facing || 1;
+      let lungeDist = 72;
+      if (enemy && !enemy.isDead) {
+        const frontDist = (enemy.x - this.x) * stepDir;
+        if (frontDist > 0) {
+          lungeDist = Math.max(0, Math.min(115, frontDist - 114));
+        }
+      }
+      if (lungeDist >= 24) {
+        this.x = this._clampArenaX(this.x + stepDir * lungeDist, game);
         this.spawnAfterimage(prevX, this.groundY, this.facing, 3, 14, 0.28, 1.0, true);
         this.spawnSoulThread(prevX, this.groundY - 82, this.x, this.groundY - 82, 0.36, true);
       }
 
-      const reapX =
-        enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 255
-          ? enemy.x
-          : this.severedSoul
-            ? this.severedSoul.x
-            : this.x + this.facing * 118;
+      const reapX = this._clampArenaX(this.x + stepDir * 114, game);
 
       this.spawnThanatosStand(0.52, 272);
       game?.renderer?.triggerImpactFrame?.(reapX, this.groundY - 104, 0.06, 'abyssal');
@@ -2923,7 +2971,7 @@ export class ReaperEx extends Fighter {
    * NEWLY-BORN SUPREME ULTIMATE (`TRUE_ULTIMATE`, `4.50s` + `12.5s` Living Covenant):
    * `MEMENTO MORI: CATHEDRAL OF OBLIVION`
    * - Unseals twin Gothic Oblivion Gates (`Row 5`),
-   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps162`),
+   * - Summons his `12.5s` Living Death-Mage & Soul-Healer Covenant (`reaper_companions.png?v=30fps163`),
    * - Drops a colossal 6-Pillar Violet-Crimson Scythe Guillotine across reality (`720` Crit)!
    */
   updateTrueUltimate(dt, enemy, game) {

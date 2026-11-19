@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps162';
+} from '../engine/shaders/chronoShaders.js?v=30fps163';
 
 const wrapPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -301,12 +301,12 @@ export class ChronomancerEx extends Fighter {
   getAiStyleProfile() {
     return {
       comboGoal: 4,
-      sweetMin: 108,
-      sweetMax: 128,
+      sweetMin: 152,
+      sweetMax: 222,
       counterCrouchBias: 0.58,
-      midLeapMin: 180,
-      midLeapMax: 295,
-      midLeapChance: 0.40,
+      midLeapMin: 230,
+      midLeapMax: 340,
+      midLeapChance: 0.30,
       postStyle: 'chrono'
     };
   }
@@ -584,6 +584,7 @@ export class ChronomancerEx extends Fighter {
     this.stateTimer = 0;
     this._intraLinkTimer = 0;
     this._beatHitMask = 0;
+    this._beatLandedHit = false;
     this.didActionFrame = false;
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
@@ -601,17 +602,16 @@ export class ChronomancerEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    let desiredX = this.x + this.facing * (v === 0 ? 18 : v === 2 ? 16 : 12);
-
+    const baseStep = v === 0 ? 36 : v === 2 ? 24 : 18;
+    let stepDist = baseStep;
     if (enemy && !enemy.isDead) {
-      const sweetDist = v === 2 ? 106 : 112;
-      const idealStandX = enemy.x - this.facing * sweetDist;
-      const rawDelta = (idealStandX - this.x) * this.facing;
-      const maxForward = v === 0 ? 108 : v === 2 ? 42 : 32;
-      const clampedForward = Math.max(0, Math.min(maxForward, rawDelta));
-      desiredX = this.x + this.facing * clampedForward;
+      const frontDist = (enemy.x - this.x) * this.facing;
+      if (frontDist > 0) {
+        const minClear = v === 2 ? 116 : 120;
+        stepDist = Math.max(0, Math.min(baseStep, frontDist - minClear));
+      }
     }
-
+    const desiredX = this.x + this.facing * stepDist;
     this._beatTargetX = this.clampArenaX(desiredX, game, 80);
   }
 
@@ -800,9 +800,12 @@ export class ChronomancerEx extends Fighter {
       landedAny = true;
     }
 
-    if (landedAny && hitStop > 0) {
-      this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
-      game?.renderer?.triggerHitStop?.(hitStop * 0.65);
+    if (landedAny) {
+      this._beatLandedHit = true;
+      if (hitStop > 0) {
+        this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
+        game?.renderer?.triggerHitStop?.(hitStop * 0.65);
+      }
     }
 
     return landedAny;
@@ -880,20 +883,24 @@ export class ChronomancerEx extends Fighter {
 
     if (enemy && !enemy.isDead) {
       const dist = Math.abs(enemy.x - this.x);
-      if (dist < 210) {
+      if (dist < 175 && dir === (enemy.x >= this.x ? 1 : -1)) {
         const crossSign = this.x < enemy.x ? 1 : -1;
-        let target = enemy.x + crossSign * 124;
+        const crossTravel = Math.min(230, Math.max(155, dist + 92));
+        let target = this.x + crossSign * crossTravel;
         if (target < 135 || target > ww - 135) {
-          target = enemy.x - crossSign * 132;
+          target = this.x - crossSign * 185;
         }
         this.flipTargetX = this.clampArenaX(target, game, 115);
       } else {
-        const toEnemy = Math.sign(enemy.x - this.x) || this.facing;
-        this.flipTargetX = this.clampArenaX(enemy.x - toEnemy * 116, game, 115);
+        let jumpDist = 205;
+        if (dir === (enemy.x >= this.x ? 1 : -1) && dist > 136 && dist < 320) {
+          jumpDist = Math.min(200, Math.max(100, dist - 132));
+        }
+        this.flipTargetX = this.clampArenaX(this.x + dir * jumpDist, game, 115);
       }
       this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || dir;
     } else {
-      this.flipTargetX = this.clampArenaX(this.x + dir * 225, game, 115);
+      this.flipTargetX = this.clampArenaX(this.x + dir * 210, game, 115);
       this.dashDir = dir;
     }
 
@@ -952,8 +959,10 @@ export class ChronomancerEx extends Fighter {
 
     const advanceDir = enemy && !enemy.isDead ? Math.sign(enemy.x - this.x) || dir : dir;
     this.dashDir = advanceDir || this.facing;
+    this._dashStartX = this.x;
+    this._dashMaxTravel = 185;
     this.facing = this.dashDir;
-    this.vx = this.dashDir * 560;
+    this.vx = this.dashDir * 550;
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
     this.fx?.spawn('temporalCrescentRift', this._safeFxX(this.x, game), this._safeFxY(this.y - 94), {
       follow: this,
@@ -1117,12 +1126,13 @@ export class ChronomancerEx extends Fighter {
 
     if (this.state === 'DASH') {
       const dir = this.dashDir || this.facing;
+      const traveled = (this.x - (this._dashStartX ?? this.x)) * dir;
       const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * dir : 999;
       if (t < (this.dashDuration || 0.36) * 0.78) {
-        if (distToEnemy <= 116 && distToEnemy >= 72) {
+        if (traveled >= (this._dashMaxTravel || 185) || (distToEnemy <= 136 && distToEnemy >= 55)) {
           this.vx = 0;
         } else {
-          this.vx = dir * 560;
+          this.vx = dir * 550;
           this.x = this.clampArenaX(this.x + this.vx * dt, game, 80);
         }
       } else {
@@ -1553,7 +1563,7 @@ export class ChronomancerEx extends Fighter {
         });
         this._applyChronoExStrike(enemy, game, {
           damage: vsAspect === 0 ? 28 : Math.round(28 * dmgMult),
-          reachFront: 216,
+          reachFront: 164,
           hitStop: 0.044,
           shakeDur: 0.056,
           knockX: 24,
@@ -1568,7 +1578,7 @@ export class ChronomancerEx extends Fighter {
     } else if (v === 1) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.06) {
         this._beatHitMask |= 1;
-        const inRangeEnemy = enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 236 ? enemy : null;
+        const inRangeEnemy = enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 178 ? enemy : null;
         const strikeX = inRangeEnemy ? inRangeEnemy.x : this.clampArenaX(this.x + this.facing * 92, game, 85);
         const strikeY = inRangeEnemy ? inRangeEnemy.groundY || inRangeEnemy.y : this.groundY;
         const cloneX = this.clampArenaX(strikeX + this.facing * 78, game, 82);
@@ -1609,7 +1619,7 @@ export class ChronomancerEx extends Fighter {
 
         this._applyChronoExStrike(enemy, game, {
           damage: vsAspect === 0 ? 30 : Math.round(30 * dmgMult),
-          reachFront: 228,
+          reachFront: 170,
           hitStop: 0.046,
           shakeDur: 0.060,
           knockX: 22,
@@ -1632,7 +1642,7 @@ export class ChronomancerEx extends Fighter {
         });
         this._applyChronoExStrike(enemy, game, {
           damage: vsAspect === 0 ? 20 : Math.round(20 * dmgMult),
-          reachFront: 218,
+          reachFront: 170,
           hitStop: 0.042,
           shakeDur: 0.048,
           knockX: 14,
@@ -1655,7 +1665,7 @@ export class ChronomancerEx extends Fighter {
         });
         this._applyChronoExStrike(enemy, game, {
           damage: vsAspect === 0 ? 22 : Math.round(22 * dmgMult),
-          reachFront: 220,
+          reachFront: 172,
           hitStop: 0.044,
           shakeDur: 0.054,
           knockX: 18,
@@ -1713,7 +1723,7 @@ export class ChronomancerEx extends Fighter {
         }
         this._applyChronoExStrike(enemy, game, {
           damage: vsAspect === 0 ? 26 : Math.round(26 * dmgMult),
-          reachFront: 224,
+          reachFront: 176,
           hitStop: 0.058,
           shakeDur: 0.082,
           knockX: 34,
@@ -1731,7 +1741,7 @@ export class ChronomancerEx extends Fighter {
         this._beatHitMask |= 2;
         this._applyChronoExStrike(enemy, game, {
           damage: vsAspect === 0 ? 18 : Math.round(18 * dmgMult),
-          reachFront: 226,
+          reachFront: 178,
           hitStop: 0,
           shakeDur: 0.046,
           knockX: 28,
@@ -1747,10 +1757,10 @@ export class ChronomancerEx extends Fighter {
         this._beatHitMask |= 4;
         this._applyChronoExStrike(enemy, game, {
           damage: vsAspect === 0 ? 24 : Math.round(24 * dmgMult),
-          reachFront: 228,
+          reachFront: 180,
           hitStop: 0,
           shakeDur: 0.056,
-          knockX: 96,
+          knockX: 118,
           knockY: -86,
           isCrit: true,
           scarDx: 102,
@@ -1775,12 +1785,15 @@ export class ChronomancerEx extends Fighter {
             game?.adventure?.uiHeldAttack ||
             game?.adventure?.queuedAction === 'attack')
       );
+      const relEnemyX = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 999;
       const aiWantsChain =
         !isManualPlayer &&
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= 245;
+        relEnemyX >= -36 &&
+        relEnemyX <= 178 &&
+        (this._beatLandedHit || relEnemyX <= 156);
 
       if (v < 3 && (this._queuedNextBeat || aiWantsChain || advHoldingAttack)) {
         this._queuedNextBeat = false;
@@ -1791,12 +1804,19 @@ export class ChronomancerEx extends Fighter {
         return;
       }
 
-      if (v === 3) {
+      if (v === 3 || (!isManualPlayer && !this._beatLandedHit && !advHoldingAttack)) {
         this.comboStep = 0;
-        this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 108 ? 0.32 : 0;
+        this._aiComboReadyFinisher = v === 3 ? 0.92 : 0;
+        this._aiOutstepTimer =
+          !game?.isAdventureMode?.() && enemy && Math.abs(enemy.x - this.x) < 214
+            ? 0.54 + Math.random() * 0.26
+            : 0;
         this._aiOutstepDir = -1;
-        this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
+        this.autoCooldown = isManualPlayer
+          ? 0.06
+          : v === 3
+            ? this._postFlurryInterval * (0.98 + Math.random() * 0.22)
+            : 0.50 + Math.random() * 0.26;
       } else {
         this.autoCooldown = 0.015;
       }
@@ -1844,6 +1864,15 @@ export class ChronomancerEx extends Fighter {
       this.anchorY = this.groundY;
       this.anchorHp = this.hp;
       this.anchorActive = vsSkill !== 1;
+      // Commit directional warp target at startup (capped <= 265px — zero cross-map teleport snap!)
+      const skillDir = primary ? Math.sign(primary.x - this.x) || this.facing || 1 : this.facing || 1;
+      const rawDist = primary ? Math.abs(primary.x - this.x) : 185;
+      this._skillDir = skillDir;
+      this._skillCommittedTargetX = this.clampArenaX(
+        this.anchorX + skillDir * Math.min(265, Math.max(120, rawDist)),
+        game,
+        105
+      );
 
       if (game?.audio) game.audio.play('time_rewind', this.x);
       this.fx?.spawn('warpPortalPairRift', this._safeFxX(this.anchorX, game), this._safeFxY(this.groundY - 88), {
@@ -1879,18 +1908,21 @@ export class ChronomancerEx extends Fighter {
       );
     }
 
-    // Stage 2 (t >= 0.24s): Warp Rift Arrival + Twin Clock-Hand Spears + Hourglass Stasis!
+    // Stage 2 (t >= 0.24s): Warp Rift Arrival at committed rift coordinate (dodging during telegraph can whiff!)
     if (t >= 0.24 && this._skillStage === 1) {
       this._skillStage = 2;
       this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
 
-      const targetX = primary ? primary.x : this.clampArenaX(this.x + this.facing * 230, game, 110);
-      const approachFacing = primary ? Math.sign(primary.x - this.x) || this.facing : this.facing;
-      const warpX = this.clampArenaX(targetX - approachFacing * 88, game, 95);
-      const pincerCloneX = this.clampArenaX(targetX + approachFacing * 88, game, 95);
+      const approachFacing = this._skillDir || this.facing || 1;
+      const targetX =
+        this._skillCommittedTargetX !== undefined
+          ? this._skillCommittedTargetX
+          : this.clampArenaX(this.x + approachFacing * 190, game, 105);
+      const warpX = this.clampArenaX(targetX - approachFacing * 96, game, 95);
+      const pincerCloneX = this.clampArenaX(targetX + approachFacing * 96, game, 95);
 
       this.x = warpX;
-      this.facing = targetX >= this.x ? 1 : -1;
+      this.facing = approachFacing;
       this.vx = 0;
 
       // Opposite-flank Mirage + Twin Clock-Hand Spears (`Row 6`) converging on targetX!
@@ -2004,18 +2036,19 @@ export class ChronomancerEx extends Fighter {
       }
     }
 
-    // Stage 3 (t >= 0.76s): Golden Rewind Echo or Aggressive Flank Execution!
+    // Stage 3 (t >= 0.76s): Golden Rewind Echo or Aggressive Flank Execution at committed rift zone!
     if (t >= 0.76 && this._skillStage === 2) {
       this._skillStage = 3;
       this.isDeflecting = false;
 
       const riftCloneX = this.x;
       const riftCloneFacing = this.facing;
-      const echoTargetX = primary
-        ? primary.x
-        : this.stasisField
-          ? this.stasisField.x
-          : riftCloneX + riftCloneFacing * 86;
+      const echoTargetX =
+        this._skillCommittedTargetX !== undefined
+          ? this._skillCommittedTargetX
+          : this.stasisField
+            ? this.stasisField.x
+            : riftCloneX + riftCloneFacing * 86;
 
       this.spawnPhantomClone(
         riftCloneX,

@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps163';
 
 const wrapStormPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -329,12 +329,12 @@ export class RoninEx extends Fighter {
   getAiStyleProfile() {
     return {
       comboGoal: 4,
-      sweetMin: 98,
-      sweetMax: 126,
+      sweetMin: 155,
+      sweetMax: 224,
       counterCrouchBias: 0.66,
-      midLeapMin: 175,
-      midLeapMax: 285,
-      midLeapChance: 0.44,
+      midLeapMin: 235,
+      midLeapMax: 345,
+      midLeapChance: 0.32,
       postStyle: 'iaido'
     };
   }
@@ -482,6 +482,9 @@ export class RoninEx extends Fighter {
       this._zantetsuStep = 0;
       this._skillOriginX = this.x;
       this._skillOriginY = this.y;
+      this._skillDir = this.facing || 1;
+      this._skillDashTargetX = undefined;
+      this._skillSlashCenter = undefined;
       this._taikoHaloTimer = 0.94;
       this._taikoLitCount = 5;
     }
@@ -567,6 +570,7 @@ export class RoninEx extends Fighter {
     this.stateTimer = 0;
     this._intraLinkTimer = 0;
     this._beatHitMask = 0;
+    this._beatLandedHit = false;
     this.didActionFrame = false;
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
@@ -587,24 +591,21 @@ export class RoninEx extends Fighter {
     }
     this._beatPostFacing = this.facing;
     this._beatStartX = this.x;
-
-    let desiredX = this.x + this.facing * (v === 0 ? 34 : v === 1 ? 30 : v === 2 ? 48 : 36);
+    const baseStep = v === 0 ? 36 : v === 1 ? 22 : v === 2 ? 32 : 24;
+    let desiredX = this.x + this.facing * baseStep;
 
     if (enemy && !enemy.isDead) {
       const dist = Math.abs(enemy.x - this.x);
-      if (v === 2 && !enemy.isColossalBoss && dist <= 165) {
+      const frontDist = (enemy.x - this.x) * this.facing;
+      if (v === 2 && !enemy.isColossalBoss && dist <= 155) {
         const crossDir = enemy.x >= this.x ? 1 : -1;
-        const flankTarget = enemy.x + crossDir * 98;
-        desiredX = this._clampArenaX(flankTarget, game, 72);
+        const crossTravel = Math.min(220, Math.max(150, dist + 84));
+        desiredX = this._clampArenaX(this.x + crossDir * crossTravel, game, 72);
         this._beatCrossedFlank = true;
         this._beatPostFacing = -crossDir;
-      } else {
-        const sweetDist = enemy.isColossalBoss ? 118 : v === 3 ? 98 : 104;
-        const idealStandX = enemy.x - this.facing * sweetDist;
-        const rawDelta = (idealStandX - this.x) * this.facing;
-        const maxForward = v === 0 ? 96 : v === 2 ? 58 : 44;
-        const minForward = dist > sweetDist + 8 ? Math.min(28, Math.max(0, rawDelta)) : 0;
-        const clampedForward = Math.max(minForward, Math.min(maxForward, rawDelta));
+      } else if (frontDist > 0) {
+        const minClear = enemy.isColossalBoss ? 118 : 118;
+        const clampedForward = Math.max(0, Math.min(baseStep, frontDist - minClear));
         desiredX = this.x + this.facing * clampedForward;
       }
     }
@@ -742,6 +743,7 @@ export class RoninEx extends Fighter {
     }
 
     if (struckFoes.length > 0) {
+      this._beatLandedHit = true;
       this.gainMana(manaGain);
       if (hitStop > 0) {
         this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
@@ -1271,21 +1273,31 @@ export class RoninEx extends Fighter {
     }
   }
 
-  startJump(enemy, game) {
+  startJump(enemy, game, dirOverride = null) {
     this.vaultCooldown = 2.8;
     this.jumpCooldown = 2.8;
     this.dashDuration = 0.56;
     this.setState('JUMP');
     this.isInvulnerable = true;
     this.isFlipVault = true;
-    const dir = enemy && !enemy.isDead ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
+    const dir =
+      dirOverride !== null
+        ? dirOverride
+        : enemy && !enemy.isDead
+          ? Math.sign(enemy.x - this.x) || this.facing
+          : this.facing;
     this.dashDir = dir;
     this.vaultStartX = this.x;
-    const targetX =
-      enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 285
-        ? enemy.x + dir * 88
-        : this.x + dir * 215;
-    this.vaultTargetX = this._clampArenaX(targetX, game, 85);
+    let jumpTravel = 205;
+    if (enemy && !enemy.isDead && dir === (enemy.x >= this.x ? 1 : -1)) {
+      const dist = Math.abs(enemy.x - this.x);
+      if (dist < 175) {
+        jumpTravel = Math.min(225, Math.max(150, dist + 82));
+      } else if (dist < 320) {
+        jumpTravel = Math.min(200, Math.max(105, dist - 130));
+      }
+    }
+    this.vaultTargetX = this._clampArenaX(this.x + dir * jumpTravel, game, 85);
     this.vx = 0;
     this.vy = 0;
     this.spawnAfterimage(this.x, this.y, this.facing, 8, 4, 0.26);
@@ -1494,7 +1506,7 @@ export class RoninEx extends Fighter {
         this.spawnPixelShockwave(this.x + this.facing * 52, this.groundY - 6, 68, vsAspect === 1 ? 'gold' : 'cyan', 0.20, true);
         const meleeHit0 = this._applyBattoStrike(enemy, game, {
           damage: vsAspect === 0 ? 28 : Math.round(28 * autoScale),
-          reachFront: 212,
+          reachFront: 162,
           hitStop: 0.042,
           shakeDur: 0.056,
           knockX: 28,
@@ -1520,7 +1532,7 @@ export class RoninEx extends Fighter {
         this.spawnPixelShockwave(this.x + this.facing * 64, this.groundY - 76, 74, 'purple', 0.22, false);
         this._applyBattoStrike(enemy, game, {
           damage: vsAspect === 0 ? 30 : Math.round(30 * autoScale),
-          reachFront: 214,
+          reachFront: 166,
           hitStop: 0.044,
           shakeDur: 0.058,
           knockX: 26,
@@ -1538,7 +1550,7 @@ export class RoninEx extends Fighter {
         this.spawnPixelShockwave(this.x + this.facing * 58, this.groundY - 78, 86, 'cyan', 0.22, false);
         this._applyBattoStrike(enemy, game, {
           damage: vsAspect === 0 ? 21 : Math.round(21 * autoScale),
-          reachFront: 216,
+          reachFront: 170,
           reachBack: 62,
           hitStop: 0.036,
           shakeDur: 0.048,
@@ -1553,7 +1565,7 @@ export class RoninEx extends Fighter {
         this._beatHitMask |= 2;
         this._applyBattoStrike(enemy, game, {
           damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
-          reachFront: 218,
+          reachFront: 172,
           reachBack: 62,
           hitStop: 0.046,
           shakeDur: 0.056,
@@ -1581,7 +1593,7 @@ export class RoninEx extends Fighter {
         this.spawnPixelLightningBolt(cleaveX, this.groundY - 230, this.groundY, 'gold', 0.28);
         const meleeHitFoes = this._applyBattoStrike(enemy, game, {
           damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
-          reachFront: 224,
+          reachFront: 176,
           hitStop: 0.056,
           shakeDur: 0.080,
           knockX: 34,
@@ -1605,7 +1617,7 @@ export class RoninEx extends Fighter {
         this._beatHitMask |= 2;
         this._applyBattoStrike(enemy, game, {
           damage: vsAspect === 0 ? 16 : Math.round(16 * autoScale),
-          reachFront: 226,
+          reachFront: 178,
           hitStop: 0,
           shakeDur: 0.046,
           knockX: 28,
@@ -1619,10 +1631,10 @@ export class RoninEx extends Fighter {
         this._beatHitMask |= 4;
         this._applyBattoStrike(enemy, game, {
           damage: vsAspect === 0 ? 24 : Math.round(24 * autoScale),
-          reachFront: 228,
+          reachFront: 180,
           hitStop: 0,
           shakeDur: 0.056,
-          knockX: 88,
+          knockX: 118,
           knockY: -96,
           isCrit: true,
           cutSlope: 0.14,
@@ -1646,14 +1658,18 @@ export class RoninEx extends Fighter {
             game?.adventure?.uiHeldAttack ||
             game?.adventure?.queuedAction === 'attack')
       );
+      const relEnemyX = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 999;
       const aiWantsChain =
         !isManualPlayer &&
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= 245;
+        relEnemyX >= -42 &&
+        relEnemyX <= 178 &&
+        (this._beatLandedHit || (v === 0 && relEnemyX <= 140));
 
       if (v < 3 && (this._queuedNextBeat || advHoldingAttack || aiWantsChain)) {
+        this._queuedNextBeat = false;
         if (game?.adventure?.queuedAction === 'attack') {
           game.adventure.queuedAction = null;
         }
@@ -1661,12 +1677,19 @@ export class RoninEx extends Fighter {
         return;
       }
 
-      if (v === 3) {
+      if (v === 3 || (!isManualPlayer && !this._beatLandedHit && !advHoldingAttack)) {
         this.comboStep = 0;
-        this._aiComboReadyFinisher = 0.90;
-        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 108 ? 0.32 : 0;
+        this._aiComboReadyFinisher = v === 3 ? 0.90 : 0;
+        this._aiOutstepTimer =
+          !game?.isAdventureMode?.() && enemy && Math.abs(enemy.x - this.x) < 214
+            ? 0.56 + Math.random() * 0.26
+            : 0;
         this._aiOutstepDir = -1;
-        this.autoCooldown = isManualPlayer ? 0.05 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
+        this.autoCooldown = isManualPlayer
+          ? 0.05
+          : v === 3
+            ? this._postFlurryInterval * (0.98 + Math.random() * 0.22)
+            : 0.50 + Math.random() * 0.26;
       } else {
         this.autoCooldown = 0.015;
       }
@@ -1690,13 +1713,6 @@ export class RoninEx extends Fighter {
     this.isInvulnerable = t < 0.70;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const clampX = (xVal) => this._clampArenaX(xVal, game, 85);
-    const originX = this._skillOriginX !== undefined ? this._skillOriginX : this.x;
-    const center =
-      enemy && !enemy.isDead
-        ? enemy.x
-        : Math.max(220, Math.min(ww - 220, originX + this.facing * 165));
-    const dir = center >= originX ? 1 : -1;
-    const dashTargetX = clampX(center + dir * 136);
 
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
     if (!this._skillVoiceFired) {
@@ -1710,7 +1726,7 @@ export class RoninEx extends Fighter {
       });
     }
 
-    // Phase 0 (0.00..0.15s): Deep Iaido Coil + Ignite 5 Raijin Taiko Drums & Thunder Crest
+    // Phase 0 (0.00..0.15s): Deep Iaido Coil + Capture Committed Flash Corridor (zero continuous enemy.x tracking!)
     if (t < 0.15) {
       this.vx = 0;
       this.vy = 0;
@@ -1720,6 +1736,17 @@ export class RoninEx extends Fighter {
         this._zantetsuStep = 1;
         this._skillOriginX = this.x;
         this._skillOriginY = this.groundY;
+        const initDir =
+          enemy && !enemy.isDead ? Math.sign(enemy.x - this.x) || this.facing || 1 : this.facing || 1;
+        const startDist = enemy && !enemy.isDead ? Math.abs(enemy.x - this.x) : 180;
+        const committedTravel = Math.min(295, Math.max(185, startDist + 108));
+        this._skillDir = initDir;
+        this._skillDashTargetX = clampX(this._skillOriginX + initDir * committedTravel);
+        const rawCenter =
+          enemy && !enemy.isDead && startDist <= 245
+            ? enemy.x
+            : this._skillOriginX + initDir * Math.min(175, committedTravel * 0.58);
+        this._skillSlashCenter = Math.max(120, Math.min(ww - 120, rawCenter));
         this._taikoHaloTimer = 0.94;
         this._taikoLitCount = 5;
         if (vsSkill === 2) {
@@ -1737,7 +1764,18 @@ export class RoninEx extends Fighter {
       return;
     }
 
-    // Phase 1 (0.15..0.48s): Explosive Shunpo Lightning Dash-Through + Indigo-Cyan Afterimages + X-Cross Katana Flash
+    const originX = this._skillOriginX !== undefined ? this._skillOriginX : this.x;
+    const dir = this._skillDir || this.facing || 1;
+    const dashTargetX =
+      this._skillDashTargetX !== undefined
+        ? this._skillDashTargetX
+        : clampX(originX + dir * 245);
+    const center =
+      this._skillSlashCenter !== undefined
+        ? this._skillSlashCenter
+        : Math.max(120, Math.min(ww - 120, (originX + dashTargetX) * 0.5));
+
+    // Phase 1 (0.15..0.48s): Explosive Shunpo Lightning Dash-Through along committed corridor
     if (t >= 0.15 && t < 0.48) {
       const dashU = Math.min(1, Math.max(0, (t - 0.15) / 0.33));
       const easeU = 1 - Math.pow(1 - dashU, 2.8);
@@ -1762,7 +1800,7 @@ export class RoninEx extends Fighter {
         if (game?.audio) game.audio.play('dash_whoosh', center);
       }
 
-      // Crisp X-Cross Katana Flash slicing right through enemy center!
+      // Crisp X-Cross Katana Flash slicing through committed corridor center!
       if (this._zantetsuStep < 3 && dashU >= 0.48) {
         this._zantetsuStep = 3;
         this.addSlashLine(center - 68, this.groundY - 138, center + 68, this.groundY - 26, 0.56, false, vsSkill === 1 ? '#f43f5e' : '#38bdf8');
@@ -1779,7 +1817,7 @@ export class RoninEx extends Fighter {
         });
         game?.vfx?.spawnLightning?.(center, this.groundY - 220, this.groundY - 8, '#67e8f9', '#4f46e5');
         if (game?.audio) game.audio.play('raijin_slash', center);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 255) {
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 168) {
           enemy.takeDamage(vsSkill === 1 ? 64 : vsSkill === 2 ? 45 : 58, this, true, 14 * dir, -56);
         }
         if (vsSkill === 1) {
@@ -1807,7 +1845,7 @@ export class RoninEx extends Fighter {
       }
     }
 
-    // Phase 3 (t >= 0.68s): Saya-Click -> Delayed High-Voltage Raijin Sky-Lightning Judgment Bolt!
+    // Phase 3 (t >= 0.68s): Saya-Click -> Delayed High-Voltage Raijin Sky-Lightning Judgment Bolt at committed corridor!
     if (t >= 0.68 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       this.fx?.stopByKey('shunpoSpearMachCone');
@@ -1840,7 +1878,7 @@ export class RoninEx extends Fighter {
         line.colorHex = '#fde047';
       }
 
-      const strikeX = enemy && !enemy.isDead ? enemy.x : center;
+      const strikeX = center;
       game?.vfx?.spawnLightning?.(strikeX, this.groundY - 460, this.groundY, '#fde047', '#38bdf8');
       game?.vfx?.spawnLightning?.(strikeX - 36, this.groundY - 380, this.groundY, '#67e8f9', '#818cf8');
       this.spawnPixelLightningBolt(strikeX, this.groundY - 260, this.groundY, 'gold', 0.36);
@@ -1857,17 +1895,27 @@ export class RoninEx extends Fighter {
 
       const mainClickDmg = vsSkill === 1 ? 124 : vsSkill === 2 ? 75 : 102;
       const sideClickDmg = vsSkill === 1 ? 92 : vsSkill === 2 ? 56 : 76;
-      const foes = this._gatherBattoTargets(enemy, game, 320, 320);
-      let hitAny = false;
-      for (const foe of foes) {
-        foe.takeDamage(foe === enemy ? mainClickDmg : sideClickDmg, this, true, 165 * dir, -205);
-        if (!foe.isDead && !foe.isColossalBoss) {
-          foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.072);
+      const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+      const hitCandidates = new Set(rawFoes.filter((f) => f && !f.isDead && !f.isBenched));
+      if (enemy && !enemy.isDead && !enemy.isBenched) hitCandidates.add(enemy);
+      if (game?.adventure?.active) {
+        if (Array.isArray(game.adventure.enemies)) {
+          for (const m of game.adventure.enemies) {
+            if (m && !m.isDead && !m.isBenched) hitCandidates.add(m);
+          }
         }
-        hitAny = true;
+        if (game.adventure.bossEntity && !game.adventure.bossEntity.isDead) {
+          hitCandidates.add(game.adventure.bossEntity);
+        }
       }
-      if (!hitAny && enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 360) {
-        enemy.takeDamage(mainClickDmg, this, true, 165 * dir, -205);
+      for (const foe of hitCandidates) {
+        const hitRad = foe.isColossalBoss ? 255 : 185;
+        if (Math.abs(foe.x - strikeX) <= hitRad) {
+          foe.takeDamage(foe === enemy ? mainClickDmg : sideClickDmg, this, true, 165 * dir, -205);
+          if (!foe.isDead && !foe.isColossalBoss) {
+            foe._hitShakeTimer = Math.max(foe._hitShakeTimer || 0, 0.072);
+          }
+        }
       }
       if (vsSkill === 2) {
         this.heal(26, 'RAIJIN FOCUS');

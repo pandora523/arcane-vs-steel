@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps162';
+} from '../engine/shaders/forgeShaders.js?v=30fps163';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)
@@ -601,6 +601,7 @@ export class TitanEx extends Fighter {
     this.stateTimer = 0;
     this._intraLinkTimer = 0;
     this._beatHitMask = 0;
+    this._beatLandedHit = false;
     this.didActionFrame = false;
     this.didSecondaryAction = false;
     this._queuedNextBeat = false;
@@ -619,17 +620,16 @@ export class TitanEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    let desiredX = this.x + this.facing * (v === 0 ? 18 : v === 2 ? 16 : 12);
-
+    const baseStep = v === 0 ? 30 : v === 2 ? 22 : 16;
+    let stepDist = baseStep;
     if (enemy && !enemy.isDead) {
-      const sweetDist = v === 2 ? 112 : 118;
-      const idealStandX = enemy.x - this.facing * sweetDist;
-      const rawDelta = (idealStandX - this.x) * this.facing;
-      const maxForward = v === 0 ? 98 : v === 2 ? 42 : 30;
-      const clampedForward = Math.max(0, Math.min(maxForward, rawDelta));
-      desiredX = this.x + this.facing * clampedForward;
+      const frontDist = (enemy.x - this.x) * this.facing;
+      if (frontDist > 0) {
+        const minClear = v === 2 ? 118 : 122;
+        stepDist = Math.max(0, Math.min(baseStep, frontDist - minClear));
+      }
     }
-
+    const desiredX = this.x + this.facing * stepDist;
     this._beatTargetX = this._clampArenaX(desiredX, game);
   }
 
@@ -825,9 +825,12 @@ export class TitanEx extends Fighter {
       landedAny = true;
     }
 
-    if (landedAny && hitStop > 0) {
-      this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
-      game?.renderer?.triggerHitStop?.(hitStop * 0.75);
+    if (landedAny) {
+      this._beatLandedHit = true;
+      if (hitStop > 0) {
+        this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
+        game?.renderer?.triggerHitStop?.(hitStop * 0.75);
+      }
     }
 
     return landedAny;
@@ -979,21 +982,26 @@ export class TitanEx extends Fighter {
     }
   }
 
-  startJump(enemy, game) {
+  startJump(enemy, game, dirOverride = null) {
     this.jumpCooldown = 2.8;
     this.dashDuration = 0.62;
     this.setState('JUMP');
     this.isInvulnerable = true;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    let dir = this.facing;
-    if (enemy && !enemy.isDead) {
+    let dir = dirOverride !== null ? dirOverride : this.facing;
+    if (dirOverride === null && enemy && !enemy.isDead) {
       dir = Math.sign(enemy.x - this.x) || this.facing;
     }
     this.dashDir = dir;
     this.isFlipVault = true;
     this.vaultStartX = this.x;
-    const targetDist =
-      enemy && !enemy.isDead ? Math.min(220, Math.max(85, Math.abs(enemy.x - this.x) - 114)) : 145;
+    let targetDist = 185;
+    if (enemy && !enemy.isDead && dir === (enemy.x >= this.x ? 1 : -1)) {
+      const frontDist = Math.abs(enemy.x - this.x);
+      if (frontDist > 136 && frontDist < 320) {
+        targetDist = Math.min(185, Math.max(92, frontDist - 134));
+      }
+    }
     this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + dir * targetDist));
     this.vx = 0;
     this.vy = 0;
@@ -1007,6 +1015,8 @@ export class TitanEx extends Fighter {
     this.isFlipVault = false;
     this.unstoppablePoise = true;
     this.dashDir = dir || this.facing;
+    this._dashStartX = this.x;
+    this._dashMaxTravel = 190;
 
     this.fx?.spawn('runicBulwarkDome', this.x, this.y - 78, {
       follow: this,
@@ -1019,6 +1029,19 @@ export class TitanEx extends Fighter {
 
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
     game?.vfx?.spawnDamageText?.(this.x, this.y - 144, 0, false, 'JUGGERNAUT BULL-RUSH!', '#f59e0b');
+  }
+
+  onStartDodge(_enemy, game, dir) {
+    const moveDir = dir || -this.facing;
+    this.dashDir = moveDir;
+    this.dashDuration = 0.38;
+    this._dashStartX = this.x;
+    this._dashMaxTravel = 160;
+    this.didActionFrame = true;
+    this.isFlipVault = false;
+    this.isInvulnerable = true;
+    game?.audio?.play?.('dash_whoosh', this.x);
+    this.spawnForgeShockRing(this.x, this.groundY - 2, 56, false, 0.20);
   }
 
   updateDashOrDodge(_dt, enemy, game) {
@@ -1074,11 +1097,12 @@ export class TitanEx extends Fighter {
     }
 
     const dir = this.dashDir || this.facing;
+    const traveled = (this.x - (this._dashStartX ?? this.x)) * dir;
     const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * dir : 999;
-    if (distToEnemy <= 114 && distToEnemy >= 65) {
+    if (traveled >= (this._dashMaxTravel || 190) || (distToEnemy <= 138 && distToEnemy >= 55)) {
       this.vx = 0;
     } else {
-      const rushSpeed = 520 * (1 - u * 0.42);
+      const rushSpeed = 510 * (1 - u * 0.42);
       this.vx = dir * rushSpeed;
     }
 
@@ -1255,7 +1279,7 @@ export class TitanEx extends Fighter {
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
           damage: vsAspect === 0 ? 46 : Math.round(46 * dmgMult),
-          reachFront: 238,
+          reachFront: 176,
           hitStop: 0.054,
           shakeDur: 0.078,
           knockX: 115,
@@ -1273,10 +1297,7 @@ export class TitanEx extends Fighter {
     } else if (v === 1) {
       if ((this._beatHitMask & 1) === 0 && t >= 0.08) {
         this._beatHitMask |= 1;
-        const pillarX =
-          enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 242
-            ? enemy.x
-            : this.x + dir * 114;
+        const pillarX = this.x + dir * 116;
         game?.renderer?.triggerShake?.(11, 0.22);
 
         this.spawnSheetBurst(2, pillarX, this.groundY - 84, {
@@ -1291,7 +1312,7 @@ export class TitanEx extends Fighter {
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
           damage: vsAspect === 0 ? 50 : Math.round(50 * dmgMult),
-          reachFront: 240,
+          reachFront: 178,
           hitStop: 0.056,
           shakeDur: 0.082,
           knockX: 98,
@@ -1314,7 +1335,7 @@ export class TitanEx extends Fighter {
         this._beatHitMask |= 1;
         this._applyWorldMaulCrush(enemy, game, {
           damage: vsAspect === 0 ? 32 : Math.round(32 * dmgMult),
-          reachFront: 242,
+          reachFront: 180,
           hitStop: 0.052,
           shakeDur: 0.074,
           knockX: 48,
@@ -1340,7 +1361,7 @@ export class TitanEx extends Fighter {
         this.spawnForgeShockRing(impactX, this.groundY - 2, 108, true, 0.30);
         const landed = this._applyWorldMaulCrush(enemy, game, {
           damage: vsAspect === 0 ? 38 : Math.round(38 * dmgMult),
-          reachFront: 246,
+          reachFront: 184,
           hitStop: 0.056,
           shakeDur: 0.084,
           knockX: 165,
@@ -1364,10 +1385,7 @@ export class TitanEx extends Fighter {
     } else {
       if ((this._beatHitMask & 1) === 0 && t >= 0.17) {
         this._beatHitMask |= 1;
-        const slamX =
-          enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 246
-            ? enemy.x
-            : this.x + dir * 116;
+        const slamX = this.x + dir * 118;
         const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
         game?.renderer?.triggerShake?.(15, 0.28);
@@ -1401,7 +1419,7 @@ export class TitanEx extends Fighter {
 
         const landed = this._applyWorldMaulCrush(enemy, game, {
           damage: vsAspect === 0 ? 30 : Math.round(30 * dmgMult),
-          reachFront: 248,
+          reachFront: 186,
           hitStop: 0.068,
           shakeDur: 0.096,
           knockX: 52,
@@ -1435,7 +1453,7 @@ export class TitanEx extends Fighter {
         this._beatHitMask |= 2;
         this._applyWorldMaulCrush(enemy, game, {
           damage: vsAspect === 0 ? 18 : Math.round(18 * dmgMult),
-          reachFront: 250,
+          reachFront: 188,
           hitStop: 0,
           shakeDur: 0.052,
           knockX: 42,
@@ -1451,7 +1469,7 @@ export class TitanEx extends Fighter {
         this._beatHitMask |= 4;
         this._applyWorldMaulCrush(enemy, game, {
           damage: vsAspect === 0 ? 24 : Math.round(24 * dmgMult),
-          reachFront: 252,
+          reachFront: 190,
           hitStop: 0,
           shakeDur: 0.064,
           knockX: 165,
@@ -1478,14 +1496,18 @@ export class TitanEx extends Fighter {
             game?.adventure?.queuedAction === 'attack' ||
             this._queuedNextBeat)
       );
+      const relEnemyX = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 999;
       const aiWantsChain =
         !isManualPlayer &&
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= 255;
+        relEnemyX >= -36 &&
+        relEnemyX <= 192 &&
+        (this._beatLandedHit || relEnemyX <= 168);
 
-      if (v < 3 && (aiWantsChain || advHoldingAttack)) {
+      if (v < 3 && (this._queuedNextBeat || aiWantsChain || advHoldingAttack)) {
+        this._queuedNextBeat = false;
         if (game?.adventure?.queuedAction === 'attack') {
           game.adventure.queuedAction = null;
         }
@@ -1493,12 +1515,19 @@ export class TitanEx extends Fighter {
         return;
       }
 
-      if (v === 3) {
+      if (v === 3 || (!isManualPlayer && !this._beatLandedHit && !advHoldingAttack)) {
         this.comboStep = 0;
-        this._aiComboReadyFinisher = 0.94;
-        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 112 ? 0.32 : 0;
+        this._aiComboReadyFinisher = v === 3 ? 0.94 : 0;
+        this._aiOutstepTimer =
+          !game?.isAdventureMode?.() && enemy && Math.abs(enemy.x - this.x) < 218
+            ? 0.54 + Math.random() * 0.24
+            : 0;
         this._aiOutstepDir = -1;
-        this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
+        this.autoCooldown = isManualPlayer
+          ? 0.06
+          : v === 3
+            ? this._postFlurryInterval * (0.98 + Math.random() * 0.22)
+            : 0.56 + Math.random() * 0.28;
       } else {
         this.autoCooldown = 0.015;
       }

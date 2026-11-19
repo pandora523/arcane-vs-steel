@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps162';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps163';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps163';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -738,8 +738,9 @@ export class FireMageEx extends Fighter {
       const toEnemy = enemy.x >= this.x ? 1 : -1;
       if (dist < 280) {
         desiredX = enemy.x - toEnemy * 365;
-      } else if (this.dashDir === toEnemy && dist > 440) {
-        desiredX = enemy.x - toEnemy * 355;
+      } else if (this.dashDir === toEnemy) {
+        const maxFwd = Math.max(70, dist - 275);
+        desiredX = this.x + this.dashDir * Math.min(dist > 440 ? 210 : 165, maxFwd);
       }
     }
     this.blinkTargetX = this._clampArenaX(desiredX, game);
@@ -840,10 +841,17 @@ export class FireMageEx extends Fighter {
     if (this.x < 185) dir = 1;
     else if (this.x > ww - 185) dir = -1;
 
-    let desiredX = this.x + dir * 295;
-    if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 245) {
-      const openSide = enemy.x < ww * 0.5 ? 1 : -1;
-      desiredX = enemy.x + openSide * 355;
+    let desiredX = this.x + dir * 255;
+    if (enemy && !enemy.isDead) {
+      const dist = Math.abs(enemy.x - this.x);
+      const toEnemy = enemy.x >= this.x ? 1 : -1;
+      if (dist < 245) {
+        const openSide = enemy.x < ww * 0.5 ? 1 : -1;
+        desiredX = enemy.x + openSide * 355;
+      } else if (dir === toEnemy && dist < 510) {
+        const maxFwd = Math.max(95, dist - 265);
+        desiredX = this.x + dir * Math.min(225, maxFwd);
+      }
     }
     this.flipTargetX = this._clampArenaX(desiredX, game);
     this.dashDuration = 0.56;
@@ -2323,7 +2331,7 @@ export class FireMageEx extends Fighter {
       (this.state === 'IDLE' || this.state === 'WALK') &&
       (this.finisherGauge || 0) < (this.maxFinisherGauge || 100)
     ) {
-      if (this.crouchCooldown <= 0 && game?.vfx?.projectiles) {
+      if (!this._isRangedOpponent?.(enemy) && this.crouchCooldown <= 0 && game?.vfx?.projectiles) {
         for (const proj of game.vfx.projectiles) {
           if (
             proj.owner !== this &&
@@ -2357,9 +2365,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps162'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps162'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps162'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps163'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps163'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps163'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

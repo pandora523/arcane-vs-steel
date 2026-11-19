@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps162';
+} from '../engine/shaders/cyberShaders.js?v=30fps163';
 
 const wrapCyberPaddedPen = (pen) =>
   new Proxy(pen, {
@@ -324,9 +324,9 @@ export class AndroidEx extends Fighter {
         return img;
       };
       assets.android_ex = {
-        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps162'),
-        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps162'),
-        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps162'),
+        sheet: mkImg('assets/sprites/android_ex_sheet.png?v=30fps163'),
+        vfx: mkImg('assets/sprites/android_ex_vfx.png?v=30fps163'),
+        portrait: mkImg('assets/sprites/android_ex_portrait.png?v=30fps163'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -443,6 +443,9 @@ export class AndroidEx extends Fighter {
     if (newState === 'SKILL') {
       this._skillStepMask = 0;
       this._skillVoiceFired = false;
+      this._skillStartX = this.x;
+      this._skillDir = this.facing || 1;
+      this._skillCommittedLockX = undefined;
       this.afterimageAccum = 0;
       this.diamondFunnelGrid = null;
     } else if (prevState === 'SKILL') {
@@ -547,6 +550,7 @@ export class AndroidEx extends Fighter {
     this.stateTimer = 0;
     this._intraLinkTimer = 0;
     this._beatHitMask = 0;
+    this._beatLandedHit = false;
     this.didActionFrame = false;
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
@@ -564,17 +568,16 @@ export class AndroidEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    let desiredX = this.x + this.facing * (v === 0 ? 18 : v === 2 ? 14 : 10);
-
+    const baseStep = v === 0 ? 34 : v === 2 ? 24 : 18;
+    let stepDist = baseStep;
     if (enemy && !enemy.isDead) {
-      const sweetDist = v === 2 ? 110 : 114;
-      const idealStandX = enemy.x - this.facing * sweetDist;
-      const rawDelta = (idealStandX - this.x) * this.facing;
-      const maxForward = v === 0 ? 114 : v === 2 ? 38 : 30;
-      const clampedForward = Math.max(0, Math.min(maxForward, rawDelta));
-      desiredX = this.x + this.facing * clampedForward;
+      const frontDist = (enemy.x - this.x) * this.facing;
+      if (frontDist > 0) {
+        const minClear = v === 2 ? 116 : 120;
+        stepDist = Math.max(0, Math.min(baseStep, frontDist - minClear));
+      }
     }
-
+    const desiredX = this.x + this.facing * stepDist;
     this._beatTargetX = this._clampArenaX(desiredX, g);
   }
 
@@ -836,9 +839,12 @@ export class AndroidEx extends Fighter {
       landedAny = true;
     }
 
-    if (landedAny && hitStop > 0) {
-      this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
-      game?.renderer?.triggerHitStop?.(hitStop * 0.65);
+    if (landedAny) {
+      this._beatLandedHit = true;
+      if (hitStop > 0) {
+        this._hitStopTimer = Math.max(this._hitStopTimer || 0, hitStop);
+        game?.renderer?.triggerHitStop?.(hitStop * 0.65);
+      }
     }
     return landedAny;
   }
@@ -955,10 +961,14 @@ export class AndroidEx extends Fighter {
     this.didSecondaryAction = false;
     this.flipStartX = this.x;
 
-    let desiredX = this.x + this.facing * 205;
+    let jumpDist = 195;
     if (enemy && !enemy.isDead && this.facing === (enemy.x >= this.x ? 1 : -1)) {
-      desiredX = enemy.x - this.facing * 114;
+      const frontDist = Math.abs(enemy.x - this.x);
+      if (frontDist > 136 && frontDist < 315) {
+        jumpDist = Math.min(195, Math.max(96, frontDist - 134));
+      }
     }
+    const desiredX = this.x + this.facing * jumpDist;
     this.flipTargetX = this._clampArenaX(desiredX, game);
     this.vx = 0;
     this.vy = 0;
@@ -1021,13 +1031,32 @@ export class AndroidEx extends Fighter {
     }
   }
 
+  onStartDodge(_enemy, game, dir) {
+    const moveDir = dir || -this.facing;
+    this.dashDir = moveDir;
+    this.dashDuration = 0.38;
+    this.isFlipVault = true;
+    this.isInvulnerable = true;
+    this.didSecondaryAction = true;
+    this.flipStartX = this.x;
+    this.flipTargetX = this._clampArenaX(this.x + moveDir * 165, game);
+    this.vx = 0;
+    this.vy = 0;
+    game?.audio?.play?.('dash_whoosh', this.x);
+  }
+
   updateDodge(dt, enemy, game) {
+    if (!Number.isFinite(this.flipStartX) || !Number.isFinite(this.flipTargetX)) {
+      this.onStartDodge(enemy, game, this.dashDir);
+    }
     this.updateJump(dt, enemy, game);
   }
 
   onStartDash(_enemy, game, dir) {
     this.dashDuration = 0.34;
     this.dashDir = dir || this.facing;
+    this._dashStartX = this.x;
+    this._dashMaxTravel = 185;
     game?.audio?.play?.('dash_whoosh', this.x);
     this.fx?.spawn('wingPylonThruster', this._safeFxX(this.x - this.dashDir * 16, game), this._safeFxY(this.y - 114), {
       follow: this,
@@ -1049,11 +1078,12 @@ export class AndroidEx extends Fighter {
     this.y = this.groundY;
 
     if (t < dur * 0.78) {
+      const traveled = (this.x - (this._dashStartX ?? this.x)) * dir;
       const distToEnemy = enemy && !enemy.isDead ? (enemy.x - this.x) * dir : 999;
-      if (distToEnemy <= 116 && distToEnemy >= 70) {
+      if (traveled >= (this._dashMaxTravel || 185) || (distToEnemy <= 136 && distToEnemy >= 55)) {
         this.vx = 0;
       } else {
-        this.vx = dir * 660;
+        this.vx = dir * 610;
       }
       this._thrusterSparkAcc += dt;
       if (this._thrusterSparkAcc >= 0.034) {
@@ -1192,7 +1222,7 @@ export class AndroidEx extends Fighter {
         }
         this._applyOdachiStrike(enemy, game, {
           damage: vsAspect === 0 ? 37 : Math.round(37 * dmgMult),
-          reachFront: 218,
+          reachFront: 166,
           hitStop: 0.044,
           shakeDur: 0.056,
           knockX: 24,
@@ -1216,7 +1246,7 @@ export class AndroidEx extends Fighter {
         this.fireFinFunnelVolley(enemy, game, 1, vsAspect === 0 ? 10 : Math.round(10 * dmgMult));
         this._applyOdachiStrike(enemy, game, {
           damage: vsAspect === 0 ? 37 : Math.round(37 * dmgMult),
-          reachFront: 220,
+          reachFront: 168,
           hitStop: 0.046,
           shakeDur: 0.058,
           knockX: 22,
@@ -1238,7 +1268,7 @@ export class AndroidEx extends Fighter {
         });
         this._applyOdachiStrike(enemy, game, {
           damage: vsAspect === 0 ? 27 : Math.round(27 * dmgMult),
-          reachFront: 218,
+          reachFront: 170,
           hitStop: 0.044,
           shakeDur: 0.048,
           knockX: 14,
@@ -1254,7 +1284,7 @@ export class AndroidEx extends Fighter {
         this.fireFinFunnelVolley(enemy, game, 2, vsAspect === 0 ? 12 : Math.round(12 * dmgMult));
         this._applyOdachiStrike(enemy, game, {
           damage: vsAspect === 0 ? 29 : Math.round(29 * dmgMult),
-          reachFront: 220,
+          reachFront: 172,
           hitStop: 0.046,
           shakeDur: 0.054,
           knockX: 18,
@@ -1287,7 +1317,7 @@ export class AndroidEx extends Fighter {
         }
         this._applyOdachiStrike(enemy, game, {
           damage: vsAspect === 0 ? 33 : Math.round(33 * dmgMult),
-          reachFront: 224,
+          reachFront: 178,
           hitStop: 0.060,
           shakeDur: 0.084,
           knockX: 36,
@@ -1311,7 +1341,7 @@ export class AndroidEx extends Fighter {
         this._beatHitMask |= 2;
         this._applyOdachiStrike(enemy, game, {
           damage: vsAspect === 0 ? 22 : Math.round(22 * dmgMult),
-          reachFront: 226,
+          reachFront: 180,
           hitStop: 0,
           shakeDur: 0.046,
           knockX: 28,
@@ -1326,10 +1356,10 @@ export class AndroidEx extends Fighter {
         this._beatHitMask |= 4;
         this._applyOdachiStrike(enemy, game, {
           damage: vsAspect === 0 ? 29 : Math.round(29 * dmgMult),
-          reachFront: 228,
+          reachFront: 182,
           hitStop: 0,
           shakeDur: 0.056,
-          knockX: 92,
+          knockX: 118,
           knockY: -86,
           isCrit: true,
           scarDx: 98,
@@ -1353,12 +1383,15 @@ export class AndroidEx extends Fighter {
             game?.adventure?.queuedAction === 'attack' ||
             this._queuedNextBeat)
       );
+      const relEnemyX = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 999;
       const aiWantsChain =
         !isManualPlayer &&
         enemy &&
         !enemy.isDead &&
         !enemy.isInvulnerable &&
-        Math.abs(enemy.x - this.x) <= 248;
+        relEnemyX >= -36 &&
+        relEnemyX <= 178 &&
+        (this._beatLandedHit || relEnemyX <= 156);
 
       if (v < 3 && (this._queuedNextBeat || aiWantsChain || advHoldingAttack)) {
         if (game?.adventure?.queuedAction === 'attack') {
@@ -1369,12 +1402,19 @@ export class AndroidEx extends Fighter {
         return;
       }
 
-      if (v === 3) {
+      if (v === 3 || (!isManualPlayer && !this._beatLandedHit && !advHoldingAttack)) {
         this.comboStep = 0;
-        this._aiComboReadyFinisher = 0.92;
-        this._aiOutstepTimer = enemy && Math.abs(enemy.x - this.x) < 112 ? 0.32 : 0;
+        this._aiComboReadyFinisher = v === 3 ? 0.92 : 0;
+        this._aiOutstepTimer =
+          !game?.isAdventureMode?.() && enemy && Math.abs(enemy.x - this.x) < 214
+            ? 0.56 + Math.random() * 0.26
+            : 0;
         this._aiOutstepDir = -1;
-        this.autoCooldown = isManualPlayer ? 0.06 : this._postFlurryInterval * (0.92 + Math.random() * 0.16);
+        this.autoCooldown = isManualPlayer
+          ? 0.06
+          : v === 3
+            ? this._postFlurryInterval * (0.98 + Math.random() * 0.22)
+            : 0.52 + Math.random() * 0.26;
       } else {
         this.autoCooldown = 0.015;
       }
@@ -1397,7 +1437,13 @@ export class AndroidEx extends Fighter {
     const dur = this.skillDuration || 0.98;
     this.unstoppablePoise = true;
 
-    const lockX = enemy && !enemy.isDead ? enemy.x : this._clampArenaX(this.x + this.facing * 150, game);
+    const rushDir = this._skillDir || this.facing || 1;
+    if (this._skillCommittedLockX === undefined) {
+      const rawDist = enemy && !enemy.isDead ? (enemy.x - this.x) * rushDir : 165;
+      const clampedLockDist = Math.max(95, Math.min(260, rawDist > 0 ? rawDist : 165));
+      this._skillCommittedLockX = this._clampArenaX(this.x + rushDir * clampedLockDist, game);
+    }
+    const lockX = this._skillCommittedLockX;
     const lockY = this.groundY - 94;
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
     if (!this._skillVoiceFired) {
@@ -1415,11 +1461,13 @@ export class AndroidEx extends Fighter {
     const skillMagPal =
       vsSkill === 1 ? POSITRON_CRIMSON_PALETTE : vsSkill === 2 ? QUANTUM_AEGIS_PALETTE : CYBER_MAGENTA_PALETTE;
 
+    // Committed directional thruster bursts (capped <= 145px travel — zero continuous enemy.x magnet!)
     if (t < 0.48) {
-      const dist = enemy && !enemy.isDead ? (enemy.x - this.x) * this.facing : 150;
+      const traveled = (this.x - (this._skillStartX ?? this.x)) * rushDir;
+      const frontDist = enemy && !enemy.isDead ? (enemy.x - this.x) * rushDir : 999;
       const inBurst = (t >= 0.04 && t < 0.16) || (t >= 0.24 && t < 0.36);
-      if (inBurst && dist > 110) {
-        this.vx = this.facing * Math.min(580, (dist - 106) * 9.5 + 220);
+      if (inBurst && traveled < 145 && !(frontDist <= 122 && frontDist >= 0)) {
+        this.vx = rushDir * 485;
       } else {
         this.vx = 0;
       }
@@ -1613,7 +1661,6 @@ export class AndroidEx extends Fighter {
 
     if (this.diamondFunnelGrid) {
       this.diamondFunnelGrid.age += dt;
-      this.diamondFunnelGrid.cx = lockX;
       if (this.diamondFunnelGrid.age >= this.diamondFunnelGrid.maxLife) {
         this.diamondFunnelGrid = null;
       }

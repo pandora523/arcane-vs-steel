@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps162';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps162';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps162';
+import { Fighter } from './Fighter.js?v=30fps163';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps163';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps163';
 import {
   GLACIAL_EFFECT_REGISTRY,
   GLACIAL_CRYO_PALETTE,
   BOREALIS_PRISM_PALETTE
-} from '../engine/shaders/glacialShaders.js?v=30fps162';
+} from '../engine/shaders/glacialShaders.js?v=30fps163';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.35s): Borealis Snowflake Circle -> 'cryo_shard' Diamond Comet -> snaps at F03 (63)
@@ -292,9 +292,9 @@ export class IceMageEx extends Fighter {
         return img;
       };
       assets.icemage_ex = {
-        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps162'),
-        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps162'),
-        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps162'),
+        sheet: mkImg('assets/sprites/icemage_ex_sheet.png?v=30fps163'),
+        vfx: mkImg('assets/sprites/icemage_ex_vfx.png?v=30fps163'),
+        portrait: mkImg('assets/sprites/icemage_ex_portrait.png?v=30fps163'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -1093,10 +1093,18 @@ export class IceMageEx extends Fighter {
     this._spawnedJumpSteps = 0;
     this.flipStartX = this.x;
 
-    let desiredX = this.x + retreatDir * 285;
-    if (enemy && !enemy.isDead && (this.x < 240 || this.x > ww - 240) && Math.abs(enemy.x - this.x) < 230) {
-      const openDir = enemy.x < ww * 0.5 ? 1 : -1;
-      desiredX = enemy.x + openDir * 355;
+    let desiredX = this.x + retreatDir * 245;
+    if (enemy && !enemy.isDead) {
+      const dist = Math.abs(enemy.x - this.x);
+      const toEnemy = enemy.x >= this.x ? 1 : -1;
+      if ((this.x < 240 || this.x > ww - 240) && dist < 230) {
+        const openDir = enemy.x < ww * 0.5 ? 1 : -1;
+        desiredX = enemy.x + openDir * 355;
+      } else if (retreatDir === toEnemy && dist < 490) {
+        // Forward aerial reposition vault keeps healthy Winter Empress ranged standoff (>= 265px)
+        const maxFwd = Math.max(90, dist - 265);
+        desiredX = this.x + retreatDir * Math.min(220, maxFwd);
+      }
     }
     this.flipTargetX = this._clampArenaX(desiredX, game);
     this.vx = 0;
@@ -1168,7 +1176,8 @@ export class IceMageEx extends Fighter {
     }
   }
 
-  onStartDodge(_enemy, game, _dir) {
+  onStartDodge(enemy, game, dir) {
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     this.iceDecoy = {
       x: this.x,
       y: this.groundY,
@@ -1177,6 +1186,32 @@ export class IceMageEx extends Fighter {
       maxLife: 1.65,
       shattered: false
     };
+    let evDir = dir || -this.facing;
+    if (this.x < 220) evDir = 1;
+    else if (this.x > ww - 220) evDir = -1;
+    this.dashDuration = 0.52;
+    this.dashDir = evDir;
+    this.isFlipVault = true;
+    this.isInvulnerable = true;
+    this.didSecondaryAction = false;
+    this._spawnedJumpSteps = 0;
+    this._jumpReaimed = false;
+    this.flipStartX = this.x;
+    let desiredX = this.x + evDir * 245;
+    if (enemy && !enemy.isDead) {
+      const dist = Math.abs(enemy.x - this.x);
+      const toEnemy = enemy.x >= this.x ? 1 : -1;
+      if ((this.x < 240 || this.x > ww - 240) && dist < 240) {
+        const openDir = enemy.x < ww * 0.5 ? 1 : -1;
+        desiredX = enemy.x + openDir * 355;
+      } else if (evDir === toEnemy && dist < 490) {
+        const maxFwd = Math.max(85, dist - 265);
+        desiredX = this.x + evDir * Math.min(215, maxFwd);
+      }
+    }
+    this.flipTargetX = this._clampArenaX(desiredX, game);
+    this.vx = 0;
+    this.vy = 0;
     this.ensureGlacialSkateRibbon();
     game?.audio?.play?.('frost_cast', this.x);
   }
@@ -2556,8 +2591,13 @@ export class IceMageEx extends Fighter {
     ) {
       const dist = Math.abs(enemy.x - this.x);
 
-      // Projectile Refraction Mirror Counter
-      if ((this.finisherGauge || 0) < (this.maxFinisherGauge || 100) && this.crouchCooldown <= 0 && game?.vfx?.projectiles) {
+      // Projectile Refraction Mirror Counter (vs melee projectiles; ranged duels defer to Fighter._tryRoleDefense for jump/blink/mirror mix!)
+      if (
+        !this._isRangedOpponent?.(enemy) &&
+        (this.finisherGauge || 0) < (this.maxFinisherGauge || 100) &&
+        this.crouchCooldown <= 0 &&
+        game?.vfx?.projectiles
+      ) {
         for (const p of game.vfx.projectiles) {
           if (
             p.owner !== this &&
