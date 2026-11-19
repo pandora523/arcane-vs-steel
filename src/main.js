@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps154';
-import { VFXManager } from './engine/VFXManager.js?v=30fps154';
-import { PixelForge } from './engine/PixelForge.js?v=30fps154';
-import { AudioManager } from './engine/AudioManager.js?v=30fps154';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps154';
-import { Fighter } from './entities/Fighter.js?v=30fps154';
-import { Warrior } from './entities/Warrior.js?v=30fps154';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps154';
-import { FireMage } from './entities/FireMage.js?v=30fps154';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps154';
-import { Archer } from './entities/Archer.js?v=30fps154';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps154';
-import { Priestess } from './entities/Priestess.js?v=30fps154';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps154';
-import { Reaper } from './entities/Reaper.js?v=30fps154';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps154';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps154';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps154';
-import { Titan } from './entities/Titan.js?v=30fps154';
-import { TitanEx } from './entities/TitanEx.js?v=30fps154';
-import { Ronin } from './entities/Ronin.js?v=30fps154';
-import { RoninEx } from './entities/RoninEx.js?v=30fps154';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps154';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps154';
-import { IceMage } from './entities/IceMage.js?v=30fps154';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps154';
-import { Android } from './entities/Android.js?v=30fps154';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps154';
-import { NyxEx } from './entities/NyxEx.js?v=30fps154';
+import { Renderer } from './engine/Renderer.js?v=30fps155';
+import { VFXManager } from './engine/VFXManager.js?v=30fps155';
+import { PixelForge } from './engine/PixelForge.js?v=30fps155';
+import { AudioManager } from './engine/AudioManager.js?v=30fps155';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps155';
+import { Fighter } from './entities/Fighter.js?v=30fps155';
+import { Warrior } from './entities/Warrior.js?v=30fps155';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps155';
+import { FireMage } from './entities/FireMage.js?v=30fps155';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps155';
+import { Archer } from './entities/Archer.js?v=30fps155';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps155';
+import { Priestess } from './entities/Priestess.js?v=30fps155';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps155';
+import { Reaper } from './entities/Reaper.js?v=30fps155';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps155';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps155';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps155';
+import { Titan } from './entities/Titan.js?v=30fps155';
+import { TitanEx } from './entities/TitanEx.js?v=30fps155';
+import { Ronin } from './entities/Ronin.js?v=30fps155';
+import { RoninEx } from './entities/RoninEx.js?v=30fps155';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps155';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps155';
+import { IceMage } from './entities/IceMage.js?v=30fps155';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps155';
+import { Android } from './entities/Android.js?v=30fps155';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps155';
+import { NyxEx } from './entities/NyxEx.js?v=30fps155';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps154';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps154';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps154';
+} from './adventure/AdventureManager.js?v=30fps155';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps155';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps155';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -3531,7 +3531,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps154');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps155');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3627,7 +3627,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps154'
+          'v=30fps155'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -6714,8 +6714,18 @@ export class Game {
 
   _renderAssetSummoningOverlay(ctx) {
     if (!ctx?.fillRect || !ctx?.fillText) return;
-    const cw = ctx.canvas?.width || 1280;
-    const ch = ctx.canvas?.height || 720;
+    const rawW = ctx.canvas?.width || 1280;
+    const rawH = ctx.canvas?.height || 720;
+    const useLogical = Boolean(
+      this.renderer &&
+        this.renderer.canvas === ctx.canvas &&
+        this.renderer.width > 0 &&
+        this.renderer.height > 0
+    );
+    const cw = useLogical ? Math.round(this.renderer.width) : rawW;
+    const ch = useLogical ? Math.round(this.renderer.height) : rawH;
+    const dprX = useLogical && cw > 0 ? rawW / cw : 1;
+    const dprY = useLogical && ch > 0 ? rawH / ch : 1;
     const boxW = 296;
     const boxH = 54;
     const bx = Math.round((cw - boxW) * 0.5);
@@ -6723,7 +6733,7 @@ export class Game {
     const step = ((Date.now() / 110) | 0) % 8;
 
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(dprX, 0, 0, dprY, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = 'rgba(9, 13, 22, 0.88)';
     ctx.fillRect(bx, by, boxW, boxH);
@@ -6731,7 +6741,7 @@ export class Game {
     ctx.lineWidth = 2;
     ctx.strokeRect(bx + 1, by + 1, boxW - 2, boxH - 2);
     ctx.fillStyle = '#e0f2fe';
-    ctx.font = 'bold 13px "Press Start 2P", monospace';
+    ctx.font = 'bold 13px "ArcanePixel", "Press Start 2P", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('SUMMONING CHAMPIONS...', bx + Math.round(boxW * 0.5), by + 20);
@@ -6812,7 +6822,9 @@ export class Game {
     return Math.floor(t * 5.5) % 4 === 3 ? 4 : 5;
   }
 
-  _drawIntroBustHeroOverlayFX(ctx, cfg) {
+  _drawIntroBustBackEnvAndMagicFX(ctx, cfg) {
+    // Layer 2 (Drawn BEHIND the transparent character cutout, ON TOP of stationary Cell 0 backdrop!):
+    // Hero-specific 60fps moving portrait environment + lush magical glowing back-silhouette aura & arcane rune ring!
     const {
       baseHero,
       bustX,
@@ -6825,8 +6837,252 @@ export class Game {
       fillRectClamped,
       drawStar4
     } = cfg;
+    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 4.8);
+    const fastPulse = 0.5 + 0.5 * Math.sin(elapsed * 9.5);
+    const bCx = bustX + (bustSize >> 1);
+    const bCy = bustY + Math.round(bustSize * 0.48);
+
+    const drawMagicBloom = (gx, gy, rad, coreCol, midCol, alphaVal) => {
+      if (typeof ctx.createRadialGradient !== 'function' || alphaVal <= 0.005 || rad <= 4) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, alphaVal));
+      const rg = ctx.createRadialGradient(gx, gy, Math.max(2, Math.round(rad * 0.08)), gx, gy, rad);
+      if (rg && typeof rg.addColorStop === 'function') {
+        rg.addColorStop(0, coreCol);
+        rg.addColorStop(0.45, midCol);
+        rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = rg;
+        fillRectClamped(gx - rad, gy - rad, rad * 2, rad * 2);
+      }
+      ctx.restore();
+    };
+
+    ctx.save();
+    // 1. Hero-specific LIVE MOVING PORTRAIT ENVIRONMENT (clouds, aurora, storm rain, cathedral sunbeams, chrono gears, eclipse, lava, cyber HUD!)
+    if (baseHero === 'nyx') {
+      // Drifting starry nebula clouds moving gently across night sky + twinkling stars
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let c = 0; c < 5; c++) {
+        const cwBand = Math.round(bustSize * (0.34 + (c % 2) * 0.14));
+        const cxCloud = bustX + Math.round((((elapsed * (22 + c * 6) + c * 95) % (bustSize + cwBand)) - cwBand));
+        const cyCloud = bustY + Math.round(bustSize * (0.12 + c * 0.14));
+        ctx.globalAlpha = turnAlpha * (0.12 + pulse * 0.06);
+        ctx.fillStyle = c % 2 === 0 ? '#a855f7' : '#22d3ee';
+        fillRectClamped(cxCloud, cyCloud, cwBand, Math.round(bustSize * 0.08));
+        fillRectClamped(cxCloud + 14, cyCloud - 6, Math.round(cwBand * 0.65), 6);
+      }
+      ctx.restore();
+      for (let s = 0; s < 10; s++) {
+        const sx = bustX + 14 + ((s * 67) % Math.max(24, bustSize - 28));
+        const sy = bustY + 12 + ((s * 39) % Math.max(24, Math.round(bustSize * 0.58)));
+        const tw = 0.25 + 0.75 * Math.abs(Math.sin(elapsed * (3.2 + (s % 3)) + s * 1.4));
+        ctx.globalAlpha = turnAlpha * tw;
+        drawStar4(sx, sy, s % 3 === 0 ? 4 : 2, s % 2 === 0 ? '#f472b6' : '#67e8f9');
+      }
+    } else if (baseHero === 'warrior' || baseHero === 'priestess') {
+      // Sweeping golden/azure cathedral god-rays streaming diagonally across gothic arches!
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const rayCol = baseHero === 'priestess' ? '#fef08a' : '#38bdf8';
+      const rayAcc = baseHero === 'priestess' ? '#ffffff' : '#fef08a';
+      for (let rI = 0; rI < 5; rI++) {
+        const drift = Math.round(Math.sin(elapsed * 0.85 + rI * 1.3) * 22);
+        const rxBase = bustX + Math.round(bustSize * (0.08 + rI * 0.21)) + drift;
+        for (let seg = 0; seg < 10; seg++) {
+          const sx = rxBase + seg * (baseHero === 'priestess' ? 4 : 9);
+          const sy = bustY + Math.round((seg / 10) * bustSize);
+          ctx.globalAlpha = turnAlpha * (0.10 + pulse * 0.08 + amp * 0.07) * (1 - seg * 0.06);
+          ctx.fillStyle = rI % 2 === 0 ? rayCol : rayAcc;
+          fillRectClamped(sx - 12, sy, 26, Math.ceil(bustSize / 9));
+        }
+      }
+      ctx.restore();
+    } else if (baseHero === 'mage' || baseHero === 'titan') {
+      // Pulsing volcanic firelight shimmer & billowing heat columns behind the silhouette!
+      drawMagicBloom(bCx, bustY + bustSize - 20, Math.round(bustSize * 0.62), '#fde047', '#ea580c', turnAlpha * (0.34 + fastPulse * 0.16 + amp * 0.22));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let h = 0; h < 7; h++) {
+        const hx = bustX + Math.round(((h + 0.5) / 7) * bustSize) + Math.round(Math.sin(elapsed * 5.2 + h * 1.1) * 10);
+        const hh = Math.round(bustSize * (0.32 + 0.22 * (0.5 + 0.5 * Math.sin(elapsed * 6.5 + h * 1.7))));
+        ctx.globalAlpha = turnAlpha * (0.16 + amp * 0.12);
+        ctx.fillStyle = baseHero === 'titan' && h % 3 === 0 ? '#10b981' : '#f97316';
+        fillRectClamped(hx - 14, bustY + bustSize - hh, 28, hh);
+      }
+      ctx.restore();
+    } else if (baseHero === 'chronomancer') {
+      // Pulsing concentric diamond/octagon temporal time-waves expanding from behind Chronos!
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let w = 0; w < 3; w++) {
+        const prog = (elapsed * 0.52 + w * 0.33) % 1;
+        const rad = Math.round(bustSize * (0.18 + prog * 0.36));
+        ctx.globalAlpha = turnAlpha * (1 - prog) * (0.38 + amp * 0.22);
+        ctx.fillStyle = w % 2 === 0 ? '#2dd4bf' : '#fde047';
+        for (let k = 0; k < 24; k++) {
+          const ang = (k / 24) * Math.PI * 2 + elapsed * (w % 2 === 0 ? 0.6 : -0.45);
+          const rx = bCx + Math.round(Math.cos(ang) * rad);
+          const ry = bCy - Math.round(bustSize * 0.06) + Math.round(Math.sin(ang) * rad);
+          fillRectClamped(rx - 2, ry - 2, 5, 5);
+        }
+      }
+      ctx.restore();
+    } else if (baseHero === 'valkyrie' || baseHero === 'icemage') {
+      // Undulating Northern Lights / Borealis Aurora curtains shimmering across the upper sky!
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const cA = baseHero === 'icemage' ? '#38bdf8' : '#34d399';
+      const cB = baseHero === 'icemage' ? '#a78bfa' : '#fbbf24';
+      const cols = 18;
+      const stripW = Math.ceil(bustSize / cols) + 1;
+      for (let i = 0; i < cols; i++) {
+        const wave = Math.sin(elapsed * 2.6 + i * 0.55) * 0.5 + 0.5;
+        const wave2 = Math.cos(elapsed * 1.9 - i * 0.38) * 0.5 + 0.5;
+        const ax = bustX + Math.round((i / cols) * bustSize);
+        const ay = bustY + Math.round(wave2 * bustSize * 0.12);
+        const ah = Math.round(bustSize * (0.20 + wave * 0.28));
+        ctx.globalAlpha = turnAlpha * (0.18 + wave * 0.14 + amp * 0.10);
+        ctx.fillStyle = i % 2 === 0 ? cA : cB;
+        fillRectClamped(ax, ay, stripW, ah);
+      }
+      ctx.restore();
+    } else if (baseHero === 'ronin') {
+      // Driving diagonal storm rain streaks + sudden distant thunder-sky flashes BEHIND Kaze-Maru!
+      const stormFlash = Math.floor(elapsed * 7) % 11 === 0 || amp > 0.62;
+      if (stormFlash) {
+        drawMagicBloom(bCx + Math.round(bustSize * 0.18), bustY + Math.round(bustSize * 0.26), Math.round(bustSize * 0.52), '#e0f2fe', '#38bdf8', turnAlpha * 0.42);
+      }
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = turnAlpha * 0.34;
+      ctx.fillStyle = '#bae6fd';
+      for (let rn = 0; rn < 16; rn++) {
+        const prog = (elapsed * (1.8 + (rn % 3) * 0.35) + rn * 0.17) % 1;
+        const rx = bustX + Math.round((((rn * 47) + prog * bustSize * 0.38) % bustSize));
+        const ry = bustY + Math.round(prog * bustSize);
+        fillRectClamped(rx, ry, 2, 12);
+        fillRectClamped(rx + 2, ry + 10, 2, 10);
+      }
+      ctx.restore();
+    } else if (baseHero === 'archer') {
+      // Swaying emerald forest canopy light shafts + drifting luminous mist bands!
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let m = 0; m < 5; m++) {
+        const mx = bustX + Math.round((((elapsed * (28 + m * 8) + m * 88) % (bustSize + 120)) - 100));
+        const my = bustY + Math.round(bustSize * (0.16 + m * 0.16)) + Math.round(Math.sin(elapsed * 2.2 + m) * 8);
+        ctx.globalAlpha = turnAlpha * (0.14 + pulse * 0.08);
+        ctx.fillStyle = m % 2 === 0 ? '#34d399' : '#bef264';
+        fillRectClamped(mx, my, Math.round(bustSize * 0.42), 14);
+      }
+      ctx.restore();
+    } else if (baseHero === 'reaper') {
+      // Throbbing Crimson-Violet Blood Eclipse halo directly behind Malakor's horned helm + curling void mist!
+      drawMagicBloom(bCx, bustY + Math.round(bustSize * 0.32), Math.round(bustSize * 0.56), '#f43f5e', '#9333ea', turnAlpha * (0.36 + pulse * 0.18 + amp * 0.24));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let v = 0; v < 6; v++) {
+        const prog = (elapsed * (0.35 + (v % 3) * 0.10) + v * 0.19) % 1;
+        const vx = bustX + Math.round(bustSize * (0.10 + v * 0.15)) + Math.round(Math.sin(elapsed * 3.2 + v) * 14);
+        const vy = bustY + bustSize - Math.round(prog * bustSize * 0.82);
+        ctx.globalAlpha = turnAlpha * (1 - prog) * 0.24;
+        ctx.fillStyle = v % 2 === 0 ? '#c084fc' : '#f472b6';
+        fillRectClamped(vx - 14, vy, 28, 18);
+      }
+      ctx.restore();
+    } else {
+      // ANDROID: Live scrolling holographic cyber wireframe grid + drifting deep-space starfield!
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const gridStep = Math.max(22, Math.round(bustSize / 12));
+      const scrollY = Math.round(elapsed * 36) % gridStep;
+      ctx.globalAlpha = turnAlpha * (0.14 + amp * 0.08);
+      ctx.fillStyle = '#22d3ee';
+      for (let gy = bustY + scrollY; gy < bustY + bustSize; gy += gridStep) {
+        fillRectClamped(bustX, gy, bustSize, 1);
+      }
+      for (let gx = bustX + (scrollY >> 1); gx < bustX + bustSize; gx += gridStep * 2) {
+        fillRectClamped(gx, bustY, 1, bustSize);
+      }
+      ctx.restore();
+    }
+
+    // 2. UNIVERSAL MAGICAL BACK-SILHOUETTE RADIANT AURA & ROTATING ARCANE RUNE RING (0 arc/ellipse/rotate!)
+    //    Wraps the hero's head, hair & shoulders in unmistakable glowing magical energy!
+    drawMagicBloom(
+      bCx,
+      bCy,
+      Math.round(bustSize * (0.50 + pulse * 0.06 + amp * 0.08)),
+      '#ffffff',
+      spkCol,
+      turnAlpha * (0.28 + pulse * 0.12 + amp * 0.24)
+    );
+    // Rotating 8-Node Pixel Arcane Magic Ring behind the character!
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const ringR = Math.round(bustSize * (0.37 + pulse * 0.025 + amp * 0.03));
+    const ringCy = bustY + Math.round(bustSize * 0.45);
+    for (let n = 0; n < 12; n++) {
+      const ang = elapsed * 0.95 + (n / 12) * Math.PI * 2;
+      const nx = bCx + Math.round(Math.cos(ang) * ringR);
+      const ny = ringCy + Math.round(Math.sin(ang) * Math.round(ringR * 0.88));
+      const sz = n % 3 === 0 ? 5 : 3;
+      ctx.globalAlpha = turnAlpha * (0.48 + fastPulse * 0.24 + amp * 0.22);
+      drawStar4(nx, ny, sz, n % 2 === 0 ? '#fef08a' : spkCol);
+    }
+    ctx.restore();
+    ctx.restore();
+    ctx.globalAlpha = turnAlpha;
+  }
+
+  _drawIntroBustHeroOverlayFX(ctx, cfg) {
+    const {
+      baseHero,
+      bustX,
+      bustY,
+      bustSize,
+      elapsed,
+      amp,
+      spkCol,
+      turnAlpha,
+      isRightSpeaker,
+      bodyDx = 0,
+      bodyDy = 0,
+      frontDx = 0,
+      frontDy = 0,
+      fillRectClamped,
+      drawStar4
+    } = cfg;
     const pulse = 0.5 + 0.5 * Math.sin(elapsed * 7.5);
     const boost = 1 + amp * 0.9;
+    const sf = bustSize / 320;
+
+    // Maps a 320x320 portrait-space weapon/hand/magic hotspot onto live canvas coordinates (tracking flip + motion!)
+    const mapHotspot = (px320, py320, useFront = false) => {
+      const dx = useFront ? frontDx : bodyDx;
+      const dy = useFront ? frontDy : bodyDy;
+      const lx = isRightSpeaker ? (320 - px320) * sf - dx : px320 * sf + dx;
+      const ly = py320 * sf + dy;
+      return [bustX + Math.round(lx), bustY + Math.round(ly)];
+    };
+
+    const drawSpotMagicBloom = (hx, hy, rad, coreCol, midCol, alphaVal) => {
+      if (typeof ctx.createRadialGradient !== 'function' || alphaVal <= 0.005 || rad <= 4) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, alphaVal));
+      const rg = ctx.createRadialGradient(hx, hy, Math.max(2, Math.round(rad * 0.10)), hx, hy, rad);
+      if (rg && typeof rg.addColorStop === 'function') {
+        rg.addColorStop(0, coreCol);
+        rg.addColorStop(0.42, midCol);
+        rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = rg;
+        fillRectClamped(hx - rad, hy - rad, rad * 2, rad * 2);
+      }
+      ctx.restore();
+    };
 
     const drawMiniHeart = (hx, hy, col) => {
       ctx.fillStyle = col;
@@ -6855,7 +7111,7 @@ export class Game {
       let lx = x0;
       let ly = y0;
       for (let i = 0; i < segs; i++) {
-        const zig = ((i % 2 === 0 ? 1 : -1) * (4 + ((i * 7) % 6)));
+        const zig = (i % 2 === 0 ? 1 : -1) * (4 + ((i * 7) % 6));
         const nx = lx + dx + zig;
         const ny = ly + dy;
         const steps = 4;
@@ -6879,11 +7135,82 @@ export class Game {
       ctx.clip();
     }
 
-    // Soft Hero-Colored Bottom/Rim Bloom Wash inside bust frame (`lighter`, 0 arc/rotate)
+    // 1. WEAPON, HAND & MAGIC CORE LOCKED LUMINOUS BLOOMS (all 12 champions glow with real magic!)
+    const MAGIC_HOTSPOTS = {
+      nyx: [
+        { x: 263, y: 145, r: 44, c0: '#e0f2fe', c1: '#22d3ee', front: true, orbit: true },
+        { x: 256, y: 215, r: 30, c0: '#fce7f3', c1: '#f472b6', front: false, orbit: false }
+      ],
+      warrior: [
+        { x: 268, y: 112, r: 48, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
+        { x: 192, y: 248, r: 36, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
+      ],
+      mage: [
+        { x: 58, y: 196, r: 58, c0: '#ffffff', c1: '#f59e0b', front: true, orbit: true },
+        { x: 184, y: 240, r: 38, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
+      ],
+      priestess: [
+        { x: 282, y: 132, r: 54, c0: '#ffffff', c1: '#fde047', front: true, orbit: true },
+        { x: 162, y: 74, r: 46, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
+      ],
+      chronomancer: [
+        { x: 160, y: 252, r: 42, c0: '#e0f2fe', c1: '#2dd4bf', front: false, orbit: true },
+        { x: 282, y: 112, r: 46, c0: '#ccfbf1', c1: '#14b8a6', front: true, orbit: false }
+      ],
+      valkyrie: [
+        { x: 274, y: 66, r: 54, c0: '#fef9c3', c1: '#f97316', front: false, orbit: true },
+        { x: 168, y: 118, r: 34, c0: '#fde047', c1: '#f43f5e', front: false, orbit: false }
+      ],
+      ronin: [
+        { x: 294, y: 246, r: 48, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
+        { x: 198, y: 218, r: 36, c0: '#bae6fd', c1: '#0284c7', front: false, orbit: false }
+      ],
+      archer: [
+        { x: 286, y: 224, r: 52, c0: '#ecfdf5', c1: '#10b981', front: true, orbit: true },
+        { x: 276, y: 98, r: 36, c0: '#fef9c3', c1: '#34d399', front: true, orbit: false }
+      ],
+      reaper: [
+        { x: 158, y: 262, r: 46, c0: '#fae8ff', c1: '#d946ef', front: false, orbit: true },
+        { x: 156, y: 42, r: 52, c0: '#f5d0fe', c1: '#a855f7', front: false, orbit: false }
+      ],
+      titan: [
+        { x: 204, y: 64, r: 50, c0: '#d1fae5', c1: '#10b981', front: false, orbit: true },
+        { x: 162, y: 288, r: 52, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
+      ],
+      icemage: [
+        { x: 266, y: 108, r: 54, c0: '#ffffff', c1: '#38bdf8', front: false, orbit: true },
+        { x: 166, y: 54, r: 40, c0: '#e0f2fe', c1: '#818cf8', front: false, orbit: false }
+      ],
+      android: [
+        { x: 184, y: 262, r: 48, c0: '#e0f2fe', c1: '#22d3ee', front: false, orbit: true },
+        { x: 54, y: 96, r: 42, c0: '#fce7f3', c1: '#ec4899', front: false, orbit: false }
+      ]
+    };
+
+    const spots = MAGIC_HOTSPOTS[baseHero] || MAGIC_HOTSPOTS.warrior;
+    for (let si = 0; si < spots.length; si++) {
+      const sp = spots[si];
+      const [sx, sy] = mapHotspot(sp.x, sp.y, sp.front);
+      const rad = Math.round(sp.r * sf * (0.90 + pulse * 0.20 + amp * 0.34));
+      drawSpotMagicBloom(sx, sy, rad, sp.c0, sp.c1, turnAlpha * (0.36 + pulse * 0.14 + amp * 0.28));
+      // Orbiting luminous magic wisps circling the primary weapon/orb hotspot!
+      if (sp.orbit) {
+        for (let w = 0; w < 3; w++) {
+          const ang = elapsed * 4.2 + w * 2.094;
+          const oR = Math.round(sp.r * sf * 0.62);
+          const wx = sx + Math.round(Math.cos(ang) * oR);
+          const wy = sy + Math.round(Math.sin(ang) * Math.round(oR * 0.68));
+          ctx.globalAlpha = turnAlpha * (0.72 + amp * 0.28);
+          drawStar4(wx, wy, w === 0 ? 5 : 3, w % 2 === 0 ? sp.c0 : sp.c1);
+        }
+      }
+    }
+
+    // Soft Hero-Colored Lower Rim Magical Uplight (`lighter`, 0 arc/rotate)
     if (typeof ctx.createLinearGradient === 'function') {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = turnAlpha * (0.14 + pulse * 0.08 + amp * 0.12);
+      ctx.globalAlpha = turnAlpha * (0.16 + pulse * 0.08 + amp * 0.14);
       const bgGrad = ctx.createLinearGradient(bustX, bustY + bustSize, bustX, bustY + Math.round(bustSize * 0.56));
       if (bgGrad && typeof bgGrad.addColorStop === 'function') {
         bgGrad.addColorStop(0, spkCol);
@@ -6894,9 +7221,9 @@ export class Game {
       ctx.restore();
     }
 
+    // 2. FOREGROUND HERO-SIGNATURE MAGICAL PARTICLES & ELEMENTAL FX
     if (baseHero === 'nyx') {
-      // Holographic glitch scanlines + floating neon cyan/pink hearts + Cob data sparkles!
-      const scanY = bustY + Math.round(((elapsed * 110) % bustSize));
+      const scanY = bustY + Math.round((elapsed * 110) % bustSize);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = turnAlpha * (0.24 + amp * 0.20);
@@ -6905,44 +7232,33 @@ export class Game {
       ctx.fillStyle = '#f472b6';
       fillRectClamped(bustX + ((Math.round(elapsed * 90) * 17) % Math.max(32, bustSize - 80)), scanY - 8, 68, 2);
       ctx.restore();
-      for (let h = 0; h < 6; h++) {
-        const prog = (elapsed * (0.42 + (h % 3) * 0.14) + h * 0.18) % 1;
+      for (let h = 0; h < 7; h++) {
+        const prog = (elapsed * (0.42 + (h % 3) * 0.14) + h * 0.16) % 1;
         const hx = bustX + 20 + ((h * 83) % Math.max(24, bustSize - 40)) + Math.round(Math.sin(elapsed * 4 + h) * 8);
         const hy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 24));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
-        if (h % 2 === 0) {
-          drawMiniHeart(hx, hy, h % 4 === 0 ? '#f472b6' : '#67e8f9');
-        } else {
-          drawStar4(hx, hy, 4, h % 3 === 0 ? '#fde047' : '#22d3ee');
-        }
+        ctx.globalAlpha = turnAlpha * (1 - prog * 0.70);
+        if (h % 2 === 0) drawMiniHeart(hx, hy, h % 4 === 0 ? '#f472b6' : '#67e8f9');
+        else drawStar4(hx, hy, 4, h % 3 === 0 ? '#fde047' : '#22d3ee');
       }
     } else if (baseHero === 'warrior') {
-      // Sweeping diagonal Dawn-Breaker cathedral sunbeams + rising golden-azure paladin motes!
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const sweep = ((elapsed * 0.55) % 1.4) - 0.2;
-      for (let s = 0; s < 16; s++) {
-        const bx = bustX + Math.round((sweep * bustSize) + s * 14);
-        const by = bustY + Math.round((s / 16) * bustSize);
-        ctx.globalAlpha = turnAlpha * (0.14 + amp * 0.12);
-        ctx.fillStyle = s % 2 === 0 ? '#38bdf8' : '#fef08a';
-        fillRectClamped(bx - 18, by, 36, Math.ceil(bustSize / 15));
-      }
-      ctx.restore();
+      // Traveling radiant energy pulse climbing up Dawn-Breaker greatsword + rising golden paladin motes!
+      const swProg = (elapsed * 1.15) % 1;
+      const [bx, by] = mapHotspot(198 + swProg * 108, 242 - swProg * 212, false);
+      drawSpotMagicBloom(bx, by, Math.round(28 * sf), '#ffffff', '#38bdf8', turnAlpha * 0.65);
+      drawStar4(bx, by, 6, '#e0f2fe');
       for (let m = 0; m < 10; m++) {
         const prog = (elapsed * (0.52 + (m % 3) * 0.18) + m * 0.13) % 1;
         const mx = bustX + 16 + ((m * 53) % Math.max(24, bustSize - 32));
         const my = bustY + bustSize - 8 - Math.round(prog * (bustSize - 18));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.75);
+        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
         drawStar4(mx, my, m % 2 === 0 ? 4 : 3, m % 2 === 0 ? '#fef08a' : '#38bdf8');
       }
     } else if (baseHero === 'mage') {
-      // Flickering rising pixel flame tongues along lower rim + blazing swirling solar embers!
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (let fl = 0; fl < 9; fl++) {
         const fx = bustX + Math.round((fl + 0.5) * (bustSize / 9));
-        const fh = Math.round((14 + ((Math.sin(elapsed * 12 + fl * 1.7) * 0.5 + 0.5) * 24)) * boost);
+        const fh = Math.round((14 + (Math.sin(elapsed * 12 + fl * 1.7) * 0.5 + 0.5) * 24) * boost);
         ctx.globalAlpha = turnAlpha * 0.42;
         ctx.fillStyle = '#ea580c';
         fillRectClamped(fx - 10, bustY + bustSize - fh, 20, fh);
@@ -6954,27 +7270,17 @@ export class Game {
         const prog = (elapsed * (0.68 + (e % 4) * 0.16) + e * 0.11) % 1;
         const ex = bustX + 14 + ((e * 61) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 6 + e) * 10);
         const ey = bustY + bustSize - 6 - Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.78);
+        ctx.globalAlpha = turnAlpha * (1 - prog * 0.75);
         ctx.fillStyle = e % 3 === 0 ? '#ffffff' : e % 2 === 0 ? '#fde047' : '#f97316';
         fillRectClamped(ex - 2, ey - 2, 5, 5);
         fillRectClamped(ex - 1, ey + 3, 2, 4);
       }
     } else if (baseHero === 'priestess') {
-      // Softly fluttering luminous pixel angel feathers + golden cathedral sun-motes!
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = turnAlpha * (0.14 + pulse * 0.08);
-      ctx.fillStyle = '#fef9c3';
-      for (let r = 0; r < 5; r++) {
-        const rx = bustX + Math.round(bustSize * (0.14 + r * 0.18)) + Math.round(Math.sin(elapsed * 1.4 + r) * 8);
-        fillRectClamped(rx, bustY, 10, Math.round(bustSize * 0.55));
-      }
-      ctx.restore();
-      for (let f = 0; f < 8; f++) {
-        const prog = (elapsed * (0.34 + (f % 3) * 0.10) + f * 0.16) % 1;
+      for (let f = 0; f < 9; f++) {
+        const prog = (elapsed * (0.34 + (f % 3) * 0.10) + f * 0.14) % 1;
         const fx = bustX + 16 + ((f * 71) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 3.2 + f * 1.5) * 16);
         const fy = bustY + 8 + Math.round(prog * (bustSize - 24));
-        ctx.globalAlpha = turnAlpha * (0.9 - prog * 0.55);
+        ctx.globalAlpha = turnAlpha * (0.92 - prog * 0.52);
         ctx.fillStyle = '#fef08a';
         fillRectClamped(fx - 5, fy, 10, 3);
         ctx.fillStyle = '#ffffff';
@@ -6982,10 +7288,9 @@ export class Game {
         fillRectClamped(fx + 4, fy + 1, 3, 2);
       }
     } else if (baseHero === 'chronomancer') {
-      // Drifting cyan/gold chrono-shards + pulsing horizontal time-scan ripples!
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const rippleY = bustY + Math.round(((elapsed * 72) % bustSize));
+      const rippleY = bustY + Math.round((elapsed * 72) % bustSize);
       ctx.globalAlpha = turnAlpha * (0.28 + amp * 0.18);
       ctx.fillStyle = '#2dd4bf';
       fillRectClamped(bustX, rippleY, bustSize, 2);
@@ -7004,10 +7309,9 @@ export class Game {
         fillRectClamped(cxP - 1, cyP - 1, 2, 2);
       }
     } else if (baseHero === 'valkyrie') {
-      // Crackling 18fps golden-crimson Bifrost lightning arcs + rising battle embers!
       const boltTick = Math.floor(elapsed * 14);
       if (boltTick % 3 !== 2 || amp > 0.35) {
-        ctx.globalAlpha = turnAlpha * (0.78 + amp * 0.22);
+        ctx.globalAlpha = turnAlpha * (0.82 + amp * 0.18);
         const bx = bustX + (boltTick % 2 === 0 ? 22 : bustSize - 56);
         const by = bustY + 18 + ((boltTick * 29) % Math.max(32, bustSize - 110));
         drawStepLightning(bx, by, boltTick % 2 === 0 ? 7 : -7, 16, 4, '#fbbf24');
@@ -7016,14 +7320,13 @@ export class Game {
         const prog = (elapsed * (0.64 + (v % 3) * 0.18) + v * 0.14) % 1;
         const vx = bustX + 14 + ((v * 59) % Math.max(24, bustSize - 28));
         const vy = bustY + bustSize - 8 - Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.76);
+        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
         drawStar4(vx, vy, v % 2 === 0 ? 4 : 3, v % 2 === 0 ? '#fde047' : '#f43f5e');
       }
     } else if (baseHero === 'ronin') {
-      // Sweeping diagonal pink pixel sakura petals + flashing cyan Raijin thunder bolts!
       const zTick = Math.floor(elapsed * 15);
       if (zTick % 3 === 0 || amp > 0.42) {
-        ctx.globalAlpha = turnAlpha * (0.76 + amp * 0.24);
+        ctx.globalAlpha = turnAlpha * (0.80 + amp * 0.20);
         const zx = bustX + bustSize - 38 - ((zTick * 23) % 44);
         const zy = bustY + 20 + ((zTick * 37) % Math.max(32, bustSize - 120));
         drawStepLightning(zx, zy, -6, 17, 4, '#38bdf8');
@@ -7031,8 +7334,8 @@ export class Game {
       for (let pI = 0; pI < 12; pI++) {
         const prog = (elapsed * (0.46 + (pI % 3) * 0.14) + pI * 0.13) % 1;
         const px = bustX + Math.round(((prog * (bustSize + 40) + pI * 47) % (bustSize + 30)) - 15);
-        const py = bustY + Math.round(((prog * (bustSize * 0.85) + pI * 63) % bustSize)) + Math.round(Math.sin(elapsed * 5 + pI) * 6);
-        ctx.globalAlpha = turnAlpha * 0.88;
+        const py = bustY + Math.round((prog * (bustSize * 0.85) + pI * 63) % bustSize) + Math.round(Math.sin(elapsed * 5 + pI) * 6);
+        ctx.globalAlpha = turnAlpha * 0.90;
         ctx.fillStyle = pI % 2 === 0 ? '#f9a8d4' : '#f472b6';
         fillRectClamped(px, py, 6, 3);
         fillRectClamped(px + 2, py + 2, 5, 3);
@@ -7040,13 +7343,12 @@ export class Game {
         fillRectClamped(px + 1, py, 2, 2);
       }
     } else if (baseHero === 'archer') {
-      // Swirling emerald wind-ribbons + fluttering sylvan leaves & starlight fireflies!
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (let w = 0; w < 4; w++) {
         const wy = bustY + Math.round(bustSize * (0.18 + w * 0.22)) + Math.round(Math.sin(elapsed * 4 + w) * 8);
         const wx = bustX + Math.round(((elapsed * (140 + w * 28) + w * 90) % (bustSize + 90)) - 70);
-        ctx.globalAlpha = turnAlpha * 0.34;
+        ctx.globalAlpha = turnAlpha * 0.36;
         ctx.fillStyle = '#34d399';
         fillRectClamped(wx, wy, 56, 3);
         ctx.fillStyle = '#bef264';
@@ -7055,9 +7357,9 @@ export class Game {
       ctx.restore();
       for (let lv = 0; lv < 10; lv++) {
         const prog = (elapsed * (0.44 + (lv % 3) * 0.12) + lv * 0.15) % 1;
-        const lx = bustX + Math.round(((prog * bustSize + lv * 53) % bustSize));
+        const lx = bustX + Math.round((prog * bustSize + lv * 53) % bustSize);
         const ly = bustY + 14 + ((lv * 41) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 4.5 + lv) * 10);
-        ctx.globalAlpha = turnAlpha * 0.88;
+        ctx.globalAlpha = turnAlpha * 0.90;
         if (lv % 2 === 0) {
           ctx.fillStyle = '#10b981';
           fillRectClamped(lx - 3, ly, 7, 3);
@@ -7068,12 +7370,11 @@ export class Game {
         }
       }
     } else if (baseHero === 'reaper') {
-      // Rising curling violet-magenta spectral soul-wisps + phantom edge haze!
       for (let sw = 0; sw < 10; sw++) {
         const prog = (elapsed * (0.48 + (sw % 3) * 0.15) + sw * 0.14) % 1;
         const sx = bustX + 16 + ((sw * 61) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 4.2 + sw * 1.4) * 14);
         const sy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 22));
-        ctx.globalAlpha = turnAlpha * (0.9 - prog * 0.72);
+        ctx.globalAlpha = turnAlpha * (0.92 - prog * 0.70);
         ctx.fillStyle = '#a855f7';
         fillRectClamped(sx - 4, sy - 4, 8, 8);
         ctx.fillStyle = '#f0abfc';
@@ -7082,30 +7383,18 @@ export class Game {
         fillRectClamped(sx - 1, sy - 2, 2, 4);
       }
     } else if (baseHero === 'titan') {
-      // Rising blazing forge-sparks & erupting emerald-gold magma embers surging on vocal peaks!
-      const cnt = amp > 0.35 ? 14 : 9;
+      const cnt = amp > 0.35 ? 14 : 10;
       for (let sp = 0; sp < cnt; sp++) {
         const prog = (elapsed * (0.72 + (sp % 4) * 0.18) + sp * 0.11) % 1;
         const tx = bustX + 14 + ((sp * 57) % Math.max(24, bustSize - 28)) + Math.round(Math.cos(elapsed * 7 + sp) * 8);
         const ty = bustY + bustSize - 6 - Math.round(prog * (bustSize - 14));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.75);
+        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
         ctx.fillStyle = sp % 4 === 0 ? '#34d399' : sp % 2 === 0 ? '#fde047' : '#f97316';
         fillRectClamped(tx - 2, ty - 2, 5, 5);
         ctx.fillStyle = '#ffffff';
         fillRectClamped(tx - 1, ty - 1, 2, 2);
       }
     } else if (baseHero === 'icemage') {
-      // Gently drifting multi-size crisp 5x5 pixel snowflakes + shimmering icy-cyan Aurora curtains!
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let aI = 0; aI < 10; aI++) {
-        const ax = bustX + Math.round((aI / 10) * bustSize);
-        const ah = 24 + Math.round((Math.sin(elapsed * 3.4 + aI * 0.85) * 0.5 + 0.5) * 28);
-        ctx.globalAlpha = turnAlpha * 0.22;
-        ctx.fillStyle = aI % 2 === 0 ? '#67e8f9' : '#818cf8';
-        fillRectClamped(ax, bustY, Math.ceil(bustSize / 10) + 1, ah);
-      }
-      ctx.restore();
       for (let sn = 0; sn < 12; sn++) {
         const prog = (elapsed * (0.30 + (sn % 4) * 0.08) + sn * 0.12) % 1;
         const sx = bustX + 12 + ((sn * 59) % Math.max(24, bustSize - 24)) + Math.round(Math.sin(elapsed * 2.8 + sn) * 12);
@@ -7114,8 +7403,7 @@ export class Game {
         drawPixelSnowflake(sx, sy, sn % 3 === 0 ? 4 : 3, sn % 2 === 0 ? '#bae6fd' : '#67e8f9');
       }
     } else {
-      // ANDROID: Live sweeping translucent cyan HUD scanner bar + blinking corner telemetry brackets + plasma sparks!
-      const scanY = bustY + Math.round(((elapsed * 96) % bustSize));
+      const scanY = bustY + Math.round((elapsed * 96) % bustSize);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = turnAlpha * (0.34 + amp * 0.22);
@@ -7124,9 +7412,8 @@ export class Game {
       ctx.fillStyle = '#ffffff';
       fillRectClamped(bustX, scanY + 1, bustSize, 1);
       ctx.restore();
-      // Pulsing corner HUD target brackets inside bust frame
       const brkCol = pulse > 0.5 ? '#67e8f9' : '#f43f5e';
-      ctx.globalAlpha = turnAlpha * 0.82;
+      ctx.globalAlpha = turnAlpha * 0.85;
       ctx.fillStyle = brkCol;
       fillRectClamped(bustX + 10, bustY + 10, 18, 3);
       fillRectClamped(bustX + 10, bustY + 10, 3, 18);
@@ -7166,23 +7453,23 @@ export class Game {
     const fullSub = isJa ? entry.ja || '' : '';
     if (!fullMain) return;
 
-    // Smooth typewriter reveal synced crisply to live speech (~1.65s so full line is readable before handoff)
-    const revealFrac = Math.min(1, Math.max(0.25, spkElapsed / 1.65));
+    // Smooth typewriter reveal synced crisply to live speech (~1.55s so full line is readable before handoff)
+    const revealFrac = Math.min(1, Math.max(0.25, spkElapsed / 1.55));
     const visChars = Math.max(1, Math.min(fullMain.length, Math.ceil(fullMain.length * revealFrac)));
     const visText = fullMain.slice(0, visChars);
     const caretOn = revealFrac < 1 || (amp > 0.08 && Math.floor(spkElapsed * 8) % 2 === 0);
     const quoted = `"${visText}${revealFrac >= 1 ? '"' : caretOn ? '_' : ''}`;
 
     const isCompactLand = !isPortraitNarrow && ch < 460;
-    const subFontPx = cw >= 960 ? 17 : isCompactLand ? 12 : isPortraitNarrow ? 12 : 14;
-    const jaFontPx = cw >= 960 ? 13 : isCompactLand ? 10 : 11;
-    const barW = Math.min(cw - 24, cw >= 960 ? 940 : cw - 20);
+    // Larger, high-legibility subtitle typography across PC Desktop (24px), Landscape (16-19px) & Mobile Portrait (16px)!
+    const subFontPx = cw >= 960 ? 24 : isCompactLand ? 16 : isPortraitNarrow ? 16 : 19;
+    const jaFontPx = cw >= 960 ? 18 : isCompactLand ? 12 : 13;
+    const barW = Math.min(cw - 20, cw >= 960 ? 1080 : cw - 16);
     const maxCharsPerLine = Math.max(
-      24,
-      Math.floor((barW - 44) / Math.max(7, Math.round(subFontPx * 0.62)))
+      20,
+      Math.floor((barW - 56) / Math.max(8, Math.round(subFontPx * 0.64)))
     );
 
-    // Word-wrap into 1-2 clean subtitle lines
     const words = quoted.split(' ');
     const lines = [];
     let cur = '';
@@ -7197,50 +7484,51 @@ export class Game {
     }
     if (cur) lines.push(cur);
 
-    const lineGap = subFontPx + 6;
+    const lineGap = subFontPx + 9;
     const hasJaLine = Boolean(fullSub && !isCompactLand);
-    const padY = isCompactLand ? 8 : 11;
+    const padY = isCompactLand ? 9 : cw >= 960 ? 14 : 12;
+    const spkTagBlockH = isCompactLand ? 0 : cw >= 960 ? 24 : 18;
     const barH = Math.max(
-      isCompactLand ? 40 : 54,
-      padY * 2 + lines.length * lineGap + (hasJaLine ? jaFontPx + 8 : 0) + (isCompactLand ? 0 : 14)
+      isCompactLand ? 46 : cw >= 960 ? 78 : 66,
+      padY * 2 + lines.length * lineGap + (hasJaLine ? jaFontPx + 10 : 0) + spkTagBlockH
     );
     const desiredTop = isCompactLand
       ? ch - barH - 6
       : isPortraitNarrow
-        ? Math.min(ch - barH - 18, Math.max(minTopY, Math.round(ch * 0.72)))
-        : Math.min(ch - barH - 16, Math.max(minTopY, Math.round(ch * 0.84)));
+        ? Math.min(ch - barH - 16, Math.max(minTopY, Math.round(ch * 0.72)))
+        : Math.min(ch - barH - 18, Math.max(minTopY, Math.round(ch * 0.80)));
     const barY = Math.max(8, Math.min(ch - barH - 6, desiredTop));
     const barX = cx - (barW >> 1);
 
     ctx.save();
     ctx.globalAlpha = turnAlpha;
 
-    // Sleek borderless feathered dark film cushion (tapered horizontal fade, zero clunky box border!)
+    // Sleek borderless feathered cinema cushion
     if (typeof ctx.createLinearGradient === 'function') {
       const bgG = ctx.createLinearGradient(barX, 0, barX + barW, 0);
       if (bgG && typeof bgG.addColorStop === 'function') {
         bgG.addColorStop(0, 'rgba(2, 6, 23, 0)');
-        bgG.addColorStop(0.10, 'rgba(2, 6, 23, 0.84)');
-        bgG.addColorStop(0.50, 'rgba(4, 9, 24, 0.92)');
-        bgG.addColorStop(0.90, 'rgba(2, 6, 23, 0.84)');
+        bgG.addColorStop(0.08, 'rgba(2, 6, 23, 0.86)');
+        bgG.addColorStop(0.50, 'rgba(4, 10, 26, 0.94)');
+        bgG.addColorStop(0.92, 'rgba(2, 6, 23, 0.86)');
         bgG.addColorStop(1, 'rgba(2, 6, 23, 0)');
         ctx.fillStyle = bgG;
       } else {
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
       }
     } else {
-      ctx.fillStyle = 'rgba(2, 6, 23, 0.86)';
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
     }
     fillRectClamped(barX, barY, barW, barH);
 
-    // Thin luminous hero-accent hairline top & bottom
+    // Luminous feathered hero-accent hairlines
     if (typeof ctx.createLinearGradient === 'function') {
       const railG = ctx.createLinearGradient(barX + 24, 0, barX + barW - 24, 0);
       if (railG && typeof railG.addColorStop === 'function') {
         railG.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        railG.addColorStop(0.22, spkCol);
+        railG.addColorStop(0.20, spkCol);
         railG.addColorStop(0.50, '#fef08a');
-        railG.addColorStop(0.78, spkCol);
+        railG.addColorStop(0.80, spkCol);
         railG.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = railG;
       } else {
@@ -7257,35 +7545,42 @@ export class Game {
 
     let textY = barY + padY;
     if (!isCompactLand) {
-      const spkTagPx = cw >= 960 ? 11 : 9;
+      const spkTagPx = cw >= 960 ? 14 : 11;
       ctx.font = `bold ${spkTagPx}px "ArcanePixel", "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(spkName, cx + 1, textY + 5, barW - 36);
+      ctx.fillText(spkName, cx + 2, textY + 7, barW - 36);
       ctx.fillStyle = spkCol;
-      ctx.fillText(spkName, cx, textY + 4, barW - 36);
-      textY += 18;
+      ctx.fillText(spkName, cx, textY + 6, barW - 36);
+      textY += spkTagBlockH;
     }
 
-    // Main Dialogue Subtitle Lines (crisp ink outline + glowing bright white lettering)
+    // Large Crisp Dialogue Subtitle Lines (soft hero glow + thick pixel ink outline + bright white face!)
     ctx.font = `bold ${subFontPx}px "ArcanePixel", "Press Start 2P", sans-serif`;
     for (let i = 0; i < lines.length; i++) {
       const ly = textY + Math.round(subFontPx * 0.5) + i * lineGap;
+      ctx.save();
+      ctx.shadowColor = spkCol;
+      ctx.shadowBlur = cw >= 960 ? 12 : 8;
+      ctx.fillStyle = spkCol;
+      ctx.globalAlpha = turnAlpha * 0.42;
+      ctx.fillText(lines[i], cx, ly, barW - 36);
+      ctx.restore();
+
       ctx.fillStyle = '#020617';
-      ctx.fillText(lines[i], cx - 2, ly, barW - 32);
-      ctx.fillText(lines[i], cx + 2, ly, barW - 32);
-      ctx.fillText(lines[i], cx, ly - 2, barW - 32);
-      ctx.fillText(lines[i], cx, ly + 2, barW - 32);
-      ctx.fillText(lines[i], cx + 2, ly + 3, barW - 32);
+      ctx.fillText(lines[i], cx - 2, ly, barW - 36);
+      ctx.fillText(lines[i], cx + 2, ly, barW - 36);
+      ctx.fillText(lines[i], cx, ly - 2, barW - 36);
+      ctx.fillText(lines[i], cx, ly + 2, barW - 36);
+      ctx.fillText(lines[i], cx + 3, ly + 3, barW - 36);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(lines[i], cx, ly, barW - 32);
+      ctx.fillText(lines[i], cx, ly, barW - 36);
     }
 
-    // Secondary Original JP Line when Japanese voice pack is active
     if (hasJaLine) {
-      const jaY = textY + lines.length * lineGap + Math.round(jaFontPx * 0.5) + 2;
+      const jaY = textY + lines.length * lineGap + Math.round(jaFontPx * 0.5) + 4;
       ctx.font = `bold ${jaFontPx}px "Hiragino Sans", "Yu Gothic", "ArcanePixel", sans-serif`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(fullSub, cx + 1, jaY + 1, barW - 36);
+      ctx.fillText(fullSub, cx + 2, jaY + 2, barW - 36);
       ctx.fillStyle = '#fef08a';
       ctx.fillText(fullSub, cx, jaY, barW - 36);
     }
@@ -7299,8 +7594,19 @@ export class Game {
     const inEngage = !inIntro && (this._roundEngageBannerTimer || 0) > 0;
     if (!inIntro && !inEngage) return;
 
-    const cw = ctx.canvas?.width || 1280;
-    const ch = ctx.canvas?.height || 720;
+    // Respect devicePixelRatio cleanly so Retina/HiDPI PCs & Mobile render at exact logical CSS proportions!
+    const rawW = ctx.canvas?.width || 1280;
+    const rawH = ctx.canvas?.height || 720;
+    const useLogical = Boolean(
+      this.renderer &&
+        this.renderer.canvas === ctx.canvas &&
+        this.renderer.width > 0 &&
+        this.renderer.height > 0
+    );
+    const cw = useLogical ? Math.round(this.renderer.width) : rawW;
+    const ch = useLogical ? Math.round(this.renderer.height) : rawH;
+    const dprX = useLogical && cw > 0 ? rawW / cw : 1;
+    const dprY = useLogical && ch > 0 ? rawH / ch : 1;
     const cx = Math.round(cw * 0.5);
     const cy = Math.round(ch * 0.46);
     const elapsed = Math.max(0, Number(this.roundIntroElapsed) || 0);
@@ -7413,10 +7719,20 @@ export class Game {
       faceCol,
       phaseSeed = 0
     ) => {
-      const dDeep = Math.max(4, Math.round(fontPx * 0.11));
-      const dDark = Math.max(3, Math.round(fontPx * 0.08));
+      const dDeep = Math.max(3, Math.round(fontPx * 0.11));
+      const dDark = Math.max(2, Math.round(fontPx * 0.08));
       const dBev = Math.max(2, Math.round(fontPx * 0.05));
-      ctx.font = `bold ${fontPx}px "Press Start 2P", monospace`;
+      ctx.font = `bold ${fontPx}px "ArcanePixel", "Press Start 2P", monospace`;
+
+      // Layer 0: Subtle Hero-Colored Magical Neon Back-Bloom behind typography
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.shadowColor = bevelCol;
+      ctx.shadowBlur = Math.max(6, Math.round(fontPx * 0.42));
+      ctx.fillStyle = bevelCol;
+      ctx.globalAlpha = (ctx.globalAlpha || 1) * 0.36;
+      ctx.fillText(label, tx, ty, maxW);
+      ctx.restore();
 
       // Layer 1: #020617 deep drop-block & crisp perimeter guard
       ctx.fillStyle = '#020617';
@@ -7441,17 +7757,17 @@ export class Game {
       ctx.fillText(label, tx, ty, maxW);
 
       // Layer 6: traveling white specular glint bar across glyph tops
-      const spanW = Math.min(maxW, Math.max(48, label.length * Math.round(fontPx * 0.86)));
+      const spanW = Math.min(maxW, Math.max(48, label.length * Math.round(fontPx * 0.80)));
       const sweep = (((elapsed * 1.85 + phaseSeed) % 1) - 0.5) * spanW;
       const glintX = tx + Math.round(sweep);
       const glintY = ty - Math.round(fontPx * 0.42);
       ctx.fillStyle = '#ffffff';
-      fillRectClamped(glintX - 16, glintY, 32, Math.max(2, Math.round(fontPx * 0.06)));
+      fillRectClamped(glintX - 14, glintY, 28, Math.max(2, Math.round(fontPx * 0.06)));
       drawStar4(glintX, glintY + 1, Math.max(4, Math.round(fontPx * 0.1)), rimCol);
     };
 
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(dprX, 0, 0, dprY, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -7472,28 +7788,28 @@ export class Game {
 
       if (!inAct2CutIn) {
         // ====================================================================
-        // ACT 1: Full-Screen Staggered Diagonal-Slash Matchup Names (`elapsed < 1.25s`)
-        //        Upper-Left Giant P1 Name / Colossal Center `VS.` / Lower-Right Giant P2 Name
+        // ACT 1: Sleek Staggered Matchup Clash Banner (`elapsed < 1.25s`)
+        //        Balanced PC & Mobile proportions — crisp ArcanePixel typography, zero overflow!
         // ====================================================================
         const slamT = Math.min(1, elapsed / 0.26);
         const slamEase = 1 - Math.pow(1 - slamT, 3);
-        const slamSlide = Math.round((1 - slamEase) * Math.min(168, Math.round(cw * 0.14)));
+        const slamSlide = Math.round((1 - slamEase) * Math.min(148, Math.round(cw * 0.12)));
 
-        // Full-screen atmospheric obsidian clash veil
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.52)';
-        const veilH = Math.min(ch - 16, cw >= 960 ? 336 : ch < 460 ? 256 : 284);
+        // Subtle atmospheric obsidian clash veil
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.44)';
+        const veilH = Math.min(ch - 16, cw >= 960 ? 248 : ch < 460 ? 204 : 232);
         fillRectClamped(0, cy - (veilH >> 1), cw, veilH);
 
-        const maxNamePx = cw >= 960 ? 64 : cw >= 520 ? 44 : 32;
-        const minNamePx = cw >= 960 ? 52 : cw >= 520 ? 34 : 24;
-        const bannerTextMaxW = Math.round(cw * (cw < 520 ? 0.88 : 0.84));
+        const maxNamePx = cw >= 960 ? 38 : cw >= 520 ? 30 : 22;
+        const minNamePx = cw >= 960 ? 32 : cw >= 520 ? 24 : 18;
+        const bannerTextMaxW = Math.min(cw - 48, cw >= 960 ? 740 : Math.round(cw * 0.84));
 
         if (this.isAdventureMode?.()) {
-          const advRibbonW = Math.min(cw - 16, Math.round(cw * 0.9));
-          const advRibbonH = cw >= 960 ? 148 : 112;
+          const advRibbonW = Math.min(cw - 24, cw >= 960 ? 760 : Math.round(cw * 0.88));
+          const advRibbonH = cw >= 960 ? 112 : 92;
           const advBx = cx - (advRibbonW >> 1);
           const advBy = cy - (advRibbonH >> 1);
-          drawChamferPlaque(advBx, advBy, advRibbonW, advRibbonH, p1Col, '#fef08a', 0.95, true);
+          drawChamferPlaque(advBx, advBy, advRibbonW, advRibbonH, p1Col, '#fef08a', 0.94, true);
 
           const advPx = fitArcadeFontPx(n1, maxNamePx, minNamePx, bannerTextMaxW);
           drawGiantArcadeText(
@@ -7508,22 +7824,24 @@ export class Game {
             '#fef08a',
             0.12
           );
-          const subPx = cw >= 960 ? 16 : 12;
-          ctx.font = `bold ${subPx}px "Press Start 2P", monospace`;
+          const subPx = cw >= 960 ? 14 : 11;
+          ctx.font = `bold ${subPx}px "ArcanePixel", "Press Start 2P", monospace`;
           ctx.fillStyle = '#020617';
-          ctx.fillText('REALM PILGRIMAGE • STANDOFF', cx + 2, cy + (cw >= 960 ? 44 : 34) + 2, bannerTextMaxW);
+          ctx.fillText('REALM PILGRIMAGE • STANDOFF', cx + 2, cy + (cw >= 960 ? 34 : 28) + 2, bannerTextMaxW);
           ctx.fillStyle = '#f59e0b';
-          ctx.fillText('REALM PILGRIMAGE • STANDOFF', cx, cy + (cw >= 960 ? 44 : 34), bannerTextMaxW);
+          ctx.fillText('REALM PILGRIMAGE • STANDOFF', cx, cy + (cw >= 960 ? 34 : 28), bannerTextMaxW);
         } else {
-          const bandGapY = cw >= 960 ? 96 : ch < 460 ? 80 : 78;
+          const bandGapY = cw >= 960 ? 78 : ch < 460 ? 64 : 68;
           const p1BandY = cy - bandGapY;
           const p2BandY = cy + bandGapY + 2;
-          const ribbonH = cw >= 960 ? 86 : cw >= 520 ? 62 : 52;
-          const ribbonW = Math.min(cw - 8, Math.round(cw * 0.88));
+          const ribbonH = cw >= 960 ? 66 : cw >= 520 ? 52 : 44;
+          const ribbonW = Math.min(cw - 24, cw >= 960 ? Math.min(780, Math.round(cw * 0.64)) : Math.round(cw * 0.84));
+          const p1RibbonX = Math.max(0, Math.round(cx - ribbonW * 0.56) - slamSlide);
+          const p2RibbonX = Math.min(cw - ribbonW, Math.round(cx - ribbonW * 0.44) + slamSlide);
 
           // Upper-left P1 slash ribbon slamming from left
           drawChamferPlaque(
-            Math.max(0, 8 - slamSlide),
+            p1RibbonX,
             p1BandY - (ribbonH >> 1),
             ribbonW,
             ribbonH,
@@ -7535,7 +7853,7 @@ export class Game {
 
           // Lower-right P2 slash ribbon slamming from right
           drawChamferPlaque(
-            Math.min(cw - ribbonW, cw - ribbonW - 8 + slamSlide),
+            p2RibbonX,
             p2BandY - (ribbonH >> 1),
             ribbonW,
             ribbonH,
@@ -7547,31 +7865,25 @@ export class Game {
 
           // Opposing high-velocity pixel speed streaks across upper & lower bands
           const spd = Math.round(elapsed * 280) % 48;
-          for (let s = 0; s < 7; s++) {
-            const lx1 = ((s * 137 + spd * 3) % Math.max(64, ribbonW - 60)) + 16;
-            const lx2 = cw - 52 - ((s * 149 + spd * 3) % Math.max(64, ribbonW - 60));
+          for (let s = 0; s < 6; s++) {
+            const lx1 = p1RibbonX + 16 + ((s * 127 + spd * 3) % Math.max(48, ribbonW - 64));
+            const lx2 = p2RibbonX + ribbonW - 50 - ((s * 139 + spd * 3) % Math.max(48, ribbonW - 64));
             ctx.fillStyle = s % 2 === 0 ? p1Col : '#fef08a';
-            fillRectClamped(lx1, p1BandY - (ribbonH >> 1) + 8 + (s % 3) * Math.round((ribbonH - 18) / 2), 34, 3);
+            fillRectClamped(lx1, p1BandY - (ribbonH >> 1) + 8 + (s % 3) * Math.round((ribbonH - 18) / 2), 28, 2);
             ctx.fillStyle = s % 2 === 0 ? p2Col : '#e0f2fe';
-            fillRectClamped(lx2, p2BandY - (ribbonH >> 1) + 8 + (s % 3) * Math.round((ribbonH - 18) / 2), 34, 3);
+            fillRectClamped(lx2, p2BandY - (ribbonH >> 1) + 8 + (s % 3) * Math.round((ribbonH - 18) / 2), 28, 2);
           }
 
-          // P1 Giant Name (Upper-Left staggered, slamming rightward)
-          const p1Px = fitArcadeFontPx(n1, maxNamePx, minNamePx, bannerTextMaxW);
-          const p1HalfEst = Math.min(
-            Math.round(bannerTextMaxW * 0.5),
-            Math.round(n1.length * p1Px * 0.5)
-          );
-          const desiredP1X = cw >= 520 ? Math.round(cw * 0.38) : cx;
-          const baseP1X = Math.max(24 + p1HalfEst, Math.min(cw - 24 - p1HalfEst, desiredP1X));
-          const drawP1X = baseP1X - slamSlide;
+          // P1 Name (Upper-Left staggered, slamming rightward)
+          const p1Px = fitArcadeFontPx(n1, maxNamePx, minNamePx, ribbonW - 44);
+          const drawP1X = p1RibbonX + Math.round(ribbonW * 0.5);
 
           drawGiantArcadeText(
             n1,
             drawP1X,
             p1BandY,
             p1Px,
-            bannerTextMaxW,
+            ribbonW - 36,
             '#1e1b4b',
             p1Col,
             '#f59e0b',
@@ -7579,22 +7891,16 @@ export class Game {
             0.14
           );
 
-          // P2 Giant Name (Lower-Right staggered, slamming leftward)
-          const p2Px = fitArcadeFontPx(n2, maxNamePx, minNamePx, bannerTextMaxW);
-          const p2HalfEst = Math.min(
-            Math.round(bannerTextMaxW * 0.5),
-            Math.round(n2.length * p2Px * 0.5)
-          );
-          const desiredP2X = cw >= 520 ? Math.round(cw * 0.62) : cx;
-          const baseP2X = Math.max(24 + p2HalfEst, Math.min(cw - 24 - p2HalfEst, desiredP2X));
-          const drawP2X = baseP2X + slamSlide;
+          // P2 Name (Lower-Right staggered, slamming leftward)
+          const p2Px = fitArcadeFontPx(n2, maxNamePx, minNamePx, ribbonW - 44);
+          const drawP2X = p2RibbonX + Math.round(ribbonW * 0.5);
 
           drawGiantArcadeText(
             n2,
             drawP2X,
             p2BandY,
             p2Px,
-            bannerTextMaxW,
+            ribbonW - 36,
             '#0f172a',
             p2Col,
             '#f59e0b',
@@ -7602,43 +7908,43 @@ export class Game {
             0.63
           );
 
-          // Colossal Center 'VS.' Clash Crest (centered at vsY within 12px of ch * 0.46)
+          // Sleek Radiant Center 'VS.' Clash Crest (centered at vsY within 12px of ch * 0.46)
           const vsY = cy + 1;
-          const minVsPx = cw >= 960 ? 76 : cw >= 520 ? 54 : 44;
-          const maxVsPx = cw >= 960 ? 90 : cw >= 520 ? 64 : 52;
+          const minVsPx = cw >= 960 ? 46 : cw >= 520 ? 36 : 28;
+          const maxVsPx = cw >= 960 ? 54 : cw >= 520 ? 44 : 34;
           const vsPx = Math.max(
             minVsPx,
             Math.min(maxVsPx, minVsPx + Math.round((1 - slamEase) * (maxVsPx - minVsPx)))
           );
 
           // Cross-slash stepped lightning bolts & clash shockwave behind 'VS.'
-          const boltSteps = cw >= 960 ? 14 : 9;
-          const boltStepPx = cw >= 960 ? 8 : 6;
+          const boltSteps = cw >= 960 ? 11 : 8;
+          const boltStepPx = cw >= 960 ? 7 : 5;
           drawSteppedSlashBolt(
             cx - boltSteps * boltStepPx,
-            vsY - Math.round(boltSteps * 3.5),
+            vsY - Math.round(boltSteps * 3.0),
             boltStepPx,
-            7,
+            6,
             boltSteps * 2 + 1,
-            4,
+            3,
             '#f59e0b',
             '#fef08a'
           );
           drawSteppedSlashBolt(
             cx - boltSteps * boltStepPx,
-            vsY + Math.round(boltSteps * 3.5),
+            vsY + Math.round(boltSteps * 3.0),
             boltStepPx,
-            -7,
+            -6,
             boltSteps * 2 + 1,
-            4,
+            3,
             '#dc2626',
             '#ffffff'
           );
 
           const shockProg = Math.min(1, elapsed / 0.42);
           if (shockProg < 1) {
-            const swW = Math.min(cw - 16, Math.round((cw >= 960 ? 220 : 140) + shockProg * 280));
-            const swH = Math.round((cw >= 960 ? 84 : 58) + shockProg * 64);
+            const swW = Math.min(cw - 16, Math.round((cw >= 960 ? 164 : 116) + shockProg * 220));
+            const swH = Math.round((cw >= 960 ? 64 : 46) + shockProg * 48);
             ctx.globalAlpha = Math.max(0, (1 - shockProg) * 0.78);
             ctx.fillStyle = '#fef08a';
             fillRectClamped(cx - (swW >> 1), vsY - (swH >> 1), swW, 3);
@@ -7648,19 +7954,36 @@ export class Game {
             ctx.globalAlpha = 1;
           }
 
-          // Center clash horizon flash bar + crest plate
-          const crestW = cw >= 960 ? 228 : cw >= 520 ? 168 : 136;
-          const crestH = cw >= 960 ? 92 : cw >= 520 ? 68 : 56;
+          // Radiant bloom behind 'VS.' crest
+          if (typeof ctx.createRadialGradient === 'function') {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.42;
+            const vsRad = cw >= 960 ? 96 : 68;
+            const vsG = ctx.createRadialGradient(cx, vsY, 8, cx, vsY, vsRad);
+            if (vsG && typeof vsG.addColorStop === 'function') {
+              vsG.addColorStop(0, '#fef08a');
+              vsG.addColorStop(0.5, '#dc2626');
+              vsG.addColorStop(1, 'rgba(0, 0, 0, 0)');
+              ctx.fillStyle = vsG;
+              fillRectClamped(cx - vsRad, vsY - vsRad, vsRad * 2, vsRad * 2);
+            }
+            ctx.restore();
+          }
+
+          // Compact Center Clash Crest Plate (generous padding around vsPx!)
+          const crestW = cw >= 960 ? 174 : cw >= 520 ? 136 : 112;
+          const crestH = cw >= 960 ? 74 : cw >= 520 ? 58 : 48;
           ctx.fillStyle = '#020617';
-          fillRectClamped(cx - (crestW >> 1) - 4, vsY - (crestH >> 1) - 4, crestW + 8, crestH + 8);
+          fillRectClamped(cx - (crestW >> 1) - 3, vsY - (crestH >> 1) - 3, crestW + 6, crestH + 6);
           ctx.fillStyle = '#090d1a';
           fillRectClamped(cx - (crestW >> 1), vsY - (crestH >> 1), crestW, crestH);
           ctx.fillStyle = '#dc2626';
-          fillRectClamped(cx - (crestW >> 1), vsY - (crestH >> 1), crestW, 4);
-          fillRectClamped(cx - (crestW >> 1), vsY + (crestH >> 1) - 4, crestW, 4);
+          fillRectClamped(cx - (crestW >> 1), vsY - (crestH >> 1), crestW, 3);
+          fillRectClamped(cx - (crestW >> 1), vsY + (crestH >> 1) - 3, crestW, 3);
           ctx.fillStyle = '#fef08a';
-          fillRectClamped(cx - (crestW >> 1) + 6, vsY - (crestH >> 1) + 5, crestW - 12, 2);
-          fillRectClamped(cx - (crestW >> 1) + 6, vsY + (crestH >> 1) - 7, crestW - 12, 2);
+          fillRectClamped(cx - (crestW >> 1) + 6, vsY - (crestH >> 1) + 4, crestW - 12, 2);
+          fillRectClamped(cx - (crestW >> 1) + 6, vsY + (crestH >> 1) - 6, crestW - 12, 2);
 
           drawGiantArcadeText(
             'VS.',
@@ -7675,14 +7998,14 @@ export class Game {
             0.38
           );
 
-          const orbitDx = Math.round(Math.cos(elapsed * 8.0) * 8);
-          drawStar4(cx - (crestW >> 1) - 14 + orbitDx, vsY, 8, '#fef08a');
-          drawStar4(cx + (crestW >> 1) + 14 - orbitDx, vsY, 8, '#fef08a');
+          const orbitDx = Math.round(Math.cos(elapsed * 8.0) * 7);
+          drawStar4(cx - (crestW >> 1) - 12 + orbitDx, vsY, 7, '#fef08a');
+          drawStar4(cx + (crestW >> 1) + 12 - orbitDx, vsY, 7, '#fef08a');
 
           // Dual Clash Progress Rail below lower band
-          const railW = Math.min(cw - 48, Math.round(cw * 0.76));
+          const railW = Math.min(cw - 48, cw >= 960 ? Math.min(720, Math.round(cw * 0.58)) : Math.round(cw * 0.74));
           const halfRail = railW >> 1;
-          const railY = Math.min(ch - 10, p2BandY + (ribbonH >> 1) + (ch < 460 ? 8 : 14));
+          const railY = Math.min(ch - 10, p2BandY + (ribbonH >> 1) + (ch < 460 ? 8 : 12));
           const fillHalf = Math.round(halfRail * ratio);
           ctx.fillStyle = '#0f172a';
           fillRectClamped(cx - halfRail, railY, railW, 5);
@@ -7739,20 +8062,20 @@ export class Game {
         ).toUpperCase();
 
         const bustSize = Math.min(
-          Math.round(ch * 0.65),
-          cw >= 960 ? 480 : cw >= 520 ? 290 : 284
+          Math.round(ch * 0.59),
+          cw >= 960 ? 430 : cw >= 520 ? 276 : 284
         );
         const isPortraitNarrow = cw < 520;
         const turnAlpha = Math.max(0.18, slideEase);
 
         // 1. Bold Full-Width Atmospheric Dark-Vignette + Hero-Colored Speed-Streak Cinema Band
-        //    (Positioned cleanly above the bottom dialogue subtitle zone across all viewports!)
+        //    (Positioned cleanly above the larger bottom dialogue subtitle zone across all viewports!)
         const bandH = isPortraitNarrow
-          ? Math.min(ch - 140, bustSize + 172)
-          : Math.min(ch - 80, Math.max(Math.round(bustSize * 0.74), cw >= 960 ? 324 : 212));
+          ? Math.min(ch - 148, bustSize + 160)
+          : Math.min(ch - 96, Math.max(Math.round(bustSize * 0.72), cw >= 960 ? 304 : 204));
         const bandY = isPortraitNarrow
-          ? Math.max(40, Math.round(ch * 0.145))
-          : Math.max(10, Math.round(ch * 0.445 - bandH * 0.5));
+          ? Math.max(38, Math.round(ch * 0.135))
+          : Math.max(10, Math.round(ch * 0.43 - bandH * 0.5));
 
         ctx.globalAlpha = turnAlpha;
         ctx.fillStyle = 'rgba(2, 6, 23, 0.84)';
@@ -7786,7 +8109,7 @@ export class Game {
         }
         ctx.globalAlpha = turnAlpha;
 
-        // 2. Giant Half-Screen Animated Talking Bust (`bustSize x bustSize`)
+        // 2. Giant Half-Screen Living Layered Talking Bust (`bustSize x bustSize`)
         //    True side-edge spring pop-in (`P1` bursts out from LEFT edge, `P2` bursts out from RIGHT edge!)
         const sideMargin = cw >= 960 ? 28 : cw >= 520 ? 16 : Math.max(12, (cw - bustSize) >> 1);
         const targetBustX = isPortraitNarrow
@@ -7812,7 +8135,7 @@ export class Game {
         const bustX = targetBustX + bustSlideDx;
         const bustY = isPortraitNarrow
           ? bandY + 12
-          : Math.max(8, Math.min(ch - bustSize - 56, Math.round(ch * 0.445 - bustSize * 0.5)));
+          : Math.max(8, Math.min(ch - bustSize - 76, Math.round(ch * 0.43 - bustSize * 0.5)));
 
         const amp = Math.max(0, Math.min(1, Number(this.audio?.getVoiceAmplitude?.() || 0)));
         const activeMouthStage =
@@ -7824,18 +8147,18 @@ export class Game {
             : null;
         const talkFrameIdx = Game.computeIntroTalkFrameIndex(amp, elapsed, activeMouthStage);
 
-        // Pulsing Hero-Colored Radiant Rim Bloom behind the talking bust (0 arc/ellipse/rotate!)
+        // Pulsing Hero-Colored Radiant Rim Bloom behind the bust frame (0 arc/ellipse/rotate!)
         if (typeof ctx.createRadialGradient === 'function') {
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = turnAlpha * (0.28 + amp * 0.22);
+          ctx.globalAlpha = turnAlpha * (0.32 + amp * 0.24);
           const bCx = bustX + (bustSize >> 1);
           const bCy = bustY + (bustSize >> 1);
-          const bRad = Math.round(bustSize * 0.66);
-          const bgGlow = ctx.createRadialGradient(bCx, bCy, Math.round(bustSize * 0.25), bCx, bCy, bRad);
+          const bRad = Math.round(bustSize * 0.68);
+          const bgGlow = ctx.createRadialGradient(bCx, bCy, Math.round(bustSize * 0.24), bCx, bCy, bRad);
           if (bgGlow && typeof bgGlow.addColorStop === 'function') {
             bgGlow.addColorStop(0, spkCol);
-            bgGlow.addColorStop(0.65, spkCol);
+            bgGlow.addColorStop(0.62, spkCol);
             bgGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = bgGlow;
             fillRectClamped(bCx - bRad, bCy - bRad, bRad * 2, bRad * 2);
@@ -7854,16 +8177,110 @@ export class Game {
         fillRectClamped(bustX, bustY, bustSize, bustSize);
 
         const talkSheetImg = PixelForge.getIntroTalkSheet?.(heroKey) || null;
+        const layersImg = PixelForge.getIntroTalkLayers?.(heroKey) || null;
+        const layersReady = Boolean(
+          layersImg &&
+            !layersImg.__avsPending &&
+            (layersImg.naturalWidth ? layersImg.naturalWidth >= 960 : layersImg.complete !== false)
+        );
         const desiredFacing = isRightSpeaker ? -1 : 1;
 
-        // Natural Bottom-Anchored Chest Breathing + Subtle Vocal Emphasis Forward Lean (clipped inside bust frame!)
+        // CHARACTER-ONLY MOTION (Stationary Portrait Environment NEVER shakes!):
+        // Bottom-anchored chest breathing + forward vocal lean + crisp vocal-peak micro-shake ONLY on character!
         const breathWave = Math.sin(elapsed * 2.75) * 0.5 + 0.5;
-        const breathScale = 1.004 + breathWave * 0.018 + amp * 0.022;
+        const breathScale = 1.003 + breathWave * 0.015 + amp * 0.016;
         const drawW = Math.round(bustSize * breathScale);
         const drawH = Math.round(bustSize * breathScale);
-        const leanForwardPx = Math.round(amp * 5) * desiredFacing;
-        const drawOffX = Math.round((bustSize - drawW) * 0.5) + leanForwardPx;
-        const drawOffY = Math.round(bustSize - drawH - breathWave * 2 - amp * 3);
+        const bodyShakeX = amp > 0.42 ? Math.round(Math.sin(elapsed * 52) * (amp * 2.4)) : 0;
+        const bodyShakeY = amp > 0.42 ? Math.round(Math.cos(elapsed * 46) * (amp * 1.9)) : 0;
+        const bodyDxLocal = Math.round((bustSize - drawW) * 0.5) + Math.round(amp * 4) + bodyShakeX;
+        const bodyDyLocal = Math.round(bustSize - drawH - breathWave * 2.5 - amp * 3) + bodyShakeY;
+
+        // Independent Front Weapon / Hand / Floating Cob Drone motion (`Cell 2`!)
+        let frontDxLocal = bodyDxLocal;
+        let frontDyLocal = bodyDyLocal;
+        if (baseHero === 'nyx') {
+          // Floating COB cyber-drone hovers freely in smooth 60fps Lissajous orbit!
+          frontDxLocal = Math.round(Math.cos(elapsed * 2.8) * 5);
+          frontDyLocal = Math.round(Math.sin(elapsed * 4.2) * 7 - amp * 4);
+        } else if (
+          baseHero === 'mage' ||
+          baseHero === 'priestess' ||
+          baseHero === 'chronomancer' ||
+          baseHero === 'archer'
+        ) {
+          // Full unbroken weapon + hand gently lifts/heaves independently with vocal poise!
+          frontDxLocal = bodyDxLocal + Math.round(Math.cos(elapsed * 2.6) * 2);
+          frontDyLocal = bodyDyLocal - Math.round(Math.sin(elapsed * 3.8 + 0.8) * 3.5 + amp * 4.5);
+        }
+
+        // Helper to draw Cell 1 (Back Hair wind-wave, Wing flap/breathe, Floating Halo/Back-Weapon) in local [0..bustSize] space
+        const drawBackArticulatedLayer = (ox, oy) => {
+          if (!layersReady || !layersImg) return;
+          if (
+            baseHero === 'nyx' ||
+            baseHero === 'warrior' ||
+            baseHero === 'ronin' ||
+            baseHero === 'archer' ||
+            baseHero === 'icemage'
+          ) {
+            // Smooth 60fps 16-strip nearest-neighbor sinusoidal hair wind-wave (zero face shear, zero gaps!)
+            const bands = 16;
+            const srcStep = 320 / bands;
+            const waveAmp = (baseHero === 'ronin' ? 5.2 : 3.6) + amp * 2.4;
+            const waveSpeed = baseHero === 'ronin' ? 5.2 : 3.4;
+            for (let b = 0; b < bands; b++) {
+              const sy0 = Math.round(b * srcStep);
+              const sy1 = Math.round((b + 1) * srcStep);
+              const dy0 = Math.round((b / bands) * bustSize);
+              const dy1 = Math.round(((b + 1) / bands) * bustSize);
+              const anchorW = Math.min(1, Math.max(0.25, (b - 1) / 8));
+              const wDx = Math.round(Math.sin(elapsed * waveSpeed - b * 0.56) * waveAmp * anchorW);
+              ctx.drawImage(
+                layersImg,
+                320,
+                sy0,
+                320,
+                sy1 - sy0,
+                ox + bodyDxLocal + wDx,
+                oy + bodyDyLocal + dy0,
+                drawW,
+                dy1 - dy0
+              );
+            }
+          } else if (baseHero === 'priestess' || baseHero === 'valkyrie') {
+            // Smooth 60fps angelic / valkyrie wing lift & outward breath spread!
+            const flap = Math.sin(elapsed * 3.2) * 0.5 + 0.5;
+            const wingSpread = Math.round(flap * 6 + amp * 7);
+            const wingLift = -Math.round(flap * 4 + amp * 5);
+            ctx.drawImage(
+              layersImg,
+              320,
+              0,
+              320,
+              320,
+              ox + bodyDxLocal - wingSpread,
+              oy + bodyDyLocal + wingLift,
+              drawW + wingSpread * 2,
+              drawH
+            );
+          } else {
+            // Floating Clockface Halo (`chronomancer`), Flaming Soul-Scythe (`reaper`), Mjolnir (`titan`), Plasma Blade (`android`)
+            const hoverDx = Math.round(Math.cos(elapsed * 2.4) * 2.5);
+            const hoverDy = -Math.round(Math.sin(elapsed * 3.6) * 4 + amp * 4.5);
+            ctx.drawImage(
+              layersImg,
+              320,
+              0,
+              320,
+              320,
+              ox + bodyDxLocal + hoverDx,
+              oy + bodyDyLocal + hoverDy,
+              drawW,
+              drawH
+            );
+          }
+        };
 
         ctx.save();
         if (typeof ctx.beginPath === 'function' && typeof ctx.rect === 'function' && typeof ctx.clip === 'function') {
@@ -7875,34 +8292,50 @@ export class Game {
           const sx = talkFrameIdx * 320;
           const flipX = 1 !== desiredFacing;
           try {
+            // LAYER 1: Stationary Portrait Environment Backdrop (`Cell 0`, 0px character shake!)
+            if (layersReady && layersImg) {
+              if (flipX && typeof ctx.translate === 'function' && typeof ctx.scale === 'function') {
+                ctx.save();
+                ctx.translate(bustX + bustSize, bustY);
+                ctx.scale(-1, 1);
+                ctx.drawImage(layersImg, 0, 0, 320, 320, 0, 0, bustSize, bustSize);
+                ctx.restore();
+              } else {
+                ctx.drawImage(layersImg, 0, 0, 320, 320, bustX, bustY, bustSize, bustSize);
+              }
+            }
+
+            // LAYER 2: Live 60fps Moving Portrait Environment FX + Magical Back-Silhouette Aura & Arcane Ring!
+            this._drawIntroBustBackEnvAndMagicFX(ctx, {
+              baseHero,
+              bustX,
+              bustY,
+              bustSize,
+              elapsed,
+              amp,
+              spkCol,
+              turnAlpha,
+              fillRectClamped,
+              drawStar4
+            });
+
+            // LAYERS 3, 4 & 5: Back Hair/Wings/Halo (`Cell 1`) -> Character-Only Body (`talk_sheet`) -> Front Weapon/Cob (`Cell 2`)!
             if (flipX && typeof ctx.translate === 'function' && typeof ctx.scale === 'function') {
               ctx.save();
               ctx.translate(bustX + bustSize, bustY);
               ctx.scale(-1, 1);
-              ctx.drawImage(
-                talkSheetImg,
-                sx,
-                0,
-                320,
-                320,
-                Math.round((bustSize - drawW) * 0.5) + Math.round(amp * 5),
-                drawOffY,
-                drawW,
-                drawH
-              );
+              drawBackArticulatedLayer(0, 0);
+              ctx.drawImage(talkSheetImg, sx, 0, 320, 320, bodyDxLocal, bodyDyLocal, drawW, drawH);
+              if (layersReady && layersImg) {
+                ctx.drawImage(layersImg, 640, 0, 320, 320, frontDxLocal, frontDyLocal, drawW, drawH);
+              }
               ctx.restore();
             } else {
-              ctx.drawImage(
-                talkSheetImg,
-                sx,
-                0,
-                320,
-                320,
-                bustX + drawOffX,
-                bustY + drawOffY,
-                drawW,
-                drawH
-              );
+              drawBackArticulatedLayer(bustX, bustY);
+              ctx.drawImage(talkSheetImg, sx, 0, 320, 320, bustX + bodyDxLocal, bustY + bodyDyLocal, drawW, drawH);
+              if (layersReady && layersImg) {
+                ctx.drawImage(layersImg, 640, 0, 320, 320, bustX + frontDxLocal, bustY + frontDyLocal, drawW, drawH);
+              }
             }
           } catch (_) {}
         } else if (typeof ctx.drawImage === 'function') {
@@ -7920,8 +8353,8 @@ export class Game {
                   fb.sy,
                   fb.sw,
                   fb.sh,
-                  Math.round((bustSize - drawW) * 0.5) + Math.round(amp * 5),
-                  drawOffY,
+                  bodyDxLocal,
+                  bodyDyLocal,
                   drawW,
                   drawH
                 );
@@ -7933,8 +8366,8 @@ export class Game {
                   fb.sy,
                   fb.sw,
                   fb.sh,
-                  bustX + drawOffX,
-                  bustY + drawOffY,
+                  bustX + bodyDxLocal,
+                  bustY + bodyDyLocal,
                   drawW,
                   drawH
                 );
@@ -7945,7 +8378,7 @@ export class Game {
         ctx.restore();
         ctx.globalAlpha = turnAlpha;
 
-        // 12-Hero Signature Living Animated Portrait Overlay FX (Sakura, Snowflakes, Lightning, Flames, Feathers, HUD Scan, Hearts!)
+        // LAYER 6: Weapon/Hand/Core-Locked Magical Glowing Bloom & 12-Hero Signature Foreground FX!
         this._drawIntroBustHeroOverlayFX(ctx, {
           baseHero,
           bustX,
@@ -7955,18 +8388,23 @@ export class Game {
           amp,
           spkCol,
           turnAlpha,
+          isRightSpeaker,
+          bodyDx: bodyDxLocal,
+          bodyDy: bodyDyLocal,
+          frontDx: frontDxLocal,
+          frontDy: frontDyLocal,
           fillRectClamped,
           drawStar4
         });
 
-        // Corner accent stars on giant bust frame
+        // Corner accent stars on living bust frame
         drawStar4(bustX, bustY, 8, '#fef08a');
         drawStar4(bustX + bustSize, bustY, 8, '#fef08a');
         drawStar4(bustX, bustY + bustSize, 8, spkCol);
         drawStar4(bustX + bustSize, bustY + bustSize, 8, spkCol);
 
-        // 3. Giant Speaker Name Slam (`48-60px` Desktop, `30-38px` Landscape, `24-30px` Portrait)
-        //    Slides in cleanly from the speaker's own side!
+        // 3. Balanced Speaker Name Slam (`34-42px` Desktop, `24-30px` Landscape, `20-24px` Portrait)
+        //    Slides in cleanly from the speaker's own side with crisp ArcanePixel typography!
         let infoX0;
         let infoX1;
         let deckTopY;
@@ -7976,7 +8414,7 @@ export class Game {
           infoX0 = 18;
           infoX1 = cw - 18;
           deckTopY = bustY + bustSize - 8;
-          deckH = 152;
+          deckH = 144;
           drawChamferPlaque(10, deckTopY, cw - 20, deckH, spkCol, '#fef08a', 0.96, true);
         } else {
           const gap = cw >= 960 ? 28 : 18;
@@ -7990,47 +8428,57 @@ export class Game {
         const infoSlideDx = Math.round(bustSlideDx * 0.45);
         const infoCx = infoX0 + Math.round(infoW * 0.5) + infoSlideDx;
 
-        // Top Matchup Tag (`VS.` + Opponent Name) keeping full matchup context & invariants intact
+        // Clean Centered Top Matchup Tag (`VS.` + Opponent Name, tight natural spacing!)
         const matchTagY = isPortraitNarrow
-          ? Math.max(28, bandY - 22)
-          : deckTopY + (cw >= 960 ? 20 : 14);
+          ? Math.max(28, bandY - 20)
+          : deckTopY + (cw >= 960 ? 18 : 14);
         if (!this.isAdventureMode?.()) {
-          const vsBadgePx = cw >= 960 ? 18 : cw >= 520 ? 14 : 12;
-          const oppPx = cw >= 960 ? 16 : cw >= 520 ? 12 : 10;
+          const vsBadgePx = cw >= 960 ? 16 : cw >= 520 ? 13 : 11;
+          const oppPx = cw >= 960 ? 15 : cw >= 520 ? 12 : 10;
           const matchCx = isPortraitNarrow ? cx : infoCx;
-          const vsLabelX = matchCx - Math.min(110, Math.round(oppName.length * oppPx * 0.36));
+          ctx.font = `bold ${vsBadgePx}px "ArcanePixel", "Press Start 2P", monospace`;
+          const vsMeasured = typeof ctx.measureText === 'function' ? Math.ceil(ctx.measureText('VS.').width || 0) : 0;
+          const vsEstW = Math.max(Math.round(vsBadgePx * 2.5), vsMeasured);
+          ctx.font = `bold ${oppPx}px "ArcanePixel", "Press Start 2P", monospace`;
+          const oppMeasured = typeof ctx.measureText === 'function' ? Math.ceil(ctx.measureText(oppName).width || 0) : 0;
+          const oppEstW = Math.max(Math.round(oppName.length * oppPx * 0.78), oppMeasured);
+          const tagGap = cw >= 960 ? 18 : 12;
+          const totalLockupW = vsEstW + tagGap + oppEstW;
+          const lockupLeft = matchCx - (totalLockupW >> 1);
+          const vsLabelX = lockupLeft + (vsEstW >> 1);
+          const oppLabelX = lockupLeft + vsEstW + tagGap + (oppEstW >> 1);
 
-          ctx.font = `bold ${vsBadgePx}px "Press Start 2P", monospace`;
+          ctx.font = `bold ${vsBadgePx}px "ArcanePixel", "Press Start 2P", monospace`;
           ctx.fillStyle = '#020617';
           ctx.fillText('VS.', vsLabelX + 2, matchTagY + 2);
           ctx.fillStyle = '#f59e0b';
           ctx.fillText('VS.', vsLabelX, matchTagY);
 
-          ctx.font = `bold ${oppPx}px "Press Start 2P", monospace`;
+          ctx.font = `bold ${oppPx}px "ArcanePixel", "Press Start 2P", monospace`;
           ctx.fillStyle = '#020617';
-          ctx.fillText(oppName, vsLabelX + Math.round(vsBadgePx * 2.4) + Math.round(oppName.length * oppPx * 0.48) + 2, matchTagY + 2, infoW);
+          ctx.fillText(oppName, oppLabelX + 2, matchTagY + 2, infoW);
           ctx.fillStyle = oppCol;
-          ctx.fillText(oppName, vsLabelX + Math.round(vsBadgePx * 2.4) + Math.round(oppName.length * oppPx * 0.48), matchTagY, infoW);
+          ctx.fillText(oppName, oppLabelX, matchTagY, infoW);
         }
 
-        // Resonance Tag (`14-18px` Desktop)
-        const resPx = cw >= 960 ? 14 : cw >= 520 ? 10 : 9;
+        // Resonance Tag
+        const resPx = cw >= 960 ? 13 : cw >= 520 ? 10 : 9;
         const resY = isPortraitNarrow
-          ? deckTopY + 22
-          : deckTopY + (cw >= 960 ? 58 : 38);
-        ctx.font = `bold ${resPx}px "Press Start 2P", monospace`;
+          ? deckTopY + 20
+          : deckTopY + (cw >= 960 ? 52 : 36);
+        ctx.font = `bold ${resPx}px "ArcanePixel", "Press Start 2P", monospace`;
         ctx.fillStyle = '#020617';
         ctx.fillText('INTRO • VOICE RESONANCE', infoCx + 2, resY + 2, infoW);
         ctx.fillStyle = '#fef08a';
         ctx.fillText('INTRO • VOICE RESONANCE', infoCx, resY, infoW);
 
-        // Giant Speaker Name Slam (`48-60px` Desktop, `30-38px` Landscape, `24-30px` Portrait)
-        const maxSpkPx = cw >= 960 ? 60 : cw >= 520 ? 38 : 30;
-        const minSpkPx = cw >= 960 ? 48 : cw >= 520 ? 30 : 24;
+        // Sleek Balanced Speaker Name Slam (`34-42px` Desktop, `24-30px` Landscape, `20-24px` Portrait)
+        const maxSpkPx = cw >= 960 ? 42 : cw >= 520 ? 30 : 24;
+        const minSpkPx = cw >= 960 ? 34 : cw >= 520 ? 24 : 20;
         const spkNamePx = fitArcadeFontPx(spkName, maxSpkPx, minSpkPx, infoW);
         const spkNameY = isPortraitNarrow
-          ? deckTopY + 62
-          : deckTopY + Math.round(deckH * 0.46);
+          ? deckTopY + 56
+          : deckTopY + Math.round(deckH * 0.44);
 
         drawGiantArcadeText(
           spkName,
@@ -8045,10 +8493,10 @@ export class Game {
           0.32
         );
 
-        // Bold Hero Title Subtitle (`14-18px` Desktop)
-        const titlePx = cw >= 960 ? 15 : cw >= 520 ? 11 : 9;
-        const titleY = spkNameY + Math.round(spkNamePx * 0.72) + (cw >= 960 ? 14 : 8);
-        ctx.font = `bold ${titlePx}px "Press Start 2P", monospace`;
+        // Bold Hero Title Subtitle
+        const titlePx = cw >= 960 ? 14 : cw >= 520 ? 11 : 9;
+        const titleY = spkNameY + Math.round(spkNamePx * 0.72) + (cw >= 960 ? 12 : 8);
+        ctx.font = `bold ${titlePx}px "ArcanePixel", "Press Start 2P", monospace`;
         ctx.fillStyle = '#020617';
         ctx.fillText(heroTitle, infoCx + 2, titleY + 2, infoW);
         ctx.fillStyle = '#e2e8f0';
@@ -8056,15 +8504,15 @@ export class Game {
 
         // Live 16-Bar Tall Stepped Pixel Voice Equalizer
         const numBars = 16;
-        const maxBarH = cw >= 960 ? 56 : cw >= 520 ? 36 : 32;
-        const eqSpanW = Math.min(infoW - 12, cw >= 960 ? 560 : infoW - 8);
+        const maxBarH = cw >= 960 ? 48 : cw >= 520 ? 34 : 28;
+        const eqSpanW = Math.min(infoW - 12, cw >= 960 ? 480 : infoW - 8);
         const barStepX = Math.max(8, Math.floor(eqSpanW / numBars));
         const barThick = Math.max(5, barStepX - 4);
         const waveTotalW = (numBars - 1) * barStepX + barThick;
         const waveStartX = infoCx - Math.round(waveTotalW * 0.5);
         const waveBaseY = isPortraitNarrow
-          ? deckTopY + deckH - 14
-          : deckTopY + deckH - (cw >= 960 ? 16 : 10);
+          ? deckTopY + deckH - 12
+          : deckTopY + deckH - (cw >= 960 ? 14 : 10);
 
         for (let b = 0; b < numBars; b++) {
           const bxBar = waveStartX + b * barStepX;
@@ -8088,7 +8536,7 @@ export class Game {
           }
         }
 
-        // 4. Live Spoken Voice Dialogue Subtitle Bar at Bottom of Screen!
+        // 4. Larger High-Legibility Spoken Voice Dialogue Subtitle Bar at Bottom of Screen!
         this._drawIntroSubtitleBar(ctx, {
           baseHero,
           spkName,
@@ -8106,7 +8554,7 @@ export class Game {
       }
     } else if (inEngage) {
       // ======================================================================
-      // ACT 3: Colossal Full-Screen `ENGAGE!` Detonation (`68-84px` Desktop, `0.85s`)
+      // ACT 3: Punchy Full-Screen `ENGAGE!` Detonation (`54-66px` Desktop, `0.85s`)
       // ======================================================================
       const rem = Math.max(0, Number(this._roundEngageBannerTimer) || 0);
       const totalEngage = 0.85;
@@ -8116,16 +8564,15 @@ export class Game {
       const p1T = Math.min(1, engageElapsed / 0.18);
       const p3T = inPhase3 ? Math.max(0, Math.min(1, rem / 0.22)) : 1;
 
-      const boxW = Math.min(cw - 20, Math.min(1040, Math.round(cw * 0.86)));
-      const fullBoxH = cw < 520 ? 108 : 148;
+      const boxW = Math.min(cw - 24, cw >= 960 ? Math.min(760, Math.round(cw * 0.64)) : Math.round(cw * 0.84));
+      const fullBoxH = cw < 520 ? 92 : cw >= 960 ? 116 : 104;
       const boxH = inPhase3 ? Math.max(20, Math.round(fullBoxH * p3T)) : fullBoxH;
       const bx = cx - Math.round(boxW * 0.5);
       const by = cy - Math.round(boxH * 0.5);
       const alpha = inPhase3 ? Math.max(0.28, p3T) : 1;
 
-      // Phase 1 (`0.00s -> 0.18s`): Full-screen horizon slash flash + expanding pixel shockwave frame
       if (inPhase1) {
-        const beamH = Math.max(6, Math.round((1 - p1T) * 34));
+        const beamH = Math.max(6, Math.round((1 - p1T) * 28));
         ctx.globalAlpha = 0.94;
         ctx.fillStyle = '#dc2626';
         fillRectClamped(0, cy - beamH - 4, cw, (beamH + 4) * 2);
@@ -8136,8 +8583,8 @@ export class Game {
         ctx.fillStyle = '#ffffff';
         fillRectClamped(0, cy - 3, cw, 6);
 
-        const shockW = Math.min(cw - 6, Math.round(boxW * (0.58 + p1T * 0.62)));
-        const shockH = Math.min(ch - 6, Math.round(fullBoxH * (0.58 + p1T * 0.82)));
+        const shockW = Math.min(cw - 6, Math.round(boxW * (0.58 + p1T * 0.56)));
+        const shockH = Math.min(ch - 6, Math.round(fullBoxH * (0.58 + p1T * 0.72)));
         const sx0 = cx - (shockW >> 1);
         const sy0 = cy - (shockH >> 1);
         ctx.fillStyle = '#fef08a';
@@ -8149,7 +8596,6 @@ export class Game {
 
       drawChamferPlaque(bx, by, boxW, boxH, '#f59e0b', '#fef08a', alpha, true);
 
-      // Phase 2 (`0.18s -> 0.63s`): High-speed outward pixel speed-lines & flying sparks
       if (!inPhase3) {
         const burstProg = Math.min(1, engageElapsed / 0.63);
         for (let s = 0; s < 14; s++) {
@@ -8163,8 +8609,7 @@ export class Game {
           fillRectClamped(sx + dir * 16, sy - 3, 5, 5);
         }
       } else {
-        // Phase 3 (`rem <= 0.22s`): Vertical razor split-exit + horizon rail zip
-        const railSpan = Math.min(cw - 8, Math.round(boxW + (1 - p3T) * 220));
+        const railSpan = Math.min(cw - 8, Math.round(boxW + (1 - p3T) * 200));
         const rx0 = cx - (railSpan >> 1);
         ctx.fillStyle = '#dc2626';
         fillRectClamped(rx0, by - 3, railSpan, 4);
@@ -8173,17 +8618,16 @@ export class Game {
         fillRectClamped(0, cy - 2, cw, 4);
       }
 
-      // Flanking double stepped pixel chevrons
-      const chevOff = Math.max(110, Math.round(boxW * 0.43));
+      const chevOff = Math.max(96, Math.round(boxW * 0.42));
       drawSteppedChevron(cx - chevOff, cy - 2, -1, 5, 6, '#f59e0b');
       drawSteppedChevron(cx - chevOff + 14, cy - 2, -1, 5, 6, '#fef08a');
       drawSteppedChevron(cx + chevOff, cy - 2, 1, 5, 6, '#f59e0b');
       drawSteppedChevron(cx + chevOff - 14, cy - 2, 1, 5, 6, '#fef08a');
 
-      // Colossal 'ENGAGE!' typography:
-      // Desktop (>= 960px): 68-84px | Medium (520..959px): 48-58px | Mobile (< 520px): 34-42px
-      const minEngPx = cw >= 960 ? 68 : cw >= 520 ? 48 : 34;
-      const maxEngPx = cw >= 960 ? 84 : cw >= 520 ? 58 : 42;
+      // Punchy balanced 'ENGAGE!' typography:
+      // Desktop (>= 960px): 54-66px | Medium (520..959px): 40-50px | Mobile (< 520px): 30-38px
+      const minEngPx = cw >= 960 ? 54 : cw >= 520 ? 40 : 30;
+      const maxEngPx = cw >= 960 ? 66 : cw >= 520 ? 50 : 38;
       const slamFactor = inPhase1 ? 1 - p1T : 0;
       const engagePx = Math.max(
         minEngPx,

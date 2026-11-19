@@ -22,8 +22,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+from scipy import ndimage
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SPRITES_DIR = REPO_ROOT / "assets" / "sprites"
@@ -1470,10 +1472,357 @@ QA_FACE_ROIS: dict[str, tuple[int, int, int, int]] = {
 }
 
 
-def render_all_qa_strips(built: dict[str, np.ndarray], scratch_dir: Path) -> None:
+def segment_character_mask(persona: str, rgb: np.ndarray) -> np.ndarray:
+    """Computes a crisp pixel-exact foreground silhouette mask for all 12 champions
+    so portrait backgrounds remain 100% stationary while ONLY the character moves/breathes/shakes.
+    """
+    h, w, _ = rgb.shape
+    yy, xx = np.mgrid[0:h, 0:w]
+    r = rgb[:, :, 0].astype(np.int16)
+    g = rgb[:, :, 1].astype(np.int16)
+    b = rgb[:, :, 2].astype(np.int16)
+    lum = (r * 2 + g * 5 + b * 3) // 10
+
+    gc = np.full((h, w), cv2.GC_PR_BGD, dtype=np.uint8)
+    gc[0:6, :] = cv2.GC_BGD
+    gc[0:48, 0:24] = cv2.GC_BGD
+    gc[0:48, w - 24 : w] = cv2.GC_BGD
+
+    if persona == "nyx":
+        gc[0:18, :] = cv2.GC_BGD
+        gc[0:120, 0:52] = cv2.GC_BGD
+        gc[0:96, 250:320] = cv2.GC_BGD
+        gc[185:320, 0:24] = cv2.GC_BGD
+        gc[195:320, 290:320] = cv2.GC_BGD
+        gc[24:205, 88:224] = cv2.GC_PR_FGD
+        gc[72:319, 110:212] = cv2.GC_FGD
+        gc[220:319, 58:246] = cv2.GC_PR_FGD
+        gc[182:290, 222:278] = cv2.GC_PR_FGD
+
+    elif persona == "warrior":
+        gc[0:20, 0:240] = cv2.GC_BGD
+        gc[0:125, 0:54] = cv2.GC_BGD
+        gc[165:320, 275:320] = cv2.GC_BGD
+        pocket = (xx >= 216) & (xx <= 258) & (yy >= 72) & (yy <= 165) & (lum < 85) & ((b - r) < 45)
+        gc[pocket] = cv2.GC_BGD
+        gc[24:319, 86:240] = cv2.GC_PR_FGD
+        gc[80:319, 118:222] = cv2.GC_FGD
+        gc[128:319, 10:122] = cv2.GC_PR_FGD
+        sword_d = (319 - xx) - (yy * 0.52)
+        sword_band = (xx >= 180) & (yy <= 265) & (sword_d >= -48) & (sword_d <= 52)
+        gc[sword_band] = cv2.GC_PR_FGD
+        gc[sword_band & ((lum >= 82) | ((b - r) >= 32))] = cv2.GC_FGD
+
+    elif persona == "mage":
+        gc[0:18, 0:54] = cv2.GC_BGD
+        gc[0:18, 224:320] = cv2.GC_BGD
+        gc[0:145, 0:34] = cv2.GC_BGD
+        gc[0:175, 265:320] = cv2.GC_BGD
+        gc[125:215, 250:320] = cv2.GC_BGD
+        gc[148:230, 0:28] = cv2.GC_BGD
+        gc[0:108, 52:214] = cv2.GC_PR_FGD
+        gc[76:124, 18:302] = cv2.GC_PR_FGD
+        gc[100:319, 98:244] = cv2.GC_FGD
+        gc[108:158, 120:222] = cv2.GC_FGD
+        gc[152:319, 20:108] = cv2.GC_PR_FGD
+        gc[164:238, 30:88] = cv2.GC_FGD
+        hat_red = (yy <= 122) & (xx >= 22) & (xx <= 298) & (r >= 88) & ((r - b) >= 24)
+        gc[hat_red] = cv2.GC_FGD
+
+    elif persona == "priestess":
+        gc[0:22, 0:82] = cv2.GC_BGD
+        gc[0:22, 212:278] = cv2.GC_BGD
+        gc[0:115, 0:46] = cv2.GC_BGD
+        gc[0:95, 215:248] = cv2.GC_BGD
+        gc[40:108, 92:226] = cv2.GC_PR_FGD
+        halo_dark = (yy <= 105) & (xx >= 88) & (xx <= 232) & (lum < 72)
+        gc[halo_dark] = cv2.GC_BGD
+        gc[106:319, 104:220] = cv2.GC_FGD
+        gc[118:319, 0:116] = cv2.GC_PR_FGD
+        gc[118:319, 214:320] = cv2.GC_PR_FGD
+        gc[12:319, 240:320] = cv2.GC_PR_FGD
+
+    elif persona == "chronomancer":
+        gc[0:10, 0:78] = cv2.GC_BGD
+        gc[0:10, 240:268] = cv2.GC_BGD
+        gc[0:220, 0:38] = cv2.GC_BGD
+        gc[185:320, 0:54] = cv2.GC_BGD
+        dist_clk = np.hypot(xx - 160, yy - 118)
+        gc[dist_clk <= 104] = cv2.GC_PR_FGD
+        gc[(dist_clk >= 66) & (dist_clk <= 100) & (lum >= 82)] = cv2.GC_FGD
+        gc[76:319, 114:214] = cv2.GC_FGD
+        gc[212:319, 64:258] = cv2.GC_PR_FGD
+        gc[218:270, 74:118] = cv2.GC_FGD
+        gc[12:319, 250:318] = cv2.GC_PR_FGD
+        gc[(xx >= 256) & (xx <= 306) & (lum >= 85)] = cv2.GC_FGD
+
+    elif persona == "valkyrie":
+        green_sky = (g >= r - 4) & (b >= r - 20) & (lum < 145)
+        gc[green_sky & (yy <= 155)] = cv2.GC_BGD
+        gc[(xx <= 118) & (yy <= 112) & (lum < 82)] = cv2.GC_BGD
+        gc[(xx >= 100) & (xx <= 228) & (yy <= 58) & (lum < 88)] = cv2.GC_BGD
+        gc[(xx >= 198) & (xx <= 270) & (yy <= 135) & (lum < 85)] = cv2.GC_BGD
+        gc[(xx >= 252) & (yy >= 232) & (lum < 72)] = cv2.GC_BGD
+        gc[(xx <= 26) & (yy >= 235) & (lum < 62)] = cv2.GC_BGD
+        gc[24:319, 78:234] = cv2.GC_PR_FGD
+        gc[64:319, 108:218] = cv2.GC_FGD
+        gc[8:319, 0:115] = cv2.GC_PR_FGD
+        gc[0:319, 210:320] = cv2.GC_PR_FGD
+        fiery = (r >= 115) & ((r - b) >= 40) & ((r - g) >= 12)
+        gc[fiery] = cv2.GC_FGD
+
+    elif persona == "ronin":
+        gc[0:30, 0:132] = cv2.GC_BGD
+        gc[0:48, 224:320] = cv2.GC_BGD
+        gc[0:115, 250:320] = cv2.GC_BGD
+        gc[120:320, 268:320] = cv2.GC_BGD
+        gc[40:319, 98:248] = cv2.GC_PR_FGD
+        gc[66:319, 134:235] = cv2.GC_FGD
+        gc[115:319, 0:136] = cv2.GC_PR_FGD
+        gc[(xx <= 155) & (yy >= 88) & (lum >= 120)] = cv2.GC_FGD
+        gc[225:319, 224:282] = cv2.GC_PR_FGD
+
+    elif persona == "archer":
+        gc[0:24, 0:88] = cv2.GC_BGD
+        gc[0:24, 210:255] = cv2.GC_BGD
+        gc[0:112, 0:38] = cv2.GC_BGD
+        gc[185:320, 0:24] = cv2.GC_BGD
+        gc[32:319, 78:236] = cv2.GC_PR_FGD
+        gc[58:319, 114:224] = cv2.GC_FGD
+        gc[100:319, 14:125] = cv2.GC_PR_FGD
+        quiver = (xx >= 24) & (xx <= 98) & (yy >= 102) & (yy <= 160) & ((g >= 115) | (r >= 135))
+        gc[quiver] = cv2.GC_FGD
+        gc[0:319, 224:318] = cv2.GC_PR_FGD
+
+    elif persona == "reaper":
+        gc[0:16, 0:54] = cv2.GC_BGD
+        gc[0:16, 265:320] = cv2.GC_BGD
+        gc[125:215, 0:44] = cv2.GC_BGD
+        gc[142:215, 272:320] = cv2.GC_BGD
+        gc[6:145, 6:314] = cv2.GC_PR_FGD
+        gc[26:185, 86:234] = cv2.GC_PR_FGD
+        gc[60:319, 98:224] = cv2.GC_FGD
+        gc[192:319, 10:310] = cv2.GC_PR_FGD
+        gc[232:319, 36:284] = cv2.GC_FGD
+        scythe_lit = (yy <= 138) & (((r >= 105) & (b >= 105)) | (lum >= 92))
+        gc[scythe_lit] = cv2.GC_FGD
+
+    elif persona == "titan":
+        gc[0:86, 0:122] = cv2.GC_BGD
+        gc[0:108, 258:320] = cv2.GC_BGD
+        gc[105:195, 0:26] = cv2.GC_BGD
+        gc[105:195, 294:320] = cv2.GC_BGD
+        gc[52:138, 62:108] = cv2.GC_PR_BGD
+        gc[62:135, 218:270] = cv2.GC_PR_BGD
+        gc[0:136, 126:258] = cv2.GC_PR_FGD
+        hammer_lit = (yy <= 128) & (xx >= 132) & (xx <= 254) & (lum >= 48)
+        gc[hammer_lit] = cv2.GC_FGD
+        gc[60:319, 78:244] = cv2.GC_PR_FGD
+        gc[108:319, 108:214] = cv2.GC_FGD
+        gc[195:319, 6:314] = cv2.GC_PR_FGD
+        gc[225:319, 44:276] = cv2.GC_FGD
+
+    elif persona == "icemage":
+        gc[0:26, 0:92] = cv2.GC_BGD
+        gc[0:26, 224:254] = cv2.GC_BGD
+        gc[0:160, 0:46] = cv2.GC_BGD
+        gc[200:320, 275:320] = cv2.GC_BGD
+        gc[14:319, 78:234] = cv2.GC_PR_FGD
+        gc[56:319, 102:222] = cv2.GC_FGD
+        gc[145:319, 14:118] = cv2.GC_PR_FGD
+        gc[12:319, 200:310] = cv2.GC_PR_FGD
+
+    elif persona == "android":
+        gc[0:36, 0:96] = cv2.GC_BGD
+        gc[0:62, 232:320] = cv2.GC_BGD
+        gc[125:210, 0:46] = cv2.GC_BGD
+        gc[195:320, 0:42] = cv2.GC_BGD
+        gc[38:319, 86:265] = cv2.GC_PR_FGD
+        gc[58:319, 118:242] = cv2.GC_FGD
+        blade_line = (yy - 68) - (xx * 0.56)
+        blade_zone = (xx <= 116) & (blade_line >= -26) & (blade_line <= 34)
+        gc[blade_zone] = cv2.GC_PR_FGD
+        gc[blade_zone & ((b >= 100) | (r >= 110) | (g >= 105))] = cv2.GC_FGD
+        gc[175:319, 235:319] = cv2.GC_PR_FGD
+        gc[(xx >= 38) & (xx <= 96) & (yy >= 240) & (lum >= 58)] = cv2.GC_FGD
+
+    bgd_model = np.zeros((1, 65), np.float64)
+    fgd_model = np.zeros((1, 65), np.float64)
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    cv2.grabCut(bgr, gc, None, bgd_model, fgd_model, 5, cv2.GC_INIT_WITH_MASK)
+
+    fg = (gc == cv2.GC_FGD) | (gc == cv2.GC_PR_FGD)
+
+    if persona == "nyx":
+        cob_roi = (xx >= 232) & (xx <= 294) & (yy >= 114) & (yy <= 172)
+        cob_pix = cob_roi & ((b >= 108) | ((r >= 118) & (b >= 102)))
+        cob_pix = ndimage.binary_fill_holes(ndimage.binary_closing(cob_pix, iterations=1))
+        fg = (fg & (~cob_roi)) | cob_pix
+    elif persona == "warrior":
+        sword_d = (319 - xx) - (yy * 0.52)
+        sword_lit = (xx >= 200) & (yy <= 245) & (sword_d >= -36) & (sword_d <= 46) & ((lum >= 92) | ((b - r) >= 34))
+        fg = fg | sword_lit
+        pocket_clean = (xx >= 216) & (xx <= 262) & (yy >= 68) & (yy <= 168) & (lum < 72) & ((b - r) < 42)
+        fg[pocket_clean] = False
+    elif persona == "mage":
+        fg[(xx >= 118) & (xx <= 220) & (yy >= 106) & (yy <= 162)] = True
+        fg[(xx <= 40) & (yy >= 146) & (yy <= 236) & (lum < 72)] = False
+    elif persona == "reaper":
+        fg[(xx >= 112) & (xx <= 206) & (yy >= 104) & (yy <= 178)] = True
+    elif persona == "priestess":
+        halo_gaps = (yy <= 102) & (xx >= 92) & (xx <= 228) & (lum < 58)
+        fg[halo_gaps] = False
+    elif persona == "valkyrie":
+        green_sky = (g >= r - 2) & (b >= r - 18) & (lum < 142) & (yy <= 155)
+        fg[green_sky] = False
+    elif persona == "titan":
+        cave_l = (xx >= 58) & (xx <= 112) & (yy >= 48) & (yy <= 145) & (lum < 34)
+        cave_r = (xx >= 216) & (xx <= 276) & (yy >= 58) & (yy <= 145) & (lum < 34)
+        fg[cave_l | cave_r] = False
+    elif persona == "android":
+        blade_line = (yy - 68) - (xx * 0.56)
+        blade_lit = (xx <= 112) & (blade_line >= -24) & (blade_line <= 30) & ((b >= 105) | (r >= 115) | (g >= 110))
+        fg = fg | blade_lit
+
+    labeled, ncomp = ndimage.label(fg)
+    if ncomp > 1:
+        sizes = ndimage.sum(fg, labeled, range(1, ncomp + 1))
+        main_lbl = int(np.argmax(sizes)) + 1
+        keep = labeled == main_lbl
+        if persona == "nyx":
+            cob_lbls = np.unique(labeled[122:168, 240:286])
+            for cl in cob_lbls:
+                if cl > 0:
+                    keep |= (labeled == cl)
+        else:
+            for lbl_i, sz in enumerate(sizes, start=1):
+                if sz >= 700:
+                    keep |= (labeled == lbl_i)
+        fg = keep
+
+    if persona not in ("priestess", "chronomancer", "warrior", "valkyrie"):
+        fg = ndimage.binary_fill_holes(fg)
+    else:
+        inv = ~fg
+        ilbl, incomp = ndimage.label(inv)
+        border_lbls = set(np.unique(ilbl[0, :])) | set(np.unique(ilbl[-1, :])) | set(np.unique(ilbl[:, 0])) | set(np.unique(ilbl[:, -1]))
+        isizes = ndimage.sum(inv, ilbl, range(1, incomp + 1)) if incomp > 0 else []
+        for idx_c, sz in enumerate(isizes, start=1):
+            if idx_c not in border_lbls and sz <= 180:
+                fg[ilbl == idx_c] = True
+
+    dil1 = ndimage.binary_dilation(fg, iterations=1)
+    fg = fg | (dil1 & (~fg) & (lum <= 46))
+    return fg
+
+
+def build_clean_bg(rgb: np.ndarray, fg_mask: np.ndarray) -> np.ndarray:
+    """Inpaints the stationary portrait environment behind the foreground character."""
+    dil = ndimage.binary_dilation(fg_mask, iterations=4).astype(np.uint8) * 255
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    inpainted = cv2.inpaint(bgr, dil, 9, cv2.INPAINT_TELEA)
+    bg_rgb = cv2.cvtColor(inpainted, cv2.COLOR_BGR2RGB)
+    inner = ndimage.binary_erosion(fg_mask, iterations=5)
+    if np.any(inner):
+        smooth = cv2.GaussianBlur(bg_rgb, (15, 15), 0)
+        bg_rgb[inner] = (smooth[inner].astype(np.float32) * 0.78).astype(np.uint8)
+    out = np.zeros((CELL, CELL, 4), dtype=np.uint8)
+    out[:, :, :3] = bg_rgb
+    out[:, :, 3] = 255
+    return out
+
+
+def build_articulated_layers(persona: str, f0_rgb: np.ndarray, fg_mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Creates the 960x320 companion `<persona>_layers.png` (`[Cell 0: Clean Stationary BG |
+    Cell 1: Back Flowing Hair / Wings / Halo / Back-Weapon | Cell 2: Full Unbroken Front Weapon / Hand / Cob]`)
+    and returns `(layers_960x320, body_mask_for_talk_sheet)`.
+    """
+    yy, xx = np.mgrid[0:CELL, 0:CELL]
+    r = f0_rgb[:, :, 0].astype(np.int16)
+    g = f0_rgb[:, :, 1].astype(np.int16)
+    b = f0_rgb[:, :, 2].astype(np.int16)
+    lum = (r * 2 + g * 5 + b * 3) // 10
+
+    back_mask = np.zeros((CELL, CELL), dtype=bool)
+    front_mask = np.zeros((CELL, CELL), dtype=bool)
+
+    if persona == "nyx":
+        back_mask = fg_mask & (yy >= 134) & (yy <= 202) & ((xx <= 104) | ((xx >= 210) & (xx <= 232))) & ((b >= 130) | (r >= 125))
+        front_mask = fg_mask & (xx >= 230) & (xx <= 298) & (yy >= 110) & (yy <= 176)
+    elif persona == "warrior":
+        back_mask = fg_mask & (xx <= 116) & (yy >= 94) & (yy <= 186) & ((lum >= 128) | ((b >= 120) & (r >= 100)))
+    elif persona == "mage":
+        front_mask = fg_mask & (xx <= 102) & (yy >= 148) & (~((xx <= 42) & (yy >= 148) & (yy <= 236) & (lum < 72)))
+    elif persona == "priestess":
+        left_wing = (xx <= 96) & (yy >= 122) & (yy <= 272)
+        right_wing = (xx >= 218) & (xx <= 252) & (yy >= 142) & (yy <= 284)
+        back_mask = fg_mask & (left_wing | right_wing)
+        front_mask = fg_mask & (xx >= 250)
+    elif persona == "chronomancer":
+        dist_clk = np.hypot(xx - 160, yy - 118)
+        head_neck_protect = (xx >= 112) & (xx <= 208) & (yy >= 54) & (yy <= 228)
+        back_mask = fg_mask & (dist_clk >= 64) & (dist_clk <= 112) & (yy <= 198) & (xx <= 252) & (~head_neck_protect)
+        front_mask = fg_mask & (xx >= 248)
+    elif persona == "valkyrie":
+        left_wing = (xx <= 88) & (yy >= 12) & (yy <= 235)
+        right_wing = (xx >= 232) & (yy >= 132) & (yy <= 255)
+        back_mask = fg_mask & (left_wing | right_wing)
+    elif persona == "ronin":
+        white_mane = (lum >= 122) & ((r + g + b) >= 355) & (~((xx >= 100) & (yy >= 118) & (lum < 142)))
+        back_mask = fg_mask & (xx <= 142) & (yy >= 44) & (yy <= 316) & white_mane
+    elif persona == "archer":
+        back_mask = fg_mask & (xx <= 94) & (yy >= 96) & (yy <= 252)
+        front_mask = fg_mask & (xx >= 244)
+    elif persona == "reaper":
+        horn_l = (xx >= 82) & (xx <= 136) & (yy >= 24) & (yy <= 155) & (np.abs(r - b) < 28) & (lum >= 65)
+        horn_r = (xx >= 184) & (xx <= 238) & (yy >= 24) & (yy <= 155) & (np.abs(r - b) < 28) & (lum >= 65)
+        helm_core = (xx >= 112) & (xx <= 208) & (yy >= 56) & (yy <= 190)
+        back_mask = fg_mask & (yy <= 158) & (~helm_core) & (~ndimage.binary_dilation(horn_l | horn_r, iterations=3))
+    elif persona == "titan":
+        golden_horn = (yy >= 52) & (yy <= 148) & (r >= 105) & ((r - b) >= 38)
+        helm_dome = (xx >= 116) & (xx <= 204) & (yy >= 82) & (yy <= 190)
+        back_mask = fg_mask & (yy <= 116) & (xx >= 134) & (xx <= 262) & (~helm_dome) & (~ndimage.binary_dilation(golden_horn, iterations=3))
+    elif persona == "icemage":
+        back_mask = fg_mask & (xx <= 96) & (yy >= 104) & (yy <= 198) & (lum >= 112)
+    elif persona == "android":
+        blade_line = (yy - 68) - (xx * 0.56)
+        back_mask = fg_mask & (xx <= 88) & (yy >= 44) & (yy <= 146) & (blade_line >= -24) & (blade_line <= 32)
+
+    back_mask = back_mask & (~front_mask)
+    core_mask = fg_mask & (~back_mask) & (~front_mask)
+
+    # Cell 0: Clean Inpainted Stationary Background
+    cell0_bg = build_clean_bg(f0_rgb, fg_mask)
+
+    # Cell 1: Back Appendages with generous 8px inward tuck BEHIND solid body -> ZERO gap on sway/wave!
+    back_tuck = ndimage.binary_dilation(back_mask, iterations=8) & fg_mask & (~front_mask)
+    cell1_back = np.zeros((CELL, CELL, 4), dtype=np.uint8)
+    cell1_back[back_tuck, :3] = f0_rgb[back_tuck]
+    cell1_back[back_tuck, 3] = 255
+
+    # Cell 2: Full Unbroken Front Weapon / Hand / Cob Drone
+    cell2_front = np.zeros((CELL, CELL, 4), dtype=np.uint8)
+    cell2_front[front_mask, :3] = f0_rgb[front_mask]
+    cell2_front[front_mask, 3] = 255
+
+    # Body mask for talk_sheet F0..F5 (includes 4px seam seal behind connected front weapons so bob never cracks!)
+    body_mask = core_mask.copy()
+    if np.any(front_mask) and persona != "nyx":
+        seam_tuck = ndimage.binary_dilation(core_mask, iterations=4) & front_mask
+        body_mask = body_mask | seam_tuck
+
+    layers_sheet = np.zeros((CELL, CELL * 3, 4), dtype=np.uint8)
+    layers_sheet[:, 0:CELL] = cell0_bg
+    layers_sheet[:, CELL : CELL * 2] = cell1_back
+    layers_sheet[:, CELL * 2 : CELL * 3] = cell2_front
+    return layers_sheet, body_mask
+
+
+def render_all_qa_strips(built: dict[str, np.ndarray], layers_map: dict[str, np.ndarray], scratch_dir: Path) -> None:
     scratch_dir.mkdir(parents=True, exist_ok=True)
     labels = ["F0 IDLE", "F1 HALF-BLK", "F2 BLINK", "F3 SMALL", "F4 MID", "F5 WIDE"]
-    zw, zh = 184, 160  # 2x zoom per 92x80 face crop -> 6 cols = 1104px wide
+    zw, zh = 184, 160
 
     for batch_idx, keys in enumerate([
         ["mage", "priestess", "chronomancer", "valkyrie", "ronin"],
@@ -1483,10 +1832,15 @@ def render_all_qa_strips(built: dict[str, np.ndarray], scratch_dir: Path) -> Non
         dr = ImageDraw.Draw(canvas)
         for r_idx, persona in enumerate(keys):
             sh = built[persona]
+            bg = layers_map[persona][:, 0:CELL, :3]
             rx0, ry0, rx1, ry1 = QA_FACE_ROIS[persona]
             y_base = 8 + r_idx * (zh + 22)
             for c_idx, lbl in enumerate(labels):
-                cell_im = Image.fromarray(sh[:, c_idx * CELL : (c_idx + 1) * CELL], "RGBA")
+                fg_c = sh[:, c_idx * CELL : (c_idx + 1) * CELL]
+                comp = bg.copy()
+                a = fg_c[:, :, 3] > 128
+                comp[a] = fg_c[a, :3]
+                cell_im = Image.fromarray(comp, "RGB").convert("RGBA")
                 crop = cell_im.crop((rx0, ry0, rx1, ry1)).resize((zw, zh), Image.Resampling.NEAREST)
                 x_base = c_idx * zw
                 canvas.paste(crop, (x_base, y_base + 18))
@@ -1498,9 +1852,22 @@ def render_all_qa_strips(built: dict[str, np.ndarray], scratch_dir: Path) -> Non
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     built: dict[str, np.ndarray] = {}
+    layers_map: dict[str, np.ndarray] = {}
 
     for persona, fn in BUILDERS.items():
-        sh = apply_living_hero_motion(persona, fn())
+        base_sheet = fn()
+        f0_rgb = base_sheet[:, 0:CELL, :3].copy()
+        fg_mask = segment_character_mask(persona, f0_rgb)
+        layers_sheet, body_mask = build_articulated_layers(persona, f0_rgb, fg_mask)
+
+        sh = apply_living_hero_motion(persona, base_sheet)
+        # Apply crisp transparent body silhouette alpha across all 6 frames (`F0..F5`)!
+        # (Background environment stays locked in `Cell 0`; hair/wings/weapons live cleanly in `Cell 1/2`!)
+        for f_idx in range(FRAMES):
+            cell = sh[:, f_idx * CELL : (f_idx + 1) * CELL]
+            cell[~body_mask] = [0, 0, 0, 0]
+            cell[body_mask, 3] = 255
+
         out_p = OUT_DIR / f"{persona}_talk_sheet.png"
         Image.fromarray(sh, "RGBA").save(out_p, optimize=True)
         assert sh.shape == (320, 1920, 4), f"{persona} bad shape: {sh.shape}"
@@ -1510,13 +1877,20 @@ def main() -> None:
                 fj = sh[:, j * CELL : (j + 1) * CELL]
                 diff_px = int(np.count_nonzero(np.any(fi != fj, axis=2)))
                 assert diff_px >= 12, f"{persona} F{i} vs F{j} too similar ({diff_px} px)"
+
+        layers_p = OUT_DIR / f"{persona}_layers.png"
+        Image.fromarray(layers_sheet, "RGBA").save(layers_p, optimize=True)
+        assert layers_sheet.shape == (320, 960, 4), f"{persona} bad layers shape: {layers_sheet.shape}"
+
         kb = out_p.stat().st_size / 1024.0
-        print(f"[OK] Saved {out_p.relative_to(REPO_ROOT)} ({sh.shape[1]}x{sh.shape[0]}, {kb:.1f} KB)")
+        lkb = layers_p.stat().st_size / 1024.0
+        print(f"[OK] Saved {out_p.relative_to(REPO_ROOT)} ({kb:.1f} KB) + {layers_p.name} ({lkb:.1f} KB)")
         built[persona] = sh
+        layers_map[persona] = layers_sheet
 
     scratch_env = os.environ.get("AVS_SCRATCH_DIR")
     if scratch_env:
-        render_all_qa_strips(built, Path(scratch_env))
+        render_all_qa_strips(built, layers_map, Path(scratch_env))
         print(f"[OK] Rendered all-12 QA strips in {scratch_env}")
 
 

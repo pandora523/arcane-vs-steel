@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps154';
+} from '../ArcaneShaderFX.js?v=30fps155';
 
 export const NEBULA_CYBER_PALETTE = [
   '#0f1029', // 0: Deep cosmic hoodie navy
