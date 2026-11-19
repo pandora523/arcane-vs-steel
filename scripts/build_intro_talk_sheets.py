@@ -1551,10 +1551,42 @@ def load_vision_subject_mask(persona: str, rgb: np.ndarray, vision_dir: Path) ->
         # Preserve crisp 1px ice-blue crystal outline around all 4 prongs & spearhead
         spear_out = ndimage.binary_dilation(spear_tip, iterations=1) & (~spear_tip) & spear_zone & (b >= 58) & (lum <= 115)
         fg = fg | spear_tip | spear_out
+    elif persona == "priestess":
+        # Restore 100% of Seraphina's curved golden halo arch + sunburst crown spikes (0 stained-glass petals!)
+        ell_p = ((xx - 168.0) / 43.0) ** 2 + ((yy - 87.0) / 23.0) ** 2
+        halo_arch = (
+            (ell_p >= 0.72) & (ell_p <= 1.25) & (yy >= 58) & (yy <= 86)
+            & (xx >= 122) & (xx <= 212) & (r >= 165) & (g >= 132) & (b >= 80)
+        )
+        spikes = (
+            (xx >= 130) & (xx <= 206) & (yy >= 48) & (yy <= 68)
+            & (r >= 205) & (g >= 175) & (b >= 128)
+        )
+        fg = fg | ndimage.binary_closing(halo_arch | spikes, iterations=1)
+    elif persona == "valkyrie":
+        # Restore 100% of Freyja's right golden tiara headdress wing (`x=190..232, y=8..106`) down to the top tip!
+        zone_v = (xx >= 190) & (xx <= 232) & (yy >= 8) & (yy <= 106)
+        wing_r = zone_v & (r >= 92) & ((r - b) >= 22) & (r >= g - 12)
+        wing_r = ndimage.binary_fill_holes(ndimage.binary_closing(wing_r, iterations=2))
+        wing_out = ndimage.binary_dilation(wing_r, iterations=1) & zone_v & (lum <= 85)
+        fg = fg | wing_r | wing_out
+    elif persona == "archer":
+        # Restore 100% of Sylvara's lower-left sweeping silver hair swirl + emerald shoulder cap (`y=150..282`)!
+        zone_a = (xx >= 10) & (xx <= 104) & (yy >= 150) & (yy <= 282)
+        hair_swirl = zone_a & (r >= 104) & (g >= 98) & ((g - r) <= 18) & (lum >= 96)
+        pauldron = (xx >= 66) & (xx <= 106) & (yy >= 148) & (yy <= 202) & (g >= 80) & (b >= 58) & (lum >= 60)
+        extra_a = ndimage.binary_fill_holes(ndimage.binary_closing(hair_swirl | pauldron, iterations=2))
+        extra_out = ndimage.binary_dilation(extra_a, iterations=1) & zone_a & (lum <= 72)
+        fg = fg | extra_a | extra_out
     elif persona == "reaper":
-        # Exclude the tiny crimson Blood-Eclipse moon sliver caught between his right horn and scythe shaft
-        moon_sliver = (xx >= 210) & (xx <= 246) & (yy >= 66) & (yy <= 128) & (r >= 135) & (g <= 78) & (b <= 118)
-        fg = fg & (~moon_sliver)
+        # Attach connected violet/magenta Soul-Scythe flames while keeping crimson Blood-Eclipse moon intact in BG!
+        is_red_moon = (r >= 132) & (g <= 80) & ((r - b) >= 34)
+        zone_rp = (yy >= 0) & (yy <= 112) & (xx >= 6) & (xx <= 316) & (~is_red_moon)
+        near_scythe = ndimage.binary_dilation(fg, iterations=15)
+        flames = zone_rp & near_scythe & (b >= 82) & ((b - g) >= 28) & (r >= 78)
+        flames = ndimage.binary_fill_holes(ndimage.binary_closing(flames, iterations=2))
+        moon_gaps = is_red_moon & (yy >= 10) & (yy <= 128) & (xx >= 80) & (xx <= 246)
+        fg = (fg | flames) & (~moon_gaps)
 
     # STRICT SINGLE-COMPONENT INVARIANT: keep strictly the single largest connected foreground body
     # (0 detached floating chunks anywhere on any of the 12 champions!)
@@ -1596,6 +1628,15 @@ def build_seamless_stationary_bg(persona: str, rgb: np.ndarray, fg_mask: np.ndar
     """
     pad_px = 4 if persona in ("valkyrie", "android", "icemage", "chronomancer") else 2
     hole_exp = ndimage.binary_dilation(fg_mask, iterations=pad_px)
+    yy_bg, xx_bg = np.mgrid[0:CELL, 0:CELL]
+    if persona == "icemage":
+        # Wipe out bright lower-left white fur shoulder glow rim so ZERO ghost streak stays behind Lyra's fur!
+        fur_zone = fg_mask & (xx_bg <= 96) & (yy_bg >= 198)
+        hole_exp = hole_exp | ndimage.binary_dilation(fur_zone, iterations=7)
+    elif persona == "android":
+        # Wipe out static painted plasma sparks clinging to Unit-07's upper-left Plasma Katana blade!
+        katana_zone = fg_mask & (xx_bg <= 118) & (yy_bg <= 150)
+        hole_exp = hole_exp | ndimage.binary_dilation(katana_zone, iterations=9)
     if cob_mask is not None:
         # Clean wider 9px halo removal strictly around floating Cob so zero stale cyan sky-glow remains beneath it
         hole_exp = hole_exp | ndimage.binary_dilation(cob_mask, iterations=9)
@@ -1787,9 +1828,9 @@ def build_v3_rig_weights(persona: str, f0_rgb: np.ndarray, fg_mask: np.ndarray) 
         hair_w = cv2.GaussianBlur(mane_ramp, (11, 11), 0)
     elif persona == "archer":
         head_mask[24:158, 118:222] = True
-        # Strictly flowing left silver hair — exclude upper-left quiver area (`yy <= 152 & xx <= 96`)!
+        # Strictly flowing left silver hair (including lower sweeping swirl y<=278, excluding quiver & green shoulder!)
         quiver_excl = (yy <= 152) & (xx <= 96)
-        silver_hair = (xx <= 124) & (yy >= 118) & (yy <= 258) & (~quiver_excl) & (lum >= 115)
+        silver_hair = (xx <= 124) & (yy >= 118) & (yy <= 280) & (~quiver_excl) & (r >= 104) & ((g - r) <= 18) & (lum >= 100)
         hair_ramp = np.where(silver_hair, np.clip((124.0 - xx) / 98.0, 0.0, 1.0), 0.0).astype(np.float32)
         hair_w = cv2.GaussianBlur(hair_ramp, (11, 11), 0)
     elif persona == "reaper":

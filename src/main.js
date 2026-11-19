@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps157';
-import { VFXManager } from './engine/VFXManager.js?v=30fps157';
-import { PixelForge } from './engine/PixelForge.js?v=30fps157';
-import { AudioManager } from './engine/AudioManager.js?v=30fps157';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps157';
-import { Fighter } from './entities/Fighter.js?v=30fps157';
-import { Warrior } from './entities/Warrior.js?v=30fps157';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps157';
-import { FireMage } from './entities/FireMage.js?v=30fps157';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps157';
-import { Archer } from './entities/Archer.js?v=30fps157';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps157';
-import { Priestess } from './entities/Priestess.js?v=30fps157';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps157';
-import { Reaper } from './entities/Reaper.js?v=30fps157';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps157';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps157';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps157';
-import { Titan } from './entities/Titan.js?v=30fps157';
-import { TitanEx } from './entities/TitanEx.js?v=30fps157';
-import { Ronin } from './entities/Ronin.js?v=30fps157';
-import { RoninEx } from './entities/RoninEx.js?v=30fps157';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps157';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps157';
-import { IceMage } from './entities/IceMage.js?v=30fps157';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps157';
-import { Android } from './entities/Android.js?v=30fps157';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps157';
-import { NyxEx } from './entities/NyxEx.js?v=30fps157';
+import { Renderer } from './engine/Renderer.js?v=30fps158';
+import { VFXManager } from './engine/VFXManager.js?v=30fps158';
+import { PixelForge } from './engine/PixelForge.js?v=30fps158';
+import { AudioManager } from './engine/AudioManager.js?v=30fps158';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps158';
+import { Fighter } from './entities/Fighter.js?v=30fps158';
+import { Warrior } from './entities/Warrior.js?v=30fps158';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps158';
+import { FireMage } from './entities/FireMage.js?v=30fps158';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps158';
+import { Archer } from './entities/Archer.js?v=30fps158';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps158';
+import { Priestess } from './entities/Priestess.js?v=30fps158';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps158';
+import { Reaper } from './entities/Reaper.js?v=30fps158';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps158';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps158';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps158';
+import { Titan } from './entities/Titan.js?v=30fps158';
+import { TitanEx } from './entities/TitanEx.js?v=30fps158';
+import { Ronin } from './entities/Ronin.js?v=30fps158';
+import { RoninEx } from './entities/RoninEx.js?v=30fps158';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps158';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps158';
+import { IceMage } from './entities/IceMage.js?v=30fps158';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps158';
+import { Android } from './entities/Android.js?v=30fps158';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps158';
+import { NyxEx } from './entities/NyxEx.js?v=30fps158';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps157';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps157';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps157';
+} from './adventure/AdventureManager.js?v=30fps158';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps158';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps158';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -3531,7 +3531,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps157');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps158');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3627,7 +3627,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps157'
+          'v=30fps158'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -7093,24 +7093,31 @@ export class Game {
       drawPixelGear(42, 74, 21, 8, elapsed * 0.95, '#eab308', '#fef08a', 0.62);
       drawPixelGear(40, 168, 26, 10, -elapsed * 0.72, '#14b8a6', '#99f6e4', 0.66);
       drawPixelGear(76, 146, 13, 6, elapsed * 1.45, '#f59e0b', '#fef08a', 0.56);
-      // Rotating glowing temporal clock hand sweeping around his painted clockface halo!
+      // Rotating glowing temporal clock hand + solid translucent 12-segment halo ring around his painted clockface!
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const handAng = elapsed * 1.05 - Math.PI * 0.5;
       const handR = Math.round(92 * sf);
       const hx = clkX + Math.round(Math.cos(handAng) * handR);
       const hy = clkY + Math.round(Math.sin(handAng) * handR);
-      ctx.globalAlpha = turnAlpha * 0.78;
-      drawPixelSegment(clkX, clkY, hx, hy, '#2dd4bf', '#ffffff', 2);
-      drawStar4(hx, hy, 5, '#fef08a');
-      // Orbiting teal/gold rune sparkles along the clockface perimeter
-      const ringR = Math.round(98 * sf);
-      for (let k = 0; k < 10; k++) {
-        const ang = elapsed * 0.65 + (k / 10) * Math.PI * 2;
-        const rx = clkX + Math.round(Math.cos(ang) * ringR);
-        const ry = clkY + Math.round(Math.sin(ang) * ringR);
-        ctx.globalAlpha = turnAlpha * (0.50 + pulse * 0.30);
-        drawStar4(rx, ry, k % 2 === 0 ? 4 : 2, k % 2 === 0 ? '#5eead4' : '#fde047');
+      ctx.globalAlpha = turnAlpha * 0.62;
+      drawPixelSegment(clkX, clkY, hx, hy, '#2dd4bf', '#ffffff', 3);
+      // Solid translucent geometric outer temporal ring (ZERO circling dust dots!)
+      const ringR = Math.round(98 * sf * (0.98 + pulse * 0.03));
+      const ringSegs = 24;
+      ctx.globalAlpha = turnAlpha * (0.24 + pulse * 0.10);
+      for (let k = 0; k < ringSegs; k++) {
+        const a0 = (k / ringSegs) * Math.PI * 2;
+        const a1 = ((k + 1) / ringSegs) * Math.PI * 2;
+        drawPixelSegment(
+          clkX + Math.round(Math.cos(a0) * ringR),
+          clkY + Math.round(Math.sin(a0) * ringR),
+          clkX + Math.round(Math.cos(a1) * ringR),
+          clkY + Math.round(Math.sin(a1) * ringR),
+          k % 2 === 0 ? '#5eead4' : '#fde047',
+          null,
+          2
+        );
       }
       ctx.restore();
     } else if (baseHero === 'valkyrie') {
@@ -7397,6 +7404,76 @@ export class Game {
       }
     };
 
+    const drawSolidSegment = (x0, y0, x1, y1, col, thick = 3) => {
+      const steps = Math.max(4, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) / 2));
+      const half = thick >> 1;
+      ctx.fillStyle = col;
+      for (let s = 0; s <= steps; s++) {
+        const px = Math.round(x0 + ((x1 - x0) * s) / steps);
+        const py = Math.round(y0 + ((y1 - y0) * s) / steps);
+        fillRectClamped(px - half, py - half, thick, thick);
+      }
+    };
+
+    const drawTranslucentPolyRing = (cxP, cyP, rx, ry, sides, rotRad, colOuter, colInner, alphaVal, thick = 3) => {
+      if (alphaVal <= 0.005 || rx <= 3 || ry <= 3) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, alphaVal));
+      for (let i = 0; i < sides; i++) {
+        const a0 = rotRad + (i / sides) * Math.PI * 2;
+        const a1 = rotRad + ((i + 1) / sides) * Math.PI * 2;
+        const x0 = cxP + Math.round(Math.cos(a0) * rx);
+        const y0 = cyP + Math.round(Math.sin(a0) * ry);
+        const x1 = cxP + Math.round(Math.cos(a1) * rx);
+        const y1 = cyP + Math.round(Math.sin(a1) * ry);
+        drawSolidSegment(x0, y0, x1, y1, colOuter, thick);
+        if (colInner && thick >= 3) {
+          drawSolidSegment(x0, y0, x1, y1, colInner, 1);
+        }
+      }
+      ctx.restore();
+    };
+
+    const drawTranslucentBottomWave = (colOuter, colCore, speed, waveH320, alphaVal) => {
+      // Smooth solid translucent elemental flame/magma/wraith wave along the bottom border (ZERO 1px column seams!)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const cols = 48;
+      for (let c = 0; c < cols; c++) {
+        const u = (c + 0.5) / cols;
+        const env = 0.35 + 0.65 * Math.sin(u * Math.PI);
+        const wv =
+          0.5 +
+          0.32 * Math.sin(u * 10.5 - elapsed * speed) +
+          0.18 * Math.cos(u * 17.0 + elapsed * (speed * 1.35));
+        const hPx = Math.max(6, Math.round(waveH320 * sf * env * wv));
+        const rx0 = bustX + Math.round((c / cols) * bustSize);
+        const rx1 = bustX + Math.round(((c + 1) / cols) * bustSize);
+        const colW = rx1 - rx0;
+        if (colW <= 0) continue;
+        const ry = bustY + bustSize - hPx;
+        ctx.globalAlpha = Math.max(0, Math.min(1, turnAlpha * alphaVal));
+        ctx.fillStyle = colOuter;
+        fillRectClamped(rx0, ry, colW, hPx);
+        ctx.globalAlpha = Math.max(0, Math.min(1, turnAlpha * (alphaVal * 0.72)));
+        ctx.fillStyle = colCore;
+        fillRectClamped(rx0, bustY + bustSize - Math.max(3, hPx >> 1), colW, Math.max(3, hPx >> 1));
+      }
+      ctx.restore();
+    };
+
+    const drawTranslucentSlashBand = (x0, y0, x1, y1, colOuter, colCore, thick, alphaVal) => {
+      if (alphaVal <= 0.005) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, alphaVal));
+      drawSolidSegment(x0, y0, x1, y1, colOuter, thick);
+      ctx.globalAlpha = Math.max(0, Math.min(1, alphaVal * 1.15));
+      drawSolidSegment(x0, y0, x1, y1, colCore, Math.max(1, thick >> 1));
+      ctx.restore();
+    };
+
     ctx.save();
     if (typeof ctx.beginPath === 'function' && typeof ctx.rect === 'function' && typeof ctx.clip === 'function') {
       ctx.beginPath();
@@ -7404,55 +7481,55 @@ export class Game {
       ctx.clip();
     }
 
-    // 1. WEAPON, HAND & MAGIC CORE LOCKED LUMINOUS BLOOMS (all 12 champions glow organically!)
+    // 1. WEAPON, HAND & MAGIC CORE LOCKED SOFT RADIAL BLOOMS (ZERO generic circling dust dots!)
     const MAGIC_HOTSPOTS = {
       nyx: [
-        { x: 263, y: 145, r: 42, c0: '#e0f2fe', c1: '#22d3ee', front: true, orbit: true },
-        { x: 256, y: 215, r: 28, c0: '#fce7f3', c1: '#f472b6', front: false, orbit: false }
+        { x: 263, y: 145, r: 38, c0: '#e0f2fe', c1: '#22d3ee', front: true },
+        { x: 256, y: 215, r: 24, c0: '#fce7f3', c1: '#f472b6', front: false }
       ],
       warrior: [
-        { x: 268, y: 112, r: 44, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
-        { x: 192, y: 248, r: 34, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
+        { x: 268, y: 112, r: 40, c0: '#e0f2fe', c1: '#38bdf8', front: false },
+        { x: 192, y: 248, r: 30, c0: '#fef9c3', c1: '#fbbf24', front: false }
       ],
       mage: [
-        { x: 58, y: 196, r: 52, c0: '#ffffff', c1: '#f59e0b', front: false, orbit: true },
-        { x: 184, y: 240, r: 34, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
+        { x: 58, y: 196, r: 46, c0: '#ffffff', c1: '#f59e0b', front: false },
+        { x: 184, y: 240, r: 30, c0: '#fef08a', c1: '#ea580c', front: false }
       ],
       priestess: [
-        { x: 282, y: 132, r: 48, c0: '#ffffff', c1: '#fde047', front: false, orbit: true },
-        { x: 162, y: 74, r: 42, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
+        { x: 282, y: 132, r: 42, c0: '#ffffff', c1: '#fde047', front: false },
+        { x: 162, y: 74, r: 36, c0: '#fef9c3', c1: '#fbbf24', front: false }
       ],
       chronomancer: [
-        { x: 160, y: 252, r: 38, c0: '#e0f2fe', c1: '#2dd4bf', front: false, orbit: true },
-        { x: 282, y: 112, r: 42, c0: '#ccfbf1', c1: '#14b8a6', front: false, orbit: false }
+        { x: 160, y: 252, r: 34, c0: '#e0f2fe', c1: '#2dd4bf', front: false },
+        { x: 282, y: 112, r: 36, c0: '#ccfbf1', c1: '#14b8a6', front: false }
       ],
       valkyrie: [
-        { x: 274, y: 66, r: 38, c0: '#fef9c3', c1: '#f97316', front: false, orbit: true },
-        { x: 158, y: 248, r: 28, c0: '#fde047', c1: '#f43f5e', front: false, orbit: false }
+        { x: 274, y: 66, r: 34, c0: '#fef9c3', c1: '#f97316', front: false },
+        { x: 158, y: 248, r: 26, c0: '#fde047', c1: '#f43f5e', front: false }
       ],
       ronin: [
-        { x: 294, y: 246, r: 44, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
-        { x: 198, y: 218, r: 32, c0: '#bae6fd', c1: '#0284c7', front: false, orbit: false }
+        { x: 294, y: 246, r: 38, c0: '#e0f2fe', c1: '#38bdf8', front: false },
+        { x: 198, y: 218, r: 28, c0: '#bae6fd', c1: '#0284c7', front: false }
       ],
       archer: [
-        { x: 286, y: 224, r: 48, c0: '#ecfdf5', c1: '#10b981', front: false, orbit: true },
-        { x: 276, y: 98, r: 32, c0: '#fef9c3', c1: '#34d399', front: false, orbit: false }
+        { x: 286, y: 224, r: 42, c0: '#ecfdf5', c1: '#10b981', front: false },
+        { x: 276, y: 98, r: 28, c0: '#fef9c3', c1: '#34d399', front: false }
       ],
       reaper: [
-        { x: 158, y: 262, r: 42, c0: '#fae8ff', c1: '#d946ef', front: false, orbit: true },
-        { x: 156, y: 42, r: 46, c0: '#f5d0fe', c1: '#a855f7', front: false, orbit: false }
+        { x: 158, y: 262, r: 38, c0: '#fae8ff', c1: '#d946ef', front: false },
+        { x: 156, y: 42, r: 40, c0: '#f5d0fe', c1: '#a855f7', front: false }
       ],
       titan: [
-        { x: 204, y: 64, r: 46, c0: '#d1fae5', c1: '#10b981', front: false, orbit: true },
-        { x: 162, y: 288, r: 46, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
+        { x: 204, y: 64, r: 42, c0: '#d1fae5', c1: '#10b981', front: false },
+        { x: 162, y: 288, r: 42, c0: '#fef08a', c1: '#ea580c', front: false }
       ],
       icemage: [
-        { x: 266, y: 108, r: 48, c0: '#ffffff', c1: '#38bdf8', front: false, orbit: true },
-        { x: 166, y: 54, r: 36, c0: '#e0f2fe', c1: '#818cf8', front: false, orbit: false }
+        { x: 266, y: 108, r: 42, c0: '#ffffff', c1: '#38bdf8', front: false },
+        { x: 166, y: 54, r: 32, c0: '#e0f2fe', c1: '#818cf8', front: false }
       ],
       android: [
-        { x: 184, y: 262, r: 44, c0: '#e0f2fe', c1: '#22d3ee', front: false, orbit: true },
-        { x: 54, y: 92, r: 38, c0: '#fce7f3', c1: '#ec4899', front: false, orbit: false }
+        { x: 184, y: 262, r: 40, c0: '#e0f2fe', c1: '#22d3ee', front: false },
+        { x: 54, y: 92, r: 34, c0: '#fce7f3', c1: '#ec4899', front: false }
       ]
     };
 
@@ -7460,185 +7537,182 @@ export class Game {
     for (let si = 0; si < spots.length; si++) {
       const sp = spots[si];
       const [sx, sy] = mapHotspot(sp.x, sp.y, sp.front);
-      const rad = Math.round(sp.r * sf * (0.90 + pulse * 0.18 + amp * 0.28));
-      drawSpotMagicBloom(sx, sy, rad, sp.c0, sp.c1, turnAlpha * (0.32 + pulse * 0.12 + amp * 0.22));
-      if (sp.orbit) {
-        for (let w = 0; w < 3; w++) {
-          const ang = elapsed * 3.8 + w * 2.094;
-          const oR = Math.round(sp.r * sf * 0.60);
-          const wx = sx + Math.round(Math.cos(ang) * oR);
-          const wy = sy + Math.round(Math.sin(ang) * Math.round(oR * 0.68));
-          ctx.globalAlpha = turnAlpha * (0.68 + amp * 0.26);
-          drawStar4(wx, wy, w === 0 ? 4 : 3, w % 2 === 0 ? sp.c0 : sp.c1);
-        }
-      }
+      const rad = Math.round(sp.r * sf * (0.90 + pulse * 0.16 + amp * 0.24));
+      drawSpotMagicBloom(sx, sy, rad, sp.c0, sp.c1, turnAlpha * (0.28 + pulse * 0.10 + amp * 0.18));
     }
 
     // Soft Hero-Colored Lower Rim Magical Uplight
     if (typeof ctx.createLinearGradient === 'function') {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = turnAlpha * (0.14 + pulse * 0.06 + amp * 0.10);
-      const bgGrad = ctx.createLinearGradient(bustX, bustY + bustSize, bustX, bustY + Math.round(bustSize * 0.62));
+      ctx.globalAlpha = turnAlpha * (0.13 + pulse * 0.05 + amp * 0.09);
+      const bgGrad = ctx.createLinearGradient(bustX, bustY + bustSize, bustX, bustY + Math.round(bustSize * 0.64));
       if (bgGrad && typeof bgGrad.addColorStop === 'function') {
         bgGrad.addColorStop(0, spkCol);
         bgGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = bgGrad;
-        fillRectClamped(bustX, bustY + Math.round(bustSize * 0.62), bustSize, Math.round(bustSize * 0.38));
+        fillRectClamped(bustX, bustY + Math.round(bustSize * 0.64), bustSize, Math.round(bustSize * 0.36));
       }
       ctx.restore();
     }
 
-    // 2. DELICATE FOREGROUND HERO-SIGNATURE MAGICAL PARTICLES (ZERO blocky bars or face-cutting scanlines!)
+    // 2. SOLID TRANSLUCENT (`0.22-0.34` ALPHA) HERO-SIGNATURE ENERGY EFFECTS (ZERO circling dust dots!)
     if (baseHero === 'nyx') {
-      for (let h = 0; h < 7; h++) {
-        const prog = (elapsed * (0.38 + (h % 3) * 0.12) + h * 0.16) % 1;
-        const hx = bustX + 20 + ((h * 83) % Math.max(24, bustSize - 40)) + Math.round(Math.sin(elapsed * 3.4 + h) * 8);
-        const hy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 24));
-        ctx.globalAlpha = turnAlpha * (0.85 - prog * 0.65);
-        if (h % 2 === 0) drawMiniHeart(hx, hy, h % 4 === 0 ? '#f472b6' : '#67e8f9');
-        else drawStar4(hx, hy, 4, h % 3 === 0 ? '#fde047' : '#22d3ee');
+      // Expanding translucent solid cyber-diamond holo-pulse radiating around floating Cob + rising pixel hearts
+      const [cobX, cobY] = mapHotspot(263, 145, true);
+      const p1 = (elapsed * 0.95) % 1.0;
+      const p2 = (elapsed * 0.95 + 0.5) % 1.0;
+      drawTranslucentPolyRing(cobX, cobY, Math.round((18 + p1 * 34) * sf), Math.round((18 + p1 * 34) * sf), 4, 0, '#22d3ee', '#ffffff', turnAlpha * (1 - p1) * 0.34, 3);
+      drawTranslucentPolyRing(cobX, cobY, Math.round((18 + p2 * 34) * sf), Math.round((18 + p2 * 34) * sf), 4, 0, '#f472b6', '#ffffff', turnAlpha * (1 - p2) * 0.30, 2);
+      for (let h = 0; h < 4; h++) {
+        const prog = (elapsed * (0.34 + (h % 2) * 0.10) + h * 0.25) % 1;
+        const hx = bustX + 24 + ((h * 89) % Math.max(24, bustSize - 48)) + Math.round(Math.sin(elapsed * 3.0 + h) * 7);
+        const hy = bustY + bustSize - 12 - Math.round(prog * (bustSize - 32));
+        ctx.globalAlpha = turnAlpha * (0.58 - prog * 0.44);
+        drawMiniHeart(hx, hy, h % 2 === 0 ? '#f472b6' : '#67e8f9');
       }
     } else if (baseHero === 'warrior') {
-      const swProg = (elapsed * 1.05) % 1;
-      const [bx, by] = mapHotspot(198 + swProg * 108, 242 - swProg * 212, false);
-      drawSpotMagicBloom(bx, by, Math.round(24 * sf), '#ffffff', '#38bdf8', turnAlpha * 0.58);
-      drawStar4(bx, by, 5, '#e0f2fe');
-      for (let m = 0; m < 10; m++) {
-        const prog = (elapsed * (0.46 + (m % 3) * 0.15) + m * 0.13) % 1;
-        const mx = bustX + 16 + ((m * 53) % Math.max(24, bustSize - 32));
-        const my = bustY + bustSize - 8 - Math.round(prog * (bustSize - 18));
-        ctx.globalAlpha = turnAlpha * (0.85 - prog * 0.68);
-        drawStar4(mx, my, m % 2 === 0 ? 4 : 3, m % 2 === 0 ? '#fef08a' : '#38bdf8');
-      }
+      // Crisp translucent solid diagonal Dawn-Breaker sword sheen slash sweeping up the blade + solid crest diamond
+      const swProg = (elapsed * 0.95) % 1;
+      const [bx0, by0] = mapHotspot(188 + swProg * 96, 252 - swProg * 196, false);
+      const [bx1, by1] = mapHotspot(218 + swProg * 96, 212 - swProg * 196, false);
+      drawTranslucentSlashBand(bx0, by0, bx1, by1, '#38bdf8', '#ffffff', Math.max(5, Math.round(6 * sf)), turnAlpha * Math.sin(swProg * Math.PI) * 0.38);
+      const [chX, chY] = mapHotspot(192, 248, false);
+      const dR = Math.round((18 + pulse * 12) * sf);
+      drawTranslucentPolyRing(chX, chY, dR, Math.round(dR * 1.25), 4, 0, '#fbbf24', '#fef9c3', turnAlpha * (0.24 + amp * 0.12), 3);
+      drawTranslucentBottomWave('#38bdf8', '#fef08a', 3.4, 24, 0.16);
     } else if (baseHero === 'mage') {
-      for (let e = 0; e < 14; e++) {
-        const prog = (elapsed * (0.62 + (e % 4) * 0.14) + e * 0.10) % 1;
-        const ex = bustX + 14 + ((e * 61) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 5.2 + e) * 10);
-        const ey = bustY + bustSize - 6 - Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (0.90 - prog * 0.72);
-        ctx.fillStyle = e % 3 === 0 ? '#ffffff' : e % 2 === 0 ? '#fde047' : '#f97316';
-        fillRectClamped(ex - 2, ey - 2, 4, 4);
-        fillRectClamped(ex - 1, ey + 2, 2, 3);
-      }
+      // Translucent solid solar octagon pulse around Sun-Staff orb + rising translucent solid flame wave along bottom
+      const [orbX, orbY] = mapHotspot(58, 196, false);
+      const mp = (elapsed * 0.85) % 1.0;
+      const rOrb = Math.round((20 + mp * 34) * sf);
+      drawTranslucentPolyRing(orbX, orbY, rOrb, rOrb, 8, elapsed * 0.4, '#f59e0b', '#fef08a', turnAlpha * (1 - mp) * 0.34, 3);
+      drawTranslucentBottomWave('#ea580c', '#fde047', 4.8, 36, 0.24 + amp * 0.08);
     } else if (baseHero === 'priestess') {
-      for (let f = 0; f < 9; f++) {
-        const prog = (elapsed * (0.30 + (f % 3) * 0.09) + f * 0.14) % 1;
-        const fx = bustX + 16 + ((f * 71) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 2.8 + f * 1.5) * 16);
+      // Translucent solid golden angelic light-cross radiating from Cross-Staff + gentle solid feathers
+      const [stX, stY] = mapHotspot(282, 132, false);
+      const armH = Math.round((34 + pulse * 14) * sf);
+      const armV = Math.round((48 + pulse * 18) * sf);
+      drawTranslucentSlashBand(stX - armH, stY, stX + armH, stY, '#fbbf24', '#ffffff', Math.max(4, Math.round(5 * sf)), turnAlpha * (0.26 + amp * 0.10));
+      drawTranslucentSlashBand(stX, stY - armV, stX, stY + armV, '#fbbf24', '#ffffff', Math.max(4, Math.round(5 * sf)), turnAlpha * (0.26 + amp * 0.10));
+      const pR = (elapsed * 0.72) % 1.0;
+      drawTranslucentPolyRing(stX, stY, Math.round((16 + pR * 32) * sf), Math.round((16 + pR * 32) * sf), 8, 0, '#fde047', '#ffffff', turnAlpha * (1 - pR) * 0.28, 2);
+      for (let f = 0; f < 6; f++) {
+        const prog = (elapsed * (0.28 + (f % 3) * 0.08) + f * 0.17) % 1;
+        const fx = bustX + 18 + ((f * 73) % Math.max(24, bustSize - 36)) + Math.round(Math.sin(elapsed * 2.5 + f * 1.5) * 14);
         const fy = bustY + 8 + Math.round(prog * (bustSize - 24));
-        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.50);
+        ctx.globalAlpha = turnAlpha * (0.52 - prog * 0.32);
         ctx.fillStyle = '#fef08a';
         fillRectClamped(fx - 5, fy, 9, 2);
         ctx.fillStyle = '#ffffff';
         fillRectClamped(fx - 3, fy - 1, 5, 3);
-        fillRectClamped(fx + 3, fy + 1, 3, 2);
       }
     } else if (baseHero === 'chronomancer') {
-      for (let c = 0; c < 9; c++) {
-        const ang = elapsed * (0.9 + (c % 2) * 0.45) + c * 0.70;
-        const rad = Math.round(bustSize * (0.37 + (c % 3) * 0.04));
-        const cxP = bustX + (bustSize >> 1) + Math.round(Math.cos(ang) * rad);
-        const cyP = bustY + Math.round(bustSize * 0.44) + Math.round(Math.sin(ang) * Math.round(rad * 0.76));
-        ctx.globalAlpha = turnAlpha * 0.80;
-        drawStar4(cxP, cyP, c % 2 === 0 ? 4 : 3, c % 2 === 0 ? '#5eead4' : '#fde047');
-      }
+      // Solid translucent geometric 12-gon chrono-pulse expanding cleanly from chest hourglass (ZERO circling dust!)
+      const [hgX, hgY] = mapHotspot(160, 252, false);
+      const cp1 = (elapsed * 0.80) % 1.0;
+      const cp2 = (elapsed * 0.80 + 0.5) % 1.0;
+      drawTranslucentPolyRing(hgX, hgY, Math.round((14 + cp1 * 34) * sf), Math.round((14 + cp1 * 34) * sf), 8, elapsed * 0.35, '#2dd4bf', '#ffffff', turnAlpha * (1 - cp1) * 0.34, 3);
+      drawTranslucentPolyRing(hgX, hgY, Math.round((14 + cp2 * 34) * sf), Math.round((14 + cp2 * 34) * sf), 8, -elapsed * 0.35, '#fde047', '#ffffff', turnAlpha * (1 - cp2) * 0.28, 2);
+      const [glX, glY] = mapHotspot(282, 112, false);
+      drawTranslucentSlashBand(glX, glY - Math.round(36 * sf), glX, glY + Math.round(36 * sf), '#2dd4bf', '#ffffff', Math.max(4, Math.round(4 * sf)), turnAlpha * (0.24 + pulse * 0.10));
     } else if (baseHero === 'valkyrie') {
-      const boltTick = Math.floor(elapsed * 12);
-      if (boltTick % 4 === 0 || amp > 0.55) {
-        ctx.globalAlpha = turnAlpha * 0.78;
-        const [sx, sy] = mapHotspot(268, 62, false);
-        drawStepLightning(sx - 10, sy - 16, 6, 12, 4, '#fbbf24');
-      }
-      for (let v = 0; v < 10; v++) {
-        const prog = (elapsed * (0.58 + (v % 3) * 0.16) + v * 0.14) % 1;
-        const vx = bustX + 14 + ((v * 59) % Math.max(24, bustSize - 28));
-        const vy = bustY + bustSize - 8 - Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.68);
-        drawStar4(vx, vy, v % 2 === 0 ? 4 : 3, v % 2 === 0 ? '#fde047' : '#f43f5e');
+      // Solid translucent rising crimson-gold battle-flame wave + crackling golden Bifrost lightning near Gungnir!
+      drawTranslucentBottomWave('#f43f5e', '#fde047', 4.6, 32, 0.22 + amp * 0.08);
+      const [sx, sy] = mapHotspot(272, 64, false);
+      const vp = (elapsed * 0.90) % 1.0;
+      drawTranslucentPolyRing(sx, sy, Math.round((16 + vp * 30) * sf), Math.round((22 + vp * 36) * sf), 4, 0, '#f59e0b', '#fef9c3', turnAlpha * (1 - vp) * 0.30, 3);
+      const boltTick = Math.floor(elapsed * 11);
+      if (boltTick % 4 === 0 || amp > 0.52) {
+        ctx.globalAlpha = turnAlpha * 0.62;
+        drawStepLightning(sx - 8, sy - 14, 6, 12, 4, '#fbbf24');
       }
     } else if (baseHero === 'ronin') {
-      const zTick = Math.floor(elapsed * 13);
+      // Crisp translucent solid diagonal cyan iaijutsu wind-slash sweeps + storm lightning + sakura petals!
+      const slProg = (elapsed * 0.92) % 1.0;
+      if (slProg < 0.72) {
+        const sp = slProg / 0.72;
+        const [sx0, sy0] = mapHotspot(40 + sp * 90, 290 - sp * 110, false);
+        const [sx1, sy1] = mapHotspot(290, 110 - sp * 65, false);
+        drawTranslucentSlashBand(sx0, sy0, sx1, sy1, '#38bdf8', '#ffffff', Math.max(4, Math.round(5 * sf)), turnAlpha * Math.sin(sp * Math.PI) * 0.32);
+      }
+      const zTick = Math.floor(elapsed * 12);
       if (zTick % 4 === 0 || amp > 0.52) {
-        ctx.globalAlpha = turnAlpha * 0.78;
+        ctx.globalAlpha = turnAlpha * 0.64;
         const zx = bustX + bustSize - 42 - ((zTick * 23) % 36);
         const zy = bustY + 26 + ((zTick * 37) % Math.max(32, bustSize - 130));
         drawStepLightning(zx, zy, -5, 14, 4, '#38bdf8');
       }
-      for (let pI = 0; pI < 12; pI++) {
-        const prog = (elapsed * (0.42 + (pI % 3) * 0.12) + pI * 0.13) % 1;
+      for (let pI = 0; pI < 9; pI++) {
+        const prog = (elapsed * (0.40 + (pI % 3) * 0.11) + pI * 0.14) % 1;
         const px = bustX + Math.round(((prog * (bustSize + 40) + pI * 47) % (bustSize + 30)) - 15);
-        const py = bustY + Math.round((prog * (bustSize * 0.85) + pI * 63) % bustSize) + Math.round(Math.sin(elapsed * 4.5 + pI) * 6);
-        ctx.globalAlpha = turnAlpha * 0.88;
+        const py = bustY + Math.round((prog * (bustSize * 0.85) + pI * 63) % bustSize) + Math.round(Math.sin(elapsed * 4.2 + pI) * 6);
+        ctx.globalAlpha = turnAlpha * 0.62;
         ctx.fillStyle = pI % 2 === 0 ? '#f9a8d4' : '#f472b6';
         fillRectClamped(px, py, 5, 3);
         fillRectClamped(px + 2, py + 2, 4, 2);
-        ctx.fillStyle = '#ffffff';
-        fillRectClamped(px + 1, py, 2, 2);
       }
     } else if (baseHero === 'archer') {
-      for (let lv = 0; lv < 11; lv++) {
-        const prog = (elapsed * (0.40 + (lv % 3) * 0.11) + lv * 0.14) % 1;
+      // Translucent solid glowing emerald Star-Bow energy pulse arc + gentle drifting sylvan leaves!
+      const [bowX, bowY] = mapHotspot(282, 220, false);
+      const ap = (elapsed * 0.85) % 1.0;
+      drawTranslucentPolyRing(bowX, bowY, Math.round((16 + ap * 34) * sf), Math.round((24 + ap * 44) * sf), 4, 0, '#10b981', '#fef9c3', turnAlpha * (1 - ap) * 0.32, 3);
+      const [bTopX, bTopY] = mapHotspot(296, 36, false);
+      const [bMidX, bMidY] = mapHotspot(252, 186, false);
+      drawTranslucentSlashBand(bTopX, bTopY, bMidX, bMidY, '#34d399', '#fef9c3', Math.max(3, Math.round(4 * sf)), turnAlpha * (0.20 + pulse * 0.12));
+      for (let lv = 0; lv < 6; lv++) {
+        const prog = (elapsed * (0.36 + (lv % 3) * 0.10) + lv * 0.18) % 1;
         const lx = bustX + Math.round((prog * bustSize + lv * 53) % bustSize);
-        const ly = bustY + 14 + ((lv * 41) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 4.0 + lv) * 10);
-        ctx.globalAlpha = turnAlpha * 0.86;
-        if (lv % 2 === 0) {
-          ctx.fillStyle = '#10b981';
-          fillRectClamped(lx - 3, ly, 6, 3);
-          ctx.fillStyle = '#bef264';
-          fillRectClamped(lx - 1, ly - 1, 4, 2);
-        } else {
-          drawStar4(lx, ly, 3, '#fef08a');
-        }
+        const ly = bustY + 14 + ((lv * 47) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 3.6 + lv) * 9);
+        ctx.globalAlpha = turnAlpha * 0.56;
+        ctx.fillStyle = '#10b981';
+        fillRectClamped(lx - 3, ly, 6, 3);
+        ctx.fillStyle = '#bef264';
+        fillRectClamped(lx - 1, ly - 1, 4, 2);
       }
     } else if (baseHero === 'reaper') {
-      for (let sw = 0; sw < 10; sw++) {
-        const prog = (elapsed * (0.44 + (sw % 3) * 0.13) + sw * 0.14) % 1;
-        const sx = bustX + 16 + ((sw * 61) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 3.8 + sw * 1.4) * 12);
-        const sy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 22));
-        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.68);
-        ctx.fillStyle = '#a855f7';
-        fillRectClamped(sx - 3, sy - 3, 6, 6);
-        ctx.fillStyle = '#f0abfc';
-        fillRectClamped(sx - 2, sy - 5, 4, 8);
-        ctx.fillStyle = '#ffffff';
-        fillRectClamped(sx - 1, sy - 2, 2, 3);
-      }
+      // Solid translucent pulsing crimson-violet eclipse shockwave ring + rising solid translucent wraith-flame wave!
+      const [gemX, gemY] = mapHotspot(158, 262, false);
+      const rp = (elapsed * 0.80) % 1.0;
+      drawTranslucentPolyRing(gemX, gemY, Math.round((16 + rp * 38) * sf), Math.round((22 + rp * 44) * sf), 6, 0, '#d946ef', '#fae8ff', turnAlpha * (1 - rp) * 0.34, 3);
+      drawTranslucentBottomWave('#7e22ce', '#e879f9', 4.2, 34, 0.24 + amp * 0.08);
     } else if (baseHero === 'titan') {
-      const cnt = amp > 0.35 ? 14 : 10;
-      for (let sp = 0; sp < cnt; sp++) {
-        const prog = (elapsed * (0.64 + (sp % 4) * 0.16) + sp * 0.11) % 1;
-        const tx = bustX + 14 + ((sp * 57) % Math.max(24, bustSize - 28)) + Math.round(Math.cos(elapsed * 6.5 + sp) * 8);
-        const ty = bustY + bustSize - 6 - Math.round(prog * (bustSize - 14));
-        ctx.globalAlpha = turnAlpha * (0.92 - prog * 0.72);
-        ctx.fillStyle = sp % 4 === 0 ? '#34d399' : sp % 2 === 0 ? '#fde047' : '#f97316';
-        fillRectClamped(tx - 2, ty - 2, 4, 4);
-        ctx.fillStyle = '#ffffff';
-        fillRectClamped(tx - 1, ty - 1, 2, 2);
-      }
+      // Solid translucent emerald Mjolnir runic shock-diamond + rising solid translucent magma heat-wave!
+      const [hmX, hmY] = mapHotspot(204, 64, false);
+      const tp = (elapsed * 0.88) % 1.0;
+      drawTranslucentPolyRing(hmX, hmY, Math.round((18 + tp * 36) * sf), Math.round((18 + tp * 36) * sf), 4, 0, '#10b981', '#d1fae5', turnAlpha * (1 - tp) * 0.34, 3);
+      drawTranslucentBottomWave('#ea580c', '#fde047', 5.0, 34, 0.24 + amp * 0.08);
     } else if (baseHero === 'icemage') {
-      for (let sn = 0; sn < 12; sn++) {
-        const prog = (elapsed * (0.28 + (sn % 4) * 0.08) + sn * 0.12) % 1;
-        const sx = bustX + 12 + ((sn * 59) % Math.max(24, bustSize - 24)) + Math.round(Math.sin(elapsed * 2.4 + sn) * 12);
+      // Solid translucent faceted diamond ice-prism crystal ring around Crystal Ice-Spear + crisp pixel snowflakes!
+      const [spX, spY] = mapHotspot(266, 108, false);
+      const ip = (elapsed * 0.78) % 1.0;
+      drawTranslucentPolyRing(spX, spY, Math.round((16 + ip * 36) * sf), Math.round((24 + ip * 44) * sf), 4, 0, '#38bdf8', '#ffffff', turnAlpha * (1 - ip) * 0.34, 3);
+      drawTranslucentBottomWave('#38bdf8', '#e0f2fe', 2.8, 24, 0.16);
+      for (let sn = 0; sn < 9; sn++) {
+        const prog = (elapsed * (0.26 + (sn % 4) * 0.07) + sn * 0.13) % 1;
+        const sx = bustX + 12 + ((sn * 59) % Math.max(24, bustSize - 24)) + Math.round(Math.sin(elapsed * 2.2 + sn) * 11);
         const sy = bustY + 6 + Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.42);
+        ctx.globalAlpha = turnAlpha * (0.64 - prog * 0.30);
         drawPixelSnowflake(sx, sy, sn % 3 === 0 ? 4 : 3, sn % 2 === 0 ? '#bae6fd' : '#67e8f9');
       }
     } else {
-      // ANDROID: Sleek corner HUD target brackets + rising neon plasma data-sparks (NO horizontal face-cut line!)
+      // ANDROID: Solid translucent holographic cyber-hex energy shield around chest reactor + corner HUD brackets!
+      const [coreX, coreY] = mapHotspot(184, 262, false);
+      const adp = (elapsed * 0.90) % 1.0;
+      drawTranslucentPolyRing(coreX, coreY, Math.round((18 + adp * 38) * sf), Math.round((18 + adp * 38) * sf), 6, elapsed * 0.3, '#22d3ee', '#ffffff', turnAlpha * (1 - adp) * 0.34, 3);
+      const [ktX, ktY] = mapHotspot(54, 92, false);
+      drawTranslucentSlashBand(ktX - Math.round(28 * sf), ktY - Math.round(14 * sf), ktX + Math.round(32 * sf), ktY + Math.round(16 * sf), '#ec4899', '#67e8f9', Math.max(4, Math.round(5 * sf)), turnAlpha * (0.24 + pulse * 0.12));
       const brkCol = pulse > 0.5 ? '#67e8f9' : '#f43f5e';
-      ctx.globalAlpha = turnAlpha * 0.78;
+      ctx.globalAlpha = turnAlpha * 0.56;
       ctx.fillStyle = brkCol;
-      fillRectClamped(bustX + 10, bustY + 10, 16, 2);
-      fillRectClamped(bustX + 10, bustY + 10, 2, 16);
-      fillRectClamped(bustX + bustSize - 26, bustY + 10, 16, 2);
-      fillRectClamped(bustX + bustSize - 12, bustY + 10, 2, 16);
-      for (let d = 0; d < 9; d++) {
-        const prog = (elapsed * (0.52 + (d % 3) * 0.14) + d * 0.14) % 1;
-        const dx = bustX + 14 + ((d * 67) % Math.max(24, bustSize - 28));
-        const dy = bustY + bustSize - 8 - Math.round(prog * (bustSize - 18));
-        ctx.globalAlpha = turnAlpha * (0.86 - prog * 0.68);
-        drawStar4(dx, dy, 3, d % 2 === 0 ? '#22d3ee' : '#fb7185');
-      }
+      fillRectClamped(bustX + 10, bustY + 10, 18, 2);
+      fillRectClamped(bustX + 10, bustY + 10, 2, 18);
+      fillRectClamped(bustX + bustSize - 28, bustY + 10, 18, 2);
+      fillRectClamped(bustX + bustSize - 12, bustY + 10, 2, 18);
+      fillRectClamped(bustX + 10, bustY + bustSize - 12, 18, 2);
+      fillRectClamped(bustX + 10, bustY + bustSize - 28, 2, 18);
+      fillRectClamped(bustX + bustSize - 28, bustY + bustSize - 12, 18, 2);
+      fillRectClamped(bustX + bustSize - 12, bustY + bustSize - 28, 2, 18);
     }
 
     ctx.restore();

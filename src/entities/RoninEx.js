@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps157';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps157';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps157';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps157';
+import { Fighter } from './Fighter.js?v=30fps158';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps158';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps158';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps158';
 
 const wrapStormPaddedPen = (pen) =>
   new Proxy(pen, {
