@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps155';
-import { VFXManager } from './engine/VFXManager.js?v=30fps155';
-import { PixelForge } from './engine/PixelForge.js?v=30fps155';
-import { AudioManager } from './engine/AudioManager.js?v=30fps155';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps155';
-import { Fighter } from './entities/Fighter.js?v=30fps155';
-import { Warrior } from './entities/Warrior.js?v=30fps155';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps155';
-import { FireMage } from './entities/FireMage.js?v=30fps155';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps155';
-import { Archer } from './entities/Archer.js?v=30fps155';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps155';
-import { Priestess } from './entities/Priestess.js?v=30fps155';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps155';
-import { Reaper } from './entities/Reaper.js?v=30fps155';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps155';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps155';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps155';
-import { Titan } from './entities/Titan.js?v=30fps155';
-import { TitanEx } from './entities/TitanEx.js?v=30fps155';
-import { Ronin } from './entities/Ronin.js?v=30fps155';
-import { RoninEx } from './entities/RoninEx.js?v=30fps155';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps155';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps155';
-import { IceMage } from './entities/IceMage.js?v=30fps155';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps155';
-import { Android } from './entities/Android.js?v=30fps155';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps155';
-import { NyxEx } from './entities/NyxEx.js?v=30fps155';
+import { Renderer } from './engine/Renderer.js?v=30fps156';
+import { VFXManager } from './engine/VFXManager.js?v=30fps156';
+import { PixelForge } from './engine/PixelForge.js?v=30fps156';
+import { AudioManager } from './engine/AudioManager.js?v=30fps156';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps156';
+import { Fighter } from './entities/Fighter.js?v=30fps156';
+import { Warrior } from './entities/Warrior.js?v=30fps156';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps156';
+import { FireMage } from './entities/FireMage.js?v=30fps156';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps156';
+import { Archer } from './entities/Archer.js?v=30fps156';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps156';
+import { Priestess } from './entities/Priestess.js?v=30fps156';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps156';
+import { Reaper } from './entities/Reaper.js?v=30fps156';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps156';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps156';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps156';
+import { Titan } from './entities/Titan.js?v=30fps156';
+import { TitanEx } from './entities/TitanEx.js?v=30fps156';
+import { Ronin } from './entities/Ronin.js?v=30fps156';
+import { RoninEx } from './entities/RoninEx.js?v=30fps156';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps156';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps156';
+import { IceMage } from './entities/IceMage.js?v=30fps156';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps156';
+import { Android } from './entities/Android.js?v=30fps156';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps156';
+import { NyxEx } from './entities/NyxEx.js?v=30fps156';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps155';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps155';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps155';
+} from './adventure/AdventureManager.js?v=30fps156';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps156';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps156';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -3531,7 +3531,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps155');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps156');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3627,7 +3627,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps155'
+          'v=30fps156'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -6823,8 +6823,8 @@ export class Game {
   }
 
   _drawIntroBustBackEnvAndMagicFX(ctx, cfg) {
-    // Layer 2 (Drawn BEHIND the transparent character cutout, ON TOP of stationary Cell 0 backdrop!):
-    // Hero-specific 60fps moving portrait environment + lush magical glowing back-silhouette aura & arcane rune ring!
+    // Layer 2 (Drawn BEHIND the Apple Vision transparent character cutout, ON TOP of stationary Cell 0 backdrop!):
+    // ZERO blocky vertical equalizer bars, ZERO hard horizontal scanlines — pure silky HD-2D magical atmospheres!
     const {
       baseHero,
       bustX,
@@ -6837,8 +6837,8 @@ export class Game {
       fillRectClamped,
       drawStar4
     } = cfg;
-    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 4.8);
-    const fastPulse = 0.5 + 0.5 * Math.sin(elapsed * 9.5);
+    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 4.2);
+    const slowDrift = Math.sin(elapsed * 1.4);
     const bCx = bustX + (bustSize >> 1);
     const bCy = bustY + Math.round(bustSize * 0.48);
 
@@ -6859,185 +6859,126 @@ export class Game {
     };
 
     ctx.save();
-    // 1. Hero-specific LIVE MOVING PORTRAIT ENVIRONMENT (clouds, aurora, storm rain, cathedral sunbeams, chrono gears, eclipse, lava, cyber HUD!)
+    // 1. 12 Hero-Unique Silky Feathered Portrait Environment Atmospheres (ZERO blocky bars!)
     if (baseHero === 'nyx') {
-      // Drifting starry nebula clouds moving gently across night sky + twinkling stars
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let c = 0; c < 5; c++) {
-        const cwBand = Math.round(bustSize * (0.34 + (c % 2) * 0.14));
-        const cxCloud = bustX + Math.round((((elapsed * (22 + c * 6) + c * 95) % (bustSize + cwBand)) - cwBand));
-        const cyCloud = bustY + Math.round(bustSize * (0.12 + c * 0.14));
-        ctx.globalAlpha = turnAlpha * (0.12 + pulse * 0.06);
-        ctx.fillStyle = c % 2 === 0 ? '#a855f7' : '#22d3ee';
-        fillRectClamped(cxCloud, cyCloud, cwBand, Math.round(bustSize * 0.08));
-        fillRectClamped(cxCloud + 14, cyCloud - 6, Math.round(cwBand * 0.65), 6);
+      // Soft drifting violet/cyan feathered nebula clouds + gently twinkling cosmos stars
+      for (let c = 0; c < 3; c++) {
+        const cxCloud = bustX + Math.round(((elapsed * (16 + c * 5) + c * 140) % (bustSize + 140)) - 70);
+        const cyCloud = bustY + Math.round(bustSize * (0.18 + c * 0.20));
+        drawMagicBloom(cxCloud, cyCloud, Math.round(bustSize * 0.26), c % 2 === 0 ? '#c084fc' : '#67e8f9', '#4c1d95', turnAlpha * (0.14 + pulse * 0.06));
       }
-      ctx.restore();
       for (let s = 0; s < 10; s++) {
         const sx = bustX + 14 + ((s * 67) % Math.max(24, bustSize - 28));
-        const sy = bustY + 12 + ((s * 39) % Math.max(24, Math.round(bustSize * 0.58)));
-        const tw = 0.25 + 0.75 * Math.abs(Math.sin(elapsed * (3.2 + (s % 3)) + s * 1.4));
+        const sy = bustY + 12 + ((s * 39) % Math.max(24, Math.round(bustSize * 0.56)));
+        const tw = 0.25 + 0.75 * Math.abs(Math.sin(elapsed * (2.6 + (s % 3)) + s * 1.4));
         ctx.globalAlpha = turnAlpha * tw;
         drawStar4(sx, sy, s % 3 === 0 ? 4 : 2, s % 2 === 0 ? '#f472b6' : '#67e8f9');
       }
-    } else if (baseHero === 'warrior' || baseHero === 'priestess') {
-      // Sweeping golden/azure cathedral god-rays streaming diagonally across gothic arches!
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const rayCol = baseHero === 'priestess' ? '#fef08a' : '#38bdf8';
-      const rayAcc = baseHero === 'priestess' ? '#ffffff' : '#fef08a';
-      for (let rI = 0; rI < 5; rI++) {
-        const drift = Math.round(Math.sin(elapsed * 0.85 + rI * 1.3) * 22);
-        const rxBase = bustX + Math.round(bustSize * (0.08 + rI * 0.21)) + drift;
-        for (let seg = 0; seg < 10; seg++) {
-          const sx = rxBase + seg * (baseHero === 'priestess' ? 4 : 9);
-          const sy = bustY + Math.round((seg / 10) * bustSize);
-          ctx.globalAlpha = turnAlpha * (0.10 + pulse * 0.08 + amp * 0.07) * (1 - seg * 0.06);
-          ctx.fillStyle = rI % 2 === 0 ? rayCol : rayAcc;
-          fillRectClamped(sx - 12, sy, 26, Math.ceil(bustSize / 9));
-        }
-      }
-      ctx.restore();
+    } else if (baseHero === 'warrior') {
+      // Soft ethereal golden-azure cathedral skylight shimmer drifting behind Aethelgard
+      drawMagicBloom(bCx + Math.round(slowDrift * 28), bustY + Math.round(bustSize * 0.24), Math.round(bustSize * 0.52), '#fef9c3', '#38bdf8', turnAlpha * (0.24 + pulse * 0.10 + amp * 0.14));
+      drawMagicBloom(bustX + Math.round(bustSize * 0.76), bustY + Math.round(bustSize * 0.30), Math.round(bustSize * 0.36), '#e0f2fe', '#0284c7', turnAlpha * (0.20 + amp * 0.14));
     } else if (baseHero === 'mage' || baseHero === 'titan') {
-      // Pulsing volcanic firelight shimmer & billowing heat columns behind the silhouette!
-      drawMagicBloom(bCx, bustY + bustSize - 20, Math.round(bustSize * 0.62), '#fde047', '#ea580c', turnAlpha * (0.34 + fastPulse * 0.16 + amp * 0.22));
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let h = 0; h < 7; h++) {
-        const hx = bustX + Math.round(((h + 0.5) / 7) * bustSize) + Math.round(Math.sin(elapsed * 5.2 + h * 1.1) * 10);
-        const hh = Math.round(bustSize * (0.32 + 0.22 * (0.5 + 0.5 * Math.sin(elapsed * 6.5 + h * 1.7))));
-        ctx.globalAlpha = turnAlpha * (0.16 + amp * 0.12);
-        ctx.fillStyle = baseHero === 'titan' && h % 3 === 0 ? '#10b981' : '#f97316';
-        fillRectClamped(hx - 14, bustY + bustSize - hh, 28, hh);
+      // Warm breathing molten firelight & volcanic ember haze radiating from behind the silhouette
+      const glowX = bCx + Math.round(Math.sin(elapsed * 2.8) * 16);
+      drawMagicBloom(glowX, bustY + bustSize - 24, Math.round(bustSize * 0.62), '#fde047', '#ea580c', turnAlpha * (0.30 + pulse * 0.14 + amp * 0.20));
+      if (baseHero === 'titan') {
+        drawMagicBloom(bCx + Math.round(bustSize * 0.12), bustY + Math.round(bustSize * 0.22), Math.round(bustSize * 0.32), '#a7f3d0', '#10b981', turnAlpha * (0.22 + amp * 0.16));
       }
-      ctx.restore();
+    } else if (baseHero === 'priestess') {
+      // Ethereal golden stained-glass celestial halo radiating gently behind Seraphina's wings & crown
+      drawMagicBloom(bCx, bustY + Math.round(bustSize * 0.24), Math.round(bustSize * 0.56), '#ffffff', '#fbbf24', turnAlpha * (0.28 + pulse * 0.12 + amp * 0.16));
+      drawMagicBloom(bustX + Math.round(bustSize * 0.16), bustY + Math.round(bustSize * 0.54), Math.round(bustSize * 0.32), '#fef9c3', '#f59e0b', turnAlpha * (0.18 + pulse * 0.08));
+      drawMagicBloom(bustX + Math.round(bustSize * 0.84), bustY + Math.round(bustSize * 0.54), Math.round(bustSize * 0.32), '#fef9c3', '#f59e0b', turnAlpha * (0.18 + pulse * 0.08));
     } else if (baseHero === 'chronomancer') {
-      // Pulsing concentric diamond/octagon temporal time-waves expanding from behind Chronos!
+      // Silky glowing teal-gold temporal halo behind his clockface + delicate slowly orbiting outer rune stars
+      drawMagicBloom(bCx, bustY + Math.round(bustSize * 0.36), Math.round(bustSize * 0.48), '#ccfbf1', '#14b8a6', turnAlpha * (0.24 + pulse * 0.12 + amp * 0.16));
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      for (let w = 0; w < 3; w++) {
-        const prog = (elapsed * 0.52 + w * 0.33) % 1;
-        const rad = Math.round(bustSize * (0.18 + prog * 0.36));
-        ctx.globalAlpha = turnAlpha * (1 - prog) * (0.38 + amp * 0.22);
-        ctx.fillStyle = w % 2 === 0 ? '#2dd4bf' : '#fde047';
-        for (let k = 0; k < 24; k++) {
-          const ang = (k / 24) * Math.PI * 2 + elapsed * (w % 2 === 0 ? 0.6 : -0.45);
-          const rx = bCx + Math.round(Math.cos(ang) * rad);
-          const ry = bCy - Math.round(bustSize * 0.06) + Math.round(Math.sin(ang) * rad);
-          fillRectClamped(rx - 2, ry - 2, 5, 5);
-        }
+      const ringR = Math.round(bustSize * 0.38);
+      for (let k = 0; k < 10; k++) {
+        const ang = elapsed * 0.72 + (k / 10) * Math.PI * 2;
+        const rx = bCx + Math.round(Math.cos(ang) * ringR);
+        const ry = bustY + Math.round(bustSize * 0.38) + Math.round(Math.sin(ang) * ringR);
+        ctx.globalAlpha = turnAlpha * (0.55 + pulse * 0.25);
+        drawStar4(rx, ry, k % 2 === 0 ? 4 : 2, k % 2 === 0 ? '#5eead4' : '#fde047');
       }
       ctx.restore();
-    } else if (baseHero === 'valkyrie' || baseHero === 'icemage') {
-      // Undulating Northern Lights / Borealis Aurora curtains shimmering across the upper sky!
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const cA = baseHero === 'icemage' ? '#38bdf8' : '#34d399';
-      const cB = baseHero === 'icemage' ? '#a78bfa' : '#fbbf24';
-      const cols = 18;
-      const stripW = Math.ceil(bustSize / cols) + 1;
-      for (let i = 0; i < cols; i++) {
-        const wave = Math.sin(elapsed * 2.6 + i * 0.55) * 0.5 + 0.5;
-        const wave2 = Math.cos(elapsed * 1.9 - i * 0.38) * 0.5 + 0.5;
-        const ax = bustX + Math.round((i / cols) * bustSize);
-        const ay = bustY + Math.round(wave2 * bustSize * 0.12);
-        const ah = Math.round(bustSize * (0.20 + wave * 0.28));
-        ctx.globalAlpha = turnAlpha * (0.18 + wave * 0.14 + amp * 0.10);
-        ctx.fillStyle = i % 2 === 0 ? cA : cB;
-        fillRectClamped(ax, ay, stripW, ah);
+    } else if (baseHero === 'valkyrie') {
+      // Smooth silky emerald-gold Northern Lights radial aurora veil (ZERO vertical sound-wave bars!)
+      for (let a = 0; a < 3; a++) {
+        const ax = bustX + Math.round(bustSize * (0.20 + a * 0.30)) + Math.round(Math.sin(elapsed * 1.3 + a * 1.7) * 24);
+        const ay = bustY + Math.round(bustSize * (0.14 + (a % 2) * 0.10));
+        drawMagicBloom(ax, ay, Math.round(bustSize * 0.36), a === 1 ? '#fef08a' : '#6ee7b7', a === 1 ? '#f97316' : '#059669', turnAlpha * (0.22 + pulse * 0.10));
       }
-      ctx.restore();
     } else if (baseHero === 'ronin') {
-      // Driving diagonal storm rain streaks + sudden distant thunder-sky flashes BEHIND Kaze-Maru!
-      const stormFlash = Math.floor(elapsed * 7) % 11 === 0 || amp > 0.62;
+      // Subtle stormy sky lightning aura + delicate diagonal rain strictly in dark sky behind Kaze-Maru
+      const stormFlash = Math.floor(elapsed * 6) % 13 === 0 || amp > 0.65;
       if (stormFlash) {
-        drawMagicBloom(bCx + Math.round(bustSize * 0.18), bustY + Math.round(bustSize * 0.26), Math.round(bustSize * 0.52), '#e0f2fe', '#38bdf8', turnAlpha * 0.42);
+        drawMagicBloom(bCx + Math.round(bustSize * 0.22), bustY + Math.round(bustSize * 0.26), Math.round(bustSize * 0.50), '#e0f2fe', '#38bdf8', turnAlpha * 0.36);
       }
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = turnAlpha * 0.34;
+      ctx.globalAlpha = turnAlpha * 0.26;
       ctx.fillStyle = '#bae6fd';
-      for (let rn = 0; rn < 16; rn++) {
-        const prog = (elapsed * (1.8 + (rn % 3) * 0.35) + rn * 0.17) % 1;
-        const rx = bustX + Math.round((((rn * 47) + prog * bustSize * 0.38) % bustSize));
+      for (let rn = 0; rn < 14; rn++) {
+        const prog = (elapsed * (1.7 + (rn % 3) * 0.3) + rn * 0.19) % 1;
+        const rx = bustX + Math.round(((rn * 47) + prog * bustSize * 0.34) % bustSize);
         const ry = bustY + Math.round(prog * bustSize);
-        fillRectClamped(rx, ry, 2, 12);
-        fillRectClamped(rx + 2, ry + 10, 2, 10);
+        fillRectClamped(rx, ry, 1, 10);
+        fillRectClamped(rx + 1, ry + 8, 1, 8);
       }
       ctx.restore();
     } else if (baseHero === 'archer') {
-      // Swaying emerald forest canopy light shafts + drifting luminous mist bands!
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let m = 0; m < 5; m++) {
-        const mx = bustX + Math.round((((elapsed * (28 + m * 8) + m * 88) % (bustSize + 120)) - 100));
-        const my = bustY + Math.round(bustSize * (0.16 + m * 0.16)) + Math.round(Math.sin(elapsed * 2.2 + m) * 8);
-        ctx.globalAlpha = turnAlpha * (0.14 + pulse * 0.08);
-        ctx.fillStyle = m % 2 === 0 ? '#34d399' : '#bef264';
-        fillRectClamped(mx, my, Math.round(bustSize * 0.42), 14);
+      // Soft emerald-gold enchanted forest bokeh light pools drifting behind Sylvara
+      for (let b = 0; b < 4; b++) {
+        const bx = bustX + Math.round(bustSize * (0.16 + b * 0.22)) + Math.round(Math.sin(elapsed * 1.4 + b * 1.5) * 18);
+        const by = bustY + Math.round(bustSize * (0.24 + (b % 2) * 0.32)) + Math.round(Math.cos(elapsed * 1.8 + b) * 12);
+        drawMagicBloom(bx, by, Math.round(bustSize * 0.24), '#fef9c3', '#10b981', turnAlpha * (0.18 + pulse * 0.08));
       }
-      ctx.restore();
     } else if (baseHero === 'reaper') {
-      // Throbbing Crimson-Violet Blood Eclipse halo directly behind Malakor's horned helm + curling void mist!
-      drawMagicBloom(bCx, bustY + Math.round(bustSize * 0.32), Math.round(bustSize * 0.56), '#f43f5e', '#9333ea', turnAlpha * (0.36 + pulse * 0.18 + amp * 0.24));
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let v = 0; v < 6; v++) {
-        const prog = (elapsed * (0.35 + (v % 3) * 0.10) + v * 0.19) % 1;
-        const vx = bustX + Math.round(bustSize * (0.10 + v * 0.15)) + Math.round(Math.sin(elapsed * 3.2 + v) * 14);
-        const vy = bustY + bustSize - Math.round(prog * bustSize * 0.82);
-        ctx.globalAlpha = turnAlpha * (1 - prog) * 0.24;
-        ctx.fillStyle = v % 2 === 0 ? '#c084fc' : '#f472b6';
-        fillRectClamped(vx - 14, vy, 28, 18);
+      // Throbbing Crimson-Violet Blood-Eclipse radial corona behind Malakor's horned helm + curling soft mist
+      drawMagicBloom(bCx, bustY + Math.round(bustSize * 0.30), Math.round(bustSize * 0.54), '#fb7185', '#9333ea', turnAlpha * (0.34 + pulse * 0.16 + amp * 0.20));
+      for (let m = 0; m < 3; m++) {
+        const mx = bustX + Math.round(bustSize * (0.22 + m * 0.28)) + Math.round(Math.sin(elapsed * 1.8 + m * 2.1) * 18);
+        const my = bustY + bustSize - Math.round(((elapsed * 0.28 + m * 0.33) % 1) * bustSize * 0.72);
+        drawMagicBloom(mx, my, Math.round(bustSize * 0.22), '#f0abfc', '#7e22ce', turnAlpha * 0.18);
       }
-      ctx.restore();
+    } else if (baseHero === 'icemage') {
+      // Smooth silky cyan-indigo Borealis radial aurora veil gently glowing across the upper cavern (ZERO vertical bars!)
+      for (let a = 0; a < 3; a++) {
+        const ax = bustX + Math.round(bustSize * (0.18 + a * 0.32)) + Math.round(Math.sin(elapsed * 1.2 + a * 1.8) * 24);
+        const ay = bustY + Math.round(bustSize * (0.15 + (a % 2) * 0.09));
+        drawMagicBloom(ax, ay, Math.round(bustSize * 0.38), '#e0f2fe', a === 1 ? '#818cf8' : '#38bdf8', turnAlpha * (0.24 + pulse * 0.10));
+      }
     } else {
-      // ANDROID: Live scrolling holographic cyber wireframe grid + drifting deep-space starfield!
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const gridStep = Math.max(22, Math.round(bustSize / 12));
-      const scrollY = Math.round(elapsed * 36) % gridStep;
-      ctx.globalAlpha = turnAlpha * (0.14 + amp * 0.08);
-      ctx.fillStyle = '#22d3ee';
-      for (let gy = bustY + scrollY; gy < bustY + bustSize; gy += gridStep) {
-        fillRectClamped(bustX, gy, bustSize, 1);
+      // ANDROID: Deep-space twinkling starfield + sleek subtle neon cyan-magenta cyber cockpit bloom
+      drawMagicBloom(bCx, bCy, Math.round(bustSize * 0.50), '#67e8f9', '#ec4899', turnAlpha * (0.20 + pulse * 0.08 + amp * 0.16));
+      for (let s = 0; s < 10; s++) {
+        const sx = bustX + 12 + ((s * 73) % Math.max(24, bustSize - 24));
+        const sy = bustY + 10 + ((s * 41) % Math.max(24, Math.round(bustSize * 0.55)));
+        const tw = 0.25 + 0.75 * Math.abs(Math.sin(elapsed * (3.0 + (s % 3)) + s));
+        ctx.globalAlpha = turnAlpha * tw;
+        drawStar4(sx, sy, 2, s % 2 === 0 ? '#67e8f9' : '#f472b6');
       }
-      for (let gx = bustX + (scrollY >> 1); gx < bustX + bustSize; gx += gridStep * 2) {
-        fillRectClamped(gx, bustY, 1, bustSize);
-      }
-      ctx.restore();
     }
 
-    // 2. UNIVERSAL MAGICAL BACK-SILHOUETTE RADIANT AURA & ROTATING ARCANE RUNE RING (0 arc/ellipse/rotate!)
-    //    Wraps the hero's head, hair & shoulders in unmistakable glowing magical energy!
+    // 2. Soft Magical Back-Silhouette Rim Aura wrapping cleanly behind the transparent Apple Vision silhouette!
     drawMagicBloom(
       bCx,
       bCy,
-      Math.round(bustSize * (0.50 + pulse * 0.06 + amp * 0.08)),
+      Math.round(bustSize * (0.46 + pulse * 0.05 + amp * 0.07)),
       '#ffffff',
       spkCol,
-      turnAlpha * (0.28 + pulse * 0.12 + amp * 0.24)
+      turnAlpha * (0.22 + pulse * 0.10 + amp * 0.20)
     );
-    // Rotating 8-Node Pixel Arcane Magic Ring behind the character!
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const ringR = Math.round(bustSize * (0.37 + pulse * 0.025 + amp * 0.03));
-    const ringCy = bustY + Math.round(bustSize * 0.45);
-    for (let n = 0; n < 12; n++) {
-      const ang = elapsed * 0.95 + (n / 12) * Math.PI * 2;
-      const nx = bCx + Math.round(Math.cos(ang) * ringR);
-      const ny = ringCy + Math.round(Math.sin(ang) * Math.round(ringR * 0.88));
-      const sz = n % 3 === 0 ? 5 : 3;
-      ctx.globalAlpha = turnAlpha * (0.48 + fastPulse * 0.24 + amp * 0.22);
-      drawStar4(nx, ny, sz, n % 2 === 0 ? '#fef08a' : spkCol);
-    }
-    ctx.restore();
     ctx.restore();
     ctx.globalAlpha = turnAlpha;
   }
 
   _drawIntroBustHeroOverlayFX(ctx, cfg) {
+    // Layer 6: Weapon/Hand/Orb-Locked Soft Magical Radial Blooms + 12 Hero-Unique Delicate Foreground Particles
+    // (ZERO blocky vertical sound-wave bars, ZERO horizontal scanlines slicing across faces!)
     const {
       baseHero,
       bustX,
@@ -7055,11 +6996,9 @@ export class Game {
       fillRectClamped,
       drawStar4
     } = cfg;
-    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 7.5);
-    const boost = 1 + amp * 0.9;
+    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 6.5);
     const sf = bustSize / 320;
 
-    // Maps a 320x320 portrait-space weapon/hand/magic hotspot onto live canvas coordinates (tracking flip + motion!)
     const mapHotspot = (px320, py320, useFront = false) => {
       const dx = useFront ? frontDx : bodyDx;
       const dy = useFront ? frontDy : bodyDy;
@@ -7111,7 +7050,7 @@ export class Game {
       let lx = x0;
       let ly = y0;
       for (let i = 0; i < segs; i++) {
-        const zig = (i % 2 === 0 ? 1 : -1) * (4 + ((i * 7) % 6));
+        const zig = (i % 2 === 0 ? 1 : -1) * (3 + ((i * 5) % 5));
         const nx = lx + dx + zig;
         const ny = ly + dy;
         const steps = 4;
@@ -7119,9 +7058,9 @@ export class Game {
           const px = Math.round(lx + ((nx - lx) * s) / steps);
           const py = Math.round(ly + ((ny - ly) * s) / steps);
           ctx.fillStyle = col;
-          fillRectClamped(px - 2, py - 2, 5, 5);
+          fillRectClamped(px - 1, py - 1, 3, 3);
           ctx.fillStyle = '#ffffff';
-          fillRectClamped(px - 1, py - 1, 2, 2);
+          fillRectClamped(px, py, 1, 1);
         }
         lx = nx;
         ly = ny;
@@ -7135,55 +7074,55 @@ export class Game {
       ctx.clip();
     }
 
-    // 1. WEAPON, HAND & MAGIC CORE LOCKED LUMINOUS BLOOMS (all 12 champions glow with real magic!)
+    // 1. WEAPON, HAND & MAGIC CORE LOCKED LUMINOUS BLOOMS (all 12 champions glow organically!)
     const MAGIC_HOTSPOTS = {
       nyx: [
-        { x: 263, y: 145, r: 44, c0: '#e0f2fe', c1: '#22d3ee', front: true, orbit: true },
-        { x: 256, y: 215, r: 30, c0: '#fce7f3', c1: '#f472b6', front: false, orbit: false }
+        { x: 263, y: 145, r: 42, c0: '#e0f2fe', c1: '#22d3ee', front: true, orbit: true },
+        { x: 256, y: 215, r: 28, c0: '#fce7f3', c1: '#f472b6', front: false, orbit: false }
       ],
       warrior: [
-        { x: 268, y: 112, r: 48, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
-        { x: 192, y: 248, r: 36, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
+        { x: 268, y: 112, r: 44, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
+        { x: 192, y: 248, r: 34, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
       ],
       mage: [
-        { x: 58, y: 196, r: 58, c0: '#ffffff', c1: '#f59e0b', front: true, orbit: true },
-        { x: 184, y: 240, r: 38, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
+        { x: 58, y: 196, r: 52, c0: '#ffffff', c1: '#f59e0b', front: false, orbit: true },
+        { x: 184, y: 240, r: 34, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
       ],
       priestess: [
-        { x: 282, y: 132, r: 54, c0: '#ffffff', c1: '#fde047', front: true, orbit: true },
-        { x: 162, y: 74, r: 46, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
+        { x: 282, y: 132, r: 48, c0: '#ffffff', c1: '#fde047', front: false, orbit: true },
+        { x: 162, y: 74, r: 42, c0: '#fef9c3', c1: '#fbbf24', front: false, orbit: false }
       ],
       chronomancer: [
-        { x: 160, y: 252, r: 42, c0: '#e0f2fe', c1: '#2dd4bf', front: false, orbit: true },
-        { x: 282, y: 112, r: 46, c0: '#ccfbf1', c1: '#14b8a6', front: true, orbit: false }
+        { x: 160, y: 252, r: 38, c0: '#e0f2fe', c1: '#2dd4bf', front: false, orbit: true },
+        { x: 282, y: 112, r: 42, c0: '#ccfbf1', c1: '#14b8a6', front: false, orbit: false }
       ],
       valkyrie: [
-        { x: 274, y: 66, r: 54, c0: '#fef9c3', c1: '#f97316', front: false, orbit: true },
-        { x: 168, y: 118, r: 34, c0: '#fde047', c1: '#f43f5e', front: false, orbit: false }
+        { x: 274, y: 66, r: 48, c0: '#fef9c3', c1: '#f97316', front: false, orbit: true },
+        { x: 158, y: 248, r: 30, c0: '#fde047', c1: '#f43f5e', front: false, orbit: false }
       ],
       ronin: [
-        { x: 294, y: 246, r: 48, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
-        { x: 198, y: 218, r: 36, c0: '#bae6fd', c1: '#0284c7', front: false, orbit: false }
+        { x: 294, y: 246, r: 44, c0: '#e0f2fe', c1: '#38bdf8', front: false, orbit: true },
+        { x: 198, y: 218, r: 32, c0: '#bae6fd', c1: '#0284c7', front: false, orbit: false }
       ],
       archer: [
-        { x: 286, y: 224, r: 52, c0: '#ecfdf5', c1: '#10b981', front: true, orbit: true },
-        { x: 276, y: 98, r: 36, c0: '#fef9c3', c1: '#34d399', front: true, orbit: false }
+        { x: 286, y: 224, r: 48, c0: '#ecfdf5', c1: '#10b981', front: false, orbit: true },
+        { x: 276, y: 98, r: 32, c0: '#fef9c3', c1: '#34d399', front: false, orbit: false }
       ],
       reaper: [
-        { x: 158, y: 262, r: 46, c0: '#fae8ff', c1: '#d946ef', front: false, orbit: true },
-        { x: 156, y: 42, r: 52, c0: '#f5d0fe', c1: '#a855f7', front: false, orbit: false }
+        { x: 158, y: 262, r: 42, c0: '#fae8ff', c1: '#d946ef', front: false, orbit: true },
+        { x: 156, y: 42, r: 46, c0: '#f5d0fe', c1: '#a855f7', front: false, orbit: false }
       ],
       titan: [
-        { x: 204, y: 64, r: 50, c0: '#d1fae5', c1: '#10b981', front: false, orbit: true },
-        { x: 162, y: 288, r: 52, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
+        { x: 204, y: 64, r: 46, c0: '#d1fae5', c1: '#10b981', front: false, orbit: true },
+        { x: 162, y: 288, r: 46, c0: '#fef08a', c1: '#ea580c', front: false, orbit: false }
       ],
       icemage: [
-        { x: 266, y: 108, r: 54, c0: '#ffffff', c1: '#38bdf8', front: false, orbit: true },
-        { x: 166, y: 54, r: 40, c0: '#e0f2fe', c1: '#818cf8', front: false, orbit: false }
+        { x: 266, y: 108, r: 48, c0: '#ffffff', c1: '#38bdf8', front: false, orbit: true },
+        { x: 166, y: 54, r: 36, c0: '#e0f2fe', c1: '#818cf8', front: false, orbit: false }
       ],
       android: [
-        { x: 184, y: 262, r: 48, c0: '#e0f2fe', c1: '#22d3ee', front: false, orbit: true },
-        { x: 54, y: 96, r: 42, c0: '#fce7f3', c1: '#ec4899', front: false, orbit: false }
+        { x: 184, y: 262, r: 44, c0: '#e0f2fe', c1: '#22d3ee', front: false, orbit: true },
+        { x: 54, y: 92, r: 38, c0: '#fce7f3', c1: '#ec4899', front: false, orbit: false }
       ]
     };
 
@@ -7191,239 +7130,183 @@ export class Game {
     for (let si = 0; si < spots.length; si++) {
       const sp = spots[si];
       const [sx, sy] = mapHotspot(sp.x, sp.y, sp.front);
-      const rad = Math.round(sp.r * sf * (0.90 + pulse * 0.20 + amp * 0.34));
-      drawSpotMagicBloom(sx, sy, rad, sp.c0, sp.c1, turnAlpha * (0.36 + pulse * 0.14 + amp * 0.28));
-      // Orbiting luminous magic wisps circling the primary weapon/orb hotspot!
+      const rad = Math.round(sp.r * sf * (0.90 + pulse * 0.18 + amp * 0.28));
+      drawSpotMagicBloom(sx, sy, rad, sp.c0, sp.c1, turnAlpha * (0.32 + pulse * 0.12 + amp * 0.22));
       if (sp.orbit) {
         for (let w = 0; w < 3; w++) {
-          const ang = elapsed * 4.2 + w * 2.094;
-          const oR = Math.round(sp.r * sf * 0.62);
+          const ang = elapsed * 3.8 + w * 2.094;
+          const oR = Math.round(sp.r * sf * 0.60);
           const wx = sx + Math.round(Math.cos(ang) * oR);
           const wy = sy + Math.round(Math.sin(ang) * Math.round(oR * 0.68));
-          ctx.globalAlpha = turnAlpha * (0.72 + amp * 0.28);
-          drawStar4(wx, wy, w === 0 ? 5 : 3, w % 2 === 0 ? sp.c0 : sp.c1);
+          ctx.globalAlpha = turnAlpha * (0.68 + amp * 0.26);
+          drawStar4(wx, wy, w === 0 ? 4 : 3, w % 2 === 0 ? sp.c0 : sp.c1);
         }
       }
     }
 
-    // Soft Hero-Colored Lower Rim Magical Uplight (`lighter`, 0 arc/rotate)
+    // Soft Hero-Colored Lower Rim Magical Uplight
     if (typeof ctx.createLinearGradient === 'function') {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = turnAlpha * (0.16 + pulse * 0.08 + amp * 0.14);
-      const bgGrad = ctx.createLinearGradient(bustX, bustY + bustSize, bustX, bustY + Math.round(bustSize * 0.56));
+      ctx.globalAlpha = turnAlpha * (0.14 + pulse * 0.06 + amp * 0.10);
+      const bgGrad = ctx.createLinearGradient(bustX, bustY + bustSize, bustX, bustY + Math.round(bustSize * 0.62));
       if (bgGrad && typeof bgGrad.addColorStop === 'function') {
         bgGrad.addColorStop(0, spkCol);
         bgGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = bgGrad;
-        fillRectClamped(bustX, bustY + Math.round(bustSize * 0.56), bustSize, Math.round(bustSize * 0.44));
+        fillRectClamped(bustX, bustY + Math.round(bustSize * 0.62), bustSize, Math.round(bustSize * 0.38));
       }
       ctx.restore();
     }
 
-    // 2. FOREGROUND HERO-SIGNATURE MAGICAL PARTICLES & ELEMENTAL FX
+    // 2. DELICATE FOREGROUND HERO-SIGNATURE MAGICAL PARTICLES (ZERO blocky bars or face-cutting scanlines!)
     if (baseHero === 'nyx') {
-      const scanY = bustY + Math.round((elapsed * 110) % bustSize);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = turnAlpha * (0.24 + amp * 0.20);
-      ctx.fillStyle = '#22d3ee';
-      fillRectClamped(bustX, scanY, bustSize, 3);
-      ctx.fillStyle = '#f472b6';
-      fillRectClamped(bustX + ((Math.round(elapsed * 90) * 17) % Math.max(32, bustSize - 80)), scanY - 8, 68, 2);
-      ctx.restore();
       for (let h = 0; h < 7; h++) {
-        const prog = (elapsed * (0.42 + (h % 3) * 0.14) + h * 0.16) % 1;
-        const hx = bustX + 20 + ((h * 83) % Math.max(24, bustSize - 40)) + Math.round(Math.sin(elapsed * 4 + h) * 8);
+        const prog = (elapsed * (0.38 + (h % 3) * 0.12) + h * 0.16) % 1;
+        const hx = bustX + 20 + ((h * 83) % Math.max(24, bustSize - 40)) + Math.round(Math.sin(elapsed * 3.4 + h) * 8);
         const hy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 24));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.70);
+        ctx.globalAlpha = turnAlpha * (0.85 - prog * 0.65);
         if (h % 2 === 0) drawMiniHeart(hx, hy, h % 4 === 0 ? '#f472b6' : '#67e8f9');
         else drawStar4(hx, hy, 4, h % 3 === 0 ? '#fde047' : '#22d3ee');
       }
     } else if (baseHero === 'warrior') {
-      // Traveling radiant energy pulse climbing up Dawn-Breaker greatsword + rising golden paladin motes!
-      const swProg = (elapsed * 1.15) % 1;
+      const swProg = (elapsed * 1.05) % 1;
       const [bx, by] = mapHotspot(198 + swProg * 108, 242 - swProg * 212, false);
-      drawSpotMagicBloom(bx, by, Math.round(28 * sf), '#ffffff', '#38bdf8', turnAlpha * 0.65);
-      drawStar4(bx, by, 6, '#e0f2fe');
+      drawSpotMagicBloom(bx, by, Math.round(24 * sf), '#ffffff', '#38bdf8', turnAlpha * 0.58);
+      drawStar4(bx, by, 5, '#e0f2fe');
       for (let m = 0; m < 10; m++) {
-        const prog = (elapsed * (0.52 + (m % 3) * 0.18) + m * 0.13) % 1;
+        const prog = (elapsed * (0.46 + (m % 3) * 0.15) + m * 0.13) % 1;
         const mx = bustX + 16 + ((m * 53) % Math.max(24, bustSize - 32));
         const my = bustY + bustSize - 8 - Math.round(prog * (bustSize - 18));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
+        ctx.globalAlpha = turnAlpha * (0.85 - prog * 0.68);
         drawStar4(mx, my, m % 2 === 0 ? 4 : 3, m % 2 === 0 ? '#fef08a' : '#38bdf8');
       }
     } else if (baseHero === 'mage') {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let fl = 0; fl < 9; fl++) {
-        const fx = bustX + Math.round((fl + 0.5) * (bustSize / 9));
-        const fh = Math.round((14 + (Math.sin(elapsed * 12 + fl * 1.7) * 0.5 + 0.5) * 24) * boost);
-        ctx.globalAlpha = turnAlpha * 0.42;
-        ctx.fillStyle = '#ea580c';
-        fillRectClamped(fx - 10, bustY + bustSize - fh, 20, fh);
-        ctx.fillStyle = '#fde047';
-        fillRectClamped(fx - 5, bustY + bustSize - Math.round(fh * 0.65), 10, Math.round(fh * 0.65));
-      }
-      ctx.restore();
-      for (let e = 0; e < 12; e++) {
-        const prog = (elapsed * (0.68 + (e % 4) * 0.16) + e * 0.11) % 1;
-        const ex = bustX + 14 + ((e * 61) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 6 + e) * 10);
+      for (let e = 0; e < 14; e++) {
+        const prog = (elapsed * (0.62 + (e % 4) * 0.14) + e * 0.10) % 1;
+        const ex = bustX + 14 + ((e * 61) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 5.2 + e) * 10);
         const ey = bustY + bustSize - 6 - Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.75);
+        ctx.globalAlpha = turnAlpha * (0.90 - prog * 0.72);
         ctx.fillStyle = e % 3 === 0 ? '#ffffff' : e % 2 === 0 ? '#fde047' : '#f97316';
-        fillRectClamped(ex - 2, ey - 2, 5, 5);
-        fillRectClamped(ex - 1, ey + 3, 2, 4);
+        fillRectClamped(ex - 2, ey - 2, 4, 4);
+        fillRectClamped(ex - 1, ey + 2, 2, 3);
       }
     } else if (baseHero === 'priestess') {
       for (let f = 0; f < 9; f++) {
-        const prog = (elapsed * (0.34 + (f % 3) * 0.10) + f * 0.14) % 1;
-        const fx = bustX + 16 + ((f * 71) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 3.2 + f * 1.5) * 16);
+        const prog = (elapsed * (0.30 + (f % 3) * 0.09) + f * 0.14) % 1;
+        const fx = bustX + 16 + ((f * 71) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 2.8 + f * 1.5) * 16);
         const fy = bustY + 8 + Math.round(prog * (bustSize - 24));
-        ctx.globalAlpha = turnAlpha * (0.92 - prog * 0.52);
+        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.50);
         ctx.fillStyle = '#fef08a';
-        fillRectClamped(fx - 5, fy, 10, 3);
+        fillRectClamped(fx - 5, fy, 9, 2);
         ctx.fillStyle = '#ffffff';
-        fillRectClamped(fx - 3, fy - 1, 6, 3);
-        fillRectClamped(fx + 4, fy + 1, 3, 2);
+        fillRectClamped(fx - 3, fy - 1, 5, 3);
+        fillRectClamped(fx + 3, fy + 1, 3, 2);
       }
     } else if (baseHero === 'chronomancer') {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const rippleY = bustY + Math.round((elapsed * 72) % bustSize);
-      ctx.globalAlpha = turnAlpha * (0.28 + amp * 0.18);
-      ctx.fillStyle = '#2dd4bf';
-      fillRectClamped(bustX, rippleY, bustSize, 2);
-      ctx.fillStyle = '#fbbf24';
-      fillRectClamped(bustX, bustY + bustSize - ((rippleY - bustY) % bustSize), bustSize, 2);
-      ctx.restore();
-      for (let c = 0; c < 10; c++) {
-        const ang = elapsed * (1.2 + (c % 2) * 0.6) + c * 0.63;
-        const rad = Math.round(bustSize * (0.34 + (c % 3) * 0.06));
+      for (let c = 0; c < 9; c++) {
+        const ang = elapsed * (0.9 + (c % 2) * 0.45) + c * 0.70;
+        const rad = Math.round(bustSize * (0.37 + (c % 3) * 0.04));
         const cxP = bustX + (bustSize >> 1) + Math.round(Math.cos(ang) * rad);
-        const cyP = bustY + Math.round(bustSize * 0.44) + Math.round(Math.sin(ang) * Math.round(rad * 0.72));
-        ctx.globalAlpha = turnAlpha * 0.85;
-        ctx.fillStyle = c % 2 === 0 ? '#5eead4' : '#fde047';
-        fillRectClamped(cxP - 3, cyP - 3, 6, 6);
-        ctx.fillStyle = '#ffffff';
-        fillRectClamped(cxP - 1, cyP - 1, 2, 2);
+        const cyP = bustY + Math.round(bustSize * 0.44) + Math.round(Math.sin(ang) * Math.round(rad * 0.76));
+        ctx.globalAlpha = turnAlpha * 0.80;
+        drawStar4(cxP, cyP, c % 2 === 0 ? 4 : 3, c % 2 === 0 ? '#5eead4' : '#fde047');
       }
     } else if (baseHero === 'valkyrie') {
-      const boltTick = Math.floor(elapsed * 14);
-      if (boltTick % 3 !== 2 || amp > 0.35) {
-        ctx.globalAlpha = turnAlpha * (0.82 + amp * 0.18);
-        const bx = bustX + (boltTick % 2 === 0 ? 22 : bustSize - 56);
-        const by = bustY + 18 + ((boltTick * 29) % Math.max(32, bustSize - 110));
-        drawStepLightning(bx, by, boltTick % 2 === 0 ? 7 : -7, 16, 4, '#fbbf24');
+      const boltTick = Math.floor(elapsed * 12);
+      if (boltTick % 4 === 0 || amp > 0.55) {
+        ctx.globalAlpha = turnAlpha * 0.78;
+        const [sx, sy] = mapHotspot(268, 62, false);
+        drawStepLightning(sx - 10, sy - 16, 6, 12, 4, '#fbbf24');
       }
       for (let v = 0; v < 10; v++) {
-        const prog = (elapsed * (0.64 + (v % 3) * 0.18) + v * 0.14) % 1;
+        const prog = (elapsed * (0.58 + (v % 3) * 0.16) + v * 0.14) % 1;
         const vx = bustX + 14 + ((v * 59) % Math.max(24, bustSize - 28));
         const vy = bustY + bustSize - 8 - Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
+        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.68);
         drawStar4(vx, vy, v % 2 === 0 ? 4 : 3, v % 2 === 0 ? '#fde047' : '#f43f5e');
       }
     } else if (baseHero === 'ronin') {
-      const zTick = Math.floor(elapsed * 15);
-      if (zTick % 3 === 0 || amp > 0.42) {
-        ctx.globalAlpha = turnAlpha * (0.80 + amp * 0.20);
-        const zx = bustX + bustSize - 38 - ((zTick * 23) % 44);
-        const zy = bustY + 20 + ((zTick * 37) % Math.max(32, bustSize - 120));
-        drawStepLightning(zx, zy, -6, 17, 4, '#38bdf8');
+      const zTick = Math.floor(elapsed * 13);
+      if (zTick % 4 === 0 || amp > 0.52) {
+        ctx.globalAlpha = turnAlpha * 0.78;
+        const zx = bustX + bustSize - 42 - ((zTick * 23) % 36);
+        const zy = bustY + 26 + ((zTick * 37) % Math.max(32, bustSize - 130));
+        drawStepLightning(zx, zy, -5, 14, 4, '#38bdf8');
       }
       for (let pI = 0; pI < 12; pI++) {
-        const prog = (elapsed * (0.46 + (pI % 3) * 0.14) + pI * 0.13) % 1;
+        const prog = (elapsed * (0.42 + (pI % 3) * 0.12) + pI * 0.13) % 1;
         const px = bustX + Math.round(((prog * (bustSize + 40) + pI * 47) % (bustSize + 30)) - 15);
-        const py = bustY + Math.round((prog * (bustSize * 0.85) + pI * 63) % bustSize) + Math.round(Math.sin(elapsed * 5 + pI) * 6);
-        ctx.globalAlpha = turnAlpha * 0.90;
+        const py = bustY + Math.round((prog * (bustSize * 0.85) + pI * 63) % bustSize) + Math.round(Math.sin(elapsed * 4.5 + pI) * 6);
+        ctx.globalAlpha = turnAlpha * 0.88;
         ctx.fillStyle = pI % 2 === 0 ? '#f9a8d4' : '#f472b6';
-        fillRectClamped(px, py, 6, 3);
-        fillRectClamped(px + 2, py + 2, 5, 3);
+        fillRectClamped(px, py, 5, 3);
+        fillRectClamped(px + 2, py + 2, 4, 2);
         ctx.fillStyle = '#ffffff';
         fillRectClamped(px + 1, py, 2, 2);
       }
     } else if (baseHero === 'archer') {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let w = 0; w < 4; w++) {
-        const wy = bustY + Math.round(bustSize * (0.18 + w * 0.22)) + Math.round(Math.sin(elapsed * 4 + w) * 8);
-        const wx = bustX + Math.round(((elapsed * (140 + w * 28) + w * 90) % (bustSize + 90)) - 70);
-        ctx.globalAlpha = turnAlpha * 0.36;
-        ctx.fillStyle = '#34d399';
-        fillRectClamped(wx, wy, 56, 3);
-        ctx.fillStyle = '#bef264';
-        fillRectClamped(wx + 12, wy + 1, 28, 2);
-      }
-      ctx.restore();
-      for (let lv = 0; lv < 10; lv++) {
-        const prog = (elapsed * (0.44 + (lv % 3) * 0.12) + lv * 0.15) % 1;
+      for (let lv = 0; lv < 11; lv++) {
+        const prog = (elapsed * (0.40 + (lv % 3) * 0.11) + lv * 0.14) % 1;
         const lx = bustX + Math.round((prog * bustSize + lv * 53) % bustSize);
-        const ly = bustY + 14 + ((lv * 41) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 4.5 + lv) * 10);
-        ctx.globalAlpha = turnAlpha * 0.90;
+        const ly = bustY + 14 + ((lv * 41) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 4.0 + lv) * 10);
+        ctx.globalAlpha = turnAlpha * 0.86;
         if (lv % 2 === 0) {
           ctx.fillStyle = '#10b981';
-          fillRectClamped(lx - 3, ly, 7, 3);
+          fillRectClamped(lx - 3, ly, 6, 3);
           ctx.fillStyle = '#bef264';
-          fillRectClamped(lx - 1, ly - 1, 4, 3);
+          fillRectClamped(lx - 1, ly - 1, 4, 2);
         } else {
           drawStar4(lx, ly, 3, '#fef08a');
         }
       }
     } else if (baseHero === 'reaper') {
       for (let sw = 0; sw < 10; sw++) {
-        const prog = (elapsed * (0.48 + (sw % 3) * 0.15) + sw * 0.14) % 1;
-        const sx = bustX + 16 + ((sw * 61) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 4.2 + sw * 1.4) * 14);
+        const prog = (elapsed * (0.44 + (sw % 3) * 0.13) + sw * 0.14) % 1;
+        const sx = bustX + 16 + ((sw * 61) % Math.max(24, bustSize - 32)) + Math.round(Math.sin(elapsed * 3.8 + sw * 1.4) * 12);
         const sy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 22));
-        ctx.globalAlpha = turnAlpha * (0.92 - prog * 0.70);
+        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.68);
         ctx.fillStyle = '#a855f7';
-        fillRectClamped(sx - 4, sy - 4, 8, 8);
+        fillRectClamped(sx - 3, sy - 3, 6, 6);
         ctx.fillStyle = '#f0abfc';
-        fillRectClamped(sx - 2, sy - 6, 4, 10);
+        fillRectClamped(sx - 2, sy - 5, 4, 8);
         ctx.fillStyle = '#ffffff';
-        fillRectClamped(sx - 1, sy - 2, 2, 4);
+        fillRectClamped(sx - 1, sy - 2, 2, 3);
       }
     } else if (baseHero === 'titan') {
       const cnt = amp > 0.35 ? 14 : 10;
       for (let sp = 0; sp < cnt; sp++) {
-        const prog = (elapsed * (0.72 + (sp % 4) * 0.18) + sp * 0.11) % 1;
-        const tx = bustX + 14 + ((sp * 57) % Math.max(24, bustSize - 28)) + Math.round(Math.cos(elapsed * 7 + sp) * 8);
+        const prog = (elapsed * (0.64 + (sp % 4) * 0.16) + sp * 0.11) % 1;
+        const tx = bustX + 14 + ((sp * 57) % Math.max(24, bustSize - 28)) + Math.round(Math.cos(elapsed * 6.5 + sp) * 8);
         const ty = bustY + bustSize - 6 - Math.round(prog * (bustSize - 14));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
+        ctx.globalAlpha = turnAlpha * (0.92 - prog * 0.72);
         ctx.fillStyle = sp % 4 === 0 ? '#34d399' : sp % 2 === 0 ? '#fde047' : '#f97316';
-        fillRectClamped(tx - 2, ty - 2, 5, 5);
+        fillRectClamped(tx - 2, ty - 2, 4, 4);
         ctx.fillStyle = '#ffffff';
         fillRectClamped(tx - 1, ty - 1, 2, 2);
       }
     } else if (baseHero === 'icemage') {
       for (let sn = 0; sn < 12; sn++) {
-        const prog = (elapsed * (0.30 + (sn % 4) * 0.08) + sn * 0.12) % 1;
-        const sx = bustX + 12 + ((sn * 59) % Math.max(24, bustSize - 24)) + Math.round(Math.sin(elapsed * 2.8 + sn) * 12);
+        const prog = (elapsed * (0.28 + (sn % 4) * 0.08) + sn * 0.12) % 1;
+        const sx = bustX + 12 + ((sn * 59) % Math.max(24, bustSize - 24)) + Math.round(Math.sin(elapsed * 2.4 + sn) * 12);
         const sy = bustY + 6 + Math.round(prog * (bustSize - 16));
-        ctx.globalAlpha = turnAlpha * (0.92 - prog * 0.45);
+        ctx.globalAlpha = turnAlpha * (0.88 - prog * 0.42);
         drawPixelSnowflake(sx, sy, sn % 3 === 0 ? 4 : 3, sn % 2 === 0 ? '#bae6fd' : '#67e8f9');
       }
     } else {
-      const scanY = bustY + Math.round((elapsed * 96) % bustSize);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = turnAlpha * (0.34 + amp * 0.22);
-      ctx.fillStyle = '#22d3ee';
-      fillRectClamped(bustX, scanY, bustSize, 4);
-      ctx.fillStyle = '#ffffff';
-      fillRectClamped(bustX, scanY + 1, bustSize, 1);
-      ctx.restore();
+      // ANDROID: Sleek corner HUD target brackets + rising neon plasma data-sparks (NO horizontal face-cut line!)
       const brkCol = pulse > 0.5 ? '#67e8f9' : '#f43f5e';
-      ctx.globalAlpha = turnAlpha * 0.85;
+      ctx.globalAlpha = turnAlpha * 0.78;
       ctx.fillStyle = brkCol;
-      fillRectClamped(bustX + 10, bustY + 10, 18, 3);
-      fillRectClamped(bustX + 10, bustY + 10, 3, 18);
-      fillRectClamped(bustX + bustSize - 28, bustY + 10, 18, 3);
-      fillRectClamped(bustX + bustSize - 13, bustY + 10, 3, 18);
-      for (let d = 0; d < 8; d++) {
-        const prog = (elapsed * (0.58 + (d % 3) * 0.16) + d * 0.15) % 1;
+      fillRectClamped(bustX + 10, bustY + 10, 16, 2);
+      fillRectClamped(bustX + 10, bustY + 10, 2, 16);
+      fillRectClamped(bustX + bustSize - 26, bustY + 10, 16, 2);
+      fillRectClamped(bustX + bustSize - 12, bustY + 10, 2, 16);
+      for (let d = 0; d < 9; d++) {
+        const prog = (elapsed * (0.52 + (d % 3) * 0.14) + d * 0.14) % 1;
         const dx = bustX + 14 + ((d * 67) % Math.max(24, bustSize - 28));
         const dy = bustY + bustSize - 8 - Math.round(prog * (bustSize - 18));
-        ctx.globalAlpha = turnAlpha * (1 - prog * 0.72);
+        ctx.globalAlpha = turnAlpha * (0.86 - prog * 0.68);
         drawStar4(dx, dy, 3, d % 2 === 0 ? '#22d3ee' : '#fb7185');
       }
     }
@@ -8178,107 +8061,75 @@ export class Game {
 
         const talkSheetImg = PixelForge.getIntroTalkSheet?.(heroKey) || null;
         const layersImg = PixelForge.getIntroTalkLayers?.(heroKey) || null;
+        const animSheetImg = PixelForge.getIntroTalkAnimSheet?.(heroKey) || null;
         const layersReady = Boolean(
           layersImg &&
             !layersImg.__avsPending &&
             (layersImg.naturalWidth ? layersImg.naturalWidth >= 960 : layersImg.complete !== false)
         );
+        const animReady = Boolean(
+          animSheetImg &&
+            !animSheetImg.__avsPending &&
+            (animSheetImg.naturalWidth ? animSheetImg.naturalWidth >= 2560 : animSheetImg.complete !== false)
+        );
         const desiredFacing = isRightSpeaker ? -1 : 1;
 
-        // CHARACTER-ONLY MOTION (Stationary Portrait Environment NEVER shakes!):
-        // Bottom-anchored chest breathing + forward vocal lean + crisp vocal-peak micro-shake ONLY on character!
-        const breathWave = Math.sin(elapsed * 2.75) * 0.5 + 0.5;
-        const breathScale = 1.003 + breathWave * 0.015 + amp * 0.016;
-        const drawW = Math.round(bustSize * breathScale);
-        const drawH = Math.round(bustSize * breathScale);
-        const bodyShakeX = amp > 0.42 ? Math.round(Math.sin(elapsed * 52) * (amp * 2.4)) : 0;
-        const bodyShakeY = amp > 0.42 ? Math.round(Math.cos(elapsed * 46) * (amp * 1.9)) : 0;
-        const bodyDxLocal = Math.round((bustSize - drawW) * 0.5) + Math.round(amp * 4) + bodyShakeX;
-        const bodyDyLocal = Math.round(bustSize - drawH - breathWave * 2.5 - amp * 3) + bodyShakeY;
+        // CHARACTER-ONLY MOTION (Stationary Portrait Environment NEVER shakes or warps!):
+        // Smooth 8-frame zero-cut C^1 breathing/hair-wind/weapon-poise + subtle character-only vocal emphasis lean/shake!
+        const animFrameIdx = Math.floor(elapsed * 9) % 8;
+        const ANIM_HEAD_DYS = [0, 0, -1, -1, -1, -1, 0, 0];
+        const headDy320 = ANIM_HEAD_DYS[animFrameIdx] || 0;
+        const faceRoi = PixelForge.INTRO_FACE_ROIS?.[baseHero] || [120, 100, 212, 180];
+        const drawW = bustSize;
+        const drawH = bustSize;
+        const bodyShakeX = amp > 0.48 ? Math.round(Math.sin(elapsed * 46) * (amp * 1.6)) : 0;
+        const bodyShakeY = amp > 0.48 ? Math.round(Math.cos(elapsed * 40) * (amp * 1.3)) : 0;
+        const bodyDxLocal = Math.round(amp * 3.5) + bodyShakeX;
+        const bodyDyLocal = -Math.round(amp * 2.0) + bodyShakeY;
 
-        // Independent Front Weapon / Hand / Floating Cob Drone motion (`Cell 2`!)
-        let frontDxLocal = bodyDxLocal;
-        let frontDyLocal = bodyDyLocal;
-        if (baseHero === 'nyx') {
-          // Floating COB cyber-drone hovers freely in smooth 60fps Lissajous orbit!
-          frontDxLocal = Math.round(Math.cos(elapsed * 2.8) * 5);
-          frontDyLocal = Math.round(Math.sin(elapsed * 4.2) * 7 - amp * 4);
-        } else if (
-          baseHero === 'mage' ||
-          baseHero === 'priestess' ||
-          baseHero === 'chronomancer' ||
-          baseHero === 'archer'
-        ) {
-          // Full unbroken weapon + hand gently lifts/heaves independently with vocal poise!
-          frontDxLocal = bodyDxLocal + Math.round(Math.cos(elapsed * 2.6) * 2);
-          frontDyLocal = bodyDyLocal - Math.round(Math.sin(elapsed * 3.8 + 0.8) * 3.5 + amp * 4.5);
-        }
+        // Nyx's 100% isolated floating COB Cyber-Drone hovers smoothly in independent Lissajous orbit!
+        const frontDxLocal = baseHero === 'nyx' ? Math.round(Math.cos(elapsed * 2.8) * 5) : bodyDxLocal;
+        const frontDyLocal = baseHero === 'nyx' ? Math.round(Math.sin(elapsed * 4.2) * 6 - amp * 3.5) : bodyDyLocal;
 
-        // Helper to draw Cell 1 (Back Hair wind-wave, Wing flap/breathe, Floating Halo/Back-Weapon) in local [0..bustSize] space
-        const drawBackArticulatedLayer = (ox, oy) => {
-          if (!layersReady || !layersImg) return;
-          if (
-            baseHero === 'nyx' ||
-            baseHero === 'warrior' ||
-            baseHero === 'ronin' ||
-            baseHero === 'archer' ||
-            baseHero === 'icemage'
-          ) {
-            // Smooth 60fps 16-strip nearest-neighbor sinusoidal hair wind-wave (zero face shear, zero gaps!)
-            const bands = 16;
-            const srcStep = 320 / bands;
-            const waveAmp = (baseHero === 'ronin' ? 5.2 : 3.6) + amp * 2.4;
-            const waveSpeed = baseHero === 'ronin' ? 5.2 : 3.4;
-            for (let b = 0; b < bands; b++) {
-              const sy0 = Math.round(b * srcStep);
-              const sy1 = Math.round((b + 1) * srcStep);
-              const dy0 = Math.round((b / bands) * bustSize);
-              const dy1 = Math.round(((b + 1) / bands) * bustSize);
-              const anchorW = Math.min(1, Math.max(0.25, (b - 1) / 8));
-              const wDx = Math.round(Math.sin(elapsed * waveSpeed - b * 0.56) * waveAmp * anchorW);
-              ctx.drawImage(
-                layersImg,
-                320,
-                sy0,
-                320,
-                sy1 - sy0,
-                ox + bodyDxLocal + wDx,
-                oy + bodyDyLocal + dy0,
-                drawW,
-                dy1 - dy0
-              );
-            }
-          } else if (baseHero === 'priestess' || baseHero === 'valkyrie') {
-            // Smooth 60fps angelic / valkyrie wing lift & outward breath spread!
-            const flap = Math.sin(elapsed * 3.2) * 0.5 + 0.5;
-            const wingSpread = Math.round(flap * 6 + amp * 7);
-            const wingLift = -Math.round(flap * 4 + amp * 5);
+        const drawCharacterComposite = (ox, oy, talkSx) => {
+          if (animReady && animSheetImg) {
+            // Smooth 8-frame zero-cut Apple Vision transparent living character loop!
             ctx.drawImage(
-              layersImg,
-              320,
+              animSheetImg,
+              animFrameIdx * 320,
               0,
               320,
               320,
-              ox + bodyDxLocal - wingSpread,
-              oy + bodyDyLocal + wingLift,
-              drawW + wingSpread * 2,
-              drawH
-            );
-          } else {
-            // Floating Clockface Halo (`chronomancer`), Flaming Soul-Scythe (`reaper`), Mjolnir (`titan`), Plasma Blade (`android`)
-            const hoverDx = Math.round(Math.cos(elapsed * 2.4) * 2.5);
-            const hoverDy = -Math.round(Math.sin(elapsed * 3.6) * 4 + amp * 4.5);
-            ctx.drawImage(
-              layersImg,
-              320,
-              0,
-              320,
-              320,
-              ox + bodyDxLocal + hoverDx,
-              oy + bodyDyLocal + hoverDy,
+              ox + bodyDxLocal,
+              oy + bodyDyLocal,
               drawW,
               drawH
             );
+            // Exact 0.00px-aligned real-time F0..F5 anime blinks & vowel lip-sync Face ROI stamp!
+            const [fx0, fy0, fx1, fy1] = faceRoi;
+            const fw = fx1 - fx0;
+            const fh = fy1 - fy0;
+            const dx0 = Math.round((fx0 / 320) * drawW);
+            const dx1 = Math.round((fx1 / 320) * drawW);
+            const dy0 = Math.round(((fy0 + headDy320) / 320) * drawH);
+            const dy1 = Math.round(((fy1 + headDy320) / 320) * drawH);
+            ctx.drawImage(
+              talkSheetImg,
+              talkSx + fx0,
+              fy0,
+              fw,
+              fh,
+              ox + bodyDxLocal + dx0,
+              oy + bodyDyLocal + dy0,
+              dx1 - dx0,
+              dy1 - dy0
+            );
+          } else {
+            ctx.drawImage(talkSheetImg, talkSx, 0, 320, 320, ox + bodyDxLocal, oy + bodyDyLocal, drawW, drawH);
+          }
+          // Nyx's truly detached floating Cob Cyber-Drone (`Cell 2`, 0 contact with body!)
+          if (baseHero === 'nyx' && layersReady && layersImg) {
+            ctx.drawImage(layersImg, 640, 0, 320, 320, ox + frontDxLocal, oy + frontDyLocal, drawW, drawH);
           }
         };
 
@@ -8292,7 +8143,7 @@ export class Game {
           const sx = talkFrameIdx * 320;
           const flipX = 1 !== desiredFacing;
           try {
-            // LAYER 1: Stationary Portrait Environment Backdrop (`Cell 0`, 0px character shake!)
+            // LAYER 1: Stationary Non-Smeared Portrait Backdrop (`Cell 0`, 0px shake!)
             if (layersReady && layersImg) {
               if (flipX && typeof ctx.translate === 'function' && typeof ctx.scale === 'function') {
                 ctx.save();
@@ -8305,7 +8156,7 @@ export class Game {
               }
             }
 
-            // LAYER 2: Live 60fps Moving Portrait Environment FX + Magical Back-Silhouette Aura & Arcane Ring!
+            // LAYER 2: Silky Feathered Portrait Environment & Magical Back-Silhouette Rim Aura (ZERO blocky bars!)
             this._drawIntroBustBackEnvAndMagicFX(ctx, {
               baseHero,
               bustX,
@@ -8319,23 +8170,15 @@ export class Game {
               drawStar4
             });
 
-            // LAYERS 3, 4 & 5: Back Hair/Wings/Halo (`Cell 1`) -> Character-Only Body (`talk_sheet`) -> Front Weapon/Cob (`Cell 2`)!
+            // LAYERS 3, 4 & 5: Zero-Cut Apple Vision Living Character Loop + Real-Time Face Lip-Sync/Blinks + Floating Cob!
             if (flipX && typeof ctx.translate === 'function' && typeof ctx.scale === 'function') {
               ctx.save();
               ctx.translate(bustX + bustSize, bustY);
               ctx.scale(-1, 1);
-              drawBackArticulatedLayer(0, 0);
-              ctx.drawImage(talkSheetImg, sx, 0, 320, 320, bodyDxLocal, bodyDyLocal, drawW, drawH);
-              if (layersReady && layersImg) {
-                ctx.drawImage(layersImg, 640, 0, 320, 320, frontDxLocal, frontDyLocal, drawW, drawH);
-              }
+              drawCharacterComposite(0, 0, sx);
               ctx.restore();
             } else {
-              drawBackArticulatedLayer(bustX, bustY);
-              ctx.drawImage(talkSheetImg, sx, 0, 320, 320, bustX + bodyDxLocal, bustY + bodyDyLocal, drawW, drawH);
-              if (layersReady && layersImg) {
-                ctx.drawImage(layersImg, 640, 0, 320, 320, bustX + frontDxLocal, bustY + frontDyLocal, drawW, drawH);
-              }
+              drawCharacterComposite(bustX, bustY, sx);
             }
           } catch (_) {}
         } else if (typeof ctx.drawImage === 'function') {
@@ -8502,38 +8345,57 @@ export class Game {
         ctx.fillStyle = '#e2e8f0';
         ctx.fillText(heroTitle, infoCx, titleY, infoW);
 
-        // Live 16-Bar Tall Stepped Pixel Voice Equalizer
-        const numBars = 16;
-        const maxBarH = cw >= 960 ? 48 : cw >= 520 ? 34 : 28;
-        const eqSpanW = Math.min(infoW - 12, cw >= 960 ? 480 : infoW - 8);
-        const barStepX = Math.max(8, Math.floor(eqSpanW / numBars));
-        const barThick = Math.max(5, barStepX - 4);
-        const waveTotalW = (numBars - 1) * barStepX + barThick;
-        const waveStartX = infoCx - Math.round(waveTotalW * 0.5);
-        const waveBaseY = isPortraitNarrow
-          ? deckTopY + deckH - 12
-          : deckTopY + deckH - (cw >= 960 ? 14 : 10);
+        // Sleek Luminous Dark-Fantasy Magical Voice Resonance Filament Wave (replaces generic boxy equalizer bars!)
+        const waveW = Math.min(infoW - 20, cw >= 960 ? 440 : infoW - 12);
+        const waveMidY = isPortraitNarrow
+          ? deckTopY + deckH - 22
+          : deckTopY + deckH - (cw >= 960 ? 28 : 20);
+        const waveX0 = infoCx - (waveW >> 1);
+        const maxWaveH = cw >= 960 ? 22 : 14;
+        const nodes = 28;
+        const nodeStep = waveW / nodes;
 
-        for (let b = 0; b < numBars; b++) {
-          const bxBar = waveStartX + b * barStepX;
-          const harmonic =
-            0.4 +
-            0.38 * Math.abs(Math.sin(elapsed * 19 + b * 0.71)) +
-            0.22 * Math.abs(Math.cos(elapsed * 29 - b * 1.13));
-          const rawH = amp > 0.02 ? Math.max(8, Math.round(amp * harmonic * maxBarH)) : 6;
-          const quantH = Math.min(maxBarH, Math.max(6, (rawH >> 1) << 1));
-          const byBar = waveBaseY - quantH;
-
-          ctx.fillStyle = '#090d1c';
-          fillRectClamped(bxBar, waveBaseY - maxBarH, barThick, maxBarH);
-          ctx.fillStyle = spkCol;
-          fillRectClamped(bxBar, byBar, barThick, quantH);
-          ctx.fillStyle = '#f59e0b';
-          fillRectClamped(bxBar, byBar, barThick, Math.min(6, quantH));
-          if (quantH >= 12) {
-            ctx.fillStyle = '#ffffff';
-            fillRectClamped(bxBar, byBar, barThick, 3);
+        // Feathered glowing center spine
+        if (typeof ctx.createLinearGradient === 'function') {
+          const spG = ctx.createLinearGradient(waveX0, 0, waveX0 + waveW, 0);
+          if (spG && typeof spG.addColorStop === 'function') {
+            spG.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            spG.addColorStop(0.25, spkCol);
+            spG.addColorStop(0.50, '#fef08a');
+            spG.addColorStop(0.75, spkCol);
+            spG.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = spG;
+          } else {
+            ctx.fillStyle = spkCol;
           }
+        } else {
+          ctx.fillStyle = spkCol;
+        }
+        fillRectClamped(waveX0, waveMidY - 1, waveW, 2);
+
+        // Symmetric glowing magical harmonic pulse nodes (tapered softly toward both ends!)
+        for (let b = 0; b <= nodes; b++) {
+          const u = b / nodes;
+          const env = Math.sin(u * Math.PI); // smooth 0 -> 1 -> 0 envelope
+          const harm =
+            0.35 +
+            0.40 * Math.abs(Math.sin(elapsed * 16 + b * 0.48)) +
+            0.25 * Math.abs(Math.cos(elapsed * 23 - b * 0.72));
+          const halfH = Math.max(2, Math.round((0.18 + amp * 0.82) * env * harm * maxWaveH));
+          const bx = Math.round(waveX0 + b * nodeStep);
+          ctx.fillStyle = spkCol;
+          fillRectClamped(bx - 1, waveMidY - halfH, 3, halfH * 2);
+          ctx.fillStyle = '#fef08a';
+          fillRectClamped(bx, waveMidY - Math.max(1, halfH >> 1), 2, Math.max(2, halfH));
+          if (halfH >= 8) {
+            ctx.fillStyle = '#ffffff';
+            fillRectClamped(bx, waveMidY - 2, 2, 4);
+          }
+        }
+        drawStar4(waveX0 + 4, waveMidY, 5, spkCol);
+        drawStar4(waveX0 + waveW - 4, waveMidY, 5, spkCol);
+        if (amp > 0.25) {
+          drawStar4(infoCx, waveMidY, Math.min(9, 5 + Math.round(amp * 4)), '#fef08a');
         }
 
         // 4. Larger High-Legibility Spoken Voice Dialogue Subtitle Bar at Bottom of Screen!
