@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps153';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps153';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps153';
+import { Fighter } from './Fighter.js?v=30fps154';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps154';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps154';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps153';
+} from '../engine/shaders/forgeShaders.js?v=30fps154';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.42s): Overhead Earth-Crush Smash Smear -> snaps at F03 (63)

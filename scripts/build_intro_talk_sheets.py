@@ -591,16 +591,16 @@ def build_mage_talk_sheet() -> np.ndarray:
 
     # F1: Seamless half-lowered shadow-hood lid (only masks upper glowing eye pixels, 0 box!)
     f1 = f0.copy()
-    for y in range(126, 134):
-        for x in range(145, 203):
+    for y in range(124, 134):
+        for x in range(140, 208):
             if is_mage_eye_px(x, y):
                 hood_bg = tuple(int(v) for v in f0[146, min(194, max(152, x)), :3])
                 draw_px(f1, x, y, (205, 88, 18) if y == 133 else hood_bg)
 
-    # F2: Seamless full arcane blink (only masks eye glow, leaving warm ember slit at y=135)
+    # F2: Seamless full arcane blink (masks 100% of eye glow x=140..208, warm ember slit at y=135)
     f2 = f0.copy()
-    for y in range(126, 141):
-        for x in range(145, 203):
+    for y in range(124, 143):
+        for x in range(140, 208):
             if is_mage_eye_px(x, y):
                 hood_bg = tuple(int(v) for v in f0[146, min(194, max(152, x)), :3])
                 draw_px(f2, x, y, hood_bg)
@@ -900,21 +900,19 @@ def build_reaper_talk_sheet() -> np.ndarray:
 
     # F1: Seamless half-narrowed crimson-magenta wraith glare (0 black box!)
     f1 = f0.copy()
-    for bx0, bx1 in ((131, 150), (164, 182)):
-        for y in range(126, 132):
+    for bx0, bx1 in ((124, 154), (160, 191)):
+        for y in range(122, 132):
             for x in range(bx0, bx1 + 1):
                 if is_reaper_eye_px(x, y):
-                    hood_bg = tuple(int(v) for v in f0[145, min(176, max(138, x)), :3])
-                    draw_px(f1, x, y, (148, 32, 138) if y == 131 else hood_bg)
+                    draw_px(f1, x, y, (148, 32, 138) if y == 131 else (0, 0, 0))
 
-    # F2: Seamless full closed wraith blink (masks white core + magenta glow cleanly!)
+    # F2: Seamless full closed wraith blink (masks 100% of white core + magenta glow cleanly!)
     f2 = f0.copy()
-    for bx0, bx1 in ((131, 150), (164, 182)):
-        for y in range(126, 138):
+    for bx0, bx1 in ((124, 154), (160, 191)):
+        for y in range(122, 142):
             for x in range(bx0, bx1 + 1):
                 if is_reaper_eye_px(x, y):
-                    hood_bg = tuple(int(v) for v in f0[145, min(176, max(138, x)), :3])
-                    draw_px(f2, x, y, hood_bg)
+                    draw_px(f2, x, y, (0, 0, 0))
     for x in range(136, 148):
         draw_px(f2, x, 134, (132, 28, 138))
     for x in range(166, 178):
@@ -1128,6 +1126,319 @@ def build_android_talk_sheet() -> np.ndarray:
     ])
 
 
+def _boost_masked_pixels(
+    frame: np.ndarray,
+    mask: np.ndarray,
+    target_rgb: tuple[int, int, int],
+    strength: float,
+) -> None:
+    """Blends pixels inside `mask` toward `target_rgb` by `strength` in [0, 1] without any box edges."""
+    if strength <= 0.001 or not np.any(mask):
+        return
+    src = frame[mask, :3].astype(np.float32)
+    tgt = np.array(target_rgb, dtype=np.float32)
+    blended = np.clip(src * (1.0 - strength) + tgt * strength, 0, 255).astype(np.uint8)
+    frame[mask, :3] = blended
+
+
+def _draw_pixel_bolt(
+    img: np.ndarray,
+    pts: list[tuple[int, int]],
+    outer_rgb: tuple[int, int, int],
+    core_rgb: tuple[int, int, int] = (255, 255, 255),
+) -> None:
+    """Draws a crisp pixel-stepped lightning bolt polyline."""
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        steps = max(1, max(abs(x1 - x0), abs(y1 - y0)))
+        for s in range(steps + 1):
+            px = int(round(x0 + (x1 - x0) * (s / steps)))
+            py = int(round(y0 + (y1 - y0) * (s / steps)))
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    if abs(dx) + abs(dy) == 1:
+                        draw_px(img, px + dx, py + dy, outer_rgb)
+            draw_px(img, px, py, core_rgb)
+
+
+def _draw_pixel_petal(img: np.ndarray, cx: int, cy: int, col1: tuple[int, int, int], col2: tuple[int, int, int]) -> None:
+    for dx, dy, c in ((0, 0, col1), (1, 0, col1), (0, 1, col2), (1, 1, col1), (2, 1, col2)):
+        draw_px(img, cx + dx, cy + dy, c)
+
+
+def _draw_pixel_flake(img: np.ndarray, cx: int, cy: int, outer: tuple[int, int, int]) -> None:
+    for d in (-2, -1, 1, 2):
+        draw_px(img, cx + d, cy, outer)
+        draw_px(img, cx, cy + d, outer)
+    for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        draw_px(img, cx + dx, cy + dy, outer)
+    draw_px(img, cx, cy, (255, 255, 255))
+
+
+def apply_living_hero_motion(persona: str, sheet: np.ndarray) -> np.ndarray:
+    """Adds genuine multi-part seam-free pixel motion across F0..F5 for all 12 champions
+    (floating Cob drone, traveling weapon rune-waves, flaring elemental eyes, pulsing cores,
+    sweeping holo-visor scanner, drifting sakura/snowflakes/embers/lightning — 0 box seams!).
+    """
+    yy, xx = np.mgrid[0:CELL, 0:CELL]
+    f0_base = sheet[:, 0:CELL].copy()
+    r0 = f0_base[:, :, 0].astype(np.int16)
+    g0 = f0_base[:, :, 1].astype(np.int16)
+    b0 = f0_base[:, :, 2].astype(np.int16)
+    out_frames: list[np.ndarray] = [sheet[:, i * CELL : (i + 1) * CELL].copy() for i in range(FRAMES)]
+
+    if persona == "nyx":
+        # 1. Floating COB Cyber-Drone physically bobs up/down cleanly over isolated dark starry sky!
+        cob_roi = (xx >= 224) & (xx <= 306) & (yy >= 104) & (yy <= 182)
+        cob_mask = cob_roi & ((b0 >= 104) | ((r0 >= 112) & (b0 >= 100)))
+        cob_dy_list = [0, -1, -2, 1, -2, -4]
+        cob_lens = (xx >= 248) & (xx <= 278) & (yy >= 134) & (yy <= 162) & (b0 >= 150) & (g0 >= 130)
+        hoodie_stars = (yy >= 190) & ((b0 >= 165) | ((r0 >= 190) & (b0 >= 150)))
+        for idx, fr in enumerate(out_frames):
+            dy = cob_dy_list[idx]
+            if dy != 0:
+                # Seamlessly restore dark night-sky background under vacated Cob pixels
+                c_ys, c_xs = np.where(cob_mask)
+                for py, px in zip(c_ys, c_xs):
+                    ref_x = 220 if px < 265 else 309
+                    fr[py, px, :3] = f0_base[py, ref_x, :3]
+                for py, px in zip(c_ys, c_xs):
+                    ny = py + dy
+                    if 0 <= ny < CELL:
+                        fr[ny, px, :3] = f0_base[py, px, :3]
+            # Pulse Cob cyan eye core & twinkling orbital stars
+            lens_boost = [0.0, 0.14, 0.08, 0.24, 0.38, 0.56][idx]
+            if lens_boost > 0:
+                shifted_lens = np.roll(cob_lens, dy, axis=0)
+                _boost_masked_pixels(fr, shifted_lens, (225, 255, 255), lens_boost)
+            # Twinkling hoodie nebula & sky stars (phase-shifted per frame)
+            twinkle_band = hoodie_stars & (((xx + yy + idx * 17) % 29) < 7)
+            _boost_masked_pixels(fr, twinkle_band, (255, 240, 255), 0.34 if idx >= 3 else 0.18)
+            sp_pts = [(232, 114 + dy), (294, 122 + dy), (236, 174 + dy), (292, 170 + dy), (32, 56), (274, 48)]
+            for s_i, (sx, sy) in enumerate(sp_pts):
+                if (s_i + idx) % 2 == 0:
+                    draw_star_sparkle(fr, sx, sy, 2 + (idx >= 4), (103, 232, 249) if s_i % 2 == 0 else (244, 114, 182))
+            if idx >= 4:
+                # Lively violet eye catchlights on mid/wide emphasis
+                draw_px(fr, 152, 122, (255, 255, 255))
+                draw_px(fr, 153, 122, (255, 255, 255))
+                draw_px(fr, 196, 122, (255, 255, 255))
+
+    elif persona == "warrior":
+        # Traveling Dawn-Breaker cyan rune-energy wave up the greatsword + cathedral orbs + azure eye flare
+        sword_cyan = ((b0 - r0) >= 36) & (g0 >= 130) & (xx >= 175)
+        gems_cyan = ((b0 - r0) >= 36) & (g0 >= 130) & (xx >= 172) & (xx <= 212) & (((yy >= 92) & (yy <= 128)) | ((yy >= 218) & (yy <= 262)))
+        wave_y = [295, 242, 194, 146, 98, 48]
+        for idx, fr in enumerate(out_frames):
+            wy = wave_y[idx]
+            band = sword_cyan & (np.abs(yy - wy) <= 34)
+            _boost_masked_pixels(fr, band, (240, 255, 255), 0.58 if idx >= 3 else 0.36)
+            _boost_masked_pixels(fr, gems_cyan, (230, 255, 255), [0.0, 0.16, 0.10, 0.28, 0.44, 0.65][idx])
+            if idx >= 3:
+                eye_glow = (xx >= 150) & (xx <= 207) & (yy >= 138) & (yy <= 150) & ((b0 - r0) >= 36) & (g0 >= 130)
+                _boost_masked_pixels(fr, eye_glow, (235, 255, 255), 0.16 if idx == 3 else (0.30 if idx == 4 else 0.48))
+            orbs = [(36, 110 - idx * 5), (66, 200 - idx * 4), (242, 92 - idx * 3), (272, 162 - idx * 4)]
+            for o_i, (ox, oy) in enumerate(orbs):
+                if (o_i + idx) % 2 == 0:
+                    draw_star_sparkle(fr, ox, oy, 2 + (idx == 5), (254, 240, 138) if o_i < 2 else (110, 234, 255))
+
+    elif persona == "mage":
+        # Blazing Sun-Staff orb + Hat sun + Chest solar core + flaring arcane eyes + rising embers
+        sun_orb = (xx >= 14) & (xx <= 98) & (yy >= 156) & (yy <= 246) & (r0 >= 185) & (g0 >= 80)
+        hat_chest_sun = (((xx >= 142) & (xx <= 186) & (yy >= 68) & (yy <= 110)) | ((xx >= 160) & (xx <= 208) & (yy >= 218) & (yy <= 266))) & (r0 >= 185) & (g0 >= 75)
+        eye_mask = (xx >= 140) & (xx <= 208) & (yy >= 124) & (yy <= 143) & (r0 >= 95) & ((r0 - b0) >= 35)
+        for idx, fr in enumerate(out_frames):
+            pulse = [0.0, 0.16, 0.12, 0.30, 0.48, 0.68][idx]
+            _boost_masked_pixels(fr, sun_orb, (255, 252, 210), pulse)
+            _boost_masked_pixels(fr, hat_chest_sun, (255, 245, 180), pulse * 0.85)
+            if idx >= 3:
+                _boost_masked_pixels(fr, eye_mask, (255, 252, 224), 0.20 if idx == 3 else (0.42 if idx == 4 else 0.66))
+                if idx == 5:
+                    # Blazing golden eye flame-tips on wide shout
+                    for ex, ey in ((146, 128), (145, 127), (147, 127), (202, 128), (203, 127)):
+                        draw_px(fr, ex, ey, (255, 232, 118))
+            # Rising flickering fire embers across background archway
+            embers = [(42, 140 - idx * 8), (88, 128 - idx * 6), (256, 178 - idx * 9), (288, 146 - idx * 7), (274, 230 - idx * 6)]
+            for e_i, (ex, ey) in enumerate(embers):
+                draw_star_sparkle(fr, ex, ey, 2 if (e_i + idx) % 2 == 0 else 1, (253, 224, 71) if e_i % 2 == 0 else (249, 115, 22))
+            if idx >= 3:
+                draw_star_sparkle(fr, 58, 198, 3 + (idx - 3), (253, 224, 71))
+
+    elif persona == "priestess":
+        # Shimmering radiant angel wing feathers + pulsing golden sun-cross staff + angelic eye gleam
+        wings_lit = ((xx <= 116) | (xx >= 232)) & (yy >= 120) & (r0 >= 210) & (g0 >= 175) & (b0 >= 110)
+        cross_staff = (xx >= 236) & (yy >= 18) & (yy <= 198) & (r0 >= 200) & (g0 >= 150)
+        for idx, fr in enumerate(out_frames):
+            wing_band = wings_lit & (((xx + yy * 2 + idx * 36) % 90) < 30)
+            _boost_masked_pixels(fr, wing_band, (255, 255, 240), 0.42 if idx >= 3 else 0.24)
+            _boost_masked_pixels(fr, cross_staff, (255, 252, 220), [0.0, 0.18, 0.10, 0.30, 0.48, 0.66][idx])
+            motes = [(44, 164 - idx * 6), (82, 212 - idx * 5), (274, 82 - idx * 4), (296, 134 - idx * 5), (242, 48 + idx * 3)]
+            for m_i, (mx, my) in enumerate(motes):
+                if (m_i + idx) % 2 == 0:
+                    draw_star_sparkle(fr, mx, my, 2 + (idx == 5 and m_i == 2), (254, 240, 138))
+            if idx >= 4:
+                draw_px(fr, 164, 150, (255, 255, 255))
+                draw_px(fr, 195, 150, (255, 255, 255))
+
+    elif persona == "chronomancer":
+        # Flowing cyan hourglass + sweeping clockface halo shimmer + pulsing Chrono-Glaive + cyan eye flare
+        hg_cyan = (xx >= 142) & (xx <= 178) & (yy >= 224) & (yy <= 282) & (g0 >= 135) & (b0 >= 135) & (r0 <= 125)
+        clock_ring = (yy >= 10) & (yy <= 196) & (g0 >= 120) & (b0 >= 115) & ((np.hypot(xx - 160, yy - 118) >= 64) & (np.hypot(xx - 160, yy - 118) <= 114))
+        glaive_cyan = (xx >= 252) & (g0 >= 135) & (b0 >= 135) & (r0 <= 120)
+        angles = np.arctan2(yy - 118, xx - 160)
+        for idx, fr in enumerate(out_frames):
+            _boost_masked_pixels(fr, hg_cyan, (230, 255, 255), [0.0, 0.18, 0.12, 0.34, 0.50, 0.70][idx])
+            # Falling glowing sand grain inside chest hourglass
+            sand_y = 242 + (idx * 5) % 22
+            draw_px(fr, 160, sand_y, (255, 255, 255))
+            draw_px(fr, 160, sand_y + 1, (165, 243, 252))
+            # Rotating clockface luminous sweep (advancing 60 deg per cel!)
+            tgt_ang = -np.pi + idx * (np.pi / 3.0)
+            ang_diff = np.abs(np.arctan2(np.sin(angles - tgt_ang), np.cos(angles - tgt_ang)))
+            _boost_masked_pixels(fr, clock_ring & (ang_diff < 0.72), (240, 255, 245), 0.54)
+            _boost_masked_pixels(fr, glaive_cyan, (225, 255, 255), [0.0, 0.14, 0.10, 0.28, 0.44, 0.62][idx])
+            if idx >= 3:
+                # Strictly match saturated cyan iris pixels inside left/right eyes (0 nose-bridge skin!)
+                eye_c = ((((xx >= 132) & (xx <= 149)) | ((xx >= 169) & (xx <= 186))) & (yy >= 145) & (yy <= 153) & (g0 >= 135) & (b0 >= 135) & ((b0 - r0) >= 30))
+                _boost_masked_pixels(fr, eye_c, (235, 255, 255), 0.22 if idx == 3 else (0.40 if idx == 4 else 0.62))
+            sx_clk = 160 + int(round(np.cos(tgt_ang) * 88))
+            sy_clk = 118 + int(round(np.sin(tgt_ang) * 88))
+            if sy_clk <= 156:
+                draw_star_sparkle(fr, sx_clk, sy_clk, 3, (94, 234, 212))
+
+    elif persona == "valkyrie":
+        # Fiery Gungnir spearhead surge + flaming crimson-gold wing tips + crackling Bifrost lightning
+        spear_fire = (xx >= 224) & (yy <= 136) & (r0 >= 185) & (g0 >= 75) & (b0 <= 115)
+        wing_fire = ((xx <= 114) | (xx >= 216)) & (r0 >= 185) & (g0 >= 65) & (b0 <= 95)
+        for idx, fr in enumerate(out_frames):
+            _boost_masked_pixels(fr, spear_fire, (255, 252, 200), [0.0, 0.18, 0.12, 0.34, 0.52, 0.72][idx])
+            w_band = wing_fire & (((yy + idx * 28) % 64) < 22)
+            _boost_masked_pixels(fr, w_band, (255, 235, 130), 0.42)
+            if idx >= 3:
+                # Strictly match fiery amber/gold iris pixels (high r-b >= 92) inside left/right eye boxes (0 skin!)
+                eye_v = ((((xx >= 152) & (xx <= 170)) | ((xx >= 191) & (xx <= 201))) & (yy >= 128) & (yy <= 137) & (r0 >= 165) & ((r0 - b0) >= 92))
+                _boost_masked_pixels(fr, eye_v, (255, 252, 210), 0.22 if idx == 3 else (0.38 if idx == 4 else 0.58))
+            # Crackling Bifrost lightning spark near spear/wings
+            if idx in (1, 3, 4, 5):
+                bx = 248 + (idx * 7) % 24
+                by = 28 + (idx * 11) % 34
+                _draw_pixel_bolt(fr, [(bx, by), (bx + 9, by + 7), (bx + 4, by + 16), (bx + 14, by + 23)], (251, 191, 36))
+            draw_star_sparkle(fr, 44 + idx * 4, 152 - idx * 8, 2 + (idx == 5), (253, 224, 71))
+
+    elif persona == "ronin":
+        # Dynamic crackling cyan Raijin lightning arcs + drifting pink sakura petals + blazing cyan eyes
+        blade_cyan = (xx >= 220) & (b0 >= 160) & (g0 >= 130)
+        eye_r = (xx >= 180) & (xx <= 214) & (yy >= 112) & (yy <= 123) & (b0 >= 125) & (g0 >= 95)
+        bolt_sets = [
+            [(264, 58), (274, 72), (266, 86), (278, 102)],
+            [(248, 86), (260, 98), (252, 114), (266, 128)],
+            [(270, 122), (282, 136), (274, 152), (288, 166)],
+            [(252, 64), (264, 78), (256, 94), (272, 110), (264, 126)],
+            [(244, 104), (258, 118), (248, 136), (266, 152), (256, 170)],
+            [(256, 48), (270, 66), (258, 84), (278, 104), (266, 126), (286, 146)],
+        ]
+        for idx, fr in enumerate(out_frames):
+            _boost_masked_pixels(fr, blade_cyan, (235, 255, 255), [0.0, 0.16, 0.12, 0.32, 0.48, 0.68][idx])
+            _draw_pixel_bolt(fr, bolt_sets[idx], (56, 189, 248))
+            if idx >= 3:
+                _boost_masked_pixels(fr, eye_r, (240, 255, 255), 0.22 if idx == 3 else (0.42 if idx == 4 else 0.70))
+                if idx == 5:
+                    for tx in range(213, 219):
+                        draw_px(fr, tx, 118, (125, 211, 252) if tx > 215 else (255, 255, 255))
+            # Drifting sakura petals advancing smoothly diagonally across sky
+            petals = [(52, 68), (94, 142), (38, 214), (246, 38), (288, 220)]
+            for p_i, (px, py) in enumerate(petals):
+                nx = (px + idx * 9 + p_i * 5) % 306 + 6
+                ny = (py + idx * 6) % 300 + 8
+                _draw_pixel_petal(fr, nx, ny, (249, 168, 212), (244, 114, 182))
+
+    elif persona == "archer":
+        # Surging emerald Star-Bow & arrow energy + twinkling forest constellation stars + emerald eye gleam
+        bow_em = (xx >= 210) & (g0 >= 145) & ((g0 - r0) >= 22)
+        for idx, fr in enumerate(out_frames):
+            _boost_masked_pixels(fr, bow_em, (235, 255, 240), [0.0, 0.18, 0.12, 0.34, 0.52, 0.72][idx])
+            if idx >= 3:
+                # Strictly match saturated emerald iris pixels inside left/right eyes (0 skin!)
+                eye_a = ((((xx >= 149) & (xx <= 165)) | ((xx >= 180) & (xx <= 190))) & (yy >= 96) & (yy <= 104) & (g0 >= 140) & ((g0 - r0) >= 24))
+                _boost_masked_pixels(fr, eye_a, (235, 255, 245), 0.22 if idx == 3 else (0.38 if idx == 4 else 0.58))
+            stars = [(44, 52), (242, 44), (288, 128), (248, 232), (36, 224), (218, 84)]
+            for s_i, (sx, sy) in enumerate(stars):
+                if (s_i + idx) % 2 == 0:
+                    draw_star_sparkle(fr, sx, sy, 2 + (idx >= 4 and s_i in (2, 3)), (110, 231, 183) if s_i % 2 == 0 else (254, 240, 138))
+
+    elif persona == "reaper":
+        # Flickering magenta scythe soul-flames + pulsing runes & soul-gems + flaring wraith eyes
+        scythe_flame = (yy <= 122) & (r0 >= 145) & (b0 >= 140) & (g0 <= 125)
+        gems_purple = (((xx >= 146) & (xx <= 168) & (yy >= 80) & (yy <= 108)) | ((xx >= 142) & (xx <= 174) & (yy >= 232) & (yy <= 284))) & (r0 >= 120) & (b0 >= 140)
+        eye_rp = (xx >= 124) & (xx <= 191) & (yy >= 122) & (yy <= 141) & (r0 >= 90) & ((r0 + b0) >= 165)
+        for idx, fr in enumerate(out_frames):
+            f_band = scythe_flame & (((xx + idx * 24) % 58) < 24)
+            _boost_masked_pixels(fr, f_band, (255, 225, 255), 0.56 if idx >= 3 else 0.34)
+            _boost_masked_pixels(fr, gems_purple, (255, 230, 255), [0.0, 0.18, 0.12, 0.34, 0.52, 0.72][idx])
+            if idx >= 3:
+                _boost_masked_pixels(fr, eye_rp, (255, 245, 255), 0.22 if idx == 3 else (0.42 if idx == 4 else 0.68))
+                if idx == 5:
+                    for wx, wy in ((128, 127), (126, 126), (125, 124), (186, 127), (188, 126), (189, 124)):
+                        draw_px(fr, wx, wy, (240, 171, 252))
+            wisps = [(44, 152 - idx * 8), (274, 166 - idx * 8), (62, 62 - idx * 4), (254, 54 - idx * 4)]
+            for w_i, (wx, wy) in enumerate(wisps):
+                draw_star_sparkle(fr, wx, wy, 2 + (idx == 5), (232, 121, 249) if w_i % 2 == 0 else (192, 132, 252))
+
+    elif persona == "titan":
+        # Blazing emerald Mjolnir runes + throbbing volcanic magma chest core & lava cracks + molten eyes
+        hammer_runes = (xx >= 140) & (xx <= 252) & (yy >= 8) & (yy <= 112) & (g0 >= 110) & ((g0 - r0) >= 22)
+        magma_core = (xx >= 110) & (xx <= 218) & (yy >= 238) & (yy <= 318) & (r0 >= 175) & (g0 >= 65) & (b0 <= 62)
+        bg_lava = ((xx <= 98) | (xx >= 228)) & (r0 >= 175) & (g0 >= 60) & (b0 <= 55)
+        eye_ti = (xx >= 137) & (xx <= 181) & (yy >= 138) & (yy <= 146) & (r0 >= 135) & (g0 >= 52) & ((r0 - b0) >= 65)
+        for idx, fr in enumerate(out_frames):
+            _boost_masked_pixels(fr, hammer_runes, (220, 255, 235), [0.0, 0.22, 0.14, 0.40, 0.58, 0.78][idx])
+            _boost_masked_pixels(fr, magma_core, (255, 250, 190), [0.0, 0.16, 0.10, 0.32, 0.50, 0.70][idx])
+            _boost_masked_pixels(fr, bg_lava, (255, 232, 140), [0.0, 0.12, 0.08, 0.24, 0.36, 0.50][idx])
+            if idx >= 3:
+                _boost_masked_pixels(fr, eye_ti, (255, 252, 200), 0.22 if idx == 3 else (0.44 if idx == 4 else 0.72))
+            sparks = [(48, 178 - idx * 9), (74, 134 - idx * 7), (268, 168 - idx * 9), (288, 118 - idx * 7), (166, 286 - idx * 5)]
+            for s_i, (sx, sy) in enumerate(sparks):
+                draw_star_sparkle(fr, sx, sy, 2 + (idx == 5 and s_i < 2), (52, 211, 153) if s_i == 1 else (253, 224, 71))
+
+    elif persona == "icemage":
+        # Sparkling diamond Ice-Spear & Ice Tiara crystal facet flashes + drifting pixel snowflakes + sapphire gleam
+        ice_crystal = (((xx >= 218) & (yy <= 232)) | ((xx >= 92) & (xx <= 228) & (yy >= 8) & (yy <= 108))) & (b0 >= 200) & (g0 >= 175)
+        for idx, fr in enumerate(out_frames):
+            facet = ice_crystal & (((xx * 2 + yy + idx * 29) % 72) < 22)
+            _boost_masked_pixels(fr, facet, (255, 255, 255), 0.56 if idx >= 3 else 0.34)
+            if idx >= 3:
+                # Strictly match saturated sapphire iris pixels inside left/right eyes (0 skin!)
+                eye_i = ((((xx >= 132) & (xx <= 155)) | ((xx >= 176) & (xx <= 192))) & (yy >= 137) & (yy <= 149) & (b0 >= 175) & ((b0 - r0) >= 34))
+                _boost_masked_pixels(fr, eye_i, (240, 255, 255), 0.20 if idx == 3 else (0.36 if idx == 4 else 0.54))
+            flakes = [(42, 62), (78, 148), (242, 68), (294, 162), (248, 226)]
+            for f_i, (fx, fy) in enumerate(flakes):
+                nx = fx + ((idx * 3 + f_i * 5) % 10) - 5
+                ny = fy + idx * 5
+                _draw_pixel_flake(fr, nx, ny, (186, 230, 253))
+            draw_star_sparkle(fr, 274, 88 + (idx % 3) * 8, 3 + (idx == 5), (186, 230, 253))
+
+    elif persona == "android":
+        # Animated sweeping cyan holo-visor scanner beam + pulsing chest reactor core & plasma blade + HUD ticks
+        visor_mask = (xx >= 153) & (xx <= 214) & (yy >= 86) & (yy <= 117) & (g0 >= 160) & (b0 >= 180) & (r0 <= 160)
+        core_glow = (xx >= 136) & (xx <= 232) & (yy >= 214) & (yy <= 308) & ((b0 >= 175) | (r0 >= 180))
+        blade_glow = (yy >= 122) & (yy <= 246) & ((xx <= 110) | (xx >= 244)) & ((b0 >= 175) | ((r0 >= 175) & (b0 >= 150)))
+        scan_xs = [162, 172, 182, 192, 200, 208]
+        for idx, fr in enumerate(out_frames):
+            sx_beam = scan_xs[idx]
+            beam = visor_mask & (np.abs(xx - sx_beam) <= 3)
+            _boost_masked_pixels(fr, beam, (255, 255, 255), 0.72)
+            _boost_masked_pixels(fr, core_glow, (235, 255, 255) if idx % 2 == 0 else (255, 220, 255), [0.0, 0.20, 0.14, 0.36, 0.54, 0.72][idx])
+            _boost_masked_pixels(fr, blade_glow, (240, 255, 255), [0.0, 0.16, 0.12, 0.32, 0.48, 0.68][idx])
+            # Animated blinking HUD telemetry bars in dark upper-right cockpit backdrop
+            for row_i in range(4):
+                bar_len = 8 + ((idx * 7 + row_i * 11) % 24)
+                by_hud = 96 + row_i * 7
+                for bx_hud in range(256, 256 + bar_len):
+                    draw_px(fr, bx_hud, by_hud, (56, 189, 248) if (row_i + idx) % 2 == 0 else (244, 114, 182))
+            draw_star_sparkle(fr, 184, 260, 2 + (idx >= 4), (34, 211, 238))
+
+    return pack_sheet(out_frames)
+
+
 BUILDERS = {
     "nyx":          build_nyx_talk_sheet,
     "warrior":      build_warrior_talk_sheet,
@@ -1189,7 +1500,7 @@ def main() -> None:
     built: dict[str, np.ndarray] = {}
 
     for persona, fn in BUILDERS.items():
-        sh = fn()
+        sh = apply_living_hero_motion(persona, fn())
         out_p = OUT_DIR / f"{persona}_talk_sheet.png"
         Image.fromarray(sh, "RGBA").save(out_p, optimize=True)
         assert sh.shape == (320, 1920, 4), f"{persona} bad shape: {sh.shape}"

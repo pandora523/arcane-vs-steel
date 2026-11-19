@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps153';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps153';
+import { PixelForge } from './PixelForge.js?v=30fps154';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps154';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps153';
+} from './shaders/exNextGenFX.js?v=30fps154';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -789,7 +789,7 @@ export class Renderer {
     this.ultDim = 0.65;
   }
 
-  triggerUltimateCutIn(caster, isTrueUlt = false) {
+  triggerUltimateCutIn(caster, isTrueUlt = false, explicitSide = null) {
     const isEx = Boolean(caster?.heroId && String(caster.heroId).endsWith('_ex'));
     this.cutInTimer = isTrueUlt ? 2.10 : 1.55;
     this.cutInMaxTimer = isTrueUlt ? 2.10 : 1.55;
@@ -810,11 +810,13 @@ export class Renderer {
     this.cutInColor = caster.primaryColor || '#38bdf8';
     this.cutInFacing = caster.facing || 1;
     this.cutInSide =
-      caster?.team === 2 ||
-      caster?.team === 'right' ||
-      (!caster?.team && (caster?.facing || 1) < 0)
-        ? 'right'
-        : 'left';
+      explicitSide === 'left' || explicitSide === 'right'
+        ? explicitSide
+        : caster?.team === 2 ||
+            caster?.team === 'right' ||
+            (!caster?.team && (caster?.facing || 1) < 0)
+          ? 'right'
+          : 'left';
   }
 
   triggerKOFinisher(x, y, color = '#facc15', winnerName = '', winnerHeroId = 'warrior') {
@@ -7842,15 +7844,29 @@ export class Renderer {
     );
     const rawCx =
       side === 'right'
-        ? Math.min(w - halfW - 14, Math.round(w * 0.695))
-        : Math.max(halfW + 14, Math.round(w * 0.305));
+        ? Math.min(w - halfW - 14, Math.round(w * 0.705))
+        : Math.max(halfW + 14, Math.round(w * 0.295));
     const cx = Math.max(halfW + 10, Math.min(w - halfW - 10, rawCx));
     // Balanced upper-mid combat focal sightline cleanly above the caster's head!
     const cy = Math.max(
       Math.round(safeTopY + halfH + 18),
       Math.round(ch * (this.isMobileLandscape ? 0.44 : this.isMobile ? 0.41 : 0.43))
     );
-    const slidePx = p < 0.14 ? Math.round(Math.pow(1 - p / 0.14, 2) * 64) * slideDir : 0;
+    // Punchy side-edge pop-in (launches from caster's own screen side with spring overshoot, exits back to that side!)
+    const launchDist = this.isMobile ? 165 : 270;
+    const exitDist = this.isMobile ? 150 : 240;
+    let slidePx = 0;
+    if (p < 0.16) {
+      const tIn = p / 0.16;
+      const easeIn = 1 - Math.pow(1 - tIn, 3);
+      slidePx = Math.round((launchDist * (1 - easeIn) - 16 * easeIn)) * slideDir;
+    } else if (p < 0.24) {
+      const tSettle = (p - 0.16) / 0.08;
+      slidePx = Math.round(-16 * (1 - tSettle)) * slideDir;
+    } else if (p > 0.82) {
+      const tOut = (p - 0.82) / 0.18;
+      slidePx = Math.round(Math.pow(tOut, 2) * exitDist) * slideDir;
+    }
     return { side, slideDir, halfW, halfH, cx, cy, slidePx };
   }
 
@@ -8484,8 +8500,30 @@ export class Renderer {
     const { p, alpha, isTrue, elemCol, accCol, halfW, halfH, slideDir, eyebrowFallback } = cfg;
     const baseHero = String(this.cutInHeroId || 'warrior').replace(/_ex$/, '');
     const typo = this._getCutInHeroTypography(baseHero, elemCol, accCol);
+    const bloomPulse = 0.5 + 0.5 * Math.sin(p * 18);
 
-    const drawStar4 = (gx, gy, arm, col) => {
+    const drawBloomOrb = (gx, gy, rad, innerCol, midCol, orbAlpha, scaleY = 1) => {
+      if (typeof ctx.createRadialGradient !== 'function' || orbAlpha <= 0.005 || rad <= 2) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, orbAlpha));
+      if (scaleY !== 1) ctx.scale(1, scaleY);
+      const ry = scaleY !== 1 ? Math.round(gy / scaleY) : gy;
+      const rg = ctx.createRadialGradient(gx, ry, Math.max(2, Math.round(rad * 0.08)), gx, ry, rad);
+      if (rg && typeof rg.addColorStop === 'function') {
+        rg.addColorStop(0, innerCol);
+        rg.addColorStop(0.42, midCol);
+        rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = rg;
+        ctx.fillRect(gx - rad, ry - rad, rad * 2, rad * 2);
+      }
+      ctx.restore();
+    };
+
+    const drawStar4 = (gx, gy, arm, col, withBloom = false) => {
+      if (withBloom) {
+        drawBloomOrb(gx, gy, Math.max(16, arm * 3), '#ffffff', col, alpha * (isTrue ? 0.42 : 0.30));
+      }
       ctx.fillStyle = col;
       ctx.fillRect(gx - arm, gy - 1, arm * 2 + 2, 3);
       ctx.fillRect(gx - 1, gy - arm, 3, arm * 2 + 2);
@@ -8493,7 +8531,7 @@ export class Renderer {
       ctx.fillRect(gx - 2, gy - 2, 5, 5);
     };
 
-    // Thick 8-way pixel ink-stroke + 3D extrusion + Hero-Specific 3-Stop Elemental Gradient Face!
+    // Dual-Pass Luminous HD-2D Back-Bloom + Thick 8-way Pixel Ink-Stroke + 3D Extrusion + 3-Stop Elemental Gradient Face!
     const drawBorderlessHeroGradLine = (
       txt,
       ox,
@@ -8511,6 +8549,22 @@ export class Renderer {
       const dMid = Math.max(1, Math.round(fontPx * 0.08));
       const rimOff = fontPx <= 16 ? 1 : 2;
       ctx.font = `bold ${fontPx}px "Press Start 2P", monospace`;
+
+      // Pass 0: Radiant Dual-Layer Neon Back-Bloom Halo (keeps foreground pixel art 100% razor-sharp!)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.shadowColor = rimCol;
+      ctx.shadowBlur = Math.max(8, Math.round(fontPx * (isTrue ? 0.96 : 0.76)));
+      ctx.globalAlpha = alpha * (isTrue ? 0.72 : 0.56);
+      ctx.fillStyle = rimCol;
+      ctx.fillText(txt, ox, ty, maxW);
+
+      ctx.shadowColor = midCol;
+      ctx.shadowBlur = Math.max(5, Math.round(fontPx * (isTrue ? 0.44 : 0.34)));
+      ctx.globalAlpha = alpha * (isTrue ? 0.62 : 0.48);
+      ctx.fillStyle = topCol;
+      ctx.fillText(txt, ox, ty, maxW);
+      ctx.restore();
 
       // 8-way crisp pixel ink outline + proportional 3D block shadow (#020617)
       ctx.fillStyle = '#020617';
@@ -8530,55 +8584,105 @@ export class Renderer {
       ctx.fillStyle = rimCol;
       ctx.fillText(txt, ox + rimOff, ty + rimOff, maxW);
 
+      let faceGrad = midCol;
       if (typeof ctx.createLinearGradient === 'function') {
         const lg = ctx.createLinearGradient(0, ty - Math.round(fontPx * 0.62), 0, ty + Math.round(fontPx * 0.62));
         if (lg && typeof lg.addColorStop === 'function') {
           lg.addColorStop(0, topCol);
           lg.addColorStop(0.46, midCol);
           lg.addColorStop(1, botCol);
-          ctx.fillStyle = lg;
-        } else {
-          ctx.fillStyle = midCol;
+          faceGrad = lg;
         }
-      } else {
-        ctx.fillStyle = midCol;
       }
+      ctx.fillStyle = faceGrad;
       ctx.fillText(txt, ox, ty, maxW);
+
+      // Subtle breathing HDR Highlight Specular Over-Bloom on main title lines
+      if (fontPx >= 16) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * ((isTrue ? 0.24 : 0.17) + bloomPulse * 0.10);
+        ctx.fillStyle = faceGrad;
+        ctx.fillText(txt, ox, ty, maxW);
+        ctx.restore();
+      }
     };
 
-    // 1. Seamless Feather-Edge Radial Elemental Mist (`lighter` <= 0.19 alpha, ZERO rectangular edges, ZERO `arc`!)
-    if (typeof ctx.createRadialGradient === 'function') {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = alpha * (isTrue ? 0.19 : 0.14);
-      ctx.scale(1, 0.38);
-      const rad = Math.max(56, Math.round(halfW * 0.94));
-      const rg = ctx.createRadialGradient(0, 14, 4, 0, 14, rad);
-      rg.addColorStop(0, typo.mid);
-      rg.addColorStop(0.45, typo.rim);
-      rg.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = rg;
-      ctx.fillRect(-rad, 14 - rad, rad * 2, rad * 2);
-      ctx.restore();
-    }
+    // 1. Lush 3-Tier Seamless Feather-Edge HD-2D Atmospheric Bloom Aura (ZERO rectangular edges, ZERO `arc`!)
+    drawBloomOrb(
+      0,
+      6,
+      Math.max(88, Math.round(halfW * 1.24)),
+      typo.rim,
+      typo.bevel,
+      alpha * ((isTrue ? 0.34 : 0.24) + bloomPulse * 0.06),
+      0.50
+    );
+    drawBloomOrb(
+      0,
+      10,
+      Math.max(64, Math.round(halfW * 0.80)),
+      '#ffffff',
+      typo.mid,
+      alpha * ((isTrue ? 0.36 : 0.26) + bloomPulse * 0.08),
+      0.34
+    );
+    // Radiant Bloom Halo Orb right behind the Living Mascot Crest!
+    drawBloomOrb(
+      0,
+      -halfH - 4,
+      isTrue ? 88 : 70,
+      '#ffffff',
+      typo.rim,
+      alpha * ((isTrue ? 0.44 : 0.34) + bloomPulse * 0.08),
+      0.86
+    );
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = alpha;
 
-    // 2. Beat 1 (`p < 0.22`): Explosive Cross-Slash Detonation Starburst!
-    if (p < 0.22) {
-      const flashT = 1 - p / 0.22;
-      const beamH = Math.max(3, Math.round(flashT * 20));
-      const beamW = Math.round(halfW * (2.2 + flashT * 0.4));
-      ctx.globalAlpha = alpha * flashT * 0.92;
-      ctx.fillStyle = typo.rim;
+    // 2. Beat 1 (`p < 0.24`): Side-Launching Luminous Bloom Flash & Anamorphic Lens-Flare Bar!
+    if (p < 0.24) {
+      const flashT = 1 - p / 0.24;
+      const beamH = Math.max(3, Math.round(flashT * 18));
+      const beamW = Math.round(halfW * (2.3 + flashT * 0.5));
+      drawBloomOrb(
+        Math.round(slideDir * halfW * 0.35 * flashT),
+        6,
+        Math.round(halfW * (0.65 + flashT * 0.35)),
+        '#ffffff',
+        typo.mid,
+        alpha * flashT * 0.55,
+        0.38
+      );
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * flashT * 0.88;
+      if (typeof ctx.createLinearGradient === 'function') {
+        const fg = ctx.createLinearGradient(-(beamW >> 1), 0, beamW >> 1, 0);
+        if (fg && typeof fg.addColorStop === 'function') {
+          fg.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          fg.addColorStop(0.28, typo.rim);
+          fg.addColorStop(0.5, '#ffffff');
+          fg.addColorStop(0.72, typo.rim);
+          fg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = fg;
+        } else {
+          ctx.fillStyle = typo.rim;
+        }
+      } else {
+        ctx.fillStyle = typo.rim;
+      }
       ctx.fillRect(-(beamW >> 1), 6 - beamH, beamW, beamH * 2);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-(beamW >> 1) + 24, 3, Math.max(24, beamW - 48), 6);
-      ctx.fillRect(-4, -Math.round(halfH * (1.3 + flashT * 0.6)), 8, Math.round(halfH * (2.6 + flashT)));
+      ctx.fillRect(-(beamW >> 1) + 28, 4, Math.max(24, beamW - 56), 4);
+      ctx.restore();
       ctx.globalAlpha = alpha;
     }
 
-    // 3. Colossal Sculpted Character-Themed Set-Piece & Live Animated VFX!
+    // 3. Living Sculpted Character-Themed Mascot Set-Piece with Luminous Elemental Bloom Glow!
+    ctx.save();
+    ctx.shadowColor = typo.rim;
+    ctx.shadowBlur = isTrue ? 16 : 11;
     this._drawCutInHeroThemeFX(ctx, {
       baseHero,
       p,
@@ -8590,35 +8694,63 @@ export class Renderer {
       halfH,
       slideDir
     });
+    ctx.restore();
+    ctx.globalAlpha = alpha;
 
-    // 4. Outward-Flying Elemental Pixel Sparks
+    // 3.5. Continuous Soft Anamorphic Bloom Light-Ribbon Across Title Centerline
+    if (p >= 0.12 && p <= 0.88 && typeof ctx.createLinearGradient === 'function') {
+      const ribW = Math.round(halfW * (1.72 + bloomPulse * 0.18));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * ((isTrue ? 0.36 : 0.25) + bloomPulse * 0.12);
+      const rgLine = ctx.createLinearGradient(-(ribW >> 1), 0, ribW >> 1, 0);
+      if (rgLine && typeof rgLine.addColorStop === 'function') {
+        rgLine.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        rgLine.addColorStop(0.22, typo.rim);
+        rgLine.addColorStop(0.5, '#ffffff');
+        rgLine.addColorStop(0.78, typo.mid);
+        rgLine.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = rgLine;
+        ctx.fillRect(-(ribW >> 1), 8, ribW, isTrue ? 4 : 3);
+      }
+      ctx.restore();
+    }
+
+    // 4. Outward-Flying Glowing Elemental Pixel Sparks (streaming outward from caster's side!)
     const sparkCount = isTrue ? 16 : 10;
     for (let s = 0; s < sparkCount; s++) {
       const cyc = (p * 2.5 + s * 0.15) % 1;
-      const dir = s % 2 === 0 ? -1 : 1;
-      const sx = dir * Math.round(36 + cyc * (halfW * 0.98) + ((s * 31) % 36));
+      const dir = s % 3 === 0 ? slideDir : -slideDir;
+      const sx = dir * Math.round(32 + cyc * (halfW * 1.02) + ((s * 31) % 34));
       const sy = ((s % 5) - 2) * Math.round(halfH * 0.36);
-      ctx.globalAlpha = alpha * (1 - cyc * 0.82);
+      ctx.globalAlpha = alpha * (1 - cyc * 0.80);
       ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? typo.mid : typo.bot;
-      ctx.fillRect(sx - 8, sy, 16, 3);
-      ctx.fillRect(sx + dir * 9, sy - 1, 4, 4);
+      ctx.fillRect(sx - 9, sy, 18, 3);
+      ctx.fillRect(sx + dir * 10, sy - 1, 4, 4);
+      if (s % 4 === 0) {
+        drawBloomOrb(sx, sy + 1, 14, '#ffffff', typo.mid, alpha * (1 - cyc) * 0.36);
+      }
     }
     ctx.globalAlpha = alpha;
 
-    // 5. 4-Beat Staggered Kinetic Whip-In (`p < 0.26`) & Katana Split-Slice Exit (`p > 0.82`)
-    const l1InT = Math.min(1, p / 0.18);
+    // 5. Same-Side Staggered Kinetic Pop-In (`p < 0.24`) & Same-Side Jet Exit (`p > 0.82`)
+    const l1InT = Math.min(1, p / 0.16);
     const l1Ease = 1 - Math.pow(1 - l1InT, 3);
-    const l2InT = Math.max(0, Math.min(1, (p - 0.04) / 0.22));
+    const l2InT = Math.max(0, Math.min(1, (p - 0.04) / 0.20));
     const l2Ease = 1 - Math.pow(1 - l2InT, 3);
-    const outShear = p > 0.82 ? Math.round(Math.pow((p - 0.82) / 0.18, 2) * 110) : 0;
+    const outJet = p > 0.82 ? Math.round(Math.pow((p - 0.82) / 0.18, 2) * 96) : 0;
 
     if (p > 0.82 && p < 0.92) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-halfW, 6, halfW * 2, 3);
+      ctx.restore();
     }
 
-    const ox1 = Math.round((1 - l1Ease) * -118 * slideDir) + outShear * slideDir;
-    const ox2 = Math.round((1 - l2Ease) * 104 * slideDir) - outShear * slideDir;
+    // Both lines whip unmistakably OUT FROM THE CASTER'S SIDE (`+slideDir`) with crisp 40ms stagger!
+    const ox1 = Math.round((1 - l1Ease) * 92 * slideDir) + outJet * slideDir;
+    const ox2 = Math.round((1 - l2Ease) * 140 * slideDir) + Math.round(outJet * 1.24) * slideDir;
 
     const eyebrow = String(
       this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • ${eyebrowFallback}`
@@ -8672,13 +8804,16 @@ export class Renderer {
       const y2 = Math.round(halfH * 0.44);
 
       if (l2InT > 0 && l2InT < 1) {
-        const ghostSpread = Math.round((1 - l2Ease) * 40);
+        const ghostSpread = Math.round((1 - l2Ease) * 44) * slideDir;
         ctx.font = `bold ${line2Px}px "Press Start 2P", monospace`;
-        ctx.globalAlpha = alpha * (1 - l2Ease) * 0.60;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * (1 - l2Ease) * 0.58;
         ctx.fillStyle = typo.mid;
-        ctx.fillText(line2, ox2 - ghostSpread, y2 - 4, cutMaxTextW);
+        ctx.fillText(line2, ox2 + ghostSpread, y2 - 3, cutMaxTextW);
         ctx.fillStyle = typo.bot;
-        ctx.fillText(line2, ox2 + ghostSpread, y2 + 4, cutMaxTextW);
+        ctx.fillText(line2, ox2 + Math.round(ghostSpread * 1.6), y2 + 3, cutMaxTextW);
+        ctx.restore();
         ctx.globalAlpha = alpha;
       }
 
@@ -8710,7 +8845,7 @@ export class Renderer {
       const sweepSpan = Math.min(cutMaxTextW, Math.max(56, line2.length * Math.round(line2Px * 0.85)));
       const glintX = ox2 + Math.round(((p * 2.6) % 1 - 0.5) * sweepSpan);
       const glintY = y2 - Math.round(line2Px * 0.46);
-      drawStar4(glintX, glintY, 7, typo.mid);
+      drawStar4(glintX, glintY, 7, typo.mid, true);
     } else {
       const singleMaxPx = this.isMobileLandscape ? 23 : this.isMobile ? 20 : isTrue ? 35 : 30;
       const singlePx = Math.max(
@@ -8720,13 +8855,16 @@ export class Renderer {
       const yMid = Math.round(halfH * 0.22);
 
       if (l2InT > 0 && l2InT < 1) {
-        const ghostSpread = Math.round((1 - l2Ease) * 40);
+        const ghostSpread = Math.round((1 - l2Ease) * 44) * slideDir;
         ctx.font = `bold ${singlePx}px "Press Start 2P", monospace`;
-        ctx.globalAlpha = alpha * (1 - l2Ease) * 0.60;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * (1 - l2Ease) * 0.58;
         ctx.fillStyle = typo.mid;
-        ctx.fillText(line2, ox2 - ghostSpread, yMid - 4, cutMaxTextW);
+        ctx.fillText(line2, ox2 + ghostSpread, yMid - 3, cutMaxTextW);
         ctx.fillStyle = typo.bot;
-        ctx.fillText(line2, ox2 + ghostSpread, yMid + 4, cutMaxTextW);
+        ctx.fillText(line2, ox2 + Math.round(ghostSpread * 1.6), yMid + 3, cutMaxTextW);
+        ctx.restore();
         ctx.globalAlpha = alpha;
       }
 
@@ -8745,7 +8883,7 @@ export class Renderer {
       const sweepSpan = Math.min(cutMaxTextW, Math.max(56, line2.length * Math.round(singlePx * 0.85)));
       const glintX = ox2 + Math.round(((p * 2.6) % 1 - 0.5) * sweepSpan);
       const glintY = yMid - Math.round(singlePx * 0.46);
-      drawStar4(glintX, glintY, 7, typo.mid);
+      drawStar4(glintX, glintY, 7, typo.mid, true);
     }
   }
 
