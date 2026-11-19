@@ -1,10 +1,11 @@
-import { PixelForge } from './PixelForge.js?v=30fps165';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps165';
+import { PixelForge } from './PixelForge.js?v=30fps166';
+import { PixelFont } from './PixelFont.js?v=30fps166';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps166';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps165';
+} from './shaders/exNextGenFX.js?v=30fps166';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -153,6 +154,10 @@ export class Renderer {
     this.cobAssistTargetX = 800;
     this.impactFrameTimer = 0;
     this.impactFrameMaxTimer = 0.15;
+    this.vsCombatHud = {
+      left: { hits: 0, damage: 0, timer: 0, maxTimer: 1.75, popTimer: 0, color: '#38bdf8', callouts: [] },
+      right: { hits: 0, damage: 0, timer: 0, maxTimer: 1.75, popTimer: 0, color: '#fb923c', callouts: [] }
+    };
     this.impactFrameFocusX = 600;
     this.impactFrameFocusY = 420;
     this.impactFrameStyle = 'inferno';
@@ -809,8 +814,97 @@ export class Renderer {
     if (!this.isMobile) this.aberration = Math.min(4, Math.max(this.aberration, amount * 0.35));
   }
 
-  triggerHitStop(duration = 0.04) {
-    this.hitStopTimer = Math.max(this.hitStopTimer, Math.min(0.05, duration));
+  triggerHitStop(duration = 0.04, allowKoBurst = false) {
+    const cap = allowKoBurst ? 0.12 : 0.05;
+    this.hitStopTimer = Math.max(this.hitStopTimer, Math.min(cap, duration));
+  }
+
+  resetVsCombatHud() {
+    if (!this.vsCombatHud) {
+      this.vsCombatHud = {
+        left: { hits: 0, damage: 0, timer: 0, maxTimer: 1.75, popTimer: 0, color: '#38bdf8', callouts: [] },
+        right: { hits: 0, damage: 0, timer: 0, maxTimer: 1.75, popTimer: 0, color: '#fb923c', callouts: [] }
+      };
+      return;
+    }
+    for (const side of ['left', 'right']) {
+      const slot = this.vsCombatHud[side];
+      slot.hits = 0;
+      slot.damage = 0;
+      slot.timer = 0;
+      slot.popTimer = 0;
+      slot.callouts.length = 0;
+    }
+  }
+
+  recordVsComboHit(side, hits, damage, color = '#38bdf8') {
+    const slot = this.vsCombatHud?.[side === 'right' ? 'right' : 'left'];
+    if (!slot) return;
+    slot.hits = Math.max(1, Math.round(hits || 1));
+    slot.damage = Math.max(0, Math.round(damage || 0));
+    slot.timer = slot.maxTimer || 1.75;
+    slot.popTimer = 0.18;
+    if (color) slot.color = color;
+  }
+
+  resetVsCombo(side) {
+    const slot = this.vsCombatHud?.[side === 'right' ? 'right' : 'left'];
+    if (!slot) return;
+    slot.hits = 0;
+    slot.damage = 0;
+    slot.timer = 0;
+    slot.popTimer = 0;
+  }
+
+  pushVsCallout(side, text, color = '#fde047', topColor = '#ffffff') {
+    const slot = this.vsCombatHud?.[side === 'right' ? 'right' : 'left'];
+    if (!slot || !text) return;
+    const upper = String(text).toUpperCase();
+    // Refresh existing identical callout instead of stacking duplicates
+    const existing = slot.callouts.find((c) => c.text === upper);
+    if (existing) {
+      existing.age = 0;
+      existing.maxLife = 1.35;
+      existing.color = color;
+      existing.topColor = topColor;
+      return;
+    }
+    slot.callouts.unshift({
+      text: upper,
+      color,
+      topColor,
+      age: 0,
+      maxLife: 1.35
+    });
+    if (slot.callouts.length > 2) {
+      slot.callouts.length = 2;
+    }
+  }
+
+  updateVsCombatHud(rawDt) {
+    if (!this.vsCombatHud) return;
+    for (const side of ['left', 'right']) {
+      const slot = this.vsCombatHud[side];
+      if (!slot) continue;
+      if (slot.popTimer > 0) {
+        slot.popTimer = Math.max(0, slot.popTimer - rawDt);
+      }
+      if (slot.timer > 0) {
+        slot.timer = Math.max(0, slot.timer - rawDt);
+        if (slot.timer <= 0) {
+          slot.hits = 0;
+          slot.damage = 0;
+        }
+      }
+      if (slot.callouts.length > 0) {
+        for (let i = slot.callouts.length - 1; i >= 0; i--) {
+          slot.callouts[i].age += rawDt;
+          if (slot.callouts[i].age >= slot.callouts[i].maxLife) {
+            slot.callouts.splice(i, 1);
+          }
+        }
+      }
+    }
   }
 
   triggerUltimateCamera(focusX, focusY) {
@@ -886,6 +980,7 @@ export class Renderer {
   update(rawDt, fighters) {
     this.time += rawDt;
     if (this.hitStopTimer > 0) this.hitStopTimer = Math.max(0, this.hitStopTimer - rawDt);
+    this.updateVsCombatHud(rawDt);
     if (this.shakeTime > 0) {
       this.shakeTime = Math.max(0, this.shakeTime - rawDt);
       // Fast exponential decay so shake settles almost immediately instead of lingering
@@ -1492,6 +1587,17 @@ export class Renderer {
           f.drawHackAndSlashStreaks(ctx);
         }
       }
+      if (
+        !this.adventureMode &&
+        f &&
+        !f.isMonster &&
+        !f.isDead &&
+        !f.isBenched &&
+        f.isPlayerControlled &&
+        !f.adventureAutoPlay
+      ) {
+        this.drawManualP1GroundIndicator(ctx, f);
+      }
     }
 
     // 7. Foreground Ultimate Attack Pass: Ultimate Attacks, Clashes & K.O. Finishers blaze IN FRONT of the characters!
@@ -1576,10 +1682,170 @@ export class Renderer {
     // 8. Screen-Space Unreal HD-2D Soft Tilt-Shift Vignette (Zero hard vertical bars)
     this.drawHD2DPostProcess(ctx);
 
+    // 8.5. Fighting-Game Side Callouts & Combo Counter (VS Mode, Nearest-Neighbor PixelFont)
+    if (!this.adventureMode) {
+      this.drawVsCombatCalloutsAndCombos(ctx);
+    }
+
     // 9. Adventure Mode Screen-Space Progress Strip, Flashing "GO!" Pixel Arrow & Boss Warning Banner
     if (this.adventureMode && this.adventureHook) {
       this.adventureHook.renderScreenHUD(ctx, this);
     }
+  }
+
+  drawManualP1GroundIndicator(ctx, f) {
+    if (!ctx?.fillRect || !f) return;
+    const fx = Math.round(f.x);
+    const gy = Math.round(Number.isFinite(f.groundY) ? f.groundY : f.y);
+    const pulse = 0.78 + Math.sin((this.time || 0) * 6.0) * 0.22;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    // Crisp stepped pixel ground ring bracket directly beneath P1's boots
+    ctx.globalAlpha = 0.85 * pulse;
+    ctx.fillStyle = '#050812';
+    ctx.fillRect(fx - 26, gy + 1, 52, 4);
+    ctx.fillRect(fx - 20, gy - 1, 40, 2);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(fx - 24, gy + 2, 14, 2);
+    ctx.fillRect(fx + 10, gy + 2, 14, 2);
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(fx - 10, gy + 2, 20, 2);
+    // Tiny upward boot pointer chevron
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(fx - 2, gy, 4, 2);
+    ctx.fillRect(fx - 4, gy + 2, 8, 2);
+
+    // Subtle crisp nearest-neighbor "1P" pixel pill beneath floor bracket
+    const tagY = gy + 14;
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = '#050812';
+    ctx.fillRect(fx - 16, tagY - 7, 32, 14);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(fx - 15, tagY - 6, 30, 1);
+    ctx.fillRect(fx - 15, tagY + 5, 30, 1);
+    ctx.fillRect(fx - 15, tagY - 6, 1, 12);
+    ctx.fillRect(fx + 14, tagY - 6, 1, 12);
+    ctx.fillStyle = '#0c1c30';
+    ctx.fillRect(fx - 14, tagY - 5, 28, 10);
+    PixelFont.drawCentered(ctx, '1P', fx, tagY, 1, '#67e8f9', '#ffffff', true);
+    ctx.restore();
+  }
+
+  drawVsCombatCalloutsAndCombos(ctx) {
+    if (!ctx?.fillRect || !this.vsCombatHud) return;
+    const viewW = this.viewWidth || this.canvas?.width || 1280;
+    const viewH = this.viewHeight || this.canvas?.height || 720;
+    const compact = Boolean(this.isMobileLandscape || this.isMobilePortrait || viewW <= 860 || viewH <= 460);
+    const hudBottom = this.getHudBottomY();
+    const baseTopY = Math.round(hudBottom + (compact ? 12 : 20));
+    const edgePad = compact ? 10 : 20;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    for (const side of ['left', 'right']) {
+      const slot = this.vsCombatHud[side];
+      if (!slot) continue;
+      const isRight = side === 'right';
+      let cursorY = baseTopY;
+
+      // 1. Live Multi-Hit Combo Counter (`2 HITS!`+)
+      if (slot.hits >= 2 && slot.timer > 0) {
+        const alpha = Math.min(1, slot.timer / 0.32);
+        const popBump = slot.popTimer > 0 ? Math.round((slot.popTimer / 0.18) * 3) : 0;
+        const hitText = `${slot.hits} HITS!`;
+        const dmgText = slot.damage > 0 ? `${slot.damage} DMG` : '';
+        const mainPx = compact ? 2 : 3;
+        const subPx = compact ? 1 : 2;
+        const tierMain =
+          slot.hits >= 7 ? '#fb7185' : slot.hits >= 4 ? '#facc15' : '#38bdf8';
+        const tierTop =
+          slot.hits >= 7 ? '#fef08a' : slot.hits >= 4 ? '#fef9c3' : '#e0f2fe';
+
+        const textW = PixelFont.measureWidth(hitText, mainPx);
+        const subW = dmgText ? PixelFont.measureWidth(dmgText, subPx) : 0;
+        const plateW = Math.max(textW, subW, compact ? 74 : 112) + (compact ? 18 : 26);
+        const plateH = (compact ? 30 : 44) + (dmgText ? (compact ? 4 : 6) : 0);
+        const px0 = isRight ? Math.round(viewW - edgePad - plateW) : Math.round(edgePad);
+        const py0 = Math.round(cursorY - popBump);
+
+        ctx.globalAlpha = alpha;
+        // Crisp darkforge obsidian backplate with stepped corners & colored accent rail
+        ctx.fillStyle = '#040710';
+        ctx.fillRect(px0 - 2, py0 - 2, plateW + 4, plateH + 4);
+        ctx.fillStyle = 'rgba(10, 16, 30, 0.90)';
+        ctx.fillRect(px0, py0, plateW, plateH);
+        // Side accent rail (left rail for P1, right rail for P2)
+        ctx.fillStyle = tierMain;
+        ctx.fillRect(isRight ? px0 + plateW - 4 : px0, py0, 4, plateH);
+        ctx.fillStyle = '#d4af37';
+        ctx.fillRect(px0, py0, plateW, 2);
+        ctx.fillRect(px0, py0 + plateH - 2, plateW, 2);
+
+        const textCx = Math.round(px0 + plateW * 0.5 + (isRight ? -2 : 2));
+        const mainCy = Math.round(py0 + (compact ? 11 : 17));
+        PixelFont.drawCentered(ctx, hitText, textCx, mainCy, mainPx, tierMain, tierTop, true);
+
+        if (dmgText) {
+          const subCy = Math.round(py0 + (compact ? 23 : 35));
+          PixelFont.drawCentered(ctx, dmgText, textCx, subCy, subPx, '#cbd5e1', '#ffffff', true);
+        }
+
+        // Slim combo decay progress rail along bottom edge
+        const frac = Math.max(0, Math.min(1, slot.timer / (slot.maxTimer || 1.75)));
+        const barW = Math.max(2, Math.round((plateW - 8) * frac));
+        const barX = isRight ? px0 + plateW - 4 - barW : px0 + 4;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px0 + 4, py0 + plateH - 5, plateW - 8, 3);
+        ctx.fillStyle = tierMain;
+        ctx.fillRect(barX, py0 + plateH - 5, barW, 3);
+
+        cursorY += plateH + (compact ? 6 : 9);
+      }
+
+      // 2. Fighting-Game Technical Callouts (`COUNTER!`, `WHIFF PUNISH!`, `PERFECT PARRY!`, `CLASH!`)
+      if (slot.callouts.length > 0) {
+        const callPx = compact ? 1 : 2;
+        for (let i = 0; i < slot.callouts.length; i++) {
+          const co = slot.callouts[i];
+          const remain = Math.max(0, co.maxLife - co.age);
+          const fadeIn = Math.min(1, co.age / 0.11);
+          const fadeOut = Math.min(1, remain / 0.24);
+          const alpha = Math.max(0, Math.min(fadeIn, fadeOut));
+          if (alpha <= 0.02) continue;
+
+          const slideShift = Math.round((1 - fadeIn) * (compact ? 18 : 28));
+          const tw = PixelFont.measureWidth(co.text, callPx);
+          const bw = tw + (compact ? 16 : 24);
+          const bh = compact ? 16 : 24;
+          const bx = isRight
+            ? Math.round(viewW - edgePad - bw + slideShift)
+            : Math.round(edgePad - slideShift);
+          const by = Math.round(cursorY);
+
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = '#03060d';
+          ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+          ctx.fillStyle = 'rgba(11, 16, 28, 0.92)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.fillStyle = co.color || '#fde047';
+          ctx.fillRect(isRight ? bx + bw - 4 : bx, by, 4, bh);
+          ctx.fillRect(bx, by, bw, 2);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(bx, by + bh - 2, bw, 2);
+
+          const cx = Math.round(bx + bw * 0.5 + (isRight ? -2 : 2));
+          const cy = Math.round(by + bh * 0.5);
+          PixelFont.drawCentered(ctx, co.text, cx, cy, callPx, co.color || '#fde047', co.topColor || '#ffffff', true);
+
+          cursorY += bh + (compact ? 5 : 7);
+        }
+      }
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   drawTagPedestalWorld(ctx, f) {

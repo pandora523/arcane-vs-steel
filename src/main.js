@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps165';
-import { VFXManager } from './engine/VFXManager.js?v=30fps165';
-import { PixelForge } from './engine/PixelForge.js?v=30fps165';
-import { AudioManager } from './engine/AudioManager.js?v=30fps165';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps165';
-import { Fighter } from './entities/Fighter.js?v=30fps165';
-import { Warrior } from './entities/Warrior.js?v=30fps165';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps165';
-import { FireMage } from './entities/FireMage.js?v=30fps165';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps165';
-import { Archer } from './entities/Archer.js?v=30fps165';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps165';
-import { Priestess } from './entities/Priestess.js?v=30fps165';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps165';
-import { Reaper } from './entities/Reaper.js?v=30fps165';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps165';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps165';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps165';
-import { Titan } from './entities/Titan.js?v=30fps165';
-import { TitanEx } from './entities/TitanEx.js?v=30fps165';
-import { Ronin } from './entities/Ronin.js?v=30fps165';
-import { RoninEx } from './entities/RoninEx.js?v=30fps165';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps165';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps165';
-import { IceMage } from './entities/IceMage.js?v=30fps165';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps165';
-import { Android } from './entities/Android.js?v=30fps165';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps165';
-import { NyxEx } from './entities/NyxEx.js?v=30fps165';
+import { Renderer } from './engine/Renderer.js?v=30fps166';
+import { VFXManager } from './engine/VFXManager.js?v=30fps166';
+import { PixelForge } from './engine/PixelForge.js?v=30fps166';
+import { AudioManager } from './engine/AudioManager.js?v=30fps166';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps166';
+import { Fighter } from './entities/Fighter.js?v=30fps166';
+import { Warrior } from './entities/Warrior.js?v=30fps166';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps166';
+import { FireMage } from './entities/FireMage.js?v=30fps166';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps166';
+import { Archer } from './entities/Archer.js?v=30fps166';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps166';
+import { Priestess } from './entities/Priestess.js?v=30fps166';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps166';
+import { Reaper } from './entities/Reaper.js?v=30fps166';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps166';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps166';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps166';
+import { Titan } from './entities/Titan.js?v=30fps166';
+import { TitanEx } from './entities/TitanEx.js?v=30fps166';
+import { Ronin } from './entities/Ronin.js?v=30fps166';
+import { RoninEx } from './entities/RoninEx.js?v=30fps166';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps166';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps166';
+import { IceMage } from './entities/IceMage.js?v=30fps166';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps166';
+import { Android } from './entities/Android.js?v=30fps166';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps166';
+import { NyxEx } from './entities/NyxEx.js?v=30fps166';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps165';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps165';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps165';
+} from './adventure/AdventureManager.js?v=30fps166';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps166';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps166';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -944,7 +944,31 @@ export class Game {
     this.reigningHero = null;
     this.ultSlowTimer = 0;
     this.koSlowTimer = 0;
+    this.koSlowMaxTimer = 0.85;
     this.clashCooldown = 0;
+    this.vsControlMode = 'ai'; // '1p' | 'ai' (default 'ai' for full AI-vs-AI & automated test compatibility)
+    this.vsInput = {
+      heldLeft: false,
+      heldRight: false,
+      heldUp: false,
+      heldDown: false,
+      heldAttack: false,
+      uiHeldAttack: false,
+      joyActive: false,
+      joyX: 0,
+      joyY: 0,
+      joyFlickLockY: 0,
+      queuedAction: null,
+      queuedTimer: 0,
+      keyHintTimer: 0,
+      keyHintDismissed: false,
+      keyHintHideTimeout: null,
+      lastTouchHeroId: null
+    };
+    this.vsComboState = {
+      left: { hits: 0, damage: 0, timer: 0 },
+      right: { hits: 0, damage: 0, timer: 0 }
+    };
     this.stageEventTriggered = false;
     this.stageEventTimer = 0;
     this.stageEventTickTimer = 0;
@@ -1043,6 +1067,20 @@ export class Game {
     }
     if (params.get('autoplay') === '1') {
       this.adventure.setAutoPlay(true, false);
+    }
+    const p1CtrlParam = params.get('p1ctrl') ?? params.get('play1p') ?? params.get('control');
+    const isAutomatedSimParam = Boolean(params.get('sim'));
+    if (p1CtrlParam === '1' || p1CtrlParam === 'true' || p1CtrlParam === '1p') {
+      this.vsControlMode = '1p';
+    } else if (p1CtrlParam === '0' || p1CtrlParam === 'false' || p1CtrlParam === 'ai') {
+      this.vsControlMode = 'ai';
+    } else if (!isAutomatedSimParam && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const savedCtrl = window.localStorage.getItem('avs_vs_control_mode');
+        if (savedCtrl === '1p' || savedCtrl === 'ai') {
+          this.vsControlMode = savedCtrl;
+        }
+      } catch (_err) {}
     }
 
     const p1 = params.get('p1');
@@ -1273,6 +1311,8 @@ export class Game {
     this._urlSimSec = simSec > 0 ? simSec : 0;
     this.initCampaignCatalog(campaignParam).catch(() => {});
     if (killTarget) {
+      this.roundIntroTimer = 0;
+      this._roundIntroQueue = [];
       const victim =
         killTarget === 'left' || killTarget === this.slot1Hero ? this.leftFighter : this.rightFighter;
       const attacker = victim === this.leftFighter ? this.rightFighter : this.leftFighter;
@@ -1292,6 +1332,9 @@ export class Game {
       }
       if (params.get('victory') === '1') {
         this.victoryOverlay.classList.remove('hidden');
+        if (this.btnSwapSides) {
+          this.btnSwapSides.classList.toggle('hidden', this.isAdventureMode());
+        }
       }
       this.updateHUD();
     }
@@ -1759,6 +1802,7 @@ export class Game {
     }
     if (nextPaused) {
       this.adventure?.clearHeldInputs();
+      this.clearVsManualInputs?.();
     }
     this.syncPauseMenuUI();
     if (changed && playSound && this.audio) {
@@ -1794,6 +1838,17 @@ export class Game {
     } else {
       this.adventure?.clearHeldInputs?.();
     }
+    this.clearVsManualInputs?.();
+    this.dismissVsKeyHintBar?.(true);
+    this.renderer?.resetVsCombatHud?.();
+    if (this.vsComboState) {
+      this.vsComboState.left.hits = 0;
+      this.vsComboState.left.damage = 0;
+      this.vsComboState.left.timer = 0;
+      this.vsComboState.right.hits = 0;
+      this.vsComboState.right.damage = 0;
+      this.vsComboState.right.timer = 0;
+    }
     this.disposeActiveFighterResources();
     this.vfx?.clear?.();
     this.fighters = [];
@@ -1809,10 +1864,11 @@ export class Game {
     this._pausedFrameRendered = false;
     this.victoryOverlay?.classList.remove('is-defeat-plaque');
     this.victoryOverlay?.classList.add('hidden');
-    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.appEl?.classList?.toggle('is-adventure-active', Boolean(this.isAdventureMode() && !this.isLandingOpen));
+    this.syncVsControlUI?.();
     this.updateAdventureBossHUD?.();
     if (releaseMemory) {
       this._matchAssetGateUntil = 0;
@@ -2051,6 +2107,596 @@ export class Game {
     this.setTestModeUnlimitedHp(!this.testModeUnlimitedHp, playSound);
   }
 
+  // =========================================================================
+  // PLAYABLE 1P VS MODE CONTROL TOGGLE, INPUT ROUTER, TOUCH DECK & COMBO HUD
+  // =========================================================================
+  isVsManualP1Active() {
+    return Boolean(this.vsControlMode === '1p' && !this.isAdventureMode());
+  }
+
+  syncVsManualControlFlags() {
+    if (this.isAdventureMode() || !Array.isArray(this.fighters)) return;
+    const isManual = this.isVsManualP1Active();
+    const leftPoint = this.getPointFighter(1);
+    for (let i = 0; i < this.fighters.length; i++) {
+      const f = this.fighters[i];
+      if (!f) continue;
+      if (isManual && f === leftPoint && !f.isDead && !f.isBenched) {
+        f.isPlayerControlled = true;
+        f.adventureAutoPlay = false;
+      } else {
+        f.isPlayerControlled = false;
+        f.adventureAutoPlay = false;
+        f._manualWalkActive = false;
+        f._manualSpeedRatio = 0;
+        f.manualMoveAxis = 0;
+      }
+    }
+  }
+
+  setVsControlMode(mode, opts = {}) {
+    const { persist = true, playSound = false, announce = false } = opts;
+    const nextMode = mode === '1p' ? '1p' : 'ai';
+    const changed = this.vsControlMode !== nextMode;
+    this.vsControlMode = nextMode;
+    if (persist && !this.simMode && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem('avs_vs_control_mode', nextMode);
+      } catch (_err) {}
+    }
+    this.clearVsManualInputs();
+    this.syncVsManualControlFlags();
+    if (!this.isLandingOpen && !this.isAdventureMode() && !this.isMatchOver) {
+      if (nextMode === '1p') {
+        this.showVsKeyHintBar(4.0);
+      } else {
+        this.dismissVsKeyHintBar(true);
+      }
+      if (announce && changed) {
+        this.renderer?.pushVsCallout?.(
+          'left',
+          nextMode === '1p' ? '1P CONTROL!' : 'AI TAKEOVER!',
+          nextMode === '1p' ? '#38bdf8' : '#facc15',
+          '#ffffff'
+        );
+      }
+    } else {
+      this.dismissVsKeyHintBar(true);
+    }
+    this.syncVsControlUI();
+    if (playSound && this.audio) {
+      this.audio.play(nextMode === '1p' ? 'reflect' : 'clock_gear', 600);
+    }
+    return this.vsControlMode;
+  }
+
+  toggleVsControlMode(opts = {}) {
+    return this.setVsControlMode(this.vsControlMode === '1p' ? 'ai' : '1p', opts);
+  }
+
+  syncVsControlUI() {
+    const is1P = this.vsControlMode === '1p';
+    const isAdv = this.isAdventureMode();
+    const activeInMatch = Boolean(is1P && !isAdv && !this.isLandingOpen && !this.isMatchOver);
+    const isTag = this.gameMode === '2v2_tag';
+
+    if (this.quickCtrl1pBtn) {
+      this.quickCtrl1pBtn.classList.toggle('active-quick-ctrl-1p', is1P);
+      this.quickCtrl1pBtn.setAttribute('aria-pressed', String(is1P));
+    }
+    if (this.quickCtrlAiBtn) {
+      this.quickCtrlAiBtn.classList.toggle('active-quick-ctrl-ai', !is1P);
+      this.quickCtrlAiBtn.setAttribute('aria-pressed', String(!is1P));
+    }
+    if (this.btnPauseVsControl) {
+      this.btnPauseVsControl.setAttribute('aria-pressed', String(is1P));
+    }
+    if (this.pauseVsControlLabel) {
+      this.pauseVsControlLabel.textContent = is1P ? 'CONTROL: PLAY 1P' : 'CONTROL: AI SPECTATE';
+    }
+    if (this.btnHudVsControl) {
+      this.btnHudVsControl.classList.toggle('is-manual-1p', is1P);
+      this.btnHudVsControl.setAttribute('aria-pressed', String(is1P));
+    }
+    if (this.hudVsControlLabel) {
+      this.hudVsControlLabel.textContent = is1P ? '1P' : 'AI';
+    }
+    if (this.appEl) {
+      this.appEl.classList.toggle('is-vs-manual-active', activeInMatch);
+    }
+    if (this.vsTouchControlsEl) {
+      this.vsTouchControlsEl.classList.toggle('hidden', !activeInMatch);
+    }
+    if (this.vsBtnTag) {
+      this.vsBtnTag.classList.toggle('hidden', !isTag);
+    }
+    if (this.vsKeyHintTextEl) {
+      const baseHtml =
+        '<kbd>A/D</kbd> MOVE • <kbd>W/SPC</kbd> JUMP • <kbd>S</kbd> PARRY • <kbd>J/Z</kbd> COMBO • <kbd>K/X</kbd> SKILL • <kbd>L/SHFT</kbd> DODGE • <kbd>U/Q</kbd> DRIVE • <kbd>I/E</kbd> ULT • <kbd>P</kbd> AI';
+      this.vsKeyHintTextEl.innerHTML = isTag ? `${baseHtml} • <kbd>TAB</kbd> TAG` : baseHtml;
+    }
+    if (activeInMatch) {
+      this.refreshVsTouchIcons();
+      this.syncVsTouchDeckUI();
+    }
+  }
+
+  _ensureVsManualState() {
+    if (!this.vsInput) {
+      this.vsInput = {
+        heldLeft: false,
+        heldRight: false,
+        heldUp: false,
+        heldDown: false,
+        heldAttack: false,
+        uiHeldAttack: false,
+        joyActive: false,
+        joyX: 0,
+        joyY: 0,
+        joyFlickLockY: 0,
+        queuedAction: null,
+        queuedTimer: 0,
+        keyHintTimer: 0,
+        keyHintDismissed: false,
+        keyHintHideTimeout: null,
+        lastTouchHeroId: null
+      };
+    }
+    if (!this.vsComboState) {
+      this.vsComboState = {
+        left: { hits: 0, damage: 0, timer: 0 },
+        right: { hits: 0, damage: 0, timer: 0 }
+      };
+    }
+    return this.vsInput;
+  }
+
+  showVsKeyHintBar(duration = 4.0) {
+    const inp = this._ensureVsManualState();
+    if (!this.vsKeyHintBarEl) return;
+    if (!this.isVsManualP1Active() || this.isLandingOpen || this.isMatchOver || this.simMode) {
+      this.dismissVsKeyHintBar(true);
+      return;
+    }
+    clearTimeout(inp.keyHintHideTimeout);
+    inp.keyHintHideTimeout = null;
+    inp.keyHintTimer = duration;
+    inp.keyHintDismissed = false;
+    this.vsKeyHintBarEl.classList.remove('hidden');
+    this.vsKeyHintBarEl.classList.remove('is-fading');
+  }
+
+  dismissVsKeyHintBar(immediate = false) {
+    if (this.vsInput) {
+      clearTimeout(this.vsInput.keyHintHideTimeout);
+      this.vsInput.keyHintHideTimeout = null;
+      this.vsInput.keyHintTimer = 0;
+      this.vsInput.keyHintDismissed = true;
+    }
+    if (!this.vsKeyHintBarEl) return;
+    if (immediate) {
+      this.vsKeyHintBarEl.classList.add('hidden');
+      this.vsKeyHintBarEl.classList.remove('is-fading');
+      return;
+    }
+    if (this.vsKeyHintBarEl.classList.contains('hidden')) return;
+    this.vsKeyHintBarEl.classList.add('is-fading');
+    const inp = this._ensureVsManualState();
+    inp.keyHintHideTimeout = setTimeout(() => {
+      inp.keyHintHideTimeout = null;
+      if (inp.keyHintDismissed) {
+        this.vsKeyHintBarEl?.classList?.add('hidden');
+        this.vsKeyHintBarEl?.classList?.remove('is-fading');
+      }
+    }, 460);
+  }
+
+  clearVsManualInputs() {
+    if (!this.vsInput) return;
+    this.vsInput.heldLeft = false;
+    this.vsInput.heldRight = false;
+    this.vsInput.heldUp = false;
+    this.vsInput.heldDown = false;
+    this.vsInput.heldAttack = false;
+    this.vsInput.uiHeldAttack = false;
+    this.vsInput.joyActive = false;
+    this.vsInput.joyX = 0;
+    this.vsInput.joyY = 0;
+    this.vsInput.joyFlickLockY = 0;
+    this.vsInput.queuedAction = null;
+    this.vsInput.queuedTimer = 0;
+    this.syncVsStickKnobUI?.();
+  }
+
+  syncVsStickKnobUI() {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const base = document.getElementById('vs-stick-base');
+    const knob = document.getElementById('vs-stick-knob');
+    if (!base || !knob) return;
+    let vx = 0;
+    let vy = 0;
+    if (this.vsInput.joyActive) {
+      vx = this.vsInput.joyX;
+      vy = this.vsInput.joyY;
+    } else {
+      vx = (this.vsInput.heldRight ? 1 : 0) - (this.vsInput.heldLeft ? 1 : 0);
+      vy = (this.vsInput.heldDown ? 1 : 0) - (this.vsInput.heldUp ? 1 : 0);
+    }
+    const maxPx = 30;
+    if (knob.style) {
+      knob.style.transform = `translate3d(${Math.round(vx * maxPx)}px, ${Math.round(vy * maxPx)}px, 0px)`;
+    }
+    base.classList?.toggle('is-active', Math.hypot(vx, vy) > 0.08);
+    if (typeof base.querySelector === 'function') {
+      base.querySelector('.adv-joy-n')?.classList?.toggle('is-lit', vy < -0.35);
+      base.querySelector('.adv-joy-s')?.classList?.toggle('is-lit', vy > 0.35);
+      base.querySelector('.adv-joy-w')?.classList?.toggle('is-lit', vx < -0.22);
+      base.querySelector('.adv-joy-e')?.classList?.toggle('is-lit', vx > 0.22);
+    }
+  }
+
+  refreshVsTouchIcons() {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const inp = this._ensureVsManualState();
+    const player = this.getPointFighter?.(1);
+    const heroKey = player?.heroId || this.slot1Hero || 'warrior_ex';
+    if (inp.lastTouchHeroId === heroKey) return;
+    inp.lastTouchHeroId = heroKey;
+    const slotMap = [
+      ['vs-icon-attack', 'attack'],
+      ['vs-icon-skill', 'skill'],
+      ['vs-icon-dodge', 'dodge'],
+      ['vs-icon-overdrive', 'overdrive'],
+      ['vs-icon-ultimate', 'ultimate'],
+      ['vs-icon-jump', 'jump'],
+      ['vs-icon-guard', 'crouch']
+    ];
+    for (let i = 0; i < slotMap.length; i++) {
+      const [id, actionType] = slotMap[i];
+      const cvs = document.getElementById(id);
+      if (!cvs || typeof cvs.getContext !== 'function') continue;
+      const ictx = cvs.getContext('2d');
+      if (ictx) {
+        PixelForge.drawAdventureActionIcon(ictx, heroKey, actionType, cvs.width || 64, cvs.height || 64, 0);
+      }
+    }
+  }
+
+  syncVsTouchDeckUI() {
+    if (!this.isVsManualP1Active() || this.isLandingOpen || this.isMatchOver) return;
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const player = this.getPointFighter?.(1);
+    if (!player) return;
+    this.refreshVsTouchIcons();
+
+    const syncOrb = (slot, cd, maxCd, isCharge = false, chargePct = 0) => {
+      const btn = document.getElementById(`vs-btn-${slot}`);
+      const sweep = document.getElementById(`vs-cd-sweep-${slot}`);
+      const txt = document.getElementById(`vs-cd-text-${slot}`);
+      if (!btn) return;
+      if (isCharge) {
+        const pct = Math.max(0, Math.min(100, Math.floor(chargePct)));
+        const ready = pct >= 100;
+        btn.classList.toggle('is-ready', ready);
+        btn.classList.toggle('is-charging', !ready);
+        btn.classList.remove('is-on-cd');
+        if (sweep?.style) sweep.style.setProperty('--cd-deg', `${Math.round((1 - pct / 100) * 360)}deg`);
+        if (txt) txt.textContent = ready ? 'MAX' : `${pct}%`;
+      } else {
+        const onCd = cd > 0.05;
+        btn.classList.toggle('is-on-cd', onCd);
+        btn.classList.toggle('is-ready', !onCd);
+        const frac = onCd && maxCd > 0 ? Math.min(1, cd / maxCd) : 0;
+        if (sweep?.style) sweep.style.setProperty('--cd-deg', `${Math.round(frac * 360)}deg`);
+        if (txt) txt.textContent = onCd ? `${cd.toFixed(1)}` : '';
+      }
+    };
+
+    syncOrb('attack', 0, 1, false);
+    syncOrb('skill', player.skillCooldown || 0, player.skillMaxCooldown || 5.0, false);
+    syncOrb('dodge', player.dodgeCooldown || 0, player.dodgeMaxCooldown || 3.4, false);
+    syncOrb('jump', player._vsManualJumpCd || 0, 0.85, false);
+    syncOrb('guard', player._vsManualGuardCd || 0, 1.05, false);
+    syncOrb('overdrive', 0, 1, true, ((player.mana || 0) / Math.max(1, player.maxMana || 100)) * 100);
+    syncOrb(
+      'ultimate',
+      0,
+      1,
+      true,
+      player.hasTrueUltimate
+        ? ((player.finisherGauge || 0) / Math.max(1, player.maxFinisherGauge || 100)) * 100
+        : 0
+    );
+
+    if (this.vsBtnTag && this.gameMode === '2v2_tag') {
+      const reserve = this.getReserveFighter?.(1);
+      const tagCd = this.team1TagCd || 0;
+      const disabled = !reserve || reserve.isDead || tagCd > 0.05;
+      this.vsBtnTag.classList.toggle('is-on-cd', disabled);
+      if (this.vsTagBtnLabel) {
+        this.vsTagBtnLabel.textContent =
+          !reserve || reserve.isDead ? 'KO' : tagCd > 0.05 ? `${Math.ceil(tagCd)}S` : 'TAG';
+      }
+    }
+  }
+
+  triggerVsManualAction(actionName) {
+    if (!this.isVsManualP1Active() || this.isLandingOpen || this.isPaused || this.isMatchOver) return false;
+    if (this.roundIntroTimer > 0) return false;
+    const inp = this._ensureVsManualState();
+    if (!inp.keyHintDismissed) {
+      this.dismissVsKeyHintBar(false);
+    }
+    const player = this.getPointFighter?.(1);
+    if (
+      actionName === 'attack' &&
+      player &&
+      !player.isDead &&
+      player.state === 'AUTO_ATTACK' &&
+      typeof player.queueNextComboBeat === 'function'
+    ) {
+      player.queueNextComboBeat();
+    }
+    inp.queuedAction = actionName;
+    inp.queuedTimer = actionName === 'attack' ? 0.34 : 0.28;
+    return true;
+  }
+
+  updateVsManualP1(dt) {
+    if (!this.isVsManualP1Active() || this.isMatchOver) return;
+    const inp = this._ensureVsManualState();
+    const player = this.getPointFighter?.(1);
+    if (!player || player.isDead || player.isBenched) return;
+    this.syncVsManualControlFlags();
+
+    if (inp.queuedTimer > 0) {
+      inp.queuedTimer = Math.max(0, inp.queuedTimer - dt);
+      if (inp.queuedTimer <= 0) {
+        inp.queuedAction = null;
+      }
+    }
+
+    const enemy = this.getTargetFor(player);
+    let axisX = 0;
+    if (this.vsInput.joyActive) {
+      axisX = Math.abs(this.vsInput.joyX) > 0.14 ? this.vsInput.joyX : 0;
+    } else {
+      axisX = (this.vsInput.heldRight ? 1 : 0) - (this.vsInput.heldLeft ? 1 : 0);
+    }
+    player.manualMoveAxis = axisX;
+
+    // Hold-to-combo support (keyboard J/Z or Attack touch orb)
+    const holdingAtk = Boolean(this.vsInput.heldAttack || this.vsInput.uiHeldAttack);
+    if (holdingAtk) {
+      if (player.state === 'AUTO_ATTACK' && typeof player.queueNextComboBeat === 'function') {
+        if ((player._activeComboStage ?? 0) < 3) {
+          player.queueNextComboBeat();
+        }
+      } else if (!this.vsInput.queuedAction) {
+        this.vsInput.queuedAction = 'attack';
+        this.vsInput.queuedTimer = 0.26;
+      }
+    }
+
+    const hasExBeatQueue = typeof player.queueNextComboBeat === 'function';
+    const act = this.vsInput.queuedAction;
+
+    // Immediate EX 4-beat combo queuing inside AUTO_ATTACK without cutting swing frames short
+    if (
+      act === 'attack' &&
+      player.state === 'AUTO_ATTACK' &&
+      hasExBeatQueue &&
+      (player._activeComboStage ?? 0) < 3
+    ) {
+      player.queueNextComboBeat();
+      this.vsInput.queuedAction = null;
+      this.vsInput.queuedTimer = 0;
+    }
+
+    const inNeutral = player.state === 'IDLE' || player.state === 'WALK';
+    const isInstantDodgeCancel =
+      player.state === 'AUTO_ATTACK' &&
+      act === 'dodge' &&
+      (player.dodgeCooldown || 0) <= 0;
+    const isAttackRecoveryCancel =
+      player.state === 'AUTO_ATTACK' &&
+      player.didActionFrame &&
+      act &&
+      (act !== 'attack' ||
+        (!hasExBeatQueue &&
+          (player.autoCooldown || 0) <= 0 &&
+          player.stateTimer >= Math.min(0.32, (player.autoDuration || 0.46) * 0.66)));
+    const isGuardCancelUlt =
+      player.state === 'CROUCH' &&
+      (act === 'overdrive' || act === 'ultimate' || act === 'dodge');
+
+    const canAct =
+      !(player.stunTimer > 0) &&
+      !player.isRooted &&
+      (inNeutral || isInstantDodgeCancel || isAttackRecoveryCancel || isGuardCancelUlt);
+
+    const faceEnemyForAction = () => {
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - player.x) > 8) {
+        player.facing = enemy.x >= player.x ? 1 : -1;
+      } else if (Math.abs(axisX) > 0.14) {
+        player.facing = axisX > 0 ? 1 : -1;
+      }
+    };
+
+    if (canAct && this.vsInput.queuedAction) {
+      const cmd = this.vsInput.queuedAction;
+      if (cmd === 'tag') {
+        this.vsInput.queuedAction = null;
+        this.vsInput.queuedTimer = 0;
+        if (this.gameMode === '2v2_tag') {
+          const swapped = this.triggerTeamTagSwap(1, false);
+          if (!swapped && (this.team1TagCd || 0) > 0.1 && this.vfx) {
+            this.vfx.spawnDamageText(
+              player.x,
+              player.y - 190,
+              0,
+              false,
+              `TAG CD ${this.team1TagCd.toFixed(1)}S`,
+              '#94a3b8'
+            );
+          }
+        }
+      } else if (
+        cmd === 'ultimate' &&
+        player.hasTrueUltimate &&
+        (player.finisherGauge || 0) >= (player.maxFinisherGauge || 100) - 0.1 &&
+        typeof player.updateTrueUltimate === 'function'
+      ) {
+        this.vsInput.queuedAction = null;
+        this.vsInput.queuedTimer = 0;
+        faceEnemyForAction();
+        player.finisherGauge = 0;
+        if (player.stats) player.stats.ultsUsed++;
+        player.setState('TRUE_ULTIMATE');
+        if (typeof this.triggerTrueUltimateCinematic === 'function') {
+          this.triggerTrueUltimateCinematic(player);
+        } else {
+          this.triggerUltimateCinematic(player);
+        }
+      } else if (cmd === 'overdrive' && (player.mana || 0) >= (player.maxMana || 100) - 0.1) {
+        this.vsInput.queuedAction = null;
+        this.vsInput.queuedTimer = 0;
+        faceEnemyForAction();
+        player.mana = 0;
+        if (player.stats) player.stats.ultsUsed++;
+        player.setState('ULTIMATE');
+        this.triggerUltimateCinematic(player);
+      } else if (cmd === 'skill' && (player.skillCooldown || 0) <= 0) {
+        this.vsInput.queuedAction = null;
+        this.vsInput.queuedTimer = 0;
+        faceEnemyForAction();
+        player.skillCooldown = player.skillMaxCooldown || 5.0;
+        if (player.stats) player.stats.skillsUsed++;
+        player.setState('SKILL');
+      } else if (cmd === 'dodge') {
+        const wantsForwardDash =
+          axisX * (player.facing || 1) > 0.25 &&
+          (player.dashCooldown || 0) <= 0 &&
+          typeof player.startDash === 'function' &&
+          inNeutral;
+        if (wantsForwardDash) {
+          this.vsInput.queuedAction = null;
+          this.vsInput.queuedTimer = 0;
+          faceEnemyForAction();
+          player.startDash(enemy, this);
+        } else if ((player.dodgeCooldown || 0) <= 0 && typeof player.startDodge === 'function') {
+          this.vsInput.queuedAction = null;
+          this.vsInput.queuedTimer = 0;
+          player.startDodge(enemy, this);
+        }
+      } else if (cmd === 'jump' && (player._vsManualJumpCd || 0) <= 0 && typeof player.startJump === 'function') {
+        this.vsInput.queuedAction = null;
+        this.vsInput.queuedTimer = 0;
+        const jumpDir = Math.abs(axisX) > 0.15 ? Math.sign(axisX) : player.facing || 1;
+        const prevDodgeCd = player.dodgeCooldown;
+        player.startJump(enemy, this, jumpDir);
+        player._vsManualJumpCd = 0.85;
+        if (Number.isFinite(prevDodgeCd)) {
+          player.dodgeCooldown = prevDodgeCd;
+        }
+      } else if (cmd === 'guard' && (player._vsManualGuardCd || 0) <= 0 && typeof player.startCrouch === 'function') {
+        this.vsInput.queuedAction = null;
+        this.vsInput.queuedTimer = 0;
+        faceEnemyForAction();
+        player.startCrouch(enemy, this);
+        player._perfectParryWindow = 0.26;
+        player._vsManualGuardCd = 1.05;
+      } else if (cmd === 'attack' && ((player.autoCooldown || 0) <= 0 || hasExBeatQueue)) {
+        this.vsInput.queuedAction = null;
+        this.vsInput.queuedTimer = 0;
+        faceEnemyForAction();
+        player.setState('AUTO_ATTACK');
+        if (hasExBeatQueue) {
+          player.autoCooldown = 0.08;
+        } else {
+          player.autoCooldown = Math.min(player.autoInterval || 0.55, 0.34);
+        }
+      }
+    }
+
+    // Crisp 2D fighting-game neutral walk (auto-faces opponent in IDLE/WALK for authentic footsies!)
+    if (
+      !player.isDead &&
+      !(player.stunTimer > 0) &&
+      !player.isRooted &&
+      (player.state === 'IDLE' || player.state === 'WALK')
+    ) {
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - player.x) > 16) {
+        player.facing = enemy.x >= player.x ? 1 : -1;
+      }
+      if (Math.abs(axisX) > 0.08) {
+        const ww = this.renderer?.worldWidth || 1200;
+        const walkSpd = Math.max(210, (player.moveSpeed || 165) * 1.24);
+        player.x = Math.max(72, Math.min(ww - 72, player.x + axisX * walkSpd * dt));
+        player._manualWalkActive = true;
+        player._manualSpeedRatio = Math.max(0.36, Math.min(1.2, Math.abs(axisX)));
+        player.moveDir = axisX * (player.facing || 1) >= 0 ? 1 : -1;
+        player.state = 'WALK';
+      } else {
+        player._manualWalkActive = false;
+        player._manualSpeedRatio = 0;
+        player.moveDir = 0;
+        player.state = 'IDLE';
+      }
+    } else {
+      player._manualWalkActive = false;
+      player._manualSpeedRatio = 0;
+    }
+  }
+
+  onCombatCallout(fighter, label, color = '#fde047', topColor = '#ffffff') {
+    if (this.isAdventureMode() || !label) return;
+    const side = fighter?.team === 2 ? 'right' : 'left';
+    this.renderer?.pushVsCallout?.(side, label, color, topColor);
+  }
+
+  onFighterHitCombo(attacker, victim, dealt, _isCrit = false) {
+    if (this.isAdventureMode() || !attacker || !victim || dealt <= 0) return;
+    const side = attacker.team === 2 ? 'right' : 'left';
+    const otherSide = side === 'left' ? 'right' : 'left';
+    const atkSlot = this.vsComboState?.[side];
+    const vicSlot = this.vsComboState?.[otherSide];
+    if (vicSlot && vicSlot.hits > 0) {
+      vicSlot.hits = 0;
+      vicSlot.damage = 0;
+      vicSlot.timer = 0;
+      this.renderer?.resetVsCombo?.(otherSide);
+    }
+    if (!atkSlot) return;
+    atkSlot.hits = (atkSlot.hits || 0) + 1;
+    atkSlot.damage = (atkSlot.damage || 0) + Math.round(dealt);
+    atkSlot.timer = 1.75;
+    if (attacker.stats) {
+      attacker.stats.maxCombo = Math.max(attacker.stats.maxCombo || 0, atkSlot.hits);
+    }
+    this.renderer?.recordVsComboHit?.(side, atkSlot.hits, atkSlot.damage, attacker.primaryColor);
+  }
+
+  swapSides(playSound = true) {
+    if (this.isAdventureMode()) return;
+    clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
+    this.audio?.stopAllHeroVoices?.(0.03);
+    const prevS1 = this.slot1Hero;
+    const prevS1b = this.slot1PartnerHero;
+    this.slot1Hero = this.slot2Hero;
+    this.slot2Hero = prevS1;
+    this.slot1PartnerHero = this.slot2PartnerHero;
+    this.slot2PartnerHero = prevS1b;
+    this.syncRosterSelectionUI(false);
+    this.resetMatch();
+    this.beginLiveRoundIntro?.();
+    if (playSound && this.audio) {
+      this.audio.play('reflect', 600);
+    }
+  }
+
   bindUI() {
     this.btnGamePause = document.getElementById('btn-game-pause');
     this.pauseSpBadge = document.getElementById('pause-sp-badge');
@@ -2113,6 +2759,18 @@ export class Game {
     this.versusLayoutEl = document.getElementById('versus-layout');
     this.btnAutoTourney = document.getElementById('btn-auto-tourney');
     this.btnNextChallenger = document.getElementById('btn-next-challenger');
+    this.btnSwapSides = document.getElementById('btn-swap-sides');
+    this.quickCtrl1pBtn = document.getElementById('quick-ctrl-1p');
+    this.quickCtrlAiBtn = document.getElementById('quick-ctrl-ai');
+    this.btnPauseVsControl = document.getElementById('btn-pause-vs-control');
+    this.pauseVsControlLabel = document.getElementById('pause-vs-control-label');
+    this.btnHudVsControl = document.getElementById('btn-hud-vs-control');
+    this.hudVsControlLabel = document.getElementById('hud-vs-control-label');
+    this.vsKeyHintBarEl = document.getElementById('vs-keyhint-bar');
+    this.vsKeyHintTextEl = document.getElementById('vs-keyhint-text');
+    this.vsTouchControlsEl = document.getElementById('vs-touch-controls');
+    this.vsBtnTag = document.getElementById('vs-btn-tag');
+    this.vsTagBtnLabel = document.getElementById('vs-tag-btn-label');
     this.btnReset = document.getElementById('btn-reset');
     this.btnPlayAgain = document.getElementById('btn-play-again');
     this.btnOpenSelect = document.getElementById('btn-open-select');
@@ -2155,6 +2813,7 @@ export class Game {
         (this.roundIntroElapsed || 0) >= 0.45
       ) {
         e.preventDefault();
+        e.stopImmediatePropagation?.();
         this.skipRoundIntro();
         return;
       }
@@ -2167,6 +2826,7 @@ export class Game {
         !this.isLandingOpen &&
         !this.isPaused &&
         !this.isMatchOver &&
+        !this.isVsManualP1Active() &&
         !(this.victoryOverlay && !this.victoryOverlay.classList.contains('hidden')) &&
         !(this.isAdventureMode() && this.adventure?.isSkillTreeOpen)
       ) {
@@ -2997,6 +3657,276 @@ export class Game {
     if (this.btnNextChallenger) {
       this.btnNextChallenger.addEventListener('click', () => this.advanceTourneyChallenger());
     }
+    if (this.btnSwapSides) {
+      this.btnSwapSides.addEventListener('click', () => this.swapSides(true));
+    }
+
+    // Playable 1P vs AI Spectate Toggles (VS Character Select Quick-Bar, Pause Menu, Compact HUD Pill)
+    if (this.quickCtrl1pBtn) {
+      this.quickCtrl1pBtn.addEventListener('click', () =>
+        this.setVsControlMode('1p', { persist: true, playSound: true })
+      );
+    }
+    if (this.quickCtrlAiBtn) {
+      this.quickCtrlAiBtn.addEventListener('click', () =>
+        this.setVsControlMode('ai', { persist: true, playSound: true })
+      );
+    }
+    if (this.btnPauseVsControl) {
+      this.btnPauseVsControl.addEventListener('click', () =>
+        this.toggleVsControlMode({ persist: true, playSound: true, announce: false })
+      );
+    }
+    if (this.btnHudVsControl) {
+      this.btnHudVsControl.addEventListener('click', () => {
+        if (this.isAdventureMode() || this.isLandingOpen || this.isMatchOver) return;
+        this.toggleVsControlMode({ persist: true, playSound: true, announce: true });
+      });
+    }
+    this.syncVsControlUI();
+
+    // Playable 1P Versus Mode Desktop Keyboard Router (`A/D`, `W/Space`, `S`, `J/Z`, `K/X`, `L/Shift`, `U/Q`, `I/E`, `Tab`, `P`)
+    window.addEventListener('keydown', (e) => {
+      if (this.isLandingOpen || this.isPaused || this.isMatchOver || this.isAdventureMode()) return;
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const code = e.code;
+
+      // Instant mid-match 1P <-> AI takeover hotkey (`P`) works in BOTH PLAY 1P and AI SPECTATE
+      if (code === 'KeyP' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        this.toggleVsControlMode({ persist: true, playSound: true, announce: true });
+        return;
+      }
+      if (!this.isVsManualP1Active()) return;
+      if (this.roundIntroTimer > 0) return;
+
+      const dismissHint = () => {
+        if (!this.vsInput.keyHintDismissed) this.dismissVsKeyHintBar(false);
+      };
+
+      if (code === 'KeyA' || code === 'ArrowLeft') {
+        this.vsInput.heldLeft = true;
+        this.syncVsStickKnobUI();
+        dismissHint();
+        e.preventDefault();
+      } else if (code === 'KeyD' || code === 'ArrowRight') {
+        this.vsInput.heldRight = true;
+        this.syncVsStickKnobUI();
+        dismissHint();
+        e.preventDefault();
+      } else if (code === 'KeyW' || code === 'ArrowUp' || code === 'Space') {
+        this.vsInput.heldUp = true;
+        if (!e.repeat) this.triggerVsManualAction('jump');
+        this.syncVsStickKnobUI();
+        e.preventDefault();
+      } else if (code === 'KeyS' || code === 'ArrowDown') {
+        this.vsInput.heldDown = true;
+        if (!e.repeat) this.triggerVsManualAction('guard');
+        this.syncVsStickKnobUI();
+        e.preventDefault();
+      } else if (code === 'KeyJ' || code === 'KeyZ') {
+        this.vsInput.heldAttack = true;
+        this.triggerVsManualAction('attack');
+        e.preventDefault();
+      } else if (code === 'KeyK' || code === 'KeyX') {
+        if (!e.repeat) this.triggerVsManualAction('skill');
+        e.preventDefault();
+      } else if (code === 'KeyL' || code === 'ShiftLeft' || code === 'ShiftRight') {
+        if (!e.repeat) this.triggerVsManualAction('dodge');
+        e.preventDefault();
+      } else if (code === 'KeyU' || code === 'KeyQ') {
+        if (!e.repeat) this.triggerVsManualAction('overdrive');
+        e.preventDefault();
+      } else if (code === 'KeyI') {
+        if (!e.repeat) this.triggerVsManualAction('ultimate');
+        e.preventDefault();
+      } else if (code === 'KeyE') {
+        if (!e.repeat) {
+          const p = this.getPointFighter?.(1);
+          const canTrueUlt = Boolean(
+            p && p.hasTrueUltimate && (p.finisherGauge || 0) >= (p.maxFinisherGauge || 100) - 0.1
+          );
+          if (this.gameMode === '2v2_tag' && !canTrueUlt) {
+            this.triggerVsManualAction('tag');
+          } else {
+            this.triggerVsManualAction('ultimate');
+          }
+        }
+        e.preventDefault();
+      } else if (code === 'Tab' && this.gameMode === '2v2_tag') {
+        if (!e.repeat) this.triggerVsManualAction('tag');
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const code = e.code;
+      if (code === 'KeyA' || code === 'ArrowLeft') {
+        this.vsInput.heldLeft = false;
+        this.syncVsStickKnobUI();
+      } else if (code === 'KeyD' || code === 'ArrowRight') {
+        this.vsInput.heldRight = false;
+        this.syncVsStickKnobUI();
+      } else if (code === 'KeyW' || code === 'ArrowUp' || code === 'Space') {
+        this.vsInput.heldUp = false;
+        this.syncVsStickKnobUI();
+      } else if (code === 'KeyS' || code === 'ArrowDown') {
+        this.vsInput.heldDown = false;
+        this.syncVsStickKnobUI();
+      } else if (code === 'KeyJ' || code === 'KeyZ') {
+        this.vsInput.heldAttack = false;
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      this.clearVsManualInputs();
+    });
+
+    // Playable 1P Versus Mode Mobile Touch Stick & Action Orbs
+    const vsStickZone = document.getElementById('vs-stick-zone');
+    const vsStickBase = document.getElementById('vs-stick-base');
+    if (vsStickZone && vsStickBase) {
+      let vsStickTouchId = null;
+      let vsStickPointerId = null;
+      const updateVsStick = (clientX, clientY) => {
+        const rect = vsStickBase.getBoundingClientRect();
+        const cx = rect.left + rect.width * 0.5;
+        const cy = rect.top + rect.height * 0.5;
+        const maxR = Math.max(30, Math.min(rect.width, rect.height) * 0.44);
+        const rawDx = clientX - cx;
+        const rawDy = clientY - cy;
+        const isCssRot = document.documentElement.classList.contains('is-css-rotated-landscape');
+        let nx = (isCssRot ? rawDy : rawDx) / maxR;
+        let ny = (isCssRot ? -rawDx : rawDy) / maxR;
+        const mag = Math.hypot(nx, ny);
+        if (mag > 1) {
+          nx /= mag;
+          ny /= mag;
+        }
+        this.vsInput.joyActive = true;
+        this.vsInput.joyX = nx;
+        this.vsInput.joyY = ny;
+        if (ny < -0.68 && this.vsInput.joyFlickLockY >= 0) {
+          this.vsInput.joyFlickLockY = -1;
+          this.triggerVsManualAction('jump');
+        } else if (ny > 0.68 && this.vsInput.joyFlickLockY <= 0) {
+          this.vsInput.joyFlickLockY = 1;
+          this.triggerVsManualAction('guard');
+        } else if (Math.abs(ny) < 0.32) {
+          this.vsInput.joyFlickLockY = 0;
+        }
+        this.syncVsStickKnobUI();
+      };
+      const releaseVsStick = () => {
+        vsStickTouchId = null;
+        vsStickPointerId = null;
+        this.vsInput.joyActive = false;
+        this.vsInput.joyX = 0;
+        this.vsInput.joyY = 0;
+        this.vsInput.joyFlickLockY = 0;
+        this.syncVsStickKnobUI();
+      };
+
+      vsStickBase.addEventListener(
+        'touchstart',
+        (e) => {
+          if (!this.isVsManualP1Active()) return;
+          if (vsStickTouchId === null && e.changedTouches.length > 0) {
+            const t = e.changedTouches[0];
+            vsStickTouchId = t.identifier;
+            updateVsStick(t.clientX, t.clientY);
+          }
+          e.preventDefault();
+        },
+        { passive: false }
+      );
+      vsStickBase.addEventListener(
+        'touchmove',
+        (e) => {
+          if (vsStickTouchId === null) return;
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (t.identifier === vsStickTouchId) {
+              updateVsStick(t.clientX, t.clientY);
+              e.preventDefault();
+              break;
+            }
+          }
+        },
+        { passive: false }
+      );
+      const onVsStickTouchEnd = (e) => {
+        if (vsStickTouchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === vsStickTouchId) {
+            releaseVsStick();
+            break;
+          }
+        }
+      };
+      vsStickBase.addEventListener('touchend', onVsStickTouchEnd, { passive: true });
+      vsStickBase.addEventListener('touchcancel', onVsStickTouchEnd, { passive: true });
+      vsStickBase.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch' || !this.isVsManualP1Active()) return;
+        vsStickPointerId = e.pointerId;
+        vsStickBase.setPointerCapture?.(e.pointerId);
+        updateVsStick(e.clientX, e.clientY);
+        e.preventDefault();
+      });
+      vsStickBase.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
+        updateVsStick(e.clientX, e.clientY);
+      });
+      vsStickBase.addEventListener('pointerup', (e) => {
+        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
+        releaseVsStick();
+      });
+      vsStickBase.addEventListener('pointercancel', (e) => {
+        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
+        releaseVsStick();
+      });
+    }
+
+    const bindVsTouchOrb = (id, actionName, holdAttack = false) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const press = (e) => {
+        if (e?.cancelable) e.preventDefault();
+        btn.classList.add('is-pressed');
+        if (holdAttack) this.vsInput.uiHeldAttack = true;
+        this.triggerVsManualAction(actionName);
+      };
+      const release = () => {
+        btn.classList.remove('is-pressed');
+        if (holdAttack) this.vsInput.uiHeldAttack = false;
+      };
+      btn.addEventListener('touchstart', press, { passive: false });
+      btn.addEventListener('touchend', release, { passive: true });
+      btn.addEventListener('touchcancel', release, { passive: true });
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return;
+        press(e);
+      });
+      btn.addEventListener('pointerup', (e) => {
+        if (e.pointerType === 'touch') return;
+        release();
+      });
+      btn.addEventListener('pointercancel', release);
+      btn.addEventListener('pointerleave', (e) => {
+        if (e.pointerType === 'touch') return;
+        release();
+      });
+    };
+
+    bindVsTouchOrb('vs-btn-attack', 'attack', true);
+    bindVsTouchOrb('vs-btn-jump', 'jump', false);
+    bindVsTouchOrb('vs-btn-guard', 'guard', false);
+    bindVsTouchOrb('vs-btn-dodge', 'dodge', false);
+    bindVsTouchOrb('vs-btn-skill', 'skill', false);
+    bindVsTouchOrb('vs-btn-overdrive', 'overdrive', false);
+    bindVsTouchOrb('vs-btn-ultimate', 'ultimate', false);
+    bindVsTouchOrb('vs-btn-tag', 'tag', false);
 
     this.btnReset.addEventListener('click', () => {
       this.setPaused(false, false);
@@ -3522,7 +4452,7 @@ export class Game {
     const fallbackB = this.rosterVersion === 'legacy' ? 'reaper' : 'reaper_ex';
     const fallbackP = this.rosterVersion === 'legacy' ? 'priestess' : 'priestess_ex';
     if (this.is2v2Mode()) {
-      const keepLead = this.reigningHero || this.slot1Hero;
+      const keepLead = this.isVsManualP1Active() ? this.slot1Hero : this.reigningHero || this.slot1Hero;
       const keepPartner =
         this.slot1PartnerHero !== keepLead
           ? this.slot1PartnerHero
@@ -3535,7 +4465,7 @@ export class Game {
       this.slot2Hero = pool[0] || fallbackA;
       this.slot2PartnerHero = pool[1] || fallbackB;
     } else {
-      const keepHero = this.reigningHero || this.slot1Hero;
+      const keepHero = this.isVsManualP1Active() ? this.slot1Hero : this.reigningHero || this.slot1Hero;
       const pool = keys.filter((k) => k !== keepHero && k !== this.slot2Hero);
       const candidates = pool.length > 0 ? pool : keys.filter((k) => k !== keepHero);
       const nextChallenger =
@@ -3603,7 +4533,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps165');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps166');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3699,7 +4629,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps165'
+          'v=30fps166'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4033,9 +4963,13 @@ export class Game {
     if (this.btnNextChallenger) {
       this.btnNextChallenger.classList.toggle('hidden', isAdv);
     }
+    if (this.btnSwapSides) {
+      this.btnSwapSides.classList.toggle('hidden', isAdv);
+    }
     if (this.btnPlayAgain) {
       this.btnPlayAgain.textContent = isAdv ? 'RETRY CAMPAIGN' : 'REMATCH';
     }
+    this.syncVsControlUI?.();
 
     if (this.p1TabLead) {
       this.p1TabLead.textContent = `P1: ${c1.name}`;
@@ -4367,6 +5301,9 @@ export class Game {
     this._roundIntroVoiceFired = true;
     this._roundEngageBannerTimer = 0.75;
     this.audio?.stopAllHeroVoices?.(0.05);
+    if (this.isVsManualP1Active() && !this.simMode) {
+      this.showVsKeyHintBar(4.0);
+    }
     return true;
   }
 
@@ -4379,7 +5316,7 @@ export class Game {
     this.audio?.stopAllHeroVoices?.(0.03);
     clearTimeout(this._introVoiceTimeout);
     this.victoryOverlay?.classList.remove('is-defeat-plaque');
-    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
     if (this.appEl) {
@@ -4396,6 +5333,7 @@ export class Game {
       this.audio?.ensureCombatWavFiles?.();
     }
     this.adventure?.syncControlDeckUI();
+    this.syncVsControlUI?.();
     this.syncPauseMenuUI?.();
     if (playSound) {
       this.beginLiveRoundIntro?.();
@@ -4425,6 +5363,9 @@ export class Game {
     }
     this.updateAdventureBossHUD?.();
     this.adventure?.syncControlDeckUI();
+    this.clearVsManualInputs?.();
+    this.dismissVsKeyHintBar?.(true);
+    this.syncVsControlUI?.();
     this.syncPauseMenuUI();
     if (targetStep) {
       this.setLandingStep(targetStep, false);
@@ -5017,7 +5958,17 @@ export class Game {
       this._lastActiveVsStageId = null;
       this._wasAdventureMatch = true;
       if (this.btnNextChallenger) this.btnNextChallenger.classList.add('hidden');
+      if (this.btnSwapSides) this.btnSwapSides.classList.add('hidden');
       if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'RETRY CAMPAIGN';
+      if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+        const lMaxLbl = document.getElementById('tel-left-max-label');
+        const rMaxLbl = document.getElementById('tel-right-max-label');
+        if (lMaxLbl) lMaxLbl.textContent = 'MAX HIT';
+        if (rMaxLbl) rMaxLbl.textContent = 'MAX HIT';
+      }
+      this.clearVsManualInputs?.();
+      this.dismissVsKeyHintBar?.(true);
+      this.renderer?.resetVsCombatHud?.();
 
       const gy = this.renderer.groundY;
       const heroKey = CHAMPION_ROSTER[this.slot1Hero] ? this.slot1Hero : 'mage';
@@ -5067,6 +6018,7 @@ export class Game {
       if (this.ultBanner) this.ultBanner.classList.add('hidden');
 
       this.syncTestModeUI();
+      this.syncVsControlUI?.();
       this.syncPauseMenuUI();
       if (
         !this.selectedCampaignId ||
@@ -5103,8 +6055,9 @@ export class Game {
     }
     this.pauseSpBadge?.classList.add('hidden');
     if (this.btnNextChallenger) this.btnNextChallenger.classList.remove('hidden');
+    if (this.btnSwapSides) this.btnSwapSides.classList.remove('hidden');
     if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'REMATCH';
-    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
 
     if (this.renderer) {
@@ -5269,7 +6222,18 @@ export class Game {
     this.matchTime = 0;
     this.ultSlowTimer = 0;
     this.koSlowTimer = 0;
+    this.koSlowMaxTimer = 0.85;
     this.clashCooldown = 0;
+    this._ensureVsManualState();
+    this.vsComboState.left.hits = 0;
+    this.vsComboState.left.damage = 0;
+    this.vsComboState.left.timer = 0;
+    this.vsComboState.right.hits = 0;
+    this.vsComboState.right.damage = 0;
+    this.vsComboState.right.timer = 0;
+    this.vsInput.lastTouchHeroId = null;
+    this.clearVsManualInputs();
+    this.renderer?.resetVsCombatHud?.();
     this.team1TagCd = 2.4;
     this.team2TagCd = 2.8;
     this.team1AssistCd = 2.8;
@@ -5284,9 +6248,16 @@ export class Game {
     this.matchOverSafetyTimer = 0;
     this.victoryOverlay.classList.remove('is-defeat-plaque');
     this.victoryOverlay.classList.add('hidden');
-    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
+    this.syncVsManualControlFlags();
+    this.syncVsControlUI();
+    if (this.isVsManualP1Active() && !this.isLandingOpen && !this.simMode) {
+      this.showVsKeyHintBar(4.0);
+    } else {
+      this.dismissVsKeyHintBar(true);
+    }
     this.updateHUD();
     if (!this.isLandingOpen && !this.simMode) {
       this.syncActiveBgm?.();
@@ -5402,6 +6373,11 @@ export class Game {
     this.vfx.spawnBurst(reserve.x, gy - 68, 22, reserve.primaryColor, 260, { upBias: 110, size: 6 });
     if (this.audio) this.audio.play('dash_whoosh', reserve.x);
     this.renderer.triggerShake(8, 0.2);
+    if (team === 1) {
+      this.vsInput.lastTouchHeroId = null;
+      this.syncVsManualControlFlags();
+      this.syncVsControlUI();
+    }
     return true;
   }
 
@@ -5715,13 +6691,22 @@ export class Game {
       const lc = CHAMPION_ROSTER[leftPoint.heroId] || CHAMPION_ROSTER.titan;
       const rc = CHAMPION_ROSTER[rightPoint.heroId] || CHAMPION_ROSTER.archer;
       PixelForge.setHUDPortraits(lc.id, lc.color, rc.id, rc.color);
+      if (survivingAlly.team === 1) {
+        this.vsInput.lastTouchHeroId = null;
+        this.syncVsManualControlFlags();
+        this.syncVsControlUI();
+      }
       this.updateHUD();
       return;
     }
 
     this.isMatchOver = true;
-    // Crisp 0.48s impact slow-motion (0.32x) without stacking ultSlowTimer, so all 30 death frames play smoothly!
-    this.koSlowTimer = 0.48;
+    this.clearVsManualInputs();
+    this.dismissVsKeyHintBar(true);
+    this.syncVsControlUI();
+    // Dramatic K.O. finishing slow-motion beat (`0.85s` ramped 0.16x -> 0.46x) so the final hit feels legendary!
+    this.koSlowTimer = 0.85;
+    this.koSlowMaxTimer = 0.85;
     this.ultSlowTimer = 0;
     this.deadMatchFighter = deadFighter;
     this.victoryRevealPending = true;
@@ -5777,37 +6762,42 @@ export class Game {
     }
     document.getElementById('victory-stats').textContent = winnerCfg.victoryLine;
 
-    // Restore VS Telemetry Headers & Victory Buttons (in case previous match was Adventure Mode)
+    // Restore VS Telemetry Stat Pills & One-Tap Victory Action Bar (in case previous match was Adventure Mode)
+    const telLeftMaxLbl = document.getElementById('tel-left-max-label');
+    const telRightMaxLbl = document.getElementById('tel-right-max-label');
     const telLeftExtraLbl = document.getElementById('tel-left-extra-label');
     const telRightSkillsLbl = document.getElementById('tel-right-skills-label');
     const telRightExtraLbl = document.getElementById('tel-right-extra-label');
-    if (telLeftExtraLbl) telLeftExtraLbl.textContent = 'HEAL / CLASH';
+    if (telLeftMaxLbl) telLeftMaxLbl.textContent = 'MAX COMBO';
+    if (telRightMaxLbl) telRightMaxLbl.textContent = 'MAX COMBO';
+    if (telLeftExtraLbl) telLeftExtraLbl.textContent = 'PARRY / DODGE';
     if (telRightSkillsLbl) telRightSkillsLbl.textContent = 'SKILLS / ULTS';
-    if (telRightExtraLbl) telRightExtraLbl.textContent = 'HEAL / CLASH';
+    if (telRightExtraLbl) telRightExtraLbl.textContent = 'PARRY / DODGE';
     if (this.btnNextChallenger) this.btnNextChallenger.classList.remove('hidden');
+    if (this.btnSwapSides) this.btnSwapSides.classList.remove('hidden');
     if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'REMATCH';
-    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
 
-    // Populate Post-Match Combat Telemetry Card (aggregates team stats in 2v2!)
+    // Populate Post-Match Compact Stat Pills (aggregates team stats in 2v2!)
     const fillTel = (side, teamNum) => {
       const members = this.getTeamFighters(teamNum);
       const agg = {
         damageDealt: 0,
         skillsUsed: 0,
         ultsUsed: 0,
-        biggestHit: 0,
-        healingDone: 0,
-        clashes: 0
+        maxCombo: 0,
+        parries: 0,
+        dodges: 0
       };
       members.forEach((m) => {
         if (!m || !m.stats) return;
         agg.damageDealt += m.stats.damageDealt || 0;
         agg.skillsUsed += m.stats.skillsUsed || 0;
         agg.ultsUsed += m.stats.ultsUsed || 0;
-        agg.biggestHit = Math.max(agg.biggestHit, m.stats.biggestHit || 0);
-        agg.healingDone += m.stats.healingDone || 0;
-        agg.clashes += m.stats.clashes || 0;
+        agg.maxCombo = Math.max(agg.maxCombo, m.stats.maxCombo || 0);
+        agg.parries += (m.stats.parries || 0) + (m.stats.clashes || 0);
+        agg.dodges += m.stats.dodges || 0;
       });
       const nameEl = document.getElementById(`tel-${side}-name`);
       const dmgEl = document.getElementById(`tel-${side}-dmg`);
@@ -5822,8 +6812,8 @@ export class Game {
       }
       if (dmgEl) dmgEl.textContent = `${agg.damageDealt}`;
       if (skEl) skEl.textContent = `${agg.skillsUsed} / ${agg.ultsUsed}`;
-      if (maxEl) maxEl.textContent = `${agg.biggestHit}`;
-      if (exEl) exEl.textContent = `${agg.healingDone} / ${agg.clashes}`;
+      if (maxEl) maxEl.textContent = `${agg.maxCombo} HIT${agg.maxCombo === 1 ? '' : 'S'}`;
+      if (exEl) exEl.textContent = `${agg.parries} / ${agg.dodges}`;
     };
     fillTel('left', 1);
     fillTel('right', 2);
@@ -5850,6 +6840,9 @@ export class Game {
     this._deathVoiceWasBusy = false;
     this._postDeathVoiceBreathRemaining = 0;
     this.victoryOverlay.classList.remove('hidden');
+    if (this.btnSwapSides) {
+      this.btnSwapSides.classList.toggle('hidden', this.isAdventureMode());
+    }
     if (this.audio) {
       this.audio.stopAllHeroVoices?.(0.06);
       const isDefeat = Boolean(this.victoryOverlay?.classList?.contains('is-defeat-plaque'));
@@ -5906,6 +6899,10 @@ export class Game {
       f2.gainMana(10);
       if (f2.stats) f2.stats.clashes++;
     }
+    if (!this.isAdventureMode()) {
+      this.renderer?.pushVsCallout?.('left', 'CLASH!', '#fde047', '#ffffff');
+      this.renderer?.pushVsCallout?.('right', 'CLASH!', '#fde047', '#ffffff');
+    }
   }
 
   updateProjectiles(dt) {
@@ -5916,6 +6913,13 @@ export class Game {
     for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
       const p = this.vfx.projectiles[i];
       if (!p) continue;
+      if (!p._initialOwner && p.owner) {
+        p._initialOwner = p.owner;
+      } else if (p.owner && p._initialOwner && p.owner !== p._initialOwner && !p._countedParry) {
+        p._countedParry = true;
+        if (p.owner.stats) p.owner.stats.parries = (p.owner.stats.parries || 0) + 1;
+        this.onCombatCallout(p.owner, 'PERFECT PARRY!', '#fde047', '#ffffff');
+      }
       for (let j = i - 1; j >= 0; j--) {
         const q = this.vfx.projectiles[j];
         if (!q || p.owner === q.owner || (p.owner && q.owner && p.owner.team === q.owner.team)) continue;
@@ -6458,6 +7462,7 @@ export class Game {
     sync(this.hudEls.left, leftPoint, leftPartner);
     if (!isAdv) {
       sync(this.hudEls.right, rightPoint, rightPartner);
+      this.syncVsTouchDeckUI?.();
     }
     this.updateAdventureBossHUD();
 
@@ -6604,6 +7609,9 @@ export class Game {
         this._introMouthStage = undefined;
         this._roundEngageBannerTimer = 0.85;
         this.audio?.play?.('slash', 600);
+        if (this.isVsManualP1Active() && !this.simMode) {
+          this.showVsKeyHintBar(4.0);
+        }
       }
 
       this.hudTimer += rawDt;
@@ -6616,10 +7624,40 @@ export class Game {
 
     if (this.renderer.hitStopTimer > 0) return;
 
+    // Auto-fade VS 1P key-hint bar after 4s of active combat (or earlier on player input)
+    if (
+      !this.isAdventureMode() &&
+      !this.isMatchOver &&
+      this.roundIntroTimer <= 0 &&
+      this.vsInput &&
+      this.vsInput.keyHintTimer > 0
+    ) {
+      this.vsInput.keyHintTimer = Math.max(0, this.vsInput.keyHintTimer - rawDt);
+      if (this.vsInput.keyHintTimer <= 0) {
+        this.dismissVsKeyHintBar(false);
+      }
+    }
+
+    // Decay VS combo tracker windows cleanly
+    if (this.vsComboState) {
+      for (const side of ['left', 'right']) {
+        const cSlot = this.vsComboState[side];
+        if (cSlot && cSlot.timer > 0) {
+          cSlot.timer = Math.max(0, cSlot.timer - rawDt);
+          if (cSlot.timer <= 0) {
+            cSlot.hits = 0;
+            cSlot.damage = 0;
+          }
+        }
+      }
+    }
+
     let timeScale = 1.0;
     if (this.koSlowTimer > 0) {
       this.koSlowTimer = Math.max(0, this.koSlowTimer - rawDt);
-      timeScale = 0.32;
+      const koProg = 1 - this.koSlowTimer / Math.max(0.01, this.koSlowMaxTimer || 0.85);
+      // Dramatic K.O. finishing slow-mo beat: deep 0.16x impact hang easing smoothly into 0.46x fall
+      timeScale = koProg < 0.45 ? 0.16 : 0.16 + ((koProg - 0.45) / 0.55) * 0.30;
     } else if (this.ultSlowTimer > 0) {
       this.ultSlowTimer = Math.max(0, this.ultSlowTimer - rawDt);
       timeScale = 0.25;
@@ -6695,6 +7733,11 @@ export class Game {
         if (!point || !reserve || point.isDead || reserve.isDead) continue;
 
         if (this.gameMode === '2v2_tag' && reserve.isBenched) {
+          if (team === 1 && this.isVsManualP1Active()) {
+            // In PLAY 1P Tag VS, P1 controls Tag Swaps manually ([Tab / E] or Touch TAG pill); allow reserve cover assists only
+            this.triggerTeamAssist(team, false);
+            continue;
+          }
           const pointHpRatio = point.hp / point.maxHp;
           const reserveHpRatio = reserve.hp / reserve.maxHp;
           if (
@@ -6715,11 +7758,34 @@ export class Game {
     if (this.isAdventureMode() && this.adventure?.active) {
       this.adventure.update(dt);
     } else {
+      if (this.isVsManualP1Active() && !this.isMatchOver) {
+        this.updateVsManualP1(dt);
+      }
       for (const f of this.fighters) {
         if (!f) continue;
         const target = this.getTargetFor(f);
         if (f.chronoTimeStopTimer > 0 && !f.isDead && f.state !== 'TRUE_ULTIMATE') {
           Fighter.prototype.update.call(f, dt, target, this);
+        } else if (
+          this.isVsManualP1Active() &&
+          f.isPlayerControlled &&
+          !f.adventureAutoPlay &&
+          (f.heroId === 'icemage' || f.heroId === 'reaper') &&
+          (f.state === 'IDLE' || f.state === 'WALK')
+        ) {
+          // Non-invasive Legacy manual guard (0 edits to Legacy IceMage.js / Reaper.js):
+          // prevent unsolicited pre-super.update() auto-crouch/jump/dodge while ticking real cooldowns accurately.
+          const savedDodgeCd = f.dodgeCooldown || 0;
+          const savedCrouchCd = f.crouchCooldown || 0;
+          let cdMult = f.isBerserk ? 1.25 : 1.0;
+          if (this.stageEventTimer > 0 && this.renderer?.stageId === 'clocktower') {
+            cdMult *= 1.35;
+          }
+          f.dodgeCooldown = Math.max(savedDodgeCd, 0.05);
+          f.crouchCooldown = Math.max(savedCrouchCd, 0.05);
+          f.update(dt, target, this);
+          f.dodgeCooldown = Math.max(0, savedDodgeCd - dt * cdMult);
+          f.crouchCooldown = Math.max(0, savedCrouchCd - dt * cdMult);
         } else {
           f.update(dt, target, this);
         }

@@ -69,19 +69,19 @@ html, body {
   image-rendering: crisp-edges;
 }
 
-/* Top Forged Arcade HUD */
+/* Top Forged Arcade HUD — Slimmer Framing for Full HD-2D Stage Visibility */
 .hud-top {
   position: absolute;
-  top: max(8px, env(safe-area-inset-top));
+  top: max(5px, env(safe-area-inset-top));
   left: 0;
   right: 0;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 0 clamp(6px, 1.8vw, 22px);
+  padding: 0 clamp(6px, 1.5vw, 18px);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: start;
-  gap: clamp(5px, 1.2vw, 16px);
+  gap: clamp(5px, 1.1vw, 14px);
   pointer-events: none;
   z-index: 10;
   transition: opacity 0.28s ease;
@@ -91,6 +91,7 @@ html, body {
 #app.is-landing-open .hud-bottom,
 #app.is-landing-open #btn-game-pause,
 #app.is-landing-open .hud-pause-btn,
+#app.is-landing-open .hud-ctrl-pill,
 #app.is-landing-open .adv-boss-raid-hud {
   opacity: 0;
   pointer-events: none !important;
@@ -321,17 +322,17 @@ html, body {
 .fighter-plate {
   display: flex;
   align-items: center;
-  gap: clamp(6px, 1.2vw, 12px);
+  gap: clamp(5px, 0.95vw, 10px);
   min-width: 0;
 }
 
 .portrait-frame {
   flex-shrink: 0;
-  width: clamp(40px, 6vw, 56px);
-  height: clamp(40px, 6vw, 56px);
+  width: clamp(36px, 4.6vw, 46px);
+  height: clamp(36px, 4.6vw, 46px);
   background: var(--iron-dark);
   border: 2px solid var(--bronze-lit);
-  box-shadow: inset 0 0 0 2px #000, 0 6px 16px rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 0 0 2px #000, 0 5px 14px rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -349,7 +350,7 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -449,11 +450,11 @@ html, body {
 /* Double-Beveled Segmented Health Bar */
 .hp-frame {
   position: relative;
-  height: clamp(14px, 2vw, 18px);
+  height: clamp(12px, 1.6vw, 15px);
   background: #06080f;
-  border: 2px solid var(--bronze-dim);
+  border: 1.5px solid var(--bronze-dim);
   outline: 1px solid #000;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 4px 12px rgba(0, 0, 0, 0.75);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9), 0 3px 10px rgba(0, 0, 0, 0.75);
   overflow: hidden;
 }
 
@@ -607,7 +608,7 @@ html, body {
 
 .ult-frame, .cd-box {
   position: relative;
-  height: 13px;
+  height: 11px;
   background: #080b12;
   border: 1px solid #334155;
   overflow: hidden;
@@ -651,14 +652,14 @@ html, body {
 /* Supreme Finishing Move Gauge ("ULTIMATE" — higher tier above Overdrive!) */
 .finisher-frame {
   position: relative;
-  height: 14px;
+  height: 11px;
   background: #040814;
   border: 1px solid #38bdf8;
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 10px rgba(56, 189, 248, 0.45);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(56, 189, 248, 0.40);
   overflow: hidden;
   display: flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 5px;
 }
 
 .plate-right .finisher-frame {
@@ -852,7 +853,7 @@ html, body {
   right: 0;
 }
 
-/* Center Shield & Clock */
+/* Center Shield & Clock — Compact Single-Band Layout */
 .center-emblem {
   display: flex;
   flex-direction: column;
@@ -860,32 +861,100 @@ html, body {
   gap: 2px;
 }
 
+.center-top-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .crest-shield {
-  width: clamp(24px, 3.6vw, 30px);
-  height: clamp(24px, 3.6vw, 30px);
+  width: clamp(20px, 2.8vw, 24px);
+  height: clamp(20px, 2.8vw, 24px);
   background: linear-gradient(135deg, #27272a, #09090b);
-  border: 2px solid var(--bronze-lit);
+  border: 1.5px solid var(--bronze-lit);
   outline: 1px solid #000;
   transform: rotate(45deg);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px #000;
+  box-shadow: 0 3px 10px #000;
 }
 
 .crest-shield span {
   transform: rotate(-45deg);
   font-family: var(--font-pixel);
-  font-size: clamp(0.40rem, 0.90vw, 0.52rem);
+  font-size: clamp(0.34rem, 0.78vw, 0.44rem);
   color: var(--bronze-lit);
 }
 
 .clock-plate {
   font-family: var(--font-pixel);
-  font-size: clamp(0.40rem, 0.90vw, 0.52rem);
-  color: var(--text-ash);
+  font-size: clamp(0.40rem, 0.85vw, 0.50rem);
+  color: var(--text-ivory);
   text-shadow: 0 2px 0 #000;
-  margin-top: 2px;
+  margin-top: 0;
+}
+
+.hud-center-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.hud-ctrl-pill {
+  position: relative;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(18, 25, 42, 0.94) 0%, rgba(8, 12, 22, 0.96) 100%);
+  border: 1.5px solid #64748b;
+  outline: 1px solid #000;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.82);
+  color: #cbd5e1;
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.14s ease, border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+
+.hud-ctrl-pill:hover {
+  filter: brightness(1.18);
+  border-color: #94a3b8;
+  color: #f8fafc;
+}
+
+.hud-ctrl-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 5px rgba(245, 158, 11, 0.72);
+  flex-shrink: 0;
+}
+
+.hud-ctrl-pill.is-manual-1p {
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  box-shadow: inset 0 1px 0 rgba(186, 230, 253, 0.35), 0 0 10px rgba(56, 189, 248, 0.45), 0 3px 8px rgba(0, 0, 0, 0.85);
+}
+
+.hud-ctrl-pill.is-manual-1p .hud-ctrl-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 6px #7dd3fc;
+}
+
+#app.is-adventure-active .hud-ctrl-pill {
+  display: none !important;
 }
 
 .hud-mode-tag {
@@ -913,8 +982,8 @@ html, body {
 /* Compact Forged Medallion Pause Button in Top HUD Center Emblem */
 .hud-pause-btn {
   position: relative;
-  margin-top: 2px;
-  padding: 3px 8px;
+  margin-top: 0;
+  padding: 3px 7px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(24, 31, 48, 0.95) 0%, rgba(9, 12, 22, 0.96) 100%);
   border: 1.5px solid var(--bronze-lit);
@@ -7069,6 +7138,459 @@ html.is-mobile-landscape .adv-boss-raid-phase {
 .landing-step-panel:not(.is-active-step),
 .landing-step-panel:not(.is-active-step) *,
 #app:not(.is-adventure-active) .adventure-controls,
-#app:not(.is-adventure-active) .adventure-controls * {
+#app:not(.is-adventure-active) .adventure-controls *,
+#app:not(.is-vs-manual-active) .vs-touch-controls,
+#app:not(.is-vs-manual-active) .vs-touch-controls * {
   animation-play-state: paused !important;
+}
+
+/* =========================================================================
+   PLAYABLE 1P VS MODE CONTROLS, AUTO-FADING KEY HINT BAR, TOUCH CLUSTER &
+   UPGRADED VICTORY STAT PILLS (?v=30fps166)
+   ========================================================================= */
+.quick-ctrl-dot {
+  width: 5px;
+  height: 5px;
+  background: #64748b;
+  flex-shrink: 0;
+}
+
+.quick-ctrl-pill.active-quick-ctrl-1p {
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  box-shadow: inset 0 1px 0 rgba(186, 230, 253, 0.34), 0 0 8px rgba(56, 189, 248, 0.35);
+}
+
+.quick-ctrl-pill.active-quick-ctrl-1p .quick-ctrl-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 6px #7dd3fc;
+}
+
+.quick-ctrl-pill.active-quick-ctrl-ai {
+  background: linear-gradient(180deg, #3c2b0b 0%, #1a1306 100%);
+  border-color: #facc15;
+  color: #fef9c3;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.28);
+}
+
+.iron-bar .iron-btn.hidden {
+  display: none !important;
+}
+
+.iron-btn-vs-ctrl[aria-pressed="true"] {
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  box-shadow: inset 0 0 8px rgba(56, 189, 248, 0.32), 0 0 10px rgba(56, 189, 248, 0.32);
+}
+
+.gem-cyan {
+  background: #64748b;
+}
+
+.iron-btn-vs-ctrl[aria-pressed="true"] .gem-cyan {
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+}
+
+/* Auto-Fading Compact Desktop Key-Hint Bar (First 4s of PLAY 1P VS Match) */
+.vs-keyhint-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 15;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(94vw, 920px);
+  padding: 5px 11px;
+  background: rgba(6, 10, 20, 0.86);
+  border: 1px solid rgba(56, 189, 248, 0.65);
+  outline: 1px solid #000;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.78);
+  opacity: 1;
+  transition: opacity 0.45s ease, transform 0.35s ease;
+}
+
+.vs-keyhint-bar.is-fading {
+  opacity: 0;
+  transform: translate(-50%, 6px);
+}
+
+.vs-keyhint-bar.hidden,
+#app.is-landing-open .vs-keyhint-bar,
+#app.is-adventure-active .vs-keyhint-bar,
+html.is-mobile-landscape .vs-keyhint-bar {
+  display: none !important;
+}
+
+.vs-kh-badge {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  color: #050811;
+  background: #38bdf8;
+  padding: 2px 5px;
+  letter-spacing: 0.04em;
+}
+
+.vs-kh-keys {
+  font-family: var(--font-pixel);
+  font-size: 0.27rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vs-kh-keys kbd {
+  font-family: var(--font-pixel);
+  font-size: 0.27rem;
+  color: #fef08a;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid #475569;
+  padding: 1px 4px;
+  margin-right: 1px;
+}
+
+/* VS 1P Mobile Touch Control Cluster — Strictly Touch / Mobile Only */
+.vs-touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 16;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  display: none;
+}
+
+.vs-touch-controls.hidden,
+#app.is-landing-open .vs-touch-controls,
+#app.is-adventure-active .vs-touch-controls,
+#app:not(.is-vs-manual-active) .vs-touch-controls {
+  display: none !important;
+}
+
+@media (pointer: coarse), (max-width: 960px), (max-height: 560px) {
+  #app.is-vs-manual-active:not(.is-landing-open):not(.is-adventure-active) .vs-touch-controls:not(.hidden) {
+    display: block;
+  }
+  .vs-keyhint-bar {
+    display: none !important;
+  }
+}
+
+html.is-mobile-landscape #app.is-vs-manual-active:not(.is-landing-open):not(.is-adventure-active) .vs-touch-controls:not(.hidden) {
+  display: block;
+}
+
+.vs-stick-zone {
+  width: 158px;
+  height: 168px;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  justify-content: flex-end;
+}
+
+.vs-stick-base {
+  width: 108px;
+  height: 108px;
+  border-color: rgba(56, 189, 248, 0.72);
+}
+
+.vs-stick-knob {
+  width: 42px;
+  height: 42px;
+  background: radial-gradient(circle at 36% 32%, #7dd3fc 0%, #0284c7 52%, #082f49 100%);
+  border-color: #e0f2fe;
+}
+
+.vs-stick-aux-row {
+  position: absolute;
+  left: 118px;
+  bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.vs-aux-orb-btn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  background: #070b15;
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 0 1px #000, 0 4px 12px rgba(0, 0, 0, 0.85);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.07s ease, border-color 0.14s ease;
+}
+
+.vs-aux-orb-btn:active,
+.vs-aux-orb-btn.is-pressed {
+  transform: scale(0.92);
+}
+
+.vs-aux-orb-btn.vs-orb-guard {
+  border-color: #facc15;
+}
+
+.vs-aux-orb-btn.is-on-cd .adv-skill-icon {
+  filter: saturate(0.4) brightness(0.68);
+}
+
+.vs-skill-cluster {
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: 180px;
+  height: 236px;
+}
+
+.vs-tag-orb-btn {
+  position: absolute;
+  right: 12px;
+  bottom: 184px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  border: 1.5px solid #38bdf8;
+  outline: 1px solid #000;
+  color: #e0f2fe;
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.85);
+}
+
+.vs-tag-orb-btn.is-on-cd {
+  opacity: 0.58;
+  border-color: #475569;
+}
+
+.vs-tag-orb-btn.hidden {
+  display: none !important;
+}
+
+/* Mobile Landscape Ultra-Slim VS HUD + Compact Touch Orbs */
+@media (max-height: 560px) {
+  .hud-top {
+    top: max(3px, env(safe-area-inset-top));
+    padding: 0 8px;
+    gap: 6px;
+  }
+  .portrait-frame {
+    width: 28px;
+    height: 28px;
+    border-width: 1px;
+  }
+  .fighter-name {
+    font-size: 0.38rem;
+  }
+  .hp-num {
+    font-size: 0.34rem;
+  }
+  .hp-frame {
+    height: 9px;
+    border-width: 1px;
+  }
+  .ult-frame, .cd-box, .finisher-frame {
+    height: 8px;
+    padding: 0 3px;
+  }
+  .ult-label, .cd-label, .finisher-label {
+    font-size: 0.24rem;
+  }
+  .crest-shield {
+    width: 17px;
+    height: 17px;
+  }
+  .crest-shield span {
+    font-size: 0.28rem;
+  }
+  .clock-plate {
+    font-size: 0.33rem;
+  }
+  .hud-mode-tag {
+    font-size: 0.22rem;
+    padding: 1px 4px;
+  }
+  .hud-ctrl-pill,
+  .hud-pause-btn {
+    padding: 2px 5px;
+    font-size: 0.23rem;
+    gap: 3px;
+  }
+  .vs-stick-zone {
+    transform: scale(0.78);
+    transform-origin: bottom left;
+    left: 10px;
+    bottom: 6px;
+  }
+  .vs-skill-cluster {
+    transform: scale(0.76);
+    transform-origin: bottom right;
+    right: 10px;
+    bottom: 6px;
+  }
+}
+
+html.is-mobile-landscape .vs-stick-zone {
+  transform: scale(0.78);
+  transform-origin: bottom left;
+  left: 12px;
+  bottom: 6px;
+}
+
+html.is-mobile-landscape .vs-skill-cluster {
+  transform: scale(0.76);
+  transform-origin: bottom right;
+  right: 12px;
+  bottom: 6px;
+}
+
+html.is-mobile-landscape .finisher-frame {
+  height: 8px;
+  padding: 0 3px;
+}
+
+html.is-mobile-landscape .finisher-label {
+  font-size: 0.24rem;
+}
+
+html.is-mobile-landscape .hud-ctrl-pill {
+  padding: 2px 5px;
+  font-size: 0.23rem;
+}
+
+/* Upgraded Victory Overlay — Compact Stat Pills & Sleek One-Tap Action Bar */
+.victory-plaque {
+  width: min(94vw, 570px);
+  padding: 16px 18px;
+}
+
+.telemetry-pills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.telemetry-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 5px 7px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid #2b3a55;
+  text-align: left;
+  min-width: 0;
+}
+
+.tel-pill-lbl {
+  font-family: var(--font-pixel);
+  font-size: 0.26rem;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.telemetry-pill strong {
+  font-family: var(--font-pixel);
+  font-size: 0.40rem;
+  color: #f8fafc;
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.victory-btn-row {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.victory-btn-row .iron-btn {
+  padding: 7px 11px;
+  font-size: 0.34rem;
+}
+
+.iron-btn-swap {
+  border-color: #38bdf8 !important;
+  color: #e0f2fe !important;
+  background: linear-gradient(180deg, #0c3554 0%, #071d31 100%) !important;
+}
+
+.iron-btn-swap:hover {
+  filter: brightness(1.18);
+  border-color: #7dd3fc !important;
+}
+
+@media (max-width: 760px), (max-height: 560px) {
+  .vs-quick-config-bar {
+    gap: 5px;
+    padding: 3px 6px;
+  }
+  .quick-cfg-pill,
+  .quick-stage-pill {
+    padding: 3px 5px;
+    font-size: 0.23rem;
+  }
+  .victory-plaque {
+    padding: 10px 12px;
+  }
+  .victory-eyebrow {
+    margin-bottom: 4px;
+    font-size: 0.36rem;
+  }
+  .victory-winner {
+    margin-bottom: 4px;
+    font-size: clamp(0.68rem, 2.2vw, 0.96rem);
+  }
+  .victory-stats {
+    margin-bottom: 8px;
+    font-size: 0.38rem;
+  }
+  .victory-telemetry {
+    padding: 7px 8px;
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+  .telemetry-pill {
+    padding: 4px 5px;
+  }
+  .tel-pill-lbl {
+    font-size: 0.22rem;
+  }
+  .telemetry-pill strong {
+    font-size: 0.32rem;
+  }
+  .victory-auto-next {
+    margin-bottom: 8px;
+    font-size: 0.34rem;
+  }
+  .victory-btn-row {
+    gap: 5px;
+  }
+  .victory-btn-row .iron-btn {
+    padding: 5px 8px;
+    font-size: 0.29rem;
+  }
 }

@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps165';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps166';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -126,8 +126,17 @@ export class Fighter {
       critsLanded: 0,
       healingDone: 0,
       biggestHit: 0,
-      clashes: 0
+      clashes: 0,
+      maxCombo: 0,
+      parries: 0,
+      dodges: 0,
+      counters: 0
     };
+    this._attackConnectedThisState = false;
+    this._recentWhiffTimer = 0;
+    this._perfectParryWindow = 0;
+    this._vsManualJumpCd = 0;
+    this._vsManualGuardCd = 0;
 
     // Fighting Style AI Director State (distinct martial cadence, counters & post-combo signatures)
     this._aiComboCount = 0;
@@ -550,6 +559,20 @@ export class Fighter {
 
   setState(newState) {
     const prevState = this.state;
+    if (
+      (prevState === 'AUTO_ATTACK' || prevState === 'SKILL') &&
+      !this._attackConnectedThisState &&
+      (this.stateTimer || 0) >= 0.14 &&
+      (newState === 'IDLE' || newState === 'WALK')
+    ) {
+      this._recentWhiffTimer = 0.42;
+    }
+    this._attackConnectedThisState = false;
+    if (newState === 'CROUCH') {
+      this._perfectParryWindow = 0.26;
+    } else if (prevState === 'CROUCH') {
+      this._perfectParryWindow = 0;
+    }
     this.state = newState;
     this.stateTimer = 0;
     this.didActionFrame = false;
@@ -834,6 +857,8 @@ export class Fighter {
     if (!atkTier) {
       // Kaze-Maru's Iaido Serene Mind Counter-Blink: teleports behind the attacker on incoming basic/skill hit!
       if (inCounter) {
+        if (this.stats) this.stats.parries = (this.stats.parries || 0) + 1;
+        this.game?.onCombatCallout?.(this, 'PERFECT PARRY!', '#fde047', '#ffffff');
         this.triggerIaidoCounterBlink(attacker, this.game);
         return;
       }
@@ -844,6 +869,7 @@ export class Fighter {
         }
         if ((this._evadeManaCd || 0) <= 0) {
           this._evadeManaCd = 0.55;
+          if (this.stats) this.stats.dodges = (this.stats.dodges || 0) + 1;
           this.gainMana(5);
         }
         return;
@@ -855,6 +881,7 @@ export class Fighter {
         }
         if ((this._evadeManaCd || 0) <= 0) {
           this._evadeManaCd = 0.55;
+          if (this.stats) this.stats.dodges = (this.stats.dodges || 0) + 1;
           this.gainMana(5);
         }
         return;
@@ -866,6 +893,7 @@ export class Fighter {
       }
       if ((this._evadeManaCd || 0) <= 0) {
         this._evadeManaCd = 0.55;
+        if (this.stats) this.stats.dodges = (this.stats.dodges || 0) + 1;
         this.gainMana(5);
       }
       return;
@@ -988,6 +1016,42 @@ export class Fighter {
           this.game.vfx.spawnDamageText(this.x, this.y - 210, 0, false, 'MAGMA ARMOR!', '#f59e0b');
         }
       }
+    } else if (
+      !atkTier &&
+      !this.isMonster &&
+      (this.isDeflecting || this.state === 'CROUCH') &&
+      ((this._perfectParryWindow || 0) > 0 || (this.state === 'CROUCH' && (this.stateTimer || 0) <= 0.26))
+    ) {
+      this._perfectParryWindow = 0;
+      if (this.stats) this.stats.parries = (this.stats.parries || 0) + 1;
+      this.game?.onCombatCallout?.(this, 'PERFECT PARRY!', '#fde047', '#ffffff');
+      if (this.isPlayerControlled && !this.adventureAutoPlay && !this.game?.isAdventureMode?.()) {
+        // Manual 1P Timed Guard-Parry: crisp full parry negation, Overdrive surge & close-range attacker stagger!
+        this.gainMana(12);
+        if (this.game) {
+          this.game.audio?.play?.('clang', this.x);
+          this.game.renderer?.triggerHitStop?.(0.05);
+          this.game.vfx?.spawnShockwave?.(this.x, this.y - 96, 88, '#fde047', 0.28);
+          this.game.vfx?.spawnBurst?.(this.x + this.facing * 20, this.y - 96, 14, '#fef08a', 240, {
+            upBias: 80,
+            size: 5
+          });
+        }
+        if (
+          attacker &&
+          !attacker.isDead &&
+          !attacker.unstoppablePoise &&
+          Math.abs(attacker.x - this.x) < 195
+        ) {
+          attacker.stunTimer = Math.max(attacker.stunTimer || 0, 0.28);
+          attacker.vx = -Math.sign(this.x - attacker.x || attacker.facing || 1) * 140;
+        }
+        return;
+      }
+      if (this.isDeflecting) {
+        amount *= 0.55;
+        knockX *= 0.25;
+      }
     } else if (this.isDeflecting) {
       amount *= 0.55;
       knockX *= 0.25;
@@ -1048,6 +1112,38 @@ export class Fighter {
       attacker.stats.damageDealt += dealt;
       if (isCrit) attacker.stats.critsLanded++;
       if (dealt > attacker.stats.biggestHit) attacker.stats.biggestHit = dealt;
+    }
+    if (attacker) {
+      attacker._attackConnectedThisState = true;
+    }
+    if (
+      !this.isMonster &&
+      attacker &&
+      !attacker.isMonster &&
+      !this._isSplashDamage &&
+      !this._isThornReflect &&
+      dealt > 0
+    ) {
+      const victimInStartup =
+        (this.state === 'AUTO_ATTACK' || this.state === 'SKILL') &&
+        !this.didActionFrame &&
+        (this.stateTimer || 0) >= 0.02 &&
+        (this.stateTimer || 0) <= 0.34;
+      const victimInWhiffRecovery =
+        ((this.state === 'AUTO_ATTACK' || this.state === 'SKILL') &&
+          this.didActionFrame &&
+          !this._attackConnectedThisState &&
+          !this._beatLandedHit) ||
+        (this._recentWhiffTimer || 0) > 0;
+      if (victimInStartup) {
+        if (attacker.stats) attacker.stats.counters = (attacker.stats.counters || 0) + 1;
+        this.game?.onCombatCallout?.(attacker, 'COUNTER!', '#fb923c', '#fef08a');
+        if (!isCrit) this.game?.renderer?.triggerHitStop?.(0.028);
+      } else if (victimInWhiffRecovery) {
+        this._recentWhiffTimer = 0;
+        this.game?.onCombatCallout?.(attacker, 'WHIFF PUNISH!', '#38bdf8', '#e0f2fe');
+      }
+      this.game?.onFighterHitCombo?.(attacker, this, dealt, isCrit);
     }
     this.hitFlash = 0.18;
     this.hurtTimer = isCrit ? 0.34 : 0.25;
@@ -1182,7 +1278,7 @@ export class Fighter {
       if (this.game) {
         this.game.renderer.triggerShake(12, 0.25);
         this.game.renderer.triggerAberration(8);
-        this.game.renderer.triggerHitStop(0.07);
+        this.game.renderer.triggerHitStop(0.11, true);
         this.game.vfx.spawnBurst(this.x, this.y - 95, 32, this.primaryColor, 295, {
           upBias: 145,
           size: 7
@@ -2122,6 +2218,10 @@ export class Fighter {
     if (this._evadeManaCd > 0) this._evadeManaCd = Math.max(0, this._evadeManaCd - dt);
     if (this._buildShieldTextCd > 0) this._buildShieldTextCd = Math.max(0, this._buildShieldTextCd - dt);
     if (this._buildRootTextCd > 0) this._buildRootTextCd = Math.max(0, this._buildRootTextCd - dt);
+    if (this._recentWhiffTimer > 0) this._recentWhiffTimer = Math.max(0, this._recentWhiffTimer - dt);
+    if (this._perfectParryWindow > 0) this._perfectParryWindow = Math.max(0, this._perfectParryWindow - dt);
+    if (this._vsManualJumpCd > 0) this._vsManualJumpCd = Math.max(0, this._vsManualJumpCd - dt);
+    if (this._vsManualGuardCd > 0) this._vsManualGuardCd = Math.max(0, this._vsManualGuardCd - dt);
     if (this.buildShieldTimer > 0) {
       this.buildShieldTimer = Math.max(0, this.buildShieldTimer - dt);
       if (this.buildShieldTimer <= 0 || this.game?.isAdventureMode?.()) {
