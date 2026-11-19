@@ -9,11 +9,11 @@
   <meta name="theme-color" content="#05070c" />
   <title>Arcane vs. Steel — HD-2D Pixel Auto-Battler</title>
   <meta name="description" content="HD-2D pixel-art idle auto-battler featuring articulated 40-frame sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
-  <link rel="icon" type="image/png" href="assets/sprites/avs_brand_logo.png?v=30fps164" />
-  <link rel="apple-touch-icon" href="assets/sprites/avs_brand_logo.png?v=30fps164" />
+  <link rel="icon" type="image/png" href="assets/sprites/avs_brand_logo.png?v=30fps165" />
+  <link rel="apple-touch-icon" href="assets/sprites/avs_brand_logo.png?v=30fps165" />
   <link rel="manifest" href="manifest.json" />
   <link rel="preload" href="assets/fonts/pixel_art.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="style.css?v=30fps164" />
+  <link rel="stylesheet" href="style.css?v=30fps165" />
 </head>
 <body>
   <main id="app" class="is-landing-open" data-landing-step="title">
@@ -578,7 +578,7 @@
       <!-- Persistent Top Forged-Brass Arcade Step Bar (Branch-Isolated) -->
       <nav class="arcade-step-nav" aria-label="Arcade Setup Navigation">
         <div class="step-nav-brand" id="step-nav-brand" title="Return to Title Screen">
-          <img src="assets/sprites/avs_brand_logo.png?v=30fps164" class="brand-crest-nav" alt="" width="26" height="26" />
+          <img src="assets/sprites/avs_brand_logo.png?v=30fps165" class="brand-crest-nav" alt="" width="26" height="26" />
           <span class="brand-wordmark">ARCANE <span>VS.</span> STEEL</span>
         </div>
 
@@ -746,7 +746,7 @@
       </nav>
 
       <!-- =========================================================================
-           STEP 1: OVERHAULED DUAL-PILLAR TITLE SCREEN (#landing-step-title)
+           STEP 1: SLEEK FULL-BLEED HD-2D TITLE SCREEN (#landing-step-title)
            Zero Background Arena Simulation • Strictly Separated VS Mode vs Adventure Mode
            ========================================================================= -->
       <div
@@ -755,23 +755,32 @@
         role="tabpanel"
         aria-labelledby="step-tab-title"
       >
+        <div class="title-ambient-backdrop" aria-hidden="true">
+          <div class="title-ambient-aurora"></div>
+          <div class="title-ambient-embers"></div>
+          <div class="title-ambient-vignette"></div>
+          <div class="title-horizon-beam"></div>
+        </div>
+
         <div class="sanctum-plaque sanctum-dual-shell">
           <header class="sanctum-hero-head">
             <div class="sanctum-crest-divider" aria-hidden="true">
               <span class="crest-line crest-line-left"></span>
-              <img
-                src="assets/sprites/avs_brand_logo.png?v=30fps164"
-                class="sanctum-brand-logo"
-                alt=""
-                width="80"
-                height="80"
-              />
+              <div class="sanctum-crest-aura">
+                <img
+                  src="assets/sprites/avs_brand_logo.png?v=30fps165"
+                  class="sanctum-brand-logo"
+                  alt=""
+                  width="84"
+                  height="84"
+                />
+              </div>
               <span class="crest-line crest-line-right"></span>
             </div>
 
             <h1 class="sanctum-title">ARCANE <span>VS.</span> STEEL</h1>
             <p class="sanctum-subtitle">
-              CHOOSE YOUR REALM • 22 HD-2D SOVEREIGN CHAMPIONS @ 30FPS
+              23 HD-2D SOVEREIGN CHAMPIONS @ 30FPS
             </p>
           </header>
 
@@ -779,9 +788,9 @@
             <!-- PILLAR I: DEDICATED VERSUS ARENA GATEWAY -->
             <button type="button" class="gateway-pillar gateway-vs" id="btn-go-mode">
               <div class="gateway-top-row">
-                <span class="gateway-kicker">REALM I • ARENA DUELS</span>
+                <span class="gateway-kicker">REALM I • ARENA</span>
                 <span class="gateway-emblem" aria-hidden="true">
-                  <svg width="28" height="28" viewBox="0 0 28 28" shape-rendering="crispEdges">
+                  <svg width="24" height="24" viewBox="0 0 28 28" shape-rendering="crispEdges">
                     <rect x="4" y="20" width="4" height="4" fill="#9a762d" />
                     <rect x="8" y="16" width="4" height="4" fill="#e2e8f0" />
                     <rect x="12" y="12" width="4" height="4" fill="#f8fafc" />
@@ -795,12 +804,9 @@
                 </span>
               </div>
               <strong class="gateway-title">VERSUS MODE</strong>
-              <span class="gateway-format-line">1V1 DUEL • TAG VS RELAY</span>
-              <p class="gateway-desc">
-                Head-to-head arena battles and 2v2 Tag VS relays across 6 sanctuary realms with 3-Overdrive Supreme Ultimates.
-              </p>
+              <span class="gateway-format-line">1V1 DUEL • TAG VS • 6 REALMS</span>
               <div class="gateway-cta-strip">
-                <span>ENTER VERSUS ARENA</span>
+                <span>ENTER VERSUS</span>
                 <span class="gateway-arrow" aria-hidden="true">
                   <svg class="px-ui-icon" width="12" height="10" viewBox="0 0 12 10" shape-rendering="crispEdges">
                     <rect x="0" y="4" width="8" height="2" fill="currentColor" />
@@ -817,7 +823,7 @@
               <div class="gateway-top-row">
                 <span class="gateway-kicker">REALM II • ACTION RPG</span>
                 <span class="gateway-emblem" aria-hidden="true">
-                  <svg width="28" height="28" viewBox="0 0 28 28" shape-rendering="crispEdges">
+                  <svg width="24" height="24" viewBox="0 0 28 28" shape-rendering="crispEdges">
                     <rect x="12" y="3" width="4" height="4" fill="#fef08a" />
                     <rect x="10" y="7" width="8" height="4" fill="#fb923c" />
                     <rect x="8" y="11" width="12" height="6" fill="#ea580c" />
@@ -829,9 +835,6 @@
               </div>
               <strong class="gateway-title">ADVENTURE MODE</strong>
               <span class="gateway-format-line">SOLO CAMPAIGN • 4 REALMS + BOSS</span>
-              <p class="gateway-desc">
-                Command any champion through a 4-realm monster gauntlet with 2.5D evade skills, RPG Skill Tree &amp; Colossal Boss Malphas.
-              </p>
               <div class="gateway-cta-strip">
                 <span>ENTER ADVENTURE</span>
                 <span class="gateway-arrow" aria-hidden="true">
@@ -847,7 +850,7 @@
           </div>
 
           <footer class="sanctum-footer" id="title-status-footer">
-            SEPARATED ARENA &amp; CAMPAIGN REALMS • ZERO BACKGROUND LOAD • INSTANT READY
+            SEPARATED ARENA &amp; CAMPAIGN REALMS • INSTANT READY • LOSSLESS HD-2D
           </footer>
         </div>
       </div>
@@ -918,7 +921,7 @@
                   <span class="mode-active-seal">SELECTED</span>
                 </div>
                 <div class="mode-card-title">ADVENTURE CAMPAIGN</div>
-                <div class="mode-card-meta">ALL 22 CHAMPIONS</div>
+                <div class="mode-card-meta">ALL 23 CHAMPIONS</div>
                 <p class="mode-card-desc">Solo 2.5D Adventure Mode (entered from Title Screen).</p>
               </button>
             </div>
@@ -993,7 +996,7 @@
             <div class="stage-gallery-grid" id="stage-gallery-grid" role="group" aria-label="Arena Stage Gallery">
               <button type="button" class="stage-card stage-pill active-stage" id="stage-btn-auto" data-stage="auto">
                 <div class="stage-thumb-wrap stage-thumb-auto">
-                  <img src="assets/sprites/arena_bg.png?v=30fps164" alt="Auto Rotating Realm" decoding="async" />
+                  <img src="assets/sprites/arena_bg.png?v=30fps165" alt="Auto Rotating Realm" decoding="async" />
                   <span class="stage-auto-emblem" aria-hidden="true">
                     <svg class="px-ui-icon" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
                       <rect x="7" y="1" width="2" height="14" fill="#fde047" />
@@ -1011,7 +1014,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-cathedral" data-stage="cathedral">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_bg.png?v=30fps164" alt="Eclipse Cathedral" decoding="async" />
+                  <img src="assets/sprites/arena_bg.png?v=30fps165" alt="Eclipse Cathedral" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ECLIPSE CATHEDRAL</strong>
@@ -1021,7 +1024,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-sanctuary" data-stage="sanctuary">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_sanctuary.png?v=30fps164" alt="Radiant Sanctuary" decoding="async" />
+                  <img src="assets/sprites/arena_sanctuary.png?v=30fps165" alt="Radiant Sanctuary" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">RADIANT SANCTUARY</strong>
@@ -1031,7 +1034,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-sylvan" data-stage="sylvan">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_sylvan.png?v=30fps164" alt="Sylvan Starwood" decoding="async" />
+                  <img src="assets/sprites/arena_sylvan.png?v=30fps165" alt="Sylvan Starwood" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">SYLVAN STARWOOD</strong>
@@ -1041,7 +1044,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-boneyard" data-stage="boneyard">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_boneyard.png?v=30fps164" alt="Abyssal Necropolis" decoding="async" />
+                  <img src="assets/sprites/arena_boneyard.png?v=30fps165" alt="Abyssal Necropolis" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ABYSSAL NECROPOLIS</strong>
@@ -1051,7 +1054,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-clocktower" data-stage="clocktower">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_clocktower.png?v=30fps164" alt="Astral Clocktower" decoding="async" />
+                  <img src="assets/sprites/arena_clocktower.png?v=30fps165" alt="Astral Clocktower" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ASTRAL CLOCKTOWER</strong>
@@ -1089,8 +1092,8 @@
       </div>
 
       <!-- =========================================================================
-           STEP 3: CHAMPION SELECT / VERSUS DRAFT (#landing-step-roster)
-           Top Matchup Slot Strip + Dual 30fps Showcase Pedestals + 11-Hero Medallion Grid
+           STEP 3: COMPACT ZERO-SCROLL PC & THUMB-FIRST MOBILE CHARACTER SELECT (#landing-step-roster)
+           Inline VS Quick-Config + Sticky P1/P2 Switcher + Mirrored Showcase Pedestals + 6x2 / 4x3 Dock + Kit Drawer
            ========================================================================= -->
       <div
         id="landing-step-roster"
@@ -1100,619 +1103,643 @@
         hidden
       >
         <div class="roster-draft-shell">
-          <!-- Top Matchup & Active Slot Bar -->
-          <header class="matchup-banner" id="matchup-banner">
-            <div class="team-slot-group team-slot-left">
-              <button
-                type="button"
-                class="slot-pill slot-left"
-                id="slot-btn-left"
-                title="Select Champion for P1 Lead (Left Team)"
-              >
-                <span class="slot-tag" id="slot-left-tag">P1 LEAD</span>
-                <strong class="slot-hero-name" id="slot-left-name">AETHELGARD</strong>
-              </button>
-              <button
-                type="button"
-                class="slot-pill slot-left-partner"
-                id="slot-btn-left-partner"
-                title="Select Partner Champion for P1B Ally (Left Team)"
-              >
-                <span class="slot-tag" id="slot-left-partner-tag">P1B ALLY</span>
-                <strong class="slot-hero-name" id="slot-left-partner-name">TORGAR</strong>
-              </button>
+          <!-- Top Control Strip: Sticky P1/P2 Slot Switcher + Inline VS Quick-Config / Adventure Stage Pack -->
+          <div class="roster-top-controls">
+            <!-- Sticky Compact P1 vs P2 Active-Slot Switcher Bar -->
+            <header class="matchup-banner" id="matchup-banner">
+              <div class="team-slot-group team-slot-left">
+                <button
+                  type="button"
+                  class="slot-pill slot-left active-slot"
+                  id="slot-btn-left"
+                  title="Select Champion for P1 Lead (Left Team)"
+                >
+                  <span class="slot-tag" id="slot-left-tag">P1</span>
+                  <strong class="slot-hero-name" id="slot-left-name">AETHELGARD EX</strong>
+                </button>
+                <button
+                  type="button"
+                  class="slot-pill slot-left-partner hidden"
+                  id="slot-btn-left-partner"
+                  title="Select Partner Champion for P1B Ally (Left Team)"
+                >
+                  <span class="slot-tag" id="slot-left-partner-tag">P1B</span>
+                  <strong class="slot-hero-name" id="slot-left-partner-name">TORGAR EX</strong>
+                </button>
+              </div>
+
+              <div class="matchup-center-crest">
+                <div class="matchup-vs-badge" id="matchup-vs-text">1V1</div>
+              </div>
+
+              <div class="team-slot-group team-slot-right">
+                <button
+                  type="button"
+                  class="slot-pill slot-right"
+                  id="slot-btn-right"
+                  title="Select Champion for P2 Lead (Right Team)"
+                >
+                  <span class="slot-tag" id="slot-right-tag">P2</span>
+                  <strong class="slot-hero-name" id="slot-right-name">MALAKOR EX</strong>
+                </button>
+                <button
+                  type="button"
+                  class="slot-pill slot-right-partner hidden"
+                  id="slot-btn-right-partner"
+                  title="Select Partner Champion for P2B Ally (Right Team)"
+                >
+                  <span class="slot-tag" id="slot-right-partner-tag">P2B</span>
+                  <strong class="slot-hero-name" id="slot-right-partner-name">IGNIS SOL EX</strong>
+                </button>
+              </div>
+            </header>
+
+            <!-- Inline VS Quick-Config Bar (1V1 / TAG VS • Compact Stage Strip • MORTAL / SANDBOX HP • Full Setup) -->
+            <div class="vs-quick-config-bar" id="vs-quick-config-bar" role="region" aria-label="Versus Quick Config">
+              <div class="quick-cfg-group quick-mode-group" role="group" aria-label="Versus Format">
+                <button type="button" class="quick-cfg-pill active-quick-mode" id="quick-mode-1v1" data-quick-mode="1v1" aria-pressed="true">
+                  1V1
+                </button>
+                <button type="button" class="quick-cfg-pill" id="quick-mode-tag" data-quick-mode="2v2_tag" aria-pressed="false">
+                  TAG VS
+                </button>
+              </div>
+
+              <span class="quick-cfg-sep" aria-hidden="true"></span>
+
+              <div class="quick-cfg-group quick-stage-strip" role="group" aria-label="Arena Stage">
+                <span class="quick-cfg-kicker">STAGE</span>
+                <button type="button" class="quick-stage-pill active-stage" data-stage="auto" aria-pressed="true">AUTO</button>
+                <button type="button" class="quick-stage-pill" data-stage="cathedral" aria-pressed="false">CATHEDRAL</button>
+                <button type="button" class="quick-stage-pill" data-stage="sanctuary" aria-pressed="false">SANCTUARY</button>
+                <button type="button" class="quick-stage-pill" data-stage="sylvan" aria-pressed="false">SYLVAN</button>
+                <button type="button" class="quick-stage-pill" data-stage="boneyard" aria-pressed="false">NECROPOLIS</button>
+                <button type="button" class="quick-stage-pill" data-stage="clocktower" aria-pressed="false">CLOCKTOWER</button>
+              </div>
+
+              <span class="quick-cfg-sep" aria-hidden="true"></span>
+
+              <div class="quick-cfg-group quick-rules-group">
+                <button
+                  type="button"
+                  class="quick-cfg-pill quick-hp-pill"
+                  id="btn-quick-hp-mode"
+                  aria-pressed="false"
+                  title="Toggle Mortal HP vs Unlimited Sandbox HP"
+                >
+                  <span class="quick-hp-dot" aria-hidden="true"></span>
+                  <span id="quick-hp-mode-label">MORTAL HP</span>
+                </button>
+                <button
+                  type="button"
+                  class="roster-config-chip"
+                  id="btn-roster-config-badge"
+                  title="Open Full VS Setup &amp; Stage Gallery"
+                >
+                  <svg class="px-ui-icon" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+                    <rect x="4" y="0" width="2" height="10" fill="currentColor" />
+                    <rect x="0" y="4" width="10" height="2" fill="currentColor" />
+                    <rect x="2" y="2" width="6" height="6" fill="currentColor" />
+                    <rect x="4" y="4" width="2" height="2" fill="#0b0f1b" />
+                  </svg>
+                  <span class="quick-setup-vis">SETUP</span>
+                  <span id="roster-config-badge-text" class="sr-only">1V1 SOVEREIGN DUEL • AUTO REALM • MORTAL HP</span>
+                </button>
+              </div>
             </div>
 
-            <div class="matchup-center-crest">
-              <div class="matchup-vs-badge" id="matchup-vs-text">1V1</div>
+            <!-- Adventure Campaign / Stage Pack Selector (Visible strictly in Adventure Mode) -->
+            <div
+              class="adv-campaign-selector-bar hidden"
+              id="adv-campaign-selector-bar"
+              role="region"
+              aria-label="Adventure Stage Pack Selector"
+              hidden
+            >
+              <label class="adv-campaign-kicker" for="adv-campaign-select">STAGE PACK</label>
+              <select
+                class="adv-campaign-select"
+                id="adv-campaign-select"
+                title="Choose Built-In Pilgrimage or an Arcane Pixel Studio Adventure Stage Pack"
+              >
+                <option value="default">ORIGINAL PILGRIMAGE (4 REALMS • 9600PX)</option>
+              </select>
               <button
                 type="button"
-                class="roster-config-chip"
-                id="btn-roster-config-badge"
-                title="Click to adjust Versus Format, Sandbox Unlimited HP, or Arena Stage"
+                class="adv-campaign-import-btn"
+                id="btn-import-campaign-json"
+                title="Import a local Adventure Stage Pack (.json)"
               >
-                <span id="roster-config-badge-text">1V1 SOVEREIGN DUEL • AUTO REALM • MORTAL HP</span>
+                IMPORT .JSON
               </button>
-            </div>
-
-            <div class="team-slot-group team-slot-right">
-              <button
-                type="button"
-                class="slot-pill slot-right active-slot"
-                id="slot-btn-right"
-                title="Select Champion for P2 Lead (Right Team)"
-              >
-                <span class="slot-tag" id="slot-right-tag">P2 LEAD</span>
-                <strong class="slot-hero-name" id="slot-right-name">MALAKOR</strong>
-              </button>
-              <button
-                type="button"
-                class="slot-pill slot-right-partner"
-                id="slot-btn-right-partner"
-                title="Select Partner Champion for P2B Ally (Right Team)"
-              >
-                <span class="slot-tag" id="slot-right-partner-tag">P2B ALLY</span>
-                <strong class="slot-hero-name" id="slot-right-partner-name">IGNIS SOL</strong>
-              </button>
-            </div>
-          </header>
-
-          <!-- Main 3-Column Fighting-Game Versus Draft Layout -->
-          <div class="versus-layout">
-            <!-- LEFT P1 SHOWCASE PEDESTAL -->
-            <aside class="fighter-profile profile-steel" id="profile-left">
-              <div class="profile-top-bar">
-                <div class="profile-corner-tag tag-p1" id="p1-corner-tag">TEAM 1</div>
-                <div class="duo-tab-row" id="p1-duo-tabs">
-                  <button type="button" class="duo-tab-btn active-tab" id="p1-tab-lead" data-inspect-left="lead">
-                    P1 LEAD
-                  </button>
-                  <button type="button" class="duo-tab-btn" id="p1-tab-partner" data-inspect-left="partner">
-                    P1B ALLY
-                  </button>
-                </div>
-                <span class="profile-style-pill" id="p1-profile-style">RUNIC VANGUARD</span>
-              </div>
-
-              <div class="profile-hero-showcase">
-                <div class="profile-stage" id="p1-stage">
-                  <div class="stage-halo halo-steel" id="p1-halo"></div>
-                  <canvas id="p1-sprite-canvas" width="320" height="240"></canvas>
-                  <div class="stage-pedestal-plinth" aria-hidden="true"></div>
-                </div>
-                <div class="profile-identity">
-                  <div class="profile-role" id="p1-profile-role">SOVEREIGN RUNE PALADIN</div>
-                  <h2 class="profile-name" id="p1-profile-name">AETHELGARD</h2>
-                  <div class="profile-trait-badge" id="p1-profile-trait">PASSIVE: AEGIS SPELL DEFLECT</div>
-                </div>
-              </div>
-
-              <div class="profile-skills-header-row">
-                <div class="profile-skills-header" id="p1-skills-header">4-SLOT SOVEREIGN KIT &amp; SUPREME ULTIMATE</div>
-                <div class="build-preset-strip hidden" id="p1-build-preset-bar" role="group" aria-label="P1 Sovereign Loadout Presets">
-                  <span class="preset-active-label" id="p1-build-preset-label">SOVEREIGN</span>
-                  <div class="preset-btn-group">
-                    <button type="button" class="preset-pill-btn active-preset" data-build-panel="p1" data-preset="0" title="Preset I: Sovereign Standard (0/0/0)">I</button>
-                    <button type="button" class="preset-pill-btn" data-build-panel="p1" data-preset="1" title="Preset II: Offense / Tempo Archetype (1/1/1)">II</button>
-                    <button type="button" class="preset-pill-btn" data-build-panel="p1" data-preset="2" title="Preset III: Sanctuary / Control Archetype (2/2/2)">III</button>
-                    <button type="button" class="preset-pill-btn preset-pill-rng" data-build-panel="p1" data-preset="rng" title="Random Sovereign Loadout on Match Start">RNG</button>
-                  </div>
-                </div>
-              </div>
-              <div class="profile-skill-list" id="p1-skill-list">
-                <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p1-skill-icon-0" width="64" height="64"></canvas></div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name" id="p1-skill-name-0">FROST CRESCENT</strong>
-                      <div class="skill-title-meta">
-                        <div class="skill-tier-tabs hidden" id="p1-tier-tabs-0" role="group" aria-label="Auto and Passive Tier">
-                          <button type="button" class="tier-tab-btn active-tier" data-build-panel="p1" data-build-cat="aspect" data-tier="0">I</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="aspect" data-tier="1">II</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="aspect" data-tier="2">III</button>
-                        </div>
-                        <span class="skill-type-badge badge-auto" id="p1-skill-type-0">AUTO + PASSIVE</span>
-                      </div>
-                    </div>
-                    <p class="skill-desc" id="p1-skill-desc-0">
-                      Cleaves with 2H Celestial Claymore frost waves &amp; raises an Aegis spell-reflect barrier.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p1-skill-icon-1" width="64" height="64"></canvas></div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name" id="p1-skill-name-1">TEMPEST VANGUARD</strong>
-                      <div class="skill-title-meta">
-                        <div class="skill-tier-tabs hidden" id="p1-tier-tabs-1" role="group" aria-label="Signature Skill Tier">
-                          <button type="button" class="tier-tab-btn active-tier" data-build-panel="p1" data-build-cat="skill" data-tier="0">I</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="skill" data-tier="1">II</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="skill" data-tier="2">III</button>
-                        </div>
-                        <span class="skill-type-badge badge-skill" id="p1-skill-type-1">SKILL • 5.1S CD</span>
-                      </div>
-                    </div>
-                    <p class="skill-desc" id="p1-skill-desc-1">
-                      360° spinning Runeblade cyclone rush that pulls foes inward before a grounded crystal slam.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="skill-card skill-card-ult">
-                  <div class="skill-icon-box icon-box-ult"><canvas id="p1-skill-icon-2" width="64" height="64"></canvas></div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name" id="p1-skill-name-2">HEAVENLY EARTHSHATTER</strong>
-                      <div class="skill-title-meta">
-                        <div class="skill-tier-tabs hidden" id="p1-tier-tabs-2" role="group" aria-label="Overdrive Ultimate Tier">
-                          <button type="button" class="tier-tab-btn active-tier" data-build-panel="p1" data-build-cat="ult" data-tier="0">I</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="ult" data-tier="1">II</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="ult" data-tier="2">III</button>
-                        </div>
-                        <span class="skill-type-badge badge-ult" id="p1-skill-type-2">OVERDRIVE ULT</span>
-                      </div>
-                    </div>
-                    <p class="skill-desc" id="p1-skill-desc-2">
-                      Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- 4th Row: Supreme Ultimate Finisher -->
-                <div class="skill-card skill-card-supreme" id="p1-true-ult-box">
-                  <div class="supreme-crest-box" aria-hidden="true">
-                    <canvas id="p1-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
-                    <img src="assets/sprites/avs_brand_logo.png?v=30fps164" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
-                    <span class="supreme-tier">III</span>
-                  </div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name supreme-ult-title" id="p1-true-ult-name">
-                        CELESTIAL JUSTICE: SWORD OF THE SANCTUARY
-                      </strong>
-                      <span class="skill-type-badge badge-supreme">SUPREME ULTIMATE</span>
-                    </div>
-                    <p class="skill-desc" id="p1-true-ult-desc">
-                      Ascends on Seraphim wings, consecrates the Radiant Sanctuary, locks a pixel reticle &amp; cleaves from the heavens!
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </aside>
-
-            <!-- CENTER COLUMN: DUAL-VERSION (EX / LEGACY) 11-AT-A-TIME PORTRAIT MEDALLION GRID -->
-            <div class="versus-center-col">
-              <div class="portrait-grid-label" id="portrait-grid-label">
-                SELECT A CHAMPION FOR P2 LEAD — OR CLICK P1 / P2 ON ANY MEDALLION
-              </div>
-
-              <!-- Adventure Campaign / Stage Pack Selector (Visible strictly in Adventure Mode) -->
-              <div
-                class="adv-campaign-selector-bar hidden"
-                id="adv-campaign-selector-bar"
-                role="region"
-                aria-label="Adventure Stage Pack Selector"
+              <input
+                type="file"
+                id="input-import-campaign-json"
+                class="adv-campaign-file-input hidden"
+                accept=".json,application/json"
+                aria-label="Import Adventure Stage Pack JSON"
                 hidden
-              >
-                <label class="adv-campaign-kicker" for="adv-campaign-select">STAGE PACK</label>
-                <select
-                  class="adv-campaign-select"
-                  id="adv-campaign-select"
-                  title="Choose Built-In Pilgrimage or an Arcane Pixel Studio Adventure Stage Pack"
-                >
-                  <option value="default">ORIGINAL PILGRIMAGE (4 REALMS • 9600PX)</option>
-                </select>
-                <button
-                  type="button"
-                  class="adv-campaign-import-btn"
-                  id="btn-import-campaign-json"
-                  title="Import a local Adventure Stage Pack (.json)"
-                >
-                  IMPORT .JSON
-                </button>
-                <input
-                  type="file"
-                  id="input-import-campaign-json"
-                  class="adv-campaign-file-input hidden"
-                  accept=".json,application/json"
-                  aria-label="Import Adventure Stage Pack JSON"
-                  hidden
-                />
-              </div>
+              />
+            </div>
+          </div>
 
-              <!-- Dual-Version Roster Switcher: EX VERSION (Neo-Vision 11) vs LEGACY VERSION (Classic 11) -->
-              <div class="roster-version-bar" id="roster-version-bar" role="tablist" aria-label="Champion Roster Version">
-                <button
-                  type="button"
-                  class="roster-version-btn active-version-tab"
-                  id="btn-roster-version-ex"
-                  role="tab"
-                  data-roster-version="ex"
-                  aria-selected="true"
-                >
-                  <svg class="px-ui-icon roster-version-crest" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">
-                    <rect x="6" y="0" width="2" height="14" fill="#fde047" />
-                    <rect x="0" y="6" width="14" height="2" fill="#fde047" />
-                    <rect x="4" y="4" width="6" height="6" fill="#38bdf8" />
-                    <rect x="5" y="5" width="4" height="4" fill="#ffffff" />
-                  </svg>
-                  <span class="roster-version-copy">
-                    <strong class="roster-version-main">EX VERSION</strong>
-                    <span class="roster-version-sub">NEO-VISION • 12</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  class="roster-version-btn"
-                  id="btn-roster-version-legacy"
-                  role="tab"
-                  data-roster-version="legacy"
-                  aria-selected="false"
-                >
-                  <svg class="px-ui-icon roster-version-crest" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">
-                    <rect x="2" y="1" width="10" height="2" fill="#d4af37" />
-                    <rect x="1" y="3" width="12" height="5" fill="#9a762d" />
-                    <rect x="3" y="8" width="8" height="3" fill="#9a762d" />
-                    <rect x="5" y="11" width="4" height="2" fill="#d4af37" />
-                    <rect x="6" y="4" width="2" height="5" fill="#fef3c7" />
-                  </svg>
-                  <span class="roster-version-copy">
-                    <strong class="roster-version-main">LEGACY VERSION</strong>
-                    <span class="roster-version-sub">CLASSIC • 11</span>
-                  </span>
-                </button>
+          <!-- Main Character Select Workspace: Facing Pedestals + Compact Portrait Dock -->
+          <div class="versus-layout" id="versus-layout" data-active-side="left">
+            <!-- SIDE-BY-SIDE MIRRORED P1 vs P2 SHOWCASE PEDESTALS -->
+            <div class="versus-pedestals-row">
+              <!-- LEFT P1 SHOWCASE PEDESTAL (Sprite faces right -> toward P2) -->
+              <aside class="fighter-profile profile-steel is-active-pedestal" id="profile-left" data-pedestal-side="left">
+                <div class="profile-top-bar">
+                  <div class="profile-top-left">
+                    <div class="profile-corner-tag tag-p1" id="p1-corner-tag">P1 LEAD</div>
+                    <div class="duo-tab-row hidden" id="p1-duo-tabs">
+                      <button type="button" class="duo-tab-btn active-tab" id="p1-tab-lead" data-inspect-left="lead">
+                        P1 LEAD
+                      </button>
+                      <button type="button" class="duo-tab-btn" id="p1-tab-partner" data-inspect-left="partner">
+                        P1B ALLY
+                      </button>
+                    </div>
+                  </div>
+                  <span class="profile-style-pill" id="p1-profile-style">RUNIC VANGUARD</span>
+                </div>
+
+                <div class="profile-hero-showcase">
+                  <div class="profile-identity">
+                    <div class="profile-role" id="p1-profile-role">EXVIUS SOVEREIGN</div>
+                    <h2 class="profile-name" id="p1-profile-name">AETHELGARD EX</h2>
+                    <div class="profile-trait-badge" id="p1-profile-trait">PASSIVE: AEGIS SPELL DEFLECT</div>
+
+                    <div class="build-preset-strip hidden" id="p1-build-preset-bar" role="group" aria-label="P1 Sovereign Loadout Presets">
+                      <span class="preset-active-label" id="p1-build-preset-label">SOVEREIGN</span>
+                      <div class="preset-btn-group">
+                        <button type="button" class="preset-pill-btn active-preset" data-build-panel="p1" data-preset="0" title="Preset I: Sovereign Standard (0/0/0)">I</button>
+                        <button type="button" class="preset-pill-btn" data-build-panel="p1" data-preset="1" title="Preset II: Offense / Tempo Archetype (1/1/1)">II</button>
+                        <button type="button" class="preset-pill-btn" data-build-panel="p1" data-preset="2" title="Preset III: Sanctuary / Control Archetype (2/2/2)">III</button>
+                        <button type="button" class="preset-pill-btn preset-pill-rng" data-build-panel="p1" data-preset="rng" title="Random Sovereign Loadout on Match Start">RNG</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="profile-stage" id="p1-stage">
+                    <div class="stage-halo halo-steel" id="p1-halo"></div>
+                    <canvas id="p1-sprite-canvas" width="320" height="240"></canvas>
+                    <div class="stage-pedestal-plinth" aria-hidden="true"></div>
+                  </div>
+                </div>
+
+                <!-- Compact 4-Icon Pixel Skill Strip + Kit & Tiers Drawer Trigger -->
+                <div class="kit-compact-bar" id="p1-kit-compact-bar">
+                  <div class="kit-icon-strip" role="group" aria-label="P1 4-Slot Kit Preview">
+                    <button type="button" class="kit-strip-btn" data-kit-drawer="p1" data-kit-slot="0" title="Inspect Auto + Passive">
+                      <canvas id="p1-strip-icon-0" width="64" height="64"></canvas>
+                      <span class="kit-strip-tier hidden" id="p1-strip-tier-0">I</span>
+                      <span class="kit-strip-tag">AUTO</span>
+                    </button>
+                    <button type="button" class="kit-strip-btn" data-kit-drawer="p1" data-kit-slot="1" title="Inspect Signature Skill">
+                      <canvas id="p1-strip-icon-1" width="64" height="64"></canvas>
+                      <span class="kit-strip-tier hidden" id="p1-strip-tier-1">I</span>
+                      <span class="kit-strip-tag">SKILL</span>
+                    </button>
+                    <button type="button" class="kit-strip-btn kit-strip-ult" data-kit-drawer="p1" data-kit-slot="2" title="Inspect Overdrive Ultimate">
+                      <canvas id="p1-strip-icon-2" width="64" height="64"></canvas>
+                      <span class="kit-strip-tier hidden" id="p1-strip-tier-2">I</span>
+                      <span class="kit-strip-tag">DRIVE</span>
+                    </button>
+                    <button type="button" class="kit-strip-btn kit-strip-supreme" data-kit-drawer="p1" data-kit-slot="3" title="Inspect Supreme Ultimate">
+                      <canvas id="p1-strip-icon-3" width="64" height="64"></canvas>
+                      <span class="kit-strip-tag">ULT</span>
+                    </button>
+                  </div>
+                  <div class="kit-strip-meta">
+                    <span class="kit-hover-caption" id="p1-kit-hover-caption">TAP ICON FOR KIT &amp; TIERS</span>
+                    <button type="button" class="kit-drawer-toggle-btn" id="btn-p1-kit-toggle" data-kit-drawer="p1">
+                      <svg class="px-ui-icon" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+                        <rect x="1" y="1" width="8" height="2" fill="currentColor" />
+                        <rect x="1" y="4" width="6" height="2" fill="#facc15" />
+                        <rect x="1" y="7" width="8" height="2" fill="currentColor" />
+                      </svg>
+                      <span>KIT &amp; TIERS</span>
+                    </button>
+                  </div>
+                </div>
+              </aside>
+
+              <!-- RIGHT P2 SHOWCASE PEDESTAL (Mirrored: Sprite faces left <- toward P1) -->
+              <aside class="fighter-profile profile-abyssal" id="profile-right" data-pedestal-side="right">
+                <div class="profile-top-bar">
+                  <div class="profile-top-left">
+                    <div class="profile-corner-tag tag-p2" id="p2-corner-tag">P2 LEAD</div>
+                    <div class="duo-tab-row hidden" id="p2-duo-tabs">
+                      <button type="button" class="duo-tab-btn active-tab" id="p2-tab-lead" data-inspect-right="lead">
+                        P2 LEAD
+                      </button>
+                      <button type="button" class="duo-tab-btn" id="p2-tab-partner" data-inspect-right="partner">
+                        P2B ALLY
+                      </button>
+                    </div>
+                  </div>
+                  <span class="profile-style-pill" id="p2-profile-style">SOUL-SEVER EXECUTIONER</span>
+                </div>
+
+                <div class="profile-hero-showcase profile-showcase-mirrored">
+                  <div class="profile-stage" id="p2-stage">
+                    <div class="stage-halo halo-abyssal" id="p2-halo"></div>
+                    <canvas id="p2-sprite-canvas" width="320" height="240"></canvas>
+                    <div class="stage-pedestal-plinth" aria-hidden="true"></div>
+                  </div>
+
+                  <div class="profile-identity">
+                    <div class="profile-role" id="p2-profile-role">THANATOS SOVEREIGN</div>
+                    <h2 class="profile-name" id="p2-profile-name">MALAKOR EX</h2>
+                    <div class="profile-trait-badge" id="p2-profile-trait">PASSIVE: SOUL HARVESTER &amp; WRAITH STEP</div>
+
+                    <div class="build-preset-strip hidden" id="p2-build-preset-bar" role="group" aria-label="P2 Sovereign Loadout Presets">
+                      <span class="preset-active-label" id="p2-build-preset-label">SOVEREIGN</span>
+                      <div class="preset-btn-group">
+                        <button type="button" class="preset-pill-btn active-preset" data-build-panel="p2" data-preset="0" title="Preset I: Sovereign Standard (0/0/0)">I</button>
+                        <button type="button" class="preset-pill-btn" data-build-panel="p2" data-preset="1" title="Preset II: Offense / Tempo Archetype (1/1/1)">II</button>
+                        <button type="button" class="preset-pill-btn" data-build-panel="p2" data-preset="2" title="Preset III: Sanctuary / Control Archetype (2/2/2)">III</button>
+                        <button type="button" class="preset-pill-btn preset-pill-rng" data-build-panel="p2" data-preset="rng" title="Random Sovereign Loadout on Match Start">RNG</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Compact 4-Icon Pixel Skill Strip + Kit & Tiers Drawer Trigger -->
+                <div class="kit-compact-bar" id="p2-kit-compact-bar">
+                  <div class="kit-icon-strip" role="group" aria-label="P2 4-Slot Kit Preview">
+                    <button type="button" class="kit-strip-btn" data-kit-drawer="p2" data-kit-slot="0" title="Inspect Auto + Passive">
+                      <canvas id="p2-strip-icon-0" width="64" height="64"></canvas>
+                      <span class="kit-strip-tier hidden" id="p2-strip-tier-0">I</span>
+                      <span class="kit-strip-tag">AUTO</span>
+                    </button>
+                    <button type="button" class="kit-strip-btn" data-kit-drawer="p2" data-kit-slot="1" title="Inspect Signature Skill">
+                      <canvas id="p2-strip-icon-1" width="64" height="64"></canvas>
+                      <span class="kit-strip-tier hidden" id="p2-strip-tier-1">I</span>
+                      <span class="kit-strip-tag">SKILL</span>
+                    </button>
+                    <button type="button" class="kit-strip-btn kit-strip-ult" data-kit-drawer="p2" data-kit-slot="2" title="Inspect Overdrive Ultimate">
+                      <canvas id="p2-strip-icon-2" width="64" height="64"></canvas>
+                      <span class="kit-strip-tier hidden" id="p2-strip-tier-2">I</span>
+                      <span class="kit-strip-tag">DRIVE</span>
+                    </button>
+                    <button type="button" class="kit-strip-btn kit-strip-supreme" data-kit-drawer="p2" data-kit-slot="3" title="Inspect Supreme Ultimate">
+                      <canvas id="p2-strip-icon-3" width="64" height="64"></canvas>
+                      <span class="kit-strip-tag">ULT</span>
+                    </button>
+                  </div>
+                  <div class="kit-strip-meta">
+                    <span class="kit-hover-caption" id="p2-kit-hover-caption">TAP ICON FOR KIT &amp; TIERS</span>
+                    <button type="button" class="kit-drawer-toggle-btn" id="btn-p2-kit-toggle" data-kit-drawer="p2">
+                      <svg class="px-ui-icon" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+                        <rect x="1" y="1" width="8" height="2" fill="currentColor" />
+                        <rect x="1" y="4" width="6" height="2" fill="#facc15" />
+                        <rect x="1" y="7" width="8" height="2" fill="currentColor" />
+                      </svg>
+                      <span id="p2-kit-toggle-label">KIT &amp; TIERS</span>
+                    </button>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
+            <!-- BOTTOM / RIGHT COMPACT ROSTER DOCK: EX/LEGACY SWITCHER + 6x2 (PC) / 4x3 (MOBILE) SQUARE PORTRAITS + CTA -->
+            <div class="versus-center-col roster-dock">
+              <div class="roster-dock-controls">
+                <!-- Dual-Version Roster Switcher: EX VERSION (Neo-Vision 12) vs LEGACY VERSION (Classic 11) -->
+                <div class="roster-version-bar" id="roster-version-bar" role="tablist" aria-label="Champion Roster Version">
+                  <button
+                    type="button"
+                    class="roster-version-btn active-version-tab"
+                    id="btn-roster-version-ex"
+                    role="tab"
+                    data-roster-version="ex"
+                    aria-selected="true"
+                  >
+                    <svg class="px-ui-icon roster-version-crest" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">
+                      <rect x="6" y="0" width="2" height="14" fill="#fde047" />
+                      <rect x="0" y="6" width="14" height="2" fill="#fde047" />
+                      <rect x="4" y="4" width="6" height="6" fill="#38bdf8" />
+                      <rect x="5" y="5" width="4" height="4" fill="#ffffff" />
+                    </svg>
+                    <span class="roster-version-copy">
+                      <strong class="roster-version-main">EX VERSION</strong>
+                      <span class="roster-version-sub">NEO-VISION • 12</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="roster-version-btn"
+                    id="btn-roster-version-legacy"
+                    role="tab"
+                    data-roster-version="legacy"
+                    aria-selected="false"
+                  >
+                    <svg class="px-ui-icon roster-version-crest" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">
+                      <rect x="2" y="1" width="10" height="2" fill="#d4af37" />
+                      <rect x="1" y="3" width="12" height="5" fill="#9a762d" />
+                      <rect x="3" y="8" width="8" height="3" fill="#9a762d" />
+                      <rect x="5" y="11" width="4" height="2" fill="#d4af37" />
+                      <rect x="6" y="4" width="2" height="5" fill="#fef3c7" />
+                    </svg>
+                    <span class="roster-version-copy">
+                      <strong class="roster-version-main">LEGACY VERSION</strong>
+                      <span class="roster-version-sub">CLASSIC • 11</span>
+                    </span>
+                  </button>
+                </div>
+
+                <div class="portrait-grid-label" id="portrait-grid-label">
+                  PICKING: P1 LEAD
+                </div>
               </div>
 
               <div class="champion-grid" id="champion-grid">
                 <!-- =========================================================
-                     EX VERSION ROSTER (11 NEO-VISION CHAMPIONS — DEFAULT TAB)
+                     EX VERSION ROSTER (12 NEO-VISION CHAMPIONS — DEFAULT TAB)
                      ========================================================= -->
                 <!-- 1. Warrior EX: AETHELGARD EX -->
-                <article class="champ-card card-steel card-exvius selected-p1" id="card-warrior_ex" data-hero="warrior_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-warrior_ex">P1 LEAD</div>
-                  <div class="portrait-tile-frame stage-steel stage-exvius">
-                    <canvas id="preview-warrior_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">AETHELGARD EX</h2>
-                  <div class="champ-role">EXVIUS SOVEREIGN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="warrior_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="warrior_ex">P2</button>
-                  </div>
+                <article class="champ-card card-steel card-exvius selected-p1" id="card-warrior_ex" data-hero="warrior_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="AETHELGARD EX — EXVIUS SOVEREIGN">
+                    <span class="card-Selected-ribbon" id="ribbon-warrior_ex">P1</span>
+                    <div class="portrait-tile-frame stage-steel stage-exvius">
+                      <canvas id="preview-warrior_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">AETHELGARD</span>
+                    <span class="sr-only champ-role">AETHELGARD EX EXVIUS SOVEREIGN</span>
+                  </button>
                 </article>
 
                 <!-- 2. Fire Mage EX: IGNIS SOL EX -->
-                <article class="champ-card card-arcane" id="card-mage_ex" data-hero="mage_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-mage_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-arcane">
-                    <canvas id="preview-mage_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">IGNIS SOL EX</h2>
-                  <div class="champ-role">SOLAR ARCHMAGE</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="mage_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="mage_ex">P2</button>
-                  </div>
+                <article class="champ-card card-arcane" id="card-mage_ex" data-hero="mage_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="IGNIS SOL EX — SOLAR ARCHMAGE">
+                    <span class="card-Selected-ribbon" id="ribbon-mage_ex"></span>
+                    <div class="portrait-tile-frame stage-arcane">
+                      <canvas id="preview-mage_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">IGNIS SOL</span>
+                    <span class="sr-only champ-role">SOLAR ARCHMAGE</span>
+                  </button>
                 </article>
 
                 <!-- 3. Priestess EX: SERAPHINA EX -->
-                <article class="champ-card card-radiant" id="card-priestess_ex" data-hero="priestess_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-priestess_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-radiant">
-                    <canvas id="preview-priestess_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">SERAPHINA EX</h2>
-                  <div class="champ-role">SERAPHIC SOVEREIGN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="priestess_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="priestess_ex">P2</button>
-                  </div>
+                <article class="champ-card card-radiant" id="card-priestess_ex" data-hero="priestess_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="SERAPHINA EX — SERAPHIC SOVEREIGN">
+                    <span class="card-Selected-ribbon" id="ribbon-priestess_ex"></span>
+                    <div class="portrait-tile-frame stage-radiant">
+                      <canvas id="preview-priestess_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">SERAPHINA</span>
+                    <span class="sr-only champ-role">SERAPHIC SOVEREIGN</span>
+                  </button>
                 </article>
 
                 <!-- 4. Chronomancer EX: CHRONOS EX -->
-                <article class="champ-card card-chrono" id="card-chronomancer_ex" data-hero="chronomancer_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-chronomancer_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-chrono">
-                    <canvas id="preview-chronomancer_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">CHRONOS EX</h2>
-                  <div class="champ-role">PARADOX SOVEREIGN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="chronomancer_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="chronomancer_ex">P2</button>
-                  </div>
+                <article class="champ-card card-chrono" id="card-chronomancer_ex" data-hero="chronomancer_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="CHRONOS EX — PARADOX SOVEREIGN">
+                    <span class="card-Selected-ribbon" id="ribbon-chronomancer_ex"></span>
+                    <div class="portrait-tile-frame stage-chrono">
+                      <canvas id="preview-chronomancer_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">CHRONOS</span>
+                    <span class="sr-only champ-role">PARADOX SOVEREIGN</span>
+                  </button>
                 </article>
 
                 <!-- 5. Valkyrie EX: FREYJA EX -->
-                <article class="champ-card card-crimson" id="card-valkyrie_ex" data-hero="valkyrie_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-valkyrie_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-crimson">
-                    <canvas id="preview-valkyrie_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">FREYJA EX</h2>
-                  <div class="champ-role">RAGNAROK SOVEREIGN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="valkyrie_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="valkyrie_ex">P2</button>
-                  </div>
+                <article class="champ-card card-crimson" id="card-valkyrie_ex" data-hero="valkyrie_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="FREYJA EX — RAGNAROK SOVEREIGN">
+                    <span class="card-Selected-ribbon" id="ribbon-valkyrie_ex"></span>
+                    <div class="portrait-tile-frame stage-crimson">
+                      <canvas id="preview-valkyrie_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">FREYJA</span>
+                    <span class="sr-only champ-role">RAGNAROK SOVEREIGN</span>
+                  </button>
                 </article>
 
                 <!-- 6. Storm Ronin EX: KAZE-MARU EX -->
-                <article class="champ-card card-storm" id="card-ronin_ex" data-hero="ronin_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-ronin_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-storm">
-                    <canvas id="preview-ronin_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">KAZE-MARU EX</h2>
-                  <div class="champ-role">RAIJIN BLADE-GOD</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="ronin_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="ronin_ex">P2</button>
-                  </div>
+                <article class="champ-card card-storm" id="card-ronin_ex" data-hero="ronin_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="KAZE-MARU EX — RAIJIN BLADE-GOD">
+                    <span class="card-Selected-ribbon" id="ribbon-ronin_ex"></span>
+                    <div class="portrait-tile-frame stage-storm">
+                      <canvas id="preview-ronin_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">KAZE-MARU</span>
+                    <span class="sr-only champ-role">RAIJIN BLADE-GOD</span>
+                  </button>
                 </article>
 
                 <!-- 7. Archer EX: SYLVARA EX -->
-                <article class="champ-card card-emerald" id="card-archer_ex" data-hero="archer_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-archer_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-emerald">
-                    <canvas id="preview-archer_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">SYLVARA EX</h2>
-                  <div class="champ-role">YGGDRASIL SOVEREIGN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="archer_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="archer_ex">P2</button>
-                  </div>
+                <article class="champ-card card-emerald" id="card-archer_ex" data-hero="archer_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="SYLVARA EX — YGGDRASIL SOVEREIGN">
+                    <span class="card-Selected-ribbon" id="ribbon-archer_ex"></span>
+                    <div class="portrait-tile-frame stage-emerald">
+                      <canvas id="preview-archer_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">SYLVARA</span>
+                    <span class="sr-only champ-role">YGGDRASIL SOVEREIGN</span>
+                  </button>
                 </article>
 
                 <!-- 8. Reaper EX: MALAKOR EX -->
-                <article class="champ-card card-abyssal selected-p2" id="card-reaper_ex" data-hero="reaper_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-reaper_ex">P2 LEAD</div>
-                  <div class="portrait-tile-frame stage-abyssal">
-                    <canvas id="preview-reaper_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">MALAKOR EX</h2>
-                  <div class="champ-role">THANATOS SOVEREIGN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="reaper_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="reaper_ex">P2</button>
-                  </div>
+                <article class="champ-card card-abyssal selected-p2" id="card-reaper_ex" data-hero="reaper_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="MALAKOR EX — THANATOS SOVEREIGN">
+                    <span class="card-Selected-ribbon" id="ribbon-reaper_ex">P2</span>
+                    <div class="portrait-tile-frame stage-abyssal">
+                      <canvas id="preview-reaper_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">MALAKOR</span>
+                    <span class="sr-only champ-role">THANATOS SOVEREIGN</span>
+                  </button>
                 </article>
 
                 <!-- 9. Titan EX: TORGAR EX -->
-                <article class="champ-card card-forge" id="card-titan_ex" data-hero="titan_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-titan_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-forge">
-                    <canvas id="preview-titan_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">TORGAR EX</h2>
-                  <div class="champ-role">WORLD-BREAKER KING</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="titan_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="titan_ex">P2</button>
-                  </div>
+                <article class="champ-card card-forge" id="card-titan_ex" data-hero="titan_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="TORGAR EX — WORLD-BREAKER KING">
+                    <span class="card-Selected-ribbon" id="ribbon-titan_ex"></span>
+                    <div class="portrait-tile-frame stage-forge">
+                      <canvas id="preview-titan_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">TORGAR</span>
+                    <span class="sr-only champ-role">WORLD-BREAKER KING</span>
+                  </button>
                 </article>
 
                 <!-- 10. Ice Mage EX: LYRA EX -->
-                <article class="champ-card card-glacial" id="card-icemage_ex" data-hero="icemage_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-icemage_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-glacial">
-                    <canvas id="preview-icemage_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">LYRA EX</h2>
-                  <div class="champ-role">BOREALIS SOVEREIGN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="icemage_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="icemage_ex">P2</button>
-                  </div>
+                <article class="champ-card card-glacial" id="card-icemage_ex" data-hero="icemage_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="LYRA EX — BOREALIS SOVEREIGN">
+                    <span class="card-Selected-ribbon" id="ribbon-icemage_ex"></span>
+                    <div class="portrait-tile-frame stage-glacial">
+                      <canvas id="preview-icemage_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">LYRA</span>
+                    <span class="sr-only champ-role">BOREALIS SOVEREIGN</span>
+                  </button>
                 </article>
 
                 <!-- 11. Android EX: VEX-09 EX -->
-                <article class="champ-card card-cyber" id="card-android_ex" data-hero="android_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-android_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-cyber">
-                    <canvas id="preview-android_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">VEX-09 EX</h2>
-                  <div class="champ-role">SINGULARITY VALKYRIE</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="android_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="android_ex">P2</button>
-                  </div>
+                <article class="champ-card card-cyber" id="card-android_ex" data-hero="android_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="VEX-09 EX — SINGULARITY VALKYRIE">
+                    <span class="card-Selected-ribbon" id="ribbon-android_ex"></span>
+                    <div class="portrait-tile-frame stage-cyber">
+                      <canvas id="preview-android_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">VEX-09</span>
+                    <span class="sr-only champ-role">SINGULARITY VALKYRIE</span>
+                  </button>
                 </article>
 
                 <!-- 12. Nebula AI Assistant EX: NYX EX -->
-                <article class="champ-card card-nebula" id="card-nyx_ex" data-hero="nyx_ex" data-roster-group="ex" tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-nyx_ex">SET P2</div>
-                  <div class="portrait-tile-frame stage-nebula">
-                    <canvas id="preview-nyx_ex" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">NYX EX</h2>
-                  <div class="champ-role">NEBULA AI ASSISTANT</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="nyx_ex">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="nyx_ex">P2</button>
-                  </div>
+                <article class="champ-card card-nebula" id="card-nyx_ex" data-hero="nyx_ex" data-roster-group="ex">
+                  <button type="button" class="champ-tile-btn" aria-label="NYX EX — NEBULA AI ASSISTANT">
+                    <span class="card-Selected-ribbon" id="ribbon-nyx_ex"></span>
+                    <div class="portrait-tile-frame stage-nebula">
+                      <canvas id="preview-nyx_ex" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">NYX</span>
+                    <span class="sr-only champ-role">NEBULA AI ASSISTANT</span>
+                  </button>
                 </article>
 
                 <!-- =========================================================
                      LEGACY VERSION ROSTER (11 CLASSIC CHAMPIONS — UNTOUCHED)
                      ========================================================= -->
                 <!-- 1. Warrior: AETHELGARD -->
-                <article class="champ-card card-steel roster-group-hidden" id="card-warrior" data-hero="warrior" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-warrior">SET P2</div>
-                  <div class="portrait-tile-frame stage-steel">
-                    <canvas id="preview-warrior" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">AETHELGARD</h2>
-                  <div class="champ-role">RUNE PALADIN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="warrior">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="warrior">P2</button>
-                  </div>
+                <article class="champ-card card-steel roster-group-hidden" id="card-warrior" data-hero="warrior" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="AETHELGARD — RUNE PALADIN">
+                    <span class="card-Selected-ribbon" id="ribbon-warrior"></span>
+                    <div class="portrait-tile-frame stage-steel">
+                      <canvas id="preview-warrior" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">AETHELGARD</span>
+                    <span class="sr-only champ-role">RUNE PALADIN</span>
+                  </button>
                 </article>
 
                 <!-- 2. Fire Mage: IGNIS SOL -->
-                <article class="champ-card card-arcane roster-group-hidden" id="card-mage" data-hero="mage" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-mage">SET P2</div>
-                  <div class="portrait-tile-frame stage-arcane">
-                    <canvas id="preview-mage" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">IGNIS SOL</h2>
-                  <div class="champ-role">SOLAR ARCHMAGE</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="mage">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="mage">P2</button>
-                  </div>
+                <article class="champ-card card-arcane roster-group-hidden" id="card-mage" data-hero="mage" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="IGNIS SOL — SOLAR ARCHMAGE">
+                    <span class="card-Selected-ribbon" id="ribbon-mage"></span>
+                    <div class="portrait-tile-frame stage-arcane">
+                      <canvas id="preview-mage" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">IGNIS SOL</span>
+                    <span class="sr-only champ-role">SOLAR ARCHMAGE</span>
+                  </button>
                 </article>
 
                 <!-- 3. Priestess: SERAPHINA -->
-                <article class="champ-card card-radiant roster-group-hidden" id="card-priestess" data-hero="priestess" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-priestess">SET P2</div>
-                  <div class="portrait-tile-frame stage-radiant">
-                    <canvas id="preview-priestess" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">SERAPHINA</h2>
-                  <div class="champ-role">HIGH PRIESTESS</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="priestess">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="priestess">P2</button>
-                  </div>
+                <article class="champ-card card-radiant roster-group-hidden" id="card-priestess" data-hero="priestess" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="SERAPHINA — HIGH PRIESTESS">
+                    <span class="card-Selected-ribbon" id="ribbon-priestess"></span>
+                    <div class="portrait-tile-frame stage-radiant">
+                      <canvas id="preview-priestess" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">SERAPHINA</span>
+                    <span class="sr-only champ-role">HIGH PRIESTESS</span>
+                  </button>
                 </article>
 
                 <!-- 4. Chronomancer: CHRONOS -->
-                <article class="champ-card card-chrono roster-group-hidden" id="card-chronomancer" data-hero="chronomancer" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-chronomancer">SET P2</div>
-                  <div class="portrait-tile-frame stage-chrono">
-                    <canvas id="preview-chronomancer" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">CHRONOS</h2>
-                  <div class="champ-role">CLOCK-BLADE</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="chronomancer">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="chronomancer">P2</button>
-                  </div>
+                <article class="champ-card card-chrono roster-group-hidden" id="card-chronomancer" data-hero="chronomancer" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="CHRONOS — CLOCK-BLADE">
+                    <span class="card-Selected-ribbon" id="ribbon-chronomancer"></span>
+                    <div class="portrait-tile-frame stage-chrono">
+                      <canvas id="preview-chronomancer" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">CHRONOS</span>
+                    <span class="sr-only champ-role">CLOCK-BLADE</span>
+                  </button>
                 </article>
 
                 <!-- 5. Valkyrie: FREYJA -->
-                <article class="champ-card card-crimson roster-group-hidden" id="card-valkyrie" data-hero="valkyrie" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-valkyrie">SET P2</div>
-                  <div class="portrait-tile-frame stage-crimson">
-                    <canvas id="preview-valkyrie" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">FREYJA</h2>
-                  <div class="champ-role">SKY VALKYRIE</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="valkyrie">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="valkyrie">P2</button>
-                  </div>
+                <article class="champ-card card-crimson roster-group-hidden" id="card-valkyrie" data-hero="valkyrie" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="FREYJA — SKY VALKYRIE">
+                    <span class="card-Selected-ribbon" id="ribbon-valkyrie"></span>
+                    <div class="portrait-tile-frame stage-crimson">
+                      <canvas id="preview-valkyrie" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">FREYJA</span>
+                    <span class="sr-only champ-role">SKY VALKYRIE</span>
+                  </button>
                 </article>
 
                 <!-- 6. Storm Ronin: KAZE-MARU -->
-                <article class="champ-card card-storm roster-group-hidden" id="card-ronin" data-hero="ronin" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-ronin">SET P2</div>
-                  <div class="portrait-tile-frame stage-storm">
-                    <canvas id="preview-ronin" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">KAZE-MARU</h2>
-                  <div class="champ-role">STORM RONIN</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="ronin">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="ronin">P2</button>
-                  </div>
+                <article class="champ-card card-storm roster-group-hidden" id="card-ronin" data-hero="ronin" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="KAZE-MARU — STORM RONIN">
+                    <span class="card-Selected-ribbon" id="ribbon-ronin"></span>
+                    <div class="portrait-tile-frame stage-storm">
+                      <canvas id="preview-ronin" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">KAZE-MARU</span>
+                    <span class="sr-only champ-role">STORM RONIN</span>
+                  </button>
                 </article>
 
                 <!-- 7. Archer: SYLVARA -->
-                <article class="champ-card card-emerald roster-group-hidden" id="card-archer" data-hero="archer" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-archer">SET P2</div>
-                  <div class="portrait-tile-frame stage-emerald">
-                    <canvas id="preview-archer" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">SYLVARA</h2>
-                  <div class="champ-role">STAR-HUNTRESS</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="archer">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="archer">P2</button>
-                  </div>
+                <article class="champ-card card-emerald roster-group-hidden" id="card-archer" data-hero="archer" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="SYLVARA — STAR-HUNTRESS">
+                    <span class="card-Selected-ribbon" id="ribbon-archer"></span>
+                    <div class="portrait-tile-frame stage-emerald">
+                      <canvas id="preview-archer" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">SYLVARA</span>
+                    <span class="sr-only champ-role">STAR-HUNTRESS</span>
+                  </button>
                 </article>
 
                 <!-- 8. Reaper: MALAKOR -->
-                <article class="champ-card card-abyssal roster-group-hidden" id="card-reaper" data-hero="reaper" data-roster-group="legacy" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-reaper">SET P2</div>
-                  <div class="portrait-tile-frame stage-abyssal">
-                    <canvas id="preview-reaper" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">MALAKOR</h2>
-                  <div class="champ-role">DREAD NECROMANCER</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="reaper">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="reaper">P2</button>
-                  </div>
+                <article class="champ-card card-abyssal roster-group-hidden" id="card-reaper" data-hero="reaper" data-roster-group="legacy" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="MALAKOR — DREAD NECROMANCER">
+                    <span class="card-Selected-ribbon" id="ribbon-reaper"></span>
+                    <div class="portrait-tile-frame stage-abyssal">
+                      <canvas id="preview-reaper" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">MALAKOR</span>
+                    <span class="sr-only champ-role">DREAD NECROMANCER</span>
+                  </button>
                 </article>
 
                 <!-- 9. Titan: TORGAR -->
-                <article class="champ-card card-forge roster-group-hidden" id="card-titan" data-hero="titan" data-roster-group="legacy" data-grid-pos="9" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-titan">SET P2</div>
-                  <div class="portrait-tile-frame stage-forge">
-                    <canvas id="preview-titan" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">TORGAR</h2>
-                  <div class="champ-role">WORLD-FORGE WARLORD</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="titan">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="titan">P2</button>
-                  </div>
+                <article class="champ-card card-forge roster-group-hidden" id="card-titan" data-hero="titan" data-roster-group="legacy" data-grid-pos="9" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="TORGAR — WORLD-FORGE WARLORD">
+                    <span class="card-Selected-ribbon" id="ribbon-titan"></span>
+                    <div class="portrait-tile-frame stage-forge">
+                      <canvas id="preview-titan" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">TORGAR</span>
+                    <span class="sr-only champ-role">WORLD-FORGE WARLORD</span>
+                  </button>
                 </article>
 
                 <!-- 10. Ice Mage: LYRA -->
-                <article class="champ-card card-glacial roster-group-hidden" id="card-icemage" data-hero="icemage" data-roster-group="legacy" data-grid-pos="10" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-icemage">SET P2</div>
-                  <div class="portrait-tile-frame stage-glacial">
-                    <canvas id="preview-icemage" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">LYRA</h2>
-                  <div class="champ-role">WINTER EMPRESS</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="icemage">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="icemage">P2</button>
-                  </div>
+                <article class="champ-card card-glacial roster-group-hidden" id="card-icemage" data-hero="icemage" data-roster-group="legacy" data-grid-pos="10" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="LYRA — WINTER EMPRESS">
+                    <span class="card-Selected-ribbon" id="ribbon-icemage"></span>
+                    <div class="portrait-tile-frame stage-glacial">
+                      <canvas id="preview-icemage" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">LYRA</span>
+                    <span class="sr-only champ-role">WINTER EMPRESS</span>
+                  </button>
                 </article>
 
                 <!-- 11. Android: VEX-09 -->
-                <article class="champ-card card-cyber roster-group-hidden" id="card-android" data-hero="android" data-roster-group="legacy" data-grid-pos="11" hidden tabindex="0">
-                  <div class="card-Selected-ribbon" id="ribbon-android">SET P2</div>
-                  <div class="portrait-tile-frame stage-cyber">
-                    <canvas id="preview-android" width="128" height="128"></canvas>
-                  </div>
-                  <h2 class="champ-name">VEX-09</h2>
-                  <div class="champ-role">CYBER VALKYRIE</div>
-                  <div class="slot-assign-row">
-                    <button type="button" class="assign-btn" data-assign-p1="android">P1</button>
-                    <button type="button" class="assign-btn" data-assign-p2="android">P2</button>
-                  </div>
+                <article class="champ-card card-cyber roster-group-hidden" id="card-android" data-hero="android" data-roster-group="legacy" data-grid-pos="11" hidden>
+                  <button type="button" class="champ-tile-btn" aria-label="VEX-09 — CYBER VALKYRIE">
+                    <span class="card-Selected-ribbon" id="ribbon-android"></span>
+                    <div class="portrait-tile-frame stage-cyber">
+                      <canvas id="preview-android" width="128" height="128"></canvas>
+                    </div>
+                    <span class="champ-name">VEX-09</span>
+                    <span class="sr-only champ-role">CYBER VALKYRIE</span>
+                  </button>
                 </article>
               </div>
 
               <footer class="landing-actions">
-                <button id="btn-roster-back-mode" class="iron-btn roster-nav-btn" type="button">
-                  <svg class="px-ui-icon" width="12" height="10" viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true">
-                    <rect x="4" y="4" width="8" height="2" fill="currentColor" />
-                    <rect x="4" y="2" width="2" height="6" fill="currentColor" />
-                    <rect x="2" y="3" width="2" height="4" fill="currentColor" />
-                    <rect x="0" y="4" width="2" height="2" fill="currentColor" />
-                  </svg>
-                  <span id="roster-back-label">VS SETUP</span>
-                </button>
-                <button id="btn-random-duel" class="iron-btn roster-nav-btn" type="button">
-                  <svg class="px-ui-icon" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
-                    <rect x="5" y="0" width="2" height="12" fill="#d4af37" />
-                    <rect x="0" y="5" width="12" height="2" fill="#d4af37" />
-                    <rect x="3" y="3" width="6" height="6" fill="#fde047" />
-                  </svg>
-                  <span>RANDOMIZE</span>
-                </button>
                 <button id="btn-start-duel" class="landing-cta-btn" type="button">
                   <span class="cta-headline-row">
                     <svg class="px-ui-icon" width="14" height="14" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
@@ -1726,138 +1753,270 @@
                       <rect x="3" y="3" width="2" height="2" fill="#fbbf24" />
                       <rect x="1" y="1" width="2" height="2" fill="#fef08a" />
                     </svg>
-                    <span class="cta-headline" id="cta-headline-text">COMMENCE BATTLE</span>
+                    <span class="cta-headline" id="cta-headline-text">START FIGHT</span>
                   </span>
                   <span class="cta-subline" id="start-duel-text">
-                    AETHELGARD VS. MALAKOR
+                    AETHELGARD EX VS. MALAKOR EX
                   </span>
                 </button>
+                <div class="roster-secondary-actions">
+                  <button id="btn-roster-back-mode" class="iron-btn roster-nav-btn" type="button">
+                    <svg class="px-ui-icon" width="12" height="10" viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true">
+                      <rect x="4" y="4" width="8" height="2" fill="currentColor" />
+                      <rect x="4" y="2" width="2" height="6" fill="currentColor" />
+                      <rect x="2" y="3" width="2" height="4" fill="currentColor" />
+                      <rect x="0" y="4" width="2" height="2" fill="currentColor" />
+                    </svg>
+                    <span id="roster-back-label">TITLE</span>
+                  </button>
+                  <button id="btn-random-duel" class="iron-btn roster-nav-btn" type="button">
+                    <svg class="px-ui-icon" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
+                      <rect x="5" y="0" width="2" height="12" fill="#d4af37" />
+                      <rect x="0" y="5" width="12" height="2" fill="#d4af37" />
+                      <rect x="3" y="3" width="6" height="6" fill="#fde047" />
+                    </svg>
+                    <span>RANDOM</span>
+                  </button>
+                </div>
               </footer>
             </div>
-
-            <!-- RIGHT P2 SHOWCASE PEDESTAL -->
-            <aside class="fighter-profile profile-abyssal" id="profile-right">
-              <div class="profile-top-bar">
-                <div class="profile-corner-tag tag-p2" id="p2-corner-tag">TEAM 2</div>
-                <div class="duo-tab-row" id="p2-duo-tabs">
-                  <button type="button" class="duo-tab-btn active-tab" id="p2-tab-lead" data-inspect-right="lead">
-                    P2 LEAD
-                  </button>
-                  <button type="button" class="duo-tab-btn" id="p2-tab-partner" data-inspect-right="partner">
-                    P2B ALLY
-                  </button>
-                </div>
-                <span class="profile-style-pill" id="p2-profile-style">SOUL-SEVER EXECUTIONER</span>
-              </div>
-
-              <div class="profile-hero-showcase">
-                <div class="profile-stage" id="p2-stage">
-                  <div class="stage-halo halo-abyssal" id="p2-halo"></div>
-                  <canvas id="p2-sprite-canvas" width="320" height="240"></canvas>
-                  <div class="stage-pedestal-plinth" aria-hidden="true"></div>
-                </div>
-                <div class="profile-identity">
-                  <div class="profile-role" id="p2-profile-role">ARCH-REAPER SOVEREIGN</div>
-                  <h2 class="profile-name" id="p2-profile-name">MALAKOR</h2>
-                  <div class="profile-trait-badge" id="p2-profile-trait">PASSIVE: SOUL HARVESTER &amp; WRAITH STEP</div>
-                </div>
-              </div>
-
-              <div class="profile-skills-header-row">
-                <div class="profile-skills-header" id="p2-skills-header">4-SLOT SOVEREIGN KIT &amp; SUPREME ULTIMATE</div>
-                <div class="build-preset-strip hidden" id="p2-build-preset-bar" role="group" aria-label="P2 Sovereign Loadout Presets">
-                  <span class="preset-active-label" id="p2-build-preset-label">SOVEREIGN</span>
-                  <div class="preset-btn-group">
-                    <button type="button" class="preset-pill-btn active-preset" data-build-panel="p2" data-preset="0" title="Preset I: Sovereign Standard (0/0/0)">I</button>
-                    <button type="button" class="preset-pill-btn" data-build-panel="p2" data-preset="1" title="Preset II: Offense / Tempo Archetype (1/1/1)">II</button>
-                    <button type="button" class="preset-pill-btn" data-build-panel="p2" data-preset="2" title="Preset III: Sanctuary / Control Archetype (2/2/2)">III</button>
-                    <button type="button" class="preset-pill-btn preset-pill-rng" data-build-panel="p2" data-preset="rng" title="Random Sovereign Loadout on Match Start">RNG</button>
-                  </div>
-                </div>
-              </div>
-              <div class="profile-skill-list" id="p2-skill-list">
-                <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p2-skill-icon-0" width="64" height="64"></canvas></div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name" id="p2-skill-name-0">TRINITY OF THE SCYTHE</strong>
-                      <div class="skill-title-meta">
-                        <div class="skill-tier-tabs hidden" id="p2-tier-tabs-0" role="group" aria-label="Auto and Passive Tier">
-                          <button type="button" class="tier-tab-btn active-tier" data-build-panel="p2" data-build-cat="aspect" data-tier="0">I</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="aspect" data-tier="1">II</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="aspect" data-tier="2">III</button>
-                        </div>
-                        <span class="skill-type-badge badge-auto" id="p2-skill-type-0">3-HIT STAND &amp; SOUL-DISC</span>
-                      </div>
-                    </div>
-                    <p class="skill-desc" id="p2-skill-desc-0">
-                      Crescent soul-wave, Ferryman hook-pull &amp; Thanatos Death-God Stand cross-reap with returning soul-disc.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p2-skill-icon-1" width="64" height="64"></canvas></div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name" id="p2-skill-name-1">SOUL SEVER</strong>
-                      <div class="skill-title-meta">
-                        <div class="skill-tier-tabs hidden" id="p2-tier-tabs-1" role="group" aria-label="Signature Skill Tier">
-                          <button type="button" class="tier-tab-btn active-tier" data-build-panel="p2" data-build-cat="skill" data-tier="0">I</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="skill" data-tier="1">II</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="skill" data-tier="2">III</button>
-                        </div>
-                        <span class="skill-type-badge badge-skill" id="p2-skill-type-1">SKILL • 4.5S CD</span>
-                      </div>
-                    </div>
-                    <p class="skill-desc" id="p2-skill-desc-1">
-                      Rips a captive Soul Effigy from the foe that echoes resonance damage, then shadow-lunges for an X-Guillotine.
-                    </p>
-                  </div>
-                </div>
-
-                <div class="skill-card skill-card-ult">
-                  <div class="skill-icon-box icon-box-ult"><canvas id="p2-skill-icon-2" width="64" height="64"></canvas></div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name" id="p2-skill-name-2">DEATH'S SOVEREIGNTY</strong>
-                      <div class="skill-title-meta">
-                        <div class="skill-tier-tabs hidden" id="p2-tier-tabs-2" role="group" aria-label="Overdrive Ultimate Tier">
-                          <button type="button" class="tier-tab-btn active-tier" data-build-panel="p2" data-build-cat="ult" data-tier="0">I</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="ult" data-tier="1">II</button>
-                          <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="ult" data-tier="2">III</button>
-                        </div>
-                        <span class="skill-type-badge badge-ult" id="p2-skill-type-2">OVERDRIVE ULT</span>
-                      </div>
-                    </div>
-                    <p class="skill-desc" id="p2-skill-desc-2">
-                      Summons the towering Thanatos Stand &amp; Twin Wraith Clones for a 3-way phantom pincer and cross-guillotine.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- 4th Row: Supreme Ultimate Finisher -->
-                <div class="skill-card skill-card-supreme" id="p2-true-ult-box">
-                  <div class="supreme-crest-box" aria-hidden="true">
-                    <canvas id="p2-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
-                    <img src="assets/sprites/avs_brand_logo.png?v=30fps164" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
-                    <span class="supreme-tier">III</span>
-                  </div>
-                  <div class="skill-info">
-                    <div class="skill-title-row">
-                      <strong class="skill-name supreme-ult-title" id="p2-true-ult-name">
-                        MEMENTO MORI: OBLIVION GUILLOTINE
-                      </strong>
-                      <span class="skill-type-badge badge-supreme">SUPREME ULTIMATE</span>
-                    </div>
-                    <p class="skill-desc" id="p2-true-ult-desc">
-                      Unseals the Twin Cathedral Gates of Oblivion, binds foes in the Six-Scythe Death-Clock &amp; cleaves reality in one strike!
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </aside>
           </div>
+        </div>
+
+        <!-- =====================================================================
+             SLIDE-OVER KIT & TIERS DRAWER (Opens cleanly on Icon / KIT & TIERS click)
+             Houses full 4-slot skill descriptions + interactive I | II | III Tier Tabs
+             ===================================================================== -->
+        <div id="kit-drawer-backdrop" class="kit-drawer-backdrop hidden" role="dialog" aria-modal="true" aria-label="Champion Kit and Loadout Tiers">
+          <!-- P1 KIT & TIERS DRAWER -->
+          <section id="p1-kit-drawer" class="kit-drawer-panel kit-drawer-left hidden" aria-labelledby="p1-drawer-hero-name">
+            <header class="kit-drawer-header">
+              <div class="kit-drawer-title-col">
+                <span class="kit-drawer-kicker tag-p1" id="p1-skills-header">SOVEREIGN LOADOUT &amp; KIT</span>
+                <h3 class="kit-drawer-hero-name" id="p1-drawer-hero-name">AETHELGARD EX</h3>
+                <span class="kit-drawer-role" id="p1-drawer-role">EXVIUS SOVEREIGN</span>
+              </div>
+              <button type="button" class="kit-drawer-close-btn" id="btn-p1-kit-close" title="Close Kit Drawer [Esc]">
+                <svg class="px-ui-icon" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+                  <rect x="1" y="1" width="2" height="2" fill="currentColor" />
+                  <rect x="7" y="1" width="2" height="2" fill="currentColor" />
+                  <rect x="3" y="3" width="4" height="4" fill="currentColor" />
+                  <rect x="1" y="7" width="2" height="2" fill="currentColor" />
+                  <rect x="7" y="7" width="2" height="2" fill="currentColor" />
+                </svg>
+                <span>CLOSE</span>
+              </button>
+            </header>
+
+            <div class="kit-drawer-preset-row">
+              <div class="build-preset-strip drawer-preset-strip hidden" id="p1-drawer-preset-bar" role="group" aria-label="P1 Drawer Loadout Presets">
+                <span class="preset-active-label" id="p1-drawer-preset-label">SOVEREIGN</span>
+                <div class="preset-btn-group">
+                  <button type="button" class="preset-pill-btn active-preset" data-build-panel="p1" data-preset="0" title="Preset I: Sovereign Standard (0/0/0)">I</button>
+                  <button type="button" class="preset-pill-btn" data-build-panel="p1" data-preset="1" title="Preset II: Offense / Tempo Archetype (1/1/1)">II</button>
+                  <button type="button" class="preset-pill-btn" data-build-panel="p1" data-preset="2" title="Preset III: Sanctuary / Control Archetype (2/2/2)">III</button>
+                  <button type="button" class="preset-pill-btn preset-pill-rng" data-build-panel="p1" data-preset="rng" title="Random Sovereign Loadout on Match Start">RNG</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="profile-skill-list" id="p1-skill-list">
+              <div class="skill-card" data-drawer-slot="0">
+                <div class="skill-icon-box"><canvas id="p1-skill-icon-0" width="64" height="64"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p1-skill-name-0">FROST CRESCENT</strong>
+                    <div class="skill-title-meta">
+                      <div class="skill-tier-tabs hidden" id="p1-tier-tabs-0" role="group" aria-label="Auto and Passive Tier">
+                        <button type="button" class="tier-tab-btn active-tier" data-build-panel="p1" data-build-cat="aspect" data-tier="0">I</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="aspect" data-tier="1">II</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="aspect" data-tier="2">III</button>
+                      </div>
+                      <span class="skill-type-badge badge-auto" id="p1-skill-type-0">AUTO + PASSIVE</span>
+                    </div>
+                  </div>
+                  <p class="skill-desc" id="p1-skill-desc-0">
+                    Cleaves with 2H Celestial Claymore frost waves &amp; raises an Aegis spell-reflect barrier.
+                  </p>
+                </div>
+              </div>
+
+              <div class="skill-card" data-drawer-slot="1">
+                <div class="skill-icon-box"><canvas id="p1-skill-icon-1" width="64" height="64"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p1-skill-name-1">TEMPEST VANGUARD</strong>
+                    <div class="skill-title-meta">
+                      <div class="skill-tier-tabs hidden" id="p1-tier-tabs-1" role="group" aria-label="Signature Skill Tier">
+                        <button type="button" class="tier-tab-btn active-tier" data-build-panel="p1" data-build-cat="skill" data-tier="0">I</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="skill" data-tier="1">II</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="skill" data-tier="2">III</button>
+                      </div>
+                      <span class="skill-type-badge badge-skill" id="p1-skill-type-1">SKILL • 5.1S CD</span>
+                    </div>
+                  </div>
+                  <p class="skill-desc" id="p1-skill-desc-1">
+                    360° spinning Runeblade cyclone rush that pulls foes inward before a grounded crystal slam.
+                  </p>
+                </div>
+              </div>
+
+              <div class="skill-card skill-card-ult" data-drawer-slot="2">
+                <div class="skill-icon-box icon-box-ult"><canvas id="p1-skill-icon-2" width="64" height="64"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p1-skill-name-2">HEAVENLY EARTHSHATTER</strong>
+                    <div class="skill-title-meta">
+                      <div class="skill-tier-tabs hidden" id="p1-tier-tabs-2" role="group" aria-label="Overdrive Ultimate Tier">
+                        <button type="button" class="tier-tab-btn active-tier" data-build-panel="p1" data-build-cat="ult" data-tier="0">I</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="ult" data-tier="1">II</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p1" data-build-cat="ult" data-tier="2">III</button>
+                      </div>
+                      <span class="skill-type-badge badge-ult" id="p1-skill-type-2">OVERDRIVE ULT</span>
+                    </div>
+                  </div>
+                  <p class="skill-desc" id="p1-skill-desc-2">
+                    Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires.
+                  </p>
+                </div>
+              </div>
+
+              <!-- 4th Row: Supreme Ultimate Finisher -->
+              <div class="skill-card skill-card-supreme" id="p1-true-ult-box" data-drawer-slot="3">
+                <div class="supreme-crest-box" aria-hidden="true">
+                  <canvas id="p1-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
+                  <img src="assets/sprites/avs_brand_logo.png?v=30fps165" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
+                  <span class="supreme-tier">III</span>
+                </div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name supreme-ult-title" id="p1-true-ult-name">
+                      CELESTIAL JUSTICE: SWORD OF THE SANCTUARY
+                    </strong>
+                    <span class="skill-type-badge badge-supreme">SUPREME ULTIMATE</span>
+                  </div>
+                  <p class="skill-desc" id="p1-true-ult-desc">
+                    Ascends on Seraphim wings, consecrates the Radiant Sanctuary, locks a pixel reticle &amp; cleaves from the heavens!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- P2 / BOSS KIT & TIERS DRAWER -->
+          <section id="p2-kit-drawer" class="kit-drawer-panel kit-drawer-right hidden" aria-labelledby="p2-drawer-hero-name">
+            <header class="kit-drawer-header">
+              <div class="kit-drawer-title-col">
+                <span class="kit-drawer-kicker tag-p2" id="p2-skills-header">SOVEREIGN LOADOUT &amp; KIT</span>
+                <h3 class="kit-drawer-hero-name" id="p2-drawer-hero-name">MALAKOR EX</h3>
+                <span class="kit-drawer-role" id="p2-drawer-role">THANATOS SOVEREIGN</span>
+              </div>
+              <button type="button" class="kit-drawer-close-btn" id="btn-p2-kit-close" title="Close Kit Drawer [Esc]">
+                <svg class="px-ui-icon" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+                  <rect x="1" y="1" width="2" height="2" fill="currentColor" />
+                  <rect x="7" y="1" width="2" height="2" fill="currentColor" />
+                  <rect x="3" y="3" width="4" height="4" fill="currentColor" />
+                  <rect x="1" y="7" width="2" height="2" fill="currentColor" />
+                  <rect x="7" y="7" width="2" height="2" fill="currentColor" />
+                </svg>
+                <span>CLOSE</span>
+              </button>
+            </header>
+
+            <div class="kit-drawer-preset-row">
+              <div class="build-preset-strip drawer-preset-strip hidden" id="p2-drawer-preset-bar" role="group" aria-label="P2 Drawer Loadout Presets">
+                <span class="preset-active-label" id="p2-drawer-preset-label">SOVEREIGN</span>
+                <div class="preset-btn-group">
+                  <button type="button" class="preset-pill-btn active-preset" data-build-panel="p2" data-preset="0" title="Preset I: Sovereign Standard (0/0/0)">I</button>
+                  <button type="button" class="preset-pill-btn" data-build-panel="p2" data-preset="1" title="Preset II: Offense / Tempo Archetype (1/1/1)">II</button>
+                  <button type="button" class="preset-pill-btn" data-build-panel="p2" data-preset="2" title="Preset III: Sanctuary / Control Archetype (2/2/2)">III</button>
+                  <button type="button" class="preset-pill-btn preset-pill-rng" data-build-panel="p2" data-preset="rng" title="Random Sovereign Loadout on Match Start">RNG</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="profile-skill-list" id="p2-skill-list">
+              <div class="skill-card" data-drawer-slot="0">
+                <div class="skill-icon-box"><canvas id="p2-skill-icon-0" width="64" height="64"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p2-skill-name-0">TRINITY OF THE SCYTHE</strong>
+                    <div class="skill-title-meta">
+                      <div class="skill-tier-tabs hidden" id="p2-tier-tabs-0" role="group" aria-label="Auto and Passive Tier">
+                        <button type="button" class="tier-tab-btn active-tier" data-build-panel="p2" data-build-cat="aspect" data-tier="0">I</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="aspect" data-tier="1">II</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="aspect" data-tier="2">III</button>
+                      </div>
+                      <span class="skill-type-badge badge-auto" id="p2-skill-type-0">3-HIT STAND &amp; SOUL-DISC</span>
+                    </div>
+                  </div>
+                  <p class="skill-desc" id="p2-skill-desc-0">
+                    Crescent soul-wave, Ferryman hook-pull &amp; Thanatos Death-God Stand cross-reap with returning soul-disc.
+                  </p>
+                </div>
+              </div>
+
+              <div class="skill-card" data-drawer-slot="1">
+                <div class="skill-icon-box"><canvas id="p2-skill-icon-1" width="64" height="64"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p2-skill-name-1">SOUL SEVER</strong>
+                    <div class="skill-title-meta">
+                      <div class="skill-tier-tabs hidden" id="p2-tier-tabs-1" role="group" aria-label="Signature Skill Tier">
+                        <button type="button" class="tier-tab-btn active-tier" data-build-panel="p2" data-build-cat="skill" data-tier="0">I</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="skill" data-tier="1">II</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="skill" data-tier="2">III</button>
+                      </div>
+                      <span class="skill-type-badge badge-skill" id="p2-skill-type-1">SKILL • 4.5S CD</span>
+                    </div>
+                  </div>
+                  <p class="skill-desc" id="p2-skill-desc-1">
+                    Rips a captive Soul Effigy from the foe that echoes resonance damage, then shadow-lunges for an X-Guillotine.
+                  </p>
+                </div>
+              </div>
+
+              <div class="skill-card skill-card-ult" data-drawer-slot="2">
+                <div class="skill-icon-box icon-box-ult"><canvas id="p2-skill-icon-2" width="64" height="64"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p2-skill-name-2">DEATH'S SOVEREIGNTY</strong>
+                    <div class="skill-title-meta">
+                      <div class="skill-tier-tabs hidden" id="p2-tier-tabs-2" role="group" aria-label="Overdrive Ultimate Tier">
+                        <button type="button" class="tier-tab-btn active-tier" data-build-panel="p2" data-build-cat="ult" data-tier="0">I</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="ult" data-tier="1">II</button>
+                        <button type="button" class="tier-tab-btn" data-build-panel="p2" data-build-cat="ult" data-tier="2">III</button>
+                      </div>
+                      <span class="skill-type-badge badge-ult" id="p2-skill-type-2">OVERDRIVE ULT</span>
+                    </div>
+                  </div>
+                  <p class="skill-desc" id="p2-skill-desc-2">
+                    Summons the towering Thanatos Stand &amp; Twin Wraith Clones for a 3-way phantom pincer and cross-guillotine.
+                  </p>
+                </div>
+              </div>
+
+              <!-- 4th Row: Supreme Ultimate Finisher -->
+              <div class="skill-card skill-card-supreme" id="p2-true-ult-box" data-drawer-slot="3">
+                <div class="supreme-crest-box" aria-hidden="true">
+                  <canvas id="p2-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
+                  <img src="assets/sprites/avs_brand_logo.png?v=30fps165" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
+                  <span class="supreme-tier">III</span>
+                </div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name supreme-ult-title" id="p2-true-ult-name">
+                      MEMENTO MORI: OBLIVION GUILLOTINE
+                    </strong>
+                    <span class="skill-type-badge badge-supreme">SUPREME ULTIMATE</span>
+                  </div>
+                  <p class="skill-desc" id="p2-true-ult-desc">
+                    Unseals the Twin Cathedral Gates of Oblivion, binds foes in the Six-Scythe Death-Clock &amp; cleaves reality in one strike!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </section>
@@ -1907,6 +2066,6 @@
     </div>
   </main>
 
-  <script type="module" src="src/main.js?v=30fps164"></script>
+  <script type="module" src="src/main.js?v=30fps165"></script>
 </body>
 </html>

@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps164';
-import { VFXManager } from './engine/VFXManager.js?v=30fps164';
-import { PixelForge } from './engine/PixelForge.js?v=30fps164';
-import { AudioManager } from './engine/AudioManager.js?v=30fps164';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps164';
-import { Fighter } from './entities/Fighter.js?v=30fps164';
-import { Warrior } from './entities/Warrior.js?v=30fps164';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps164';
-import { FireMage } from './entities/FireMage.js?v=30fps164';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps164';
-import { Archer } from './entities/Archer.js?v=30fps164';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps164';
-import { Priestess } from './entities/Priestess.js?v=30fps164';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps164';
-import { Reaper } from './entities/Reaper.js?v=30fps164';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps164';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps164';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps164';
-import { Titan } from './entities/Titan.js?v=30fps164';
-import { TitanEx } from './entities/TitanEx.js?v=30fps164';
-import { Ronin } from './entities/Ronin.js?v=30fps164';
-import { RoninEx } from './entities/RoninEx.js?v=30fps164';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps164';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps164';
-import { IceMage } from './entities/IceMage.js?v=30fps164';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps164';
-import { Android } from './entities/Android.js?v=30fps164';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps164';
-import { NyxEx } from './entities/NyxEx.js?v=30fps164';
+import { Renderer } from './engine/Renderer.js?v=30fps165';
+import { VFXManager } from './engine/VFXManager.js?v=30fps165';
+import { PixelForge } from './engine/PixelForge.js?v=30fps165';
+import { AudioManager } from './engine/AudioManager.js?v=30fps165';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps165';
+import { Fighter } from './entities/Fighter.js?v=30fps165';
+import { Warrior } from './entities/Warrior.js?v=30fps165';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps165';
+import { FireMage } from './entities/FireMage.js?v=30fps165';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps165';
+import { Archer } from './entities/Archer.js?v=30fps165';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps165';
+import { Priestess } from './entities/Priestess.js?v=30fps165';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps165';
+import { Reaper } from './entities/Reaper.js?v=30fps165';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps165';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps165';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps165';
+import { Titan } from './entities/Titan.js?v=30fps165';
+import { TitanEx } from './entities/TitanEx.js?v=30fps165';
+import { Ronin } from './entities/Ronin.js?v=30fps165';
+import { RoninEx } from './entities/RoninEx.js?v=30fps165';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps165';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps165';
+import { IceMage } from './entities/IceMage.js?v=30fps165';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps165';
+import { Android } from './entities/Android.js?v=30fps165';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps165';
+import { NyxEx } from './entities/NyxEx.js?v=30fps165';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps164';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps164';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps164';
+} from './adventure/AdventureManager.js?v=30fps165';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps165';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps165';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -976,7 +976,8 @@ export class Game {
     this.slot2PartnerHero = 'mage_ex';
     this.inspectLeftRole = 'lead'; // 'lead' | 'partner'
     this.inspectRightRole = 'lead'; // 'partner' | 'lead'
-    this.activeAssignSlot = 2; // 1 = P1 Lead, 2 = P2 Lead, 3 = P1B Partner, 4 = P2B Partner
+    this.activeAssignSlot = 1; // 1 = P1 Lead, 2 = P2 Lead, 3 = P1B Partner, 4 = P2B Partner
+    this._kitDrawerSide = null; // null | 'p1' | 'p2'
     this.isLandingOpen = true;
     this.isPaused = false;
     this.landingStep = 'title'; // 'title' | 'mode' | 'roster'
@@ -1917,11 +1918,11 @@ export class Game {
 
     const rosterBackLabel = document.getElementById('roster-back-label');
     if (rosterBackLabel) {
-      rosterBackLabel.textContent = isAdv ? 'TITLE SCREEN' : 'VS SETUP';
+      rosterBackLabel.textContent = 'TITLE';
     }
     const ctaHeadline = document.getElementById('cta-headline-text');
     if (ctaHeadline) {
-      ctaHeadline.textContent = isAdv ? 'EMBARK ON CAMPAIGN' : 'COMMENCE BATTLE';
+      ctaHeadline.textContent = isAdv ? 'START CAMPAIGN' : 'START FIGHT';
     }
     const rosterConfigBadge = document.getElementById('btn-roster-config-badge');
     if (rosterConfigBadge) {
@@ -1933,6 +1934,7 @@ export class Game {
   setGameMode(mode, playSound = true) {
     if (!['1v1', '2v2_brawl', '2v2_tag', 'adventure'].includes(mode)) return;
     this.setPaused(false, false);
+    this.closeKitDrawer?.(false);
     this.gameMode = mode;
     this.testModeUnlimitedHp =
       mode === 'adventure'
@@ -2001,6 +2003,13 @@ export class Game {
     }
     if (this.hudTestModeLabel) {
       this.hudTestModeLabel.textContent = active ? 'UNLIMITED HP: ON' : 'UNLIMITED HP: OFF';
+    }
+    if (this.btnQuickHpMode) {
+      this.btnQuickHpMode.classList.toggle('active-quick-hp', active);
+      this.btnQuickHpMode.setAttribute('aria-pressed', String(active));
+    }
+    if (this.quickHpModeLabel) {
+      this.quickHpModeLabel.textContent = active ? 'SANDBOX HP' : 'MORTAL HP';
     }
     if (this.hudEls?.modeBadge) {
       if (this.isAdventureMode() && this.adventure?.active) {
@@ -2096,6 +2105,12 @@ export class Game {
     this.landingBtnTestMode = document.getElementById('landing-btn-test-mode');
     this.landingTestModeLabel = document.getElementById('landing-test-mode-label');
     this.landingTestModeTag = document.getElementById('landing-test-mode-tag');
+    this.btnQuickHpMode = document.getElementById('btn-quick-hp-mode');
+    this.quickHpModeLabel = document.getElementById('quick-hp-mode-label');
+    this.kitDrawerBackdrop = document.getElementById('kit-drawer-backdrop');
+    this.p1KitDrawer = document.getElementById('p1-kit-drawer');
+    this.p2KitDrawer = document.getElementById('p2-kit-drawer');
+    this.versusLayoutEl = document.getElementById('versus-layout');
     this.btnAutoTourney = document.getElementById('btn-auto-tourney');
     this.btnNextChallenger = document.getElementById('btn-next-challenger');
     this.btnReset = document.getElementById('btn-reset');
@@ -2172,6 +2187,11 @@ export class Game {
       }
       if (e.code !== 'Escape') return;
       if (this.isLandingOpen) {
+        if (this._kitDrawerSide) {
+          e.preventDefault();
+          this.closeKitDrawer(true);
+          return;
+        }
         if (this._navAudioOpen) {
           e.preventDefault();
           this.setNavAudioOpen(false, true);
@@ -2194,7 +2214,84 @@ export class Game {
     if (this.landingBtnTestMode) {
       this.landingBtnTestMode.addEventListener('click', () => this.toggleTestModeUnlimitedHp(true));
     }
+    if (this.btnQuickHpMode) {
+      this.btnQuickHpMode.addEventListener('click', () => this.toggleTestModeUnlimitedHp(true));
+    }
     this.syncTestModeUI();
+
+    this.quickModeBtns = document.querySelectorAll('[data-quick-mode]');
+    this.quickModeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (this.isAdventureMode()) return;
+        const modeKey = btn.getAttribute('data-quick-mode');
+        if (modeKey === '1v1' || modeKey === '2v2_tag') {
+          this.setGameMode(modeKey, true);
+        }
+      });
+    });
+
+    // Clicking either showcase pedestal switches active assignment slot cleanly
+    const profileLeftEl = document.getElementById('profile-left');
+    const profileRightEl = document.getElementById('profile-right');
+    if (profileLeftEl) {
+      profileLeftEl.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        this.setActiveSlot(this.is2v2Mode() && this.inspectLeftRole === 'partner' ? 3 : 1);
+      });
+    }
+    if (profileRightEl) {
+      profileRightEl.addEventListener('click', (e) => {
+        if (this.isAdventureMode() || e.target.closest('button')) return;
+        this.setActiveSlot(this.is2v2Mode() && this.inspectRightRole === 'partner' ? 4 : 2);
+      });
+    }
+
+    // Kit & Tiers Slide-Over Drawer + 4-Icon Skill Strip Hover & Click Triggers
+    const updateStripHoverCaption = (side, slotIdx) => {
+      const capEl = document.getElementById(`${side}-kit-hover-caption`);
+      if (!capEl) return;
+      if (slotIdx < 0) {
+        capEl.textContent =
+          this.isAdventureMode() && side === 'p2'
+            ? 'TAP ICON FOR BOSS RAID KIT'
+            : 'TAP ICON FOR KIT & TIERS';
+        return;
+      }
+      if (slotIdx === 3) {
+        const supName = document.getElementById(`${side}-true-ult-name`)?.textContent?.trim();
+        capEl.textContent = supName ? `ULT: ${supName}` : 'SUPREME ULTIMATE';
+        return;
+      }
+      const sName = document.getElementById(`${side}-skill-name-${slotIdx}`)?.textContent?.trim();
+      const sType = document.getElementById(`${side}-skill-type-${slotIdx}`)?.textContent?.trim();
+      capEl.textContent = sName ? (sType ? `${sName} • ${sType}` : sName) : 'TAP ICON FOR KIT & TIERS';
+    };
+    document.querySelectorAll('[data-kit-drawer]').forEach((btn) => {
+      const side = btn.getAttribute('data-kit-drawer');
+      const slotAttr = btn.getAttribute('data-kit-slot');
+      const slotIdx = slotAttr !== null ? Number(slotAttr) : -1;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openKitDrawer(side, slotIdx);
+      });
+      if (slotIdx >= 0) {
+        btn.addEventListener('mouseenter', () => updateStripHoverCaption(side, slotIdx));
+        btn.addEventListener('focus', () => updateStripHoverCaption(side, slotIdx));
+        btn.addEventListener('mouseleave', () => updateStripHoverCaption(side, -1));
+        btn.addEventListener('blur', () => updateStripHoverCaption(side, -1));
+      }
+    });
+    const btnP1KitClose = document.getElementById('btn-p1-kit-close');
+    const btnP2KitClose = document.getElementById('btn-p2-kit-close');
+    if (btnP1KitClose) btnP1KitClose.addEventListener('click', () => this.closeKitDrawer(true));
+    if (btnP2KitClose) btnP2KitClose.addEventListener('click', () => this.closeKitDrawer(true));
+    if (this.kitDrawerBackdrop) {
+      this.kitDrawerBackdrop.addEventListener('click', (e) => {
+        if (e.target === this.kitDrawerBackdrop) {
+          this.closeKitDrawer(true);
+        }
+      });
+    }
 
     this.modeBtns = {
       '1v1': document.getElementById('mode-btn-1v1'),
@@ -2549,67 +2646,8 @@ export class Game {
           this.setActiveSlot(1);
           return;
         }
-        if (this.slot1Hero === heroKey) {
-          this.inspectLeftRole = 'lead';
-          this.setActiveSlot(1);
-          if (this.audio) {
-            this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 350);
-            this.audio.playHeroVoice?.(heroKey, 'select', {
-              worldX: 350,
-              speakerKey: 'roster_ui',
-              priority: 2,
-              cooldownMs: 220,
-              maxAsyncDelayMs: 950
-            });
-          }
-        } else if (this.is2v2Mode() && this.slot1PartnerHero === heroKey) {
-          this.inspectLeftRole = 'partner';
-          this.setActiveSlot(3);
-          if (this.audio) {
-            this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 350);
-            this.audio.playHeroVoice?.(heroKey, 'select', {
-              worldX: 350,
-              speakerKey: 'roster_ui',
-              priority: 2,
-              cooldownMs: 220,
-              maxAsyncDelayMs: 950
-            });
-          }
-        } else if (this.slot2Hero === heroKey) {
-          this.inspectRightRole = 'lead';
-          this.setActiveSlot(2);
-          if (this.audio) {
-            this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 850);
-            this.audio.playHeroVoice?.(heroKey, 'select', {
-              worldX: 850,
-              speakerKey: 'roster_ui',
-              priority: 2,
-              cooldownMs: 220,
-              maxAsyncDelayMs: 950
-            });
-          }
-        } else if (this.is2v2Mode() && this.slot2PartnerHero === heroKey) {
-          this.inspectRightRole = 'partner';
-          this.setActiveSlot(4);
-          if (this.audio) {
-            this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 850);
-            this.audio.playHeroVoice?.(heroKey, 'select', {
-              worldX: 850,
-              speakerKey: 'roster_ui',
-              priority: 2,
-              cooldownMs: 220,
-              maxAsyncDelayMs: 950
-            });
-          }
-        } else {
-          this.assignHeroToSlot(this.activeAssignSlot, heroKey, true);
-          if (this.is2v2Mode()) {
-            const nextOrder = { 1: 3, 3: 2, 2: 4, 4: 1 };
-            this.setActiveSlot(nextOrder[this.activeAssignSlot] || 1);
-          } else {
-            this.setActiveSlot(this.activeAssignSlot === 1 ? 2 : 1);
-          }
-        }
+        // Assign directly to the currently active slot (swapping cleanly if already picked in another slot)
+        this.assignHeroToSlot(this.activeAssignSlot || 1, heroKey, true);
       });
     });
 
@@ -2693,7 +2731,7 @@ export class Game {
         if (this.isAdventureMode() || this.gameMode === '2v2_brawl') {
           this.setGameMode('1v1', false);
         }
-        this.setLandingStep('mode', true);
+        this.setLandingStep('roster', true);
       });
     }
     const btnTitleAdventure = document.getElementById('btn-title-adventure');
@@ -2714,11 +2752,7 @@ export class Game {
     const btnRosterBackMode = document.getElementById('btn-roster-back-mode');
     if (btnRosterBackMode) {
       btnRosterBackMode.addEventListener('click', () => {
-        if (this.isAdventureMode()) {
-          this.goToTitleScreen(true);
-        } else {
-          this.setLandingStep('mode', true);
-        }
+        this.goToTitleScreen(true);
       });
     }
     const btnRosterConfigBadge = document.getElementById('btn-roster-config-badge');
@@ -3400,7 +3434,45 @@ export class Game {
     }
   }
 
+  openKitDrawer(side, focusSlot = -1) {
+    const validSide = side === 'p2' ? 'p2' : 'p1';
+    this._kitDrawerSide = validSide;
+    if (this.kitDrawerBackdrop) {
+      this.kitDrawerBackdrop.classList.remove('hidden');
+      this.kitDrawerBackdrop.setAttribute('data-drawer-side', validSide);
+    }
+    if (this.p1KitDrawer) {
+      this.p1KitDrawer.classList.toggle('hidden', validSide !== 'p1');
+    }
+    if (this.p2KitDrawer) {
+      this.p2KitDrawer.classList.toggle('hidden', validSide !== 'p2');
+    }
+    const activeDrawer = validSide === 'p2' ? this.p2KitDrawer : this.p1KitDrawer;
+    if (activeDrawer) {
+      activeDrawer.querySelectorAll('.skill-card[data-drawer-slot]').forEach((card) => {
+        const sIdx = Number(card.getAttribute('data-drawer-slot'));
+        card.classList.toggle('is-focused-slot', focusSlot >= 0 && sIdx === focusSlot);
+      });
+    }
+    if (this.audio) this.audio.play('clock_gear', validSide === 'p2' ? 850 : 350);
+  }
+
+  closeKitDrawer(playSound = false) {
+    if (!this._kitDrawerSide && (!this.kitDrawerBackdrop || this.kitDrawerBackdrop.classList.contains('hidden'))) {
+      return;
+    }
+    this._kitDrawerSide = null;
+    if (this.kitDrawerBackdrop) {
+      this.kitDrawerBackdrop.classList.add('hidden');
+      this.kitDrawerBackdrop.removeAttribute('data-drawer-side');
+    }
+    if (this.p1KitDrawer) this.p1KitDrawer.classList.add('hidden');
+    if (this.p2KitDrawer) this.p2KitDrawer.classList.add('hidden');
+    if (playSound && this.audio) this.audio.play('clock_gear', 600);
+  }
+
   setLandingStep(step, playSound = true) {
+    this.closeKitDrawer?.(false);
     let validStep = step === 'mode' || step === 'roster' ? step : 'title';
     if (validStep === 'mode' && this.isAdventureMode()) {
       validStep = 'roster';
@@ -3531,7 +3603,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps164');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps165');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -3627,7 +3699,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps164'
+          'v=30fps165'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -3765,12 +3837,19 @@ export class Game {
     const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
     const c2b = CHAMPION_ROSTER[this.slot2PartnerHero] || CHAMPION_ROSTER.reaper;
 
-    // 1. Mode Selector Bar, Stage Selector Bar & Pause Menu VS Mode/Assist Controls
+    // 1. Mode Selector Bar, Inline Quick-Config Bar, Stage Selector Bar & Pause Menu VS Mode/Assist Controls
     if (this.modeBtns) {
       Object.entries(this.modeBtns).forEach(([modeKey, btn]) => {
         if (!btn) return;
         const active = this.gameMode === modeKey;
         btn.classList.toggle('active-mode', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+    }
+    if (this.quickModeBtns) {
+      this.quickModeBtns.forEach((btn) => {
+        const active = !isAdv && btn.getAttribute('data-quick-mode') === this.gameMode;
+        btn.classList.toggle('active-quick-mode', active);
         btn.setAttribute('aria-pressed', String(active));
       });
     }
@@ -3865,7 +3944,7 @@ export class Game {
     const titleFooterEl = document.getElementById('title-status-footer');
     if (titleFooterEl) {
       titleFooterEl.textContent =
-        'SEPARATED ARENA & CAMPAIGN REALMS • ZERO BACKGROUND LOAD • INSTANT READY';
+        'SEPARATED ARENA & CAMPAIGN REALMS • INSTANT READY • LOSSLESS HD-2D';
     }
     const modeSummaryEl = document.getElementById('mode-step-summary');
     if (modeSummaryEl) modeSummaryEl.textContent = summaryStr;
@@ -3883,15 +3962,21 @@ export class Game {
     const gridPromptEl = document.getElementById('portrait-grid-label');
     if (gridPromptEl) {
       gridPromptEl.textContent = isAdv
-        ? 'SELECT ANY OF THE 22 CHAMPIONS (EX OR LEGACY) FOR YOUR 4-REALM CAMPAIGN'
-        : `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || 'P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
+        ? '23 CHAMPIONS (12 EX • 11 LEGACY)'
+        : `PICKING: ${slotLabelMap[this.activeAssignSlot] || 'P1 LEAD'}`;
+    }
+
+    const activeSide =
+      isAdv || this.activeAssignSlot === 1 || this.activeAssignSlot === 3 ? 'left' : 'right';
+    if (this.versusLayoutEl) {
+      this.versusLayoutEl.setAttribute('data-active-side', activeSide);
     }
 
     // 2. Matchup Banner 4-Slot Names, Tags & Active Slot Highlight
     const slotLeftTagEl = document.getElementById('slot-left-tag');
     const slotRightTagEl = document.getElementById('slot-right-tag');
-    if (slotLeftTagEl) slotLeftTagEl.textContent = isAdv ? 'CAMPAIGN HERO' : 'P1 LEAD';
-    if (slotRightTagEl) slotRightTagEl.textContent = isAdv ? 'BOSS ENCOUNTER' : 'P2 LEAD';
+    if (slotLeftTagEl) slotLeftTagEl.textContent = isAdv ? 'HERO' : 'P1';
+    if (slotRightTagEl) slotRightTagEl.textContent = isAdv ? 'BOSS' : 'P2';
 
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
@@ -3923,22 +4008,26 @@ export class Game {
     const p1CornerTagEl = document.getElementById('p1-corner-tag');
     const p2CornerTagEl = document.getElementById('p2-corner-tag');
     const p2SkillsHeaderEl = document.getElementById('p2-skills-header');
+    const p2KitToggleLabelEl = document.getElementById('p2-kit-toggle-label');
     if (p1CornerTagEl) {
-      p1CornerTagEl.textContent = isAdv ? 'SOLO HERO' : is2v2 ? 'TEAM 1' : 'CHAMPION • LEFT SIDE';
+      p1CornerTagEl.textContent = isAdv ? 'SOLO HERO' : is2v2 ? 'TEAM 1' : 'P1 LEAD';
     }
     if (p2CornerTagEl) {
       p2CornerTagEl.textContent = isAdv
         ? customPackSummary
-          ? `STAGE PACK • ${customPackSummary.zoneCount} REALM${customPackSummary.zoneCount === 1 ? '' : 'S'}`
-          : 'COLOSSAL BOSS • ZONE IV'
+          ? `STAGE PACK • ${customPackSummary.zoneCount}Z`
+          : 'ZONE IV BOSS'
         : is2v2
           ? 'TEAM 2'
-          : 'CHALLENGER • RIGHT SIDE';
+          : 'P2 LEAD';
     }
     if (p2SkillsHeaderEl) {
       p2SkillsHeaderEl.textContent = isAdv
         ? '3-PHASE RAID MECHANICS & CATACLYSM'
         : '4-SLOT SOVEREIGN KIT & SUPREME ULTIMATE';
+    }
+    if (p2KitToggleLabelEl) {
+      p2KitToggleLabelEl.textContent = isAdv ? 'BOSS KIT' : 'KIT & TIERS';
     }
 
     if (this.btnNextChallenger) {
@@ -3969,13 +4058,7 @@ export class Game {
       this.p2TabPartner.classList.toggle('active-tab', this.inspectRightRole === 'partner');
     }
 
-    // 3. Roster Card Badges & Quick-Assign Buttons
-    const slotPrompts = {
-      1: 'SET P1',
-      2: 'SET P2',
-      3: 'SET P1B',
-      4: 'SET P2B'
-    };
+    // 3. Roster Card Badges (Clean P1 / P2 / HERO corner tags; hidden when unselected)
     Object.keys(CHAMPION_ROSTER).forEach((key) => {
       const card = this.cards[key];
       const ribbon = this.ribbons[key];
@@ -3992,47 +4075,22 @@ export class Game {
       if (ribbon) {
         ribbon.textContent = isAdv
           ? isP1
-            ? 'CAMPAIGN HERO'
-            : 'SELECT HERO'
+            ? 'HERO'
+            : ''
           : isP1
-            ? 'P1 LEAD'
+            ? 'P1'
             : isP1B
-              ? 'P1B ALLY'
+              ? 'P1B'
               : isP2
-                ? 'P2 LEAD'
+                ? 'P2'
                 : isP2B
-                  ? 'P2B ALLY'
-                  : slotPrompts[this.activeAssignSlot] || 'SET P1';
+                  ? 'P2B'
+                  : '';
       }
     });
 
-    document.querySelectorAll('[data-assign-p1]').forEach((btn) => {
-      const k = btn.getAttribute('data-assign-p1');
-      const isP1 = this.slot1Hero === k;
-      const isP1B = !isAdv && is2v2 && this.slot1PartnerHero === k;
-      btn.classList.toggle('active-p1', isP1 || isP1B);
-      btn.textContent = isAdv
-        ? isP1
-          ? 'HERO'
-          : 'SELECT'
-        : isP1
-          ? 'P1'
-          : isP1B
-            ? 'P1B'
-            : this.activeAssignSlot === 3 && is2v2
-              ? '+P1B'
-              : 'P1';
-    });
-    document.querySelectorAll('[data-assign-p2]').forEach((btn) => {
-      const k = btn.getAttribute('data-assign-p2');
-      const isP2 = !isAdv && this.slot2Hero === k;
-      const isP2B = !isAdv && is2v2 && this.slot2PartnerHero === k;
-      btn.classList.toggle('hidden', isAdv);
-      btn.classList.toggle('active-p2', isP2 || isP2B);
-      btn.textContent = isP2 ? 'P2' : isP2B ? 'P2B' : this.activeAssignSlot === 4 && is2v2 ? '+P2B' : 'P2';
-    });
-
-    // 4. Populate Left (P1 / P1B) and Right (P2 / P2B or Adventure Final Boss) Profile Panels
+    // 4. Populate Left (P1 / P1B) and Right (P2 / P2B or Adventure Final Boss) Profile Panels & Kit Drawers
+    const romanTierMap = ['I', 'II', 'III'];
     const syncProfilePanel = (prefix, sideName, cfg, partnerCfg, slotKey) => {
       if (!cfg) return;
       const asideEl = document.getElementById(`profile-${sideName}`);
@@ -4046,36 +4104,50 @@ export class Game {
       const headerEl = document.getElementById(`${prefix}-skills-header`);
       const presetBarEl = document.getElementById(`${prefix}-build-preset-bar`);
       const presetLblEl = document.getElementById(`${prefix}-build-preset-label`);
+      const drawerHeroNameEl = document.getElementById(`${prefix}-drawer-hero-name`);
+      const drawerRoleEl = document.getElementById(`${prefix}-drawer-role`);
+      const drawerPresetBarEl = document.getElementById(`${prefix}-drawer-preset-bar`);
+      const drawerPresetLblEl = document.getElementById(`${prefix}-drawer-preset-label`);
+      const hoverCapEl = document.getElementById(`${prefix}-kit-hover-caption`);
 
       const kit = HeroBuildSystem.getProfileDisplayKit(cfg.id || '', cfg, slotKey, isAdv);
       const showBuild = Boolean(kit?.showBuildUI && !isAdv);
+      const isActivePedestal = activeSide === sideName;
 
-      if (asideEl) asideEl.className = `fighter-profile profile-${cfg.theme}`;
-      if (nameEl) nameEl.textContent = cfg.name;
-      if (roleEl) {
-        roleEl.textContent =
-          is2v2 && partnerCfg ? `${cfg.role} • DUO WITH ${partnerCfg.name}` : cfg.role;
+      if (asideEl) {
+        asideEl.className = `fighter-profile profile-${cfg.theme}${isActivePedestal ? ' is-active-pedestal' : ''}`;
       }
+      if (nameEl) nameEl.textContent = cfg.name;
+      if (drawerHeroNameEl) drawerHeroNameEl.textContent = cfg.name;
+      const roleStr = is2v2 && partnerCfg ? `${cfg.role} • DUO: ${partnerCfg.name}` : cfg.role;
+      if (roleEl) roleEl.textContent = roleStr;
+      if (drawerRoleEl) drawerRoleEl.textContent = roleStr;
       if (styleEl) styleEl.textContent = cfg.style;
       if (traitEl) traitEl.textContent = kit?.trait || cfg.trait;
       if (haloEl) haloEl.className = `stage-halo halo-${cfg.theme}`;
       if (trueUltNameEl && cfg.trueUltName) trueUltNameEl.textContent = cfg.trueUltName;
       if (trueUltDescEl && cfg.trueUltDesc) trueUltDescEl.textContent = cfg.trueUltDesc;
+      if (hoverCapEl) {
+        hoverCapEl.textContent =
+          isAdv && prefix === 'p2' ? 'TAP ICON FOR BOSS RAID KIT' : 'TAP ICON FOR KIT & TIERS';
+      }
 
       if (headerEl) {
         headerEl.textContent =
           isAdv && prefix === 'p2'
             ? '3-PHASE RAID MECHANICS & CATACLYSM'
             : showBuild
-              ? 'SOVEREIGN LOADOUT'
+              ? 'SOVEREIGN LOADOUT & KIT'
               : '4-SLOT SOVEREIGN KIT & SUPREME ULTIMATE';
       }
-      if (presetBarEl) {
-        presetBarEl.classList.toggle('hidden', !showBuild);
-        presetBarEl.classList.toggle('is-locked-std', Boolean(showBuild && !kit?.hasCustomBuilds));
+
+      const syncPresetStrip = (barEl, lblEl) => {
+        if (!barEl) return;
+        barEl.classList.toggle('hidden', !showBuild);
+        barEl.classList.toggle('is-locked-std', Boolean(showBuild && !kit?.hasCustomBuilds));
         if (showBuild && kit?.slotBuild) {
-          if (presetLblEl) presetLblEl.textContent = kit.activeSummary || 'SOVEREIGN';
-          presetBarEl.querySelectorAll('[data-preset]').forEach((btn) => {
+          if (lblEl) lblEl.textContent = kit.activeSummary || 'SOVEREIGN';
+          barEl.querySelectorAll('[data-preset]').forEach((btn) => {
             const pAttr = btn.getAttribute('data-preset');
             const isRngBtn = pAttr === 'rng';
             const pIdx = isRngBtn ? -99 : Number(pAttr);
@@ -4088,7 +4160,9 @@ export class Game {
             }
           });
         }
-      }
+      };
+      syncPresetStrip(presetBarEl, presetLblEl);
+      syncPresetStrip(drawerPresetBarEl, drawerPresetLblEl);
 
       const displaySkills = Array.isArray(kit?.skills) ? kit.skills : cfg.skills;
       if (Array.isArray(displaySkills)) {
@@ -4101,9 +4175,16 @@ export class Game {
           const sType = document.getElementById(`${prefix}-skill-type-${idx}`);
           const sDesc = document.getElementById(`${prefix}-skill-desc-${idx}`);
           const tabsEl = document.getElementById(`${prefix}-tier-tabs-${idx}`);
+          const stripTierEl = document.getElementById(`${prefix}-strip-tier-${idx}`);
           if (sName) sName.textContent = sk.name;
           if (sType) sType.textContent = sk.type;
           if (sDesc) sDesc.textContent = sk.desc;
+          if (stripTierEl) {
+            const curTier = tierVals[idx] || 0;
+            stripTierEl.classList.toggle('hidden', !showBuild || !kit?.hasCustomBuilds);
+            stripTierEl.textContent = kit?.slotBuild?.rng ? '?' : romanTierMap[curTier] || 'I';
+            stripTierEl.setAttribute('data-tier-val', kit?.slotBuild?.rng ? 'rng' : String(curTier));
+          }
           if (tabsEl) {
             tabsEl.classList.toggle('hidden', !showBuild);
             tabsEl.classList.toggle('is-locked-std', Boolean(showBuild && !kit?.hasCustomBuilds));
@@ -4291,6 +4372,7 @@ export class Game {
 
   startDuel(playSound = true) {
     this.setNavAudioOpen?.(false, false);
+    this.closeKitDrawer?.(false);
     this.isLandingOpen = false;
     this.setPaused(false, false);
     this._pausedFrameRendered = false;
@@ -4598,6 +4680,15 @@ export class Game {
         }
       }
 
+      const syncStripIcon = (slotIdx, srcCanvas) => {
+        const stripCanvas = document.getElementById(`${prefix}-strip-icon-${slotIdx}`);
+        if (!stripCanvas || !srcCanvas) return;
+        const stx = stripCanvas.getContext('2d');
+        stx.clearRect(0, 0, stripCanvas.width, stripCanvas.height);
+        stx.imageSmoothingEnabled = false;
+        stx.drawImage(srcCanvas, 0, 0, stripCanvas.width, stripCanvas.height);
+      };
+
       if (Array.isArray(cfg.skills)) {
         cfg.skills.forEach((_sk, idx) => {
           const iconCanvas = document.getElementById(`${prefix}-skill-icon-${idx}`);
@@ -4605,6 +4696,7 @@ export class Game {
           if (iconCanvas._drawnHeroKey === primaryKey && iconCanvas._iconsReady && iconsReady) return;
           const ictx = iconCanvas.getContext('2d');
           PixelForge.drawSkillIcon(ictx, primaryKey, idx, iconCanvas.width, iconCanvas.height, t);
+          syncStripIcon(idx, iconCanvas);
           iconCanvas._drawnHeroKey = primaryKey;
           iconCanvas._iconsReady = iconsReady;
         });
@@ -4627,6 +4719,7 @@ export class Game {
               supIconCanvas.height,
               t
             );
+            syncStripIcon(3, supIconCanvas);
             supIconCanvas._drawnHeroKey = primaryKey;
             supIconCanvas._iconsReady = iconsReady;
           }
@@ -4743,6 +4836,14 @@ export class Game {
         ictx.strokeRect(1, 1, iw - 2, ih - 2);
         ictx.restore();
       };
+      const syncBossStripIcon = (slotIdx, srcCanvas) => {
+        const stripCanvas = document.getElementById(`p2-strip-icon-${slotIdx}`);
+        if (!stripCanvas || !srcCanvas) return;
+        const stx = stripCanvas.getContext('2d');
+        stx.clearRect(0, 0, stripCanvas.width, stripCanvas.height);
+        stx.imageSmoothingEnabled = false;
+        stx.drawImage(srcCanvas, 0, 0, stripCanvas.width, stripCanvas.height);
+      };
       [0, 1, 2].forEach((idx) => {
         const iconCanvas = document.getElementById(`p2-skill-icon-${idx}`);
         if (iconCanvas) {
@@ -4753,6 +4854,8 @@ export class Game {
             iconCanvas.height,
             t
           );
+          syncBossStripIcon(idx, iconCanvas);
+          iconCanvas._drawnHeroKey = '__adv_boss__';
         }
       });
       const supIconCanvas = document.getElementById('p2-skill-icon-3');
@@ -4767,6 +4870,8 @@ export class Game {
           supIconCanvas.height,
           t
         );
+        syncBossStripIcon(3, supIconCanvas);
+        supIconCanvas._drawnHeroKey = '__adv_boss__';
       }
     } else {
       drawSideProfileVisuals('p2', p2Front, p2Back, true);
