@@ -1475,7 +1475,9 @@ QA_FACE_ROIS: dict[str, tuple[int, int, int, int]] = {
 
 VISION_CACHE_DIR = Path(os.environ.get("AVS_VISION_MASK_DIR", "/tmp/avs_vision_masks"))
 ANIM_FRAMES = 8
-ANIM_HEAD_DYS = [0, 0, -1, -1, -1, -1, 0, 0]
+# Smooth unified bottom-grounded breathing curve (`0px -> -2px -> 0px` over 8 frames):
+# Entire upper torso, shoulders, rigid weapons, neck, head, helm/crown/ears/horns move together!
+ANIM_HEAD_DYS = [0, -1, -2, -2, -2, -1, 0, 0]
 
 
 def ensure_vision_masks() -> Path:
@@ -1494,8 +1496,9 @@ def ensure_vision_masks() -> Path:
 
 
 def load_vision_subject_mask(persona: str, rgb: np.ndarray, vision_dir: Path) -> tuple[np.ndarray, np.ndarray | None]:
-    """Loads the Apple Vision neural subject mask for `persona`, restores thin weapon/quiver tips
-    with zero background leaks, preserves crisp 1px dark outline, and separates Nyx's floating Cob.
+    """Loads the Apple Vision neural subject mask for `persona`, cleanly restores thin weapon tips
+    with ZERO detached floating chunks (`assert ncomp == 1`), preserves crisp 1px dark outline,
+    and separates Nyx's truly floating Cob drone.
     """
     yy, xx = np.mgrid[0:CELL, 0:CELL]
     r = rgb[:, :, 0].astype(np.int16)
@@ -1518,28 +1521,57 @@ def load_vision_subject_mask(persona: str, rgb: np.ndarray, vision_dir: Path) ->
         cob_mask = cob_pix
         fg = fg & (~cob_roi)
     elif persona == "chronomancer":
-        glaive_tip = (xx >= 256) & (xx <= 316) & (yy >= 12) & (yy <= 170) & ((b >= 95) | (g >= 105)) & (lum >= 62)
-        fg = fg | ndimage.binary_closing(glaive_tip, iterations=2)
+        # Remove the tiny XII-o'clock background clock-needle sticking out above his hair!
+        clk_needle = (yy <= 58) & (xx >= 146) & (xx <= 174) & (b >= 112) & ((b - r) >= 18)
+        fg = fg & (~clk_needle)
+        # Restore 100% of the Chrono-Glaive blade (both cyan edge AND bronze spine down to y=198)
+        # strictly OUTSIDE the giant clockface ring (`dist_clk > 107`) so ZERO clockface chunk floats!
+        dist_clk = np.hypot(xx - 160, yy - 118)
+        glaive_tip = (
+            (xx >= 265)
+            & (xx <= 319)
+            & (yy >= 8)
+            & (yy <= 198)
+            & (dist_clk > 107.0)
+            & (((b >= 82) | (g >= 92)) | ((r >= 76) & (g >= 56) & (b <= 96)))
+            & (lum >= 38)
+        )
+        fg = fg | ndimage.binary_fill_holes(ndimage.binary_closing(glaive_tip, iterations=2))
     elif persona == "icemage":
-        spear_tip = (xx >= 232) & (xx <= 312) & (yy >= 10) & (yy <= 155) & (b >= 145) & (g >= 125)
-        fg = fg | ndimage.binary_closing(spear_tip, iterations=2)
-    elif persona == "archer":
-        quiver = (xx >= 28) & (xx <= 98) & (yy >= 98) & (yy <= 165) & (((g >= 112) & (g > r)) | ((r >= 135) & (g >= 110)))
-        fg = fg | ndimage.binary_closing(quiver, iterations=2)
+        # Restore 100% of Lyra's Crystal Ice-Spear including ALL FOUR crystal prongs (`x=216..316, y=10..178`)
+        # while excluding isolated background snowflakes (and single-component filter drops any strays!)
+        bg_flake_excl = (
+            ((xx >= 235) & (xx <= 268) & (yy >= 30) & (yy <= 68))
+            | ((xx >= 245) & (xx <= 278) & (yy >= 164) & (yy <= 202))
+            | ((xx >= 288) & (yy >= 134))
+        )
+        spear_zone = (xx >= 216) & (xx <= 316) & (yy >= 10) & (yy <= 178) & (~bg_flake_excl)
+        spear_tip = spear_zone & (b >= 112) & (g >= 86) & ((b - r) >= 12)
+        spear_tip = ndimage.binary_fill_holes(ndimage.binary_closing(spear_tip, iterations=2))
+        # Preserve crisp 1px ice-blue crystal outline around all 4 prongs & spearhead
+        spear_out = ndimage.binary_dilation(spear_tip, iterations=1) & (~spear_tip) & spear_zone & (b >= 58) & (lum <= 115)
+        fg = fg | spear_tip | spear_out
+    elif persona == "reaper":
+        # Exclude the tiny crimson Blood-Eclipse moon sliver caught between his right horn and scythe shaft
+        moon_sliver = (xx >= 210) & (xx <= 246) & (yy >= 66) & (yy <= 128) & (r >= 135) & (g <= 78) & (b <= 118)
+        fg = fg & (~moon_sliver)
 
+    # STRICT SINGLE-COMPONENT INVARIANT: keep strictly the single largest connected foreground body
+    # (0 detached floating chunks anywhere on any of the 12 champions!)
     labeled, ncomp = ndimage.label(fg)
     if ncomp > 1:
         sizes = ndimage.sum(fg, labeled, range(1, ncomp + 1))
         main_lbl = int(np.argmax(sizes)) + 1
-        keep = labeled == main_lbl
-        for lbl_i, sz in enumerate(sizes, start=1):
-            if sz >= 250:
-                keep |= (labeled == lbl_i)
-        fg = keep
+        fg = labeled == main_lbl
 
     inv = ~fg
     ilbl, incomp = ndimage.label(inv)
-    border_lbls = set(np.unique(ilbl[0, :])) | set(np.unique(ilbl[-1, :])) | set(np.unique(ilbl[:, 0])) | set(np.unique(ilbl[:, -1]))
+    border_lbls = (
+        set(np.unique(ilbl[0, :]))
+        | set(np.unique(ilbl[-1, :]))
+        | set(np.unique(ilbl[:, 0]))
+        | set(np.unique(ilbl[:, -1]))
+    )
     if incomp > 0:
         isizes = ndimage.sum(inv, ilbl, range(1, incomp + 1))
         for idx_c, sz in enumerate(isizes, start=1):
@@ -1548,6 +1580,13 @@ def load_vision_subject_mask(persona: str, rgb: np.ndarray, vision_dir: Path) ->
 
     dil1 = ndimage.binary_dilation(fg, iterations=1)
     fg = fg | (dil1 & (~fg) & (lum <= 52))
+    # Final safety verify: strictly 1 connected component!
+    labeled_fin, ncomp_fin = ndimage.label(fg)
+    if ncomp_fin > 1:
+        sizes_fin = ndimage.sum(fg, labeled_fin, range(1, ncomp_fin + 1))
+        fg = labeled_fin == (int(np.argmax(sizes_fin)) + 1)
+    _, ncomp_chk = ndimage.label(fg)
+    assert ncomp_chk == 1, f"{persona}: expected strictly 1 connected component, got {ncomp_chk}"
     return fg, cob_mask
 
 
@@ -1555,11 +1594,11 @@ def build_seamless_stationary_bg(persona: str, rgb: np.ndarray, fg_mask: np.ndar
     """Builds a 100% smear-free stationary background via exact nearest true-BG lookup (`distance_transform_edt`),
     preserving 100% of untouched master background pixels and eliminating INPAINT_TELEA cone smears.
     """
-    hole = fg_mask.copy()
+    pad_px = 4 if persona in ("valkyrie", "android", "icemage", "chronomancer") else 2
+    hole_exp = ndimage.binary_dilation(fg_mask, iterations=pad_px)
     if cob_mask is not None:
-        hole = hole | cob_mask
-    pad_px = 4 if persona in ("valkyrie", "android") else 2
-    hole_exp = ndimage.binary_dilation(hole, iterations=pad_px)
+        # Clean wider 9px halo removal strictly around floating Cob so zero stale cyan sky-glow remains beneath it
+        hole_exp = hole_exp | ndimage.binary_dilation(cob_mask, iterations=9)
     valid_bg = ~hole_exp
 
     if not np.any(valid_bg):
@@ -1584,126 +1623,257 @@ def build_seamless_stationary_bg(persona: str, rgb: np.ndarray, fg_mask: np.ndar
     return out
 
 
-def _soft_ellipse(xx: np.ndarray, yy: np.ndarray, cx: float, cy: float, rx: float, ry: float, power: float = 1.55) -> np.ndarray:
-    d2 = ((xx - cx) / max(1.0, rx)) ** 2 + ((yy - cy) / max(1.0, ry)) ** 2
-    return np.power(np.clip(1.0 - d2, 0.0, 1.0), power).astype(np.float32)
+def _apply_anim_frame_magic_shimmer(
+    persona: str,
+    warped: np.ndarray,
+    frame_idx: int,
+    face_box: tuple[int, int, int, int],
+    hdy: int,
+) -> None:
+    """Bakes smooth 8-frame periodic pixel-exact luminous weapon, rune, gem, armor & hoodie shimmer
+    directly onto the warped character cutout (ZERO geometry distortion, ZERO rubber weapon wiggle,
+    and keeps Face ROI untouched for exact real-time F0..F5 lip-sync/blink stamping!).
+    """
+    alpha = warped[:, :, 3] > 128
+    yy, xx = np.mgrid[0:CELL, 0:CELL]
+    r = warped[:, :, 0].astype(np.int16)
+    g = warped[:, :, 1].astype(np.int16)
+    b = warped[:, :, 2].astype(np.int16)
+
+    fx0, fy0, fx1, fy1 = face_box
+    not_face = ~(
+        (xx >= max(0, fx0 - 2))
+        & (xx < min(CELL, fx1 + 2))
+        & (yy >= max(0, fy0 + hdy - 2))
+        & (yy < min(CELL, fy1 + hdy + 2))
+    )
+    ok = alpha & not_face
+
+    phase = (frame_idx / ANIM_FRAMES) * 2.0 * np.pi
+    pulse = 0.5 - 0.5 * np.cos(phase)  # smooth periodic 0 -> 1 -> 0 across 8 frames
+
+    if persona == "nyx":
+        hoodie_stars = ok & (yy >= 190) & ((b >= 158) | ((r >= 182) & (b >= 145)))
+        twinkle = hoodie_stars & (((xx + yy + frame_idx * 13) % 24) < 8)
+        _boost_masked_pixels(warped, twinkle, (255, 240, 255), 0.24 + pulse * 0.22)
+    elif persona == "warrior":
+        # Traveling cyan rune-wave gliding smoothly up razor-straight Dawn-Breaker blade + pulsing chest/crown gems
+        sword_cyan = ok & ((b - r) >= 34) & (g >= 126) & (xx >= 175)
+        wave_y = 290 - (frame_idx * 34)
+        band = sword_cyan & (np.abs(yy - wave_y) <= 38)
+        _boost_masked_pixels(warped, band, (240, 255, 255), 0.44)
+        gems = ok & ((b - r) >= 34) & (g >= 126) & (xx >= 165) & (xx <= 215) & ((yy <= 125) | (yy >= 216))
+        _boost_masked_pixels(warped, gems, (230, 255, 255), 0.12 + pulse * 0.36)
+    elif persona == "mage":
+        # Breathing golden solar flare on Sun-Staff orb, hat sun emblem, and chest solar amulet
+        sun_orb = ok & (xx >= 14) & (xx <= 98) & (yy >= 152) & (yy <= 248) & (r >= 180) & (g >= 75)
+        hat_chest = ok & (
+            ((xx >= 140) & (xx <= 188) & (yy >= 64) & (yy <= 112))
+            | ((xx >= 158) & (xx <= 210) & (yy >= 216) & (yy <= 268))
+        ) & (r >= 180) & (g >= 72)
+        _boost_masked_pixels(warped, sun_orb, (255, 252, 212), 0.14 + pulse * 0.42)
+        _boost_masked_pixels(warped, hat_chest, (255, 246, 185), 0.10 + pulse * 0.34)
+    elif persona == "priestess":
+        # Soft celestial gold sheen sweeping gently across Seraphina's tiara, halo & gold armor trim
+        gold_trim = ok & (r >= 200) & (g >= 165) & (b <= 155)
+        band = gold_trim & (((xx + yy + frame_idx * 24) % 96) < 28)
+        _boost_masked_pixels(warped, band, (255, 255, 232), 0.28)
+    elif persona == "chronomancer":
+        # Pulsing chest hourglass + traveling cyan rune-wave along rigid Chrono-Glaive blade
+        hg_cyan = ok & (xx >= 140) & (xx <= 180) & (yy >= 220) & (yy <= 284) & (g >= 130) & (b >= 130) & (r <= 128)
+        glaive_cyan = ok & (xx >= 254) & (g >= 125) & (b >= 125) & (r <= 128)
+        _boost_masked_pixels(warped, hg_cyan, (230, 255, 255), 0.14 + pulse * 0.44)
+        wy = 170 - (frame_idx * 20)
+        _boost_masked_pixels(warped, glaive_cyan & (np.abs(yy - wy) <= 34), (235, 255, 255), 0.42)
+    elif persona == "valkyrie":
+        # Warm golden-amber sheen across winged tiara & breastplate trim
+        gold_arm = ok & (r >= 195) & (g >= 135) & (b <= 110)
+        band = gold_arm & (((xx + yy + frame_idx * 22) % 88) < 26)
+        _boost_masked_pixels(warped, band, (255, 250, 205), 0.30)
+    elif persona == "ronin":
+        # Pulsing cyan thunder-chakra chest crest & gauntlets
+        cyan_runes = ok & (b >= 138) & (g >= 115) & ((b - r) >= 24) & (yy >= 168)
+        _boost_masked_pixels(warped, cyan_runes, (235, 255, 255), 0.14 + pulse * 0.44)
+    elif persona == "archer":
+        # Surging emerald starlight pulse flowing along rigid Star-Bow & arrowhead
+        bow_em = ok & (xx >= 206) & (g >= 140) & ((g - r) >= 20)
+        wy = 285 - (frame_idx * 34)
+        _boost_masked_pixels(warped, bow_em & (np.abs(yy - wy) <= 44), (235, 255, 240), 0.46)
+        _boost_masked_pixels(warped, bow_em, (220, 255, 235), 0.10 + pulse * 0.24)
+    elif persona == "reaper":
+        # Flickering magenta scythe soul-flames & pulsing chest/crown soul-gems
+        scythe_flame = ok & (yy <= 122) & (r >= 142) & (b >= 135) & (g <= 125)
+        gems_p = ok & (
+            ((xx >= 144) & (xx <= 170) & (yy >= 76) & (yy <= 110))
+            | ((xx >= 140) & (xx <= 176) & (yy >= 228) & (yy <= 286))
+        ) & (r >= 115) & (b >= 135)
+        f_band = scythe_flame & (((xx + frame_idx * 20) % 64) < 26)
+        _boost_masked_pixels(warped, f_band, (255, 224, 255), 0.42)
+        _boost_masked_pixels(warped, gems_p, (255, 232, 255), 0.14 + pulse * 0.44)
+    elif persona == "titan":
+        # Blazing emerald Mjolnir runes + throbbing volcanic chest magma core
+        hammer_runes = ok & (xx >= 138) & (xx <= 254) & (yy >= 4) & (yy <= 116) & (g >= 106) & ((g - r) >= 20)
+        magma_core = ok & (xx >= 108) & (xx <= 220) & (yy >= 234) & (yy <= 318) & (r >= 170) & (g >= 62) & (b <= 64)
+        _boost_masked_pixels(warped, hammer_runes, (220, 255, 236), 0.18 + pulse * 0.50)
+        _boost_masked_pixels(warped, magma_core, (255, 248, 188), 0.12 + pulse * 0.42)
+    elif persona == "icemage":
+        # Sparkling diamond crystal glint facets across rigid Ice-Spear & Ice Crown
+        ice_crys = ok & (((xx >= 216) & (yy <= 236)) | ((xx >= 90) & (xx <= 230) & (yy >= 6) & (yy <= 112))) & (b >= 195) & (g >= 170)
+        facet = ice_crys & (((xx * 2 + yy + frame_idx * 24) % 72) < 22)
+        _boost_masked_pixels(warped, facet, (255, 255, 255), 0.44)
+    elif persona == "android":
+        # Pulsing cyber chest reactor core + surging plasma katana blade edge shimmer
+        core_glow = ok & (xx >= 136) & (xx <= 232) & (yy >= 210) & (yy <= 308) & ((b >= 170) | (r >= 175))
+        blade_glow = ok & (yy >= 118) & (yy <= 248) & ((xx <= 116) | (xx >= 238)) & ((b >= 170) | ((r >= 170) & (b >= 145)))
+        _boost_masked_pixels(warped, core_glow, (235, 255, 255), 0.14 + pulse * 0.44)
+        wx = (frame_idx * 40) % 320
+        _boost_masked_pixels(warped, blade_glow & (np.abs(xx - wx) <= 44), (245, 255, 255), 0.46)
+
+
+def build_v3_rig_weights(persona: str, f0_rgb: np.ndarray, fg_mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Unified V3 Hierarchical Pixel Rig Weights:
+      - `wpn_w === 0` everywhere: ZERO weapon rubber-wiggle on any sword, spear, staff, bow, hammer, scythe, or katana!
+      - `breath_w`: Bottom edge (`y=319`) grounded smoothly at `0.0`, ramping monotonically to `1.0` at shoulders
+        and staying `1.0` across the ENTIRE upper body + rigid weapons + ENTIRE head/helm/crown/horns/cat-ears!
+      - `hair_w`: Color- and anatomy-masked strictly to soft flowing hair/mane/beard strands (0 armor/gauntlet/fur/orb/quiver bleed!).
+    """
+    yy, xx = np.mgrid[0:CELL, 0:CELL].astype(np.float32)
+    r = f0_rgb[:, :, 0].astype(np.int16)
+    g = f0_rgb[:, :, 1].astype(np.int16)
+    b = f0_rgb[:, :, 2].astype(np.int16)
+    lum = (r * 2 + g * 5 + b * 3) // 10
+
+    fx0, fy0, fx1, fy1 = QA_FACE_ROIS[persona]
+
+    # 1. Unified bottom-grounded monotonic breathing (`0.0` at y=319 -> `1.0` across upper torso, weapons & entire head!)
+    ramp_top = float(min(220, fy1 + 26))
+    breath_w = np.clip((319.0 - yy) / max(48.0, 319.0 - ramp_top), 0.0, 1.0).astype(np.float32)
+    breath_w = breath_w * breath_w * (3.0 - 2.0 * breath_w)
+
+    head_mask = np.zeros((CELL, CELL), dtype=bool)
+    hair_w = np.zeros((CELL, CELL), dtype=np.float32)
+
+    if persona == "nyx":
+        head_mask[18:182, 108:218] = True
+        left_lock = (xx <= 132) & (yy >= 132) & (yy <= 212) & ((b >= 122) | (r >= 118))
+        right_lock = (xx >= 200) & (xx <= 234) & (yy >= 128) & (yy <= 202) & ((b >= 122) | (r >= 118))
+        hair_raw = np.where(left_lock | right_lock, np.clip((yy - 126.0) / 70.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(hair_raw, (9, 9), 0)
+    elif persona == "warrior":
+        head_mask[24:200, 122:226] = True
+        mane = (xx <= 126) & (yy >= 82) & (yy <= 198) & (lum >= 122)
+        mane_ramp = np.where(mane, np.clip((126.0 - xx) / 104.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(mane_ramp, (11, 11), 0)
+    elif persona == "mage":
+        head_mask[0:192, 42:298] = True
+    elif persona == "priestess":
+        head_mask[40:206, 118:228] = True
+        left_hair = (xx <= 132) & (yy >= 162) & (yy <= 298) & (r >= 135) & (g >= 110)
+        hair_ramp = np.where(left_hair, np.clip((132.0 - xx) / 96.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(hair_ramp, (11, 11), 0)
+    elif persona == "chronomancer":
+        head_mask[44:204, 108:218] = True
+    elif persona == "valkyrie":
+        head_mask[18:188, 110:228] = True
+        rose_hair = (xx <= 134) & (yy >= 150) & (yy <= 296) & (r >= 118) & (b >= 78)
+        hair_ramp = np.where(rose_hair, np.clip((134.0 - xx) / 108.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(hair_ramp, (11, 11), 0)
+    elif persona == "ronin":
+        head_mask[42:176, 146:248] = True
+        # Strictly white sweeping samurai mane — exclude dark armor & bright lower-left armored gauntlet (`yy >= 205 & xx >= 82`)!
+        gauntlet_excl = (yy >= 205) & (xx >= 82)
+        mane = (xx <= 156) & (yy >= 44) & (yy <= 278) & (~gauntlet_excl) & (lum >= 122) & ((r + g + b) >= 355) & (r >= 98)
+        mane_ramp = np.where(mane, np.clip((156.0 - xx) / 138.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(mane_ramp, (11, 11), 0)
+    elif persona == "archer":
+        head_mask[24:158, 118:222] = True
+        # Strictly flowing left silver hair — exclude upper-left quiver area (`yy <= 152 & xx <= 96`)!
+        quiver_excl = (yy <= 152) & (xx <= 96)
+        silver_hair = (xx <= 124) & (yy >= 118) & (yy <= 258) & (~quiver_excl) & (lum >= 115)
+        hair_ramp = np.where(silver_hair, np.clip((124.0 - xx) / 98.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(hair_ramp, (11, 11), 0)
+    elif persona == "reaper":
+        head_mask[24:192, 92:228] = True
+    elif persona == "titan":
+        head_mask[56:196, 98:220] = True
+        beard = (xx >= 126) & (xx <= 194) & (yy >= 202) & (yy <= 252) & (r >= 118) & ((r - b) >= 44)
+        beard_ramp = np.where(beard, np.clip((yy - 198.0) / 48.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(beard_ramp, (9, 9), 0)
+    elif persona == "icemage":
+        head_mask[10:196, 100:222] = True
+        # Strictly flowing ice-white hair ABOVE her solid fluffy fur shoulder collar (`yy <= 194 & xx <= 104`)!
+        ice_hair = (xx <= 104) & (yy >= 110) & (yy <= 194) & (b >= 155) & (lum >= 112)
+        hair_ramp = np.where(ice_hair, np.clip((104.0 - xx) / 80.0, 0.0, 1.0), 0.0).astype(np.float32)
+        hair_w = cv2.GaussianBlur(hair_ramp, (11, 11), 0)
+    elif persona == "android":
+        head_mask[34:166, 114:234] = True
+        # Strictly lower lavender bob tips strictly ABOVE her glowing cyan left shoulder orb (`yy <= 144`)!
+        bob_tips = (xx >= 100) & (xx <= 140) & (yy >= 118) & (yy <= 144) & (b >= 120) & (r >= 110)
+        hair_w = cv2.GaussianBlur(bob_tips.astype(np.float32), (9, 9), 0)
+
+    head_soft = cv2.GaussianBlur(head_mask.astype(np.float32), (11, 11), 0)
+    hair_w = np.clip(hair_w * np.clip(1.0 - head_soft, 0.0, 1.0), 0.0, 1.0)
+    hair_w[max(0, fy0 - 6) : min(CELL, fy1 + 6), max(0, fx0 - 6) : min(CELL, fx1 + 6)] = 0.0
+    breath_w = np.maximum(breath_w, head_soft)
+    breath_w[max(0, fy0 - 6) : min(CELL, fy1 + 6), max(0, fx0 - 6) : min(CELL, fx1 + 6)] = 1.0
+
+    fg_f = fg_mask.astype(np.float32)
+    return breath_w * fg_f, hair_w * fg_f
 
 
 def build_zero_cut_anim_sheet(persona: str, f0_rgb: np.ndarray, fg_mask: np.ndarray) -> np.ndarray:
-    """Builds a silky 8-frame (`2560x320`) transparent RGBA living character loop using a smooth C^1
-    continuous flow field strictly on the Apple Vision foreground cutout:
-      - ZERO vertical knife-cuts, ZERO stair-stepped hair strips, ZERO snapped weapon shafts!
-      - Background never warps by even 0.1px (only the transparent character animates!).
-      - Face ROI moves by exact rigid integer `ANIM_HEAD_DYS` so real-time F0..F5 lip-sync & blinks align to 0.00px!
+    """Builds a silky 8-frame (`2560x320`) transparent RGBA living character loop using the V3
+    Unified Hierarchical Rig strictly on the single-component Apple Vision foreground cutout:
+      - ZERO weapon rubber-wiggle (`wpn_w = 0`), ZERO floating fragments (`ncomp == 1`), ZERO vertical knife-cuts!
+      - Unified bottom-grounded breathing (`y=319` stays anchored at `0.0px`, whole upper body + rigid weapons +
+        ENTIRE head/crown/helm/horns/ears breathe together by exact integer `ANIM_HEAD_DYS`)!
+      - Smooth root-to-tip wind wave strictly on soft flowing hair/manes/beards + baked 8-frame weapon/core shimmer!
     """
     yy, xx = np.mgrid[0:CELL, 0:CELL].astype(np.float32)
-    edge_x = np.clip(np.minimum(xx, (CELL - 1) - xx) / 12.0, 0.0, 1.0)
-    edge_top = np.clip(yy / 12.0, 0.0, 1.0)
-    edge_guard = (edge_x * edge_top).astype(np.float32)
-
     fx0, fy0, fx1, fy1 = QA_FACE_ROIS[persona]
-    body_w = np.zeros((CELL, CELL), dtype=np.float32)
-    hair_w = np.zeros((CELL, CELL), dtype=np.float32)
-    wpn_w = np.zeros((CELL, CELL), dtype=np.float32)
-
-    if persona == "nyx":
-        body_w = _soft_ellipse(xx, yy, 165, 255, 82, 85, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 114, 152, 34, 58, 1.5) + _soft_ellipse(xx, yy, 214, 148, 30, 52, 1.5)
-        wpn_w = _soft_ellipse(xx, yy, 252, 232, 34, 48, 1.5)
-    elif persona == "warrior":
-        body_w = _soft_ellipse(xx, yy, 158, 258, 96, 86, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 78, 162, 68, 66, 1.35)
-        wpn_w = _soft_ellipse(xx, yy, 248, 168, 62, 118, 1.5)
-    elif persona == "mage":
-        body_w = _soft_ellipse(xx, yy, 174, 255, 86, 86, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 145, 58, 72, 46, 1.6)
-        wpn_w = _soft_ellipse(xx, yy, 62, 224, 48, 78, 1.4)
-    elif persona == "priestess":
-        body_w = _soft_ellipse(xx, yy, 162, 260, 74, 82, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 96, 212, 54, 72, 1.35)
-        wpn_w = _soft_ellipse(xx, yy, 216, 248, 42, 54, 1.5)
-    elif persona == "chronomancer":
-        body_w = _soft_ellipse(xx, yy, 160, 268, 86, 78, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 160, 88, 56, 38, 1.5)
-        wpn_w = _soft_ellipse(xx, yy, 280, 165, 42, 128, 1.45)
-    elif persona == "valkyrie":
-        body_w = _soft_ellipse(xx, yy, 158, 256, 78, 86, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 82, 210, 56, 78, 1.35)
-        wpn_w = _soft_ellipse(xx, yy, 226, 232, 44, 58, 1.5)
-    elif persona == "ronin":
-        body_w = _soft_ellipse(xx, yy, 184, 248, 78, 88, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 76, 168, 76, 98, 1.25) + _soft_ellipse(xx, yy, 108, 92, 62, 48, 1.4)
-        wpn_w = _soft_ellipse(xx, yy, 254, 266, 46, 56, 1.5)
-    elif persona == "archer":
-        body_w = _soft_ellipse(xx, yy, 160, 252, 72, 86, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 72, 174, 58, 78, 1.35)
-        wpn_w = _soft_ellipse(xx, yy, 274, 172, 46, 124, 1.4)
-    elif persona == "reaper":
-        body_w = _soft_ellipse(xx, yy, 160, 264, 108, 78, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 68, 82, 64, 58, 1.4) + _soft_ellipse(xx, yy, 256, 86, 62, 58, 1.4) + _soft_ellipse(xx, yy, 160, 36, 78, 28, 1.5)
-        wpn_w = _soft_ellipse(xx, yy, 160, 260, 48, 48, 1.5)
-    elif persona == "titan":
-        body_w = _soft_ellipse(xx, yy, 160, 258, 112, 82, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 158, 214, 48, 44, 1.5)
-        wpn_w = _soft_ellipse(xx, yy, 198, 62, 68, 52, 1.45) + _soft_ellipse(xx, yy, 58, 212, 48, 54, 1.5)
-    elif persona == "icemage":
-        body_w = _soft_ellipse(xx, yy, 152, 268, 86, 76, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 76, 178, 54, 72, 1.35)
-        wpn_w = _soft_ellipse(xx, yy, 256, 146, 54, 118, 1.4)
-    elif persona == "android":
-        body_w = _soft_ellipse(xx, yy, 178, 262, 92, 80, 1.4)
-        hair_w = _soft_ellipse(xx, yy, 128, 124, 34, 42, 1.5)
-        wpn_w = _soft_ellipse(xx, yy, 58, 96, 54, 42, 1.45) + _soft_ellipse(xx, yy, 276, 232, 42, 58, 1.5)
-
-    face_protect = np.zeros((CELL, CELL), dtype=np.float32)
-    face_protect[max(0, fy0 - 4) : min(CELL, fy1 + 4), max(0, fx0 - 4) : min(CELL, fx1 + 4)] = 1.0
-    face_soft = cv2.GaussianBlur(face_protect, (15, 15), 0)
-    non_face = np.clip(1.0 - face_soft, 0.0, 1.0)
-
-    body_w = np.clip(body_w * edge_guard * non_face, 0.0, 1.0)
-    hair_w = np.clip(hair_w * edge_guard * non_face, 0.0, 1.0)
-    wpn_w = np.clip(wpn_w * edge_guard * non_face, 0.0, 1.0)
+    breath_w, hair_w = build_v3_rig_weights(persona, f0_rgb, fg_mask)
 
     char_rgba = np.zeros((CELL, CELL, 4), dtype=np.uint8)
     char_rgba[fg_mask, :3] = f0_rgb[fg_mask]
     char_rgba[fg_mask, 3] = 255
 
+    hair_amp = (
+        3.4 if persona == "ronin"
+        else (2.8 if persona in ("warrior", "valkyrie", "priestess", "archer")
+        else (2.2 if persona in ("icemage", "nyx") else 1.8))
+    )
+
     frames = []
     for i in range(ANIM_FRAMES):
         phase = (i / ANIM_FRAMES) * 2.0 * np.pi
-        breath = 0.5 - 0.5 * np.cos(phase)
-        wind_x = np.sin(phase + yy * 0.045)
-        wind_y = np.cos(phase + xx * 0.035)
-        wpn_lift = np.sin(phase - 0.6)
+        hdy = float(ANIM_HEAD_DYS[i])
+        wind_x = np.sin(phase - yy * 0.026)
+        wind_y = np.cos(phase - xx * 0.024)
 
-        hair_amp = 3.2 if persona in ("ronin", "warrior", "valkyrie", "priestess") else 2.2
-        wpn_amp = 2.6 if persona in ("mage", "chronomancer", "archer", "icemage", "titan") else 1.8
-
-        dx = hair_w * (wind_x * hair_amp) + wpn_w * (np.cos(phase) * 1.0)
-        dy = (
-            -body_w * (breath * 2.8)
-            + hair_w * (wind_y * (hair_amp * 0.45))
-            - wpn_w * (wpn_lift * wpn_amp)
-            + face_soft * float(ANIM_HEAD_DYS[i])
-        )
+        dx = hair_w * (wind_x * hair_amp)
+        dy = breath_w * hdy + hair_w * (wind_y * (hair_amp * 0.32))
         dx[fy0:fy1, fx0:fx1] = 0.0
-        dy[fy0:fy1, fx0:fx1] = float(ANIM_HEAD_DYS[i])
-
-        map_x = (xx - dx).astype(np.float32)
-        map_y = (yy - dy).astype(np.float32)
+        dy[fy0:fy1, fx0:fx1] = hdy
 
         warped = cv2.remap(
             char_rgba,
-            map_x,
-            map_y,
+            (xx - dx).astype(np.float32),
+            (yy - dy).astype(np.float32),
             interpolation=cv2.INTER_NEAREST,
             borderMode=cv2.BORDER_CONSTANT,
             borderValue=(0, 0, 0, 0),
         )
-        hdy = ANIM_HEAD_DYS[i]
-        warped[fy0 + hdy : fy1 + hdy, fx0:fx1] = char_rgba[fy0:fy1, fx0:fx1]
-        # Keep crisp binary alpha (0 or 255)
-        warped[:, :, 3] = np.where(warped[:, :, 3] >= 128, 255, 0).astype(np.uint8)
+        ihdy = ANIM_HEAD_DYS[i]
+        warped[fy0 + ihdy : fy1 + ihdy, fx0:fx1] = char_rgba[fy0:fy1, fx0:fx1]
+        alpha_bin = warped[:, :, 3] >= 128
+        lbl_w, nw = ndimage.label(alpha_bin)
+        if nw > 1:
+            sz_w = ndimage.sum(alpha_bin, lbl_w, range(1, nw + 1))
+            keep_w = lbl_w == (int(np.argmax(sz_w)) + 1)
+            warped[~keep_w] = [0, 0, 0, 0]
+            alpha_bin = keep_w
+        warped[:, :, 3] = np.where(alpha_bin, 255, 0).astype(np.uint8)
+        _apply_anim_frame_magic_shimmer(persona, warped, i, (fx0, fy0, fx1, fy1), ihdy)
         frames.append(warped)
 
     return np.concatenate(frames, axis=1)
@@ -1717,7 +1887,7 @@ def build_vision_layers_sheet(
 ) -> np.ndarray:
     """Creates the 960x320 companion `<persona>_layers.png`:
       - Cell 0 (`0..320`):   100% clean non-smeared stationary portrait backdrop
-      - Cell 1 (`320..640`): Empty transparent (ZERO vertical knife cuts!)
+      - Cell 1 (`320..640`): Empty transparent (ZERO vertical knife cuts or torn wing edges!)
       - Cell 2 (`640..960`): Nyx's isolated floating Cob drone (empty on all other 11!)
     """
     layers = np.zeros((CELL, CELL * 3, 4), dtype=np.uint8)
