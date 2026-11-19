@@ -1552,17 +1552,34 @@ def load_vision_subject_mask(persona: str, rgb: np.ndarray, vision_dir: Path) ->
         spear_out = ndimage.binary_dilation(spear_tip, iterations=1) & (~spear_tip) & spear_zone & (b >= 58) & (lum <= 115)
         fg = fg | spear_tip | spear_out
     elif persona == "priestess":
-        # Restore 100% of Seraphina's curved golden halo arch + sunburst crown spikes (0 stained-glass petals!)
-        ell_p = ((xx - 168.0) / 43.0) ** 2 + ((yy - 87.0) / 23.0) ** 2
-        halo_arch = (
-            (ell_p >= 0.72) & (ell_p <= 1.25) & (yy >= 58) & (yy <= 86)
-            & (xx >= 122) & (xx <= 212) & (r >= 165) & (g >= 132) & (b >= 80)
+        # Restore 100% of Seraphina's continuous curved golden halo-crown arch + ALL 5 crown spikes
+        # + crisp 1px dark bronze outline, solidly anchored into BOTH winged tiara earpieces (0 stained-glass bleed!)
+        ell_p = ((xx - 165.0) / 44.0) ** 2 + ((yy - 94.0) / 26.5) ** 2
+        # Main arched band + tight left/right wing anchors (y <= 85, x in 121..207)
+        arch_band = (
+            (ell_p >= 0.80) & (ell_p <= 1.20) & (yy >= 63) & (yy <= 85)
+            & (xx >= 121) & (xx <= 207)
+            & (~((xx >= 190) & (xx <= 201) & (yy >= 79) & (ell_p < 0.90)))
         )
-        spikes = (
-            (xx >= 130) & (xx <= 206) & (yy >= 48) & (yy <= 68)
-            & (r >= 205) & (g >= 175) & (b >= 128)
-        )
-        fg = fg | ndimage.binary_closing(halo_arch | spikes, iterations=1)
+        # Keep arch golden/bronze core + its immediate dark underside/top edge cleanly
+        halo_arch = arch_band & (((r >= 128) & (g >= 92)) | (lum <= 92))
+        # Exact tight polygons around all 5 symmetrical crown spikes rising cleanly off the arch
+        spike_poly_mask = np.zeros((CELL, CELL), dtype=np.uint8)
+        crown_spike_polys = [
+            np.array([[131, 63], [136, 65], [140, 74], [133, 76], [130, 67]], dtype=np.int32),  # Far-left spike
+            np.array([[150, 58], [153, 60], [154, 70], [146, 70], [147, 61]], dtype=np.int32),  # Mid-left spike
+            np.array([[172, 46], [175, 53], [177, 67], [162, 68], [167, 56], [170, 47]], dtype=np.int32),  # Center spire
+            np.array([[190, 58], [193, 61], [192, 72], [184, 71], [185, 62]], dtype=np.int32),  # Mid-right spike
+            np.array([[201, 66], [203, 70], [199, 77], [194, 74], [197, 68]], dtype=np.int32),  # Far-right spike
+        ]
+        for poly in crown_spike_polys:
+            cv2.fillPoly(spike_poly_mask, [poly], 1)
+        spikes = (spike_poly_mask > 0) & (r >= 112) & (g >= 80)
+        crown_core = ndimage.binary_fill_holes(ndimage.binary_closing(halo_arch | spikes, iterations=1))
+        # Preserve crisp 1px dark bronze/black pixel outline cleanly around the entire crown arch & all 5 spikes
+        crown_zone = (yy >= 44) & (yy <= 88) & (xx >= 118) & (xx <= 210)
+        crown_out = ndimage.binary_dilation(crown_core, iterations=1) & (~crown_core) & crown_zone & (lum <= 96)
+        fg = fg | crown_core | crown_out
     elif persona == "valkyrie":
         # Restore 100% of Freyja's right golden tiara headdress wing (`x=190..232, y=8..106`) down to the top tip!
         zone_v = (xx >= 190) & (xx <= 232) & (yy >= 8) & (yy <= 106)
@@ -1629,7 +1646,11 @@ def build_seamless_stationary_bg(persona: str, rgb: np.ndarray, fg_mask: np.ndar
     pad_px = 4 if persona in ("valkyrie", "android", "icemage", "chronomancer") else 2
     hole_exp = ndimage.binary_dilation(fg_mask, iterations=pad_px)
     yy_bg, xx_bg = np.mgrid[0:CELL, 0:CELL]
-    if persona == "icemage":
+    if persona == "priestess":
+        # Cleanly erase Seraphina's golden crown-halo arch & all 5 spikes from stationary BG so ZERO double-crown ghost appears on breathing!
+        crown_bg_zone = fg_mask & (xx_bg >= 118) & (xx_bg <= 212) & (yy_bg >= 42) & (yy_bg <= 90)
+        hole_exp = hole_exp | ndimage.binary_dilation(crown_bg_zone, iterations=4)
+    elif persona == "icemage":
         # Wipe out bright lower-left white fur shoulder glow rim so ZERO ghost streak stays behind Lyra's fur!
         fur_zone = fg_mask & (xx_bg <= 96) & (yy_bg >= 198)
         hole_exp = hole_exp | ndimage.binary_dilation(fur_zone, iterations=7)
