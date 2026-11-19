@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps161';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps161';
+import { PixelForge } from './PixelForge.js?v=30fps162';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps162';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps161';
+} from './shaders/exNextGenFX.js?v=30fps162';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -519,6 +519,37 @@ export class Renderer {
       'rgba(22,34,86,0.26)'
     );
     this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)');
+    // Soft feathered atmospheric textures for organic volcanic smoke & low-lying ground mist (0 hard boxes!)
+    this.smokeDarkTex = makeGlow(
+      'rgba(22,10,8,0.80)',
+      'rgba(18,9,8,0.46)',
+      'rgba(14,7,6,0.14)'
+    );
+    this.smokeEmberTex = makeGlow(
+      'rgba(234,88,12,0.62)',
+      'rgba(154,52,18,0.28)',
+      'rgba(124,45,18,0.08)'
+    );
+    this.smokeRoseTex = makeGlow(
+      'rgba(225,29,72,0.54)',
+      'rgba(180,48,22,0.26)',
+      'rgba(124,30,18,0.08)'
+    );
+    this.mistCyanTex = makeGlow(
+      'rgba(125,211,252,0.48)',
+      'rgba(56,189,248,0.22)',
+      'rgba(14,116,144,0.06)'
+    );
+    this.mistRoseTex = makeGlow(
+      'rgba(251,164,185,0.44)',
+      'rgba(244,114,182,0.19)',
+      'rgba(136,19,55,0.05)'
+    );
+    this.mistVioletTex = makeGlow(
+      'rgba(192,132,252,0.46)',
+      'rgba(126,34,206,0.20)',
+      'rgba(59,7,100,0.05)'
+    );
   }
 
   getGlowForColor(col) {
@@ -2132,36 +2163,31 @@ export class Renderer {
     }
 
     // Stage-Aware Pixel-Stepped Flagstone Seams & Elemental Specular Trim
+    // (Skip flat horizontal flagstone ruler lines on organic basalt `inferno` & cracked permafrost `glacial` floors!)
     const seamStage = this.getActiveStageId();
     const seamPulse = 0.5 + 0.5 * Math.sin(this.time * 3.8);
     for (let r = 0; r < 5; r++) {
+      if (seamStage === 'inferno' || seamStage === 'glacial') break;
       const ry = Math.round((gy - 22 + r * r * 12) / 3) * 3;
-      if (seamStage === 'inferno' || seamStage === 'shogunate_inferno') {
-        ctx.fillStyle = seamStage === 'shogunate_inferno' ? 'rgba(18, 7, 6, 0.46)' : 'rgba(15, 6, 4, 0.44)';
+      if (seamStage === 'shogunate_inferno') {
+        ctx.fillStyle = 'rgba(18, 7, 6, 0.38)';
         ctx.fillRect(-800, ry, ww + 1600, 3);
-        const lavaSeamAlpha = (0.12 + 0.08 * Math.sin(this.time * 5.2 + r * 1.3)).toFixed(3);
-        ctx.fillStyle =
-          seamStage === 'shogunate_inferno'
-            ? `rgba(244, 63, 94, ${lavaSeamAlpha})`
-            : `rgba(251, 146, 60, ${lavaSeamAlpha})`;
-        ctx.fillRect(-800, ry + 1, ww + 1600, 2);
-        // Segmented incandescent ember-lit stone fault cracks
-        const coreAlpha = (0.16 + 0.10 * Math.sin(this.time * 6.8 + r * 1.9)).toFixed(3);
-        ctx.fillStyle = `rgba(254, 215, 170, ${coreAlpha})`;
-        for (let seg = -3; seg <= 6; seg++) {
-          const sx = Math.round((seg * 195 + r * 47) / 3) * 3;
-          const sw = 48 + ((seg * 17 + r * 11) & 31);
-          ctx.fillRect(sx, ry + 1, sw, 1);
+        if (r === 1 || r === 3) {
+          const lavaSeamAlpha = (0.09 + 0.05 * Math.sin(this.time * 5.2 + r * 1.3)).toFixed(3);
+          ctx.fillStyle = `rgba(244, 63, 94, ${lavaSeamAlpha})`;
+          ctx.fillRect(-800, ry + 1, ww + 1600, 2);
         }
-      } else if (seamStage === 'glacial' || seamStage === 'shogunate_glacial') {
-        ctx.fillStyle = 'rgba(6, 14, 30, 0.36)';
+      } else if (seamStage === 'shogunate_glacial') {
+        ctx.fillStyle = 'rgba(6, 14, 30, 0.30)';
         ctx.fillRect(-800, ry, ww + 1600, 3);
-        const iceSeamAlpha = (0.14 + 0.07 * Math.sin(this.time * 4.2 + r * 1.4)).toFixed(3);
-        ctx.fillStyle =
-          r % 2 === 0
-            ? `rgba(103, 232, 249, ${iceSeamAlpha})`
-            : `rgba(232, 121, 249, ${iceSeamAlpha})`;
-        ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        if (r === 1 || r === 3) {
+          const iceSeamAlpha = (0.10 + 0.04 * Math.sin(this.time * 4.2 + r * 1.4)).toFixed(3);
+          ctx.fillStyle =
+            r === 1
+              ? `rgba(103, 232, 249, ${iceSeamAlpha})`
+              : `rgba(232, 121, 249, ${iceSeamAlpha})`;
+          ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        }
       } else if (
         seamStage === 'cob_monitor' ||
         seamStage === 'cob_monitor_inferno' ||
@@ -2667,6 +2693,300 @@ export class Renderer {
     return c;
   }
 
+  // ---------------------------------------------------------------------------
+  // Shared HD-2D Stage Atmosphere & Pixel-Crisp Primitive Helpers
+  // (ZERO ctx.rotate / ctx.arc / ctx.ellipse / ctx.stroke / blocky fillRect bars)
+  // ---------------------------------------------------------------------------
+  _drawPixelSpark4(ctx, px, py, arm = 2, bodyCol = '#fde047', coreCol = '#ffffff') {
+    const x = Math.round(px);
+    const y = Math.round(py);
+    const a = Math.max(1, Math.round(arm));
+    ctx.fillStyle = bodyCol;
+    ctx.fillRect(x - a, y, a * 2 + 1, 1);
+    ctx.fillRect(x, y - a, 1, a * 2 + 1);
+    if (a >= 3) {
+      ctx.fillRect(x - 1, y - 1, 3, 3);
+    }
+    if (coreCol) {
+      ctx.fillStyle = coreCol;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  _drawPixelLine(ctx, x0, y0, x1, y1, outerCol, coreCol = null, step = 3, thick = 3) {
+    const dist = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    const safeStep = Math.max(1, step);
+    const steps = Math.max(1, Math.ceil(dist / safeStep));
+    const half = thick >> 1;
+    const coreThick = Math.max(1, thick - 2);
+    const coreHalf = coreThick >> 1;
+    for (let s = 0; s <= steps; s++) {
+      const u = s / steps;
+      const px = Math.round((x0 + (x1 - x0) * u) / safeStep) * safeStep;
+      const py = Math.round((y0 + (y1 - y0) * u) / safeStep) * safeStep;
+      ctx.fillStyle = outerCol;
+      ctx.fillRect(px - half, py - half, thick, thick);
+      if (coreCol) {
+        ctx.fillStyle = coreCol;
+        ctx.fillRect(px - coreHalf, py - coreHalf, coreThick, coreThick);
+      }
+    }
+  }
+
+  _drawForkedPixelLightning(ctx, startX, startY, segs, stepY, spreadX, seed, outerCol, coreCol, alpha) {
+    if (alpha <= 0.01) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    let lx = Math.round(startX / 3) * 3;
+    let ly = Math.round(startY / 3) * 3;
+    for (let i = 0; i < segs; i++) {
+      const dir = (i + seed) % 2 === 0 ? -1 : 1;
+      const zig = dir * (spreadX * 0.55 + (((i * 11 + seed * 7) % 5) * spreadX * 0.16));
+      const nx = Math.round((lx + zig) / 3) * 3;
+      const ny = Math.round((ly + stepY) / 3) * 3;
+      this._drawPixelLine(ctx, lx, ly, nx, ny, outerCol, coreCol, 2, 3);
+      if (i === 1 || i === 2) {
+        const bDir = i === 1 ? 1 : -1;
+        const bx = Math.round((nx + bDir * (spreadX * 1.15 + (seed % 7) * 3)) / 3) * 3;
+        const by = Math.round((ny + stepY * 0.78) / 3) * 3;
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.72));
+        this._drawPixelLine(ctx, nx, ny, bx, by, outerCol, coreCol, 2, 2);
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+      }
+      lx = nx;
+      ly = ny;
+    }
+    ctx.restore();
+  }
+
+  _drawPixelEllipseGlintRing(ctx, cx, cy, rx, ry, count, phase, colA, colB, baseAlpha, t, opts = {}) {
+    const grid = opts.grid || 3;
+    const tickW = opts.tickW || grid;
+    const tickH = opts.tickH || Math.max(2, grid - 1);
+    const pulseSpeed = opts.pulseSpeed || 3.2;
+    const twinkle = opts.twinkle !== false;
+    const arcSegments = opts.arcSegments || 0;
+    const arcDuty = opts.arcDuty || 0.65;
+    for (let i = 0; i < count; i++) {
+      if (arcSegments > 0) {
+        const segFrac = ((i / count) * arcSegments) % 1;
+        if (segFrac > arcDuty) continue;
+      }
+      const ang = phase + (i / count) * Math.PI * 2;
+      const px = Math.round((cx + Math.cos(ang) * rx) / grid) * grid;
+      const py = Math.round((cy + Math.sin(ang) * ry) / grid) * grid;
+      const pulse = twinkle ? 0.42 + 0.58 * Math.sin(t * pulseSpeed + i * 0.85) : 1;
+      const a = baseAlpha * pulse;
+      if (a <= 0.012) continue;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = i % 2 === 0 ? colA : colB;
+      ctx.fillRect(px - (tickW >> 1), py - (tickH >> 1), tickW, tickH);
+      if (opts.cardinalSpark && i % Math.max(1, Math.floor(count / 4)) === 0) {
+        ctx.globalAlpha = Math.min(0.82, a * 1.45);
+        this._drawPixelSpark4(ctx, px, py, 2, i % 2 === 0 ? colA : colB, '#ffffff');
+      }
+    }
+  }
+
+  _drawPixelSteppedClockHand(ctx, cx, cy, angle, len, baseThick, bodyCol, coreCol, rimCol = '#0f172a') {
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const step = 3;
+    const startD = -9;
+    const total = len - startD;
+    const steps = Math.max(4, Math.ceil(total / step));
+    // Pass 1: crisp dark pixel outline silhouette
+    ctx.fillStyle = rimCol;
+    for (let s = 0; s <= steps; s++) {
+      const d = startD + (s / steps) * total;
+      const u = Math.max(0, d / Math.max(1, len));
+      const w = Math.max(3, Math.round((baseThick * (1 - u * 0.72)) / 3) * 3);
+      const px = Math.round((cx + cosA * d) / 3) * 3;
+      const py = Math.round((cy + sinA * d) / 3) * 3;
+      const half = w >> 1;
+      ctx.fillRect(px - half - 1, py - half - 1, w + 2, w + 2);
+    }
+    // Pass 2: metallic pixel body + specular spine
+    for (let s = 0; s <= steps; s++) {
+      const d = startD + (s / steps) * total;
+      const u = Math.max(0, d / Math.max(1, len));
+      const w = Math.max(3, Math.round((baseThick * (1 - u * 0.72)) / 3) * 3);
+      const px = Math.round((cx + cosA * d) / 3) * 3;
+      const py = Math.round((cy + sinA * d) / 3) * 3;
+      const half = w >> 1;
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(px - half, py - half, w, w);
+      if (coreCol && u < 0.88) {
+        const cw = Math.max(1, w - 3);
+        ctx.fillStyle = coreCol;
+        ctx.fillRect(px - (cw >> 1), py - (cw >> 1), cw, cw);
+      }
+    }
+  }
+
+  _drawFeatheredAuroraRibbon(
+    ctx,
+    x0,
+    x1,
+    yBase,
+    waveAmp,
+    ribbonH,
+    freq,
+    speed,
+    glowA,
+    glowB,
+    maxAlpha,
+    alpha,
+    t,
+    lobes = 14
+  ) {
+    if (!glowA && !glowB) return;
+    const spanW = x1 - x0;
+    const stepW = spanW / Math.max(1, lobes);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < lobes; i++) {
+      const u = (i + 0.5) / lobes;
+      const env = Math.sin(u * Math.PI);
+      const wave =
+        Math.sin(u * freq + t * speed) * waveAmp +
+        Math.cos(u * (freq * 0.62) - t * (speed * 0.76)) * (waveAmp * 0.45);
+      const cx = x0 + u * spanW + Math.sin(t * 0.65 + i * 0.55) * 10;
+      const cy = yBase + wave;
+      const breathe = 0.72 + 0.28 * Math.sin(t * 1.8 + i * 0.75);
+      const w = Math.round(stepW * 2.75);
+      const h = Math.round(ribbonH * (0.76 + env * 0.42));
+      const a = Math.min(maxAlpha, maxAlpha * env * breathe) * alpha;
+      if (a <= 0.004) continue;
+      const gMain = i % 3 === 1 && glowB ? glowB : glowA || glowB;
+      ctx.globalAlpha = a;
+      ctx.drawImage(gMain, cx - w * 0.5, cy - h * 0.5, w, h);
+      if (glowB && i % 2 === 0) {
+        ctx.globalAlpha = a * 0.58;
+        ctx.drawImage(glowB, cx - w * 0.42, cy - h * 0.72, w * 0.84, h * 0.76);
+      }
+    }
+    ctx.restore();
+  }
+
+  _drawVolcanicSmokePlume(
+    ctx,
+    ventX,
+    ventY,
+    scale,
+    count,
+    seed,
+    t,
+    parallaxX,
+    alpha,
+    isRoseUnder = false
+  ) {
+    const darkTex = this.smokeDarkTex || this.shadowTex;
+    const underTex = isRoseUnder
+      ? this.smokeRoseTex || this.smokeEmberTex || this.glowCrimson
+      : this.smokeEmberTex || this.glowOrange;
+    if (!darkTex) return;
+    ctx.save();
+    for (let p = 0; p < count; p++) {
+      const u = (t * (0.14 + (p % 3) * 0.035) + seed + p * 0.27) % 1;
+      const env = Math.sin(u * Math.PI);
+      const driftX = (u * 80 + Math.sin(t * 1.25 + p * 1.4 + seed) * 18) * scale + parallaxX;
+      const riseY = u * 168 * scale;
+      const cx = ventX + driftX;
+      const cy = ventY - riseY;
+      const rx = (46 + u * 64) * scale;
+      const ry = (26 + u * 34) * scale;
+      const sFade = env * 0.34 * alpha;
+      if (sFade <= 0.01) continue;
+
+      // Multi-lobe organic feathered ash billows (ZERO dark fillRect boxes!)
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = sFade;
+      ctx.drawImage(darkTex, cx - rx, cy - ry, rx * 2, ry * 2);
+      ctx.globalAlpha = sFade * 0.70;
+      ctx.drawImage(darkTex, cx - rx * 1.15, cy - ry * 0.62, rx * 1.32, ry * 1.32);
+      ctx.drawImage(darkTex, cx + rx * 0.08, cy - ry * 0.88, rx * 1.22, ry * 1.22);
+
+      // Feathered molten thermal haze on the lower edge facing the fire/caldera
+      if (underTex && u < 0.66) {
+        const heatEnv = Math.sin(u * Math.PI) * (1 - u / 0.66);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.14, heatEnv * 0.14) * alpha;
+        ctx.drawImage(underTex, cx - rx * 0.85, cy + ry * 0.04, rx * 1.7, ry * 0.90);
+      }
+    }
+    ctx.restore();
+  }
+
+  _drawSoftFloorMist(ctx, drawX, drawW, gy, t, count, texA, texB, maxAlpha, alpha) {
+    if (!texA && !texB) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let m = 0; m < count; m++) {
+      const mDrift = Math.sin(t * (0.55 + (m % 3) * 0.12) + m * 1.65) * 68;
+      const mx = drawX + drawW * (0.14 + (m / Math.max(1, count - 1)) * 0.72) + mDrift;
+      const my = gy - 10 + (m % 3) * 11 + Math.sin(t * 1.3 + m) * 4;
+      const mw = 320 + (m % 3) * 56;
+      const mh = 44 + (m % 2) * 14;
+      const tex = m % 2 === 0 ? texA || texB : texB || texA;
+      ctx.globalAlpha =
+        Math.min(maxAlpha, maxAlpha * (0.68 + 0.32 * Math.sin(t * 1.5 + m * 1.2))) * alpha;
+      ctx.drawImage(tex, mx - mw * 0.5, my - mh * 0.5, mw, mh);
+    }
+    ctx.restore();
+  }
+
+  _drawPixelFloorEmberCrack(ctx, fx, fy, len, dir, pulse, alpha, t, idx, isRose = false) {
+    const x0 = Math.round((fx - len * 0.5) / 2) * 2;
+    const y0 = Math.round(fy / 2) * 2;
+    const x1 = Math.round((fx - len * 0.12) / 2) * 2;
+    const y1 = Math.round((fy + dir * 2) / 2) * 2;
+    const x2 = Math.round((fx + len * 0.24) / 2) * 2;
+    const y2 = Math.round((fy - dir * 2) / 2) * 2;
+    const x3 = Math.round((fx + len * 0.52) / 2) * 2;
+    const y3 = Math.round((fy + dir * 2) / 2) * 2;
+    const bx = Math.round((x2 + dir * 16) / 2) * 2;
+    const by = Math.round((y2 + dir * 6) / 2) * 2;
+
+    // Restrained warm floor ember radiance (<= 0.11 — zero washout!)
+    const gTex = isRose && this.glowCrimson ? this.glowCrimson : this.glowOrange;
+    if (gTex) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.11, 0.10 * pulse) * alpha;
+      ctx.drawImage(gTex, fx - len * 0.85, fy - 14, len * 1.7, 30);
+    }
+
+    // Continuous jagged pixel-art basalt/stone hairline crack (step === thick -> ZERO dotted gaps!)
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.62 * alpha;
+    this._drawPixelLine(ctx, x0, y0 + 1, x1, y1 + 1, '#260a05', null, 2, 3);
+    this._drawPixelLine(ctx, x1, y1 + 1, x2, y2 + 1, '#260a05', null, 2, 3);
+    this._drawPixelLine(ctx, x2, y2 + 1, x3, y3 + 1, '#260a05', null, 2, 3);
+
+    const veinCol = isRose ? '#c2410c' : '#ea580c';
+    const hotCol = isRose ? '#fb923c' : pulse > 0.82 ? '#fef08a' : '#fb923c';
+    ctx.globalAlpha = (0.48 + 0.26 * pulse) * alpha;
+    this._drawPixelLine(ctx, x0, y0, x1, y1, veinCol, hotCol, 2, 2);
+    this._drawPixelLine(ctx, x1, y1, x2, y2, veinCol, hotCol, 2, 2);
+    this._drawPixelLine(ctx, x2, y2, x3, y3, veinCol, null, 2, 2);
+    ctx.globalAlpha = (0.34 + 0.18 * pulse) * alpha;
+    this._drawPixelLine(ctx, x2, y2, bx, by, veinCol, null, 2, 2);
+
+    // Subtle crisp pixel ember spark pop along the crack
+    const popCycle = (t * (0.68 + (idx % 3) * 0.14) + idx * 0.39) % 1;
+    if (popCycle >= 0.72) {
+      const burst = (popCycle - 0.72) / 0.28;
+      ctx.globalAlpha = (1 - burst) * 0.82 * alpha;
+      for (let sp = -1; sp <= 1; sp += 2) {
+        const sx = Math.round(x1 + sp * (4 + burst * 14));
+        const sy = Math.round(y1 - Math.sin(burst * Math.PI) * (10 + (idx % 3) * 3));
+        ctx.fillStyle = sp < 0 ? '#fef08a' : '#fb923c';
+        ctx.fillRect(sx, sy, 2, 2);
+      }
+    }
+  }
+
   drawStagePixelFlames(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     // Exact measured brazier flame bounding boxes in arena_bg.png (normalized 0..1 coordinates)
     const braziers = [
@@ -2683,54 +3003,63 @@ export class Renderer {
     const bgW = flameLayer ? flameLayer.width : 640;
     const bgH = flameLayer ? flameLayer.height : 360;
 
-    // 0. Eclipse Rose-Window Corona Rays, Pulsing Solar Rim & Stained-Glass Lancet Backlights
+    // 0. Restrained HD-2D Eclipse Rose-Window Corona Glow & Crisp Pixel Rim Glints (ZERO vector spokes!)
     const eclipseX = drawX + drawW * 0.498;
     const eclipseY = drawY + drawH * 0.367;
     const eclipseR = 54;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.42 + 0.12 * Math.sin(t * 4.2);
-    ctx.drawImage(this.glowGold, eclipseX - 280, eclipseY - 280, 560, 560);
-    ctx.globalAlpha = 0.26 + 0.08 * Math.cos(t * 3.1);
-    ctx.drawImage(this.glowOrange, eclipseX - 210, eclipseY - 210, 420, 420);
-    // Cool stained-glass lancet wash on upper-left & warm solar wash on upper-right
-    ctx.globalAlpha = 0.16 + 0.05 * Math.sin(t * 2.3);
-    ctx.drawImage(this.glowCyan, drawX + drawW * 0.22 - 180, drawY + drawH * 0.18 - 140, 360, 280);
-    ctx.drawImage(this.glowOrange, drawX + drawW * 0.78 - 180, drawY + drawH * 0.18 - 140, 360, 280);
-
-    // Subtle rotating 12-spoke Eclipse Corona Rays & Baily's-Bead Rim Glints
-    for (let k = 0; k < 12; k++) {
-      const ang = (k / 12) * Math.PI * 2 + t * 0.18;
-      const spokePulse = 0.5 + 0.5 * Math.sin(t * 4.6 + k * 1.3);
-      const inner = eclipseR - 2;
-      const outer = eclipseR + 18 + spokePulse * 24;
-      ctx.strokeStyle = k % 2 === 0 ? '#fde047' : '#fb923c';
-      ctx.lineWidth = k % 3 === 0 ? 2.5 : 1.5;
-      ctx.globalAlpha = 0.14 + 0.12 * spokePulse;
-      ctx.beginPath();
-      ctx.moveTo(eclipseX + Math.cos(ang) * inner, eclipseY + Math.sin(ang) * inner);
-      ctx.lineTo(eclipseX + Math.cos(ang) * outer, eclipseY + Math.sin(ang) * outer);
-      ctx.stroke();
-
-      const bx = Math.round(eclipseX + Math.cos(ang + 0.12) * eclipseR);
-      const by = Math.round(eclipseY + Math.sin(ang + 0.12) * eclipseR);
-      ctx.globalAlpha = 0.35 + 0.35 * spokePulse;
-      ctx.fillStyle = spokePulse > 0.7 ? '#ffffff' : '#fde047';
-      ctx.fillRect(bx - 2, by - 2, 4, 4);
+    if (this.glowGold) {
+      ctx.globalAlpha = 0.18 + 0.05 * Math.sin(t * 3.6);
+      ctx.drawImage(this.glowGold, eclipseX - 240, eclipseY - 240, 480, 480);
     }
+    if (this.glowOrange) {
+      ctx.globalAlpha = 0.13 + 0.04 * Math.cos(t * 2.9);
+      ctx.drawImage(this.glowOrange, eclipseX - 180, eclipseY - 180, 360, 360);
+    }
+    // Restrained stained-glass lancet backlights strictly high in upper nave
+    ctx.globalAlpha = 0.10 + 0.03 * Math.sin(t * 2.1);
+    if (this.glowCyan) ctx.drawImage(this.glowCyan, drawX + drawW * 0.22 - 165, drawY + drawH * 0.17 - 125, 330, 250);
+    if (this.glowOrange) ctx.drawImage(this.glowOrange, drawX + drawW * 0.78 - 165, drawY + drawH * 0.17 - 125, 330, 250);
+
+    // Crisp pixel-snapped Baily's-Bead solar corona rim glints (0 ctx.stroke() spokes!)
+    ctx.globalCompositeOperation = 'source-over';
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      eclipseX,
+      eclipseY,
+      eclipseR,
+      eclipseR,
+      16,
+      t * 0.14,
+      '#fde047',
+      '#fb923c',
+      0.56,
+      t,
+      { grid: 3, tickW: 3, tickH: 3, pulseSpeed: 4.2, cardinalSpark: true }
+    );
     ctx.restore();
 
-    // Rising Golden & Frost Sanctuary Censer Sparks below the Rose Window
+    // Delicate Rising Sanctuary Censer Sparks below the Rose Window (ZERO chunky 8x8 plus-crosses!)
     ctx.save();
-    for (let j = 0; j < 16; j++) {
-      const life = (t * (0.45 + (j % 3) * 0.12) + j * 0.41) % 1;
-      const ox = Math.round((eclipseX + (j - 7.5) * 24 + Math.sin(t * 3.2 + j) * 10) / 4) * 4;
-      const oy = Math.round((eclipseY + 95 - life * 170) / 4) * 4;
-      ctx.globalAlpha = Math.sin(life * Math.PI) * 0.85;
-      ctx.fillStyle = j % 4 === 0 ? '#7dd3fc' : j % 3 === 0 ? '#ffffff' : j % 2 === 0 ? '#fde047' : '#fb923c';
-      ctx.fillRect(ox - 2, oy - 4, 4, 8);
-      ctx.fillRect(ox - 4, oy - 2, 8, 4);
+    ctx.globalCompositeOperation = 'source-over';
+    for (let j = 0; j < 14; j++) {
+      const life = (t * (0.42 + (j % 3) * 0.11) + j * 0.41) % 1;
+      const ox = Math.round((eclipseX + (j - 6.5) * 26 + Math.sin(t * 2.8 + j) * 10) / 3) * 3;
+      const oy = Math.round((eclipseY + 95 - life * 170) / 3) * 3;
+      const a = Math.sin(life * Math.PI) * 0.72;
+      if (a <= 0.03) continue;
+      ctx.globalAlpha = a;
+      const sparkCol = j % 4 === 0 ? '#7dd3fc' : j % 2 === 0 ? '#fde047' : '#fb923c';
+      if (j % 3 === 0) {
+        this._drawPixelSpark4(ctx, ox, oy, 2, sparkCol, '#ffffff');
+      } else {
+        ctx.fillStyle = sparkCol;
+        ctx.fillRect(ox - 1, oy - 1, 3, 3);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ox, oy, 1, 1);
+      }
     }
     ctx.restore();
 
@@ -2744,9 +3073,9 @@ export class Renderer {
       const flameH = worldBot - worldTop;
       const flameW = drawW * b.w;
 
-      // 1. Real-Time Heat-Wave Slice Animation using the Isolated Transparent Flame Layer
+      // 1. Clean Tapered Flame Breathing Animation (20 smooth strips, base-locked quadratic taper — ZERO harsh slice tearing!)
       if (flameLayer) {
-        const strips = 14;
+        const strips = 20;
         const srcX = (b.cx - b.w * 0.5) * bgW;
         const srcW = b.w * bgW;
         const srcTop = b.top * bgH;
@@ -2754,16 +3083,17 @@ export class Renderer {
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.52 + 0.22 * Math.sin(t * 11 + b.seed);
+        ctx.globalAlpha = 0.24 + 0.09 * Math.sin(t * 9.5 + b.seed);
         for (let s = 0; s < strips; s++) {
           const ratio = 1 - s / strips;
+          const taper = ratio * ratio;
           const sy = srcTop + (s / strips) * srcH;
-          const sh = srcH / strips + 0.5;
+          const sh = srcH / strips + 0.6;
           const dy = worldTop + (s / strips) * flameH;
-          const dh = flameH / strips + 1;
+          const dh = flameH / strips + 1.1;
 
           const wave = Math.round(
-            Math.sin(t * 11.5 + s * 0.65 + b.seed) * (ratio * 6.5 * b.scale)
+            Math.sin(t * 9.8 + s * 0.42 + b.seed) * (taper * 2.8 * b.scale)
           );
           ctx.drawImage(
             flameLayer,
@@ -2772,7 +3102,7 @@ export class Renderer {
             srcW,
             sh,
             Math.round(worldCx - flameW * 0.5 + wave),
-            Math.round(dy - ratio * 6 * b.scale),
+            Math.round(dy - taper * 2.8 * b.scale),
             Math.round(flameW),
             Math.round(dh)
           );
@@ -2780,56 +3110,57 @@ export class Renderer {
         ctx.restore();
       }
 
-      // 2. Volumetric Saturated Point-Light Halo & Wet Stone Floor Reflection Pool
-      const pulse = Math.sin(t * 7.5 + b.seed) * 18 * b.scale;
-      const glowR = 145 * b.scale + pulse;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.44;
-      ctx.drawImage(glow, worldCx - glowR, worldMidY - glowR, glowR * 2, glowR * 2);
-      ctx.globalAlpha = 0.30;
-      ctx.drawImage(glow, worldCx - glowR * 0.76, gy - 28, glowR * 1.52, 104 * b.scale);
-      ctx.restore();
+      // 2. Restrained Brazier Point-Light Halo & Floor Reflection (combat lane capped <= 0.16!)
+      const pulse = Math.sin(t * 6.8 + b.seed) * 10 * b.scale;
+      const glowR = 112 * b.scale + pulse;
+      if (glow) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.16;
+        ctx.drawImage(glow, worldCx - glowR, worldMidY - glowR, glowR * 2, glowR * 2);
+        ctx.globalAlpha = 0.11;
+        ctx.drawImage(glow, worldCx - glowR * 0.76, gy - 22, glowR * 1.52, 84 * b.scale);
+        ctx.restore();
+      }
 
-      // 3. Roaring Pixel-Art Flame Tongues & High-Rising Glowing Ember Trails
+      // 3. Crisp Rising Pixel-Art Brazier Embers (zero clunky 8x8 blocks!)
       ctx.save();
-      const emberCount = 18;
+      const emberCount = 12;
       for (let e = 0; e < emberCount; e++) {
-        const life = (t * (1.15 + (e % 4) * 0.28) + b.seed + e * 1.17) % 1;
-        const spread = (((e * 29) % 13) - 6) * 0.095 * flameW;
-        const sway = Math.sin(t * 8.5 + e * 1.9 + b.seed) * (9 * b.scale * life);
-        const ex = Math.round((worldCx + spread * (1 - life * 0.45) + sway) / 4) * 4;
-        const ey = Math.round((worldBot - flameH * (0.22 + life * 1.42)) / 4) * 4;
-        const pxSz = life < 0.28 ? 8 : life < 0.62 ? 6 : 4;
+        const life = (t * (1.05 + (e % 4) * 0.24) + b.seed + e * 1.17) % 1;
+        const spread = (((e * 29) % 13) - 6) * 0.088 * flameW;
+        const sway = Math.sin(t * 7.8 + e * 1.9 + b.seed) * (8 * b.scale * life);
+        const ex = Math.round((worldCx + spread * (1 - life * 0.45) + sway) / 3) * 3;
+        const ey = Math.round((worldBot - flameH * (0.24 + life * 1.32)) / 3) * 3;
+        const pxSz = life < 0.30 ? 4 : life < 0.68 ? 3 : 2;
         const fade = Math.max(0, 1 - life * 0.88);
 
-        if (e % 2 === 0) {
+        if (e % 3 === 0 && glow) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.38;
-          ctx.drawImage(glow, ex - 18, ey - 18, 36, 36);
+          ctx.globalAlpha = Math.min(0.15, fade * 0.15);
+          ctx.drawImage(glow, ex - 12, ey - 12, 24, 24);
         }
         ctx.globalCompositeOperation = 'source-over';
-        // Rising 2-step pixel ember wake
-        ctx.globalAlpha = fade * 0.48;
+        ctx.globalAlpha = fade * 0.42;
         ctx.fillStyle = pal[1];
-        ctx.fillRect(ex - 2, ey + pxSz * 0.5, 4, 6);
-        ctx.globalAlpha = fade * 0.95;
+        ctx.fillRect(ex - 1, ey + pxSz * 0.5, 2, 4);
+        ctx.globalAlpha = fade * 0.92;
         ctx.fillStyle = life < 0.25 ? '#ffffff' : life < 0.55 ? pal[3] : life < 0.8 ? pal[2] : pal[1];
-        ctx.fillRect(ex - pxSz * 0.5, ey - pxSz * 0.5, pxSz, pxSz);
+        ctx.fillRect(ex - (pxSz >> 1), ey - (pxSz >> 1), pxSz, pxSz);
       }
       ctx.restore();
     }
 
-    // 4. Rich Warm/Cool Dual-Elemental (Frost-Cyan vs Solar-Gold) Cathedral Floor Reflection Pools
+    // 4. Subtle Dual-Elemental Cathedral Floor Reflection Pools (capped <= 0.12 so EX heroes pop!)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     const altarCx = drawX + drawW * 0.50;
-    ctx.globalAlpha = 0.26 + 0.08 * Math.sin(t * 3.8);
-    ctx.drawImage(this.glowCyan, altarCx - 420, gy - 22, 390, 68);
-    ctx.drawImage(this.glowGold, altarCx + 30, gy - 22, 390, 68);
-    ctx.globalAlpha = 0.16 + 0.05 * Math.cos(t * 3.1);
-    ctx.drawImage(this.glowOrange, altarCx + 180, gy + 12, 340, 72);
-    ctx.drawImage(this.glowCyan, altarCx - 520, gy + 12, 340, 72);
+    ctx.globalAlpha = 0.11 + 0.03 * Math.sin(t * 3.4);
+    if (this.glowCyan) ctx.drawImage(this.glowCyan, altarCx - 420, gy - 18, 380, 58);
+    if (this.glowGold) ctx.drawImage(this.glowGold, altarCx + 40, gy - 18, 380, 58);
+    ctx.globalAlpha = 0.08 + 0.02 * Math.cos(t * 2.9);
+    if (this.glowOrange) ctx.drawImage(this.glowOrange, altarCx + 180, gy + 14, 320, 62);
+    if (this.glowCyan) ctx.drawImage(this.glowCyan, altarCx - 500, gy + 14, 320, 62);
     ctx.restore();
   }
 
@@ -2837,31 +3168,40 @@ export class Renderer {
     const t = this.time;
     const waterfallLayer = this.getSylvanWaterfallLayer(bg);
 
-    // 0. Smooth Volumetric Aurora Borealis Sky Veil
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for (let lobe = 0; lobe < 5; lobe++) {
-      const u = lobe / 4;
-      const ax = drawX + drawW * (0.20 + u * 0.60) + Math.sin(t * 1.1 + lobe * 1.4) * 28;
-      const ay = drawY + drawH * 0.14 + Math.cos(t * 0.9 + lobe * 1.1) * 12;
-      const glow = lobe % 2 === 0 ? this.glowEmerald : this.glowCyan;
-      ctx.globalAlpha = 0.22 + 0.07 * Math.sin(t * 2.4 + lobe);
-      ctx.drawImage(glow, ax - 190, ay - 75, 380, 150);
-    }
-    ctx.restore();
+    // 0. Silky Feathered Volumetric Aurora Sky Veil (strictly upper sky, capped <= 0.11)
+    this._drawFeatheredAuroraRibbon(
+      ctx,
+      drawX + drawW * 0.16,
+      drawX + drawW * 0.84,
+      drawY + drawH * 0.11,
+      14,
+      118,
+      4.4,
+      0.85,
+      this.glowEmerald,
+      this.glowCyan,
+      0.11,
+      1.0,
+      t,
+      12
+    );
 
-    // 1. Soft Crescent Moon Volumetric Glow
+    // 1. Restrained Crescent Moon Halo (preserves painted pixel moon detail!)
     const moonX = drawX + drawW * 0.50;
     const moonY = drawY + drawH * 0.25;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.34 + 0.08 * Math.sin(t * 3.2);
-    ctx.drawImage(this.glowEmerald, moonX - 240, moonY - 240, 480, 480);
-    ctx.globalAlpha = 0.24 + 0.06 * Math.cos(t * 2.5);
-    ctx.drawImage(this.glowCyan, moonX - 180, moonY - 180, 360, 360);
+    if (this.glowEmerald) {
+      ctx.globalAlpha = 0.16 + 0.04 * Math.sin(t * 2.9);
+      ctx.drawImage(this.glowEmerald, moonX - 220, moonY - 220, 440, 440);
+    }
+    if (this.glowCyan) {
+      ctx.globalAlpha = 0.11 + 0.03 * Math.cos(t * 2.3);
+      ctx.drawImage(this.glowCyan, moonX - 165, moonY - 165, 330, 330);
+    }
     ctx.restore();
 
-    // 2. Animated Waterfall Shimmer Strips, Plunge-Pool Mist Spray Halo & Foaming Cascade Droplets
+    // 2. Clean Animated Waterfall Shimmer & Restrained Plunge-Pool Mist (zero whiteout behind fighters!)
     const fallsLeft = drawX + drawW * 0.405;
     const fallsW = drawW * 0.192;
     const fallsTop = drawY + drawH * 0.505;
@@ -2871,22 +3211,22 @@ export class Renderer {
     if (waterfallLayer) {
       const wfW = waterfallLayer.width;
       const wfH = waterfallLayer.height;
-      const strips = 14;
+      const strips = 18;
       const srcX = wfW * 0.405;
       const srcW = wfW * 0.192;
       const srcTop = wfH * 0.505;
       const srcH = wfH * 0.227;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.36 + 0.10 * Math.sin(t * 6.4);
+      ctx.globalAlpha = 0.18 + 0.04 * Math.sin(t * 5.8);
       for (let s = 0; s < strips; s++) {
-        const flow = (s / strips + t * 0.55) % 1;
-        const sy = srcTop + ((s / strips) * srcH);
+        const flow = (s / strips + t * 0.52) % 1;
+        const sy = srcTop + (s / strips) * srcH;
         const sh = srcH / strips + 0.6;
         const dy = fallsTop + (s / strips) * fallsH;
         const dh = fallsH / strips + 1.2;
-        const shimmerX = Math.round(Math.sin(t * 8.5 + s * 0.9) * 3);
-        const dropY = Math.round(Math.sin(flow * Math.PI * 2) * 3);
+        const shimmerX = Math.round(Math.sin(t * 7.5 + s * 0.8) * 2);
+        const dropY = Math.round(Math.sin(flow * Math.PI * 2) * 2);
         ctx.drawImage(
           waterfallLayer,
           srcX,
@@ -2904,62 +3244,79 @@ export class Renderer {
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.36 + 0.09 * Math.sin(t * 5);
-    ctx.drawImage(this.glowCyan, fallsLeft - 45, fallsBot - 68, fallsW + 90, 138);
-    ctx.globalAlpha = 0.26 + 0.06 * Math.cos(t * 4.2);
-    ctx.drawImage(this.glowEmerald, fallsLeft - 14, fallsTop - 20, fallsW + 28, fallsH + 44);
-    // Drifting Mist Spray Cloud Puffs rising from plunge pool
-    for (let m = 0; m < 5; m++) {
-      const mx = fallsLeft + (m / 4) * fallsW + Math.sin(t * 1.9 + m * 1.6) * 20;
-      const my = fallsBot - 8 - Math.abs(Math.sin(t * 1.4 + m)) * 18;
-      ctx.globalAlpha = 0.18 + 0.06 * Math.sin(t * 3.1 + m);
-      ctx.drawImage(m % 2 === 0 ? this.glowCyan : this.glowWhite, mx - 58, my - 26, 116, 52);
+    if (this.glowCyan) {
+      ctx.globalAlpha = 0.13 + 0.03 * Math.sin(t * 4.4);
+      ctx.drawImage(this.glowCyan, fallsLeft - 36, fallsBot - 52, fallsW + 72, 108);
+    }
+    if (this.glowEmerald) {
+      ctx.globalAlpha = 0.09 + 0.02 * Math.cos(t * 3.8);
+      ctx.drawImage(this.glowEmerald, fallsLeft - 10, fallsTop - 14, fallsW + 20, fallsH + 28);
+    }
+    // Soft low-alpha mist puffs rising cleanly from the plunge pool
+    const mistTex = this.mistCyanTex || this.glowCyan;
+    if (mistTex) {
+      for (let m = 0; m < 4; m++) {
+        const mx = fallsLeft + (m / 3) * fallsW + Math.sin(t * 1.7 + m * 1.6) * 18;
+        const my = fallsBot - 6 - Math.abs(Math.sin(t * 1.3 + m)) * 14;
+        ctx.globalAlpha = 0.08 + 0.03 * Math.sin(t * 2.8 + m);
+        ctx.drawImage(mistTex, mx - 56, my - 22, 112, 44);
+      }
     }
 
-    for (let s = 0; s < 18; s++) {
-      const streamX = fallsLeft + (s / 17) * fallsW + Math.sin(t * 3.2 + s * 1.9) * 5;
-      const dropPhase = (t * (1.25 + (s % 4) * 0.18) + s * 0.21) % 1;
-      const dx = Math.round(streamX);
-      const dy = Math.round(fallsTop + dropPhase * fallsH);
+    for (let s = 0; s < 14; s++) {
+      const streamX = fallsLeft + (s / 13) * fallsW + Math.sin(t * 3.0 + s * 1.9) * 4;
+      const dropPhase = (t * (1.15 + (s % 4) * 0.16) + s * 0.21) % 1;
+      const dx = Math.round(streamX / 2) * 2;
+      const dy = Math.round((fallsTop + dropPhase * fallsH) / 2) * 2;
       const fade = Math.sin(dropPhase * Math.PI);
       const glow = s % 2 === 0 ? this.glowCyan : this.glowEmerald;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.35;
-      ctx.drawImage(glow, dx - 14, dy - 18, 28, 36);
+      if (s % 2 === 0 && glow) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.13, fade * 0.13);
+        ctx.drawImage(glow, dx - 10, dy - 12, 20, 24);
+      }
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.85;
+      ctx.globalAlpha = fade * 0.80;
       ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? '#7dd3fc' : '#6ee7b7';
-      ctx.fillRect(dx - 1, dy - 3, 3, 6);
+      ctx.fillRect(dx - 1, dy - 2, 2, 5);
     }
     ctx.restore();
 
-    // 2.5. Glowing Floor Rune Pulse Rings & Ley-Band Shimmer on the Wet Sanctuary Flagstones
+    // 2.5. Pixel-Snapped Runic Floor Constellation Glints on Wet Sanctuary Flagstones (ZERO ctx.ellipse!)
     ctx.save();
     const runeCx = drawX + drawW * 0.50;
-    const runePulse = 0.5 + 0.5 * Math.sin(t * 3.0);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = '#34d399';
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.16 + 0.10 * runePulse;
-    ctx.beginPath();
-    ctx.ellipse(runeCx, gy + 30, 210 + runePulse * 8, 22 + runePulse * 2, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.globalAlpha = 0.14 + 0.08 * (1 - runePulse);
-    ctx.beginPath();
-    ctx.ellipse(runeCx, gy + 30, 145, 15, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    for (let r = 0; r < 10; r++) {
-      const rx = Math.round(runeCx + (r - 4.5) * 92);
-      const ry = gy + (r % 2 === 0 ? 12 : 48);
-      const rFade = 0.35 + 0.45 * Math.sin(t * 4.2 + r * 1.1);
-      ctx.globalAlpha = rFade * 0.36;
-      ctx.fillStyle = r % 2 === 0 ? '#6ee7b7' : '#7dd3fc';
-      ctx.fillRect(rx - 4, ry, 8, 2);
-    }
+    ctx.globalCompositeOperation = 'source-over';
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      runeCx,
+      gy + 30,
+      212,
+      22,
+      28,
+      t * 0.12,
+      '#34d399',
+      '#6ee7b7',
+      0.34,
+      t,
+      { grid: 3, tickW: 6, tickH: 2, pulseSpeed: 3.1, cardinalSpark: true }
+    );
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      runeCx,
+      gy + 30,
+      142,
+      15,
+      20,
+      -t * 0.16,
+      '#38bdf8',
+      '#7dd3fc',
+      0.28,
+      t,
+      { grid: 3, tickW: 4, tickH: 2, pulseSpeed: 3.6 }
+    );
     ctx.restore();
 
-    // 3. 6 Hanging Bioluminescent Crystal Lanterns & Swarming Glowing Forest Fireflies with Trails
+    // 3. 6 Hanging Bioluminescent Crystal Lanterns & Crisp Forest Fireflies (combat glow capped <= 0.16!)
     const lanterns = [
       { cx: 0.064, cy: 0.33, scale: 1.25, isCyan: false, seed: 1.1 },
       { cx: 0.150, cy: 0.41, scale: 1.05, isCyan: true, seed: 2.4 },
@@ -2974,63 +3331,66 @@ export class Renderer {
       const ly = drawY + drawH * l.cy;
       const pal = l.isCyan ? CYAN_FIRE_PAL : EMERALD_FIRE_PAL;
       const glow = l.isCyan ? this.glowCyan : this.glowEmerald;
-      const glowR = (130 + Math.sin(t * 5.5 + l.seed) * 16) * l.scale;
+      const glowR = (106 + Math.sin(t * 5.0 + l.seed) * 12) * l.scale;
 
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.42;
-      ctx.drawImage(glow, lx - glowR, ly - glowR, glowR * 2, glowR * 2);
-      ctx.globalAlpha = 0.26;
-      ctx.drawImage(glow, lx - glowR * 0.68, gy - 24, glowR * 1.36, 88 * l.scale);
-      ctx.restore();
+      if (glow) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.16;
+        ctx.drawImage(glow, lx - glowR, ly - glowR, glowR * 2, glowR * 2);
+        ctx.globalAlpha = 0.10;
+        ctx.drawImage(glow, lx - glowR * 0.68, gy - 20, glowR * 1.36, 72 * l.scale);
+        ctx.restore();
+      }
 
       ctx.save();
       ctx.fillStyle = pal[2];
-      ctx.fillRect(Math.round(lx) - 4, Math.round(ly) - 4, 8, 8);
+      ctx.fillRect(Math.round(lx) - 3, Math.round(ly) - 3, 6, 6);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(Math.round(lx) - 2, Math.round(ly) - 2, 4, 4);
+      ctx.fillRect(Math.round(lx) - 1, Math.round(ly) - 1, 2, 2);
 
-      for (let e = 0; e < 8; e++) {
-        const life = (t * (0.85 + (e % 3) * 0.22) + l.seed + e * 1.19) % 1;
-        const sx = Math.round(lx + Math.sin(t * 4.2 + e * 2.1 + l.seed) * (32 * l.scale));
-        const sy = Math.round(ly + 22 - life * (95 * l.scale));
-        const prevSx = Math.round(lx + Math.sin((t - 0.06) * 4.2 + e * 2.1 + l.seed) * (32 * l.scale));
-        const prevSy = sy + 5;
+      for (let e = 0; e < 6; e++) {
+        const life = (t * (0.78 + (e % 3) * 0.20) + l.seed + e * 1.19) % 1;
+        const sx = Math.round((lx + Math.sin(t * 3.9 + e * 2.1 + l.seed) * (30 * l.scale)) / 2) * 2;
+        const sy = Math.round((ly + 20 - life * (90 * l.scale)) / 2) * 2;
         const fade = Math.max(0, 1 - life * 0.85);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.36;
-        ctx.drawImage(glow, sx - 14, sy - 14, 28, 28);
+        if (e % 2 === 0 && glow) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.14, fade * 0.14);
+          ctx.drawImage(glow, sx - 11, sy - 11, 22, 22);
+        }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.45;
-        ctx.fillStyle = pal[2];
-        ctx.fillRect(prevSx - 1, prevSy - 1, 2, 2);
-        ctx.globalAlpha = fade * 0.92;
+        ctx.globalAlpha = fade * 0.90;
         ctx.fillStyle = e % 3 === 0 ? '#fef08a' : life < 0.45 ? pal[3] : pal[1];
-        ctx.fillRect(sx - 2, sy - 2, 4, 4);
+        ctx.fillRect(sx - 1, sy - 1, 3, 3);
       }
       ctx.restore();
     }
 
-    // 4. Drifting Wind-Swept Bioluminescent Star-Petals
+    // 4. Drifting Wind-Swept Bioluminescent Star-Petals (crisp pixel silhouettes, restrained glow <= 0.12)
     ctx.save();
-    for (let p = 0; p < 22; p++) {
+    for (let p = 0; p < 18; p++) {
       const u = (t * (0.14 + (p % 3) * 0.04) + p * 0.17) % 1;
-      const px = Math.round(drawX + drawW * (0.08 + u * 0.84));
-      const py = Math.round(
-        drawY +
-          drawH * (0.22 + ((p * 0.19 + u * 0.55) % 0.58)) +
-          Math.sin(t * 3.5 + p * 1.7) * 18
-      );
+      const px = Math.round((drawX + drawW * (0.08 + u * 0.84)) / 2) * 2;
+      const py =
+        Math.round(
+          (drawY +
+            drawH * (0.22 + ((p * 0.19 + u * 0.55) % 0.58)) +
+            Math.sin(t * 3.2 + p * 1.7) * 16) /
+            2
+        ) * 2;
       const gTex = p % 3 === 0 ? this.glowGold : p % 2 === 0 ? this.glowEmerald : this.glowCyan;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.32;
-      ctx.drawImage(gTex, px - 14, py - 14, 28, 28);
+      if (p % 2 === 0 && gTex) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.12;
+        ctx.drawImage(gTex, px - 10, py - 10, 20, 20);
+      }
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.90;
+      ctx.globalAlpha = 0.88;
       ctx.fillStyle = p % 3 === 0 ? '#fef08a' : p % 2 === 0 ? '#6ee7b7' : '#7dd3fc';
-      ctx.fillRect(px - 3, py - 1, 5, 3);
+      ctx.fillRect(px - 2, py - 1, 4, 2);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px - 1, py - 1, 2, 2);
+      ctx.fillRect(px - 1, py - 1, 2, 1);
     }
     ctx.restore();
   }
@@ -3038,31 +3398,38 @@ export class Renderer {
   drawBoneyardStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 0. Breathing Blood-Moon Atmospheric Horizon Pulse & Distant Spire Lightning Glint
-    const moonPulse = 0.22 + 0.12 * Math.sin(t * 2.1);
+    // 0. Restrained Blood-Moon Atmospheric Horizon Pulse & Forked Pixel Spire Lightning (ZERO vector ctx.stroke!)
+    const moonPulse = 0.10 + 0.03 * Math.sin(t * 2.1);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = moonPulse;
-    ctx.drawImage(this.glowViolet, drawX + drawW * 0.25, drawY + drawH * 0.02, drawW * 0.5, drawH * 0.45);
+    if (this.glowViolet) {
+      ctx.globalAlpha = moonPulse;
+      ctx.drawImage(this.glowViolet, drawX + drawW * 0.25, drawY + drawH * 0.02, drawW * 0.5, drawH * 0.36);
+    }
 
-    // Occasional Distant Necropolis Spire Lightning Glint (upper sky only, zero fighter washout)
+    // Occasional Distant Necropolis Spire Forked Pixel Lightning (upper sky only, zero fighter washout)
     const boltCycle = (t * 0.24) % 1;
     if (boltCycle > 0.925) {
       const flash = Math.sin(((boltCycle - 0.925) / 0.075) * Math.PI);
       const isRightSpire = Math.floor(t * 0.24) % 2 === 1;
       const bx = drawX + drawW * (isRightSpire ? 0.68 : 0.31);
-      const by = drawY + drawH * 0.08;
-      ctx.globalAlpha = flash * 0.28;
-      ctx.drawImage(this.glowViolet, bx - 160, by - 40, 320, 240);
-      ctx.strokeStyle = '#f5d0fe';
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = flash * 0.55;
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx - 12, by + 42);
-      ctx.lineTo(bx + 8, by + 76);
-      ctx.lineTo(bx - 6, by + 128);
-      ctx.stroke();
+      const by = drawY + drawH * 0.07;
+      if (this.glowViolet) {
+        ctx.globalAlpha = Math.min(0.16, flash * 0.16);
+        ctx.drawImage(this.glowViolet, bx - 140, by - 36, 280, 210);
+      }
+      this._drawForkedPixelLightning(
+        ctx,
+        bx,
+        by,
+        4,
+        32,
+        14,
+        Math.floor(t * 0.24),
+        '#e879f9',
+        '#ffffff',
+        flash * 0.72
+      );
     }
     ctx.restore();
 
@@ -3087,7 +3454,7 @@ export class Renderer {
       const flameW = drawW * b.w;
 
       if (flameLayer) {
-        const strips = 12;
+        const strips = 18;
         const srcX = (b.cx - b.w * 0.5) * bgW;
         const srcW = b.w * bgW;
         const srcTop = b.top * bgH;
@@ -3095,14 +3462,15 @@ export class Renderer {
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.54 + 0.20 * Math.sin(t * 10 + b.seed);
+        ctx.globalAlpha = 0.25 + 0.09 * Math.sin(t * 9.2 + b.seed);
         for (let s = 0; s < strips; s++) {
           const ratio = 1 - s / strips;
+          const taper = ratio * ratio;
           const sy = srcTop + (s / strips) * srcH;
-          const sh = srcH / strips + 0.5;
+          const sh = srcH / strips + 0.6;
           const dy = worldTop + (s / strips) * flameH;
-          const dh = flameH / strips + 1;
-          const wave = Math.round(Math.sin(t * 11 + s * 0.65 + b.seed) * (ratio * 6.5 * b.scale));
+          const dh = flameH / strips + 1.1;
+          const wave = Math.round(Math.sin(t * 9.5 + s * 0.45 + b.seed) * (taper * 2.8 * b.scale));
           ctx.drawImage(
             flameLayer,
             srcX,
@@ -3110,7 +3478,7 @@ export class Renderer {
             srcW,
             sh,
             Math.round(worldCx - flameW * 0.5 + wave),
-            Math.round(dy - ratio * 5 * b.scale),
+            Math.round(dy - taper * 2.5 * b.scale),
             Math.round(flameW),
             Math.round(dh)
           );
@@ -3118,34 +3486,36 @@ export class Renderer {
         ctx.restore();
       }
 
-      const glowR = (145 + Math.sin(t * 7 + b.seed) * 18) * b.scale;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.44;
-      ctx.drawImage(this.glowViolet, worldCx - glowR, worldMidY - glowR, glowR * 2, glowR * 2);
-      ctx.globalAlpha = 0.28;
-      ctx.drawImage(this.glowViolet, worldCx - glowR * 0.72, gy - 26, glowR * 1.44, 96 * b.scale);
-      ctx.restore();
+      const glowR = (110 + Math.sin(t * 6.4 + b.seed) * 10) * b.scale;
+      if (this.glowViolet) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.16;
+        ctx.drawImage(this.glowViolet, worldCx - glowR, worldMidY - glowR, glowR * 2, glowR * 2);
+        ctx.globalAlpha = 0.10;
+        ctx.drawImage(this.glowViolet, worldCx - glowR * 0.72, gy - 20, glowR * 1.44, 78 * b.scale);
+        ctx.restore();
+      }
 
-      // Dancing Crimson-Violet Soul-Fire Pixel Embers & Curling Wisps
+      // Crisp Dancing Crimson-Violet Soul-Fire Pixel Embers (capped glow <= 0.15)
       ctx.save();
-      for (let e = 0; e < 16; e++) {
-        const life = (t * (1.2 + (e % 3) * 0.28) + b.seed + e * 1.31) % 1;
-        const spread = (((e * 23) % 11) - 5) * 0.11 * flameW;
-        const sway = Math.sin(t * 8.8 + e * 1.7 + b.seed) * (10 * b.scale * life);
-        const ex = Math.round(worldCx + spread * (1 - life * 0.5) + sway);
-        const ey = Math.round(worldBot - flameH * (0.22 + life * 1.35));
-        const pxSz = life < 0.35 ? 5 : life < 0.72 ? 4 : 3;
-        const fade = Math.max(0, 0.96 - life * 0.85);
-        if (e % 2 === 0) {
+      for (let e = 0; e < 12; e++) {
+        const life = (t * (1.1 + (e % 3) * 0.24) + b.seed + e * 1.31) % 1;
+        const spread = (((e * 23) % 11) - 5) * 0.10 * flameW;
+        const sway = Math.sin(t * 8.0 + e * 1.7 + b.seed) * (8 * b.scale * life);
+        const ex = Math.round((worldCx + spread * (1 - life * 0.5) + sway) / 2) * 2;
+        const ey = Math.round((worldBot - flameH * (0.24 + life * 1.28)) / 2) * 2;
+        const pxSz = life < 0.35 ? 4 : life < 0.72 ? 3 : 2;
+        const fade = Math.max(0, 0.94 - life * 0.85);
+        if (e % 3 === 0 && this.glowViolet) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.36;
-          ctx.drawImage(this.glowViolet, ex - 16, ey - 16, 32, 32);
+          ctx.globalAlpha = Math.min(0.14, fade * 0.14);
+          ctx.drawImage(this.glowViolet, ex - 12, ey - 12, 24, 24);
         }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.45;
+        ctx.globalAlpha = fade * 0.40;
         ctx.fillStyle = ABYSSAL_FIRE_PAL[1];
-        ctx.fillRect(ex - 1, ey + pxSz * 0.5, 2, 5);
+        ctx.fillRect(ex - 1, ey + pxSz * 0.5, 2, 4);
         ctx.globalAlpha = fade;
         ctx.fillStyle =
           life < 0.22
@@ -3155,70 +3525,78 @@ export class Renderer {
               : life < 0.78
                 ? ABYSSAL_FIRE_PAL[2]
                 : ABYSSAL_FIRE_PAL[1];
-        ctx.fillRect(ex - pxSz * 0.5, ey - pxSz * 0.5, pxSz, pxSz);
+        ctx.fillRect(ex - (pxSz >> 1), ey - (pxSz >> 1), pxSz, pxSz);
       }
       ctx.restore();
     }
 
-    // 2. Blood-Crimson & Royal-Purple Eclipse Moon Corona Ring
+    // 2. Restrained Blood-Crimson & Royal-Purple Eclipse Moon Corona (ZERO smooth ctx.arc vector rings!)
     const moonX = drawX + drawW * 0.498;
     const moonY = drawY + drawH * 0.264;
     const moonR = Math.round(drawW * 0.101);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.38 + 0.10 * Math.sin(t * 3.8);
-    ctx.drawImage(this.glowViolet, moonX - 250, moonY - 250, 500, 500);
+    if (this.glowViolet) {
+      ctx.globalAlpha = 0.17 + 0.04 * Math.sin(t * 3.4);
+      ctx.drawImage(this.glowViolet, moonX - 235, moonY - 235, 470, 470);
+    }
     if (this.glowCrimson) {
-      ctx.globalAlpha = 0.26 + 0.08 * Math.cos(t * 3.1);
-      ctx.drawImage(this.glowCrimson, moonX - 220, moonY - 220, 440, 440);
+      ctx.globalAlpha = 0.14 + 0.03 * Math.cos(t * 2.9);
+      ctx.drawImage(this.glowCrimson, moonX - 205, moonY - 205, 410, 410);
     }
-    ctx.strokeStyle = '#f43f5e';
-    ctx.lineWidth = 2.5;
-    ctx.globalAlpha = 0.28 + 0.12 * Math.sin(t * 4.4);
-    ctx.beginPath();
-    ctx.arc(moonX, moonY, moonR + 2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = '#e879f9';
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.22 + 0.08 * Math.cos(t * 3.6);
-    ctx.beginPath();
-    ctx.arc(moonX, moonY, moonR + 7, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      moonX,
+      moonY,
+      moonR + 2,
+      moonR + 2,
+      28,
+      t * 0.08,
+      '#fb7185',
+      '#e879f9',
+      0.42,
+      t,
+      { grid: 3, tickW: 3, tickH: 3, pulseSpeed: 3.4, cardinalSpark: true }
+    );
     ctx.restore();
 
-    // 2.5. Low-Rolling Violet & Crimson Crypt Ground-Mist Ribbons along `gy`
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for (let m = 0; m < 7; m++) {
-      const drift = ((t * 28 + m * 210) % (drawW * 0.92)) - drawW * 0.46;
-      const mx = drawX + drawW * 0.5 + drift;
-      const my = gy - 8 + (m % 3) * 14 + Math.sin(t * 1.8 + m) * 5;
-      const mistGlow = m % 3 === 0 && this.glowCrimson ? this.glowCrimson : this.glowViolet;
-      ctx.globalAlpha = 0.12 + 0.05 * Math.sin(t * 2.2 + m * 1.3);
-      ctx.drawImage(mistGlow, mx - 185, my - 26, 370, 52);
-    }
-    ctx.restore();
+    // 2.5. Soft Low-Rolling Feathered Crypt Ground-Mist (capped <= 0.09 — zero fighter leg washout!)
+    this._drawSoftFloorMist(
+      ctx,
+      drawX,
+      drawW,
+      gy,
+      t,
+      6,
+      this.mistVioletTex || this.glowViolet,
+      this.mistRoseTex || this.glowCrimson,
+      0.09,
+      1.0
+    );
 
-    // 3. Rising Spectral Wraith Wisps with Soft Volumetric Glow Halos
+    // 3. Rising Spectral Wraith Wisps with Restrained Halos (<= 0.15!)
     ctx.save();
-    for (let w = 0; w < 18; w++) {
-      const life = (t * (0.44 + (w % 3) * 0.14) + w * 0.67) % 1;
-      const wx = drawX + drawW * (0.10 + (w / 17) * 0.80) + Math.sin(t * 3.4 + w * 1.9) * 32;
-      const wy = gy + 14 - life * 290;
-      const rx = Math.round(wx);
-      const ry = Math.round(wy);
+    for (let w = 0; w < 14; w++) {
+      const life = (t * (0.40 + (w % 3) * 0.13) + w * 0.67) % 1;
+      const wx = drawX + drawW * (0.10 + (w / 13) * 0.80) + Math.sin(t * 3.1 + w * 1.9) * 28;
+      const wy = gy + 14 - life * 270;
+      const rx = Math.round(wx / 2) * 2;
+      const ry = Math.round(wy / 2) * 2;
       const fade = Math.sin(life * Math.PI);
 
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.44;
-      ctx.drawImage(this.glowViolet, rx - 22, ry - 22, 44, 44);
+      if (w % 2 === 0 && this.glowViolet) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.15, fade * 0.15);
+        ctx.drawImage(this.glowViolet, rx - 15, ry - 15, 30, 30);
+      }
 
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.90;
+      ctx.globalAlpha = fade * 0.88;
       ctx.fillStyle = w % 3 === 0 ? '#e11d48' : '#a855f7';
-      ctx.fillRect(rx - 2, ry - 2, 5, 5);
+      ctx.fillRect(rx - 2, ry - 2, 4, 4);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(rx - 1, ry - 1, 3, 3);
+      ctx.fillRect(rx - 1, ry - 1, 2, 2);
     }
     ctx.restore();
   }
@@ -3226,8 +3604,9 @@ export class Renderer {
   drawClocktowerStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 0. Occasional Shooting Stars streaking across the Upper Starry Observatory Arches (`y = 0.08..0.28`)
+    // 0. Crisp Pixel-Stepped Shooting Stars across the Upper Observatory Arches (ZERO vector ctx.stroke!)
     ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
     for (let s = 0; s < 2; s++) {
       const period = (t * (0.28 + s * 0.09) + s * 0.53) % 1;
       if (period < 0.24) {
@@ -3236,91 +3615,87 @@ export class Renderer {
         const sx = archBaseX + u * (drawW * 0.10);
         const sy = drawY + drawH * (0.10 + s * 0.05) + u * (drawH * 0.11);
         const sFade = Math.sin(u * Math.PI);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = s === 0 ? '#5eead4' : '#fde047';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = sFade * 0.72;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx - 28, sy - 18);
-        ctx.stroke();
-        ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = sFade * 0.95;
-        ctx.fillRect(Math.round(sx) - 2, Math.round(sy) - 2, 4, 4);
+        const tailCol = s === 0 ? '#5eead4' : '#fde047';
+        ctx.globalAlpha = sFade * 0.62;
+        this._drawPixelLine(ctx, sx - 24, sy - 15, sx, sy, tailCol, null, 3, 2);
+        ctx.globalAlpha = sFade * 0.92;
+        this._drawPixelSpark4(ctx, sx, sy, 2, tailCol, '#ffffff');
       }
     }
     ctx.restore();
 
-    // 1. Central Astronomical Stained-Glass Clock Dial with Counter-Rotating Celestial Astrolabe Rings & Tapered Hands
+    // 1. Central Astronomical Stained-Glass Clock Dial — Stepped Pixel Astrolabe & Zero-Rotate Pixel Hands!
     const clockX = drawX + drawW * 0.502;
     const clockY = drawY + drawH * 0.315;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.38 + 0.10 * Math.sin(t * 3.6);
-    ctx.drawImage(this.glowTeal, clockX - 250, clockY - 250, 500, 500);
-    ctx.globalAlpha = 0.28 + 0.08 * Math.cos(t * 2.8);
-    ctx.drawImage(this.glowGold, clockX - 190, clockY - 190, 380, 380);
-
-    // Counter-Rotating Astrolabe Rings & Orbiting Celestial Nodes
-    for (let ring = 0; ring < 2; ring++) {
-      const rAst = ring === 0 ? 112 : 154;
-      const rot = ring === 0 ? t * 0.32 : -t * 0.21;
-      ctx.strokeStyle = ring === 0 ? '#2dd4bf' : '#facc15';
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.26 + 0.08 * Math.sin(t * 3.0 + ring);
-      for (let arcIdx = 0; arcIdx < 4; arcIdx++) {
-        const a0 = rot + (arcIdx * Math.PI) / 2 + 0.14;
-        ctx.beginPath();
-        ctx.arc(clockX, clockY, rAst, a0, a0 + Math.PI * 0.34);
-        ctx.stroke();
-        const nx = Math.round(clockX + Math.cos(a0 - 0.07) * rAst);
-        const ny = Math.round(clockY + Math.sin(a0 - 0.07) * rAst);
-        ctx.fillStyle = ring === 0 ? '#99f6e4' : '#fef08a';
-        ctx.fillRect(nx - 2, ny - 2, 4, 4);
-      }
+    if (this.glowTeal) {
+      ctx.globalAlpha = 0.16 + 0.04 * Math.sin(t * 3.2);
+      ctx.drawImage(this.glowTeal, clockX - 220, clockY - 220, 440, 440);
     }
+    if (this.glowGold) {
+      ctx.globalAlpha = 0.12 + 0.03 * Math.cos(t * 2.5);
+      ctx.drawImage(this.glowGold, clockX - 170, clockY - 170, 340, 340);
+    }
+
+    // Counter-Rotating Pixel-Snapped Astrolabe Arcs & Constellation Nodes (ZERO ctx.arc!)
+    ctx.globalCompositeOperation = 'source-over';
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      clockX,
+      clockY,
+      112,
+      112,
+      44,
+      t * 0.28,
+      '#2dd4bf',
+      '#99f6e4',
+      0.46,
+      t,
+      { grid: 3, tickW: 3, tickH: 3, arcSegments: 4, arcDuty: 0.62, cardinalSpark: true }
+    );
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      clockX,
+      clockY,
+      154,
+      154,
+      56,
+      -t * 0.19,
+      '#eab308',
+      '#fef08a',
+      0.42,
+      t,
+      { grid: 3, tickW: 3, tickH: 3, arcSegments: 4, arcDuty: 0.58, cardinalSpark: true }
+    );
     ctx.restore();
 
+    // Pixel-Grid Stepped Clockwork Hands (ZERO ctx.rotate! Locked cleanly to the 3px HD-2D stage grid!)
     ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
     const secAngle = Math.floor(t * 6) * ((Math.PI * 2) / 24) - Math.PI * 0.5;
     const minAngle = t * 0.85 - Math.PI * 0.5;
     const hourAngle = t * 0.18 - Math.PI * 0.25;
 
-    const drawTaperedHand = (angle, len, baseW, col, coreCol) => {
-      ctx.save();
-      ctx.translate(clockX, clockY);
-      ctx.rotate(angle);
-      ctx.fillStyle = col;
-      ctx.beginPath();
-      ctx.moveTo(-8, 0);
-      ctx.lineTo(0, -baseW);
-      ctx.lineTo(len, 0);
-      ctx.lineTo(0, baseW);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = coreCol;
-      ctx.beginPath();
-      ctx.moveTo(0, -baseW * 0.45);
-      ctx.lineTo(len * 0.88, 0);
-      ctx.lineTo(0, baseW * 0.45);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    };
+    this._drawPixelSteppedClockHand(ctx, clockX, clockY, hourAngle, 58, 9, '#eab308', '#fef08a', '#0f172a');
+    this._drawPixelSteppedClockHand(ctx, clockX, clockY, minAngle, 84, 6, '#14b8a6', '#99f6e4', '#0f172a');
+    this._drawPixelSteppedClockHand(ctx, clockX, clockY, secAngle, 92, 3, '#fde047', '#ffffff', '#0f172a');
 
-    drawTaperedHand(hourAngle, 58, 4.5, '#eab308', '#fef08a');
-    drawTaperedHand(minAngle, 84, 3.5, '#14b8a6', '#5eead4');
-    drawTaperedHand(secAngle, 92, 2.0, '#fde047', '#ffffff');
-
-    // Central clockwork pivot boss
-    ctx.fillStyle = '#fde047';
-    ctx.fillRect(Math.round(clockX) - 5, Math.round(clockY) - 5, 10, 10);
+    // Central stepped pixel clockwork pivot boss
+    const pivX = Math.round(clockX / 3) * 3;
+    const pivY = Math.round(clockY / 3) * 3;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(pivX - 6, pivY - 6, 12, 12);
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(pivX - 5, pivY - 5, 10, 10);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(pivX - 3, pivY - 3, 6, 6);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(Math.round(clockX) - 2, Math.round(clockY) - 2, 4, 4);
+    ctx.fillRect(pivX - 1, pivY - 1, 2, 2);
     ctx.restore();
 
-    // 2. 6 Pulsing Aether-Teal & Imperial-Gold Observatory Lanterns + Anti-Gravity Time-Sand Motes
+    // 2. 6 Pulsing Aether-Teal & Imperial-Gold Observatory Lanterns (combat glow capped <= 0.16!)
     const lanterns = [
       { cx: 0.075, cy: 0.36, scale: 1.20, isTeal: true, seed: 1.3 },
       { cx: 0.176, cy: 0.42, scale: 1.00, isTeal: false, seed: 2.6 },
@@ -3335,64 +3710,71 @@ export class Renderer {
       const ly = drawY + drawH * l.cy;
       const glow = l.isTeal ? this.glowTeal : this.glowGold;
       const pal = l.isTeal ? CHRONO_FIRE_PAL : RADIANT_FIRE_PAL;
-      const glowR = (132 + Math.sin(t * 6.5 + l.seed) * 16) * l.scale;
+      const glowR = (106 + Math.sin(t * 5.8 + l.seed) * 10) * l.scale;
+
+      if (glow) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.16;
+        ctx.drawImage(glow, lx - glowR, ly - glowR, glowR * 2, glowR * 2);
+        ctx.globalAlpha = 0.10;
+        ctx.drawImage(glow, lx - glowR * 0.68, gy - 20, glowR * 1.36, 76 * l.scale);
+        ctx.restore();
+      }
 
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.42;
-      ctx.drawImage(glow, lx - glowR, ly - glowR, glowR * 2, glowR * 2);
-      ctx.globalAlpha = 0.26;
-      ctx.drawImage(glow, lx - glowR * 0.68, gy - 24, glowR * 1.36, 90 * l.scale);
-      ctx.restore();
-
-      ctx.save();
-      for (let e = 0; e < 10; e++) {
-        const life = (t * (1.15 + (e % 3) * 0.25) + l.seed + e * 1.4) % 1;
-        const ex = Math.round(lx + Math.sin(t * 6 + e * 2.1 + l.seed) * (20 * l.scale));
-        const ey = Math.round(ly + 14 - life * (84 * l.scale));
-        const fade = Math.max(0, 0.95 - life * 0.85);
-        if (e % 2 === 0) {
+      for (let e = 0; e < 7; e++) {
+        const life = (t * (1.05 + (e % 3) * 0.22) + l.seed + e * 1.4) % 1;
+        const ex = Math.round((lx + Math.sin(t * 5.4 + e * 2.1 + l.seed) * (18 * l.scale)) / 2) * 2;
+        const ey = Math.round((ly + 14 - life * (78 * l.scale)) / 2) * 2;
+        const fade = Math.max(0, 0.92 - life * 0.85);
+        if (e % 3 === 0 && glow) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.35;
-          ctx.drawImage(glow, ex - 15, ey - 15, 30, 30);
+          ctx.globalAlpha = Math.min(0.14, fade * 0.14);
+          ctx.drawImage(glow, ex - 11, ey - 11, 22, 22);
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = fade;
         ctx.fillStyle = life < 0.3 ? '#ffffff' : life < 0.65 ? pal[3] : pal[2];
-        ctx.fillRect(ex - 2, ey - 2, 4, 4);
+        ctx.fillRect(ex - 1, ey - 1, 3, 3);
       }
       ctx.restore();
     }
 
-    // 3. Glowing Zodiac Floor Ticks & Rising Anti-Gravity Golden Chrono-Dust
+    // 3. Pixel-Snapped Zodiac Floor Glints & Rising Anti-Gravity Golden Chrono-Dust (<= 0.14 glow)
     ctx.save();
     const floorCx = drawX + drawW * 0.50;
     const floorCy = gy + 44;
     const activeHour = Math.floor(t * 3) % 12;
+    ctx.globalCompositeOperation = 'source-over';
     for (let z = 0; z < 12; z++) {
       const za = (z / 12) * Math.PI * 2 + t * 0.08;
-      const zx = Math.round(floorCx + Math.cos(za) * 245);
-      const zy = Math.round(floorCy + Math.sin(za) * 34);
+      const zx = Math.round((floorCx + Math.cos(za) * 245) / 3) * 3;
+      const zy = Math.round((floorCy + Math.sin(za) * 34) / 3) * 3;
       const isLit = z === activeHour || z === (activeHour + 6) % 12;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = isLit ? 0.55 : 0.22;
+      ctx.globalAlpha = isLit ? 0.56 : 0.22;
       ctx.fillStyle = z % 2 === 0 ? '#fde047' : '#2dd4bf';
-      ctx.fillRect(zx - 3, zy - 1, 6, 3);
+      ctx.fillRect(zx - 3, zy - 1, 6, 2);
+      if (isLit) {
+        this._drawPixelSpark4(ctx, zx, zy, 2, z % 2 === 0 ? '#fde047' : '#5eead4', '#ffffff');
+      }
     }
 
-    for (let n = 0; n < 18; n++) {
-      const life = (t * (0.55 + (n % 3) * 0.15) + n * 0.37) % 1;
-      const nx = Math.round(floorCx + (n - 8.5) * 38 + Math.sin(t * 2.5 + n) * 10);
-      const ny = Math.round(gy + 16 - life * 105);
+    for (let n = 0; n < 14; n++) {
+      const life = (t * (0.52 + (n % 3) * 0.14) + n * 0.37) % 1;
+      const nx = Math.round((floorCx + (n - 6.5) * 44 + Math.sin(t * 2.4 + n) * 10) / 2) * 2;
+      const ny = Math.round((gy + 16 - life * 100) / 2) * 2;
       const fade = Math.sin(life * Math.PI);
       const glow = n % 2 === 0 ? this.glowGold : this.glowTeal;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.34;
-      ctx.drawImage(glow, nx - 12, ny - 12, 24, 24);
+      if (n % 2 === 0 && glow) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.14, fade * 0.14);
+        ctx.drawImage(glow, nx - 10, ny - 10, 20, 20);
+      }
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.88;
+      ctx.globalAlpha = fade * 0.86;
       ctx.fillStyle = n % 2 === 0 ? '#fde047' : '#2dd4bf';
-      ctx.fillRect(nx - 2, ny - 2, 3, 4);
+      ctx.fillRect(nx - 1, ny - 1, 2, 3);
     }
     ctx.restore();
   }
@@ -3403,121 +3785,145 @@ export class Renderer {
   drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
     const t = this.time;
     const sanctuaryCx = drawX + drawW * 0.50;
-    const roseY = drawY + drawH * 0.32;
+    const roseY = drawY + drawH * 0.30;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 0. High-Altitude Drifting Cloud-Sea Wisps past the Flanking Marble Colonnades
+    // 0. Subtle High-Altitude Cloud-Sea Wisps past the Flanking Marble Colonnades
     ctx.globalCompositeOperation = 'lighter';
     for (let c = 0; c < 6; c++) {
       const isLeft = c < 3;
       const localIdx = c % 3;
-      const drift = Math.sin(t * 0.65 + c * 1.4) * 26;
+      const drift = Math.sin(t * 0.65 + c * 1.4) * 24;
       const cloudX =
         drawX + drawW * (isLeft ? 0.08 + localIdx * 0.08 : 0.76 + localIdx * 0.08) + drift;
       const cloudY = drawY + drawH * (0.54 + (localIdx % 2) * 0.08);
-      const cGlow = localIdx % 2 === 0 ? this.glowWhite : this.glowCyan;
+      const cGlow = localIdx % 2 === 0 ? this.mistCyanTex || this.glowCyan : this.glowCyan;
       if (cGlow) {
-        ctx.globalAlpha = (0.16 + 0.05 * Math.sin(t * 1.6 + c)) * alpha;
-        ctx.drawImage(cGlow, cloudX - 150, cloudY - 48, 300, 96);
+        ctx.globalAlpha = Math.min(0.11, (0.08 + 0.025 * Math.sin(t * 1.5 + c))) * alpha;
+        ctx.drawImage(cGlow, cloudX - 140, cloudY - 42, 280, 84);
       }
     }
 
-    // 1. Radiant Celestial Rose-Window & Sapphire-Gold Sky Halo
-    ctx.globalAlpha = (0.46 + 0.12 * Math.sin(t * 3.8)) * alpha;
-    if (this.glowCyan) ctx.drawImage(this.glowCyan, sanctuaryCx - 360, roseY - 260, 720, 520);
-    ctx.globalAlpha = (0.36 + 0.10 * Math.cos(t * 3.1)) * alpha;
-    if (this.glowWhite) ctx.drawImage(this.glowWhite, sanctuaryCx - 260, roseY - 200, 520, 400);
-    ctx.globalAlpha = (0.28 + 0.08 * Math.sin(t * 2.4)) * alpha;
-    if (this.glowGold) ctx.drawImage(this.glowGold, sanctuaryCx - 210, roseY - 160, 420, 320);
+    // 1. Restrained Celestial Rose-Window Halo (ZERO nuclear cyan/white washout!)
+    if (this.glowCyan) {
+      ctx.globalAlpha = (0.12 + 0.03 * Math.sin(t * 3.2)) * alpha;
+      ctx.drawImage(this.glowCyan, sanctuaryCx - 290, roseY - 200, 580, 400);
+    }
+    if (this.glowGold) {
+      ctx.globalAlpha = (0.10 + 0.025 * Math.sin(t * 2.3)) * alpha;
+      ctx.drawImage(this.glowGold, sanctuaryCx - 180, roseY - 135, 360, 270);
+    }
+    if (this.glowWhite) {
+      ctx.globalAlpha = (0.045 + 0.015 * Math.cos(t * 2.8)) * alpha;
+      ctx.drawImage(this.glowWhite, sanctuaryCx - 165, roseY - 120, 330, 240);
+    }
 
-    // 2. 5 Soft Diagonal Heavenly Sanctuary God-Ray Shafts Streaming Down from the Sky Breach
+    // 2. 5 Delicate Diagonal Heavenly God-Ray Shafts (whisper-clean upper skylight, fading cleanly above heroes!)
     if (!this._sanctuaryRayGradCache) this._sanctuaryRayGradCache = new Map();
     for (let i = -2; i <= 2; i++) {
       const topX = sanctuaryCx - 80 + i * 105;
       const midBotX = sanctuaryCx + 40 + i * 165;
-      const botX = midBotX + Math.sin(t * 1.8 + i) * 18;
-      const rayW = i === 0 ? 92 : 64;
-      const gradKey = `${sanctuaryCx}:${drawY}:${gy}:${i}`;
+      const botX = midBotX + Math.sin(t * 1.6 + i) * 16;
+      const rayW = i === 0 ? 84 : 58;
+      const rayBotY = gy - 28;
+      const gradKey = `${sanctuaryCx}:${drawY}:${rayBotY}:${i}`;
       let rayGrad = this._sanctuaryRayGradCache.get(gradKey);
       if (!rayGrad) {
         if (this._sanctuaryRayGradCache.size >= 15) this._sanctuaryRayGradCache.clear();
-        rayGrad = ctx.createLinearGradient(topX, drawY + 30, midBotX, gy + 12);
+        rayGrad = ctx.createLinearGradient(topX, drawY + 24, midBotX, rayBotY);
         rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        rayGrad.addColorStop(0.22, i === 0 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(125, 211, 252, 0.20)');
-        rayGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.10)');
+        rayGrad.addColorStop(0.22, i === 0 ? 'rgba(254, 249, 195, 0.14)' : 'rgba(125, 211, 252, 0.11)');
+        rayGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.05)');
         rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
         this._sanctuaryRayGradCache.set(gradKey, rayGrad);
       }
-      ctx.globalAlpha = alpha * (0.72 + 0.22 * Math.sin(t * 3.2 + i * 1.3));
+      ctx.globalAlpha = alpha * (0.58 + 0.16 * Math.sin(t * 2.8 + i * 1.3));
       ctx.fillStyle = rayGrad;
       ctx.beginPath();
-      ctx.moveTo(topX - rayW * 0.45, drawY + 30);
-      ctx.lineTo(topX + rayW * 0.45, drawY + 30);
-      ctx.lineTo(botX + rayW * 0.85, gy + 12);
-      ctx.lineTo(botX - rayW * 0.85, gy + 12);
+      ctx.moveTo(topX - rayW * 0.42, drawY + 24);
+      ctx.lineTo(topX + rayW * 0.42, drawY + 24);
+      ctx.lineTo(botX + rayW * 0.78, rayBotY);
+      ctx.lineTo(botX - rayW * 0.78, rayBotY);
       ctx.closePath();
       ctx.fill();
     }
 
-    // 3. Consecrated Sapphire & Imperial-Gold Runic Floor Seal Circles across the Marble Floor
-    const sealPulse = 0.5 + 0.5 * Math.sin(t * 3.4);
-    ctx.strokeStyle = '#7dd3fc';
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = (0.20 + 0.10 * sealPulse) * alpha;
-    ctx.beginPath();
-    ctx.ellipse(sanctuaryCx, gy + 34, 290, 32, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = '#fde047';
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = (0.18 + 0.08 * (1 - sealPulse)) * alpha;
-    ctx.beginPath();
-    ctx.ellipse(sanctuaryCx, gy + 34, 185, 20, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    // 3. Pixel-Snapped Consecrated Runic Floor Seal Glints & Restrained Marble Floor Pools (ZERO ctx.ellipse!)
+    ctx.globalCompositeOperation = 'source-over';
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      sanctuaryCx,
+      gy + 34,
+      286,
+      30,
+      36,
+      t * 0.10,
+      '#7dd3fc',
+      '#bae6fd',
+      0.34 * alpha,
+      t,
+      { grid: 3, tickW: 6, tickH: 2, pulseSpeed: 3.0, cardinalSpark: true }
+    );
+    this._drawPixelEllipseGlintRing(
+      ctx,
+      sanctuaryCx,
+      gy + 34,
+      182,
+      19,
+      24,
+      -t * 0.14,
+      '#fde047',
+      '#fef08a',
+      0.32 * alpha,
+      t,
+      { grid: 3, tickW: 4, tickH: 2, pulseSpeed: 3.4 }
+    );
 
+    ctx.globalCompositeOperation = 'lighter';
     for (let k = -2; k <= 2; k++) {
       const poolX = sanctuaryCx + k * 210;
       const glow = k % 2 === 0 ? this.glowCyan : this.glowGold;
       if (glow) {
-        ctx.globalAlpha = (0.30 + 0.09 * Math.sin(t * 4.5 + k)) * alpha;
-        ctx.drawImage(glow, poolX - 160, gy - 26, 320, 68);
+        ctx.globalAlpha = Math.min(0.12, (0.095 + 0.025 * Math.sin(t * 3.8 + k))) * alpha;
+        ctx.drawImage(glow, poolX - 140, gy - 18, 280, 56);
       }
     }
 
-    // 4. Gentle Falling Pixel Seraphic Feathers & Ascending Sacred Censer Motes
-    for (let f = 0; f < 18; f++) {
-      const fall = (t * (0.18 + (f % 4) * 0.04) + f * 0.23) % 1;
+    // 4. Crisp Falling Pixel Seraphic Feathers & Delicate Ascending Sacred Motes
+    for (let f = 0; f < 16; f++) {
+      const fall = (t * (0.17 + (f % 4) * 0.04) + f * 0.23) % 1;
       const fx = Math.round(
-        (sanctuaryCx + (f - 8.5) * 62 + Math.sin(t * 2.1 + f * 1.5) * 26) / 2
+        (sanctuaryCx + (f - 7.5) * 66 + Math.sin(t * 2.1 + f * 1.5) * 24) / 2
       ) * 2;
       const fy = Math.round((drawY + drawH * 0.18 + fall * (gy - drawY - drawH * 0.14)) / 2) * 2;
       const fFade = Math.sin(fall * Math.PI) * alpha;
       const tilt = Math.sin(t * 3.0 + f) > 0 ? 1 : -1;
-      if (f % 2 === 0 && this.glowCyan) {
+      if (f % 3 === 0 && this.glowCyan) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fFade * 0.28;
-        ctx.drawImage(this.glowCyan, fx - 14, fy - 14, 28, 28);
+        ctx.globalAlpha = Math.min(0.13, fFade * 0.13);
+        ctx.drawImage(this.glowCyan, fx - 11, fy - 11, 22, 22);
       }
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fFade * 0.90;
+      ctx.globalAlpha = fFade * 0.88;
       ctx.fillStyle = f % 3 === 0 ? '#fef08a' : '#bae6fd';
-      ctx.fillRect(fx - 3 * tilt, fy - 2, 6, 3);
-      ctx.fillRect(fx - 1 * tilt, fy + 1, 5, 2);
+      ctx.fillRect(fx - 3 * tilt, fy - 2, 5, 2);
+      ctx.fillRect(fx - 1 * tilt, fy, 4, 2);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(fx - 2 * tilt, fy - 1, 4, 2);
+      ctx.fillRect(fx - 2 * tilt, fy - 1, 3, 1);
     }
 
-    for (let m = 0; m < 18; m++) {
-      const life = (t * (0.65 + (m % 4) * 0.16) + m * 0.29) % 1;
-      const mx = Math.round((sanctuaryCx + (m - 8.5) * 54 + Math.sin(t * 3.4 + m) * 14) / 3) * 3;
-      const my = Math.round((gy - 8 - life * 360) / 3) * 3;
+    ctx.globalCompositeOperation = 'source-over';
+    for (let m = 0; m < 14; m++) {
+      const life = (t * (0.58 + (m % 4) * 0.14) + m * 0.29) % 1;
+      const mx = Math.round((sanctuaryCx + (m - 6.5) * 60 + Math.sin(t * 3.1 + m) * 14) / 3) * 3;
+      const my = Math.round((gy - 8 - life * 340) / 3) * 3;
       const fade = Math.sin(life * Math.PI) * alpha;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.88;
-      ctx.fillStyle = m % 3 === 0 ? '#fef08a' : m % 2 === 0 ? '#ffffff' : '#7dd3fc';
-      ctx.fillRect(mx - 1, my - 3, 2, 6);
-      ctx.fillRect(mx - 3, my - 1, 6, 2);
+      if (fade <= 0.03) continue;
+      ctx.globalAlpha = fade * 0.82;
+      const mCol = m % 3 === 0 ? '#fef08a' : '#7dd3fc';
+      this._drawPixelSpark4(ctx, mx, my, 2, mCol, '#ffffff');
     }
 
     ctx.restore();
@@ -3544,73 +3950,55 @@ export class Renderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 0. Billowing Dark-Rimmed Volcanic Ash & Pyroclastic Smoke Plumes behind the Central Caldera & Twin Peaks
-    const smokeVents = [
-      { x: calderaCx, y: calderaCy - 36, scale: 1.35, count: 7, seed: 0.4 },
-      { x: leftPeakCx, y: leftPeakCy - 12, scale: 0.72, count: 4, seed: 2.1 },
-      { x: rightPeakCx, y: rightPeakCy - 14, scale: 0.78, count: 4, seed: 3.9 }
-    ];
-    ctx.globalCompositeOperation = 'source-over';
-    for (const vent of smokeVents) {
-      for (let p = 0; p < vent.count; p++) {
-        const u = (t * (0.16 + (p % 3) * 0.04) + vent.seed + p * 0.27) % 1;
-        const driftX = (u * 78 + Math.sin(t * 1.4 + p + vent.seed) * 16) * vent.scale + parallaxSmokeX;
-        const riseY = u * 165 * vent.scale;
-        const px = Math.round((vent.x + driftX) / 4) * 4;
-        const py = Math.round((vent.y - riseY) / 4) * 4;
-        const pw = Math.round((44 + u * 64) * vent.scale);
-        const ph = Math.round((20 + u * 28) * vent.scale);
-        const sFade = Math.sin(u * Math.PI) * 0.38 * alpha;
-        // Dark pyroclastic ash body
-        ctx.globalAlpha = sFade;
-        ctx.fillStyle = '#180c09';
-        ctx.fillRect(px - (pw >> 1), py - (ph >> 1), pw, ph);
-        // Scorching magma-lit underbelly rim facing the caldera below
-        ctx.globalAlpha = sFade * (1 - u * 0.55) * 0.85;
-        ctx.fillStyle = u < 0.45 ? '#c2410c' : '#7c2d12';
-        ctx.fillRect(px - Math.round(pw * 0.38), py + Math.round(ph * 0.22), Math.round(pw * 0.76), 4);
-      }
-    }
+    // 0. Organic Layered Feathered Pyroclastic Smoke Plumes & Thermal Haze (ZERO giant dark fillRect boxes!)
+    this._drawVolcanicSmokePlume(ctx, calderaCx, calderaCy - 36, 1.32, 6, 0.4, t, parallaxSmokeX, alpha, false);
+    this._drawVolcanicSmokePlume(ctx, leftPeakCx, leftPeakCy - 12, 0.74, 4, 2.1, t, parallaxSmokeX, alpha, false);
+    this._drawVolcanicSmokePlume(ctx, rightPeakCx, rightPeakCy - 14, 0.78, 4, 3.9, t, parallaxSmokeX, alpha, false);
 
-    // 1. Pulsing Caldera & Twin-Peak Solar-Corona Halos (`glowOrange` + `glowCrimson` + `glowGold`)
+    // 1. Restrained Caldera & Twin-Peak Magma Halos (ZERO nuclear caldera washout!)
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = (0.50 + 0.14 * Math.sin(t * 4.2)) * alpha;
-    if (this.glowOrange) ctx.drawImage(this.glowOrange, calderaCx - 430, calderaCy - 270, 860, 540);
-    ctx.globalAlpha = (0.36 + 0.10 * Math.cos(t * 3.5)) * alpha;
-    if (this.glowCrimson) ctx.drawImage(this.glowCrimson, calderaCx - 350, calderaCy - 220, 700, 440);
-    ctx.globalAlpha = (0.34 + 0.10 * Math.sin(t * 5.3)) * alpha;
-    if (this.glowGold) ctx.drawImage(this.glowGold, calderaCx - 240, calderaCy - 155, 480, 310);
-
-    // Twin Volcanic Peak Eruption Coronas
     if (this.glowOrange) {
-      ctx.globalAlpha = (0.30 + 0.10 * Math.sin(t * 4.8 + 1.2)) * alpha;
-      ctx.drawImage(this.glowOrange, leftPeakCx - 125, leftPeakCy - 95, 250, 190);
-      ctx.globalAlpha = (0.32 + 0.10 * Math.cos(t * 4.5 + 2.4)) * alpha;
-      ctx.drawImage(this.glowOrange, rightPeakCx - 135, rightPeakCy - 100, 270, 200);
+      ctx.globalAlpha = (0.18 + 0.04 * Math.sin(t * 3.8)) * alpha;
+      ctx.drawImage(this.glowOrange, calderaCx - 370, calderaCy - 230, 740, 460);
+    }
+    if (this.glowCrimson) {
+      ctx.globalAlpha = (0.14 + 0.03 * Math.cos(t * 3.1)) * alpha;
+      ctx.drawImage(this.glowCrimson, calderaCx - 310, calderaCy - 190, 620, 380);
+    }
+    if (this.glowGold) {
+      ctx.globalAlpha = (0.12 + 0.03 * Math.sin(t * 4.6)) * alpha;
+      ctx.drawImage(this.glowGold, calderaCx - 200, calderaCy - 125, 400, 250);
     }
 
-    // 2. Live Animated `getInfernoMagmaLayer(bg)` Heat-Shimmer & Downward Lava Cascade Wave-Strips
+    // Twin Volcanic Peak Eruption Coronas (restrained <= 0.16)
+    if (this.glowOrange) {
+      ctx.globalAlpha = (0.14 + 0.03 * Math.sin(t * 4.4 + 1.2)) * alpha;
+      ctx.drawImage(this.glowOrange, leftPeakCx - 115, leftPeakCy - 85, 230, 170);
+      ctx.globalAlpha = (0.15 + 0.03 * Math.cos(t * 4.1 + 2.4)) * alpha;
+      ctx.drawImage(this.glowOrange, rightPeakCx - 125, rightPeakCy - 90, 250, 180);
+    }
+
+    // 2. Refined Live Animated `getInfernoMagmaLayer(bg)` Heat-Shimmer & Lava Cascades (restrained <= 0.24)
     if (magmaLayer) {
       const mw = magmaLayer.width;
       const mh = magmaLayer.height;
 
-      // 2A. Central Caldera & Twin Peaks Horizontal Heat-Shimmer Wave-Strips
       const shimmerZones = [
-        { x0: 0.35, y0: 0.30, w: 0.30, h: 0.34, strips: 14, amp: 4.5, seed: 0.5 },
-        { x0: 0.22, y0: 0.19, w: 0.10, h: 0.16, strips: 6, amp: 2.5, seed: 2.2 },
-        { x0: 0.70, y0: 0.17, w: 0.10, h: 0.17, strips: 6, amp: 2.5, seed: 3.8 }
+        { x0: 0.35, y0: 0.30, w: 0.30, h: 0.34, strips: 18, amp: 2.6, seed: 0.5 },
+        { x0: 0.22, y0: 0.19, w: 0.10, h: 0.16, strips: 8, amp: 1.8, seed: 2.2 },
+        { x0: 0.70, y0: 0.17, w: 0.10, h: 0.17, strips: 8, amp: 1.8, seed: 3.8 }
       ];
       ctx.globalCompositeOperation = 'lighter';
       for (const z of shimmerZones) {
-        ctx.globalAlpha = (0.44 + 0.16 * Math.sin(t * 7.2 + z.seed)) * alpha;
+        ctx.globalAlpha = (0.20 + 0.05 * Math.sin(t * 6.4 + z.seed)) * alpha;
         for (let s = 0; s < z.strips; s++) {
           const u = s / z.strips;
           const sy = (z.y0 + u * z.h) * mh;
           const sh = (z.h / z.strips) * mh + 0.6;
           const dy = drawY + (z.y0 + u * z.h) * drawH;
           const dh = (z.h / z.strips) * drawH + 1.2;
-          const waveX = Math.round(Math.sin(t * 9.6 + s * 0.8 + z.seed) * z.amp * (1 - u * 0.4));
-          const liftY = Math.round(Math.cos(t * 7.4 + s * 0.9) * 1.5);
+          const waveX = Math.round(Math.sin(t * 8.4 + s * 0.7 + z.seed) * z.amp * (1 - u * 0.4));
+          const liftY = Math.round(Math.cos(t * 6.8 + s * 0.8) * 1.2);
           ctx.drawImage(
             magmaLayer,
             z.x0 * mw,
@@ -3625,23 +4013,22 @@ export class Renderer {
         }
       }
 
-      // 2B. Flank Lava Falls (`(0.10, 0.66)` & `(0.92, 0.65)`) Downward Cascade Wave-Strips
       const lavaFalls = [
         { x0: 0.04, y0: 0.56, w: 0.12, h: 0.20, poolCx: 0.10, poolCy: 0.72, seed: 1.1 },
         { x0: 0.85, y0: 0.56, w: 0.13, h: 0.20, poolCx: 0.92, poolCy: 0.71, seed: 4.3 }
       ];
       for (const lf of lavaFalls) {
-        const strips = 10;
-        ctx.globalAlpha = (0.48 + 0.16 * Math.sin(t * 8.4 + lf.seed)) * alpha;
+        const strips = 12;
+        ctx.globalAlpha = (0.22 + 0.06 * Math.sin(t * 7.6 + lf.seed)) * alpha;
         for (let s = 0; s < strips; s++) {
           const u = s / strips;
-          const flowPhase = (u - ((t * 0.85) % 1) + 1) % 1;
+          const flowPhase = (u - ((t * 0.80) % 1) + 1) % 1;
           const sy = (lf.y0 + u * lf.h) * mh;
           const sh = (lf.h / strips) * mh + 0.6;
           const dy = drawY + (lf.y0 + u * lf.h) * drawH;
-          const dh = (lf.h / strips) * drawH + 1.5;
-          const cascadeDrop = Math.round(Math.sin(flowPhase * Math.PI * 2) * 3.5);
-          const swayX = Math.round(Math.sin(t * 7.5 + s * 1.1 + lf.seed) * 2.5);
+          const dh = (lf.h / strips) * drawH + 1.4;
+          const cascadeDrop = Math.round(Math.sin(flowPhase * Math.PI * 2) * 2.5);
+          const swayX = Math.round(Math.sin(t * 6.8 + s * 0.9 + lf.seed) * 1.8);
           ctx.drawImage(
             magmaLayer,
             lf.x0 * mw,
@@ -3655,29 +4042,28 @@ export class Renderer {
           );
         }
         if (this.glowOrange) {
-          ctx.globalAlpha = (0.34 + 0.10 * Math.sin(t * 6.0 + lf.seed)) * alpha;
+          ctx.globalAlpha = (0.14 + 0.03 * Math.sin(t * 5.6 + lf.seed)) * alpha;
           ctx.drawImage(
             this.glowOrange,
-            drawX + lf.poolCx * drawW - 95,
-            drawY + lf.poolCy * drawH - 55,
-            190,
-            110
+            drawX + lf.poolCx * drawW - 85,
+            drawY + lf.poolCy * drawH - 46,
+            170,
+            92
           );
         }
       }
 
-      // 2C. Floor Lava Rivers (`y = 0.72..0.98`) Flowing Molten Undulation Strips
-      const riverStrips = 12;
+      const riverStrips = 14;
       const rY0 = 0.72;
       const rH = 0.26;
-      ctx.globalAlpha = (0.34 + 0.12 * Math.sin(t * 5.4)) * alpha;
+      ctx.globalAlpha = (0.16 + 0.05 * Math.sin(t * 5.0)) * alpha;
       for (let s = 0; s < riverStrips; s++) {
         const u = s / riverStrips;
         const sy = (rY0 + u * rH) * mh;
         const sh = (rH / riverStrips) * mh + 0.6;
         const dy = drawY + (rY0 + u * rH) * drawH;
         const dh = (rH / riverStrips) * drawH + 1.2;
-        const driftX = Math.round(Math.sin(t * 5.8 + s * 0.95) * (2.5 + u * 2.5));
+        const driftX = Math.round(Math.sin(t * 5.2 + s * 0.85) * (1.8 + u * 1.8));
         ctx.drawImage(
           magmaLayer,
           0.04 * mw,
@@ -3692,87 +4078,45 @@ export class Renderer {
       }
     }
 
-    // 3. Glowing Branching Molten Floor Fissures (`gy - 6 .. gy + 110`) & Periodic Magma-Bubble / Spark Pops
+    // 3. Subtle Organic Jagged Pixel-Art Floor Ember Cracks (ZERO boxy horizontal fillRect lava bars!)
     const centerCx = drawX + drawW * 0.50;
-    const fissures = [-480, -340, -195, -60, 85, 225, 365, 500];
+    const fissures = [-470, -330, -185, -55, 90, 230, 365, 495];
     for (let i = 0; i < fissures.length; i++) {
       const fx = centerCx + fissures[i];
-      const fy = gy - 4 + ((i * 31) % 5) * 22;
-      const pulse = 0.72 + 0.28 * Math.sin(t * 6.2 + i * 1.4);
-
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.36 * pulse * alpha;
-      if (this.glowOrange) ctx.drawImage(this.glowOrange, fx - 135, fy - 28, 270, 64);
-      if (i % 2 === 0 && this.glowGold) {
-        ctx.globalAlpha = 0.26 * pulse * alpha;
-        ctx.drawImage(this.glowGold, fx - 90, fy - 18, 180, 44);
-      }
-
-      // Stepped Branching Pixel-Art Glowing Lava Vein + Diagonal Fork
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.90 * alpha;
-      const crackW = Math.round((58 + (i % 3) * 22) * pulse);
+      const fy = gy + 2 + ((i * 31) % 5) * 20;
+      const pulse = 0.70 + 0.30 * Math.sin(t * 5.6 + i * 1.4);
+      const crackLen = 48 + (i % 3) * 18;
       const branchDir = i % 2 === 0 ? 1 : -1;
-      ctx.fillStyle = '#431407';
-      ctx.fillRect(Math.round(fx - crackW * 0.62), fy - 2, Math.round(crackW * 1.24), 6);
-      ctx.fillStyle = '#ea580c';
-      ctx.fillRect(Math.round(fx - crackW * 0.48), fy - 1, Math.round(crackW * 0.96), 4);
-      ctx.fillRect(Math.round(fx + branchDir * 12), fy + 3, Math.round(crackW * 0.42), 3);
-      ctx.fillRect(Math.round(fx + branchDir * 24), fy + 6, Math.round(crackW * 0.28), 2);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(Math.round(fx - crackW * 0.26), fy, Math.round(crackW * 0.52), 2);
-
-      // Periodic Mini Magma-Bubble Blister & Crisp Pixel Spark Pop
-      const popCycle = (t * (0.72 + (i % 3) * 0.14) + i * 0.39) % 1;
-      const bx = Math.round((fx + branchDir * 10) / 2) * 2;
-      const by = fy;
-      if (popCycle > 0.45 && popCycle < 0.72) {
-        const swell = (popCycle - 0.45) / 0.27;
-        const bSz = swell > 0.6 ? 6 : 4;
-        ctx.fillStyle = '#f97316';
-        ctx.fillRect(bx - (bSz >> 1), by - bSz + 1, bSz, bSz);
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(bx - 1, by - bSz + 2, 2, 2);
-      } else if (popCycle >= 0.72) {
-        const burst = (popCycle - 0.72) / 0.28;
-        ctx.globalAlpha = (1 - burst) * 0.92 * alpha;
-        for (let sp = -1; sp <= 1; sp++) {
-          const sx = Math.round(bx + sp * (6 + burst * 18));
-          const sy = Math.round(by - Math.sin(burst * Math.PI) * (14 + Math.abs(sp) * 6));
-          ctx.fillStyle = sp === 0 ? '#ffffff' : '#fb923c';
-          ctx.fillRect(sx - 1, sy - 1, 3, 3);
-        }
-      }
+      this._drawPixelFloorEmberCrack(ctx, fx, fy, crackLen, branchDir, pulse, alpha, t, i, false);
     }
 
-    // 4. 52 Wind-Swept Rising Spiral Embers & Cinders across the Laywaste of Inferno!
-    for (let e = 0; e < 52; e++) {
-      const life = (t * (0.88 + (e % 5) * 0.21) + e * 0.29) % 1;
+    // 4. 38 Crisp Wind-Swept Rising Spiral Embers & Cinders (glow capped <= 0.15!)
+    for (let e = 0; e < 38; e++) {
+      const life = (t * (0.82 + (e % 5) * 0.18) + e * 0.29) % 1;
       const baseLaneX = drawX + drawW * (0.06 + ((e * 37) % 100) * 0.0088);
-      const windDrift = life * (42 + (e % 3) * 18);
-      const spiralX = Math.sin(life * Math.PI * 4 + t * 5.2 + e * 1.7) * (14 + (e % 4) * 5);
+      const windDrift = life * (40 + (e % 3) * 16);
+      const spiralX = Math.sin(life * Math.PI * 4 + t * 4.8 + e * 1.7) * (13 + (e % 4) * 4);
       const ex = Math.round((baseLaneX + windDrift + spiralX) / 3) * 3;
-      const ey = Math.round((gy + 24 - life * 510) / 3) * 3;
+      const ey = Math.round((gy + 22 - life * 490) / 3) * 3;
       const fade = Math.sin(life * Math.PI) * alpha;
-      const sz = life < 0.30 ? 5 : life < 0.70 ? 4 : 3;
+      const sz = life < 0.30 ? 4 : life < 0.72 ? 3 : 2;
 
-      if (e % 2 === 0 && this.glowOrange) {
+      if (e % 3 === 0 && this.glowOrange) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.34;
+        ctx.globalAlpha = Math.min(0.15, fade * 0.15);
         ctx.drawImage(
           e % 6 === 0 && this.glowCrimson ? this.glowCrimson : this.glowOrange,
-          ex - 16,
-          ey - 16,
-          32,
-          32
+          ex - 12,
+          ey - 12,
+          24,
+          24
         );
       }
       ctx.globalCompositeOperation = 'source-over';
-      // Trailing cooling cinder wake
-      ctx.globalAlpha = fade * 0.50;
+      ctx.globalAlpha = fade * 0.45;
       ctx.fillStyle = '#9a3412';
-      ctx.fillRect(ex - 2, ey + 2, 3, 4);
-      ctx.globalAlpha = fade * 0.95;
+      ctx.fillRect(ex - 1, ey + 2, 2, 3);
+      ctx.globalAlpha = fade * 0.94;
       ctx.fillStyle =
         life < 0.20
           ? '#ffffff'
@@ -3793,7 +4137,7 @@ export class Renderer {
    * Moonlit Feudal Japanese Castle (`arena_shogunate.png`):
    *   - Silver-cyan full moon halo at `(0.583, 0.184)` + subtle pixel-stepped rim glints
    *   - Warm amber stone Tōrō lantern glow & flagstone reflections at `(0.057, 0.600)`, `(0.270, 0.587)`, `(0.731, 0.574)`, `(0.939, 0.599)`
-   *   - Drifting indigo castle-courtyard night mist & 34 wind-swept pixel sakura petals
+   *   - Soft feathered indigo/sakura courtyard night mist & 76 wind-swept pixel sakura petals
    */
   drawShogunateStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
     if (alpha <= 0.01) return;
@@ -3810,18 +4154,18 @@ export class Renderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Silver-Cyan Full Moon Halo (`'lighter'` capped <= 0.18)
+    // 1. Silver-Cyan Full Moon Halo (`'lighter'` capped <= 0.16)
     ctx.globalCompositeOperation = 'lighter';
     if (this.glowCyan) {
-      ctx.globalAlpha = (0.14 + 0.03 * Math.sin(t * 2.1)) * alpha;
-      ctx.drawImage(this.glowCyan, moonCx - 290, moonCy - 210, 580, 420);
+      ctx.globalAlpha = (0.13 + 0.03 * Math.sin(t * 2.1)) * alpha;
+      ctx.drawImage(this.glowCyan, moonCx - 270, moonCy - 195, 540, 390);
     }
     if (this.glowIndigo) {
-      ctx.globalAlpha = (0.11 + 0.03 * Math.cos(t * 1.7)) * alpha;
-      ctx.drawImage(this.glowIndigo, moonCx - 220, moonCy - 165, 440, 330);
+      ctx.globalAlpha = (0.10 + 0.025 * Math.cos(t * 1.7)) * alpha;
+      ctx.drawImage(this.glowIndigo, moonCx - 210, moonCy - 155, 420, 310);
     }
 
-    // 2. 4 Stone Tōrō Lantern Warm Pixel-Stepped Halos & Courtyard Reflections
+    // 2. 4 Stone Tōrō Lantern Warm Halos & Courtyard Reflections (capped <= 0.15)
     for (let i = 0; i < lanterns.length; i++) {
       const l = lanterns[i];
       const lx = Math.round(drawX + drawW * l.cx);
@@ -3830,12 +4174,12 @@ export class Renderer {
 
       ctx.globalCompositeOperation = 'lighter';
       if (this.glowGold) {
-        ctx.globalAlpha = Math.min(0.17, 0.14 * flick) * alpha;
-        ctx.drawImage(this.glowGold, lx - 72, ly - 64, 144, 128);
+        ctx.globalAlpha = Math.min(0.15, 0.13 * flick) * alpha;
+        ctx.drawImage(this.glowGold, lx - 68, ly - 60, 136, 120);
       }
       if (this.glowOrange) {
-        ctx.globalAlpha = Math.min(0.14, 0.11 * flick) * alpha;
-        ctx.drawImage(this.glowOrange, lx - 86, gy - 10, 172, 46);
+        ctx.globalAlpha = Math.min(0.11, 0.10 * flick) * alpha;
+        ctx.drawImage(this.glowOrange, lx - 80, gy - 10, 160, 42);
       }
 
       // Crisp pixel-art paper-shoji lantern flame heart
@@ -3847,17 +4191,19 @@ export class Renderer {
       ctx.fillRect(lx - 2, ly - 3, 4, 6);
     }
 
-    // 3. Stepped Indigo Courtyard Night-Mist Ribbons
-    ctx.globalCompositeOperation = 'lighter';
-    for (let m = 0; m < 4; m++) {
-      const mDrift = Math.sin(t * 0.85 + m * 1.7) * 58;
-      const mx = Math.round((drawX + drawW * (0.20 + m * 0.20) + mDrift) / 4) * 4;
-      const my = Math.round((gy - 34 + (m % 2) * 14) / 4) * 4;
-      ctx.globalAlpha = (0.05 + 0.02 * Math.sin(t * 1.6 + m)) * alpha;
-      ctx.fillStyle = m % 2 === 0 ? '#7dd3fc' : '#fda4af';
-      ctx.fillRect(mx - 110, my, 220, 6);
-      ctx.fillRect(mx - 70, my - 6, 140, 6);
-    }
+    // 3. Soft Feathered Low-Lying Courtyard Night-Mist (ZERO flat 220x6 horizontal fillRect bars!)
+    this._drawSoftFloorMist(
+      ctx,
+      drawX,
+      drawW,
+      gy,
+      t,
+      5,
+      this.mistCyanTex || this.glowIndigo,
+      this.mistRoseTex || this.glowCrimson,
+      0.085,
+      alpha
+    );
 
     // 4. 76 Continuous Diagonal Raining Cherry Blossoms (`Sakura Fubuki`) + 18 Courtyard-Skittering Petals (`0` ctx.rotate!)
     const petalCols = ['#fda4af', '#fb7185', '#fbcfe8', '#fff1f2', '#f472b6'];
@@ -3874,8 +4220,8 @@ export class Renderer {
 
       if (p % 5 === 0 && this.glowCrimson) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.13, fade * 0.11);
-        ctx.drawImage(this.glowCrimson, px - 12, py - 12, 24, 24);
+        ctx.globalAlpha = Math.min(0.12, fade * 0.11);
+        ctx.drawImage(this.glowCrimson, px - 11, py - 11, 22, 22);
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade * 0.94;
@@ -3968,9 +4314,9 @@ export class Renderer {
 
   /**
    * Burning Feudal Japanese Stage (`arena_shogunate_inferno.png` — Kaze-Maru vs Ignis Sol Synergy!):
-   *   - Pyroclastic smoke plumes rising from the burning Tenshu roofs, 5-story pagoda & right pavilion
+   *   - Organic feathered pyroclastic smoke plumes rising from the burning Tenshu roofs, 5-story pagoda & right pavilion
    *   - Solar Eclipse Corona at `(0.574, 0.206)` + `getShogunateInfernoFlameLayer` heat-shimmer wave strips
-   *   - Blazing stone Tōrō lanterns, incandescent courtyard fissures & 44 burning sakura petals / cinders
+   *   - Blazing stone Tōrō lanterns, subtle jagged ember floor cracks & 44 burning sakura petals / cinders
    */
   drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
     if (alpha <= 0.01) return;
@@ -3985,63 +4331,42 @@ export class Renderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 0. Dark Pyroclastic Smoke Plumes rising from the Burning Tenshu, Pagoda & Right Pavilion
-    const smokeVents = [
-      { x: drawX + drawW * 0.48, y: drawY + drawH * 0.23, count: 6, scale: 1.05, seed: 0.4 },
-      { x: drawX + drawW * 0.63, y: drawY + drawH * 0.27, count: 4, scale: 0.80, seed: 1.9 },
-      { x: drawX + drawW * 0.72, y: drawY + drawH * 0.39, count: 4, scale: 0.78, seed: 3.4 }
-    ];
-    ctx.globalCompositeOperation = 'source-over';
-    for (const vent of smokeVents) {
-      for (let p = 0; p < vent.count; p++) {
-        const u = (t * (0.17 + (p % 3) * 0.04) + vent.seed + p * 0.25) % 1;
-        const driftX = (u * 72 + Math.sin(t * 1.5 + p + vent.seed) * 14) * vent.scale + parallaxSmokeX;
-        const riseY = u * 150 * vent.scale;
-        const px = Math.round((vent.x + driftX) / 4) * 4;
-        const py = Math.round((vent.y - riseY) / 4) * 4;
-        const pw = Math.round((42 + u * 58) * vent.scale);
-        const ph = Math.round((18 + u * 26) * vent.scale);
-        const sFade = Math.sin(u * Math.PI) * 0.34 * alpha;
-        ctx.globalAlpha = sFade;
-        ctx.fillStyle = '#180a09';
-        ctx.fillRect(px - (pw >> 1), py - (ph >> 1), pw, ph);
-        ctx.globalAlpha = sFade * (1 - u * 0.52) * 0.84;
-        ctx.fillStyle = u < 0.45 ? '#ea580c' : '#9a3412';
-        ctx.fillRect(px - Math.round(pw * 0.36), py + Math.round(ph * 0.22), Math.round(pw * 0.72), 4);
-      }
-    }
+    // 0. Organic Feathered Pyroclastic Smoke Plumes rising from the Burning Tenshu, Pagoda & Pavilion (ZERO fillRect boxes!)
+    this._drawVolcanicSmokePlume(ctx, drawX + drawW * 0.48, drawY + drawH * 0.23, 1.02, 5, 0.4, t, parallaxSmokeX, alpha, true);
+    this._drawVolcanicSmokePlume(ctx, drawX + drawW * 0.63, drawY + drawH * 0.27, 0.78, 4, 1.9, t, parallaxSmokeX, alpha, true);
+    this._drawVolcanicSmokePlume(ctx, drawX + drawW * 0.72, drawY + drawH * 0.39, 0.74, 4, 3.4, t, parallaxSmokeX, alpha, false);
 
-    // 1. Solar Eclipse Corona (`'lighter'` capped <= 0.18)
+    // 1. Solar Eclipse Corona (`'lighter'` capped <= 0.16)
     ctx.globalCompositeOperation = 'lighter';
     if (this.glowOrange) {
-      ctx.globalAlpha = (0.16 + 0.02 * Math.sin(t * 4.1)) * alpha;
-      ctx.drawImage(this.glowOrange, eclipseCx - 320, eclipseCy - 220, 640, 440);
+      ctx.globalAlpha = (0.14 + 0.02 * Math.sin(t * 4.1)) * alpha;
+      ctx.drawImage(this.glowOrange, eclipseCx - 300, eclipseCy - 205, 600, 410);
     }
     if (this.glowCrimson) {
-      ctx.globalAlpha = (0.14 + 0.03 * Math.cos(t * 3.4)) * alpha;
-      ctx.drawImage(this.glowCrimson, eclipseCx - 260, eclipseCy - 180, 520, 360);
+      ctx.globalAlpha = (0.12 + 0.025 * Math.cos(t * 3.4)) * alpha;
+      ctx.drawImage(this.glowCrimson, eclipseCx - 245, eclipseCy - 170, 490, 340);
     }
 
-    // 2. Live Heat-Shimmer Wave Strips on the Burning Tenshu Keep, 5-Story Pagoda & Pavilion
+    // 2. Refined Live Heat-Shimmer Wave Strips on the Burning Tenshu Keep, 5-Story Pagoda & Pavilion
     if (flameLayer) {
       const mw = flameLayer.width;
       const mh = flameLayer.height;
       const fireZones = [
-        { x0: 0.35, y0: 0.14, w: 0.25, h: 0.28, strips: 12, amp: 3.5, seed: 0.6 },
-        { x0: 0.59, y0: 0.24, w: 0.08, h: 0.13, strips: 6, amp: 2.5, seed: 2.1 },
-        { x0: 0.68, y0: 0.36, w: 0.09, h: 0.11, strips: 5, amp: 2.5, seed: 3.7 }
+        { x0: 0.35, y0: 0.14, w: 0.25, h: 0.28, strips: 14, amp: 2.4, seed: 0.6 },
+        { x0: 0.59, y0: 0.24, w: 0.08, h: 0.13, strips: 8, amp: 1.8, seed: 2.1 },
+        { x0: 0.68, y0: 0.36, w: 0.09, h: 0.11, strips: 6, amp: 1.8, seed: 3.7 }
       ];
       ctx.globalCompositeOperation = 'lighter';
       for (const z of fireZones) {
-        ctx.globalAlpha = Math.min(0.18, 0.15 + 0.03 * Math.sin(t * 7.6 + z.seed)) * alpha;
+        ctx.globalAlpha = Math.min(0.17, 0.14 + 0.03 * Math.sin(t * 7.2 + z.seed)) * alpha;
         for (let s = 0; s < z.strips; s++) {
           const u = s / z.strips;
           const sy = (z.y0 + u * z.h) * mh;
           const sh = (z.h / z.strips) * mh + 0.6;
           const dy = drawY + (z.y0 + u * z.h) * drawH;
           const dh = (z.h / z.strips) * drawH + 1.2;
-          const waveX = Math.round(Math.sin(t * 9.2 + s * 0.85 + z.seed) * z.amp);
-          const liftY = Math.round(Math.cos(t * 7.8 + s * 0.9) * 1.5);
+          const waveX = Math.round(Math.sin(t * 8.6 + s * 0.75 + z.seed) * z.amp);
+          const liftY = Math.round(Math.cos(t * 7.2 + s * 0.85) * 1.2);
           ctx.drawImage(
             flameLayer,
             z.x0 * mw,
@@ -4057,7 +4382,7 @@ export class Renderer {
       }
     }
 
-    // 3. Blazing Stone Tōrō Lanterns & Incandescent Courtyard Ember Seams
+    // 3. Blazing Stone Tōrō Lanterns & Subtle Courtyard Ember Cracks
     const lanterns = [
       { cx: 0.057, cy: 0.600, seed: 0.7 },
       { cx: 0.270, cy: 0.587, seed: 2.1 },
@@ -4071,8 +4396,8 @@ export class Renderer {
       const flick = 0.74 + 0.26 * Math.sin(t * 8.2 + l.seed);
       ctx.globalCompositeOperation = 'lighter';
       if (this.glowOrange) {
-        ctx.globalAlpha = Math.min(0.18, 0.16 * flick) * alpha;
-        ctx.drawImage(this.glowOrange, lx - 84, ly - 74, 168, 148);
+        ctx.globalAlpha = Math.min(0.16, 0.14 * flick) * alpha;
+        ctx.drawImage(this.glowOrange, lx - 78, ly - 68, 156, 136);
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.92 * alpha;
@@ -4080,6 +4405,16 @@ export class Renderer {
       ctx.fillRect(lx - 5, ly - 7, 10, 13);
       ctx.fillStyle = '#fef08a';
       ctx.fillRect(lx - 2, ly - 4, 4, 8);
+    }
+
+    // Subtle crimson-amber pixel ember fissures along courtyard stones + soft thermal haze
+    const shogCenter = drawX + drawW * 0.50;
+    const shogCracks = [-360, -145, 130, 355];
+    for (let i = 0; i < shogCracks.length; i++) {
+      const fx = shogCenter + shogCracks[i];
+      const fy = gy + 8 + (i % 2) * 26;
+      const pulse = 0.68 + 0.32 * Math.sin(t * 5.4 + i * 1.6);
+      this._drawPixelFloorEmberCrack(ctx, fx, fy, 42 + (i % 2) * 14, i % 2 === 0 ? 1 : -1, pulse, alpha, t, i, true);
     }
 
     // 4. 44 Wind-Swept Burning Sakura Petals & Rising Spiral Cinders (`0` ctx.rotate!)
@@ -4097,19 +4432,18 @@ export class Renderer {
 
       if (e % 3 === 0 && this.glowOrange) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.17, fade * 0.16);
+        ctx.globalAlpha = Math.min(0.14, fade * 0.14);
         ctx.drawImage(
           isBurningPetal && this.glowCrimson ? this.glowCrimson : this.glowOrange,
-          ex - 14,
-          ey - 14,
-          28,
-          28
+          ex - 12,
+          ey - 12,
+          24,
+          24
         );
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade * 0.94;
       if (isBurningPetal) {
-        // Charred dark sakura petal with glowing ember-lit edge!
         ctx.fillStyle = '#291510';
         ctx.fillRect(ex - 3, ey - 2, 6, 4);
         ctx.fillStyle = e % 4 === 0 ? '#f43f5e' : '#fb923c';
@@ -4179,29 +4513,52 @@ export class Renderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Polar Crescent Moon & Borealis Sky Shimmer (`'lighter'` capped <= 0.15)
+    // 1. Polar Crescent Moon & Silky Multi-Stop Volumetric Borealis Ribbons (ZERO 8px vertical bars!)
     ctx.globalCompositeOperation = 'lighter';
     if (this.glowCyan) {
-      ctx.globalAlpha = (0.12 + 0.03 * Math.sin(t * 1.9)) * alpha;
-      ctx.drawImage(this.glowCyan, moonCx - 260, moonCy - 165, 520, 330);
+      ctx.globalAlpha = (0.12 + 0.025 * Math.sin(t * 1.9)) * alpha;
+      ctx.drawImage(this.glowCyan, moonCx - 245, moonCy - 155, 490, 310);
     }
     if (this.glowViolet) {
-      ctx.globalAlpha = (0.10 + 0.03 * Math.cos(t * 1.5)) * alpha;
-      ctx.drawImage(this.glowViolet, drawX + drawW * 0.36 - 240, drawY + drawH * 0.18 - 140, 480, 280);
+      ctx.globalAlpha = (0.09 + 0.025 * Math.cos(t * 1.5)) * alpha;
+      ctx.drawImage(this.glowViolet, drawX + drawW * 0.36 - 220, drawY + drawH * 0.16 - 125, 440, 250);
     }
 
-    // Stepped vertical Aurora Borealis pixel curtains gently undulating in the upper sky
-    const auroraCols = ['#67e8f9', '#2dd4bf', '#38bdf8', '#e879f9', '#c084fc'];
-    for (let a = 0; a < 14; a++) {
-      const ax = Math.round((drawX + drawW * (0.18 + a * 0.046) + Math.sin(t * 1.4 + a * 0.8) * 14) / 4) * 4;
-      const ay = Math.round((drawY + drawH * (0.04 + (a % 3) * 0.03) + Math.cos(t * 1.8 + a) * 8) / 4) * 4;
-      const ah = Math.round(drawH * (0.14 + (a % 4) * 0.035));
-      ctx.globalAlpha = (0.045 + 0.025 * Math.sin(t * 2.4 + a * 1.1)) * alpha;
-      ctx.fillStyle = auroraCols[a % auroraCols.length];
-      ctx.fillRect(ax, ay, 8, ah);
-    }
+    // Two undulating multi-stop volumetric Borealis sky curtains (teal-cyan & glacial-violet)
+    this._drawFeatheredAuroraRibbon(
+      ctx,
+      drawX + drawW * 0.14,
+      drawX + drawW * 0.86,
+      drawY + drawH * 0.09,
+      16,
+      138,
+      4.8,
+      0.88,
+      this.glowTeal || this.glowCyan,
+      this.glowViolet,
+      0.105,
+      alpha,
+      t,
+      16
+    );
+    this._drawFeatheredAuroraRibbon(
+      ctx,
+      drawX + drawW * 0.22,
+      drawX + drawW * 0.82,
+      drawY + drawH * 0.15,
+      12,
+      106,
+      3.9,
+      -0.72,
+      this.glowGlacial || this.glowCyan,
+      this.glowCyan,
+      0.085,
+      alpha,
+      t,
+      14
+    );
 
-    // 2. Flanking Sapphire Glacier Spire Specular Glints & Mirror-Ice Mist
+    // 2. Flanking Sapphire Glacier Spire Specular Glints & Feathered Mirror-Ice Mist
     const spires = [
       { cx: 0.235, cy: 0.48, seed: 0.8 },
       { cx: 0.765, cy: 0.48, seed: 2.9 }
@@ -4212,21 +4569,27 @@ export class Renderer {
       const pulse = 0.65 + 0.35 * Math.sin(t * 3.1 + sp.seed);
       if (this.glowCyan) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.14, 0.11 * pulse) * alpha;
-        ctx.drawImage(this.glowCyan, sx - 90, sy - 110, 180, 220);
+        ctx.globalAlpha = Math.min(0.12, 0.10 * pulse) * alpha;
+        ctx.drawImage(this.glowCyan, sx - 84, sy - 102, 168, 204);
       }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = (0.35 + 0.45 * pulse) * alpha;
+      this._drawPixelSpark4(ctx, sx, sy - 32, 2, '#67e8f9', '#ffffff');
     }
 
-    for (let m = 0; m < 4; m++) {
-      const mDrift = Math.sin(t * 0.78 + m * 1.6) * 56;
-      const mx = Math.round((drawX + drawW * (0.20 + m * 0.20) + mDrift) / 4) * 4;
-      const my = Math.round((gy - 28 + (m % 2) * 12) / 4) * 4;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = (0.055 + 0.02 * Math.sin(t * 1.7 + m)) * alpha;
-      ctx.fillStyle = m % 2 === 0 ? '#67e8f9' : '#e879f9';
-      ctx.fillRect(mx - 116, my, 232, 6);
-      ctx.fillRect(mx - 72, my - 6, 144, 6);
-    }
+    // Soft feathered low-lying permafrost floor mist (ZERO 232x6 horizontal fillRect bars!)
+    this._drawSoftFloorMist(
+      ctx,
+      drawX,
+      drawW,
+      gy,
+      t,
+      5,
+      this.mistCyanTex || this.glowCyan,
+      this.mistVioletTex || this.glowViolet,
+      0.085,
+      alpha
+    );
 
     // 3. 56 Drifting Diamond-Dust Snowflakes (`0` ctx.rotate!)
     const flakeCols = ['#bae6fd', '#67e8f9', '#e0f2fe', '#f5d0fe', '#38bdf8'];
@@ -4260,9 +4623,9 @@ export class Renderer {
 
   /**
    * Frozen Sakura Shogunate (`arena_shogunate_glacial.png` — Kaze-Maru <-> Lyra Synergy!):
-   *   - Ice-Blue Full Moon & Borealis Ribbons at `(0.584, 0.200)` (`'lighter'` <= 0.15)
+   *   - Ice-Blue Full Moon & Silky Feathered Borealis Ribbons at `(0.584, 0.200)` (`'lighter'` <= 0.15)
    *   - 4 Cold Spirit-Ice Stone Tōrō Lanterns at `(0.058, 0.590)`, `(0.263, 0.596)`, `(0.737, 0.597)`, `(0.940, 0.588)`
-   *   - 64 Raining Frost-Crystallized Sakura Petals & Diamond-Dust Flakes (`0` ctx.rotate!)
+   *   - Soft feathered permafrost mist & 64 Raining Frost-Crystallized Sakura Petals & Diamond-Dust Flakes (`0` ctx.rotate!)
    */
   drawShogunateGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
     if (alpha <= 0.01) return;
@@ -4279,16 +4642,32 @@ export class Renderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Ice-Blue Full Moon & Borealis Halo (`'lighter'` capped <= 0.15)
+    // 1. Ice-Blue Full Moon & Silky Feathered Borealis Halo (`'lighter'` capped <= 0.14)
     ctx.globalCompositeOperation = 'lighter';
     if (this.glowCyan) {
-      ctx.globalAlpha = (0.13 + 0.03 * Math.sin(t * 2.0)) * alpha;
-      ctx.drawImage(this.glowCyan, moonCx - 280, moonCy - 200, 560, 400);
+      ctx.globalAlpha = (0.12 + 0.025 * Math.sin(t * 2.0)) * alpha;
+      ctx.drawImage(this.glowCyan, moonCx - 260, moonCy - 185, 520, 370);
     }
     if (this.glowViolet) {
-      ctx.globalAlpha = (0.10 + 0.025 * Math.cos(t * 1.6)) * alpha;
-      ctx.drawImage(this.glowViolet, moonCx - 230, moonCy - 160, 460, 320);
+      ctx.globalAlpha = (0.09 + 0.02 * Math.cos(t * 1.6)) * alpha;
+      ctx.drawImage(this.glowViolet, moonCx - 215, moonCy - 150, 430, 300);
     }
+    this._drawFeatheredAuroraRibbon(
+      ctx,
+      drawX + drawW * 0.18,
+      drawX + drawW * 0.86,
+      drawY + drawH * 0.08,
+      12,
+      110,
+      4.5,
+      0.82,
+      this.glowTeal || this.glowCyan,
+      this.glowViolet,
+      0.085,
+      alpha,
+      t,
+      14
+    );
 
     // 2. 4 Cold Spirit-Ice Stone Tōrō Lantern Halos & Mirror-Ice Reflections
     for (let i = 0; i < lanterns.length; i++) {
@@ -4299,10 +4678,10 @@ export class Renderer {
 
       ctx.globalCompositeOperation = 'lighter';
       if (this.glowCyan) {
-        ctx.globalAlpha = Math.min(0.15, 0.13 * flick) * alpha;
-        ctx.drawImage(this.glowCyan, lx - 72, ly - 64, 144, 128);
-        ctx.globalAlpha = Math.min(0.12, 0.10 * flick) * alpha;
-        ctx.drawImage(this.glowCyan, lx - 84, gy - 8, 168, 44);
+        ctx.globalAlpha = Math.min(0.14, 0.12 * flick) * alpha;
+        ctx.drawImage(this.glowCyan, lx - 68, ly - 60, 136, 120);
+        ctx.globalAlpha = Math.min(0.11, 0.095 * flick) * alpha;
+        ctx.drawImage(this.glowCyan, lx - 78, gy - 8, 156, 40);
       }
 
       ctx.globalCompositeOperation = 'source-over';
@@ -4313,17 +4692,19 @@ export class Renderer {
       ctx.fillRect(lx - 2, ly - 3, 4, 6);
     }
 
-    // 3. Stepped Borealis Courtyard Frost-Mist Ribbons
-    ctx.globalCompositeOperation = 'lighter';
-    for (let m = 0; m < 4; m++) {
-      const mDrift = Math.sin(t * 0.82 + m * 1.7) * 56;
-      const mx = Math.round((drawX + drawW * (0.20 + m * 0.20) + mDrift) / 4) * 4;
-      const my = Math.round((gy - 32 + (m % 2) * 14) / 4) * 4;
-      ctx.globalAlpha = (0.05 + 0.02 * Math.sin(t * 1.6 + m)) * alpha;
-      ctx.fillStyle = m % 2 === 0 ? '#67e8f9' : '#f5d0fe';
-      ctx.fillRect(mx - 110, my, 220, 6);
-      ctx.fillRect(mx - 70, my - 6, 140, 6);
-    }
+    // 3. Soft Feathered Low-Lying Courtyard Frost-Mist (ZERO flat 220x6 horizontal fillRect bars!)
+    this._drawSoftFloorMist(
+      ctx,
+      drawX,
+      drawW,
+      gy,
+      t,
+      5,
+      this.mistCyanTex || this.glowCyan,
+      this.mistVioletTex || this.glowViolet,
+      0.085,
+      alpha
+    );
 
     // 4. 64 Raining Frost-Crystallized Sakura Petals & Diamond-Dust Flakes + 14 Skittering Ice Petals (`0` ctx.rotate!)
     const frostPetalCols = ['#bae6fd', '#67e8f9', '#f5d0fe', '#e9d5ff', '#fbcfe8'];
@@ -4393,7 +4774,7 @@ export class Renderer {
    *   - Animates Creator Cob beyond the monitor glass (`Row 0` Idle, `Row 1` Active Command Attack, `Row 2` Inferno, `Row 3` Glacial)
    *   - Scrolls neon code lines, thermal/cryo bars & bouncing equalizer bars inside both flanking `COB-OS` hologram windows
    *   - Renders translucent glass HUD telemetry nodes, CRT glitch ripples, perspective floor circuit waves,
-   *     plus volcanic embers (`inferno`) and Aurora Borealis curtains + icicles + snowflakes (`glacial`) (`0` ctx.rotate!)
+   *     plus feathered thermal haze (`inferno`) and silky feathered Borealis ribbons + icicles + snowflakes (`glacial`) (`0` ctx.rotate!)
    */
   drawCobMonitorStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0, variant = 'normal') {
     if (alpha <= 0.01) return;
@@ -4415,26 +4796,50 @@ export class Renderer {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Undulating Background Phenomena Behind/Along Glass (`inferno` heat shimmer / `glacial` Aurora Borealis)
+    // 1. Silky Feathered Background Phenomena Behind Monitor Glass (`glacial` Borealis ribbons / `inferno` feathered thermal haze — ZERO vertical bars!)
     if (isGlacial) {
-      const auroraCols = ['#67e8f9', '#2dd4bf', '#38bdf8', '#e879f9', '#c084fc'];
-      ctx.globalCompositeOperation = 'lighter';
-      for (let a = 0; a < 12; a++) {
-        const ax = Math.round((drawX + drawW * (0.24 + a * 0.044) + Math.sin(t * 1.6 + a * 0.85) * 14) / 4) * 4;
-        const ay = Math.round((drawY + drawH * (0.40 + (a % 3) * 0.025) + Math.cos(t * 1.9 + a) * 6) / 4) * 4;
-        const ah = Math.round(drawH * (0.10 + (a % 3) * 0.028));
-        ctx.globalAlpha = Math.min(0.07, (0.042 + 0.024 * Math.sin(t * 2.5 + a * 1.1)) * alpha);
-        ctx.fillStyle = auroraCols[a % auroraCols.length];
-        ctx.fillRect(ax, ay, 8, ah);
-      }
+      this._drawFeatheredAuroraRibbon(
+        ctx,
+        drawX + drawW * 0.23,
+        drawX + drawW * 0.77,
+        drawY + drawH * 0.435,
+        9,
+        82,
+        4.6,
+        0.92,
+        this.glowTeal || this.glowCyan,
+        this.glowViolet,
+        0.072,
+        alpha,
+        t,
+        12
+      );
+      this._drawFeatheredAuroraRibbon(
+        ctx,
+        drawX + drawW * 0.28,
+        drawX + drawW * 0.72,
+        drawY + drawH * 0.475,
+        7,
+        66,
+        3.8,
+        -0.78,
+        this.glowGlacial || this.glowCyan,
+        this.glowCyan,
+        0.055,
+        alpha,
+        t,
+        10
+      );
     } else if (isInferno) {
-      ctx.globalCompositeOperation = 'lighter';
-      for (let h = 0; h < 6; h++) {
-        const hy = Math.round((drawY + drawH * (0.42 + h * 0.052) - ((t * 36 + h * 18) % 22)) / 4) * 4;
-        const hx = Math.round((drawX + drawW * (0.24 + (h % 3) * 0.16) + Math.sin(t * 3.8 + h) * 16) / 4) * 4;
-        ctx.globalAlpha = Math.min(0.07, (0.04 + 0.025 * Math.sin(t * 5.2 + h)) * alpha);
-        ctx.fillStyle = h % 2 === 0 ? '#fb923c' : '#ef4444';
-        ctx.fillRect(hx, hy, 92, 4);
+      const heatTex = this.smokeEmberTex || this.glowOrange;
+      if (heatTex) {
+        ctx.globalCompositeOperation = 'lighter';
+        for (let h = 0; h < 5; h++) {
+          const hy = drawY + drawH * (0.44 + (h % 3) * 0.065) - ((t * 28 + h * 18) % 24);
+          const hx = drawX + drawW * (0.27 + h * 0.115) + Math.sin(t * 2.8 + h) * 18;
+          ctx.globalAlpha = Math.min(0.065, (0.04 + 0.02 * Math.sin(t * 4.4 + h))) * alpha;
+          ctx.drawImage(h % 2 === 0 ? heatTex : this.smokeRoseTex || heatTex, hx - 74, hy - 22, 148, 44);
+        }
       }
     }
 
@@ -6173,9 +6578,9 @@ export class Renderer {
     const moteAnchorOffset = this.adventureMode ? this.camX - 600 : 0;
     ctx.save();
 
-    // 1. Soft Ambient Radial Sky-Glow per Active Stage
+    // 1. Soft Ambient Radial Sky-Glow per Active Stage (elevated cleanly above combat lane & capped <= 0.14!)
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.22 + 0.05 * Math.sin(t * 1.4);
+    ctx.globalAlpha = 0.11 + 0.025 * Math.sin(t * 1.4);
     const skyGlow =
       activeStage === 'sylvan'
         ? this.glowEmerald
@@ -6196,7 +6601,7 @@ export class Renderer {
                 ? this.glowOrange
                 : this.glowGold;
     if (skyGlow) {
-      ctx.drawImage(skyGlow, viewCenterX - 390 + parX * 0.4, gy - 540, 780, 480);
+      ctx.drawImage(skyGlow, viewCenterX - 360 + parX * 0.4, gy - 595, 720, 380);
     }
     if (
       (activeStage === 'inferno' ||
@@ -6204,34 +6609,34 @@ export class Renderer {
         activeStage === 'cob_monitor_inferno') &&
       this.glowCrimson
     ) {
-      ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 2.1);
-      ctx.drawImage(this.glowCrimson, viewCenterX - 320 + parX * 0.3, gy - 480, 640, 420);
+      ctx.globalAlpha = 0.08 + 0.02 * Math.cos(t * 2.1);
+      ctx.drawImage(this.glowCrimson, viewCenterX - 300 + parX * 0.3, gy - 560, 600, 340);
     } else if (
       (activeStage === 'glacial' ||
         activeStage === 'shogunate_glacial' ||
         activeStage === 'cob_monitor_glacial') &&
       this.glowViolet
     ) {
-      ctx.globalAlpha = 0.12 + 0.03 * Math.cos(t * 1.7);
-      ctx.drawImage(this.glowViolet, viewCenterX - 300 + parX * 0.3, gy - 510, 600, 420);
+      ctx.globalAlpha = 0.075 + 0.02 * Math.cos(t * 1.7);
+      ctx.drawImage(this.glowViolet, viewCenterX - 280 + parX * 0.3, gy - 575, 560, 340);
     } else if (activeStage === 'shogunate' && this.glowIndigo) {
-      ctx.globalAlpha = 0.14 + 0.03 * Math.cos(t * 1.8);
-      ctx.drawImage(this.glowIndigo, viewCenterX - 280 + parX * 0.3, gy - 510, 560, 420);
+      ctx.globalAlpha = 0.075 + 0.02 * Math.cos(t * 1.8);
+      ctx.drawImage(this.glowIndigo, viewCenterX - 260 + parX * 0.3, gy - 575, 520, 340);
     } else if (activeStage === 'sanctuary' && this.glowGold) {
-      ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 1.9);
-      ctx.drawImage(this.glowGold, viewCenterX - 280 + parX * 0.3, gy - 510, 560, 420);
+      ctx.globalAlpha = 0.08 + 0.02 * Math.cos(t * 1.9);
+      ctx.drawImage(this.glowGold, viewCenterX - 260 + parX * 0.3, gy - 575, 520, 340);
     }
 
-    // 2. 5 Diagonal Volumetric Parallax Light-Shafts (`0.06..0.12` alpha in `'lighter'` — zero fighter washout!)
+    // 2. 5 Delicate Diagonal Volumetric Parallax Light-Shafts (`0.04..0.07` alpha — zero fighter washout!)
     const shaftCount = 5;
     for (let s = 0; s < shaftCount; s++) {
       const idx = s - 2; // -2..+2
-      const sway = Math.sin(t * (0.9 + s * 0.17) + s * 1.4) * 22;
+      const sway = Math.sin(t * (0.9 + s * 0.17) + s * 1.4) * 20;
       let topX;
       let botX;
       let topRgb;
       let midRgb;
-      let baseAlpha = 0.085;
+      let baseAlpha = 0.058;
 
       if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
         topX = viewCenterX + idx * 145 - 35 + parX;
@@ -6243,25 +6648,25 @@ export class Renderer {
               ? '251, 146, 60'
               : '250, 204, 21';
         midRgb = s % 3 === 0 ? '239, 68, 68' : '234, 88, 12';
-        baseAlpha = 0.095;
+        baseAlpha = 0.064;
       } else if (activeStage === 'glacial' || activeStage === 'shogunate_glacial') {
         topX = viewCenterX + 20 + idx * 132 + parX;
         botX = viewCenterX - 18 + idx * 178 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '103, 232, 249' : '232, 121, 249';
         midRgb = s % 2 === 0 ? '56, 189, 248' : '192, 132, 252';
-        baseAlpha = 0.078;
+        baseAlpha = 0.056;
       } else if (activeStage === 'shogunate') {
         topX = viewCenterX + 45 + idx * 128 + parX;
         botX = viewCenterX - 25 + idx * 176 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '125, 211, 252' : '253, 164, 175';
         midRgb = s % 2 === 0 ? '56, 189, 248' : '244, 63, 94';
-        baseAlpha = 0.082;
+        baseAlpha = 0.056;
       } else if (activeStage === 'sanctuary') {
         topX = viewCenterX - 95 + idx * 118 + parX;
         botX = viewCenterX + 35 + idx * 172 + sway + parX * 1.15;
         topRgb = s === 2 ? '254, 240, 138' : '125, 211, 252';
         midRgb = s % 2 === 0 ? '56, 189, 248' : '250, 204, 21';
-        baseAlpha = 0.095;
+        baseAlpha = 0.060;
       } else if (
         activeStage === 'cob_monitor' ||
         activeStage === 'cob_monitor_inferno' ||
@@ -6279,25 +6684,25 @@ export class Renderer {
           topRgb = s % 2 === 0 ? '34, 211, 238' : '217, 70, 239';
           midRgb = s % 2 === 0 ? '168, 85, 247' : '56, 189, 248';
         }
-        baseAlpha = 0.072;
+        baseAlpha = 0.056;
       } else if (activeStage === 'sylvan') {
         topX = viewCenterX - 40 + idx * 135 + parX;
         botX = viewCenterX + 30 + idx * 178 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '52, 211, 153' : '253, 224, 71';
         midRgb = s % 2 === 0 ? '16, 185, 129' : '56, 189, 248';
-        baseAlpha = 0.085;
+        baseAlpha = 0.058;
       } else if (activeStage === 'boneyard') {
         topX = viewCenterX + idx * 125 + parX;
         botX = viewCenterX + idx * 185 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '244, 63, 94' : '192, 132, 252';
         midRgb = s % 2 === 0 ? '159, 18, 57' : '126, 34, 206';
-        baseAlpha = 0.075;
+        baseAlpha = 0.056;
       } else if (activeStage === 'clocktower') {
         topX = viewCenterX + idx * 130 + parX;
         botX = viewCenterX + idx * 182 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '45, 212, 191' : '250, 204, 21';
         midRgb = s % 2 === 0 ? '20, 184, 166' : '202, 138, 4';
-        baseAlpha = 0.085;
+        baseAlpha = 0.058;
       } else {
         // Cathedral: frost-cyan shafts on left, eclipse-solar shafts on center/right
         topX = viewCenterX + idx * 118 + parX;
@@ -6305,12 +6710,12 @@ export class Renderer {
         const isCool = idx < 0;
         topRgb = isCool ? '56, 189, 248' : idx === 0 ? '253, 224, 71' : '251, 146, 60';
         midRgb = isCool ? '14, 165, 233' : '234, 88, 12';
-        baseAlpha = 0.088;
+        baseAlpha = 0.060;
       }
 
       const topY = gy - 545;
-      const botY = this.adventureMode ? 684 : gy + 16;
-      const beamAlpha = baseAlpha + 0.025 * Math.sin(t * 2.1 + s * 1.3);
+      const botY = this.adventureMode ? 684 : gy - 12;
+      const beamAlpha = baseAlpha + 0.016 * Math.sin(t * 2.1 + s * 1.3);
       if (!this._godRayGradCache) this._godRayGradCache = new Map();
       const gradKey = `${topY}:${botY}:${topRgb}:${midRgb}`;
       let grad = this._godRayGradCache.get(gradKey);
@@ -6463,8 +6868,8 @@ export class Renderer {
       const s = m.size;
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = alpha * 0.42;
-      ctx.drawImage(glowTex, mx - 16, my - 16, 32, 32);
+      ctx.globalAlpha = Math.min(0.16, alpha * 0.18);
+      ctx.drawImage(glowTex, mx - 12, my - 12, 24, 24);
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = alpha;
@@ -6515,43 +6920,46 @@ export class Renderer {
     const fade = Math.min(1, this.stageEventTimer / 1.5);
     ctx.save();
 
-    // Helper for drawing a luminous HD-2D particle with a smooth tapered streak (zero stepped square tails!)
+    // Helper for drawing a crisp HD-2D pixel particle with stepped pixel wake & restrained halo (ZERO ctx.stroke!)
     const drawGlowingParticle = (px, py, size, coreCol, midCol, glowTex, glowR, alpha, tailDx = 0, tailDy = 0) => {
+      const rx = Math.round(px);
+      const ry = Math.round(py);
       if (glowTex && glowR > 0) {
+        const clampedR = Math.min(18, glowR);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * 0.46;
-        ctx.drawImage(glowTex, px - glowR, py - glowR, glowR * 2, glowR * 2);
-      }
-      if (tailDx !== 0 || tailDy !== 0) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * 0.55;
-        ctx.strokeStyle = midCol;
-        ctx.lineWidth = Math.max(1.5, size * 0.55);
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px + tailDx * 3.2, py + tailDy * 3.2);
-        ctx.stroke();
+        ctx.globalAlpha = Math.min(0.16, alpha * 0.18);
+        ctx.drawImage(glowTex, rx - clampedR, ry - clampedR, clampedR * 2, clampedR * 2);
       }
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = alpha * 0.95;
+      if (tailDx !== 0 || tailDy !== 0) {
+        ctx.fillStyle = midCol;
+        for (let step = 1; step <= 3; step++) {
+          const tx = Math.round(rx + tailDx * step * 0.85);
+          const ty = Math.round(ry + tailDy * step * 0.85);
+          const tSz = Math.max(1, Math.round(size * (0.72 - step * 0.16)));
+          ctx.globalAlpha = alpha * (0.58 - step * 0.15);
+          ctx.fillRect(tx - (tSz >> 1), ty - (tSz >> 1), tSz, tSz);
+        }
+      }
+      ctx.globalAlpha = alpha * 0.94;
       ctx.fillStyle = midCol;
-      ctx.fillRect(px - size * 0.5, py - size * 0.5, size, size);
+      ctx.fillRect(rx - (size >> 1), ry - (size >> 1), size, size);
+      const cSz = Math.max(1, size - 2);
       ctx.fillStyle = coreCol;
-      ctx.fillRect(px - size * 0.25, py - size * 0.25, Math.max(2, size * 0.5), Math.max(2, size * 0.5));
+      ctx.fillRect(rx - (cSz >> 1), ry - (cSz >> 1), cSz, cSz);
     };
 
     if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
       // INFERNO / SHOGUNATE INFERNO PHENOMENON: PYROCLASTIC CINDER STORM & SOLAR FLARE
       const calderaX = ww * 0.495;
-      const calderaY = gy - 355;
+      const calderaY = gy - 365;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = (0.44 + 0.10 * Math.sin(t * 5.2)) * fade;
-      if (this.glowOrange) ctx.drawImage(this.glowOrange, calderaX - 440, calderaY - 260, 880, 520);
-      ctx.globalAlpha = 0.30 * fade;
-      if (this.glowCrimson) ctx.drawImage(this.glowCrimson, ww * 0.5 - 500, gy - 260, 1000, 300);
-      ctx.globalAlpha = 0.28 * fade;
-      if (this.glowGold) ctx.drawImage(this.glowGold, calderaX - 260, calderaY - 170, 520, 340);
+      ctx.globalAlpha = (0.16 + 0.03 * Math.sin(t * 4.8)) * fade;
+      if (this.glowOrange) ctx.drawImage(this.glowOrange, calderaX - 380, calderaY - 220, 760, 440);
+      ctx.globalAlpha = 0.12 * fade;
+      if (this.glowCrimson) ctx.drawImage(this.glowCrimson, ww * 0.5 - 460, gy - 250, 920, 260);
+      ctx.globalAlpha = 0.11 * fade;
+      if (this.glowGold) ctx.drawImage(this.glowGold, calderaX - 220, calderaY - 140, 440, 280);
 
       for (let p = 0; p < 72; p++) {
         const speed = 0.62 + (p % 5) * 0.11;
@@ -6734,25 +7142,34 @@ export class Renderer {
         }
       }
     } else if (activeStage === 'sanctuary') {
-      // SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER
+      // SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER (ZERO ctx.ellipse / glow washout!)
       const originX = ww * 0.50;
       const originY = gy - 390;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.38 * fade;
-      if (this.glowCyan) ctx.drawImage(this.glowCyan, originX - 420, originY - 240, 840, 480);
-      ctx.globalAlpha = 0.28 * fade;
-      if (this.glowGold) ctx.drawImage(this.glowGold, originX - 300, originY - 190, 600, 380);
+      ctx.globalAlpha = 0.15 * fade;
+      if (this.glowCyan) ctx.drawImage(this.glowCyan, originX - 380, originY - 210, 760, 420);
+      ctx.globalAlpha = 0.12 * fade;
+      if (this.glowGold) ctx.drawImage(this.glowGold, originX - 270, originY - 165, 540, 330);
 
-      // Descending Consecrated Golden-Sapphire Halo Ripples on the Marble Floor
+      // Expanding Pixel-Snapped Consecrated Runic Halo Glints on the Marble Floor
+      ctx.globalCompositeOperation = 'source-over';
       for (let h = 0; h < 3; h++) {
         const hProg = (t * 0.42 + h * 0.33) % 1;
         const hAlpha = fade * Math.sin(hProg * Math.PI) * 0.34;
-        ctx.strokeStyle = h % 2 === 0 ? '#fde047' : '#7dd3fc';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = hAlpha;
-        ctx.beginPath();
-        ctx.ellipse(originX, gy + 24, 110 + hProg * 260, 12 + hProg * 28, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        this._drawPixelEllipseGlintRing(
+          ctx,
+          originX,
+          gy + 24,
+          110 + hProg * 260,
+          12 + hProg * 28,
+          24,
+          h * 0.7 + t * 0.15,
+          h % 2 === 0 ? '#fde047' : '#7dd3fc',
+          '#ffffff',
+          hAlpha,
+          t,
+          { grid: 3, tickW: 6, tickH: 2, twinkle: false }
+        );
       }
 
       for (let f = 0; f < 56; f++) {
@@ -6766,28 +7183,28 @@ export class Renderer {
         const glow = isGold ? this.glowGold : this.glowCyan;
         const tilt = Math.cos(t * 2.6 + f * 1.5) >= 0 ? 1 : -1;
 
-        if (glow) {
+        if (glow && f % 2 === 0) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fAlpha * 0.38;
-          ctx.drawImage(glow, fx - 18, fy - 18, 36, 36);
+          ctx.globalAlpha = Math.min(0.15, fAlpha * 0.16);
+          ctx.drawImage(glow, fx - 14, fy - 14, 28, 28);
         }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fAlpha * 0.94;
+        ctx.globalAlpha = fAlpha * 0.92;
         ctx.fillStyle = isGold ? '#fef08a' : '#bae6fd';
-        ctx.fillRect(fx - 3 * tilt, fy - 2, 7, 3);
-        ctx.fillRect(fx - 1 * tilt, fy + 1, 5, 2);
+        ctx.fillRect(fx - 3 * tilt, fy - 2, 6, 3);
+        ctx.fillRect(fx - 1 * tilt, fy + 1, 4, 2);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(fx - 2 * tilt, fy - 1, 4, 2);
+        ctx.fillRect(fx - 2 * tilt, fy - 1, 3, 2);
       }
     } else if (activeStage === 'cathedral') {
       // CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN
       const originX = ww * 0.504;
       const originY = gy - 380;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.42 * fade;
-      ctx.drawImage(this.glowGold, originX - 320, originY - 240, 640, 480);
-      ctx.globalAlpha = 0.28 * fade;
-      ctx.drawImage(this.glowOrange, ww * 0.5 - 480, gy - 220, 960, 260);
+      ctx.globalAlpha = 0.16 * fade;
+      if (this.glowGold) ctx.drawImage(this.glowGold, originX - 300, originY - 210, 600, 420);
+      ctx.globalAlpha = 0.12 * fade;
+      if (this.glowOrange) ctx.drawImage(this.glowOrange, ww * 0.5 - 420, gy - 230, 840, 240);
 
       for (let p = 0; p < 64; p++) {
         const seed = p * 1.37;
@@ -6802,13 +7219,13 @@ export class Renderer {
         const glow = isFrost ? this.glowCyan : p % 2 === 0 ? this.glowGold : this.glowOrange;
         const sz = p % 3 === 0 ? 5 : 4;
 
-        drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, -5);
+        drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 16, pAlpha, 0, -5);
       }
     } else if (activeStage === 'sylvan') {
       // SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.34 * fade;
-      ctx.drawImage(this.glowEmerald, ww * 0.5 - 460, gy - 420, 920, 440);
+      ctx.globalAlpha = 0.16 * fade;
+      if (this.glowEmerald) ctx.drawImage(this.glowEmerald, ww * 0.5 - 420, gy - 430, 840, 400);
 
       for (let s = 0; s < 16; s++) {
         const speed = 0.55 + (s % 4) * 0.12;
@@ -6822,7 +7239,7 @@ export class Renderer {
         const col = isCyan ? '#38bdf8' : '#34d399';
         const glow = isCyan ? this.glowCyan : this.glowEmerald;
 
-        drawGlowingParticle(sx, sy, 5, '#ffffff', col, glow, 26, sAlpha, -12, -19);
+        drawGlowingParticle(sx, sy, 5, '#ffffff', col, glow, 18, sAlpha, -9, -14);
       }
 
       for (let f = 0; f < 48; f++) {
@@ -6836,13 +7253,13 @@ export class Renderer {
         const isGold = f % 4 === 0;
         const midCol = isGold ? '#fde047' : f % 2 === 0 ? '#34d399' : '#38bdf8';
         const glow = isGold ? this.glowGold : f % 2 === 0 ? this.glowEmerald : this.glowCyan;
-        drawGlowingParticle(fx, fy, 4, '#ffffff', midCol, glow, 20, fAlpha, -3, 2);
+        drawGlowingParticle(fx, fy, 4, '#ffffff', midCol, glow, 15, fAlpha, -3, 2);
       }
     } else if (activeStage === 'boneyard') {
       // BONEYARD PHENOMENON: ABYSSAL SOUL-EMBER ASCENSION
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.36 * fade;
-      ctx.drawImage(this.glowViolet, ww * 0.5 - 480, gy - 320, 960, 360);
+      ctx.globalAlpha = 0.16 * fade;
+      if (this.glowViolet) ctx.drawImage(this.glowViolet, ww * 0.5 - 440, gy - 340, 880, 340);
 
       for (let w = 0; w < 72; w++) {
         const cycle = (t * (0.38 + (w % 5) * 0.07) + w * 0.23) % 1;
@@ -6855,13 +7272,13 @@ export class Renderer {
         const midCol = isCrimson ? '#f43f5e' : w % 2 === 0 ? '#e879f9' : '#a855f7';
         const sz = w % 4 === 0 ? 5 : 4;
 
-        drawGlowingParticle(wx, wy, sz, '#ffffff', midCol, this.glowViolet, 24, wAlpha, -swirlX * 0.08, 6);
+        drawGlowingParticle(wx, wy, sz, '#ffffff', midCol, this.glowViolet, 16, wAlpha, -swirlX * 0.08, 6);
       }
     } else if (activeStage === 'clocktower') {
       // CLOCKTOWER PHENOMENON: ANTI-GRAVITY TIME-SAND VORTEX
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.36 * fade;
-      ctx.drawImage(this.glowTeal, ww * 0.5 - 460, gy - 420, 920, 440);
+      ctx.globalAlpha = 0.16 * fade;
+      if (this.glowTeal) ctx.drawImage(this.glowTeal, ww * 0.5 - 420, gy - 420, 840, 400);
 
       for (let p = 0; p < 72; p++) {
         const cycle = (t * (0.40 + (p % 4) * 0.08) + p * 0.21) % 1;
@@ -6875,7 +7292,7 @@ export class Renderer {
         const glow = isGold ? this.glowGold : this.glowTeal;
         const sz = p % 3 === 0 ? 5 : 4;
 
-        drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, 6);
+        drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 16, pAlpha, 0, 6);
       }
     }
 
@@ -6951,21 +7368,21 @@ export class Renderer {
         const isAshFlake = i % 3 === 1;
         if (!isAshFlake && this.glowOrange) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * 0.36;
-          ctx.drawImage(this.glowOrange, px - 20, py - 20, 40, 40);
+          ctx.globalAlpha = Math.min(0.15, alpha * 0.22);
+          ctx.drawImage(this.glowOrange, px - 16, py - 16, 32, 32);
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * 0.92;
         if (isAshFlake) {
           ctx.fillStyle = '#291510';
-          ctx.fillRect(px - 4, py - 2, 8, 5);
+          ctx.fillRect(px - 3, py - 2, 6, 4);
           ctx.fillStyle = activeStage === 'shogunate_inferno' ? '#f43f5e' : '#ea580c';
-          ctx.fillRect(px - 3, py + 1, 5, 2);
+          ctx.fillRect(px - 2, py + 1, 4, 1);
         } else {
           ctx.fillStyle = activeStage === 'shogunate_inferno' && i % 2 === 0 ? '#fb7185' : '#fb923c';
-          ctx.fillRect(px - 3, py - 3, 6, 6);
+          ctx.fillRect(px - 2, py - 2, 5, 5);
           ctx.fillStyle = '#fef08a';
-          ctx.fillRect(px - 1, py - 1, 3, 3);
+          ctx.fillRect(px - 1, py - 1, 2, 2);
         }
       } else if (isShogFg) {
         if (activeStage === 'shogunate' && this.glowCrimson && i % 4 === 0) {
@@ -7013,35 +7430,33 @@ export class Renderer {
         const gTex = i % 2 === 0 ? this.glowEmerald : this.glowCyan;
         if (gTex) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * 0.34;
-          ctx.drawImage(gTex, px - 18, py - 18, 36, 36);
+          ctx.globalAlpha = Math.min(0.15, alpha * 0.22);
+          ctx.drawImage(gTex, px - 14, py - 14, 28, 28);
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * 0.88;
         ctx.fillStyle = i % 3 === 0 ? '#fef08a' : i % 2 === 0 ? '#6ee7b7' : '#7dd3fc';
-        ctx.fillRect(px - 3, py - 2, 6, 4);
+        ctx.fillRect(px - 2, py - 1, 5, 3);
       } else if (activeStage === 'boneyard') {
         if (this.glowViolet) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * 0.34;
-          ctx.drawImage(this.glowViolet, px - 18, py - 18, 36, 36);
+          ctx.globalAlpha = Math.min(0.15, alpha * 0.22);
+          ctx.drawImage(this.glowViolet, px - 14, py - 14, 28, 28);
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * 0.88;
         ctx.fillStyle = i % 3 === 0 ? '#f43f5e' : '#c084fc';
-        ctx.fillRect(px - 3, py - 2, 5, 5);
+        ctx.fillRect(px - 2, py - 2, 4, 4);
       } else if (activeStage === 'clocktower') {
         const gTex = i % 2 === 0 ? this.glowGold : this.glowTeal;
         if (gTex) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * 0.34;
-          ctx.drawImage(gTex, px - 16, py - 16, 32, 32);
+          ctx.globalAlpha = Math.min(0.15, alpha * 0.22);
+          ctx.drawImage(gTex, px - 14, py - 14, 28, 28);
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * 0.90;
-        ctx.fillStyle = i % 2 === 0 ? '#fde047' : '#5eead4';
-        ctx.fillRect(px - 3, py - 1, 6, 2);
-        ctx.fillRect(px - 1, py - 3, 2, 6);
+        this._drawPixelSpark4(ctx, px, py, 2, i % 2 === 0 ? '#fde047' : '#5eead4', '#ffffff');
       } else if (
         activeStage === 'cob_monitor' ||
         activeStage === 'cob_monitor_inferno' ||
@@ -7050,8 +7465,8 @@ export class Renderer {
         if (activeStage === 'cob_monitor_inferno') {
           if (this.glowOrange) {
             ctx.globalCompositeOperation = 'lighter';
-            ctx.globalAlpha = Math.min(0.16, alpha * 0.28);
-            ctx.drawImage(this.glowOrange, px - 18, py - 18, 36, 36);
+            ctx.globalAlpha = Math.min(0.16, alpha * 0.24);
+            ctx.drawImage(this.glowOrange, px - 16, py - 16, 32, 32);
           }
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = alpha * 0.90;
@@ -7088,28 +7503,26 @@ export class Renderer {
       } else if (activeStage === 'sanctuary') {
         if (this.glowCyan) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * 0.32;
-          ctx.drawImage(this.glowCyan, px - 18, py - 18, 36, 36);
+          ctx.globalAlpha = Math.min(0.15, alpha * 0.22);
+          ctx.drawImage(this.glowCyan, px - 14, py - 14, 28, 28);
         }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = alpha * 0.90;
+        ctx.globalAlpha = alpha * 0.88;
         ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#e0f2fe';
-        ctx.fillRect(px - 4, py - 2, 8, 3);
+        ctx.fillRect(px - 3, py - 2, 6, 3);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px - 2, py - 1, 4, 2);
+        ctx.fillRect(px - 2, py - 1, 3, 2);
       } else {
         // Cathedral: left frost-cyan & right solar-gold censer sparks
         const gTex = isLeftFlank ? this.glowCyan : this.glowOrange;
         if (gTex) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * 0.34;
-          ctx.drawImage(gTex, px - 18, py - 18, 36, 36);
+          ctx.globalAlpha = Math.min(0.15, alpha * 0.22);
+          ctx.drawImage(gTex, px - 14, py - 14, 28, 28);
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * 0.88;
-        ctx.fillStyle = isLeftFlank ? '#7dd3fc' : '#fde047';
-        ctx.fillRect(px - 2, py - 3, 4, 6);
-        ctx.fillRect(px - 3, py - 1, 6, 2);
+        this._drawPixelSpark4(ctx, px, py, 2, isLeftFlank ? '#7dd3fc' : '#fde047', '#ffffff');
       }
     }
 
