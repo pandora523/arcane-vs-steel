@@ -1,10 +1,10 @@
-import { PixelForge } from './PixelForge.js?v=30fps163';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps163';
+import { PixelForge } from './PixelForge.js?v=30fps164';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps164';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps163';
+} from './shaders/exNextGenFX.js?v=30fps164';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -8451,7 +8451,7 @@ export class Renderer {
     const popT = Math.min(1, p / 0.14);
     const popScale =
       popT < 1
-        ? 0.68 + 0.38 * (1 - Math.pow(1 - popT, 3))
+        ? 0.72 + 0.34 * (1 - Math.pow(1 - popT, 3))
         : p < 0.22
           ? 1.06 - ((p - 0.14) / 0.08) * 0.06
           : 1.0;
@@ -8461,8 +8461,10 @@ export class Renderer {
         ? isTrue ? 96 : 84
         : isTrue ? 128 : 112;
     const drawSize = Math.max(48, Math.round(baseSize * popScale));
-    const bob = Math.round(Math.sin(p * 12) * 3);
-    const crestCy = -halfH - Math.round(baseSize * 0.36) + bob;
+    // Gentle ambient sway strictly for flanking stars/motes — NOT applied to the crest itself
+    // so the 12-frame pixel-art animation reads with zero monotonous sticker bobbing!
+    const bob = Math.round(Math.sin(p * 10) * 2);
+    const crestCy = -halfH - Math.round(baseSize * 0.36);
     return { popScale, baseSize, drawSize, bob, crestCy };
   }
 
@@ -8489,11 +8491,12 @@ export class Renderer {
       ctx.fillRect(hx - 1, hy + 5, 3, 1);
     };
 
-    // 1. ALL 12 CHAMPIONS: Genuine 8-Frame Animated Lossless HD-2D Pixel-Art Ultimate Crest!
-    //    Zero cut-seams, zero uncanny morphing — pure 1:1 nearest-neighbor 16-bit sprite animation!
+    // 1. ALL 12 CHAMPIONS: Genuine 12-Frame Animated Lossless HD-2D Pixel-Art Ultimate Crest!
+    //    Smooth ~12.2-13.5fps playback through all 12 frames; zero sticker bob, restrained HDR sheen
+    //    so every ink outline, roaring flame, ticking gear, and animated moving part stays razor-sharp!
     const sheet = PixelForge.getUltimateEmblemSheet?.();
     const cellSz = PixelForge.ULT_EMBLEM_CELL_SIZE || 128;
-    const frameCount = PixelForge.ULT_EMBLEM_FRAME_COUNT || 8;
+    const frameCount = PixelForge.ULT_EMBLEM_FRAME_COUNT || 12;
     const sheetReady = Boolean(
       sheet &&
         (sheet.complete === undefined || sheet.complete) &&
@@ -8501,8 +8504,11 @@ export class Renderer {
     );
     if (sheetReady) {
       const rowIdx = PixelForge.getUltimateEmblemRow(baseHero);
-      const animCycles = baseHero === 'mage' || baseHero === 'ronin' ? 2.6 : 2.1;
-      const frameIdx = Math.floor(Math.max(0, p) * frameCount * animCycles) % frameCount;
+      const maxDur = this.cutInMaxTimer || (isTrue ? 2.1 : 1.55);
+      const elapsedSec = Math.max(0, p) * maxDur;
+      const animFps =
+        baseHero === 'mage' || baseHero === 'ronin' || baseHero === 'reaper' ? 13.5 : 12.2;
+      const frameIdx = Math.floor(elapsedSec * animFps) % frameCount;
       const sx = frameIdx * cellSz;
       const sy = rowIdx * cellSz;
       const dx = -(drawSize >> 1);
@@ -8513,11 +8519,11 @@ export class Renderer {
       ctx.globalAlpha = alpha;
       ctx.drawImage(sheet, sx, sy, cellSz, cellSz, dx, dy, drawSize, drawSize);
 
-      // Rhythmic HDR additive luminescence beat locked strictly to the animated crest pixels
+      // Restrained HDR luminescence sheen (<= 0.08 steady-state) so crisp 16-bit pixels never wash out!
       const hdrPulse =
-        (p < 0.16 ? 0.26 * (1 - p / 0.16) : 0) +
-        0.07 +
-        0.11 * (0.5 + 0.5 * Math.sin(p * 16));
+        (p < 0.14 ? 0.15 * (1 - p / 0.14) : 0) +
+        0.03 +
+        0.04 * (0.5 + 0.5 * Math.sin(p * 14));
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = alpha * hdrPulse;
       ctx.drawImage(sheet, sx, sy, cellSz, cellSz, dx, dy, drawSize, drawSize);
@@ -8798,15 +8804,16 @@ export class Renderer {
       alpha * ((isTrue ? 0.36 : 0.26) + bloomPulse * 0.08),
       0.34
     );
-    // Radiant Bloom Halo Orb centered cleanly behind the Animated HD-2D Ultimate Crest!
+    // Restrained Elemental Back-Halo centered behind the 12-Frame Animated HD-2D Ultimate Crest
+    // (keeps pixel silhouettes and dark ink outlines razor-sharp instead of drowned in white bloom!)
     const { crestCy, baseSize } = this._getCutInCrestMetrics(halfH, isTrue, p);
     drawBloomOrb(
       0,
       crestCy,
-      Math.round(baseSize * (isTrue ? 0.78 : 0.72)),
-      '#ffffff',
+      Math.round(baseSize * (isTrue ? 0.66 : 0.60)),
       typo.rim,
-      alpha * ((isTrue ? 0.44 : 0.34) + bloomPulse * 0.08),
+      typo.bevel,
+      alpha * ((isTrue ? 0.19 : 0.14) + bloomPulse * 0.04),
       0.92
     );
     ctx.globalCompositeOperation = 'source-over';
@@ -8851,10 +8858,10 @@ export class Renderer {
       ctx.globalAlpha = alpha;
     }
 
-    // 3. Living Sculpted Character-Themed Mascot Set-Piece with Luminous Elemental Bloom Glow!
+    // 3. Living 12-Frame Animated Ultimate Crest with Subtle Rim Lift (never blurring crisp pixel edges!)
     ctx.save();
     ctx.shadowColor = typo.rim;
-    ctx.shadowBlur = isTrue ? 16 : 11;
+    ctx.shadowBlur = isTrue ? 6 : 4;
     this._drawCutInHeroThemeFX(ctx, {
       baseHero,
       p,
