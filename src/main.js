@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps167';
-import { VFXManager } from './engine/VFXManager.js?v=30fps167';
-import { PixelForge } from './engine/PixelForge.js?v=30fps167';
-import { AudioManager } from './engine/AudioManager.js?v=30fps167';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps167';
-import { Fighter } from './entities/Fighter.js?v=30fps167';
-import { Warrior } from './entities/Warrior.js?v=30fps167';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps167';
-import { FireMage } from './entities/FireMage.js?v=30fps167';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps167';
-import { Archer } from './entities/Archer.js?v=30fps167';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps167';
-import { Priestess } from './entities/Priestess.js?v=30fps167';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps167';
-import { Reaper } from './entities/Reaper.js?v=30fps167';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps167';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps167';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps167';
-import { Titan } from './entities/Titan.js?v=30fps167';
-import { TitanEx } from './entities/TitanEx.js?v=30fps167';
-import { Ronin } from './entities/Ronin.js?v=30fps167';
-import { RoninEx } from './entities/RoninEx.js?v=30fps167';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps167';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps167';
-import { IceMage } from './entities/IceMage.js?v=30fps167';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps167';
-import { Android } from './entities/Android.js?v=30fps167';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps167';
-import { NyxEx } from './entities/NyxEx.js?v=30fps167';
+import { Renderer } from './engine/Renderer.js?v=30fps168';
+import { VFXManager } from './engine/VFXManager.js?v=30fps168';
+import { PixelForge } from './engine/PixelForge.js?v=30fps168';
+import { AudioManager } from './engine/AudioManager.js?v=30fps168';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps168';
+import { Fighter } from './entities/Fighter.js?v=30fps168';
+import { Warrior } from './entities/Warrior.js?v=30fps168';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps168';
+import { FireMage } from './entities/FireMage.js?v=30fps168';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps168';
+import { Archer } from './entities/Archer.js?v=30fps168';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps168';
+import { Priestess } from './entities/Priestess.js?v=30fps168';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps168';
+import { Reaper } from './entities/Reaper.js?v=30fps168';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps168';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps168';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps168';
+import { Titan } from './entities/Titan.js?v=30fps168';
+import { TitanEx } from './entities/TitanEx.js?v=30fps168';
+import { Ronin } from './entities/Ronin.js?v=30fps168';
+import { RoninEx } from './entities/RoninEx.js?v=30fps168';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps168';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps168';
+import { IceMage } from './entities/IceMage.js?v=30fps168';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps168';
+import { Android } from './entities/Android.js?v=30fps168';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps168';
+import { NyxEx } from './entities/NyxEx.js?v=30fps168';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps167';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps167';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps167';
+} from './adventure/AdventureManager.js?v=30fps168';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps168';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps168';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1840,7 +1840,6 @@ export class Game {
     }
     this.clearVsManualInputs?.();
     this.dismissVsKeyHintBar?.(true);
-    this.renderer?.resetVsCombatHud?.();
     if (this.vsComboState) {
       this.vsComboState.left.hits = 0;
       this.vsComboState.left.damage = 0;
@@ -2151,14 +2150,6 @@ export class Game {
         this.showVsKeyHintBar(4.0);
       } else {
         this.dismissVsKeyHintBar(true);
-      }
-      if (announce && changed) {
-        this.renderer?.pushVsCallout?.(
-          'left',
-          nextMode === '1p' ? '1P CONTROL!' : 'AI TAKEOVER!',
-          nextMode === '1p' ? '#38bdf8' : '#facc15',
-          '#ffffff'
-        );
       }
     } else {
       this.dismissVsKeyHintBar(true);
@@ -2647,12 +2638,6 @@ export class Game {
       player._manualWalkActive = false;
       player._manualSpeedRatio = 0;
     }
-  }
-
-  onCombatCallout(fighter, label, color = '#fde047', topColor = '#ffffff') {
-    if (this.isAdventureMode() || !label) return;
-    const side = fighter?.team === 2 ? 'right' : 'left';
-    this.renderer?.pushVsCallout?.(side, label, color, topColor);
   }
 
   onFighterHitCombo(attacker, victim, dealt, _isCrit = false) {
@@ -4531,7 +4516,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps167');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps168');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -4627,7 +4612,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps167'
+          'v=30fps168'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -5966,7 +5951,6 @@ export class Game {
       }
       this.clearVsManualInputs?.();
       this.dismissVsKeyHintBar?.(true);
-      this.renderer?.resetVsCombatHud?.();
 
       const gy = this.renderer.groundY;
       const heroKey = CHAMPION_ROSTER[this.slot1Hero] ? this.slot1Hero : 'mage';
@@ -6231,7 +6215,6 @@ export class Game {
     this.vsComboState.right.timer = 0;
     this.vsInput.lastTouchHeroId = null;
     this.clearVsManualInputs();
-    this.renderer?.resetVsCombatHud?.();
     this.team1TagCd = 2.4;
     this.team2TagCd = 2.8;
     this.team1AssistCd = 2.8;
@@ -6897,10 +6880,6 @@ export class Game {
       f2.gainMana(10);
       if (f2.stats) f2.stats.clashes++;
     }
-    if (!this.isAdventureMode()) {
-      this.renderer?.pushVsCallout?.('left', 'CLASH!', '#fde047', '#ffffff');
-      this.renderer?.pushVsCallout?.('right', 'CLASH!', '#fde047', '#ffffff');
-    }
   }
 
   updateProjectiles(dt) {
@@ -6916,7 +6895,6 @@ export class Game {
       } else if (p.owner && p._initialOwner && p.owner !== p._initialOwner && !p._countedParry) {
         p._countedParry = true;
         if (p.owner.stats) p.owner.stats.parries = (p.owner.stats.parries || 0) + 1;
-        this.onCombatCallout(p.owner, 'PERFECT PARRY!', '#fde047', '#ffffff');
       }
       for (let j = i - 1; j >= 0; j--) {
         const q = this.vfx.projectiles[j];

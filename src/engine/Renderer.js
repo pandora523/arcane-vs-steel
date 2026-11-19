@@ -1,11 +1,11 @@
-import { PixelForge } from './PixelForge.js?v=30fps167';
-import { PixelFont } from './PixelFont.js?v=30fps167';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps167';
+import { PixelForge } from './PixelForge.js?v=30fps168';
+import { PixelFont } from './PixelFont.js?v=30fps168';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps168';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps167';
+} from './shaders/exNextGenFX.js?v=30fps168';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -154,10 +154,6 @@ export class Renderer {
     this.cobAssistTargetX = 800;
     this.impactFrameTimer = 0;
     this.impactFrameMaxTimer = 0.15;
-    this.vsCombatHud = {
-      left: { callouts: [] },
-      right: { callouts: [] }
-    };
     this.impactFrameFocusX = 600;
     this.impactFrameFocusY = 420;
     this.impactFrameStyle = 'inferno';
@@ -819,61 +815,6 @@ export class Renderer {
     this.hitStopTimer = Math.max(this.hitStopTimer, Math.min(cap, duration));
   }
 
-  resetVsCombatHud() {
-    if (!this.vsCombatHud) {
-      this.vsCombatHud = {
-        left: { callouts: [] },
-        right: { callouts: [] }
-      };
-      return;
-    }
-    for (const side of ['left', 'right']) {
-      const slot = this.vsCombatHud[side];
-      if (slot?.callouts) slot.callouts.length = 0;
-    }
-  }
-
-  pushVsCallout(side, text, color = '#fde047', topColor = '#ffffff') {
-    const slot = this.vsCombatHud?.[side === 'right' ? 'right' : 'left'];
-    if (!slot || !text) return;
-    const upper = String(text).toUpperCase();
-    // Refresh existing identical callout instead of stacking duplicates
-    const existing = slot.callouts.find((c) => c.text === upper);
-    if (existing) {
-      existing.age = 0;
-      existing.maxLife = 1.35;
-      existing.color = color;
-      existing.topColor = topColor;
-      return;
-    }
-    slot.callouts.unshift({
-      text: upper,
-      color,
-      topColor,
-      age: 0,
-      maxLife: 1.35
-    });
-    if (slot.callouts.length > 2) {
-      slot.callouts.length = 2;
-    }
-  }
-
-  updateVsCombatHud(rawDt) {
-    if (!this.vsCombatHud) return;
-    for (const side of ['left', 'right']) {
-      const slot = this.vsCombatHud[side];
-      if (!slot) continue;
-      if (slot.callouts.length > 0) {
-        for (let i = slot.callouts.length - 1; i >= 0; i--) {
-          slot.callouts[i].age += rawDt;
-          if (slot.callouts[i].age >= slot.callouts[i].maxLife) {
-            slot.callouts.splice(i, 1);
-          }
-        }
-      }
-    }
-  }
-
   triggerUltimateCamera(focusX, focusY) {
     this.ultFocusX = focusX;
     this.ultFocusY = focusY;
@@ -947,7 +888,6 @@ export class Renderer {
   update(rawDt, fighters) {
     this.time += rawDt;
     if (this.hitStopTimer > 0) this.hitStopTimer = Math.max(0, this.hitStopTimer - rawDt);
-    this.updateVsCombatHud(rawDt);
     if (this.shakeTime > 0) {
       this.shakeTime = Math.max(0, this.shakeTime - rawDt);
       // Fast exponential decay so shake settles almost immediately instead of lingering
@@ -1649,11 +1589,6 @@ export class Renderer {
     // 8. Screen-Space Unreal HD-2D Soft Tilt-Shift Vignette (Zero hard vertical bars)
     this.drawHD2DPostProcess(ctx);
 
-    // 8.5. Fighting-Game Side Callouts (VS Mode, Nearest-Neighbor PixelFont)
-    if (!this.adventureMode) {
-      this.drawVsCombatCallouts(ctx);
-    }
-
     // 9. Adventure Mode Screen-Space Progress Strip, Flashing "GO!" Pixel Arrow & Boss Warning Banner
     if (this.adventureMode && this.adventureHook) {
       this.adventureHook.renderScreenHUD(ctx, this);
@@ -1696,66 +1631,6 @@ export class Renderer {
     ctx.fillStyle = '#0c1c30';
     ctx.fillRect(fx - 14, tagY - 5, 28, 10);
     PixelFont.drawCentered(ctx, '1P', fx, tagY, 1, '#67e8f9', '#ffffff', true);
-    ctx.restore();
-  }
-
-  drawVsCombatCallouts(ctx) {
-    if (!ctx?.fillRect || !this.vsCombatHud) return;
-    const viewW = this.viewWidth || this.canvas?.width || 1280;
-    const viewH = this.viewHeight || this.canvas?.height || 720;
-    const compact = Boolean(this.isMobileLandscape || this.isMobilePortrait || viewW <= 860 || viewH <= 460);
-    const hudBottom = this.getHudBottomY();
-    const baseTopY = Math.round(hudBottom + (compact ? 12 : 20));
-    const edgePad = compact ? 10 : 20;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-
-    for (const side of ['left', 'right']) {
-      const slot = this.vsCombatHud[side];
-      if (!slot || !slot.callouts.length) continue;
-      const isRight = side === 'right';
-      let cursorY = baseTopY;
-
-      // Fighting-Game Technical Callouts (`COUNTER!`, `WHIFF PUNISH!`, `PERFECT PARRY!`, `CLASH!`)
-      const callPx = compact ? 1 : 2;
-      for (let i = 0; i < slot.callouts.length; i++) {
-        const co = slot.callouts[i];
-        const remain = Math.max(0, co.maxLife - co.age);
-        const fadeIn = Math.min(1, co.age / 0.11);
-        const fadeOut = Math.min(1, remain / 0.24);
-        const alpha = Math.max(0, Math.min(fadeIn, fadeOut));
-        if (alpha <= 0.02) continue;
-
-        const slideShift = Math.round((1 - fadeIn) * (compact ? 18 : 28));
-        const tw = PixelFont.measureWidth(co.text, callPx);
-        const bw = tw + (compact ? 16 : 24);
-        const bh = compact ? 16 : 24;
-        const bx = isRight
-          ? Math.round(viewW - edgePad - bw + slideShift)
-          : Math.round(edgePad - slideShift);
-        const by = Math.round(cursorY);
-
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = '#03060d';
-        ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
-        ctx.fillStyle = 'rgba(11, 16, 28, 0.92)';
-        ctx.fillRect(bx, by, bw, bh);
-        ctx.fillStyle = co.color || '#fde047';
-        ctx.fillRect(isRight ? bx + bw - 4 : bx, by, 4, bh);
-        ctx.fillRect(bx, by, bw, 2);
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(bx, by + bh - 2, bw, 2);
-
-        const cx = Math.round(bx + bw * 0.5 + (isRight ? -2 : 2));
-        const cy = Math.round(by + bh * 0.5);
-        PixelFont.drawCentered(ctx, co.text, cx, cy, callPx, co.color || '#fde047', co.topColor || '#ffffff', true);
-
-        cursorY += bh + (compact ? 5 : 7);
-      }
-    }
-
-    ctx.globalAlpha = 1;
     ctx.restore();
   }
 

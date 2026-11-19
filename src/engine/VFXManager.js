@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps167';
-import { PixelForge } from './PixelForge.js?v=30fps167';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps167';
+import { PixelFont } from './PixelFont.js?v=30fps168';
+import { PixelForge } from './PixelForge.js?v=30fps168';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps168';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };

@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps167';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps168';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -858,7 +858,6 @@ export class Fighter {
       // Kaze-Maru's Iaido Serene Mind Counter-Blink: teleports behind the attacker on incoming basic/skill hit!
       if (inCounter) {
         if (this.stats) this.stats.parries = (this.stats.parries || 0) + 1;
-        this.game?.onCombatCallout?.(this, 'PERFECT PARRY!', '#fde047', '#ffffff');
         this.triggerIaidoCounterBlink(attacker, this.game);
         return;
       }
@@ -1024,7 +1023,6 @@ export class Fighter {
     ) {
       this._perfectParryWindow = 0;
       if (this.stats) this.stats.parries = (this.stats.parries || 0) + 1;
-      this.game?.onCombatCallout?.(this, 'PERFECT PARRY!', '#fde047', '#ffffff');
       if (this.isPlayerControlled && !this.adventureAutoPlay && !this.game?.isAdventureMode?.()) {
         // Manual 1P Timed Guard-Parry: crisp full parry negation, Overdrive surge & close-range attacker stagger!
         this.gainMana(12);
@@ -1137,11 +1135,9 @@ export class Fighter {
         (this._recentWhiffTimer || 0) > 0;
       if (victimInStartup) {
         if (attacker.stats) attacker.stats.counters = (attacker.stats.counters || 0) + 1;
-        this.game?.onCombatCallout?.(attacker, 'COUNTER!', '#fb923c', '#fef08a');
         if (!isCrit) this.game?.renderer?.triggerHitStop?.(0.028);
       } else if (victimInWhiffRecovery) {
         this._recentWhiffTimer = 0;
-        this.game?.onCombatCallout?.(attacker, 'WHIFF PUNISH!', '#38bdf8', '#e0f2fe');
       }
       this.game?.onFighterHitCombo?.(attacker, this, dealt, isCrit);
     }
