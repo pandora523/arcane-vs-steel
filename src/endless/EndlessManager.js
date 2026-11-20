@@ -1,12 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps194';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps194';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps194';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps194';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps194';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps194';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps194';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps194';
-import { EndlessAscension } from './EndlessAscension.js?v=30fps194';
+import { Fighter } from '../entities/Fighter.js?v=30fps195';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps195';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps195';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps195';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps195';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps195';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps195';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps195';
+import { EndlessAscension } from './EndlessAscension.js?v=30fps195';
+import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps195';
 
 export const ENDLESS_REALMS = [
   {
@@ -95,7 +96,9 @@ const COMBINED_EXT_KEYS = Object.freeze([
   'startingGold',
   'bossTimerBonusSec',
   'relicDiscountMult',
-  'feverDurationBonusSec'
+  'feverDurationBonusSec',
+  'hasteMult',
+  'bossDmgMult'
 ]);
 
 const GOBLIN_MAX_ACTIVE = 2;
@@ -625,12 +628,16 @@ export class EndlessManager {
     this.tapSmites = [];
     this.feverBursts = [];
     this.feverChains = [];
+    this.wave4Bursts = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
 
     // Wave 3: Astral Ascension prestige, Offline Loot, Gilded Goblins & Milestone Chests
     this.ascension = new EndlessAscension();
+    this.bossDirector = new EndlessBossDirector();
+    this._activeDirectorSnap = null;
+    this._activeDirectorMods = null;
     this.pendingOfflineLoot = null;
     this.treasureGoblins = [];
     this.treasureChests = [];
@@ -1014,6 +1021,13 @@ export class EndlessManager {
       this.ascension && typeof this.ascension.getPermanentModifiers === 'function'
         ? this.ascension.getPermanentModifiers() || null
         : null;
+    const dirSnap =
+      this.bossDirector && typeof this.bossDirector.getDirectorSnapshot === 'function'
+        ? this.bossDirector.getDirectorSnapshot(this.stage, this.bestStage, this.getCurrentRealm())
+        : null;
+    const dirMods = dirSnap?.combinedModifiers || null;
+    this._activeDirectorSnap = dirSnap;
+    this._activeDirectorMods = dirMods;
 
     if (!this.economy || typeof this.economy.setExternalModifiers !== 'function') {
       this._activeSynergyMods = synMods || null;
@@ -1022,7 +1036,8 @@ export class EndlessManager {
 
     const hasSyn = Boolean(synMods && typeof synMods === 'object');
     const hasAsc = Boolean(ascMods && typeof ascMods === 'object');
-    if (!hasSyn && !hasAsc) {
+    const hasDir = Boolean(dirMods && typeof dirMods === 'object');
+    if (!hasSyn && !hasAsc && !hasDir) {
       if (this._lastWrittenSynergyExt) {
         this._clearSynergyFromEconomy();
       } else {
@@ -1174,12 +1189,60 @@ export class EndlessManager {
         ? this._baseExternalModifiers.feverDurationBonusSec
         : 0;
 
-    merged.globalDpsMult = baseGlobal * ascHero * synHero;
-    merged.goldMult = baseGold * ascGold * synGold;
-    merged.tapMult = baseTap * (ascTap / ascHero) * (synTap / synHero);
-    merged.companionMult = baseComp * (ascComp / ascHero) * (synComp / synHero);
-    merged.critChanceBonus = baseCritChance + ascCritChance + synCritChance;
+    const dirHero =
+      hasDir && Number.isFinite(dirMods.heroDmgMult) && dirMods.heroDmgMult > 0
+        ? dirMods.heroDmgMult
+        : 1.0;
+    const dirTap =
+      hasDir && Number.isFinite(dirMods.tapDmgMult) && dirMods.tapDmgMult > 0
+        ? dirMods.tapDmgMult
+        : 1.0;
+    const dirComp =
+      hasDir && Number.isFinite(dirMods.companionDmgMult) && dirMods.companionDmgMult > 0
+        ? dirMods.companionDmgMult
+        : 1.0;
+    const dirGold =
+      hasDir && Number.isFinite(dirMods.goldMult) && dirMods.goldMult > 0 ? dirMods.goldMult : 1.0;
+    const dirCritChance = hasDir && Number.isFinite(dirMods.critBonus) ? dirMods.critBonus : 0;
+    const dirHaste =
+      hasDir && Number.isFinite(dirMods.hasteMult) && dirMods.hasteMult > 0 ? dirMods.hasteMult : 1.0;
+    const dirBossDmg =
+      hasDir && Number.isFinite(dirMods.bossDmgMult) && dirMods.bossDmgMult > 0
+        ? dirMods.bossDmgMult
+        : 1.0;
+
+    const baseHaste =
+      Number.isFinite(this._baseExternalModifiers.hasteMult) &&
+      this._baseExternalModifiers.hasteMult > 0
+        ? this._baseExternalModifiers.hasteMult
+        : 1.0;
+    const baseBossDmg =
+      Number.isFinite(this._baseExternalModifiers.bossDmgMult) &&
+      this._baseExternalModifiers.bossDmgMult > 0
+        ? this._baseExternalModifiers.bossDmgMult
+        : 1.0;
+
+    merged.globalDpsMult = baseGlobal * ascHero * synHero * dirHero;
+    merged.goldMult = baseGold * ascGold * synGold * dirGold;
+    merged.tapMult = baseTap * (ascTap / ascHero) * (synTap / synHero) * (dirTap / dirHero);
+    merged.companionMult =
+      baseComp * (ascComp / ascHero) * (synComp / synHero) * (dirComp / dirHero);
+    merged.critChanceBonus = baseCritChance + ascCritChance + synCritChance + dirCritChance;
     merged.critDmgMult = baseCritDmg * ascCritDmg * synCritDmg;
+    const totalHaste = baseHaste * dirHaste;
+    const totalBossDmg = baseBossDmg * dirBossDmg;
+    if (
+      Math.abs(totalHaste - 1.0) > 1e-9 ||
+      Object.prototype.hasOwnProperty.call(this._baseExternalModifiers, 'hasteMult')
+    ) {
+      merged.hasteMult = totalHaste;
+    }
+    if (
+      Math.abs(totalBossDmg - 1.0) > 1e-9 ||
+      Object.prototype.hasOwnProperty.call(this._baseExternalModifiers, 'bossDmgMult')
+    ) {
+      merged.bossDmgMult = totalBossDmg;
+    }
 
     const totalStartingGold = baseStartingGold + ascStartingGold;
     const totalBossTimer = baseBossTimer + ascBossTimer;
@@ -1236,6 +1299,7 @@ export class EndlessManager {
     this.tapSmites = [];
     this.feverBursts = [];
     this.feverChains = [];
+    this.wave4Bursts = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
@@ -1518,6 +1582,7 @@ export class EndlessManager {
     this.tapSmites = [];
     this.feverBursts = [];
     this.feverChains = [];
+    this.wave4Bursts = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
@@ -1601,6 +1666,7 @@ export class EndlessManager {
     this.tapSmites = [];
     this.feverBursts = [];
     this.feverChains = [];
+    this.wave4Bursts = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
@@ -1704,6 +1770,7 @@ export class EndlessManager {
     this.tapSmites = [];
     this.feverBursts = [];
     this.feverChains = [];
+    this.wave4Bursts = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
@@ -1781,6 +1848,7 @@ export class EndlessManager {
     );
     const fxX = player?.x ?? this.corridorOriginX;
     const fxY = player?.groundY ?? this.depthMidY;
+    this._spawnWave4Burst(fxX, fxY - 64, 'ascension', 2.05);
     this.spawnFloatingCallout(fxX, fxY - 155, `ASCENDED! +${shardsGained} SHARDS`, '#facc15', 2, 1.55, {
       kind: 'shard'
     });
@@ -1869,6 +1937,20 @@ export class EndlessManager {
   // SHOP & COMPANION ACTION HELPERS (CALLED BY UI OR DIRECTLY)
   // =========================================================================
 
+  _spawnWave4Burst(x, groundY, kind = 'goblin', scale = 1.65) {
+    while (this.wave4Bursts.length >= 10) {
+      this.wave4Bursts.shift();
+    }
+    this.wave4Bursts.push({
+      x: Math.round(x),
+      groundY: Math.round(groundY),
+      kind: kind === 'ascension' ? 'ascension' : 'goblin',
+      age: 0,
+      maxLife: kind === 'ascension' ? 0.62 : 0.48,
+      scale: Number.isFinite(scale) && scale > 0 ? scale : 1.65
+    });
+  }
+
   buyRelic(relicId, bulkModeOverride = null) {
     if (!this.economy || typeof this.economy.buyRelic !== 'function') {
       return { ok: false, bought: 0, spent: 0, newLevel: 0 };
@@ -1878,6 +1960,29 @@ export class EndlessManager {
       const player = this.game?.leftFighter;
       if (player) {
         this.progression.syncMaxHpWithEconomy(player);
+        if (res.milestoneReached) {
+          this.spawnFloatingCallout(
+            player.x,
+            (player.groundY || player.y) - 148,
+            `MILESTONE ${res.milestoneReached.tag}!`,
+            '#fde047',
+            2,
+            1.35,
+            { kind: 'fever' }
+          );
+        }
+        if (Array.isArray(res.setsUpgraded) && res.setsUpgraded.length > 0) {
+          const upgradedSet = res.setsUpgraded[0];
+          this.spawnFloatingCallout(
+            player.x,
+            (player.groundY || player.y) - 182,
+            `${upgradedSet.name} ${upgradedSet.tierLabel}!`,
+            upgradedSet.color || '#38bdf8',
+            2,
+            1.45,
+            { kind: 'shard' }
+          );
+        }
       }
       this.game?.audio?.play?.('holy_hit', player?.x || 600);
       this.saveNow();
@@ -1972,13 +2077,18 @@ export class EndlessManager {
     const stageIdx = Math.max(0, (this.stage || 1) - 1);
     const waveIdx = Math.max(0, (this.waveInStage || 1) - 1);
     const baseHp = ENDLESS_MONSTER_BASE_HP[kind] || 320;
+    const dirHpMult =
+      this._activeDirectorMods && Number.isFinite(this._activeDirectorMods.monsterHpMult)
+        ? this._activeDirectorMods.monsterHpMult
+        : 1.0;
     const defaultScaledHp = Math.max(
       40,
       Math.round(
         baseHp *
           Math.pow(1.28, stageIdx) *
           (1 + waveIdx * 0.08) *
-          (opts.isElite ? 1.45 : 1.0)
+          (opts.isElite ? 1.45 : 1.0) *
+          dirHpMult
       )
     );
     const defaultDmgScale = 0.56 * Math.pow(1.14, stageIdx) * (opts.isElite ? 1.12 : 1.0);
@@ -2061,6 +2171,12 @@ export class EndlessManager {
     const maxSpawnX = this.lockMaxX - 110;
     const span = Math.max(180, maxSpawnX - minSpawnX);
 
+    const dirMods =
+      this._activeDirectorMods ||
+      this.bossDirector?.getDirectorSnapshot?.(this.stage, this.bestStage, realm)?.combinedModifiers ||
+      null;
+    const eliteChanceBonus = Math.max(0, Number(dirMods?.eliteChanceBonus) || 0);
+
     for (let i = 0; i < count; i++) {
       const kind = realm.monsters[i % realm.monsters.length] || 'templar';
       const frac = count > 1 ? i / (count - 1) : 0.5;
@@ -2069,7 +2185,8 @@ export class EndlessManager {
       const isElite =
         (this.bossFarmMode && i === count - 1) ||
         (waveNum >= 3 && i === count - 1) ||
-        (waveNum >= 5 && i === 1);
+        (waveNum >= 5 && i === 1) ||
+        (eliteChanceBonus > 0 && Math.random() < eliteChanceBonus);
       this._spawnEndlessMonster(kind, sx, { groundY: gy, isElite });
     }
 
@@ -2113,7 +2230,11 @@ export class EndlessManager {
     this._bossPortalActive = true;
 
     const player = this.game?.leftFighter;
-    const isColossal = this.stage % 5 === 0;
+    const bossProfile =
+      this.bossDirector && typeof this.bossDirector.getBossProfileForStage === 'function'
+        ? this.bossDirector.getBossProfileForStage(this.stage, realm)
+        : null;
+    const isColossal = Boolean(bossProfile ? bossProfile.isColossal : this.stage % 5 === 0);
     if (player) {
       const safeRight = isColossal ? bossX - 165 : bossX - 240;
       if (player.x > safeRight) player.x = Math.max(this.lockMinX + 60, safeRight);
@@ -2129,10 +2250,12 @@ export class EndlessManager {
 
     if (isColossal) {
       PixelForge.ensureHeroLoaded?.('archfiend');
-      const colossalHp = Math.round(11800 * Math.pow(1.30, Math.max(0, this.stage - 5)));
+      const profileHpMult = Number.isFinite(bossProfile?.hpMult) && bossProfile.hpMult > 0 ? bossProfile.hpMult : 1.0;
+      const colossalHp = Math.round(11800 * Math.pow(1.30, Math.max(0, this.stage - 5)) * profileHpMult);
       const bossDmgMult = 0.72 * Math.pow(1.14, Math.max(0, this.stage - 1));
       const tierNum = Math.floor(this.stage / 5);
-      const bossName = tierNum > 1 ? `BEHEMOTH MALPHAS MK-${tierNum}` : 'BEHEMOTH MALPHAS';
+      const bossName =
+        bossProfile?.name || (tierNum > 1 ? `BEHEMOTH MALPHAS MK-${tierNum}` : 'BEHEMOTH MALPHAS');
       this.bossEntity = this._spawnEndlessMonster('archfiend', bossX, {
         groundY: this.depthMidY,
         name: bossName,
@@ -2142,11 +2265,16 @@ export class EndlessManager {
         skipPortal: true,
         isEndlessStageBoss: true
       });
+      if (this.bossEntity && bossProfile) {
+        this.bossEntity._bossProfile = bossProfile;
+      }
       this.totalWaveLabel = `STAGE ${this.stage} • COLOSSAL BOSS`;
       this.showBanner(
-        `STAGE ${this.stage} COLOSSAL BOSS`,
-        `${bossName} • ${Math.round(this.bossTimerMax)}S TIMER!`,
-        '#ef4444',
+        bossProfile?.heraldText || `STAGE ${this.stage} COLOSSAL BOSS`,
+        bossProfile?.heraldSubText
+          ? `${bossProfile.heraldSubText} • ${Math.round(this.bossTimerMax)}S`
+          : `${bossName} • ${Math.round(this.bossTimerMax)}S TIMER!`,
+        bossProfile?.accentHex || '#ef4444',
         2.8
       );
       if (!this.game?.isLandingOpen) {
@@ -2159,25 +2287,33 @@ export class EndlessManager {
       this.game?.renderer?.triggerShake?.(14, 0.55);
     } else {
       const baseHp = ENDLESS_MONSTER_BASE_HP[realm.warden] || 360;
-      const wardenHp = Math.round(baseHp * Math.pow(1.28, Math.max(0, this.stage - 1)) * 4.8);
+      const profileHpMult = Number.isFinite(bossProfile?.hpMult) && bossProfile.hpMult > 0 ? bossProfile.hpMult : 1.0;
+      const wardenHp = Math.round(baseHp * Math.pow(1.28, Math.max(0, this.stage - 1)) * 4.8 * profileHpMult);
       const wardenDmgScale = 0.65 * Math.pow(1.14, Math.max(0, this.stage - 1));
+      const wardenName = bossProfile?.name || realm.wardenName;
+      const wardenTitle = bossProfile?.title || `STAGE ${this.stage} WARDEN`;
       this.bossEntity = this._spawnEndlessMonster(realm.warden, bossX, {
         groundY: this.depthMidY,
         isMiniBoss: true,
         isElite: true,
         isEndlessStageBoss: true,
-        wardenName: realm.wardenName,
-        wardenTitle: `STAGE ${this.stage} WARDEN`,
+        wardenName,
+        wardenTitle,
         maxHp: wardenHp,
         dmgScale: wardenDmgScale,
         spriteScale: realm.warden === 'treant' || realm.warden === 'brute' ? 1.38 : 1.28,
         skipPortal: true
       });
+      if (this.bossEntity && bossProfile) {
+        this.bossEntity._bossProfile = bossProfile;
+      }
       this.totalWaveLabel = `STAGE ${this.stage} • WARDEN BOSS`;
       this.showBanner(
-        `STAGE ${this.stage} BOSS: ${realm.wardenName}`,
-        `SLAY WITHIN ${Math.round(this.bossTimerMax)}S TO ADVANCE!`,
-        realm.accentHex,
+        bossProfile?.heraldText || `STAGE ${this.stage} BOSS: ${wardenName}`,
+        bossProfile?.heraldSubText
+          ? `${bossProfile.heraldSubText} • ${Math.round(this.bossTimerMax)}S`
+          : `SLAY WITHIN ${Math.round(this.bossTimerMax)}S TO ADVANCE!`,
+        bossProfile?.accentHex || realm.accentHex,
         2.6
       );
       if (!this.game?.isLandingOpen) {
@@ -2252,11 +2388,18 @@ export class EndlessManager {
     const bGy = boss?.groundY || this.depthMidY;
 
     // Huge Sovereign Gold Coin shower + Astral Shards!
-    const rawBossGold = this.economy.computeMonsterGoldReward(clearedStage, {
+    const bossProfile =
+      boss?._bossProfile ||
+      this.bossDirector?.getBossProfileForStage?.(clearedStage, this.getCurrentRealm()) ||
+      null;
+    const profileGoldMult =
+      Number.isFinite(bossProfile?.goldMult) && bossProfile.goldMult > 0 ? bossProfile.goldMult : 1.0;
+    const baseBossGold = this.economy.computeMonsterGoldReward(clearedStage, {
       isElite: true,
       isWarden: !isColossal,
       isColossalBoss: isColossal
     });
+    const rawBossGold = Math.max(1, Math.round(baseBossGold * profileGoldMult));
     const instantGold = Math.round(rawBossGold * 0.35);
     const showerGold = Math.max(1, rawBossGold - instantGold);
     if (instantGold > 0) {
@@ -2268,7 +2411,9 @@ export class EndlessManager {
       applyMult: true
     });
 
-    const shardCount = clearedStage % 5 === 0 ? Math.max(2, Math.floor(clearedStage / 2)) : 1;
+    const baseShards = clearedStage % 5 === 0 ? Math.max(2, Math.floor(clearedStage / 2)) : 1;
+    const profileBonusShards = Math.max(0, Math.floor(Number(bossProfile?.bonusShards) || 0));
+    const shardCount = Math.max(baseShards, profileBonusShards);
     this.economy.addAstralShards(shardCount);
     this._spawnAstralShardVisuals(bx, bGy, Math.min(6, shardCount));
 
@@ -2456,11 +2601,19 @@ export class EndlessManager {
     }
 
     // Normal / Elite monster gold drop + plume VFX
-    const rawGold = this.economy.computeMonsterGoldReward(this.stage, {
+    const baseMonsterGold = this.economy.computeMonsterGoldReward(this.stage, {
       isElite: Boolean(deadMonster.isElite),
       isWarden: false,
       isColossalBoss: false
     });
+    const eliteGoldMult =
+      deadMonster.isElite &&
+      this._activeDirectorMods &&
+      Number.isFinite(this._activeDirectorMods.eliteGoldMult) &&
+      this._activeDirectorMods.eliteGoldMult > 0
+        ? this._activeDirectorMods.eliteGoldMult
+        : 1.0;
+    const rawGold = Math.max(1, Math.round(baseMonsterGold * eliteGoldMult));
     this.spawnGoldCoins(deadMonster.x, deadMonster.groundY || this.depthMidY, rawGold, {
       count: deadMonster.isElite ? 6 : 3,
       isBoss: false,
@@ -2904,6 +3057,7 @@ export class EndlessManager {
     const shards = 1 + Math.floor(Math.random() * 3);
     this.economy.addAstralShards(shards);
     this._spawnAstralShardVisuals(goblin.x, goblin.groundY, shards);
+    this._spawnWave4Burst(goblin.x, goblin.groundY - 42, 'goblin', 1.75);
 
     this.monstersKilled++;
     this.economy.totalKills = (this.economy.totalKills || 0) + 1;
@@ -3486,11 +3640,18 @@ export class EndlessManager {
       this.onMonsterDeath(target);
     }
 
-    // Tap-Fever Overdrive Chain Lightning: arc to up to 2 nearby living monsters within 360px for 45% splash
+    // Tap-Fever Overdrive & Tempest Surge Chain Lightning: arc to nearby living monsters within 360px for 45% splash
     const feverActive = (this.economy?.tapFeverTimer || 0) > 0;
     const feverTier = feverActive ? ((this.economy?.tapFeverLevel || 0) >= 2 ? 2 : 1) : 0;
+    const dirMods =
+      this._activeDirectorMods ||
+      this.bossDirector?.getDirectorSnapshot?.(this.stage, this.bestStage, this.getCurrentRealm())?.combinedModifiers ||
+      null;
+    const alwaysChain = Boolean(dirMods?.alwaysTapChain);
+    const extraChainTargets = Math.max(0, Math.floor(Number(dirMods?.extraChainTargets) || 0));
+    const effectiveChainTier = feverTier >= 1 ? feverTier : alwaysChain ? 2 : 0;
     let chainedHits = 0;
-    if (feverActive && feverTier >= 1) {
+    if ((feverActive && feverTier >= 1) || alwaysChain) {
       const candidates = [];
       const postLiving = this.getLivingMonsters();
       for (let i = 0; i < postLiving.length; i++) {
@@ -3507,7 +3668,7 @@ export class EndlessManager {
       }
       candidates.sort((a, b) => a.dist - b.dist);
 
-      const chainCount = Math.min(FEVER_CHAIN_MAX_TARGETS, candidates.length);
+      const chainCount = Math.min(FEVER_CHAIN_MAX_TARGETS + extraChainTargets, candidates.length);
       const chainDmg = Math.max(1, Math.round(dmg * FEVER_CHAIN_SPLASH_RATIO));
       for (let ci = 0; ci < chainCount; ci++) {
         const entry = candidates[ci];
@@ -3537,13 +3698,13 @@ export class EndlessManager {
         while (this.feverChains.length >= FEVER_CHAIN_MAX_COUNT) {
           this.feverChains.shift();
         }
-        const boltPts = this._buildPixelChainPoints(tx, tGy - 62, entry.mx, entry.mGy - 62, feverTier);
+        const boltPts = this._buildPixelChainPoints(tx, tGy - 62, entry.mx, entry.mGy - 62, effectiveChainTier);
         this.feverChains.push({
           x1: Math.round(tx),
           y1: Math.round(tGy - 62),
           x2: Math.round(entry.mx),
           y2: Math.round(entry.mGy - 62),
-          tier: feverTier,
+          tier: effectiveChainTier,
           age: 0,
           maxLife: FEVER_CHAIN_LIFE,
           main: boltPts.main,
@@ -3554,7 +3715,7 @@ export class EndlessManager {
           entry.mx + (Math.random() * 18 - 9),
           entry.mGy - 104,
           formatEndlessNumber(chainDmg),
-          feverTier >= 2 ? '#67e8f9' : '#fde047',
+          effectiveChainTier >= 2 ? '#67e8f9' : '#fde047',
           1,
           0.74,
           { kind: 'damage', topColor: '#ffffff' }
@@ -3564,7 +3725,7 @@ export class EndlessManager {
             entry.mx,
             entry.mGy - 56,
             6,
-            feverTier >= 2 ? '#38bdf8' : '#facc15',
+            effectiveChainTier >= 2 ? '#38bdf8' : '#facc15',
             155,
             { upBias: 95, size: 4 }
           );
@@ -4552,6 +4713,10 @@ export class EndlessManager {
       this.feverChains[i].age += effDt;
       if (this.feverChains[i].age >= this.feverChains[i].maxLife) this.feverChains.splice(i, 1);
     }
+    for (let i = this.wave4Bursts.length - 1; i >= 0; i--) {
+      this.wave4Bursts[i].age += effDt;
+      if (this.wave4Bursts[i].age >= this.wave4Bursts[i].maxLife) this.wave4Bursts.splice(i, 1);
+    }
     for (let i = this.portals.length - 1; i >= 0; i--) {
       this.portals[i].age += effDt;
       if (this.portals[i].age >= this.portals[i].maxLife) this.portals.splice(i, 1);
@@ -5435,6 +5600,63 @@ export class EndlessManager {
       ctx.globalAlpha = 1;
     }
 
+    // 3c. Wave 4 Bursts: Treasure Goblin Coin Burst (Row 8 Cols 0..5) & Astral Ascension Starburst (Row 8 Cols 6..11)
+    if (this.wave4Bursts.length > 0) {
+      const hasRow8 = Boolean(vfxReady && (vfxImg.naturalHeight || vfxImg.height || 0) >= ENDLESS_VFX_CELL * 9);
+      for (let i = 0; i < this.wave4Bursts.length; i++) {
+        const wb = this.wave4Bursts[i];
+        const u = Math.max(0, Math.min(1, wb.age / Math.max(0.05, wb.maxLife)));
+        const localFrame = Math.min(5, Math.floor(u * 6));
+        const col = wb.kind === 'ascension' ? 6 + localFrame : localFrame;
+        const wx = Math.round(wb.x);
+        const wy = Math.round(wb.groundY);
+        const alpha = u > 0.72 ? Math.max(0, 1 - (u - 0.72) / 0.28) : 1;
+
+        if (hasRow8 && ctx.drawImage) {
+          const sz = Math.round(136 * (wb.scale || 1.65));
+          const dx = Math.round(wx - sz * 0.5);
+          const dy = Math.round(wy - sz * 0.5);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(
+            vfxImg,
+            col * ENDLESS_VFX_CELL,
+            8 * ENDLESS_VFX_CELL,
+            ENDLESS_VFX_CELL,
+            ENDLESS_VFX_CELL,
+            dx,
+            dy,
+            sz,
+            sz
+          );
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.18, alpha * 0.18);
+          ctx.drawImage(
+            vfxImg,
+            col * ENDLESS_VFX_CELL,
+            8 * ENDLESS_VFX_CELL,
+            ENDLESS_VFX_CELL,
+            ENDLESS_VFX_CELL,
+            dx,
+            dy,
+            sz,
+            sz
+          );
+        } else if (typeof ctx.fillRect === 'function') {
+          const r = Math.round(24 + u * 72);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = alpha * 0.9;
+          ctx.fillStyle = wb.kind === 'ascension' ? '#c084fc' : '#facc15';
+          ctx.fillRect(wx - r, wy - 4, r * 2, 8);
+          ctx.fillRect(wx - 4, wy - r, 8, r * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(wx - 10, wy - 10, 20, 20);
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+
     ctx.restore();
 
     // 4. Companions foreground projectiles/strikes & SkillSets foreground
@@ -6117,6 +6339,20 @@ export class EndlessManager {
     }
 
     const boss = this.isBossEncounter && this.bossEntity && !this.bossEntity.isDead ? this.bossEntity : null;
+    const directorSnap =
+      this.bossDirector && typeof this.bossDirector.getDirectorSnapshot === 'function'
+        ? this.bossDirector.getDirectorSnapshot(this.stage, this.bestStage, realm)
+        : null;
+    const relicSets =
+      typeof this.economy.getRelicSetSynergies === 'function'
+        ? this.economy.getRelicSetSynergies()
+        : [];
+    const relicMilestones = {};
+    if (typeof this.economy.getRelicMilestoneInfo === 'function' && this.economy.relicLevels) {
+      for (const rid of Object.keys(this.economy.relicLevels)) {
+        relicMilestones[rid] = this.economy.getRelicMilestoneInfo(rid);
+      }
+    }
     return {
       active: this.active,
       stage: this.stage,
@@ -6176,7 +6412,12 @@ export class EndlessManager {
       ascension: this.ascension?.getAscensionView?.(this.stage, this.economy) || null,
       pendingOfflineLoot: this.pendingOfflineLoot || null,
       activeGoblinCount: this.treasureGoblins.length,
-      activeChestCount: this.treasureChests.length
+      activeChestCount: this.treasureChests.length,
+      bossDirector: directorSnap,
+      realmModifier: directorSnap?.modifier || null,
+      bestStageTrophies: directorSnap?.trophies || null,
+      relicSets,
+      relicMilestones
     };
   }
 }

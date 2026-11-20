@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps194';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps195';
 
 /**
  * Interactive Front-Facing Orthogonal 16-Bit HD-2D Destructible Shrines & Braziers (`AdventureDestructibles`)

@@ -2,11 +2,12 @@
 // Strictly Node-test safe (all DOM/window/Image accesses guarded), zero emojis,
 // pure nearest-neighbor blits & fillRect fallbacks, in-place DOM patching (zero 60fps click drops).
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps194';
-import { ENDLESS_RELICS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps194';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps195';
+import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps195';
 
-const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps194';
+const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps195';
 const ENDLESS_ICON_ROW = 7;
+const ENDLESS_SIGIL_ROW = 9;
 const ENDLESS_ICON_CELL = 128;
 const STYLE_ELEMENT_ID = 'endless-shop-ui-styles';
 const ROOT_ELEMENT_ID = 'endless-hud-root';
@@ -2862,6 +2863,228 @@ html.is-mobile-landscape .endless-offline-continue-btn {
     font-size: 0.40rem;
   }
 }
+
+/* Wave 4: Realm Modifier Pill, Relic Set Synergies Strip, Milestone Tags & Best-Stage Trophies */
+.endless-modifier-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px 2px 4px;
+  background: rgba(11, 14, 28, 0.94);
+  border: 1px solid #f43f5e;
+  border-radius: 3px;
+  font-size: 0.39rem;
+  letter-spacing: 0.03em;
+  color: #fda4af;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.endless-modifier-pill.hidden {
+  display: none !important;
+}
+
+.endless-modifier-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.endless-relic-sets-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px 6px;
+  background: rgba(7, 10, 20, 0.94);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.28);
+  flex-shrink: 0;
+}
+
+.endless-relic-set-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 5px;
+  background: rgba(14, 18, 32, 0.9);
+  border: 1px solid #334155;
+  border-radius: 3px;
+  min-width: 0;
+  opacity: 0.72;
+  transition: border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.endless-relic-set-pill.is-active {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(28, 24, 16, 0.95) 0%, rgba(12, 14, 24, 0.98) 100%);
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.18);
+}
+
+.endless-relic-set-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-relic-set-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.endless-relic-set-name {
+  font-size: 0.31rem;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-relic-set-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+}
+
+.endless-relic-set-tier {
+  font-size: 0.31rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.endless-relic-set-pill.is-active .endless-relic-set-tier {
+  color: #fde047;
+}
+
+.endless-relic-set-lv {
+  font-size: 0.30rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.endless-relic-milestone {
+  display: inline-block;
+  padding: 1px 4px;
+  margin-left: auto;
+  font-size: 0.31rem;
+  border-radius: 2px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #334155;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.endless-relic-milestone.is-reached {
+  background: rgba(120, 53, 15, 0.45);
+  border-color: #facc15;
+  color: #fef08a;
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.32);
+}
+
+.endless-trophies-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 9px;
+  margin-bottom: 6px;
+  background: linear-gradient(180deg, rgba(22, 18, 36, 0.95) 0%, rgba(10, 12, 22, 0.97) 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.65);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.16);
+}
+
+.endless-trophy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.endless-trophy-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.endless-trophy-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.endless-trophy-title {
+  font-size: 0.41rem;
+  color: #fde047;
+  letter-spacing: 0.04em;
+}
+
+.endless-trophy-bonus {
+  font-size: 0.36rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(250, 204, 21, 0.14);
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  color: #fef08a;
+  white-space: nowrap;
+}
+
+.endless-trophy-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.35rem;
+  color: #cbd5e1;
+}
+
+.endless-trophy-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.endless-trophy-badge {
+  font-size: 0.32rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(15, 20, 34, 0.92);
+  border: 1px solid #334155;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.endless-trophy-badge.is-unlocked {
+  background: rgba(46, 33, 12, 0.9);
+  color: #fef08a;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.2);
+}
+
+html.is-mobile-landscape .endless-modifier-pill {
+  padding: 2px 5px 2px 3px;
+  font-size: 0.34rem;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-modifier-icon {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 560px) {
+  html:not(.is-mobile-landscape) .endless-modifier-pill {
+    padding: 2px 5px 2px 3px;
+    font-size: 0.35rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-relic-sets-strip {
+    gap: 3px;
+    padding: 4px 5px;
+  }
+}
 `;
 
 function setTextIfChanged(el, text) {
@@ -3306,6 +3529,7 @@ export class EndlessShopUI {
     this._iconCanvases = [];
     this._partySlotRefs = [];
     this._relicRowRefs.clear();
+    this._relicSetPillRefs = new Map();
     this._companionCardRefs.clear();
     this._artifactRowRefs.clear();
     this._tabBtnRefs.clear();
@@ -3314,6 +3538,8 @@ export class EndlessShopUI {
     this._statRefs.clear();
     this._lastHudSynergySig = '';
     this._lastDrawerSynergySig = '';
+    this._lastTrophySig = '';
+    this._modifierIconEntry = null;
     this._refs = {};
 
     this._buildTopStatusBar();
@@ -3408,7 +3634,19 @@ export class EndlessShopUI {
     feverMeter.appendChild(feverFill);
     feverMeter.appendChild(feverLabel);
 
+    // Wave 4: Rotating Realm Modifier Pill (Row 9 Cols 0..3)
+    const modPill = document.createElement('div');
+    modPill.className = 'endless-modifier-pill';
+    modPill.title = 'BLOOD MOON: +60% GOLD & +8% CRIT';
+    const modIcon = this._makeIconCanvas(24, 0, '#f43f5e', 'endless-modifier-icon', ENDLESS_SIGIL_ROW);
+    this._modifierIconEntry = this._iconCanvases[this._iconCanvases.length - 1] || null;
+    const modName = document.createElement('span');
+    modName.textContent = 'BLOOD MOON';
+    modPill.appendChild(modIcon);
+    modPill.appendChild(modName);
+
     bar.appendChild(stageBadge);
+    bar.appendChild(modPill);
     bar.appendChild(waveMeter);
     bar.appendChild(currencyGroup);
     bar.appendChild(feverMeter);
@@ -3446,6 +3684,9 @@ export class EndlessShopUI {
     this._refs.stageBadge = stageBadge;
     this._refs.stageText = stageText;
     this._refs.loopPill = loopPill;
+    this._refs.modPill = modPill;
+    this._refs.modIcon = modIcon;
+    this._refs.modName = modName;
     this._refs.waveMeter = waveMeter;
     this._refs.waveFill = waveFill;
     this._refs.waveLabel = waveLabel;
@@ -3956,6 +4197,49 @@ export class EndlessShopUI {
     bulkBar.appendChild(bulkLabel);
     bulkBar.appendChild(bulkGroup);
 
+    // Wave 4: Compact Relic Set Synergies strip (Row 9 Cols 4/5/6)
+    const setsStrip = document.createElement('div');
+    setsStrip.className = 'endless-relic-sets-strip';
+    this._relicSetPillRefs = new Map();
+    for (let i = 0; i < ENDLESS_RELIC_SETS.length; i++) {
+      const setDef = ENDLESS_RELIC_SETS[i];
+      const pill = document.createElement('div');
+      pill.className = 'endless-relic-set-pill';
+      pill.dataset.setId = setDef.id;
+      pill.title = `${setDef.name}: ALL LV.${setDef.tiers[0].minLevel} -> ${setDef.tiers[0].bonusDesc}`;
+
+      const head = document.createElement('div');
+      head.className = 'endless-relic-set-head';
+      const iconCanvas = this._makeIconCanvas(
+        24,
+        setDef.sigilCol,
+        setDef.color,
+        'endless-relic-set-icon',
+        ENDLESS_SIGIL_ROW
+      );
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'endless-relic-set-name';
+      nameSpan.textContent = setDef.name.replace("'S ", ' ');
+      head.appendChild(iconCanvas);
+      head.appendChild(nameSpan);
+
+      const foot = document.createElement('div');
+      foot.className = 'endless-relic-set-foot';
+      const tierSpan = document.createElement('span');
+      tierSpan.className = 'endless-relic-set-tier';
+      tierSpan.textContent = 'LOCKED';
+      const lvSpan = document.createElement('span');
+      lvSpan.className = 'endless-relic-set-lv';
+      lvSpan.textContent = `0/${setDef.tiers[0].minLevel}`;
+      foot.appendChild(tierSpan);
+      foot.appendChild(lvSpan);
+
+      pill.appendChild(head);
+      pill.appendChild(foot);
+      setsStrip.appendChild(pill);
+      this._relicSetPillRefs.set(setDef.id, { pill, tierSpan, lvSpan, def: setDef });
+    }
+
     const list = document.createElement('div');
     list.className = 'endless-scroll-list';
 
@@ -3982,8 +4266,12 @@ export class EndlessShopUI {
       const lvEl = document.createElement('span');
       lvEl.className = 'endless-relic-lv';
       lvEl.textContent = 'LV.0';
+      const milestoneEl = document.createElement('span');
+      milestoneEl.className = 'endless-relic-milestone';
+      milestoneEl.textContent = 'LV.10 X1.5';
       head.appendChild(nameEl);
       head.appendChild(lvEl);
+      head.appendChild(milestoneEl);
 
       const bonusEl = document.createElement('div');
       bonusEl.className = 'endless-relic-bonus';
@@ -4026,6 +4314,7 @@ export class EndlessShopUI {
       this._relicRowRefs.set(relic.id, {
         row,
         lvEl,
+        milestoneEl,
         bonusEl,
         buyBtn,
         countSpan,
@@ -4034,6 +4323,7 @@ export class EndlessShopUI {
     }
 
     panel.appendChild(bulkBar);
+    panel.appendChild(setsStrip);
     panel.appendChild(list);
   }
 
@@ -4555,7 +4845,45 @@ export class EndlessShopUI {
     actions.appendChild(saveBtn);
     actions.appendChild(resetBtn);
 
+    // Wave 4: Best-Stage Trophies Card (Row 9 Col 7 Trophy Crown)
+    const trophiesCard = document.createElement('div');
+    trophiesCard.className = 'endless-trophies-card';
+
+    const trophyHead = document.createElement('div');
+    trophyHead.className = 'endless-trophy-head';
+    const trophyTitleWrap = document.createElement('div');
+    trophyTitleWrap.className = 'endless-trophy-title-wrap';
+    const trophyIcon = this._makeIconCanvas(28, 7, '#facc15', 'endless-trophy-icon', ENDLESS_SIGIL_ROW);
+    const trophyTitle = document.createElement('span');
+    trophyTitle.className = 'endless-trophy-title';
+    trophyTitle.textContent = 'STAGE TROPHIES';
+    trophyTitleWrap.appendChild(trophyIcon);
+    trophyTitleWrap.appendChild(trophyTitle);
+
+    const trophyBonus = document.createElement('span');
+    trophyBonus.className = 'endless-trophy-bonus';
+    trophyBonus.textContent = '+0% DMG / GOLD';
+    trophyHead.appendChild(trophyTitleWrap);
+    trophyHead.appendChild(trophyBonus);
+
+    const trophyMeta = document.createElement('div');
+    trophyMeta.className = 'endless-trophy-meta';
+    const trophyRank = document.createElement('span');
+    trophyRank.textContent = 'RANK: UNRANKED';
+    const trophyNext = document.createElement('span');
+    trophyNext.textContent = 'NEXT: STAGE 5';
+    trophyMeta.appendChild(trophyRank);
+    trophyMeta.appendChild(trophyNext);
+
+    const trophyList = document.createElement('div');
+    trophyList.className = 'endless-trophy-list';
+
+    trophiesCard.appendChild(trophyHead);
+    trophiesCard.appendChild(trophyMeta);
+    trophiesCard.appendChild(trophyList);
+
     scroll.appendChild(dpsCard);
+    scroll.appendChild(trophiesCard);
     scroll.appendChild(grid);
     scroll.appendChild(actions);
     panel.appendChild(scroll);
@@ -4572,6 +4900,10 @@ export class EndlessShopUI {
     this._refs.dpsPartyPct = dpsPartyCol.pct;
     this._refs.dpsTotalVal = sumTotalVal;
     this._refs.dpsGoldSecVal = sumGoldVal;
+    this._refs.trophyBonus = trophyBonus;
+    this._refs.trophyRank = trophyRank;
+    this._refs.trophyNext = trophyNext;
+    this._refs.trophyList = trophyList;
     this._refs.saveBtn = saveBtn;
     this._refs.resetBtn = resetBtn;
   }
@@ -4697,10 +5029,19 @@ export class EndlessShopUI {
       this._playSfx('playUiConfirm');
       const ref = this._relicRowRefs.get(relicId);
       const bought = Math.max(1, Math.floor(Number(res?.bought) || 1));
-      const badgeText = bulkMode === 'MAX'
-        ? (bought > 1 ? `MAX! +${bought}` : 'MAX!')
-        : `+${bought}`;
-      this._triggerBuyFeedback(ref?.row, ref?.buyBtn, badgeText, false);
+      const badgeText = res?.milestoneReached
+        ? `${res.milestoneReached.tag}!`
+        : Array.isArray(res?.setsUpgraded) && res.setsUpgraded.length > 0
+          ? `${res.setsUpgraded[0].tierLabel} SET!`
+          : bulkMode === 'MAX'
+            ? (bought > 1 ? `MAX! +${bought}` : 'MAX!')
+            : `+${bought}`;
+      this._triggerBuyFeedback(
+        ref?.row,
+        ref?.buyBtn,
+        badgeText,
+        Boolean(res?.milestoneReached || (res?.setsUpgraded && res.setsUpgraded.length > 0))
+      );
     } else {
       this._playSfx('playUiBack');
     }
@@ -5332,6 +5673,30 @@ export class EndlessShopUI {
         }
       : null;
 
+    const dirSnap =
+      snap?.bossDirector ||
+      (typeof mgr?.bossDirector?.getDirectorSnapshot === 'function'
+        ? mgr.bossDirector.getDirectorSnapshot(stage, bestStage, realmObj)
+        : null);
+    const realmModifier = snap?.realmModifier || dirSnap?.modifier || null;
+    const bestStageTrophies = snap?.bestStageTrophies || dirSnap?.trophies || null;
+    const relicSets = Array.isArray(snap?.relicSets)
+      ? snap.relicSets
+      : (typeof econ?.getRelicSetSynergies === 'function' ? econ.getRelicSetSynergies() : []);
+    const relicMilestones =
+      snap?.relicMilestones && typeof snap.relicMilestones === 'object'
+        ? snap.relicMilestones
+        : (() => {
+            const map = {};
+            if (typeof econ?.getRelicMilestoneInfo === 'function') {
+              for (let i = 0; i < ENDLESS_RELICS.length; i++) {
+                const rid = ENDLESS_RELICS[i].id;
+                map[rid] = econ.getRelicMilestoneInfo(rid);
+              }
+            }
+            return map;
+          })();
+
     return {
       stage,
       bestStage,
@@ -5366,7 +5731,11 @@ export class EndlessShopUI {
       activeSlotsCount,
       maxActiveSlots,
       ascension,
-      pendingOfflineLoot
+      pendingOfflineLoot,
+      realmModifier,
+      bestStageTrophies,
+      relicSets,
+      relicMilestones
     };
   }
 
@@ -5526,6 +5895,36 @@ export class EndlessShopUI {
       this._refs.loopPill.classList.toggle('hidden', !showLoop);
       if (showLoop) {
         setTextIfChanged(this._refs.loopPill, `LOOP ${state.ascendedLoop}`);
+      }
+    }
+
+    // Wave 4: Rotating Realm Modifier Pill (Row 9 Col 0..3)
+    if (this._refs.modPill && this._refs.modName) {
+      const mod = state.realmModifier;
+      const showMod = Boolean(mod && mod.name);
+      this._refs.modPill.classList.toggle('hidden', !showMod);
+      if (showMod) {
+        const modColor = mod.accentHex || '#f43f5e';
+        setTextIfChanged(this._refs.modName, mod.name);
+        this._refs.modPill.style.borderColor = modColor;
+        this._refs.modPill.style.color = modColor;
+        const modTip = mod.shortDesc ? `${mod.name}: ${mod.shortDesc}` : mod.name;
+        if (this._refs.modPill.title !== modTip) {
+          this._refs.modPill.title = modTip;
+        }
+        const sigilCol = Number.isFinite(Number(mod.sigilCol))
+          ? Math.max(0, Math.min(11, Math.floor(Number(mod.sigilCol))))
+          : 0;
+        if (this._modifierIconEntry) {
+          const changed =
+            this._modifierIconEntry.col !== sigilCol ||
+            this._modifierIconEntry.accentHex !== modColor;
+          this._modifierIconEntry.col = sigilCol;
+          this._modifierIconEntry.accentHex = modColor;
+          if (changed && this._refs.modIcon) {
+            this._blitIconCanvas(this._refs.modIcon, sigilCol, modColor, true, ENDLESS_SIGIL_ROW);
+          }
+        }
       }
     }
 
@@ -5771,6 +6170,24 @@ export class EndlessShopUI {
       btn.classList.toggle('is-active', mode === state.bulkMode);
     }
 
+    // Wave 4: Sync Relic Set Synergies strip
+    const relicSets = Array.isArray(state.relicSets) ? state.relicSets : [];
+    for (let i = 0; i < relicSets.length; i++) {
+      const s = relicSets[i];
+      const setRef = this._relicSetPillRefs?.get?.(s.id);
+      if (!setRef) continue;
+      setRef.pill.classList.toggle('is-active', Boolean(s.active));
+      setRef.pill.style.borderColor = s.active ? s.color || '#facc15' : '#334155';
+      setTextIfChanged(setRef.tierSpan, s.tierLabel || (s.active ? `TIER ${s.tier}` : 'LOCKED'));
+      const lvLabel = s.nextTierLevel ? `${s.minLevel}/${s.nextTierLevel}` : `LV.${s.minLevel}+`;
+      setTextIfChanged(setRef.lvSpan, lvLabel);
+      const setTip = `${s.name} (${s.tierLabel || 'LOCKED'}): ${s.bonusDesc || ''}`;
+      if (setRef.pill.title !== setTip) {
+        setRef.pill.title = setTip;
+      }
+    }
+
+    const milestonesMap = state.relicMilestones || {};
     for (let i = 0; i < state.relicsView.length; i++) {
       const item = state.relicsView[i];
       const ref = this._relicRowRefs.get(item.id);
@@ -5783,6 +6200,17 @@ export class EndlessShopUI {
 
       ref.row.classList.toggle('is-affordable', canAfford);
       setTextIfChanged(ref.lvEl, `LV.${lv}`);
+      if (ref.milestoneEl) {
+        const ms = milestonesMap[item.id];
+        if (ms) {
+          const reached = ms.reachedCount > 0;
+          ref.milestoneEl.classList.toggle('is-reached', reached);
+          const tagText = reached
+            ? (ms.nextLevel ? `X${ms.activeMult} -> ${ms.nextLevel}` : `MAX X${ms.activeMult}`)
+            : `LV.${ms.nextLevel || 10} X1.5`;
+          setTextIfChanged(ref.milestoneEl, tagText);
+        }
+      }
       setTextIfChanged(
         ref.bonusEl,
         item.bonusText || (relicDef ? relicDef.formatBonus(lv) : '')
@@ -5910,6 +6338,39 @@ export class EndlessShopUI {
     setTextIfChanged(this._refs.dpsPartyPct, `${b.partyPct}%`);
     setTextIfChanged(this._refs.dpsTotalVal, formatEndlessNumber(b.totalDps));
     setTextIfChanged(this._refs.dpsGoldSecVal, `${formatEndlessNumber(b.goldPerSec)}/S`);
+
+    // Wave 4: Best-Stage Trophies Card
+    const tr = state.bestStageTrophies;
+    if (tr && this._refs.trophyBonus) {
+      setTextIfChanged(this._refs.trophyBonus, `+${tr.totalBonusPct || 0}% DMG & GOLD`);
+      setTextIfChanged(
+        this._refs.trophyRank,
+        tr.highestTrophy ? `RANK: ${tr.highestTrophy.name}` : `UNLOCKED: 0 (BEST STG ${tr.bestStage})`
+      );
+      setTextIfChanged(
+        this._refs.trophyNext,
+        tr.nextTrophy ? `NEXT STG ${tr.nextMilestoneStage}` : 'MAX RANK'
+      );
+      if (this._refs.trophyList && Array.isArray(tr.trophies)) {
+        const displayTrophies = tr.trophies.slice(0, 8);
+        const sig = displayTrophies.map((t) => `${t.id}:${t.unlocked ? 1 : 0}`).join('|');
+        if (sig !== this._lastTrophySig) {
+          this._lastTrophySig = sig;
+          this._refs.trophyList.textContent = '';
+          for (let i = 0; i < displayTrophies.length; i++) {
+            const t = displayTrophies[i];
+            const bEl = document.createElement('span');
+            bEl.className = t.unlocked ? 'endless-trophy-badge is-unlocked' : 'endless-trophy-badge';
+            if (t.unlocked && t.accentHex) {
+              bEl.style.borderColor = t.accentHex;
+            }
+            bEl.textContent = `STG ${t.stage} ${t.name.split(' ')[0]}`;
+            bEl.title = `${t.name} (Stage ${t.stage}): ${t.bonusDesc}`;
+            this._refs.trophyList.appendChild(bEl);
+          }
+        }
+      }
+    }
 
     setTextIfChanged(this._statRefs.get('stage'), `${state.stage} / BEST ${state.bestStage}`);
     setTextIfChanged(this._statRefs.get('goldPerSec'), `${formatEndlessNumber(b.goldPerSec)}/S`);

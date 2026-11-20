@@ -1,5 +1,5 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps194';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps194';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps195';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps195';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
 

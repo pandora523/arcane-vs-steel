@@ -699,6 +699,8 @@ export class EndlessEconomy {
     const extCritChance = this._extBonus('critChanceBonus', 0);
     const extCritDmg = this._extMult('critDmgMult', 1.0);
     const extBossTimer = Math.max(0, this._extBonus('bossTimerBonusSec', 0));
+    const extHaste = this._extMult('hasteMult', 1.0);
+    const extBossDmg = this._extMult('bossDmgMult', 1.0);
 
     const feverActive = this.tapFeverTimer > 0;
     const feverGoldMult = feverActive ? (this.tapFeverLevel >= 2 ? 3.0 : 2.0) : 1.0;
@@ -713,12 +715,12 @@ export class EndlessEconomy {
       coinMagnetRadius: 150 + Math.round(lvMagnet * 22 * mMagnet) + setCoinMagnetBonus,
       critChance: Math.min(0.75, Math.max(0, 0.05 + lvCrit * 0.022 * mCrit + extCritChance)),
       critMult: (1.75 + lvCrit * 0.14 * mCrit) * extCritDmg,
-      hasteMult: (1 + lvHaste * 0.06 * mHaste) * setHasteMult,
+      hasteMult: (1 + lvHaste * 0.06 * mHaste) * setHasteMult * extHaste,
       moveSpeedMult: Math.min(2.6, 1 + lvHaste * 0.04 * mHaste),
       maxHpMult: 1 + lvVitality * 0.20 * mVitality,
       hpRegenPct: lvVitality * 0.03 * mVitality,
       companionDmgMult: (1 + lvBanner * 0.24 * mBanner) * setCompanionDmgMult * extCompanion * extGlobalDps,
-      bossDmgMult: (1 + lvBoss * 0.22 * mBoss) * setBossDmgMult,
+      bossDmgMult: (1 + lvBoss * 0.22 * mBoss) * setBossDmgMult * extBossDmg,
       bossTimerBonusSec: Math.min(20, Math.floor(lvBoss / 2) * 1.5 * mBoss) + extBossTimer,
       lifestealPct: Math.min(0.25, lvSiphon * 0.015 * mSiphon),
       gaugeGainMult: 1 + lvSiphon * 0.10 * mSiphon,
