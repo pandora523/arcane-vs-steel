@@ -1,17 +1,17 @@
-import { Fighter } from './Fighter.js?v=30fps178';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps178';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps178';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps178';
+import { Fighter } from './Fighter.js?v=30fps179';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps179';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps179';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps179';
 
 const AUTO_SLICES_EX = [
-  [60, 8], // Beat 1 (V0, 0.30s): Snappy stepping storm jab -> snaps at F03 (63)
-  [68, 7], // Beat 2 (V1, 0.30s): Cross-step spinning thunder backfist/hook -> snaps at F10 (70)
-  [75, 8], // Beat 3 (V2, 0.36s): Rising sky-breaker uppercut (lightning trail) -> snaps at F17/F18 (77/78)
-  [83, 7]  // Beat 4 (V3, 0.46s): Heavy one-inch THUNDERCLAP PALM shockwave finisher -> snaps at F25 (85)
+  [60, 8], // Beat 1 (V0, 0.22s): Explosive stepping storm jab -> snaps at F02/F03 (62/63)
+  [68, 7], // Beat 2 (V1, 0.22s): Full-body whipping thunder cross-hook -> snaps at F10 (70)
+  [75, 8], // Beat 3 (V2, 0.27s): Knee-tucked rising Sky-Breaker Uppercut -> snaps at F17/F18 (77/78)
+  [83, 7]  // Beat 4 (V3, 0.36s): Heavy one-inch THUNDERCLAP PALM shockwave finisher -> snaps at F25 (85)
 ];
 
-const BEAT_DURATIONS = [0.30, 0.30, 0.36, 0.46];
-const INTRA_COMBO_LINK = 0.015;
+const BEAT_DURATIONS = [0.22, 0.22, 0.27, 0.36];
+const INTRA_COMBO_LINK = 0.012;
 
 // Pixel-pure storm-gold & midnight-indigo ArcaneShaderFX registry with strict radial/margin tapering
 // so every shadeBox call produces ZERO boundary clips across x = 110 / 600 / 1090 / 7400!
@@ -209,9 +209,9 @@ export class BrawlerEx extends Fighter {
       ...opts,
       name: opts.name || 'Raijin EX',
       maxHp: 3940,
-      attackRange: 128,
-      moveSpeed: 224,
-      autoInterval: 0.85,
+      attackRange: 132,
+      moveSpeed: 256,
+      autoInterval: 0.56,
       lightColor: 'rgba(251, 191, 36, 1)',
       primaryColor: '#fbbf24',
       secondaryColor: '#6366f1',
@@ -226,26 +226,26 @@ export class BrawlerEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.04;
+    this._postFlurryInterval = 0.56;
 
     this.skillName = 'THUNDERSTEP BREAKER';
-    this.skillMaxCooldown = 3.90;
-    this.skillCooldown = 1.05;
-    this.skillDuration = 0.94;
-    this.skillTriggerRange = 390;
+    this.skillMaxCooldown = 3.70;
+    this.skillCooldown = 0.90;
+    this.skillDuration = 0.72;
+    this.skillTriggerRange = 410;
 
     this.ultName = 'TEMPEST HUNDRED FISTS';
     this.ultSub = 'PHANTOM THUNDER FIST BARRAGE & SKY-BREAKER';
-    this.ultDuration = 1.78;
+    this.ultDuration = 1.32;
 
     this.trueUltName = 'HEAVEN-SPLITTING RAIJIN CRASH';
     this.trueUltSub = 'STORM-PILLAR LEAP & THUNDER-CRATER DIVE SLAM';
     this.trueUltDuration = 4.10;
 
-    this.dodgeMaxCooldown = 3.05;
-    this.dashMaxCooldown = 2.75;
+    this.dodgeMaxCooldown = 2.60;
+    this.dashMaxCooldown = 1.75;
     this.crouchCooldown = 0;
-    this.crouchDuration = 0.86;
+    this.crouchDuration = 0.68;
     this.isCrouching = false;
     this.isDeflecting = false;
     this.vaultCooldown = 0;
@@ -319,26 +319,26 @@ export class BrawlerEx extends Fighter {
       // Aspect II: STORM-EMPEROR BURST (zero-heal high-speed shockwave burst)
       this.maxHp = 3740;
       this.hp = this.maxHp;
-      this.moveSpeed = 234;
-      this._postFlurryInterval = 0.96;
+      this.moveSpeed = 268;
+      this._postFlurryInterval = 0.48;
     } else if (aspect === 2) {
       // Aspect III: IRON-BODY COUNTER (fortified armor & guard parry)
       this.maxHp = 3980;
       this.hp = this.maxHp;
-      this.moveSpeed = 212;
-      this._postFlurryInterval = 1.15;
+      this.moveSpeed = 242;
+      this._postFlurryInterval = 0.66;
     }
   }
 
   getAiStyleProfile() {
     return {
       comboGoal: 4,
-      sweetMin: 78,
-      sweetMax: 122,
-      counterCrouchBias: 0.56,
-      midLeapMin: 165,
-      midLeapMax: 330,
-      midLeapChance: 0.42,
+      sweetMin: 72,
+      sweetMax: 120,
+      counterCrouchBias: 0.54,
+      midLeapMin: 155,
+      midLeapMax: 340,
+      midLeapChance: 0.48,
       postStyle: 'brawler'
     };
   }
@@ -354,9 +354,9 @@ export class BrawlerEx extends Fighter {
         return im;
       };
       assets.brawler_ex = {
-        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps178'),
-        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps178'),
-        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps178'),
+        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps179'),
+        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps179'),
+        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps179'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -618,6 +618,7 @@ export class BrawlerEx extends Fighter {
   _beginComboBeat(beatIdx, game) {
     const v = ((beatIdx % 4) + 4) % 4;
     this._autoVariant = v;
+    this._activeComboStage = v;
     this.comboStep = (v + 1) % 4;
     this.autoDuration = BEAT_DURATIONS[v];
     this.stateTimer = 0;
@@ -626,7 +627,7 @@ export class BrawlerEx extends Fighter {
     this.didActionFrame = false;
     this._queuedNextBeat = false;
     this._bootsPlanted = false;
-    this._comboPersistTimer = 0.78;
+    this._comboPersistTimer = 0.85;
     this.unstoppablePoise = v >= 2;
     this.y = this.groundY;
     this.vy = 0;
@@ -641,12 +642,12 @@ export class BrawlerEx extends Fighter {
     }
 
     this._beatStartX = this.x;
-    // Crisp forward martial step-in footsies!
-    let stepDelta = v === 0 ? 22 : v === 1 ? 26 : v === 2 ? 20 : 28;
+    // Aggressive lightning-brawler step-in footsies!
+    let stepDelta = v === 0 ? 30 : v === 1 ? 34 : v === 2 ? 26 : 36;
     if (enemy && !enemy.isDead) {
       const horizDist = Math.abs(enemy.x - this.x);
-      if (horizDist < 72) stepDelta = 6;
-      else if (horizDist > 110) stepDelta = Math.min(48, Math.max(stepDelta, horizDist - 84));
+      if (horizDist < 72) stepDelta = 8;
+      else if (horizDist > 105) stepDelta = Math.min(64, Math.max(stepDelta, horizDist - 78));
     }
     this._beatTargetX = this._clampArenaX(this.x + this.facing * stepDelta, game);
   }
@@ -696,8 +697,15 @@ export class BrawlerEx extends Fighter {
       if (rel < -reachBack || rel > reachFront + bossBonus) continue;
       if (isAdv && !foe.isColossalBoss && Math.abs((foe.groundY || foe.y) - myGy) > 88) continue;
 
-      const dealt = foe.takeDamage(damage, this, isCrit, this.facing * knockX, knockY);
-      if (dealt > 0 || foe.isDead) {
+      const hpBefore = foe.hp;
+      const wasDead = foe.isDead;
+      this._attackConnectedThisState = false;
+      foe.takeDamage(damage, this, isCrit, this.facing * knockX, knockY);
+      const hitConnected =
+        (!wasDead && foe.isDead) ||
+        foe.hp < hpBefore ||
+        Boolean(this._attackConnectedThisState);
+      if (hitConnected) {
         landed = true;
         this.tempestComboStacks = Math.min(8, this.tempestComboStacks + 1);
         const hx = foe.x - this.facing * 12;
@@ -714,8 +722,10 @@ export class BrawlerEx extends Fighter {
           core: '#ffffff',
           layer: 'front'
         });
-        this.gainMana(isCrit ? 11 : 7);
-        this.gainFinisher(isCrit ? 5.5 : 3.2);
+        this.gainMana(isCrit ? 6.5 : 4.2);
+        if (isCrit && tier !== 'ULTIMATE' && tier !== 'TRUE_ULTIMATE') {
+          this.gainFinisher(1.4);
+        }
       }
     }
     this._activeHitTier = prevTier;
@@ -771,15 +781,24 @@ export class BrawlerEx extends Fighter {
     this._overrideFrameIdx = frameIdx;
 
     // Crisp forward step-in lunge
-    const moveU = Math.min(1, u / 0.45);
-    const easedMove = 1 - Math.pow(1 - moveU, 2.2);
+    const moveU = Math.min(1, u / 0.36);
+    const easedMove = 1 - Math.pow(1 - moveU, 2.4);
     this.x = this._beatStartX + (this._beatTargetX - this._beatStartX) * easedMove;
+
+    // Subtle speed afterimage on snappy Beat 2 / Beat 3 / Beat 4 surges
+    if (v >= 1 && u >= 0.14 && u <= 0.44) {
+      this.afterimageAccum += dt;
+      if (this.afterimageAccum >= 0.055) {
+        this.afterimageAccum = 0;
+        this.spawnAfterimage(this.x, this.y, this.facing, 2, frameIdx - 60, 0.16);
+      }
+    }
 
     // Beat 3 Rising Sky-Breaker Uppercut micro-hop returning cleanly to groundY
     if (v === 2) {
-      if (u >= 0.24 && u <= 0.78) {
-        const hopU = (u - 0.24) / 0.54;
-        this.y = this.groundY - Math.sin(hopU * Math.PI) * 34;
+      if (u >= 0.18 && u <= 0.76) {
+        const hopU = (u - 0.18) / 0.58;
+        this.y = this.groundY - Math.sin(hopU * Math.PI) * 38;
       } else {
         this.y = this.groundY;
       }
@@ -906,9 +925,11 @@ export class BrawlerEx extends Fighter {
     if (t >= dur) {
       this.y = this.groundY;
       this.vy = 0;
+      const isManual =
+        (this.isPlayerControlled && !this.adventureAutoPlay) || this.isManualAdventureControl;
       const foeInRange =
-        enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 75;
-      if (v < 3 && (this._queuedNextBeat || (!this.isManualControlled && foeInRange))) {
+        enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 85;
+      if (v < 3 && (this._queuedNextBeat || (!isManual && foeInRange))) {
         this._beginComboBeat(v + 1, game);
       } else {
         this.autoCooldown = v === 3 ? this._postFlurryInterval : INTRA_COMBO_LINK;
@@ -919,7 +940,7 @@ export class BrawlerEx extends Fighter {
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.skillDuration || 0.94;
+    const dur = this.skillDuration || 0.72;
     const u = Math.min(1, Math.max(0, t / dur));
     const vsSkill = game?.isAdventureMode?.() ? 0 : this.buildSkill || 0;
 
@@ -933,10 +954,10 @@ export class BrawlerEx extends Fighter {
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
         const dist = Math.abs(enemy.x - this.x);
-        const desiredDist = Math.min(340, Math.max(96, dist - 74));
+        const desiredDist = Math.min(360, Math.max(110, dist - 68));
         this._skillTargetX = this._clampArenaX(this.x + this.facing * desiredDist, game);
       } else {
-        this._skillTargetX = this._clampArenaX(this.x + this.facing * 200, game);
+        this._skillTargetX = this._clampArenaX(this.x + this.facing * 220, game);
       }
       if (game?.audio) {
         game.audio.play('storm_leap', this.x);
@@ -963,27 +984,27 @@ export class BrawlerEx extends Fighter {
       }
     }
 
-    // Phase 1 -> 2 (u = 0.22..0.48): Explosive Lightning Dash-Rush with afterimages!
-    if (u >= 0.22 && u <= 0.48) {
-      const du = (u - 0.22) / 0.26;
-      const eased = 1 - Math.pow(1 - du, 2.4);
+    // Phase 1 -> 2 (u = 0.16..0.42): Explosive Lightning Dash-Rush with afterimages!
+    if (u >= 0.16 && u <= 0.42) {
+      const du = (u - 0.16) / 0.26;
+      const eased = 1 - Math.pow(1 - du, 2.6);
       this.x = this._skillStartX + (this._skillTargetX - this._skillStartX) * eased;
       this.afterimageAccum += dt;
-      if (this.afterimageAccum >= 0.042) {
+      if (this.afterimageAccum >= 0.032) {
         this.afterimageAccum = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 3, Math.min(13, Math.floor(u * 30)), 0.24);
+        this.spawnAfterimage(this.x, this.y, this.facing, 3, Math.min(12, Math.floor(u * 30)), 0.22);
       }
       if (this._skillPhase === 1) {
         this._skillPhase = 2;
-        this.spawnVfxAnim(2, (this._skillStartX + this._skillTargetX) * 0.5, this.y - 84, 210, 148, 0.36, {
+        this.spawnVfxAnim(2, (this._skillStartX + this._skillTargetX) * 0.5, this.y - 84, 210, 148, 0.32, {
           inFront: true
         });
-        this.spawnTempestBolt(this._skillStartX, this.y - 82, this._skillTargetX, this.y - 88, 0.28, 16);
+        this.spawnTempestBolt(this._skillStartX, this.y - 82, this._skillTargetX, this.y - 88, 0.24, 16);
       }
     }
 
-    // Phase 2 -> 3 (u >= 0.48): Explosive Storm Cross-Punch Detonation!
-    if (this._skillPhase < 3 && u >= 0.48) {
+    // Phase 2 -> 3 (u >= 0.42): Explosive Storm Cross-Punch Detonation!
+    if (this._skillPhase < 3 && u >= 0.42) {
       this._skillPhase = 3;
       this.didActionFrame = true;
       this.x = this._skillTargetX;
@@ -1033,7 +1054,7 @@ export class BrawlerEx extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.ultDuration || 1.78;
+    const dur = this.ultDuration || 1.32;
     const u = Math.min(1, Math.max(0, t / dur));
     const vsUlt = game?.isAdventureMode?.() ? 0 : this.buildUlt || 0;
 
@@ -1048,12 +1069,12 @@ export class BrawlerEx extends Fighter {
       this.isInvulnerable = true;
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
-        this._ultTargetX = this._clampArenaX(enemy.x - this.facing * 86, game);
+        this._ultTargetX = this._clampArenaX(enemy.x - this.facing * 82, game);
       } else {
         this._ultTargetX = this._clampArenaX(this.x + this.facing * 120, game);
       }
-      this.spawnVfxAnim(7, this.x, this.y - 86, 208, 208, 0.92, { inFront: false, followOwner: true, offsetY: -86 });
-      this.spawnGroundSeal(this.x, this.groundY, 118, 0.96);
+      this.spawnVfxAnim(7, this.x, this.y - 86, 208, 208, 0.78, { inFront: false, followOwner: true, offsetY: -86 });
+      this.spawnGroundSeal(this.x, this.groundY, 118, 0.84);
       game?.vfx?.triggerCinematicCutIn?.(this, this.ultName, '#fbbf24');
       game?.vfx?.spawnSpecialCastAura?.(this, this.ultName, this.ultSub, 'tempest', false);
       if (game?.audio) {
@@ -1076,43 +1097,43 @@ export class BrawlerEx extends Fighter {
     }
 
     // Snap rapidly into melee barrage pocket during F00..F02
-    if (u < 0.2) {
-      const approach = Math.min(1, u / 0.18);
-      this.x = this.x + (this._ultTargetX - this.x) * Math.min(1, dt * 16 + approach * 0.2);
+    if (u < 0.18) {
+      const approach = Math.min(1, u / 0.16);
+      this.x = this.x + (this._ultTargetX - this.x) * Math.min(1, dt * 22 + approach * 0.28);
     }
 
-    // 6-hit rapid TEMPEST HUNDRED FISTS phantom barrage (u = 0.20..0.66)
-    const barrageTimes = [0.22, 0.30, 0.38, 0.46, 0.54, 0.62];
+    // 6-hit supersonic TEMPEST HUNDRED FISTS phantom barrage (u = 0.18..0.58)
+    const barrageTimes = [0.18, 0.25, 0.32, 0.39, 0.46, 0.53];
     while (this._ultHitStep < barrageTimes.length && u >= barrageTimes[this._ultHitStep]) {
       const idx = this._ultHitStep++;
       const strikeX = this._clampArenaX(this.x + this.facing * (76 + (idx % 3) * 14), game);
       const strikeY = this.y - 78 - ((idx % 3) - 1) * 20;
-      this.spawnVfxAnim(3, strikeX, strikeY, 188, 178, 0.28, { inFront: true });
-      this.spawnAfterimage(this.x - this.facing * 10, this.y, this.facing, 4, 3 + (idx % 6), 0.18);
-      this.spawnTempestBolt(this.x + this.facing * 26, this.y - 90, strikeX + this.facing * 32, strikeY, 0.16, 12);
+      this.spawnVfxAnim(3, strikeX, strikeY, 188, 178, 0.22, { inFront: true });
+      this.spawnAfterimage(this.x - this.facing * 10, this.y, this.facing, 4, 3 + (idx % 6), 0.15);
+      this.spawnTempestBolt(this.x + this.facing * 26, this.y - 90, strikeX + this.facing * 32, strikeY, 0.14, 12);
       const hitDmg = vsUlt === 1 ? 48 : vsUlt === 2 ? 37 : 43;
       this._applyTempestStrike(enemy, game, {
         damage: hitDmg,
         reachFront: 235,
-        hitStop: 0.022,
-        shakeDur: 0.032,
-        knockX: 14,
-        knockY: -10,
+        hitStop: 0.016,
+        shakeDur: 0.026,
+        knockX: 12,
+        knockY: -8,
         sfx: 'slash',
         tier: 'ULTIMATE'
       });
     }
 
-    // Climax Rising Shockwave Uppercut (u >= 0.70, F10..F11 -> grounded F12..F14)
-    if (u >= 0.68 && u <= 0.84) {
-      const riseU = (u - 0.68) / 0.16;
-      this.y = this.groundY - Math.sin(riseU * Math.PI) * 52;
+    // Climax Rising Shockwave Uppercut (u >= 0.65, F10..F11 -> grounded F12..F14)
+    if (u >= 0.64 && u <= 0.80) {
+      const riseU = (u - 0.64) / 0.16;
+      this.y = this.groundY - Math.sin(riseU * Math.PI) * 56;
     } else {
       this.y = this.groundY;
       this.vy = 0;
     }
 
-    if (this._ultHitStep === barrageTimes.length && u >= 0.70) {
+    if (this._ultHitStep === barrageTimes.length && u >= 0.66) {
       this._ultHitStep++;
       this.didActionFrame = true;
       const finX = this._clampArenaX(this.x + this.facing * 86, game);
@@ -1439,23 +1460,71 @@ export class BrawlerEx extends Fighter {
     }
   }
 
+  startDash(enemy, game) {
+    if (this._advPureDodge) return;
+    if (enemy && !enemy.isDead && !this.isPlayerControlled) {
+      this.facing = enemy.x >= this.x ? 1 : -1;
+    }
+    this.dashCooldown = this.dashMaxCooldown * (0.86 + Math.random() * 0.24);
+    this.dashDuration = 0.26;
+    this.dashDir = this.facing;
+    this._dashStartX = this.x;
+    let dashDist = 215;
+    if (enemy && !enemy.isDead && this.dashDir === (enemy.x >= this.x ? 1 : -1)) {
+      const frontDist = Math.abs(enemy.x - this.x);
+      if (frontDist > 96) {
+        dashDist = Math.min(240, Math.max(96, frontDist - 78));
+      }
+    }
+    this._dashTargetX = this._clampArenaX(this.x + this.dashDir * dashDist, game);
+    this.vx = 0;
+    this.vy = 0;
+    this.y = this.groundY;
+    this.setState('DASH');
+    if (game?.audio) game.audio.play('storm_leap', this.x);
+    this.spawnTempestBolt(this.x, this.y - 76, this._dashTargetX, this.y - 76, 0.18, 12);
+    this.spawnGroundSeal(this.x, this.groundY, 56, 0.22);
+  }
+
+  updateDash(dt, _enemy, _game) {
+    const t = this.stateTimer;
+    const dur = this.dashDuration || 0.26;
+    const u = Math.min(1, Math.max(0, t / dur));
+    const eased = 1 - Math.pow(1 - u, 2.5);
+    this.x = (this._dashStartX ?? this.x) + ((this._dashTargetX ?? this.x) - (this._dashStartX ?? this.x)) * eased;
+    this.y = this.groundY;
+    this.vy = 0;
+    this.isInvulnerable = u < 0.45;
+    this.afterimageAccum += dt;
+    if (this.afterimageAccum >= 0.036) {
+      this.afterimageAccum = 0;
+      this.spawnAfterimage(this.x, this.y, this.facing, 6, Math.min(28, Math.floor(u * 30)), 0.16);
+    }
+    if (t >= dur) {
+      this.x = this._dashTargetX ?? this.x;
+      this.y = this.groundY;
+      this.isInvulnerable = false;
+      this.setState('IDLE');
+    }
+  }
+
   startJump(enemy, game, dirOverride = null) {
     if (this._advPureDodge) return;
     const dir = dirOverride || this.facing;
     this.facing = dir;
-    this.vaultCooldown = 2.6;
-    this.jumpCooldown = 2.6;
-    this.dashDuration = 0.50;
+    this.vaultCooldown = 2.2;
+    this.jumpCooldown = 2.2;
+    this.dashDuration = 0.38;
     this.isFlipVault = true;
     this.isInvulnerable = true;
     this.didSecondaryAction = false;
     this.flipStartX = this.x;
 
-    let jumpDist = 186;
+    let jumpDist = 196;
     if (enemy && !enemy.isDead && dir === (enemy.x >= this.x ? 1 : -1)) {
       const frontDist = Math.abs(enemy.x - this.x);
-      if (frontDist > 120 && frontDist < 300) {
-        jumpDist = Math.min(186, Math.max(88, frontDist - 96));
+      if (frontDist > 120 && frontDist < 320) {
+        jumpDist = Math.min(196, Math.max(92, frontDist - 88));
       }
     }
     this.flipTargetX = this._clampArenaX(this.x + dir * jumpDist, game);
@@ -1463,38 +1532,35 @@ export class BrawlerEx extends Fighter {
     this.vy = 0;
     this.setState('JUMP');
     if (game?.audio) game.audio.play('storm_leap', this.x);
-    this.spawnGroundSeal(this.x, this.groundY, 64, 0.26);
+    this.spawnGroundSeal(this.x, this.groundY, 64, 0.24);
   }
 
   updateJump(dt, enemy, game) {
-    if (this._advPureDodge) {
-      super.updateDashOrDodge?.(dt, enemy, game);
-      return;
-    }
+    if (this._advPureDodge) return;
     const t = this.stateTimer;
-    const dur = this.dashDuration || 0.50;
+    const dur = this.dashDuration || 0.38;
     const u = Math.min(1, Math.max(0, t / dur));
 
-    this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * (1 - Math.pow(1 - u, 1.8));
-    this.y = this.groundY - Math.sin(u * Math.PI) * 108;
+    this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * (1 - Math.pow(1 - u, 2.0));
+    this.y = this.groundY - Math.sin(u * Math.PI) * 104;
     this.isInvulnerable = u < 0.62;
 
     this.afterimageAccum += dt;
-    if (this.afterimageAccum >= 0.055 && u < 0.82) {
+    if (this.afterimageAccum >= 0.042 && u < 0.82) {
       this.afterimageAccum = 0;
-      this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(28, Math.floor(u * 30)), 0.20);
+      this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(28, Math.floor(u * 30)), 0.16);
     }
 
-    if (!this.didSecondaryAction && u >= 0.54) {
+    if (!this.didSecondaryAction && u >= 0.52) {
       this.didSecondaryAction = true;
       if (enemy && !enemy.isDead) this.facing = enemy.x >= this.x ? 1 : -1;
       const hitX = this._clampArenaX(this.x + this.facing * 56, game);
-      this.spawnVfxAnim(0, hitX, this.y - 68, 144, 144, 0.26, { inFront: true });
+      this.spawnVfxAnim(0, hitX, this.y - 68, 144, 144, 0.24, { inFront: true });
       this._applyTempestStrike(enemy, game, {
         damage: 34,
         reachFront: 164,
-        hitStop: 0.038,
-        shakeDur: 0.048,
+        hitStop: 0.036,
+        shakeDur: 0.046,
         knockX: 68,
         knockY: -46,
         sfx: 'heavy_cleave'
@@ -1507,6 +1573,30 @@ export class BrawlerEx extends Fighter {
       this.isInvulnerable = false;
       this.isFlipVault = false;
       this.setState('IDLE');
+    }
+  }
+
+  updateDashOrDodge(dt, enemy, game) {
+    if (this._advPureDodge) return;
+    if (this.state === 'DASH') {
+      this.updateDash(dt, enemy, game);
+    } else if (this.state === 'JUMP') {
+      this.updateJump(dt, enemy, game);
+    } else {
+      // Snappy invulnerable lightning backstep / roll (`DODGE`)
+      const dur = this.dashDuration || 0.28;
+      this.x = this._clampArenaX(this.x + (this.dashDir || -this.facing) * 460 * dt, game);
+      this.y = this.groundY;
+      this.isInvulnerable = this.stateTimer < dur * 0.72;
+      this.afterimageAccum += dt;
+      if (this.afterimageAccum >= 0.04) {
+        this.afterimageAccum = 0;
+        this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(28, Math.floor((this.stateTimer / dur) * 30)), 0.14);
+      }
+      if (this.stateTimer >= dur) {
+        this.isInvulnerable = false;
+        this.setState('IDLE');
+      }
     }
   }
 

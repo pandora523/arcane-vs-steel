@@ -1220,44 +1220,43 @@ def render_pose_160(rig: dict, pose: dict) -> np.ndarray:
 # 5. ALL 10 ANIMATION ROWS (30fps CHOREOGRAPHY)
 # ==============================================================================
 def build_row0_idle(rig: dict) -> list[np.ndarray]:
-    """Row 0 IDLE: Coiled bare-knuckle martial stance, scarf billowing, subtle wrist lightning flicker."""
+    """Row 0 IDLE: Low coiled martial boxer-bounce stance, rhythmic guard fists & crackling wrist sparks."""
     frames = []
     for c in range(COLS):
         u = c / float(COLS)
         ph = u * math.tau
-        bob = 2.4 * math.sin(ph)  # Ensures clean vertical breathing motion (>= 4px output span)
-        sway = 1.2 * math.cos(ph)
+        bob = 2.8 * math.sin(ph)  # Deep athletic knee bounce
+        sway = 1.6 * math.cos(ph)
 
         def idle_vfx(arr, fw, bw, _pelv, col=c, phase=ph):
-            # Subtle crackling wrist lightning sparks alternating fists every few frames
             if col % 3 == 0:
                 draw_lightning_bolt_160(
-                    arr, fw[0] - 3, fw[1] - 2, fw[0] + 5, fw[1] - 6, seed=col * 7 + 1, jag=2.0, thick=1
+                    arr, fw[0] - 4, fw[1] - 2, fw[0] + 6, fw[1] - 7, seed=col * 7 + 1, jag=2.2, thick=1
                 )
             elif col % 3 == 1:
                 draw_lightning_bolt_160(
-                    arr, bw[0] - 2, bw[1] - 3, bw[0] + 6, bw[1] + 2, seed=col * 11 + 3, jag=1.8, thick=1
+                    arr, bw[0] - 2, bw[1] - 3, bw[0] + 7, bw[1] + 2, seed=col * 11 + 3, jag=2.0, thick=1
                 )
-            # Tiny golden spark pixel dancing near knuckles so every single frame is alive (29/29)
-            sx = int(round(fw[0] + 4.0 * math.cos(phase * 2.0 + col)))
-            sy = int(round(fw[1] - 4.0 + 3.0 * math.sin(phase * 3.0)))
+            sx = int(round(fw[0] + 4.5 * math.cos(phase * 2.0 + col)))
+            sy = int(round(fw[1] - 4.0 + 3.2 * math.sin(phase * 3.0)))
             put_px(arr, sx, sy, C_GOLD_LIT if col % 2 == 0 else C_INDIGO_LIT)
 
         pose = {
-            "dx": sway * 0.5,
-            "dy": 4.2 + bob,
-            "torso_ang": 7.0 + 1.8 * math.sin(ph),
-            "head_ang": -2.5 + 1.0 * math.sin(ph - 0.5),
-            "l_foot": (-13.0, 0.0),
-            "r_foot": (12.5, 0.0),
-            "f_hand": (13.5 + 1.4 * math.sin(ph), 5.0 + 1.2 * math.cos(ph)),
-            "b_hand": (17.0 - 1.2 * math.sin(ph), -1.5 + 1.4 * math.sin(ph)),
-            "f_charge": 0.35 + 0.25 * abs(math.sin(ph * 2.0)),
-            "b_charge": 0.35 + 0.25 * abs(math.cos(ph * 2.0)),
+            "dx": sway * 0.75,
+            "dy": 8.0 + bob,
+            "torso_ang": 13.0 + 3.2 * math.sin(ph),
+            "head_ang": -5.0 + 1.4 * math.sin(ph - 0.6),
+            "l_foot": (-15.5, 0.0),
+            "r_foot": (15.0, 0.0),
+            # Authentic asymmetric martial guard: power fist coiled by ribs/jaw, lead fist bobbing out!
+            "f_hand": (7.5 + 2.8 * math.cos(ph), 5.0 + 2.2 * math.sin(ph)),
+            "b_hand": (19.5 + 2.6 * math.sin(ph), -2.5 + 2.2 * math.cos(ph)),
+            "f_charge": 0.4 + 0.28 * abs(math.sin(ph * 2.0)),
+            "b_charge": 0.4 + 0.28 * abs(math.cos(ph * 2.0)),
             "wave_phase": ph,
-            "scarf_amp": 18.0,
-            "hb_amp": 12.0,
-            "scarf_ang": 4.0 + 3.0 * math.sin(ph),
+            "scarf_amp": 23.0,
+            "hb_amp": 14.0,
+            "scarf_ang": 10.0 + 4.5 * math.sin(ph),
             "expr": "fierce",
             "vfx_fn": idle_vfx,
         }
@@ -1267,9 +1266,9 @@ def build_row0_idle(rig: dict) -> list[np.ndarray]:
 
 def build_row1_walk(rig: dict) -> list[np.ndarray]:
     """
-    Row 1 WALK: Grounded bipedal +X forward martial stride.
+    Row 1 WALK: Agile low-crouched martial sprint-stalk (+X forward stride, full pumping arms!).
     Guarantees:
-      - walkStanceDelta <= -6.0px on BOTH half-cycles (stance foot sweeps backward -X while swing foot crosses +X!)
+      - walkStanceDelta <= -6.0px on BOTH half-cycles (stance foot sweeps -X while swing foot crosses +X!)
       - maxBootSpan >= 56px, minBootSpan <= maxBootSpan * 0.55
       - Smooth topY delta <= 4px, grounded maxY in 224..232
     """
@@ -1279,46 +1278,46 @@ def build_row1_walk(rig: dict) -> list[np.ndarray]:
         ph = u * math.tau
 
         def foot_traj(cycle_u: float) -> tuple[float, float, float]:
-            # First half [0.0..0.5): STANCE phase firmly planted on ground sweeping steadily BACKWARD (+17 -> -17)
-            # Second half [0.5..1.0): SWING phase lifted cleanly off floor sweeping FORWARD (-17 -> +17)
+            # First half [0.0..0.5): STANCE phase firmly planted sweeping cleanly BACKWARD (+18.5 -> -18.5)
+            # Second half [0.5..1.0): SWING phase lifted high & briskly whipping FORWARD (-18.5 -> +18.5)
             cu = cycle_u % 1.0
             if cu < 0.5:
                 s = cu / 0.5
-                fx = lerp(17.0, -17.0, s)
+                fx = lerp(18.5, -18.5, s)
                 fy = 0.0
-                bang = lerp(-8.0, 12.0, s)
+                bang = lerp(-10.0, 14.0, s)
             else:
                 s = (cu - 0.5) / 0.5
-                fx = lerp(-17.0, 17.0, smoothstep(s))
-                fy = -13.5 * math.sin(s * math.pi)
-                bang = lerp(16.0, -14.0, s)
+                fx = lerp(-18.5, 18.5, smoothstep(s))
+                fy = -15.0 * math.sin(s * math.pi)
+                bang = lerp(20.0, -16.0, s)
             return (fx, fy, bang)
 
-        # Right (lead) foot starts stance at F00; Left foot starts stance at F15
         rf_x, rf_y, rb_ang = foot_traj(u)
         lf_x, lf_y, lb_ang = foot_traj(u + 0.5)
 
-        # Subtle martial bob synced to double-step contact (lowest at stride split, highest at crossover)
-        step_bob = 2.6 - 2.0 * abs(math.sin(ph))
+        # Athletic double-step vertical bounce (smooth cosine so adjacent topY delta stays <= 4px!)
+        step_bob = 2.4 * math.cos(ph * 2.0)
         arm_swing = math.sin(ph)
 
         pose = {
-            "dx": 1.0 * math.sin(ph * 2.0),
-            "dy": 4.0 + step_bob,
-            "torso_ang": 11.5 + 2.2 * math.cos(ph * 2.0),
-            "head_ang": -3.0 + 1.0 * math.sin(ph),
+            "dx": 2.5 + 2.2 * math.sin(ph * 2.0),
+            "dy": 8.6 + step_bob,
+            "torso_ang": 21.5 + 3.5 * math.cos(ph * 2.0),
+            "head_ang": -7.0 + 1.5 * math.sin(ph * 2.0),
             "l_foot": (lf_x, lf_y),
             "r_foot": (rf_x, rf_y),
             "l_boot_ang": lb_ang,
             "r_boot_ang": rb_ang,
-            "f_hand": (14.5 + 5.5 * arm_swing, 4.5 - 2.0 * arm_swing),
-            "b_hand": (15.5 - 5.5 * arm_swing, 0.5 + 2.0 * arm_swing),
-            "f_charge": 0.2,
-            "b_charge": 0.2,
+            # Energetic martial sprint arm-pump (counter-swinging opposite legs!)
+            "f_hand": (10.5 + 10.5 * arm_swing, 3.0 - 4.5 * arm_swing),
+            "b_hand": (13.0 - 10.5 * arm_swing, 0.5 + 4.5 * arm_swing),
+            "f_charge": 0.28 + 0.14 * abs(arm_swing),
+            "b_charge": 0.28 + 0.14 * abs(arm_swing),
             "wave_phase": ph * 2.0,
-            "scarf_amp": 24.0,
-            "hb_amp": 15.0,
-            "scarf_ang": 10.0 + 4.0 * math.sin(ph * 2.0),
+            "scarf_amp": 30.0,
+            "hb_amp": 18.0,
+            "scarf_ang": 18.0 + 6.0 * math.sin(ph * 2.0),
             "expr": "fierce",
         }
         frames.append(render_pose_160(rig, pose))
@@ -1328,266 +1327,272 @@ def build_row1_walk(rig: dict) -> list[np.ndarray]:
 def build_row2_auto(rig: dict) -> list[np.ndarray]:
     """
     Row 2 AUTO_ATTACK (`[[60,8],[68,7],[75,8],[83,7]]`):
-      - Beat 1 (F00..F07): Snappy stepping storm jab
-      - Beat 2 (F08..F14): Cross-step spinning thunder backfist/hook
-      - Beat 3 (F15..F22): Rising sky-breaker uppercut (lightning trail)
-      - Beat 4 (F23..F29): Heavy one-inch THUNDERCLAP PALM shockwave finisher
+      - Beat 1 (F00..F07): Explosive stepping storm jab (flows low into Beat 2!)
+      - Beat 2 (F08..F14): Full-body whipping thunder cross-hook (flows low into Beat 3!)
+      - Beat 3 (F15..F22): Knee-tucked rising Sky-Breaker Uppercut (Shoryuken silhouette!)
+      - Beat 4 (F23..F29): Heavy One-Inch THUNDERCLAP PALM shockwave finisher
     """
     frames = []
     for c in range(COLS):
         # -------- BEAT 1: Stepping Storm Jab (F00..F07) --------
         if c < 8:
-            t = c / 7.0
-            if c <= 1:  # Quick coil
-                k = c / 1.0
+            if c == 0:  # Snappy 1-frame coil
                 pose = {
-                    "dx": lerp(-2.0, -5.0, k),
-                    "dy": 6.5,
-                    "torso_ang": lerp(6.0, -4.0, k),
+                    "dx": -5.5,
+                    "dy": 9.5,
+                    "torso_ang": -2.0,
                     "head_ang": 2.0,
-                    "l_foot": (-14.0, 0.0),
-                    "r_foot": (12.0, 0.0),
-                    "f_hand": (9.0, 7.0),
-                    "b_hand": (5.0, 1.0),
-                    "b_charge": 0.55,
-                    "wave_phase": c * 0.6,
-                    "scarf_amp": 22.0,
-                    "expr": "fierce",
-                }
-            elif c <= 4:  # Explosive stepping jab extension!
-                ext = 1.0 if c in (2, 3) else 0.88
-                def jab_vfx(arr, _fw, bw, _p, col=c):
-                    draw_punch_smear_160(arr, bw[0] - 20, bw[1], bw[0] + 18, bw[1] - 1, half_w=5.5, phase=col)
-                    draw_lightning_bolt_160(arr, bw[0] - 14, bw[1] - 3, bw[0] + 22, bw[1] - 2, seed=col * 13, jag=3.2, thick=1)
-                    if col == 3:
-                        draw_shockwave_ring_160(arr, bw[0] + 10, bw[1], 5.5, 11.0, phase=col)
-
-                pose = {
-                    "dx": 8.0 * ext,
-                    "dy": 5.5,
-                    "torso_ang": 20.0 * ext,
-                    "head_ang": 2.0,
-                    "l_foot": (-10.0, 0.0),
-                    "r_foot": (20.5, 0.0),
-                    "f_hand": (4.0, 9.5),
-                    "b_hand": (26.0 * ext, -2.5),
-                    "rear_arm_front": True,
-                    "b_charge": 0.95,
-                    "f_charge": 0.35,
-                    "wave_phase": c * 0.9,
-                    "scarf_amp": 30.0,
-                    "scarf_ang": 18.0,
-                    "expr": "yell",
-                    "vfx_fn": jab_vfx,
-                }
-            else:  # Snappy retract into guard
-                k = (c - 4) / 3.0
-                pose = {
-                    "dx": lerp(7.0, 1.0, k),
-                    "dy": lerp(5.5, 4.5, k),
-                    "torso_ang": lerp(16.0, 8.0, k),
-                    "l_foot": (lerp(-10.0, -12.5, k), 0.0),
-                    "r_foot": (lerp(19.0, 13.0, k), 0.0),
-                    "f_hand": (lerp(6.0, 13.0, k), lerp(8.5, 5.0, k)),
-                    "b_hand": (lerp(20.0, 15.0, k), lerp(-1.5, 0.0, k)),
-                    "b_charge": 0.45 * (1.0 - k),
-                    "wave_phase": c * 0.7,
-                    "scarf_amp": 20.0,
-                    "expr": "fierce",
-                }
-
-        # -------- BEAT 2: Cross-Step Spinning Thunder Backfist/Hook (F08..F14) --------
-        elif c < 15:
-            lc = c - 8
-            if lc == 0:  # Deep pivot windup
-                pose = {
-                    "dx": -4.0,
-                    "dy": 8.0,
-                    "torso_ang": -12.0,
-                    "head_ang": 4.0,
-                    "l_foot": (-15.0, 0.0),
-                    "r_foot": (10.0, 0.0),
-                    "f_hand": (-8.0, 3.0),
-                    "b_hand": (11.0, 7.0),
-                    "f_charge": 0.7,
-                    "wave_phase": lc * 0.8 + 2.0,
-                    "scarf_amp": 28.0,
-                    "scarf_ang": -12.0,
-                    "expr": "focus",
-                }
-            elif lc <= 3:  # Whipping horizontal thunder backfist/hook!
-                swing = (lc - 1) / 2.0
-                def hook_vfx(arr, fw, _bw, pelv, col=lc):
-                    draw_thunder_arc_smear_160(
-                        arr, pelv[0] + 10, pelv[1] - 14, 34.0, 13.0, -155.0 + col * 25.0, 32.0 + col * 10.0, band_w=6.5, phase=col
-                    )
-                    draw_lightning_bolt_160(arr, fw[0] - 18, fw[1] - 4, fw[0] + 20, fw[1] + 2, seed=col * 17 + 5, jag=3.8, thick=1)
-
-                pose = {
-                    "dx": lerp(4.0, 11.0, swing),
-                    "dy": 6.0,
-                    "torso_ang": lerp(18.0, 26.0, swing),
-                    "head_ang": 5.0,
-                    "l_foot": (-8.0, 0.0),
-                    "r_foot": (23.0, 0.0),
-                    "f_hand": (lerp(24.0, 26.5, swing), lerp(-5.0, -1.0, swing)),
-                    "b_hand": (-3.0, 6.0),
-                    "f_charge": 1.0,
-                    "wave_phase": lc * 1.1 + 2.0,
-                    "scarf_amp": 36.0,
-                    "scarf_ang": 22.0,
-                    "expr": "yell",
-                    "vfx_fn": hook_vfx,
-                }
-            else:  # Follow-through settle
-                k = (lc - 3) / 3.0
-                pose = {
-                    "dx": lerp(10.0, 2.0, k),
-                    "dy": lerp(6.0, 5.0, k),
-                    "torso_ang": lerp(22.0, 9.0, k),
-                    "l_foot": (lerp(-8.0, -12.0, k), 0.0),
-                    "r_foot": (lerp(21.0, 14.0, k), 0.0),
-                    "f_hand": (lerp(22.0, 14.0, k), lerp(1.0, 5.0, k)),
-                    "b_hand": (lerp(2.0, 14.0, k), lerp(5.0, 1.0, k)),
-                    "f_charge": 0.4 * (1.0 - k),
-                    "wave_phase": lc * 0.8 + 2.0,
-                    "scarf_amp": 24.0,
-                    "expr": "fierce",
-                }
-
-        # -------- BEAT 3: Rising Sky-Breaker Uppercut (F15..F22) --------
-        elif c < 23:
-            lc = c - 15
-            if lc <= 1:  # Deep crouch spring-coil
-                k = lc / 1.0
-                pose = {
-                    "dx": -3.0,
-                    "dy": lerp(10.0, 15.0, k),
-                    "torso_ang": 18.0,
-                    "head_ang": -6.0,
-                    "l_foot": (-15.0, 0.0),
+                    "l_foot": (-16.0, 0.0),
                     "r_foot": (14.0, 0.0),
-                    "f_hand": (6.0, 18.0),
-                    "b_hand": (14.0, 8.0),
-                    "f_role": "uppercut",
-                    "f_charge": 0.85,
-                    "wave_phase": lc * 0.7 + 4.0,
+                    "f_hand": (6.0, 7.5),
+                    "b_hand": (3.0, 0.0),
+                    "b_charge": 0.7,
+                    "wave_phase": 0.4,
                     "scarf_amp": 26.0,
                     "expr": "focus",
                 }
-            elif lc <= 5:  # Explosive vertical rising Sky-Breaker Uppercut!
-                u_rise = (lc - 2) / 3.0
-                lift = -15.5 * math.sin(min(1.0, u_rise * 1.15) * math.pi)
-                def upper_vfx(arr, fw, _bw, pelv, col=lc):
-                    draw_thunder_arc_smear_160(
-                        arr, pelv[0] + 10, pelv[1] - 18, 26.0, 38.0, 35.0, -96.0, band_w=7.0, phase=col
-                    )
-                    draw_lightning_bolt_160(arr, fw[0] - 4, fw[1] + 24, fw[0] + 6, fw[1] - 18, seed=col * 23, jag=4.0, thick=2)
+            elif c <= 4:  # Explosive full-body stepping jab extension!
+                ext = 1.0 if c in (1, 2, 3) else 0.90
+                def jab_vfx(arr, _fw, bw, _p, col=c):
+                    draw_punch_smear_160(arr, bw[0] - 24, bw[1], bw[0] + 20, bw[1] - 1, half_w=6.0, phase=col)
+                    draw_lightning_bolt_160(arr, bw[0] - 16, bw[1] - 3, bw[0] + 24, bw[1] - 2, seed=col * 13, jag=3.4, thick=1)
+                    if col in (2, 3):
+                        draw_shockwave_ring_160(arr, bw[0] + 10, bw[1], 6.0, 12.0, phase=col)
 
                 pose = {
-                    "dx": 7.5 + 3.0 * u_rise,
+                    "dx": 11.5 * ext,
+                    "dy": 8.0,
+                    "torso_ang": 26.5 * ext,
+                    "head_ang": -3.0,
+                    "l_foot": (-15.0, 0.0),
+                    "r_foot": (23.0, 0.0),
+                    # Rear hip-pull counter-torque on power arm!
+                    "f_hand": (-4.0, 8.5),
+                    "b_hand": (28.0 * ext, -3.5),
+                    "rear_arm_front": True,
+                    "b_charge": 1.0,
+                    "f_charge": 0.45,
+                    "wave_phase": c * 1.1,
+                    "scarf_amp": 34.0,
+                    "scarf_ang": 24.0,
+                    "expr": "yell",
+                    "vfx_fn": jab_vfx,
+                }
+            else:  # Stay coiled low & flow directly into Beat 2 windup (no upright reset!)
+                k = (c - 4) / 3.0
+                pose = {
+                    "dx": lerp(9.0, -3.0, k),
+                    "dy": lerp(8.0, 10.0, k),
+                    "torso_ang": lerp(22.0, -6.0, k),
+                    "head_ang": lerp(-2.0, 3.0, k),
+                    "l_foot": (lerp(-14.5, -16.0, k), 0.0),
+                    "r_foot": (lerp(22.0, 13.0, k), 0.0),
+                    "f_hand": (lerp(-2.0, -9.0, k), lerp(8.0, 4.0, k)),
+                    "b_hand": (lerp(21.0, 12.0, k), lerp(-2.0, 5.0, k)),
+                    "f_charge": lerp(0.45, 0.75, k),
+                    "b_charge": 0.4 * (1.0 - k),
+                    "wave_phase": c * 0.9,
+                    "scarf_amp": 26.0,
+                    "expr": "fierce",
+                }
+
+        # -------- BEAT 2: Cross-Step Whipping Thunder Hook (F08..F14) --------
+        elif c < 15:
+            lc = c - 8
+            if lc == 0:  # Tight coiled torque windup
+                pose = {
+                    "dx": -5.5,
+                    "dy": 10.5,
+                    "torso_ang": -15.0,
+                    "head_ang": 5.0,
+                    "l_foot": (-16.5, 0.0),
+                    "r_foot": (12.0, 0.0),
+                    "f_hand": (-12.5, 2.0),
+                    "b_hand": (12.0, 6.0),
+                    "f_charge": 0.85,
+                    "wave_phase": lc * 0.9 + 2.0,
+                    "scarf_amp": 32.0,
+                    "scarf_ang": -14.0,
+                    "expr": "focus",
+                }
+            elif lc <= 4:  # Explosive full-body whipping thunder cross-hook!
+                swing = (lc - 1) / 3.0
+                def hook_vfx(arr, fw, _bw, pelv, col=lc):
+                    draw_thunder_arc_smear_160(
+                        arr, pelv[0] + 12, pelv[1] - 13, 36.0, 14.0, -160.0 + col * 24.0, 36.0 + col * 10.0, band_w=7.5, phase=col
+                    )
+                    draw_lightning_bolt_160(arr, fw[0] - 20, fw[1] - 4, fw[0] + 22, fw[1] + 2, seed=col * 17 + 5, jag=4.0, thick=1)
+
+                pose = {
+                    "dx": lerp(6.0, 14.0, swing),
+                    "dy": 8.0,
+                    "torso_ang": lerp(22.0, 31.0, swing),
+                    "head_ang": -2.0,
+                    "l_foot": (-14.5, 0.0),
+                    "r_foot": (24.5, 0.0),
+                    "f_hand": (lerp(25.5, 28.0, swing), lerp(-5.0, 0.5, swing)),
+                    "b_hand": (-8.5, 7.0),
+                    "f_charge": 1.0,
+                    "wave_phase": lc * 1.2 + 2.0,
+                    "scarf_amp": 38.0,
+                    "scarf_ang": 28.0,
+                    "expr": "yell",
+                    "vfx_fn": hook_vfx,
+                }
+            else:  # Drop low directly into Beat 3 uppercut crouch!
+                k = (lc - 4) / 2.0
+                pose = {
+                    "dx": lerp(11.0, -2.5, k),
+                    "dy": lerp(8.5, 14.5, k),
+                    "torso_ang": lerp(26.0, 20.0, k),
+                    "head_ang": lerp(0.0, -6.0, k),
+                    "l_foot": (lerp(-14.0, -16.0, k), 0.0),
+                    "r_foot": (lerp(23.0, 15.0, k), 0.0),
+                    "f_hand": (lerp(22.0, 7.0, k), lerp(2.0, 18.0, k)),
+                    "b_hand": (lerp(-4.0, 14.0, k), lerp(7.0, 8.0, k)),
+                    "f_role": "uppercut" if k > 0.4 else "fist",
+                    "f_charge": 0.75,
+                    "wave_phase": lc * 0.9 + 2.0,
+                    "scarf_amp": 28.0,
+                    "expr": "focus",
+                }
+
+        # -------- BEAT 3: Knee-Tucked Rising Sky-Breaker Uppercut (F15..F22) --------
+        elif c < 23:
+            lc = c - 15
+            if lc == 0:  # Compressed 1-frame spring crouch
+                pose = {
+                    "dx": -3.5,
+                    "dy": 16.5,
+                    "torso_ang": 24.0,
+                    "head_ang": -8.0,
+                    "l_foot": (-16.5, 0.0),
+                    "r_foot": (15.5, 0.0),
+                    "f_hand": (6.0, 20.0),
+                    "b_hand": (14.0, 7.0),
+                    "f_role": "uppercut",
+                    "f_charge": 0.95,
+                    "wave_phase": 4.4,
+                    "scarf_amp": 30.0,
+                    "expr": "focus",
+                }
+            elif lc <= 5:  # Explosive Shoryuken knee-tuck Sky-Breaker Uppercut!
+                u_rise = (lc - 1) / 4.0
+                lift = -17.0 * math.sin(min(1.0, u_rise * 1.1) * math.pi)
+                def upper_vfx(arr, fw, _bw, pelv, col=lc):
+                    draw_thunder_arc_smear_160(
+                        arr, pelv[0] + 10, pelv[1] - 18, 28.0, 40.0, 35.0, -98.0, band_w=7.5, phase=col
+                    )
+                    draw_lightning_bolt_160(arr, fw[0] - 4, fw[1] + 24, fw[0] + 7, max(5, fw[1] - 18), seed=col * 23, jag=4.2, thick=2)
+
+                pose = {
+                    "dx": 8.0 + 4.0 * u_rise,
                     "dy": -4.0 + lift,
-                    "torso_ang": -14.0,
-                    "head_ang": -12.0,
-                    "l_foot": (-4.0, lift * 0.75),
-                    "r_foot": (16.0, lift * 0.9 - 3.0),
-                    "f_hand": (18.5 + 3.0 * u_rise, -22.5),
-                    "b_hand": (-4.0, 10.0),
+                    "torso_ang": -18.0,
+                    "head_ang": -14.0,
+                    # Iconic tucked lead knee + dramatic trailing back leg!
+                    "l_foot": (-13.0, lift * 0.65 + 2.0),
+                    "r_foot": (17.0, lift * 0.9 - 13.5),
+                    "l_boot_ang": 22.0,
+                    "r_boot_ang": -24.0,
+                    "f_hand": (19.5 + 2.5 * u_rise, -23.5),
+                    "b_hand": (-8.5, 11.5),
                     "f_role": "uppercut",
                     "f_charge": 1.0,
                     "f_bend": 0,
-                    "wave_phase": lc * 1.2 + 4.0,
-                    "scarf_amp": 34.0,
-                    "scarf_ang": 34.0,
+                    "wave_phase": lc * 1.3 + 4.0,
+                    "scarf_amp": 38.0,
+                    "scarf_ang": 38.0,
                     "expr": "yell",
                     "vfx_fn": upper_vfx,
                 }
-            else:  # Crisp planted landing settle
+            else:  # Coiled athletic landing straight into Beat 4 palm gather!
                 k = (lc - 5) / 2.0
                 pose = {
-                    "dx": lerp(8.0, 2.0, k),
-                    "dy": lerp(2.0, 5.5, k),
-                    "torso_ang": lerp(-6.0, 8.0, k),
-                    "l_foot": (lerp(-8.0, -13.0, k), 0.0),
-                    "r_foot": (lerp(18.0, 14.0, k), 0.0),
-                    "f_hand": (lerp(15.0, 13.0, k), lerp(-10.0, 4.0, k)),
-                    "b_hand": (lerp(4.0, 15.0, k), lerp(8.0, 0.0, k)),
-                    "f_charge": 0.5 * (1.0 - k),
-                    "wave_phase": lc * 0.9 + 4.0,
-                    "scarf_amp": 24.0,
-                    "expr": "fierce",
+                    "dx": lerp(8.0, -4.0, k),
+                    "dy": lerp(4.0, 12.5, k),
+                    "torso_ang": lerp(-6.0, 6.0, k),
+                    "l_foot": (lerp(-12.0, -17.0, k), 0.0),
+                    "r_foot": (lerp(18.0, 16.5, k), 0.0),
+                    "f_hand": (lerp(14.0, 4.0, k), lerp(-8.0, 6.0, k)),
+                    "b_hand": (lerp(2.0, 6.0, k), lerp(8.0, 4.0, k)),
+                    "f_charge": 0.75,
+                    "wave_phase": lc * 1.0 + 4.0,
+                    "scarf_amp": 28.0,
+                    "expr": "focus",
                 }
 
         # -------- BEAT 4: Heavy One-Inch THUNDERCLAP PALM Shockwave Finisher (F23..F29) --------
         else:
             lc = c - 23
-            if lc <= 1:  # Deep horse-stance twin-palm gather
+            if lc == 0:  # Tight 1-frame twin-palm gather
                 def charge_vfx(arr, fw, _bw, _p, col=lc):
-                    draw_lightning_bolt_160(arr, fw[0] - 8, fw[1] - 8, fw[0] + 8, fw[1] + 8, seed=col * 19, jag=3.0, thick=1)
-                    draw_shockwave_ring_160(arr, fw[0], fw[1], 7.0 - col * 2.0, 7.0 - col * 2.0, phase=col)
+                    draw_lightning_bolt_160(arr, fw[0] - 8, fw[1] - 8, fw[0] + 8, fw[1] + 8, seed=col * 19, jag=3.2, thick=1)
+                    draw_shockwave_ring_160(arr, fw[0], fw[1], 7.0, 7.0, phase=col)
 
                 pose = {
-                    "dx": -5.0,
-                    "dy": 11.5,
-                    "torso_ang": 4.0,
-                    "head_ang": 0.0,
-                    "l_foot": (-17.5, 0.0),
-                    "r_foot": (16.5, 0.0),
-                    "f_hand": (4.0, 6.0),
-                    "b_hand": (6.0, 4.0),
+                    "dx": -6.0,
+                    "dy": 14.0,
+                    "torso_ang": 5.0,
+                    "head_ang": -2.0,
+                    "l_foot": (-18.0, 0.0),
+                    "r_foot": (17.0, 0.0),
+                    "f_hand": (3.0, 6.0),
+                    "b_hand": (5.5, 3.5),
                     "f_role": "palm",
                     "b_role": "palm",
-                    "f_charge": 0.95,
-                    "b_charge": 0.85,
-                    "wave_phase": lc * 0.8 + 6.0,
-                    "scarf_amp": 28.0,
+                    "f_charge": 1.0,
+                    "b_charge": 0.95,
+                    "wave_phase": 6.4,
+                    "scarf_amp": 32.0,
                     "expr": "focus",
                     "vfx_fn": charge_vfx,
                 }
-            elif lc <= 4:  # Explosive THUNDERCLAP PALM thrust + shockwave ring!
-                blast_u = (lc - 2) / 2.0
+            elif lc <= 4:  # Explosive THUNDERCLAP PALM thrust + shockwave blast!
+                blast_u = (lc - 1) / 3.0
                 def palm_vfx(arr, fw, _bw, _p, col=lc, bu=blast_u):
-                    rx = 7.0 + bu * 12.0
-                    ry = 14.0 + bu * 18.0
-                    cx = fw[0] + 10.0 + bu * 14.0
-                    draw_punch_smear_160(arr, fw[0] - 12, fw[1], cx + 8, fw[1], half_w=7.5, phase=col)
+                    rx = 7.5 + bu * 13.0
+                    ry = 15.0 + bu * 19.0
+                    cx = fw[0] + 10.0 + bu * 15.0
+                    draw_punch_smear_160(arr, fw[0] - 14, fw[1], cx + 8, fw[1], half_w=8.0, phase=col)
                     draw_shockwave_ring_160(arr, cx, fw[1], rx, ry, phase=col)
-                    draw_lightning_bolt_160(arr, fw[0] + 2, fw[1], cx + 18, fw[1] - 14, seed=col * 29 + 1, jag=4.2, thick=2)
-                    draw_lightning_bolt_160(arr, fw[0] + 2, fw[1], cx + 18, fw[1] + 14, seed=col * 31 + 2, jag=4.2, thick=1)
+                    draw_lightning_bolt_160(arr, fw[0] + 2, fw[1], cx + 18, fw[1] - 15, seed=col * 29 + 1, jag=4.4, thick=2)
+                    draw_lightning_bolt_160(arr, fw[0] + 2, fw[1], cx + 18, fw[1] + 15, seed=col * 31 + 2, jag=4.4, thick=1)
 
                 pose = {
-                    "dx": 10.0,
-                    "dy": 7.5,
-                    "torso_ang": 22.0,
-                    "head_ang": 2.0,
-                    "l_foot": (-14.0, 0.0),
-                    "r_foot": (23.5, 0.0),
-                    "f_hand": (25.5, 1.0),
-                    "b_hand": (22.0, -3.5),
+                    "dx": 13.0,
+                    "dy": 9.0,
+                    "torso_ang": 28.0,
+                    "head_ang": -2.0,
+                    "l_foot": (-16.0, 0.0),
+                    "r_foot": (25.0, 0.0),
+                    "f_hand": (27.5, -0.5),
+                    "b_hand": (23.5, -4.5),
                     "f_role": "palm",
                     "b_role": "palm",
                     "f_charge": 1.0,
                     "b_charge": 1.0,
-                    "wave_phase": lc * 1.4 + 6.0,
-                    "scarf_amp": 40.0,
-                    "scarf_ang": 24.0,
+                    "wave_phase": lc * 1.5 + 6.0,
+                    "scarf_amp": 44.0,
+                    "scarf_ang": 28.0,
                     "expr": "yell",
                     "vfx_fn": palm_vfx,
                 }
-            else:  # Heavy power recoil recovery
+            else:  # Crisp coiled martial guard settle
                 k = (lc - 4) / 2.0
                 pose = {
-                    "dx": lerp(8.0, 1.5, k),
-                    "dy": lerp(7.0, 4.5, k),
-                    "torso_ang": lerp(18.0, 8.0, k),
-                    "l_foot": (lerp(-14.0, -13.0, k), 0.0),
-                    "r_foot": (lerp(22.0, 13.0, k), 0.0),
-                    "f_hand": (lerp(22.0, 14.0, k), lerp(2.0, 5.0, k)),
-                    "b_hand": (lerp(18.0, 15.0, k), lerp(-2.0, 0.0, k)),
+                    "dx": lerp(10.0, 1.5, k),
+                    "dy": lerp(9.0, 8.0, k),
+                    "torso_ang": lerp(22.0, 13.0, k),
+                    "head_ang": lerp(-2.0, -5.0, k),
+                    "l_foot": (lerp(-16.0, -15.5, k), 0.0),
+                    "r_foot": (lerp(23.5, 15.0, k), 0.0),
+                    "f_hand": (lerp(22.0, 8.0, k), lerp(1.0, 5.0, k)),
+                    "b_hand": (lerp(20.0, 19.0, k), lerp(-3.0, -2.5, k)),
                     "f_role": "palm" if lc == 5 else "fist",
-                    "f_charge": 0.45 * (1.0 - k),
-                    "wave_phase": lc * 0.9 + 6.0,
-                    "scarf_amp": 26.0,
+                    "f_charge": 0.55 * (1.0 - k),
+                    "wave_phase": lc * 1.0 + 6.0,
+                    "scarf_amp": 28.0,
                     "expr": "fierce",
                 }
         frames.append(render_pose_160(rig, pose))
@@ -1595,99 +1600,100 @@ def build_row2_auto(rig: dict) -> list[np.ndarray]:
 
 
 def build_row3_skill(rig: dict) -> list[np.ndarray]:
-    """Row 3 SKILL (`THUNDERSTEP BREAKER`): Coiled lightning dash-rush -> explosive storm cross-punch."""
+    """Row 3 SKILL (`THUNDERSTEP BREAKER`): Snappy coil -> blitz lightning sprint-dash -> explosive storm cross-punch."""
     frames = []
     for c in range(COLS):
-        if c <= 6:  # F00..F06: Deep coiled sprint-crouch charging golden-indigo lightning
-            k = c / 6.0
+        if c <= 4:  # F00..F04: Tight explosive coil charging lightning
+            k = c / 4.0
             def sk_coil_vfx(arr, fw, bw, pelv, col=c):
-                draw_lightning_bolt_160(arr, pelv[0] - 16, pelv[1] + 18, fw[0] + 6, fw[1] - 6, seed=col * 13, jag=3.8, thick=1)
-                if col >= 3:
-                    draw_lightning_bolt_160(arr, pelv[0] + 14, pelv[1] + 22, bw[0] - 4, bw[1] - 10, seed=col * 17, jag=3.2, thick=1)
+                draw_lightning_bolt_160(arr, pelv[0] - 16, pelv[1] + 18, fw[0] + 6, fw[1] - 6, seed=col * 13, jag=4.0, thick=1)
+                if col >= 2:
+                    draw_lightning_bolt_160(arr, pelv[0] + 14, pelv[1] + 22, bw[0] - 4, bw[1] - 10, seed=col * 17, jag=3.4, thick=1)
 
             pose = {
-                "dx": lerp(-2.0, -9.0, k),
-                "dy": lerp(6.0, 14.5, k),
-                "torso_ang": lerp(12.0, 28.0, k),
-                "head_ang": -8.0,
-                "l_foot": (-18.0, 0.0),
-                "r_foot": (14.0, 0.0),
-                "f_hand": (lerp(10.0, -10.0, k), lerp(6.0, 8.0, k)),
-                "b_hand": (14.0, 5.0),
-                "f_charge": 0.5 + 0.5 * k,
-                "b_charge": 0.4 + 0.4 * k,
-                "wave_phase": c * 0.9,
-                "scarf_amp": 30.0,
-                "scarf_ang": 22.0,
+                "dx": lerp(-2.0, -10.0, k),
+                "dy": lerp(8.0, 16.0, k),
+                "torso_ang": lerp(14.0, 32.0, k),
+                "head_ang": -10.0,
+                "l_foot": (-18.5, 0.0),
+                "r_foot": (14.5, 0.0),
+                "f_hand": (lerp(8.0, -12.0, k), lerp(5.0, 8.0, k)),
+                "b_hand": (16.0, 4.0),
+                "f_charge": 0.6 + 0.4 * k,
+                "b_charge": 0.5 + 0.4 * k,
+                "wave_phase": c * 1.1,
+                "scarf_amp": 34.0,
+                "scarf_ang": 26.0,
                 "expr": "focus",
                 "vfx_fn": sk_coil_vfx,
             }
-        elif c <= 13:  # F07..F13: Explosive lightning dash-rush forward
-            k = (c - 7) / 6.0
+        elif c <= 12:  # F05..F12: Blazing horizontal lightning sprint-dash!
+            k = (c - 5) / 7.0
+            stride = math.sin(k * math.tau * 1.5)
             def sk_dash_vfx(arr, fw, _bw, pelv, col=c):
-                # Horizontal golden-indigo speed-lightning arcs trailing behind dash
                 for dy_off in (-16, -2, 12):
                     draw_lightning_bolt_160(
-                        arr, pelv[0] - 34, pelv[1] + dy_off, pelv[0] + 10, pelv[1] + dy_off - 2, seed=col * 11 + dy_off, jag=2.6, thick=1
+                        arr, pelv[0] - 36, pelv[1] + dy_off, pelv[0] + 12, pelv[1] + dy_off - 2, seed=col * 11 + dy_off, jag=2.8, thick=1
                     )
-                draw_punch_smear_160(arr, fw[0] - 10, fw[1], fw[0] + 12, fw[1] - 2, half_w=4.5, phase=col)
+                draw_punch_smear_160(arr, fw[0] - 12, fw[1], fw[0] + 14, fw[1] - 2, half_w=5.0, phase=col)
 
             pose = {
-                "dx": lerp(-4.0, 10.0, k),
-                "dy": 9.5 - 3.5 * math.sin(k * math.pi),
-                "torso_ang": 34.0,
-                "head_ang": -10.0,
-                "l_foot": (-20.0, -3.5 * math.sin(k * math.pi)),
-                "r_foot": (22.0, 0.0),
-                "f_hand": (-8.0 + 14.0 * k, 4.0),
-                "b_hand": (20.0, 2.0),
+                "dx": lerp(-4.0, 12.0, k),
+                "dy": 10.5 - 3.0 * abs(stride),
+                "torso_ang": 38.0,
+                "head_ang": -13.0,
+                "l_foot": (-19.0 + 12.0 * stride, -6.5 * max(0.0, stride)),
+                "r_foot": (20.0 - 12.0 * stride, -6.5 * max(0.0, -stride)),
+                "f_hand": (-10.0 + 18.0 * k, 4.0),
+                "b_hand": (22.0, 1.0),
                 "f_charge": 1.0,
-                "b_charge": 0.9,
-                "wave_phase": c * 1.5,
-                "scarf_amp": 42.0,
-                "scarf_ang": 30.0,
+                "b_charge": 0.95,
+                "wave_phase": c * 1.7,
+                "scarf_amp": 44.0,
+                "scarf_ang": 34.0,
                 "expr": "yell",
                 "vfx_fn": sk_dash_vfx,
             }
-        elif c <= 21:  # F14..F21: Explosive Storm Cross-Punch detonation!
-            k = (c - 14) / 7.0
+        elif c <= 22:  # F13..F22: Explosive Storm Cross-Punch detonation!
+            k = (c - 13) / 9.0
             def sk_impact_vfx(arr, fw, _bw, _pelv, col=c, uk=k):
                 if uk < 0.72:
-                    draw_punch_smear_160(arr, fw[0] - 24, fw[1], fw[0] + 24, fw[1] - 2, half_w=8.0, phase=col)
-                    draw_shockwave_ring_160(arr, fw[0] + 12 + uk * 14, fw[1], 7.0 + uk * 11.0, 14.0 + uk * 16.0, phase=col)
-                    draw_lightning_bolt_160(arr, fw[0] - 8, fw[1] - 10, fw[0] + 28, fw[1] - 16, seed=col * 19, jag=4.4, thick=2)
-                    draw_lightning_bolt_160(arr, fw[0] - 8, fw[1] + 8, fw[0] + 26, fw[1] + 14, seed=col * 23, jag=4.4, thick=1)
+                    draw_punch_smear_160(arr, fw[0] - 26, fw[1], fw[0] + 26, fw[1] - 2, half_w=8.5, phase=col)
+                    draw_shockwave_ring_160(arr, fw[0] + 12 + uk * 14, fw[1], 7.5 + uk * 12.0, 15.0 + uk * 17.0, phase=col)
+                    draw_lightning_bolt_160(arr, fw[0] - 8, fw[1] - 10, fw[0] + 28, fw[1] - 16, seed=col * 19, jag=4.6, thick=2)
+                    draw_lightning_bolt_160(arr, fw[0] - 8, fw[1] + 8, fw[0] + 26, fw[1] + 14, seed=col * 23, jag=4.6, thick=1)
 
             pose = {
-                "dx": lerp(14.0, 10.0, k),
-                "dy": 7.0,
-                "torso_ang": lerp(28.0, 20.0, k),
-                "head_ang": 2.0,
-                "l_foot": (-15.0, 0.0),
-                "r_foot": (24.5, 0.0),
-                "f_hand": (26.5, -2.0),
-                "b_hand": (-6.0, 7.0),
+                "dx": lerp(15.0, 10.0, k),
+                "dy": 8.5,
+                "torso_ang": lerp(32.0, 22.0, k),
+                "head_ang": -2.0,
+                "l_foot": (-16.0, 0.0),
+                "r_foot": (25.0, 0.0),
+                "f_hand": (28.0, -2.5),
+                "b_hand": (-9.0, 7.5),
                 "f_charge": 1.0,
-                "b_charge": 0.6,
-                "wave_phase": c * 1.4,
-                "scarf_amp": 42.0,
-                "scarf_ang": 26.0,
+                "b_charge": 0.65,
+                "wave_phase": c * 1.5,
+                "scarf_amp": 44.0,
+                "scarf_ang": 28.0,
                 "expr": "yell",
                 "vfx_fn": sk_impact_vfx,
             }
-        else:  # F22..F29: Crisp martial stance recoil
-            k = (c - 22) / 7.0
+        else:  # F23..F29: Coiled martial stance recoil
+            k = (c - 23) / 6.0
             pose = {
                 "dx": lerp(9.0, 0.0, k),
-                "dy": lerp(7.0, 4.2, k),
-                "torso_ang": lerp(18.0, 7.0, k),
-                "l_foot": (lerp(-15.0, -13.0, k), 0.0),
-                "r_foot": (lerp(23.0, 12.5, k), 0.0),
-                "f_hand": (lerp(22.0, 13.5, k), lerp(0.0, 5.0, k)),
-                "b_hand": (lerp(2.0, 17.0, k), lerp(6.0, -1.5, k)),
+                "dy": lerp(8.5, 8.0, k),
+                "torso_ang": lerp(20.0, 13.0, k),
+                "head_ang": lerp(-2.0, -5.0, k),
+                "l_foot": (lerp(-16.0, -15.5, k), 0.0),
+                "r_foot": (lerp(24.0, 15.0, k), 0.0),
+                "f_hand": (lerp(22.0, 7.5, k), lerp(0.0, 5.0, k)),
+                "b_hand": (lerp(0.0, 19.5, k), lerp(6.0, -2.5, k)),
                 "f_charge": 0.55 * (1.0 - k),
-                "wave_phase": c * 0.8,
-                "scarf_amp": 24.0,
+                "wave_phase": c * 0.9,
+                "scarf_amp": 26.0,
                 "expr": "fierce",
             }
         frames.append(render_pose_160(rig, pose))
@@ -1728,61 +1734,64 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
                 "expr": "focus",
                 "vfx_fn": u_gather_vfx,
             }
-        elif c <= 9:  # Rapid alternating multi-hit phantom fist barrage!
+        elif c <= 9:  # Supersonic alternating left/right thunder-fist barrage!
             alt = (c % 2) == 0
             def barrage_vfx(arr, fw, bw, pelv, col=c):
-                # Fan of 5 glowing sculpted golden-indigo phantom fists punching forward!
+                # Fan of 6 overlapping speed-smeared golden-indigo phantom fists punching forward!
                 offsets = [
-                    (34, -18, True), (46, -6, False), (52, 4, True),
-                    (40, 12, False), (28, -8, True),
+                    (32, -20, True), (46, -10, False), (54, 0, True),
+                    (46, 10, False), (36, -4, True), (28, 12, False),
                 ]
                 for idx, (ox, oy, is_gold) in enumerate(offsets):
-                    jitter_x = ((col * 7 + idx * 5) % 9) - 4
-                    jitter_y = ((col * 5 + idx * 3) % 7) - 3
+                    jitter_x = ((col * 9 + idx * 5) % 11) - 5
+                    jitter_y = ((col * 7 + idx * 3) % 9) - 4
                     fx = pelv[0] + ox + jitter_x
                     fy = pelv[1] - 10 + oy + jitter_y
-                    draw_punch_smear_160(arr, fx - 18, fy, fx + 4, fy, half_w=3.2, phase=col + idx)
+                    draw_punch_smear_160(arr, fx - 22, fy, fx + 5, fy, half_w=3.5, phase=col + idx)
                     draw_phantom_fist_160(arr, fx, fy, scale=1.0, gold=is_gold)
-                draw_lightning_bolt_160(arr, fw[0], fw[1], pelv[0] + 54, pelv[1] - 12 + ((col % 3) - 1) * 10, seed=col * 31, jag=3.8, thick=1)
+                draw_lightning_bolt_160(arr, fw[0], fw[1], pelv[0] + 56, pelv[1] - 12 + ((col % 3) - 1) * 11, seed=col * 31, jag=4.0, thick=1)
 
             pose = {
-                "dx": 6.0 + (2.0 if alt else -1.0),
-                "dy": 7.5,
-                "torso_ang": 22.0 if alt else 14.0,
-                "l_foot": (-15.0, 0.0),
-                "r_foot": (21.5, 0.0),
-                "f_hand": (26.0 if alt else 6.0, -4.0 if alt else 7.0),
-                "b_hand": (7.0 if alt else 26.0, 6.0 if alt else -5.0),
+                "dx": 8.0 + (3.0 if alt else -1.5),
+                "dy": 9.0,
+                "torso_ang": 28.0 if alt else 16.0,
+                "head_ang": -4.0,
+                "l_foot": (-16.5, 0.0),
+                "r_foot": (23.0, 0.0),
+                "f_hand": (28.0 if alt else -4.0, (-6.0 if c % 4 == 0 else 2.0) if alt else 7.0),
+                "b_hand": (-2.0 if alt else 28.0, 6.0 if alt else (-6.0 if c % 4 == 1 else 2.0)),
                 "rear_arm_front": not alt,
                 "f_charge": 1.0,
                 "b_charge": 1.0,
-                "wave_phase": c * 1.9,
-                "scarf_amp": 42.0,
-                "scarf_ang": 28.0,
+                "wave_phase": c * 2.2,
+                "scarf_amp": 44.0,
+                "scarf_ang": 32.0,
                 "expr": "yell",
                 "vfx_fn": barrage_vfx,
             }
-        elif c <= 11:  # Climax rising shockwave uppercut!
+        elif c <= 11:  # Climax knee-tucked rising shockwave uppercut!
             def u_upper_vfx(arr, fw, _bw, pelv, col=c):
                 draw_thunder_arc_smear_160(arr, pelv[0] + 12, pelv[1] - 18, 30.0, 42.0, 35.0, -100.0, band_w=8.0, phase=col)
                 draw_lightning_bolt_160(arr, fw[0] - 4, fw[1] + 24, fw[0] + 10, max(6, fw[1] - 24), seed=col * 37, jag=4.6, thick=2)
                 draw_shockwave_ring_160(arr, fw[0] + 4, fw[1] - 4, 15.0, 8.0, phase=col)
 
             pose = {
-                "dx": 9.0,
+                "dx": 10.0,
                 "dy": -9.0 if c == 10 else -6.0,
-                "torso_ang": -15.0,
+                "torso_ang": -18.0,
                 "head_ang": -14.0,
-                "l_foot": (-6.0, -7.0 if c == 10 else -3.0),
-                "r_foot": (16.0, -9.0 if c == 10 else -4.0),
-                "f_hand": (19.5, -22.5),
-                "b_hand": (-5.0, 10.0),
+                "l_foot": (-12.0, -6.0 if c == 10 else -2.0),
+                "r_foot": (17.0, -18.0 if c == 10 else -12.0),
+                "l_boot_ang": 22.0,
+                "r_boot_ang": -24.0,
+                "f_hand": (20.0, -23.5),
+                "b_hand": (-8.0, 11.0),
                 "f_role": "uppercut",
                 "f_charge": 1.0,
                 "f_bend": 0,
                 "wave_phase": c * 1.5,
                 "scarf_amp": 38.0,
-                "scarf_ang": 34.0,
+                "scarf_ang": 36.0,
                 "expr": "yell",
                 "vfx_fn": u_upper_vfx,
             }
@@ -1790,14 +1799,15 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
             k = (c - 12) / 2.0
             pose = {
                 "dx": lerp(7.0, 0.5, k),
-                "dy": lerp(7.0, 4.5, k),
-                "torso_ang": lerp(14.0, 7.0, k),
-                "l_foot": (lerp(-14.0, -13.0, k), 0.0),
-                "r_foot": (lerp(18.0, 13.0, k), 0.0),
+                "dy": lerp(8.5, 8.0, k),
+                "torso_ang": lerp(18.0, 13.0, k),
+                "head_ang": lerp(-2.0, -5.0, k),
+                "l_foot": (lerp(-15.5, -15.5, k), 0.0),
+                "r_foot": (lerp(19.0, 15.0, k), 0.0),
                 "l_boot_ang": 0.0,
                 "r_boot_ang": 0.0,
-                "f_hand": (lerp(16.0, 13.5, k), lerp(-6.0, 5.0, k)),
-                "b_hand": (lerp(8.0, 16.5, k), lerp(6.0, -1.0, k)),
+                "f_hand": (lerp(15.0, 7.5, k), lerp(-4.0, 5.0, k)),
+                "b_hand": (lerp(10.0, 19.5, k), lerp(4.0, -2.5, k)),
                 "f_charge": 0.6 * (1.0 - k),
                 "wave_phase": c * 0.9,
                 "scarf_amp": 26.0,
@@ -2032,30 +2042,34 @@ def build_row5_death(rig: dict) -> list[np.ndarray]:
 
 
 def build_row6_dash(rig: dict) -> list[np.ndarray]:
-    """Row 6 DASH: Low forward lightning-sprint dash with streaming scarf & crackling speed arcs."""
+    """Row 6 DASH: High-speed athletic lightning sprint-dash with full pumping stride & crackling arcs."""
     frames = []
     for c in range(COLS):
         u = c / float(COLS)
-        ph = u * math.tau
+        ph = u * math.tau * 2.0  # Double sprint cadence across 30 frames!
+        stride = math.sin(ph)
         def dash_vfx(arr, _fw, _bw, pelv, col=c):
-            draw_lightning_bolt_160(arr, pelv[0] - 32, pelv[1] - 12, pelv[0] + 6, pelv[1] - 10, seed=col * 11, jag=2.4, thick=1)
-            draw_lightning_bolt_160(arr, pelv[0] - 30, pelv[1] + 6, pelv[0] + 8, pelv[1] + 8, seed=col * 13 + 2, jag=2.2, thick=1)
+            draw_lightning_bolt_160(arr, pelv[0] - 34, pelv[1] - 14, pelv[0] + 8, pelv[1] - 11, seed=col * 11, jag=2.6, thick=1)
+            draw_lightning_bolt_160(arr, pelv[0] - 32, pelv[1] + 5, pelv[0] + 10, pelv[1] + 7, seed=col * 13 + 2, jag=2.4, thick=1)
 
         pose = {
-            "dx": 4.0 + 1.5 * math.sin(ph),
-            "dy": 9.5 + 1.4 * math.sin(ph * 2.0),
-            "torso_ang": 34.0 + 2.0 * math.sin(ph),
-            "head_ang": -12.0,
-            "l_foot": (-19.0 + 4.0 * math.sin(ph), -3.5 * max(0.0, math.sin(ph))),
-            "r_foot": (20.0 - 4.0 * math.sin(ph), 0.0),
-            "f_hand": (-8.0, 7.0 + 1.5 * math.cos(ph)),
-            "b_hand": (18.0, 2.0 - 1.5 * math.cos(ph)),
-            "f_charge": 0.7,
-            "b_charge": 0.7,
-            "wave_phase": ph * 2.0,
-            "scarf_amp": 42.0,
-            "scarf_ang": 32.0,
-            "expr": "focus",
+            "dx": 6.0 + 2.5 * math.cos(ph),
+            "dy": 10.5 - 2.6 * abs(stride),
+            "torso_ang": 37.0 + 3.0 * math.cos(ph),
+            "head_ang": -14.0,
+            # Full athletic running leg crossover & high rear heel kicks!
+            "l_foot": (-18.0 + 18.0 * stride, -11.0 * max(0.0, stride)),
+            "r_foot": (18.0 - 18.0 * stride, -11.0 * max(0.0, -stride)),
+            "l_boot_ang": 18.0 if stride > 0 else -10.0,
+            "r_boot_ang": 18.0 if stride < 0 else -10.0,
+            "f_hand": (-8.0 - 10.0 * stride, 6.0 + 3.5 * stride),
+            "b_hand": (16.0 + 9.0 * stride, 1.0 - 3.5 * stride),
+            "f_charge": 0.85,
+            "b_charge": 0.85,
+            "wave_phase": ph * 1.5,
+            "scarf_amp": 44.0,
+            "scarf_ang": 34.0,
+            "expr": "yell",
             "vfx_fn": dash_vfx,
         }
         frames.append(render_pose_160(rig, pose))
@@ -2333,7 +2347,7 @@ def append_hero_icons_row12():
 # ==============================================================================
 # 7. SELF-AUDIT & COMPACT VISUAL QA STRIPS
 # ==============================================================================
-def verify_and_dump_qa(sheet: np.ndarray):
+def verify_and_dump_qa(sheet: np.ndarray, qa_dir: Path | None = None):
     clips = 0
     row_vert_spans = {}
     for r in range(ROWS):
@@ -2407,7 +2421,9 @@ def verify_and_dump_qa(sheet: np.ndarray):
         f"vertSpans=R0:{row_vert_spans[0][0]}/R2:{row_vert_spans[2][0]}/R3:{row_vert_spans[3][0]}"
     )
 
-    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    if qa_dir is None:
+        return
+    qa_dir.mkdir(parents=True, exist_ok=True)
     picks = [
         ("R0 IDLE F00", 0, 0),
         ("R1 WALK F01", 1, 1),
@@ -2440,16 +2456,24 @@ def verify_and_dump_qa(sheet: np.ndarray):
         dr.rectangle([gx, gy, gx + CELL_W - 1, gy + CELL_H - 1], outline=(99, 102, 241, 255))
         dr.line([(gx, gy + 230), (gx + CELL_W, gy + 230)], fill=(251, 191, 36, 90))
         dr.text((gx + 6, gy + 4), lbl, fill=(254, 240, 138, 255))
-    strip.save(SCRATCH_DIR / "brawler_ex_sheet_check.png")
+    strip.save(qa_dir / "brawler_ex_sheet_check.png")
 
 
 def main():
+    args = sys.argv[1:]
+    sheet_only = "--sheet-only" in args
+    qa_dir = None
+    if "--qa-dir" in args:
+        idx = args.index("--qa-dir")
+        if idx + 1 < len(args):
+            qa_dir = Path(args[idx + 1])
     rig = build_raijin_rig_512()
     sheet = build_character_sheet(rig)
     Image.fromarray(sheet, "RGBA").save(OUT_SHEET, optimize=True)
-    build_portrait_256()
-    append_hero_icons_row12()
-    verify_and_dump_qa(sheet)
+    if not sheet_only:
+        build_portrait_256()
+        append_hero_icons_row12()
+    verify_and_dump_qa(sheet, qa_dir=qa_dir)
 
 
 if __name__ == "__main__":
