@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps187';
-import { PixelForge } from './PixelForge.js?v=30fps187';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps187';
+import { PixelFont } from './PixelFont.js?v=30fps188';
+import { PixelForge } from './PixelForge.js?v=30fps188';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps188';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -437,7 +437,8 @@ export class VFXManager {
       erupted: false,
       tickTimer: 0,
       isUltimate: !!opts.isUltimate,
-      tickDamage: opts.tickDamage
+      tickDamage: opts.tickDamage,
+      _advCastSource: this._resolveAdvCastSource(owner, opts)
     });
   }
 
@@ -522,7 +523,8 @@ export class VFXManager {
       erupted: false,
       life: 0,
       maxLife: opts.maxLife || 0.88,
-      isUltimate: !!opts.isUltimate
+      isUltimate: !!opts.isUltimate,
+      _advCastSource: this._resolveAdvCastSource(owner, opts)
     });
   }
 
@@ -565,8 +567,29 @@ export class VFXManager {
       impacted: false,
       linger: 0,
       maxLinger: opts.maxLinger || 0.48,
-      isUltimate: !!opts.isUltimate
+      isUltimate: !!opts.isUltimate,
+      _advCastSource: this._resolveAdvCastSource(owner, opts)
     });
+  }
+
+  _resolveAdvCastSource(owner, opts = null) {
+    if (!owner || owner.isMonster) return null;
+    if (!owner.game?.isAdventureMode?.() && !opts?._advCastSource && !opts?.advCastSource) {
+      return null;
+    }
+    if (opts?._advCastSource) return opts._advCastSource;
+    if (opts?.advCastSource) return opts.advCastSource;
+    const st = owner.state;
+    if (st === 'TRUE_ULTIMATE' || owner._activeHitTier === 'TRUE_ULTIMATE') return 'true_ult';
+    if (st === 'ULTIMATE' || opts?.isUltimate || opts?.isMeteor || owner._activeHitTier === 'ULTIMATE') {
+      return 'ult';
+    }
+    if (st === 'SKILL' || owner._activeHitTier === 'SKILL') return 'skill';
+    if (st === 'AUTO_ATTACK') return 'auto';
+    if (owner._advRecentCastSource && (owner._advRecentCastTimer || 0) > 0) {
+      return owner._advRecentCastSource;
+    }
+    return 'auto';
   }
 
   spawnProjectile(opts) {
@@ -610,6 +633,7 @@ export class VFXManager {
       vfxRow: Number.isFinite(opts.vfxRow) ? opts.vfxRow : null,
       isMeteor: !!opts.isMeteor,
       isUltimate: !!opts.isUltimate,
+      _advCastSource: this._resolveAdvCastSource(opts.owner, opts),
       isTwinSlash: !!opts.isTwinSlash,
       pierce: !!opts.pierce,
       maxRange: Number.isFinite(opts.maxRange) && opts.maxRange > 0 ? opts.maxRange : 0,
@@ -623,18 +647,25 @@ export class VFXManager {
     });
   }
 
-  _dealDelayedVfxDamage(foe, dmg, owner, isUlt, isCrit, kx, ky) {
+  _dealDelayedVfxDamage(foe, dmg, owner, isUlt, isCrit, kx, ky, advCastSource = null) {
     if (!foe || dmg <= 0) return;
-    if (!isUlt || !owner || owner.isMonster || owner._activeHitTier === 'TRUE_ULTIMATE') {
+    if (!owner || owner.isMonster || (!isUlt && !advCastSource)) {
       foe.takeDamage(dmg, owner, isCrit, kx, ky);
       return;
     }
     const prevTier = owner._activeHitTier;
-    owner._activeHitTier = 'ULTIMATE';
+    const prevAdvSource = owner._advActiveCastSource;
+    if (isUlt && prevTier !== 'TRUE_ULTIMATE') {
+      owner._activeHitTier = 'ULTIMATE';
+    }
+    if (advCastSource) {
+      owner._advActiveCastSource = advCastSource;
+    }
     try {
       foe.takeDamage(dmg, owner, isCrit, kx, ky);
     } finally {
       owner._activeHitTier = prevTier;
+      owner._advActiveCastSource = prevAdvSource;
     }
   }
 
@@ -920,7 +951,7 @@ export class VFXManager {
             !foe.isBenched &&
             Math.abs(foe.x - cs.x) < (foe.isColossalBoss ? 145 : 76)
           ) {
-            this._dealDelayedVfxDamage(foe, cs.damage, cs.owner, cs.isUltimate, false, 65, -90);
+            this._dealDelayedVfxDamage(foe, cs.damage, cs.owner, cs.isUltimate, false, 65, -90, cs._advCastSource);
           }
         }
       } else if (Math.random() < 0.65) {
@@ -1025,7 +1056,7 @@ export class VFXManager {
                 !foe.isBenched &&
                 Math.abs(foe.x - s.x) < (foe.isColossalBoss ? 155 : 92)
               ) {
-                this._dealDelayedVfxDamage(foe, s.damage, s.owner, s.isUltimate, isHeavyWeapon, 55, -60);
+                this._dealDelayedVfxDamage(foe, s.damage, s.owner, s.isUltimate, isHeavyWeapon, 55, -60, s._advCastSource);
               }
             }
           }
@@ -1127,7 +1158,7 @@ export class VFXManager {
               (foe.isColossalBoss || pilGy - foe.y < 155)
             ) {
               const pDmg = Number.isFinite(pil.tickDamage) ? pil.tickDamage : Math.round(28 * pil.scaleWidth);
-              if (pDmg > 0) this._dealDelayedVfxDamage(foe, pDmg, pil.owner, pil.isUltimate, false, 35, -55);
+              if (pDmg > 0) this._dealDelayedVfxDamage(foe, pDmg, pil.owner, pil.isUltimate, false, 35, -55, pil._advCastSource);
             }
           }
         }

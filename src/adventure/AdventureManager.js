@@ -1,7 +1,7 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps187';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps187';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps187';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps187';
+import { Fighter } from '../entities/Fighter.js?v=30fps188';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps188';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps188';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps188';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
@@ -15,10 +15,10 @@ import {
   loadAdventureHeroProgress,
   saveAdventureHeroProgress,
   resetAdventureHeroProgress
-} from './AdventureProgression.js?v=30fps187';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps187';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps187';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps187';
+} from './AdventureProgression.js?v=30fps188';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps188';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps188';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps188';
 
 export {
   ADVENTURE_HERO_PROGRESS_STORAGE_KEY,
@@ -783,6 +783,10 @@ export class AdventureManager {
     this.difficultyTier = 'normal';
     this.progressMode = 'fresh';
     this._progressStorageOverride = null;
+    this._progressSessionEligible = false;
+    this._lastProgressSaveMs = 0;
+    this._progressDirty = false;
+    this._lastSavedProgressSig = '';
     this.activeCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
     this.activeCampaignPack = null;
     this._campaignPackCache = new Map();
@@ -850,6 +854,9 @@ export class AdventureManager {
     this._boundKeyDown = (e) => this.onKeyDown(e);
     this._boundKeyUp = (e) => this.onKeyUp(e);
     this._boundBlur = () => this.clearHeldInputs();
+    this._boundPageHide = () => {
+      if (this.active) this.persistHeroProgressIfEnabled({ force: true });
+    };
     this._listenersAttached = false;
     this.bindDOMControls();
   }
@@ -952,6 +959,7 @@ export class AdventureManager {
     window.addEventListener('keydown', this._boundKeyDown);
     window.addEventListener('keyup', this._boundKeyUp);
     window.addEventListener('blur', this._boundBlur);
+    window.addEventListener('pagehide', this._boundPageHide);
   }
 
   clearHeldInputs() {
@@ -1118,7 +1126,7 @@ export class AdventureManager {
   }
 
   setProgressMode(mode, storageOverride = undefined) {
-    this.progressMode = normalizeAdventureProgressMode(mode);
+    this.progressMode = normalizeAdventureProgressMode(mode, 'keep');
     if (storageOverride !== undefined) {
       this._progressStorageOverride = storageOverride;
     }
@@ -1126,23 +1134,58 @@ export class AdventureManager {
   }
 
   getProgressMode() {
-    return normalizeAdventureProgressMode(this.progressMode);
+    return normalizeAdventureProgressMode(this.progressMode, 'fresh');
   }
 
-  persistHeroProgressIfEnabled() {
-    if (this.progressMode !== 'keep') return false;
-    if (this.game?.simMode || this.game?.testModeUnlimitedHp) return false;
+  persistHeroProgressIfEnabled(opts = {}) {
+    const force = Boolean(opts && opts.force);
+    if (this.progressMode !== 'keep' || !this._progressSessionEligible) return false;
+    if (this.game?.simMode || this.game?.testModeUnlimitedHp || this.autoPlay) return false;
     const heroId = this.game?.leftFighter?.heroId;
     if (!heroId) return false;
+
+    const snap = this.progression.exportProgressSnapshot();
+    const spentRanks = Object.values(snap.ranks || {}).reduce((acc, v) => acc + (v || 0), 0);
+    const isEmptyLv1 = snap.level <= 1 && snap.xp <= 0 && spentRanks === 0;
+    if (isEmptyLv1 && !this._lastSavedProgressSig) {
+      if (!loadAdventureHeroProgress(heroId, this._progressStorageOverride)) {
+        this._progressDirty = false;
+        return false;
+      }
+    }
+
+    const sig = JSON.stringify(snap);
+    if (!force && sig === this._lastSavedProgressSig) {
+      this._progressDirty = false;
+      return false;
+    }
+
+    const now = Date.now();
+    if (!force && this._lastProgressSaveMs > 0 && now - this._lastProgressSaveMs < 1500) {
+      this._progressDirty = true;
+      return false;
+    }
+
     this.progression.saveToStorage(heroId, this._progressStorageOverride);
+    this._lastProgressSaveMs = now;
+    this._lastSavedProgressSig = sig;
+    this._progressDirty = false;
     this.game?.syncAdventureClearMedalsUI?.();
     return true;
+  }
+
+  flushPendingHeroProgressSave(force = false) {
+    if (!this._progressDirty && !force) return false;
+    return this.persistHeroProgressIfEnabled({ force });
   }
 
   resetHeroLevelToLv1(playSound = true) {
     const player = this.game?.leftFighter || null;
     const heroId = player?.heroId || this.game?.slot1Hero || null;
     this.progression.resetChampionToLv1(heroId, player, this._progressStorageOverride);
+    this._progressDirty = false;
+    this._lastSavedProgressSig = '';
+    this._lastProgressSaveMs = Date.now();
     if (playSound && this.game?.audio) {
       this.game.audio.play('reflect', player?.x || 600);
     }
@@ -2275,7 +2318,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps187') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps188') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -2285,7 +2328,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps187') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps188') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
@@ -2432,12 +2475,19 @@ export class AdventureManager {
       !this.game?.simMode &&
       !this.game?.testModeUnlimitedHp &&
       !this.autoPlay;
+    this._progressSessionEligible = canLoadSavedProgress;
+    this._progressDirty = false;
+    this._lastProgressSaveMs = 0;
+    this._lastSavedProgressSig = '';
     if (canLoadSavedProgress && playerFighter?.heroId) {
-      this.progression.loadFromStorage(
+      const loadedSaved = this.progression.loadFromStorage(
         playerFighter.heroId,
         null,
         this._progressStorageOverride
       );
+      if (loadedSaved) {
+        this._lastSavedProgressSig = JSON.stringify(this.progression.exportProgressSnapshot());
+      }
     }
     this.progression.attachToFighter(playerFighter);
 
@@ -2487,6 +2537,9 @@ export class AdventureManager {
     playerFighter._advPerfectDodgeTriggered = false;
     playerFighter._phantomEmpowerReady = false;
     playerFighter._phantomEmpowerTimer = 0;
+    playerFighter._advRecentCastSource = null;
+    playerFighter._advRecentCastTimer = 0;
+    playerFighter._advActiveCastSource = null;
     playerFighter._advDodgeStartX = null;
     playerFighter._advDodgeStartGy = null;
     playerFighter._advAiVelX = 0;
@@ -2518,6 +2571,12 @@ export class AdventureManager {
   }
 
   stopCampaign() {
+    if (this.active && this.game?.leftFighter) {
+      this.persistHeroProgressIfEnabled({ force: true });
+    }
+    this._progressSessionEligible = false;
+    this._progressDirty = false;
+    this._lastSavedProgressSig = '';
     this.closeSkillTree(false);
     this.closeRelicDraft(false);
     this.activeRelics = [];
@@ -2554,6 +2613,9 @@ export class AdventureManager {
       this.game.leftFighter._advPerfectDodgeTriggered = false;
       this.game.leftFighter._phantomEmpowerReady = false;
       this.game.leftFighter._phantomEmpowerTimer = 0;
+      this.game.leftFighter._advRecentCastSource = null;
+      this.game.leftFighter._advRecentCastTimer = 0;
+      this.game.leftFighter._advActiveCastSource = null;
       this.game.leftFighter._advDodgeStartX = null;
       this.game.leftFighter._advDodgeStartGy = null;
       this.game.leftFighter._advAiVelX = 0;
@@ -3238,7 +3300,7 @@ export class AdventureManager {
         score: this.score,
         tier: diff.id
       });
-      this.persistHeroProgressIfEnabled();
+      this.persistHeroProgressIfEnabled({ force: true });
       g.syncAdventureClearMedalsUI?.();
     }
 
@@ -3340,7 +3402,7 @@ export class AdventureManager {
     g.deadMatchFighter = player;
     g.victoryRevealPending = true;
     g.postDeathHoldTimer = 0;
-    this.persistHeroProgressIfEnabled();
+    this.persistHeroProgressIfEnabled({ force: true });
 
     const killer = this.bossEntity || this.getLivingMonsters()[0] || null;
     const killerName = killer && killer !== player ? killer.name : 'ABYSSAL HORDE';
@@ -3457,7 +3519,7 @@ export class AdventureManager {
 
     const p = this.game.leftFighter;
     this.progression.gainXp(35, p);
-    this.persistHeroProgressIfEnabled();
+    this.persistHeroProgressIfEnabled({ force: true });
 
     const curZ = activeZones[zoneIdx];
     const dropBaseX = p
@@ -5969,6 +6031,7 @@ export class AdventureManager {
     this.goBlinkTimer += dt;
     this.progression.update(effDt, player);
     this.skillSets.update(effDt, player);
+    this.flushPendingHeroProgressSave(false);
 
     const activeZones = this.getActiveZones();
     const lastZoneIdx = Math.max(0, activeZones.length - 1);
@@ -6071,8 +6134,28 @@ export class AdventureManager {
     }
 
     // 5. Update Player (Manual or Auto-Play) + Clamp Arena Walk Bounds + Update Active Monsters
+    const syncAdvCastGrace = (isPostStep) => {
+      if (!player) return;
+      if (player.state === 'TRUE_ULTIMATE') {
+        player._advRecentCastSource = 'true_ult';
+        player._advRecentCastTimer = 0.45;
+      } else if (player.state === 'ULTIMATE') {
+        player._advRecentCastSource = 'ult';
+        player._advRecentCastTimer = 0.45;
+      } else if (player.state === 'SKILL') {
+        player._advRecentCastSource = 'skill';
+        player._advRecentCastTimer = 0.45;
+      } else if (isPostStep && (player._advRecentCastTimer || 0) > 0) {
+        player._advRecentCastTimer = Math.max(0, player._advRecentCastTimer - effDt);
+        if (player._advRecentCastTimer <= 0) {
+          player._advRecentCastSource = null;
+        }
+      }
+    };
+    syncAdvCastGrace(false);
     const nearestMonster = this.getNearestLivingMonster(player);
     this.processPlayerControls(effDt, player, nearestMonster);
+    syncAdvCastGrace(true);
 
     // Keep player out of the Right-Side Colossal Boss's throne parapet & inside wave locks!
     const colossalAlive = Boolean(

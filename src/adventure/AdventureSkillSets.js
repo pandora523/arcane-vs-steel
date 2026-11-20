@@ -754,20 +754,32 @@ export class AdventureSkillSets {
     const living = this.adventure.getLivingMonsters?.();
     if (!living || living.length <= 1) return;
 
-    const st = attacker.state;
+    const cleaveTier =
+      this.adventure?.progression?.resolveOutgoingCastTier?.(
+        rawAmount,
+        attacker,
+        attacker._advActiveCastSource || null
+      ) ||
+      (attacker.state === 'TRUE_ULTIMATE'
+        ? 'true_ult'
+        : attacker.state === 'ULTIMATE'
+          ? 'ult'
+          : attacker.state === 'SKILL'
+            ? 'skill'
+            : 'auto');
     let radX = attacker.hasHackAndSlashCombo?.() || (attacker.attackRange || 180) < 300 ? 155 : 130;
     let radZ = 100;
     let splashMult = 0.45;
 
-    if (st === 'TRUE_ULTIMATE') {
+    if (cleaveTier === 'true_ult') {
       radX = 460;
       radZ = 220;
       splashMult = 1.00;
-    } else if (st === 'ULTIMATE') {
+    } else if (cleaveTier === 'ult') {
       radX = 360;
       radZ = 195;
       splashMult = 0.95;
-    } else if (st === 'SKILL') {
+    } else if (cleaveTier === 'skill') {
       radX = 255;
       radZ = 150;
       splashMult = 0.90;

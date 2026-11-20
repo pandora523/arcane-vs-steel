@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps187';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps187';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps187';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps187';
+import { Fighter } from './Fighter.js?v=30fps188';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps188';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps188';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps188';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -536,6 +536,10 @@ export class Monster extends Fighter {
     let effectiveCrit = Boolean(isCrit);
     let consumedPhantomEmpower = false;
     const prog = this.game?.isAdventureMode?.() ? this.game.adventure?.progression : null;
+    const resolvedCastTier =
+      prog && attacker && !attacker.isMonster
+        ? prog.resolveOutgoingCastTier?.(amount, attacker, attacker._advActiveCastSource || null) || null
+        : null;
     if (prog && attacker && !attacker.isMonster) {
       if (attacker._phantomEmpowerReady && !this._isAdvCleaveSplash) {
         attacker._phantomEmpowerReady = false;
@@ -543,7 +547,13 @@ export class Monster extends Fighter {
         consumedPhantomEmpower = true;
         effectiveCrit = true;
       }
-      finalAmount = prog.scaleOutgoingDamage(amount, attacker, this, effectiveCrit);
+      finalAmount = prog.scaleOutgoingDamage(
+        amount,
+        attacker,
+        this,
+        effectiveCrit,
+        attacker._advActiveCastSource || null
+      );
       if (consumedPhantomEmpower) {
         finalAmount = Math.max(4, Math.round(finalAmount * 1.45));
         this.game?.vfx?.spawnShockwave?.(this.x, (this.groundY || this.y) - 52, 138, '#67e8f9', 0.30, true);
@@ -565,7 +575,7 @@ export class Monster extends Fighter {
     if (
       attacker &&
       !attacker.isMonster &&
-      attacker.state === 'TRUE_ULTIMATE' &&
+      (attacker.state === 'TRUE_ULTIMATE' || resolvedCastTier === 'true_ult') &&
       amount < 9000
     ) {
       const trueUltCap = this.isColossalBoss
@@ -600,8 +610,17 @@ export class Monster extends Fighter {
       prog.onPlayerHitMonster(attacker, this, dealt);
       // Fill Warden / Colossal Boss Stagger Gauge on player hits (Skills, Overdrive, Perfect-Dodge counters)
       if (this.maxStagger > 0 && !this.isDead && !this._isAdvCleaveSplash) {
-        const st = attacker.state;
-        let stagAmt = st === 'TRUE_ULTIMATE' ? 95 : st === 'ULTIMATE' ? 62 : st === 'SKILL' ? 34 : 6;
+        const stagTier =
+          resolvedCastTier ||
+          (attacker.state === 'TRUE_ULTIMATE'
+            ? 'true_ult'
+            : attacker.state === 'ULTIMATE'
+              ? 'ult'
+              : attacker.state === 'SKILL'
+                ? 'skill'
+                : 'auto');
+        let stagAmt =
+          stagTier === 'true_ult' ? 95 : stagTier === 'ult' ? 62 : stagTier === 'skill' ? 34 : 6;
         if (consumedPhantomEmpower) stagAmt += 42;
         this.addStagger(stagAmt, attacker, this.game);
       }

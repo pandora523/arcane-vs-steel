@@ -138,10 +138,10 @@ const [
   { EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER, Game },
   { HeroBuildSystem, SOVEREIGN_BUILD_HERO_IDS, HERO_BUILD_CATALOG }
 ] = await Promise.all([
-  import('../../src/entities/Fighter.js?v=30fps187'),
-  import('../../src/engine/VFXManager.js?v=30fps187'),
-  import('../../src/main.js?v=30fps187'),
-  import('../../src/combat/HeroBuildSystem.js?v=30fps187')
+  import('../../src/entities/Fighter.js?v=30fps188'),
+  import('../../src/engine/VFXManager.js?v=30fps188'),
+  import('../../src/main.js?v=30fps188'),
+  import('../../src/combat/HeroBuildSystem.js?v=30fps188')
 ]);
 
 const STAGES = ['cathedral', 'sylvan', 'boneyard', 'clocktower'];

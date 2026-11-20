@@ -1,33 +1,33 @@
-import { Renderer } from './engine/Renderer.js?v=30fps187';
-import { VFXManager } from './engine/VFXManager.js?v=30fps187';
-import { PixelForge } from './engine/PixelForge.js?v=30fps187';
-import { AudioManager } from './engine/AudioManager.js?v=30fps187';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps187';
-import { Fighter } from './entities/Fighter.js?v=30fps187';
-import { Warrior } from './entities/Warrior.js?v=30fps187';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps187';
-import { FireMage } from './entities/FireMage.js?v=30fps187';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps187';
-import { Archer } from './entities/Archer.js?v=30fps187';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps187';
-import { Priestess } from './entities/Priestess.js?v=30fps187';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps187';
-import { Reaper } from './entities/Reaper.js?v=30fps187';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps187';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps187';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps187';
-import { Titan } from './entities/Titan.js?v=30fps187';
-import { TitanEx } from './entities/TitanEx.js?v=30fps187';
-import { Ronin } from './entities/Ronin.js?v=30fps187';
-import { RoninEx } from './entities/RoninEx.js?v=30fps187';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps187';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps187';
-import { IceMage } from './entities/IceMage.js?v=30fps187';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps187';
-import { Android } from './entities/Android.js?v=30fps187';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps187';
-import { NyxEx } from './entities/NyxEx.js?v=30fps187';
-import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps187';
+import { Renderer } from './engine/Renderer.js?v=30fps188';
+import { VFXManager } from './engine/VFXManager.js?v=30fps188';
+import { PixelForge } from './engine/PixelForge.js?v=30fps188';
+import { AudioManager } from './engine/AudioManager.js?v=30fps188';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps188';
+import { Fighter } from './entities/Fighter.js?v=30fps188';
+import { Warrior } from './entities/Warrior.js?v=30fps188';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps188';
+import { FireMage } from './entities/FireMage.js?v=30fps188';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps188';
+import { Archer } from './entities/Archer.js?v=30fps188';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps188';
+import { Priestess } from './entities/Priestess.js?v=30fps188';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps188';
+import { Reaper } from './entities/Reaper.js?v=30fps188';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps188';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps188';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps188';
+import { Titan } from './entities/Titan.js?v=30fps188';
+import { TitanEx } from './entities/TitanEx.js?v=30fps188';
+import { Ronin } from './entities/Ronin.js?v=30fps188';
+import { RoninEx } from './entities/RoninEx.js?v=30fps188';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps188';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps188';
+import { IceMage } from './entities/IceMage.js?v=30fps188';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps188';
+import { Android } from './entities/Android.js?v=30fps188';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps188';
+import { NyxEx } from './entities/NyxEx.js?v=30fps188';
+import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps188';
 import {
   AdventureManager,
   ADVENTURE_DIFFICULTY_TIERS,
@@ -40,9 +40,9 @@ import {
   normalizeAdventureCampaignPack,
   normalizeAdventureDifficultyId,
   normalizeAdventureProgressMode
-} from './adventure/AdventureManager.js?v=30fps187';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps187';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps187';
+} from './adventure/AdventureManager.js?v=30fps188';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps188';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps188';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -2230,6 +2230,9 @@ export class Game {
       this._pausedFrameRendered = false;
     }
     if (nextPaused) {
+      if (this.isAdventureMode() && this.adventure?.active) {
+        this.adventure.persistHeroProgressIfEnabled?.({ force: true });
+      }
       this.adventure?.clearHeldInputs();
       this.clearVsManualInputs?.();
     }
@@ -5813,7 +5816,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps187');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps188');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -5928,7 +5931,12 @@ export class Game {
       if (!keepLvlActive || !progRec) {
         if (lvlPip) {
           lvlPip.textContent = '';
+          lvlPip.removeAttribute?.('title');
           lvlPip.classList.add('hidden');
+        }
+        if (btn && btn !== cardEl && btn.dataset?.advLvlTooltip === '1') {
+          btn.removeAttribute?.('title');
+          delete btn.dataset.advLvlTooltip;
         }
       } else {
         if (!lvlPip && typeof document.createElement === 'function') {
@@ -5937,9 +5945,25 @@ export class Game {
           btn.appendChild(lvlPip);
         }
         if (lvlPip) {
+          const spentRanks = Object.values(progRec.ranks || {}).reduce((acc, v) => acc + (v || 0), 0);
+          const xpDetail =
+            progRec.level >= 10
+              ? 'MAX'
+              : `${progRec.xp || 0}/${progRec.xpToNext || 115} XP`;
+          const spDetail =
+            spentRanks > 0 && progRec.skillPoints > 0
+              ? `${spentRanks} Rank${spentRanks === 1 ? '' : 's'} Active • ${progRec.skillPoints} SP Unspent`
+              : spentRanks > 0
+                ? `${spentRanks} Skill Rank${spentRanks === 1 ? '' : 's'} Active`
+                : `${progRec.skillPoints} SP Ready`;
+          const tip = `Saved Adventure Progress: LV.${progRec.level} (${xpDetail}) • ${spDetail}`;
           lvlPip.textContent = `LV.${progRec.level}`;
-          lvlPip.title = `Saved Adventure Level: LV.${progRec.level} (${progRec.skillPoints} SP unspent)`;
+          lvlPip.title = tip;
           lvlPip.classList.remove('hidden');
+          if (btn && btn !== cardEl) {
+            btn.title = tip;
+            if (btn.dataset) btn.dataset.advLvlTooltip = '1';
+          }
         }
       }
     });
@@ -6019,7 +6043,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps187'
+          'v=30fps188'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -7456,6 +7480,9 @@ export class Game {
       : Boolean(this.vsTestModeUnlimitedHp);
 
     if (this.isAdventureMode()) {
+      if (this.adventure?.active && this.leftFighter) {
+        this.adventure.persistHeroProgressIfEnabled?.({ force: true });
+      }
       if (this.renderer) {
         this.renderer.releaseStageCutoutCaches?.(false);
         this.renderer.stageEventTimer = 0;
@@ -8848,13 +8875,20 @@ export class Game {
             if (cand && !cand.isDead && !cand.isBenched && Math.abs(cand.x - p.x) < meteorRad) {
               const owner = p.owner;
               const prevTier = owner?._activeHitTier;
+              const prevAdvSource = owner?._advActiveCastSource;
               if ((p.isMeteor || p.isUltimate) && owner && !owner.isMonster && prevTier !== 'TRUE_ULTIMATE') {
                 owner._activeHitTier = 'ULTIMATE';
+              }
+              if (p._advCastSource && owner && !owner.isMonster) {
+                owner._advActiveCastSource = p._advCastSource;
               }
               try {
                 cand.takeDamage(p.damage, owner, true, 160, -240);
               } finally {
-                if (owner) owner._activeHitTier = prevTier;
+                if (owner) {
+                  owner._activeHitTier = prevTier;
+                  owner._advActiveCastSource = prevAdvSource;
+                }
               }
               this.renderer.triggerHitStop(0.075);
             }
@@ -8863,13 +8897,20 @@ export class Game {
           const isCrit = Math.random() < 0.28;
           const owner = p.owner;
           const prevTier = owner?._activeHitTier;
+          const prevAdvSource = owner?._advActiveCastSource;
           if ((p.isMeteor || p.isUltimate) && owner && !owner.isMonster && prevTier !== 'TRUE_ULTIMATE') {
             owner._activeHitTier = 'ULTIMATE';
+          }
+          if (p._advCastSource && owner && !owner.isMonster) {
+            owner._advActiveCastSource = p._advCastSource;
           }
           try {
             hitTarget.takeDamage(isCrit ? p.damage * 1.38 : p.damage, owner, isCrit, 100, 0);
           } finally {
-            if (owner) owner._activeHitTier = prevTier;
+            if (owner) {
+              owner._activeHitTier = prevTier;
+              owner._advActiveCastSource = prevAdvSource;
+            }
           }
           if (this.audio) {
             const impactSfx =

@@ -583,8 +583,39 @@ export function getHeroSkillTreeTheme(heroId = 'mage') {
 export const ADVENTURE_HERO_PROGRESS_STORAGE_KEY = 'avs_adv_hero_progress_v1';
 export const ADVENTURE_KEEP_LEVEL_STORAGE_KEY = 'avs_adv_keep_level_v1';
 
-export function normalizeAdventureProgressMode(rawMode) {
-  return String(rawMode || '').trim().toLowerCase() === 'keep' ? 'keep' : 'fresh';
+/**
+ * Adventure-only per-archetype damage floor equalizer (zero edits to any VS Mode hero entity!).
+ * Lifts lower-raw-output zoning, support, and multi-hit champions to satisfying Adventure DPS
+ * comparable to melee bruisers while preserving all Boss caps (`Suite 29C`) and ability hierarchy.
+ */
+export const ADVENTURE_HERO_DMG_EQUALIZER = {
+  priestess: { auto: 1.34, skill: 1.24, ult: 1.18, true_ult: 1.12 },
+  priestess_ex: { auto: 1.36, skill: 1.26, ult: 1.18, true_ult: 1.12 },
+  icemage: { auto: 1.30, skill: 1.22, ult: 1.16, true_ult: 1.10 },
+  icemage_ex: { auto: 1.32, skill: 1.24, ult: 1.18, true_ult: 1.10 },
+  archer: { auto: 1.24, skill: 1.20, ult: 1.15, true_ult: 1.08 },
+  archer_ex: { auto: 1.24, skill: 1.20, ult: 1.15, true_ult: 1.08 },
+  chronomancer: { auto: 1.24, skill: 1.20, ult: 1.16, true_ult: 1.10 },
+  chronomancer_ex: { auto: 1.28, skill: 1.22, ult: 1.18, true_ult: 1.10 },
+  nyx_ex: { auto: 1.28, skill: 1.22, ult: 1.18, true_ult: 1.10 },
+  reaper: { auto: 1.22, skill: 1.18, ult: 1.15, true_ult: 1.08 },
+  reaper_ex: { auto: 1.24, skill: 1.20, ult: 1.15, true_ult: 1.08 },
+  android: { auto: 1.22, skill: 1.18, ult: 1.15, true_ult: 1.08 },
+  android_ex: { auto: 1.26, skill: 1.20, ult: 1.16, true_ult: 1.08 }
+};
+
+export function getAdventureHeroDamageEqualizer(heroId, tier = 'auto') {
+  if (!heroId || typeof heroId !== 'string') return 1.0;
+  const rec = ADVENTURE_HERO_DMG_EQUALIZER[heroId];
+  if (!rec) return 1.0;
+  return rec[tier] || 1.0;
+}
+
+export function normalizeAdventureProgressMode(rawMode, defaultMode = 'keep') {
+  const clean = String(rawMode || '').trim().toLowerCase();
+  if (clean === 'fresh') return 'fresh';
+  if (clean === 'keep') return 'keep';
+  return defaultMode === 'fresh' ? 'fresh' : 'keep';
 }
 
 function resolveProgressStorage(storageOverride = null) {
@@ -601,16 +632,20 @@ function resolveProgressStorage(storageOverride = null) {
 
 export function loadAdventureProgressMode(storageOverride = null) {
   const store = resolveProgressStorage(storageOverride);
-  if (!store || typeof store.getItem !== 'function') return 'fresh';
+  if (!store || typeof store.getItem !== 'function') return 'keep';
   try {
-    return normalizeAdventureProgressMode(store.getItem(ADVENTURE_KEEP_LEVEL_STORAGE_KEY));
+    const raw = store.getItem(ADVENTURE_KEEP_LEVEL_STORAGE_KEY);
+    if (raw === null || raw === undefined || String(raw).trim() === '') {
+      return 'keep';
+    }
+    return normalizeAdventureProgressMode(raw, 'keep');
   } catch {
-    return 'fresh';
+    return 'keep';
   }
 }
 
 export function saveAdventureProgressMode(mode, storageOverride = null) {
-  const clean = normalizeAdventureProgressMode(mode);
+  const clean = normalizeAdventureProgressMode(mode, 'keep');
   const store = resolveProgressStorage(storageOverride);
   if (store && typeof store.setItem === 'function') {
     try {
@@ -811,6 +846,10 @@ export class AdventureProgression {
     for (const node of ADVENTURE_SKILL_TREE) {
       this.ranks[node.id] = clean.ranks[node.id] || 0;
     }
+    const rAstral3 = this.ranks.astral_3 || 0;
+    if (rAstral3 > 0) {
+      this.astralCharge = Math.min(100, rAstral3 * 18);
+    }
     if (player) {
       const stats = this.getComputedStats();
       player.maxHp = stats.maxHp;
@@ -885,7 +924,7 @@ export class AdventureProgression {
       this.applyStatsToFighter(player, prevMaxHp);
       this.syncGaugesToPlayer(player);
     }
-    this.adventure?.persistHeroProgressIfEnabled?.();
+    this.adventure?.persistHeroProgressIfEnabled?.({ force: true });
     return true;
   }
 
@@ -905,7 +944,7 @@ export class AdventureProgression {
       player.hp = Math.min(player.hp, player.maxHp);
       this.syncGaugesToPlayer(player);
     }
-    this.adventure?.persistHeroProgressIfEnabled?.();
+    this.adventure?.persistHeroProgressIfEnabled?.({ force: true });
     return true;
   }
 
@@ -1130,23 +1169,67 @@ export class AdventureProgression {
       }
     }
     if (leveledUp) {
-      this.adventure?.persistHeroProgressIfEnabled?.();
+      this.adventure?.persistHeroProgressIfEnabled?.({ force: true });
+    } else {
+      this.adventure?.persistHeroProgressIfEnabled?.({ force: false });
     }
   }
 
-  scaleOutgoingDamage(rawAmount, attacker, monster, _isCrit = false) {
+  resolveOutgoingCastTier(rawAmount, attacker, castSource = null) {
+    const explicit = castSource || attacker?._advActiveCastSource || null;
+    if (explicit === 'true_ult') return 'true_ult';
+    if (explicit === 'ult') return 'ult';
+    if (explicit === 'skill') return 'skill';
+    if (explicit === 'auto') {
+      return rawAmount >= 420 ? 'true_ult' : 'auto';
+    }
+
+    const st = attacker?.state;
+    const hitTier = attacker?._activeHitTier;
+    if (st === 'TRUE_ULTIMATE' || hitTier === 'TRUE_ULTIMATE' || rawAmount >= 420) {
+      return 'true_ult';
+    }
+    if (st === 'ULTIMATE' || hitTier === 'ULTIMATE') {
+      return 'ult';
+    }
+    if (st === 'SKILL' || hitTier === 'SKILL') {
+      return 'skill';
+    }
+    if (st === 'AUTO_ATTACK') {
+      return 'auto';
+    }
+    // 0.45s post-cast Skill/Ult grace window for delayed ground shockwaves, summons, and aftershocks
+    if (
+      attacker?._advRecentCastSource &&
+      (attacker._advRecentCastTimer || 0) > 0 &&
+      (attacker._advRecentCastSource === 'true_ult' ||
+        attacker._advRecentCastSource === 'ult' ||
+        attacker._advRecentCastSource === 'skill')
+    ) {
+      return attacker._advRecentCastSource;
+    }
+    if (rawAmount >= 22 && rawAmount <= 44) {
+      return 'skill';
+    }
+    return 'auto';
+  }
+
+  scaleOutgoingDamage(rawAmount, attacker, monster, _isCrit = false, castSource = null) {
     if (!attacker || attacker.isMonster) return rawAmount;
     const stats = this.getComputedStats();
-    const st = attacker.state;
+    const tier = this.resolveOutgoingCastTier(rawAmount, attacker, castSource);
     let mult = stats.atkMult;
-    if (st === 'TRUE_ULTIMATE' || rawAmount >= 420) {
+    if (tier === 'true_ult') {
       mult = stats.superUltMult;
       if (monster?.isBoss) mult *= 1.18;
-    } else if (st === 'ULTIMATE') {
+    } else if (tier === 'ult') {
       mult = stats.ultMult;
-    } else if (st === 'SKILL' || (rawAmount >= 22 && rawAmount <= 44)) {
+    } else if (tier === 'skill') {
       mult = stats.skillMult;
     }
+
+    // Adventure-only per-archetype damage floor equalizer (zero VS Mode hero entity edits!)
+    mult *= getAdventureHeroDamageEqualizer(attacker.heroId, tier);
 
     // Warden / Colossal Boss Guard-Break (+55% DMG) or Exposed Heart-Core (+45% DMG) + Starwood Spore Pod (+25% DMG)
     if ((monster?.staggerBreakTimer || 0) > 0) {
@@ -1169,9 +1252,26 @@ export class AdventureProgression {
     this.comboHits++;
     this.comboTimer = 3.0;
 
+    const explicitSrc = player._advActiveCastSource || null;
     const st = player.state;
+    const isSkillHit = explicitSrc === 'skill' || (!explicitSrc && st === 'SKILL');
+    const isUltHit =
+      explicitSrc === 'ult' ||
+      explicitSrc === 'true_ult' ||
+      (!explicitSrc && (st === 'ULTIMATE' || st === 'TRUE_ULTIMATE'));
     const relicSpiritBonus = this.adventure?.hasRelic?.('soul_siphon_cleave') ? 4 : 0;
-    if (st === 'AUTO_ATTACK' || st === 'IDLE' || st === 'WALK' || st === 'CROUCH' || st === 'JUMP') {
+    if (isSkillHit) {
+      const skillUltHit = monster?.isBoss ? stats.bossHitUltGain + 1.8 : 1.8;
+      this.gainAdventureUlt(skillUltHit, player);
+    } else if (
+      !isUltHit &&
+      (explicitSrc === 'auto' ||
+        st === 'AUTO_ATTACK' ||
+        st === 'IDLE' ||
+        st === 'WALK' ||
+        st === 'CROUCH' ||
+        st === 'JUMP')
+    ) {
       this.gainSpirit(stats.basicSpiritGain + relicSpiritBonus);
       if (player.skillCooldown > 0 && (this._skillCdShaveThrottle || 0) <= 0) {
         player.skillCooldown = Math.max(0, player.skillCooldown - stats.basicSkillCdShave);
@@ -1180,9 +1280,6 @@ export class AdventureProgression {
       const comboBonus = this.comboHits >= 8 ? 1.45 : this.comboHits >= 4 ? 1.2 : 1.0;
       const baseUltHit = monster?.isBoss ? stats.bossHitUltGain + 1.5 : 2.1;
       this.gainAdventureUlt(baseUltHit * comboBonus, player);
-    } else if (st === 'SKILL') {
-      const skillUltHit = monster?.isBoss ? stats.bossHitUltGain + 1.8 : 1.8;
-      this.gainAdventureUlt(skillUltHit, player);
     }
   }
 
@@ -1243,7 +1340,8 @@ export class AdventureProgression {
         type: rangedExCfg.type,
         pierce: rangedExCfg.pierce,
         maxRange: 680,
-        isMeteor: false
+        isMeteor: false,
+        advCastSource: 'auto'
       });
 
       if (!stats.hasHomingSeeker) return;
@@ -1303,7 +1401,8 @@ export class AdventureProgression {
         pierce: true,
         maxRange: 640,
         isTwinSlash,
-        ignoreTargets: player._lastAutoMeleeHitFoes || null
+        ignoreTargets: player._lastAutoMeleeHitFoes || null,
+        advCastSource: 'auto'
       });
       return;
     }
@@ -1383,7 +1482,8 @@ export class AdventureProgression {
       damage: 58,
       type: cfg.type,
       pierce: cfg.pierce,
-      isMeteor: false
+      isMeteor: false,
+      advCastSource: 'auto'
     });
   }
 

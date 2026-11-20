@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps187';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps188';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
@@ -223,6 +223,45 @@ function drawSteppedPixelLine(ctx, x0, y0, x1, y1, color, pxUnit = 2) {
     const py = snapPx(y0 + dy * f, u);
     ctx.fillRect(px, py, u, u);
   }
+}
+
+/**
+ * Zone I Eclipse Corona: Draws a razor-thin curved tangential pixel filament hugging the eclipse rim
+ * strictly via quantized 2px pixel steps (zero vector arcs, ellipses, or canvas rotations!).
+ */
+function drawCoronaFilamentArc(ctx, cx, cy, radius, angStart, angEnd, rimHex, coreHex, alpha) {
+  if (alpha <= 0.01) return;
+  const segs = 7;
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
+  const prevFill = ctx.fillStyle;
+  for (let s = 0; s < segs; s++) {
+    const f0 = s / segs;
+    const f1 = (s + 1) / segs;
+    const midF = (f0 + f1) * 0.5;
+    const env = Math.sin(midF * Math.PI);
+    if (env <= 0.08) continue;
+    const a0 = angStart + (angEnd - angStart) * f0;
+    const a1 = angStart + (angEnd - angStart) * f1;
+    // Slight outward parabolic bow along the tangential filament
+    const bow0 = Math.sin(f0 * Math.PI) * 4.5;
+    const bow1 = Math.sin(f1 * Math.PI) * 4.5;
+    const x0 = cx + Math.cos(a0) * (radius + bow0);
+    const y0 = cy + Math.sin(a0) * (radius + bow0);
+    const x1 = cx + Math.cos(a1) * (radius + bow1);
+    const y1 = cy + Math.sin(a1) * (radius + bow1);
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.min(0.66, alpha * env);
+    drawSteppedPixelLine(ctx, x0, y0, x1, y1, rimHex, 2);
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(0.15, alpha * 0.24 * env);
+    drawSteppedPixelLine(ctx, x0, y0, x1, y1, coreHex, 2);
+  }
+  ctx.globalCompositeOperation = prevComp;
+  ctx.globalAlpha = prevAlpha;
+  ctx.fillStyle = prevFill;
 }
 
 const BIOME_SLOT_BY_ID = {
@@ -1243,155 +1282,270 @@ export class AdventureMapRenderer {
     for (let k = firstK; k <= lastK; k++) {
       const baseWx = vistaAnchor + k * vistaPeriod;
 
-      // A. Zone I: Solar Eclipse Stepped Pixel-Rim Corona (`artX = 406, artY = 70, rimR = 44 * PANO_SCALE`)
-      const eclipseX = baseWx + 406 * PANO_SCALE;
-      const eclipseY = ARCH_WORLD_TOP_Y + 70 * PANO_SCALE; // -73
-      if (eclipseX + 380 >= viewLeft && eclipseX - 380 <= viewRight) {
+      // A. Zone I: Cohesive Celestial Solar Eclipse Corona (`artX = 407.5, artY = 73`, `rimR = 45.5 * PANO_SCALE`)
+      //    Softly pulsing volumetric corona halo, tangential razor-thin rim filaments, drifting celestial motes,
+      //    subtle breathing diagonal gold/cyan god-rays & crisp forked corona crest arcs (`Row 5`) — ZERO upright torch candles!
+      const eclipseX = baseWx + 407.5 * PANO_SCALE;
+      const eclipseY = archTopY + 73 * PANO_SCALE;
+      if (eclipseX + 420 >= viewLeft && eclipseX - 420 <= viewRight) {
         const rimPal = infernoAlpha > 0.5 ? 'ember' : isGlacialPerm ? 'cyan' : 'gold';
-        const rimR = 44 * PANO_SCALE; // 115.5px exact ruler-measured eclipse ring!
-        for (let i = 0; i < 8; i++) {
-          const ang = (i / 8) * Math.PI * 2 + Math.floor(t * 2.0) * 0.196;
-          const rx = eclipseX + Math.cos(ang) * rimR;
-          const ry = eclipseY + Math.sin(ang) * rimR;
-          const pulse = 0.58 + 0.42 * Math.sin(t * 3.8 + i * 1.3 + k);
-          drawSteppedPixelBloom(ctx, rx, ry, i % 3 === 0 ? 'cyan' : rimPal, 5, 2, 0.09 * pulse);
-          if ((i + Math.floor(t * 3)) % 2 === 0) {
-            drawPixelCrossGlint(ctx, rx, ry, '#fde047', '#ffffff', 4, 2, 0.14 * pulse);
-          }
+        const secPal = infernoAlpha > 0.5 ? 'gold' : 'cyan';
+        const rimR = 45.5 * PANO_SCALE; // ~119.4px ruler-verified eclipse ring!
+        const coronaBreath = 0.78 + 0.22 * Math.sin(t * 1.45 + k);
+        const rimShimmer = 0.76 + 0.24 * Math.cos(t * 2.25 + k * 1.3);
+
+        // 1. Softly pulsing volumetric corona halo (`SOFT_ATMO_TEX_CACHE`, strictly <= 0.16 lighter alpha)
+        drawSoftAtmoPool(ctx, eclipseX, eclipseY, 464, 428, rimPal, 0.105 * coronaBreath, 'lighter');
+        drawSoftAtmoPool(ctx, eclipseX, eclipseY, 316, 298, secPal, 0.088 * rimShimmer, 'lighter');
+
+        // 2. Tangential curved razor-thin corona filaments hugging the dark eclipse rim (6 slowly orbiting arcs)
+        const goldRimHex = infernoAlpha > 0.5 ? '#fb923c' : isGlacialPerm ? '#38bdf8' : '#facc15';
+        const cyanRimHex = infernoAlpha > 0.5 ? '#fde047' : '#7dd3fc';
+        const coreWhiteHex = infernoAlpha > 0.5 ? '#fef08a' : '#fef9c3';
+        for (let fIdx = 0; fIdx < 6; fIdx++) {
+          const driftDir = fIdx % 2 === 0 ? 1 : -1;
+          const baseAng = (fIdx / 6) * Math.PI * 2 + t * 0.16 * driftDir + k * 0.9;
+          const span = 0.52 + (fIdx % 3) * 0.12;
+          const radOff = 3 + (fIdx % 3) * 4.5 + Math.sin(t * 2.1 + fIdx * 1.7) * 2.0;
+          const fPulse = 0.54 + 0.46 * Math.sin(t * 2.4 + fIdx * 1.45 + k);
+          drawCoronaFilamentArc(
+            ctx,
+            eclipseX,
+            eclipseY,
+            rimR + radOff,
+            baseAng - span * 0.5,
+            baseAng + span * 0.5,
+            fIdx % 2 === 0 ? goldRimHex : cyanRimHex,
+            fIdx % 2 === 0 ? coreWhiteHex : '#e0f2fe',
+            0.74 * fPulse
+          );
         }
-        // Character-shader pixel prominence tongues hugging the painted eclipse crown (`rimR - 4`)
-        const promRow = infernoAlpha > 0.5 ? 6 : isGlacialPerm ? 1 : 0;
-        const promAngles = [-2.22, -1.76, -1.38, -0.92];
-        for (let pIdx = 0; pIdx < promAngles.length; pIdx++) {
-          const ang = promAngles[pIdx];
-          const px = eclipseX + Math.cos(ang) * (rimR - 4);
-          const py = eclipseY + Math.sin(ang) * (rimR - 4);
-          const pRow = pIdx % 2 === 1 && infernoAlpha <= 0.5 ? 10 : promRow;
-          const fCol = Math.floor(t * 12 + pIdx * 4 + k * 3);
-          blitStageOverlayPixelCell(ctx, vfxSheet, pRow, fCol, px - 36, py - 58, 72, 74, 0.58, 0.12);
+
+        // 3. Twin subtle "Bailey's Beads" rim diamond-ring flares + gentle perimeter radiance
+        const beadAngles = [-0.62 + Math.sin(t * 0.45) * 0.14, 2.52 + Math.cos(t * 0.40) * 0.14];
+        for (let bIdx = 0; bIdx < beadAngles.length; bIdx++) {
+          const bAng = beadAngles[bIdx];
+          const bx = eclipseX + Math.cos(bAng) * (rimR + 1);
+          const by = eclipseY + Math.sin(bAng) * (rimR + 1);
+          const bPulse = 0.62 + 0.38 * Math.sin(t * 3.1 + bIdx * 2.3 + k);
+          drawSoftAtmoPool(ctx, bx, by, 78, 78, bIdx === 0 ? rimPal : secPal, 0.11 * bPulse, 'lighter');
+          drawPixelCrossGlint(
+            ctx,
+            bx,
+            by,
+            bIdx === 0 ? goldRimHex : cyanRimHex,
+            '#ffffff',
+            3,
+            3,
+            0.15 * bPulse
+          );
         }
-        // Periodic pixel lightning corona arc across the eclipse crest (`Row 5`)
-        if ((Math.floor(t * 2.4 + Math.abs(k)) % 3) !== 2) {
-          const arcCol = Math.floor(t * 16 + k * 5);
+
+        // 4. Smooth drifting celestial spark motes peeling gently outward from the corona rim
+        for (let m = 0; m < 10; m++) {
+          const cyc = (t * (0.14 + (m % 3) * 0.04) + m * 0.113 + Math.abs(k) * 0.27) % 1;
+          const env = Math.sin(cyc * Math.PI);
+          if (env <= 0.12) continue;
+          const mAng = (m / 10) * Math.PI * 2 + cyc * 0.36 * (m % 2 === 0 ? 1 : -1) + k * 0.7;
+          const mRad = rimR + 5 + cyc * (58 + (m % 3) * 18);
+          const mx = snapPx(eclipseX + Math.cos(mAng) * mRad, 2);
+          const my = snapPx(eclipseY + Math.sin(mAng) * mRad, 2);
+          const mCol = m % 3 === 0 ? cyanRimHex : goldRimHex;
+          ctx.save();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 0.72 * env;
+          ctx.fillStyle = mCol;
+          ctx.fillRect(mx, my, 2, 2);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.14, 0.13 * env);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(mx, my, 2, 2);
+          ctx.restore();
+        }
+
+        // 5. Refined crisp forked celestial corona crest arcs (`Row 5`) with smooth breathing fade
+        const crestWin = (t * 0.62 + Math.abs(k) * 0.31) % 1;
+        if (crestWin < 0.58) {
+          const crestEnv = Math.sin((crestWin / 0.58) * Math.PI);
+          const arcCol = Math.floor(t * 15 + k * 5);
+          const crestSide = Math.floor(t * 0.62 + Math.abs(k) * 0.31) % 2 === 0 ? -1 : 1;
+          const arcX = eclipseX + crestSide * 66;
+          const arcY = eclipseY - rimR + 12;
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
             5,
             arcCol,
-            eclipseX - 42,
-            eclipseY - rimR - 40,
-            84,
-            88,
-            0.52,
-            0.12
+            arcX - 36,
+            arcY - 46,
+            72,
+            82,
+            0.54 * crestEnv,
+            0.12 * crestEnv
           );
         }
-        // Stepped pixel-staircase diagonal eclipse god-rays
-        const rayPulse = 0.7 + 0.3 * Math.sin(t * 1.9 + k);
-        drawPixelStaircaseRay(ctx, eclipseX - 96, eclipseY + 86, -14, 42, 36, 6, '#fde047', 0.042 * rayPulse);
-        drawPixelStaircaseRay(ctx, eclipseX + 62, eclipseY + 86, 14, 42, 36, 6, '#38bdf8', 0.038 * rayPulse);
+
+        // 6. Subtle breathing diagonal golden & celestial-cyan god-ray shafts radiating from behind the eclipse
+        const rayPulseA = 0.68 + 0.32 * Math.sin(t * 1.35 + k);
+        const rayPulseB = 0.68 + 0.32 * Math.cos(t * 1.65 + k + 1.1);
+        drawPixelStaircaseRay(ctx, eclipseX - 118, eclipseY + 56, -20, 46, 40, 6, '#fde047', 0.044 * rayPulseA);
+        drawPixelStaircaseRay(ctx, eclipseX - 42, eclipseY + 96, -8, 48, 34, 6, '#fde047', 0.036 * rayPulseB);
+        drawPixelStaircaseRay(ctx, eclipseX + 54, eclipseY + 92, 12, 46, 36, 6, '#38bdf8', 0.040 * rayPulseB);
+        drawPixelStaircaseRay(ctx, eclipseX + 116, eclipseY + 52, 22, 46, 38, 6, '#38bdf8', 0.036 * rayPulseA);
       }
 
-      // B. Zone II: Starwood Ravine Cascading Cliff Waterfalls (exact ruler-verified chutes `447, 493, 552, 642`!)
+      // B. Zone II: Starwood Ravine Cascading Cliff Waterfalls (ruler-verified chutes `447, 492, 547, 569, 644, 638`!)
+      //    Blended multi-strand falling cascades (`Row 3`) + feathered plunge-basin spray mist (`SOFT_ATMO_TEX_CACHE` + `Row 7`)
+      //    + subtle bouncing water droplets at each cliff chute base (zero stiff pasted cyan boxes!).
       const wfChutes = [
-        [447, 196, 46, 112],
-        [493, 214, 52, 112],
-        [552, 226, 56, 104],
-        [642, 130, 60, 176],
-        [638, 210, 72, 140]
+        [447, 196, 36, 98, false, 0.40],
+        [492, 214, 42, 136, true, 0.58],
+        [547, 204, 46, 152, true, 0.60],
+        [569, 214, 38, 138, true, 0.54],
+        [644, 136, 40, 212, false, 0.58],
+        [638, 196, 60, 168, true, 0.64]
       ];
       for (let wf = 0; wf < wfChutes.length; wf++) {
-        const [wfArtX, wfArtY, wfW, wfH] = wfChutes[wf];
-        const wfX = snapPx(baseWx + wfArtX * PANO_SCALE, 4);
-        if (wfX + 160 < viewLeft || wfX - 160 > viewRight) continue;
-        const wfTopY = ARCH_WORLD_TOP_Y + wfArtY * PANO_SCALE;
-        const p = 0.72 + 0.28 * Math.sin(t * 3.6 + wf * 1.7);
-        drawSteppedPixelBloom(
+        const [wfArtX, wfArtY, wfW, wfH, hasPlunge, baseAlpha] = wfChutes[wf];
+        const wfX = snapPx(baseWx + wfArtX * PANO_SCALE, 2);
+        if (wfX + 180 < viewLeft || wfX - 180 > viewRight) continue;
+        const wfTopY = archTopY + wfArtY * PANO_SCALE;
+        const p = 0.78 + 0.22 * Math.sin(t * 2.8 + wf * 1.5);
+
+        // Soft vertical aqua-silver atmospheric water sheen hugging the dark mossy cliff
+        drawSoftAtmoPool(
           ctx,
           wfX,
-          wfTopY + wfH * 0.55,
-          wf % 2 === 0 ? 'cyan' : 'emerald',
-          6,
-          3,
-          0.08 * p
+          wfTopY + wfH * 0.52,
+          wfW * 1.85,
+          wfH * 1.06,
+          wf % 2 === 0 ? 'mistCyan' : 'mistTeal',
+          0.068 * p,
+          'lighter'
         );
-        // `Row 3` (`WATERFALL_CASCADE_FOAM`) locked 0.0px onto each painted cliff waterfall chute
+
+        // Single continuous, unbroken multi-strand falling water cascade (`Row 3`, zero mid-cliff seams!)
+        const fCol = Math.floor(t * (14 + (wf % 3)) + wf * 5);
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           3,
-          Math.floor(t * 15 + wf * 5),
+          fCol,
           wfX - wfW * 0.5,
-          wfTopY - 6,
+          wfTopY - 8,
           wfW,
           wfH,
-          0.62,
-          0.12
+          baseAlpha,
+          0.10
         );
-        if (wf !== 3) {
-          // Plunge-basin rising pixel mist wisp (`Row 7`) at base of each chute
+
+        if (hasPlunge) {
+          const plungeY = wfTopY + wfH - 14;
+          // 1. Feathered volumetric plunge-basin spray mist (`SOFT_ATMO_TEX_CACHE`)
+          drawSoftAtmoPool(ctx, wfX, plungeY + 4, wfW * 2.75, 48, 'mistCyan', 0.105 * p, 'lighter');
+          drawSoftAtmoPool(ctx, wfX + 6, plungeY + 8, wfW * 2.1, 34, 'mistTeal', 0.082 * p, 'lighter');
+
+          // 2. Refined airy drifting pixel spray & mist curls (`Row 7`) at plunge base
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
             7,
-            Math.floor(t * 10 + wf * 7),
-            wfX - 58,
-            wfTopY + wfH - 34,
-            116,
+            Math.floor(t * 10 + wf * 6),
+            wfX - wfW * 1.28,
+            plungeY - 26,
+            wfW * 2.56,
             56,
-            0.44,
+            0.52,
             0.08
           );
+
+          // 3. Subtle bouncing 2px silver-white/aqua water droplets leaping out of each cliff chute base
+          ctx.save();
+          ctx.globalCompositeOperation = 'source-over';
+          for (let d = 0; d < 4; d++) {
+            const cyc = (t * (0.72 + (d % 2) * 0.18) + d * 0.25 + wf * 0.37) % 1;
+            const arc = Math.sin(cyc * Math.PI);
+            if (arc <= 0.18) continue;
+            const side = d % 2 === 0 ? 1 : -1;
+            const dx = snapPx(wfX + side * (5 + (d % 3) * 4 + cyc * (18 + wf * 2)), 2);
+            const dy = snapPx(plungeY - arc * (14 + (d % 2) * 8), 2);
+            ctx.globalAlpha = 0.76 * arc;
+            ctx.fillStyle = d % 2 === 0 ? '#e6fbfe' : '#8be0ed';
+            ctx.fillRect(dx, dy, 2, 2);
+          }
+          ctx.restore();
         }
       }
 
-      // C. Zone III: Sunken Violet Necropolis Viaduct Windows & Spire Storm Lightning (`artX = 823..927`)
+      // C. Zone III: Sunken Violet Necropolis Viaduct & Cathedral Spires (`artX = 823..927`)
+      //    Clean atmospheric necrotic haze, layered curling crypt mist (`Row 8`), smooth-enveloped razor-thin
+      //    spire lightning (`Row 5`) & ascending pale soul-motes.
       const cryptVistaPts = [
-        [823, 168],
-        [848, 177],
-        [906, 183],
-        [927, 184]
+        [823, 166],
+        [848, 174],
+        [876, 152],
+        [906, 180],
+        [927, 182]
       ];
       for (let sp = 0; sp < cryptVistaPts.length; sp++) {
         const spX = baseWx + cryptVistaPts[sp][0] * PANO_SCALE;
-        if (spX + 140 < viewLeft || spX - 140 > viewRight) continue;
-        const spY = ARCH_WORLD_TOP_Y + cryptVistaPts[sp][1] * PANO_SCALE;
-        const p = 0.68 + 0.32 * Math.sin(t * 3.1 + sp * 1.8);
-        drawSteppedPixelBloom(ctx, spX, spY, 'violet', 5, 2, 0.095 * p);
-        if (sp % 2 === 0) {
+        if (spX + 180 < viewLeft || spX - 180 > viewRight) continue;
+        const spY = archTopY + cryptVistaPts[sp][1] * PANO_SCALE;
+        const p = 0.72 + 0.28 * Math.sin(t * 2.4 + sp * 1.6);
+
+        // Soft layered necrotic atmospheric haze cradling the broken viaduct & cathedral spire
+        drawSoftAtmoPool(ctx, spX, spY + 6, 136, 86, sp === 2 ? 'mistRose' : 'mistViolet', 0.088 * p, 'lighter');
+
+        if (sp === 0 || sp === 2 || sp === 4) {
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
             8,
-            Math.floor(t * 10 + sp * 4),
-            spX - 56,
-            spY - 22,
-            116,
-            70,
-            0.52,
-            0.10
+            Math.floor(t * 9 + sp * 4),
+            spX - 66,
+            spY - 24,
+            132,
+            72,
+            0.48,
+            0.09
           );
-          const strikeWindow = (t * 0.85 + sp * 0.37 + Math.abs(k) * 0.23) % 1;
-          if (strikeWindow < 0.46) {
+        }
+
+        if (sp === 0 || sp === 2) {
+          // Smooth-enveloped razor-thin spire storm lightning (`Row 5`, zero harsh pop-in/pop-out!)
+          const strikeWindow = (t * 0.72 + sp * 0.43 + Math.abs(k) * 0.23) % 1;
+          if (strikeWindow < 0.38) {
+            const env = Math.sin((strikeWindow / 0.38) * Math.PI);
+            drawSoftAtmoPool(ctx, spX, spY - 122, 168, 92, 'mistViolet', 0.11 * env, 'lighter');
             blitStageOverlayPixelCell(
               ctx,
               vfxSheet,
               5,
-              Math.floor(t * 18 + sp * 5),
-              spX - 44,
-              spY - 142,
-              88,
-              118,
-              0.62,
-              0.14
+              Math.floor(t * 16 + sp * 5),
+              spX - 42,
+              spY - 148,
+              84,
+              122,
+              0.66 * env,
+              0.13 * env
             );
           }
-          // Occasional distant crimson eclipse lightning flash on the Zone III horizon
-          drawHorizonEclipseLightning(ctx, spX + 34, archTopY + 52, spY - 8, t, sp * 1.9 + k * 0.7);
+          drawHorizonEclipseLightning(ctx, spX + 38, archTopY + 46, spY - 6, t, sp * 1.9 + k * 0.7);
+        }
+
+        // Ascending ghostly pale-lavender soul motes above the sunken cathedral nave
+        if (sp === 1 || sp === 2 || sp === 3) {
+          const cyc = (t * (0.22 + sp * 0.04) + sp * 0.31 + Math.abs(k) * 0.19) % 1;
+          const env = Math.sin(cyc * Math.PI);
+          if (env > 0.18) {
+            const mx = snapPx(spX + Math.sin(t * 1.9 + sp * 2.1) * 14, 2);
+            const my = snapPx(spY + 18 - cyc * 96, 2);
+            drawPixelCrossGlint(ctx, mx, my, '#c084fc', '#f5d0fe', 2, 1, 0.14 * env);
+          }
         }
       }
 
-      // D. Zone IV: Black Pit Volcano Smoking Cones (`artX = 1103..1542`) & Valley Lava Pools (`artY = 228`)
+      // D. Zone IV: Black Pit Volcano Caldera Cones (`artX = 1103..1542`) & Valley Magma Rivers (`artY = 228`)
       const volcanoCraters = [
         [1103, 103],
         [1198, 106],
@@ -1402,61 +1556,86 @@ export class AdventureMapRenderer {
       ];
       for (let cr = 0; cr < volcanoCraters.length; cr++) {
         const crX = baseWx + volcanoCraters[cr][0] * PANO_SCALE;
-        if (crX + 120 < viewLeft || crX - 120 > viewRight) continue;
-        const crY = ARCH_WORLD_TOP_Y + volcanoCraters[cr][1] * PANO_SCALE;
-        drawVolcanicSmokePlume(ctx, crX, crY - 10, t, cr * 0.67 + k * 0.4, 138, 0.85);
+        if (crX + 140 < viewLeft || crX - 140 > viewRight) continue;
+        const crY = archTopY + volcanoCraters[cr][1] * PANO_SCALE;
+        const crPulse = 0.72 + 0.28 * Math.sin(t * 3.2 + cr * 1.4);
+
+        // Warm caldera heat glow + feathered volcanic ash plume + refined molten lip shimmer (`Row 9`)
+        drawSoftAtmoPool(ctx, crX, crY - 4, 82, 44, 'ember', 0.088 * crPulse, 'lighter');
+        drawVolcanicSmokePlume(ctx, crX, crY - 12, t, cr * 0.67 + k * 0.4, 146, 0.88);
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           9,
           Math.floor(t * 11 + cr * 3),
-          crX - 20,
+          crX - 22,
           crY - 17,
-          40,
+          44,
           30,
-          0.58,
-          0.10
+          0.52,
+          0.09
         );
+        // Subtle rising volcanic crater embers
+        const eCyc = (t * (0.34 + (cr % 3) * 0.08) + cr * 0.29) % 1;
+        const eEnv = Math.sin(eCyc * Math.PI);
+        if (eEnv > 0.20) {
+          const ex = snapPx(crX + Math.sin(t * 2.5 + cr) * 10 - eCyc * 12, 2);
+          const ey = snapPx(crY - 14 - eCyc * 74, 2);
+          drawRisingPixelSparkWake(ctx, ex, ey, 2, '#fef08a', '#fb923c', 0.76 * eEnv);
+        }
       }
 
       const magmaPts = [1152, 1316, 1482];
       for (let vc = 0; vc < magmaPts.length; vc++) {
         const vcX = baseWx + magmaPts[vc] * PANO_SCALE;
-        if (vcX + 170 < viewLeft || vcX - 170 > viewRight) continue;
-        const vcY = ARCH_WORLD_TOP_Y + 228 * PANO_SCALE;
-        const p = 0.72 + 0.28 * Math.sin(t * 4.6 + vc * 1.9);
-        drawSteppedPixelBloom(ctx, vcX, vcY, 'ember', 6, 3, 0.10 * p);
+        if (vcX + 190 < viewLeft || vcX - 190 > viewRight) continue;
+        const vcY = archTopY + 228 * PANO_SCALE;
+        const p = 0.74 + 0.26 * Math.sin(t * 3.8 + vc * 1.9);
+
+        // Layered molten valley heat-shimmer glow (`SOFT_ATMO_TEX_CACHE`)
+        drawSoftAtmoPool(ctx, vcX, vcY - 2, 216, 74, 'mistEmber', 0.095 * p, 'lighter');
+        drawSoftAtmoPool(ctx, vcX, vcY + 4, 138, 42, 'ember', 0.092 * p, 'lighter');
+
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           9,
-          Math.floor(t * 13 + vc * 5),
-          vcX - 66,
+          Math.floor(t * 12 + vc * 5),
+          vcX - 68,
           vcY - 37,
-          132,
+          136,
           66,
-          0.66,
-          0.12
+          0.62,
+          0.11
         );
-        if (((t * 0.72 + vc * 0.41) % 1) < 0.34) {
+
+        // Smooth-enveloped razor-thin volcanic dry-lightning above the peaks (`Row 5`)
+        const volWin = (t * 0.58 + vc * 0.37 + Math.abs(k) * 0.19) % 1;
+        if (volWin < 0.32) {
+          const vEnv = Math.sin((volWin / 0.32) * Math.PI);
+          drawSoftAtmoPool(ctx, vcX, vcY - 182, 160, 88, 'mistEmber', 0.09 * vEnv, 'lighter');
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
             5,
-            Math.floor(t * 17 + vc * 6),
-            vcX - 40,
-            vcY - 216,
-            80,
-            98,
-            0.48,
-            0.10
+            Math.floor(t * 16 + vc * 6),
+            vcX - 38,
+            vcY - 224,
+            76,
+            106,
+            0.54 * vEnv,
+            0.11 * vEnv
           );
         }
+
         for (let c = 0; c < 4; c++) {
-          const cyc = (t * (0.34 + (c % 2) * 0.11) + c * 0.25 + vc * 0.4) % 1;
-          const ex = snapPx(vcX - 24 + c * 16 + Math.sin(t * 2.4 + c) * 8, 4);
-          const ey = snapPx(vcY - 8 - cyc * 136, 4);
-          drawPixelCrossGlint(ctx, ex, ey, '#fb923c', '#fde047', 3, 1, Math.sin(cyc * Math.PI) * 0.15);
+          const cyc = (t * (0.30 + (c % 2) * 0.10) + c * 0.25 + vc * 0.4) % 1;
+          const env = Math.sin(cyc * Math.PI);
+          if (env <= 0.18) continue;
+          const ex = snapPx(vcX - 30 + c * 20 + Math.sin(t * 2.2 + c) * 9, 2);
+          const ey = snapPx(vcY - 6 - cyc * 138, 2);
+          drawRisingPixelSparkWake(ctx, ex, ey, c % 2 === 0 ? 4 : 2, '#fef08a', '#fb923c', 0.72 * env);
+          drawPixelCrossGlint(ctx, ex, ey, '#fb923c', '#fde047', 2, 1, env * 0.14);
         }
       }
     }

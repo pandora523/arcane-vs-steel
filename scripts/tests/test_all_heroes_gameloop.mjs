@@ -41,48 +41,48 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps187';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps187';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps187';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps187';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps187';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps187';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps187';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps187';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps187';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps187';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps187';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps187';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps187';
-import { Archer } from '../../src/entities/Archer.js?v=30fps187';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps187';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps187';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps187';
-import { Titan } from '../../src/entities/Titan.js?v=30fps187';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps187';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps187';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps187';
-import { Android } from '../../src/entities/Android.js?v=30fps187';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps187';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps187';
-import { BrawlerEx } from '../../src/entities/BrawlerEx.js?v=30fps187';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps187';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps187';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps188';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps188';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps188';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps188';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps188';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps188';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps188';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps188';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps188';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps188';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps188';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps188';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps188';
+import { Archer } from '../../src/entities/Archer.js?v=30fps188';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps188';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps188';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps188';
+import { Titan } from '../../src/entities/Titan.js?v=30fps188';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps188';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps188';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps188';
+import { Android } from '../../src/entities/Android.js?v=30fps188';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps188';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps188';
+import { BrawlerEx } from '../../src/entities/BrawlerEx.js?v=30fps188';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps188';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps188';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps187';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps187';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps188';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps188';
 import {
   DeathFXManager,
   CHAMPION_DEATH_STYLES,
   getDeathStyleForHero
-} from '../../src/engine/DeathFXManager.js?v=30fps187';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps187';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps187';
+} from '../../src/engine/DeathFXManager.js?v=30fps188';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps188';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps188';
 import {
   Game,
   EX_HERO_KEYS,
@@ -97,8 +97,8 @@ import {
   loadArcadeTrophies,
   saveArcadeTrophy,
   buildArcadeLadder
-} from '../../src/main.js?v=30fps187';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps187';
+} from '../../src/main.js?v=30fps188';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps188';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
@@ -109,29 +109,31 @@ import {
   loadAdventureMedals,
   saveAdventureMedal,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps187';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps187';
+} from '../../src/adventure/AdventureManager.js?v=30fps188';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps188';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
+  ADVENTURE_HERO_DMG_EQUALIZER,
+  getAdventureHeroDamageEqualizer,
   getHeroSkillTreeTheme,
   loadAdventureProgressMode,
   saveAdventureProgressMode,
   loadAdventureHeroProgress,
   saveAdventureHeroProgress,
   resetAdventureHeroProgress
-} from '../../src/adventure/AdventureProgression.js?v=30fps187';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps187';
+} from '../../src/adventure/AdventureProgression.js?v=30fps188';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps188';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps187';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps188';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps187';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps188';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -822,7 +824,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps187');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps188');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11438,8 +11440,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps187');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps187');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps188');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps188');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12241,7 +12243,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps187'
+        src: 'assets/sprites/arena_bg.png?v=30fps188'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12285,13 +12287,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps187`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps188`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps187'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps188'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -15150,7 +15152,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps187';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps188';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -15185,7 +15187,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps187';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps188';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15290,12 +15292,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps187') ||
-      !manifestSrc.includes('?v=30fps187') ||
+      !indexHtmlSrc.includes('?v=30fps188') ||
+      !manifestSrc.includes('?v=30fps188') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps187 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps188 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16893,7 +16895,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps187 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps188 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17425,7 +17427,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.21: Batch ?v=30fps187 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // 36.21: Batch ?v=30fps188 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
   // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
   // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
   // --------------------------------------------------------------------------
@@ -18431,16 +18433,16 @@ if (!RUN_SUITE36_ONLY) {
       audio24.bgmDuckGain = makeGainMock24(1.0);
       audio24.master = audio24.sfxBus;
 
-      // Lazy BGM + Voice cache-bust ?v=30fps187 check
+      // Lazy BGM + Voice cache-bust ?v=30fps188 check
       await audio24.loadVoiceKey('nyx_select', 'en');
       await audio24.loadBgmTrack('bgm_title_select');
       if (
-        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps187')) ||
-        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps187')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps188')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps188')) ||
         fetchedUrls24.filter((u) => u.includes('assets/bgm/')).length !== 1
       ) {
         throw new Error(
-          `[Suite 36.24] Expected ?v=30fps187 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
+          `[Suite 36.24] Expected ?v=30fps188 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
         );
       }
 
@@ -19687,7 +19689,7 @@ if (!RUN_SUITE36_ONLY) {
 
   // ============================================================================
   // Suite 36.27: Grounded Lyra EX Ults, Blink/Warp AI Non-Starvation, De-Twitched AI,
-  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps187`)
+  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps188`)
   // ============================================================================
   {
     const g27 = createMockGame();
@@ -20060,7 +20062,7 @@ if (!RUN_SUITE36_ONLY) {
   // Suite 36.28: 3-Act Match Intro Overhaul — Real-Time Voice Envelope Analyzer
   // (`AudioManager.getVoiceAmplitude`), Act 1 Colossal Split-Wing `NAME VS. NAME` Clash,
   // Act 2 Live Voice-Synced Close-Up Talking Portrait Cut-In & Stage Taunt Flourish,
-  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps187`)
+  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps188`)
   // ============================================================================
   {
     const created28 = [];
@@ -22057,7 +22059,17 @@ if (!RUN_SUITE36_ONLY) {
         );
       }
 
-      // (C) Persistent KEEP LVL Save / Load / Reset Across Difficulties + Automated Fresh Lv.1 Guard
+      // (C) Default-ON KEEP LVL Mode, Strict Per-Hero Isolation, Mid-Run XP Auto-Save & Automated Fresh Lv.1 Guard
+      if (loadAdventureProgressMode(mockStorage35) !== 'keep') {
+        throw new Error('[Suite 36.35] Expected loadAdventureProgressMode to default to keep when unset in localStorage!');
+      }
+      if (adv35.getProgressMode() !== 'fresh') {
+        throw new Error(`[Suite 36.35] Expected direct Node AdventureManager to default to fresh, got ${adv35.getProgressMode()}`);
+      }
+      saveAdventureProgressMode('fresh', mockStorage35);
+      if (loadAdventureProgressMode(mockStorage35) !== 'fresh') {
+        throw new Error('[Suite 36.35] Failed to persist explicit fresh mode!');
+      }
       saveAdventureProgressMode('keep', mockStorage35);
       if (loadAdventureProgressMode(mockStorage35) !== 'keep') {
         throw new Error('[Suite 36.35] Failed to persist avs_adv_keep_level_v1 mode!');
@@ -22068,36 +22080,136 @@ if (!RUN_SUITE36_ONLY) {
       adv35.progression.gainXp(400, hero35); // Levels up & auto-saves!
       adv35.progression.upgradeNode('wrath_1', hero35);
       adv35.progression.upgradeNode('wrath_2', hero35);
+      // Earn additional mid-run XP without leveling up, then stopCampaign() -> must flush mid-run XP!
+      const xpBeforeMid = adv35.progression.xp;
+      adv35.progression.gainXp(35, hero35);
+      adv35.stopCampaign();
       const savedLv = adv35.progression.level;
+      const savedMidXp = adv35.progression.xp;
       const savedWrath2 = adv35.progression.getRank('wrath_2');
-      // Switch to Sovereign difficulty & restart campaign -> must carry over Level & Skill Tree!
-      adv35.setDifficultyTier('sovereign');
-      adv35.startCampaign(hero35);
-      if (
-        savedLv < 3 ||
-        adv35.progression.level !== savedLv ||
-        adv35.progression.getRank('wrath_1') !== 1 ||
-        adv35.progression.getRank('wrath_2') !== savedWrath2
-      ) {
-        throw new Error(`[Suite 36.35] KEEP LVL failed to carry over across difficulties: lv=${adv35.progression.level}/${savedLv}, w2=${adv35.progression.getRank('wrath_2')}`);
+      const recAfterStop = loadAdventureHeroProgress(hero35.heroId, mockStorage35);
+      if (!recAfterStop || recAfterStop.xp !== savedMidXp || savedMidXp <= xpBeforeMid) {
+        throw new Error(`[Suite 36.35] Mid-run XP auto-save failed on stopCampaign(): expected xp=${savedMidXp}, got ${JSON.stringify(recAfterStop)}`);
       }
-      // simMode must cleanly default to Fresh Lv.1 even if progressMode === 'keep'
-      g35.simMode = true;
-      adv35.startCampaign(hero35);
-      if (adv35.progression.level !== 1 || adv35.progression.getRank('wrath_1') !== 0) {
-        throw new Error(`[Suite 36.35] simMode must start fresh Lv.1, got lv=${adv35.progression.level}`);
-      }
-      g35.simMode = false;
-      // RESET LV must wipe champion back to Lv.1 and delete saved record
-      adv35.startCampaign(hero35);
-      adv35.resetHeroLevelToLv1(false);
-      if (
-        adv35.progression.level !== 1 ||
-        adv35.progression.skillPoints !== 1 ||
-        hero35.maxHp !== 1320 ||
-        loadAdventureHeroProgress(hero35.heroId, mockStorage35) !== null
-      ) {
-        throw new Error(`[Suite 36.35] resetHeroLevelToLv1 failed to wipe champion back to Lv.1!`);
+      // Strict per-hero isolation: starting a different hero (`priestess_ex`) must stay Lv.1 & never touch `brawler_ex`!
+      const sera35 = new PriestessEx(240, 561, 1);
+      sera35.game = g35;
+      try {
+        g35.leftFighter = sera35;
+        adv35.startCampaign(sera35);
+        if (adv35.progression.level !== 1 || adv35.progression.getRank('wrath_1') !== 0) {
+          throw new Error(`[Suite 36.35] Per-hero isolation leaked brawler_ex progress into priestess_ex: lv=${adv35.progression.level}`);
+        }
+        adv35.progression.gainXp(45, sera35);
+        adv35.stopCampaign();
+        const seraRec = loadAdventureHeroProgress('priestess_ex', mockStorage35);
+        const brawlerStill = loadAdventureHeroProgress(hero35.heroId, mockStorage35);
+        if (!seraRec || seraRec.level !== 1 || seraRec.xp !== 45 || !brawlerStill || brawlerStill.level !== savedLv) {
+          throw new Error(`[Suite 36.35] Per-hero storage isolation mismatch: sera=${JSON.stringify(seraRec)}, brawler=${JSON.stringify(brawlerStill)}`);
+        }
+        // FRESH LV.1 mode must NEVER overwrite saved hero progress!
+        adv35.setProgressMode('fresh', mockStorage35);
+        g35.leftFighter = hero35;
+        adv35.startCampaign(hero35);
+        adv35.progression.gainXp(25, hero35);
+        adv35.stopCampaign();
+        const brawlerAfterFresh = loadAdventureHeroProgress(hero35.heroId, mockStorage35);
+        if (!brawlerAfterFresh || brawlerAfterFresh.level !== savedLv || brawlerAfterFresh.xp !== savedMidXp) {
+          throw new Error(`[Suite 36.35] FRESH LV.1 overwrote saved hero progress: ${JSON.stringify(brawlerAfterFresh)}`);
+        }
+        adv35.setProgressMode('keep', mockStorage35);
+        // Switch to Sovereign difficulty & restart campaign -> must carry over Level, mid-run XP & Skill Tree!
+        adv35.setDifficultyTier('sovereign');
+        adv35.startCampaign(hero35);
+        if (
+          savedLv < 3 ||
+          adv35.progression.level !== savedLv ||
+          adv35.progression.xp !== savedMidXp ||
+          adv35.progression.getRank('wrath_1') !== 1 ||
+          adv35.progression.getRank('wrath_2') !== savedWrath2
+        ) {
+          throw new Error(`[Suite 36.35] KEEP LVL failed to carry over across difficulties: lv=${adv35.progression.level}/${savedLv}, xp=${adv35.progression.xp}/${savedMidXp}, w2=${adv35.progression.getRank('wrath_2')}`);
+        }
+        // simMode & autoPlay must cleanly default to Fresh Lv.1 even if progressMode === 'keep'
+        g35.simMode = true;
+        adv35.startCampaign(hero35);
+        if (adv35.progression.level !== 1 || adv35.progression.getRank('wrath_1') !== 0) {
+          throw new Error(`[Suite 36.35] simMode must start fresh Lv.1, got lv=${adv35.progression.level}`);
+        }
+        g35.simMode = false;
+        // RESET LV must wipe champion back to Lv.1 and delete saved record (and stay wiped after stopCampaign!)
+        adv35.startCampaign(hero35);
+        adv35.resetHeroLevelToLv1(false);
+        if (
+          adv35.progression.level !== 1 ||
+          adv35.progression.skillPoints !== 1 ||
+          hero35.maxHp !== 1320 ||
+          loadAdventureHeroProgress(hero35.heroId, mockStorage35) !== null
+        ) {
+          throw new Error(`[Suite 36.35] resetHeroLevelToLv1 failed to wipe champion back to Lv.1!`);
+        }
+        adv35.stopCampaign();
+        if (loadAdventureHeroProgress(hero35.heroId, mockStorage35) !== null) {
+          throw new Error(`[Suite 36.35] stopCampaign() must not recreate deleted record after resetHeroLevelToLv1!`);
+        }
+
+        // (C2) Delayed-Projectile Skill/Ult Multiplier Preservation, 0.45s Grace Window & Weak-Hero Adventure Equalizer
+        adv35.setProgressMode('fresh', mockStorage35);
+        adv35.setDifficultyTier('normal');
+        g35.leftFighter = sera35;
+        adv35.startCampaign(sera35);
+        const dummyMob35 = adv35.spawnMonster('templar', 520, { maxHp: 5000, groundY: 561, skipPortal: true });
+        // 1. VFXManager.spawnProjectile tags `_advCastSource` from `owner.state` at spawn time
+        const vfx35 = new VFXManager();
+        sera35.state = 'SKILL';
+        vfx35.spawnProjectile({ x: 300, y: 460, vx: 600, vy: 0, owner: sera35, damage: 100, type: 'holy_light' });
+        const skillProj = vfx35.projectiles.at(-1);
+        sera35.state = 'ULTIMATE';
+        vfx35.spawnProjectile({ x: 300, y: 460, vx: 600, vy: 0, owner: sera35, damage: 100, type: 'holy_light', isUltimate: true });
+        const ultProj = vfx35.projectiles.at(-1);
+        sera35.state = 'IDLE'; // Hero already returned to IDLE before projectile lands!
+        const delayedSkillDmg = adv35.progression.scaleOutgoingDamage(100, sera35, dummyMob35, false, skillProj._advCastSource);
+        const delayedUltDmg = adv35.progression.scaleOutgoingDamage(100, sera35, dummyMob35, false, ultProj._advCastSource);
+        const autoIdleDmg = adv35.progression.scaleOutgoingDamage(100, sera35, dummyMob35, false, 'auto');
+        if (
+          skillProj._advCastSource !== 'skill' ||
+          ultProj._advCastSource !== 'ult' ||
+          !(delayedUltDmg > delayedSkillDmg && delayedSkillDmg > autoIdleDmg * 1.5)
+        ) {
+          throw new Error(
+            `[Suite 36.35] Delayed projectile cast-source scaling failed: src=${skillProj._advCastSource}/${ultProj._advCastSource}, auto=${autoIdleDmg}, skill=${delayedSkillDmg}, ult=${delayedUltDmg}`
+          );
+        }
+        // 2. 0.45s post-cast Skill/Ult grace window preserves Skill mult on delayed ground/summon hits in IDLE/WALK
+        sera35._advRecentCastSource = 'skill';
+        sera35._advRecentCastTimer = 0.45;
+        sera35.state = 'WALK';
+        const graceSkillDmg = adv35.progression.scaleOutgoingDamage(100, sera35, dummyMob35, false);
+        sera35._advRecentCastTimer = 0;
+        sera35._advRecentCastSource = null;
+        const postGraceAutoDmg = adv35.progression.scaleOutgoingDamage(100, sera35, dummyMob35, false);
+        if (graceSkillDmg !== delayedSkillDmg || postGraceAutoDmg !== autoIdleDmg) {
+          throw new Error(
+            `[Suite 36.35] Post-cast 0.45s grace window failed: grace=${graceSkillDmg}/${delayedSkillDmg}, postGrace=${postGraceAutoDmg}/${autoIdleDmg}`
+          );
+        }
+        // 3. Adventure-only archetype equalizer boosts all 13 target zoning/support/multi-hit champions over bruiser baseline
+        const eqHeroes = [
+          'priestess', 'priestess_ex', 'icemage', 'icemage_ex', 'archer', 'archer_ex',
+          'chronomancer', 'chronomancer_ex', 'nyx_ex', 'reaper', 'reaper_ex', 'android', 'android_ex'
+        ];
+        for (const hKey of eqHeroes) {
+          if (getAdventureHeroDamageEqualizer(hKey, 'auto') <= 1.15 || getAdventureHeroDamageEqualizer(hKey, 'skill') <= 1.12) {
+            throw new Error(`[Suite 36.35] Missing Adventure equalizer boost for ${hKey}: ${JSON.stringify(ADVENTURE_HERO_DMG_EQUALIZER[hKey])}`);
+          }
+        }
+        const bruiserAutoDmg = adv35.progression.scaleOutgoingDamage(100, hero35, dummyMob35, false, 'auto');
+        if (autoIdleDmg <= bruiserAutoDmg) {
+          throw new Error(`[Suite 36.35] Expected priestess_ex Adventure equalizer (${autoIdleDmg}) > bruiser baseline (${bruiserAutoDmg})`);
+        }
+        g35.leftFighter = hero35;
+      } finally {
+        sera35.fx?.dispose?.();
       }
       adv35.setProgressMode('fresh', mockStorage35);
 
