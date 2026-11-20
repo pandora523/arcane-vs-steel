@@ -54,6 +54,36 @@ const ENDLESS_CORRIDOR_STEP_X = 480;
 const ENDLESS_CORRIDOR_WIDTH = 1420;
 const ENDLESS_VFX_CELL = 128;
 
+const COIN_STREAK_DECAY_SEC = 0.85;
+const COIN_CHIME_THROTTLE_MS = 45;
+const COIN_PENTATONIC_HZ = Object.freeze([
+  1046.5,
+  1174.66,
+  1318.51,
+  1567.98,
+  1760.0,
+  2093.0,
+  2349.32,
+  2637.02,
+  3135.96,
+  3520.0
+]);
+
+const FEVER_CHAIN_MAX_RANGE = 360;
+const FEVER_CHAIN_MAX_TARGETS = 2;
+const FEVER_CHAIN_SPLASH_RATIO = 0.45;
+const FEVER_CHAIN_MAX_COUNT = 16;
+const FEVER_CHAIN_LIFE = 0.28;
+
+const SYNERGY_EXT_KEYS = Object.freeze([
+  'globalDpsMult',
+  'goldMult',
+  'tapMult',
+  'companionMult',
+  'critChanceBonus',
+  'critDmgMult'
+]);
+
 const ENDLESS_MONSTER_BASE_HP = {
   templar: 320,
   astrologer: 260,
@@ -124,15 +154,25 @@ class EndlessProgressionAdapter {
   getComputedStats() {
     const ecoStats = this.endless?.economy?.getComputedStats?.() || {};
     const partyBuffs = this.endless?.companions?.getPartyBuffs?.() || {};
-    const hasteMult = (ecoStats.hasteMult || 1) * (1 + (partyBuffs.hasteBonus || 0));
+    const synMods =
+      this.endless?._activeSynergyMods ||
+      this.endless?.companions?.getPartySynergyModifiers?.() ||
+      null;
+    const synHaste =
+      Number.isFinite(synMods?.hasteMult) && synMods.hasteMult > 0 ? synMods.hasteMult : 1;
+    const synMaxHp =
+      Number.isFinite(synMods?.maxHpMult) && synMods.maxHpMult > 0 ? synMods.maxHpMult : 1;
+    const hasteMult = (ecoStats.hasteMult || 1) * (1 + (partyBuffs.hasteBonus || 0)) * synHaste;
     const cdDiv = Math.max(0.45, 1 / Math.max(0.5, hasteMult));
+    const maxHpMult = (ecoStats.maxHpMult || 1) * synMaxHp;
     const maxHp = Math.max(
       ENDLESS_BASE_HERO_HP,
-      Math.round(ENDLESS_BASE_HERO_HP * (ecoStats.maxHpMult || 1))
+      Math.round(ENDLESS_BASE_HERO_HP * maxHpMult)
     );
     return {
       ...ecoStats,
       maxHp,
+      maxHpMult,
       hasteMult,
       moveSpeedMult: ecoStats.moveSpeedMult || 1,
       skillSpiritCost: 28,
@@ -558,9 +598,19 @@ export class EndlessManager {
     this.coins = [];
     this.tapSmites = [];
     this.feverBursts = [];
+    this.feverChains = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
+
+    this._coinStreak = 0;
+    this._coinStreakTimer = 0;
+    this._lastCoinChimeMs = -1000;
+    this._lastFeverTier = 0;
+    this._feverStampPopTimer = 0;
+    this._activeSynergyMods = null;
+    this._baseExternalModifiers = {};
+    this._lastWrittenSynergyExt = null;
 
     this.bannerText = '';
     this.bannerSubText = '';
@@ -832,21 +882,186 @@ export class EndlessManager {
     this.bannerTimer = Math.max(0.5, duration || 2.4);
   }
 
-  spawnFloatingCallout(x, y, text, color = '#facc15', scale = 1, maxLife = 0.95) {
+  spawnFloatingCallout(x, y, text, color = '#facc15', scale = 1, maxLife = 0.95, opts = {}) {
     if (!text) return;
     while (this.floatingCallouts.length >= 32) {
       this.floatingCallouts.shift();
     }
+    const label = String(text).toUpperCase();
+    let kind = opts?.kind || null;
+    if (!kind) {
+      if (label.startsWith('CRIT ')) kind = 'crit';
+      else if (label.includes('FEVER') || label.includes('OVERDRIVE')) kind = 'fever';
+      else if (label.includes('SHARD')) kind = 'shard';
+      else if (label.startsWith('+') && label.endsWith('G')) kind = 'gold';
+      else kind = 'callout';
+    }
+    const isPunchy = kind === 'crit' || kind === 'fever';
+    const isGold = kind === 'gold' || kind === 'shard';
+    const initVy = Number.isFinite(opts?.vy)
+      ? opts.vy
+      : isPunchy
+        ? -96
+        : isGold
+          ? -78
+          : -68;
+    const initVx = Number.isFinite(opts?.vx)
+      ? opts.vx
+      : kind === 'gold' || kind === 'crit'
+        ? (Math.random() - 0.5) * 28
+        : 0;
+    const topColor =
+      opts?.topColor ||
+      (kind === 'gold'
+        ? '#ffffff'
+        : kind === 'crit'
+          ? '#fef08a'
+          : kind === 'fever'
+            ? '#fef9c3'
+            : kind === 'shard'
+              ? '#e0f2fe'
+              : '#ffffff');
+
     this.floatingCallouts.push({
       x: Math.round(x),
       y: Math.round(y),
-      vy: -54,
-      text: String(text).toUpperCase(),
+      vx: initVx,
+      vy: initVy,
+      text: label,
       color: color || '#facc15',
+      topColor,
+      kind,
       scale: scale >= 2 ? 2 : 1,
+      popPeak: isPunchy ? 1.34 : isGold ? 1.22 : 1.14,
       age: 0,
       maxLife: Math.max(0.35, maxLife)
     });
+  }
+
+  _clearSynergyFromEconomy() {
+    if (this._lastWrittenSynergyExt && this.economy?.setExternalModifiers) {
+      const cur = this.economy._externalModifiers || {};
+      const restored = {};
+      for (const k of Object.keys(cur)) {
+        if (!SYNERGY_EXT_KEYS.includes(k)) {
+          restored[k] = cur[k];
+        } else if (
+          this._baseExternalModifiers &&
+          Object.prototype.hasOwnProperty.call(this._baseExternalModifiers, k)
+        ) {
+          restored[k] = this._baseExternalModifiers[k];
+        }
+      }
+      this.economy.setExternalModifiers(restored);
+    }
+    this._activeSynergyMods = null;
+    this._lastWrittenSynergyExt = null;
+  }
+
+  _applyPartySynergyToEconomy(synMods) {
+    if (!this.economy || typeof this.economy.setExternalModifiers !== 'function') {
+      this._activeSynergyMods = synMods || null;
+      return synMods || null;
+    }
+    if (!synMods || typeof synMods !== 'object') {
+      if (this._lastWrittenSynergyExt) {
+        this._clearSynergyFromEconomy();
+      } else {
+        this._activeSynergyMods = null;
+      }
+      return null;
+    }
+
+    const cur = this.economy._externalModifiers || {};
+    if (!this._baseExternalModifiers) this._baseExternalModifiers = {};
+    const prevWritten = this._lastWrittenSynergyExt;
+
+    for (let i = 0; i < SYNERGY_EXT_KEYS.length; i++) {
+      const k = SYNERGY_EXT_KEYS[i];
+      const hasCur = Object.prototype.hasOwnProperty.call(cur, k) && Number.isFinite(cur[k]);
+      const prevVal =
+        prevWritten && Object.prototype.hasOwnProperty.call(prevWritten, k)
+          ? prevWritten[k]
+          : undefined;
+      if (hasCur && (prevVal === undefined || Math.abs(cur[k] - prevVal) > 1e-9)) {
+        this._baseExternalModifiers[k] = cur[k];
+      } else if (!hasCur && prevVal !== undefined) {
+        delete this._baseExternalModifiers[k];
+      }
+    }
+
+    const merged = {};
+    for (const k of Object.keys(cur)) {
+      if (!SYNERGY_EXT_KEYS.includes(k)) {
+        merged[k] = cur[k];
+      }
+    }
+
+    const synHero =
+      Number.isFinite(synMods.heroDmgMult) && synMods.heroDmgMult > 0 ? synMods.heroDmgMult : 1.0;
+    const synComp =
+      Number.isFinite(synMods.companionDmgMult) && synMods.companionDmgMult > 0
+        ? synMods.companionDmgMult
+        : 1.0;
+    const synGold =
+      Number.isFinite(synMods.goldMult) && synMods.goldMult > 0 ? synMods.goldMult : 1.0;
+    const synTap =
+      Number.isFinite(synMods.tapDmgMult) && synMods.tapDmgMult > 0 ? synMods.tapDmgMult : 1.0;
+    const synCritChance = Number.isFinite(synMods.critBonus) ? synMods.critBonus : 0;
+    const synCritDmg =
+      Number.isFinite(synMods.critDmgMult) && synMods.critDmgMult > 0
+        ? synMods.critDmgMult
+        : Number.isFinite(synMods.critDmgBonus) && synMods.critDmgBonus > 0
+          ? 1 + synMods.critDmgBonus
+          : 1.0;
+
+    const baseGlobal =
+      Number.isFinite(this._baseExternalModifiers.globalDpsMult) &&
+      this._baseExternalModifiers.globalDpsMult > 0
+        ? this._baseExternalModifiers.globalDpsMult
+        : 1.0;
+    const baseGold =
+      Number.isFinite(this._baseExternalModifiers.goldMult) &&
+      this._baseExternalModifiers.goldMult > 0
+        ? this._baseExternalModifiers.goldMult
+        : 1.0;
+    const baseTap =
+      Number.isFinite(this._baseExternalModifiers.tapMult) &&
+      this._baseExternalModifiers.tapMult > 0
+        ? this._baseExternalModifiers.tapMult
+        : 1.0;
+    const baseComp =
+      Number.isFinite(this._baseExternalModifiers.companionMult) &&
+      this._baseExternalModifiers.companionMult > 0
+        ? this._baseExternalModifiers.companionMult
+        : 1.0;
+    const baseCritChance = Number.isFinite(this._baseExternalModifiers.critChanceBonus)
+      ? this._baseExternalModifiers.critChanceBonus
+      : 0;
+    const baseCritDmg =
+      Number.isFinite(this._baseExternalModifiers.critDmgMult) &&
+      this._baseExternalModifiers.critDmgMult > 0
+        ? this._baseExternalModifiers.critDmgMult
+        : 1.0;
+
+    merged.globalDpsMult = baseGlobal * synHero;
+    merged.goldMult = baseGold * synGold;
+    merged.tapMult = baseTap * (synTap / synHero);
+    merged.companionMult = baseComp * (synComp / synHero);
+    merged.critChanceBonus = baseCritChance + synCritChance;
+    merged.critDmgMult = baseCritDmg * synCritDmg;
+
+    this._lastWrittenSynergyExt = {
+      globalDpsMult: merged.globalDpsMult,
+      goldMult: merged.goldMult,
+      tapMult: merged.tapMult,
+      companionMult: merged.companionMult,
+      critChanceBonus: merged.critChanceBonus,
+      critDmgMult: merged.critDmgMult
+    };
+    this._activeSynergyMods = synMods;
+    this.economy.setExternalModifiers(merged);
+    return synMods;
   }
 
   // =========================================================================
@@ -865,9 +1080,19 @@ export class EndlessManager {
     this.coins = [];
     this.tapSmites = [];
     this.feverBursts = [];
+    this.feverChains = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
+
+    this._coinStreak = 0;
+    this._coinStreakTimer = 0;
+    this._lastCoinChimeMs = -1000;
+    this._lastFeverTier = 0;
+    this._feverStampPopTimer = 0;
+    this._activeSynergyMods = null;
+    this._baseExternalModifiers = {};
+    this._lastWrittenSynergyExt = null;
     this.bannerTimer = 0;
     this.bannerText = '';
     this.bannerSubText = '';
@@ -1025,6 +1250,9 @@ export class EndlessManager {
     if (playerFighter) {
       this.companions.syncEntitiesWithWorld(playerFighter);
       this._lastCompanionSyncSig = this._computeCompanionSyncSig();
+      const initSyn = this.companions?.getPartySynergyModifiers?.() || null;
+      this._applyPartySynergyToEconomy(initSyn);
+      this.progression.syncMaxHpWithEconomy(playerFighter);
       this.refreshActionIcons(playerFighter.heroId || 'mage_ex');
     }
 
@@ -1099,9 +1327,18 @@ export class EndlessManager {
     this.coins = [];
     this.tapSmites = [];
     this.feverBursts = [];
+    this.feverChains = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
+
+    this._clearSynergyFromEconomy();
+    this._coinStreak = 0;
+    this._coinStreakTimer = 0;
+    this._lastCoinChimeMs = -1000;
+    this._lastFeverTier = 0;
+    this._feverStampPopTimer = 0;
+    this._baseExternalModifiers = {};
     this.clearHeldInputs();
 
     this.shopUI?.setVisible?.(false);
@@ -1148,6 +1385,7 @@ export class EndlessManager {
   }
 
   resetEndlessRun() {
+    this._clearSynergyFromEconomy();
     this.economy.resetRunState({ keepMeta: true });
     this.companions.reset();
     this.stage = 1;
@@ -1164,9 +1402,19 @@ export class EndlessManager {
     this.coins = [];
     this.tapSmites = [];
     this.feverBursts = [];
+    this.feverChains = [];
     this.portals = [];
     this.monsterPlumes = [];
     this.floatingCallouts = [];
+
+    this._coinStreak = 0;
+    this._coinStreakTimer = 0;
+    this._lastCoinChimeMs = -1000;
+    this._lastFeverTier = 0;
+    this._feverStampPopTimer = 0;
+    this._activeSynergyMods = null;
+    this._baseExternalModifiers = {};
+    this._lastWrittenSynergyExt = null;
 
     this.economy.stage = 1;
     this.economy.waveInStage = 1;
@@ -1247,6 +1495,9 @@ export class EndlessManager {
       const player = this.game?.leftFighter;
       if (player) this.companions.syncEntitiesWithWorld(player);
       this._lastCompanionSyncSig = this._computeCompanionSyncSig();
+      const synMods = this.companions?.getPartySynergyModifiers?.() || null;
+      this._applyPartySynergyToEconomy(synMods);
+      if (player) this.progression.syncMaxHpWithEconomy(player);
       this.game?.audio?.play?.('holy_hit', player?.x || 600);
       this.saveNow();
       this.shopUI?.sync?.(this.getUiSnapshot(), true);
@@ -1273,6 +1524,9 @@ export class EndlessManager {
       const player = this.game?.leftFighter;
       if (player) this.companions.syncEntitiesWithWorld(player);
       this._lastCompanionSyncSig = this._computeCompanionSyncSig();
+      const synMods = this.companions?.getPartySynergyModifiers?.() || null;
+      this._applyPartySynergyToEconomy(synMods);
+      if (player) this.progression.syncMaxHpWithEconomy(player);
       this.game?.audio?.play?.('clock_gear', player?.x || 600);
       this.saveNow();
       this.shopUI?.sync?.(this.getUiSnapshot(), true);
@@ -1479,9 +1733,12 @@ export class EndlessManager {
         '#ef4444',
         2.8
       );
-      if (!this.game?.isLandingOpen && !this.game?.simMode) {
+      if (!this.game?.isLandingOpen) {
         this.game?.audio?.play?.('eclipse_charge', bossX);
-        this.game?.audio?.playBgm?.('bgm_boss_malphas');
+        this.game?.audio?.play?.('thunder_slam', bossX);
+        if (!this.game?.simMode) {
+          this.game?.audio?.playBgm?.('bgm_boss_malphas');
+        }
       }
       this.game?.renderer?.triggerShake?.(14, 0.55);
     } else {
@@ -1507,7 +1764,10 @@ export class EndlessManager {
         realm.accentHex,
         2.6
       );
-      this.game?.audio?.play?.('eclipse_charge', bossX);
+      if (!this.game?.isLandingOpen) {
+        this.game?.audio?.play?.('eclipse_charge', bossX);
+        this.game?.audio?.play?.('thunder_slam', bossX);
+      }
       this.game?.renderer?.triggerShake?.(8, 0.32);
     }
 
@@ -1614,7 +1874,7 @@ export class EndlessManager {
     if (isColossal && !this.game?.isLandingOpen && !this.game?.simMode) {
       this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
     }
-    this.game?.audio?.play?.('holy_hit', bx);
+    this.game?.audio?.play?.('victory_fanfare', bx);
     this.game?.renderer?.triggerShake?.(isColossal ? 12 : 7, 0.34);
 
     this.spawnFloatingCallout(
@@ -1912,27 +2172,163 @@ export class EndlessManager {
 
       if (dist <= 62 || c.age >= 3.2) {
         this.coins.splice(i, 1);
+        this._coinStreak = Math.min(12, (this._coinStreak || 0) + 1);
+        this._coinStreakTimer = COIN_STREAK_DECAY_SEC;
+
         if (c.kind === 'gold' && c.rawGold > 0) {
           const gained = this.economy.addGold(c.rawGold, {
             isBoss: c.isBoss,
             applyMult: c.applyMult
           });
-          if (gained > 0 && (c.isBoss || Math.random() < 0.45)) {
+          if (gained > 0 && (c.isBoss || this.floatingCallouts.length < 22 || Math.random() < 0.55)) {
             this.spawnFloatingCallout(
               px + (Math.random() * 28 - 14),
               pGy - 134,
-              `+${formatEndlessNumber(gained)}G`,
+              `+${formatEndlessNumber(gained)} G`,
               '#fde047',
               1,
-              0.72
+              0.84,
+              { kind: 'gold', topColor: '#ffffff' }
             );
           }
         }
-        if (this.game?.audio && Math.random() < 0.35) {
-          this.game.audio.play('clock_gear', px);
-        }
+        this._playCoinPickupChime(px, c.kind === 'shard');
       }
     }
+  }
+
+  _playCoinPickupChime(worldX, isShard = false) {
+    const audio = this.game?.audio;
+    if (!audio) return;
+    if (audio.enabled === false || audio.sfxEnabled === false || audio._bgSuspended) return;
+
+    const nowMs =
+      typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+    if (nowMs - (this._lastCoinChimeMs ?? -1000) < COIN_CHIME_THROTTLE_MS) return;
+    this._lastCoinChimeMs = nowMs;
+
+    const ctx = audio.ctx;
+    const canOscSynth =
+      Boolean(audio.sfxEnabled) &&
+      !this.game?.simMode &&
+      ctx &&
+      ctx.state === 'running' &&
+      typeof ctx.createOscillator === 'function' &&
+      typeof ctx.createGain === 'function';
+
+    if (canOscSynth) {
+      try {
+        const dest = audio.sfxBus || audio.master || ctx.destination;
+        if (dest) {
+          const t0 = Number.isFinite(ctx.currentTime) ? ctx.currentTime : 0;
+          const noteIdx = Math.max(
+            0,
+            Math.min(COIN_PENTATONIC_HZ.length - 1, Math.max(0, (this._coinStreak || 1) - 1))
+          );
+          const baseFreq = COIN_PENTATONIC_HZ[noteIdx] * (isShard ? 1.25 : 1.0);
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const env = ctx.createGain();
+          const shimmerGain = ctx.createGain();
+          const peak = isShard ? 0.15 : 0.115;
+          const decaySec = isShard ? 0.19 : 0.135;
+
+          osc1.type = 'triangle';
+          osc1.frequency.setValueAtTime(baseFreq, t0);
+          osc1.frequency.exponentialRampToValueAtTime(baseFreq * 1.03, t0 + 0.045);
+
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(baseFreq * 2.0, t0);
+          osc2.frequency.exponentialRampToValueAtTime(baseFreq * 2.025, t0 + 0.085);
+
+          shimmerGain.gain.setValueAtTime(0.36, t0);
+          env.gain.setValueAtTime(0.0001, t0);
+          env.gain.linearRampToValueAtTime(peak, t0 + 0.007);
+          env.gain.exponentialRampToValueAtTime(0.0008, t0 + decaySec);
+
+          let panner = null;
+          if (Number.isFinite(worldX) && typeof ctx.createStereoPanner === 'function') {
+            panner = ctx.createStereoPanner();
+            const camX = this.game?.renderer?.camX ?? 600;
+            panner.pan.value = Math.max(-0.42, Math.min(0.42, (worldX - camX) / 650));
+            env.connect(panner);
+            panner.connect(dest);
+          } else {
+            env.connect(dest);
+          }
+
+          osc1.connect(env);
+          osc2.connect(shimmerGain);
+          shimmerGain.connect(env);
+
+          const stopAt = t0 + decaySec + 0.02;
+          osc1.onended = () => {
+            osc1.onended = null;
+            try { osc1.disconnect(); } catch (_) {}
+            try { osc2.disconnect(); } catch (_) {}
+            try { shimmerGain.disconnect(); } catch (_) {}
+            try { env.disconnect(); } catch (_) {}
+            try { panner?.disconnect(); } catch (_) {}
+          };
+          osc1.start(t0);
+          osc2.start(t0);
+          osc1.stop(stopAt);
+          osc2.stop(stopAt);
+          return;
+        }
+      } catch (_) {
+        // Fall through cleanly to throttled reflect fallback
+      }
+    }
+
+    // Soft throttled fallback when no unlocked Web Audio ctx
+    audio.play?.('reflect', worldX);
+  }
+
+  _buildPixelChainPoints(x1, y1, x2, y2, tier = 1) {
+    const sx = Math.round(x1);
+    const sy = Math.round(y1);
+    const ex = Math.round(x2);
+    const ey = Math.round(y2);
+    const dx = ex - sx;
+    const dy = ey - sy;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    const nx = -dy / dist;
+    const ny = dx / dist;
+    const segs = Math.max(5, Math.min(9, Math.round(dist / 42)));
+    const amp = Math.min(28, Math.max(12, dist * 0.11)) * (tier >= 2 ? 1.18 : 1.0);
+
+    const main = [{ x: sx, y: sy }];
+    for (let i = 1; i < segs; i++) {
+      const frac = i / segs;
+      const env = Math.sin(frac * Math.PI);
+      const side = i % 2 === 0 ? 1 : -1;
+      const jag = side * (0.45 + Math.random() * 0.65) * amp * env;
+      main.push({
+        x: Math.round((sx + dx * frac + nx * jag) / 2) * 2,
+        y: Math.round((sy + dy * frac + ny * jag) / 2) * 2
+      });
+    }
+    main.push({ x: ex, y: ey });
+
+    const midNode = main[Math.floor(main.length * 0.5)] || main[0];
+    const forkDir = Math.random() < 0.5 ? 1 : -1;
+    const forkLen = 22 + Math.random() * 16;
+    const forkMidX = Math.round((midNode.x + dx * 0.08 + nx * forkDir * forkLen * 0.55) / 2) * 2;
+    const forkMidY = Math.round((midNode.y + dy * 0.08 + ny * forkDir * forkLen * 0.55) / 2) * 2;
+    const forkEndX = Math.round((midNode.x + dx * 0.18 + nx * forkDir * forkLen) / 2) * 2;
+    const forkEndY = Math.round((midNode.y + dy * 0.18 + ny * forkDir * forkLen) / 2) * 2;
+
+    return {
+      main,
+      branch: [
+        { x: midNode.x, y: midNode.y },
+        { x: forkMidX, y: forkMidY },
+        { x: forkEndX, y: forkEndY }
+      ]
+    };
   }
 
   handleCanvasTap(worldX, worldY, _screenX = 0, _screenY = 0) {
@@ -2000,7 +2396,7 @@ export class EndlessManager {
         maxLife: 0.34,
         scale: 1.05
       });
-      this.game?.audio?.play?.('hit_light', wx);
+      this.game?.audio?.play?.('holy_bolt', wx);
       return { hit: false, scooped };
     }
 
@@ -2040,6 +2436,92 @@ export class EndlessManager {
       this.onMonsterDeath(target);
     }
 
+    // Tap-Fever Overdrive Chain Lightning: arc to up to 2 nearby living monsters within 360px for 45% splash
+    const feverActive = (this.economy?.tapFeverTimer || 0) > 0;
+    const feverTier = feverActive ? ((this.economy?.tapFeverLevel || 0) >= 2 ? 2 : 1) : 0;
+    let chainedHits = 0;
+    if (feverActive && feverTier >= 1) {
+      const candidates = [];
+      const postLiving = this.getLivingMonsters();
+      for (let i = 0; i < postLiving.length; i++) {
+        const m = postLiving[i];
+        if (!m || m === target || m.isDead) continue;
+        const mx = m.isColossalBoss ? (m.anchorX || m.x) - 105 : m.x;
+        const mGy = m.isColossalBoss
+          ? m.anchorGroundY || this.depthMidY
+          : m.groundY || m.y || this.depthMidY;
+        const dist = Math.hypot(mx - tx, mGy - tGy);
+        if (dist <= FEVER_CHAIN_MAX_RANGE) {
+          candidates.push({ monster: m, mx, mGy, dist });
+        }
+      }
+      candidates.sort((a, b) => a.dist - b.dist);
+
+      const chainCount = Math.min(FEVER_CHAIN_MAX_TARGETS, candidates.length);
+      const chainDmg = Math.max(1, Math.round(dmg * FEVER_CHAIN_SPLASH_RATIO));
+      for (let ci = 0; ci < chainCount; ci++) {
+        const entry = candidates[ci];
+        const cm = entry.monster;
+        if (!cm || cm.isDead) continue;
+        const chainAttacker = {
+          isTapSmite: true,
+          isMonster: false,
+          team: 1,
+          x: entry.mx,
+          y: entry.mGy,
+          groundY: entry.mGy,
+          facing: entry.mx >= tx ? 1 : -1,
+          heroId: 'tap_smite',
+          gainMana() {},
+          gainFinisher() {}
+        };
+        const cKnockDir = cm.isColossalBoss ? 0 : entry.mx >= tx ? 1 : -1;
+        cm.takeDamage(chainDmg, chainAttacker, false, cKnockDir * 24, 0);
+        this.economy.recordDamageSample('tap', chainDmg);
+        chainedHits++;
+        if ((cm.isDead || cm.hp <= 0) && !cm._endlessDeathHandled) {
+          cm.isDead = true;
+          this.onMonsterDeath(cm);
+        }
+
+        while (this.feverChains.length >= FEVER_CHAIN_MAX_COUNT) {
+          this.feverChains.shift();
+        }
+        const boltPts = this._buildPixelChainPoints(tx, tGy - 62, entry.mx, entry.mGy - 62, feverTier);
+        this.feverChains.push({
+          x1: Math.round(tx),
+          y1: Math.round(tGy - 62),
+          x2: Math.round(entry.mx),
+          y2: Math.round(entry.mGy - 62),
+          tier: feverTier,
+          age: 0,
+          maxLife: FEVER_CHAIN_LIFE,
+          main: boltPts.main,
+          branch: boltPts.branch
+        });
+
+        this.spawnFloatingCallout(
+          entry.mx + (Math.random() * 18 - 9),
+          entry.mGy - 104,
+          formatEndlessNumber(chainDmg),
+          feverTier >= 2 ? '#67e8f9' : '#fde047',
+          1,
+          0.74,
+          { kind: 'damage', topColor: '#ffffff' }
+        );
+        if (this.game?.vfx) {
+          this.game.vfx.spawnBurst(
+            entry.mx,
+            entry.mGy - 56,
+            6,
+            feverTier >= 2 ? '#38bdf8' : '#facc15',
+            155,
+            { upBias: 95, size: 4 }
+          );
+        }
+      }
+    }
+
     // Spawn TAP_SMITE_SKYBOLT (Row 2)
     while (this.tapSmites.length >= 24) this.tapSmites.shift();
     this.tapSmites.push({
@@ -2073,11 +2555,22 @@ export class EndlessManager {
         maxLife: 0.56,
         scale: 1.95
       });
-      const tierLabel = smite.feverTier >= 2 ? 'GOLD FEVER TIER II!' : 'GOLD FEVER OVERDRIVE!';
-      const tierSub = smite.feverTier >= 2 ? '3X GOLD & MAXIMUM SURGE!' : '2X GOLD & HERO SURGE!';
-      this.showBanner(tierLabel, tierSub, '#facc15', 2.0);
+      this._feverStampPopTimer = 0.28;
+      this._lastFeverTier = Math.max(1, feverTier);
+      const tierLabel = smite.feverTier >= 2 ? 'OVERDRIVE 3X GOLD!' : 'FEVER 2X GOLD!';
+      const tierSub = smite.feverTier >= 2 ? '3X GOLD & CHAIN LIGHTNING SURGE!' : '2X GOLD & CHAIN LIGHTNING!';
+      this.showBanner(tierLabel, tierSub, smite.feverTier >= 2 ? '#38bdf8' : '#facc15', 2.0);
+      this.spawnFloatingCallout(
+        tx,
+        tGy - 156,
+        tierLabel,
+        smite.feverTier >= 2 ? '#38bdf8' : '#facc15',
+        2,
+        1.25,
+        { kind: 'fever', topColor: '#fef9c3' }
+      );
       this.game?.renderer?.triggerShake?.(9, 0.24);
-      this.game?.audio?.play?.('holy_hit', tx);
+      this.game?.audio?.play?.('thunder_slam', tx);
     } else {
       this.game?.audio?.play?.(smite.isCrit ? 'raijin_slash' : 'holy_bolt', tx);
     }
@@ -2100,7 +2593,11 @@ export class EndlessManager {
       dmgLabel,
       smite.isCrit ? '#fb923c' : '#38bdf8',
       smite.isCrit ? 2 : 1,
-      0.85
+      smite.isCrit ? 0.96 : 0.80,
+      {
+        kind: smite.isCrit ? 'crit' : 'damage',
+        topColor: smite.isCrit ? '#fef08a' : '#e0f2fe'
+      }
     );
 
     if (this.game?.vfx) {
@@ -2117,6 +2614,7 @@ export class EndlessManager {
       isCrit: Boolean(smite.isCrit),
       feverActive: Boolean(smite.feverActive),
       feverTriggered: Boolean(smite.feverTriggered),
+      chainedHits,
       scooped
     };
   }
@@ -2791,6 +3289,15 @@ export class EndlessManager {
     if (this.bannerTimer > 0) {
       this.bannerTimer = Math.max(0, this.bannerTimer - effDt);
     }
+    if (this._coinStreakTimer > 0) {
+      this._coinStreakTimer = Math.max(0, this._coinStreakTimer - effDt);
+      if (this._coinStreakTimer <= 0) {
+        this._coinStreak = 0;
+      }
+    }
+    if (this._feverStampPopTimer > 0) {
+      this._feverStampPopTimer = Math.max(0, this._feverStampPopTimer - effDt);
+    }
     if (this._phoenixInvulnTimer > 0) {
       this._phoenixInvulnTimer = Math.max(0, this._phoenixInvulnTimer - effDt);
       if (this._phoenixInvulnTimer <= 0 && !player._advPureDodge) {
@@ -2800,17 +3307,44 @@ export class EndlessManager {
       }
     }
 
-    // 1. Update Economy (Tap-Fever decay & 5s DPS/Gold metrics), Progression & SkillSets
-    this.economy.update(effDt);
-    this.progression.update(effDt, player);
-    this.skillSets.update(effDt, player);
-
     // Keep companions synced if user recruited/deployed/upgraded directly via ShopUI
     const compSig = this._computeCompanionSyncSig();
     if (compSig !== this._lastCompanionSyncSig) {
       this.companions.syncEntitiesWithWorld(player);
       this._lastCompanionSyncSig = compSig;
     }
+
+    // 1. Apply Party Synergy modifiers cleanly, then update Economy, Progression & SkillSets
+    const synMods = this.companions?.getPartySynergyModifiers?.() || null;
+    this._applyPartySynergyToEconomy(synMods);
+
+    this.economy.update(effDt);
+    this.progression.update(effDt, player);
+    this.skillSets.update(effDt, player);
+
+    // Apply Party Synergy HP Regen bonus safely to player HP
+    if (
+      synMods &&
+      Number.isFinite(synMods.hpRegenBonus) &&
+      synMods.hpRegenBonus > 0 &&
+      !player.isDead &&
+      player.maxHp > 0 &&
+      player.hp < player.maxHp
+    ) {
+      const safeRegenRate = Math.min(0.25, synMods.hpRegenBonus);
+      player.hp = Math.min(player.maxHp, player.hp + player.maxHp * safeRegenRate * effDt);
+    }
+
+    const curFeverTier =
+      (this.economy?.tapFeverTimer || 0) > 0
+        ? (this.economy?.tapFeverLevel || 0) >= 2
+          ? 2
+          : 1
+        : 0;
+    if (curFeverTier > this._lastFeverTier) {
+      this._feverStampPopTimer = 0.28;
+    }
+    this._lastFeverTier = curFeverTier;
 
     // 2. Boss Encounter Countdown & Zero-Punishment Boss Fail
     if (this.isBossEncounter) {
@@ -2932,7 +3466,7 @@ export class EndlessManager {
     // 7. Update Autonomous HD-2D Companions
     this.companions.update(effDt, player, this.getLivingMonsters(), this.economy, entityGame);
 
-    // 8. Update Magnetic Coins, Tap-Smites, Fever Bursts, Portals, Plumes & Floating Callouts
+    // 8. Update Magnetic Coins, Tap-Smites, Fever Bursts, Fever Chains, Portals, Plumes & Floating Callouts
     this._updateCoins(effDt, player);
     for (let i = this.tapSmites.length - 1; i >= 0; i--) {
       this.tapSmites[i].age += effDt;
@@ -2942,6 +3476,10 @@ export class EndlessManager {
       this.feverBursts[i].age += effDt;
       if (this.feverBursts[i].age >= this.feverBursts[i].maxLife) this.feverBursts.splice(i, 1);
     }
+    for (let i = this.feverChains.length - 1; i >= 0; i--) {
+      this.feverChains[i].age += effDt;
+      if (this.feverChains[i].age >= this.feverChains[i].maxLife) this.feverChains.splice(i, 1);
+    }
     for (let i = this.portals.length - 1; i >= 0; i--) {
       this.portals[i].age += effDt;
       if (this.portals[i].age >= this.portals[i].maxLife) this.portals.splice(i, 1);
@@ -2950,11 +3488,15 @@ export class EndlessManager {
       this.monsterPlumes[i].age += effDt;
       if (this.monsterPlumes[i].age >= this.monsterPlumes[i].maxLife) this.monsterPlumes.splice(i, 1);
     }
+    const decelY = Math.exp(-3.8 * effDt);
+    const decelX = Math.exp(-5.0 * effDt);
     for (let i = this.floatingCallouts.length - 1; i >= 0; i--) {
       const fc = this.floatingCallouts[i];
       fc.age += effDt;
+      fc.x += (fc.vx || 0) * effDt;
       fc.y += fc.vy * effDt;
-      fc.vy *= Math.max(0, 1 - effDt * 2.4);
+      fc.vx = (fc.vx || 0) * decelX;
+      fc.vy *= decelY;
       if (fc.age >= fc.maxLife) this.floatingCallouts.splice(i, 1);
     }
 
@@ -3474,21 +4016,109 @@ export class EndlessManager {
       }
     }
 
+    // 3b. Tap-Fever Overdrive Stepped Pixel Chain Lightning Bolts (100% fillRect)
+    if (this.feverChains.length > 0 && typeof ctx.fillRect === 'function') {
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i < this.feverChains.length; i++) {
+        const bolt = this.feverChains[i];
+        const u = Math.max(0, Math.min(1, bolt.age / Math.max(0.04, bolt.maxLife || FEVER_CHAIN_LIFE)));
+        const baseAlpha = u < 0.55 ? 1 : Math.max(0, 1 - (u - 0.55) / 0.45);
+        const flicker = u > 0.45 && Math.floor(bolt.age * 42) % 3 === 0 ? 0.55 : 1.0;
+        const alpha = baseAlpha * flicker;
+        if (alpha <= 0.02) continue;
+
+        const isTier2 = (bolt.tier || 1) >= 2;
+        const glowCol = isTier2 ? '#38bdf8' : '#d97706';
+        const midCol = isTier2 ? '#facc15' : '#fde047';
+        const mainPts = bolt.main || [
+          { x: bolt.x1, y: bolt.y1 },
+          { x: bolt.x2, y: bolt.y2 }
+        ];
+
+        // Outer electric halo -> bright lightning body -> crisp white core
+        ctx.globalAlpha = alpha * 0.58;
+        this._drawPixelPolyline(ctx, mainPts, isTier2 ? 8 : 6, glowCol);
+        ctx.globalAlpha = alpha * 0.94;
+        this._drawPixelPolyline(ctx, mainPts, 4, midCol);
+        ctx.globalAlpha = alpha;
+        this._drawPixelPolyline(ctx, mainPts, 2, '#ffffff');
+
+        // Crisp stepped sub-branch fork
+        if (Array.isArray(bolt.branch) && bolt.branch.length >= 2) {
+          ctx.globalAlpha = alpha * 0.52;
+          this._drawPixelPolyline(ctx, bolt.branch, 4, glowCol);
+          ctx.globalAlpha = alpha * 0.9;
+          this._drawPixelPolyline(ctx, bolt.branch, 2, '#fef9c3');
+        }
+
+        // Stepped pixel diamond flash at chained target impact point
+        const ix = Math.round(bolt.x2);
+        const iy = Math.round(bolt.y2);
+        const r = Math.round(10 + (1 - u) * 8);
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.fillStyle = '#050712';
+        ctx.fillRect(ix - r - 1, iy - 3, (r + 1) * 2, 6);
+        ctx.fillRect(ix - 3, iy - r - 1, 6, (r + 1) * 2);
+        ctx.fillStyle = glowCol;
+        ctx.fillRect(ix - r, iy - 2, r * 2, 4);
+        ctx.fillRect(ix - 2, iy - r, 4, r * 2);
+        ctx.fillStyle = midCol;
+        ctx.fillRect(ix - 5, iy - 5, 10, 10);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ix - 2, iy - 2, 4, 4);
+      }
+      ctx.globalAlpha = 1;
+    }
+
     ctx.restore();
 
     // 4. Companions foreground projectiles/strikes & SkillSets foreground
     this.companions?.renderForegroundFX?.(ctx, renderer);
     this.skillSets.renderForeground(ctx);
 
-    // 5. Crisp PixelFont Floating World Callouts
-    if (this.floatingCallouts.length > 0) {
+    // 5. Crisp PixelFont Floating World Callouts (Pop-In Scale + #050712 2px Pixel Outline)
+    if (this.floatingCallouts.length > 0 && typeof ctx.fillRect === 'function') {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       for (let i = 0; i < this.floatingCallouts.length; i++) {
         const fc = this.floatingCallouts[i];
-        const u = fc.age / fc.maxLife;
-        ctx.globalAlpha = u > 0.65 ? Math.max(0, 1 - (u - 0.65) / 0.35) : 1;
-        PixelFont.drawCentered(ctx, fc.text, Math.round(fc.x), Math.round(fc.y), fc.scale, fc.color, '#ffffff', true);
+        const u = Math.max(0, Math.min(1, fc.age / Math.max(0.1, fc.maxLife)));
+        const fade = u > 0.65 ? Math.max(0, 1 - (u - 0.65) / 0.35) : 1;
+        if (fade <= 0.02) continue;
+
+        const popDur = 0.14;
+        let popScale = 1;
+        if (fc.age < popDur) {
+          const k = fc.age / popDur;
+          const peak = fc.popPeak || 1.2;
+          if (k < 0.45) {
+            const tIn = k / 0.45;
+            popScale = 0.58 + (peak - 0.58) * (1 - (1 - tIn) * (1 - tIn));
+          } else {
+            const tOut = (k - 0.45) / 0.55;
+            popScale = peak - (peak - 1) * (tOut * tOut * (3 - 2 * tOut));
+          }
+        }
+
+        const drawX = Math.round(fc.x);
+        const drawY = Math.round(fc.y);
+        const topCol = fc.topColor || '#ffffff';
+
+        ctx.globalAlpha = fade;
+        if (
+          Math.abs(popScale - 1) > 0.01 &&
+          typeof ctx.translate === 'function' &&
+          typeof ctx.scale === 'function'
+        ) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.translate(drawX, drawY);
+          ctx.scale(popScale, popScale);
+          this._drawOutlinedPixelCallout(ctx, fc.text, 0, 0, fc.scale, fc.color, topCol);
+          ctx.restore();
+        } else {
+          this._drawOutlinedPixelCallout(ctx, fc.text, drawX, drawY, fc.scale, fc.color, topCol);
+        }
       }
       ctx.restore();
     }
@@ -3529,37 +4159,208 @@ export class EndlessManager {
     }
   }
 
+  _drawPixelSegment(ctx, x0, y0, x1, y1, thickness, color) {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const step = Math.max(2, Math.floor(thickness * 0.75));
+    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / step));
+    const half = Math.floor(thickness * 0.5);
+    ctx.fillStyle = color;
+    for (let s = 0; s <= steps; s++) {
+      const px = Math.round((x0 + (dx * s) / steps) / 2) * 2;
+      const py = Math.round((y0 + (dy * s) / steps) / 2) * 2;
+      ctx.fillRect(px - half, py - half, thickness, thickness);
+    }
+  }
+
+  _drawPixelPolyline(ctx, pts, thickness, color) {
+    if (!Array.isArray(pts) || pts.length < 2) return;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      this._drawPixelSegment(ctx, a.x, a.y, b.x, b.y, thickness, color);
+    }
+  }
+
+  _drawOutlinedPixelCallout(ctx, text, cx, cy, pixelSize, mainColor, topColor = '#ffffff') {
+    const p = Math.max(1, Math.round(pixelSize || 1));
+    const ix = Math.round(cx);
+    const iy = Math.round(cy);
+    if (p === 1) {
+      // Crisp 2px dark #050712 pixel ring around 1x glyphs + 1px bottom drop weight
+      const ring = [
+        [-2, 0],
+        [2, 0],
+        [0, -2],
+        [0, 2],
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+        [0, 3]
+      ];
+      for (let i = 0; i < ring.length; i++) {
+        PixelFont.drawCentered(ctx, text, ix + ring[i][0], iy + ring[i][1], 1, '#050712', '#050712', false);
+      }
+      PixelFont.drawCentered(ctx, text, ix, iy, 1, mainColor, topColor, true);
+    } else {
+      // 2x glyphs already have a 2px cardinal outline; add crisp diagonal corners & drop shadow in #050712
+      const diag = [
+        [-2, -2],
+        [2, -2],
+        [-2, 2],
+        [2, 2],
+        [0, 3],
+        [2, 3]
+      ];
+      for (let i = 0; i < diag.length; i++) {
+        PixelFont.drawCentered(ctx, text, ix + diag[i][0], iy + diag[i][1], p, '#050712', '#050712', false);
+      }
+      PixelFont.drawCentered(ctx, text, ix, iy, p, mainColor, topColor, true);
+    }
+  }
+
   renderScreenHUD(ctx, renderer) {
     if (!this.active || !ctx || this.game?.isLandingOpen) return;
+    if (typeof ctx.fillRect !== 'function') return;
     const w = renderer?.width || 1280;
     const h = renderer?.height || 720;
     const t = renderer?.time || this._clock || 0;
+    const isCompact = w < 640;
+    const isShort = h < 460;
+    const hudBot =
+      typeof renderer?.getHudBottomY === 'function' ? renderer.getHudBottomY() : isShort ? 56 : 82;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Tap-Fever Golden Screen-Edge Pulse (100% fillRect, 0 rotate/ellipse/arc)
+    // 1. Animated Pixel-Framed FEVER OVERDRIVE Border Aura (100% fillRect, 0 rotate/ellipse/arc)
     const feverTimer = this.economy?.tapFeverTimer || 0;
-    if (feverTimer > 0) {
-      const tier = this.economy?.tapFeverLevel || 1;
-      const pulse = 0.32 + 0.24 * Math.sin(t * (tier >= 2 ? 16 : 11));
-      const railCol = tier >= 2 ? '#fef08a' : '#facc15';
-      const trimCol = tier >= 2 ? '#fb923c' : '#d97706';
-      const thickness = tier >= 2 ? 6 : 4;
+    const feverTier = feverTimer > 0 ? ((this.economy?.tapFeverLevel || 0) >= 2 ? 2 : 1) : 0;
+    if (feverTier >= 1) {
+      const isOverdrive = feverTier >= 2;
+      const pulse = isOverdrive
+        ? 0.56 + 0.28 * Math.sin(t * 16)
+        : 0.44 + 0.24 * Math.sin(t * 10.5);
+      const outerThick = isOverdrive ? 7 : 5;
+      const trimCol = isOverdrive ? '#f59e0b' : '#b45309';
+      const goldRailCol = isOverdrive ? '#facc15' : '#d4af37';
+      const innerRailCol = isOverdrive ? '#38bdf8' : '#fef08a';
 
-      ctx.globalAlpha = pulse;
+      // Dark #050712 hairline inner framing border so the aura stays razor crisp
+      ctx.globalAlpha = Math.min(0.85, pulse * 1.1);
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(0, outerThick, w, 1);
+      ctx.fillRect(0, h - outerThick - 1, w, 1);
+      ctx.fillRect(outerThick, 0, 1, h);
+      ctx.fillRect(w - outerThick - 1, 0, 1, h);
+
+      // Outer burnished / molten gold frame
+      ctx.globalAlpha = pulse * 0.82;
       ctx.fillStyle = trimCol;
-      ctx.fillRect(0, 0, w, thickness + 2);
-      ctx.fillRect(0, h - thickness - 2, w, thickness + 2);
-      ctx.fillRect(0, 0, thickness + 2, h);
-      ctx.fillRect(w - thickness - 2, 0, thickness + 2, h);
+      ctx.fillRect(0, 0, w, outerThick);
+      ctx.fillRect(0, h - outerThick, w, outerThick);
+      ctx.fillRect(0, 0, outerThick, h);
+      ctx.fillRect(w - outerThick, 0, outerThick, h);
 
-      ctx.globalAlpha = Math.min(0.88, pulse * 1.4);
-      ctx.fillStyle = railCol;
-      ctx.fillRect(0, 0, w, 2);
-      ctx.fillRect(0, h - 2, w, 2);
-      ctx.fillRect(0, 0, 2, h);
-      ctx.fillRect(w - 2, 0, 2, h);
+      // Bright burnished gold mid rail
+      ctx.globalAlpha = Math.min(0.92, pulse * 1.15);
+      ctx.fillStyle = goldRailCol;
+      ctx.fillRect(0, 0, w, 3);
+      ctx.fillRect(0, h - 3, w, 3);
+      ctx.fillRect(0, 0, 3, h);
+      ctx.fillRect(w - 3, 0, 3, h);
+
+      // Inner gleam rail (bright gold at 2x, electric cyan at 3x)
+      ctx.globalAlpha = Math.min(0.96, pulse * 1.25);
+      ctx.fillStyle = innerRailCol;
+      ctx.fillRect(3, 3, Math.max(0, w - 6), 2);
+      ctx.fillRect(3, h - 5, Math.max(0, w - 6), 2);
+      ctx.fillRect(3, 3, 2, Math.max(0, h - 6));
+      ctx.fillRect(w - 5, 3, 2, Math.max(0, h - 6));
+
+      // Animated marching pixel glint dashes gliding along edges
+      const stride = 68;
+      const shift = Math.floor(t * (isOverdrive ? 120 : 84)) % stride;
+      const dashLen = isOverdrive ? 18 : 14;
+      ctx.globalAlpha = Math.min(0.95, pulse * 1.3);
+      for (let gx = shift; gx < w - 24; gx += stride) {
+        ctx.fillStyle = isOverdrive && ((gx / stride) | 0) % 2 === 0 ? '#bae6fd' : '#fef9c3';
+        ctx.fillRect(gx, 1, dashLen, 2);
+        const bx = w - gx - dashLen;
+        if (bx > 12) ctx.fillRect(bx, h - 3, dashLen, 2);
+      }
+      for (let gy = shift; gy < h - 24; gy += stride) {
+        ctx.fillStyle = isOverdrive && ((gy / stride) | 0) % 2 === 0 ? '#bae6fd' : '#fef9c3';
+        ctx.fillRect(w - 3, gy, 2, dashLen);
+        const ly = h - gy - dashLen;
+        if (ly > 12) ctx.fillRect(1, ly, 2, dashLen);
+      }
+
+      // Stepped gothic corner L-brackets (gold at 2x, blazing gold-cyan electric corners at 3x)
+      const arm = isOverdrive ? 32 : 24;
+      const corners = [
+        { x: 0, y: 0, dx: 1, dy: 1 },
+        { x: w, y: 0, dx: -1, dy: 1 },
+        { x: 0, y: h, dx: 1, dy: -1 },
+        { x: w, y: h, dx: -1, dy: -1 }
+      ];
+      ctx.globalAlpha = Math.min(1, 0.72 + 0.28 * Math.sin(t * (isOverdrive ? 18 : 10)));
+      for (let ci = 0; ci < corners.length; ci++) {
+        const cn = corners[ci];
+        const hx = cn.dx > 0 ? cn.x + 2 : cn.x - 2 - arm;
+        const hy = cn.dy > 0 ? cn.y + 2 : cn.y - 6;
+        const vx = cn.dx > 0 ? cn.x + 2 : cn.x - 6;
+        const vy = cn.dy > 0 ? cn.y + 2 : cn.y - 2 - arm;
+
+        ctx.fillStyle = '#050712';
+        ctx.fillRect(hx - 1, hy - 1, arm + 2, 6);
+        ctx.fillRect(vx - 1, vy - 1, 6, arm + 2);
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(hx, hy, arm, 4);
+        ctx.fillRect(vx, vy, 4, arm);
+
+        const studX = cn.dx > 0 ? cn.x + 3 : cn.x - 9;
+        const studY = cn.dy > 0 ? cn.y + 3 : cn.y - 9;
+        ctx.fillStyle = isOverdrive ? '#38bdf8' : '#fef9c3';
+        ctx.fillRect(studX, studY, 6, 6);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(studX + 2, studY + 2, 2, 2);
+
+        if (isOverdrive) {
+          // Animated blazing cyan-gold stepped electric corner crackles
+          const sparkPhase = (Math.floor(t * 20) + ci * 3) % 4;
+          const ix = cn.dx > 0 ? cn.x + 8 : cn.x - 10;
+          const iy = cn.dy > 0 ? cn.y + 8 : cn.y - 10;
+          const s1x = ix + cn.dx * (6 + sparkPhase * 2);
+          const s1y = iy + cn.dy * (4 + ((sparkPhase + 1) % 3) * 2);
+          const s2x = s1x + cn.dx * 8;
+          const s2y = s1y + cn.dy * (sparkPhase % 2 === 0 ? 6 : 2);
+          const s3x = s2x + cn.dx * (sparkPhase % 2 === 0 ? 4 : 8);
+          const s3y = s2y + cn.dy * 6;
+          this._drawPixelPolyline(
+            ctx,
+            [
+              { x: ix, y: iy },
+              { x: s1x, y: s1y },
+              { x: s2x, y: s2y },
+              { x: s3x, y: s3y }
+            ],
+            4,
+            '#38bdf8'
+          );
+          this._drawPixelPolyline(
+            ctx,
+            [
+              { x: ix, y: iy },
+              { x: s1x, y: s1y },
+              { x: s2x, y: s2y }
+            ],
+            2,
+            '#ffffff'
+          );
+        }
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -3574,17 +4375,17 @@ export class EndlessManager {
     }
 
     // 3. Stage Clear / Boss Retreat / Gold Fever PixelFont Banner Ribbon
+    let activeBannerBottomY = 0;
     if (this.bannerTimer > 0 && this.bannerText) {
       const fade = this.bannerTimer < 0.35 ? this.bannerTimer / 0.35 : 1;
-      const isCompact = w < 640;
       const mainSz = !isCompact && PixelFont.measureWidth(this.bannerText, 2) + 40 <= w - 32 ? 2 : 1;
       const mainW = PixelFont.measureWidth(this.bannerText, mainSz);
       const subW = this.bannerSubText ? PixelFont.measureWidth(this.bannerSubText, 1) : 0;
       const banW = Math.min(w - 24, Math.max(240, Math.max(mainW, subW) + 40));
       const banH = this.bannerSubText ? (mainSz === 2 ? 46 : 36) : mainSz === 2 ? 32 : 24;
       const banX = Math.round((w - banW) * 0.5);
-      const hudBot = typeof renderer?.getHudBottomY === 'function' ? renderer.getHudBottomY() : 82;
-      const banY = Math.round(hudBot + (isCompact ? 54 : 58));
+      const banY = Math.round(hudBot + (isShort ? 44 : isCompact ? 86 : 74));
+      activeBannerBottomY = banY + banH;
 
       ctx.globalAlpha = fade;
       ctx.fillStyle = '#05070e';
@@ -3635,6 +4436,85 @@ export class EndlessManager {
         );
       }
       ctx.globalAlpha = 1;
+    }
+
+    // 4. Compact Upper-Mid FEVER 2X GOLD! / OVERDRIVE 3X GOLD! Stamp (never obscures HUD buttons)
+    if (feverTier >= 1) {
+      const isOverdrive = feverTier >= 2;
+      const stampText = isOverdrive ? 'OVERDRIVE 3X GOLD!' : 'FEVER 2X GOLD!';
+      const textW = PixelFont.measureWidth(stampText, 1);
+      const stampW = Math.min(w - 36, Math.max(132, textW + 26));
+      const stampH = 22;
+      const cx = Math.round(w * 0.5);
+      const baseStampY = isShort
+        ? Math.round(hudBot + 48)
+        : isCompact
+          ? Math.round(hudBot + 94)
+          : Math.round(hudBot + 80);
+      const stampY = Math.min(
+        Math.max(44, h - 104),
+        activeBannerBottomY > 0 ? activeBannerBottomY + 6 : baseStampY
+      );
+      const stampX = Math.round(cx - stampW * 0.5);
+      const timerRatio = Math.max(0, Math.min(1, feverTimer / (isOverdrive ? 9.5 : 7.5)));
+      const fadeOut = feverTimer < 0.4 ? Math.max(0.2, feverTimer / 0.4) : 1;
+      const popFrac = this._feverStampPopTimer > 0 ? this._feverStampPopTimer / 0.28 : 0;
+      const stampScale = popFrac > 0 ? 1 + 0.16 * Math.sin(popFrac * Math.PI) : 1;
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = fadeOut;
+      if (
+        stampScale > 1.005 &&
+        typeof ctx.translate === 'function' &&
+        typeof ctx.scale === 'function'
+      ) {
+        ctx.translate(cx, stampY + Math.floor(stampH * 0.5));
+        ctx.scale(stampScale, stampScale);
+        ctx.translate(-cx, -(stampY + Math.floor(stampH * 0.5)));
+      }
+
+      // Crisp dark #050712 2px pixel outline frame
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(stampX - 2, stampY - 2, stampW + 4, stampH + 4);
+      ctx.fillStyle = isOverdrive ? 'rgba(9, 14, 28, 0.94)' : 'rgba(14, 12, 22, 0.92)';
+      ctx.fillRect(stampX, stampY, stampW, stampH);
+
+      // Burnished gold / blazing gold-cyan border trim & corner studs
+      ctx.fillStyle = isOverdrive ? '#38bdf8' : '#facc15';
+      ctx.fillRect(stampX, stampY, stampW, 2);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(stampX, stampY + stampH - 2, stampW, 2);
+      ctx.fillRect(stampX, stampY, 2, stampH);
+      ctx.fillRect(stampX + stampW - 2, stampY, 2, stampH);
+
+      ctx.fillStyle = isOverdrive ? '#bae6fd' : '#fef9c3';
+      ctx.fillRect(stampX, stampY, 3, 3);
+      ctx.fillRect(stampX + stampW - 3, stampY, 3, 3);
+      ctx.fillRect(stampX, stampY + stampH - 3, 3, 3);
+      ctx.fillRect(stampX + stampW - 3, stampY + stampH - 3, 3, 3);
+
+      // Animated fever remaining fuel bar tucked neatly along bottom edge
+      const barW = Math.max(4, Math.round((stampW - 8) * timerRatio));
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(stampX + 4, stampY + stampH - 5, stampW - 8, 3);
+      ctx.fillStyle = isOverdrive ? '#38bdf8' : '#facc15';
+      ctx.fillRect(stampX + 4, stampY + stampH - 5, barW, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(stampX + 4, stampY + stampH - 5, barW, 1);
+
+      // Crisp outlined stamp label
+      PixelFont.drawCentered(
+        ctx,
+        stampText,
+        cx,
+        stampY + 9,
+        1,
+        isOverdrive ? '#67e8f9' : '#fde047',
+        '#ffffff',
+        true
+      );
+      ctx.restore();
     }
 
     ctx.restore();
@@ -3904,6 +4784,13 @@ export class EndlessManager {
       tapFeverTimer: this.economy.tapFeverTimer || 0,
       tapFeverLevel: this.economy.tapFeverLevel || 0,
       feverActive: (this.economy.tapFeverTimer || 0) > 0,
+      feverTier:
+        (this.economy.tapFeverTimer || 0) > 0
+          ? (this.economy.tapFeverLevel || 0) >= 2
+            ? 2
+            : 1
+          : 0,
+      feverGoldMult: stats?.feverGoldMult || 1,
       dpsMetrics: this.economy.dpsMetrics || { heroDps: 0, tapDps: 0, companionDps: 0, goldPerSec: 0 },
       totalKills: this.economy.totalKills || this.monstersKilled || 0,
       bossesSlain: this.economy.bossesSlain || 0,
@@ -3912,6 +4799,8 @@ export class EndlessManager {
       stats,
       economy: this.economy,
       companions: companionsView,
+      activeCompanionUnits: this.companions?.getActiveHudUnits?.() || [],
+      activeSynergies: this.companions?.getActiveSynergies?.() || [],
       activeCompanionCount: activeSlots.length,
       maxCompanionSlots: 3,
       hasAffordableRelic,
