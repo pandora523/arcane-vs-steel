@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps179';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps179';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps179';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps179';
+import { Fighter } from './Fighter.js?v=30fps180';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps180';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps180';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps180';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.22s): Explosive stepping storm jab -> snaps at F02/F03 (62/63)
@@ -279,6 +279,8 @@ export class BrawlerEx extends Fighter {
     this._ultTargetX = this.x;
     this._trueUltInit = false;
     this._trueUltStage = 0;
+    this._trueUltBlitzStep = 0;
+    this._trueUltDomainAlpha = 0;
     this._trueUltTargetX = this.x;
     this._trueUltStartX = this.x;
     this._stormCrashTimer = 0;
@@ -288,6 +290,7 @@ export class BrawlerEx extends Fighter {
     this.afterimageAccum = 0;
     this.activeVfxAnims = [];
     this.tempestBolts = [];
+    this._blitzTethers = [];
     this.groundSeals = [];
     this._exParticles = new ExParticleSystem('brawler_ex', '#fbbf24');
 
@@ -354,9 +357,9 @@ export class BrawlerEx extends Fighter {
         return im;
       };
       assets.brawler_ex = {
-        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps179'),
-        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps179'),
-        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps179'),
+        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps180'),
+        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps180'),
+        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps180'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -585,6 +588,9 @@ export class BrawlerEx extends Fighter {
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltInit = false;
       this._trueUltStage = 0;
+      this._trueUltBlitzStep = 0;
+      this._trueUltDomainAlpha = 0;
+      this._blitzTethers.length = 0;
       this._trueUltStartX = this.x;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
@@ -599,8 +605,10 @@ export class BrawlerEx extends Fighter {
       this.fx?.clear();
       this._exParticles?.clear();
       this.tempestBolts.length = 0;
+      this._blitzTethers.length = 0;
       this.groundSeals.length = 0;
       this._stormCrashTimer = 0;
+      this._trueUltDomainAlpha = 0;
       this.cameraAirLift = 0;
       this._overrideFrameIdx = null;
       this.trueUltFrameOverride = null;
@@ -732,8 +740,8 @@ export class BrawlerEx extends Fighter {
 
     if (landed) {
       if (game?.audio) game.audio.play(sfx, this.x + this.facing * 60);
-      if (hitStop > 0) game?.addHitStop?.(hitStop);
-      if (shakeDur > 0) game?.renderer?.addShake?.(isCrit ? 9 : 5, shakeDur);
+      if (hitStop > 0) game?.renderer?.triggerHitStop?.(hitStop);
+      if (shakeDur > 0) game?.renderer?.triggerShake?.(isCrit ? 9 : 5, shakeDur);
     }
     return landed;
   }
@@ -1175,42 +1183,35 @@ export class BrawlerEx extends Fighter {
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.trueUltDuration || 4.10;
-    const u = Math.min(1, Math.max(0, t / dur));
+    const tx = enemy && !enemy.isDead ? enemy.x : this._trueUltTargetX || this.x + this.facing * 180;
 
-    // Row 4 F15..F29 (`135..149`):
-    //   0.00..0.28 -> F15..F17 storm-pillar crouch gather
-    //   0.28..0.48 -> F18..F20 storm-pillar sky leap
-    //   0.48..0.64 -> F21..F22 apex meteor-fist poise tracking target
-    //   0.64..0.76 -> F23..F25 jagged golden-indigo lightning dive-slam crashing to ground!
-    //   0.76..1.00 -> F26..F29 planted touchdown kneel & stance recovery (`cellMaxY = 229..231`)
-    let colOffset = 0;
-    if (u < 0.28) colOffset = Math.min(2, Math.floor((u / 0.28) * 3));
-    else if (u < 0.48) colOffset = 3 + Math.min(2, Math.floor(((u - 0.28) / 0.20) * 3));
-    else if (u < 0.64) colOffset = 6 + Math.min(1, Math.floor(((u - 0.48) / 0.16) * 2));
-    else if (u < 0.76) colOffset = 8 + Math.min(2, Math.floor(((u - 0.64) / 0.12) * 3));
-    else colOffset = 11 + Math.min(3, Math.floor(((u - 0.76) / 0.24) * 4));
+    // Smooth dark Thunder-God storm domain backdrop alpha across Acts 1..4
+    if (t < 0.35) {
+      this._trueUltDomainAlpha = Math.min(1, t / 0.35);
+    } else if (t > dur - 0.55) {
+      this._trueUltDomainAlpha = Math.max(0, (dur - t) / 0.55);
+    } else {
+      this._trueUltDomainAlpha = 1;
+    }
 
-    this.trueUltFrameOverride = 135 + colOffset;
-    this._overrideFrameIdx = 135 + colOffset;
-
+    // ==================== ACT 1 (0.00..0.85s): THUNDER-GOD DOMAIN AWAKENING ====================
     if (!this._trueUltInit) {
       this._trueUltInit = true;
       this._trueUltStage = 0;
+      this._trueUltBlitzStep = 0;
+      this._blitzTethers.length = 0;
       this._trueUltStartX = this.x;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
-      const aimX =
-        enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 200;
-      this._trueUltTargetX = this._clampArenaX(aimX, game);
+      this._trueUltTargetX = this._clampArenaX(tx, game);
       this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
 
-      this.spawnVfxAnim(7, this.x, this.y - 84, 240, 240, 1.15, { inFront: false, followOwner: true, offsetY: -84 });
-      this.spawnGroundSeal(this.x, this.groundY, 134, 1.18);
-      game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#fbbf24');
-      game?.vfx?.spawnSpecialCastAura?.(this, this.trueUltName, this.trueUltSub, 'tempest', true);
+      this.spawnVfxAnim(7, this.x, this.y - 92, 260, 260, 1.05, { inFront: false, followOwner: true, offsetY: -92 });
+      this.spawnGroundSeal(this.x, this.groundY, 146, 1.05);
       this.fx?.spawn('tempestPillar', this._safeFxX(this.x, game), this.groundY - 8, {
-        extra: { halfW: 30, height: 176 }
+        extra: { halfW: 32, height: 184 }
       });
+      this.spawnTempestBolt(this.x - 12, this.groundY - 360, this.x, this.groundY - 8, 0.36, 18);
       if (game?.audio) {
         game.audio.play('ult_cast', this.x);
         game.audio.playHeroVoice?.(this.heroId, 'true_ult_charge', {
@@ -1224,102 +1225,156 @@ export class BrawlerEx extends Fighter {
       if (!game?.isAdventureMode?.()) {
         this.heal(Math.round(this.maxHp * 0.072), 'RAIJIN SECOND WIND');
       }
-      game?.renderer?.addShake?.(7, 0.24);
+      game?.renderer?.triggerShake?.(10, 0.28);
     }
 
-    // Stage 1: Storm-Pillar Sky Leap (u = 0.28..0.48)
-    if (u >= 0.28 && u < 0.48) {
-      const lu = (u - 0.28) / 0.20;
-      const eased = 1 - Math.pow(1 - lu, 2.2);
-      this.y = this.groundY - eased * 188;
-      this.cameraAirLift = eased * 74;
+    if (t < 0.85) {
+      const fIdx = 135 + Math.min(2, Math.floor((t / 0.85) * 3));
+      this.trueUltFrameOverride = fIdx;
+      this._overrideFrameIdx = fIdx;
+      this.y = this.groundY;
+      return;
+    }
+
+    // ==================== ACT 2 (0.85..2.15s): 6-STRIKE STAR-CAGE LIGHTNING TELEPORT BLITZ ====================
+    if (t < 2.15) {
       if (this._trueUltStage < 1) {
         this._trueUltStage = 1;
-        this.spawnVfxAnim(4, this.x, this.groundY - 148, 224, 310, 0.72, { inFront: false });
-        this.spawnVfxAnim(1, this.x, this.groundY - 130, 188, 224, 0.62, { inFront: true });
-        this.spawnTempestBolt(this.x - 16, this.groundY, this.x + 12, this.groundY - 260, 0.36, 18);
-        if (game?.audio) game.audio.play('storm_leap', this.x);
+        this._trueUltTargetX = this._clampArenaX(tx, game);
       }
-      this.afterimageAccum += dt;
-      if (this.afterimageAccum >= 0.05) {
-        this.afterimageAccum = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, 18, 0.22);
+      const focusX = this._clampArenaX(enemy && !enemy.isDead ? enemy.x : this._trueUltTargetX, game);
+      this._trueUltTargetX = focusX;
+
+      const blitzSchedule = [
+        { time: 0.88, offX: -124, oy: 0, face: 1, frame: 63, gold: true },
+        { time: 1.08, offX: 124, oy: -10, face: -1, frame: 70, gold: false },
+        { time: 1.28, offX: -104, oy: -46, face: 1, frame: 77, gold: true },
+        { time: 1.48, offX: 104, oy: -46, face: -1, frame: 85, gold: false },
+        { time: 1.68, offX: -82, oy: -98, face: 1, frame: 106, gold: true },
+        { time: 1.88, offX: 82, oy: -98, face: -1, frame: 130, gold: false }
+      ];
+
+      while (this._trueUltBlitzStep < blitzSchedule.length && t >= blitzSchedule[this._trueUltBlitzStep].time) {
+        const s = blitzSchedule[this._trueUltBlitzStep++];
+        const prevX = this.x;
+        const prevY = this.y - 82;
+
+        this.spawnAfterimage(this.x, this.y, this.facing, 2, 3, 0.34);
+        this.x = this._clampArenaX(focusX + s.offX, game);
+        this.y = this.groundY + s.oy;
+        this.facing = s.face;
+        this.trueUltFrameOverride = s.frame;
+        this._overrideFrameIdx = s.frame;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, 18, 0.32);
+
+        // Weave persistent blazing lightning tether connecting each blitz point into a Thunder Star-Cage!
+        this._blitzTethers.push({
+          x0: prevX,
+          y0: prevY,
+          x1: this.x,
+          y1: this.y - 82,
+          age: 0,
+          maxLife: 1.35,
+          seed: Math.random() * 100,
+          isGold: s.gold
+        });
+        this.spawnVfxAnim(0, focusX, this.groundY - 88 + s.oy * 0.45, 198, 198, 0.28, {
+          flipX: s.face < 0,
+          inFront: true
+        });
+        this.spawnVfxAnim(3, focusX, this.groundY - 88 + s.oy * 0.4, 186, 176, 0.24, {
+          flipX: s.face < 0,
+          inFront: true
+        });
+        this.spawnTempestBolt(this.x, this.y - 82, focusX, this.groundY - 88, 0.22, 16);
+        this.spawnGroundSeal(focusX, this.groundY, 118 + this._trueUltBlitzStep * 10, 0.36);
+
+        this._applyTempestStrike(enemy, game, {
+          damage: 34,
+          reachFront: 280,
+          reachBack: 180,
+          hitStop: 0.024,
+          shakeDur: 0.075,
+          knockX: 6,
+          knockY: -34,
+          isCrit: s.gold,
+          sfx: s.gold ? 'heavy_cleave' : 'slash',
+          tier: 'TRUE_ULTIMATE'
+        });
       }
+      return;
     }
 
-    // Stage 2: Apex Meteor-Fist Lock-On Overhead (u = 0.48..0.64)
-    if (u >= 0.48 && u < 0.64) {
-      const au = (u - 0.48) / 0.16;
-      if (enemy && !enemy.isDead) {
-        this._trueUltTargetX = this._clampArenaX(enemy.x, game);
-      }
-      const hoverX = this._clampArenaX(this._trueUltTargetX - this.facing * 42, game);
-      this.x = this._trueUltStartX + (hoverX - this._trueUltStartX) * Math.min(1, au * 1.35);
-      this.y = this.groundY - 188 - Math.sin(au * Math.PI) * 18;
-      this.cameraAirLift = 74;
+    // ==================== ACT 3 (2.15..2.95s): HEAVEN-SPLITTING SKY ASCENT & RAIJIN HALO ====================
+    if (t < 2.95) {
+      const focusX = this._clampArenaX(enemy && !enemy.isDead ? enemy.x : this._trueUltTargetX, game);
+      this._trueUltTargetX = focusX;
+      const ascU = Math.min(1, (t - 2.15) / 0.80);
+
       if (this._trueUltStage < 2) {
         this._trueUltStage = 2;
-        this.spawnGroundSeal(this._trueUltTargetX, this.groundY, 152, 1.32);
-        this.fx?.spawn('tempestCrater', this._safeFxX(this._trueUltTargetX, game), this.groundY - 6, {
-          extra: { rx: 94, ry: 22 }
+        if (game?.audio) game.audio.play('storm_leap', this.x);
+        this.spawnVfxAnim(1, this.x, this.groundY - 140, 224, 290, 0.62, { inFront: true });
+        this.spawnVfxAnim(7, this.x, this.y - 96, 270, 270, 0.82, { inFront: false, followOwner: true, offsetY: -96 });
+        this.spawnGroundSeal(focusX, this.groundY, 174, 1.15);
+        this.fx?.spawn('tempestCrater', this._safeFxX(focusX, game), this.groundY - 6, {
+          extra: { rx: 108, ry: 24 }
         });
-        this.spawnTempestBolt(this.x, this.y - 80, this._trueUltTargetX, this.groundY - 6, 0.32, 20);
       }
-    }
 
-    // Stage 3: Jagged Golden-Indigo Lightning DIVE-SLAM Crashing Down (u = 0.64..0.76)
-    if (u >= 0.64 && u < 0.76) {
-      const du = (u - 0.64) / 0.12;
-      const slamEase = du * du * du;
-      const landX = this._clampArenaX(this._trueUltTargetX - this.facing * 56, game);
-      this.x = this.x + (landX - this.x) * Math.min(1, dt * 22);
-      this.y = this.groundY - 188 * (1 - slamEase);
-      this.cameraAirLift = 74 * (1 - slamEase);
+      const lift = 300 * (1 - Math.pow(1 - Math.min(1, ascU * 1.25), 2.3));
+      const hoverX = this._clampArenaX(focusX - this.facing * 52, game);
+      this.x = this.x + (hoverX - this.x) * Math.min(1, dt * 10);
+      this.y = this.groundY - lift;
+      this.cameraAirLift = lift * 0.68;
+
+      // Smooth knee-tuck launch (F18..F20) -> cocked downward meteor-fist poise (F21..F22)
+      const skyFrame = ascU < 0.56 ? 138 + Math.min(2, Math.floor((ascU / 0.56) * 3)) : 141 + (ascU >= 0.78 ? 1 : 0);
+      this.trueUltFrameOverride = skyFrame;
+      this._overrideFrameIdx = skyFrame;
+
       this.afterimageAccum += dt;
-      if (this.afterimageAccum >= 0.032) {
+      if (this.afterimageAccum >= 0.055) {
         this.afterimageAccum = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, 24, 0.24);
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, skyFrame - 120, 0.22);
+        this.spawnTempestBolt(this.x + (Math.random() - 0.5) * 80, this.y - 120, focusX + (Math.random() - 0.5) * 60, this.groundY - 4, 0.16, 18);
       }
+      return;
     }
 
-    // Impact Detonation at u >= 0.73 (clean planted touchdown!)
-    if (this._trueUltStage < 3 && u >= 0.73) {
+    // ==================== ACT 4 (2.95..4.10s): METEOR RAIJIN FIST CRASH & 5-PILLAR SKY CATACLYSM ====================
+    if (t < 3.09) {
+      const diveU = Math.min(1, (t - 2.95) / 0.14);
+      const landX = this._clampArenaX(this._trueUltTargetX - this.facing * 52, game);
+      this.x = this.x + (landX - this.x) * Math.min(1, dt * 28);
+      this.y = this.groundY - 300 * (1 - diveU * diveU);
+      this.cameraAirLift = Math.max(0, (this.groundY - this.y) * 0.68);
+      const diveFrame = 143 + Math.min(1, Math.floor(diveU * 2));
+      this.trueUltFrameOverride = diveFrame;
+      this._overrideFrameIdx = diveFrame;
+      this.spawnAfterimage(this.x, this.y, this.facing, 4, diveFrame - 120, 0.28);
+      return;
+    }
+
+    // Impact Detonation & Grounded Recovery (3.09..4.10s)
+    this.y = this.groundY;
+    this.vy = 0;
+    this.cameraAirLift = Math.max(0, this.cameraAirLift - dt * 960);
+    const recU = Math.min(1, (t - 3.09) / Math.max(0.1, dur - 3.09));
+    const impactFrame = recU < 0.24 ? 145 : 146 + Math.min(3, Math.floor(((recU - 0.24) / 0.76) * 4));
+    this.trueUltFrameOverride = impactFrame;
+    this._overrideFrameIdx = impactFrame;
+
+    if (this._trueUltStage < 3) {
       this._trueUltStage = 3;
       this.didActionFrame = true;
-      this.y = this.groundY;
-      this.vy = 0;
-      this.cameraAirLift = 0;
-      this._stormCrashTimer = 0.92;
+      this._stormCrashTimer = 1.0;
 
       const crashX = this._clampArenaX(this.x + this.facing * 58, game);
-      // Colossal Heaven-Splitting Storm Pillar + Thunder-Crater Ground Shatter!
-      this.spawnVfxAnim(4, crashX, this.groundY - 156, 268, 356, 0.88, { inFront: true });
-      this.spawnVfxAnim(5, crashX, this.groundY - 18, 296, 162, 0.92, { inFront: false });
-      this.spawnGroundSeal(crashX, this.groundY, 178, 0.98);
-      this.fx?.spawn('tempestPillar', this._safeFxX(crashX, game), this.groundY - 8, {
-        extra: { halfW: 38, height: 204 }
-      });
-      this.fx?.spawn('tempestCrater', this._safeFxX(crashX, game), this.groundY - 6, {
-        extra: { rx: 108, ry: 24 }
-      });
-      for (const off of [-84, -36, 36, 84]) {
-        const bx = this._clampArenaX(crashX + off, game);
-        this.spawnTempestBolt(bx + (off < 0 ? 18 : -18), this.groundY - 280, bx, this.groundY - 6, 0.42, 22);
-      }
-      this._exParticles?.burst(crashX, this.groundY - 46, {
-        count: 24,
-        shapes: ['bolt', 'star4', 'diamond'],
-        speedMin: 95,
-        speedMax: 320,
-        upBias: 95,
-        color: '#fbbf24',
-        accent: '#6366f1',
-        core: '#ffffff',
-        layer: 'front'
-      });
-
-      game?.renderer?.triggerFlash?.('rgba(254, 240, 138, 0.52)', 0.16);
-      game?.renderer?.addShake?.(16, 0.34);
+      // Black/Gold Anime Impact Frame + Colossal Shake + HitStop!
+      game?.renderer?.triggerImpactFrame?.(crashX, this.groundY - 110, 0.14, 'exvius');
+      game?.renderer?.triggerShake?.(24, 0.48);
+      game?.renderer?.triggerHitStop?.(0.088);
       game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
         worldX: crashX,
         speakerKey: this,
@@ -1328,52 +1383,98 @@ export class BrawlerEx extends Fighter {
         duckSfx: true
       });
 
+      // Colossal Central Heaven-Splitting Raijin Pillar + 2 Flanking Sky-Bolts (reaching clean to top of sky!)
+      const pillarSpecs = [
+        { off: 0, w: 236, h: 680, life: 0.90, beamW: 58, beamCol: '#fbbf24', inFront: true },
+        { off: -148, w: 138, h: 680, life: 0.72, beamW: 28, beamCol: '#38bdf8', inFront: false },
+        { off: 148, w: 138, h: 680, life: 0.72, beamW: 28, beamCol: '#38bdf8', inFront: false }
+      ];
+      for (let i = 0; i < pillarSpecs.length; i++) {
+        const ps = pillarSpecs[i];
+        const px = this._clampArenaX(crashX + ps.off, game);
+        this.spawnVfxAnim(4, px, this.groundY - ps.h * 0.48, ps.w, ps.h, ps.life, {
+          inFront: ps.inFront
+        });
+        game?.vfx?.spawnBeam?.({
+          x1: px,
+          y1: this.groundY - 640,
+          x2: px,
+          y2: this.groundY,
+          width: ps.beamW,
+          color: ps.beamCol,
+          coreColor: '#ffffff',
+          maxLife: i === 0 ? 0.54 : 0.40,
+          owner: this
+        });
+        this.spawnTempestBolt(px + (i % 2 === 0 ? -28 : 28), this.groundY - 460, px, this.groundY - 6, 0.46, 24);
+      }
+      // Diagonal outer lightning arcs exploding outward from crater
+      this.spawnTempestBolt(crashX, this.groundY - 24, this._clampArenaX(crashX - 220, game), this.groundY - 140, 0.38, 18);
+      this.spawnTempestBolt(crashX, this.groundY - 24, this._clampArenaX(crashX + 220, game), this.groundY - 140, 0.38, 18);
+
+      game?.vfx?.spawnDecal?.(crashX, this.groundY, 'crater', 174);
+      game?.vfx?.spawnShockwave?.(crashX, this.groundY - 4, 240, '#fbbf24', 0.46);
+      game?.vfx?.spawnShockwave?.(crashX, this.groundY - 4, 178, '#38bdf8', 0.34);
+      this.spawnVfxAnim(5, crashX, this.groundY - 18, 340, 180, 0.92, { inFront: false });
+      this.spawnGroundSeal(crashX, this.groundY, 192, 0.98);
+      this.fx?.spawn('tempestPillar', this._safeFxX(crashX, game), this.groundY - 8, {
+        extra: { halfW: 40, height: 210 }
+      });
+      this.fx?.spawn('tempestCrater', this._safeFxX(crashX, game), this.groundY - 6, {
+        extra: { rx: 118, ry: 26 }
+      });
+      this._exParticles?.burst(crashX, this.groundY - 54, {
+        count: 28,
+        shapes: ['bolt', 'star4', 'diamond'],
+        speedMin: 110,
+        speedMax: 340,
+        upBias: 110,
+        color: '#fbbf24',
+        accent: '#38bdf8',
+        core: '#ffffff',
+        layer: 'front'
+      });
+
       this._applyTempestStrike(enemy, game, {
-        damage: 445,
-        reachFront: 340,
-        reachBack: 150,
-        hitStop: 0.095,
+        damage: 380,
+        reachFront: 360,
+        reachBack: 220,
+        hitStop: 0.085,
         shakeDur: 0.24,
         knockX: 165,
-        knockY: -130,
+        knockY: -155,
         isCrit: true,
         sfx: 'thunder_slam',
         tier: 'TRUE_ULTIMATE'
       });
     }
 
-    // Secondary storm-crater aftershock pulse at u >= 0.82
-    if (this._trueUltStage === 3 && u >= 0.82) {
+    // Secondary storm-crater aftershock detonation at t >= 3.40s
+    if (this._trueUltStage === 3 && t >= 3.40) {
       this._trueUltStage = 4;
-      this.y = this.groundY;
-      this.vy = 0;
       const crashX = this._clampArenaX(this.x + this.facing * 58, game);
-      this.spawnVfxAnim(0, crashX, this.groundY - 88, 224, 224, 0.42, { inFront: true });
+      this.spawnVfxAnim(0, crashX, this.groundY - 96, 250, 250, 0.42, { inFront: true });
+      game?.vfx?.spawnShockwave?.(crashX, this.groundY - 4, 268, '#fef08a', 0.36);
       this._applyTempestStrike(enemy, game, {
-        damage: 255,
-        reachFront: 360,
-        reachBack: 160,
-        hitStop: 0.068,
+        damage: 145,
+        reachFront: 380,
+        reachBack: 220,
+        hitStop: 0.055,
         shakeDur: 0.16,
         knockX: 120,
-        knockY: -96,
+        knockY: -108,
         isCrit: true,
         sfx: 'heavy_cleave',
         tier: 'TRUE_ULTIMATE'
       });
     }
 
-    // Planted grounded recovery F26..F29
-    if (u >= 0.76) {
-      this.y = this.groundY;
-      this.vy = 0;
-      this.cameraAirLift = 0;
-    }
-
     if (t >= dur) {
       this.y = this.groundY;
       this.vy = 0;
       this.cameraAirLift = 0;
+      this._trueUltDomainAlpha = 0;
+      this._blitzTethers.length = 0;
       this.isInvulnerable = false;
       this.unstoppablePoise = false;
       this.setState('IDLE');
@@ -1633,6 +1734,13 @@ export class BrawlerEx extends Fighter {
       this.tempestBolts[i].age += dt;
       if (this.tempestBolts[i].age >= this.tempestBolts[i].maxLife) this.tempestBolts.splice(i, 1);
     }
+    for (let i = this._blitzTethers.length - 1; i >= 0; i--) {
+      this._blitzTethers[i].age += dt;
+      if (this._blitzTethers[i].age >= this._blitzTethers[i].maxLife) this._blitzTethers.splice(i, 1);
+    }
+    if (this.state !== 'TRUE_ULTIMATE' && this._trueUltDomainAlpha > 0) {
+      this._trueUltDomainAlpha = Math.max(0, this._trueUltDomainAlpha - dt * 2.4);
+    }
     for (let i = this.groundSeals.length - 1; i >= 0; i--) {
       this.groundSeals[i].age += dt;
       if (this.groundSeals[i].age >= this.groundSeals[i].maxLife) this.groundSeals.splice(i, 1);
@@ -1686,6 +1794,53 @@ export class BrawlerEx extends Fighter {
     }
   }
 
+  _drawTempestDomainBackdrop(ctx, renderer) {
+    const a = this._trueUltDomainAlpha || 0;
+    if (a <= 0.02 || this.isDead) return;
+    const cx = this._resolveShaderCenterX(renderer);
+    const gy = this.groundY || 520;
+    const t = this.stateTimer || 0;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    // Brooding midnight-indigo Thunder-God storm-sky curtain (seamless stepped alpha fade, 0 hard seams!)
+    ctx.globalAlpha = 0.58 * a;
+    ctx.fillStyle = '#070a1c';
+    ctx.fillRect(Math.round(cx - 1100), Math.round(gy - 720), 2200, 960);
+
+    for (let band = 0; band < 5; band++) {
+      const by = Math.round(gy - 420 + band * 84);
+      ctx.globalAlpha = (0.04 + band * 0.032) * a;
+      ctx.fillStyle = band >= 3 ? '#312e81' : '#1e1b4b';
+      ctx.fillRect(Math.round(cx - 1050), by, 2100, 86);
+    }
+
+    // Crisp stepped diagonal pixel storm-wind & rain streaks
+    ctx.globalAlpha = 0.34 * a;
+    for (let i = 0; i < 22; i++) {
+      const rx = Math.round(cx - 640 + (((i * 173 + Math.floor(t * 780)) % 1280) + 1280) % 1280);
+      const ry = Math.round(gy - 440 + (((i * 97 + Math.floor(t * 620)) % 440) + 440) % 440);
+      ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#38bdf8';
+      ctx.fillRect(rx, ry, 2, 16);
+      ctx.fillRect(rx - 2, ry + 14, 2, 14);
+    }
+
+    // Periodic distant horizon sky-lightning flashes behind the fighters
+    const flashIdx = Math.floor(t * 7.5);
+    if (flashIdx % 3 === 0) {
+      const bx = Math.round(cx + Math.sin(flashIdx * 3.7) * 340);
+      drawTempestPixelBolt(ctx, bx, gy - 440, bx + Math.sin(flashIdx) * 48, gy - 40, 7, 20, flashIdx * 11, 0.45 * a);
+    }
+    ctx.restore();
+
+    // Glowing Star-Cage lightning tethers connecting Act 2 blitz teleport strikes!
+    for (let i = 0; i < this._blitzTethers.length; i++) {
+      const tr = this._blitzTethers[i];
+      const ta = Math.max(0, 1 - tr.age / Math.max(0.01, tr.maxLife));
+      drawTempestPixelBolt(ctx, tr.x0, tr.y0, tr.x1, tr.y1, 7, 13, tr.seed, ta * 0.92);
+    }
+  }
+
   /**
    * Called by `Fighter.prototype.draw` BEFORE drawing Raijin EX's sprite frame (inherits DeathFX,
    * floor reflections, rim-light, hit-flashes, and shadow projection automatically!).
@@ -1694,6 +1849,8 @@ export class BrawlerEx extends Fighter {
     const sprites = this.getExSprites();
     const sheet = PixelForge.ensureImage?.(sprites?.sheet) || sprites?.sheet;
     const arenaCenterX = this._resolveShaderCenterX(renderer);
+
+    this._drawTempestDomainBackdrop(ctx, renderer);
 
     if (!this.isDead) {
       drawExBayerHalo(ctx, Math.round(this.x), Math.round(this.groundY - 4), 52, 16, '#6366f1', '#fbbf24', 0.16);
@@ -1762,7 +1919,7 @@ export class BrawlerEx extends Fighter {
       for (let i = 0; i < this.activeVfxAnims.length; i++) {
         const a = this.activeVfxAnims[i];
         if (a.row !== 4 && a.row !== 5 && a.row !== 7) continue;
-        const u = Math.min(1, a.age / Math.max(0.001, a.duration));
+        const u = Math.min(1, a.age / Math.max(0.001, a.maxLife || 0.34));
         const col = Math.min(29, Math.floor(u * 30));
         const fade = u > 0.8 ? (1 - u) / 0.2 : 1.0;
         const dw = Math.round(a.w);

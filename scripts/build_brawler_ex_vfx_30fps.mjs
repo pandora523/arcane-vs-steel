@@ -1,22 +1,20 @@
 #!/usr/bin/env node
 /**
- * Next-Gen 30fps HD-2D VFX Sprite Sheet Builder for RAIJIN EX -- "THE TEMPEST FIST" (`brawler_ex`).
- * Pure nearest-neighbor integer-grid pixel rendering (`104x104` logical -> `2x` NEAREST -> `208x208`),
- * `0` smooth vector / rotation calls, `0/240` 4px border clips, `29/29` transitions per row!
+ * Next-Gen 30fps RAZOR-SHARP 4-Tone HD-2D Pixel VFX Sheet Builder for:
+ *   RAIJIN EX -- "THE TEMPEST FIST" (`brawler_ex`)
  *
- * Outputs:
- *   1. `assets/sprites/brawler_ex_vfx.png` (`6240x1664`, `8 rows x 30 cols @ 208x208`)
- *   2. `/Users/rei/.gemini/antigravity/brain/9632a6ee-c817-4a54-a13c-c1d08491f273/scratch/debug_brawler_ex_vfx.png`
+ * Pure hard-edged quantized pixel art (`104x104` logical -> `2x` NEAREST -> `208x208`),
+ * ZERO muddy soft gradients, ZERO smooth vector / rotation calls, `0/240` 4px border clips, `29/29` transitions!
  *
- * Row Layout (`0..7`, 30fps each, palette `#0f172a #1e1b4b #4338ca #6366f1 #fbbf24 #fef08a #ffffff`):
- *   Row 0: Thunderclap Fist Shockwave Crescent (Beat 1/2/4 melee punch impact waves)
- *   Row 1: Sky-Breaker Rising Lightning Helix (Beat 3 uppercut & Ult climax rising bolt spiral)
- *   Row 2: Thunderstep Dash Lightning Stream (SKILL: THUNDERSTEP BREAKER forward surge)
- *   Row 3: Tempest Phantom Fist Barrage Burst (ULTIMATE: TEMPEST HUNDRED FISTS sculpted phantom fists)
- *   Row 4: Heaven-Splitting Raijin Storm Pillar (TRUE_ULTIMATE sky-to-earth jagged lightning column)
- *   Row 5: Thunder-Crater Ground Shatter Seal (TRUE_ULTIMATE & Thunderclap radial ground shockwave)
- *   Row 6: Iron-Body Static Parry Flare (CROUCH Iron Guard counter & parry diamond spark)
- *   Row 7: Raijin Storm-Crest Mandala Aura (Overdrive & Supreme Ult swirling storm-gold thunder ring)
+ * Row Layout (`0..7`, 30fps each, crisp high-contrast storm-gold + electric-azure + royal-indigo palette):
+ *   Row 0: Razor 4-Band Tapered Golden-White Thunderclap Crescent Arc (Beat 1/2/4 & Impact)
+ *   Row 1: Crisp Twin-Helix Sky-Breaker Lightning Vortex (Beat 3 Uppercut & Ult Climax)
+ *   Row 2: High-Speed Horizontal Thunderstep Lightning Wind-Streaks (SKILL & Dash)
+ *   Row 3: Sculpted Giant Energy Punch-Fists + Motion Cones (ULTIMATE: TEMPEST HUNDRED FISTS)
+ *   Row 4: Blinding White-Gold / Electric-Azure Heaven-Splitting Raijin Sky-Bolt Pillar (TRUE_ULTIMATE)
+ *   Row 5: Radial Shattered Thunder-Crater Shockwave & Flying Pixel Rock/Lightning Shards
+ *   Row 6: Razor 4-Point Golden-Azure Iron-Guard Parry Starburst
+ *   Row 7: Spinning Raijin Tomoe Drum Storm-Crest Mandala (3 Golden Tomoe + Crackling Arcs)
  */
 
 import fs from 'node:fs';
@@ -26,22 +24,22 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
-const SCRATCH_DIR =
-  '/Users/rei/.gemini/antigravity/brain/9632a6ee-c817-4a54-a13c-c1d08491f273/scratch';
 
 const LOG = 104;
 const CELL = 208;
 const ROWS = 8;
 const COLS = 30;
+const SAFE = 3; // >= 6px output margin on 208x208 (`0/240` border clips guaranteed!)
 
-// Raijin EX storm-gold + midnight-indigo palette
-const C_DEEP = [30, 27, 75];       // #1e1b4b
-const C_INDIGO = [67, 56, 202];    // #4338ca
-const C_VIOLET = [99, 102, 241];   // #6366f1
-const C_ICE = [165, 180, 252];     // #a5b4fc
-const C_GOLD = [251, 191, 36];     // #fbbf24
-const C_GOLD_HI = [254, 240, 138]; // #fef08a
-const C_WHITE = [255, 255, 255];   // #ffffff
+// Crisp 4-tone anime HD-2D storm palette (ZERO muddy brown/gray midtones!)
+const C_OUTLINE = [20, 18, 66];    // #141242 deep midnight indigo selout
+const C_INDIGO = [58, 52, 204];    // #3a34cc vivid royal storm indigo
+const C_AZURE = [56, 189, 248];    // #38bdf8 electric thunder cyan-azure
+const C_SKY = [186, 230, 253];     // #bae6fd crackling white-blue spark
+const C_AMBER = [245, 158, 11];    // #f59e0b rich golden amber
+const C_GOLD = [251, 191, 36];     // #fbbf24 radiant storm gold
+const C_GOLD_HI = [254, 240, 138]; // #fef08a blazing pale gold
+const C_WHITE = [255, 255, 255];   // #ffffff blinding lightning core
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -90,395 +88,458 @@ function encodeRgbaPng(width, height, rgba) {
   ]);
 }
 
-function blendPx(rgba, x, y, rgb, aFloat = 1.0) {
+// Crisp hard-pixel plotter (snaps alpha to clean Bayer / solid steps — ZERO blurry haze!)
+function putPx(rgba, x, y, rgb, alpha = 255) {
   const ix = Math.round(x);
   const iy = Math.round(y);
-  if (ix < 3 || ix >= LOG - 3 || iy < 3 || iy >= LOG - 3 || aFloat <= 0.01) return;
+  if (ix < SAFE || ix >= LOG - SAFE || iy < SAFE || iy >= LOG - SAFE || alpha <= 16) return;
   const o = (iy * LOG + ix) * 4;
-  const sa = Math.max(0, Math.min(1, aFloat));
-  const da = rgba[o + 3] / 255;
-  const outA = sa + da * (1 - sa);
-  if (outA <= 0) return;
-  rgba[o] = Math.round((rgb[0] * sa + rgba[o] * da * (1 - sa)) / outA);
-  rgba[o + 1] = Math.round((rgb[1] * sa + rgba[o + 1] * da * (1 - sa)) / outA);
-  rgba[o + 2] = Math.round((rgb[2] * sa + rgba[o + 2] * da * (1 - sa)) / outA);
-  rgba[o + 3] = Math.round(outA * 255);
+  if (alpha >= 240 || rgba[o + 3] === 0) {
+    rgba[o] = rgb[0];
+    rgba[o + 1] = rgb[1];
+    rgba[o + 2] = rgb[2];
+    rgba[o + 3] = Math.max(rgba[o + 3], Math.min(255, Math.round(alpha)));
+  } else {
+    const sa = alpha / 255;
+    const da = rgba[o + 3] / 255;
+    const outA = sa + da * (1 - sa);
+    rgba[o] = Math.round((rgb[0] * sa + rgba[o] * da * (1 - sa)) / outA);
+    rgba[o + 1] = Math.round((rgb[1] * sa + rgba[o + 1] * da * (1 - sa)) / outA);
+    rgba[o + 2] = Math.round((rgb[2] * sa + rgba[o + 2] * da * (1 - sa)) / outA);
+    rgba[o + 3] = Math.round(outA * 255);
+  }
 }
 
-function drawBolt(rgba, x0, y0, x1, y1, seed, jag, env, thick = 1.6, goldCore = true) {
+function drawDisk(rgba, cx, cy, r, rgb, alpha = 255) {
+  const ir = Math.ceil(r);
+  const r2 = r * r + 0.15;
+  for (let dy = -ir; dy <= ir; dy++) {
+    for (let dx = -ir; dx <= ir; dx++) {
+      if (dx * dx + dy * dy <= r2) putPx(rgba, cx + dx, cy + dy, rgb, alpha);
+    }
+  }
+}
+
+function drawDiamond(rgba, cx, cy, rx, ry, rgb, alpha = 255) {
+  const irx = Math.ceil(rx);
+  const iry = Math.ceil(ry);
+  for (let dy = -iry; dy <= iry; dy++) {
+    for (let dx = -irx; dx <= irx; dx++) {
+      if (Math.abs(dx) / Math.max(0.5, rx) + Math.abs(dy) / Math.max(0.5, ry) <= 1.05) {
+        putPx(rgba, cx + dx, cy + dy, rgb, alpha);
+      }
+    }
+  }
+}
+
+function drawStar4(rgba, cx, cy, arm, rgbCore = C_WHITE, rgbRim = C_GOLD) {
+  for (let i = -arm; i <= arm; i++) {
+    const col = Math.abs(i) <= Math.ceil(arm * 0.45) ? rgbCore : rgbRim;
+    putPx(rgba, cx + i, cy, col, 255);
+    putPx(rgba, cx, cy + i, col, 255);
+  }
+  putPx(rgba, cx - 1, cy - 1, rgbRim, 230);
+  putPx(rgba, cx + 1, cy - 1, rgbRim, 230);
+  putPx(rgba, cx - 1, cy + 1, rgbRim, 230);
+  putPx(rgba, cx + 1, cy + 1, rgbRim, 230);
+}
+
+function drawCrispBolt(rgba, x0, y0, x1, y1, seed, jag, coreW = 1, rimCol = C_AZURE, coreCol = C_WHITE, midCol = C_GOLD_HI) {
   const dx = x1 - x0;
   const dy = y1 - y0;
   const ln = Math.max(1, Math.hypot(dx, dy));
   const nx = -dy / ln;
   const ny = dx / ln;
-  const segs = Math.max(4, Math.min(12, Math.round(ln / 7)));
+  const segs = Math.max(4, Math.min(12, Math.round(ln / 6.5)));
   const pts = [[x0, y0]];
   for (let i = 1; i < segs; i++) {
     const u = i / segs;
-    const wob = Math.sin(seed * 3.1 + i * 4.3) * jag * Math.sin(u * Math.PI);
-    pts.push([x0 + dx * u + nx * wob, y0 + dy * u + ny * wob]);
+    const h = Math.sin((seed * 7.3 + i * 19.7) * 12.9898) * 43758.5453;
+    const j = ((h - Math.floor(h)) * 2 - 1) * jag * Math.sin(u * Math.PI);
+    pts.push([x0 + dx * u + nx * j, y0 + dy * u + ny * j]);
   }
   pts.push([x1, y1]);
 
-  const pathPts = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [ax, ay] = pts[i];
-    const [bx, by] = pts[i + 1];
-    const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) * 1.6));
-    for (let s = 0; s <= steps; s++) {
-      const t = s / steps;
-      pathPts.push([ax + (bx - ax) * t, ay + (by - ay) * t]);
-    }
-  }
-
-  // Pass 1: Indigo atmospheric aura
-  const rOut = Math.ceil(thick + 1.4);
-  for (const [px, py] of pathPts) {
-    for (let oy = -rOut; oy <= rOut; oy++) {
-      for (let ox = -rOut; ox <= rOut; ox++) {
-        const d = Math.hypot(ox, oy);
-        if (d <= thick + 1.4) {
-          blendPx(rgba, px + ox, py + oy, d > thick ? C_INDIGO : C_VIOLET, env * Math.max(0, 1 - d / (thick + 2.0)) * 0.65);
-        }
+  const trace = (rad, col, a) => {
+    for (let s = 0; s < pts.length - 1; s++) {
+      const [ax, ay] = pts[s];
+      const [bx, by] = pts[s + 1];
+      const st = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) * 1.6));
+      for (let k = 0; k <= st; k++) {
+        const t = k / st;
+        drawDisk(rgba, ax + (bx - ax) * t, ay + (by - ay) * t, rad, col, a);
       }
     }
-  }
-  // Pass 2: Storm-gold body
-  const rMid = Math.ceil(thick * 0.7);
-  for (const [px, py] of pathPts) {
-    for (let oy = -rMid; oy <= rMid; oy++) {
-      for (let ox = -rMid; ox <= rMid; ox++) {
-        if (Math.hypot(ox, oy) <= thick * 0.75) {
-          blendPx(rgba, px + ox, py + oy, goldCore ? C_GOLD : C_ICE, env * 0.9);
-        }
-      }
-    }
-  }
-  // Pass 3: White-hot razor spine
-  for (const [px, py] of pathPts) {
-    blendPx(rgba, px, py, goldCore ? C_WHITE : C_GOLD_HI, env);
-  }
-}
-
-function drawSpark4(rgba, cx, cy, arm, env, gold = true) {
-  const a = Math.max(2, Math.round(arm));
-  const cMid = gold ? C_GOLD : C_VIOLET;
-  const cHi = gold ? C_GOLD_HI : C_ICE;
-  for (let i = -a; i <= a; i++) {
-    const f = (1 - Math.abs(i) / (a + 1)) * env;
-    blendPx(rgba, cx + i, cy, Math.abs(i) <= 1 ? C_WHITE : cHi, f);
-    blendPx(rgba, cx, cy + i, Math.abs(i) <= 1 ? C_WHITE : cMid, f);
-  }
-}
-
-function drawSculptedPhantomFist104(rgba, cx, cy, scale, env, gold = true) {
-  const cOut = C_DEEP;
-  const cInd = gold ? C_INDIGO : C_VIOLET;
-  const cMid = gold ? C_GOLD : C_VIOLET;
-  const cHi = gold ? C_GOLD_HI : C_ICE;
-  // Crisp right-facing sculpted martial fist bitmap: wrist tape cuff, raised thumb clasp,
-  // 4 stepped knuckle ridge + indigo knuckle crease pixels (unmistakable fist silhouette!)
-  const rows = [
-    '....OOOOOO....',
-    '...OIMHHMIO...',
-    '..OIMWWWWMMO..',
-    'OOIMWWWWWWHIO.',
-    'OIMHWWWWWWWMIO',
-    'OIMHWWWWWWWMIO',
-    'OIMHWWWIWWWMIO',
-    'OIMHWWWWWWWMIO',
-    'OOIMWWWIWWWHIO',
-    '..OIMWWWWMMO..',
-    '...OIMHHMIO...',
-    '....OOOOOO....'
-  ];
-  const colorMap = {
-    O: cOut,
-    I: cInd,
-    M: cMid,
-    H: cHi,
-    W: C_WHITE
   };
-  const h = rows.length;
-  const w = rows[0].length;
-  for (let ry = 0; ry < h; ry++) {
-    for (let rx = 0; rx < w; rx++) {
-      const ch = rows[ry][rx];
-      const col = colorMap[ch];
-      if (!col) continue;
-      const px = cx + (rx - w * 0.5) * scale;
-      const py = cy + (ry - h * 0.5) * scale;
-      const step = Math.max(1, Math.ceil(scale));
-      for (let dy = 0; dy < step; dy++) {
-        for (let dx = 0; dx < step; dx++) {
-          blendPx(rgba, px + dx, py + dy, col, env);
-        }
-      }
-    }
-  }
+  trace(coreW + 1.5, C_INDIGO, 220);
+  trace(coreW + 0.8, rimCol, 245);
+  trace(Math.max(0.5, coreW * 0.65), midCol, 255);
+  trace(Math.max(0.4, coreW * 0.35), coreCol, 255);
 }
 
-// Row 0: Thunderclap Fist Shockwave Crescent
+// ============================================================================
+// ROW 0: RAZOR 4-BAND TAPERED GOLDEN-WHITE THUNDERCLAP CRESCENT ARC
+// ============================================================================
 function renderRow0(rgba, col) {
   const u = col / 29;
-  const env = Math.max(0.16, Math.sin(u * Math.PI) * 0.92 + 0.14);
-  const cx = 36 + u * 26;
+  const env = u < 0.14 ? u / 0.14 : Math.max(0, 1 - Math.max(0, u - 0.56) / 0.44);
+  if (env <= 0.04) {
+    putPx(rgba, 52 + (col % 3), 52, C_GOLD_HI, 180);
+    return;
+  }
+  const cx = 34 + u * 20;
   const cy = 52;
-  const rx = 18 + u * 18;
-  const ry = 26 + u * 14;
-  for (let y = 8; y < 96; y++) {
-    for (let x = 8; x < 96; x++) {
+  const rx = 20 + u * 22;
+  const ry = 28 + u * 16;
+  const maxHalfAng = (1.18 - u * 0.25) * Math.PI * 0.65;
+  const maxThick = (10.5 - u * 5.2) * (0.45 + 0.55 * env);
+
+  for (let y = SAFE; y < LOG - SAFE; y++) {
+    for (let x = SAFE; x < LOG - SAFE; x++) {
       const dx = x - cx;
       const dy = y - cy;
-      if (dx < -10) continue;
-      const rNorm = Math.hypot(dx / rx, dy / ry);
-      const band = Math.abs(rNorm - 0.82);
-      const arcFade = Math.max(0, Math.min(1, (dx + 8) / 22));
-      if (band < 0.28 && arcFade > 0.05) {
-        const w = (1 - band / 0.28) * arcFade * env;
-        const colRgb = band < 0.07 ? C_WHITE : band < 0.15 ? C_GOLD_HI : band < 0.21 ? C_GOLD : C_VIOLET;
-        blendPx(rgba, x, y, colRgb, w * 1.15);
-      }
+      const ang = Math.atan2(dy, dx);
+      if (Math.abs(ang) > maxHalfAng) continue;
+      const tipTaper = Math.cos((ang / maxHalfAng) * (Math.PI * 0.5));
+      if (tipTaper <= 0.04) continue;
+      const nr = Math.hypot(dx / rx, dy / ry);
+      const thickNorm = (maxThick * tipTaper) / ((rx + ry) * 0.5);
+      const rIn = 1.0 - thickNorm;
+      const rOut = 1.0 + thickNorm * 0.35;
+      if (nr < rIn || nr > rOut) continue;
+      const v = (nr - rIn) / Math.max(0.01, rOut - rIn);
+      // Bayer dither tail fade only on fading end frames
+      if (env < 0.55 && ((x + y) & 1) === 1 && v < 0.45) continue;
+      let colRgb = C_INDIGO;
+      if (v > 0.78) colRgb = C_WHITE;
+      else if (v > 0.52) colRgb = C_GOLD_HI;
+      else if (v > 0.26) colRgb = C_GOLD;
+      else if (v > 0.12) colRgb = C_AZURE;
+      putPx(rgba, x, y, colRgb, 255);
     }
   }
-  drawBolt(rgba, cx + rx * 0.6, cy - ry * 0.72, cx + rx * 0.85, cy + ry * 0.72, col * 3.1, 4.2, env * 0.92, 1.5, true);
-  drawSpark4(rgba, cx + rx * 0.8, cy + Math.sin(col * 0.8) * 14, 5.5, env, true);
+  // Crisp forward electric spark-tips & star glint
+  drawCrispBolt(rgba, cx + rx * 0.78, cy - ry * 0.52, cx + rx * 0.96, cy + ry * 0.52, col + 3, 5.5, 0.7, C_AZURE, C_WHITE, C_GOLD_HI);
+  if (env > 0.35) {
+    drawStar4(rgba, cx + rx + 2, cy + Math.round(Math.sin(u * 14) * 6), Math.round(3 + env * 3), C_WHITE, C_GOLD);
+  }
 }
 
-// Row 1: Sky-Breaker Rising Lightning Helix
+// ============================================================================
+// ROW 1: CRISP TWIN-HELIX SKY-BREAKER RISING LIGHTNING VORTEX
+// ============================================================================
 function renderRow1(rgba, col) {
   const u = col / 29;
-  const ph = u * Math.PI * 4;
-  const env = Math.sin(u * Math.PI) * 0.95 + 0.15;
+  const env = u < 0.14 ? u / 0.14 : Math.max(0, 1 - Math.max(0, u - 0.62) / 0.38);
+  const topY = 8 + Math.round((1 - Math.min(1, u * 2.2)) * 28);
+  const botY = 96;
   const cx = 52;
-  for (let s = 0; s < 42; s++) {
-    const v = s / 41;
-    const py = 90 - v * 76;
-    const rad = (10 + 18 * Math.sin(v * Math.PI)) * (0.65 + 0.35 * u);
-    const xA = cx + Math.cos(v * 9.5 - ph) * rad;
-    const xB = cx - Math.cos(v * 9.5 - ph) * rad;
-    for (let oy = -2; oy <= 2; oy++) {
-      for (let ox = -2; ox <= 2; ox++) {
-        const d = Math.hypot(ox, oy);
-        if (d <= 2.4) {
-          blendPx(rgba, xA + ox, py + oy, d < 1.0 ? C_WHITE : d < 1.8 ? C_GOLD : C_VIOLET, env * 0.85);
-          blendPx(rgba, xB + ox, py + oy, d < 1.0 ? C_GOLD_HI : C_INDIGO, env * 0.72);
-        }
+  const rad = (11 + Math.sin(u * Math.PI) * 14) * (0.4 + 0.6 * env);
+
+  // Crisp twin braided golden-white & electric-azure rising helices
+  for (let y = topY; y <= botY; y++) {
+    const f = (y - topY) / Math.max(1, botY - topY);
+    const taper = Math.sin(f * Math.PI);
+    const a1 = f * Math.PI * 4.5 - u * Math.PI * 6.0;
+    const x1 = cx + Math.cos(a1) * rad * taper;
+    const x2 = cx - Math.cos(a1) * rad * taper;
+    const w = Math.max(1, 2.2 * taper * env);
+    drawDisk(rgba, x1, y, w + 0.9, C_INDIGO, 240);
+    drawDisk(rgba, x1, y, w, C_GOLD, 255);
+    putPx(rgba, x1, y, C_WHITE, 255);
+
+    drawDisk(rgba, x2, y, w + 0.8, C_OUTLINE, 230);
+    drawDisk(rgba, x2, y, w * 0.9, C_AZURE, 255);
+    putPx(rgba, x2, y, C_SKY, 255);
+  }
+  // Razor central ascending bolt
+  drawCrispBolt(rgba, cx, botY - 2, cx, topY + 2, col * 3 + 5, 6.2, 1.1 * env + 0.4, C_GOLD, C_WHITE, C_GOLD_HI);
+  // Rising diamond spark flakes
+  for (let i = 0; i < 6; i++) {
+    const py = botY - (((u * 120 + i * 17) % (botY - topY + 12)));
+    const px = cx + Math.sin(i * 2.7 + col * 0.7) * (rad + 7);
+    drawDiamond(rgba, px, py, 2, 3, i % 2 === 0 ? C_GOLD_HI : C_SKY, 245);
+  }
+}
+
+// ============================================================================
+// ROW 2: SLEEK HIGH-SPEED HORIZONTAL THUNDERSTEP WIND-STREAKS
+// ============================================================================
+function renderRow2(rgba, col) {
+  const u = col / 29;
+  const env = u < 0.14 ? u / 0.14 : Math.max(0, 1 - Math.max(0, u - 0.62) / 0.38);
+  const headX = 32 + u * 62;
+  const lanes = [-20, -10, 0, 10, 20];
+  for (let i = 0; i < lanes.length; i++) {
+    const ly = 52 + lanes[i] + Math.round(Math.sin(col * 0.8 + i) * 1.5);
+    const len = (36 - Math.abs(lanes[i]) * 0.65) * (0.55 + 0.45 * env);
+    const x0 = Math.max(SAFE + 2, headX - len);
+    const x1 = Math.min(LOG - SAFE - 2, headX - Math.abs(lanes[i]) * 0.35);
+    if (x1 <= x0 + 3) continue;
+    const isCenter = i === 2;
+    for (let x = Math.round(x0); x <= Math.round(x1); x++) {
+      const f = (x - x0) / Math.max(1, x1 - x0);
+      if (f < 0.25 && ((x + ly) & 1) === 1) continue;
+      const halfH = isCenter ? (f > 0.6 ? 2 : 1) : f > 0.55 ? 1 : 0;
+      for (let dy = -halfH; dy <= halfH; dy++) {
+        const c =
+          dy === 0 && f > 0.55
+            ? C_WHITE
+            : isCenter
+              ? f > 0.3
+                ? C_GOLD_HI
+                : C_GOLD
+              : i % 2 === 0
+                ? C_AZURE
+                : C_INDIGO;
+        putPx(rgba, x, ly + dy, c, 255);
       }
     }
   }
-  drawBolt(rgba, cx - 4, 90, cx + 4, 14, col * 2.7 + 1, 5.5, env, 1.8, true);
-  drawSpark4(rgba, cx + Math.sin(ph) * 12, 22 + (col % 6) * 4, 6, env, true);
+  drawCrispBolt(rgba, Math.max(8, headX - 44), 52, Math.min(96, headX), 52, col * 5 + 1, 5.2, 0.9, C_GOLD, C_WHITE, C_GOLD_HI);
+  drawStar4(rgba, Math.min(95, headX), 52, Math.round(3 + env * 3), C_WHITE, C_GOLD);
 }
 
-// Row 2: Thunderstep Dash Lightning Stream
-function renderRow2(rgba, col) {
-  const u = col / 29;
-  const env = Math.max(0.16, Math.sin(u * Math.PI) * 0.88 + 0.16);
-  const leadX = 24 + u * 66;
-  const tailX = Math.max(10, leadX - 48);
-  for (let lane = -2; lane <= 2; lane++) {
-    const ly = 52 + lane * 8;
-    const w = 1 - Math.abs(lane) * 0.25;
-    drawBolt(rgba, tailX + Math.abs(lane) * 4, ly, leadX - Math.abs(lane) * 2, ly, col * 4.1 + lane * 7, 3.0, env * w, lane === 0 ? 2.1 : 1.2, lane === 0 || lane === -1);
+// ============================================================================
+// ROW 3: SCULPTED GIANT PIXEL ENERGY PUNCH-FISTS + TAPERED MOTION CONES
+// ============================================================================
+function drawEnergyFist104(rgba, fx, fy, scale, isGold) {
+  const cOut = C_OUTLINE;
+  const cMid = isGold ? C_AMBER : C_INDIGO;
+  const cLit = isGold ? C_GOLD : C_AZURE;
+  const cHi = isGold ? C_GOLD_HI : C_SKY;
+
+  // Tapered anime kinetic punch cone trailing behind the fist
+  const coneLen = Math.round(28 * scale);
+  for (let dx = -coneLen; dx <= 0; dx++) {
+    const f = 1 + dx / coneLen; // 0 at tail -> 1 at fist
+    const halfH = Math.max(1, Math.round(f * 7.5 * scale));
+    if (f < 0.35 && ((Math.round(fx + dx)) & 1) === 1) continue;
+    for (let dy = -halfH; dy <= halfH; dy++) {
+      const edge = Math.abs(dy) >= halfH - 1;
+      const col = edge ? cMid : Math.abs(dy) <= Math.ceil(halfH * 0.35) ? C_WHITE : f > 0.6 ? cHi : cLit;
+      putPx(rgba, fx + dx, fy + dy, col, 255);
+    }
   }
-  // Forward shock-ring nose
-  for (let i = 0; i < 36; i++) {
-    const a = (i / 36) * Math.PI * 2;
-    const px = leadX - 4 + Math.cos(a) * (6 + u * 4);
-    const py = 52 + Math.sin(a) * (16 + u * 10);
-    blendPx(rgba, px, py, Math.abs(Math.sin(a)) < 0.6 ? C_GOLD_HI : C_VIOLET, env * 0.82);
+
+  // Sculpted blocky pixel fist with 4 distinct knuckle ridges + tucked thumb!
+  const s = scale;
+  const fillBox = (x0, y0, x1, y1, col) => {
+    for (let y = Math.round(fy + y0 * s); y <= Math.round(fy + y1 * s); y++) {
+      for (let x = Math.round(fx + x0 * s); x <= Math.round(fx + x1 * s); x++) {
+        putPx(rgba, x, y, col, 255);
+      }
+    }
+  };
+  // Outer indigo/dark rim
+  fillBox(-7, -8, 9, 8, cOut);
+  // Main fist body
+  fillBox(-6, -7, 7, 7, cMid);
+  fillBox(-4, -6, 6, 5, cLit);
+  // 4 sculpted knuckle bumps along the leading strike face (+X)
+  for (const ky of [-5, -2, 1, 4]) {
+    fillBox(5, ky - 1, 9, ky + 1, cHi);
+    putPx(rgba, fx + 9 * s, fy + ky * s, C_WHITE, 255);
   }
-  drawSpark4(rgba, leadX, 52, 7, env, true);
+  // Tucked thumb silhouette on lower-front edge
+  fillBox(-2, 5, 5, 8, cLit);
+  // Blinding front impact crescent
+  for (let dy = -7; dy <= 7; dy++) {
+    const cxOff = Math.round((10.5 - (dy * dy) / 22) * s);
+    putPx(rgba, fx + cxOff, fy + dy * s, Math.abs(dy) <= 3 ? C_WHITE : cHi, 255);
+  }
 }
 
-// Row 3: Tempest Phantom Fist Barrage Burst
 function renderRow3(rgba, col) {
   const u = col / 29;
-  const ph = (col / 30) * Math.PI * 2;
-  const env = 0.88 + 0.12 * Math.sin(ph * 2);
   const fists = [
-    { bx: 42, by: 28, sp: 1.25, gold: true },
-    { bx: 58, by: 46, sp: 1.55, gold: false },
-    { bx: 60, by: 62, sp: 1.45, gold: true },
-    { bx: 38, by: 72, sp: 1.15, gold: false }
+    { ox: -4, oy: -22, phase: 0.0, gold: true, sc: 0.92 },
+    { ox: 8, oy: 0, phase: 0.33, gold: false, sc: 1.08 },
+    { ox: -2, oy: 22, phase: 0.66, gold: true, sc: 0.94 }
   ];
   for (let i = 0; i < fists.length; i++) {
     const f = fists[i];
-    const phaseI = (u * 2.0 + i * 0.25) % 1.0;
-    const fx = f.bx - 12 + phaseI * 26;
-    const fy = f.by + Math.sin(ph + i * 1.4) * 3.0;
-    const fEnv = Math.sin(phaseI * Math.PI) * env;
-    if (fEnv > 0.1) {
-      // Crisp directional martial pressure streak behind phantom fist (0 tadpole strings!)
-      for (let tx = 4; tx <= 20; tx++) {
-        const w = (1 - tx / 22) * fEnv * 0.65;
-        const halfH = Math.max(1, Math.round((1 - tx / 24) * 4.5));
-        for (let oy = -halfH; oy <= halfH; oy++) {
-          blendPx(rgba, fx - tx - 4, fy + oy, Math.abs(oy) <= 1 ? (f.gold ? C_GOLD_HI : C_ICE) : C_VIOLET, w);
-        }
-      }
-      drawSculptedPhantomFist104(rgba, fx, fy, f.sp, fEnv, f.gold);
-      // Forward impact crescent spark on punch tip
-      for (let a = -0.9; a <= 0.9; a += 0.22) {
-        blendPx(rgba, fx + 9 * f.sp + Math.cos(a) * 3, fy + Math.sin(a) * 9 * f.sp, f.gold ? C_GOLD : C_ICE, fEnv * 0.85);
-      }
-    }
+    const cyc = (u * 2.2 + f.phase) % 1.0;
+    const fx = 34 + cyc * 46 + f.ox;
+    const fy = 52 + f.oy + Math.sin(col * 0.9 + i * 2) * 2.0;
+    drawEnergyFist104(rgba, fx, fy, f.sc, f.gold);
   }
-  drawSpark4(rgba, 66 + Math.sin(ph * 3) * 8, 52 + Math.cos(ph * 2) * 10, 6, env * 0.9, true);
+  // Crackling forward lightning arc connecting the flurry
+  drawCrispBolt(rgba, 22, 52, 92, 52 + Math.sin(col) * 14, col * 7, 7.0, 0.8, C_AZURE, C_WHITE, C_GOLD_HI);
 }
 
-// Row 4: Heaven-Splitting Raijin Storm Pillar
+// ============================================================================
+// ROW 4: BLINDING WHITE-GOLD / ELECTRIC-AZURE HEAVEN-SPLITTING RAIJIN PILLAR
+// ============================================================================
 function renderRow4(rgba, col) {
   const u = col / 29;
-  const env = u < 0.12 ? 0.55 + 0.45 * (u / 0.12) : u > 0.82 ? Math.max(0.14, 1 - (u - 0.82) / 0.2) : 1.0;
+  const env = u < 0.12 ? u / 0.12 : Math.max(0, 1 - Math.max(0, u - 0.68) / 0.32);
   const cx = 52;
-  const halfW = (11 + 8 * Math.sin(u * Math.PI)) * (0.8 + 0.2 * Math.sin(col * 1.7));
-  for (let y = 10; y < 94; y++) {
-    const sway = Math.sin(y * 0.16 + col * 0.9) * 3.2;
-    const endFade = Math.min(1, (y - 8) / 10, (96 - y) / 10);
-    for (let x = 16; x < 88; x++) {
-      const d = Math.abs(x - (cx + sway));
-      if (d > halfW + 6) continue;
-      const core = Math.max(0, 1 - d / Math.max(2, halfW));
-      if (core > 0.02) {
-        const rgb = core > 0.74 ? C_WHITE : core > 0.46 ? C_GOLD_HI : core > 0.22 ? C_GOLD : C_VIOLET;
-        blendPx(rgba, x, y, rgb, core * endFade * env * 0.95);
-      }
+  const halfW = Math.max(3, (17.5 * (0.45 + 0.55 * env)) * (0.9 + 0.12 * Math.sin(col * 1.4)));
+
+  // Crisp 4-band vertical thunder column (ZERO muddy brown fog!)
+  for (let y = SAFE + 1; y < LOG - SAFE - 1; y++) {
+    const fy = (y - SAFE) / (LOG - SAFE * 2);
+    const sway = Math.sin(y * 0.22 + col * 1.1) * 2.2;
+    const flare = fy > 0.82 ? 1.0 + ((fy - 0.82) / 0.18) * 0.85 : 1.0;
+    const w = halfW * flare;
+    const xStart = Math.max(SAFE, Math.round(cx + sway - w));
+    const xEnd = Math.min(LOG - SAFE - 1, Math.round(cx + sway + w));
+    for (let x = xStart; x <= xEnd; x++) {
+      const dist = Math.abs(x - (cx + sway)) / Math.max(1, w);
+      if (env < 0.5 && ((x + y) & 1) === 1 && dist > 0.55) continue;
+      let rgb = C_INDIGO;
+      if (dist < 0.28) rgb = C_WHITE;
+      else if (dist < 0.52) rgb = C_GOLD_HI;
+      else if (dist < 0.74) rgb = C_GOLD;
+      else if (dist < 0.88) rgb = C_AZURE;
+      putPx(rgba, x, y, rgb, 255);
     }
   }
-  drawBolt(rgba, cx - 10, 12, cx - 4, 92, col * 5.3, 6.2, env, 1.8, true);
-  drawBolt(rgba, cx + 10, 12, cx + 4, 92, col * 5.9 + 2, 6.0, env, 1.6, false);
-  drawBolt(rgba, cx, 72, cx - 26, 90, col * 7.1, 4.0, env * 0.85, 1.2, true);
-  drawBolt(rgba, cx, 72, cx + 26, 90, col * 7.7, 4.0, env * 0.85, 1.2, true);
+
+  // Twin crackling zig-zag hyper-bolts spiraling around the blinding core + branching ground forks!
+  drawCrispBolt(rgba, cx - 4, 6, cx + 2, 95, col * 3 + 1, 9.0, 1.3, C_AZURE, C_WHITE, C_GOLD_HI);
+  drawCrispBolt(rgba, cx + 6, 8, cx - 3, 94, col * 5 + 9, 8.5, 0.9, C_GOLD, C_WHITE, C_SKY);
+  // Ground impact forks flaring left & right
+  drawCrispBolt(rgba, cx, 88, cx - 34, 96, col * 7 + 2, 4.5, 0.8, C_AZURE, C_WHITE, C_GOLD_HI);
+  drawCrispBolt(rgba, cx, 88, cx + 34, 96, col * 7 + 5, 4.5, 0.8, C_AZURE, C_WHITE, C_GOLD_HI);
+  // Crisp golden spark diamonds shooting upward along column edges
+  for (let i = 0; i < 8; i++) {
+    const sy = 94 - (((col * 5 + i * 13) % 84));
+    const side = i % 2 === 0 ? -1 : 1;
+    const sx = cx + side * (halfW + 4 + ((i * 3) % 8));
+    drawDiamond(rgba, sx, sy, 2, 3, i % 2 === 0 ? C_WHITE : C_GOLD_HI, 255);
+  }
 }
 
-// Row 5: Thunder-Crater Ground Shatter Seal
+// ============================================================================
+// ROW 5: RADIAL SHATTERED THUNDER-CRATER SHOCKWAVE & FLYING PIXEL SHARDS
+// ============================================================================
 function renderRow5(rgba, col) {
   const u = col / 29;
-  const env = u < 0.1 ? 0.65 + 0.35 * (u / 0.1) : Math.max(0.12, 1 - Math.max(0, u - 0.65) / 0.38);
+  const env = u < 0.12 ? u / 0.12 : Math.max(0, 1 - Math.max(0, u - 0.62) / 0.38);
   const cx = 52;
   const cy = 62;
-  const rx = 14 + u * 29;
-  const ry = 6 + u * 11;
-  // Perspective ground shockwave rings
-  for (let i = 0; i < 72; i++) {
-    const a = (i / 72) * Math.PI * 2;
-    const ca = Math.cos(a);
-    const sa = Math.sin(a);
-    for (let dr = -2.2; dr <= 2.2; dr += 0.7) {
-      const rgb = Math.abs(dr) < 0.7 ? C_WHITE : Math.abs(dr) < 1.4 ? C_GOLD : C_VIOLET;
-      blendPx(rgba, cx + ca * (rx + dr * 1.4), cy + sa * (ry + dr * 0.7), rgb, env * (1 - Math.abs(dr) / 2.6));
+  const rx = 14 + u * 34;
+  const ry = 6 + u * 15;
+
+  // Crisp double elliptical golden-white & electric-azure shockwave ring
+  for (let y = SAFE; y < LOG - SAFE; y++) {
+    for (let x = SAFE; x < LOG - SAFE; x++) {
+      const r = Math.hypot((x - cx) / rx, (y - cy) / ry);
+      if (r >= 0.72 && r <= 1.08) {
+        if (env < 0.5 && ((x + y) & 1) === 1) continue;
+        const c = r > 0.94 ? C_INDIGO : r > 0.84 ? C_WHITE : r > 0.78 ? C_GOLD_HI : C_AZURE;
+        putPx(rgba, x, y, c, 255);
+      }
     }
   }
-  // 8 jagged radial lightning cracks & dark-indigo rock splinters bursting upward
-  for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2 + u * 0.25;
-    drawBolt(rgba, cx + Math.cos(a) * 6, cy + Math.sin(a) * 3, cx + Math.cos(a) * (rx + 4), cy + Math.sin(a) * (ry + 3), col * 2 + k * 7, 2.4, env * 0.9, 1.2, k % 2 === 0);
-    // Flying dark pixel rock shard
-    const sx = cx + Math.cos(a) * (10 + u * 26);
-    const sy = cy - 4 - Math.sin(u * Math.PI) * (18 + (k % 3) * 8) + Math.sin(a) * 6;
-    blendPx(rgba, sx, sy, C_DEEP, env);
-    blendPx(rgba, sx + 1, sy, C_INDIGO, env);
-    blendPx(rgba, sx, sy + 1, C_GOLD, env * 0.8);
+  // 8 jagged radial crater lightning fissures
+  for (let i = 0; i < 8; i++) {
+    const ang = (i / 8) * Math.PI * 2 + 0.18;
+    const x1 = cx + Math.cos(ang) * (rx * 0.96);
+    const y1 = cy + Math.sin(ang) * (ry * 0.96);
+    drawCrispBolt(rgba, cx, cy, x1, y1, col * 3 + i * 7, 3.2, 0.7, C_AZURE, C_WHITE, C_GOLD_HI);
+  }
+  // Erupting pixel rock chunks & golden lightning sparks arcing upward!
+  for (let i = 0; i < 10; i++) {
+    const dir = (i % 2 === 0 ? 1 : -1) * (0.35 + (i % 5) * 0.18);
+    const px = cx + dir * (14 + u * 36);
+    const py = cy - Math.sin(Math.min(1, u * 1.25) * Math.PI) * (24 + (i % 4) * 11) + (i % 3) * 3;
+    drawDiamond(rgba, px, py, i % 3 === 0 ? 3 : 2, 2, i % 2 === 0 ? C_GOLD_HI : C_SKY, 255);
+    putPx(rgba, px, py, C_WHITE, 255);
   }
 }
 
-// Row 6: Iron-Body Static Parry Flare
+// ============================================================================
+// ROW 6: RAZOR 4-POINT GOLDEN-AZURE IRON-GUARD PARRY STARBURST
+// ============================================================================
 function renderRow6(rgba, col) {
   const u = col / 29;
-  const env = Math.max(0.16, Math.sin(u * Math.PI) * 0.9 + 0.14);
+  const env = u < 0.18 ? u / 0.18 : Math.max(0, 1 - Math.max(0, u - 0.52) / 0.48);
   const cx = 52;
   const cy = 52;
-  const arm = 12 + u * 24;
-  // Crisp diamond cross-starburst (Pass 1 indigo -> Pass 2 gold -> Pass 3 white)
-  for (let y = 12; y < 92; y++) {
-    for (let x = 12; x < 92; x++) {
-      const dx = Math.abs(x - cx);
-      const dy = Math.abs(y - cy);
-      const manh = dx + dy;
-      const cross = Math.min(dx, dy);
-      if (cross <= 4 && Math.max(dx, dy) <= arm) {
-        const f = (1 - Math.max(dx, dy) / arm) * (1 - cross / 5) * env;
-        const rgb = cross <= 1 ? C_WHITE : cross <= 2 ? C_GOLD_HI : C_VIOLET;
-        blendPx(rgba, x, y, rgb, f * 1.2);
-      } else if (Math.abs(manh - (10 + u * 22)) <= 2.4) {
-        blendPx(rgba, x, y, manh < 10 + u * 22 ? C_GOLD : C_VIOLET, env * 0.85);
-      }
+  const arm = Math.round((12 + u * 30) * (0.4 + 0.6 * env));
+
+  // Crisp 4-point diamond flare + diagonal cross-sparks
+  for (let i = -arm; i <= arm; i++) {
+    const f = 1 - Math.abs(i) / Math.max(1, arm);
+    const thick = Math.max(0, Math.round(f * 3.2));
+    const colRgb = f > 0.65 ? C_WHITE : f > 0.35 ? C_GOLD_HI : C_GOLD;
+    for (let d = -thick; d <= thick; d++) {
+      putPx(rgba, cx + i, cy + d, Math.abs(d) === thick ? C_AZURE : colRgb, 255);
+      putPx(rgba, cx + d, cy + i, Math.abs(d) === thick ? C_AZURE : colRgb, 255);
     }
   }
-  drawBolt(rgba, cx - 18, cy - 18, cx + 18, cy + 18, col * 3.7, 3.2, env * 0.9, 1.3, true);
-  drawBolt(rgba, cx + 18, cy - 18, cx - 18, cy + 18, col * 4.3, 3.2, env * 0.9, 1.3, false);
+  const dArm = Math.round(arm * 0.62);
+  for (let i = -dArm; i <= dArm; i++) {
+    const colRgb = Math.abs(i) < dArm * 0.45 ? C_WHITE : C_GOLD;
+    putPx(rgba, cx + i, cy + i, colRgb, 255);
+    putPx(rgba, cx + i, cy - i, colRgb, 255);
+  }
+  drawDiamond(rgba, cx, cy, Math.max(3, Math.round(arm * 0.36)), Math.max(3, Math.round(arm * 0.36)), C_WHITE, 255);
+  // 4 crisp orbiting lightning sparks for smooth 30fps shimmer across all 30 frames
+  const orbR = 14 + u * 26;
+  for (let k = 0; k < 4; k++) {
+    const a = u * Math.PI * 3.0 + (k * Math.PI) / 2;
+    const sx = cx + Math.cos(a) * orbR;
+    const sy = cy + Math.sin(a) * orbR;
+    drawDiamond(rgba, sx, sy, 1.5, 1.5, k % 2 === 0 ? C_GOLD_HI : C_SKY, 255);
+  }
 }
 
-// Row 7: Raijin Storm-Crest Mandala Aura
+// ============================================================================
+// ROW 7: SPINNING RAIJIN TOMOE DRUM STORM-CREST MANDALA (3 CRISP TOMOE)
+// ============================================================================
 function renderRow7(rgba, col) {
-  const u = col / 30;
-  const ph = u * Math.PI * 2;
-  const cx = 51.5;
-  const cy = 51.5;
-  const rOuter = 34;
-  const rInner = 22;
-  for (let y = 10; y < 94; y++) {
-    for (let x = 10; x < 94; x++) {
-      const dx = x - cx;
-      const dy = y - cy;
-      const r = Math.hypot(dx, dy);
-      const ang = Math.atan2(dy, dx);
-      if (Math.abs(r - rOuter) <= 2.6) {
-        const pulse = 0.72 + 0.28 * Math.sin(ang * 6 - ph * 2);
-        const rgb = Math.abs(r - rOuter) < 0.9 ? C_GOLD_HI : C_VIOLET;
-        blendPx(rgba, x, y, rgb, pulse * 0.92);
-      } else if (Math.abs(r - rInner) <= 2.0) {
-        const pulse = 0.75 + 0.25 * Math.cos(ang * 3 + ph * 3);
-        blendPx(rgba, x, y, Math.abs(r - rInner) < 0.8 ? C_WHITE : C_GOLD, pulse * 0.88);
+  const u = col / 29;
+  const rot = u * Math.PI * 2;
+  const cx = 52;
+  const cy = 52;
+  const rOuter = 38;
+  const rInner = 29;
+
+  // Crisp golden-indigo double ring
+  for (let y = SAFE; y < LOG - SAFE; y++) {
+    for (let x = SAFE; x < LOG - SAFE; x++) {
+      const d = Math.hypot(x - cx, y - cy);
+      if (Math.abs(d - rOuter) <= 2.4) {
+        const colRgb = Math.abs(d - rOuter) < 0.9 ? C_GOLD_HI : Math.abs(d - rOuter) < 1.7 ? C_GOLD : C_INDIGO;
+        putPx(rgba, x, y, colRgb, 255);
+      } else if (Math.abs(d - rInner) <= 1.6) {
+        putPx(rgba, x, y, Math.abs(d - rInner) < 0.8 ? C_SKY : C_AZURE, 255);
       }
     }
   }
-  // 3 orbiting Raijin thunder-drum tomoe nodes connected by golden lightning arcs!
-  const nodes = [];
+
+  // 3 rotating Raijin Tomoe drum crests + crackling lightning links between them!
+  const pts = [];
   for (let k = 0; k < 3; k++) {
-    const a = ph + (k * Math.PI * 2) / 3;
-    const nx = cx + Math.cos(a) * 28;
-    const ny = cy + Math.sin(a) * 28;
-    nodes.push([nx, ny]);
-    for (let oy = -4; oy <= 4; oy++) {
-      for (let ox = -4; ox <= 4; ox++) {
-        const d = Math.hypot(ox, oy);
-        if (d <= 4.2) {
-          blendPx(rgba, nx + ox, ny + oy, d < 1.6 ? C_WHITE : d < 3.0 ? C_GOLD : C_INDIGO, 0.95);
-        }
-      }
-    }
+    const a = rot + (k * Math.PI * 2) / 3;
+    const tx = cx + Math.cos(a) * 33.5;
+    const ty = cy + Math.sin(a) * 33.5;
+    pts.push([tx, ty]);
+    // Outer taiko drum disc
+    drawDisk(rgba, tx, ty, 6.2, C_OUTLINE, 255);
+    drawDisk(rgba, tx, ty, 5.2, C_GOLD, 255);
+    drawDisk(rgba, tx, ty, 3.8, C_GOLD_HI, 255);
+    // Crisp dark-indigo tomoe comma core
+    drawDisk(rgba, tx + Math.cos(a + 1.2) * 1.4, ty + Math.sin(a + 1.2) * 1.4, 1.8, C_OUTLINE, 255);
+    putPx(rgba, tx - Math.cos(a) * 1.5, ty - Math.sin(a) * 1.5, C_WHITE, 255);
   }
   for (let k = 0; k < 3; k++) {
-    const [ax, ay] = nodes[k];
-    const [bx, by] = nodes[(k + 1) % 3];
-    drawBolt(rgba, ax, ay, bx, by, col * 3 + k * 9, 3.8, 0.88, 1.3, true);
+    const [x0, y0] = pts[k];
+    const [x1, y1] = pts[(k + 1) % 3];
+    drawCrispBolt(rgba, x0, y0, x1, y1, col * 5 + k * 11, 4.2, 0.7, C_AZURE, C_WHITE, C_GOLD_HI);
   }
 }
 
-function applyRadialEnvelopeAndSafeMargin(rgba) {
-  const cx = (LOG - 1) * 0.5;
-  const cy = (LOG - 1) * 0.5;
+function enforceSafeMargin(rgba) {
   for (let y = 0; y < LOG; y++) {
     for (let x = 0; x < LOG; x++) {
-      const o = (y * LOG + x) * 4;
-      let a = rgba[o + 3];
-      if (!a) continue;
-      const distC = Math.hypot(x - cx, y - cy);
-      let rMul = 1.0;
-      if (distC >= 48.0) rMul = 0.0;
-      else if (distC > 36.0) rMul = 0.5 * (1 + Math.cos(((distC - 36.0) / 12.0) * Math.PI));
-      const dEdge = Math.min(x, y, LOG - 1 - x, LOG - 1 - y);
-      let mMul = 1.0;
-      if (dEdge < 3) mMul = 0.0;
-      else if (dEdge < 7) mMul = (dEdge - 2.0) / 5.0;
-      a = Math.round(a * rMul * mMul);
-      if (a <= 2) {
-        rgba[o] = rgba[o + 1] = rgba[o + 2] = rgba[o + 3] = 0;
-      } else {
-        rgba[o + 3] = a;
+      if (x < SAFE || x >= LOG - SAFE || y < SAFE || y >= LOG - SAFE) {
+        const o = (y * LOG + x) * 4;
+        rgba[o] = 0; rgba[o + 1] = 0; rgba[o + 2] = 0; rgba[o + 3] = 0;
       }
     }
   }
@@ -531,15 +592,22 @@ function alphaComposite(src, dst, dstW, dstX, dstY) {
 }
 
 function bakeBrawlerExVfx() {
+  const args = process.argv.slice(2);
+  let qaDir = null;
+  const qi = args.indexOf('--qa-dir');
+  if (qi >= 0 && args[qi + 1]) qaDir = args[qi + 1];
+
   const sheetW = COLS * CELL;
   const sheetH = ROWS * CELL;
   const sheetRgba = new Uint8Array(sheetW * sheetH * 4);
-  const sampleCols = [0, 4, 9, 14, 19, 24, 28];
+  const sampleCols = [2, 8, 14, 20, 26];
   const qaW = sampleCols.length * CELL;
   const qaH = ROWS * CELL;
-  const qaRgba = new Uint8Array(qaW * qaH * 4);
-  for (let i = 0; i < qaW * qaH; i++) {
-    qaRgba[i * 4] = 12; qaRgba[i * 4 + 1] = 16; qaRgba[i * 4 + 2] = 34; qaRgba[i * 4 + 3] = 255;
+  const qaRgba = qaDir ? new Uint8Array(qaW * qaH * 4) : null;
+  if (qaRgba) {
+    for (let i = 0; i < qaW * qaH; i++) {
+      qaRgba[i * 4] = 12; qaRgba[i * 4 + 1] = 16; qaRgba[i * 4 + 2] = 34; qaRgba[i * 4 + 3] = 255;
+    }
   }
 
   const fns = [renderRow0, renderRow1, renderRow2, renderRow3, renderRow4, renderRow5, renderRow6, renderRow7];
@@ -553,7 +621,7 @@ function bakeBrawlerExVfx() {
     for (let c = 0; c < COLS; c++) {
       cell104.fill(0);
       fns[r](cell104, c);
-      applyRadialEnvelopeAndSafeMargin(cell104);
+      enforceSafeMargin(cell104);
 
       if (c > 0) {
         let diff = false;
@@ -572,8 +640,10 @@ function bakeBrawlerExVfx() {
       if (has4pxBorderClip(cell208)) borderClips++;
       blitUpscaledNearest(cell104, sheetRgba, sheetW, c * CELL, r * CELL);
 
-      const si = sampleCols.indexOf(c);
-      if (si >= 0) alphaComposite(cell208, qaRgba, qaW, si * CELL, r * CELL);
+      if (qaRgba) {
+        const si = sampleCols.indexOf(c);
+        if (si >= 0) alphaComposite(cell208, qaRgba, qaW, si * CELL, r * CELL);
+      }
     }
     if (transitions !== 29) {
       throw new Error(`[brawler_ex_vfx] Row ${r} transitions=${transitions} != 29`);
@@ -582,9 +652,10 @@ function bakeBrawlerExVfx() {
 
   const outPath = path.join(REPO_ROOT, 'assets/sprites/brawler_ex_vfx.png');
   fs.writeFileSync(outPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  fs.mkdirSync(SCRATCH_DIR, { recursive: true });
-  const dbgPath = path.join(SCRATCH_DIR, 'debug_brawler_ex_vfx.png');
-  fs.writeFileSync(dbgPath, encodeRgbaPng(qaW, qaH, qaRgba));
+  if (qaDir && qaRgba) {
+    fs.mkdirSync(qaDir, { recursive: true });
+    fs.writeFileSync(path.join(qaDir, 'brawler_vfx_check_v2.png'), encodeRgbaPng(qaW, qaH, qaRgba));
+  }
   console.log(`[OK] brawler_ex_vfx: ${outPath} (${sheetW}x${sheetH}) | borderClips=${borderClips}/240 | 29/29 all rows`);
   if (borderClips > 0) process.exitCode = 1;
 }
