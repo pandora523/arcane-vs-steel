@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps190';
-import { PixelFont } from './PixelFont.js?v=30fps190';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps190';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps190';
+import { PixelForge } from './PixelForge.js?v=30fps191';
+import { PixelFont } from './PixelFont.js?v=30fps191';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps191';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps191';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps190';
+} from './shaders/exNextGenFX.js?v=30fps191';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -256,6 +256,15 @@ export class Renderer {
   }
 
   setStageTransformation(stageKey, alpha = 1.0, permanent = false, holdDuration = 0) {
+    // Ignis Sol's Inferno map transformation is strictly VS-Mode-only so Adventure Mode preserves its 4-Realm & Stage Pack maps!
+    if (
+      this.adventureMode &&
+      (stageKey === 'inferno' ||
+        stageKey === 'shogunate_inferno' ||
+        stageKey === 'cob_monitor_inferno')
+    ) {
+      return;
+    }
     let resolvedKey = stageKey;
     const isCurShogunate =
       this.permanentStageOverride === 'shogunate' ||
@@ -1504,6 +1513,12 @@ export class Renderer {
         }
       }
 
+      const portalEmerge =
+        f.isMonster && typeof f.getPortalEmergeOffset === 'function' ? f.getPortalEmergeOffset() : null;
+      const emOx = portalEmerge?.active ? portalEmerge.ox : 0;
+      const emOy = portalEmerge?.active ? portalEmerge.oy : 0;
+      const emAlpha = portalEmerge?.active ? portalEmerge.alpha : 1;
+
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = isBespokeDeath
@@ -1527,9 +1542,9 @@ export class Renderer {
           : f.state === 'IDLE' || f.state === 'WALK'
             ? 0.16
             : 0.26;
-      ctx.globalAlpha = baseAlpha * deathFade * (f.isBenched ? 0.65 : 1);
+      ctx.globalAlpha = baseAlpha * deathFade * emAlpha * (f.isBenched ? 0.65 : 1);
       const glow = this.getGlowForColor(f.primaryColor);
-      ctx.drawImage(glow, f.x - 125, f.y - (f.isDead && !isBespokeDeath ? 95 : 175), 250, 250);
+      ctx.drawImage(glow, f.x + emOx - 125, f.y + emOy - (f.isDead && !isBespokeDeath ? 95 : 175), 250, 250);
       if (isChrono && !f.isDead) {
         ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.22 : 0.34) * deathFade;
         ctx.drawImage(this.glowGold, f.x - 105, f.y - 165, 210, 210);
@@ -1537,7 +1552,15 @@ export class Renderer {
       ctx.restore();
 
       if (f.heroId !== 'reaper' && f.heroId !== 'reaper_ex' && !isBespokeDeath) {
-        this.drawCharacterGroundHalo(ctx, f);
+        if (portalEmerge?.active) {
+          ctx.save();
+          ctx.translate(emOx, emOy);
+          ctx.globalAlpha *= emAlpha;
+          this.drawCharacterGroundHalo(ctx, f);
+          ctx.restore();
+        } else {
+          this.drawCharacterGroundHalo(ctx, f);
+        }
       }
       if (!f.isMonster && !isBespokeDeath) {
         this.drawCharacterPixelFlames(ctx, f);
@@ -8477,12 +8500,19 @@ export class Renderer {
     const assets = PixelForge.initAssets();
     for (const f of fighters) {
       if (f.isFullyBurrowed || f.isColossalBoss) continue;
-      const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
-      const jumpH = Math.max(0, fGy - f.y);
-      const scale = Math.max(0.25, 1 - jumpH / 320);
+      const portalEm =
+        f.isMonster && typeof f.getPortalEmergeOffset === 'function' ? f.getPortalEmergeOffset() : null;
+      const emOx = portalEm?.active ? portalEm.ox : 0;
+      const emOy = portalEm?.active ? portalEm.oy : 0;
+      const emAlpha = portalEm?.active ? portalEm.alpha : 1;
+      const fx = f.x + emOx;
+      const fy = f.y + emOy;
+      const fGy = (Number.isFinite(f.groundY) ? f.groundY : gy) + emOy;
+      const jumpH = Math.max(0, fGy - fy);
+      const scale = Math.max(0.25, 1 - jumpH / 320) * (portalEm?.active ? portalEm.scale : 1);
       const isBespokeDeath = Boolean(f.isDead && !f.isMonster && this.deathFX?.isHandlingFighter?.(f));
-      const bespokeShadowVis = isBespokeDeath ? this.deathFX.getShadowAlpha(f) : 1;
-      if (isBespokeDeath && bespokeShadowVis <= 0.02) continue;
+      const bespokeShadowVis = (isBespokeDeath ? this.deathFX.getShadowAlpha(f) : 1) * emAlpha;
+      if (bespokeShadowVis <= 0.02) continue;
       const deadStretch =
         f.isDead && !isBespokeDeath ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;
 
@@ -8535,12 +8565,12 @@ export class Renderer {
             if (alpha <= 0.015) return;
             // Note: sprite local Y is negative (-198..-230 at head, 0 at boots), so shear c=(L.x-f.x)/260
             // projects the head shadow AWAY from light L while keeping the boots pinned at (f.x, fGy + 2).
-            const shearX = Math.max(-0.85, Math.min(0.85, (L.x - f.x) / 260));
+            const shearX = Math.max(-0.85, Math.min(0.85, (L.x - fx) / 260));
             ctx.save();
             ctx.imageSmoothingEnabled = false;
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = alpha;
-            ctx.translate(Math.round(f.x), Math.round(fGy + 2));
+            ctx.translate(Math.round(fx), Math.round(fGy + 2));
             ctx.transform(1, 0, shearX, -0.30 * scale, 0, 0);
             ctx.scale(f.facing || 1, 1);
             PixelForge.drawSilhouetteFrame(ctx, sprites, frameIdx, 208, 208, '#03050c');
@@ -8554,28 +8584,28 @@ export class Renderer {
       // 2. Crisp Grounded Contact Shadow Under Fighter Boots
       let shiftX = 0;
       for (const l of lights) {
-        const dx = f.x - l.x;
-        const dist = Math.hypot(dx, f.y - l.y) + 1;
+        const dx = fx - l.x;
+        const dist = Math.hypot(dx, fy - l.y) + 1;
         if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 18 * l.intensity;
       }
       shiftX = Math.max(-24, Math.min(24, shiftX));
       const rx = 68 * scale * deadStretch;
       const ry = 17 * scale;
-      if (isBespokeDeath && bespokeShadowVis < 0.99) {
+      if (bespokeShadowVis < 0.99) {
         ctx.save();
         ctx.globalAlpha = bespokeShadowVis;
       }
-      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, fGy - ry + 4, rx * 2, ry * 2);
+      ctx.drawImage(this.shadowTex, fx + shiftX - rx, fGy - ry + 4, rx * 2, ry * 2);
       if (jumpH < 8) {
         ctx.drawImage(
           this.shadowTex,
-          f.x - 46 * deadStretch,
+          fx - 46 * deadStretch,
           fGy - 8,
           92 * deadStretch,
           18
         );
       }
-      if (isBespokeDeath && bespokeShadowVis < 0.99) {
+      if (bespokeShadowVis < 0.99) {
         ctx.restore();
       }
     }

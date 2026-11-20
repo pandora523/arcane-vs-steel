@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps190';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps190';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps190';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps190';
+import { Fighter } from './Fighter.js?v=30fps191';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps191';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps191';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps191';
 import {
   MALPHAS_VFX_ROW,
   blitMalphasVfxCell,
@@ -10,7 +10,7 @@ import {
   drawMalphasRunicTelegraphs,
   drawMalphasActionVfxOverlay,
   drawMalphasGrabForegroundOverlay
-} from '../engine/shaders/malphasBossShaders.js?v=30fps190';
+} from '../engine/shaders/malphasBossShaders.js?v=30fps191';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -1795,19 +1795,51 @@ export class Monster extends Fighter {
     ctx.restore();
   }
 
+  getPortalEmergeOffset() {
+    if (
+      this.isDead ||
+      this.isColossalBoss ||
+      !(this.portalSpawnTimer > 0) ||
+      !Number.isFinite(this.portalEmergeFromY) ||
+      this.hurtTimer > 0 ||
+      this.stunTimer > 0
+    ) {
+      return { active: false, ox: 0, oy: 0, scale: 1, alpha: 1, u: 1 };
+    }
+    const maxT = Math.max(0.1, this.portalSpawnMax || 0.72);
+    const u = Math.max(0, Math.min(1, 1 - this.portalSpawnTimer / maxT));
+    const ease = 1 - Math.pow(1 - u, 2.2);
+    const fromX = Number.isFinite(this.portalEmergeFromX) ? this.portalEmergeFromX : this.x;
+    const fromY = this.portalEmergeFromY;
+    const curY = Number.isFinite(this.groundY) ? this.groundY : this.y;
+    return {
+      active: true,
+      ox: Math.round((fromX - this.x) * (1 - ease)),
+      oy: Math.round((fromY - curY) * (1 - ease)),
+      scale: 0.74 + 0.26 * ease,
+      alpha: Math.min(1, 0.18 + u * 1.9),
+      u
+    };
+  }
+
   drawOverheadPlate(ctx) {
     if (this.isDead) return;
-    const scale = this.spriteScale || 1;
+    const emerge = this.getPortalEmergeOffset();
+    if (emerge.active && emerge.u < 0.28) return;
+    const scale = (this.spriteScale || 1) * (emerge.active ? emerge.scale : 1);
     const barW = this.isBoss ? 96 : this.isMiniBoss ? 86 : this.isElite ? 66 : 52;
     const barH = this.isBoss ? 7 : this.isMiniBoss ? 6 : 5;
-    const bx = Math.round(this.x);
+    const bx = Math.round(this.x + emerge.ox);
     const by = Math.round(
-      this.y - 168 * scale - (this.isBoss ? 18 : this.isMiniBoss ? 10 : 6)
+      this.y + emerge.oy - 168 * scale - (this.isBoss ? 18 : this.isMiniBoss ? 10 : 6)
     );
     const x0 = bx - Math.floor(barW * 0.5);
     const hpPct = Math.max(0, Math.min(1, this.hp / Math.max(1, this.maxHp)));
 
     ctx.save();
+    if (emerge.active) {
+      ctx.globalAlpha *= Math.min(1, (emerge.u - 0.28) / 0.35);
+    }
     if (this.telegraphTimer > 0 && !this.isBoss) {
       // Crisp 14x14 pixel-art exclamation danger badge (replaces verbose text boxes!)
       const pulse = Math.sin((this.walkPhase || 0) * 18) > -0.2;
@@ -1917,17 +1949,20 @@ export class Monster extends Fighter {
     if (!ctx || this.isDead || this.isColossalBoss) return;
     const assets = PixelForge.initAssets();
     const zone = this.getMonsterBiomeZone();
+    const emerge = this.getPortalEmergeOffset();
+    const ex = this.x + emerge.ox;
+    const egy = (this.groundY || this.y) + emerge.oy;
 
     if (this.isElite || this.isMiniBoss) {
       drawExBayerHalo(
         ctx,
-        this.x,
-        this.groundY - 2,
+        ex,
+        egy - 2,
         this.isMiniBoss ? 68 : 52,
         this.isMiniBoss ? 18 : 14,
         this.primaryColor || '#38bdf8',
         this.secondaryColor || '#fef08a',
-        this.isMiniBoss ? 0.16 : 0.12
+        (this.isMiniBoss ? 0.16 : 0.12) * emerge.alpha
       );
       const fxSheet = PixelForge.ensureImage?.(assets?.advFxSheet) || assets?.advFxSheet;
       const fxReady =
@@ -1936,21 +1971,21 @@ export class Monster extends Fighter {
           !(fxSheet instanceof HTMLImageElement) ||
           (fxSheet.complete && fxSheet.naturalWidth > 0));
       if (fxReady && ctx.drawImage) {
-        const sealW = this.isMiniBoss ? 148 : 116;
-        const sealH = this.isMiniBoss ? 52 : 40;
+        const sealW = Math.round((this.isMiniBoss ? 148 : 116) * emerge.scale);
+        const sealH = Math.round((this.isMiniBoss ? 52 : 40) * emerge.scale);
         const pulse = 0.5 + 0.5 * Math.sin((renderer?.time || 0) * 5.2 + (this.x % 7));
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 0.36 + 0.14 * pulse;
+        ctx.globalAlpha = (0.36 + 0.14 * pulse) * emerge.alpha;
         ctx.drawImage(
           fxSheet,
           (4 + zone) * 128,
           512,
           128,
           128,
-          Math.round(this.x - sealW * 0.5),
-          Math.round(this.groundY - sealH * 0.5),
+          Math.round(ex - sealW * 0.5),
+          Math.round(egy - sealH * 0.5),
           sealW,
           sealH
         );
@@ -2007,11 +2042,13 @@ export class Monster extends Fighter {
       return;
     }
     if (charSet && sheet && sheet.complete && sheet.naturalWidth > 0) {
-      const emergeU =
-        this.portalSpawnTimer > 0
+      const emerge = this.getPortalEmergeOffset();
+      const emergeU = emerge.active
+        ? emerge.u
+        : this.portalSpawnTimer > 0
           ? 1 - this.portalSpawnTimer / Math.max(0.1, this.portalSpawnMax || 0.72)
           : 1;
-      const emergeScale = emergeU < 1 ? 0.84 + 0.16 * emergeU : 1;
+      const emergeScale = emerge.active ? emerge.scale : emergeU < 1 ? 0.84 + 0.16 * emergeU : 1;
       const scale = (this.spriteScale || 1.0) * emergeScale;
       const drawW = Math.round(208 * scale);
       const drawH = Math.round(208 * scale);
@@ -2052,11 +2089,11 @@ export class Monster extends Fighter {
         : 1;
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.translate(Math.round(this.x + shakeX), Math.round(this.y));
+      ctx.translate(Math.round(this.x + emerge.ox + shakeX), Math.round(this.y + emerge.oy));
       ctx.scale(this.facing, 1);
 
       if (emergeU < 1 && !isReflection) {
-        ctx.globalAlpha *= 0.45 + 0.55 * emergeU;
+        ctx.globalAlpha *= emerge.active ? emerge.alpha : 0.45 + 0.55 * emergeU;
       }
       if (this.isDead) {
         ctx.globalAlpha *= deathAlpha;

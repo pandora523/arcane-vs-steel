@@ -1,7 +1,7 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps190';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps190';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps190';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps190';
+import { Fighter } from '../entities/Fighter.js?v=30fps191';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps191';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps191';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps191';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
@@ -15,10 +15,10 @@ import {
   loadAdventureHeroProgress,
   saveAdventureHeroProgress,
   resetAdventureHeroProgress
-} from './AdventureProgression.js?v=30fps190';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps190';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps190';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps190';
+} from './AdventureProgression.js?v=30fps191';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps191';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps191';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps191';
 
 export {
   ADVENTURE_HERO_PROGRESS_STORAGE_KEY,
@@ -2318,7 +2318,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps190') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps191') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -2328,7 +2328,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps190') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps191') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
@@ -2742,7 +2742,7 @@ export class AdventureManager {
       this.game.rightFighter = m;
     }
 
-    // Open a biome-matched HD-2D Dimensional Summoning Portal behind every emerging Realm enemy!
+    // Open a biome-matched HD-2D Dimensional Summoning Portal anchored flush against the back-wall stone curb!
     if (!m.isBoss && !opts.skipPortal) {
       const portalZone =
         kind === 'templar' || kind === 'astrologer'
@@ -2754,22 +2754,74 @@ export class AdventureManager {
               : kind === 'brute' || kind === 'fiend'
                 ? 3
                 : Math.max(0, Math.min(3, Math.floor(spawnX / 2400)));
+
+      const BACK_WALL_PORTAL_Y = 446;
+      const worldLim = Math.max(1070, this.getWorldWidth() - 125);
+      const minPortalX = this.lockActive && Number.isFinite(this.lockMinX) ? Math.max(125, this.lockMinX + 86) : 125;
+      const maxPortalX = this.lockActive && Number.isFinite(this.lockMaxX) ? Math.min(worldLim, this.lockMaxX - 86) : worldLim;
+      const clampX = (vx) => Math.max(minPortalX, Math.min(maxPortalX, Math.round(vx)));
+      const basePortalX = clampX(spawnX);
+
+      // Keep sibling back-wall portals cleanly spaced (>= 174px apart) AND clear of standing back-curb braziers/reliquaries!
+      const curbProps = Array.isArray(this.destructibles?.props) ? this.destructibles.props : [];
+      const isClear = (candX, checkProps = true) => {
+        if (this.portals.some((other) => other && other.age < 1.35 && Math.abs(other.x - candX) < 174)) {
+          return false;
+        }
+        if (checkProps) {
+          for (let i = 0; i < curbProps.length; i++) {
+            const prop = curbProps[i];
+            if (!prop || prop.destroyed) continue;
+            const pGy = Number.isFinite(prop.groundY) ? prop.groundY : prop.y || 560;
+            if (pGy <= 486 && Math.abs(prop.x - candX) < 118) return false;
+          }
+        }
+        return true;
+      };
+      let portalX = basePortalX;
+      if (!isClear(portalX, true)) {
+        const offsets = [116, -116, 186, -186, 256, -256, 336, -336, 420, -420];
+        let bestX = null;
+        let bestDist = Infinity;
+        for (const checkProps of [true, false]) {
+          for (const off of offsets) {
+            const cand = clampX(basePortalX + off);
+            if (isClear(cand, checkProps)) {
+              const d = Math.abs(cand - spawnX);
+              if (d < bestDist) {
+                bestDist = d;
+                bestX = cand;
+              }
+            }
+          }
+          if (bestX !== null) break;
+        }
+        if (bestX !== null) portalX = bestX;
+      }
+
       this.portals.push({
-        x: spawnX - facing * 26,
-        groundY: gy,
+        x: portalX,
+        groundY: BACK_WALL_PORTAL_Y,
+        targetGroundY: gy,
         zone: portalZone,
         facing,
         age: 0,
-        maxLife: 1.36,
+        maxLife: 1.68,
         isElite: Boolean(opts.isElite),
         primaryColor: m.primaryColor || '#38bdf8',
-        seed: (this.portals.length * 1.7 + spawnX * 0.01) % 6.28
+        seed: (this.portals.length * 1.7 + portalX * 0.01) % 6.28
       });
+
+      // Record back-wall portal threshold so Monster visually strides straight out of the archway onto its lane!
+      m.portalEmergeFromX = portalX;
+      m.portalEmergeFromY = BACK_WALL_PORTAL_Y + 4;
     }
 
     if (this.game.vfx) {
-      this.game.vfx.spawnShockwave(spawnX, gy - 24, m.isBoss ? 250 : 92, m.primaryColor, 0.34, true);
-      this.game.vfx.spawnBurst(spawnX, gy - 44, m.isBoss ? 28 : 12, m.primaryColor, 210, { upBias: 130, size: 5 });
+      const fxX = Number.isFinite(m.portalEmergeFromX) ? m.portalEmergeFromX : spawnX;
+      const fxY = Number.isFinite(m.portalEmergeFromY) ? m.portalEmergeFromY - 58 : gy - 24;
+      this.game.vfx.spawnShockwave(fxX, fxY, m.isBoss ? 250 : 96, m.primaryColor, 0.36, true);
+      this.game.vfx.spawnBurst(fxX, fxY - 12, m.isBoss ? 28 : 14, m.primaryColor, 210, { upBias: 120, size: 5 });
     }
     return m;
   }
@@ -6191,6 +6243,7 @@ export class AdventureManager {
     // 6. Update Interactive 2.5D Destructible Terrain, Reliquaries & Tactical Hazards
     this.destructibles.update(effDt, player, g);
 
+    this.syncStageBadge();
     this.syncRightHUD();
     this.syncControlDeckUI();
   }
@@ -6229,15 +6282,26 @@ export class AdventureManager {
       for (const p of this.portals) {
         if (pHasBounds && Math.abs(p.x - renderer.camX) > pHalfSpan) continue;
         const u = Math.max(0, Math.min(1, p.age / p.maxLife));
-        const openScale = p.age < 0.22 ? 0.35 + 0.65 * (p.age / 0.22) : u > 0.75 ? 1 - 0.55 * ((u - 0.75) / 0.25) : 1;
-        const alpha = p.age < 0.14 ? p.age / 0.14 : u > 0.72 ? (1 - u) / 0.28 : 1;
+        const openScale =
+          p.age < 0.24 ? 0.30 + 0.70 * (p.age / 0.24) : u > 0.78 ? 1 - 0.55 * ((u - 0.78) / 0.22) : 1;
+        const alpha = p.age < 0.14 ? p.age / 0.14 : u > 0.76 ? (1 - u) / 0.24 : 1;
         if (alpha <= 0.01) continue;
 
         const px = Math.round(p.x);
         const py = Math.round(p.groundY);
         const sealW = Math.round((p.isElite ? 196 : 176) * openScale);
-        const sealH = Math.round((p.isElite ? 82 : 74) * openScale);
+        const sealH = Math.round((p.isElite ? 52 : 46) * openScale);
+        // Seat the entire foreshortened Runic Seal flat on the walkable flagstones right at the portal threshold (y >= roadTop)!
+        const sealY = Math.round(Math.max(roadTop + Math.ceil(sealH * 0.5) + 1, py + 18));
         const z = Math.max(0, Math.min(3, p.zone | 0));
+
+        // Grounded stepped plinth contact shadow right beneath the back-wall archway stone base
+        const shW = Math.round((p.isElite ? 164 : 148) * openScale);
+        ctx.globalAlpha = 0.52 * alpha;
+        ctx.fillStyle = '#05070e';
+        ctx.fillRect(Math.round(px - shW * 0.5), py - 3, shW, 6);
+        ctx.globalAlpha = 0.28 * alpha;
+        ctx.fillRect(Math.round(px - shW * 0.56), py + 2, Math.round(shW * 1.12), 4);
 
         const glowTex = renderer?.getGlowForColor
           ? renderer.getGlowForColor(p.primaryColor)
@@ -6246,7 +6310,13 @@ export class AdventureManager {
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = Math.min(0.16, 0.15 * alpha);
-          ctx.drawImage(glowTex, Math.round(px - sealW * 0.55), Math.round(py - sealH * 0.55), Math.round(sealW * 1.1), Math.round(sealH * 1.1));
+          ctx.drawImage(
+            glowTex,
+            Math.round(px - sealW * 0.56),
+            Math.round(sealY - sealH * 0.58),
+            Math.round(sealW * 1.12),
+            Math.round(sealH * 1.16)
+          );
           ctx.restore();
         }
 
@@ -6259,13 +6329,13 @@ export class AdventureManager {
             128,
             128,
             Math.round(px - sealW * 0.5),
-            Math.round(py - sealH * 0.5),
+            Math.round(sealY - sealH * 0.5),
             sealW,
             sealH
           );
         } else {
           ctx.fillStyle = p.primaryColor || '#38bdf8';
-          ctx.fillRect(Math.round(px - sealW * 0.4), py - 4, Math.round(sealW * 0.8), 8);
+          ctx.fillRect(Math.round(px - sealW * 0.4), sealY - 4, Math.round(sealW * 0.8), 8);
         }
       }
       ctx.restore();
@@ -6429,35 +6499,35 @@ export class AdventureManager {
         let scaleY = 1.0;
         let alpha = 1.0;
 
-        if (p.age < 0.20) {
-          const k = p.age / 0.20;
+        if (p.age < 0.24) {
+          const k = p.age / 0.24;
           const ease = 1 - Math.pow(1 - k, 3);
-          scaleX = 0.16 + 0.88 * ease;
-          scaleY = 0.76 + 0.26 * ease;
-          alpha = Math.min(1, k * 1.4);
-        } else if (u < 0.74) {
-          const pulse = Math.sin(p.age * 12.0 + p.seed);
-          scaleX = 1.0 + 0.035 * pulse;
-          scaleY = 1.0 - 0.02 * pulse;
+          scaleX = 0.20 + 0.80 * ease;
+          scaleY = 0.82 + 0.18 * ease;
+          alpha = Math.min(1, k * 1.45);
+        } else if (u < 0.78) {
+          const pulse = Math.sin(p.age * 10.5 + p.seed);
+          scaleX = 1.0 + 0.02 * pulse;
+          scaleY = 1.0 - 0.015 * pulse;
           alpha = 1.0;
         } else {
-          const k = (u - 0.74) / 0.26;
-          scaleX = Math.max(0.10, 1 - 0.88 * k * k);
-          scaleY = 1.0 + 0.10 * k;
+          const k = (u - 0.78) / 0.22;
+          scaleX = Math.max(0.12, 1 - 0.86 * k * k);
+          scaleY = 1.0 + 0.08 * k;
           alpha = Math.max(0, 1 - k);
         }
         if (alpha <= 0.01) continue;
 
         const px = Math.round(p.x);
-        const py = Math.round(p.groundY + 6);
-        const baseW = p.isElite ? 214 : 196;
-        const baseH = p.isElite ? 224 : 206;
+        const py = Math.round(p.groundY);
+        const baseW = p.isElite ? 214 : 194;
+        const baseH = p.isElite ? 222 : 202;
         const dw = Math.max(8, Math.round(baseW * scaleX));
         const dh = Math.max(16, Math.round(baseH * scaleY));
         const dx = Math.round(px - dw * 0.5);
         const dy = Math.round(py - (122 / 128) * dh);
         const z = Math.max(0, Math.min(3, p.zone | 0));
-        const frame = Math.floor(p.age * 11.5 + p.seed) & 3;
+        const frame = Math.floor(p.age * 10.5 + p.seed) & 3;
 
         const glowTex = renderer?.getGlowForColor
           ? renderer.getGlowForColor(p.primaryColor)
@@ -6506,21 +6576,26 @@ export class AdventureManager {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       for (const p of this.portals) {
-        if (p.age >= 1.12) continue;
-        const fade = p.age > 0.85 ? 1 - (p.age - 0.85) / 0.27 : 1;
+        if (p.age >= 1.38) continue;
+        const fade = p.age > 1.04 ? 1 - (p.age - 1.04) / 0.34 : 1;
         const z = Math.max(0, Math.min(3, p.zone | 0));
         const cols = sparkCols[z];
-        for (let s = 0; s < 5; s++) {
-          const cyc = (p.age * (1.8 + (s % 2) * 0.45) + s * 0.21 + p.seed) % 1;
+        for (let s = 0; s < 6; s++) {
+          const cyc = (p.age * (1.65 + (s % 2) * 0.42) + s * 0.19 + p.seed) % 1;
           const sx = Math.round(
-            p.x + Math.cos(p.age * 5.2 + s * 1.35) * (46 + (s % 2) * 14)
+            p.x + Math.cos(p.age * 4.8 + s * 1.15) * (38 + (s % 2) * 16)
           );
-          const sy = Math.round(p.groundY - 18 - cyc * 148);
-          ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.88 * fade;
+          const sy = Math.round(p.groundY - 16 - cyc * 146);
+          ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.90 * fade;
+          // Crisp 4-pt HD-2D pixel diamond spark
           ctx.fillStyle = '#0d0f1c';
-          ctx.fillRect(sx - 3, sy - 3, 6, 6);
+          ctx.fillRect(sx - 3, sy - 1, 6, 2);
+          ctx.fillRect(sx - 1, sy - 3, 2, 6);
           ctx.fillStyle = cols[s & 1];
-          ctx.fillRect(sx - 2, sy - 2, 4, 4);
+          ctx.fillRect(sx - 2, sy - 1, 4, 2);
+          ctx.fillRect(sx - 1, sy - 2, 2, 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sx - 1, sy - 1, 2, 2);
         }
       }
       ctx.restore();
