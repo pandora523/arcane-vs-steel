@@ -1775,103 +1775,90 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
                 "expr": "fierce",
             }
 
-        # ============ TRUE ULTIMATE: HEAVEN-SPLITTING RAIJIN CRASH (F15..F29) ============
-        elif c <= 17:  # F15..F17: Heroic Thunder-God gather (fists braced wide at waist, ZERO face squiggles!)
+        # ============ TRUE ULTIMATE: HEAVEN-SPLITTING RAIJIN CRASH (F15..F29 — 100% GROUNDED BARE-KNUCKLE!) ============
+        elif c <= 17:  # F15..F17: Act 1 Point-blank lightning gut-check punch!
             k = (c - 15) / 2.0
+            def tu_gut_vfx(arr, fw, _bw, _pelv, col=c):
+                if col >= 16:
+                    draw_punch_smear_160(arr, fw[0] - 6, fw[1], fw[0] + 24, fw[1], half_w=6.5, phase=col)
+
             pose = {
-                "dx": -2.0,
-                "dy": 5.5 + 1.5 * k,
-                "torso_ang": 10.0 + 3.0 * k,
-                "head_ang": -4.0,
-                "l_foot": (-16.0, 0.0),
-                "r_foot": (16.0, 0.0),
-                "f_hand": (-8.0, 8.5),
-                "b_hand": (16.0, 5.5),
+                "dx": lerp(2.0, 12.0, k),
+                "dy": 4.8,
+                "torso_ang": lerp(10.0, 24.0, k),
+                "head_ang": -2.0,
+                "l_foot": (-15.5, 0.0),
+                "r_foot": (lerp(15.0, 24.0, k), 0.0),
+                "f_hand": (lerp(12.0, 28.5, k), lerp(4.0, 0.0, k)),
+                "b_hand": (-8.0, 6.0),
                 "f_charge": 1.0,
-                "b_charge": 1.0,
+                "b_charge": 0.7,
                 "wave_phase": c * 1.4,
-                "scarf_amp": 38.0,
-                "scarf_ang": 24.0,
-                "expr": "focus",
+                "scarf_amp": 36.0,
+                "scarf_ang": 22.0,
+                "expr": "yell",
+                "vfx_fn": tu_gut_vfx,
             }
-        elif c <= 20:  # F18..F20: Dynamic heroic knee-tuck sky-vault launch (clean silhouette!)
-            k = (c - 18) / 2.0
-            lift = lerp(-6.0, -14.0, k)
+        elif c <= 21:  # F18..F21: Act 2 Deep grounded horse-stance ONE-INCH PUNCH CHARGE (power fist cocked at hip, lead palm sighting!)
+            k = (c - 18) / 3.0
             pose = {
-                "dx": 4.0,
-                "dy": lift,
-                "torso_ang": -12.0,
-                "head_ang": -10.0,
-                "l_foot": (-11.0, lift * 0.6 + 2.0),
-                "r_foot": (15.5, lift * 0.85 - 11.0),
-                "l_boot_ang": 18.0,
-                "r_boot_ang": -20.0,
-                "f_hand": (17.0, -22.5),
-                "b_hand": (-7.5, 10.0),
-                "f_role": "uppercut",
+                "dx": -5.5 - 1.5 * k,
+                "dy": 6.5 + 1.2 * k,
+                "torso_ang": -12.0 - 4.0 * k,
+                "head_ang": 6.0,
+                "l_foot": (-17.5, 0.0),
+                "r_foot": (17.5, 0.0),
+                # Iconic martial arts charge: right power fist drawn deep back by hip, left open palm sighting forward!
+                "f_hand": (-12.0 - 2.0 * k, 7.5),
+                "b_hand": (22.0, -2.0),
+                "b_role": "palm",
                 "f_charge": 1.0,
                 "b_charge": 0.9,
-                "f_bend": 0,
-                "wave_phase": c * 1.6,
-                "scarf_amp": 38.0,
-                "scarf_ang": 38.0,
-                "expr": "yell",
-            }
-        elif c <= 22:  # F21..F22: Iconic cocked downward Raijin Meteor-Fist dive pose!
-            pose = {
-                "dx": 6.0,
-                "dy": -10.0,
-                "torso_ang": 34.0,
-                "head_ang": 6.0,
-                "l_foot": (-14.0, -14.0),
-                "r_foot": (8.0, -8.0),
-                "l_boot_ang": 22.0,
-                "r_boot_ang": -12.0,
-                "f_hand": (-9.0, -12.0),
-                "b_hand": (20.0, 16.0),
-                "f_charge": 1.0,
-                "b_charge": 1.0,
                 "wave_phase": c * 1.8,
                 "scarf_amp": 42.0,
-                "scarf_ang": -26.0,
-                "expr": "yell",
+                "scarf_ang": 28.0 + 4.0 * math.sin(k * math.tau),
+                "expr": "focus",
             }
-        elif c <= 25:  # F23..F25: Heroic earth-shattering meteor-fist slam! (100% CLEAN SILHOUETTE!)
-            k = (c - 23) / 2.0
-            dy_slam = lerp(2.0, 9.5, k)
+        elif c <= 25:  # F22..F25: Act 3 EXPLOSIVE HORIZONTAL MACH RAIL-PUNCH EXTENSION!
+            k = (c - 22) / 3.0
+            def tu_rail_vfx(arr, fw, _bw, _pelv, col=c, uk=k):
+                draw_punch_smear_160(arr, fw[0] - 10, fw[1], min(LOG_W - 6, fw[0] + 32), fw[1], half_w=8.5, phase=col)
+                draw_shockwave_ring_160(arr, min(LOG_W - 14, fw[0] + 10 + uk * 8), fw[1], 5.5, 16.0 + uk * 6.0, phase=col)
+
             pose = {
-                "dx": 9.0,
-                "dy": dy_slam,
-                "torso_ang": 30.0,
-                "head_ang": 4.0,
-                "l_foot": (-17.5, 0.0),
-                "r_foot": (21.5, 0.0),
-                "f_hand": (22.0, 21.0),
-                "b_hand": (-12.0, -6.0),
+                "dx": 14.0,
+                "dy": 5.5,
+                "torso_ang": 32.0,
+                "head_ang": -4.0,
+                "l_foot": (-18.0, 0.0),
+                "r_foot": (25.5, 0.0),
+                "f_hand": (30.0, -2.5),
+                "b_hand": (-13.0, 5.0),
                 "f_charge": 1.0,
-                "b_charge": 0.85,
-                "wave_phase": c * 1.9,
-                "scarf_amp": 40.0,
-                "scarf_ang": -16.0,
+                "b_charge": 0.9,
+                "wave_phase": c * 2.1,
+                "scarf_amp": 44.0,
+                "scarf_ang": 34.0,
                 "expr": "yell",
+                "vfx_fn": tu_rail_vfx,
             }
-        else:  # F26..F29: Heroic rise to tall proud martial stance (`cellMaxY = 229..231`)
+        else:  # F26..F29: Act 3 Heroic grounded skid-stop & slow proud rise (`cellMaxY = 229..231`)
             k = (c - 26) / 3.0
             pose = {
-                "dx": lerp(8.0, 0.5, k),
-                "dy": lerp(8.5, 1.8, k),
-                "torso_ang": lerp(24.0, 5.5, k),
-                "head_ang": lerp(4.0, -2.0, k),
+                "dx": lerp(10.0, 0.5, k),
+                "dy": lerp(6.0, 1.8, k),
+                "torso_ang": lerp(22.0, 5.5, k),
+                "head_ang": lerp(-3.0, -2.0, k),
                 "l_foot": (lerp(-17.0, -12.5, k), 0.0),
-                "r_foot": (lerp(20.5, 12.5, k), 0.0),
+                "r_foot": (lerp(22.0, 12.5, k), 0.0),
                 "l_boot_ang": 0.0,
                 "r_boot_ang": 0.0,
-                "f_hand": (lerp(18.0, 7.5, k), lerp(16.0, 4.0, k)),
-                "b_hand": (lerp(-6.0, 18.0, k), lerp(0.0, -2.5, k)),
-                "f_charge": 0.7 * (1.0 - k),
+                "f_hand": (lerp(24.0, 2.0, k), lerp(-1.0, 9.5, k)),
+                "b_hand": (lerp(-8.0, 18.5, k), lerp(5.0, 0.0, k)),
+                "f_charge": 0.85 * (1.0 - k),
                 "wave_phase": c * 1.0,
-                "scarf_amp": 26.0,
-                "expr": "fierce",
+                "scarf_amp": 28.0,
+                "expr": "grin" if c >= 28 else "fierce",
             }
         frames.append(render_pose_160(rig, pose))
     return frames
