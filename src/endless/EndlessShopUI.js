@@ -134,15 +134,15 @@ const ENDLESS_SHOP_CSS = `
 /* Top-Center Status Stack (Status Bar + Boss Controls) */
 .endless-top-stack {
   position: absolute;
-  top: max(88px, calc(env(safe-area-inset-top) + 84px));
+  top: max(60px, calc(env(safe-area-inset-top) + 56px));
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
-  max-width: min(690px, calc(100% - 216px));
+  max-width: min(880px, calc(100% - 316px));
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   pointer-events: none;
   z-index: 23;
 }
@@ -152,8 +152,8 @@ const ENDLESS_SHOP_CSS = `
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 6px 10px;
-  padding: 5px 10px;
+  gap: 5px 8px;
+  padding: 4px 9px;
   max-width: 100%;
   background: linear-gradient(180deg, rgba(14, 18, 34, 0.94) 0%, rgba(7, 9, 18, 0.97) 100%);
   border: 2px solid #d4af37;
@@ -394,14 +394,14 @@ const ENDLESS_SHOP_CSS = `
 /* Floating Shop Toggle Button */
 #endless-shop-toggle {
   position: absolute;
-  top: max(88px, calc(env(safe-area-inset-top) + 84px));
+  top: max(60px, calc(env(safe-area-inset-top) + 56px));
   right: max(12px, env(safe-area-inset-right));
   z-index: 28;
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px 6px 7px;
+  padding: 5px 10px 5px 7px;
   font-family: inherit;
   font-size: 0.46rem;
   letter-spacing: 0.04em;
@@ -450,7 +450,7 @@ const ENDLESS_SHOP_CSS = `
 /* Collapsible Gothic Shop Drawer */
 .endless-shop-shell {
   position: absolute;
-  top: max(130px, calc(env(safe-area-inset-top) + 126px));
+  top: max(104px, calc(env(safe-area-inset-top) + 100px));
   right: max(12px, env(safe-area-inset-right));
   bottom: max(76px, env(safe-area-inset-bottom));
   width: 348px;
@@ -987,6 +987,10 @@ const ENDLESS_SHOP_CSS = `
   color: #94a3b8;
 }
 
+.endless-empty-msg.hidden {
+  display: none !important;
+}
+
 /* Stats Tab */
 .endless-stats-grid {
   display: grid;
@@ -1059,7 +1063,7 @@ const ENDLESS_SHOP_CSS = `
 .endless-party-hud {
   position: absolute;
   left: max(14px, env(safe-area-inset-left));
-  top: max(96px, calc(env(safe-area-inset-top) + 92px));
+  top: max(98px, calc(env(safe-area-inset-top) + 94px));
   z-index: 24;
   width: 184px;
   max-width: calc(100vw - 28px);
@@ -2386,81 +2390,227 @@ const ENDLESS_SHOP_CSS = `
    ========================================================================= */
 @media (max-height: 500px) {
   .endless-top-stack {
-    top: max(56px, calc(env(safe-area-inset-top) + 52px));
-    max-width: calc(100% - 178px);
+    top: max(52px, calc(env(safe-area-inset-top) + 48px));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(140px, calc(env(safe-area-inset-right) + 134px));
+    transform: none;
+    width: auto;
+    max-width: none;
+    align-items: center;
     gap: 3px;
   }
 
   .endless-top-bar {
-    padding: 3px 6px;
-    gap: 4px 6px;
+    width: max-content;
+    max-width: 100%;
+    padding: 2px 6px;
+    gap: 3px 5px;
     border-width: 1.5px;
   }
 
   .endless-stage-badge {
-    font-size: 0.38rem;
+    font-size: 0.36rem;
     padding: 2px 5px;
+    gap: 4px;
+  }
+
+  .endless-loop-pill {
+    font-size: 0.30rem;
+    padding: 1px 3px;
   }
 
   .endless-wave-meter {
-    min-width: 88px;
+    min-width: 82px;
     height: 15px;
+    padding: 0 5px;
   }
 
   .endless-wave-label {
-    font-size: 0.35rem;
+    font-size: 0.33rem;
+  }
+
+  .endless-currency-group {
+    gap: 4px;
   }
 
   .endless-currency-pill {
-    font-size: 0.38rem;
+    font-size: 0.36rem;
     padding: 1px 5px 1px 3px;
+    gap: 4px;
   }
 
   .endless-currency-icon {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
   }
 
   .endless-fever-meter {
-    width: 66px;
+    width: 62px;
     height: 14px;
   }
 
   .endless-fever-label {
-    font-size: 0.30rem;
+    font-size: 0.29rem;
   }
 
   .endless-autoboss-btn,
   .endless-challenge-boss-btn {
-    font-size: 0.36rem;
-    padding: 3px 7px;
+    font-size: 0.35rem;
+    padding: 3px 6px;
   }
 
   #endless-shop-toggle {
-    top: max(56px, calc(env(safe-area-inset-top) + 52px));
+    top: max(52px, calc(env(safe-area-inset-top) + 48px));
     right: max(8px, env(safe-area-inset-right));
-    padding: 4px 8px 4px 5px;
-    font-size: 0.38rem;
+    padding: 3px 8px 3px 5px;
+    font-size: 0.36rem;
+    gap: 5px;
   }
 
   .endless-toggle-icon {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
   }
 
   .endless-shop-shell {
-    top: max(88px, calc(env(safe-area-inset-top) + 84px));
+    top: max(82px, calc(env(safe-area-inset-top) + 78px));
     right: max(8px, env(safe-area-inset-right));
     bottom: max(6px, env(safe-area-inset-bottom));
-    width: min(334px, 54vw);
+    width: min(332px, 50vw);
     z-index: 34;
+  }
+
+  .endless-drawer-header {
+    padding: 5px 8px;
+  }
+
+  .endless-drawer-title {
+    font-size: 0.44rem;
+  }
+
+  .endless-drawer-close {
+    width: 21px;
+    height: 21px;
+  }
+
+  .endless-tab-bar {
+    padding: 4px 5px;
+  }
+
+  .endless-tab-btn {
+    font-size: 0.33rem;
+    padding: 4px 2px;
+  }
+
+  .endless-bulk-bar {
+    padding: 4px 7px;
+  }
+
+  .endless-bulk-btn {
+    padding: 3px 7px;
+    font-size: 0.38rem;
+  }
+
+  .endless-scroll-list {
+    padding: 5px 6px 8px;
+    gap: 5px;
+  }
+
+  .endless-relic-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .endless-relic-icon-wrap {
+    width: 32px;
+    height: 32px;
+  }
+
+  .endless-relic-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .endless-relic-name {
+    font-size: 0.38rem;
+  }
+
+  .endless-relic-lv {
+    font-size: 0.33rem;
+    padding: 1px 3px;
+  }
+
+  .endless-buy-btn {
+    min-width: 68px;
+    padding: 5px 5px;
+  }
+
+  .endless-artifact-row {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .endless-artifact-icon-wrap {
+    width: 32px;
+    height: 32px;
+  }
+
+  .endless-artifact-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .endless-artifact-buy-btn {
+    min-width: 74px;
+    padding: 5px 5px;
+    font-size: 0.33rem;
+  }
+
+  .endless-ascend-card {
+    padding: 7px 8px;
+    gap: 5px;
+  }
+
+  .endless-ascend-btn {
+    padding: 7px 8px;
+    font-size: 0.39rem;
+  }
+
+  .endless-drawer-telemetry {
+    padding: 4px 7px;
+    gap: 3px;
+  }
+
+  .endless-party-bar {
+    padding: 4px 6px;
+    gap: 2px;
+  }
+
+  .endless-party-synergies-box {
+    gap: 2px;
+    padding-top: 3px;
+  }
+
+  .endless-party-syn-list {
+    max-height: 56px;
+    overflow-y: auto;
+    gap: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: #d4af37 #0a0d18;
+  }
+
+  .endless-party-syn-pill {
+    padding: 2px 5px;
+    gap: 1px;
   }
 
   .endless-party-hud {
     left: max(8px, env(safe-area-inset-left));
-    top: max(108px, calc(env(safe-area-inset-top) + 104px));
+    top: max(104px, calc(env(safe-area-inset-top) + 100px));
     width: auto;
-    max-width: min(306px, calc(100vw - 16px));
+    max-width: min(296px, calc(100vw - 16px));
     gap: 3px;
   }
 
@@ -2471,27 +2621,27 @@ const ENDLESS_SHOP_CSS = `
   }
 
   .endless-party-card {
-    width: 94px;
+    width: 92px;
     padding: 3px 4px;
     gap: 3px;
   }
 
   .endless-party-port-wrap {
-    width: 26px;
-    height: 26px;
-  }
-
-  .endless-party-portrait {
     width: 24px;
     height: 24px;
   }
 
+  .endless-party-portrait {
+    width: 22px;
+    height: 22px;
+  }
+
   .endless-party-name {
-    font-size: 0.31rem;
+    font-size: 0.30rem;
   }
 
   .endless-party-lv {
-    font-size: 0.27rem;
+    font-size: 0.26rem;
     padding: 1px 2px;
   }
 
@@ -2506,11 +2656,6 @@ const ENDLESS_SHOP_CSS = `
   .endless-synergy-badge {
     font-size: 0.27rem;
     padding: 2px 4px;
-  }
-
-  .endless-tab-btn {
-    font-size: 0.34rem;
-    padding: 5px 2px;
   }
 
   .endless-offline-modal {
@@ -2583,36 +2728,227 @@ const ENDLESS_SHOP_CSS = `
 }
 
 html.is-mobile-landscape .endless-top-stack {
-  top: 56px;
-  max-width: calc(100% - 178px);
+  top: max(52px, calc(env(safe-area-inset-top) + 48px));
+  left: max(8px, env(safe-area-inset-left));
+  right: max(140px, calc(env(safe-area-inset-right) + 134px));
+  transform: none;
+  width: auto;
+  max-width: none;
+  align-items: center;
   gap: 3px;
 }
 
 html.is-mobile-landscape .endless-top-bar {
+  width: max-content;
+  max-width: 100%;
+  padding: 2px 6px;
+  gap: 3px 5px;
+  border-width: 1.5px;
+}
+
+html.is-mobile-landscape .endless-stage-badge {
+  font-size: 0.36rem;
+  padding: 2px 5px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-loop-pill {
+  font-size: 0.30rem;
+  padding: 1px 3px;
+}
+
+html.is-mobile-landscape .endless-wave-meter {
+  min-width: 82px;
+  height: 15px;
+  padding: 0 5px;
+}
+
+html.is-mobile-landscape .endless-wave-label {
+  font-size: 0.33rem;
+}
+
+html.is-mobile-landscape .endless-currency-group {
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-currency-pill {
+  font-size: 0.36rem;
+  padding: 1px 5px 1px 3px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-currency-icon {
+  width: 13px;
+  height: 13px;
+}
+
+html.is-mobile-landscape .endless-fever-meter {
+  width: 62px;
+  height: 14px;
+}
+
+html.is-mobile-landscape .endless-fever-label {
+  font-size: 0.29rem;
+}
+
+html.is-mobile-landscape .endless-autoboss-btn,
+html.is-mobile-landscape .endless-challenge-boss-btn {
+  font-size: 0.35rem;
   padding: 3px 6px;
-  gap: 4px 6px;
 }
 
 html.is-mobile-landscape #endless-shop-toggle {
-  top: 56px;
-  right: 8px;
-  padding: 4px 8px 4px 5px;
-  font-size: 0.38rem;
+  top: max(52px, calc(env(safe-area-inset-top) + 48px));
+  right: max(8px, env(safe-area-inset-right));
+  padding: 3px 8px 3px 5px;
+  font-size: 0.36rem;
+  gap: 5px;
+}
+
+html.is-mobile-landscape .endless-toggle-icon {
+  width: 15px;
+  height: 15px;
 }
 
 html.is-mobile-landscape .endless-shop-shell {
-  top: 88px;
-  right: 8px;
-  bottom: 6px;
-  width: min(334px, 54vw);
+  top: max(82px, calc(env(safe-area-inset-top) + 78px));
+  right: max(8px, env(safe-area-inset-right));
+  bottom: max(6px, env(safe-area-inset-bottom));
+  width: min(332px, 50vw);
   z-index: 34;
 }
 
+html.is-mobile-landscape .endless-drawer-header {
+  padding: 5px 8px;
+}
+
+html.is-mobile-landscape .endless-drawer-title {
+  font-size: 0.44rem;
+}
+
+html.is-mobile-landscape .endless-drawer-close {
+  width: 21px;
+  height: 21px;
+}
+
+html.is-mobile-landscape .endless-tab-bar {
+  padding: 4px 5px;
+}
+
+html.is-mobile-landscape .endless-tab-btn {
+  font-size: 0.33rem;
+  padding: 4px 2px;
+}
+
+html.is-mobile-landscape .endless-bulk-bar {
+  padding: 4px 7px;
+}
+
+html.is-mobile-landscape .endless-bulk-btn {
+  padding: 3px 7px;
+  font-size: 0.38rem;
+}
+
+html.is-mobile-landscape .endless-scroll-list {
+  padding: 5px 6px 8px;
+  gap: 5px;
+}
+
+html.is-mobile-landscape .endless-relic-row {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 5px;
+  padding: 5px;
+}
+
+html.is-mobile-landscape .endless-relic-icon-wrap {
+  width: 32px;
+  height: 32px;
+}
+
+html.is-mobile-landscape .endless-relic-icon {
+  width: 26px;
+  height: 26px;
+}
+
+html.is-mobile-landscape .endless-relic-name {
+  font-size: 0.38rem;
+}
+
+html.is-mobile-landscape .endless-relic-lv {
+  font-size: 0.33rem;
+  padding: 1px 3px;
+}
+
+html.is-mobile-landscape .endless-buy-btn {
+  min-width: 68px;
+  padding: 5px 5px;
+}
+
+html.is-mobile-landscape .endless-artifact-row {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 5px;
+  padding: 5px;
+}
+
+html.is-mobile-landscape .endless-artifact-icon-wrap {
+  width: 32px;
+  height: 32px;
+}
+
+html.is-mobile-landscape .endless-artifact-icon {
+  width: 26px;
+  height: 26px;
+}
+
+html.is-mobile-landscape .endless-artifact-buy-btn {
+  min-width: 74px;
+  padding: 5px 5px;
+  font-size: 0.33rem;
+}
+
+html.is-mobile-landscape .endless-ascend-card {
+  padding: 7px 8px;
+  gap: 5px;
+}
+
+html.is-mobile-landscape .endless-ascend-btn {
+  padding: 7px 8px;
+  font-size: 0.39rem;
+}
+
+html.is-mobile-landscape .endless-drawer-telemetry {
+  padding: 4px 7px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape .endless-party-bar {
+  padding: 4px 6px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-party-synergies-box {
+  gap: 2px;
+  padding-top: 3px;
+}
+
+html.is-mobile-landscape .endless-party-syn-list {
+  max-height: 56px;
+  overflow-y: auto;
+  gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #d4af37 #0a0d18;
+}
+
+html.is-mobile-landscape .endless-party-syn-pill {
+  padding: 2px 5px;
+  gap: 1px;
+}
+
 html.is-mobile-landscape .endless-party-hud {
-  left: 8px;
-  top: 108px;
+  left: max(8px, env(safe-area-inset-left));
+  top: max(104px, calc(env(safe-area-inset-top) + 100px));
   width: auto;
-  max-width: min(306px, calc(100vw - 16px));
+  max-width: min(296px, calc(100vw - 16px));
   gap: 3px;
 }
 
@@ -2623,28 +2959,41 @@ html.is-mobile-landscape .endless-party-strip {
 }
 
 html.is-mobile-landscape .endless-party-card {
-  width: 94px;
+  width: 92px;
   padding: 3px 4px;
   gap: 3px;
 }
 
 html.is-mobile-landscape .endless-party-port-wrap {
-  width: 26px;
-  height: 26px;
-}
-
-html.is-mobile-landscape .endless-party-portrait {
   width: 24px;
   height: 24px;
 }
 
+html.is-mobile-landscape .endless-party-portrait {
+  width: 22px;
+  height: 22px;
+}
+
 html.is-mobile-landscape .endless-party-name {
-  font-size: 0.31rem;
+  font-size: 0.30rem;
 }
 
 html.is-mobile-landscape .endless-party-lv {
-  font-size: 0.27rem;
+  font-size: 0.26rem;
   padding: 1px 2px;
+}
+
+html.is-mobile-landscape .endless-party-ult-track {
+  height: 6px;
+}
+
+html.is-mobile-landscape .endless-party-ult-tag {
+  font-size: 0.24rem;
+}
+
+html.is-mobile-landscape .endless-synergy-badge {
+  font-size: 0.27rem;
+  padding: 2px 4px;
 }
 
 html.is-mobile-landscape .endless-offline-modal {
@@ -2685,7 +3034,7 @@ html.is-mobile-landscape .endless-offline-continue-btn {
 
 @media (max-width: 560px) and (orientation: portrait) {
   html:not(.is-mobile-landscape) .endless-top-stack {
-    top: max(78px, calc(env(safe-area-inset-top) + 74px));
+    top: max(56px, calc(env(safe-area-inset-top) + 52px));
     left: 6px;
     right: 6px;
     transform: none;
@@ -2697,7 +3046,7 @@ html.is-mobile-landscape .endless-offline-continue-btn {
   html:not(.is-mobile-landscape) .endless-top-bar {
     width: 100%;
     padding: 4px 6px;
-    gap: 4px 6px;
+    gap: 4px 5px;
   }
 
   html:not(.is-mobile-landscape) .endless-stage-badge {
@@ -2742,9 +3091,9 @@ html.is-mobile-landscape .endless-offline-continue-btn {
   }
 
   html:not(.is-mobile-landscape) #endless-shop-toggle {
-    top: max(164px, calc(env(safe-area-inset-top) + 160px));
-    right: max(8px, env(safe-area-inset-right));
-    padding: 5px 8px 5px 6px;
+    top: max(142px, calc(env(safe-area-inset-top) + 138px));
+    right: max(6px, env(safe-area-inset-right));
+    padding: 4px 8px 4px 6px;
     font-size: 0.39rem;
   }
 
@@ -2756,7 +3105,7 @@ html.is-mobile-landscape .endless-offline-continue-btn {
   html:not(.is-mobile-landscape) .endless-party-hud {
     left: 6px;
     right: 6px;
-    top: max(200px, calc(env(safe-area-inset-top) + 196px));
+    top: max(176px, calc(env(safe-area-inset-top) + 172px));
     width: auto;
     max-width: none;
     align-items: stretch;
@@ -3063,15 +3412,58 @@ html.is-mobile-landscape .endless-offline-continue-btn {
   box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.2);
 }
 
+@media (max-height: 500px) {
+  .endless-modifier-pill {
+    padding: 1px 5px 1px 3px;
+    font-size: 0.33rem;
+    gap: 3px;
+  }
+
+  .endless-modifier-icon {
+    width: 13px;
+    height: 13px;
+  }
+
+  .endless-relic-sets-strip {
+    gap: 3px;
+    padding: 4px 5px;
+  }
+
+  .endless-relic-set-pill {
+    padding: 3px 4px;
+    gap: 2px;
+  }
+
+  .endless-relic-milestone {
+    font-size: 0.28rem;
+    padding: 1px 3px;
+  }
+}
+
 html.is-mobile-landscape .endless-modifier-pill {
-  padding: 2px 5px 2px 3px;
-  font-size: 0.34rem;
-  gap: 4px;
+  padding: 1px 5px 1px 3px;
+  font-size: 0.33rem;
+  gap: 3px;
 }
 
 html.is-mobile-landscape .endless-modifier-icon {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
+}
+
+html.is-mobile-landscape .endless-relic-sets-strip {
+  gap: 3px;
+  padding: 4px 5px;
+}
+
+html.is-mobile-landscape .endless-relic-set-pill {
+  padding: 3px 4px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-relic-milestone {
+  font-size: 0.28rem;
+  padding: 1px 3px;
 }
 
 @media (max-width: 560px) {

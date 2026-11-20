@@ -6763,7 +6763,10 @@ html.is-mobile-landscape .adv-st-grid {
 
 #app.is-endless-active #adv-btn-skilltree,
 #app.is-endless-active #pause-adv-relics-section,
-#app.is-endless-active #pause-sp-badge {
+#app.is-endless-active #pause-sp-badge,
+#app.is-endless-active #hud-stage-badge,
+#app.is-endless-active #hud-mode-badge,
+#app.is-endless-active #left-partner-wing {
   display: none !important;
 }
 
