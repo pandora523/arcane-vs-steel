@@ -10,6 +10,7 @@ import { EndlessAscension } from './EndlessAscension.js?v=30fps199';
 import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps199';
 import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps199';
 import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps199';
+import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps199';
 
 export const ENDLESS_REALMS = [
   {
@@ -249,6 +250,7 @@ class EndlessProgressionAdapter {
       null;
     const gearMods = this.endless?.gear?.getGearModifiers?.() || null;
     const eventMods = this.endless?.events?.getEventModifiers?.() || null;
+    const evoMods = this.endless?.companionEvo?.getFormationModifiers?.() || null;
     const synHaste =
       Number.isFinite(synMods?.hasteMult) && synMods.hasteMult > 0 ? synMods.hasteMult : 1;
     const synMaxHp =
@@ -257,6 +259,10 @@ class EndlessProgressionAdapter {
       Number.isFinite(gearMods?.maxHpMult) && gearMods.maxHpMult > 0 ? gearMods.maxHpMult : 1;
     const evMaxHp =
       Number.isFinite(eventMods?.maxHpMult) && eventMods.maxHpMult > 0 ? eventMods.maxHpMult : 1;
+    const evoMaxHp =
+      Number.isFinite(evoMods?.maxHpMult) && evoMods.maxHpMult > 0 ? evoMods.maxHpMult : 1;
+    const evoHpRegen =
+      Number.isFinite(evoMods?.hpRegenBonus) && evoMods.hpRegenBonus > 0 ? evoMods.hpRegenBonus : 0;
     const hasteMult = safeBoundedFloat(
       (Number.isFinite(ecoStats.hasteMult) && ecoStats.hasteMult > 0 ? ecoStats.hasteMult : 1) *
         (1 + (Number.isFinite(partyBuffs.hasteBonus) ? partyBuffs.hasteBonus : 0)) *
@@ -267,16 +273,20 @@ class EndlessProgressionAdapter {
     );
     const cdDiv = Math.max(0.45, 1 / Math.max(0.5, hasteMult));
     const rawEcoMaxHp = Number.isFinite(ecoStats.maxHpMult) && ecoStats.maxHpMult > 0 ? ecoStats.maxHpMult : 1;
-    const maxHpMult = safeBoundedFloat(rawEcoMaxHp * synMaxHp * gearMaxHp * evMaxHp, 1, ENDLESS_MAX_MULT, 1);
+    const maxHpMult = safeBoundedFloat(rawEcoMaxHp * synMaxHp * gearMaxHp * evMaxHp * evoMaxHp, 1, ENDLESS_MAX_MULT, 1);
     const maxHp = safeBoundedInt(
       ENDLESS_BASE_HERO_HP * maxHpMult,
       ENDLESS_BASE_HERO_HP,
       ENDLESS_MAX_STAT
     );
+    const baseRegenPct =
+      Number.isFinite(ecoStats.hpRegenPct) && ecoStats.hpRegenPct > 0 ? ecoStats.hpRegenPct : 0;
+    const hpRegenPct = safeBoundedFloat(baseRegenPct + evoHpRegen, 0, 0.5, 0);
     return {
       ...ecoStats,
       maxHp,
       maxHpMult,
+      hpRegenPct,
       hasteMult,
       moveSpeedMult: safeBoundedFloat(ecoStats.moveSpeedMult, 0.5, 4.0, 1),
       skillSpiritCost: 28,
@@ -674,6 +684,7 @@ export class EndlessManager {
   constructor(game) {
     this.game = game;
     this.economy = new EndlessEconomy();
+    this.companionEvo = new EndlessCompanionEvo();
     this.companions = new EndlessCompanions(this);
     this.shopUI = new EndlessShopUI(this);
     this.skillSets = new AdventureSkillSets(this);
@@ -1206,6 +1217,10 @@ export class EndlessManager {
       this.events && typeof this.events.getEventModifiers === 'function'
         ? this.events.getEventModifiers() || null
         : null;
+    const evoMods =
+      this.companionEvo && typeof this.companionEvo.getFormationModifiers === 'function'
+        ? this.companionEvo.getFormationModifiers() || null
+        : null;
     this._activeDirectorSnap = dirSnap;
     this._activeDirectorMods = dirMods;
 
@@ -1219,7 +1234,8 @@ export class EndlessManager {
     const hasDir = Boolean(dirMods && typeof dirMods === 'object');
     const hasGear = Boolean(gearMods && typeof gearMods === 'object');
     const hasEv = Boolean(eventMods && typeof eventMods === 'object');
-    if (!hasSyn && !hasAsc && !hasDir && !hasGear && !hasEv) {
+    const hasEvo = Boolean(evoMods && typeof evoMods === 'object');
+    if (!hasSyn && !hasAsc && !hasDir && !hasGear && !hasEv && !hasEvo) {
       if (this._lastWrittenSynergyExt) {
         this._clearSynergyFromEconomy();
       } else {
@@ -1454,14 +1470,35 @@ export class EndlessManager {
         ? eventMods.hasteMult
         : 1.0;
 
+    const evoHero =
+      hasEvo && Number.isFinite(evoMods.heroDmgMult) && evoMods.heroDmgMult > 0
+        ? evoMods.heroDmgMult
+        : 1.0;
+    const evoComp =
+      hasEvo && Number.isFinite(evoMods.companionDmgMult) && evoMods.companionDmgMult > 0
+        ? evoMods.companionDmgMult
+        : 1.0;
+    const evoGold =
+      hasEvo && Number.isFinite(evoMods.goldMult) && evoMods.goldMult > 0 ? evoMods.goldMult : 1.0;
+    const evoCritChance =
+      hasEvo && Number.isFinite(evoMods.critBonus) ? evoMods.critBonus : 0;
+    const evoHaste =
+      hasEvo && Number.isFinite(evoMods.hasteMult) && evoMods.hasteMult > 0
+        ? evoMods.hasteMult
+        : 1.0;
+    const evoBossDmg =
+      hasEvo && Number.isFinite(evoMods.bossDmgMult) && evoMods.bossDmgMult > 0
+        ? evoMods.bossDmgMult
+        : 1.0;
+
     merged.globalDpsMult = safeBoundedFloat(
-      baseGlobal * ascHero * synHero * dirHero * gearHero * evHero,
+      baseGlobal * ascHero * synHero * dirHero * gearHero * evHero * evoHero,
       0.1,
       ENDLESS_MAX_MULT,
       1.0
     );
     merged.goldMult = safeBoundedFloat(
-      baseGold * ascGold * synGold * dirGold * gearGold * evGold,
+      baseGold * ascGold * synGold * dirGold * gearGold * evGold * evoGold,
       0.1,
       ENDLESS_MAX_MULT,
       1.0
@@ -1472,7 +1509,8 @@ export class EndlessManager {
         (synTap / synHero) *
         (dirTap / dirHero) *
         (gearTap / gearHero) *
-        (evTap / evHero),
+        (evTap / evHero) *
+        (1.0 / evoHero),
       1e-6,
       ENDLESS_MAX_MULT,
       1.0
@@ -1483,20 +1521,21 @@ export class EndlessManager {
         (synComp / synHero) *
         (dirComp / dirHero) *
         (gearComp / gearHero) *
-        (evComp / evHero),
+        (evComp / evHero) *
+        (evoComp / evoHero),
       1e-6,
       ENDLESS_MAX_MULT,
       1.0
     );
     merged.critChanceBonus = safeBoundedFloat(
-      baseCritChance + ascCritChance + synCritChance + dirCritChance + gearCritChance + evCritChance,
+      baseCritChance + ascCritChance + synCritChance + dirCritChance + gearCritChance + evCritChance + evoCritChance,
       0,
       0.95,
       0
     );
     merged.critDmgMult = safeBoundedFloat(baseCritDmg * ascCritDmg * synCritDmg * evCritDmg, 0.5, 1e4, 1.0);
-    const totalHaste = safeBoundedFloat(baseHaste * dirHaste * evHaste, 0.25, 25, 1.0);
-    const totalBossDmg = safeBoundedFloat(baseBossDmg * dirBossDmg * gearBossDmg, 0.1, ENDLESS_MAX_MULT, 1.0);
+    const totalHaste = safeBoundedFloat(baseHaste * dirHaste * evHaste * evoHaste, 0.25, 25, 1.0);
+    const totalBossDmg = safeBoundedFloat(baseBossDmg * dirBossDmg * gearBossDmg * evoBossDmg, 0.1, ENDLESS_MAX_MULT, 1.0);
     if (
       Math.abs(totalHaste - 1.0) > 1e-9 ||
       Object.prototype.hasOwnProperty.call(this._baseExternalModifiers, 'hasteMult')
@@ -1624,6 +1663,13 @@ export class EndlessManager {
     }
     if (loadedSnap) {
       this.economy.importSaveSnapshot(loadedSnap);
+      if (this.companionEvo) {
+        if (loadedSnap?.meta?.companionEvo && typeof this.companionEvo.importSnapshot === 'function') {
+          this.companionEvo.importSnapshot(loadedSnap.meta.companionEvo);
+        } else if (typeof this.companionEvo.reset === 'function') {
+          this.companionEvo.reset();
+        }
+      }
       const compSnap = loadedSnap.companions || loadedSnap.companionSnapshot || null;
       if (compSnap) {
         this.companions.importSnapshot(compSnap);
@@ -1667,7 +1713,7 @@ export class EndlessManager {
             this.ascension.computeOfflineLoot(loadedSnap.savedAt, Date.now(), this.stage, this.economy) ||
             null;
         }
-      } else if (this.gear || this.events) {
+      } else if (this.gear || this.events || this.companionEvo) {
         const loadedSyn = this.companions?.getPartySynergyModifiers?.() || null;
         this._syncExternalModifiers(loadedSyn, { preserveBase: true });
       }
@@ -1678,7 +1724,10 @@ export class EndlessManager {
       if (this.events && typeof this.events.reset === 'function') {
         this.events.reset(1);
       }
-      if (this.ascension || this.gear || this.events) {
+      if (this.companionEvo && typeof this.companionEvo.reset === 'function') {
+        this.companionEvo.reset();
+      }
+      if (this.ascension || this.gear || this.events || this.companionEvo) {
         this._syncExternalModifiers(null, { preserveBase: true });
       }
       this.economy.resetRunState({ keepMeta: !resumeSaved });
@@ -1799,7 +1848,7 @@ export class EndlessManager {
       this._syncExternalModifiers(initSyn, { preserveBase: true });
       this.progression.syncMaxHpWithEconomy(playerFighter);
       this.refreshActionIcons(playerFighter.heroId || 'mage_ex');
-    } else if (this.ascension || this.gear || this.events) {
+    } else if (this.ascension || this.gear || this.events || this.companionEvo) {
       this._syncExternalModifiers(null, { preserveBase: true });
     }
 
@@ -1962,7 +2011,8 @@ export class EndlessManager {
       waveInStage: this.waveInStage,
       ascension: this.ascension?.exportSnapshot?.() || null,
       gear: this.gear?.exportSnapshot?.() || null,
-      events: this.events?.exportSnapshot?.() || null
+      events: this.events?.exportSnapshot?.() || null,
+      companionEvo: this.companionEvo?.exportSnapshot?.() || null
     };
     return this.economy.saveToStorage(compSnap, metaSnap);
   }
@@ -1971,7 +2021,8 @@ export class EndlessManager {
     this._clearSynergyFromEconomy();
     this.gear?.reset?.();
     this.events?.reset?.(1);
-    if (this.ascension || this.gear || this.events) {
+    this.companionEvo?.reset?.();
+    if (this.ascension || this.gear || this.events || this.companionEvo) {
       this._syncExternalModifiers(null, { preserveBase: true });
     }
     this.economy.resetRunState({ keepMeta: true });
@@ -2017,7 +2068,7 @@ export class EndlessManager {
     this._activeSynergyMods = null;
     this._baseExternalModifiers = {};
     this._lastWrittenSynergyExt = null;
-    if (this.ascension || this.gear || this.events) {
+    if (this.ascension || this.gear || this.events || this.companionEvo) {
       this._syncExternalModifiers(null, { preserveBase: true });
     }
 
@@ -2127,6 +2178,10 @@ export class EndlessManager {
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
     this.companions?.clearTransientFX?.();
+    if (this.companionEvo) {
+      this.companionEvo.overdriveCharge = 0;
+      this.companionEvo.overdriveActiveTimer = 0;
+    }
 
     this._coinStreak = 0;
     this._coinStreakTimer = 0;
@@ -2396,6 +2451,92 @@ export class EndlessManager {
     return res || { ok: false };
   }
 
+  promoteCompanion(id) {
+    if (!this.companionEvo || typeof this.companionEvo.promoteCompanion !== 'function') {
+      return { ok: false, reason: 'no_companion_evo' };
+    }
+    const normId = this.companions?.normalizeId?.(id) || id;
+    const res = this.companionEvo.promoteCompanion(normId, this.economy, this.gear);
+    if (res?.ok) {
+      const player = this.game?.leftFighter;
+      if (player) this.companions?.syncEntitiesWithWorld?.(player);
+      this._lastCompanionSyncSig = this._computeCompanionSyncSig();
+      this._syncExternalModifiers(undefined, { preserveBase: true });
+      if (player) this.progression.syncMaxHpWithEconomy(player);
+      const ent = this.companions?.entities?.find?.((e) => e.companionId === normId) || null;
+      const fxX = ent?.x ?? player?.x ?? this.corridorOriginX;
+      const fxY = ent?.groundY ?? player?.groundY ?? this.depthMidY;
+      if (res.unlockedEx) {
+        ent?.triggerAuraRing?.('buff', 1.65);
+        ent?.triggerCallout?.('EX ASCENDED!', '#38bdf8', 1.5, true);
+        this.spawnFloatingCallout(fxX, fxY - 155, 'EX EVOLVED!', '#38bdf8', 2, 1.45, { kind: 'shard' });
+        this.showBanner(
+          `${ent?.name || normId.toUpperCase()} EX EVOLVED!`,
+          `${res.star}-STAR SOVEREIGN FORM UNLOCKED!`,
+          '#38bdf8',
+          2.2
+        );
+        this.game?.audio?.play?.('victory_fanfare', fxX);
+      } else {
+        ent?.triggerAuraRing?.('buff', 1.15);
+        ent?.triggerCallout?.(`${res.star}-STAR!`, '#facc15', 1.15, false);
+        this.spawnFloatingCallout(fxX, fxY - 140, `+1 STAR (${res.star}-STAR)`, '#facc15', 1, 1.15, { kind: 'shard' });
+        this.game?.audio?.play?.('holy_hit', fxX);
+      }
+      this.saveNow();
+      this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    }
+    return res || { ok: false };
+  }
+
+  setSquadFormation(formationId) {
+    if (!this.companionEvo || typeof this.companionEvo.setFormation !== 'function') {
+      return { ok: false, reason: 'no_companion_evo' };
+    }
+    const res = this.companionEvo.setFormation(formationId);
+    const ok = Boolean(res?.ok ?? res);
+    if (ok) {
+      this.companions?.onFormationChanged?.();
+      this._syncExternalModifiers(undefined, { preserveBase: true });
+      const player = this.game?.leftFighter;
+      if (player) {
+        this.progression.syncMaxHpWithEconomy(player);
+      }
+      const form = this.companionEvo.getFormation?.() || null;
+      if (form?.name && player) {
+        this.spawnFloatingCallout(
+          player.x,
+          (player.groundY || this.depthMidY) - 150,
+          form.name,
+          form.accentHex || '#facc15',
+          1,
+          1.15
+        );
+      }
+      this.game?.audio?.play?.('clock_gear', player?.x || 600);
+      this.saveNow();
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    }
+    return typeof res === 'object' && res !== null ? res : { ok, formationId: this.companionEvo.formationId };
+  }
+
+  triggerSquadOverdrive() {
+    const player = this.game?.leftFighter || null;
+    const targets =
+      this.treasureGoblins.length > 0
+        ? [...this.getLivingMonsters(), ...this.treasureGoblins.filter((tg) => tg && !tg.isDead)]
+        : this.getLivingMonsters();
+    const entityGame = this._getEntityGameView();
+    const res = this.companions?.triggerSquadOverdrive?.(player, targets, this.economy, entityGame);
+    if (res?.ok) {
+      this._syncExternalModifiers(undefined, { preserveBase: true });
+      if (player) this.progression.syncMaxHpWithEconomy(player);
+      this.saveNow();
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    }
+    return res || { ok: false, hitCount: 0, totalDamage: 0, activeCount: 0 };
+  }
+
   // =========================================================================
   // WAVE 7: GEAR ARMORY ACTIONS (DELEGATED TO EndlessGear)
   // =========================================================================
@@ -2606,7 +2747,8 @@ export class EndlessManager {
   _computeCompanionSyncSig() {
     const slots = this.companions?.activeSlots || [];
     const rs = this.companions?.rosterState || {};
-    return slots.map((id) => `${id}:${rs[id]?.level || 0}`).join('|');
+    const evo = this.companionEvo;
+    return slots.map((id) => `${id}:${rs[id]?.level || 0}:${evo?.getStar?.(id) || 1}`).join('|');
   }
 
   // =========================================================================
@@ -6030,11 +6172,12 @@ export class EndlessManager {
       this._lastCompanionSyncSig = compSig;
     }
 
-    // 1. Tick Wave 8 Events, apply Party Synergy + Event modifiers cleanly, then update Economy, Progression & SkillSets
+    // 1. Tick Wave 8 Events & Wave 9 Companion Evo, apply Party Synergy + Event + Formation modifiers cleanly
     const evTick = this.events?.update?.(effDt) || null;
+    const evoTick = this.companionEvo?.update?.(effDt) || null;
     const synMods = this.companions?.getPartySynergyModifiers?.() || null;
     this._applyPartySynergyToEconomy(synMods);
-    if (evTick?.buffsChanged) {
+    if (evTick?.buffsChanged || evoTick?.overdriveEnded) {
       this._syncExternalModifiers(synMods, { preserveBase: true });
       this.progression.syncMaxHpWithEconomy(player);
       this.shopUI?.sync?.(this.getUiSnapshot(), false);
@@ -8632,7 +8775,9 @@ export class EndlessManager {
     const activeSlots = this.companions?.activeSlots || [];
 
     const hasAffordableCompanion = companionsView.some(
-      (c) => (!c.unlocked && c.canAffordRecruit) || (c.unlocked && c.canAffordUpgrade)
+      (c) =>
+        (!c.unlocked && c.canAffordRecruit) ||
+        (c.unlocked && (c.canAffordUpgrade || Boolean(c.promoteQuote?.canPromote)))
     );
     let hasAffordableRelic = false;
     if (typeof this.economy.getRelicCost === 'function' && this.economy.relicLevels) {
@@ -8721,6 +8866,8 @@ export class EndlessManager {
       stats,
       economy: this.economy,
       companions: companionsView,
+      companionEvo:
+        this.companionEvo?.getEvoSnapshot?.(this.economy, this.gear, activeSlots.length) || null,
       activeCompanionUnits: this.companions?.getActiveHudUnits?.() || [],
       activeSynergies: this.companions?.getActiveSynergies?.() || [],
       activeCompanionCount: activeSlots.length,
