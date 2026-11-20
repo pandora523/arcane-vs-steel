@@ -2,10 +2,10 @@
 // Strictly Node-test safe (all DOM/window/Image accesses guarded), zero emojis,
 // pure nearest-neighbor blits & fillRect fallbacks, in-place DOM patching (zero 60fps click drops).
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps196';
-import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps196';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps197';
+import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps197';
 
-const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps196';
+const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps197';
 const ENDLESS_ICON_ROW = 7;
 const ENDLESS_SIGIL_ROW = 9;
 const ENDLESS_ICON_CELL = 128;
@@ -2445,7 +2445,7 @@ const ENDLESS_SHOP_CSS = `
   }
 
   .endless-fever-meter {
-    width: 62px;
+    width: 76px;
     height: 14px;
   }
 
@@ -2783,7 +2783,7 @@ html.is-mobile-landscape .endless-currency-icon {
 }
 
 html.is-mobile-landscape .endless-fever-meter {
-  width: 62px;
+  width: 76px;
   height: 14px;
 }
 

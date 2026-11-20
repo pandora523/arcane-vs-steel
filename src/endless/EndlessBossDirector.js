@@ -394,7 +394,7 @@ export class EndlessBossDirector {
         bonusShards,
         accentHex,
         heraldText: `STAGE ${s} COLOSSAL BOSS: ${name}`,
-        heraldSubText: `${arch.heraldSubText} | ${modifier.name}`,
+        heraldSubText: `${arch.heraldSubText} • ${modifier.name}`,
         sigilCol: BOSS_SKULL_SIGIL_COL,
         modifier
       };
@@ -432,7 +432,7 @@ export class EndlessBossDirector {
       bonusShards,
       accentHex,
       heraldText: `STAGE ${s} WARDEN: ${name}`,
-      heraldSubText: `${arch.heraldSubText} | ${modifier.name}`,
+      heraldSubText: `${arch.heraldSubText} • ${modifier.name}`,
       sigilCol: modifier.sigilCol,
       modifier
     };

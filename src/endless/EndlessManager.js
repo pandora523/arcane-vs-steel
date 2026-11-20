@@ -1,13 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps196';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps196';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps196';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps196';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps196';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps196';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps196';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps196';
-import { EndlessAscension } from './EndlessAscension.js?v=30fps196';
-import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps196';
+import { Fighter } from '../entities/Fighter.js?v=30fps197';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps197';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps197';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps197';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps197';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps197';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps197';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps197';
+import { EndlessAscension } from './EndlessAscension.js?v=30fps197';
+import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps197';
 
 export const ENDLESS_REALMS = [
   {
@@ -52,7 +52,7 @@ const ENDLESS_DEPTH_MIN_Y = 442;
 const ENDLESS_DEPTH_MAX_Y = 680;
 const ENDLESS_DEPTH_MID_Y = 561;
 const ENDLESS_BASE_HERO_HP = 1400;
-const ENDLESS_CORRIDOR_STEP_X = 480;
+const ENDLESS_CORRIDOR_STEP_X = 400;
 const ENDLESS_CORRIDOR_WIDTH = 1420;
 const ENDLESS_VFX_CELL = 128;
 
@@ -1039,8 +1039,8 @@ export class EndlessManager {
   }
 
   showBanner(text, subText = '', color = '#facc15', duration = 2.4) {
-    this.bannerText = String(text || '').toUpperCase();
-    this.bannerSubText = String(subText || '').toUpperCase();
+    this.bannerText = String(text || '').replace(/\|/g, '•').toUpperCase();
+    this.bannerSubText = String(subText || '').replace(/\|/g, '•').toUpperCase();
     this.bannerColor = color || '#facc15';
     this.bannerTimer = Math.max(0.5, duration || 2.4);
   }
@@ -1533,10 +1533,13 @@ export class EndlessManager {
 
     const realm = this.getCurrentRealm();
     this.zoneIndex = realm.realmIndex;
+    this._prewarmRealmAssets(this.zoneIndex);
+    this._prewarmRealmAssets((this.zoneIndex + 1) % ENDLESS_REALMS.length);
 
-    // Initialize infinite corridor origin
-    this.corridorOriginX = 240;
-    this.corridorMinX = 60;
+    // Initialize infinite corridor origin aligned cleanly to the active Realm's 2400px biome band
+    const resumeWaveOffset = Math.max(0, Math.min(this.wavesPerStage - 1, this.waveInStage - 1)) * ENDLESS_CORRIDOR_STEP_X;
+    this.corridorOriginX = realm.realmIndex * 2400 + 240 + resumeWaveOffset;
+    this.corridorMinX = Math.max(60, this.corridorOriginX - 180);
     this.corridorMaxX = this.corridorOriginX + ENDLESS_CORRIDOR_WIDTH - 180;
     this.lockMinX = this.corridorMinX;
     this.lockMaxX = this.corridorMaxX;
@@ -2531,7 +2534,16 @@ export class EndlessManager {
     if (!Number.isFinite(this.corridorOriginX) || this.corridorOriginX < 240) {
       this.corridorOriginX = 240;
     }
-    this.corridorOriginX += ENDLESS_CORRIDOR_STEP_X;
+    if (this.bossFarmMode && nextSpawnKind === 'wave') {
+      // Keep farming waves inside the current stage's 2400px biome band so visual biome stays synced to stage
+      const biomeBandStart = Math.floor(this.corridorOriginX / 2400) * 2400;
+      const maxFarmOrigin = biomeBandStart + 1840;
+      if (this.corridorOriginX + ENDLESS_CORRIDOR_STEP_X <= maxFarmOrigin) {
+        this.corridorOriginX += ENDLESS_CORRIDOR_STEP_X;
+      }
+    } else {
+      this.corridorOriginX += ENDLESS_CORRIDOR_STEP_X;
+    }
     this.lockActive = false;
     this._syncCorridorBounds({ lockToCorridor: false, syncCamera: true });
 
@@ -6116,7 +6128,8 @@ export class EndlessManager {
   _getHudClearance(w, h, hudBot, isNarrowLandscape, isCompactPortrait, renderer = null) {
     const isShort = h <= 500;
     const hasParty = (this.companions?.activeSlots?.length || 0) > 0;
-    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}`;
+    const drawerOpen = Boolean(this.shopUI?.isDrawerOpen?.());
+    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}:${drawerOpen ? 1 : 0}`;
     const nowSec =
       typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() * 0.001
@@ -6134,6 +6147,7 @@ export class EndlessManager {
     let domPartyRight = 0;
     let domPartyBottom = 0;
     let domShopBottom = 0;
+    let domDrawerLeft = 0;
 
     try {
       if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
@@ -6168,6 +6182,14 @@ export class EndlessManager {
             domShopBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
           }
         }
+
+        const drawerEl = document.querySelector('.endless-shop-shell');
+        if (drawerEl && !drawerEl.classList?.contains?.('hidden') && !isCompactPortrait) {
+          const r = drawerEl.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            domDrawerLeft = Math.floor((r.left - rootRect.left) * scaleX);
+          }
+        }
       }
     } catch {
       // Ignore DOM measurement errors in headless/Node contexts
@@ -6183,10 +6205,10 @@ export class EndlessManager {
         ? Math.max(116, Math.round(clampedHudBot + 56))
         : Math.max(138, Math.round(clampedHudBot + 62));
       topClearY = domTopBottom > 24 ? Math.max(clampedHudBot + 6, domTopBottom + 6) : fallbackTop;
-      safeRight = Math.max(240, w - 12);
+      safeRight = domDrawerLeft > 260 ? Math.min(w - 12, domDrawerLeft - 8) : Math.max(240, w - 12);
       const partyFloor = w >= 560 ? 330 : 12;
       const measuredParty = domPartyRight > 0 ? domPartyRight + 8 : 0;
-      safeLeft = Math.min(Math.max(12, safeRight - 220), Math.max(partyFloor, measuredParty));
+      safeLeft = Math.min(Math.max(12, safeRight - 160), Math.max(partyFloor, measuredParty));
     } else if (isCompactPortrait) {
       const fallbackTop = hasParty
         ? Math.max(248, Math.round(hudBot + 108))
@@ -6202,9 +6224,9 @@ export class EndlessManager {
     } else {
       const fallbackTop = Math.max(146, Math.round(hudBot + 66));
       topClearY = domTopBottom > 24 ? Math.max(hudBot + 8, domTopBottom + 8) : fallbackTop;
-      safeRight = Math.max(360, w - 20);
+      safeRight = domDrawerLeft > 360 ? Math.min(w - 20, domDrawerLeft - 12) : Math.max(360, w - 20);
       const measuredParty = domPartyRight > 0 ? domPartyRight + 10 : 0;
-      safeLeft = Math.min(Math.max(20, safeRight - 320), Math.max(208, measuredParty));
+      safeLeft = Math.min(Math.max(20, safeRight - 260), Math.max(208, measuredParty));
     }
 
     const result = { key: cacheKey, topClearY, safeLeft, safeRight };
