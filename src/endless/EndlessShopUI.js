@@ -47,6 +47,49 @@ const DPS_BAR_SVG =
   '<rect x="0" y="9" width="10" height="1" fill="#d4af37"/>' +
   '</svg>';
 
+const ASCEND_STAR_SVG =
+  '<svg class="endless-px-svg" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="5" y="0" width="2" height="12" fill="#e9d5ff"/>' +
+  '<rect x="0" y="5" width="12" height="2" fill="#c084fc"/>' +
+  '<rect x="3" y="3" width="6" height="6" fill="#a855f7"/>' +
+  '<rect x="4" y="4" width="4" height="4" fill="#fef08a"/>' +
+  '<rect x="5" y="5" width="2" height="2" fill="#ffffff"/>' +
+  '</svg>';
+
+const ETERNAL_ARTIFACT_ICON_MAP = Object.freeze({
+  eternal_blade: { row: 7, col: 2, accentHex: '#f97316' },
+  sovereign_vault: { row: 7, col: 11, accentHex: '#facc15' },
+  banner_of_oaths: { row: 7, col: 8, accentHex: '#f43f5e' },
+  astral_spark: { row: 7, col: 3, accentHex: '#c084fc' },
+  chronos_hourglass: { row: 7, col: 9, accentHex: '#38bdf8' },
+  gilded_ledger: { row: 7, col: 0, accentHex: '#fde047' }
+});
+
+function formatAwayTime(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const rem = s % 60;
+  if (h > 0) return `${h}H ${m}M`;
+  if (m > 0) return rem > 0 ? `${m}M ${rem}S` : `${m}M`;
+  return `${rem}S`;
+}
+
+function resolveArtifactIconSpec(art) {
+  if (art && art.id && ETERNAL_ARTIFACT_ICON_MAP[art.id]) {
+    return ETERNAL_ARTIFACT_ICON_MAP[art.id];
+  }
+  const rawCol = Number(art?.iconCol);
+  if (Number.isFinite(rawCol)) {
+    return {
+      row: ENDLESS_ICON_ROW,
+      col: Math.max(0, Math.min(11, Math.floor(rawCol))),
+      accentHex: '#c084fc'
+    };
+  }
+  return { row: 1, col: 0, accentHex: '#c084fc' };
+}
+
 const ENDLESS_SHOP_CSS = `
 /* =========================================================================
    ENDLESS CRUSADE HUD & COLLAPSIBLE GOTHIC SHOP DRAWER
@@ -481,8 +524,8 @@ const ENDLESS_SHOP_CSS = `
 .endless-tab-bar {
   display: flex;
   align-items: stretch;
-  gap: 4px;
-  padding: 5px 7px;
+  gap: 3px;
+  padding: 5px 6px;
   background: rgba(6, 8, 15, 0.94);
   border-bottom: 1px solid rgba(212, 175, 55, 0.35);
   flex-shrink: 0;
@@ -491,10 +534,14 @@ const ENDLESS_SHOP_CSS = `
 .endless-tab-btn {
   flex: 1 1 0;
   min-width: 0;
-  padding: 6px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 3px;
   font-family: inherit;
-  font-size: 0.42rem;
-  letter-spacing: 0.04em;
+  font-size: 0.37rem;
+  letter-spacing: 0.02em;
   color: #94a3b8;
   background: rgba(13, 17, 30, 0.9);
   border: 1.5px solid #334155;
@@ -502,7 +549,36 @@ const ENDLESS_SHOP_CSS = `
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
+}
+
+.endless-tab-btn[data-tab-id="companions"] {
+  flex: 1.42 1 0;
+}
+
+.endless-tab-btn[data-tab-id="ascend"] {
+  flex: 1.08 1 0;
+  border-color: rgba(168, 85, 247, 0.55);
+  color: #d8b4fe;
+}
+
+.endless-tab-label {
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endless-tab-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: #c084fc;
+  border: 1px solid #fef08a;
+  box-shadow: 0 0 8px #c084fc, 0 0 3px #facc15;
+  animation: endlessDotPulse 1.1s ease-in-out infinite;
+}
+
+.endless-tab-dot.hidden {
+  display: none;
 }
 
 .endless-tab-btn.is-active {
@@ -510,6 +586,15 @@ const ENDLESS_SHOP_CSS = `
   border-color: #facc15;
   background: linear-gradient(180deg, rgba(66, 46, 12, 0.92) 0%, rgba(28, 20, 8, 0.96) 100%);
   box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.3);
+}
+
+.endless-tab-btn[data-tab-id="ascend"].is-active {
+  color: #fef08a;
+  border-color: #d8b4fe;
+  background: linear-gradient(180deg, rgba(76, 29, 149, 0.94) 0%, rgba(30, 14, 58, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.35),
+    0 0 8px rgba(168, 85, 247, 0.45);
 }
 
 /* Drawer Body & Panels */
@@ -1568,12 +1653,15 @@ const ENDLESS_SHOP_CSS = `
    WAVE 2: RESPONSIVE BUY-PULSE FEEDBACK & FLOATING MICRO-BADGES
    ========================================================================= */
 .endless-relic-row.is-buy-pulse,
-.endless-comp-card.is-buy-pulse {
+.endless-comp-card.is-buy-pulse,
+.endless-artifact-row.is-buy-pulse {
   animation: endlessBuyPulse 0.44s ease-out;
 }
 
 .endless-buy-btn.is-buy-pulse,
-.endless-comp-btn.is-buy-pulse {
+.endless-comp-btn.is-buy-pulse,
+.endless-artifact-buy-btn.is-buy-pulse,
+.endless-ascend-btn.is-buy-pulse {
   animation: endlessBuyBtnPulse 0.38s ease-out;
 }
 
@@ -1661,6 +1749,635 @@ const ENDLESS_SHOP_CSS = `
     opacity: 0;
     transform: translate(-50%, -30px) scale(0.95);
   }
+}
+
+/* =========================================================================
+   WAVE 3: ASTRAL ASCENSION TAB & ETERNAL ARTIFACTS
+   ========================================================================= */
+.endless-ascend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 9px 10px;
+  background: linear-gradient(180deg, rgba(34, 18, 62, 0.96) 0%, rgba(11, 10, 26, 0.99) 100%);
+  border: 2px solid #d4af37;
+  outline: 1px solid #000;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.34),
+    inset 0 0 20px rgba(168, 85, 247, 0.22),
+    0 5px 14px rgba(0, 0, 0, 0.85);
+}
+
+.endless-ascend-card.is-ascend-flash {
+  animation: endlessAscendFlash 0.68s ease-out;
+}
+
+@keyframes endlessAscendFlash {
+  0% {
+    border-color: #ffffff;
+    box-shadow:
+      0 0 0 2px #fef08a,
+      0 0 26px rgba(250, 204, 21, 0.95),
+      inset 0 0 28px rgba(254, 240, 138, 0.65);
+    filter: brightness(1.3);
+  }
+  45% {
+    border-color: #fde047;
+    box-shadow:
+      0 0 18px rgba(192, 132, 252, 0.85),
+      inset 0 0 22px rgba(250, 204, 21, 0.38);
+    filter: brightness(1.1);
+  }
+  100% {
+    border-color: #d4af37;
+    box-shadow:
+      inset 0 1px 0 rgba(254, 240, 138, 0.34),
+      inset 0 0 20px rgba(168, 85, 247, 0.22),
+      0 5px 14px rgba(0, 0, 0, 0.85);
+    filter: brightness(1);
+  }
+}
+
+.endless-ascend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.endless-ascend-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.endless-ascend-crest {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.endless-ascend-title {
+  font-size: 0.45rem;
+  color: #fef08a;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-ascend-count {
+  font-size: 0.33rem;
+  color: #e9d5ff;
+  background: rgba(88, 28, 135, 0.65);
+  border: 1px solid #c084fc;
+  border-radius: 3px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.endless-ascend-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.endless-ascend-plaque {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 7px;
+  background: rgba(8, 10, 22, 0.92);
+  border: 1px solid rgba(192, 132, 252, 0.42);
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.endless-ascend-plaque.is-preview {
+  border-color: rgba(250, 204, 21, 0.52);
+  background: linear-gradient(180deg, rgba(35, 19, 64, 0.88) 0%, rgba(10, 10, 24, 0.94) 100%);
+}
+
+.endless-ascend-plaque-lbl {
+  font-size: 0.29rem;
+  color: #a5b4fc;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-ascend-plaque-val-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.endless-ascend-shard-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.endless-ascend-plaque-val {
+  font-size: 0.42rem;
+  color: #7dd3fc;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-ascend-plaque-val.is-pending {
+  font-size: 0.35rem;
+  color: #fde047;
+}
+
+.endless-ascend-plaque-val.is-locked {
+  color: #64748b;
+}
+
+.endless-ascend-note {
+  font-size: 0.29rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+.endless-ascend-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  font-family: inherit;
+  font-size: 0.43rem;
+  letter-spacing: 0.04em;
+  color: #fffbeb;
+  background: linear-gradient(180deg, #7e22ce 0%, #4c1d95 62%, #2e1065 100%);
+  border: 2px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  cursor: pointer;
+  text-shadow: 0 1px 0 #000;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.48),
+    0 0 12px rgba(168, 85, 247, 0.45);
+  transition: transform 0.08s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.endless-ascend-btn:hover:not(:disabled) {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.65),
+    0 0 16px rgba(192, 132, 252, 0.72);
+}
+
+.endless-ascend-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-ascend-btn:disabled {
+  color: #64748b;
+  background: linear-gradient(180deg, #161b2a 0%, #0c101b 100%);
+  border-color: #334155;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.86;
+}
+
+.endless-ascend-btn.is-armed {
+  color: #ffffff;
+  background: linear-gradient(180deg, #b45309 0%, #7e22ce 55%, #581c87 100%);
+  border-color: #fef08a;
+  animation: endlessBossPulse 0.85s ease-in-out infinite;
+}
+
+.endless-ascend-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 2px 0;
+}
+
+.endless-ascend-section-title {
+  font-size: 0.39rem;
+  color: #e9d5ff;
+  letter-spacing: 0.04em;
+}
+
+.endless-ascend-section-sub {
+  font-size: 0.31rem;
+  color: #94a3b8;
+}
+
+.endless-artifact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.endless-artifact-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 6px;
+  background: linear-gradient(180deg, rgba(20, 16, 39, 0.95) 0%, rgba(10, 11, 24, 0.97) 100%);
+  border: 1.5px solid rgba(100, 116, 139, 0.45);
+  border-radius: 4px;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.endless-artifact-row.is-affordable {
+  border-color: rgba(192, 132, 252, 0.85);
+  box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.14);
+}
+
+.endless-artifact-row.is-maxed {
+  border-color: rgba(212, 175, 55, 0.72);
+}
+
+.endless-artifact-icon-wrap {
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  background: #070914;
+  border: 1.5px solid #c084fc;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-artifact-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.endless-artifact-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.endless-artifact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-artifact-name {
+  font-size: 0.40rem;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-artifact-lv {
+  font-size: 0.34rem;
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.22);
+  border: 1px solid rgba(192, 132, 252, 0.55);
+  padding: 1px 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.endless-artifact-row.is-maxed .endless-artifact-lv {
+  color: #fef08a;
+  background: rgba(250, 204, 21, 0.18);
+  border-color: #facc15;
+}
+
+.endless-artifact-effect {
+  font-size: 0.34rem;
+  color: #7dd3fc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-artifact-desc {
+  font-size: 0.30rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-artifact-buy-btn {
+  min-width: 82px;
+  padding: 6px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 0.36rem;
+  letter-spacing: 0.02em;
+  color: #fef08a;
+  background: linear-gradient(180deg, #6d28d9 0%, #3b0764 100%);
+  border: 1.5px solid #d8b4fe;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
+  transition: transform 0.08s ease;
+}
+
+.endless-artifact-buy-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-artifact-buy-btn:disabled {
+  color: #64748b;
+  background: linear-gradient(180deg, #161b2a 0%, #0d101b 100%);
+  border-color: #334155;
+  cursor: not-allowed;
+  opacity: 0.84;
+}
+
+.endless-artifact-buy-btn.is-maxed,
+.endless-artifact-buy-btn.is-maxed:disabled {
+  color: #fef08a;
+  background: linear-gradient(180deg, #422006 0%, #1c1205 100%);
+  border-color: #d4af37;
+  opacity: 1;
+}
+
+/* =========================================================================
+   WAVE 3: WELCOME BACK OFFLINE LOOT MODAL (z-index: 48)
+   ========================================================================= */
+.endless-offline-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(4, 6, 14, 0.78);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.endless-offline-modal.hidden {
+  display: none !important;
+}
+
+.endless-offline-card {
+  width: min(444px, calc(100% - 8px));
+  max-height: calc(100% - 12px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 11px;
+  padding: 15px 16px;
+  background: linear-gradient(180deg, rgba(18, 22, 42, 0.98) 0%, rgba(8, 10, 20, 0.99) 100%);
+  border: 2px solid #d4af37;
+  outline: 2px solid #000;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.36),
+    inset 0 0 24px rgba(212, 175, 55, 0.16),
+    0 14px 40px rgba(0, 0, 0, 0.95);
+  animation: endlessModalPop 0.22s ease-out;
+}
+
+@keyframes endlessModalPop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.endless-offline-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid rgba(212, 175, 55, 0.45);
+}
+
+.endless-offline-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 0.62rem;
+  color: #fef08a;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 0 #000;
+  line-height: 1.35;
+}
+
+.endless-offline-subtitle {
+  font-size: 0.34rem;
+  color: #cbd5e1;
+  letter-spacing: 0.03em;
+}
+
+.endless-offline-badges {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.endless-offline-away-badge {
+  padding: 4px 8px;
+  font-size: 0.39rem;
+  color: #fef08a;
+  background: rgba(12, 16, 30, 0.96);
+  border: 1.5px solid rgba(212, 175, 55, 0.72);
+  border-radius: 3px;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-offline-cap-badge {
+  padding: 4px 7px;
+  font-size: 0.34rem;
+  color: #e9d5ff;
+  background: rgba(88, 28, 135, 0.72);
+  border: 1.5px solid #c084fc;
+  border-radius: 3px;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-offline-cap-badge.hidden {
+  display: none !important;
+}
+
+.endless-offline-stages-badge {
+  padding: 4px 7px;
+  font-size: 0.33rem;
+  color: #bae6fd;
+  background: rgba(12, 34, 58, 0.78);
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  border-radius: 3px;
+}
+
+.endless-offline-stages-badge.hidden {
+  display: none !important;
+}
+
+.endless-offline-rewards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.endless-offline-plaque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: 11px 8px;
+  background: linear-gradient(180deg, rgba(14, 18, 34, 0.96) 0%, rgba(7, 9, 18, 0.98) 100%);
+  border: 2px solid #d4af37;
+  outline: 1px solid #000;
+  border-radius: 5px;
+  min-width: 0;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.24);
+}
+
+.endless-offline-plaque.is-gold {
+  border-color: #facc15;
+  background: linear-gradient(180deg, rgba(44, 32, 10, 0.92) 0%, rgba(15, 11, 5, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.35),
+    0 0 14px rgba(250, 204, 21, 0.22);
+}
+
+.endless-offline-plaque.is-shard {
+  border-color: #c084fc;
+  background: linear-gradient(180deg, rgba(35, 18, 66, 0.92) 0%, rgba(12, 10, 26, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(233, 213, 255, 0.3),
+    0 0 14px rgba(168, 85, 247, 0.22);
+}
+
+.endless-offline-plaque.is-empty {
+  opacity: 0.62;
+  border-color: #475569;
+  box-shadow: none;
+}
+
+.endless-offline-plaque-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.endless-offline-plaque-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.endless-offline-plaque-val {
+  font-size: 0.50rem;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 #000;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-offline-plaque.is-gold .endless-offline-plaque-val {
+  color: #fde047;
+}
+
+.endless-offline-plaque.is-shard .endless-offline-plaque-val {
+  color: #7dd3fc;
+}
+
+.endless-offline-plaque-lbl {
+  font-size: 0.31rem;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+.endless-offline-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.endless-offline-collect-btn,
+.endless-offline-continue-btn {
+  padding: 10px 10px;
+  font-family: inherit;
+  font-size: 0.45rem;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  outline: 1px solid #000;
+  cursor: pointer;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
+  transition: transform 0.08s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.endless-offline-collect-btn {
+  color: #fffbeb;
+  background: linear-gradient(180deg, #b45309 0%, #78350f 65%, #451a03 100%);
+  border: 2px solid #facc15;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.55),
+    0 0 14px rgba(250, 204, 21, 0.45);
+}
+
+.endless-offline-collect-btn:hover {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.72),
+    0 0 18px rgba(250, 204, 21, 0.75);
+}
+
+.endless-offline-continue-btn {
+  color: #e2e8f0;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border: 1.5px solid #d4af37;
+}
+
+.endless-offline-continue-btn:hover {
+  color: #fef08a;
+  border-color: #fef08a;
+}
+
+.endless-offline-collect-btn:active,
+.endless-offline-continue-btn:active {
+  transform: translateY(1px);
 }
 
 /* =========================================================================
@@ -1789,6 +2506,79 @@ const ENDLESS_SHOP_CSS = `
     font-size: 0.27rem;
     padding: 2px 4px;
   }
+
+  .endless-tab-btn {
+    font-size: 0.34rem;
+    padding: 5px 2px;
+  }
+
+  .endless-offline-modal {
+    padding: 8px 10px;
+  }
+
+  .endless-offline-card {
+    width: min(432px, calc(100% - 8px));
+    padding: 10px 12px;
+    gap: 7px;
+  }
+
+  .endless-offline-header {
+    gap: 3px;
+    padding-bottom: 6px;
+  }
+
+  .endless-offline-title {
+    font-size: 0.50rem;
+  }
+
+  .endless-offline-subtitle {
+    font-size: 0.30rem;
+  }
+
+  .endless-offline-away-badge {
+    font-size: 0.34rem;
+    padding: 3px 6px;
+  }
+
+  .endless-offline-cap-badge,
+  .endless-offline-stages-badge {
+    font-size: 0.29rem;
+    padding: 3px 5px;
+  }
+
+  .endless-offline-rewards {
+    gap: 7px;
+  }
+
+  .endless-offline-plaque {
+    flex-direction: row;
+    text-align: left;
+    gap: 8px;
+    padding: 7px 9px;
+  }
+
+  .endless-offline-plaque-meta {
+    align-items: flex-start;
+  }
+
+  .endless-offline-plaque-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .endless-offline-plaque-val {
+    font-size: 0.42rem;
+  }
+
+  .endless-offline-plaque-lbl {
+    font-size: 0.27rem;
+  }
+
+  .endless-offline-collect-btn,
+  .endless-offline-continue-btn {
+    padding: 7px 8px;
+    font-size: 0.39rem;
+  }
 }
 
 html.is-mobile-landscape .endless-top-stack {
@@ -1854,6 +2644,42 @@ html.is-mobile-landscape .endless-party-name {
 html.is-mobile-landscape .endless-party-lv {
   font-size: 0.27rem;
   padding: 1px 2px;
+}
+
+html.is-mobile-landscape .endless-offline-modal {
+  padding: 8px 10px;
+}
+
+html.is-mobile-landscape .endless-offline-card {
+  width: min(432px, calc(100% - 8px));
+  padding: 10px 12px;
+  gap: 7px;
+}
+
+html.is-mobile-landscape .endless-offline-plaque {
+  flex-direction: row;
+  text-align: left;
+  gap: 8px;
+  padding: 7px 9px;
+}
+
+html.is-mobile-landscape .endless-offline-plaque-meta {
+  align-items: flex-start;
+}
+
+html.is-mobile-landscape .endless-offline-plaque-icon {
+  width: 26px;
+  height: 26px;
+}
+
+html.is-mobile-landscape .endless-offline-plaque-val {
+  font-size: 0.42rem;
+}
+
+html.is-mobile-landscape .endless-offline-collect-btn,
+html.is-mobile-landscape .endless-offline-continue-btn {
+  padding: 7px 8px;
+  font-size: 0.39rem;
 }
 
 @media (max-width: 560px) and (orientation: portrait) {
@@ -1997,6 +2823,44 @@ html.is-mobile-landscape .endless-party-lv {
     height: min(55vh, 435px);
     z-index: 36;
   }
+
+  html:not(.is-mobile-landscape) .endless-offline-modal {
+    padding: 10px 8px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-offline-card {
+    width: min(362px, calc(100% - 4px));
+    padding: 12px 11px;
+    gap: 9px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-offline-title {
+    font-size: 0.52rem;
+    gap: 5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-offline-rewards {
+    gap: 7px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-offline-plaque {
+    padding: 9px 6px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-offline-plaque-val {
+    font-size: 0.43rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-offline-actions {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-offline-collect-btn,
+  html:not(.is-mobile-landscape) .endless-offline-continue-btn {
+    padding: 9px 6px;
+    font-size: 0.40rem;
+  }
 }
 `;
 
@@ -2019,7 +2883,7 @@ function stopEventLeak(el) {
   el.addEventListener('click', halt);
 }
 
-function drawFallbackPixelIcon(canvas, col, accentHex = '#facc15') {
+function drawFallbackPixelIcon(canvas, col, accentHex = '#facc15', row = ENDLESS_ICON_ROW) {
   if (!canvas || typeof canvas.getContext !== 'function') return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -2038,18 +2902,18 @@ function drawFallbackPixelIcon(canvas, col, accentHex = '#facc15') {
   px(2, 2, 12, 12, '#0d0f1c');
   px(3, 3, 10, 10, '#181e34');
 
-  if (col === 0) {
-    // Sovereign Gold Coin
-    px(4, 3, 8, 10, '#92400e');
-    px(5, 4, 6, 8, '#facc15');
-    px(6, 5, 4, 6, '#fef08a');
-    px(7, 6, 2, 4, '#d97706');
-  } else if (col === 1) {
+  if (row === 1 || (row === ENDLESS_ICON_ROW && col === 1)) {
     // Astral Shard Crystal
     px(7, 2, 2, 12, '#bae6fd');
     px(5, 4, 6, 8, '#38bdf8');
     px(4, 6, 8, 4, '#a855f7');
     px(6, 5, 4, 5, '#ffffff');
+  } else if (row === 0 || (row === ENDLESS_ICON_ROW && col === 0)) {
+    // Sovereign Gold Coin
+    px(4, 3, 8, 10, '#92400e');
+    px(5, 4, 6, 8, '#facc15');
+    px(6, 5, 4, 6, '#fef08a');
+    px(7, 6, 2, 4, '#d97706');
   } else if (col === 11) {
     // Gothic Obsidian-Gold Chest
     px(2, 5, 12, 8, '#0d0f1c');
@@ -2208,6 +3072,7 @@ export class EndlessShopUI {
     this._partySlotRefs = [];
     this._relicRowRefs = new Map();
     this._companionCardRefs = new Map();
+    this._artifactRowRefs = new Map();
     this._tabBtnRefs = new Map();
     this._tabPanelRefs = new Map();
     this._bulkBtnRefs = new Map();
@@ -2216,18 +3081,22 @@ export class EndlessShopUI {
 
     this._resetArmed = false;
     this._resetArmTimer = null;
+    this._ascendArmed = false;
+    this._ascendArmTimer = null;
     this._partyNoticeTimer = null;
     this._saveFlashTimer = null;
     this._ephemeralTimers = new Set();
     this._lastHudSynergySig = '';
     this._lastDrawerSynergySig = '';
+    this._lastResolvedAscension = null;
     this._telemExpanded = false;
     this._lastSnapshot = null;
 
-    // Data-driven tab registry so Wave 3 can append an ASCEND tab seamlessly
+    // Built-in 4-tab registry: ITEMS | COMPANIONS | ASCEND | STATS
     this.tabs = [
       { id: 'items', label: 'ITEMS', builtIn: true },
       { id: 'companions', label: 'COMPANIONS', builtIn: true },
+      { id: 'ascend', label: 'ASCEND', builtIn: true },
       { id: 'stats', label: 'STATS', builtIn: true }
     ];
   }
@@ -2282,11 +3151,11 @@ export class EndlessShopUI {
     return null;
   }
 
-  _blitIconCanvas(canvas, col, accentHex, force = false) {
+  _blitIconCanvas(canvas, col, accentHex, force = false, row = ENDLESS_ICON_ROW) {
     if (!canvas || typeof canvas.getContext !== 'function') return;
     const sheet = this._resolveVfxSheet();
-    if (sheet) {
-      if (!force && canvas._blittedSheet === sheet && canvas._blittedCol === col) {
+    if (sheet && sheet.naturalHeight >= (row + 1) * ENDLESS_ICON_CELL) {
+      if (!force && canvas._blittedSheet === sheet && canvas._blittedRow === row && canvas._blittedCol === col) {
         return;
       }
       const ctx = canvas.getContext('2d');
@@ -2294,7 +3163,7 @@ export class EndlessShopUI {
       ctx.imageSmoothingEnabled = false;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const sx = col * ENDLESS_ICON_CELL;
-      const sy = ENDLESS_ICON_ROW * ENDLESS_ICON_CELL;
+      const sy = row * ENDLESS_ICON_CELL;
       ctx.drawImage(
         sheet,
         sx,
@@ -2307,11 +3176,12 @@ export class EndlessShopUI {
         canvas.height
       );
       canvas._blittedSheet = sheet;
+      canvas._blittedRow = row;
       canvas._blittedCol = col;
       return;
     }
     if (!canvas._fallbackDrawn || force) {
-      drawFallbackPixelIcon(canvas, col, accentHex);
+      drawFallbackPixelIcon(canvas, col, accentHex, row);
       canvas._fallbackDrawn = true;
     }
   }
@@ -2319,7 +3189,7 @@ export class EndlessShopUI {
   _blitAllIcons(force = false) {
     for (let i = 0; i < this._iconCanvases.length; i++) {
       const entry = this._iconCanvases[i];
-      this._blitIconCanvas(entry.canvas, entry.col, entry.accentHex, force);
+      this._blitIconCanvas(entry.canvas, entry.col, entry.accentHex, force, entry.row ?? ENDLESS_ICON_ROW);
     }
   }
 
@@ -2437,6 +3307,7 @@ export class EndlessShopUI {
     this._partySlotRefs = [];
     this._relicRowRefs.clear();
     this._companionCardRefs.clear();
+    this._artifactRowRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
@@ -2450,6 +3321,7 @@ export class EndlessShopUI {
     this._buildShopToggle();
     this._buildShopDrawer();
     this._buildFxLayer();
+    this._buildOfflineLootModal();
 
     this.setVisible(this.visible);
     this.setDrawerOpen(this.drawerOpen);
@@ -2459,13 +3331,13 @@ export class EndlessShopUI {
     return this;
   }
 
-  _makeIconCanvas(size, col, accentHex, className) {
+  _makeIconCanvas(size, col, accentHex, className, row = ENDLESS_ICON_ROW) {
     const c = document.createElement('canvas');
     c.width = size;
     c.height = size;
     if (className) c.className = className;
     c.setAttribute('aria-hidden', 'true');
-    this._iconCanvases.push({ canvas: c, col, accentHex });
+    this._iconCanvases.push({ canvas: c, col, accentHex, row });
     return c;
   }
 
@@ -2686,6 +3558,130 @@ export class EndlessShopUI {
     this._refs.fxLayer = fxLayer;
   }
 
+  _buildOfflineLootModal() {
+    const modal = document.createElement('div');
+    modal.className = 'endless-offline-modal hidden';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Welcome Back Offline Crusade Loot');
+    stopEventLeak(modal);
+
+    const card = document.createElement('div');
+    card.className = 'endless-offline-card';
+    stopEventLeak(card);
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'endless-offline-header';
+    const title = document.createElement('div');
+    title.className = 'endless-offline-title';
+    title.innerHTML = `${BOSS_CROWN_SVG}<span>WELCOME BACK, CRUSADER</span>${BOSS_CROWN_SVG}`;
+    const subtitle = document.createElement('div');
+    subtitle.className = 'endless-offline-subtitle';
+    subtitle.textContent = 'YOUR CRUSADE MARCHED ON WHILE YOU WERE AWAY';
+    header.appendChild(title);
+    header.appendChild(subtitle);
+
+    // Away Time / Cap / Stages Badges
+    const badges = document.createElement('div');
+    badges.className = 'endless-offline-badges';
+    const awayBadge = document.createElement('span');
+    awayBadge.className = 'endless-offline-away-badge';
+    awayBadge.textContent = 'AWAY: 0M';
+    const capBadge = document.createElement('span');
+    capBadge.className = 'endless-offline-cap-badge hidden';
+    capBadge.textContent = '12H MAX CAP';
+    const stagesBadge = document.createElement('span');
+    stagesBadge.className = 'endless-offline-stages-badge hidden';
+    stagesBadge.textContent = '1 STAGE SIMULATED';
+    badges.appendChild(awayBadge);
+    badges.appendChild(capBadge);
+    badges.appendChild(stagesBadge);
+
+    // Reward Plaques: Sovereign Gold & Astral Shards
+    const rewards = document.createElement('div');
+    rewards.className = 'endless-offline-rewards';
+
+    const goldPlaque = document.createElement('div');
+    goldPlaque.className = 'endless-offline-plaque is-gold';
+    const goldIcon = this._makeIconCanvas(32, 0, '#facc15', 'endless-offline-plaque-icon', ENDLESS_ICON_ROW);
+    const goldMeta = document.createElement('div');
+    goldMeta.className = 'endless-offline-plaque-meta';
+    const goldVal = document.createElement('div');
+    goldVal.className = 'endless-offline-plaque-val';
+    goldVal.textContent = '+0 GOLD';
+    const goldLbl = document.createElement('div');
+    goldLbl.className = 'endless-offline-plaque-lbl';
+    goldLbl.textContent = 'SOVEREIGN GOLD';
+    goldMeta.appendChild(goldVal);
+    goldMeta.appendChild(goldLbl);
+    goldPlaque.appendChild(goldIcon);
+    goldPlaque.appendChild(goldMeta);
+
+    const shardPlaque = document.createElement('div');
+    shardPlaque.className = 'endless-offline-plaque is-shard';
+    const shardIcon = this._makeIconCanvas(32, 1, '#38bdf8', 'endless-offline-plaque-icon', ENDLESS_ICON_ROW);
+    const shardMeta = document.createElement('div');
+    shardMeta.className = 'endless-offline-plaque-meta';
+    const shardVal = document.createElement('div');
+    shardVal.className = 'endless-offline-plaque-val';
+    shardVal.textContent = '+0 SHARDS';
+    const shardLbl = document.createElement('div');
+    shardLbl.className = 'endless-offline-plaque-lbl';
+    shardLbl.textContent = 'ASTRAL SHARDS';
+    shardMeta.appendChild(shardVal);
+    shardMeta.appendChild(shardLbl);
+    shardPlaque.appendChild(shardIcon);
+    shardPlaque.appendChild(shardMeta);
+
+    rewards.appendChild(goldPlaque);
+    rewards.appendChild(shardPlaque);
+
+    // Actions: COLLECT LOOT (Primary) + CONTINUE (Secondary — still claims so gold is never forfeited!)
+    const actions = document.createElement('div');
+    actions.className = 'endless-offline-actions';
+
+    const collectBtn = document.createElement('button');
+    collectBtn.type = 'button';
+    collectBtn.className = 'endless-offline-collect-btn';
+    collectBtn.textContent = 'COLLECT LOOT';
+    collectBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleCollectOfflineLoot();
+    });
+
+    const continueBtn = document.createElement('button');
+    continueBtn.type = 'button';
+    continueBtn.className = 'endless-offline-continue-btn';
+    continueBtn.textContent = 'CONTINUE';
+    continueBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleContinueOfflineLoot();
+    });
+
+    actions.appendChild(collectBtn);
+    actions.appendChild(continueBtn);
+
+    card.appendChild(header);
+    card.appendChild(badges);
+    card.appendChild(rewards);
+    card.appendChild(actions);
+    modal.appendChild(card);
+    this.root.appendChild(modal);
+
+    this._refs.offlineModal = modal;
+    this._refs.offlineCard = card;
+    this._refs.offlineAwayBadge = awayBadge;
+    this._refs.offlineCapBadge = capBadge;
+    this._refs.offlineStagesBadge = stagesBadge;
+    this._refs.offlineGoldPlaque = goldPlaque;
+    this._refs.offlineGoldVal = goldVal;
+    this._refs.offlineShardPlaque = shardPlaque;
+    this._refs.offlineShardVal = shardVal;
+    this._refs.offlineCollectBtn = collectBtn;
+    this._refs.offlineContinueBtn = continueBtn;
+  }
+
   _buildShopToggle() {
     const toggle = document.createElement('button');
     toggle.id = 'endless-shop-toggle';
@@ -2883,7 +3879,21 @@ export class EndlessShopUI {
       btn.className = 'endless-tab-btn';
       btn.setAttribute('role', 'tab');
       btn.dataset.tabId = tabDef.id;
-      btn.textContent = tabDef.label;
+
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'endless-tab-label';
+      labelSpan.textContent = tabDef.label;
+      btn.appendChild(labelSpan);
+      btn._labelSpan = labelSpan;
+
+      if (tabDef.id === 'ascend') {
+        const dot = document.createElement('span');
+        dot.className = 'endless-tab-dot hidden';
+        dot.setAttribute('aria-hidden', 'true');
+        btn.appendChild(dot);
+        this._refs.ascendTabDot = dot;
+      }
+
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.setActiveTab(tabDef.id);
@@ -2891,7 +3901,7 @@ export class EndlessShopUI {
       this._refs.tabBar.appendChild(btn);
       this._tabBtnRefs.set(tabDef.id, btn);
     } else {
-      setTextIfChanged(btn, tabDef.label);
+      setTextIfChanged(btn._labelSpan || btn, tabDef.label);
     }
 
     let panel = this._tabPanelRefs.get(tabDef.id);
@@ -2906,6 +3916,8 @@ export class EndlessShopUI {
         this._buildItemsPanel(panel);
       } else if (tabDef.id === 'companions') {
         this._buildCompanionsPanel(panel);
+      } else if (tabDef.id === 'ascend') {
+        this._buildAscendPanel(panel);
       } else if (tabDef.id === 'stats') {
         this._buildStatsPanel(panel);
       } else if (typeof tabDef.renderContent === 'function') {
@@ -3189,6 +4201,202 @@ export class EndlessShopUI {
       accentHex: comp.accentHex
     };
     this._companionCardRefs.set(comp.id, ref);
+    return ref;
+  }
+
+  _buildAscendPanel(panel) {
+    const scroll = document.createElement('div');
+    scroll.className = 'endless-scroll-list';
+
+    // Top Astral Ascension Prestige Card (Obsidian-Violet & Burnished-Gold)
+    const card = document.createElement('div');
+    card.className = 'endless-ascend-card';
+
+    const head = document.createElement('div');
+    head.className = 'endless-ascend-head';
+
+    const titleWrap = document.createElement('div');
+    titleWrap.className = 'endless-ascend-title-wrap';
+    const crestCanvas = this._makeIconCanvas(32, 0, '#c084fc', 'endless-ascend-crest', 1);
+    const titleEl = document.createElement('span');
+    titleEl.className = 'endless-ascend-title';
+    titleEl.textContent = 'ASTRAL ASCENSION';
+    titleWrap.appendChild(crestCanvas);
+    titleWrap.appendChild(titleEl);
+
+    const countEl = document.createElement('span');
+    countEl.className = 'endless-ascend-count';
+    countEl.textContent = 'ASCENSIONS: 0';
+
+    head.appendChild(titleWrap);
+    head.appendChild(countEl);
+
+    const metrics = document.createElement('div');
+    metrics.className = 'endless-ascend-metrics';
+
+    // Current Astral Shards Badge Plaque
+    const curPlaque = document.createElement('div');
+    curPlaque.className = 'endless-ascend-plaque';
+    const curLbl = document.createElement('span');
+    curLbl.className = 'endless-ascend-plaque-lbl';
+    curLbl.textContent = 'ASTRAL SHARDS';
+    const curValRow = document.createElement('div');
+    curValRow.className = 'endless-ascend-plaque-val-row';
+    const curShardIcon = this._makeIconCanvas(32, 1, '#38bdf8', 'endless-ascend-shard-icon', ENDLESS_ICON_ROW);
+    const curShardVal = document.createElement('span');
+    curShardVal.className = 'endless-ascend-plaque-val';
+    curShardVal.textContent = '0';
+    curValRow.appendChild(curShardIcon);
+    curValRow.appendChild(curShardVal);
+    curPlaque.appendChild(curLbl);
+    curPlaque.appendChild(curValRow);
+
+    // Live Pending Prestige Preview Plaque
+    const previewPlaque = document.createElement('div');
+    previewPlaque.className = 'endless-ascend-plaque is-preview';
+    const previewLbl = document.createElement('span');
+    previewLbl.className = 'endless-ascend-plaque-lbl';
+    previewLbl.textContent = 'ON PRESTIGE';
+    const previewVal = document.createElement('span');
+    previewVal.className = 'endless-ascend-plaque-val is-pending is-locked';
+    previewVal.textContent = '+0 ASTRAL SHARDS';
+    previewPlaque.appendChild(previewLbl);
+    previewPlaque.appendChild(previewVal);
+
+    metrics.appendChild(curPlaque);
+    metrics.appendChild(previewPlaque);
+
+    const noteEl = document.createElement('div');
+    noteEl.className = 'endless-ascend-note';
+    noteEl.textContent = 'RESETS STAGE, GOLD & ALLIES - KEEPS SHARDS & ETERNAL ARTIFACTS';
+
+    const ascendBtn = document.createElement('button');
+    ascendBtn.type = 'button';
+    ascendBtn.className = 'endless-ascend-btn';
+    ascendBtn.disabled = true;
+    const ascendBtnIcon = document.createElement('span');
+    ascendBtnIcon.innerHTML = ASCEND_STAR_SVG;
+    const ascendBtnLabel = document.createElement('span');
+    ascendBtnLabel.textContent = 'REACH STAGE 5 TO ASCEND';
+    ascendBtn.appendChild(ascendBtnIcon);
+    ascendBtn.appendChild(ascendBtnLabel);
+    ascendBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleAscendClick();
+    });
+
+    card.appendChild(head);
+    card.appendChild(metrics);
+    card.appendChild(noteEl);
+    card.appendChild(ascendBtn);
+
+    // Eternal Artifacts Section Header & List
+    const sectionHead = document.createElement('div');
+    sectionHead.className = 'endless-ascend-section-head';
+    const sectionTitle = document.createElement('span');
+    sectionTitle.className = 'endless-ascend-section-title';
+    sectionTitle.textContent = 'ETERNAL ARTIFACTS';
+    const sectionSub = document.createElement('span');
+    sectionSub.className = 'endless-ascend-section-sub';
+    sectionSub.textContent = 'PERMANENT BOOSTS';
+    sectionHead.appendChild(sectionTitle);
+    sectionHead.appendChild(sectionSub);
+
+    const artifactList = document.createElement('div');
+    artifactList.className = 'endless-artifact-list';
+
+    const artifactEmpty = document.createElement('div');
+    artifactEmpty.className = 'endless-empty-msg hidden';
+    artifactEmpty.textContent = 'ETERNAL ARTIFACTS UNAVAILABLE';
+    artifactList.appendChild(artifactEmpty);
+
+    scroll.appendChild(card);
+    scroll.appendChild(sectionHead);
+    scroll.appendChild(artifactList);
+    panel.appendChild(scroll);
+
+    this._refs.ascendCard = card;
+    this._refs.ascendCount = countEl;
+    this._refs.ascendCurShards = curShardVal;
+    this._refs.ascendPendingShards = previewVal;
+    this._refs.ascendBtn = ascendBtn;
+    this._refs.ascendBtnLabel = ascendBtnLabel;
+    this._refs.artifactSectionSub = sectionSub;
+    this._refs.artifactList = artifactList;
+    this._refs.artifactEmpty = artifactEmpty;
+  }
+
+  _ensureArtifactRow(art) {
+    const existing = this._artifactRowRefs.get(art.id);
+    if (existing) return existing;
+
+    const iconSpec = resolveArtifactIconSpec(art);
+
+    const row = document.createElement('div');
+    row.className = 'endless-artifact-row';
+    row.dataset.artifactId = art.id;
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'endless-artifact-icon-wrap';
+    iconWrap.style.borderColor = iconSpec.accentHex;
+    const iconCanvas = this._makeIconCanvas(32, iconSpec.col, iconSpec.accentHex, 'endless-artifact-icon', iconSpec.row);
+    iconWrap.appendChild(iconCanvas);
+
+    const info = document.createElement('div');
+    info.className = 'endless-artifact-info';
+
+    const head = document.createElement('div');
+    head.className = 'endless-artifact-head';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'endless-artifact-name';
+    nameEl.textContent = art.name || art.id;
+    const lvEl = document.createElement('span');
+    lvEl.className = 'endless-artifact-lv';
+    lvEl.textContent = `LV.${art.level || 0} / ${art.maxLevel || 1}`;
+    head.appendChild(nameEl);
+    head.appendChild(lvEl);
+
+    const effectEl = document.createElement('div');
+    effectEl.className = 'endless-artifact-effect';
+    effectEl.textContent = art.effectSummary || '';
+
+    const descEl = document.createElement('div');
+    descEl.className = 'endless-artifact-desc';
+    descEl.textContent = art.desc || '';
+
+    info.appendChild(head);
+    info.appendChild(effectEl);
+    info.appendChild(descEl);
+
+    const buyBtn = document.createElement('button');
+    buyBtn.type = 'button';
+    buyBtn.className = 'endless-artifact-buy-btn';
+    buyBtn.dataset.artifactId = art.id;
+    buyBtn.textContent = `${formatEndlessNumber(art.cost || 0)} SHARDS`;
+    buyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleBuyEternalArtifact(art.id);
+    });
+
+    row.appendChild(iconWrap);
+    row.appendChild(info);
+    row.appendChild(buyBtn);
+
+    if (this._refs.artifactList) {
+      this._refs.artifactList.appendChild(row);
+    }
+
+    this._blitIconCanvas(iconCanvas, iconSpec.col, iconSpec.accentHex, true, iconSpec.row);
+
+    const ref = {
+      row,
+      nameEl,
+      lvEl,
+      effectEl,
+      descEl,
+      buyBtn
+    };
+    this._artifactRowRefs.set(art.id, ref);
     return ref;
   }
 
@@ -3661,6 +4869,166 @@ export class EndlessShopUI {
     this._resyncNow();
   }
 
+  _disarmAscendConfirm() {
+    this._ascendArmed = false;
+    if (this._ascendArmTimer) {
+      clearTimeout(this._ascendArmTimer);
+      this._ascendArmTimer = null;
+    }
+    if (this._refs.ascendBtn) {
+      this._refs.ascendBtn.classList.remove('is-armed');
+    }
+    if (this._refs.ascendBtnLabel) {
+      const asc = this._lastResolvedAscension;
+      if (asc && !asc.canAscend) {
+        setTextIfChanged(this._refs.ascendBtnLabel, `REACH STAGE ${asc.unlockStage} TO ASCEND`);
+      } else {
+        setTextIfChanged(this._refs.ascendBtnLabel, 'ASCEND NOW');
+      }
+    }
+  }
+
+  _triggerAscendFlash(shardsGained = 0) {
+    const card = this._refs.ascendCard;
+    if (card && card.classList) {
+      card.classList.remove('is-ascend-flash');
+      void card.offsetWidth;
+      card.classList.add('is-ascend-flash');
+      if (card._ascendFlashTimer) {
+        clearTimeout(card._ascendFlashTimer);
+        this._ephemeralTimers.delete(card._ascendFlashTimer);
+      }
+      card._ascendFlashTimer = this._scheduleEphemeral(() => {
+        card.classList?.remove('is-ascend-flash');
+        card._ascendFlashTimer = null;
+      }, 700);
+    }
+    const btn = this._refs.ascendBtn;
+    const badgeText = shardsGained > 0 ? `+${formatEndlessNumber(shardsGained)} SHARDS!` : 'ASCENDED!';
+    if (btn) {
+      this._triggerBuyFeedback(null, btn, badgeText, false);
+    }
+  }
+
+  _handleAscendClick() {
+    const state = this._resolveState(this._lastSnapshot);
+    const asc = state.ascension;
+    if (!asc || !asc.canAscend) {
+      this._playSfx('playUiBack');
+      this._disarmAscendConfirm();
+      return;
+    }
+
+    if (!this._ascendArmed) {
+      this._ascendArmed = true;
+      this._playSfx('playUiClick');
+      if (this._refs.ascendBtn) {
+        this._refs.ascendBtn.classList.add('is-armed');
+      }
+      setTextIfChanged(
+        this._refs.ascendBtnLabel,
+        `CONFIRM ASCEND? (+${formatEndlessNumber(asc.pendingShards)} SHARDS)`
+      );
+      if (this._ascendArmTimer) clearTimeout(this._ascendArmTimer);
+      if (typeof setTimeout === 'function') {
+        this._ascendArmTimer = setTimeout(() => {
+          this._disarmAscendConfirm();
+        }, 4000);
+      }
+      return;
+    }
+
+    const previewGained = asc.pendingShards;
+    this._disarmAscendConfirm();
+
+    let res = null;
+    if (typeof this.manager?.performAscension === 'function') {
+      res = this.manager.performAscension();
+    } else if (typeof this.manager?.ascension?.performAscension === 'function' && this.manager?.economy) {
+      res = this.manager.ascension.performAscension(this.manager.economy, this.manager.companions);
+      if (res?.ok && typeof this.manager?.saveNow === 'function') {
+        this.manager.saveNow();
+      }
+    }
+
+    const ok = res === undefined
+      ? typeof this.manager?.performAscension === 'function'
+      : Boolean(res?.ok !== false);
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      const gained = Math.max(0, Math.floor(Number(res?.shardsGained ?? previewGained) || 0));
+      this._triggerAscendFlash(gained);
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleBuyEternalArtifact(artifactId) {
+    let res = null;
+    if (typeof this.manager?.buyEternalArtifact === 'function') {
+      res = this.manager.buyEternalArtifact(artifactId);
+    } else if (typeof this.manager?.ascension?.buyArtifact === 'function' && this.manager?.economy) {
+      res = this.manager.ascension.buyArtifact(artifactId, this.manager.economy);
+      if (res?.ok && typeof this.manager?.saveNow === 'function') {
+        this.manager.saveNow();
+      }
+    }
+
+    const ok = res === undefined
+      ? typeof this.manager?.buyEternalArtifact === 'function'
+      : Boolean(res?.ok);
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      const ref = this._artifactRowRefs.get(artifactId);
+      this._triggerBuyFeedback(ref?.row, ref?.buyBtn, '+1', true);
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleCollectOfflineLoot() {
+    this._playSfx('playUiConfirm');
+    let claimed = false;
+    if (typeof this.manager?.claimOfflineLoot === 'function') {
+      const res = this.manager.claimOfflineLoot();
+      claimed = res !== false;
+    } else if (this.manager?.pendingOfflineLoot) {
+      const loot = this.manager.pendingOfflineLoot;
+      if (loot.gold > 0) this.manager.economy?.addGold?.(loot.gold);
+      if (loot.astralShards > 0) this.manager.economy?.addAstralShards?.(loot.astralShards);
+      this.manager.pendingOfflineLoot = null;
+      claimed = true;
+    }
+    if (this._lastSnapshot && typeof this._lastSnapshot === 'object' && !this.manager?.pendingOfflineLoot) {
+      this._lastSnapshot = { ...this._lastSnapshot, pendingOfflineLoot: null };
+    }
+    if (claimed && this._refs.offlineCollectBtn) {
+      this._spawnFloatingMicroBadge(this._refs.offlineCollectBtn, 'LOOT CLAIMED!', false);
+    }
+    this._resyncNow();
+  }
+
+  _handleContinueOfflineLoot() {
+    this._playSfx('playUiConfirm');
+    const hasPending = Boolean(this.manager?.pendingOfflineLoot || this._lastSnapshot?.pendingOfflineLoot);
+    if (hasPending && typeof this.manager?.claimOfflineLoot === 'function') {
+      this.manager.claimOfflineLoot();
+    } else if (typeof this.manager?.dismissOfflineLoot === 'function') {
+      this.manager.dismissOfflineLoot();
+    } else if (this.manager?.pendingOfflineLoot) {
+      const loot = this.manager.pendingOfflineLoot;
+      if (loot.gold > 0) this.manager.economy?.addGold?.(loot.gold);
+      if (loot.astralShards > 0) this.manager.economy?.addAstralShards?.(loot.astralShards);
+      this.manager.pendingOfflineLoot = null;
+    }
+    if (this._lastSnapshot && typeof this._lastSnapshot === 'object' && !this.manager?.pendingOfflineLoot) {
+      this._lastSnapshot = { ...this._lastSnapshot, pendingOfflineLoot: null };
+    }
+    this._resyncNow();
+  }
+
   _resyncNow() {
     const snap = typeof this.manager?.getUiSnapshot === 'function'
       ? this.manager.getUiSnapshot()
@@ -3690,6 +5058,7 @@ export class EndlessShopUI {
     if (!this.visible) {
       this.setDrawerOpen(false);
       this._disarmResetConfirm();
+      this._disarmAscendConfirm();
     }
   }
 
@@ -3704,6 +5073,7 @@ export class EndlessShopUI {
     }
     if (!this.drawerOpen) {
       this._disarmResetConfirm();
+      this._disarmAscendConfirm();
     } else if (this._lastSnapshot || this.manager) {
       this._blitAllIcons(false);
       this._resyncNow();
@@ -3725,6 +5095,9 @@ export class EndlessShopUI {
     this.activeTab = exists ? tabId : 'items';
     if (this.activeTab !== 'stats') {
       this._disarmResetConfirm();
+    }
+    if (this.activeTab !== 'ascend') {
+      this._disarmAscendConfirm();
     }
     this._syncTabVisibility();
     if (this.drawerOpen && (this._lastSnapshot || this.manager)) {
@@ -3892,6 +5265,73 @@ export class EndlessShopUI {
       ? Math.max(1, Number(snap.feverGoldMult))
       : Math.max(1, Number(stats?.feverGoldMult) || (feverTier >= 2 ? 3 : feverTier === 1 ? 2 : 1));
 
+    const rawAsc = (snap && typeof snap.ascension === 'object' && snap.ascension)
+      ? snap.ascension
+      : (typeof mgr?.ascension?.getAscensionView === 'function'
+        ? mgr.ascension.getAscensionView(stage, econ)
+        : null);
+
+    const ascShards = Math.max(
+      0,
+      Math.floor(Number(rawAsc?.astralShards ?? astralShards) || 0)
+    );
+    const resolvedAstralShards = (snap && snap.astralShards !== undefined)
+      ? astralShards
+      : (econ && econ.astralShards !== undefined ? astralShards : ascShards);
+
+    const ascension = {
+      canAscend: Boolean(rawAsc?.canAscend),
+      unlockStage: Math.max(1, Math.floor(Number(rawAsc?.unlockStage) || 5)),
+      currentStage: Math.max(1, Math.floor(Number(rawAsc?.currentStage ?? stage) || stage)),
+      pendingShards: Math.max(0, Math.floor(Number(rawAsc?.pendingShards) || 0)),
+      totalAscensions: Math.max(0, Math.floor(Number(rawAsc?.totalAscensions) || 0)),
+      astralShards: ascShards,
+      totalAstralShards: Math.max(
+        ascShards,
+        Math.floor(Number(rawAsc?.totalAstralShards ?? ascShards) || ascShards)
+      ),
+      modifiers: rawAsc?.modifiers || null,
+      artifacts: Array.isArray(rawAsc?.artifacts)
+        ? rawAsc.artifacts.map((a, idx) => {
+            const level = Math.max(0, Math.floor(Number(a?.level) || 0));
+            const maxLevel = Math.max(1, Math.floor(Number(a?.maxLevel) || 1));
+            const isMaxed = Boolean(a?.isMaxed ?? (level >= maxLevel));
+            const cost = Math.max(0, Math.floor(Number(a?.cost) || 0));
+            const canAfford = Boolean(
+              !isMaxed && (a?.canAfford !== undefined ? a.canAfford : ascShards >= cost)
+            );
+            return {
+              id: String(a?.id || `artifact_${idx}`),
+              name: String(a?.name || a?.id || `ARTIFACT ${idx + 1}`),
+              desc: String(a?.desc || ''),
+              level,
+              maxLevel,
+              cost,
+              isMaxed,
+              canAfford,
+              effectSummary: String(a?.effectSummary || ''),
+              iconCol: a?.iconCol
+            };
+          })
+        : []
+    };
+
+    const rawOffline = (snap && Object.prototype.hasOwnProperty.call(snap, 'pendingOfflineLoot'))
+      ? snap.pendingOfflineLoot
+      : (mgr?.pendingOfflineLoot ?? null);
+    const pendingOfflineLoot = (rawOffline && typeof rawOffline === 'object')
+      ? {
+          awaySec: Math.max(0, Math.floor(Number(rawOffline.awaySec) || 0)),
+          cappedSec: Math.max(0, Math.floor(Number(rawOffline.cappedSec ?? rawOffline.awaySec) || 0)),
+          gold: Math.max(0, Number(rawOffline.gold) || 0),
+          astralShards: Math.max(0, Math.floor(Number(rawOffline.astralShards) || 0)),
+          stagesSimulated: Math.max(0, Math.floor(Number(rawOffline.stagesSimulated) || 0)),
+          formattedTime: String(
+            rawOffline.formattedTime || formatAwayTime(rawOffline.cappedSec ?? rawOffline.awaySec ?? 0)
+          ).toUpperCase()
+        }
+      : null;
+
     return {
       stage,
       bestStage,
@@ -3906,7 +5346,7 @@ export class EndlessShopUI {
       bossTimerMax,
       gold,
       totalGoldEarned,
-      astralShards,
+      astralShards: resolvedAstralShards,
       autoBoss,
       bulkMode,
       tapFever,
@@ -3924,7 +5364,9 @@ export class EndlessShopUI {
       activeCompanionUnits,
       activeSynergies,
       activeSlotsCount,
-      maxActiveSlots
+      maxActiveSlots,
+      ascension,
+      pendingOfflineLoot
     };
   }
 
@@ -4135,13 +5577,34 @@ export class EndlessShopUI {
     // 2B. Live Active Companion Mini-HUD & Synergy Badges (always synced, even when drawer closed)
     this._syncActivePartyHud(state);
 
-    // 3. Check affordability dot on Shop Toggle
-    let anyAffordable = false;
-    for (let i = 0; i < state.relicsView.length; i++) {
-      const item = state.relicsView[i];
-      if (item.canAfford ?? item.quote?.canAfford) {
-        anyAffordable = true;
-        break;
+    // 2C. Welcome Back Offline Loot Modal (always synced, even when drawer closed)
+    this._syncOfflineLootModal(state);
+
+    // 3. Check affordability dot on Shop Toggle & ASCEND Tab Notification Dot
+    const asc = state.ascension;
+    let anyArtifactAffordable = false;
+    if (asc && Array.isArray(asc.artifacts)) {
+      for (let i = 0; i < asc.artifacts.length; i++) {
+        const art = asc.artifacts[i];
+        if (art && !art.isMaxed && art.canAfford) {
+          anyArtifactAffordable = true;
+          break;
+        }
+      }
+    }
+    const ascendNotify = Boolean(asc?.canAscend || anyArtifactAffordable);
+    if (this._refs.ascendTabDot) {
+      this._refs.ascendTabDot.classList.toggle('hidden', !ascendNotify);
+    }
+
+    let anyAffordable = ascendNotify;
+    if (!anyAffordable) {
+      for (let i = 0; i < state.relicsView.length; i++) {
+        const item = state.relicsView[i];
+        if (item.canAfford ?? item.quote?.canAfford) {
+          anyAffordable = true;
+          break;
+        }
       }
     }
     if (!anyAffordable) {
@@ -4170,16 +5633,135 @@ export class EndlessShopUI {
     if (this.activeTab === 'companions' || forceRebuild) {
       this._syncCompanionsTab(state);
     }
+    if (this.activeTab === 'ascend' || forceRebuild) {
+      this._syncAscendTab(state);
+    }
     if (this.activeTab === 'stats' || forceRebuild) {
       this._syncStatsTab(state, dpsBreakdown);
     }
 
-    // Sync any custom Wave 3 tabs (e.g. ASCEND)
+    // Sync any custom registered tabs
     for (let i = 0; i < this.tabs.length; i++) {
       const t = this.tabs[i];
       if (!t.builtIn && typeof t.syncContent === 'function' && (this.activeTab === t.id || forceRebuild)) {
         const panel = this._tabPanelRefs.get(t.id);
         if (panel) t.syncContent(panel, state, this);
+      }
+    }
+  }
+
+  _syncOfflineLootModal(state) {
+    const modal = this._refs.offlineModal;
+    if (!modal) return;
+    const loot = state.pendingOfflineLoot;
+    const show = Boolean(loot);
+    modal.classList.toggle('hidden', !show);
+    if (!show) return;
+
+    setTextIfChanged(this._refs.offlineAwayBadge, `AWAY: ${loot.formattedTime}`);
+
+    const isCapped = loot.cappedSec > 0 && loot.awaySec > loot.cappedSec;
+    if (this._refs.offlineCapBadge) {
+      this._refs.offlineCapBadge.classList.toggle('hidden', !isCapped);
+      if (isCapped) {
+        const capHrs = Math.max(1, Math.round(loot.cappedSec / 3600));
+        setTextIfChanged(this._refs.offlineCapBadge, `${capHrs}H MAX CAP`);
+      }
+    }
+
+    if (this._refs.offlineStagesBadge) {
+      const showStages = loot.stagesSimulated > 0;
+      this._refs.offlineStagesBadge.classList.toggle('hidden', !showStages);
+      if (showStages) {
+        const unit = loot.stagesSimulated === 1 ? 'STAGE' : 'STAGES';
+        setTextIfChanged(
+          this._refs.offlineStagesBadge,
+          `${formatEndlessNumber(loot.stagesSimulated)} ${unit} SIMULATED`
+        );
+      }
+    }
+
+    setTextIfChanged(this._refs.offlineGoldVal, `+${formatEndlessNumber(loot.gold)} GOLD`);
+    if (this._refs.offlineGoldPlaque) {
+      this._refs.offlineGoldPlaque.classList.toggle('is-empty', loot.gold <= 0);
+    }
+
+    setTextIfChanged(this._refs.offlineShardVal, `+${formatEndlessNumber(loot.astralShards)} SHARDS`);
+    if (this._refs.offlineShardPlaque) {
+      this._refs.offlineShardPlaque.classList.toggle('is-empty', loot.astralShards <= 0);
+    }
+  }
+
+  _syncAscendTab(state) {
+    const asc = state.ascension;
+    if (!asc) return;
+    this._lastResolvedAscension = asc;
+
+    setTextIfChanged(this._refs.ascendCount, `ASCENSIONS: ${formatEndlessNumber(asc.totalAscensions)}`);
+    setTextIfChanged(this._refs.ascendCurShards, formatEndlessNumber(asc.astralShards));
+    setTextIfChanged(
+      this._refs.ascendPendingShards,
+      `+${formatEndlessNumber(asc.pendingShards)} ASTRAL SHARDS`
+    );
+    if (this._refs.ascendPendingShards) {
+      this._refs.ascendPendingShards.classList.toggle('is-locked', !asc.canAscend || asc.pendingShards <= 0);
+    }
+
+    if (this._refs.ascendBtn && this._refs.ascendBtnLabel) {
+      if (!asc.canAscend) {
+        if (this._ascendArmed) {
+          this._disarmAscendConfirm();
+        }
+        this._refs.ascendBtn.disabled = true;
+        this._refs.ascendBtn.classList.remove('is-armed');
+        setTextIfChanged(this._refs.ascendBtnLabel, `REACH STAGE ${asc.unlockStage} TO ASCEND`);
+      } else {
+        this._refs.ascendBtn.disabled = false;
+        if (this._ascendArmed) {
+          this._refs.ascendBtn.classList.add('is-armed');
+          setTextIfChanged(
+            this._refs.ascendBtnLabel,
+            `CONFIRM ASCEND? (+${formatEndlessNumber(asc.pendingShards)} SHARDS)`
+          );
+        } else {
+          this._refs.ascendBtn.classList.remove('is-armed');
+          setTextIfChanged(this._refs.ascendBtnLabel, 'ASCEND NOW');
+        }
+      }
+    }
+
+    const list = Array.isArray(asc.artifacts) ? asc.artifacts : [];
+    if (this._refs.artifactEmpty) {
+      this._refs.artifactEmpty.classList.toggle('hidden', list.length > 0);
+    }
+    if (this._refs.artifactSectionSub) {
+      const ownedCount = list.filter((a) => a.level > 0).length;
+      setTextIfChanged(
+        this._refs.artifactSectionSub,
+        list.length > 0 ? `${ownedCount} / ${list.length} OWNED` : 'PERMANENT BOOSTS'
+      );
+    }
+
+    for (let i = 0; i < list.length; i++) {
+      const art = list[i];
+      const ref = this._ensureArtifactRow(art);
+      const isMaxed = Boolean(art.isMaxed);
+      const canAfford = Boolean(!isMaxed && art.canAfford);
+
+      ref.row.classList.toggle('is-affordable', canAfford);
+      ref.row.classList.toggle('is-maxed', isMaxed);
+      setTextIfChanged(ref.nameEl, art.name);
+      setTextIfChanged(ref.lvEl, `LV.${art.level} / ${art.maxLevel}`);
+      setTextIfChanged(ref.effectEl, art.effectSummary || '');
+      setTextIfChanged(ref.descEl, art.desc || '');
+
+      ref.buyBtn.classList.toggle('is-maxed', isMaxed);
+      if (isMaxed) {
+        setTextIfChanged(ref.buyBtn, 'MAXED');
+        ref.buyBtn.disabled = true;
+      } else {
+        setTextIfChanged(ref.buyBtn, `${formatEndlessNumber(art.cost)} SHARDS`);
+        ref.buyBtn.disabled = !canAfford;
       }
     }
   }
@@ -4360,6 +5942,7 @@ export class EndlessShopUI {
 
   unmount() {
     this._disarmResetConfirm();
+    this._disarmAscendConfirm();
     if (this._partyNoticeTimer) {
       clearTimeout(this._partyNoticeTimer);
       this._partyNoticeTimer = null;
@@ -4385,12 +5968,14 @@ export class EndlessShopUI {
     this._partySlotRefs = [];
     this._relicRowRefs.clear();
     this._companionCardRefs.clear();
+    this._artifactRowRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
     this._statRefs.clear();
     this._lastHudSynergySig = '';
     this._lastDrawerSynergySig = '';
+    this._lastResolvedAscension = null;
     this._refs = {};
   }
 
