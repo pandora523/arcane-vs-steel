@@ -77,6 +77,37 @@ const FEVER_CHAIN_SPLASH_RATIO = 0.45;
 const FEVER_CHAIN_MAX_COUNT = 16;
 const FEVER_CHAIN_LIFE = 0.28;
 
+const COINS_MAX_COUNT = 64;
+const TAP_SMITE_MAX_COUNT = 24;
+const FEVER_BURST_MAX_COUNT = 8;
+const WAVE4_BURST_MAX_COUNT = 10;
+const PORTAL_MAX_COUNT = 18;
+const MONSTER_PLUME_MAX_COUNT = 24;
+const FLOATING_CALLOUT_MAX_COUNT = 32;
+
+const ENDLESS_MAX_STAT = 1e15;
+const ENDLESS_MAX_DMG_SCALE = 1e11;
+const ENDLESS_MAX_MULT = 1e9;
+
+function safeBoundedInt(val, minVal = 1, maxVal = ENDLESS_MAX_STAT, fallback = minVal) {
+  const n = Number(val);
+  if (n === Infinity) return maxVal;
+  if (!Number.isFinite(n)) return fallback;
+  const r = Math.round(n);
+  if (r < minVal) return minVal;
+  if (r > maxVal) return maxVal;
+  return r;
+}
+
+function safeBoundedFloat(val, minVal = 0, maxVal = ENDLESS_MAX_STAT, fallback = minVal) {
+  const n = Number(val);
+  if (n === Infinity) return maxVal;
+  if (!Number.isFinite(n)) return fallback;
+  if (n < minVal) return minVal;
+  if (n > maxVal) return maxVal;
+  return n;
+}
+
 const SYNERGY_EXT_KEYS = Object.freeze([
   'globalDpsMult',
   'goldMult',
@@ -191,19 +222,28 @@ class EndlessProgressionAdapter {
       Number.isFinite(synMods?.hasteMult) && synMods.hasteMult > 0 ? synMods.hasteMult : 1;
     const synMaxHp =
       Number.isFinite(synMods?.maxHpMult) && synMods.maxHpMult > 0 ? synMods.maxHpMult : 1;
-    const hasteMult = (ecoStats.hasteMult || 1) * (1 + (partyBuffs.hasteBonus || 0)) * synHaste;
+    const hasteMult = safeBoundedFloat(
+      (Number.isFinite(ecoStats.hasteMult) && ecoStats.hasteMult > 0 ? ecoStats.hasteMult : 1) *
+        (1 + (Number.isFinite(partyBuffs.hasteBonus) ? partyBuffs.hasteBonus : 0)) *
+        synHaste,
+      0.25,
+      25,
+      1
+    );
     const cdDiv = Math.max(0.45, 1 / Math.max(0.5, hasteMult));
-    const maxHpMult = (ecoStats.maxHpMult || 1) * synMaxHp;
-    const maxHp = Math.max(
+    const rawEcoMaxHp = Number.isFinite(ecoStats.maxHpMult) && ecoStats.maxHpMult > 0 ? ecoStats.maxHpMult : 1;
+    const maxHpMult = safeBoundedFloat(rawEcoMaxHp * synMaxHp, 1, ENDLESS_MAX_MULT, 1);
+    const maxHp = safeBoundedInt(
+      ENDLESS_BASE_HERO_HP * maxHpMult,
       ENDLESS_BASE_HERO_HP,
-      Math.round(ENDLESS_BASE_HERO_HP * maxHpMult)
+      ENDLESS_MAX_STAT
     );
     return {
       ...ecoStats,
       maxHp,
       maxHpMult,
       hasteMult,
-      moveSpeedMult: ecoStats.moveSpeedMult || 1,
+      moveSpeedMult: safeBoundedFloat(ecoStats.moveSpeedMult, 0.5, 4.0, 1),
       skillSpiritCost: 28,
       skillCdMult: Math.max(0.38, cdDiv),
       mobilityCdMult: Math.max(0.42, cdDiv),
@@ -249,12 +289,13 @@ class EndlessProgressionAdapter {
 
     player.heal = (amount, label = '') => {
       if (player.isDead || !Number.isFinite(amount) || amount <= 0) return 0;
+      const safeHeal = safeBoundedInt(amount, 1, ENDLESS_MAX_STAT);
       const origHeal = player._endlessOrig?.heal;
       if (origHeal) {
-        return origHeal(Math.max(1, Math.round(amount)), label);
+        return origHeal(safeHeal, label);
       }
       const prev = player.hp;
-      player.hp = Math.min(player.maxHp, player.hp + Math.round(amount));
+      player.hp = Math.min(player.maxHp, player.hp + safeHeal);
       return Math.max(0, player.hp - prev);
     };
 
@@ -262,7 +303,8 @@ class EndlessProgressionAdapter {
       if (player.isDead || player.isBenched) return;
       if ((this.endless?._phoenixInvulnTimer || 0) > 0 || player.isInvulnerable) return;
       const dr = this.damageReduction;
-      const mitigated = Math.max(1, Math.round(amount * (1 - dr)));
+      const safeRaw = safeBoundedFloat(amount, 1, ENDLESS_MAX_STAT, 1);
+      const mitigated = safeBoundedInt(safeRaw * (1 - dr), 1, ENDLESS_MAX_STAT);
       if (player._endlessOrig?.takeDamage) {
         player._endlessOrig.takeDamage(mitigated, attacker, isCrit, knockX, knockY);
       } else {
@@ -374,10 +416,11 @@ class EndlessProgressionAdapter {
   scaleOutgoingDamage(amount, attacker, monster, isCrit = false, castSource = null) {
     if (!attacker || attacker.isMonster) return amount;
     if (!Number.isFinite(amount) || amount <= 0) return 0;
+    const safeAmount = safeBoundedFloat(amount, 1, ENDLESS_MAX_STAT, 1);
 
     // Tap-Smite hits are pre-scaled & crit-rolled inside EndlessEconomy.computeTapSmiteHit
     if (attacker.isTapSmite) {
-      return Math.max(1, Math.round(amount));
+      return safeBoundedInt(safeAmount, 1, ENDLESS_MAX_STAT);
     }
 
     // Companions already compute their own scaled power via EndlessCompanions + companionDmgMult
@@ -389,24 +432,26 @@ class EndlessProgressionAdapter {
       } else if (monster?.isBoss && (monster.vulnerableTimer || 0) > 0) {
         compMult *= 1.45;
       }
-      return Math.max(1, Math.round(amount * compMult));
+      return safeBoundedInt(safeAmount * compMult, 1, ENDLESS_MAX_STAT);
     }
 
     const stats = this.endless?.economy?.getComputedStats?.() || {};
-    const tier = this.resolveOutgoingCastTier(amount, attacker, castSource);
+    const tier = this.resolveOutgoingCastTier(safeAmount, attacker, castSource);
     let tierMult = 1.0;
     if (tier === 'true_ult') tierMult = 2.15;
     else if (tier === 'ult') tierMult = 1.65;
     else if (tier === 'skill') tierMult = 1.32;
 
-    let mult = (stats.heroDmgMult || 1.0) * (stats.feverDmgMult || 1.0) * tierMult;
+    const heroDmgMult = safeBoundedFloat(stats.heroDmgMult, 0.1, ENDLESS_MAX_MULT, 1.0);
+    const feverDmgMult = safeBoundedFloat(stats.feverDmgMult, 1.0, 100, 1.0);
+    let mult = heroDmgMult * feverDmgMult * tierMult;
 
     if (monster && (monster.isBoss || monster.isMiniBoss || monster.isEndlessStageBoss)) {
-      mult *= stats.bossDmgMult || 1.0;
+      mult *= safeBoundedFloat(stats.bossDmgMult, 1.0, ENDLESS_MAX_MULT, 1.0);
     }
 
-    const critChance = Math.max(0, Math.min(0.95, stats.critChance || 0.08));
-    const critMult = Math.max(1.2, stats.critMult || 1.65);
+    const critChance = safeBoundedFloat(stats.critChance, 0, 0.95, 0.08);
+    const critMult = safeBoundedFloat(stats.critMult, 1.2, 1e4, 1.65);
     const rolledCrit = Boolean(isCrit) || Math.random() < critChance;
     if (rolledCrit) {
       mult *= critMult;
@@ -418,7 +463,7 @@ class EndlessProgressionAdapter {
       mult *= 1.45;
     }
 
-    return Math.max(4, Math.round(amount * mult));
+    return safeBoundedInt(safeAmount * mult, 4, ENDLESS_MAX_STAT);
   }
 
   onPlayerHitMonster(attacker, monster, dealt) {
@@ -700,6 +745,8 @@ export class EndlessManager {
     this._uiSyncAccum = 0;
     this._lastCompanionSyncSig = '';
     this._clock = 0;
+    this._hudClearanceCache = null;
+    this._hudClearanceCachedAt = -1;
 
     this._boundKeyDown = (e) => this.onKeyDown(e);
     this._boundKeyUp = (e) => this.onKeyUp(e);
@@ -851,21 +898,95 @@ export class EndlessManager {
   }
 
   getWorldWidth() {
-    return Math.max(9600, this.corridorMaxX + 2400);
+    const safeMax = Number.isFinite(this.corridorMaxX) ? this.corridorMaxX : 1480;
+    return Math.max(9600, safeMax + 2400);
+  }
+
+  _syncCorridorBounds({ lockToCorridor = false, syncCamera = true } = {}) {
+    if (!Number.isFinite(this.corridorOriginX) || this.corridorOriginX < 240) {
+      this.corridorOriginX = 240;
+    }
+    this.corridorMinX = Math.max(60, Math.round(this.corridorOriginX - 240));
+    this.corridorMaxX = Math.round(this.corridorOriginX + ENDLESS_CORRIDOR_WIDTH - 180);
+
+    if (lockToCorridor || this.lockActive) {
+      this.lockMinX = this.corridorMinX;
+      this.lockMaxX = this.corridorMaxX;
+    } else {
+      if (!Number.isFinite(this.lockMinX) || this.corridorMinX - this.lockMinX > ENDLESS_CORRIDOR_STEP_X * 3) {
+        this.lockMinX = this.corridorMinX;
+      }
+      if (!Number.isFinite(this.lockMaxX) || this.lockMaxX < this.corridorMaxX) {
+        this.lockMaxX = this.corridorMaxX;
+      }
+    }
+
+    if (this.lockMaxX < this.lockMinX + 400) {
+      this.lockMaxX = this.lockMinX + ENDLESS_CORRIDOR_WIDTH;
+    }
+
+    if (syncCamera && this.game?.renderer) {
+      const renderer = this.game.renderer;
+      const neededW = this.getWorldWidth();
+      if (!Number.isFinite(renderer.worldWidth) || renderer.worldWidth < neededW) {
+        renderer.worldWidth = neededW;
+      }
+      const camMin = Math.max(0, this.lockMinX - 60);
+      const camMax = this.lockMaxX + 180;
+      renderer.adventureCamMinX = camMin;
+      renderer.adventureCamMaxX = camMax;
+      if (
+        !Number.isFinite(renderer.camX) ||
+        renderer.camX < camMin - 480 ||
+        renderer.camX > camMax + 480
+      ) {
+        renderer.camX = Math.round((camMin + camMax) * 0.5);
+      }
+    }
+  }
+
+  _evictOverflowCoins() {
+    while (this.coins.length >= COINS_MAX_COUNT) {
+      const oldest = this.coins.shift();
+      if (oldest && oldest.kind === 'gold' && Number.isFinite(oldest.rawGold) && oldest.rawGold > 0) {
+        this.economy.addGold(safeBoundedInt(oldest.rawGold, 1, ENDLESS_MAX_STAT), {
+          isBoss: Boolean(oldest.isBoss),
+          applyMult: Boolean(oldest.applyMult)
+        });
+      }
+    }
+  }
+
+  _pushTapSmite(entry) {
+    if (!entry) return;
+    while (this.tapSmites.length >= TAP_SMITE_MAX_COUNT) {
+      this.tapSmites.shift();
+    }
+    this.tapSmites.push(entry);
+  }
+
+  _pushFeverBurst(entry) {
+    if (!entry) return;
+    while (this.feverBursts.length >= FEVER_BURST_MAX_COUNT) {
+      this.feverBursts.shift();
+    }
+    this.feverBursts.push(entry);
   }
 
   getActiveStageBounds() {
+    const minX = Number.isFinite(this.lockMinX) ? this.lockMinX : this.corridorMinX || 60;
+    const maxX = Number.isFinite(this.lockMaxX) ? this.lockMaxX : this.corridorMaxX || 1480;
     const colossalAlive = Boolean(
       this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss
     );
     if (colossalAlive) {
-      const anchorX = this.bossEntity.anchorX || this.lockMaxX - 180;
+      const anchorX = Number.isFinite(this.bossEntity.anchorX) ? this.bossEntity.anchorX : maxX - 180;
       return {
-        minX: this.lockMinX,
-        maxX: Math.max(this.lockMinX + 240, anchorX - 85)
+        minX,
+        maxX: Math.max(minX + 240, anchorX - 85)
       };
     }
-    return { minX: this.lockMinX, maxX: this.lockMaxX };
+    return { minX, maxX: Math.max(minX + 240, maxX) };
   }
 
   getBossAnchorX() {
@@ -926,7 +1047,9 @@ export class EndlessManager {
 
   spawnFloatingCallout(x, y, text, color = '#facc15', scale = 1, maxLife = 0.95, opts = {}) {
     if (!text) return;
-    while (this.floatingCallouts.length >= 32) {
+    const safeX = Number.isFinite(x) ? Math.round(x) : Math.round(this.corridorOriginX || 240);
+    const safeY = Number.isFinite(y) ? Math.round(y) : Math.round(this.depthMidY - 100);
+    while (this.floatingCallouts.length >= FLOATING_CALLOUT_MAX_COUNT) {
       this.floatingCallouts.shift();
     }
     const label = String(text).toUpperCase();
@@ -965,8 +1088,8 @@ export class EndlessManager {
               : '#ffffff');
 
     this.floatingCallouts.push({
-      x: Math.round(x),
-      y: Math.round(y),
+      x: safeX,
+      y: safeY,
       vx: initVx,
       vy: initVy,
       text: label,
@@ -976,7 +1099,7 @@ export class EndlessManager {
       scale: scale >= 2 ? 2 : 1,
       popPeak: isPunchy ? 1.34 : isGold ? 1.22 : 1.14,
       age: 0,
-      maxLife: Math.max(0.35, maxLife)
+      maxLife: Math.max(0.35, Number.isFinite(maxLife) ? maxLife : 0.95)
     });
   }
 
@@ -1222,15 +1345,24 @@ export class EndlessManager {
         ? this._baseExternalModifiers.bossDmgMult
         : 1.0;
 
-    merged.globalDpsMult = baseGlobal * ascHero * synHero * dirHero;
-    merged.goldMult = baseGold * ascGold * synGold * dirGold;
-    merged.tapMult = baseTap * (ascTap / ascHero) * (synTap / synHero) * (dirTap / dirHero);
-    merged.companionMult =
-      baseComp * (ascComp / ascHero) * (synComp / synHero) * (dirComp / dirHero);
-    merged.critChanceBonus = baseCritChance + ascCritChance + synCritChance + dirCritChance;
-    merged.critDmgMult = baseCritDmg * ascCritDmg * synCritDmg;
-    const totalHaste = baseHaste * dirHaste;
-    const totalBossDmg = baseBossDmg * dirBossDmg;
+    merged.globalDpsMult = safeBoundedFloat(baseGlobal * ascHero * synHero * dirHero, 0.1, ENDLESS_MAX_MULT, 1.0);
+    merged.goldMult = safeBoundedFloat(baseGold * ascGold * synGold * dirGold, 0.1, ENDLESS_MAX_MULT, 1.0);
+    merged.tapMult = safeBoundedFloat(
+      baseTap * (ascTap / ascHero) * (synTap / synHero) * (dirTap / dirHero),
+      0.1,
+      ENDLESS_MAX_MULT,
+      1.0
+    );
+    merged.companionMult = safeBoundedFloat(
+      baseComp * (ascComp / ascHero) * (synComp / synHero) * (dirComp / dirHero),
+      0.1,
+      ENDLESS_MAX_MULT,
+      1.0
+    );
+    merged.critChanceBonus = safeBoundedFloat(baseCritChance + ascCritChance + synCritChance + dirCritChance, 0, 0.95, 0);
+    merged.critDmgMult = safeBoundedFloat(baseCritDmg * ascCritDmg * synCritDmg, 0.5, 1e4, 1.0);
+    const totalHaste = safeBoundedFloat(baseHaste * dirHaste, 0.25, 25, 1.0);
+    const totalBossDmg = safeBoundedFloat(baseBossDmg * dirBossDmg, 0.1, ENDLESS_MAX_MULT, 1.0);
     if (
       Math.abs(totalHaste - 1.0) > 1e-9 ||
       Object.prototype.hasOwnProperty.call(this._baseExternalModifiers, 'hasteMult')
@@ -1244,10 +1376,10 @@ export class EndlessManager {
       merged.bossDmgMult = totalBossDmg;
     }
 
-    const totalStartingGold = baseStartingGold + ascStartingGold;
-    const totalBossTimer = baseBossTimer + ascBossTimer;
-    const totalRelicDiscount = baseRelicDiscount * ascRelicDiscount;
-    const totalFeverBonus = baseFeverBonus + ascFeverBonus;
+    const totalStartingGold = safeBoundedInt(baseStartingGold + ascStartingGold, 0, ENDLESS_MAX_STAT, 0);
+    const totalBossTimer = safeBoundedFloat(baseBossTimer + ascBossTimer, 0, 120, 0);
+    const totalRelicDiscount = safeBoundedFloat(baseRelicDiscount * ascRelicDiscount, 0.15, 1.5, 1.0);
+    const totalFeverBonus = safeBoundedFloat(baseFeverBonus + ascFeverBonus, 0, 30, 0);
 
     if (totalStartingGold > 0 || Object.prototype.hasOwnProperty.call(this._baseExternalModifiers, 'startingGold')) {
       merged.startingGold = totalStartingGold;
@@ -1309,6 +1441,7 @@ export class EndlessManager {
     this.treasureChests = [];
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
+    this.companions?.clearTransientFX?.();
 
     this._coinStreak = 0;
     this._coinStreakTimer = 0;
@@ -1530,8 +1663,13 @@ export class EndlessManager {
       for (const ch of this.treasureChests) {
         if (!ch || ch.opened) continue;
         ch.opened = true;
-        const stageGold = this.economy.computeMonsterGoldReward(ch.stage || this.stage);
-        this.economy.addGold(Math.max(16, Math.round(stageGold * 10)), { isBoss: true, applyMult: true });
+        const stageGold = safeBoundedInt(
+          this.economy.computeMonsterGoldReward(ch.stage || this.stage),
+          1,
+          ENDLESS_MAX_STAT
+        );
+        const chestGold = safeBoundedInt(stageGold * 10, 16, ENDLESS_MAX_STAT);
+        this.economy.addGold(chestGold, { isBoss: true, applyMult: true });
         if ((ch.stage || 1) % 5 === 0) {
           this.economy.addAstralShards(2);
         }
@@ -1590,6 +1728,7 @@ export class EndlessManager {
     this.treasureChests = [];
     this.pendingOfflineLoot = null;
     this._heroGoblinHitCd = 0;
+    this.companions?.clearTransientFX?.();
 
     this._clearSynergyFromEconomy();
     this._coinStreak = 0;
@@ -1778,6 +1917,7 @@ export class EndlessManager {
     this.treasureChests = [];
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
+    this.companions?.clearTransientFX?.();
 
     this._coinStreak = 0;
     this._coinStreakTimer = 0;
@@ -1891,8 +2031,8 @@ export class EndlessManager {
     const loot = this.pendingOfflineLoot;
     this.pendingOfflineLoot = null;
 
-    const goldAmt = Math.max(0, Math.floor(Number(loot.gold) || 0));
-    const shardAmt = Math.max(0, Math.floor(Number(loot.astralShards) || 0));
+    const goldAmt = safeBoundedInt(loot.gold, 0, ENDLESS_MAX_STAT, 0);
+    const shardAmt = safeBoundedInt(loot.astralShards, 0, 1e9, 0);
     if (goldAmt > 0) {
       this.economy.addGold(goldAmt, { isBoss: false, applyMult: false });
     }
@@ -1938,12 +2078,14 @@ export class EndlessManager {
   // =========================================================================
 
   _spawnWave4Burst(x, groundY, kind = 'goblin', scale = 1.65) {
-    while (this.wave4Bursts.length >= 10) {
+    while (this.wave4Bursts.length >= WAVE4_BURST_MAX_COUNT) {
       this.wave4Bursts.shift();
     }
+    const safeX = Number.isFinite(x) ? Math.round(x) : Math.round(this.corridorOriginX || 240);
+    const safeGy = Number.isFinite(groundY) ? Math.round(groundY) : this.depthMidY;
     this.wave4Bursts.push({
-      x: Math.round(x),
-      groundY: Math.round(groundY),
+      x: safeX,
+      groundY: safeGy,
       kind: kind === 'ascension' ? 'ascension' : 'goblin',
       age: 0,
       maxLife: kind === 'ascension' ? 0.62 : 0.48,
@@ -2071,47 +2213,59 @@ export class EndlessManager {
     const count = this.game?.fighters ? this.game.fighters.length : 0;
     const rawGy = Number.isFinite(opts.groundY) ? opts.groundY : lanePool[count % lanePool.length];
     const gy = Math.max(this.depthMinY + 12, Math.min(this.depthMaxY - 12, rawGy));
+    const safeX = Number.isFinite(x) ? Math.round(x) : Math.round((this.lockMinX + this.lockMaxX) * 0.5);
     const player = this.game?.leftFighter;
-    const facing = opts.isColossalBoss ? -1 : player && player.x > x ? 1 : -1;
+    const facing = opts.isColossalBoss ? -1 : player && player.x > safeX ? 1 : -1;
 
-    const stageIdx = Math.max(0, (this.stage || 1) - 1);
-    const waveIdx = Math.max(0, (this.waveInStage || 1) - 1);
+    const stageNum = Math.max(1, Math.floor(Number.isFinite(this.stage) ? this.stage : 1));
+    const stageIdx = Math.max(0, stageNum - 1);
+    const waveIdx = Math.max(0, Math.min(this.wavesPerStage, Math.floor(Number.isFinite(this.waveInStage) ? this.waveInStage : 1) - 1));
     const baseHp = ENDLESS_MONSTER_BASE_HP[kind] || 320;
     const dirHpMult =
-      this._activeDirectorMods && Number.isFinite(this._activeDirectorMods.monsterHpMult)
+      this._activeDirectorMods && Number.isFinite(this._activeDirectorMods.monsterHpMult) && this._activeDirectorMods.monsterHpMult > 0
         ? this._activeDirectorMods.monsterHpMult
         : 1.0;
-    const defaultScaledHp = Math.max(
+    const defaultScaledHp = safeBoundedInt(
+      baseHp *
+        Math.pow(1.28, Math.min(200, stageIdx)) *
+        (1 + waveIdx * 0.08) *
+        (opts.isElite ? 1.45 : 1.0) *
+        dirHpMult,
       40,
-      Math.round(
-        baseHp *
-          Math.pow(1.28, stageIdx) *
-          (1 + waveIdx * 0.08) *
-          (opts.isElite ? 1.45 : 1.0) *
-          dirHpMult
-      )
+      ENDLESS_MAX_STAT
     );
-    const defaultDmgScale = 0.56 * Math.pow(1.14, stageIdx) * (opts.isElite ? 1.12 : 1.0);
+    const defaultDmgScale = safeBoundedFloat(
+      0.56 * Math.pow(1.14, Math.min(300, stageIdx)) * (opts.isElite ? 1.12 : 1.0),
+      0.1,
+      ENDLESS_MAX_DMG_SCALE,
+      0.56
+    );
 
     const spawnOpts = {
       ...opts,
-      maxHp: Number.isFinite(opts.maxHp) && opts.maxHp > 0 ? Math.round(opts.maxHp) : defaultScaledHp,
-      dmgScale: Number.isFinite(opts.dmgScale) && opts.dmgScale > 0 ? opts.dmgScale : defaultDmgScale
+      maxHp:
+        Number.isFinite(opts.maxHp) && opts.maxHp > 0
+          ? safeBoundedInt(opts.maxHp, 1, ENDLESS_MAX_STAT)
+          : defaultScaledHp,
+      dmgScale:
+        Number.isFinite(opts.dmgScale) && opts.dmgScale > 0
+          ? safeBoundedFloat(opts.dmgScale, 0.1, ENDLESS_MAX_DMG_SCALE, defaultDmgScale)
+          : defaultDmgScale
     };
 
     const m =
       kind === 'archfiend'
-        ? new ArchfiendBoss(x, gy, -1, spawnOpts)
-        : new Monster(kind, x, gy, facing, spawnOpts);
+        ? new ArchfiendBoss(safeX, gy, -1, spawnOpts)
+        : new Monster(kind, safeX, gy, facing, spawnOpts);
 
     m.game = this._getEntityGameView();
     m.team = 2;
     m.groundY = gy;
     m.y = gy;
     if (kind === 'archfiend') {
-      m.anchorX = x;
+      m.anchorX = safeX;
       m.anchorGroundY = gy;
-      m.x = x;
+      m.x = safeX;
       m.facing = -1;
       m.isBoss = true;
       m.isColossalBoss = true;
@@ -2129,8 +2283,11 @@ export class EndlessManager {
 
     // Back-wall dimensional summoning portal (y = 446, adv_fx_sheet.png)
     if (!opts.skipPortal && kind !== 'archfiend') {
+      while (this.portals.length >= PORTAL_MAX_COUNT) {
+        this.portals.shift();
+      }
       const portalZone = this.zoneIndex;
-      const portalX = Math.max(this.lockMinX + 86, Math.min(this.lockMaxX - 86, Math.round(x)));
+      const portalX = Math.max(this.lockMinX + 86, Math.min(this.lockMaxX - 86, safeX));
       this.portals.push({
         x: portalX,
         groundY: 446,
@@ -2148,7 +2305,7 @@ export class EndlessManager {
     }
 
     if (this.game?.vfx) {
-      const fxX = Number.isFinite(m.portalEmergeFromX) ? m.portalEmergeFromX : x;
+      const fxX = Number.isFinite(m.portalEmergeFromX) ? m.portalEmergeFromX : safeX;
       const fxY = Number.isFinite(m.portalEmergeFromY) ? m.portalEmergeFromY - 56 : gy - 24;
       this.game.vfx.spawnShockwave(fxX, fxY, m.isEndlessStageBoss ? 220 : 92, m.primaryColor, 0.34, true);
       this.game.vfx.spawnBurst(fxX, fxY - 10, m.isEndlessStageBoss ? 24 : 12, m.primaryColor, 200, {
@@ -2161,14 +2318,20 @@ export class EndlessManager {
   }
 
   _spawnWaveMonsters() {
+    this._syncCorridorBounds({ lockToCorridor: true, syncCamera: true });
     const realm = this.getCurrentRealm();
     const waveNum = Math.max(1, Math.min(this.wavesPerStage, this.waveInStage));
     const count = this.bossFarmMode ? 4 : waveNum <= 2 ? 3 : waveNum <= 4 ? 4 : 5;
     const lanes = [480, 561, 642, 514, 608];
 
-    const playerX = this.game?.leftFighter?.x ?? this.corridorOriginX;
-    const minSpawnX = Math.max(this.lockMinX + 380, playerX + 260);
-    const maxSpawnX = this.lockMaxX - 110;
+    const playerX = Number.isFinite(this.game?.leftFighter?.x)
+      ? this.game.leftFighter.x
+      : this.corridorOriginX;
+    const hardMinX = this.lockMinX + 120;
+    const hardMaxX = Math.max(hardMinX + 180, this.lockMaxX - 90);
+    const maxSpawnX = Math.max(hardMinX + 180, this.lockMaxX - 110);
+    const rawMinSpawnX = Math.max(this.lockMinX + 380, playerX + 260);
+    const minSpawnX = Math.max(hardMinX, Math.min(maxSpawnX - 180, rawMinSpawnX));
     const span = Math.max(180, maxSpawnX - minSpawnX);
 
     const dirMods =
@@ -2180,7 +2343,7 @@ export class EndlessManager {
     for (let i = 0; i < count; i++) {
       const kind = realm.monsters[i % realm.monsters.length] || 'templar';
       const frac = count > 1 ? i / (count - 1) : 0.5;
-      const sx = Math.round(minSpawnX + frac * span);
+      const sx = Math.max(hardMinX, Math.min(hardMaxX, Math.round(minSpawnX + frac * span)));
       const gy = lanes[(i + waveNum + this._farmWaveCount) % lanes.length];
       const isElite =
         (this.bossFarmMode && i === count - 1) ||
@@ -2214,16 +2377,22 @@ export class EndlessManager {
     this._waveAdvancePending = false;
     this._waveSpawnDelay = 0;
 
+    const stageNum = Math.max(1, Math.floor(Number.isFinite(this.stage) ? this.stage : 1));
+    this.stage = stageNum;
     const realm = this.getCurrentRealm();
     const stats = this.economy.getComputedStats();
     this.isBossEncounter = true;
     this.bossFarmMode = false;
-    this.bossTimerMax = 40 + (stats.bossTimerBonusSec || 0);
+    this.bossTimerMax = safeBoundedFloat(
+      40 + (Number.isFinite(stats?.bossTimerBonusSec) ? stats.bossTimerBonusSec : 0),
+      10,
+      180,
+      40
+    );
     this.bossTimer = this.bossTimerMax;
 
-    this.lockMinX = this.corridorMinX;
-    this.lockMaxX = this.corridorMaxX;
     this.lockActive = true;
+    this._syncCorridorBounds({ lockToCorridor: true, syncCamera: true });
 
     const bossX = Math.round(this.lockMaxX - 180);
     this._bossPortalX = bossX;
@@ -2232,28 +2401,32 @@ export class EndlessManager {
     const player = this.game?.leftFighter;
     const bossProfile =
       this.bossDirector && typeof this.bossDirector.getBossProfileForStage === 'function'
-        ? this.bossDirector.getBossProfileForStage(this.stage, realm)
+        ? this.bossDirector.getBossProfileForStage(stageNum, realm)
         : null;
-    const isColossal = Boolean(bossProfile ? bossProfile.isColossal : this.stage % 5 === 0);
+    const isColossal = Boolean(bossProfile ? bossProfile.isColossal : stageNum % 5 === 0);
     if (player) {
       const safeRight = isColossal ? bossX - 165 : bossX - 240;
-      if (player.x > safeRight) player.x = Math.max(this.lockMinX + 60, safeRight);
+      if (!Number.isFinite(player.x) || player.x > safeRight) player.x = Math.max(this.lockMinX + 60, safeRight);
       if (player.x < this.lockMinX + 40) player.x = this.lockMinX + 80;
       player.facing = 1;
     }
 
-    if (this.game?.renderer) {
-      this.game.renderer.worldWidth = this.getWorldWidth();
-      this.game.renderer.adventureCamMinX = Math.max(0, this.lockMinX - 60);
-      this.game.renderer.adventureCamMaxX = this.lockMaxX + 180;
-    }
-
     if (isColossal) {
       PixelForge.ensureHeroLoaded?.('archfiend');
-      const profileHpMult = Number.isFinite(bossProfile?.hpMult) && bossProfile.hpMult > 0 ? bossProfile.hpMult : 1.0;
-      const colossalHp = Math.round(11800 * Math.pow(1.30, Math.max(0, this.stage - 5)) * profileHpMult);
-      const bossDmgMult = 0.72 * Math.pow(1.14, Math.max(0, this.stage - 1));
-      const tierNum = Math.floor(this.stage / 5);
+      const profileHpMult =
+        Number.isFinite(bossProfile?.hpMult) && bossProfile.hpMult > 0 ? bossProfile.hpMult : 1.0;
+      const colossalHp = safeBoundedInt(
+        11800 * Math.pow(1.30, Math.min(200, Math.max(0, stageNum - 5))) * profileHpMult,
+        11800,
+        ENDLESS_MAX_STAT
+      );
+      const bossDmgMult = safeBoundedFloat(
+        0.72 * Math.pow(1.14, Math.min(300, Math.max(0, stageNum - 1))),
+        0.1,
+        ENDLESS_MAX_DMG_SCALE,
+        0.72
+      );
+      const tierNum = Math.floor(stageNum / 5);
       const bossName =
         bossProfile?.name || (tierNum > 1 ? `BEHEMOTH MALPHAS MK-${tierNum}` : 'BEHEMOTH MALPHAS');
       this.bossEntity = this._spawnEndlessMonster('archfiend', bossX, {
@@ -2268,9 +2441,9 @@ export class EndlessManager {
       if (this.bossEntity && bossProfile) {
         this.bossEntity._bossProfile = bossProfile;
       }
-      this.totalWaveLabel = `STAGE ${this.stage} • COLOSSAL BOSS`;
+      this.totalWaveLabel = `STAGE ${stageNum} • COLOSSAL BOSS`;
       this.showBanner(
-        bossProfile?.heraldText || `STAGE ${this.stage} COLOSSAL BOSS`,
+        bossProfile?.heraldText || `STAGE ${stageNum} COLOSSAL BOSS`,
         bossProfile?.heraldSubText
           ? `${bossProfile.heraldSubText} • ${Math.round(this.bossTimerMax)}S`
           : `${bossName} • ${Math.round(this.bossTimerMax)}S TIMER!`,
@@ -2287,11 +2460,21 @@ export class EndlessManager {
       this.game?.renderer?.triggerShake?.(14, 0.55);
     } else {
       const baseHp = ENDLESS_MONSTER_BASE_HP[realm.warden] || 360;
-      const profileHpMult = Number.isFinite(bossProfile?.hpMult) && bossProfile.hpMult > 0 ? bossProfile.hpMult : 1.0;
-      const wardenHp = Math.round(baseHp * Math.pow(1.28, Math.max(0, this.stage - 1)) * 4.8 * profileHpMult);
-      const wardenDmgScale = 0.65 * Math.pow(1.14, Math.max(0, this.stage - 1));
+      const profileHpMult =
+        Number.isFinite(bossProfile?.hpMult) && bossProfile.hpMult > 0 ? bossProfile.hpMult : 1.0;
+      const wardenHp = safeBoundedInt(
+        baseHp * Math.pow(1.28, Math.min(200, Math.max(0, stageNum - 1))) * 4.8 * profileHpMult,
+        200,
+        ENDLESS_MAX_STAT
+      );
+      const wardenDmgScale = safeBoundedFloat(
+        0.65 * Math.pow(1.14, Math.min(300, Math.max(0, stageNum - 1))),
+        0.1,
+        ENDLESS_MAX_DMG_SCALE,
+        0.65
+      );
       const wardenName = bossProfile?.name || realm.wardenName;
-      const wardenTitle = bossProfile?.title || `STAGE ${this.stage} WARDEN`;
+      const wardenTitle = bossProfile?.title || `STAGE ${stageNum} WARDEN`;
       this.bossEntity = this._spawnEndlessMonster(realm.warden, bossX, {
         groundY: this.depthMidY,
         isMiniBoss: true,
@@ -2307,9 +2490,9 @@ export class EndlessManager {
       if (this.bossEntity && bossProfile) {
         this.bossEntity._bossProfile = bossProfile;
       }
-      this.totalWaveLabel = `STAGE ${this.stage} • WARDEN BOSS`;
+      this.totalWaveLabel = `STAGE ${stageNum} • WARDEN BOSS`;
       this.showBanner(
-        bossProfile?.heraldText || `STAGE ${this.stage} BOSS: ${wardenName}`,
+        bossProfile?.heraldText || `STAGE ${stageNum} BOSS: ${wardenName}`,
         bossProfile?.heraldSubText
           ? `${bossProfile.heraldSubText} • ${Math.round(this.bossTimerMax)}S`
           : `SLAY WITHIN ${Math.round(this.bossTimerMax)}S TO ADVANCE!`,
@@ -2345,21 +2528,23 @@ export class EndlessManager {
   }
 
   _advanceCorridorForNextWave(nextSpawnKind = 'wave') {
+    if (!Number.isFinite(this.corridorOriginX) || this.corridorOriginX < 240) {
+      this.corridorOriginX = 240;
+    }
     this.corridorOriginX += ENDLESS_CORRIDOR_STEP_X;
-    this.corridorMinX = Math.max(60, this.corridorOriginX - 240);
-    this.corridorMaxX = this.corridorOriginX + ENDLESS_CORRIDOR_WIDTH - 180;
+    this.lockActive = false;
+    this._syncCorridorBounds({ lockToCorridor: false, syncCamera: true });
 
     // Smoothly unlock right side so hero & companions march forward into the new arena
-    this.lockActive = false;
     this.lockMaxX = this.corridorMaxX;
     this._waveAdvancePending = true;
     this._waveAdvanceTargetX = this.corridorOriginX + 80;
     this._waveAdvanceElapsed = 0;
     this._pendingSpawnKind = nextSpawnKind;
 
-    if (this.game?.renderer) {
-      this.game.renderer.worldWidth = this.getWorldWidth();
-      this.game.renderer.adventureCamMaxX = this.corridorMaxX + 180;
+    // Pull dropped wave coins smoothly to the marching hero so high-coordinate scrolling never strands gold
+    for (let i = 0; i < this.coins.length; i++) {
+      if (this.coins[i]) this.coins[i].magnetForced = true;
     }
 
     // Nudge any active Treasure Goblins forward with the advancing corridor
@@ -2382,10 +2567,15 @@ export class EndlessManager {
       }
     }
 
-    const clearedStage = this.stage;
+    const clearedStage = Math.max(1, Math.floor(Number.isFinite(this.stage) ? this.stage : 1));
     const isColossal = Boolean(boss?.isColossalBoss || clearedStage % 5 === 0);
-    const bx = boss?.isColossalBoss ? (boss.anchorX || boss.x) - 110 : boss?.x || this.corridorOriginX + 420;
-    const bGy = boss?.groundY || this.depthMidY;
+    const rawBx = boss?.isColossalBoss
+      ? (Number.isFinite(boss.anchorX) ? boss.anchorX : boss.x) - 110
+      : Number.isFinite(boss?.x)
+        ? boss.x
+        : this.corridorOriginX + 420;
+    const bx = Math.max(this.lockMinX + 72, Math.min(this.lockMaxX - 72, Math.round(rawBx)));
+    const bGy = Number.isFinite(boss?.groundY) ? boss.groundY : this.depthMidY;
 
     // Huge Sovereign Gold Coin shower + Astral Shards!
     const bossProfile =
@@ -2394,14 +2584,18 @@ export class EndlessManager {
       null;
     const profileGoldMult =
       Number.isFinite(bossProfile?.goldMult) && bossProfile.goldMult > 0 ? bossProfile.goldMult : 1.0;
-    const baseBossGold = this.economy.computeMonsterGoldReward(clearedStage, {
-      isElite: true,
-      isWarden: !isColossal,
-      isColossalBoss: isColossal
-    });
-    const rawBossGold = Math.max(1, Math.round(baseBossGold * profileGoldMult));
-    const instantGold = Math.round(rawBossGold * 0.35);
-    const showerGold = Math.max(1, rawBossGold - instantGold);
+    const baseBossGold = safeBoundedInt(
+      this.economy.computeMonsterGoldReward(clearedStage, {
+        isElite: true,
+        isWarden: !isColossal,
+        isColossalBoss: isColossal
+      }),
+      1,
+      ENDLESS_MAX_STAT
+    );
+    const rawBossGold = safeBoundedInt(baseBossGold * profileGoldMult, 1, ENDLESS_MAX_STAT);
+    const instantGold = safeBoundedInt(Math.round(rawBossGold * 0.35), 0, rawBossGold, 0);
+    const showerGold = safeBoundedInt(Math.max(1, rawBossGold - instantGold), 1, ENDLESS_MAX_STAT);
     if (instantGold > 0) {
       this.economy.addGold(instantGold, { isBoss: true, applyMult: true });
     }
@@ -2413,7 +2607,7 @@ export class EndlessManager {
 
     const baseShards = clearedStage % 5 === 0 ? Math.max(2, Math.floor(clearedStage / 2)) : 1;
     const profileBonusShards = Math.max(0, Math.floor(Number(bossProfile?.bonusShards) || 0));
-    const shardCount = Math.max(baseShards, profileBonusShards);
+    const shardCount = safeBoundedInt(Math.max(baseShards, profileBonusShards), 1, 1e9);
     this.economy.addAstralShards(shardCount);
     this._spawnAstralShardVisuals(bx, bGy, Math.min(6, shardCount));
 
@@ -2601,11 +2795,15 @@ export class EndlessManager {
     }
 
     // Normal / Elite monster gold drop + plume VFX
-    const baseMonsterGold = this.economy.computeMonsterGoldReward(this.stage, {
-      isElite: Boolean(deadMonster.isElite),
-      isWarden: false,
-      isColossalBoss: false
-    });
+    const baseMonsterGold = safeBoundedInt(
+      this.economy.computeMonsterGoldReward(this.stage, {
+        isElite: Boolean(deadMonster.isElite),
+        isWarden: false,
+        isColossalBoss: false
+      }),
+      1,
+      ENDLESS_MAX_STAT
+    );
     const eliteGoldMult =
       deadMonster.isElite &&
       this._activeDirectorMods &&
@@ -2613,7 +2811,7 @@ export class EndlessManager {
       this._activeDirectorMods.eliteGoldMult > 0
         ? this._activeDirectorMods.eliteGoldMult
         : 1.0;
-    const rawGold = Math.max(1, Math.round(baseMonsterGold * eliteGoldMult));
+    const rawGold = safeBoundedInt(baseMonsterGold * eliteGoldMult, 1, ENDLESS_MAX_STAT);
     this.spawnGoldCoins(deadMonster.x, deadMonster.groundY || this.depthMidY, rawGold, {
       count: deadMonster.isElite ? 6 : 3,
       isBoss: false,
@@ -2645,26 +2843,26 @@ export class EndlessManager {
   // =========================================================================
 
   spawnGoldCoins(x, groundY, totalRawGold, { count = 4, isBoss = false, applyMult = true } = {}) {
-    if (!Number.isFinite(totalRawGold) || totalRawGold <= 0) return;
-    const roundedTotal = Math.max(1, Math.round(totalRawGold));
+    const numGold = Number(totalRawGold);
+    if (Number.isNaN(numGold) || numGold <= 0) return;
+    const roundedTotal = safeBoundedInt(numGold, 1, ENDLESS_MAX_STAT);
     const n = Math.max(1, Math.min(20, Math.min(roundedTotal, count | 0)));
     const basePerCoin = Math.floor(roundedTotal / n);
     const remainder = roundedTotal - basePerCoin * n;
-    const gy = Math.max(this.depthMinY + 12, Math.min(this.depthMaxY - 12, groundY || this.depthMidY));
+    const safeX = Number.isFinite(x) ? x : this.corridorOriginX || 240;
+    const gy = Math.max(
+      this.depthMinY + 12,
+      Math.min(this.depthMaxY - 12, Number.isFinite(groundY) ? groundY : this.depthMidY)
+    );
 
     for (let i = 0; i < n; i++) {
-      while (this.coins.length >= 64) {
-        const oldest = this.coins.shift();
-        if (oldest && oldest.kind === 'gold' && oldest.rawGold > 0) {
-          this.economy.addGold(oldest.rawGold, { isBoss: oldest.isBoss, applyMult: oldest.applyMult });
-        }
-      }
+      this._evictOverflowCoins();
       const spread = (i - (n - 1) * 0.5) * 26 + (Math.random() * 18 - 9);
       const laneOff = (Math.random() - 0.5) * 34;
       const targetGy = Math.max(this.depthMinY + 12, Math.min(this.depthMaxY - 12, gy + laneOff));
       this.coins.push({
         kind: 'gold',
-        x: x + spread * 0.35,
+        x: safeX + spread * 0.35,
         y: targetGy - 18,
         groundY: targetGy,
         vx: spread * 2.2,
@@ -2681,12 +2879,17 @@ export class EndlessManager {
 
   _spawnAstralShardVisuals(x, groundY, count = 2) {
     const n = Math.max(1, Math.min(8, count | 0));
-    const gy = Math.max(this.depthMinY + 12, Math.min(this.depthMaxY - 12, groundY || this.depthMidY));
+    const safeX = Number.isFinite(x) ? x : this.corridorOriginX || 240;
+    const gy = Math.max(
+      this.depthMinY + 12,
+      Math.min(this.depthMaxY - 12, Number.isFinite(groundY) ? groundY : this.depthMidY)
+    );
     for (let i = 0; i < n; i++) {
+      this._evictOverflowCoins();
       const spread = (i - (n - 1) * 0.5) * 32;
       this.coins.push({
         kind: 'shard',
-        x: x + spread * 0.4,
+        x: safeX + spread * 0.4,
         y: gy - 26,
         groundY: gy,
         vx: spread * 2.0,
@@ -2704,8 +2907,11 @@ export class EndlessManager {
   _scoopAllCoinsInstant() {
     let totalAdded = 0;
     for (const c of this.coins) {
-      if (c && c.kind === 'gold' && c.rawGold > 0) {
-        totalAdded += this.economy.addGold(c.rawGold, { isBoss: c.isBoss, applyMult: c.applyMult });
+      if (c && c.kind === 'gold' && Number.isFinite(c.rawGold) && c.rawGold > 0) {
+        totalAdded += this.economy.addGold(safeBoundedInt(c.rawGold, 1, ENDLESS_MAX_STAT), {
+          isBoss: c.isBoss,
+          applyMult: c.applyMult
+        });
       }
     }
     this.coins = [];
@@ -2715,12 +2921,24 @@ export class EndlessManager {
   _updateCoins(dt, player) {
     if (!this.coins.length) return;
     const stats = this.economy.getComputedStats();
-    const baseRadius = Math.max(180, stats.coinMagnetRadius || 210);
-    const px = player ? player.x : this.corridorOriginX;
-    const pGy = player ? player.groundY || player.y || this.depthMidY : this.depthMidY;
+    const baseRadius = Math.max(180, Number.isFinite(stats.coinMagnetRadius) ? stats.coinMagnetRadius : 210);
+    const px = Number.isFinite(player?.x) ? player.x : this.corridorOriginX;
+    const pGy = player && Number.isFinite(player.groundY || player.y)
+      ? player.groundY || player.y
+      : this.depthMidY;
 
     for (let i = this.coins.length - 1; i >= 0; i--) {
       const c = this.coins[i];
+      if (!c || !Number.isFinite(c.age) || !Number.isFinite(c.x) || !Number.isFinite(c.groundY)) {
+        if (c && c.kind === 'gold' && Number.isFinite(c.rawGold) && c.rawGold > 0) {
+          this.economy.addGold(safeBoundedInt(c.rawGold, 1, ENDLESS_MAX_STAT), {
+            isBoss: Boolean(c.isBoss),
+            applyMult: Boolean(c.applyMult)
+          });
+        }
+        this.coins.splice(i, 1);
+        continue;
+      }
       c.age += dt;
 
       // Arc physics before settling on road
@@ -2736,10 +2954,13 @@ export class EndlessManager {
         }
       }
 
-      // Magnetic vacuum pull (auto-pulls after 0.85s or immediately when magnetForced / within radius)
+      // Magnetic vacuum pull (auto-pulls after 0.85s or immediately when magnetForced / within radius / far behind)
       const dx = px - c.x;
       const dz = pGy - c.groundY;
       const dist = Math.hypot(dx, dz * 1.25);
+      if (Math.abs(dx) > 1800 && c.age >= 0.45) {
+        c.magnetForced = true;
+      }
       const shouldPull =
         player &&
         (c.magnetForced || c.age >= 0.85 || (c.age >= 0.20 && dist <= baseRadius));
@@ -2756,8 +2977,8 @@ export class EndlessManager {
         this._coinStreak = Math.min(12, (this._coinStreak || 0) + 1);
         this._coinStreakTimer = COIN_STREAK_DECAY_SEC;
 
-        if (c.kind === 'gold' && c.rawGold > 0) {
-          const gained = this.economy.addGold(c.rawGold, {
+        if (c.kind === 'gold' && Number.isFinite(c.rawGold) && c.rawGold > 0) {
+          const gained = this.economy.addGold(safeBoundedInt(c.rawGold, 1, ENDLESS_MAX_STAT), {
             isBoss: c.isBoss,
             applyMult: c.applyMult
           });
@@ -2938,9 +3159,14 @@ export class EndlessManager {
 
     const realm = this.getCurrentRealm();
     const baseKindHp = ENDLESS_MONSTER_BASE_HP[realm.monsters?.[0]] || 320;
-    const stageIdx = Math.max(0, (this.stage || 1) - 1);
-    const maxHp = Math.max(120, Math.round(baseKindHp * Math.pow(1.28, stageIdx) * 2.4));
-    const speed = 138 + Math.min(54, stageIdx * 4);
+    const stageNum = Math.max(1, Math.floor(Number.isFinite(this.stage) ? this.stage : 1));
+    const stageIdx = Math.max(0, stageNum - 1);
+    const maxHp = safeBoundedInt(
+      baseKindHp * Math.pow(1.28, Math.min(200, stageIdx)) * 2.4,
+      120,
+      ENDLESS_MAX_STAT
+    );
+    const speed = safeBoundedFloat(138 + Math.min(54, stageIdx * 4), 60, 260, 140);
 
     const manager = this;
     const goblin = {
@@ -2950,7 +3176,7 @@ export class EndlessManager {
       isBoss: false,
       isColossalBoss: false,
       isDead: false,
-      stage: Math.max(1, Math.floor(this.stage || 1)),
+      stage: stageNum,
       x: sx,
       y: gy,
       groundY: gy,
@@ -3005,7 +3231,7 @@ export class EndlessManager {
     { isTap = false, doubleGoldSpray = false } = {}
   ) {
     if (!goblin || goblin.isDead || goblin.hp <= 0) return 0;
-    const dmg = Math.max(1, Math.round(Number(rawDamage) || 1));
+    const dmg = safeBoundedInt(rawDamage, 1, ENDLESS_MAX_STAT);
     goblin.hp = Math.max(0, goblin.hp - dmg);
     goblin.hitFlash = 0.14;
     goblin.hopPhase = 1.0;
@@ -3015,8 +3241,16 @@ export class EndlessManager {
     }
 
     // Drop instant shimmering coin sprays every time the goblin takes damage!
-    const baseMonsterGold = this.economy.computeMonsterGoldReward(goblin.stage || this.stage);
-    const sprayGold = Math.max(1, Math.round(baseMonsterGold * (doubleGoldSpray ? 0.85 : 0.42)));
+    const baseMonsterGold = safeBoundedInt(
+      this.economy.computeMonsterGoldReward(goblin.stage || this.stage),
+      1,
+      ENDLESS_MAX_STAT
+    );
+    const sprayGold = safeBoundedInt(
+      baseMonsterGold * (doubleGoldSpray ? 0.85 : 0.42),
+      1,
+      ENDLESS_MAX_STAT
+    );
     this.spawnGoldCoins(goblin.x, goblin.groundY, sprayGold, {
       count: doubleGoldSpray ? 4 : 2,
       isBoss: false,
@@ -3046,8 +3280,12 @@ export class EndlessManager {
       this.treasureGoblins.splice(idx, 1);
     }
 
-    const baseMonsterGold = this.economy.computeMonsterGoldReward(goblin.stage || this.stage);
-    const jackpotGold = Math.max(14, Math.round(baseMonsterGold * 8));
+    const baseMonsterGold = safeBoundedInt(
+      this.economy.computeMonsterGoldReward(goblin.stage || this.stage),
+      1,
+      ENDLESS_MAX_STAT
+    );
+    const jackpotGold = safeBoundedInt(baseMonsterGold * 8, 14, ENDLESS_MAX_STAT);
     this.spawnGoldCoins(goblin.x, goblin.groundY, jackpotGold, {
       count: 14,
       isBoss: false,
@@ -3106,7 +3344,7 @@ export class EndlessManager {
     // 1. Move goblins across the corridor & handle escape timer
     for (let i = this.treasureGoblins.length - 1; i >= 0; i--) {
       const g = this.treasureGoblins[i];
-      if (!g || g.isDead) {
+      if (!g || g.isDead || !Number.isFinite(g.x) || !Number.isFinite(g.escapeTimer)) {
         this.treasureGoblins.splice(i, 1);
         continue;
       }
@@ -3221,16 +3459,24 @@ export class EndlessManager {
 
   spawnStageTreasureChest(x, groundY, stageNum = null) {
     // Enforce cap 3: auto-collect oldest chest cleanly so milestone loot is never lost
-    while (this.treasureChests.length >= CHEST_MAX_ACTIVE) {
+    let guard = 0;
+    while (this.treasureChests.length >= CHEST_MAX_ACTIVE && guard < 16) {
+      guard++;
       const oldest = this.treasureChests[0];
-      if (oldest) {
+      if (oldest && !oldest.opened) {
         this._openTreasureChest(oldest);
       } else {
         this.treasureChests.shift();
       }
+      if (this.treasureChests[0] === oldest) {
+        this.treasureChests.shift();
+      }
     }
 
-    const cx = Number.isFinite(x) ? Math.round(x) : Math.round(this.corridorOriginX + 340);
+    const minX = (this.lockMinX || this.corridorMinX || 60) + 72;
+    const maxX = Math.max(minX + 120, (this.lockMaxX || this.corridorMaxX || 1480) - 72);
+    const rawCx = Number.isFinite(x) ? Math.round(x) : Math.round(this.corridorOriginX + 340);
+    const cx = Math.max(minX, Math.min(maxX, rawCx));
     const cy = Math.max(
       this.depthMinY + 26,
       Math.min(this.depthMaxY - 24, Number.isFinite(groundY) ? Math.round(groundY) : this.depthMidY)
@@ -3300,9 +3546,13 @@ export class EndlessManager {
       this.treasureChests.splice(idx, 1);
     }
 
-    const stg = Math.max(1, Math.floor(chest.stage || this.stage || 1));
-    const stageGold = this.economy.computeMonsterGoldReward(stg);
-    const chestGold = Math.max(16, Math.round(stageGold * 10));
+    const stg = Math.max(1, Math.floor(Number(chest.stage || this.stage) || 1));
+    const stageGold = safeBoundedInt(
+      this.economy.computeMonsterGoldReward(stg),
+      1,
+      ENDLESS_MAX_STAT
+    );
+    const chestGold = safeBoundedInt(stageGold * 10, 16, ENDLESS_MAX_STAT);
     this.spawnGoldCoins(chest.x, chest.groundY, chestGold, {
       count: 16,
       isBoss: true,
@@ -3355,9 +3605,10 @@ export class EndlessManager {
 
   _updateTreasureChests(dt) {
     if (!this.treasureChests.length) return;
+    const minActiveX = (this.lockMinX || this.corridorMinX || 60) - 180;
     for (let i = this.treasureChests.length - 1; i >= 0; i--) {
       const ch = this.treasureChests[i];
-      if (!ch || ch.opened) {
+      if (!ch || ch.opened || !Number.isFinite(ch.x) || !Number.isFinite(ch.autoCrackTimer)) {
         this.treasureChests.splice(i, 1);
         continue;
       }
@@ -3373,7 +3624,7 @@ export class EndlessManager {
       ) {
         ch.shakeTimer = Math.max(ch.shakeTimer, 0.18);
       }
-      if (ch.autoCrackTimer <= 0) {
+      if (ch.autoCrackTimer <= 0 || ch.x < minActiveX) {
         this._openTreasureChest(ch);
       }
     }
@@ -3430,7 +3681,7 @@ export class EndlessManager {
             this.economy.tapFeverTimer += feverBonusSec;
           }
         }
-        const dmg = Math.max(1, Math.round(smite.damage || 10));
+        const dmg = safeBoundedInt(smite.damage, 1, ENDLESS_MAX_STAT, 10);
         const gx = bestGoblin.x;
         const gGy = bestGoblin.groundY;
         const tapAttacker = {
@@ -3450,8 +3701,7 @@ export class EndlessManager {
           doubleGoldSpray: true
         });
 
-        while (this.tapSmites.length >= 24) this.tapSmites.shift();
-        this.tapSmites.push({
+        this._pushTapSmite({
           x: gx,
           groundY: gGy,
           kind: 'bolt',
@@ -3460,7 +3710,7 @@ export class EndlessManager {
           scale: smite.isCrit ? 1.55 : 1.32
         });
         if (smite.isCrit) {
-          this.tapSmites.push({
+          this._pushTapSmite({
             x: gx,
             groundY: gGy - 52,
             kind: 'crit',
@@ -3470,8 +3720,7 @@ export class EndlessManager {
           });
         }
         if (smite.feverTriggered) {
-          while (this.feverBursts.length >= 8) this.feverBursts.shift();
-          this.feverBursts.push({
+          this._pushFeverBurst({
             x: gx,
             groundY: gGy - 36,
             age: 0,
@@ -3488,7 +3737,7 @@ export class EndlessManager {
           this.game?.audio?.play?.(smite.isCrit ? 'raijin_slash' : 'holy_bolt', gx);
         }
         if ((smite.goldBonus || 0) > 0) {
-          this.spawnGoldCoins(gx, gGy, smite.goldBonus, {
+          this.spawnGoldCoins(gx, gGy, safeBoundedInt(smite.goldBonus, 1, ENDLESS_MAX_STAT), {
             count: smite.feverTier >= 2 ? 3 : 1,
             isBoss: false,
             applyMult: true
@@ -3537,8 +3786,7 @@ export class EndlessManager {
       }
       if (bestChest) {
         const crackRes = this._crackTreasureChest(bestChest, true);
-        while (this.tapSmites.length >= 24) this.tapSmites.shift();
-        this.tapSmites.push({
+        this._pushTapSmite({
           x: bestChest.x,
           groundY: bestChest.groundY,
           kind: 'bolt',
@@ -3592,7 +3840,7 @@ export class EndlessManager {
 
     if (!target) {
       // Visual sky-bolt tap spark on empty ground
-      this.tapSmites.push({
+      this._pushTapSmite({
         x: wx,
         groundY: wy,
         kind: 'bolt',
@@ -3615,7 +3863,7 @@ export class EndlessManager {
       feverTriggered: false,
       goldBonus: 0
     };
-    const dmg = Math.max(1, Math.round(smite.damage || 10));
+    const dmg = safeBoundedInt(smite.damage, 1, ENDLESS_MAX_STAT, 10);
     const tx = target.isColossalBoss ? (target.anchorX || target.x) - 105 : target.x;
     const tGy = target.isColossalBoss ? target.anchorGroundY || this.depthMidY : target.groundY || target.y || this.depthMidY;
 
@@ -3669,7 +3917,7 @@ export class EndlessManager {
       candidates.sort((a, b) => a.dist - b.dist);
 
       const chainCount = Math.min(FEVER_CHAIN_MAX_TARGETS + extraChainTargets, candidates.length);
-      const chainDmg = Math.max(1, Math.round(dmg * FEVER_CHAIN_SPLASH_RATIO));
+      const chainDmg = safeBoundedInt(dmg * FEVER_CHAIN_SPLASH_RATIO, 1, ENDLESS_MAX_STAT);
       for (let ci = 0; ci < chainCount; ci++) {
         const entry = candidates[ci];
         const cm = entry.monster;
@@ -3734,8 +3982,7 @@ export class EndlessManager {
     }
 
     // Spawn TAP_SMITE_SKYBOLT (Row 2)
-    while (this.tapSmites.length >= 24) this.tapSmites.shift();
-    this.tapSmites.push({
+    this._pushTapSmite({
       x: tx,
       groundY: tGy,
       kind: 'bolt',
@@ -3746,7 +3993,7 @@ export class EndlessManager {
 
     // Spawn CRIT_STARBURST (Row 3) when critical hit
     if (smite.isCrit) {
-      this.tapSmites.push({
+      this._pushTapSmite({
         x: tx,
         groundY: tGy - 62,
         kind: 'crit',
@@ -3762,8 +4009,7 @@ export class EndlessManager {
       if (feverBonusSec > 0 && this.economy && this.economy.tapFeverTimer > 0) {
         this.economy.tapFeverTimer += feverBonusSec;
       }
-      while (this.feverBursts.length >= 8) this.feverBursts.shift();
-      this.feverBursts.push({
+      this._pushFeverBurst({
         x: tx,
         groundY: tGy - 36,
         age: 0,
@@ -3792,7 +4038,7 @@ export class EndlessManager {
 
     // Fever Bonus Gold Coins!
     if ((smite.goldBonus || 0) > 0) {
-      this.spawnGoldCoins(tx, tGy, smite.goldBonus, {
+      this.spawnGoldCoins(tx, tGy, safeBoundedInt(smite.goldBonus, 1, ENDLESS_MAX_STAT), {
         count: smite.feverTier >= 2 ? 3 : 1,
         isBoss: false,
         applyMult: true
@@ -4497,9 +4743,10 @@ export class EndlessManager {
     const player = g?.leftFighter;
     if (!player) return;
 
-    const effDt = Math.min(0.05, Math.max(0, dt || 0));
-    this._clock += effDt;
+    const effDt = Math.min(0.05, Math.max(0, Number.isFinite(dt) ? dt : 0));
+    this._clock = Number.isFinite(this._clock) ? this._clock + effDt : effDt;
     this.goBlinkTimer += effDt;
+    this._syncCorridorBounds({ lockToCorridor: false, syncCamera: true });
 
     if (this.bannerTimer > 0) {
       this.bannerTimer = Math.max(0, this.bannerTimer - effDt);
@@ -4582,8 +4829,11 @@ export class EndlessManager {
           f.isDead = true;
           this.onMonsterDeath(f);
         }
-        if (f.isDead && (f.deathTimer || 0) >= 1.55) {
-          g.fighters.splice(i, 1);
+        if (f.isDead) {
+          f._endlessDeadAge = (f._endlessDeadAge || 0) + effDt;
+          if ((f.deathTimer || 0) >= 1.55 || f._endlessDeadAge >= 2.2) {
+            g.fighters.splice(i, 1);
+          }
         }
       }
     }
@@ -4702,33 +4952,67 @@ export class EndlessManager {
     this._updateTreasureChests(effDt);
     this._updateCoins(effDt, player);
     for (let i = this.tapSmites.length - 1; i >= 0; i--) {
-      this.tapSmites[i].age += effDt;
-      if (this.tapSmites[i].age >= this.tapSmites[i].maxLife) this.tapSmites.splice(i, 1);
+      const it = this.tapSmites[i];
+      if (!it || !Number.isFinite(it.age) || !Number.isFinite(it.maxLife)) {
+        this.tapSmites.splice(i, 1);
+        continue;
+      }
+      it.age += effDt;
+      if (it.age >= it.maxLife) this.tapSmites.splice(i, 1);
     }
     for (let i = this.feverBursts.length - 1; i >= 0; i--) {
-      this.feverBursts[i].age += effDt;
-      if (this.feverBursts[i].age >= this.feverBursts[i].maxLife) this.feverBursts.splice(i, 1);
+      const it = this.feverBursts[i];
+      if (!it || !Number.isFinite(it.age) || !Number.isFinite(it.maxLife)) {
+        this.feverBursts.splice(i, 1);
+        continue;
+      }
+      it.age += effDt;
+      if (it.age >= it.maxLife) this.feverBursts.splice(i, 1);
     }
     for (let i = this.feverChains.length - 1; i >= 0; i--) {
-      this.feverChains[i].age += effDt;
-      if (this.feverChains[i].age >= this.feverChains[i].maxLife) this.feverChains.splice(i, 1);
+      const it = this.feverChains[i];
+      if (!it || !Number.isFinite(it.age) || !Number.isFinite(it.maxLife)) {
+        this.feverChains.splice(i, 1);
+        continue;
+      }
+      it.age += effDt;
+      if (it.age >= it.maxLife) this.feverChains.splice(i, 1);
     }
     for (let i = this.wave4Bursts.length - 1; i >= 0; i--) {
-      this.wave4Bursts[i].age += effDt;
-      if (this.wave4Bursts[i].age >= this.wave4Bursts[i].maxLife) this.wave4Bursts.splice(i, 1);
+      const it = this.wave4Bursts[i];
+      if (!it || !Number.isFinite(it.age) || !Number.isFinite(it.maxLife)) {
+        this.wave4Bursts.splice(i, 1);
+        continue;
+      }
+      it.age += effDt;
+      if (it.age >= it.maxLife) this.wave4Bursts.splice(i, 1);
     }
     for (let i = this.portals.length - 1; i >= 0; i--) {
-      this.portals[i].age += effDt;
-      if (this.portals[i].age >= this.portals[i].maxLife) this.portals.splice(i, 1);
+      const it = this.portals[i];
+      if (!it || !Number.isFinite(it.age) || !Number.isFinite(it.maxLife)) {
+        this.portals.splice(i, 1);
+        continue;
+      }
+      it.age += effDt;
+      if (it.age >= it.maxLife) this.portals.splice(i, 1);
     }
     for (let i = this.monsterPlumes.length - 1; i >= 0; i--) {
-      this.monsterPlumes[i].age += effDt;
-      if (this.monsterPlumes[i].age >= this.monsterPlumes[i].maxLife) this.monsterPlumes.splice(i, 1);
+      const it = this.monsterPlumes[i];
+      if (!it || !Number.isFinite(it.age) || !Number.isFinite(it.maxLife)) {
+        this.monsterPlumes.splice(i, 1);
+        continue;
+      }
+      it.age += effDt;
+      if (it.age >= it.maxLife) this.monsterPlumes.splice(i, 1);
     }
     const decelY = Math.exp(-3.8 * effDt);
     const decelX = Math.exp(-5.0 * effDt);
     for (let i = this.floatingCallouts.length - 1; i >= 0; i--) {
       const fc = this.floatingCallouts[i];
+      if (!fc || !Number.isFinite(fc.age) || !Number.isFinite(fc.maxLife)) {
+        this.floatingCallouts.splice(i, 1);
+        continue;
+      }
       fc.age += effDt;
       fc.x += (fc.vx || 0) * effDt;
       fc.y += fc.vy * effDt;
@@ -4768,18 +5052,19 @@ export class EndlessManager {
     maxLife = 0.48,
     essenceSparks = 6
   ) {
-    while (this.monsterPlumes.length >= 24) this.monsterPlumes.shift();
+    while (this.monsterPlumes.length >= MONSTER_PLUME_MAX_COUNT) this.monsterPlumes.shift();
+    const safeX = Number.isFinite(x) ? x : this.corridorOriginX || 240;
     const gy = Number.isFinite(groundY) ? groundY : this.depthMidY;
     this.monsterPlumes.push({
-      x,
+      x: safeX,
       groundY: gy,
       vfxRow: Math.max(0, Math.min(11, vfxRow | 0)),
       color: color || '#38bdf8',
       scale: Number.isFinite(scale) ? scale : 1.6,
       age: 0,
-      maxLife: Math.max(0.18, maxLife || 0.48),
+      maxLife: Math.max(0.18, Number.isFinite(maxLife) ? maxLife : 0.48),
       essenceSparks: Math.max(0, Math.min(14, essenceSparks | 0)),
-      seed: (Math.abs(x) * 0.13) % 6.28
+      seed: (Math.abs(safeX) * 0.13) % 6.28
     });
   }
 
@@ -5807,29 +6092,165 @@ export class EndlessManager {
     }
   }
 
+  _fitPixelText(text, pixelSize, maxPx) {
+    const raw = String(text || '').toUpperCase();
+    if (!raw || maxPx <= 0) return '';
+    if (PixelFont.measureWidth(raw, pixelSize) <= maxPx) return raw;
+    const ellipsis = '...';
+    const ellW = PixelFont.measureWidth(ellipsis, pixelSize);
+    if (ellW >= maxPx) return '';
+    let lo = 0;
+    let hi = raw.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) * 0.5);
+      const cand = `${raw.slice(0, mid).trimEnd()}${ellipsis}`;
+      if (PixelFont.measureWidth(cand, pixelSize) <= maxPx) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return lo > 0 ? `${raw.slice(0, lo).trimEnd()}${ellipsis}` : '';
+  }
+
+  _getHudClearance(w, h, hudBot, isNarrowLandscape, isCompactPortrait, renderer = null) {
+    const isShort = h <= 500;
+    const hasParty = (this.companions?.activeSlots?.length || 0) > 0;
+    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}`;
+    const nowSec =
+      typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() * 0.001
+        : this._clock || 0;
+    if (
+      this._hudClearanceCache &&
+      this._hudClearanceCache.key === cacheKey &&
+      this._hudClearanceCachedAt >= 0 &&
+      nowSec - this._hudClearanceCachedAt < 0.25
+    ) {
+      return this._hudClearanceCache;
+    }
+
+    let domTopBottom = 0;
+    let domPartyRight = 0;
+    let domPartyBottom = 0;
+    let domShopBottom = 0;
+
+    try {
+      if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+        const rootEl = renderer?.canvas || document.getElementById?.('app') || null;
+        const rootRect = rootEl && typeof rootEl.getBoundingClientRect === 'function'
+          ? rootEl.getBoundingClientRect()
+          : { left: 0, top: 0, width: w, height: h };
+        const scaleX = rootRect.width > 0 ? w / rootRect.width : 1;
+        const scaleY = rootRect.height > 0 ? h / rootRect.height : 1;
+
+        const topEl = document.querySelector('.endless-top-stack');
+        if (topEl && !topEl.classList?.contains?.('hidden')) {
+          const r = topEl.getBoundingClientRect();
+          if (r.height > 0) {
+            domTopBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
+          }
+        }
+
+        const partyEl = document.querySelector('.endless-party-hud');
+        if (partyEl && !partyEl.classList?.contains?.('hidden')) {
+          const r = partyEl.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            domPartyRight = Math.ceil((r.right - rootRect.left) * scaleX);
+            domPartyBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
+          }
+        }
+
+        const shopBtn = document.getElementById?.('endless-shop-toggle');
+        if (shopBtn && !shopBtn.classList?.contains?.('hidden')) {
+          const r = shopBtn.getBoundingClientRect();
+          if (r.height > 0) {
+            domShopBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
+          }
+        }
+      }
+    } catch {
+      // Ignore DOM measurement errors in headless/Node contexts
+    }
+
+    let topClearY;
+    let safeLeft;
+    let safeRight;
+
+    if (isNarrowLandscape) {
+      const clampedHudBot = isShort ? Math.min(hudBot, 64) : Math.min(hudBot, 84);
+      const fallbackTop = isShort
+        ? Math.max(116, Math.round(clampedHudBot + 56))
+        : Math.max(138, Math.round(clampedHudBot + 62));
+      topClearY = domTopBottom > 24 ? Math.max(clampedHudBot + 6, domTopBottom + 6) : fallbackTop;
+      safeRight = Math.max(240, w - 12);
+      const partyFloor = w >= 560 ? 330 : 12;
+      const measuredParty = domPartyRight > 0 ? domPartyRight + 8 : 0;
+      safeLeft = Math.min(Math.max(12, safeRight - 220), Math.max(partyFloor, measuredParty));
+    } else if (isCompactPortrait) {
+      const fallbackTop = hasParty
+        ? Math.max(248, Math.round(hudBot + 108))
+        : Math.max(194, Math.round(hudBot + 88));
+      const measuredMax = Math.max(
+        domTopBottom > 0 ? domTopBottom + 6 : 0,
+        domShopBottom > 0 ? domShopBottom + 6 : 0,
+        domPartyBottom > 0 ? domPartyBottom + 6 : 0
+      );
+      topClearY = measuredMax > 24 ? Math.max(hudBot + 6, measuredMax) : fallbackTop;
+      safeLeft = 10;
+      safeRight = Math.max(180, w - 10);
+    } else {
+      const fallbackTop = Math.max(146, Math.round(hudBot + 66));
+      topClearY = domTopBottom > 24 ? Math.max(hudBot + 8, domTopBottom + 8) : fallbackTop;
+      safeRight = Math.max(360, w - 20);
+      const measuredParty = domPartyRight > 0 ? domPartyRight + 10 : 0;
+      safeLeft = Math.min(Math.max(20, safeRight - 320), Math.max(208, measuredParty));
+    }
+
+    const result = { key: cacheKey, topClearY, safeLeft, safeRight };
+    this._hudClearanceCache = result;
+    this._hudClearanceCachedAt = nowSec;
+    return result;
+  }
+
   renderScreenHUD(ctx, renderer) {
     if (!this.active || !ctx || this.game?.isLandingOpen) return;
     if (typeof ctx.fillRect !== 'function') return;
     const w = renderer?.width || 1280;
     const h = renderer?.height || 720;
     const t = renderer?.time || this._clock || 0;
-    const isCompact = w < 640;
+    const isNarrowLandscape = Boolean(
+      renderer?.isMobileLandscape || (w <= 920 && w >= h) || (h <= 500 && w > h)
+    );
+    const isCompactPortrait = Boolean(
+      !isNarrowLandscape && (renderer?.isMobilePortrait || w < 640)
+    );
+    const isCompactUi = isNarrowLandscape || isCompactPortrait;
     const isShort = h < 460;
     const hudBot =
       typeof renderer?.getHudBottomY === 'function' ? renderer.getHudBottomY() : isShort ? 56 : 82;
+
+    const feverTimer = this.economy?.tapFeverTimer || 0;
+    const feverTier = feverTimer > 0 ? ((this.economy?.tapFeverLevel || 0) >= 2 ? 2 : 1) : 0;
+    const hasBanner = Boolean(this.bannerTimer > 0 && this.bannerText);
+    const clearance =
+      hasBanner || feverTier >= 1
+        ? this._getHudClearance(w, h, hudBot, isNarrowLandscape, isCompactPortrait, renderer)
+        : null;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
     // 1. Animated Pixel-Framed FEVER OVERDRIVE Border Aura (100% fillRect, 0 rotate/ellipse/arc)
-    const feverTimer = this.economy?.tapFeverTimer || 0;
-    const feverTier = feverTimer > 0 ? ((this.economy?.tapFeverLevel || 0) >= 2 ? 2 : 1) : 0;
     if (feverTier >= 1) {
       const isOverdrive = feverTier >= 2;
       const pulse = isOverdrive
         ? 0.56 + 0.28 * Math.sin(t * 16)
         : 0.44 + 0.24 * Math.sin(t * 10.5);
-      const outerThick = isOverdrive ? 7 : 5;
+      const outerThick = isCompactUi ? (isOverdrive ? 5 : 4) : isOverdrive ? 7 : 5;
+      const midThick = isCompactUi ? 2 : 3;
+      const innerOffset = isCompactUi ? 2 : 3;
+      const innerThick = isCompactUi ? 1 : 2;
       const trimCol = isOverdrive ? '#f59e0b' : '#b45309';
       const goldRailCol = isOverdrive ? '#facc15' : '#d4af37';
       const innerRailCol = isOverdrive ? '#38bdf8' : '#fef08a';
@@ -5853,23 +6274,23 @@ export class EndlessManager {
       // Bright burnished gold mid rail
       ctx.globalAlpha = Math.min(0.92, pulse * 1.15);
       ctx.fillStyle = goldRailCol;
-      ctx.fillRect(0, 0, w, 3);
-      ctx.fillRect(0, h - 3, w, 3);
-      ctx.fillRect(0, 0, 3, h);
-      ctx.fillRect(w - 3, 0, 3, h);
+      ctx.fillRect(0, 0, w, midThick);
+      ctx.fillRect(0, h - midThick, w, midThick);
+      ctx.fillRect(0, 0, midThick, h);
+      ctx.fillRect(w - midThick, 0, midThick, h);
 
       // Inner gleam rail (bright gold at 2x, electric cyan at 3x)
       ctx.globalAlpha = Math.min(0.96, pulse * 1.25);
       ctx.fillStyle = innerRailCol;
-      ctx.fillRect(3, 3, Math.max(0, w - 6), 2);
-      ctx.fillRect(3, h - 5, Math.max(0, w - 6), 2);
-      ctx.fillRect(3, 3, 2, Math.max(0, h - 6));
-      ctx.fillRect(w - 5, 3, 2, Math.max(0, h - 6));
+      ctx.fillRect(innerOffset, innerOffset, Math.max(0, w - innerOffset * 2), innerThick);
+      ctx.fillRect(innerOffset, h - innerOffset - innerThick, Math.max(0, w - innerOffset * 2), innerThick);
+      ctx.fillRect(innerOffset, innerOffset, innerThick, Math.max(0, h - innerOffset * 2));
+      ctx.fillRect(w - innerOffset - innerThick, innerOffset, innerThick, Math.max(0, h - innerOffset * 2));
 
       // Animated marching pixel glint dashes gliding along edges
       const stride = 68;
       const shift = Math.floor(t * (isOverdrive ? 120 : 84)) % stride;
-      const dashLen = isOverdrive ? 18 : 14;
+      const dashLen = isCompactUi ? (isOverdrive ? 14 : 10) : isOverdrive ? 18 : 14;
       ctx.globalAlpha = Math.min(0.95, pulse * 1.3);
       for (let gx = shift; gx < w - 24; gx += stride) {
         ctx.fillStyle = isOverdrive && ((gx / stride) | 0) % 2 === 0 ? '#bae6fd' : '#fef9c3';
@@ -5884,8 +6305,9 @@ export class EndlessManager {
         if (ly > 12) ctx.fillRect(1, ly, 2, dashLen);
       }
 
-      // Stepped gothic corner L-brackets (gold at 2x, blazing gold-cyan electric corners at 3x)
-      const arm = isOverdrive ? 32 : 24;
+      // Stepped gothic corner L-brackets (sleeker on mobile so corner HUDs stay crystal clear)
+      const arm = isCompactUi ? (isOverdrive ? 18 : 14) : isOverdrive ? 32 : 24;
+      const armThick = isCompactUi ? 3 : 4;
       const corners = [
         { x: 0, y: 0, dx: 1, dy: 1 },
         { x: w, y: 0, dx: -1, dy: 1 },
@@ -5896,35 +6318,37 @@ export class EndlessManager {
       for (let ci = 0; ci < corners.length; ci++) {
         const cn = corners[ci];
         const hx = cn.dx > 0 ? cn.x + 2 : cn.x - 2 - arm;
-        const hy = cn.dy > 0 ? cn.y + 2 : cn.y - 6;
-        const vx = cn.dx > 0 ? cn.x + 2 : cn.x - 6;
+        const hy = cn.dy > 0 ? cn.y + 2 : cn.y - 2 - armThick;
+        const vx = cn.dx > 0 ? cn.x + 2 : cn.x - 2 - armThick;
         const vy = cn.dy > 0 ? cn.y + 2 : cn.y - 2 - arm;
 
         ctx.fillStyle = '#050712';
-        ctx.fillRect(hx - 1, hy - 1, arm + 2, 6);
-        ctx.fillRect(vx - 1, vy - 1, 6, arm + 2);
+        ctx.fillRect(hx - 1, hy - 1, arm + 2, armThick + 2);
+        ctx.fillRect(vx - 1, vy - 1, armThick + 2, arm + 2);
         ctx.fillStyle = '#facc15';
-        ctx.fillRect(hx, hy, arm, 4);
-        ctx.fillRect(vx, vy, 4, arm);
+        ctx.fillRect(hx, hy, arm, armThick);
+        ctx.fillRect(vx, vy, armThick, arm);
 
-        const studX = cn.dx > 0 ? cn.x + 3 : cn.x - 9;
-        const studY = cn.dy > 0 ? cn.y + 3 : cn.y - 9;
+        const studSz = isCompactUi ? 4 : 6;
+        const studX = cn.dx > 0 ? cn.x + 3 : cn.x - 3 - studSz;
+        const studY = cn.dy > 0 ? cn.y + 3 : cn.y - 3 - studSz;
         ctx.fillStyle = isOverdrive ? '#38bdf8' : '#fef9c3';
-        ctx.fillRect(studX, studY, 6, 6);
+        ctx.fillRect(studX, studY, studSz, studSz);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(studX + 2, studY + 2, 2, 2);
+        ctx.fillRect(studX + 1, studY + 1, 2, 2);
 
         if (isOverdrive) {
           // Animated blazing cyan-gold stepped electric corner crackles
           const sparkPhase = (Math.floor(t * 20) + ci * 3) % 4;
-          const ix = cn.dx > 0 ? cn.x + 8 : cn.x - 10;
-          const iy = cn.dy > 0 ? cn.y + 8 : cn.y - 10;
-          const s1x = ix + cn.dx * (6 + sparkPhase * 2);
-          const s1y = iy + cn.dy * (4 + ((sparkPhase + 1) % 3) * 2);
-          const s2x = s1x + cn.dx * 8;
-          const s2y = s1y + cn.dy * (sparkPhase % 2 === 0 ? 6 : 2);
-          const s3x = s2x + cn.dx * (sparkPhase % 2 === 0 ? 4 : 8);
-          const s3y = s2y + cn.dy * 6;
+          const spScale = isCompactUi ? 0.65 : 1.0;
+          const ix = cn.dx > 0 ? cn.x + 6 : cn.x - 8;
+          const iy = cn.dy > 0 ? cn.y + 6 : cn.y - 8;
+          const s1x = Math.round(ix + cn.dx * (6 + sparkPhase * 2) * spScale);
+          const s1y = Math.round(iy + cn.dy * (4 + ((sparkPhase + 1) % 3) * 2) * spScale);
+          const s2x = Math.round(s1x + cn.dx * 8 * spScale);
+          const s2y = Math.round(s1y + cn.dy * (sparkPhase % 2 === 0 ? 6 : 2) * spScale);
+          const s3x = Math.round(s2x + cn.dx * (sparkPhase % 2 === 0 ? 4 : 8) * spScale);
+          const s3y = Math.round(s2y + cn.dy * 6 * spScale);
           this._drawPixelPolyline(
             ctx,
             [
@@ -5933,7 +6357,7 @@ export class EndlessManager {
               { x: s2x, y: s2y },
               { x: s3x, y: s3y }
             ],
-            4,
+            isCompactUi ? 3 : 4,
             '#38bdf8'
           );
           this._drawPixelPolyline(
@@ -5962,16 +6386,50 @@ export class EndlessManager {
     }
 
     // 3. Stage Clear / Boss Retreat / Gold Fever PixelFont Banner Ribbon
+    //    Compact & HUD-aware on mobile landscape (w <= 920 / isMobileLandscape) so it
+    //    NEVER overlaps the top status bar or the left-side Active Companion Mini-HUD (x <= 325).
     let activeBannerBottomY = 0;
-    if (this.bannerTimer > 0 && this.bannerText) {
+    if (hasBanner && clearance) {
       const fade = this.bannerTimer < 0.35 ? this.bannerTimer / 0.35 : 1;
-      const mainSz = !isCompact && PixelFont.measureWidth(this.bannerText, 2) + 40 <= w - 32 ? 2 : 1;
-      const mainW = PixelFont.measureWidth(this.bannerText, mainSz);
-      const subW = this.bannerSubText ? PixelFont.measureWidth(this.bannerSubText, 1) : 0;
-      const banW = Math.min(w - 24, Math.max(240, Math.max(mainW, subW) + 40));
-      const banH = this.bannerSubText ? (mainSz === 2 ? 46 : 36) : mainSz === 2 ? 32 : 24;
-      const banX = Math.round((w - banW) * 0.5);
-      const banY = Math.round(hudBot + (isShort ? 44 : isCompact ? 86 : 74));
+      const availLaneW = Math.max(140, clearance.safeRight - clearance.safeLeft);
+      const padX = isNarrowLandscape ? 22 : isCompactPortrait ? 20 : 40;
+      const maxBanW = isNarrowLandscape
+        ? Math.min(availLaneW, 336)
+        : isCompactPortrait
+          ? Math.min(availLaneW, w - 20)
+          : Math.min(availLaneW, Math.min(w - 420, 760));
+      const mainSz =
+        !isCompactUi && PixelFont.measureWidth(this.bannerText, 2) + padX <= maxBanW ? 2 : 1;
+      const maxTextPx = Math.max(96, maxBanW - padX + 4);
+      const fittedMain = this._fitPixelText(this.bannerText, mainSz, maxTextPx);
+      const fittedSub = this.bannerSubText
+        ? this._fitPixelText(this.bannerSubText, 1, maxTextPx)
+        : '';
+      const mainW = PixelFont.measureWidth(fittedMain, mainSz);
+      const subW = fittedSub ? PixelFont.measureWidth(fittedSub, 1) : 0;
+      const minBanW = isNarrowLandscape ? 168 : isCompactPortrait ? 184 : 240;
+      const banW = Math.min(maxBanW, Math.max(minBanW, Math.max(mainW, subW) + padX));
+      const banH = fittedSub
+        ? mainSz === 2
+          ? 46
+          : isNarrowLandscape
+            ? 30
+            : 34
+        : mainSz === 2
+          ? 32
+          : isNarrowLandscape
+            ? 20
+            : 24;
+      const idealBanX = Math.round((w - banW) * 0.5);
+      const banX = Math.max(
+        clearance.safeLeft,
+        Math.min(clearance.safeRight - banW, idealBanX)
+      );
+      const banY = Math.min(
+        Math.max(44, h - banH - (isNarrowLandscape ? 48 : 84)),
+        Math.round(clearance.topClearY)
+      );
+      const banCx = Math.round(banX + banW * 0.5);
       activeBannerBottomY = banY + banH;
 
       ctx.globalAlpha = fade;
@@ -5988,13 +6446,12 @@ export class EndlessManager {
       ctx.fillRect(banX, banY + banH - 3, 3, 3);
       ctx.fillRect(banX + banW - 3, banY + banH - 3, 3, 3);
 
-      const cx = Math.round(w * 0.5);
-      if (this.bannerSubText) {
+      if (fittedSub) {
         PixelFont.drawCentered(
           ctx,
-          this.bannerText,
-          cx,
-          banY + (mainSz === 2 ? 15 : 12),
+          fittedMain,
+          banCx,
+          banY + (mainSz === 2 ? 15 : isNarrowLandscape ? 10 : 12),
           mainSz,
           this.bannerColor || '#facc15',
           '#ffffff',
@@ -6002,9 +6459,9 @@ export class EndlessManager {
         );
         PixelFont.drawCentered(
           ctx,
-          this.bannerSubText,
-          cx,
-          banY + banH - 10,
+          fittedSub,
+          banCx,
+          banY + banH - (isNarrowLandscape ? 8 : 10),
           1,
           '#e2e8f0',
           '#ffffff',
@@ -6013,8 +6470,8 @@ export class EndlessManager {
       } else {
         PixelFont.drawCentered(
           ctx,
-          this.bannerText,
-          cx,
+          fittedMain,
+          banCx,
           banY + Math.floor(banH * 0.5),
           mainSz,
           this.bannerColor || '#facc15',
@@ -6025,24 +6482,28 @@ export class EndlessManager {
       ctx.globalAlpha = 1;
     }
 
-    // 4. Compact Upper-Mid FEVER 2X GOLD! / OVERDRIVE 3X GOLD! Stamp (never obscures HUD buttons)
-    if (feverTier >= 1) {
+    // 4. Compact Upper-Mid FEVER 2X GOLD! / OVERDRIVE 3X GOLD! Stamp (never collides with Top Bar or Party HUD)
+    if (feverTier >= 1 && clearance) {
       const isOverdrive = feverTier >= 2;
       const stampText = isOverdrive ? 'OVERDRIVE 3X GOLD!' : 'FEVER 2X GOLD!';
       const textW = PixelFont.measureWidth(stampText, 1);
-      const stampW = Math.min(w - 36, Math.max(132, textW + 26));
-      const stampH = 22;
-      const cx = Math.round(w * 0.5);
-      const baseStampY = isShort
-        ? Math.round(hudBot + 48)
-        : isCompact
-          ? Math.round(hudBot + 94)
-          : Math.round(hudBot + 80);
-      const stampY = Math.min(
-        Math.max(44, h - 104),
-        activeBannerBottomY > 0 ? activeBannerBottomY + 6 : baseStampY
+      const availLaneW = Math.max(120, clearance.safeRight - clearance.safeLeft);
+      const stampW = Math.min(
+        availLaneW,
+        Math.max(isNarrowLandscape ? 118 : 132, textW + (isNarrowLandscape ? 20 : 26))
       );
-      const stampX = Math.round(cx - stampW * 0.5);
+      const stampH = isNarrowLandscape ? 20 : 22;
+      const idealStampX = Math.round((w - stampW) * 0.5);
+      const stampX = Math.max(
+        clearance.safeLeft,
+        Math.min(clearance.safeRight - stampW, idealStampX)
+      );
+      const stampCx = Math.round(stampX + stampW * 0.5);
+      const baseStampY = Math.round(clearance.topClearY);
+      const stampY = Math.min(
+        Math.max(44, h - stampH - (isNarrowLandscape ? 42 : 84)),
+        activeBannerBottomY > 0 ? activeBannerBottomY + 5 : baseStampY
+      );
       const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
       const maxFeverDur = (isOverdrive ? 9.5 : 7.5) + feverBonusSec;
       const timerRatio = Math.max(0, Math.min(1, feverTimer / Math.max(1, maxFeverDur)));
@@ -6058,9 +6519,9 @@ export class EndlessManager {
         typeof ctx.translate === 'function' &&
         typeof ctx.scale === 'function'
       ) {
-        ctx.translate(cx, stampY + Math.floor(stampH * 0.5));
+        ctx.translate(stampCx, stampY + Math.floor(stampH * 0.5));
         ctx.scale(stampScale, stampScale);
-        ctx.translate(-cx, -(stampY + Math.floor(stampH * 0.5)));
+        ctx.translate(-stampCx, -(stampY + Math.floor(stampH * 0.5)));
       }
 
       // Crisp dark #050712 2px pixel outline frame
@@ -6096,8 +6557,8 @@ export class EndlessManager {
       PixelFont.drawCentered(
         ctx,
         stampText,
-        cx,
-        stampY + 9,
+        stampCx,
+        stampY + (isNarrowLandscape ? 8 : 9),
         1,
         isOverdrive ? '#67e8f9' : '#fde047',
         '#ffffff',
@@ -6372,14 +6833,16 @@ export class EndlessManager {
       bossTimer: this.bossTimer,
       bossTimerMax: this.bossTimerMax,
       bossName: boss ? boss.name : '',
-      bossHp: boss ? Math.max(0, Math.round(boss.hp)) : 0,
-      bossMaxHp: boss ? Math.max(1, Math.round(boss.maxHp)) : 0,
+      bossHp: boss ? safeBoundedInt(boss.hp, 0, ENDLESS_MAX_STAT, 0) : 0,
+      bossMaxHp: boss ? safeBoundedInt(boss.maxHp, 1, ENDLESS_MAX_STAT, 1) : 0,
       isColossalBoss: Boolean(boss?.isColossalBoss),
-      gold: this.economy.gold || 0,
-      formattedGold: formatEndlessNumber(this.economy.gold || 0),
-      totalGoldEarned: this.economy.totalGoldEarned || 0,
-      astralShards: this.economy.astralShards || 0,
-      formattedAstralShards: formatEndlessNumber(this.economy.astralShards || 0),
+      gold: Number.isFinite(this.economy.gold) ? this.economy.gold : 0,
+      formattedGold: formatEndlessNumber(Number.isFinite(this.economy.gold) ? this.economy.gold : 0),
+      totalGoldEarned: Number.isFinite(this.economy.totalGoldEarned) ? this.economy.totalGoldEarned : 0,
+      astralShards: Number.isFinite(this.economy.astralShards) ? this.economy.astralShards : 0,
+      formattedAstralShards: formatEndlessNumber(
+        Number.isFinite(this.economy.astralShards) ? this.economy.astralShards : 0
+      ),
       autoBoss: Boolean(this.economy.autoBoss),
       autoPlay: Boolean(this.autoPlay),
       bulkMode: this.economy.bulkMode || 'x1',

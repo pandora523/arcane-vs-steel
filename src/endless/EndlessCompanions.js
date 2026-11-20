@@ -288,9 +288,34 @@ const FORMATION_LANE_OFFSETS = [-62, 60, -8];
 const SPAWN_X_OFFSETS = [-102, -124, -138];
 const SPAWN_LANE_Y = [492, 622, 558];
 
+const FLOOR_RIPPLE_MAX_COUNT = 24;
+const COMPANION_STRIKES_MAX_COUNT = 16;
+const COMPANION_PROJECTILES_MAX_COUNT = 24;
+const ULT_EFFECTS_MAX_COUNT = 36;
+const ENDLESS_COMPANION_MAX_STAT = 1e15;
+
 function clampNum(v, lo, hi) {
   if (!Number.isFinite(v)) return lo;
   return v < lo ? lo : v > hi ? hi : v;
+}
+
+function safeBoundedInt(v, minVal = 1, maxVal = ENDLESS_COMPANION_MAX_STAT, fallback = minVal) {
+  const n = Number(v);
+  if (n === Infinity) return maxVal;
+  if (!Number.isFinite(n)) return fallback;
+  const r = Math.round(n);
+  if (r < minVal) return minVal;
+  if (r > maxVal) return maxVal;
+  return r;
+}
+
+function safeBoundedFloat(v, minVal = 0, maxVal = ENDLESS_COMPANION_MAX_STAT, fallback = minVal) {
+  const n = Number(v);
+  if (n === Infinity) return maxVal;
+  if (!Number.isFinite(n)) return fallback;
+  if (n < minVal) return minVal;
+  if (n > maxVal) return maxVal;
+  return n;
 }
 
 function safeEnsureHeroLoaded(heroKey) {
@@ -839,7 +864,22 @@ export class EndlessCompanions {
     this.reset();
   }
 
+  clearTransientFX() {
+    this._floorRipples.length = 0;
+    this._ultEffects.length = 0;
+    if (Array.isArray(this.entities)) {
+      for (let i = 0; i < this.entities.length; i++) {
+        const ent = this.entities[i];
+        if (!ent) continue;
+        if (Array.isArray(ent.activeProjectiles)) ent.activeProjectiles.length = 0;
+        if (Array.isArray(ent.activeStrikes)) ent.activeStrikes.length = 0;
+        ent.targetMonster = null;
+      }
+    }
+  }
+
   reset() {
+    this.clearTransientFX();
     this.rosterState = {};
     for (const cfg of ENDLESS_COMPANION_ROSTER) {
       this.rosterState[cfg.id] = { unlocked: false, level: 0 };
@@ -862,7 +902,7 @@ export class EndlessCompanions {
     const cfg = ROSTER_BY_ID[id];
     if (!cfg) return Infinity;
     const discount = this._getDiscountMult(economy);
-    return Math.max(1, Math.round(cfg.recruitCost * discount));
+    return safeBoundedInt(cfg.recruitCost * discount, 1, ENDLESS_COMPANION_MAX_STAT);
   }
 
   getUpgradeCost(id, economy = null) {
@@ -871,9 +911,10 @@ export class EndlessCompanions {
     const st = this.rosterState[id];
     const currentLv = Math.max(1, Math.floor(Number(st?.level) || 1));
     const discount = this._getDiscountMult(economy);
-    return Math.max(
+    return safeBoundedInt(
+      cfg.upgradeBaseCost * Math.pow(cfg.costGrowth, Math.min(320, currentLv - 1)) * discount,
       1,
-      Math.round(cfg.upgradeBaseCost * Math.pow(cfg.costGrowth, currentLv - 1) * discount)
+      ENDLESS_COMPANION_MAX_STAT
     );
   }
 
@@ -1047,7 +1088,7 @@ export class EndlessCompanions {
     if (!cfg) {
       return { attackDmg: 0, skillDmg: 0, ultDmg: 0, healAmount: 0, dpsEstimate: 0 };
     }
-    const lv = Math.max(1, Math.floor(Number(level) || 1));
+    const lv = Math.max(1, Math.min(1e6, Math.floor(Number(level) || 1)));
     const stats = typeof economy?.getComputedStats === 'function' ? economy.getComputedStats() : null;
     const synMods = this.getPartySynergyModifiers();
 
@@ -1061,30 +1102,34 @@ export class EndlessCompanions {
     const economyHasSynergyComp = Boolean(
       synMods.companionDmgMult > 1.0001 && extAppliedComp >= synMods.companionDmgMult - 0.001
     );
-    const synCompMult = economyHasSynergyComp ? 1.0 : synMods.companionDmgMult;
-    const compMult = Math.max(0.1, (Number(stats?.companionDmgMult) || 1) * synCompMult);
+    const synCompMult = economyHasSynergyComp ? 1.0 : safeBoundedFloat(synMods.companionDmgMult, 0.1, 1e6, 1);
+    const rawEcoComp = Number(stats?.companionDmgMult);
+    const ecoCompMult = Number.isFinite(rawEcoComp) && rawEcoComp > 0 ? rawEcoComp : 1;
+    const compMult = safeBoundedFloat(ecoCompMult * synCompMult, 0.1, 1e9, 1);
 
-    const milestoneMult = Math.pow(1.45, Math.floor(lv / 10));
-    const levelScale = Math.pow(1.16, lv - 1) * (1 + (lv - 1) * 0.12) * milestoneMult;
+    const milestoneMult = Math.pow(1.45, Math.min(120, Math.floor(lv / 10)));
+    const levelScale = Math.pow(1.16, Math.min(300, lv - 1)) * (1 + (lv - 1) * 0.12) * milestoneMult;
     const scaledBaseDps = cfg.baseDps * levelScale * compMult;
 
-    const attackDmg = Math.max(1, Math.round(scaledBaseDps * cfg.attackInterval));
+    const attackDmg = safeBoundedInt(scaledBaseDps * cfg.attackInterval, 1, ENDLESS_COMPANION_MAX_STAT);
     const roleSkillMult = SKILL_DAMAGE_MULTIPLIER_BY_ROLE[cfg.role] || 2.5;
-    const skillDmg = Math.max(2, Math.round(attackDmg * roleSkillMult));
+    const skillDmg = safeBoundedInt(attackDmg * roleSkillMult, 2, ENDLESS_COMPANION_MAX_STAT);
     const roleUltMult = cfg.ultDmgMult || ULT_DAMAGE_MULTIPLIER_BY_ROLE[cfg.role] || 5.5;
-    const ultDmg = Math.max(4, Math.round(attackDmg * roleUltMult));
+    const ultDmg = safeBoundedInt(attackDmg * roleUltMult, 4, ENDLESS_COMPANION_MAX_STAT);
 
     const healAmount =
       cfg.role === 'HEALER'
-        ? Math.max(
+        ? safeBoundedInt(
+            (75 + (lv - 1) * 28) * Math.pow(1.10, Math.min(40, lv - 1)) * compMult,
             45,
-            Math.round((75 + (lv - 1) * 28) * Math.pow(1.10, Math.min(40, lv - 1)) * compMult)
+            ENDLESS_COMPANION_MAX_STAT
           )
         : 0;
 
     const autoDps = attackDmg / Math.max(0.25, cfg.attackInterval);
     const skillDps = skillDmg / Math.max(1.5, cfg.skillCooldown);
-    const dpsEstimate = Math.max(1, Math.round((autoDps + skillDps) * synMods.hasteMult));
+    const safeHaste = safeBoundedFloat(synMods.hasteMult, 0.25, 25, 1);
+    const dpsEstimate = safeBoundedInt((autoDps + skillDps) * safeHaste, 1, ENDLESS_COMPANION_MAX_STAT);
 
     return { attackDmg, skillDmg, ultDmg, healAmount, dpsEstimate };
   }
@@ -1244,18 +1289,23 @@ export class EndlessCompanions {
     const pFacing = (player?.facing || 1) < 0 ? -1 : 1;
     const bounds = this.manager?.getActiveStageBounds?.() || null;
 
+    const keptIds = new Set();
     const nextEntities = [];
-    for (let i = 0; i < this.activeSlots.length; i++) {
+    for (let i = 0; i < this.activeSlots.length && nextEntities.length < ENDLESS_MAX_ACTIVE_SLOTS; i++) {
       const id = this.activeSlots[i];
       const cfg = ROSTER_BY_ID[id];
       const st = this.rosterState[id];
       if (!cfg || !st?.unlocked) continue;
 
+      keptIds.add(id);
       const level = Math.max(1, Math.floor(Number(st.level) || 1));
       let ent = existingById.get(id);
       if (ent) {
         ent.level = level;
         ent.slotIndex = i;
+        if (bounds && Number.isFinite(bounds.minX) && Number.isFinite(bounds.maxX)) {
+          ent.x = clampNum(ent.x, bounds.minX + 28, bounds.maxX - 28);
+        }
         nextEntities.push(ent);
       } else {
         const offsetX = SPAWN_X_OFFSETS[i % SPAWN_X_OFFSETS.length];
@@ -1274,6 +1324,14 @@ export class EndlessCompanions {
         ent.triggerAuraRing('summon', 1.35);
         safeEnsureHeroLoaded(cfg.heroKey);
         nextEntities.push(ent);
+      }
+    }
+
+    for (const [oldId, oldEnt] of existingById.entries()) {
+      if (!keptIds.has(oldId) && oldEnt) {
+        if (Array.isArray(oldEnt.activeProjectiles)) oldEnt.activeProjectiles.length = 0;
+        if (Array.isArray(oldEnt.activeStrikes)) oldEnt.activeStrikes.length = 0;
+        oldEnt.targetMonster = null;
       }
     }
 
@@ -1302,20 +1360,26 @@ export class EndlessCompanions {
   }
 
   _spawnFloorRipple(x, y, kind = 'buff', maxAge = 0.72, scaleMult = 1.0) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    while (this._floorRipples.length >= FLOOR_RIPPLE_MAX_COUNT) {
+      this._floorRipples.shift();
+    }
     this._floorRipples.push({
       x: Math.round(x),
       y: Math.round(y),
       kind,
       age: 0,
-      maxAge: Math.max(0.25, maxAge),
-      scaleMult
+      maxAge: clampNum(Number(maxAge) || 0.72, 0.25, 4.0),
+      scaleMult: clampNum(Number(scaleMult) || 1.0, 0.35, 3.0)
     });
-    if (this._floorRipples.length > 24) {
-      this._floorRipples.shift();
-    }
   }
 
   _spawnStrikeFX(entity, kind, x, y, color, facing = 1, maxAge = 0.26, scale = 1) {
+    if (!entity || !Array.isArray(entity.activeStrikes)) return;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    while (entity.activeStrikes.length >= COMPANION_STRIKES_MAX_COUNT) {
+      entity.activeStrikes.shift();
+    }
     entity.activeStrikes.push({
       kind,
       x: Math.round(x),
@@ -1323,23 +1387,25 @@ export class EndlessCompanions {
       color: color || entity.primaryColor,
       facing: facing < 0 ? -1 : 1,
       age: 0,
-      maxAge,
-      scale
+      maxAge: clampNum(Number(maxAge) || 0.26, 0.1, 3.0),
+      scale: clampNum(Number(scale) || 1, 0.35, 3.0)
     });
-    if (entity.activeStrikes.length > 16) {
-      entity.activeStrikes.shift();
-    }
   }
 
   _spawnProjectile(entity, target, dmg, isCrit, opts = {}) {
-    const startX = entity.x + entity.facing * 28;
-    const startY = entity.y - 76;
+    if (!entity || !Array.isArray(entity.activeProjectiles)) return;
+    while (entity.activeProjectiles.length >= COMPANION_PROJECTILES_MAX_COUNT) {
+      const evicted = entity.activeProjectiles.shift();
+      if (evicted) evicted.target = null;
+    }
+    const startX = (Number.isFinite(entity.x) ? entity.x : 260) + entity.facing * 28;
+    const startY = (Number.isFinite(entity.y) ? entity.y : entity.groundY || 558) - 76;
     const targetX = Number.isFinite(target?.x) ? target.x : startX + entity.facing * 260;
     const targetY = (Number.isFinite(target?.groundY) ? target.groundY : entity.groundY) - 68;
     const dx = targetX - startX;
     const dy = targetY - startY;
     const dist = Math.hypot(dx, dy) || 1;
-    const speed = opts.speed || 760;
+    const speed = clampNum(Number(opts.speed) || 760, 120, 2200);
 
     entity.activeProjectiles.push({
       x: startX,
@@ -1347,39 +1413,36 @@ export class EndlessCompanions {
       vx: (dx / dist) * speed,
       vy: (dy / dist) * speed,
       target,
-      dmg: Math.max(1, Math.round(dmg)),
+      dmg: safeBoundedInt(dmg, 1, ENDLESS_COMPANION_MAX_STAT),
       isCrit: Boolean(isCrit),
-      knockX: opts.knockX ?? 42,
+      knockX: Number.isFinite(opts.knockX) ? opts.knockX : 42,
       color: opts.color || entity.primaryColor,
       coreColor: opts.coreColor || '#ffffff',
       style: opts.style || 'bolt',
       splashRadius: opts.splashRadius || 0,
       fromUlt: Boolean(opts.fromUlt),
       life: 0,
-      maxLife: opts.maxLife || 0.85
+      maxLife: clampNum(Number(opts.maxLife) || 0.85, 0.15, 3.0)
     });
-    if (entity.activeProjectiles.length > 24) {
-      entity.activeProjectiles.shift();
-    }
   }
 
   _spawnUltEffect(effect) {
     if (!effect) return;
-    this._ultEffects.push({
-      age: 0,
-      maxAge: Math.max(0.25, Number(effect.maxAge) || 0.72),
-      ...effect
-    });
-    if (this._ultEffects.length > 36) {
+    while (this._ultEffects.length >= ULT_EFFECTS_MAX_COUNT) {
       this._ultEffects.shift();
     }
+    this._ultEffects.push({
+      age: 0,
+      maxAge: clampNum(Number(effect.maxAge) || 0.72, 0.25, 4.0),
+      ...effect
+    });
   }
 
   _applyCompanionDamage(entity, target, rawDmg, isCrit, knockX, economy, game, opts = {}) {
     if (!target || target.isDead) return 0;
     if (Number.isFinite(target.hp) && target.hp <= 0) return 0;
 
-    const dmg = Math.max(1, Math.round(rawDmg));
+    const dmg = safeBoundedInt(rawDmg, 1, ENDLESS_COMPANION_MAX_STAT);
     const prevHp = Number.isFinite(target.hp) ? target.hp : dmg;
 
     // Detect real Monster.takeDamage -> EndlessManager.progression.onPlayerHitMonster path
@@ -1412,17 +1475,23 @@ export class EndlessCompanions {
     if (dealt <= 0 && prevHp > 0 && target.hp === prevHp) {
       dealt = dmg;
     }
+    dealt = safeBoundedInt(dealt, 0, ENDLESS_COMPANION_MAX_STAT, 0);
 
     if (dealt > 0) {
       if (recordDirectly) {
         economy.recordDamageSample('companion', dealt);
       }
-      entity.stats.damageDealt += dealt;
+      entity.stats.damageDealt = safeBoundedInt(
+        (entity.stats.damageDealt || 0) + dealt,
+        0,
+        ENDLESS_COMPANION_MAX_STAT,
+        0
+      );
       if (isCrit) entity.stats.critsLanded += 1;
       if (dealt > entity.stats.biggestHit) entity.stats.biggestHit = dealt;
 
       if (!opts.fromUlt && !entity.isCastingUlt) {
-        const gaugeMult = Math.max(0.5, Number(opts.gaugeMult) || 1);
+        const gaugeMult = clampNum(Number(opts.gaugeMult) || 1, 0.5, 25);
         entity.ultCharge = clampNum(
           entity.ultCharge + (isCrit ? 9.5 : 6.5) * gaugeMult,
           0,
@@ -1448,10 +1517,11 @@ export class EndlessCompanions {
   }
 
   _scaleHit(baseDmg, target, stats, forceCrit = false, economy = null) {
+    const safeBase = safeBoundedFloat(baseDmg, 1, ENDLESS_COMPANION_MAX_STAT, 1);
     const synMods = this.getPartySynergyModifiers();
     const extMod = economy?._externalModifiers;
-    const extCritChance = Number(extMod?.critChanceBonus) || 0;
-    const extCritDmg = Number(extMod?.critDmgMult) || 1;
+    const extCritChance = Number.isFinite(Number(extMod?.critChanceBonus)) ? Number(extMod.critChanceBonus) : 0;
+    const extCritDmg = Number.isFinite(Number(extMod?.critDmgMult)) ? Number(extMod.critDmgMult) : 1;
     const extraCritBonus =
       synMods.critBonus > 0 && extCritChance < synMods.critBonus - 0.0001 ? synMods.critBonus : 0;
     const extraCritDmgMult =
@@ -1459,12 +1529,14 @@ export class EndlessCompanions {
         ? synMods.critDmgMult
         : 1.0;
 
-    const feverMult = Math.max(1, Number(stats?.feverDmgMult) || 1);
-    const bossMult = this._isBossTarget(target) ? Math.max(1, Number(stats?.bossDmgMult) || 1) : 1;
+    const feverMult = safeBoundedFloat(stats?.feverDmgMult, 1, 100, 1);
+    const bossMult = this._isBossTarget(target) ? safeBoundedFloat(stats?.bossDmgMult, 1, 1e6, 1) : 1;
     const critChance = clampNum((Number(stats?.critChance) || 0.08) + extraCritBonus, 0, 0.85);
-    const critMult = Math.max(1.25, (Number(stats?.critMult) || 1.5) * extraCritDmgMult);
+    const rawCritMult = Number(stats?.critMult);
+    const baseCritMult = Number.isFinite(rawCritMult) && rawCritMult > 0 ? rawCritMult : 1.5;
+    const critMult = safeBoundedFloat(baseCritMult * extraCritDmgMult, 1.25, 1e4, 1.5);
     const isCrit = forceCrit || Math.random() < critChance;
-    const total = Math.max(1, Math.round(baseDmg * feverMult * bossMult * (isCrit ? critMult : 1)));
+    const total = safeBoundedInt(safeBase * feverMult * bossMult * (isCrit ? critMult : 1), 1, ENDLESS_COMPANION_MAX_STAT);
     return { dmg: total, isCrit };
   }
 
@@ -1730,7 +1802,11 @@ export class EndlessCompanions {
       return da - db;
     });
 
-    const baseUltDmg = Math.max(4, power.ultDmg || Math.round(power.skillDmg * 2.1));
+    const baseUltDmg = safeBoundedInt(
+      power.ultDmg || Math.round(power.skillDmg * 2.1),
+      4,
+      ENDLESS_COMPANION_MAX_STAT
+    );
     let totalDealt = 0;
 
     // Signature gold/role starburst flare on caster
@@ -2165,23 +2241,47 @@ export class EndlessCompanions {
   _updateProjectilesAndStrikes(entity, safeDt, aliveMonsters, economy, game, gaugeMult = 1) {
     for (let i = entity.activeStrikes.length - 1; i >= 0; i--) {
       const st = entity.activeStrikes[i];
+      if (!st || !Number.isFinite(st.age) || !Number.isFinite(st.maxAge)) {
+        entity.activeStrikes.splice(i, 1);
+        continue;
+      }
       st.age += safeDt;
       if (st.age >= st.maxAge) {
         entity.activeStrikes.splice(i, 1);
       }
     }
+    while (entity.activeStrikes.length > COMPANION_STRIKES_MAX_COUNT) {
+      entity.activeStrikes.shift();
+    }
 
     for (let i = entity.activeProjectiles.length - 1; i >= 0; i--) {
       const p = entity.activeProjectiles[i];
+      if (
+        !p ||
+        !Number.isFinite(p.life) ||
+        !Number.isFinite(p.maxLife) ||
+        !Number.isFinite(p.x) ||
+        !Number.isFinite(p.y) ||
+        !Number.isFinite(p.vx) ||
+        !Number.isFinite(p.vy)
+      ) {
+        if (p) p.target = null;
+        entity.activeProjectiles.splice(i, 1);
+        continue;
+      }
       p.life += safeDt;
       p.x += p.vx * safeDt;
       p.y += p.vy * safeDt;
 
       let hitMonster = null;
-      if (p.target && !p.target.isDead && !(Number.isFinite(p.target.hp) && p.target.hp <= 0)) {
-        const ty = (Number.isFinite(p.target.groundY) ? p.target.groundY : entity.groundY) - 68;
-        if (Math.hypot(p.x - p.target.x, p.y - ty) <= 52) {
-          hitMonster = p.target;
+      if (p.target) {
+        if (p.target.isDead || (Number.isFinite(p.target.hp) && p.target.hp <= 0)) {
+          p.target = null;
+        } else {
+          const ty = (Number.isFinite(p.target.groundY) ? p.target.groundY : entity.groundY) - 68;
+          if (Math.hypot(p.x - p.target.x, p.y - ty) <= 52) {
+            hitMonster = p.target;
+          }
         }
       }
       if (!hitMonster) {
@@ -2209,35 +2309,57 @@ export class EndlessCompanions {
           0.22,
           p.isCrit ? 1.15 : 0.85
         );
+        p.target = null;
         entity.activeProjectiles.splice(i, 1);
         continue;
       }
 
       if (p.life >= p.maxLife) {
+        p.target = null;
         entity.activeProjectiles.splice(i, 1);
       }
+    }
+    while (entity.activeProjectiles.length > COMPANION_PROJECTILES_MAX_COUNT) {
+      const evicted = entity.activeProjectiles.shift();
+      if (evicted) evicted.target = null;
     }
   }
 
   update(dt, player = null, monsters = [], economy = null, game = null) {
     const safeDt = clampNum(Number(dt) || 0, 0, 0.1);
-    this._time += safeDt;
+    this._time = Number.isFinite(this._time) ? this._time + safeDt : safeDt;
 
     this.activeBuffTimers.shieldTimer = Math.max(0, this.activeBuffTimers.shieldTimer - safeDt);
     this.activeBuffTimers.hasteTimer = Math.max(0, this.activeBuffTimers.hasteTimer - safeDt);
 
     for (let i = this._floorRipples.length - 1; i >= 0; i--) {
-      this._floorRipples[i].age += safeDt;
-      if (this._floorRipples[i].age >= this._floorRipples[i].maxAge) {
+      const r = this._floorRipples[i];
+      if (!r || !Number.isFinite(r.age) || !Number.isFinite(r.maxAge)) {
+        this._floorRipples.splice(i, 1);
+        continue;
+      }
+      r.age += safeDt;
+      if (r.age >= r.maxAge) {
         this._floorRipples.splice(i, 1);
       }
     }
+    while (this._floorRipples.length > FLOOR_RIPPLE_MAX_COUNT) {
+      this._floorRipples.shift();
+    }
 
     for (let i = this._ultEffects.length - 1; i >= 0; i--) {
-      this._ultEffects[i].age += safeDt;
-      if (this._ultEffects[i].age >= this._ultEffects[i].maxAge) {
+      const ef = this._ultEffects[i];
+      if (!ef || !Number.isFinite(ef.age) || !Number.isFinite(ef.maxAge)) {
+        this._ultEffects.splice(i, 1);
+        continue;
+      }
+      ef.age += safeDt;
+      if (ef.age >= ef.maxAge) {
         this._ultEffects.splice(i, 1);
       }
+    }
+    while (this._ultEffects.length > ULT_EFFECTS_MAX_COUNT) {
+      this._ultEffects.shift();
     }
 
     // Keep live entities aligned with activeSlots automatically
@@ -2256,13 +2378,14 @@ export class EndlessCompanions {
 
     const stats = typeof economy?.getComputedStats === 'function' ? economy.getComputedStats() : null;
     const synMods = this.getPartySynergyModifiers();
-    const gaugeMult = Math.max(0.5, Number(stats?.gaugeGainMult) || 1);
-    const hasteMult = Math.max(
-      0.5,
+    const gaugeMult = clampNum(Number(stats?.gaugeGainMult) || 1, 0.5, 25);
+    const hasteMult = clampNum(
       (Number(stats?.hasteMult) || 1) * synMods.hasteMult +
-        (this.activeBuffTimers.hasteTimer > 0 ? 0.20 : 0)
+        (this.activeBuffTimers.hasteTimer > 0 ? 0.20 : 0),
+      0.5,
+      25
     );
-    const moveBoost = Math.max(0.8, Number(stats?.moveSpeedMult) || 1);
+    const moveBoost = clampNum(Number(stats?.moveSpeedMult) || 1, 0.8, 4.0);
     const bounds = this.manager?.getActiveStageBounds?.() || null;
     const minLaneY = Math.max(475, (this.manager?.depthMinY || 442) + 33);
     const maxLaneY = Math.min(645, (this.manager?.depthMaxY || 680) - 35);
@@ -2301,7 +2424,11 @@ export class EndlessCompanions {
           : ent.isRanged
             ? -(98 + i * 20)
             : -(54 + i * 24);
-      const formX = px + roleOffsetX * pFacing;
+      const rawFormX = px + roleOffsetX * pFacing;
+      const formX =
+        bounds && Number.isFinite(bounds.minX) && Number.isFinite(bounds.maxX)
+          ? clampNum(rawFormX, bounds.minX + 28, bounds.maxX - 28)
+          : rawFormX;
       const formY = clampNum(
         py + FORMATION_LANE_OFFSETS[i % FORMATION_LANE_OFFSETS.length],
         minLaneY,
@@ -2309,12 +2436,13 @@ export class EndlessCompanions {
       );
 
       const distToPlayerX = Math.abs(px - ent.x);
-      if (distToPlayerX > 960) {
+      if (!Number.isFinite(ent.x) || !Number.isFinite(ent.groundY) || distToPlayerX > 960) {
         ent.x = formX;
         ent.groundY = formY;
         ent.y = formY;
         ent.facing = pFacing;
         ent._castingUltState = false;
+        ent.targetMonster = null;
         ent.setState('IDLE');
         ent.triggerAuraRing('summon', 1.0);
         continue;
