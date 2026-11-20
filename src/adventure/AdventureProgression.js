@@ -42,7 +42,7 @@ export const ADVENTURE_SKILL_TREE = [
     iconSlot: 'skill',
     name: 'COMBUSTION FLOW',
     summary: (r) =>
-      `Basic hits grant +${(r || 1) * 6} bonus Spirit & shave -${((r || 1) * 0.55).toFixed(2)}s off Skill CD`
+      `Basic hits grant +${(r || 1) * 3} bonus Spirit & shave -${((r || 1) * 0.12).toFixed(2)}s off Skill CD`
   },
   {
     id: 'wrath_3',
@@ -53,7 +53,7 @@ export const ADVENTURE_SKILL_TREE = [
     iconSlot: 'skill',
     name: 'SEARING MASTERY',
     summary: (r) =>
-      `Skill Spirit cost ${r === 2 ? '14' : r === 1 ? '22' : '22/14'} (from 32) & +${(r || 1) * 28}% Skill Damage`
+      `Skill Spirit cost ${r === 2 ? '26' : r === 1 ? '32' : '32/26'} (from 38) & +${(r || 1) * 28}% Skill Damage`
   },
 
   // =========================================================================
@@ -580,6 +580,178 @@ export function getHeroSkillTreeTheme(heroId = 'mage') {
   return HERO_SKILL_TREE_THEMES.mage;
 }
 
+export const ADVENTURE_HERO_PROGRESS_STORAGE_KEY = 'avs_adv_hero_progress_v1';
+export const ADVENTURE_KEEP_LEVEL_STORAGE_KEY = 'avs_adv_keep_level_v1';
+
+export function normalizeAdventureProgressMode(rawMode) {
+  return String(rawMode || '').trim().toLowerCase() === 'keep' ? 'keep' : 'fresh';
+}
+
+function resolveProgressStorage(storageOverride = null) {
+  if (storageOverride) return storageOverride;
+  try {
+    if (typeof window !== 'undefined' && window && window.localStorage) {
+      return window.localStorage;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function loadAdventureProgressMode(storageOverride = null) {
+  const store = resolveProgressStorage(storageOverride);
+  if (!store || typeof store.getItem !== 'function') return 'fresh';
+  try {
+    return normalizeAdventureProgressMode(store.getItem(ADVENTURE_KEEP_LEVEL_STORAGE_KEY));
+  } catch {
+    return 'fresh';
+  }
+}
+
+export function saveAdventureProgressMode(mode, storageOverride = null) {
+  const clean = normalizeAdventureProgressMode(mode);
+  const store = resolveProgressStorage(storageOverride);
+  if (store && typeof store.setItem === 'function') {
+    try {
+      store.setItem(ADVENTURE_KEEP_LEVEL_STORAGE_KEY, clean);
+    } catch {
+      // Ignore storage quota or sandbox errors safely
+    }
+  }
+  return clean;
+}
+
+function sanitizeHeroProgressRecord(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const maxLevel = 10;
+  const level = Number.isFinite(raw.level)
+    ? Math.max(1, Math.min(maxLevel, Math.floor(raw.level)))
+    : 1;
+  const expectedXpToNext = Math.round(115 * Math.pow(1.32, level - 1));
+  const xpToNext =
+    Number.isFinite(raw.xpToNext) && raw.xpToNext > 0
+      ? Math.round(raw.xpToNext)
+      : expectedXpToNext;
+  const xp =
+    level >= maxLevel
+      ? 0
+      : Number.isFinite(raw.xp)
+        ? Math.max(0, Math.min(Math.max(0, xpToNext - 1), Math.round(raw.xp)))
+        : 0;
+
+  const ranks = {};
+  let spent = 0;
+  const rawRanks = raw.ranks && typeof raw.ranks === 'object' ? raw.ranks : {};
+  for (const node of ADVENTURE_SKILL_TREE) {
+    const r = Number.isFinite(rawRanks[node.id])
+      ? Math.max(0, Math.min(node.maxRank, Math.floor(rawRanks[node.id])))
+      : 0;
+    ranks[node.id] = r;
+    spent += r;
+  }
+
+  // Enforce tier unlock invariants and total SP budget (`totalSpEarned === level`)
+  if (spent > level) {
+    for (const node of ADVENTURE_SKILL_TREE) {
+      ranks[node.id] = 0;
+    }
+    spent = 0;
+  } else {
+    for (const branch of ['wrath', 'astral', 'aegis']) {
+      const t1 = ADVENTURE_SKILL_TREE.find((n) => n.branch === branch && n.tier === 1);
+      const t2 = ADVENTURE_SKILL_TREE.find((n) => n.branch === branch && n.tier === 2);
+      const t3 = ADVENTURE_SKILL_TREE.find((n) => n.branch === branch && n.tier === 3);
+      if (t1 && t2 && ranks[t1.id] < 1 && ranks[t2.id] > 0) {
+        spent -= ranks[t2.id];
+        ranks[t2.id] = 0;
+      }
+      if (t1 && t2 && t3 && ranks[t1.id] + ranks[t2.id] < 2 && ranks[t3.id] > 0) {
+        spent -= ranks[t3.id];
+        ranks[t3.id] = 0;
+      }
+    }
+  }
+
+  const maxUnspent = Math.max(0, level - spent);
+  const skillPoints = Number.isFinite(raw.skillPoints)
+    ? Math.max(0, Math.min(maxUnspent, Math.floor(raw.skillPoints)))
+    : maxUnspent;
+
+  return {
+    level,
+    xp,
+    xpToNext,
+    skillPoints: spent + skillPoints === level ? skillPoints : maxUnspent,
+    ranks
+  };
+}
+
+export function loadAllAdventureHeroProgress(storageOverride = null) {
+  const store = resolveProgressStorage(storageOverride);
+  if (!store || typeof store.getItem !== 'function') return {};
+  try {
+    const raw = store.getItem(ADVENTURE_HERO_PROGRESS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out = {};
+    for (const [heroId, rec] of Object.entries(parsed)) {
+      if (!heroId || typeof heroId !== 'string') continue;
+      const clean = sanitizeHeroProgressRecord(rec);
+      if (clean) out[heroId] = clean;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function loadAdventureHeroProgress(heroId, storageOverride = null) {
+  if (!heroId || typeof heroId !== 'string') return null;
+  const cleanHero = heroId.trim();
+  if (!cleanHero) return null;
+  const all = loadAllAdventureHeroProgress(storageOverride);
+  return all[cleanHero] || null;
+}
+
+export function saveAdventureHeroProgress(heroId, snapshot, storageOverride = null) {
+  if (!heroId || typeof heroId !== 'string') return null;
+  const cleanHero = heroId.trim();
+  if (!cleanHero) return null;
+  const cleanRec = sanitizeHeroProgressRecord(snapshot);
+  if (!cleanRec) return null;
+  const all = loadAllAdventureHeroProgress(storageOverride);
+  all[cleanHero] = cleanRec;
+  const store = resolveProgressStorage(storageOverride);
+  if (store && typeof store.setItem === 'function') {
+    try {
+      store.setItem(ADVENTURE_HERO_PROGRESS_STORAGE_KEY, JSON.stringify(all));
+    } catch {
+      // Ignore storage quota or sandbox errors safely
+    }
+  }
+  return cleanRec;
+}
+
+export function resetAdventureHeroProgress(heroId, storageOverride = null) {
+  if (!heroId || typeof heroId !== 'string') return false;
+  const cleanHero = heroId.trim();
+  if (!cleanHero) return false;
+  const all = loadAllAdventureHeroProgress(storageOverride);
+  const existed = Object.prototype.hasOwnProperty.call(all, cleanHero);
+  delete all[cleanHero];
+  const store = resolveProgressStorage(storageOverride);
+  if (store && typeof store.setItem === 'function') {
+    try {
+      store.setItem(ADVENTURE_HERO_PROGRESS_STORAGE_KEY, JSON.stringify(all));
+    } catch {
+      // Ignore storage quota or sandbox errors safely
+    }
+  }
+  return existed;
+}
+
 export class AdventureProgression {
   constructor(adventure) {
     this.adventure = adventure;
@@ -610,6 +782,68 @@ export class AdventureProgression {
     this.comboHits = 0;
     this.comboTimer = 0;
     this.seekerShotCounter = 0;
+    this._skillCdShaveThrottle = 0;
+  }
+
+  exportProgressSnapshot() {
+    const ranksCopy = {};
+    for (const node of ADVENTURE_SKILL_TREE) {
+      ranksCopy[node.id] = this.ranks[node.id] || 0;
+    }
+    return {
+      level: this.level,
+      xp: this.xp,
+      xpToNext: this.xpToNext,
+      skillPoints: this.skillPoints,
+      ranks: ranksCopy
+    };
+  }
+
+  importProgressSnapshot(snapshot, player = null, fullHeal = true) {
+    const clean = sanitizeHeroProgressRecord(snapshot);
+    if (!clean) return false;
+    this.resetForNewCampaign();
+    this.level = clean.level;
+    this.xp = clean.xp;
+    this.xpToNext = clean.xpToNext;
+    this.skillPoints = clean.skillPoints;
+    this.totalSpEarned = clean.level;
+    for (const node of ADVENTURE_SKILL_TREE) {
+      this.ranks[node.id] = clean.ranks[node.id] || 0;
+    }
+    if (player) {
+      const stats = this.getComputedStats();
+      player.maxHp = stats.maxHp;
+      player.hp = fullHeal ? stats.maxHp : Math.min(player.hp, stats.maxHp);
+      this.syncGaugesToPlayer(player);
+    }
+    return true;
+  }
+
+  saveToStorage(heroId, storageOverride = null) {
+    return saveAdventureHeroProgress(heroId, this.exportProgressSnapshot(), storageOverride);
+  }
+
+  loadFromStorage(heroId, player = null, storageOverride = null) {
+    const rec = loadAdventureHeroProgress(heroId, storageOverride);
+    if (!rec) return false;
+    return this.importProgressSnapshot(rec, player, true);
+  }
+
+  resetChampionToLv1(heroId, player = null, storageOverride = null) {
+    this.resetForNewCampaign();
+    if (heroId) {
+      resetAdventureHeroProgress(heroId, storageOverride);
+    }
+    if (player) {
+      const stats = this.getComputedStats();
+      player.maxHp = stats.maxHp;
+      if (!player.isDead) {
+        player.hp = Math.min(player.hp, stats.maxHp);
+      }
+      this.syncGaugesToPlayer(player);
+    }
+    return true;
   }
 
   getRank(nodeId) {
@@ -651,6 +885,7 @@ export class AdventureProgression {
       this.applyStatsToFighter(player, prevMaxHp);
       this.syncGaugesToPlayer(player);
     }
+    this.adventure?.persistHeroProgressIfEnabled?.();
     return true;
   }
 
@@ -670,6 +905,7 @@ export class AdventureProgression {
       player.hp = Math.min(player.hp, player.maxHp);
       this.syncGaugesToPlayer(player);
     }
+    this.adventure?.persistHeroProgressIfEnabled?.();
     return true;
   }
 
@@ -691,15 +927,15 @@ export class AdventureProgression {
         (this.adventure?._relicHasteTimer || 0) > 0
     );
 
-    const maxHp = 1040 + (lv - 1) * 110 + rAegis1 * 240;
-    const atkMult = 0.50 + (lv - 1) * 0.045 + rWrath1 * 0.15;
-    const skillMult = 0.54 + (lv - 1) * 0.045 + rWrath1 * 0.08 + rWrath3 * 0.28;
+    const maxHp = 1320 + (lv - 1) * 115 + rAegis1 * 240;
+    const atkMult = 0.64 + (lv - 1) * 0.045 + rWrath1 * 0.15;
+    const skillMult = 0.74 + (lv - 1) * 0.045 + rWrath1 * 0.08 + rWrath3 * 0.28;
     const ultMult = (0.50 + (lv - 1) * 0.04 + rAstral2 * 0.28) * (hasOverdriveSurge ? 1.22 : 1.0);
     const superUltMult = (0.45 + (lv - 1) * 0.04 + rAstral3 * 0.35) * (hasOverdriveSurge ? 1.22 : 1.0);
 
-    const skillSpiritCost = rWrath3 >= 2 ? 14 : rWrath3 === 1 ? 22 : 32;
-    const basicSpiritGain = 12 + rWrath2 * 6;
-    const basicSkillCdShave = 0.35 + rWrath2 * 0.55;
+    const skillSpiritCost = rWrath3 >= 2 ? 26 : rWrath3 === 1 ? 32 : 38;
+    const basicSpiritGain = 8 + rWrath2 * 3;
+    const basicSkillCdShave = 0.10 + rWrath2 * 0.12;
 
     const ultGainMult = (1.0 + rAstral1 * 0.25) * (hasOverdriveSurge ? 1.30 : 1.0);
     const bossHitUltGain = rAstral1 > 0 ? 0.5 + rAstral1 * 1.4 : 0.45;
@@ -865,10 +1101,12 @@ export class AdventureProgression {
     this.xp += Math.round(amount);
     const g = this.adventure?.game;
 
+    let leveledUp = false;
     while (this.xp >= this.xpToNext && this.level < this.maxLevel) {
       this.xp -= this.xpToNext;
       const prevMaxHp = this.getComputedStats().maxHp;
       this.level++;
+      leveledUp = true;
       this.skillPoints++;
       this.totalSpEarned++;
       this.xpToNext = Math.round(115 * Math.pow(1.32, this.level - 1));
@@ -890,6 +1128,9 @@ export class AdventureProgression {
           );
         }
       }
+    }
+    if (leveledUp) {
+      this.adventure?.persistHeroProgressIfEnabled?.();
     }
   }
 
@@ -932,8 +1173,9 @@ export class AdventureProgression {
     const relicSpiritBonus = this.adventure?.hasRelic?.('soul_siphon_cleave') ? 4 : 0;
     if (st === 'AUTO_ATTACK' || st === 'IDLE' || st === 'WALK' || st === 'CROUCH' || st === 'JUMP') {
       this.gainSpirit(stats.basicSpiritGain + relicSpiritBonus);
-      if (player.skillCooldown > 0) {
+      if (player.skillCooldown > 0 && (this._skillCdShaveThrottle || 0) <= 0) {
         player.skillCooldown = Math.max(0, player.skillCooldown - stats.basicSkillCdShave);
+        this._skillCdShaveThrottle = 0.35;
       }
       const comboBonus = this.comboHits >= 8 ? 1.45 : this.comboHits >= 4 ? 1.2 : 1.0;
       const baseUltHit = monster?.isBoss ? stats.bossHitUltGain + 1.5 : 2.1;
@@ -1146,6 +1388,9 @@ export class AdventureProgression {
   }
 
   update(dt, player) {
+    if (this._skillCdShaveThrottle > 0) {
+      this._skillCdShaveThrottle = Math.max(0, this._skillCdShaveThrottle - dt);
+    }
     if (this.comboTimer > 0) {
       this.comboTimer = Math.max(0, this.comboTimer - dt);
       if (this.comboTimer <= 0) {

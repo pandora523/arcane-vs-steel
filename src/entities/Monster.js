@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps185';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps185';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps185';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps185';
+import { Fighter } from './Fighter.js?v=30fps186';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps186';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps186';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps186';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -2191,7 +2191,10 @@ export class ArchfiendBoss extends Monster {
     this.attackRange = 880;
     this.autoInterval = 1.85;
     this.autoDuration = 1.04;
-    this.skillMaxCooldown = 3.9;
+    this.skillMaxCooldown =
+      Number.isFinite(opts?.skillMaxCooldown) && opts.skillMaxCooldown > 0
+        ? opts.skillMaxCooldown
+        : 3.9;
     this.skillDuration = 1.08;
     this.ultDuration = 1.85;
     this.ultCooldown = 6.2;
@@ -2248,7 +2251,15 @@ export class ArchfiendBoss extends Monster {
     this._grabCrushTicks = 0;
     this._grabInitDone = false;
 
-    this.soulTitheCooldown = 5.4;
+    this.soulTitheBaseCd =
+      Number.isFinite(opts?.soulTitheBaseCd) && opts.soulTitheBaseCd > 0
+        ? opts.soulTitheBaseCd
+        : 5.4;
+    this.soulTitheCooldown = this.soulTitheBaseCd;
+    this.soulTitheChipScale =
+      Number.isFinite(opts?.soulTitheChipScale) && opts.soulTitheChipScale > 0
+        ? opts.soulTitheChipScale
+        : 1.0;
     this.soulTitheWindupTimer = 0;
     this.soulTitheFlashTimer = 0;
     this.soulTitheCount = 0;
@@ -2359,7 +2370,11 @@ export class ArchfiendBoss extends Monster {
     this.roarFlashTimer = Math.max(this.roarFlashTimer || 0, 0.36);
     this.impactRecoilTimer = Math.max(this.impactRecoilTimer || 0, 0.22);
     const phasePct = this.bossPhase >= 3 ? 0.095 : this.bossPhase >= 2 ? 0.082 : 0.070;
-    const rawTithe = Math.round((enemy.maxHp || 3600) * phasePct + 52 * this.dmgScale);
+    const chipScale =
+      Number.isFinite(this.soulTitheChipScale) && this.soulTitheChipScale > 0
+        ? this.soulTitheChipScale
+        : 1.0;
+    const rawTithe = Math.round(((enemy.maxHp || 3600) * phasePct + 52 * this.dmgScale) * chipScale);
     this.telegraphLabel = 'HELLPIT SOUL-TITHE! (UNAVOIDABLE)';
     this.telegraphTimer = Math.max(this.telegraphTimer || 0, 0.95);
     if (game?.audio) game.audio.play('flame_pillar', enemy.x);
@@ -2678,7 +2693,12 @@ export class ArchfiendBoss extends Monster {
       this.didPhase2 = true;
       this.bossPhase = 2;
       this.ultCooldown = 0.45;
-      this.soulTitheCooldown = Math.min(this.soulTitheCooldown || 5.4, 0.85);
+      const baseTitheCd2 =
+        Number.isFinite(this.soulTitheBaseCd) && this.soulTitheBaseCd > 0 ? this.soulTitheBaseCd : 5.4;
+      this.soulTitheCooldown = Math.min(
+        this.soulTitheCooldown || baseTitheCd2,
+        baseTitheCd2 >= 8.0 ? 2.2 : 0.85
+      );
       this.jawOpen = 1.0;
       this.roarFlashTimer = 0.72;
       this.impactRecoilTimer = 0.30;
@@ -2710,7 +2730,12 @@ export class ArchfiendBoss extends Monster {
       this.bossPhase = 3;
       this.isBerserk = true;
       this.ultCooldown = 0.2;
-      this.soulTitheCooldown = Math.min(this.soulTitheCooldown || 5.4, 0.75);
+      const baseTitheCd3 =
+        Number.isFinite(this.soulTitheBaseCd) && this.soulTitheBaseCd > 0 ? this.soulTitheBaseCd : 5.4;
+      this.soulTitheCooldown = Math.min(
+        this.soulTitheCooldown || baseTitheCd3,
+        baseTitheCd3 >= 8.0 ? 2.0 : 0.75
+      );
       this.jawOpen = 1.0;
       this.roarFlashTimer = 0.85;
       this.impactRecoilTimer = 0.34;
@@ -2749,11 +2774,19 @@ export class ArchfiendBoss extends Monster {
       if (this.soulTitheWindupTimer > 0) {
         this.soulTitheWindupTimer = Math.max(0, this.soulTitheWindupTimer - safeDt);
         if (this.soulTitheWindupTimer <= 0) {
-          this.soulTitheCooldown = this.bossPhase >= 3 ? 5.2 : this.bossPhase >= 2 ? 6.4 : 7.6;
+          const baseTitheCd =
+            Number.isFinite(this.soulTitheBaseCd) && this.soulTitheBaseCd > 0
+              ? this.soulTitheBaseCd
+              : 5.4;
+          const phaseScale = this.bossPhase >= 3 ? 0.84 : this.bossPhase >= 2 ? 0.94 : 1.08;
+          this.soulTitheCooldown = Math.max(3.6, +(baseTitheCd * phaseScale).toFixed(2));
           this.triggerUnavoidableSoulTithe(enemy, game);
         }
       } else {
-        this.soulTitheCooldown = Math.max(0, (this.soulTitheCooldown ?? 5.4) - safeDt);
+        this.soulTitheCooldown = Math.max(
+          0,
+          (this.soulTitheCooldown ?? this.soulTitheBaseCd ?? 5.4) - safeDt
+        );
         if (this.soulTitheCooldown <= 0) {
           this.soulTitheWindupTimer = 0.56;
           this.telegraphLabel = 'UNAVOIDABLE: HELLPIT SOUL-TITHE!';

@@ -1,15 +1,36 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps185';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps185';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps185';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps185';
+import { Fighter } from '../entities/Fighter.js?v=30fps186';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps186';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps186';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps186';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
-  getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps185';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps185';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps185';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps185';
+  ADVENTURE_HERO_PROGRESS_STORAGE_KEY,
+  ADVENTURE_KEEP_LEVEL_STORAGE_KEY,
+  getHeroSkillTreeTheme,
+  normalizeAdventureProgressMode,
+  loadAdventureProgressMode,
+  saveAdventureProgressMode,
+  loadAllAdventureHeroProgress,
+  loadAdventureHeroProgress,
+  saveAdventureHeroProgress,
+  resetAdventureHeroProgress
+} from './AdventureProgression.js?v=30fps186';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps186';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps186';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps186';
+
+export {
+  ADVENTURE_HERO_PROGRESS_STORAGE_KEY,
+  ADVENTURE_KEEP_LEVEL_STORAGE_KEY,
+  normalizeAdventureProgressMode,
+  loadAdventureProgressMode,
+  saveAdventureProgressMode,
+  loadAllAdventureHeroProgress,
+  loadAdventureHeroProgress,
+  saveAdventureHeroProgress,
+  resetAdventureHeroProgress
+};
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -31,6 +52,10 @@ export const ADVENTURE_DIFFICULTY_TIERS = {
     dmgMult: 1.0,
     cadenceMult: 1.0,
     scoreMult: 1.0,
+    bossDmgMult: 0.76,
+    bossSkillCd: 4.55,
+    bossSoulTitheCd: 8.8,
+    bossSoulTitheChipScale: 0.72,
     accentHex: '#94a3b8',
     medalTier: 'bronze'
   },
@@ -42,6 +67,10 @@ export const ADVENTURE_DIFFICULTY_TIERS = {
     dmgMult: 1.22,
     cadenceMult: 1.15,
     scoreMult: 1.5,
+    bossDmgMult: 1.12,
+    bossSkillCd: 3.65,
+    bossSoulTitheCd: 6.2,
+    bossSoulTitheChipScale: 1.0,
     accentHex: '#facc15',
     medalTier: 'gold'
   },
@@ -53,6 +82,10 @@ export const ADVENTURE_DIFFICULTY_TIERS = {
     dmgMult: 1.4,
     cadenceMult: 1.25,
     scoreMult: 2.25,
+    bossDmgMult: 1.35,
+    bossSkillCd: 3.15,
+    bossSoulTitheCd: 5.0,
+    bossSoulTitheChipScale: 1.15,
     accentHex: '#f43f5e',
     medalTier: 'crimson'
   }
@@ -748,6 +781,8 @@ export class AdventureManager {
     this.perfectDodgeCount = 0;
 
     this.difficultyTier = 'normal';
+    this.progressMode = 'fresh';
+    this._progressStorageOverride = null;
     this.activeCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
     this.activeCampaignPack = null;
     this._campaignPackCache = new Map();
@@ -1080,6 +1115,42 @@ export class AdventureManager {
     this.renderSkillTreeModal();
     this.syncControlDeckUI();
     this.game.updateHUD?.();
+  }
+
+  setProgressMode(mode, storageOverride = undefined) {
+    this.progressMode = normalizeAdventureProgressMode(mode);
+    if (storageOverride !== undefined) {
+      this._progressStorageOverride = storageOverride;
+    }
+    return this.progressMode;
+  }
+
+  getProgressMode() {
+    return normalizeAdventureProgressMode(this.progressMode);
+  }
+
+  persistHeroProgressIfEnabled() {
+    if (this.progressMode !== 'keep') return false;
+    if (this.game?.simMode || this.game?.testModeUnlimitedHp) return false;
+    const heroId = this.game?.leftFighter?.heroId;
+    if (!heroId) return false;
+    this.progression.saveToStorage(heroId, this._progressStorageOverride);
+    this.game?.syncAdventureClearMedalsUI?.();
+    return true;
+  }
+
+  resetHeroLevelToLv1(playSound = true) {
+    const player = this.game?.leftFighter || null;
+    const heroId = player?.heroId || this.game?.slot1Hero || null;
+    this.progression.resetChampionToLv1(heroId, player, this._progressStorageOverride);
+    if (playSound && this.game?.audio) {
+      this.game.audio.play('reflect', player?.x || 600);
+    }
+    this.renderSkillTreeModal();
+    this.syncControlDeckUI();
+    this.game?.syncAdventureClearMedalsUI?.();
+    this.game?.updateHUD?.();
+    return true;
   }
 
   setDifficultyTier(tierId) {
@@ -1593,6 +1664,23 @@ export class AdventureManager {
       `${Math.floor(prog.ultCharge)}% / ${Math.floor(prog.astralCharge)}%`
     );
     setTxt('adv-st-stat-ward', `${Math.round(stats.wardReduction * 100)}% DR`);
+
+    const resetLvBtn = document.getElementById('adv-st-reset-lv');
+    if (resetLvBtn) {
+      const heroIdForReset = player?.heroId || this.game?.slot1Hero || null;
+      const hasSavedRec = Boolean(
+        heroIdForReset && loadAdventureHeroProgress(heroIdForReset, this._progressStorageOverride)
+      );
+      const totalSpentSp =
+        prog.getBranchPointsSpent('wrath') +
+        prog.getBranchPointsSpent('astral') +
+        prog.getBranchPointsSpent('aegis');
+      const canResetLv = prog.level > 1 || prog.xp > 0 || totalSpentSp > 0 || hasSavedRec;
+      resetLvBtn.disabled = !canResetLv;
+      resetLvBtn.title = hasSavedRec
+        ? `Reset ${heroTitle} back to Lv.1 & clear saved KEEP LVL data`
+        : `Reset ${heroTitle} back to Lv.1`;
+    }
 
     this.renderActiveRelicsInspector();
 
@@ -2187,7 +2275,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps185') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps186') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -2197,7 +2285,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps185') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps186') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
@@ -2339,10 +2427,22 @@ export class AdventureManager {
 
     this.skillSets.attachToFighter(playerFighter);
     this.progression.resetForNewCampaign();
+    const canLoadSavedProgress =
+      this.progressMode === 'keep' &&
+      !this.game?.simMode &&
+      !this.game?.testModeUnlimitedHp &&
+      !this.autoPlay;
+    if (canLoadSavedProgress && playerFighter?.heroId) {
+      this.progression.loadFromStorage(
+        playerFighter.heroId,
+        null,
+        this._progressStorageOverride
+      );
+    }
     this.progression.attachToFighter(playerFighter);
 
     this.autoCdMax = playerFighter.autoInterval || 0.44;
-    this.skillCdMax = Math.max(0.5, (playerFighter.skillMaxCooldown || 4.5) * 0.85);
+    this.skillCdMax = Math.max(3.8, (playerFighter.skillMaxCooldown || 4.5) * 1.15);
     this.dodgeCdMax = 1.35;
     this._renderedIconHero = null;
     this._renderedMageIconsReady = false;
@@ -2522,27 +2622,54 @@ export class AdventureManager {
       kind === 'archfiend'
         ? new ArchfiendBoss(spawnX, gy, facing, opts)
         : new Monster(kind, spawnX, gy, facing, opts);
-    // Apply Ascension Difficulty Tier scaling (`NORMAL: 1.0x`, `HEROIC: 1.35x HP / 1.22x DMG / +15% Cadence`, `SOVEREIGN: 1.75x HP / 1.40x DMG / +25% Cadence`)
+    // Apply Ascension Difficulty Tier scaling (`NORMAL`, `HEROIC`, `SOVEREIGN`)
     const diff = this.getDifficultyConfig();
     if (diff.hpMult !== 1) {
       m.maxHp = Math.max(1, Math.round(m.maxHp * diff.hpMult));
       m.hp = m.maxHp;
     }
-    if (diff.dmgMult !== 1) {
-      m.dmgScale = (m.dmgScale || 1) * diff.dmgMult;
-    }
-    if (diff.cadenceMult !== 1) {
-      m.cadenceMult = diff.cadenceMult;
-      m.autoInterval = Math.max(0.35, (m.autoInterval || 1.0) / diff.cadenceMult);
-      m.skillMaxCooldown = Math.max(0.9, (m.skillMaxCooldown || 3.5) / diff.cadenceMult);
-      if (Number.isFinite(m.dashMaxCooldown) && m.dashMaxCooldown > 0) {
-        m.dashMaxCooldown = Math.max(0.9, m.dashMaxCooldown / diff.cadenceMult);
+    if (m.isBoss) {
+      const bossDmgMult =
+        Number.isFinite(diff.bossDmgMult) && diff.bossDmgMult > 0
+          ? diff.bossDmgMult
+          : diff.dmgMult || 1;
+      m.dmgScale = (m.dmgScale || 1.24) * bossDmgMult;
+      if (Number.isFinite(diff.bossSkillCd) && diff.bossSkillCd > 0) {
+        m.skillMaxCooldown = diff.bossSkillCd;
+        m.skillCooldown = Math.min(m.skillCooldown || diff.bossSkillCd, diff.bossSkillCd);
       }
-      if (Number.isFinite(m.ultCooldown) && m.ultCooldown > 0) {
-        m.ultCooldown = Math.max(2.2, m.ultCooldown / diff.cadenceMult);
+      if (Number.isFinite(diff.bossSoulTitheCd) && diff.bossSoulTitheCd > 0) {
+        m.soulTitheBaseCd = diff.bossSoulTitheCd;
+        m.soulTitheCooldown = diff.bossSoulTitheCd;
       }
-      m.autoCooldown = Math.max(0.25, (m.autoCooldown || 0.5) / diff.cadenceMult);
-      m.skillCooldown = Math.max(0.5, (m.skillCooldown || 1.5) / diff.cadenceMult);
+      if (Number.isFinite(diff.bossSoulTitheChipScale) && diff.bossSoulTitheChipScale > 0) {
+        m.soulTitheChipScale = diff.bossSoulTitheChipScale;
+      }
+      if (diff.cadenceMult !== 1) {
+        m.cadenceMult = diff.cadenceMult;
+        m.autoInterval = Math.max(0.35, (m.autoInterval || 1.0) / diff.cadenceMult);
+        if (Number.isFinite(m.ultCooldown) && m.ultCooldown > 0) {
+          m.ultCooldown = Math.max(2.2, m.ultCooldown / diff.cadenceMult);
+        }
+        m.autoCooldown = Math.max(0.25, (m.autoCooldown || 0.5) / diff.cadenceMult);
+      }
+    } else {
+      if (diff.dmgMult !== 1) {
+        m.dmgScale = (m.dmgScale || 1) * diff.dmgMult;
+      }
+      if (diff.cadenceMult !== 1) {
+        m.cadenceMult = diff.cadenceMult;
+        m.autoInterval = Math.max(0.35, (m.autoInterval || 1.0) / diff.cadenceMult);
+        m.skillMaxCooldown = Math.max(0.9, (m.skillMaxCooldown || 3.5) / diff.cadenceMult);
+        if (Number.isFinite(m.dashMaxCooldown) && m.dashMaxCooldown > 0) {
+          m.dashMaxCooldown = Math.max(0.9, m.dashMaxCooldown / diff.cadenceMult);
+        }
+        if (Number.isFinite(m.ultCooldown) && m.ultCooldown > 0) {
+          m.ultCooldown = Math.max(2.2, m.ultCooldown / diff.cadenceMult);
+        }
+        m.autoCooldown = Math.max(0.25, (m.autoCooldown || 0.5) / diff.cadenceMult);
+        m.skillCooldown = Math.max(0.5, (m.skillCooldown || 1.5) / diff.cadenceMult);
+      }
     }
     m.game = this.game;
     m.team = 2;
@@ -2986,7 +3113,7 @@ export class AdventureManager {
       if (this.hasRelic('haste_momentum')) {
         this._relicHasteTimer = 4.0;
         if (player.skillCooldown > 0) {
-          player.skillCooldown = Math.max(0, player.skillCooldown * 0.88);
+          player.skillCooldown = Math.max(0, player.skillCooldown * 0.94);
         }
         if (player.dodgeCooldown > 0) {
           player.dodgeCooldown = Math.max(0, player.dodgeCooldown * 0.88);
@@ -3111,6 +3238,7 @@ export class AdventureManager {
         score: this.score,
         tier: diff.id
       });
+      this.persistHeroProgressIfEnabled();
       g.syncAdventureClearMedalsUI?.();
     }
 
@@ -3212,6 +3340,7 @@ export class AdventureManager {
     g.deadMatchFighter = player;
     g.victoryRevealPending = true;
     g.postDeathHoldTimer = 0;
+    this.persistHeroProgressIfEnabled();
 
     const killer = this.bossEntity || this.getLivingMonsters()[0] || null;
     const killerName = killer && killer !== player ? killer.name : 'ABYSSAL HORDE';
@@ -3328,6 +3457,7 @@ export class AdventureManager {
 
     const p = this.game.leftFighter;
     this.progression.gainXp(35, p);
+    this.persistHeroProgressIfEnabled();
 
     const curZ = activeZones[zoneIdx];
     const dropBaseX = p
@@ -5151,7 +5281,10 @@ export class AdventureManager {
             player._manualWalkActive = false;
             player._manualSpeedRatio = 0;
             player.facing = target.x >= player.x ? 1 : -1;
-            this.skillCdMax = Math.max(0.45, player.skillMaxCooldown * 0.78 * (stats.skillCdMult ?? 1));
+            this.skillCdMax = Math.max(
+              3.8,
+              (player.skillMaxCooldown || 4.5) * 1.15 * (stats.skillCdMult ?? 1)
+            );
             player.skillCooldown = this.skillCdMax;
             if (player.stats) player.stats.skillsUsed++;
             player.setState('SKILL');
@@ -5413,10 +5546,10 @@ export class AdventureManager {
     }
 
     // =========================================================================
-    // MANUAL 360° 3D CONTROL: BRISK OBSTACLE-DODGING WALK + PURE 3D EVADE DASH
+    // MANUAL 360° 3D CONTROL: SNAPPY OBSTACLE-DODGING WALK + PURE 3D EVADE DASH
     // =========================================================================
-    const maxSpeedX = 276 * stats.moveSpeedMult;
-    const maxSpeedZ = 156 * stats.moveSpeedMult; // Agile 2.5D depth-lane dodging while keeping gentle micro-tilt silky-smooth!
+    const maxSpeedX = 316 * stats.moveSpeedMult;
+    const maxSpeedZ = 192 * stats.moveSpeedMult;
     let targetVx = 0;
     let targetVy = 0;
     let rawDirX = 0;
@@ -5424,17 +5557,13 @@ export class AdventureManager {
 
     if (this.joyActive) {
       const mag = Math.hypot(this.joyX, this.joyY);
-      const deadzone = 0.12;
+      const deadzone = 0.06;
       if (mag > deadzone) {
-        const u = Math.min(1, (mag - deadzone) / (1 - deadzone));
-        // Progressive quadratic response: gentle precision walk near center, brisk sprint at outer rim
-        const curved = 0.28 * u + 0.72 * u * u;
-        let nx = this.joyX / mag;
-        let ny = this.joyY / mag;
-        // Subtle horizontal lane-keeping assist so slight thumb drift doesn't veer steeply up/down
-        if (Math.abs(ny) < 0.24 * Math.abs(nx)) {
-          ny *= 0.42;
-        }
+        const u = Math.min(1, (mag - deadzone) / 0.72);
+        // Snappy responsive curve: gentle thumb tilts respond immediately (>=70% speed at 50% tilt) & ~78% throw hits full speed!
+        const curved = Math.pow(u, 0.72);
+        const nx = this.joyX / mag;
+        const ny = this.joyY / mag;
         rawDirX = nx * curved;
         rawDirY = ny * curved;
         targetVx = rawDirX * maxSpeedX;
@@ -5454,9 +5583,17 @@ export class AdventureManager {
     }
 
     const isReleasing = Math.abs(targetVx) < 0.01 && Math.abs(targetVy) < 0.01;
-    const smoothAlpha = Math.min(1, dt * (isReleasing ? 28 : 20));
-    this.smoothVelX += (targetVx - this.smoothVelX) * smoothAlpha;
-    this.smoothVelY += (targetVy - this.smoothVelY) * smoothAlpha;
+    const smoothAlpha = Math.min(1, dt * (isReleasing ? 44 : 38));
+    if (targetVx !== 0 && this.smoothVelX !== 0 && targetVx * this.smoothVelX < 0) {
+      this.smoothVelX = targetVx;
+    } else {
+      this.smoothVelX += (targetVx - this.smoothVelX) * smoothAlpha;
+    }
+    if (targetVy !== 0 && this.smoothVelY !== 0 && targetVy * this.smoothVelY < 0) {
+      this.smoothVelY = targetVy;
+    } else {
+      this.smoothVelY += (targetVy - this.smoothVelY) * smoothAlpha;
+    }
     if (Math.abs(targetVx) < 0.01 && Math.abs(this.smoothVelX) < 2.0) this.smoothVelX = 0;
     if (Math.abs(targetVy) < 0.01 && Math.abs(this.smoothVelY) < 2.0) this.smoothVelY = 0;
 
@@ -5543,7 +5680,10 @@ export class AdventureManager {
           } else if (moveDirX !== 0) {
             player.facing = moveDirX;
           }
-          this.skillCdMax = Math.max(0.45, player.skillMaxCooldown * 0.78 * (stats.skillCdMult ?? 1));
+          this.skillCdMax = Math.max(
+            3.8,
+            (player.skillMaxCooldown || 4.5) * 1.15 * (stats.skillCdMult ?? 1)
+          );
           player.skillCooldown = this.skillCdMax;
           if (player.stats) player.stats.skillsUsed++;
           player.setState('SKILL');

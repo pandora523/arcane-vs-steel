@@ -41,48 +41,48 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps185';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps185';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps185';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps185';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps185';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps185';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps185';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps185';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps185';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps185';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps185';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps185';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps185';
-import { Archer } from '../../src/entities/Archer.js?v=30fps185';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps185';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps185';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps185';
-import { Titan } from '../../src/entities/Titan.js?v=30fps185';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps185';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps185';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps185';
-import { Android } from '../../src/entities/Android.js?v=30fps185';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps185';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps185';
-import { BrawlerEx } from '../../src/entities/BrawlerEx.js?v=30fps185';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps185';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps185';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps186';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps186';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps186';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps186';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps186';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps186';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps186';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps186';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps186';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps186';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps186';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps186';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps186';
+import { Archer } from '../../src/entities/Archer.js?v=30fps186';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps186';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps186';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps186';
+import { Titan } from '../../src/entities/Titan.js?v=30fps186';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps186';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps186';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps186';
+import { Android } from '../../src/entities/Android.js?v=30fps186';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps186';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps186';
+import { BrawlerEx } from '../../src/entities/BrawlerEx.js?v=30fps186';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps186';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps186';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps185';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps185';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps186';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps186';
 import {
   DeathFXManager,
   CHAMPION_DEATH_STYLES,
   getDeathStyleForHero
-} from '../../src/engine/DeathFXManager.js?v=30fps185';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps185';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps185';
+} from '../../src/engine/DeathFXManager.js?v=30fps186';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps186';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps186';
 import {
   Game,
   EX_HERO_KEYS,
@@ -97,8 +97,8 @@ import {
   loadArcadeTrophies,
   saveArcadeTrophy,
   buildArcadeLadder
-} from '../../src/main.js?v=30fps185';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps185';
+} from '../../src/main.js?v=30fps186';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps186';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
@@ -109,24 +109,29 @@ import {
   loadAdventureMedals,
   saveAdventureMedal,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps185';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps185';
+} from '../../src/adventure/AdventureManager.js?v=30fps186';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps186';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
-  getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps185';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps185';
+  getHeroSkillTreeTheme,
+  loadAdventureProgressMode,
+  saveAdventureProgressMode,
+  loadAdventureHeroProgress,
+  saveAdventureHeroProgress,
+  resetAdventureHeroProgress
+} from '../../src/adventure/AdventureProgression.js?v=30fps186';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps186';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps185';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps186';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps185';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps186';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -817,7 +822,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps185');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps186');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2760,14 +2765,14 @@ for (const [name, Cls] of CLASSES) {
     adv.startCampaign(sol);
 
     // Verify Adventure RPG Stats & Gauge Isolation on Campaign Start:
-    // - Lv.1 Adventure HP = 1040 (decoupled from 3700 VS HP)
+    // - Lv.1 Adventure HP = 1320 (decoupled from 3700 VS HP)
     // - Starts with 1 SP, 0% Ultimate (`ultCharge`), 0% Super-Ult (`astralCharge`)
     // - Passive VS gainMana / gainFinisher calls are blocked so ONLY Soul Embers, Combos & Astral Relics charge them!
     sol.gainMana(55);
     sol.gainFinisher(55);
     if (
-      sol.maxHp !== 1040 ||
-      sol.hp !== 1040 ||
+      sol.maxHp !== 1320 ||
+      sol.hp !== 1320 ||
       adv.progression.level !== 1 ||
       adv.progression.skillPoints !== 1 ||
       adv.progression.ultCharge !== 0 ||
@@ -2909,15 +2914,15 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
-    // Verify Smooth Non-Steep 3D Touch-Screen Virtual Analog Joystick (`setJoystickVector`):
-    // 1) Gentle micro-deflection (`-0.24` Y) moves smoothly by only ~1-6px over 10 frames (NOT steep!)
+    // Verify Snappy 3D Touch-Screen Virtual Analog Joystick (`setJoystickVector`):
+    // 1) Gentle micro-deflection (`-0.24` Y) responds briskly without pegging full speed (4..32px over 10 frames)
     for (const m of w1Monsters) m.stunTimer = 6.0;
     adv.setJoystickVector(0, -0.24, true);
     tickAdv(10);
     const gentleDeltaGy = 561 - sol.groundY;
-    if (gentleDeltaGy <= 0.2 || gentleDeltaGy > 8) {
+    if (gentleDeltaGy <= 4 || gentleDeltaGy > 32) {
       throw new Error(
-        `Expected gentle -0.24 joystick deflection to give smooth fine micro-control (0.2..8px), got deltaGy=${gentleDeltaGy.toFixed(2)}`
+        `Expected gentle -0.24 joystick deflection to give responsive partial speed (4..32px), got deltaGy=${gentleDeltaGy.toFixed(2)}`
       );
     }
 
@@ -3067,9 +3072,9 @@ for (const [name, Cls] of CLASSES) {
 
     // 3) XP Level-Up (`Lv.1 -> Lv.2`, `+1 SP`) + Interactive 3-Branch Skill Tree Upgrade & Refund!
     adv.progression.gainXp(130, sol);
-    if (adv.progression.level !== 2 || adv.progression.skillPoints !== 2 || sol.maxHp !== 1150) {
+    if (adv.progression.level !== 2 || adv.progression.skillPoints !== 2 || sol.maxHp !== 1435) {
       throw new Error(
-        `Expected XP Level-Up to Lv.2 (2 SP, 1150 HP), got lv=${adv.progression.level}, sp=${adv.progression.skillPoints}, maxHp=${sol.maxHp}`
+        `Expected XP Level-Up to Lv.2 (2 SP, 1435 HP), got lv=${adv.progression.level}, sp=${adv.progression.skillPoints}, maxHp=${sol.maxHp}`
       );
     }
     adv.openSkillTree(false);
@@ -3085,15 +3090,15 @@ for (const [name, Cls] of CLASSES) {
       adv.progression.getRank('wrath_1') !== 1 ||
       adv.progression.getRank('aegis_1') !== 1 ||
       adv.progression.skillPoints !== 0 ||
-      sol.maxHp !== 1390
+      sol.maxHp !== 1675
     ) {
       throw new Error(
         `Skill Tree DOM upgrade failed: wrath_1=${adv.progression.getRank('wrath_1')}, aegis_1=${adv.progression.getRank('aegis_1')}, sp=${adv.progression.skillPoints}, maxHp=${sol.maxHp}`
       );
     }
-    // Test Respec (`refundSkillTree`) -> restores 2 SP & 1150 HP, then invest 2 ranks in `wrath_1` to unlock Homing Seeker!
+    // Test Respec (`refundSkillTree`) -> restores 2 SP & 1435 HP, then invest 2 ranks in `wrath_1` to unlock Homing Seeker!
     adv.refundSkillTree(false);
-    if (adv.progression.skillPoints !== 2 || sol.maxHp !== 1150) {
+    if (adv.progression.skillPoints !== 2 || sol.maxHp !== 1435) {
       throw new Error(`Skill Tree refund failed: sp=${adv.progression.skillPoints}, maxHp=${sol.maxHp}`);
     }
     adv.progression.upgradeNode('wrath_1', sol);
@@ -11433,8 +11438,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps185');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps185');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps186');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps186');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12236,7 +12241,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps185'
+        src: 'assets/sprites/arena_bg.png?v=30fps186'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12280,13 +12285,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps185`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps186`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps185'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps186'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -15145,7 +15150,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps185';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps186';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -15180,7 +15185,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps185';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps186';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15285,12 +15290,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps185') ||
-      !manifestSrc.includes('?v=30fps185') ||
+      !indexHtmlSrc.includes('?v=30fps186') ||
+      !manifestSrc.includes('?v=30fps186') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps185 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps186 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16888,7 +16893,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps185 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps186 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17420,7 +17425,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.21: Batch ?v=30fps185 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // 36.21: Batch ?v=30fps186 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
   // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
   // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
   // --------------------------------------------------------------------------
@@ -18426,16 +18431,16 @@ if (!RUN_SUITE36_ONLY) {
       audio24.bgmDuckGain = makeGainMock24(1.0);
       audio24.master = audio24.sfxBus;
 
-      // Lazy BGM + Voice cache-bust ?v=30fps185 check
+      // Lazy BGM + Voice cache-bust ?v=30fps186 check
       await audio24.loadVoiceKey('nyx_select', 'en');
       await audio24.loadBgmTrack('bgm_title_select');
       if (
-        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps185')) ||
-        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps185')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps186')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps186')) ||
         fetchedUrls24.filter((u) => u.includes('assets/bgm/')).length !== 1
       ) {
         throw new Error(
-          `[Suite 36.24] Expected ?v=30fps185 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
+          `[Suite 36.24] Expected ?v=30fps186 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
         );
       }
 
@@ -19682,7 +19687,7 @@ if (!RUN_SUITE36_ONLY) {
 
   // ============================================================================
   // Suite 36.27: Grounded Lyra EX Ults, Blink/Warp AI Non-Starvation, De-Twitched AI,
-  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps185`)
+  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps186`)
   // ============================================================================
   {
     const g27 = createMockGame();
@@ -20055,7 +20060,7 @@ if (!RUN_SUITE36_ONLY) {
   // Suite 36.28: 3-Act Match Intro Overhaul — Real-Time Voice Envelope Analyzer
   // (`AudioManager.getVoiceAmplitude`), Act 1 Colossal Split-Wing `NAME VS. NAME` Clash,
   // Act 2 Live Voice-Synced Close-Up Talking Portrait Cut-In & Stage Taunt Flourish,
-  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps185`)
+  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps186`)
   // ============================================================================
   {
     const created28 = [];
@@ -21884,6 +21889,189 @@ if (!RUN_SUITE36_ONLY) {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // 36.35: Adventure Deliberate Skill Rhythm, Fair Normal/Tiered Boss Tuning,
+  //        Optional Persistent KEEP LVL Carry-Over & Snappy Virtual Joystick
+  // -------------------------------------------------------------------------
+  {
+    const idxHtml35 = fs.readFileSync(`${REPO_ROOT}/index.html`, 'utf8');
+    const css35 = fs.readFileSync(`${REPO_ROOT}/style.css`, 'utf8');
+    const mainJs35 = fs.readFileSync(`${REPO_ROOT}/src/main.js`, 'utf8');
+    for (const reqDom of ['id="adv-progress-mode-toggle"', 'data-adv-progress="keep"', 'id="adv-st-reset-lv"']) {
+      if (!idxHtml35.includes(reqDom)) {
+        throw new Error(`[Suite 36.35] Missing required Adventure UI hook in index.html: ${reqDom}`);
+      }
+    }
+    for (const reqCss of [
+      '.landing-overlay:not([data-branch="adventure"]) #adv-progress-mode-toggle',
+      '.landing-overlay:not([data-branch="adventure"]) .adv-saved-lvl-pip',
+      'transition: none !important;'
+    ]) {
+      if (!css35.includes(reqCss)) {
+        throw new Error(`[Suite 36.35] Missing required CSS isolation / zero-lag knob rule in style.css: ${reqCss}`);
+      }
+    }
+    if (!mainJs35.includes('* 0.34') || !mainJs35.includes('clampSoftOrigin')) {
+      throw new Error('[Suite 36.35] Missing tight 0.34 throw radius or ±16px soft dynamic joystick origin in main.js!');
+    }
+
+    const memStore35 = new Map();
+    const mockStorage35 = {
+      getItem: (k) => (memStore35.has(k) ? memStore35.get(k) : null),
+      setItem: (k, v) => memStore35.set(k, String(v))
+    };
+
+    const g35 = createMockGame();
+    g35.gameMode = 'adventure';
+    g35.simMode = false;
+    g35.testModeUnlimitedHp = false;
+    g35.isAdventureMode = () => true;
+    const adv35 = new AdventureManager(g35);
+    g35.adventure = adv35;
+    const hero35 = new BrawlerEx(240, 561, 1);
+    hero35.game = g35;
+    g35.leftFighter = hero35;
+    try {
+      // (A) Deliberate Skill Rhythm (1.15x CD min 3.8s, throttled basicSkillCdShave, 0.94 kill shave, 38/32/26 Spirit, buffed atk/skill mults)
+      adv35.startCampaign(hero35);
+      const st0 = adv35.progression.getComputedStats();
+      if (
+        st0.maxHp !== 1320 ||
+        Math.abs(st0.atkMult - 0.64) > 0.001 ||
+        Math.abs(st0.skillMult - 0.74) > 0.001 ||
+        st0.skillSpiritCost !== 38 ||
+        st0.basicSpiritGain !== 8 ||
+        Math.abs(st0.basicSkillCdShave - 0.10) > 0.001
+      ) {
+        throw new Error(`[Suite 36.35] Lv.1 Adventure stats mismatch: ${JSON.stringify(st0)}`);
+      }
+      hero35.skillCooldown = 0;
+      adv35.progression.spirit = 80;
+      adv35.triggerAction('skill');
+      adv35.update(1 / 30);
+      const expectedMinCd = Math.max(3.8, (hero35.skillMaxCooldown || 4.5) * 1.15);
+      if (hero35.state !== 'SKILL' || adv35.skillCdMax < expectedMinCd - 0.02 || hero35.skillCooldown < expectedMinCd - 0.08) {
+        throw new Error(`[Suite 36.35] Expected deliberate 1.15x skill CD >= ${expectedMinCd.toFixed(2)}s, got cd=${hero35.skillCooldown}, max=${adv35.skillCdMax}`);
+      }
+      // Verify 0.35s throttle prevents multi-hit basic attacks from draining skill CD on consecutive hits
+      hero35.setState('AUTO_ATTACK');
+      hero35.skillCooldown = 4.0;
+      adv35.progression._skillCdShaveThrottle = 0;
+      const target35 = adv35.getLivingMonsters()[0];
+      adv35.progression.onPlayerHitMonster(hero35, target35, 40);
+      const cdAfterHit1 = hero35.skillCooldown;
+      adv35.progression.onPlayerHitMonster(hero35, target35, 40);
+      const cdAfterHit2SameFrame = hero35.skillCooldown;
+      adv35.progression.update(0.36, hero35);
+      adv35.progression.onPlayerHitMonster(hero35, target35, 40);
+      const cdAfterThrottle = hero35.skillCooldown;
+      if (
+        Math.abs(cdAfterHit1 - 3.90) > 0.005 ||
+        Math.abs(cdAfterHit2SameFrame - 3.90) > 0.005 ||
+        Math.abs(cdAfterThrottle - 3.80) > 0.005
+      ) {
+        throw new Error(`[Suite 36.35] Skill CD shave throttle failed: hit1=${cdAfterHit1}, hit2=${cdAfterHit2SameFrame}, afterThrottle=${cdAfterThrottle}`);
+      }
+      // Verify on-kill Haste Momentum skill CD shave uses 0.94x
+      adv35.activeRelics.push(ADVENTURE_RELIC_BOONS.find((b) => b.id === 'haste_momentum'));
+      hero35.skillCooldown = 4.0;
+      const killFoe35 = adv35.spawnMonster('ghoul', 400, { maxHp: 50, groundY: 561 });
+      adv35.onMonsterDeath(killFoe35);
+      if (Math.abs(hero35.skillCooldown - 4.0 * 0.94) > 0.02) {
+        throw new Error(`[Suite 36.35] Expected on-kill skill CD shave 0.94x (3.76s), got ${hero35.skillCooldown}`);
+      }
+
+      // (B) Per-Tier Boss Tuning (Normal fair 0.76x DMG / 4.55s skill / 8.8s 0.72x tithe vs Heroic/Sovereign fierce)
+      adv35.setDifficultyTier('normal');
+      const bossNorm = adv35.spawnMonster('archfiend', 9335, { groundY: 561 });
+      adv35.setDifficultyTier('heroic');
+      const bossHero = adv35.spawnMonster('archfiend', 9335, { groundY: 561 });
+      adv35.setDifficultyTier('sovereign');
+      const bossSov = adv35.spawnMonster('archfiend', 9335, { groundY: 561 });
+      if (
+        bossNorm.maxHp !== 11800 ||
+        Math.abs(bossNorm.skillMaxCooldown - 4.55) > 0.02 ||
+        Math.abs(bossNorm.soulTitheBaseCd - 8.8) > 0.02 ||
+        Math.abs(bossNorm.soulTitheChipScale - 0.72) > 0.02 ||
+        bossNorm.dmgScale >= bossHero.dmgScale * 0.72 ||
+        bossHero.soulTitheBaseCd !== 6.2 ||
+        bossSov.soulTitheBaseCd !== 5.0 ||
+        bossSov.dmgScale <= bossHero.dmgScale * 1.15
+      ) {
+        throw new Error(
+          `[Suite 36.35] Tiered boss tuning mismatch: norm=(dmg:${bossNorm.dmgScale.toFixed(2)},cd:${bossNorm.skillMaxCooldown},tithe:${bossNorm.soulTitheBaseCd}x${bossNorm.soulTitheChipScale}), hero=(dmg:${bossHero.dmgScale.toFixed(2)},tithe:${bossHero.soulTitheBaseCd}), sov=(dmg:${bossSov.dmgScale.toFixed(2)},tithe:${bossSov.soulTitheBaseCd})`
+        );
+      }
+
+      // (C) Persistent KEEP LVL Save / Load / Reset Across Difficulties + Automated Fresh Lv.1 Guard
+      saveAdventureProgressMode('keep', mockStorage35);
+      if (loadAdventureProgressMode(mockStorage35) !== 'keep') {
+        throw new Error('[Suite 36.35] Failed to persist avs_adv_keep_level_v1 mode!');
+      }
+      adv35.setDifficultyTier('normal');
+      adv35.setProgressMode('keep', mockStorage35);
+      adv35.startCampaign(hero35);
+      adv35.progression.gainXp(400, hero35); // Levels up & auto-saves!
+      adv35.progression.upgradeNode('wrath_1', hero35);
+      adv35.progression.upgradeNode('wrath_2', hero35);
+      const savedLv = adv35.progression.level;
+      const savedWrath2 = adv35.progression.getRank('wrath_2');
+      // Switch to Sovereign difficulty & restart campaign -> must carry over Level & Skill Tree!
+      adv35.setDifficultyTier('sovereign');
+      adv35.startCampaign(hero35);
+      if (
+        savedLv < 3 ||
+        adv35.progression.level !== savedLv ||
+        adv35.progression.getRank('wrath_1') !== 1 ||
+        adv35.progression.getRank('wrath_2') !== savedWrath2
+      ) {
+        throw new Error(`[Suite 36.35] KEEP LVL failed to carry over across difficulties: lv=${adv35.progression.level}/${savedLv}, w2=${adv35.progression.getRank('wrath_2')}`);
+      }
+      // simMode must cleanly default to Fresh Lv.1 even if progressMode === 'keep'
+      g35.simMode = true;
+      adv35.startCampaign(hero35);
+      if (adv35.progression.level !== 1 || adv35.progression.getRank('wrath_1') !== 0) {
+        throw new Error(`[Suite 36.35] simMode must start fresh Lv.1, got lv=${adv35.progression.level}`);
+      }
+      g35.simMode = false;
+      // RESET LV must wipe champion back to Lv.1 and delete saved record
+      adv35.startCampaign(hero35);
+      adv35.resetHeroLevelToLv1(false);
+      if (
+        adv35.progression.level !== 1 ||
+        adv35.progression.skillPoints !== 1 ||
+        hero35.maxHp !== 1320 ||
+        loadAdventureHeroProgress(hero35.heroId, mockStorage35) !== null
+      ) {
+        throw new Error(`[Suite 36.35] resetHeroLevelToLv1 failed to wipe champion back to Lv.1!`);
+      }
+      adv35.setProgressMode('fresh', mockStorage35);
+
+      // (D) Snappy Virtual Joystick Curve (>= 0.70 speed at 50% tilt, 1.0x at 78% tilt & instant reversal at 60fps)
+      adv35.setDifficultyTier('normal');
+      adv35.startCampaign(hero35);
+      for (const m of adv35.getLivingMonsters()) m.stunTimer = 5;
+      adv35.setJoystickVector(0.50, 0, true);
+      adv35.update(1 / 30);
+      const speedRatioAt50 = adv35.smoothVelX / 316;
+      adv35.setJoystickVector(0.78, 0, true);
+      adv35.update(1 / 30);
+      const speedRatioAt78 = adv35.smoothVelX / 316;
+      // Instant direction reversal at 60fps (`dt = 1/60`) must flip velocity sign immediately on frame 1!
+      adv35.setJoystickVector(-0.80, 0, true);
+      adv35.update(1 / 60);
+      const revVx = adv35.smoothVelX;
+      if (speedRatioAt50 < 0.70 || speedRatioAt78 < 0.99 || revVx > -300) {
+        throw new Error(
+          `[Suite 36.35] Snappy joystick curve/reversal failed: r50=${speedRatioAt50.toFixed(3)}, r78=${speedRatioAt78.toFixed(3)}, revVx=${revVx.toFixed(1)}`
+        );
+      }
+      adv35.stopCampaign();
+    } finally {
+      hero35.fx?.dispose?.();
+    }
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -21892,7 +22080,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-13 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-13 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-13 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-13 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19), Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20), Dual Voice/SFX Mixer + Sidechain Ducking + Pre-Round Intro Standoff + 9s Victory Hold Parity (36.21), Batch-1 6-Champion + Seraphina JP Voice Packs + EN/JP Toggle Parity (36.22), Batch-2 Final 5-Champion Full-Roster 312-MP3 EN/JP Voice Parity (36.23), Cute Nyx Recast + 11-Track Lyria 3 OST + Steady Non-Dipping BGM 3-Bus Mixer Parity (36.24), Kawaii JP Nyx + 96-Clip Snappy Arcade Barks + Contextual Layering Parity (36.25), True Zero-Dip BGM Compressor Bypass + Center VS Intro / All-24 Idle + Portrait-Free Side Cut-Ins + Cross-Speaker Anti-Overlap & Sequential End-of-Match Queue Parity (36.26), Grounded Lyra EX Ults + Blink/Warp Non-Starvation + De-Twitched AI + Ult Super-Armor/Graze/Pierce + 3-Tier Zoom Modes (36.27), 3-Act Match Intro Overhaul + Live Voice Envelope Analyzer + Close-Up Talking Portrait Cut-In + Explosive ENGAGE! Slash-Burst (36.28), Optional Playable 1P vs AI VS Mode + Slimmer HUD / Dramatic K.O. / Victory Overlay (36.29), 13 Bespoke Champion Death Animations + 3-Beat End-of-Match Camera Spotlight & Pacing (36.30), Adventure Mode HD-2D Visual Overhaul, Odd-Effects Cleanup, Desktop RPG Hotbar / Slim HUD, Phantom Evade, Boss Stagger Break, Tactical Hazards & Sovereign Relic Altar (36.31), Adventure Depth/Polish Pass: Slim HUD, Relic Inspector, Callout De-Stacking, Ascension Tiers, Clear Medals, 12 Boons / 4-Relic Cap & 4 Stage Packs (36.32), 5-Stage Arcade Ladder + Training / Combo Lab (36.33) & Champion #13 EX RAIJIN EX ("THE TEMPEST FIST") Full Suite (36.34) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-13 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-13 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-13 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-13 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19), Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20), Dual Voice/SFX Mixer + Sidechain Ducking + Pre-Round Intro Standoff + 9s Victory Hold Parity (36.21), Batch-1 6-Champion + Seraphina JP Voice Packs + EN/JP Toggle Parity (36.22), Batch-2 Final 5-Champion Full-Roster 312-MP3 EN/JP Voice Parity (36.23), Cute Nyx Recast + 11-Track Lyria 3 OST + Steady Non-Dipping BGM 3-Bus Mixer Parity (36.24), Kawaii JP Nyx + 96-Clip Snappy Arcade Barks + Contextual Layering Parity (36.25), True Zero-Dip BGM Compressor Bypass + Center VS Intro / All-24 Idle + Portrait-Free Side Cut-Ins + Cross-Speaker Anti-Overlap & Sequential End-of-Match Queue Parity (36.26), Grounded Lyra EX Ults + Blink/Warp Non-Starvation + De-Twitched AI + Ult Super-Armor/Graze/Pierce + 3-Tier Zoom Modes (36.27), 3-Act Match Intro Overhaul + Live Voice Envelope Analyzer + Close-Up Talking Portrait Cut-In + Explosive ENGAGE! Slash-Burst (36.28), Optional Playable 1P vs AI VS Mode + Slimmer HUD / Dramatic K.O. / Victory Overlay (36.29), 13 Bespoke Champion Death Animations + 3-Beat End-of-Match Camera Spotlight & Pacing (36.30), Adventure Mode HD-2D Visual Overhaul, Odd-Effects Cleanup, Desktop RPG Hotbar / Slim HUD, Phantom Evade, Boss Stagger Break, Tactical Hazards & Sovereign Relic Altar (36.31), Adventure Depth/Polish Pass: Slim HUD, Relic Inspector, Callout De-Stacking, Ascension Tiers, Clear Medals, 12 Boons / 4-Relic Cap & 4 Stage Packs (36.32), 5-Stage Arcade Ladder + Training / Combo Lab (36.33), Champion #13 EX RAIJIN EX ("THE TEMPEST FIST") Full Suite (36.34) & Adventure Deliberate Skill Rhythm, Fair Tiered Boss Balance, Optional KEEP LVL Persistence & Snappy Virtual Joystick Overhaul (36.35) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

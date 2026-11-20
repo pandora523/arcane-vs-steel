@@ -1,44 +1,48 @@
-import { Renderer } from './engine/Renderer.js?v=30fps185';
-import { VFXManager } from './engine/VFXManager.js?v=30fps185';
-import { PixelForge } from './engine/PixelForge.js?v=30fps185';
-import { AudioManager } from './engine/AudioManager.js?v=30fps185';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps185';
-import { Fighter } from './entities/Fighter.js?v=30fps185';
-import { Warrior } from './entities/Warrior.js?v=30fps185';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps185';
-import { FireMage } from './entities/FireMage.js?v=30fps185';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps185';
-import { Archer } from './entities/Archer.js?v=30fps185';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps185';
-import { Priestess } from './entities/Priestess.js?v=30fps185';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps185';
-import { Reaper } from './entities/Reaper.js?v=30fps185';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps185';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps185';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps185';
-import { Titan } from './entities/Titan.js?v=30fps185';
-import { TitanEx } from './entities/TitanEx.js?v=30fps185';
-import { Ronin } from './entities/Ronin.js?v=30fps185';
-import { RoninEx } from './entities/RoninEx.js?v=30fps185';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps185';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps185';
-import { IceMage } from './entities/IceMage.js?v=30fps185';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps185';
-import { Android } from './entities/Android.js?v=30fps185';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps185';
-import { NyxEx } from './entities/NyxEx.js?v=30fps185';
-import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps185';
+import { Renderer } from './engine/Renderer.js?v=30fps186';
+import { VFXManager } from './engine/VFXManager.js?v=30fps186';
+import { PixelForge } from './engine/PixelForge.js?v=30fps186';
+import { AudioManager } from './engine/AudioManager.js?v=30fps186';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps186';
+import { Fighter } from './entities/Fighter.js?v=30fps186';
+import { Warrior } from './entities/Warrior.js?v=30fps186';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps186';
+import { FireMage } from './entities/FireMage.js?v=30fps186';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps186';
+import { Archer } from './entities/Archer.js?v=30fps186';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps186';
+import { Priestess } from './entities/Priestess.js?v=30fps186';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps186';
+import { Reaper } from './entities/Reaper.js?v=30fps186';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps186';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps186';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps186';
+import { Titan } from './entities/Titan.js?v=30fps186';
+import { TitanEx } from './entities/TitanEx.js?v=30fps186';
+import { Ronin } from './entities/Ronin.js?v=30fps186';
+import { RoninEx } from './entities/RoninEx.js?v=30fps186';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps186';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps186';
+import { IceMage } from './entities/IceMage.js?v=30fps186';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps186';
+import { Android } from './entities/Android.js?v=30fps186';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps186';
+import { NyxEx } from './entities/NyxEx.js?v=30fps186';
+import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps186';
 import {
   AdventureManager,
   ADVENTURE_DIFFICULTY_TIERS,
   ADVENTURE_TIER_STORAGE_KEY,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   loadAdventureMedals,
+  loadAdventureProgressMode,
+  saveAdventureProgressMode,
+  loadAllAdventureHeroProgress,
   normalizeAdventureCampaignPack,
-  normalizeAdventureDifficultyId
-} from './adventure/AdventureManager.js?v=30fps185';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps185';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps185';
+  normalizeAdventureDifficultyId,
+  normalizeAdventureProgressMode
+} from './adventure/AdventureManager.js?v=30fps186';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps186';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps186';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1289,6 +1293,20 @@ export class Game {
       ? normalizeAdventureDifficultyId(tierParamRaw)
       : savedAdvTier;
     this.adventure?.setDifficultyTier?.(this.selectedAdvDifficulty);
+    const keepLvlParamRaw = params.get('keeplvl') || params.get('progress');
+    const savedProgressMode = loadAdventureProgressMode();
+    const keepLvlFromUrl =
+      keepLvlParamRaw === '1' || keepLvlParamRaw === 'true' || keepLvlParamRaw === 'keep'
+        ? 'keep'
+        : keepLvlParamRaw === '0' || keepLvlParamRaw === 'false' || keepLvlParamRaw === 'fresh'
+          ? 'fresh'
+          : null;
+    this.selectedAdvProgressMode = keepLvlFromUrl
+      ? keepLvlFromUrl
+      : this.simMode || this.testModeUnlimitedHp
+        ? 'fresh'
+        : savedProgressMode;
+    this.adventure?.setProgressMode?.(this.selectedAdvProgressMode);
     const versionParam = params.get('version');
     if (versionParam === 'legacy') {
       this.rosterVersion = 'legacy';
@@ -2898,7 +2916,11 @@ export class Game {
     const enemy = this.getTargetFor(player);
     let axisX = 0;
     if (this.vsInput.joyActive) {
-      axisX = Math.abs(this.vsInput.joyX) > 0.14 ? this.vsInput.joyX : 0;
+      const absJx = Math.abs(this.vsInput.joyX);
+      if (absJx > 0.06) {
+        const u = Math.min(1, (absJx - 0.06) / 0.72);
+        axisX = Math.sign(this.vsInput.joyX) * Math.pow(u, 0.72);
+      }
     } else {
       axisX = (this.vsInput.heldRight ? 1 : 0) - (this.vsInput.heldLeft ? 1 : 0);
     }
@@ -4926,22 +4948,35 @@ export class Game {
       this.clearVsManualInputs();
     });
 
-    // Playable 1P Versus Mode Mobile Touch Stick & Action Orbs
+    // Playable 1P Versus Mode Mobile Touch Stick & Action Orbs (Full-zone touch, tight 0.34x throw, soft ±16px dynamic origin & window-tracked drags)
     const vsStickZone = document.getElementById('vs-stick-zone');
     const vsStickBase = document.getElementById('vs-stick-base');
     if (vsStickZone && vsStickBase) {
       let vsStickTouchId = null;
       let vsStickPointerId = null;
-      const updateVsStick = (clientX, clientY) => {
+      let vsOriginX = null;
+      let vsOriginY = null;
+      let vsMaxR = 36;
+      const clampSoftOrigin = (v) => Math.max(-16, Math.min(16, v));
+
+      const initVsOrigin = (clientX, clientY) => {
         const rect = vsStickBase.getBoundingClientRect();
         const cx = rect.left + rect.width * 0.5;
         const cy = rect.top + rect.height * 0.5;
-        const maxR = Math.max(30, Math.min(rect.width, rect.height) * 0.44);
-        const rawDx = clientX - cx;
-        const rawDy = clientY - cy;
+        vsMaxR = Math.max(26, Math.min(rect.width, rect.height) * 0.34);
+        vsOriginX = cx + clampSoftOrigin(clientX - cx);
+        vsOriginY = cy + clampSoftOrigin(clientY - cy);
+      };
+
+      const updateVsStick = (clientX, clientY) => {
+        if (vsOriginX === null || vsOriginY === null) {
+          initVsOrigin(clientX, clientY);
+        }
+        const rawDx = clientX - vsOriginX;
+        const rawDy = clientY - vsOriginY;
         const isCssRot = document.documentElement.classList.contains('is-css-rotated-landscape');
-        let nx = (isCssRot ? rawDy : rawDx) / maxR;
-        let ny = (isCssRot ? -rawDx : rawDy) / maxR;
+        let nx = (isCssRot ? rawDy : rawDx) / vsMaxR;
+        let ny = (isCssRot ? -rawDx : rawDy) / vsMaxR;
         const mag = Math.hypot(nx, ny);
         if (mag > 1) {
           nx /= mag;
@@ -4961,9 +4996,54 @@ export class Game {
         }
         this.syncVsStickKnobUI();
       };
+
+      const onVsWinTouchMove = (e) => {
+        if (vsStickTouchId === null) return;
+        const touches = e.changedTouches || [];
+        for (let i = 0; i < touches.length; i++) {
+          const t = touches[i];
+          if (t.identifier === vsStickTouchId) {
+            if (e.cancelable) e.preventDefault();
+            updateVsStick(t.clientX, t.clientY);
+            break;
+          }
+        }
+      };
+      const onVsWinTouchEnd = (e) => {
+        if (vsStickTouchId === null) return;
+        const touches = e.changedTouches || [];
+        for (let i = 0; i < touches.length; i++) {
+          if (touches[i].identifier === vsStickTouchId) {
+            releaseVsStick();
+            break;
+          }
+        }
+      };
+      const onVsWinPointerMove = (e) => {
+        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
+        if (e.cancelable) e.preventDefault();
+        updateVsStick(e.clientX, e.clientY);
+      };
+      const onVsWinPointerEnd = (e) => {
+        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
+        releaseVsStick();
+      };
+
+      const detachVsStickWin = () => {
+        window.removeEventListener('touchmove', onVsWinTouchMove, { passive: false });
+        window.removeEventListener('touchend', onVsWinTouchEnd);
+        window.removeEventListener('touchcancel', onVsWinTouchEnd);
+        window.removeEventListener('pointermove', onVsWinPointerMove);
+        window.removeEventListener('pointerup', onVsWinPointerEnd);
+        window.removeEventListener('pointercancel', onVsWinPointerEnd);
+      };
+
       const releaseVsStick = () => {
         vsStickTouchId = null;
         vsStickPointerId = null;
+        vsOriginX = null;
+        vsOriginY = null;
+        detachVsStickWin();
         this.vsInput.joyActive = false;
         this.vsInput.joyX = 0;
         this.vsInput.joyY = 0;
@@ -4971,63 +5051,43 @@ export class Game {
         this.syncVsStickKnobUI();
       };
 
-      vsStickBase.addEventListener(
+      const isVsAuxBtnTarget = (target) =>
+        Boolean(target && typeof target.closest === 'function' && target.closest('.vs-aux-orb-btn, .vs-stick-aux-row'));
+
+      vsStickZone.addEventListener(
         'touchstart',
         (e) => {
-          if (!this.isVsManualP1Active()) return;
+          if (!this.isVsManualP1Active() || isVsAuxBtnTarget(e.target)) return;
           if (vsStickTouchId === null && e.changedTouches.length > 0) {
             const t = e.changedTouches[0];
             vsStickTouchId = t.identifier;
+            initVsOrigin(t.clientX, t.clientY);
             updateVsStick(t.clientX, t.clientY);
+            window.addEventListener('touchmove', onVsWinTouchMove, { passive: false });
+            window.addEventListener('touchend', onVsWinTouchEnd, { passive: true });
+            window.addEventListener('touchcancel', onVsWinTouchEnd, { passive: true });
           }
-          e.preventDefault();
+          if (e.cancelable) e.preventDefault();
         },
         { passive: false }
       );
-      vsStickBase.addEventListener(
-        'touchmove',
-        (e) => {
-          if (vsStickTouchId === null) return;
-          for (let i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            if (t.identifier === vsStickTouchId) {
-              updateVsStick(t.clientX, t.clientY);
-              e.preventDefault();
-              break;
-            }
-          }
-        },
-        { passive: false }
-      );
-      const onVsStickTouchEnd = (e) => {
-        if (vsStickTouchId === null) return;
-        for (let i = 0; i < e.changedTouches.length; i++) {
-          if (e.changedTouches[i].identifier === vsStickTouchId) {
-            releaseVsStick();
-            break;
-          }
-        }
-      };
-      vsStickBase.addEventListener('touchend', onVsStickTouchEnd, { passive: true });
-      vsStickBase.addEventListener('touchcancel', onVsStickTouchEnd, { passive: true });
-      vsStickBase.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch' || !this.isVsManualP1Active()) return;
+      vsStickZone.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch' || !this.isVsManualP1Active() || isVsAuxBtnTarget(e.target)) return;
         vsStickPointerId = e.pointerId;
-        vsStickBase.setPointerCapture?.(e.pointerId);
+        try {
+          vsStickZone.setPointerCapture?.(e.pointerId);
+        } catch (_) {
+          // Optional pointer capture
+        }
+        initVsOrigin(e.clientX, e.clientY);
         updateVsStick(e.clientX, e.clientY);
-        e.preventDefault();
+        window.addEventListener('pointermove', onVsWinPointerMove);
+        window.addEventListener('pointerup', onVsWinPointerEnd);
+        window.addEventListener('pointercancel', onVsWinPointerEnd);
+        if (e.cancelable) e.preventDefault();
       });
-      vsStickBase.addEventListener('pointermove', (e) => {
-        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
-        updateVsStick(e.clientX, e.clientY);
-      });
-      vsStickBase.addEventListener('pointerup', (e) => {
-        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
-        releaseVsStick();
-      });
-      vsStickBase.addEventListener('pointercancel', (e) => {
-        if (e.pointerType === 'touch' || e.pointerId !== vsStickPointerId) return;
-        releaseVsStick();
+      vsStickZone.addEventListener('lostpointercapture', () => {
+        if (vsStickPointerId !== null) releaseVsStick();
       });
     }
 
@@ -5101,71 +5161,66 @@ export class Game {
       this.beginLiveRoundIntro();
     });
 
-    // Adventure Mode Mobile Action-RPG HUD: Independent Multi-Touch Joystick + Simultaneous Right-Side Skill Cluster
+    // Adventure Mode Mobile Action-RPG HUD: Independent Multi-Touch Joystick (Tight 0.34x throw, soft ±16px dynamic origin & reliable window-tracked drags)
     const joyZone = document.getElementById('adv-joystick-zone');
     const joyBase = document.getElementById('adv-joystick-base');
     if (joyZone) {
       let activeJoyTouchId = null;
       let activeJoyPointerId = null;
-      const updateJoyFromCoords = (clientX, clientY) => {
+      let joyOriginX = null;
+      let joyOriginY = null;
+      let joyMaxRadius = 40;
+      const clampSoftOrigin = (v) => Math.max(-16, Math.min(16, v));
+
+      const initJoyOrigin = (clientX, clientY) => {
         const refEl = joyBase || joyZone;
         const rect = refEl.getBoundingClientRect();
         const cx = rect.left + rect.width * 0.5;
         const cy = rect.top + rect.height * 0.5;
-        const maxRadius = Math.max(36, Math.min(rect.width, rect.height) * 0.44);
-        const rawDx = clientX - cx;
-        const rawDy = clientY - cy;
+        joyMaxRadius = Math.max(26, Math.min(rect.width, rect.height) * 0.34);
+        joyOriginX = cx + clampSoftOrigin(clientX - cx);
+        joyOriginY = cy + clampSoftOrigin(clientY - cy);
+      };
+
+      const updateJoyFromCoords = (clientX, clientY) => {
+        if (joyOriginX === null || joyOriginY === null) {
+          initJoyOrigin(clientX, clientY);
+        }
+        const rawDx = clientX - joyOriginX;
+        const rawDy = clientY - joyOriginY;
         const isCssRotated = document.documentElement.classList.contains('is-css-rotated-landscape');
-        const dx = (isCssRotated ? rawDy : rawDx) / maxRadius;
-        const dy = (isCssRotated ? -rawDx : rawDy) / maxRadius;
+        const dx = (isCssRotated ? rawDy : rawDx) / joyMaxRadius;
+        const dy = (isCssRotated ? -rawDx : rawDy) / joyMaxRadius;
         this.adventure?.setJoystickVector(dx, dy, true);
       };
 
-      // Dedicated TouchEvent multi-touch tracking by touch.identifier (zero interference with right-hand Attack/Skills!)
-      joyZone.addEventListener(
-        'touchstart',
-        (e) => {
-          if (activeJoyTouchId !== null) return;
-          const t = e.changedTouches?.[0];
-          if (!t) return;
-          e.preventDefault();
-          activeJoyTouchId = t.identifier;
-          updateJoyFromCoords(t.clientX, t.clientY);
-        },
-        { passive: false }
-      );
-      joyZone.addEventListener(
-        'touchmove',
-        (e) => {
-          if (activeJoyTouchId === null) return;
-          const touches = e.changedTouches || [];
-          for (let i = 0; i < touches.length; i++) {
-            if (touches[i].identifier === activeJoyTouchId) {
-              e.preventDefault();
-              updateJoyFromCoords(touches[i].clientX, touches[i].clientY);
-              break;
-            }
-          }
-        },
-        { passive: false }
-      );
-      const releaseJoyTouch = (e) => {
+      const onJoyWinTouchMove = (e) => {
         if (activeJoyTouchId === null) return;
         const touches = e.changedTouches || [];
         for (let i = 0; i < touches.length; i++) {
           if (touches[i].identifier === activeJoyTouchId) {
-            activeJoyTouchId = null;
-            activeJoyPointerId = null;
-            this.adventure?.setJoystickVector(0, 0, false);
+            if (e.cancelable) e.preventDefault();
+            updateJoyFromCoords(touches[i].clientX, touches[i].clientY);
             break;
           }
         }
       };
-      joyZone.addEventListener('touchend', releaseJoyTouch, { passive: false });
-      joyZone.addEventListener('touchcancel', releaseJoyTouch, { passive: false });
-
-      // PointerEvent fallback for desktop mouse/pen/synthetic pointers
-      const releaseJoyPointer = (e) => {
+      const onJoyWinTouchEnd = (e) => {
+        if (activeJoyTouchId === null) return;
+        const touches = e.changedTouches || [];
+        for (let i = 0; i < touches.length; i++) {
+          if (touches[i].identifier === activeJoyTouchId) {
+            releaseAdvJoy();
+            break;
+          }
+        }
+      };
+      const onJoyWinPointerMove = (e) => {
+        if (e.pointerType === 'touch' || e.pointerId !== activeJoyPointerId) return;
+        if (e.cancelable) e.preventDefault();
+        updateJoyFromCoords(e.clientX, e.clientY);
+      };
+      const onJoyWinPointerEnd = (e) => {
         if (e?.pointerType === 'touch' && activeJoyTouchId !== null) return;
         if (
           e &&
@@ -5175,29 +5230,65 @@ export class Game {
         ) {
           return;
         }
+        releaseAdvJoy();
+      };
+
+      const detachAdvJoyWin = () => {
+        window.removeEventListener('touchmove', onJoyWinTouchMove, { passive: false });
+        window.removeEventListener('touchend', onJoyWinTouchEnd);
+        window.removeEventListener('touchcancel', onJoyWinTouchEnd);
+        window.removeEventListener('pointermove', onJoyWinPointerMove);
+        window.removeEventListener('pointerup', onJoyWinPointerEnd);
+        window.removeEventListener('pointercancel', onJoyWinPointerEnd);
+      };
+
+      const releaseAdvJoy = () => {
+        activeJoyTouchId = null;
         activeJoyPointerId = null;
+        joyOriginX = null;
+        joyOriginY = null;
+        detachAdvJoyWin();
         this.adventure?.setJoystickVector(0, 0, false);
       };
+
+      // Dedicated TouchEvent multi-touch tracking by touch.identifier (zero interference with right-hand Attack/Skills!)
+      joyZone.addEventListener(
+        'touchstart',
+        (e) => {
+          if (activeJoyTouchId !== null) return;
+          const t = e.changedTouches?.[0];
+          if (!t) return;
+          if (e.cancelable) e.preventDefault();
+          activeJoyTouchId = t.identifier;
+          initJoyOrigin(t.clientX, t.clientY);
+          updateJoyFromCoords(t.clientX, t.clientY);
+          window.addEventListener('touchmove', onJoyWinTouchMove, { passive: false });
+          window.addEventListener('touchend', onJoyWinTouchEnd, { passive: true });
+          window.addEventListener('touchcancel', onJoyWinTouchEnd, { passive: true });
+        },
+        { passive: false }
+      );
+
+      // PointerEvent fallback for desktop mouse/pen/synthetic pointers
       joyZone.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'touch') return;
         if (activeJoyPointerId !== null && activeJoyPointerId !== e.pointerId) return;
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         activeJoyPointerId = e.pointerId;
         try {
           joyZone.setPointerCapture?.(e.pointerId);
         } catch (_) {
           // Pointer capture optional in synthetic/headless environments
         }
+        initJoyOrigin(e.clientX, e.clientY);
         updateJoyFromCoords(e.clientX, e.clientY);
+        window.addEventListener('pointermove', onJoyWinPointerMove);
+        window.addEventListener('pointerup', onJoyWinPointerEnd);
+        window.addEventListener('pointercancel', onJoyWinPointerEnd);
       });
-      joyZone.addEventListener('pointermove', (e) => {
-        if (e.pointerType === 'touch' || e.pointerId !== activeJoyPointerId) return;
-        e.preventDefault();
-        updateJoyFromCoords(e.clientX, e.clientY);
+      joyZone.addEventListener('lostpointercapture', () => {
+        if (activeJoyPointerId !== null) releaseAdvJoy();
       });
-      joyZone.addEventListener('pointerup', releaseJoyPointer);
-      joyZone.addEventListener('pointercancel', releaseJoyPointer);
-      joyZone.addEventListener('lostpointercapture', releaseJoyPointer);
     }
 
     // Primary Anchor Attack Button (independent multi-touch Set — works seamlessly while dragging left joystick!)
@@ -5307,6 +5398,17 @@ export class Game {
       });
     });
     this.syncAdventureDifficultyUI();
+    this.advProgressToggle = document.getElementById('adv-progress-mode-toggle');
+    this.advProgBtns = this.advProgressToggle
+      ? Array.from(this.advProgressToggle.querySelectorAll('.adv-prog-btn[data-adv-progress]'))
+      : [];
+    this.advProgBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const nextMode = btn.getAttribute('data-adv-progress') || 'fresh';
+        this.setAdventureProgressMode(nextMode, true);
+      });
+    });
+    this.syncAdventureProgressModeUI();
     this.btnImportCampaignJson = document.getElementById('btn-import-campaign-json');
     this.inputImportCampaignJson = document.getElementById('input-import-campaign-json');
     if (this.advCampaignSelect) {
@@ -5360,6 +5462,12 @@ export class Game {
     if (advStRefund) {
       advStRefund.addEventListener('click', () => {
         this.adventure?.refundSkillTree(true);
+      });
+    }
+    const advStResetLv = document.getElementById('adv-st-reset-lv');
+    if (advStResetLv) {
+      advStResetLv.addEventListener('click', () => {
+        this.adventure?.resetHeroLevelToLv1(true);
       });
     }
 
@@ -5705,7 +5813,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps185');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps186');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -5739,6 +5847,7 @@ export class Game {
       // Ignore storage errors safely
     }
     this.syncAdventureDifficultyUI();
+    this.syncAdventureProgressModeUI();
     this.syncRosterSelectionUI(false);
     if (playSound && this.audio) {
       this.audio.play('clock_gear', 600);
@@ -5757,10 +5866,36 @@ export class Game {
     });
   }
 
+  setAdventureProgressMode(mode, playSound = true) {
+    const clean = normalizeAdventureProgressMode(mode);
+    this.selectedAdvProgressMode = clean;
+    saveAdventureProgressMode(clean);
+    this.adventure?.setProgressMode?.(clean);
+    this.syncAdventureProgressModeUI();
+    this.syncAdventureClearMedalsUI();
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+    return clean;
+  }
+
+  syncAdventureProgressModeUI() {
+    const cur = normalizeAdventureProgressMode(this.selectedAdvProgressMode);
+    if (!Array.isArray(this.advProgBtns)) return;
+    this.advProgBtns.forEach((btn) => {
+      const m = btn.getAttribute('data-adv-progress') || 'fresh';
+      const active = m === cur;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+  }
+
   syncAdventureClearMedalsUI() {
     if (!this.cards || typeof document === 'undefined') return;
     const isAdv = this.isAdventureMode();
     const medals = isAdv ? loadAdventureMedals() : {};
+    const keepLvlActive = isAdv && normalizeAdventureProgressMode(this.selectedAdvProgressMode) === 'keep';
+    const savedProgress = keepLvlActive ? loadAllAdventureHeroProgress() : {};
     Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
       if (!cardEl) return;
       const btn = cardEl.querySelector?.('.champ-tile-btn') || cardEl;
@@ -5772,20 +5907,41 @@ export class Game {
           pip.classList.add('hidden');
           pip.removeAttribute('data-medal-tier');
         }
-        return;
+      } else {
+        if (!pip && typeof document.createElement === 'function') {
+          pip = document.createElement('span');
+          pip.className = 'adv-clear-medal-pip';
+          btn.appendChild(pip);
+        }
+        if (pip) {
+          const tierCfg =
+            ADVENTURE_DIFFICULTY_TIERS[rec.bestTier] || ADVENTURE_DIFFICULTY_TIERS.normal;
+          pip.textContent = rec.rank || 'B';
+          pip.setAttribute('data-medal-tier', tierCfg.medalTier || 'bronze');
+          pip.title = `Best Adventure Clear: ${rec.rank} (${tierCfg.label} • ${rec.score} PTS)`;
+          pip.classList.remove('hidden');
+        }
       }
-      if (!pip && typeof document.createElement === 'function') {
-        pip = document.createElement('span');
-        pip.className = 'adv-clear-medal-pip';
-        btn.appendChild(pip);
+
+      let lvlPip = cardEl.querySelector?.('.adv-saved-lvl-pip') || null;
+      const progRec = keepLvlActive ? savedProgress[heroKey] : null;
+      if (!keepLvlActive || !progRec) {
+        if (lvlPip) {
+          lvlPip.textContent = '';
+          lvlPip.classList.add('hidden');
+        }
+      } else {
+        if (!lvlPip && typeof document.createElement === 'function') {
+          lvlPip = document.createElement('span');
+          lvlPip.className = 'adv-saved-lvl-pip';
+          btn.appendChild(lvlPip);
+        }
+        if (lvlPip) {
+          lvlPip.textContent = `LV.${progRec.level}`;
+          lvlPip.title = `Saved Adventure Level: LV.${progRec.level} (${progRec.skillPoints} SP unspent)`;
+          lvlPip.classList.remove('hidden');
+        }
       }
-      if (!pip) return;
-      const tierCfg =
-        ADVENTURE_DIFFICULTY_TIERS[rec.bestTier] || ADVENTURE_DIFFICULTY_TIERS.normal;
-      pip.textContent = rec.rank || 'B';
-      pip.setAttribute('data-medal-tier', tierCfg.medalTier || 'bronze');
-      pip.title = `Best Adventure Clear: ${rec.rank} (${tierCfg.label} • ${rec.score} PTS)`;
-      pip.classList.remove('hidden');
     });
   }
 
@@ -5863,7 +6019,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps185'
+          'v=30fps186'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -6094,6 +6250,7 @@ export class Game {
       advCampaignSelectEl.value = this.selectedCampaignId || DEFAULT_ADVENTURE_CAMPAIGN_ID;
     }
     this.syncAdventureDifficultyUI();
+    this.syncAdventureProgressModeUI();
     const customPackSummary = isAdv ? this.getActiveSelectedCampaignSummary() : null;
     const advDiffCfg =
       ADVENTURE_DIFFICULTY_TIERS[normalizeAdventureDifficultyId(this.selectedAdvDifficulty)] ||
@@ -7381,6 +7538,7 @@ export class Game {
       this.syncVsControlUI?.();
       this.syncPauseMenuUI();
       this.adventure.setDifficultyTier(this.selectedAdvDifficulty);
+      this.adventure.setProgressMode(this.selectedAdvProgressMode);
       if (
         !this.selectedCampaignId ||
         this.selectedCampaignId === DEFAULT_ADVENTURE_CAMPAIGN_ID

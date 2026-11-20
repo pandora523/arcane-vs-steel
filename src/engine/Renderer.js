@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps185';
-import { PixelFont } from './PixelFont.js?v=30fps185';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps185';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps185';
+import { PixelForge } from './PixelForge.js?v=30fps186';
+import { PixelFont } from './PixelFont.js?v=30fps186';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps186';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps186';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps185';
+} from './shaders/exNextGenFX.js?v=30fps186';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];

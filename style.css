@@ -3648,6 +3648,7 @@ html.is-mobile-landscape .hud-build-badge {
 
 /* Adventure Campaign / Stage Pack Selector Bar (Strictly Hidden in Versus Modes) */
 .landing-overlay:not([data-branch="adventure"]) .adv-campaign-selector-bar,
+.landing-overlay:not([data-branch="adventure"]) #adv-progress-mode-toggle,
 .adv-campaign-selector-bar.hidden,
 .adv-campaign-file-input {
   display: none !important;
@@ -3656,7 +3657,7 @@ html.is-mobile-landscape .hud-build-badge {
 .adv-campaign-selector-bar {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 6px;
   padding: 3px 8px;
@@ -3667,7 +3668,8 @@ html.is-mobile-landscape .hud-build-badge {
   min-width: 0;
 }
 
-.adv-difficulty-group {
+.adv-difficulty-group,
+.adv-progress-toggle {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -3677,7 +3679,8 @@ html.is-mobile-landscape .hud-build-badge {
   flex-shrink: 0;
 }
 
-.adv-diff-btn {
+.adv-diff-btn,
+.adv-prog-btn {
   height: 20px;
   padding: 0 7px;
   background: transparent;
@@ -3692,10 +3695,25 @@ html.is-mobile-landscape .hud-build-badge {
 }
 
 .adv-diff-btn:hover,
-.adv-diff-btn:focus-visible {
+.adv-diff-btn:focus-visible,
+.adv-prog-btn:hover,
+.adv-prog-btn:focus-visible {
   color: #f8fafc;
   border-color: #64748b;
   outline: none;
+}
+
+.adv-prog-btn.is-active[data-adv-progress="fresh"] {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border-color: #cbd5e1;
+  color: #ffffff;
+}
+
+.adv-prog-btn.is-active[data-adv-progress="keep"] {
+  background: linear-gradient(180deg, #0f766e 0%, #115e59 100%);
+  border-color: #5eead4;
+  color: #ecfeff;
+  box-shadow: 0 0 8px rgba(45, 212, 191, 0.38);
 }
 
 .adv-diff-btn.is-active[data-adv-tier="normal"] {
@@ -4027,6 +4045,31 @@ html.is-mobile-landscape .hud-build-badge {
   border-color: #fda4af;
   color: #fff1f2;
   box-shadow: 0 0 6px rgba(244, 63, 94, 0.55);
+}
+
+/* Adventure Mode Saved KEEP LVL Portrait Corner Badge (Strictly Hidden in VS Mode & FRESH LV.1!) */
+.landing-overlay:not([data-branch="adventure"]) .adv-saved-lvl-pip,
+.adv-saved-lvl-pip.hidden,
+.adv-saved-lvl-pip:empty {
+  display: none !important;
+}
+
+.adv-saved-lvl-pip {
+  position: absolute;
+  bottom: 16px;
+  left: 3px;
+  z-index: 4;
+  font-family: var(--font-pixel);
+  font-size: 0.21rem;
+  line-height: 1;
+  padding: 2px 4px;
+  background: linear-gradient(180deg, #0f766e 0%, #134e4a 100%);
+  border: 1px solid #5eead4;
+  outline: 1px solid #000;
+  color: #ecfeff;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: 0 0 5px rgba(45, 212, 191, 0.4);
+  pointer-events: none;
 }
 
 .champ-card.selected-p1 .card-Selected-ribbon {
@@ -4522,42 +4565,49 @@ html.is-mobile-landscape .hud-build-badge {
     font-size: 0.23rem;
   }
   html:not(.is-mobile-landscape) .adv-campaign-selector-bar {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 3px 4px;
     padding: 3px 5px;
   }
   html:not(.is-mobile-landscape) .adv-campaign-kicker {
-    grid-row: 1;
-    grid-column: 1;
+    order: 1;
     font-size: 0.21rem;
     padding: 0 2px;
   }
   html:not(.is-mobile-landscape) .adv-campaign-select {
-    grid-row: 1;
-    grid-column: 2;
+    order: 2;
+    flex: 1 1 120px;
     height: 22px;
     font-size: 0.23rem;
     padding: 1px 4px;
   }
   html:not(.is-mobile-landscape) .adv-campaign-import-btn {
-    grid-row: 1;
-    grid-column: 3;
+    order: 3;
     height: 22px;
     font-size: 0.21rem;
     padding: 0 5px;
   }
   html:not(.is-mobile-landscape) .adv-difficulty-group {
-    grid-row: 2;
-    grid-column: 1 / -1;
+    order: 4;
+    flex: 1.32 1 170px;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
     padding: 1px;
   }
-  html:not(.is-mobile-landscape) .adv-diff-btn {
+  html:not(.is-mobile-landscape) .adv-progress-toggle {
+    order: 5;
+    flex: 1 1 132px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 1px;
+  }
+  html:not(.is-mobile-landscape) .adv-diff-btn,
+  html:not(.is-mobile-landscape) .adv-prog-btn {
     height: 18px;
-    padding: 0 4px;
-    font-size: 0.21rem;
+    padding: 0 3px;
+    font-size: 0.19rem;
     text-align: center;
   }
 
@@ -5126,6 +5176,7 @@ html.is-mobile-landscape .hud-build-badge {
   align-items: center;
   justify-content: center;
   transform: translate3d(0px, 0px, 0px);
+  transition: none !important;
   will-change: transform;
   pointer-events: none;
 }
@@ -5842,9 +5893,10 @@ html.is-mobile-landscape .adv-campaign-selector-bar {
   gap: 4px;
 }
 
-html.is-mobile-landscape .adv-diff-btn {
+html.is-mobile-landscape .adv-diff-btn,
+html.is-mobile-landscape .adv-prog-btn {
   height: 16px;
-  padding: 0 5px;
+  padding: 0 4px;
   font-size: 0.19rem;
 }
 
@@ -6384,6 +6436,23 @@ html.is-mobile-landscape .victory-plaque {
 .adv-st-btn-refund {
   background: linear-gradient(180deg, #334155 0%, #0f172a 100%);
   border-color: #94a3b8;
+}
+
+.adv-st-btn-reset-lv {
+  background: linear-gradient(180deg, #7f1d1d 0%, #450a0a 100%);
+  border-color: #f87171;
+  color: #fee2e2;
+}
+
+.adv-st-btn-reset-lv:hover:not(:disabled),
+.adv-st-btn-reset-lv:focus-visible:not(:disabled) {
+  border-color: #fca5a5;
+  filter: brightness(1.12);
+}
+
+.adv-st-btn-reset-lv:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 
 .adv-st-btn-close {
@@ -7502,6 +7571,7 @@ html.is-mobile-landscape #app.is-vs-manual-active:not(.is-landing-open):not(.is-
   height: 42px;
   background: radial-gradient(circle at 36% 32%, #7dd3fc 0%, #0284c7 52%, #082f49 100%);
   border-color: #e0f2fe;
+  transition: none !important;
 }
 
 .vs-stick-aux-row {
@@ -8863,7 +8933,7 @@ html.is-mobile-landscape .adv-st-relic-desc {
 /* =========================================================================
    PLAYER VS AI SUB-MODES (EXHIBITION / ARCADE 5 / TRAINING LAB),
    5-STAGE ARCADE LADDER HUD + VICTORY BRACKET + TROPHY PIPS,
-   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps185)
+   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps186)
    ========================================================================= */
 
 /* Sub-Mode Switcher in #vs-quick-config-bar (Strictly visible in PLAYER VS AI only!) */
