@@ -31,6 +31,22 @@ const BOSS_CROWN_SVG =
   '<rect x="5" y="6" width="2" height="2" fill="#ef4444"/>' +
   '</svg>';
 
+const SYNERGY_DIAMOND_SVG =
+  '<svg class="endless-px-svg" width="8" height="8" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="3" y="0" width="2" height="8" fill="currentColor"/>' +
+  '<rect x="1" y="2" width="6" height="4" fill="currentColor"/>' +
+  '<rect x="0" y="3" width="8" height="2" fill="currentColor"/>' +
+  '<rect x="3" y="3" width="2" height="2" fill="#ffffff"/>' +
+  '</svg>';
+
+const DPS_BAR_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="1" y="5" width="2" height="4" fill="#38bdf8"/>' +
+  '<rect x="4" y="2" width="2" height="7" fill="#facc15"/>' +
+  '<rect x="7" y="4" width="2" height="5" fill="#c084fc"/>' +
+  '<rect x="0" y="9" width="10" height="1" fill="#d4af37"/>' +
+  '</svg>';
+
 const ENDLESS_SHOP_CSS = `
 /* =========================================================================
    ENDLESS CRUSADE HUD & COLLAPSIBLE GOTHIC SHOP DRAWER
@@ -952,6 +968,702 @@ const ENDLESS_SHOP_CSS = `
 }
 
 /* =========================================================================
+   WAVE 2: ACTIVE COMPANION MINI-HUD & SYNERGY BADGES
+   ========================================================================= */
+.endless-party-hud {
+  position: absolute;
+  left: max(14px, env(safe-area-inset-left));
+  top: max(96px, calc(env(safe-area-inset-top) + 92px));
+  z-index: 24;
+  width: 184px;
+  max-width: calc(100vw - 28px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.endless-party-hud.hidden {
+  display: none !important;
+}
+
+.endless-party-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.endless-party-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px 4px 4px;
+  font-family: inherit;
+  text-align: left;
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(14, 18, 34, 0.94) 0%, rgba(7, 9, 18, 0.97) 100%);
+  border: 1.5px solid #d4af37;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.24),
+    0 4px 12px rgba(0, 0, 0, 0.85);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
+}
+
+.endless-party-card:hover {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.36),
+    0 0 10px rgba(250, 204, 21, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.9);
+}
+
+.endless-party-card:active {
+  transform: translateY(1px);
+}
+
+.endless-party-card.hidden {
+  display: none !important;
+}
+
+.endless-party-card.is-casting-ult {
+  border-color: #fef08a;
+  background: linear-gradient(180deg, rgba(58, 40, 10, 0.96) 0%, rgba(20, 14, 6, 0.98) 100%);
+  animation: endlessUltCastPulse 0.42s ease-in-out infinite;
+}
+
+@keyframes endlessUltCastPulse {
+  0%, 100% {
+    border-color: #facc15;
+    box-shadow:
+      inset 0 0 10px rgba(250, 204, 21, 0.45),
+      0 0 12px rgba(250, 204, 21, 0.72);
+  }
+  50% {
+    border-color: #ffffff;
+    box-shadow:
+      inset 0 0 16px rgba(254, 240, 138, 0.78),
+      0 0 20px rgba(254, 240, 138, 0.96);
+  }
+}
+
+.endless-party-port-wrap {
+  width: 30px;
+  height: 30px;
+  padding: 1px;
+  background: #060812;
+  border: 1.5px solid #d4af37;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.endless-party-portrait {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.endless-party-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.endless-party-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-party-name {
+  font-size: 0.36rem;
+  color: #f8fafc;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-party-lv {
+  font-size: 0.31rem;
+  color: #fde047;
+  background: rgba(250, 204, 21, 0.14);
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  border-radius: 2px;
+  padding: 1px 3px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.endless-party-ult-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-party-ult-track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 7px;
+  background: #050712;
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.endless-party-ult-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: linear-gradient(90deg, #b45309 0%, #facc15 65%, #fef08a 100%);
+  transition: width 0.12s linear;
+}
+
+.endless-party-card.is-casting-ult .endless-party-ult-track {
+  border-color: #fef08a;
+  box-shadow: 0 0 8px rgba(254, 240, 138, 0.85);
+}
+
+.endless-party-card.is-casting-ult .endless-party-ult-fill {
+  width: 100% !important;
+  background: linear-gradient(90deg, #facc15 0%, #ffffff 50%, #facc15 100%);
+}
+
+.endless-party-ult-tag {
+  font-size: 0.27rem;
+  color: #fde047;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-party-card.is-casting-ult .endless-party-ult-tag {
+  color: #ffffff;
+}
+
+/* Active Synergy Badges below/beside Party Strip */
+.endless-synergy-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.endless-synergy-hud.hidden {
+  display: none !important;
+}
+
+.endless-synergy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 5px;
+  font-size: 0.30rem;
+  letter-spacing: 0.03em;
+  color: #fef08a;
+  background: linear-gradient(180deg, rgba(16, 20, 36, 0.94) 0%, rgba(8, 10, 19, 0.96) 100%);
+  border: 1px solid #d4af37;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.78);
+}
+
+.endless-synergy-badge-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Companions Tab Header Party Synergies Box */
+.endless-party-synergies-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.endless-party-syn-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.endless-party-syn-title {
+  font-size: 0.34rem;
+  color: #fde047;
+  letter-spacing: 0.04em;
+}
+
+.endless-party-syn-count {
+  font-size: 0.31rem;
+  color: #94a3b8;
+}
+
+.endless-party-syn-count.is-active {
+  color: #34d399;
+}
+
+.endless-party-syn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.endless-party-syn-empty {
+  font-size: 0.30rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.endless-party-syn-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgba(12, 16, 29, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-left: 3px solid #facc15;
+  border-radius: 3px;
+}
+
+.endless-party-syn-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.34rem;
+  color: #fef08a;
+  letter-spacing: 0.03em;
+}
+
+.endless-party-syn-desc {
+  font-size: 0.30rem;
+  color: #cbd5e1;
+  line-height: 1.3;
+}
+
+/* =========================================================================
+   WAVE 2: REAL-TIME DPS BREAKDOWN CARD & DRAWER TELEMETRY FOOTER STRIP
+   ========================================================================= */
+.endless-dps-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px 8px;
+  background: linear-gradient(180deg, rgba(16, 21, 38, 0.96) 0%, rgba(9, 12, 22, 0.98) 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.72);
+  outline: 1px solid #000;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.2);
+}
+
+.endless-dps-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.endless-dps-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.40rem;
+  color: #fde047;
+  letter-spacing: 0.04em;
+}
+
+.endless-dps-fever-pill {
+  font-size: 0.31rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(250, 204, 21, 0.18);
+  border: 1px solid #facc15;
+  color: #fef08a;
+}
+
+.endless-dps-fever-pill.hidden {
+  display: none !important;
+}
+
+.endless-dps-bar-track {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  background: #050712;
+  border: 1px solid rgba(212, 175, 55, 0.65);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.endless-dps-bar-track.is-slim {
+  height: 6px;
+  border-color: rgba(212, 175, 55, 0.48);
+}
+
+.endless-dps-seg {
+  height: 100%;
+  width: 0%;
+  transition: width 0.16s linear;
+}
+
+.endless-dps-seg.is-hero {
+  background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 55%, #0284c7 100%);
+}
+
+.endless-dps-seg.is-tap {
+  background: linear-gradient(180deg, #fef08a 0%, #facc15 55%, #ca8a04 100%);
+}
+
+.endless-dps-seg.is-party {
+  background: linear-gradient(180deg, #e9d5ff 0%, #c084fc 55%, #9333ea 100%);
+}
+
+.endless-dps-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.endless-dps-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 5px;
+  background: rgba(7, 9, 18, 0.85);
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  border-radius: 3px;
+  min-width: 0;
+}
+
+.endless-dps-col-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.29rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-dps-swatch {
+  width: 7px;
+  height: 7px;
+  border: 1px solid #000;
+  flex-shrink: 0;
+}
+
+.endless-dps-swatch.is-hero {
+  background: #38bdf8;
+}
+
+.endless-dps-swatch.is-tap {
+  background: #facc15;
+}
+
+.endless-dps-swatch.is-party {
+  background: #c084fc;
+}
+
+.endless-dps-col-val {
+  font-size: 0.39rem;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-dps-col-pct {
+  font-size: 0.30rem;
+  color: #cbd5e1;
+}
+
+.endless-dps-col.is-hero .endless-dps-col-pct {
+  color: #38bdf8;
+}
+
+.endless-dps-col.is-tap .endless-dps-col-pct {
+  color: #facc15;
+}
+
+.endless-dps-col.is-party .endless-dps-col-pct {
+  color: #c084fc;
+}
+
+.endless-dps-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(212, 175, 55, 0.22);
+  font-size: 0.34rem;
+}
+
+.endless-dps-sum-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.endless-dps-sum-lbl {
+  color: #94a3b8;
+  font-size: 0.30rem;
+}
+
+.endless-dps-sum-val {
+  color: #fef08a;
+  font-size: 0.38rem;
+}
+
+.endless-dps-sum-val.is-gold {
+  color: #facc15;
+}
+
+/* Compact Expandable Live Telemetry Footer Strip in Drawer */
+.endless-drawer-telemetry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, rgba(12, 15, 27, 0.96) 0%, rgba(7, 9, 17, 0.99) 100%);
+  border-top: 1.5px solid rgba(212, 175, 55, 0.58);
+  flex-shrink: 0;
+}
+
+.endless-telem-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.endless-telem-metrics {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.endless-telem-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  font-size: 0.34rem;
+}
+
+.endless-telem-key {
+  color: #94a3b8;
+  font-size: 0.29rem;
+}
+
+.endless-telem-val {
+  color: #fef08a;
+}
+
+.endless-telem-val.is-gold {
+  color: #facc15;
+}
+
+.endless-telem-expand-btn {
+  font-family: inherit;
+  font-size: 0.29rem;
+  letter-spacing: 0.03em;
+  padding: 2px 5px;
+  color: #fde047;
+  background: rgba(15, 21, 36, 0.95);
+  border: 1px solid rgba(212, 175, 55, 0.58);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.endless-telem-expand-btn:hover {
+  border-color: #fef08a;
+  color: #ffffff;
+}
+
+.endless-telem-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.endless-telem-details.hidden {
+  display: none !important;
+}
+
+.endless-telem-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 4px;
+  background: rgba(6, 9, 18, 0.92);
+  border: 1px solid rgba(71, 85, 105, 0.45);
+  border-radius: 3px;
+  font-size: 0.28rem;
+  min-width: 0;
+}
+
+.endless-telem-chip.is-hero {
+  border-left: 2px solid #38bdf8;
+}
+
+.endless-telem-chip.is-tap {
+  border-left: 2px solid #facc15;
+}
+
+.endless-telem-chip.is-party {
+  border-left: 2px solid #c084fc;
+}
+
+.endless-telem-chip-lbl {
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-telem-chip-val {
+  color: #f8fafc;
+  font-size: 0.31rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================================================
+   WAVE 2: RESPONSIVE BUY-PULSE FEEDBACK & FLOATING MICRO-BADGES
+   ========================================================================= */
+.endless-relic-row.is-buy-pulse,
+.endless-comp-card.is-buy-pulse {
+  animation: endlessBuyPulse 0.44s ease-out;
+}
+
+.endless-buy-btn.is-buy-pulse,
+.endless-comp-btn.is-buy-pulse {
+  animation: endlessBuyBtnPulse 0.38s ease-out;
+}
+
+@keyframes endlessBuyPulse {
+  0% {
+    border-color: #ffffff;
+    box-shadow:
+      0 0 0 1px #fef08a,
+      0 0 16px rgba(250, 204, 21, 0.88),
+      inset 0 0 16px rgba(250, 204, 21, 0.42);
+  }
+  45% {
+    border-color: #fde047;
+    box-shadow:
+      0 0 12px rgba(250, 204, 21, 0.58),
+      inset 0 0 10px rgba(250, 204, 21, 0.22);
+  }
+  100% {
+    border-color: rgba(212, 175, 55, 0.78);
+    box-shadow: none;
+  }
+}
+
+@keyframes endlessBuyBtnPulse {
+  0% {
+    border-color: #ffffff;
+    box-shadow: 0 0 14px rgba(254, 240, 138, 0.95), inset 0 0 8px rgba(255, 255, 255, 0.45);
+    filter: brightness(1.26);
+  }
+  100% {
+    border-color: #facc15;
+    box-shadow: none;
+    filter: brightness(1);
+  }
+}
+
+.endless-fx-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 42;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.endless-micro-badge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 5px;
+  font-family: 'ArcanePixel', 'Press Start 2P', monospace;
+  font-size: 0.38rem;
+  letter-spacing: 0.04em;
+  color: #090c14;
+  background: linear-gradient(180deg, #fef08a 0%, #facc15 100%);
+  border: 1.5px solid #ffffff;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.85), 0 2px 6px rgba(0, 0, 0, 0.9);
+  animation: endlessMicroBadgeFloat 0.68s ease-out forwards;
+}
+
+.endless-micro-badge.is-recruit {
+  color: #ffffff;
+  background: linear-gradient(180deg, #a855f7 0%, #6b21a8 100%);
+  border-color: #fef08a;
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.9), 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+@keyframes endlessMicroBadgeFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.82);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -8px) scale(1.06);
+  }
+  74% {
+    opacity: 1;
+    transform: translate(-50%, -20px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(0.95);
+  }
+}
+
+/* =========================================================================
    RESPONSIVE ERGONOMICS: MOBILE LANDSCAPE (844x390) & PORTRAIT (390x844)
    ========================================================================= */
 @media (max-height: 500px) {
@@ -1025,6 +1737,58 @@ const ENDLESS_SHOP_CSS = `
     width: min(334px, 54vw);
     z-index: 34;
   }
+
+  .endless-party-hud {
+    left: max(8px, env(safe-area-inset-left));
+    top: max(108px, calc(env(safe-area-inset-top) + 104px));
+    width: auto;
+    max-width: min(440px, calc(100vw - 16px));
+    gap: 3px;
+  }
+
+  .endless-party-strip {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .endless-party-card {
+    width: 120px;
+    padding: 3px 4px;
+    gap: 4px;
+  }
+
+  .endless-party-port-wrap {
+    width: 26px;
+    height: 26px;
+  }
+
+  .endless-party-portrait {
+    width: 24px;
+    height: 24px;
+  }
+
+  .endless-party-name {
+    font-size: 0.31rem;
+  }
+
+  .endless-party-lv {
+    font-size: 0.27rem;
+    padding: 1px 2px;
+  }
+
+  .endless-party-ult-track {
+    height: 6px;
+  }
+
+  .endless-party-ult-tag {
+    font-size: 0.24rem;
+  }
+
+  .endless-synergy-badge {
+    font-size: 0.27rem;
+    padding: 2px 4px;
+  }
 }
 
 html.is-mobile-landscape .endless-top-stack {
@@ -1051,6 +1815,45 @@ html.is-mobile-landscape .endless-shop-shell {
   bottom: 6px;
   width: min(334px, 54vw);
   z-index: 34;
+}
+
+html.is-mobile-landscape .endless-party-hud {
+  left: 8px;
+  top: 108px;
+  width: auto;
+  max-width: min(440px, calc(100vw - 16px));
+  gap: 3px;
+}
+
+html.is-mobile-landscape .endless-party-strip {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-party-card {
+  width: 120px;
+  padding: 3px 4px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-party-port-wrap {
+  width: 26px;
+  height: 26px;
+}
+
+html.is-mobile-landscape .endless-party-portrait {
+  width: 24px;
+  height: 24px;
+}
+
+html.is-mobile-landscape .endless-party-name {
+  font-size: 0.31rem;
+}
+
+html.is-mobile-landscape .endless-party-lv {
+  font-size: 0.27rem;
+  padding: 1px 2px;
 }
 
 @media (max-width: 560px) and (orientation: portrait) {
@@ -1121,6 +1924,67 @@ html.is-mobile-landscape .endless-shop-shell {
   html:not(.is-mobile-landscape) .endless-toggle-icon {
     width: 18px;
     height: 18px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-hud {
+    left: 6px;
+    right: 6px;
+    top: max(200px, calc(env(safe-area-inset-top) + 196px));
+    width: auto;
+    max-width: none;
+    align-items: stretch;
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-strip {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+    width: 100%;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-card {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 146px;
+    padding: 3px 4px;
+    gap: 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-port-wrap {
+    width: 24px;
+    height: 24px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-portrait {
+    width: 22px;
+    height: 22px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-name {
+    font-size: 0.30rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-lv {
+    font-size: 0.26rem;
+    padding: 1px 2px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-ult-track {
+    height: 6px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-ult-tag {
+    font-size: 0.24rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-synergy-hud {
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-synergy-badge {
+    font-size: 0.27rem;
+    padding: 2px 4px;
   }
 
   html:not(.is-mobile-landscape) .endless-shop-shell {
@@ -1228,6 +2092,107 @@ function drawFallbackPortrait(canvas, accentHex = '#facc15') {
   px(5, 10, 6, 4, '#1e293b');
 }
 
+const PIXEL_MONOGRAM_3X5 = Object.freeze({
+  A: [0b010, 0b101, 0b111, 0b101, 0b101],
+  B: [0b110, 0b101, 0b110, 0b101, 0b110],
+  C: [0b011, 0b100, 0b100, 0b100, 0b011],
+  D: [0b110, 0b101, 0b101, 0b101, 0b110],
+  E: [0b111, 0b100, 0b110, 0b100, 0b111],
+  F: [0b111, 0b100, 0b110, 0b100, 0b100],
+  G: [0b011, 0b100, 0b101, 0b101, 0b011],
+  H: [0b101, 0b101, 0b111, 0b101, 0b101],
+  I: [0b111, 0b010, 0b010, 0b010, 0b111],
+  J: [0b001, 0b001, 0b001, 0b101, 0b010],
+  K: [0b101, 0b101, 0b110, 0b101, 0b101],
+  L: [0b100, 0b100, 0b100, 0b100, 0b111],
+  M: [0b101, 0b111, 0b111, 0b101, 0b101],
+  N: [0b111, 0b101, 0b101, 0b101, 0b101],
+  O: [0b010, 0b101, 0b101, 0b101, 0b010],
+  P: [0b110, 0b101, 0b110, 0b100, 0b100],
+  Q: [0b010, 0b101, 0b101, 0b011, 0b001],
+  R: [0b110, 0b101, 0b110, 0b101, 0b101],
+  S: [0b011, 0b100, 0b010, 0b001, 0b110],
+  T: [0b111, 0b010, 0b010, 0b010, 0b010],
+  U: [0b101, 0b101, 0b101, 0b101, 0b111],
+  V: [0b101, 0b101, 0b101, 0b101, 0b010],
+  W: [0b101, 0b101, 0b111, 0b111, 0b101],
+  X: [0b101, 0b101, 0b010, 0b101, 0b101],
+  Y: [0b101, 0b101, 0b010, 0b010, 0b010],
+  Z: [0b111, 0b001, 0b010, 0b100, 0b111],
+  0: [0b111, 0b101, 0b101, 0b101, 0b111],
+  1: [0b010, 0b110, 0b010, 0b010, 0b111],
+  2: [0b110, 0b001, 0b010, 0b100, 0b111],
+  3: [0b110, 0b001, 0b010, 0b001, 0b110],
+  4: [0b101, 0b101, 0b111, 0b001, 0b001],
+  5: [0b111, 0b100, 0b110, 0b001, 0b110],
+  6: [0b011, 0b100, 0b111, 0b101, 0b111],
+  7: [0b111, 0b001, 0b010, 0b010, 0b010],
+  8: [0b111, 0b101, 0b111, 0b101, 0b111],
+  9: [0b111, 0b101, 0b111, 0b001, 0b110]
+});
+
+function extractMonogramLetters(label) {
+  const cleaned = String(label || 'AL')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s-]/g, '')
+    .trim();
+  if (!cleaned) return 'AL';
+  const parts = cleaned.split(/[\s-]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`;
+  }
+  return cleaned.slice(0, 2);
+}
+
+function drawMonogramPortrait(canvas, accentHex = '#facc15', label = 'AL') {
+  if (!canvas || typeof canvas.getContext !== 'function') return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const w = canvas.width || 28;
+  const h = canvas.height || 28;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, w, h);
+
+  // Gothic obsidian framed tile with colored inner accent trim
+  ctx.fillStyle = '#070912';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = accentHex || '#facc15';
+  ctx.fillRect(1, 1, w - 2, h - 2);
+  ctx.fillStyle = '#12172b';
+  ctx.fillRect(3, 3, w - 6, h - 6);
+  ctx.fillStyle = '#1b223d';
+  ctx.fillRect(4, 4, w - 8, Math.max(2, Math.floor((h - 8) * 0.45)));
+
+  // Crisp 2x pixel-snapped monogram letters
+  const chars = extractMonogramLetters(label);
+  const scale = Math.max(1, Math.floor(w / 14));
+  const charW = 3 * scale;
+  const charH = 5 * scale;
+  const gap = chars.length > 1 ? scale : 0;
+  const totalW = chars.length * charW + (chars.length - 1) * gap;
+  const startX = Math.floor((w - totalW) * 0.5);
+  const startY = Math.floor((h - charH) * 0.5);
+
+  for (let ci = 0; ci < chars.length; ci++) {
+    const ch = chars[ci];
+    const glyph = PIXEL_MONOGRAM_3X5[ch] || PIXEL_MONOGRAM_3X5.A;
+    const ox = startX + ci * (charW + gap);
+    for (let row = 0; row < 5; row++) {
+      const bits = glyph[row];
+      for (let col = 0; col < 3; col++) {
+        if ((bits >> (2 - col)) & 1) {
+          const px = ox + col * scale;
+          const py = startY + row * scale;
+          ctx.fillStyle = '#050712';
+          ctx.fillRect(px + 1, py + 1, scale, scale);
+          ctx.fillStyle = row < 2 ? '#ffffff' : (accentHex || '#fef08a');
+          ctx.fillRect(px, py, scale, scale);
+        }
+      }
+    }
+  }
+}
+
 export class EndlessShopUI {
   constructor(endlessManager = null) {
     this.manager = endlessManager || null;
@@ -1240,6 +2205,7 @@ export class EndlessShopUI {
     this._createdRoot = false;
     this._vfxFallbackImg = null;
     this._iconCanvases = [];
+    this._partySlotRefs = [];
     this._relicRowRefs = new Map();
     this._companionCardRefs = new Map();
     this._tabBtnRefs = new Map();
@@ -1252,6 +2218,10 @@ export class EndlessShopUI {
     this._resetArmTimer = null;
     this._partyNoticeTimer = null;
     this._saveFlashTimer = null;
+    this._ephemeralTimers = new Set();
+    this._lastHudSynergySig = '';
+    this._lastDrawerSynergySig = '';
+    this._telemExpanded = false;
     this._lastSnapshot = null;
 
     // Data-driven tab registry so Wave 3 can append an ASCEND tab seamlessly
@@ -1340,32 +2310,63 @@ export class EndlessShopUI {
     }
   }
 
-  _blitCompanionPortrait(canvas, heroKey, accentHex) {
-    if (!canvas || typeof canvas.getContext !== 'function') return;
-    const img = PixelForge?.assets?.[heroKey]?.portrait || null;
+  _resolvePortraitImage(heroKey) {
+    if (!heroKey) return null;
+    let assets = PixelForge?.assets || null;
+    if (!assets && typeof PixelForge?.initAssets === 'function' && typeof Image !== 'undefined') {
+      try {
+        assets = PixelForge.initAssets();
+      } catch (_err) {
+        assets = null;
+      }
+    }
+    const baseKey = String(heroKey).replace(/_ex$/, '');
+    const img = assets?.[heroKey]?.portrait || assets?.[baseKey]?.portrait || null;
     if (img && typeof PixelForge?.ensureImage === 'function') {
       PixelForge.ensureImage(img);
     }
+    return img;
+  }
+
+  _blitCompanionPortrait(canvas, heroKey, accentHex, fallbackLabel = null) {
+    if (!canvas || typeof canvas.getContext !== 'function') return;
+    const keySig = `${heroKey || ''}|${accentHex || ''}|${fallbackLabel || ''}`;
+    const img = this._resolvePortraitImage(heroKey);
+
     if (img && img.complete && img.naturalWidth > 0) {
-      if (canvas._blittedPortrait === img) return;
+      if (canvas._blittedPortrait === img && canvas._blittedKeySig === keySig) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.imageSmoothingEnabled = false;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       canvas._blittedPortrait = img;
+      canvas._blittedKeySig = keySig;
+      canvas._fallbackKeySig = null;
       return;
     }
-    if (img && !img.complete && typeof img.addEventListener === 'function' && !canvas._portraitLoadBound) {
-      canvas._portraitLoadBound = true;
+
+    canvas._expectedKeySig = keySig;
+    if (img && !img.complete && typeof img.addEventListener === 'function' && canvas._portraitLoadBoundImg !== img) {
+      canvas._portraitLoadBoundImg = img;
       img.addEventListener('load', () => {
-        canvas._portraitLoadBound = false;
-        this._blitCompanionPortrait(canvas, heroKey, accentHex);
+        if (canvas._portraitLoadBoundImg === img) {
+          canvas._portraitLoadBoundImg = null;
+        }
+        if (canvas._expectedKeySig === keySig) {
+          this._blitCompanionPortrait(canvas, heroKey, accentHex, fallbackLabel);
+        }
       }, { once: true });
     }
-    if (!canvas._fallbackPortraitDrawn) {
-      drawFallbackPortrait(canvas, accentHex);
-      canvas._fallbackPortraitDrawn = true;
+
+    if (canvas._fallbackKeySig !== keySig) {
+      canvas._blittedPortrait = null;
+      if (fallbackLabel) {
+        drawMonogramPortrait(canvas, accentHex, fallbackLabel);
+      } else {
+        drawFallbackPortrait(canvas, accentHex);
+      }
+      canvas._fallbackKeySig = keySig;
     }
   }
 
@@ -1420,17 +2421,22 @@ export class EndlessShopUI {
     this.root = root;
     this.root.textContent = '';
     this._iconCanvases = [];
+    this._partySlotRefs = [];
     this._relicRowRefs.clear();
     this._companionCardRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
     this._statRefs.clear();
+    this._lastHudSynergySig = '';
+    this._lastDrawerSynergySig = '';
     this._refs = {};
 
     this._buildTopStatusBar();
+    this._buildActivePartyHud();
     this._buildShopToggle();
     this._buildShopDrawer();
+    this._buildFxLayer();
 
     this.setVisible(this.visible);
     this.setDrawerOpen(this.drawerOpen);
@@ -1567,6 +2573,106 @@ export class EndlessShopUI {
     this._refs.challengeBtn = challengeBtn;
   }
 
+  _buildActivePartyHud() {
+    const partyHud = document.createElement('div');
+    partyHud.className = 'endless-party-hud hidden';
+    partyHud.setAttribute('aria-label', 'Active Companion Party');
+
+    const strip = document.createElement('div');
+    strip.className = 'endless-party-strip';
+
+    this._partySlotRefs = [];
+    for (let i = 0; i < 3; i++) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'endless-party-card hidden';
+      card.dataset.slotIndex = String(i);
+      stopEventLeak(card);
+
+      const portWrap = document.createElement('div');
+      portWrap.className = 'endless-party-port-wrap';
+
+      const portCanvas = document.createElement('canvas');
+      portCanvas.width = 28;
+      portCanvas.height = 28;
+      portCanvas.className = 'endless-party-portrait';
+      portCanvas.setAttribute('aria-hidden', 'true');
+      portWrap.appendChild(portCanvas);
+
+      const meta = document.createElement('div');
+      meta.className = 'endless-party-meta';
+
+      const head = document.createElement('div');
+      head.className = 'endless-party-head';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'endless-party-name';
+      nameEl.textContent = 'ALLY';
+      const lvEl = document.createElement('span');
+      lvEl.className = 'endless-party-lv';
+      lvEl.textContent = 'LV.1';
+      head.appendChild(nameEl);
+      head.appendChild(lvEl);
+
+      const ultRow = document.createElement('div');
+      ultRow.className = 'endless-party-ult-row';
+      const ultTrack = document.createElement('div');
+      ultTrack.className = 'endless-party-ult-track';
+      const ultFill = document.createElement('div');
+      ultFill.className = 'endless-party-ult-fill';
+      ultTrack.appendChild(ultFill);
+      const ultTag = document.createElement('span');
+      ultTag.className = 'endless-party-ult-tag';
+      ultTag.textContent = '0%';
+      ultRow.appendChild(ultTrack);
+      ultRow.appendChild(ultTag);
+
+      meta.appendChild(head);
+      meta.appendChild(ultRow);
+
+      card.appendChild(portWrap);
+      card.appendChild(meta);
+
+      card.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._playSfx('playUiClick');
+        this.setActiveTab('companions');
+        this.setDrawerOpen(true);
+      });
+
+      strip.appendChild(card);
+      this._partySlotRefs.push({
+        card,
+        portWrap,
+        portCanvas,
+        nameEl,
+        lvEl,
+        ultFill,
+        ultTag
+      });
+    }
+
+    const synHud = document.createElement('div');
+    synHud.className = 'endless-synergy-hud hidden';
+    synHud.setAttribute('aria-label', 'Active Party Synergies');
+    stopEventLeak(synHud);
+
+    partyHud.appendChild(strip);
+    partyHud.appendChild(synHud);
+    this.root.appendChild(partyHud);
+
+    this._refs.partyHud = partyHud;
+    this._refs.partyStrip = strip;
+    this._refs.synergyHud = synHud;
+  }
+
+  _buildFxLayer() {
+    const fxLayer = document.createElement('div');
+    fxLayer.className = 'endless-fx-layer';
+    fxLayer.setAttribute('aria-hidden', 'true');
+    this.root.appendChild(fxLayer);
+    this._refs.fxLayer = fxLayer;
+  }
+
   _buildShopToggle() {
     const toggle = document.createElement('button');
     toggle.id = 'endless-shop-toggle';
@@ -1637,14 +2743,117 @@ export class EndlessShopUI {
     const body = document.createElement('div');
     body.className = 'endless-drawer-body';
 
+    // Compact Live Expandable Telemetry Footer Strip
+    const telemetry = document.createElement('div');
+    telemetry.className = 'endless-drawer-telemetry';
+
+    const telemTop = document.createElement('div');
+    telemTop.className = 'endless-telem-top';
+
+    const telemMetrics = document.createElement('div');
+    telemMetrics.className = 'endless-telem-metrics';
+
+    const dpsPair = document.createElement('span');
+    dpsPair.className = 'endless-telem-pair';
+    const dpsKey = document.createElement('span');
+    dpsKey.className = 'endless-telem-key';
+    dpsKey.textContent = 'DPS';
+    const dpsVal = document.createElement('span');
+    dpsVal.className = 'endless-telem-val';
+    dpsVal.textContent = '0';
+    dpsPair.appendChild(dpsKey);
+    dpsPair.appendChild(dpsVal);
+
+    const goldPair = document.createElement('span');
+    goldPair.className = 'endless-telem-pair';
+    const goldKey = document.createElement('span');
+    goldKey.className = 'endless-telem-key';
+    goldKey.textContent = 'G/S';
+    const goldVal = document.createElement('span');
+    goldVal.className = 'endless-telem-val is-gold';
+    goldVal.textContent = '0';
+    goldPair.appendChild(goldKey);
+    goldPair.appendChild(goldVal);
+
+    telemMetrics.appendChild(dpsPair);
+    telemMetrics.appendChild(goldPair);
+
+    const telemExpandBtn = document.createElement('button');
+    telemExpandBtn.type = 'button';
+    telemExpandBtn.className = 'endless-telem-expand-btn';
+    telemExpandBtn.setAttribute('aria-expanded', this._telemExpanded ? 'true' : 'false');
+    telemExpandBtn.textContent = this._telemExpanded ? 'HIDE' : 'SPLIT';
+    telemExpandBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._playSfx('playUiClick');
+      this._telemExpanded = !this._telemExpanded;
+      if (this._refs.telemDetails) {
+        this._refs.telemDetails.classList.toggle('hidden', !this._telemExpanded);
+      }
+      telemExpandBtn.setAttribute('aria-expanded', this._telemExpanded ? 'true' : 'false');
+      setTextIfChanged(telemExpandBtn, this._telemExpanded ? 'HIDE' : 'SPLIT');
+    });
+
+    telemTop.appendChild(telemMetrics);
+    telemTop.appendChild(telemExpandBtn);
+
+    const telemTrack = document.createElement('div');
+    telemTrack.className = 'endless-dps-bar-track is-slim';
+    const telemSegHero = document.createElement('div');
+    telemSegHero.className = 'endless-dps-seg is-hero';
+    const telemSegTap = document.createElement('div');
+    telemSegTap.className = 'endless-dps-seg is-tap';
+    const telemSegParty = document.createElement('div');
+    telemSegParty.className = 'endless-dps-seg is-party';
+    telemTrack.appendChild(telemSegHero);
+    telemTrack.appendChild(telemSegTap);
+    telemTrack.appendChild(telemSegParty);
+
+    const telemDetails = document.createElement('div');
+    telemDetails.className = this._telemExpanded ? 'endless-telem-details' : 'endless-telem-details hidden';
+
+    const makeTelemChip = (cls, lbl) => {
+      const chip = document.createElement('div');
+      chip.className = `endless-telem-chip ${cls}`;
+      const k = document.createElement('span');
+      k.className = 'endless-telem-chip-lbl';
+      k.textContent = lbl;
+      const v = document.createElement('span');
+      v.className = 'endless-telem-chip-val';
+      v.textContent = '0 (0%)';
+      chip.appendChild(k);
+      chip.appendChild(v);
+      telemDetails.appendChild(chip);
+      return v;
+    };
+
+    const telemHeroVal = makeTelemChip('is-hero', 'HERO');
+    const telemTapVal = makeTelemChip('is-tap', 'TAP');
+    const telemPartyVal = makeTelemChip('is-party', 'PARTY');
+
+    telemetry.appendChild(telemTop);
+    telemetry.appendChild(telemTrack);
+    telemetry.appendChild(telemDetails);
+
     shell.appendChild(header);
     shell.appendChild(tabBar);
     shell.appendChild(body);
+    shell.appendChild(telemetry);
     this.root.appendChild(shell);
 
     this._refs.shopShell = shell;
     this._refs.tabBar = tabBar;
     this._refs.drawerBody = body;
+    this._refs.telemDpsVal = dpsVal;
+    this._refs.telemGoldVal = goldVal;
+    this._refs.telemExpandBtn = telemExpandBtn;
+    this._refs.telemDetails = telemDetails;
+    this._refs.telemSegHero = telemSegHero;
+    this._refs.telemSegTap = telemSegTap;
+    this._refs.telemSegParty = telemSegParty;
+    this._refs.telemHeroVal = telemHeroVal;
+    this._refs.telemTapVal = telemTapVal;
+    this._refs.telemPartyVal = telemPartyVal;
 
     for (let i = 0; i < this.tabs.length; i++) {
       this._ensureTabElements(this.tabs[i]);
@@ -1822,7 +3031,33 @@ export class EndlessShopUI {
     notice.className = 'endless-party-notice hidden';
     notice.textContent = '';
 
+    // Active Party Synergies section in Companions tab header
+    const synBox = document.createElement('div');
+    synBox.className = 'endless-party-synergies-box';
+
+    const synHead = document.createElement('div');
+    synHead.className = 'endless-party-syn-head';
+    const synTitle = document.createElement('span');
+    synTitle.className = 'endless-party-syn-title';
+    synTitle.textContent = 'PARTY SYNERGIES';
+    const synCount = document.createElement('span');
+    synCount.className = 'endless-party-syn-count';
+    synCount.textContent = '0 ACTIVE';
+    synHead.appendChild(synTitle);
+    synHead.appendChild(synCount);
+
+    const synList = document.createElement('div');
+    synList.className = 'endless-party-syn-list';
+    const synEmpty = document.createElement('div');
+    synEmpty.className = 'endless-party-syn-empty';
+    synEmpty.textContent = 'DEPLOY COMPATIBLE ALLIES TO UNLOCK SQUAD BONUSES';
+    synList.appendChild(synEmpty);
+
+    synBox.appendChild(synHead);
+    synBox.appendChild(synList);
+
     partyBar.appendChild(partyRow);
+    partyBar.appendChild(synBox);
     partyBar.appendChild(notice);
 
     const list = document.createElement('div');
@@ -1838,6 +3073,8 @@ export class EndlessShopUI {
 
     this._refs.partyCounter = counter;
     this._refs.partyNotice = notice;
+    this._refs.partySynCount = synCount;
+    this._refs.partySynList = synList;
     this._refs.companionList = list;
     this._refs.companionEmpty = emptyMsg;
   }
@@ -1946,6 +3183,97 @@ export class EndlessShopUI {
     const scroll = document.createElement('div');
     scroll.className = 'endless-scroll-list';
 
+    // Live Real-Time DPS Breakdown Card
+    const dpsCard = document.createElement('div');
+    dpsCard.className = 'endless-dps-card';
+
+    const dpsHead = document.createElement('div');
+    dpsHead.className = 'endless-dps-card-head';
+    const dpsTitle = document.createElement('span');
+    dpsTitle.className = 'endless-dps-title';
+    dpsTitle.innerHTML = `${DPS_BAR_SVG}<span>DPS BREAKDOWN</span>`;
+    const dpsFeverPill = document.createElement('span');
+    dpsFeverPill.className = 'endless-dps-fever-pill hidden';
+    dpsFeverPill.textContent = 'FEVER X2';
+    dpsHead.appendChild(dpsTitle);
+    dpsHead.appendChild(dpsFeverPill);
+
+    const dpsBarTrack = document.createElement('div');
+    dpsBarTrack.className = 'endless-dps-bar-track';
+    const dpsSegHero = document.createElement('div');
+    dpsSegHero.className = 'endless-dps-seg is-hero';
+    const dpsSegTap = document.createElement('div');
+    dpsSegTap.className = 'endless-dps-seg is-tap';
+    const dpsSegParty = document.createElement('div');
+    dpsSegParty.className = 'endless-dps-seg is-party';
+    dpsBarTrack.appendChild(dpsSegHero);
+    dpsBarTrack.appendChild(dpsSegTap);
+    dpsBarTrack.appendChild(dpsSegParty);
+
+    const dpsLegend = document.createElement('div');
+    dpsLegend.className = 'endless-dps-legend';
+
+    const makeDpsCol = (cls, labelText) => {
+      const col = document.createElement('div');
+      col.className = `endless-dps-col ${cls}`;
+      const colHead = document.createElement('div');
+      colHead.className = 'endless-dps-col-head';
+      const sw = document.createElement('span');
+      sw.className = `endless-dps-swatch ${cls}`;
+      const lbl = document.createElement('span');
+      lbl.textContent = labelText;
+      colHead.appendChild(sw);
+      colHead.appendChild(lbl);
+      const val = document.createElement('div');
+      val.className = 'endless-dps-col-val';
+      val.textContent = '0';
+      const pct = document.createElement('div');
+      pct.className = 'endless-dps-col-pct';
+      pct.textContent = '0%';
+      col.appendChild(colHead);
+      col.appendChild(val);
+      col.appendChild(pct);
+      dpsLegend.appendChild(col);
+      return { val, pct };
+    };
+
+    const dpsHeroCol = makeDpsCol('is-hero', 'HERO DPS');
+    const dpsTapCol = makeDpsCol('is-tap', 'TAP DPS');
+    const dpsPartyCol = makeDpsCol('is-party', 'PARTY DPS');
+
+    const dpsSummary = document.createElement('div');
+    dpsSummary.className = 'endless-dps-summary';
+
+    const sumTotal = document.createElement('div');
+    sumTotal.className = 'endless-dps-sum-item';
+    const sumTotalLbl = document.createElement('span');
+    sumTotalLbl.className = 'endless-dps-sum-lbl';
+    sumTotalLbl.textContent = 'TOTAL DPS';
+    const sumTotalVal = document.createElement('span');
+    sumTotalVal.className = 'endless-dps-sum-val';
+    sumTotalVal.textContent = '0';
+    sumTotal.appendChild(sumTotalLbl);
+    sumTotal.appendChild(sumTotalVal);
+
+    const sumGold = document.createElement('div');
+    sumGold.className = 'endless-dps-sum-item';
+    const sumGoldLbl = document.createElement('span');
+    sumGoldLbl.className = 'endless-dps-sum-lbl';
+    sumGoldLbl.textContent = 'GOLD / SEC';
+    const sumGoldVal = document.createElement('span');
+    sumGoldVal.className = 'endless-dps-sum-val is-gold';
+    sumGoldVal.textContent = '0/S';
+    sumGold.appendChild(sumGoldLbl);
+    sumGold.appendChild(sumGoldVal);
+
+    dpsSummary.appendChild(sumTotal);
+    dpsSummary.appendChild(sumGold);
+
+    dpsCard.appendChild(dpsHead);
+    dpsCard.appendChild(dpsBarTrack);
+    dpsCard.appendChild(dpsLegend);
+    dpsCard.appendChild(dpsSummary);
+
     const grid = document.createElement('div');
     grid.className = 'endless-stats-grid';
 
@@ -2006,12 +3334,95 @@ export class EndlessShopUI {
     actions.appendChild(saveBtn);
     actions.appendChild(resetBtn);
 
+    scroll.appendChild(dpsCard);
     scroll.appendChild(grid);
     scroll.appendChild(actions);
     panel.appendChild(scroll);
 
+    this._refs.dpsFeverPill = dpsFeverPill;
+    this._refs.dpsSegHero = dpsSegHero;
+    this._refs.dpsSegTap = dpsSegTap;
+    this._refs.dpsSegParty = dpsSegParty;
+    this._refs.dpsHeroVal = dpsHeroCol.val;
+    this._refs.dpsHeroPct = dpsHeroCol.pct;
+    this._refs.dpsTapVal = dpsTapCol.val;
+    this._refs.dpsTapPct = dpsTapCol.pct;
+    this._refs.dpsPartyVal = dpsPartyCol.val;
+    this._refs.dpsPartyPct = dpsPartyCol.pct;
+    this._refs.dpsTotalVal = sumTotalVal;
+    this._refs.dpsGoldSecVal = sumGoldVal;
     this._refs.saveBtn = saveBtn;
     this._refs.resetBtn = resetBtn;
+  }
+
+  _scheduleEphemeral(fn, delayMs) {
+    if (typeof setTimeout !== 'function') return null;
+    const timer = setTimeout(() => {
+      this._ephemeralTimers.delete(timer);
+      fn();
+    }, delayMs);
+    this._ephemeralTimers.add(timer);
+    return timer;
+  }
+
+  _triggerBuyFeedback(cardEl, btnEl, badgeText, isRecruit = false) {
+    const targets = [cardEl, btnEl].filter(Boolean);
+    for (let i = 0; i < targets.length; i++) {
+      const el = targets[i];
+      if (!el.classList) continue;
+      el.classList.remove('is-buy-pulse');
+      // Force synchronous reflow so consecutive purchases cleanly restart the CSS flare
+      void el.offsetWidth;
+      el.classList.add('is-buy-pulse');
+      if (el._buyPulseTimer) {
+        clearTimeout(el._buyPulseTimer);
+        this._ephemeralTimers.delete(el._buyPulseTimer);
+      }
+      el._buyPulseTimer = this._scheduleEphemeral(() => {
+        el.classList?.remove('is-buy-pulse');
+        el._buyPulseTimer = null;
+      }, 460);
+    }
+
+    if (badgeText && btnEl && this._hasDom()) {
+      this._spawnFloatingMicroBadge(btnEl, badgeText, isRecruit);
+    }
+  }
+
+  _spawnFloatingMicroBadge(anchorEl, text, isRecruit = false) {
+    if (!this._hasDom() || !anchorEl) return;
+    const badge = document.createElement('div');
+    badge.className = isRecruit ? 'endless-micro-badge is-recruit' : 'endless-micro-badge';
+    badge.textContent = String(text);
+
+    const fxLayer = this._refs.fxLayer;
+    const rootRect = this.root && typeof this.root.getBoundingClientRect === 'function'
+      ? this.root.getBoundingClientRect()
+      : null;
+    const btnRect = typeof anchorEl.getBoundingClientRect === 'function'
+      ? anchorEl.getBoundingClientRect()
+      : null;
+
+    if (fxLayer && rootRect && btnRect && rootRect.width > 0 && btnRect.width > 0) {
+      const rawLeft = (btnRect.left - rootRect.left) + btnRect.width * 0.5;
+      const clampedLeft = Math.max(36, Math.min(rootRect.width - 36, rawLeft));
+      const clampedTop = Math.max(10, (btnRect.top - rootRect.top) - 4);
+      badge.style.left = `${Math.round(clampedLeft)}px`;
+      badge.style.top = `${Math.round(clampedTop)}px`;
+      fxLayer.appendChild(badge);
+    } else if (fxLayer) {
+      badge.style.left = '50%';
+      badge.style.top = '50%';
+      fxLayer.appendChild(badge);
+    } else if (anchorEl.parentNode) {
+      anchorEl.parentNode.appendChild(badge);
+    }
+
+    this._scheduleEphemeral(() => {
+      if (badge.parentNode) {
+        badge.parentNode.removeChild(badge);
+      }
+    }, 700);
   }
 
   _handleToggleAutoBoss() {
@@ -2034,13 +3445,16 @@ export class EndlessShopUI {
 
   _handleSetBulkMode(mode) {
     this._playSfx('playUiClick');
-    if (this.manager?.economy) {
+    if (typeof this.manager?.setBulkMode === 'function') {
+      this.manager.setBulkMode(mode);
+    } else if (this.manager?.economy) {
       this.manager.economy.bulkMode = mode;
     }
     this._resyncNow();
   }
 
   _handleBuyRelic(relicId) {
+    const bulkMode = this.manager?.economy?.bulkMode || this._lastSnapshot?.bulkMode || 'x1';
     let res = null;
     if (typeof this.manager?.buyRelic === 'function') {
       res = this.manager.buyRelic(relicId);
@@ -2061,14 +3475,11 @@ export class EndlessShopUI {
     if (res?.ok) {
       this._playSfx('playUiConfirm');
       const ref = this._relicRowRefs.get(relicId);
-      if (ref?.row) {
-        ref.row.classList.add('is-just-bought');
-        if (typeof setTimeout === 'function') {
-          setTimeout(() => {
-            ref.row?.classList?.remove('is-just-bought');
-          }, 260);
-        }
-      }
+      const bought = Math.max(1, Math.floor(Number(res?.bought) || 1));
+      const badgeText = bulkMode === 'MAX'
+        ? (bought > 1 ? `MAX! +${bought}` : 'MAX!')
+        : `+${bought}`;
+      this._triggerBuyFeedback(ref?.row, ref?.buyBtn, badgeText, false);
     } else {
       this._playSfx('playUiBack');
     }
@@ -2078,25 +3489,54 @@ export class EndlessShopUI {
   _handleCompanionPrimary(companionId) {
     const comps = this.manager?.companions;
     const econ = this.manager?.economy;
-    if (!comps || !econ) return;
+    const state = comps?.rosterState?.[companionId];
+    const snapComp = !state
+      ? (this._lastSnapshot?.companions || this._lastSnapshot?.companionRoster || []).find((c) => c.id === companionId)
+      : null;
+    const unlocked = Boolean(state?.unlocked ?? snapComp?.unlocked);
 
-    const state = comps.rosterState?.[companionId];
-    const unlocked = Boolean(state?.unlocked);
-    const res = unlocked
-      ? comps.upgrade?.(companionId, econ)
-      : comps.recruit?.(companionId, econ);
+    let res = null;
+    if (unlocked) {
+      if (typeof this.manager?.upgradeCompanion === 'function') {
+        res = this.manager.upgradeCompanion(companionId);
+      } else if (comps && econ) {
+        res = comps.upgrade?.(companionId, econ);
+        if (res?.ok) {
+          const hero = this.manager?.game?.fighters?.[0] || this.manager?.player || null;
+          if (hero && typeof comps.syncEntitiesWithWorld === 'function') {
+            comps.syncEntitiesWithWorld(hero);
+          }
+          if (typeof this.manager?.saveNow === 'function') {
+            this.manager.saveNow();
+          } else {
+            econ.saveToStorage?.(comps.exportSnapshot?.());
+          }
+        }
+      }
+    } else {
+      if (typeof this.manager?.recruitCompanion === 'function') {
+        res = this.manager.recruitCompanion(companionId);
+      } else if (comps && econ) {
+        res = comps.recruit?.(companionId, econ);
+        if (res?.ok) {
+          const hero = this.manager?.game?.fighters?.[0] || this.manager?.player || null;
+          if (hero && typeof comps.syncEntitiesWithWorld === 'function') {
+            comps.syncEntitiesWithWorld(hero);
+          }
+          if (typeof this.manager?.saveNow === 'function') {
+            this.manager.saveNow();
+          } else {
+            econ.saveToStorage?.(comps.exportSnapshot?.());
+          }
+        }
+      }
+    }
 
     if (res?.ok) {
       this._playSfx('playUiConfirm');
-      const hero = this.manager?.game?.fighters?.[0] || this.manager?.player || null;
-      if (hero && typeof comps.syncEntitiesWithWorld === 'function') {
-        comps.syncEntitiesWithWorld(hero);
-      }
-      if (typeof this.manager?.saveNow === 'function') {
-        this.manager.saveNow();
-      } else {
-        econ.saveToStorage?.(comps.exportSnapshot?.());
-      }
+      const ref = this._companionCardRefs.get(companionId);
+      const badgeText = unlocked ? '+1' : 'RECRUITED!';
+      this._triggerBuyFeedback(ref?.card, ref?.primaryBtn, badgeText, !unlocked);
     } else {
       this._playSfx('playUiBack');
     }
@@ -2104,21 +3544,28 @@ export class EndlessShopUI {
   }
 
   _handleCompanionDeploy(companionId) {
-    const comps = this.manager?.companions;
-    if (!comps || typeof comps.toggleDeploy !== 'function') return;
+    let res = null;
+    if (typeof this.manager?.toggleCompanionDeploy === 'function') {
+      res = this.manager.toggleCompanionDeploy(companionId);
+    } else {
+      const comps = this.manager?.companions;
+      if (!comps || typeof comps.toggleDeploy !== 'function') return;
+      res = comps.toggleDeploy(companionId);
+      if (res?.ok) {
+        const hero = this.manager?.game?.fighters?.[0] || this.manager?.player || null;
+        if (hero && typeof comps.syncEntitiesWithWorld === 'function') {
+          comps.syncEntitiesWithWorld(hero);
+        }
+        if (typeof this.manager?.saveNow === 'function') {
+          this.manager.saveNow();
+        } else {
+          this.manager?.economy?.saveToStorage?.(comps.exportSnapshot?.());
+        }
+      }
+    }
 
-    const res = comps.toggleDeploy(companionId);
     if (res?.ok) {
       this._playSfx('playUiClick');
-      const hero = this.manager?.game?.fighters?.[0] || this.manager?.player || null;
-      if (hero && typeof comps.syncEntitiesWithWorld === 'function') {
-        comps.syncEntitiesWithWorld(hero);
-      }
-      if (typeof this.manager?.saveNow === 'function') {
-        this.manager.saveNow();
-      } else {
-        this.manager?.economy?.saveToStorage?.(comps.exportSnapshot?.());
-      }
     } else if (res?.reason === 'SLOTS_FULL') {
       this._playSfx('playUiBack');
       this._showPartyNotice('PARTY FULL (3/3) - BENCH A COMPANION FIRST');
@@ -2361,6 +3808,77 @@ export class EndlessShopUI {
         ? snap.activeSlots.length
         : companions.filter((c) => c.deployed).length);
 
+    let rawHudUnits = Array.isArray(snap?.activeCompanionUnits) ? snap.activeCompanionUnits : null;
+    if (!rawHudUnits && mgr?.companions && typeof mgr.companions.getActiveHudUnits === 'function') {
+      rawHudUnits = mgr.companions.getActiveHudUnits();
+    }
+    if (!rawHudUnits) {
+      rawHudUnits = companions
+        .filter((c) => c.deployed)
+        .slice(0, 3)
+        .map((c) => ({
+          id: c.id,
+          heroKey: c.heroKey,
+          name: c.name,
+          shortName: c.shortName || c.name,
+          role: c.role,
+          color: c.accentHex || c.color || '#facc15',
+          level: c.level || 1,
+          ultCharge: 0,
+          ultPct: 0,
+          isCastingUlt: false,
+          skillCdRatio: 0,
+          dpsEstimate: c.dpsEstimate || 0,
+          lastCallout: ''
+        }));
+    }
+
+    const activeCompanionUnits = rawHudUnits.slice(0, 3).map((u, idx) => {
+      const rawUlt = Number.isFinite(Number(u?.ultPct))
+        ? Number(u.ultPct)
+        : (Number.isFinite(Number(u?.ultCharge)) ? Number(u.ultCharge) : 0);
+      const ultPct = rawUlt <= 1 && rawUlt > 0 && !Number.isFinite(Number(u?.ultCharge))
+        ? Math.max(0, Math.min(100, rawUlt * 100))
+        : Math.max(0, Math.min(100, rawUlt));
+      const fullName = String(u?.name || u?.shortName || u?.id || `ALLY ${idx + 1}`);
+      return {
+        id: String(u?.id || u?.heroKey || `unit_${idx}`),
+        heroKey: String(u?.heroKey || ''),
+        name: fullName,
+        shortName: String(u?.shortName || fullName),
+        role: String(u?.role || 'ALLY'),
+        color: String(u?.color || u?.accentHex || '#facc15'),
+        level: Math.max(1, Math.floor(Number(u?.level) || 1)),
+        ultCharge: Math.max(0, Math.min(100, Number(u?.ultCharge ?? ultPct) || 0)),
+        ultPct,
+        isCastingUlt: Boolean(u?.isCastingUlt),
+        skillCdRatio: Math.max(0, Math.min(1, Number(u?.skillCdRatio) || 0)),
+        dpsEstimate: Math.max(0, Number(u?.dpsEstimate) || 0),
+        lastCallout: String(u?.lastCallout || '')
+      };
+    });
+
+    let rawSynergies = Array.isArray(snap?.activeSynergies) ? snap.activeSynergies : null;
+    if (!rawSynergies && mgr?.companions && typeof mgr.companions.getActiveSynergies === 'function') {
+      rawSynergies = mgr.companions.getActiveSynergies();
+    }
+    const activeSynergies = Array.isArray(rawSynergies)
+      ? rawSynergies.map((s, idx) => ({
+          id: String(s?.id || s?.name || `syn_${idx}`),
+          name: String(s?.name || s?.shortLabel || 'SYNERGY'),
+          shortLabel: String(s?.shortLabel || s?.name || 'BUFF'),
+          desc: String(s?.desc || ''),
+          color: String(s?.color || '#facc15')
+        }))
+      : [];
+
+    const feverTier = Number.isFinite(Number(snap?.feverTier))
+      ? Math.max(0, Math.floor(Number(snap.feverTier)))
+      : (tapFeverTimer > 0 ? (tapFeverLevel >= 2 ? 2 : 1) : 0);
+    const feverGoldMult = Number.isFinite(Number(snap?.feverGoldMult))
+      ? Math.max(1, Number(snap.feverGoldMult))
+      : Math.max(1, Number(stats?.feverGoldMult) || (feverTier >= 2 ? 3 : feverTier === 1 ? 2 : 1));
+
     return {
       stage,
       bestStage,
@@ -2381,6 +3899,8 @@ export class EndlessShopUI {
       tapFever,
       tapFeverTimer,
       tapFeverLevel,
+      feverTier,
+      feverGoldMult,
       totalKills,
       bossesSlain,
       totalTaps,
@@ -2388,9 +3908,146 @@ export class EndlessShopUI {
       stats,
       relicsView,
       companions,
+      activeCompanionUnits,
+      activeSynergies,
       activeSlotsCount,
       maxActiveSlots
     };
+  }
+
+  _computeDpsBreakdown(state) {
+    const m = state?.dpsMetrics || {};
+    const heroDps = Math.max(0, Number(m.heroDps) || 0);
+    const tapDps = Math.max(0, Number(m.tapDps) || 0);
+    const partyDps = Math.max(0, Number(m.companionDps) || 0);
+    const goldPerSec = Math.max(0, Number(m.goldPerSec) || 0);
+    const totalDps = heroDps + tapDps + partyDps;
+
+    let heroWidth = 0;
+    let tapWidth = 0;
+    let partyWidth = 0;
+    let heroPct = 0;
+    let tapPct = 0;
+    let partyPct = 0;
+
+    if (totalDps > 0) {
+      heroWidth = (heroDps / totalDps) * 100;
+      tapWidth = (tapDps / totalDps) * 100;
+      partyWidth = Math.max(0, 100 - heroWidth - tapWidth);
+
+      heroPct = Math.round(heroWidth);
+      tapPct = Math.round(tapWidth);
+      partyPct = Math.max(0, 100 - heroPct - tapPct);
+      if (partyDps > 0 && partyPct === 0) {
+        partyPct = 1;
+        if (heroPct >= tapPct && heroPct > 1) heroPct -= 1;
+        else if (tapPct > 1) tapPct -= 1;
+      }
+    }
+
+    return {
+      heroDps,
+      tapDps,
+      partyDps,
+      totalDps,
+      goldPerSec,
+      heroWidth,
+      tapWidth,
+      partyWidth,
+      heroPct,
+      tapPct,
+      partyPct
+    };
+  }
+
+  _syncActivePartyHud(state) {
+    const partyHud = this._refs.partyHud;
+    if (!partyHud) return;
+
+    const units = state.activeCompanionUnits || [];
+    const hasUnits = units.length > 0;
+    partyHud.classList.toggle('hidden', !hasUnits);
+    if (!hasUnits) return;
+
+    for (let i = 0; i < this._partySlotRefs.length; i++) {
+      const slot = this._partySlotRefs[i];
+      const u = units[i];
+      if (!u) {
+        slot.card.classList.add('hidden');
+        slot.card.classList.remove('is-casting-ult');
+        continue;
+      }
+
+      slot.card.classList.remove('hidden');
+      slot.card.classList.toggle('is-casting-ult', u.isCastingUlt);
+      slot.portWrap.style.borderColor = u.isCastingUlt ? '#fef08a' : u.color;
+
+      this._blitCompanionPortrait(
+        slot.portCanvas,
+        u.heroKey,
+        u.color,
+        u.shortName || u.name
+      );
+
+      setTextIfChanged(slot.nameEl, u.shortName || u.name);
+      setTextIfChanged(slot.lvEl, `LV.${u.level}`);
+
+      const ultPct = Math.max(0, Math.min(100, Number(u.ultPct) || 0));
+      slot.ultFill.style.width = `${ultPct.toFixed(1)}%`;
+      setTextIfChanged(slot.ultTag, u.isCastingUlt ? 'ULT!' : `${Math.round(ultPct)}%`);
+
+      const tip =
+        `${u.name} (${u.role}) LV.${u.level} | DPS ${formatEndlessNumber(u.dpsEstimate)} | ULT ${Math.round(ultPct)}%` +
+        (u.lastCallout ? ` | ${u.lastCallout}` : '') +
+        ' - Click to manage party';
+      if (slot.card.title !== tip) {
+        slot.card.title = tip;
+      }
+    }
+
+    // Active Synergy Badges right underneath/beside the party strip
+    const synHud = this._refs.synergyHud;
+    if (!synHud) return;
+    const synergies = state.activeSynergies || [];
+    synHud.classList.toggle('hidden', synergies.length === 0);
+    const sig = synergies.map((s) => `${s.id}|${s.shortLabel}|${s.name}|${s.desc}|${s.color}`).join('||');
+    if (sig === this._lastHudSynergySig) return;
+    this._lastHudSynergySig = sig;
+    synHud.textContent = '';
+
+    for (let i = 0; i < synergies.length; i++) {
+      const s = synergies[i];
+      const badge = document.createElement('div');
+      badge.className = 'endless-synergy-badge';
+      badge.style.borderColor = s.color;
+      badge.style.color = s.color;
+      badge.title = s.desc ? `${s.name}: ${s.desc}` : s.name;
+
+      const iconWrap = document.createElement('span');
+      iconWrap.innerHTML = SYNERGY_DIAMOND_SVG;
+      const textSpan = document.createElement('span');
+      textSpan.className = 'endless-synergy-badge-text';
+      textSpan.style.color = '#fef08a';
+      textSpan.textContent = s.shortLabel || s.name;
+
+      badge.appendChild(iconWrap);
+      badge.appendChild(textSpan);
+      synHud.appendChild(badge);
+    }
+  }
+
+  _syncDrawerTelemetry(state, breakdown = null) {
+    const b = breakdown || this._computeDpsBreakdown(state);
+    setTextIfChanged(this._refs.telemDpsVal, formatEndlessNumber(b.totalDps));
+    setTextIfChanged(this._refs.telemGoldVal, `${formatEndlessNumber(b.goldPerSec)}/S`);
+
+    if (this._refs.telemSegHero) this._refs.telemSegHero.style.width = `${b.heroWidth.toFixed(2)}%`;
+    if (this._refs.telemSegTap) this._refs.telemSegTap.style.width = `${b.tapWidth.toFixed(2)}%`;
+    if (this._refs.telemSegParty) this._refs.telemSegParty.style.width = `${b.partyWidth.toFixed(2)}%`;
+
+    setTextIfChanged(this._refs.telemHeroVal, `${formatEndlessNumber(b.heroDps)} (${b.heroPct}%)`);
+    setTextIfChanged(this._refs.telemTapVal, `${formatEndlessNumber(b.tapDps)} (${b.tapPct}%)`);
+    setTextIfChanged(this._refs.telemPartyVal, `${formatEndlessNumber(b.partyDps)} (${b.partyPct}%)`);
   }
 
   sync(snapshot = null, forceRebuild = false) {
@@ -2439,7 +4096,7 @@ export class EndlessShopUI {
 
     if (this._refs.feverMeter && this._refs.feverFill && this._refs.feverLabel) {
       const feverActive = state.tapFeverTimer > 0;
-      const tier2 = feverActive && state.tapFeverLevel >= 2;
+      const tier2 = feverActive && (state.feverTier >= 2 || state.tapFeverLevel >= 2);
       this._refs.feverMeter.classList.toggle('is-active', feverActive);
       this._refs.feverMeter.classList.toggle('is-tier2', tier2);
       this._refs.feverFill.style.width = `${Math.round(state.tapFever)}%`;
@@ -2461,6 +4118,9 @@ export class EndlessShopUI {
       const showChallenge = state.bossFarmMode && !state.isBossEncounter;
       this._refs.challengeBtn.classList.toggle('hidden', !showChallenge);
     }
+
+    // 2B. Live Active Companion Mini-HUD & Synergy Badges (always synced, even when drawer closed)
+    this._syncActivePartyHud(state);
 
     // 3. Check affordability dot on Shop Toggle
     let anyAffordable = false;
@@ -2487,6 +4147,9 @@ export class EndlessShopUI {
     // Skip heavy drawer patching while drawer is closed (unless forceRebuild)
     if (!this.drawerOpen && !forceRebuild) return;
 
+    const dpsBreakdown = this._computeDpsBreakdown(state);
+    this._syncDrawerTelemetry(state, dpsBreakdown);
+
     // 4. Sync Active Tab Contents In-Place
     if (this.activeTab === 'items' || forceRebuild) {
       this._syncItemsTab(state);
@@ -2495,7 +4158,7 @@ export class EndlessShopUI {
       this._syncCompanionsTab(state);
     }
     if (this.activeTab === 'stats' || forceRebuild) {
-      this._syncStatsTab(state);
+      this._syncStatsTab(state, dpsBreakdown);
     }
 
     // Sync any custom Wave 3 tabs (e.g. ASCEND)
@@ -2541,6 +4204,52 @@ export class EndlessShopUI {
       `ACTIVE PARTY ${state.activeSlotsCount} / ${state.maxActiveSlots}`
     );
 
+    // Sync active Party Synergies header list
+    const synergies = state.activeSynergies || [];
+    if (this._refs.partySynCount) {
+      setTextIfChanged(this._refs.partySynCount, `${synergies.length} ACTIVE`);
+      this._refs.partySynCount.classList.toggle('is-active', synergies.length > 0);
+    }
+    if (this._refs.partySynList) {
+      const sig = synergies.map((s) => `${s.id}|${s.name}|${s.shortLabel}|${s.desc}|${s.color}`).join('||');
+      if (sig !== this._lastDrawerSynergySig) {
+        this._lastDrawerSynergySig = sig;
+        this._refs.partySynList.textContent = '';
+        if (synergies.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'endless-party-syn-empty';
+          empty.textContent = 'DEPLOY COMPATIBLE ALLIES TO UNLOCK SQUAD BONUSES';
+          this._refs.partySynList.appendChild(empty);
+        } else {
+          for (let i = 0; i < synergies.length; i++) {
+            const s = synergies[i];
+            const pill = document.createElement('div');
+            pill.className = 'endless-party-syn-pill';
+            pill.style.borderLeftColor = s.color;
+
+            const nameRow = document.createElement('div');
+            nameRow.className = 'endless-party-syn-name';
+            nameRow.style.color = s.color;
+            const iconWrap = document.createElement('span');
+            iconWrap.innerHTML = SYNERGY_DIAMOND_SVG;
+            const titleTxt = document.createElement('span');
+            titleTxt.style.color = '#fef08a';
+            titleTxt.textContent = s.name;
+            nameRow.appendChild(iconWrap);
+            nameRow.appendChild(titleTxt);
+
+            const descRow = document.createElement('div');
+            descRow.className = 'endless-party-syn-desc';
+            descRow.textContent = s.desc || s.shortLabel;
+
+            pill.appendChild(nameRow);
+            pill.appendChild(descRow);
+            this._refs.partySynList.appendChild(pill);
+          }
+        }
+      }
+    }
+
     const list = state.companions || [];
     if (this._refs.companionEmpty) {
       this._refs.companionEmpty.classList.toggle('hidden', list.length > 0);
@@ -2556,7 +4265,12 @@ export class EndlessShopUI {
       ref.card.classList.toggle('is-unlocked', unlocked);
       ref.card.classList.toggle('is-deployed', deployed);
 
-      this._blitCompanionPortrait(ref.portCanvas, comp.heroKey, comp.accentHex);
+      this._blitCompanionPortrait(
+        ref.portCanvas,
+        comp.heroKey,
+        comp.accentHex,
+        comp.shortName || comp.name
+      );
 
       setTextIfChanged(ref.lvEl, unlocked ? `LV.${lv}` : 'LOCKED');
       setTextIfChanged(ref.dpsEl, `DPS ${formatEndlessNumber(comp.dpsEstimate || 0)}`);
@@ -2577,20 +4291,37 @@ export class EndlessShopUI {
     }
   }
 
-  _syncStatsTab(state) {
-    const m = state.dpsMetrics || {};
-    const heroDps = Number(m.heroDps) || 0;
-    const tapDps = Number(m.tapDps) || 0;
-    const compDps = Number(m.companionDps) || 0;
-    const goldPerSec = Number(m.goldPerSec) || 0;
+  _syncStatsTab(state, breakdown = null) {
+    const b = breakdown || this._computeDpsBreakdown(state);
     const s = state.stats;
 
+    // Live DPS Breakdown Card
+    if (this._refs.dpsFeverPill) {
+      const showFever = state.feverGoldMult > 1;
+      this._refs.dpsFeverPill.classList.toggle('hidden', !showFever);
+      if (showFever) {
+        setTextIfChanged(this._refs.dpsFeverPill, `FEVER X${Math.round(state.feverGoldMult)}`);
+      }
+    }
+    if (this._refs.dpsSegHero) this._refs.dpsSegHero.style.width = `${b.heroWidth.toFixed(2)}%`;
+    if (this._refs.dpsSegTap) this._refs.dpsSegTap.style.width = `${b.tapWidth.toFixed(2)}%`;
+    if (this._refs.dpsSegParty) this._refs.dpsSegParty.style.width = `${b.partyWidth.toFixed(2)}%`;
+
+    setTextIfChanged(this._refs.dpsHeroVal, formatEndlessNumber(b.heroDps));
+    setTextIfChanged(this._refs.dpsHeroPct, `${b.heroPct}%`);
+    setTextIfChanged(this._refs.dpsTapVal, formatEndlessNumber(b.tapDps));
+    setTextIfChanged(this._refs.dpsTapPct, `${b.tapPct}%`);
+    setTextIfChanged(this._refs.dpsPartyVal, formatEndlessNumber(b.partyDps));
+    setTextIfChanged(this._refs.dpsPartyPct, `${b.partyPct}%`);
+    setTextIfChanged(this._refs.dpsTotalVal, formatEndlessNumber(b.totalDps));
+    setTextIfChanged(this._refs.dpsGoldSecVal, `${formatEndlessNumber(b.goldPerSec)}/S`);
+
     setTextIfChanged(this._statRefs.get('stage'), `${state.stage} / BEST ${state.bestStage}`);
-    setTextIfChanged(this._statRefs.get('goldPerSec'), `${formatEndlessNumber(goldPerSec)}/S`);
-    setTextIfChanged(this._statRefs.get('heroDps'), formatEndlessNumber(heroDps));
-    setTextIfChanged(this._statRefs.get('tapDps'), formatEndlessNumber(tapDps));
-    setTextIfChanged(this._statRefs.get('companionDps'), formatEndlessNumber(compDps));
-    setTextIfChanged(this._statRefs.get('totalDps'), formatEndlessNumber(heroDps + tapDps + compDps));
+    setTextIfChanged(this._statRefs.get('goldPerSec'), `${formatEndlessNumber(b.goldPerSec)}/S`);
+    setTextIfChanged(this._statRefs.get('heroDps'), formatEndlessNumber(b.heroDps));
+    setTextIfChanged(this._statRefs.get('tapDps'), formatEndlessNumber(b.tapDps));
+    setTextIfChanged(this._statRefs.get('companionDps'), formatEndlessNumber(b.partyDps));
+    setTextIfChanged(this._statRefs.get('totalDps'), formatEndlessNumber(b.totalDps));
     setTextIfChanged(this._statRefs.get('totalKills'), formatEndlessNumber(state.totalKills));
     setTextIfChanged(this._statRefs.get('bossesSlain'), formatEndlessNumber(state.bossesSlain));
     setTextIfChanged(this._statRefs.get('totalTaps'), formatEndlessNumber(state.totalTaps));
@@ -2624,6 +4355,10 @@ export class EndlessShopUI {
       clearTimeout(this._saveFlashTimer);
       this._saveFlashTimer = null;
     }
+    for (const timer of this._ephemeralTimers) {
+      clearTimeout(timer);
+    }
+    this._ephemeralTimers.clear();
     if (this.root) {
       this.root.textContent = '';
       this.root.classList.add('hidden');
@@ -2634,12 +4369,15 @@ export class EndlessShopUI {
     this.root = null;
     this.mounted = false;
     this._iconCanvases = [];
+    this._partySlotRefs = [];
     this._relicRowRefs.clear();
     this._companionCardRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
     this._statRefs.clear();
+    this._lastHudSynergySig = '';
+    this._lastDrawerSynergySig = '';
     this._refs = {};
   }
 
