@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps193';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps193';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps193';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps193';
+import { Fighter } from './Fighter.js?v=30fps194';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps194';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps194';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps194';
 import {
   MALPHAS_VFX_ROW,
   blitMalphasVfxCell,
@@ -10,7 +10,7 @@ import {
   drawMalphasRunicTelegraphs,
   drawMalphasActionVfxOverlay,
   drawMalphasGrabForegroundOverlay
-} from '../engine/shaders/malphasBossShaders.js?v=30fps193';
+} from '../engine/shaders/malphasBossShaders.js?v=30fps194';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)

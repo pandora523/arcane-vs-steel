@@ -1,11 +1,12 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps193';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps193';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps193';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps193';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps193';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps193';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps193';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps193';
+import { Fighter } from '../entities/Fighter.js?v=30fps194';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps194';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps194';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps194';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps194';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps194';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps194';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps194';
+import { EndlessAscension } from './EndlessAscension.js?v=30fps194';
 
 export const ENDLESS_REALMS = [
   {
@@ -628,8 +629,8 @@ export class EndlessManager {
     this.monsterPlumes = [];
     this.floatingCallouts = [];
 
-    // Wave 3: Optional Ascension prestige, Offline Loot, Gilded Goblins & Milestone Chests
-    this.ascension = null;
+    // Wave 3: Astral Ascension prestige, Offline Loot, Gilded Goblins & Milestone Chests
+    this.ascension = new EndlessAscension();
     this.pendingOfflineLoot = null;
     this.treasureGoblins = [];
     this.treasureChests = [];

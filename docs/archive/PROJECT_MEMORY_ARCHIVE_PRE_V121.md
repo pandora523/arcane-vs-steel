@@ -634,3 +634,9 @@
 - **Batch `?v=30fps187` Web-Only Upgrade (`src/adventure/{AdventureProgression,AdventureSkillSets}.js`, `src/entities/Monster.js`, `index.html`, `style.css`, `scripts/tests/test_all_heroes_gameloop.mjs`)**:
   - Inverted Adventure ability power hierarchy (`skillMult: 1.15`, `ultMult: 1.28`, `superUltMult: 1.52`, enhanced pack cleave & Warden/Boss stagger `6/34/62/95`) while keeping Auto animations & Colossal Boss `12% maxHp` caps untouched.
   - Replaced cramped portrait `#adv-skill-cluster` `scale(0.78)` with spacious `scale(0.98)` (`218x278`) & `62px` clear gap to `.adv-joystick-zone` across `390x844` (`Suite 36.35`, 3-viewport Chrome QA verified).
+
+---
+
+### Archived Batch (`?v=30fps188–189` — Default-ON Per-Hero Persistent `KEEP LVL` + In-Game `AUTO` Retry Fix, Delayed-Projectile Skill/Ult Parity + Weak-Hero Equalizer & HD-2D Background Vista VFX Overhaul)
+- **Batch `?v=30fps188–189` Web-Only Upgrade (`src/adventure/{AdventureProgression,AdventureManager,AdventureSkillSets,AdventureMapRenderer}.js`, `src/engine/VFXManager.js`, `src/entities/Monster.js`, `src/main.js`, `scripts/build_adv_stage_vfx_30fps.mjs`, `assets/sprites/adv_stage_vfx.png`)**:
+  - Made `KEEP LVL` default human-play setting (`avs_adv_hero_progress_v1`), fixed human in-game `AUTO` Retry reset (`urlAutoPlay` separation), added delayed-hit `_advCastSource` + `0.45s` grace window + `ADVENTURE_HERO_DMG_EQUALIZER` (0 VS entity edits), and rebuilt `adv_stage_vfx.png` + `Plane 1` 4-Realm vistas (`Suite 27A`/`36.35`, 4-realm Chrome QA verified).

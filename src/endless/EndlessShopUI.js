@@ -2,10 +2,10 @@
 // Strictly Node-test safe (all DOM/window/Image accesses guarded), zero emojis,
 // pure nearest-neighbor blits & fillRect fallbacks, in-place DOM patching (zero 60fps click drops).
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps193';
-import { ENDLESS_RELICS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps193';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps194';
+import { ENDLESS_RELICS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps194';
 
-const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps193';
+const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps194';
 const ENDLESS_ICON_ROW = 7;
 const ENDLESS_ICON_CELL = 128;
 const STYLE_ELEMENT_ID = 'endless-shop-ui-styles';
