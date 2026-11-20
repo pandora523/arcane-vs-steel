@@ -9,6 +9,7 @@ import { EndlessShopUI } from './EndlessShopUI.js?v=30fps198';
 import { EndlessAscension } from './EndlessAscension.js?v=30fps198';
 import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps198';
 import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps198';
+import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps198';
 
 export const ENDLESS_REALMS = [
   {
@@ -154,6 +155,17 @@ const LOOT_BEAM_TAP_HALF_X = 92;
 const LOOT_BEAM_TAP_HEIGHT_Y = 140;
 const BLOOD_REAVER_NOVA_RADIUS = 220;
 
+const WORLD_SHRINE_MAX_ACTIVE = 2;
+const WANDERING_MERCHANT_MAX_ACTIVE = 1;
+const WORLD_SHRINE_SPAWN_MIN_SEC = 24;
+const WORLD_SHRINE_SPAWN_MAX_SEC = 38;
+const WANDERING_MERCHANT_SPAWN_MIN_SEC = 48;
+const WANDERING_MERCHANT_SPAWN_MAX_SEC = 70;
+const WORLD_SHRINE_MAX_AGE = 34;
+const WANDERING_MERCHANT_MAX_AGE = 32;
+const WORLD_EVENT_PROXIMITY_RADIUS = 96;
+const WORLD_EVENT_TAP_RADIUS = 88;
+
 const ENDLESS_MONSTER_BASE_HP = {
   templar: 320,
   astrologer: 260,
@@ -207,7 +219,14 @@ class EndlessProgressionAdapter {
   get damageReduction() {
     const buffs = this.endless?.companions?.getPartyBuffs?.();
     const shieldDr = Number.isFinite(buffs?.damageReduction) ? buffs.damageReduction : 0;
-    return Math.min(0.45, 0.06 + shieldDr);
+    const baseDr = Math.min(0.45, 0.06 + shieldDr);
+    const eventMods = this.endless?.events?.getEventModifiers?.() || null;
+    const evDr =
+      Number.isFinite(eventMods?.damageReduction) && eventMods.damageReduction > 0
+        ? Math.min(0.75, eventMods.damageReduction)
+        : 0;
+    if (evDr <= 0) return baseDr;
+    return Math.min(0.80, 1 - (1 - baseDr) * (1 - evDr));
   }
 
   resetForRun() {
@@ -229,12 +248,15 @@ class EndlessProgressionAdapter {
       this.endless?.companions?.getPartySynergyModifiers?.() ||
       null;
     const gearMods = this.endless?.gear?.getGearModifiers?.() || null;
+    const eventMods = this.endless?.events?.getEventModifiers?.() || null;
     const synHaste =
       Number.isFinite(synMods?.hasteMult) && synMods.hasteMult > 0 ? synMods.hasteMult : 1;
     const synMaxHp =
       Number.isFinite(synMods?.maxHpMult) && synMods.maxHpMult > 0 ? synMods.maxHpMult : 1;
     const gearMaxHp =
       Number.isFinite(gearMods?.maxHpMult) && gearMods.maxHpMult > 0 ? gearMods.maxHpMult : 1;
+    const evMaxHp =
+      Number.isFinite(eventMods?.maxHpMult) && eventMods.maxHpMult > 0 ? eventMods.maxHpMult : 1;
     const hasteMult = safeBoundedFloat(
       (Number.isFinite(ecoStats.hasteMult) && ecoStats.hasteMult > 0 ? ecoStats.hasteMult : 1) *
         (1 + (Number.isFinite(partyBuffs.hasteBonus) ? partyBuffs.hasteBonus : 0)) *
@@ -245,7 +267,7 @@ class EndlessProgressionAdapter {
     );
     const cdDiv = Math.max(0.45, 1 / Math.max(0.5, hasteMult));
     const rawEcoMaxHp = Number.isFinite(ecoStats.maxHpMult) && ecoStats.maxHpMult > 0 ? ecoStats.maxHpMult : 1;
-    const maxHpMult = safeBoundedFloat(rawEcoMaxHp * synMaxHp * gearMaxHp, 1, ENDLESS_MAX_MULT, 1);
+    const maxHpMult = safeBoundedFloat(rawEcoMaxHp * synMaxHp * gearMaxHp * evMaxHp, 1, ENDLESS_MAX_MULT, 1);
     const maxHp = safeBoundedInt(
       ENDLESS_BASE_HERO_HP * maxHpMult,
       ENDLESS_BASE_HERO_HP,
@@ -699,6 +721,7 @@ export class EndlessManager {
     this.ascension = new EndlessAscension();
     this.bossDirector = new EndlessBossDirector();
     this.gear = new EndlessGear();
+    this.events = new EndlessEvents();
     this._activeDirectorSnap = null;
     this._activeDirectorMods = null;
     this.pendingOfflineLoot = null;
@@ -707,6 +730,11 @@ export class EndlessManager {
     this.lootBeams = [];
     this._gearNovaFx = [];
     this._inBloodReaverNova = false;
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this._shrineSpawnTimer = 26;
+    this._merchantSpawnTimer = 50;
+    this._tempestBoltTimer = 0;
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
     this._encounterSeq = 0;
@@ -1174,6 +1202,10 @@ export class EndlessManager {
       this.gear && typeof this.gear.getGearModifiers === 'function'
         ? this.gear.getGearModifiers() || null
         : null;
+    const eventMods =
+      this.events && typeof this.events.getEventModifiers === 'function'
+        ? this.events.getEventModifiers() || null
+        : null;
     this._activeDirectorSnap = dirSnap;
     this._activeDirectorMods = dirMods;
 
@@ -1186,7 +1218,8 @@ export class EndlessManager {
     const hasAsc = Boolean(ascMods && typeof ascMods === 'object');
     const hasDir = Boolean(dirMods && typeof dirMods === 'object');
     const hasGear = Boolean(gearMods && typeof gearMods === 'object');
-    if (!hasSyn && !hasAsc && !hasDir && !hasGear) {
+    const hasEv = Boolean(eventMods && typeof eventMods === 'object');
+    if (!hasSyn && !hasAsc && !hasDir && !hasGear && !hasEv) {
       if (this._lastWrittenSynergyExt) {
         this._clearSynergyFromEconomy();
       } else {
@@ -1394,38 +1427,75 @@ export class EndlessManager {
         ? gearMods.bossDmgMult
         : 1.0;
 
+    const evHero =
+      hasEv && Number.isFinite(eventMods.heroDmgMult) && eventMods.heroDmgMult > 0
+        ? eventMods.heroDmgMult
+        : 1.0;
+    const evTap =
+      hasEv && Number.isFinite(eventMods.tapDmgMult) && eventMods.tapDmgMult > 0
+        ? eventMods.tapDmgMult
+        : 1.0;
+    const evComp =
+      hasEv && Number.isFinite(eventMods.companionDmgMult) && eventMods.companionDmgMult > 0
+        ? eventMods.companionDmgMult
+        : 1.0;
+    const evGold =
+      hasEv && Number.isFinite(eventMods.goldMult) && eventMods.goldMult > 0
+        ? eventMods.goldMult
+        : 1.0;
+    const evCritChance =
+      hasEv && Number.isFinite(eventMods.critBonus) ? eventMods.critBonus : 0;
+    const evCritDmg =
+      hasEv && Number.isFinite(eventMods.critDmgMult) && eventMods.critDmgMult > 0
+        ? eventMods.critDmgMult
+        : 1.0;
+    const evHaste =
+      hasEv && Number.isFinite(eventMods.hasteMult) && eventMods.hasteMult > 0
+        ? eventMods.hasteMult
+        : 1.0;
+
     merged.globalDpsMult = safeBoundedFloat(
-      baseGlobal * ascHero * synHero * dirHero * gearHero,
+      baseGlobal * ascHero * synHero * dirHero * gearHero * evHero,
       0.1,
       ENDLESS_MAX_MULT,
       1.0
     );
     merged.goldMult = safeBoundedFloat(
-      baseGold * ascGold * synGold * dirGold * gearGold,
+      baseGold * ascGold * synGold * dirGold * gearGold * evGold,
       0.1,
       ENDLESS_MAX_MULT,
       1.0
     );
     merged.tapMult = safeBoundedFloat(
-      baseTap * (ascTap / ascHero) * (synTap / synHero) * (dirTap / dirHero) * (gearTap / gearHero),
+      baseTap *
+        (ascTap / ascHero) *
+        (synTap / synHero) *
+        (dirTap / dirHero) *
+        (gearTap / gearHero) *
+        (evTap / evHero),
       1e-6,
       ENDLESS_MAX_MULT,
       1.0
     );
     merged.companionMult = safeBoundedFloat(
-      baseComp * (ascComp / ascHero) * (synComp / synHero) * (dirComp / dirHero) * (gearComp / gearHero),
+      baseComp *
+        (ascComp / ascHero) *
+        (synComp / synHero) *
+        (dirComp / dirHero) *
+        (gearComp / gearHero) *
+        (evComp / evHero),
       1e-6,
       ENDLESS_MAX_MULT,
       1.0
     );
     merged.critChanceBonus = safeBoundedFloat(
-      baseCritChance + ascCritChance + synCritChance + dirCritChance + gearCritChance,
+      baseCritChance + ascCritChance + synCritChance + dirCritChance + gearCritChance + evCritChance,
       0,
       0.95,
       0
     );
-    merged.critDmgMult = safeBoundedFloat(baseCritDmg * ascCritDmg * synCritDmg, 0.5, 1e4, 1.0);
-    const totalHaste = safeBoundedFloat(baseHaste * dirHaste, 0.25, 25, 1.0);
+    merged.critDmgMult = safeBoundedFloat(baseCritDmg * ascCritDmg * synCritDmg * evCritDmg, 0.5, 1e4, 1.0);
+    const totalHaste = safeBoundedFloat(baseHaste * dirHaste * evHaste, 0.25, 25, 1.0);
     const totalBossDmg = safeBoundedFloat(baseBossDmg * dirBossDmg * gearBossDmg, 0.1, ENDLESS_MAX_MULT, 1.0);
     if (
       Math.abs(totalHaste - 1.0) > 1e-9 ||
@@ -1506,6 +1576,11 @@ export class EndlessManager {
     this.lootBeams = [];
     this._gearNovaFx = [];
     this._inBloodReaverNova = false;
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this._shrineSpawnTimer = 26;
+    this._merchantSpawnTimer = 50;
+    this._tempestBoltTimer = 0;
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
     this.companions?.clearTransientFX?.();
@@ -1574,6 +1649,13 @@ export class EndlessManager {
           this.gear.reset();
         }
       }
+      if (this.events) {
+        if (loadedSnap?.meta?.events && typeof this.events.importSnapshot === 'function') {
+          this.events.importSnapshot(loadedSnap.meta.events);
+        } else if (typeof this.events.reset === 'function') {
+          this.events.reset(this.stage);
+        }
+      }
       if (this.ascension) {
         if (loadedSnap?.meta?.ascension && typeof this.ascension.importSnapshot === 'function') {
           this.ascension.importSnapshot(loadedSnap.meta.ascension);
@@ -1585,7 +1667,7 @@ export class EndlessManager {
             this.ascension.computeOfflineLoot(loadedSnap.savedAt, Date.now(), this.stage, this.economy) ||
             null;
         }
-      } else if (this.gear) {
+      } else if (this.gear || this.events) {
         const loadedSyn = this.companions?.getPartySynergyModifiers?.() || null;
         this._syncExternalModifiers(loadedSyn, { preserveBase: true });
       }
@@ -1593,7 +1675,10 @@ export class EndlessManager {
       if (this.gear && typeof this.gear.reset === 'function') {
         this.gear.reset();
       }
-      if (this.ascension || this.gear) {
+      if (this.events && typeof this.events.reset === 'function') {
+        this.events.reset(1);
+      }
+      if (this.ascension || this.gear || this.events) {
         this._syncExternalModifiers(null, { preserveBase: true });
       }
       this.economy.resetRunState({ keepMeta: !resumeSaved });
@@ -1603,11 +1688,15 @@ export class EndlessManager {
       this.waveInStage = 1;
       this.bossFarmMode = false;
       this.autoPlay = true;
+      if (this.events && typeof this.events.reset === 'function' && this.stage !== 1) {
+        this.events.reset(this.stage);
+      }
     }
 
     this.economy.stage = this.stage;
     this.economy.bestStage = this.bestStage;
     this.economy.waveInStage = this.waveInStage;
+    this.events?.ensureActiveBounty?.(this.stage, this.economy);
     this.economy.activeHeroId =
       playerFighter?.heroId || this.game?.slot1Hero || this.economy.activeHeroId || 'mage_ex';
 
@@ -1710,7 +1799,7 @@ export class EndlessManager {
       this._syncExternalModifiers(initSyn, { preserveBase: true });
       this.progression.syncMaxHpWithEconomy(playerFighter);
       this.refreshActionIcons(playerFighter.heroId || 'mage_ex');
-    } else if (this.ascension || this.gear) {
+    } else if (this.ascension || this.gear || this.events) {
       this._syncExternalModifiers(null, { preserveBase: true });
     }
 
@@ -1815,6 +1904,10 @@ export class EndlessManager {
     this.lootBeams = [];
     this._gearNovaFx = [];
     this._inBloodReaverNova = false;
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this._tempestBoltTimer = 0;
+    this.events?.dismissMerchantOffer?.();
     this.pendingOfflineLoot = null;
     this._heroGoblinHitCd = 0;
     this.companions?.clearTransientFX?.();
@@ -1868,7 +1961,8 @@ export class EndlessManager {
       bestStage: this.bestStage,
       waveInStage: this.waveInStage,
       ascension: this.ascension?.exportSnapshot?.() || null,
-      gear: this.gear?.exportSnapshot?.() || null
+      gear: this.gear?.exportSnapshot?.() || null,
+      events: this.events?.exportSnapshot?.() || null
     };
     return this.economy.saveToStorage(compSnap, metaSnap);
   }
@@ -1876,7 +1970,8 @@ export class EndlessManager {
   resetEndlessRun() {
     this._clearSynergyFromEconomy();
     this.gear?.reset?.();
-    if (this.ascension || this.gear) {
+    this.events?.reset?.(1);
+    if (this.ascension || this.gear || this.events) {
       this._syncExternalModifiers(null, { preserveBase: true });
     }
     this.economy.resetRunState({ keepMeta: true });
@@ -1905,6 +2000,11 @@ export class EndlessManager {
     this.lootBeams = [];
     this._gearNovaFx = [];
     this._inBloodReaverNova = false;
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this._shrineSpawnTimer = 26;
+    this._merchantSpawnTimer = 50;
+    this._tempestBoltTimer = 0;
     this.pendingOfflineLoot = null;
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
@@ -1917,12 +2017,13 @@ export class EndlessManager {
     this._activeSynergyMods = null;
     this._baseExternalModifiers = {};
     this._lastWrittenSynergyExt = null;
-    if (this.ascension || this.gear) {
+    if (this.ascension || this.gear || this.events) {
       this._syncExternalModifiers(null, { preserveBase: true });
     }
 
     this.economy.stage = 1;
     this.economy.waveInStage = 1;
+    this.events?.ensureActiveBounty?.(1, this.economy);
     const realm = this.getCurrentRealm();
     this.zoneIndex = realm.realmIndex;
 
@@ -2017,6 +2118,12 @@ export class EndlessManager {
     this.lootBeams = [];
     this._gearNovaFx = [];
     this._inBloodReaverNova = false;
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this._shrineSpawnTimer = 26;
+    this._merchantSpawnTimer = 50;
+    this._tempestBoltTimer = 0;
+    this.events?.dismissMerchantOffer?.();
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
     this.companions?.clearTransientFX?.();
@@ -2033,6 +2140,7 @@ export class EndlessManager {
     this.economy.stage = 1;
     this.economy.bestStage = Math.max(this.economy.bestStage || 1, this.bestStage);
     this.economy.waveInStage = 1;
+    this.events?.ensureActiveBounty?.(this.stage, this.economy);
 
     const realm = this.getCurrentRealm();
     this.zoneIndex = realm.realmIndex;
@@ -2358,6 +2466,141 @@ export class EndlessManager {
       this._afterGearMutation((res.count || 0) > 0 ? 'clock_gear' : null);
     }
     return res || { ok: false, count: 0, dustGained: 0 };
+  }
+
+  // =========================================================================
+  // WAVE 8: BOUNTIES, SHRINES & WANDERING MERCHANT ACTIONS
+  // =========================================================================
+
+  _recordBounty(metric, amount = 1) {
+    if (!this.events || typeof this.events.recordProgress !== 'function') {
+      return { progressed: false, justCompleted: false, bounty: null };
+    }
+    const res = this.events.recordProgress(metric, amount, this.stage, this.economy);
+    if (res?.justCompleted) {
+      const player = this.game?.leftFighter;
+      const fxX = Number.isFinite(player?.x) ? player.x : this.corridorOriginX || 240;
+      const fxY = Number.isFinite(player?.groundY || player?.y)
+        ? player.groundY || player.y
+        : this.depthMidY;
+      this.spawnFloatingCallout(fxX, fxY - 156, 'BOUNTY COMPLETE!', '#facc15', 2, 1.4, {
+        kind: 'fever',
+        topColor: '#ffffff'
+      });
+      this.game?.audio?.play?.('holy_hit', fxX);
+      this._playCoinPickupChime(fxX, true);
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    }
+    return res || { progressed: false, justCompleted: false, bounty: null };
+  }
+
+  claimActiveBounty() {
+    if (!this.events || typeof this.events.claimBounty !== 'function') {
+      return { ok: false, reason: 'no_events' };
+    }
+    const res = this.events.claimBounty(this.economy, this.gear, this.stage);
+    if (!res?.ok) {
+      return res || { ok: false };
+    }
+
+    this._syncExternalModifiers(undefined, { preserveBase: true });
+    const player = this.game?.leftFighter;
+    if (player) {
+      this.progression.syncMaxHpWithEconomy(player);
+    }
+    const fxX = Number.isFinite(player?.x) ? player.x : this.corridorOriginX || 240;
+    const fxY = Number.isFinite(player?.groundY || player?.y)
+      ? player.groundY || player.y
+      : this.depthMidY;
+
+    this.spawnFloatingCallout(fxX, fxY - 154, 'BOUNTY CLAIMED!', '#facc15', 2, 1.4, {
+      kind: 'fever',
+      topColor: '#ffffff'
+    });
+    const rw = res.rewards || {};
+    const parts = [];
+    if ((rw.gold || 0) > 0) parts.push(`+${formatEndlessNumber(rw.gold)}G`);
+    if ((rw.astralShards || 0) > 0) parts.push(`+${rw.astralShards} SHARDS`);
+    if ((rw.forgeDust || 0) > 0) parts.push(`+${rw.forgeDust} DUST`);
+    if (parts.length > 0) {
+      this.spawnFloatingCallout(fxX, fxY - 122, parts.join(' '), '#fde047', 1, 1.2, {
+        kind: 'gold',
+        topColor: '#ffffff'
+      });
+    }
+    if (this.game?.vfx) {
+      this.game.vfx.spawnShockwave(fxX, fxY - 16, 160, '#facc15', 0.34, true);
+      this.game.vfx.spawnBurst(fxX, fxY - 58, 18, '#fde047', 210, { upBias: 145, size: 5 });
+    }
+    this.game?.audio?.play?.('victory_fanfare', fxX);
+    this._playCoinPickupChime(fxX, true);
+    this.saveNow();
+    this.syncRightHUD();
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    return res;
+  }
+
+  buyMerchantOffer() {
+    if (!this.events || typeof this.events.purchaseMerchantOffer !== 'function') {
+      return { ok: false, reason: 'no_events' };
+    }
+    const res = this.events.purchaseMerchantOffer(this.economy, this.gear, this.stage);
+    if (!res?.ok) {
+      return res || { ok: false };
+    }
+
+    this._syncExternalModifiers(undefined, { preserveBase: true });
+    const player = this.game?.leftFighter;
+    if (player) {
+      this.progression.syncMaxHpWithEconomy(player);
+    }
+    const fxX = Number.isFinite(player?.x) ? player.x : this.corridorOriginX || 240;
+    const fxY = Number.isFinite(player?.groundY || player?.y)
+      ? player.groundY || player.y
+      : this.depthMidY;
+
+    if (res.offerType === 'dps_elixir') {
+      this.spawnFloatingCallout(fxX, fxY - 154, 'ELIXIR ACTIVE!', '#c084fc', 2, 1.45, {
+        kind: 'fever',
+        topColor: '#f5d0fe'
+      });
+      if (this.game?.vfx) {
+        this.game.vfx.spawnShockwave(fxX, fxY - 16, 170, '#c084fc', 0.36, true);
+        this.game.vfx.spawnBurst(fxX, fxY - 58, 18, '#c084fc', 210, { upBias: 140, size: 5 });
+      }
+      this.game?.audio?.play?.('victory_fanfare', fxX);
+    } else {
+      const item = res.item || null;
+      const rm = (item && GEAR_RARITY_BY_ID?.[item.rarity]) || {};
+      const sm = (item && GEAR_SLOT_META?.[item.slot]) || {};
+      const rarityLabel = String(rm.label || item?.rarity || 'ARCANE').toUpperCase();
+      const slotLabel = String(sm.label || item?.slot || 'GEAR').toUpperCase();
+      const col = rm.color || '#facc15';
+      const topCol = rm.glowHex || '#ffffff';
+      const toastText = item ? `${rarityLabel} ${slotLabel}!` : 'MERCHANT CHEST!';
+      this.spawnFloatingCallout(fxX, fxY - 154, toastText, col, 2, 1.45, {
+        kind: 'fever',
+        topColor: topCol
+      });
+      if (this.game?.vfx) {
+        this.game.vfx.spawnShockwave(fxX, fxY - 16, 165, col, 0.34, true);
+        this.game.vfx.spawnBurst(fxX, fxY - 56, 16, topCol, 200, { upBias: 135, size: 5 });
+      }
+      const isHigh = item?.rarity === 'mythic' || item?.rarity === 'sovereign';
+      this.game?.audio?.play?.(isHigh ? 'victory_fanfare' : 'holy_hit', fxX);
+    }
+
+    this._playCoinPickupChime(fxX, true);
+    this.saveNow();
+    this.syncRightHUD();
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    return res;
+  }
+
+  dismissMerchantOffer() {
+    this.events?.dismissMerchantOffer?.();
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    return true;
   }
 
   _computeCompanionSyncSig() {
@@ -2800,6 +3043,7 @@ export class EndlessManager {
     this.spawnGearLootBeam(bx - 42, bGy, isColossal ? 'colossal' : 'boss', { stage: clearedStage });
 
     this.economy.bossesSlain = (this.economy.bossesSlain || 0) + 1;
+    this._recordBounty('bosses', 1);
     this.isBossEncounter = false;
     this.bossTimer = 0;
     this._bossPortalActive = false;
@@ -2968,6 +3212,7 @@ export class EndlessManager {
     deadMonster._endlessDeathHandled = true;
     this.monstersKilled++;
     this.economy.totalKills = (this.economy.totalKills || 0) + 1;
+    this._recordBounty('kills', 1);
     this.score += deadMonster.scoreValue || 250;
 
     if (
@@ -3177,6 +3422,7 @@ export class EndlessManager {
             isBoss: c.isBoss,
             applyMult: c.applyMult
           });
+          this._recordBounty('coins', 1);
           if (gained > 0 && (c.isBoss || this.floatingCallouts.length < 22 || Math.random() < 0.55)) {
             this.spawnFloatingCallout(
               px + (Math.random() * 28 - 14),
@@ -3495,6 +3741,7 @@ export class EndlessManager {
 
     this.monstersKilled++;
     this.economy.totalKills = (this.economy.totalKills || 0) + 1;
+    this._recordBounty('kills', 1);
 
     this.showBanner(
       `GILDED GOBLIN SLAIN! +${shards} SHARD${shards === 1 ? '' : 'S'}`,
@@ -4176,6 +4423,357 @@ export class EndlessManager {
     return true;
   }
 
+  // =========================================================================
+  // WAVE 8: INTERACTIVE SHRINES, WANDERING MERCHANT & TEMPEST AUTO-LIGHTNING
+  // =========================================================================
+
+  spawnWorldShrine(shrineId = null, x = null, y = null) {
+    if (this.worldShrines.length >= WORLD_SHRINE_MAX_ACTIVE) return null;
+    let def = shrineId ? ENDLESS_SHRINE_BY_ID?.[shrineId] || null : null;
+    if (!def && Array.isArray(ENDLESS_SHRINE_TYPES) && ENDLESS_SHRINE_TYPES.length > 0) {
+      def = ENDLESS_SHRINE_TYPES[Math.floor(Math.random() * ENDLESS_SHRINE_TYPES.length)];
+    }
+    if (!def) return null;
+
+    const minBoundX = this.lockMinX || this.corridorMinX || 60;
+    const maxBoundX = Math.max(minBoundX + 180, this.lockMaxX || this.corridorMaxX || 1480);
+    const sx = Number.isFinite(x)
+      ? Math.max(minBoundX, Math.min(maxBoundX, Math.round(x)))
+      : Math.max(
+          minBoundX + 72,
+          Math.min(
+            maxBoundX - 72,
+            Math.round((this.corridorOriginX || 240) + 300 + Math.random() * 260)
+          )
+        );
+    const lanePool = [524, 561, 598];
+    const rawGy = Number.isFinite(y)
+      ? Math.round(y)
+      : lanePool[this._encounterSeq % lanePool.length];
+    const gy = Math.max(this.depthMinY + 20, Math.min(this.depthMaxY - 20, rawGy));
+
+    const seq = ++this._encounterSeq;
+    const shrine = {
+      uid: `shrine_${seq}`,
+      shrineId: def.id,
+      def,
+      x: sx,
+      groundY: gy,
+      age: 0,
+      maxAge: WORLD_SHRINE_MAX_AGE,
+      pulsePhase: (seq * 1.13) % (Math.PI * 2)
+    };
+    this.worldShrines.push(shrine);
+
+    if (this.game?.vfx) {
+      this.game.vfx.spawnShockwave(sx, gy - 10, 112, def.accentHex || '#facc15', 0.32, true);
+      this.game.vfx.spawnBurst(sx, gy - 44, 10, def.glowHex || def.accentHex || '#fef08a', 170, {
+        upBias: 120,
+        size: 4
+      });
+    }
+    this.spawnFloatingCallout(sx, gy - 118, def.name || 'ARCANE SHRINE', def.accentHex || '#facc15', 1, 1.25, {
+      kind: 'shard',
+      topColor: def.glowHex || '#ffffff'
+    });
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    return shrine;
+  }
+
+  activateWorldShrine(shrine) {
+    if (!shrine || shrine.activated || !this.events || typeof this.events.activateShrine !== 'function') {
+      return { ok: false };
+    }
+    shrine.activated = true;
+    const idx = this.worldShrines.indexOf(shrine);
+    if (idx !== -1) {
+      this.worldShrines.splice(idx, 1);
+    }
+
+    const res = this.events.activateShrine(shrine.shrineId);
+    if (!res?.ok) {
+      return res || { ok: false };
+    }
+
+    this._syncExternalModifiers(undefined, { preserveBase: true });
+    const player = this.game?.leftFighter;
+    if (player) {
+      this.progression.syncMaxHpWithEconomy(player);
+      if (res.instantFullHeal && !player.isDead && player.maxHp > 0) {
+        player.hp = player.maxHp;
+      }
+    }
+    if (shrine.shrineId === 'tempest') {
+      this._tempestBoltTimer = 0.25;
+    }
+
+    const def = shrine.def || res.shrine || ENDLESS_SHRINE_BY_ID?.[shrine.shrineId] || {};
+    const fxX = Number.isFinite(shrine.x) ? shrine.x : player?.x ?? this.corridorOriginX;
+    const fxY = Number.isFinite(shrine.groundY) ? shrine.groundY : player?.groundY ?? this.depthMidY;
+    const callout = `${def.name || 'SHRINE'} • ${def.shortLabel || 'BLESSING'}!`;
+
+    this.spawnFloatingCallout(fxX, fxY - 134, callout, def.accentHex || '#facc15', 2, 1.45, {
+      kind: 'fever',
+      topColor: def.glowHex || '#ffffff'
+    });
+    if (this.game?.vfx) {
+      this.game.vfx.spawnShockwave(fxX, fxY - 14, 185, def.accentHex || '#facc15', 0.38, true);
+      this.game.vfx.spawnBurst(fxX, fxY - 52, 18, def.glowHex || def.accentHex || '#fef08a', 220, {
+        upBias: 150,
+        size: 5
+      });
+    }
+    this.game?.audio?.play?.('holy_hit', fxX);
+    this.game?.audio?.play?.('victory_fanfare', fxX);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    return res;
+  }
+
+  spawnWanderingMerchant(x = null, y = null) {
+    if (this.wanderingMerchants.length >= WANDERING_MERCHANT_MAX_ACTIVE) return null;
+
+    const minBoundX = this.lockMinX || this.corridorMinX || 60;
+    const maxBoundX = Math.max(minBoundX + 180, this.lockMaxX || this.corridorMaxX || 1480);
+    const mx = Number.isFinite(x)
+      ? Math.max(minBoundX, Math.min(maxBoundX, Math.round(x)))
+      : Math.max(
+          minBoundX + 80,
+          Math.min(
+            maxBoundX - 80,
+            Math.round((this.corridorOriginX || 240) + 340 + Math.random() * 240)
+          )
+        );
+    const rawGy = Number.isFinite(y) ? Math.round(y) : this.depthMidY + 18;
+    const gy = Math.max(this.depthMinY + 20, Math.min(this.depthMaxY - 20, rawGy));
+
+    const seq = ++this._encounterSeq;
+    const merchant = {
+      uid: `merchant_${seq}`,
+      x: mx,
+      groundY: gy,
+      age: 0,
+      maxAge: WANDERING_MERCHANT_MAX_AGE,
+      bobPhase: (seq * 1.27) % (Math.PI * 2),
+      interacted: false
+    };
+    this.wanderingMerchants.push(merchant);
+
+    if (this.game?.vfx) {
+      this.game.vfx.spawnShockwave(mx, gy - 10, 108, '#facc15', 0.32, true);
+      this.game.vfx.spawnBurst(mx, gy - 44, 12, '#fde047', 165, { upBias: 115, size: 4 });
+    }
+    this.spawnFloatingCallout(mx, gy - 122, 'ARCANE MERCHANT!', '#fde047', 1, 1.3, {
+      kind: 'gold',
+      topColor: '#ffffff'
+    });
+    this.game?.audio?.play?.('clock_gear', mx);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    return merchant;
+  }
+
+  interactWanderingMerchant(merchant) {
+    if (
+      !merchant ||
+      merchant.interacted ||
+      !this.events ||
+      typeof this.events.rollMerchantOffer !== 'function'
+    ) {
+      return null;
+    }
+    merchant.interacted = true;
+    const idx = this.wanderingMerchants.indexOf(merchant);
+    if (idx !== -1) {
+      this.wanderingMerchants.splice(idx, 1);
+    }
+
+    const offer = this.events.rollMerchantOffer(this.stage, this.economy);
+    const fxX = Number.isFinite(merchant.x) ? merchant.x : this.corridorOriginX || 240;
+    const fxY = Number.isFinite(merchant.groundY) ? merchant.groundY : this.depthMidY;
+
+    this.spawnFloatingCallout(fxX, fxY - 128, 'ARCANE MERCHANT!', '#facc15', 2, 1.35, {
+      kind: 'gold',
+      topColor: '#fef08a'
+    });
+    if (this.game?.vfx) {
+      this.game.vfx.spawnBurst(fxX, fxY - 52, 14, '#fde047', 180, { upBias: 120, size: 4 });
+    }
+    this._playCoinPickupChime(fxX, true);
+    this.game?.audio?.play?.('clock_gear', fxX);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    return offer;
+  }
+
+  _strikeTempestAutoBolt(target) {
+    if (!target || target.isDead || target.hp <= 0) return false;
+    const stats = this.economy?.getComputedStats?.() || {};
+    const s = Math.max(1, Math.floor(Number(this.stage) || 1));
+    const stageScale = Math.pow(1.16, Math.min(200, s - 1));
+    const isBoss = Boolean(
+      target.isBoss || target.isMiniBoss || target.isEndlessStageBoss || target === this.bossEntity
+    );
+    let rawDmg =
+      (stats.tapBaseDmg || 12) *
+      (stats.tapDmgMult || 1) *
+      stageScale *
+      (stats.feverDmgMult || 1);
+    if (isBoss) {
+      rawDmg *= stats.bossDmgMult || 1;
+    }
+    const isCrit = Math.random() < (stats.critChance || 0);
+    if (isCrit) {
+      rawDmg *= stats.critMult || 1.75;
+    }
+    const dmg = safeBoundedInt(rawDmg, 1, ENDLESS_MAX_STAT, 10);
+
+    const tx = target.isColossalBoss ? (target.anchorX || target.x) - 105 : target.x;
+    const tGy = target.isColossalBoss
+      ? target.anchorGroundY || this.depthMidY
+      : target.groundY || target.y || this.depthMidY;
+
+    const boltAttacker = {
+      isTapSmite: true,
+      isMonster: false,
+      team: 1,
+      x: tx,
+      y: tGy,
+      groundY: tGy,
+      facing: 1,
+      heroId: 'tempest_bolt',
+      gainMana() {},
+      gainFinisher() {}
+    };
+    const knockDir = target.isColossalBoss ? 0 : target.x >= (this.game?.leftFighter?.x || 0) ? 1 : -1;
+    target.takeDamage(dmg, boltAttacker, isCrit, knockDir * 28, 0);
+    this.economy.recordDamageSample('tap', dmg);
+
+    if ((target.isDead || target.hp <= 0) && !target._endlessDeathHandled) {
+      target.isDead = true;
+      this.onMonsterDeath(target);
+    } else if (target === this.bossEntity) {
+      this._tryTitanSlayerExecute(target);
+    }
+
+    this._pushTapSmite({
+      x: tx,
+      groundY: tGy,
+      kind: 'bolt',
+      age: 0,
+      maxLife: 0.36,
+      scale: isCrit ? 1.5 : 1.3
+    });
+    if (isCrit) {
+      this._pushTapSmite({
+        x: tx,
+        groundY: tGy - 60,
+        kind: 'crit',
+        age: 0,
+        maxLife: 0.34,
+        scale: 1.38
+      });
+    }
+
+    while (this.feverChains.length >= FEVER_CHAIN_MAX_COUNT) {
+      this.feverChains.shift();
+    }
+    const skyY = Math.round(tGy - 250);
+    const hitY = Math.round(tGy - 48);
+    const boltPts = this._buildPixelChainPoints(tx, skyY, tx, hitY, 2);
+    this.feverChains.push({
+      x1: Math.round(tx),
+      y1: skyY,
+      x2: Math.round(tx),
+      y2: hitY,
+      tier: 2,
+      age: 0,
+      maxLife: FEVER_CHAIN_LIFE,
+      main: boltPts.main,
+      branch: boltPts.branch
+    });
+
+    this.spawnFloatingCallout(
+      tx + (Math.random() * 18 - 9),
+      tGy - 116,
+      isCrit ? `CRIT ${formatEndlessNumber(dmg)}!` : formatEndlessNumber(dmg),
+      isCrit ? '#67e8f9' : '#38bdf8',
+      isCrit ? 2 : 1,
+      0.82,
+      { kind: isCrit ? 'crit' : 'damage', topColor: '#ffffff' }
+    );
+    if (this.game?.vfx) {
+      this.game.vfx.spawnBurst(tx, tGy - 52, isCrit ? 10 : 6, '#38bdf8', 175, {
+        upBias: 110,
+        size: 4
+      });
+    }
+    this.game?.audio?.play?.(isCrit ? 'raijin_slash' : 'holy_bolt', tx);
+    return true;
+  }
+
+  _updateWorldEvents(dt, player) {
+    const px = Number.isFinite(player?.x) ? player.x : null;
+    const pGy =
+      player && Number.isFinite(player.groundY || player.y)
+        ? player.groundY || player.y
+        : this.depthMidY;
+    const minActiveX = (this.lockMinX || this.corridorMinX || 60) - 360;
+
+    for (let i = this.worldShrines.length - 1; i >= 0; i--) {
+      const s = this.worldShrines[i];
+      if (!s || s.activated || !Number.isFinite(s.x) || !Number.isFinite(s.age)) {
+        this.worldShrines.splice(i, 1);
+        continue;
+      }
+      s.age += dt;
+      s.pulsePhase = (s.pulsePhase || 0) + dt * 4.2;
+      if (px !== null && Math.hypot(px - s.x, pGy - s.groundY) <= WORLD_EVENT_PROXIMITY_RADIUS) {
+        this.activateWorldShrine(s);
+        continue;
+      }
+      if (s.age >= (s.maxAge || WORLD_SHRINE_MAX_AGE) || (s.x < minActiveX && s.age >= 1.5)) {
+        this.worldShrines.splice(i, 1);
+      }
+    }
+
+    for (let i = this.wanderingMerchants.length - 1; i >= 0; i--) {
+      const m = this.wanderingMerchants[i];
+      if (!m || m.interacted || !Number.isFinite(m.x) || !Number.isFinite(m.age)) {
+        this.wanderingMerchants.splice(i, 1);
+        continue;
+      }
+      m.age += dt;
+      m.bobPhase = (m.bobPhase || 0) + dt * 3.2;
+      if (px !== null && Math.hypot(px - m.x, pGy - m.groundY) <= WORLD_EVENT_PROXIMITY_RADIUS) {
+        this.interactWanderingMerchant(m);
+        continue;
+      }
+      if (m.age >= (m.maxAge || WANDERING_MERCHANT_MAX_AGE) || (m.x < minActiveX && m.age >= 1.5)) {
+        this.wanderingMerchants.splice(i, 1);
+      }
+    }
+
+    // Altar of Tempest Auto-Lightning strikes a random living monster/boss every 1.1s
+    const eventMods = this.events?.getEventModifiers?.() || null;
+    const boltInterval =
+      Number.isFinite(eventMods?.autoLightningIntervalSec) && eventMods.autoLightningIntervalSec > 0
+        ? eventMods.autoLightningIntervalSec
+        : 0;
+    if (boltInterval > 0) {
+      this._tempestBoltTimer -= dt;
+      if (this._tempestBoltTimer <= 0) {
+        const living = this.getLivingMonsters();
+        if (living.length > 0) {
+          this._tempestBoltTimer = boltInterval;
+          const target = living[Math.floor(Math.random() * living.length)];
+          this._strikeTempestAutoBolt(target);
+        } else {
+          this._tempestBoltTimer = 0.15;
+        }
+      }
+    } else {
+      this._tempestBoltTimer = 0;
+    }
+  }
+
   handleCanvasTap(worldX, worldY, _screenX = 0, _screenY = 0) {
     if (!this.active || this.game?.isPaused || this.game?.isLandingOpen) {
       return { hit: false };
@@ -4216,6 +4814,62 @@ export class EndlessManager {
       }
     }
 
+    // 1c. Wave 8 Interactive World Shrines (88px tap radius)
+    if (this.worldShrines.length > 0) {
+      let bestShrine = null;
+      let bestShrineDist = WORLD_EVENT_TAP_RADIUS + 0.001;
+      for (let i = 0; i < this.worldShrines.length; i++) {
+        const s = this.worldShrines[i];
+        if (!s || s.activated) continue;
+        const dBody = Math.hypot(s.x - wx, (s.groundY - 42) - rawWy);
+        const dFeet = Math.hypot(s.x - wx, s.groundY - rawWy);
+        const d = Math.min(dBody, dFeet);
+        if (d <= WORLD_EVENT_TAP_RADIUS && d < bestShrineDist) {
+          bestShrineDist = d;
+          bestShrine = s;
+        }
+      }
+      if (bestShrine) {
+        const shrineResult = this.activateWorldShrine(bestShrine);
+        return {
+          hit: true,
+          hitKind: 'shrine',
+          shrine: bestShrine,
+          shrineResult,
+          lootCollected,
+          scooped
+        };
+      }
+    }
+
+    // 1d. Wave 8 Wandering Arcane Merchant (88px tap radius)
+    if (this.wanderingMerchants.length > 0) {
+      let bestMerchant = null;
+      let bestMerchantDist = WORLD_EVENT_TAP_RADIUS + 0.001;
+      for (let i = 0; i < this.wanderingMerchants.length; i++) {
+        const m = this.wanderingMerchants[i];
+        if (!m || m.interacted) continue;
+        const dBody = Math.hypot(m.x - wx, (m.groundY - 42) - rawWy);
+        const dFeet = Math.hypot(m.x - wx, m.groundY - rawWy);
+        const d = Math.min(dBody, dFeet);
+        if (d <= WORLD_EVENT_TAP_RADIUS && d < bestMerchantDist) {
+          bestMerchantDist = d;
+          bestMerchant = m;
+        }
+      }
+      if (bestMerchant) {
+        const merchantOffer = this.interactWanderingMerchant(bestMerchant);
+        return {
+          hit: true,
+          hitKind: 'merchant',
+          merchant: bestMerchant,
+          merchantOffer,
+          lootCollected,
+          scooped
+        };
+      }
+    }
+
     // 2. PRIORITY FIRST: Check living Gilded Treasure Goblins (generous 96px tap radius)
     if (this.treasureGoblins.length > 0) {
       let bestGoblin = null;
@@ -4240,7 +4894,9 @@ export class EndlessManager {
           feverTriggered: false,
           goldBonus: 0
         };
+        this._recordBounty('taps', 1);
         if (smite.feverTriggered) {
+          this._recordBounty('fevers', 1);
           const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
           if (feverBonusSec > 0 && this.economy.tapFeverTimer > 0) {
             this.economy.tapFeverTimer += feverBonusSec;
@@ -4433,6 +5089,7 @@ export class EndlessManager {
       feverTriggered: false,
       goldBonus: 0
     };
+    this._recordBounty('taps', 1);
     const dmg = safeBoundedInt(smite.damage, 1, ENDLESS_MAX_STAT, 10);
     const tx = target.isColossalBoss ? (target.anchorX || target.x) - 105 : target.x;
     const tGy = target.isColossalBoss ? target.anchorGroundY || this.depthMidY : target.groundY || target.y || this.depthMidY;
@@ -4600,6 +5257,7 @@ export class EndlessManager {
 
     // Spawn GOLD_FEVER_BURST (Row 4) when Tap-Fever Overdrive triggers!
     if (smite.feverTriggered) {
+      this._recordBounty('fevers', 1);
       const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
       if (feverBonusSec > 0 && this.economy && this.economy.tapFeverTimer > 0) {
         this.economy.tapFeverTimer += feverBonusSec;
@@ -5372,9 +6030,17 @@ export class EndlessManager {
       this._lastCompanionSyncSig = compSig;
     }
 
-    // 1. Apply Party Synergy modifiers cleanly, then update Economy, Progression & SkillSets
+    // 1. Tick Wave 8 Events, apply Party Synergy + Event modifiers cleanly, then update Economy, Progression & SkillSets
+    const evTick = this.events?.update?.(effDt) || null;
     const synMods = this.companions?.getPartySynergyModifiers?.() || null;
     this._applyPartySynergyToEconomy(synMods);
+    if (evTick?.buffsChanged) {
+      this._syncExternalModifiers(synMods, { preserveBase: true });
+      this.progression.syncMaxHpWithEconomy(player);
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    } else if (evTick?.offerExpired) {
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
+    }
 
     this.economy.update(effDt);
     this.progression.update(effDt, player);
@@ -5541,7 +6207,7 @@ export class EndlessManager {
       this._tryTitanSlayerExecute(this.bossEntity);
     }
 
-    // 7b. Wave 3 Automatic Gilded Treasure Goblin timer (34..46s during non-boss waves)
+    // 7b. Wave 3 Gilded Goblin + Wave 8 Organic Shrine & Wandering Merchant timers (active non-boss waves)
     if (!this.isBossEncounter && !this._waveAdvancePending && livingMonsters.length > 0) {
       this._goblinSpawnTimer -= effDt;
       if (this._goblinSpawnTimer <= 0) {
@@ -5551,12 +6217,36 @@ export class EndlessManager {
           this.spawnTreasureGoblin();
         }
       }
+
+      this._shrineSpawnTimer -= effDt;
+      if (this._shrineSpawnTimer <= 0) {
+        this._shrineSpawnTimer =
+          WORLD_SHRINE_SPAWN_MIN_SEC +
+          Math.random() * (WORLD_SHRINE_SPAWN_MAX_SEC - WORLD_SHRINE_SPAWN_MIN_SEC);
+        if (this.worldShrines.length < WORLD_SHRINE_MAX_ACTIVE) {
+          this.spawnWorldShrine();
+        }
+      }
+
+      this._merchantSpawnTimer -= effDt;
+      if (this._merchantSpawnTimer <= 0) {
+        this._merchantSpawnTimer =
+          WANDERING_MERCHANT_SPAWN_MIN_SEC +
+          Math.random() * (WANDERING_MERCHANT_SPAWN_MAX_SEC - WANDERING_MERCHANT_SPAWN_MIN_SEC);
+        if (
+          this.wanderingMerchants.length < WANDERING_MERCHANT_MAX_ACTIVE &&
+          !this.events?.activeMerchantOffer
+        ) {
+          this.spawnWanderingMerchant();
+        }
+      }
     }
 
-    // 8. Update Goblins, Milestone Chests, Loot Beams, Gear Nova FX, Magnetic Coins, Tap-Smites, Fever Bursts, Fever Chains, Portals, Plumes & Floating Callouts
+    // 8. Update Goblins, Milestone Chests, Loot Beams, World Shrines & Merchants, Tempest Auto-Lightning, Gear Nova FX, Magnetic Coins, Tap-Smites, Fever Bursts, Fever Chains, Portals, Plumes & Floating Callouts
     this._updateTreasureGoblins(effDt, player);
     this._updateTreasureChests(effDt);
     this._updateLootBeams(effDt, player);
+    this._updateWorldEvents(effDt, player);
     this._updateGearNovaFx(effDt);
     this._updateCoins(effDt, player);
     for (let i = this.tapSmites.length - 1; i >= 0; i--) {
@@ -6552,7 +7242,7 @@ export class EndlessManager {
 
     ctx.restore();
 
-    // 4. Companions foreground projectiles/strikes, SkillSets foreground, Blood-Reaver Nova & Gear Loot Beams
+    // 4. Companions foreground projectiles/strikes, SkillSets foreground, Blood-Reaver Nova, Gear Loot Beams & Wave 8 Shrines/Merchant
     this.companions?.renderForegroundFX?.(ctx, renderer);
     this.skillSets.renderForeground(ctx);
     if (this._gearNovaFx.length > 0) {
@@ -6561,6 +7251,13 @@ export class EndlessManager {
     if (this.lootBeams.length > 0) {
       this._renderLootBeams(ctx, t);
     }
+    if (this.worldShrines.length > 0) {
+      this._renderWorldShrines(ctx, t);
+    }
+    if (this.wanderingMerchants.length > 0) {
+      this._renderWanderingMerchants(ctx, t);
+    }
+    this._renderSanctuaryShieldAura(ctx, t);
 
     // 5. Crisp PixelFont Floating World Callouts (Pop-In Scale + #050712 2px Pixel Outline)
     if (this.floatingCallouts.length > 0 && typeof ctx.fillRect === 'function') {
@@ -6843,6 +7540,330 @@ export class EndlessManager {
       this._drawOutlinedPixelCallout(ctx, tagText, bx, tagY, 1, glowCol, '#ffffff');
     }
 
+    ctx.restore();
+  }
+
+  _renderWorldShrines(ctx, t) {
+    if (!ctx || typeof ctx.fillRect !== 'function' || !this.worldShrines.length) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
+
+    for (let i = 0; i < this.worldShrines.length; i++) {
+      const s = this.worldShrines[i];
+      if (!s || s.activated) continue;
+      const def = s.def || ENDLESS_SHRINE_BY_ID?.[s.shrineId] || {};
+      const col = def.accentHex || '#facc15';
+      const glowCol = def.glowHex || '#fef08a';
+      const sx = Math.round(s.x);
+      const gY = Math.round(s.groundY);
+      const pulse = 0.68 + 0.32 * Math.sin(t * 5.2 + (s.pulsePhase || 0));
+      const bobY = Math.round(Math.sin(t * 4.4 + (s.pulsePhase || 0)) * 3);
+
+      // 1. Stepped ground contact shadow & glowing altar rune base
+      ctx.globalAlpha = 0.56;
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(sx - 34, gY - 3, 68, 6);
+      ctx.fillRect(sx - 26, gY - 5, 52, 10);
+      ctx.globalAlpha = 0.42 * pulse;
+      ctx.fillStyle = col;
+      ctx.fillRect(sx - 30, gY - 2, 60, 4);
+      ctx.globalAlpha = 0.62 * pulse;
+      ctx.fillStyle = glowCol;
+      ctx.fillRect(sx - 18, gY - 1, 36, 2);
+
+      // 2. Soft vertical pixel glow pillar behind crystal obelisk
+      ctx.globalAlpha = 0.16 * pulse;
+      ctx.fillStyle = col;
+      ctx.fillRect(sx - 14, gY - 118, 28, 104);
+      ctx.globalAlpha = 0.24 * pulse;
+      ctx.fillStyle = glowCol;
+      ctx.fillRect(sx - 6, gY - 110, 12, 96);
+
+      // 3. Stepped Gothic stone altar pedestal
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(sx - 26, gY - 12, 52, 14);
+      ctx.fillRect(sx - 20, gY - 28, 40, 18);
+      ctx.fillRect(sx - 24, gY - 34, 48, 8);
+      // Slate stone base & bevels
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(sx - 24, gY - 10, 48, 10);
+      ctx.fillRect(sx - 18, gY - 26, 36, 16);
+      ctx.fillRect(sx - 22, gY - 32, 44, 6);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(sx - 22, gY - 10, 44, 4);
+      ctx.fillRect(sx - 16, gY - 26, 32, 12);
+      ctx.fillRect(sx - 20, gY - 32, 40, 3);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(sx - 20, gY - 32, 40, 1);
+      ctx.fillRect(sx - 22, gY - 10, 44, 1);
+      // Carved glowing vertical rune channel in pedestal
+      ctx.fillStyle = col;
+      ctx.fillRect(sx - 3, gY - 26, 6, 18);
+      ctx.fillStyle = glowCol;
+      ctx.fillRect(sx - 1, gY - 24, 2, 14);
+
+      // 4. Floating glowing colored crystal obelisk above altar
+      const oy = gY - 68 + bobY;
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(sx - 4, oy - 30, 8, 6);
+      ctx.fillRect(sx - 8, oy - 24, 16, 10);
+      ctx.fillRect(sx - 12, oy - 14, 24, 24);
+      ctx.fillRect(sx - 8, oy + 10, 16, 10);
+      ctx.fillRect(sx - 4, oy + 20, 8, 6);
+
+      ctx.fillStyle = col;
+      ctx.fillRect(sx - 2, oy - 28, 4, 6);
+      ctx.fillRect(sx - 6, oy - 22, 12, 10);
+      ctx.fillRect(sx - 10, oy - 12, 20, 20);
+      ctx.fillRect(sx - 6, oy + 8, 12, 10);
+      ctx.fillRect(sx - 2, oy + 18, 4, 6);
+
+      ctx.fillStyle = glowCol;
+      ctx.fillRect(sx - 4, oy - 20, 8, 8);
+      ctx.fillRect(sx - 6, oy - 12, 12, 16);
+      ctx.fillRect(sx - 4, oy + 4, 8, 8);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx - 2, oy - 18, 3, 20);
+      ctx.fillRect(sx - 4, oy - 10, 2, 6);
+
+      // 5. Floating pixel rune motes orbiting / rising around obelisk
+      for (let m = 0; m < 4; m++) {
+        const phase = (t * 0.65 + m * 0.25 + (s.pulsePhase || 0)) % 1;
+        const mAngle = t * 2.6 + m * 1.57 + (s.pulsePhase || 0);
+        const mx = Math.round(sx + Math.cos(mAngle) * 20);
+        const my = Math.round(gY - 28 - phase * 76);
+        ctx.globalAlpha = Math.max(0.18, (1 - phase) * 0.95);
+        ctx.fillStyle = '#050712';
+        ctx.fillRect(mx - 2, my - 2, 5, 5);
+        ctx.fillStyle = m % 2 === 0 ? glowCol : col;
+        ctx.fillRect(mx - 1, my - 1, 3, 3);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(mx, my, 1, 1);
+      }
+
+      // 6. Lifetime bar + Crisp PixelFont Shrine label pill
+      ctx.globalAlpha = 1;
+      const lifeRatio = Math.max(
+        0,
+        Math.min(1, 1 - (s.age || 0) / Math.max(1, s.maxAge || WORLD_SHRINE_MAX_AGE))
+      );
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(sx - 24, gY + 6, 48, 4);
+      ctx.fillStyle = col;
+      ctx.fillRect(sx - 23, gY + 7, Math.max(2, Math.round(46 * lifeRatio)), 2);
+
+      const labelText = String(def.shortLabel || def.name || 'SHRINE').toUpperCase();
+      const nameText = String(def.name || 'ARCANE SHRINE').toUpperCase();
+      const tagY = oy - 42;
+      const nameW = PixelFont.measureWidth(nameText, 1);
+      const subW = PixelFont.measureWidth(labelText, 1);
+      const pillW = Math.max(nameW, subW) + 12;
+      ctx.globalAlpha = 0.88;
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(Math.round(sx - pillW * 0.5), tagY - 13, pillW, 23);
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.round(sx - pillW * 0.5), tagY - 13, pillW, 1);
+      ctx.fillRect(Math.round(sx - pillW * 0.5), tagY + 9, pillW, 1);
+      ctx.globalAlpha = 1;
+      this._drawOutlinedPixelCallout(ctx, nameText, sx, tagY - 6, 1, glowCol, '#ffffff');
+      this._drawOutlinedPixelCallout(ctx, labelText, sx, tagY + 4, 1, col, '#ffffff');
+    }
+
+    ctx.restore();
+  }
+
+  _renderWanderingMerchants(ctx, t) {
+    if (!ctx || typeof ctx.fillRect !== 'function' || !this.wanderingMerchants.length) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
+
+    for (let i = 0; i < this.wanderingMerchants.length; i++) {
+      const m = this.wanderingMerchants[i];
+      if (!m || m.interacted) continue;
+
+      const mx = Math.round(m.x);
+      const gY = Math.round(m.groundY);
+      const bobY = Math.round(Math.sin(t * 3.4 + (m.bobPhase || 0)) * 2);
+      const lanternPulse = 0.72 + 0.28 * Math.sin(t * 7.8 + (m.bobPhase || 0));
+
+      // 1. Contact shadow + warm golden lantern ground glow
+      ctx.globalAlpha = 0.54;
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(mx - 30, gY - 3, 60, 6);
+      ctx.fillRect(mx - 22, gY - 5, 44, 10);
+      ctx.globalAlpha = 0.34 * lanternPulse;
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(mx - 6, gY - 2, 42, 4);
+
+      // 2. Bulging leather merchant pack behind cloak
+      ctx.globalAlpha = 1;
+      const py = gY - 52 + bobY;
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(mx - 28, py - 2, 22, 30);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(mx - 26, py, 18, 26);
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(mx - 24, py + 2, 14, 18);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(mx - 26, py + 8, 18, 2);
+      ctx.fillRect(mx - 20, py + 6, 4, 6);
+      // Peeking arcane scroll & violet elixir bottle on top of pack
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(mx - 25, py - 10, 8, 10);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(mx - 24, py - 9, 6, 8);
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(mx - 17, py - 12, 8, 12);
+      ctx.fillStyle = '#c084fc';
+      ctx.fillRect(mx - 16, py - 10, 6, 9);
+      ctx.fillStyle = '#f5d0fe';
+      ctx.fillRect(mx - 15, py - 9, 2, 4);
+
+      // 3. Hooded Obsidian Cloak & Gold-Trimmed Robes
+      const by = gY + bobY;
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(mx - 18, by - 62, 36, 62);
+      ctx.fillRect(mx - 14, by - 76, 28, 18);
+      ctx.fillRect(mx - 10, by - 82, 20, 8);
+      // Main deep obsidian cloak
+      ctx.fillStyle = '#14182a';
+      ctx.fillRect(mx - 16, by - 60, 32, 58);
+      ctx.fillStyle = '#1e1b4b';
+      ctx.fillRect(mx - 12, by - 58, 24, 52);
+      // Burnished gold cloak borders & mantle clasp
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(mx - 16, by - 6, 32, 4);
+      ctx.fillRect(mx - 2, by - 58, 4, 54);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(mx - 14, by - 5, 28, 2);
+      ctx.fillRect(mx - 4, by - 52, 8, 6);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(mx - 2, by - 50, 4, 2);
+
+      // Shadowed Gothic Hood & Glowing Golden Eyes
+      ctx.fillStyle = '#1e1b4b';
+      ctx.fillRect(mx - 12, by - 74, 24, 16);
+      ctx.fillRect(mx - 8, by - 80, 16, 6);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(mx - 12, by - 60, 24, 2);
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(mx - 6, by - 71, 14, 11);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(mx - 3, by - 67, 3, 2);
+      ctx.fillRect(mx + 3, by - 67, 3, 2);
+
+      // 4. Extended Lantern Staff & Glowing Golden Pixel Lantern
+      const lx = mx + 24;
+      const ly = by - 50 + Math.round(Math.sin(t * 5.6 + (m.bobPhase || 0)) * 2);
+      // Staff arm & iron hook
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(mx + 12, by - 54, 14, 6);
+      ctx.fillRect(lx - 2, by - 74, 4, 24);
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(mx + 13, by - 53, 12, 4);
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(lx - 1, by - 72, 2, 20);
+
+      // Warm stepped lantern light halo
+      ctx.globalAlpha = 0.22 * lanternPulse;
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(lx - 16, ly - 14, 32, 30);
+      ctx.globalAlpha = 0.34 * lanternPulse;
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(lx - 10, ly - 8, 20, 18);
+
+      // Crisp iron & amber pixel lantern body
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(lx - 7, ly - 8, 14, 18);
+      ctx.fillRect(lx - 5, ly - 10, 10, 22);
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(lx - 5, ly - 6, 10, 14);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(lx - 3, ly - 4, 6, 10);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(lx - 1, ly - 2, 2, 6);
+
+      // Floating golden motes around lantern
+      for (let d = 0; d < 3; d++) {
+        const phase = (t * 0.72 + d * 0.33 + (m.bobPhase || 0)) % 1;
+        const dx = lx + Math.round(Math.sin(t * 4.5 + d * 2.1) * 10);
+        const dy = Math.round(ly - 8 - phase * 28);
+        ctx.globalAlpha = Math.max(0.15, (1 - phase) * 0.92);
+        ctx.fillStyle = d === 0 ? '#ffffff' : '#fde047';
+        ctx.fillRect(dx - 1, dy - 1, 2, 2);
+      }
+
+      // 5. Duration bar + Crisp PixelFont `MERCHANT` tag
+      ctx.globalAlpha = 1;
+      const lifeRatio = Math.max(
+        0,
+        Math.min(1, 1 - (m.age || 0) / Math.max(1, m.maxAge || WANDERING_MERCHANT_MAX_AGE))
+      );
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(mx - 22, gY + 6, 44, 4);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(mx - 21, gY + 7, Math.max(2, Math.round(42 * lifeRatio)), 2);
+
+      const tagText = 'MERCHANT';
+      const tagY = by - 94;
+      const pillW = PixelFont.measureWidth(tagText, 1) + 12;
+      ctx.globalAlpha = 0.88;
+      ctx.fillStyle = '#050712';
+      ctx.fillRect(Math.round(mx - pillW * 0.5), tagY - 6, pillW, 13);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(Math.round(mx - pillW * 0.5), tagY - 6, pillW, 1);
+      ctx.fillRect(Math.round(mx - pillW * 0.5), tagY + 6, pillW, 1);
+      ctx.globalAlpha = 1;
+      this._drawOutlinedPixelCallout(ctx, tagText, mx, tagY, 1, '#fde047', '#ffffff');
+    }
+
+    ctx.restore();
+  }
+
+  _renderSanctuaryShieldAura(ctx, t) {
+    if (!ctx || typeof ctx.fillRect !== 'function') return;
+    const eventMods = this.events?.getEventModifiers?.() || null;
+    if (!eventMods || !(eventMods.damageReduction > 0)) return;
+    const player = this.game?.leftFighter;
+    if (!player || player.isDead) return;
+
+    const px = Math.round(player.x);
+    const py = Math.round((player.groundY || player.y || this.depthMidY) - 48);
+    const pulse = 0.62 + 0.32 * Math.sin(t * 7.2);
+    const hw = 42;
+    const hh = 52;
+    const arm = 12;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.24 * pulse;
+    ctx.fillStyle = '#34d399';
+    ctx.fillRect(px - hw, py - hh, hw * 2, 2);
+    ctx.fillRect(px - hw, py + hh - 2, hw * 2, 2);
+    ctx.fillRect(px - hw, py - hh, 2, hh * 2);
+    ctx.fillRect(px + hw - 2, py - hh, 2, hh * 2);
+
+    ctx.globalAlpha = 0.86 * pulse;
+    const drawCorner = (x, y, w, h) => {
+      ctx.fillStyle = '#34d399';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#6ee7b7';
+      ctx.fillRect(x + 1, y + 1, Math.max(1, w - 2), Math.max(1, h - 2));
+    };
+    drawCorner(px - hw, py - hh, arm, 3);
+    drawCorner(px - hw, py - hh, 3, arm);
+    drawCorner(px + hw - arm, py - hh, arm, 3);
+    drawCorner(px + hw - 3, py - hh, 3, arm);
+    drawCorner(px - hw, py + hh - 3, arm, 3);
+    drawCorner(px - hw, py + hh - arm, 3, arm);
+    drawCorner(px + hw - arm, py + hh - 3, arm, 3);
+    drawCorner(px + hw - 3, py + hh - arm, 3, arm);
     ctx.restore();
   }
 
@@ -7716,6 +8737,9 @@ export class EndlessManager {
       pendingOfflineLoot: this.pendingOfflineLoot || null,
       activeGoblinCount: this.treasureGoblins.length,
       activeChestCount: this.treasureChests.length,
+      events: this.events?.getEventsSnapshot?.(this.economy) || null,
+      activeShrineCount: this.worldShrines.length,
+      activeMerchantCount: this.wanderingMerchants.length,
       bossDirector: directorSnap,
       realmModifier: directorSnap?.modifier || null,
       bestStageTrophies: directorSnap?.trophies || null,
