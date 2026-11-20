@@ -143,6 +143,54 @@ const FORGE_DUST_SVG =
   '<rect x="3" y="10" width="8" height="1" fill="#d4af37"/>' +
   '</svg>';
 
+const BOUNTY_SVG =
+  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="1" y="1" width="12" height="2" fill="#d4af37"/>' +
+  '<rect x="2" y="1" width="10" height="1" fill="#fef08a"/>' +
+  '<rect x="2" y="3" width="10" height="8" fill="#e2c799"/>' +
+  '<rect x="3" y="3" width="8" height="8" fill="#f5e6c8"/>' +
+  '<rect x="11" y="3" width="1" height="8" fill="#b49263"/>' +
+  '<rect x="5" y="4" width="4" height="6" fill="#dc2626"/>' +
+  '<rect x="4" y="5" width="6" height="4" fill="#ef4444"/>' +
+  '<rect x="5" y="5" width="4" height="4" fill="#f8fafc"/>' +
+  '<rect x="6" y="6" width="2" height="2" fill="#dc2626"/>' +
+  '<rect x="6" y="6" width="1" height="1" fill="#fef08a"/>' +
+  '<rect x="1" y="11" width="12" height="2" fill="#b45309"/>' +
+  '<rect x="2" y="11" width="10" height="1" fill="#facc15"/>' +
+  '</svg>';
+
+const SHRINE_SVG =
+  '<svg class="endless-px-svg" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="6" y="0" width="2" height="2" fill="currentColor"/>' +
+  '<rect x="5" y="2" width="3" height="2" fill="currentColor"/>' +
+  '<rect x="3" y="4" width="6" height="2" fill="currentColor"/>' +
+  '<rect x="4" y="4" width="3" height="2" fill="#fef08a"/>' +
+  '<rect x="2" y="6" width="8" height="2" fill="currentColor"/>' +
+  '<rect x="4" y="6" width="4" height="2" fill="#ffffff"/>' +
+  '<rect x="4" y="8" width="4" height="2" fill="currentColor"/>' +
+  '<rect x="5" y="8" width="2" height="2" fill="#fef08a"/>' +
+  '<rect x="4" y="10" width="2" height="2" fill="currentColor"/>' +
+  '</svg>';
+
+const MERCHANT_SVG =
+  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="5" y="0" width="4" height="1" fill="#facc15"/>' +
+  '<rect x="6" y="1" width="2" height="1" fill="#d4af37"/>' +
+  '<rect x="3" y="2" width="8" height="2" fill="#334155"/>' +
+  '<rect x="4" y="2" width="6" height="1" fill="#d4af37"/>' +
+  '<rect x="3" y="4" width="1" height="7" fill="#475569"/>' +
+  '<rect x="10" y="4" width="1" height="7" fill="#475569"/>' +
+  '<rect x="4" y="4" width="6" height="7" fill="#f59e0b"/>' +
+  '<rect x="5" y="5" width="4" height="5" fill="#facc15"/>' +
+  '<rect x="6" y="5" width="2" height="4" fill="#fef08a"/>' +
+  '<rect x="6" y="6" width="2" height="2" fill="#ffffff"/>' +
+  '<rect x="1" y="5" width="1" height="1" fill="#c084fc"/>' +
+  '<rect x="12" y="6" width="1" height="1" fill="#fef08a"/>' +
+  '<rect x="2" y="11" width="10" height="2" fill="#b45309"/>' +
+  '<rect x="3" y="11" width="8" height="1" fill="#facc15"/>' +
+  '<rect x="4" y="13" width="6" height="1" fill="#334155"/>' +
+  '</svg>';
+
 const GEAR_SLOT_ORDER = Object.freeze(['weapon', 'armor', 'amulet', 'ring']);
 
 const GEAR_SLOT_DEFAULTS = Object.freeze({
@@ -286,6 +334,14 @@ function formatAwayTime(sec) {
   if (h > 0) return `${h}H ${m}M`;
   if (m > 0) return rem > 0 ? `${m}M ${rem}S` : `${m}M`;
   return `${rem}S`;
+}
+
+function formatGoldTag(formatted, rawGold) {
+  const base = formatted
+    ? String(formatted).trim()
+    : formatEndlessNumber(Math.max(0, Number(rawGold) || 0));
+  const upper = base.toUpperCase();
+  return upper.endsWith('G') ? upper : `${upper}G`;
 }
 
 function resolveArtifactIconSpec(art) {
@@ -1896,7 +1952,9 @@ const ENDLESS_SHOP_CSS = `
 .endless-comp-card.is-buy-pulse,
 .endless-artifact-row.is-buy-pulse,
 .endless-gear-slot-card.is-buy-pulse,
-.endless-gear-bag-row.is-buy-pulse {
+.endless-gear-bag-row.is-buy-pulse,
+.endless-bounty-pill.is-buy-pulse,
+.endless-merchant-card.is-buy-pulse {
   animation: endlessBuyPulse 0.44s ease-out;
 }
 
@@ -1906,7 +1964,8 @@ const ENDLESS_SHOP_CSS = `
 .endless-ascend-btn.is-buy-pulse,
 .endless-gear-hdr-btn.is-buy-pulse,
 .endless-gear-enh-btn.is-buy-pulse,
-.endless-gear-act-btn.is-buy-pulse {
+.endless-gear-act-btn.is-buy-pulse,
+.endless-merchant-buy-btn.is-buy-pulse {
   animation: endlessBuyBtnPulse 0.38s ease-out;
 }
 
@@ -4464,6 +4523,622 @@ html.is-mobile-landscape .endless-gear-act-btn {
     font-size: 0.30rem;
   }
 }
+
+/* =========================================================================
+   WAVE 8: UNIFIED EVENTS DOCK (BOUNTY TRACKER, SHRINE/ELIXIR BUFFS, MERCHANT)
+   ========================================================================= */
+.endless-events-dock {
+  position: absolute;
+  top: max(106px, calc(env(safe-area-inset-top) + 102px));
+  right: max(14px, env(safe-area-inset-right));
+  width: 232px;
+  max-width: calc(100vw - 28px);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  pointer-events: none;
+  transition: right 0.16s ease, top 0.16s ease;
+}
+
+.endless-events-dock.hidden {
+  display: none !important;
+}
+
+#endless-hud-root.is-drawer-open .endless-events-dock {
+  top: max(120px, calc(env(safe-area-inset-top) + 116px));
+  right: max(374px, calc(env(safe-area-inset-right) + 374px));
+}
+
+/* Widget A: Compact Bounty Tracker Pill */
+.endless-bounty-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 7px;
+  font-family: inherit;
+  text-align: left;
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(14, 18, 34, 0.94) 0%, rgba(7, 9, 18, 0.97) 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.72);
+  border-left: 3px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.86);
+  pointer-events: auto;
+  cursor: default;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
+}
+
+.endless-bounty-pill.hidden {
+  display: none !important;
+}
+
+.endless-bounty-pill.is-claimable {
+  cursor: pointer;
+  border-color: #fde047;
+  border-left-color: #fef08a;
+  background: linear-gradient(180deg, rgba(68, 48, 12, 0.96) 0%, rgba(24, 16, 6, 0.98) 100%);
+  animation: endlessBountyClaimPulse 1.2s ease-in-out infinite;
+}
+
+.endless-bounty-pill.is-claimable:hover {
+  border-color: #ffffff;
+  filter: brightness(1.08);
+}
+
+.endless-bounty-pill.is-claimable:active {
+  transform: translateY(1px);
+}
+
+@keyframes endlessBountyClaimPulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(254, 240, 138, 0.45),
+      0 0 10px rgba(250, 204, 21, 0.52),
+      0 4px 12px rgba(0, 0, 0, 0.88);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.62),
+      0 0 18px rgba(250, 204, 21, 0.92),
+      0 4px 14px rgba(0, 0, 0, 0.92);
+  }
+}
+
+.endless-bounty-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  min-width: 0;
+}
+
+.endless-bounty-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.endless-bounty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-bounty-label {
+  font-size: 0.36rem;
+  letter-spacing: 0.03em;
+  color: #f8fafc;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-bounty-cta {
+  font-size: 0.32rem;
+  letter-spacing: 0.03em;
+  padding: 2px 5px;
+  border-radius: 2px;
+  background: rgba(250, 204, 21, 0.14);
+  border: 1px solid rgba(250, 204, 21, 0.52);
+  color: #fde047;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-bounty-pill.is-claimable .endless-bounty-cta {
+  color: #090c14;
+  background: linear-gradient(180deg, #fef08a 0%, #f59e0b 100%);
+  border-color: #ffffff;
+  text-shadow: none;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.85);
+}
+
+.endless-bounty-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: #050712;
+  border: 1px solid rgba(212, 175, 55, 0.48);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.endless-bounty-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: #facc15;
+  transition: width 0.12s linear;
+}
+
+/* Widget B: Active Shrine / Elixir Buff Timer Strip */
+.endless-buff-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.endless-buff-strip.hidden {
+  display: none !important;
+}
+
+.endless-buff-pill {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  max-width: 100%;
+  padding: 3px 6px 6px;
+  background: linear-gradient(180deg, rgba(16, 20, 36, 0.94) 0%, rgba(8, 10, 19, 0.97) 100%);
+  border: 1.5px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 3px 10px rgba(0, 0, 0, 0.84);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.endless-buff-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-buff-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #facc15;
+}
+
+.endless-buff-text {
+  font-size: 0.31rem;
+  letter-spacing: 0.03em;
+  color: #fef9c3;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-buff-bar-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(5, 7, 18, 0.92);
+}
+
+.endless-buff-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: #facc15;
+  transition: width 0.1s linear;
+}
+
+/* Widget C: Wandering Merchant Pop-Offer Card */
+.endless-merchant-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 7px;
+  background: linear-gradient(180deg, rgba(24, 16, 44, 0.96) 0%, rgba(9, 10, 22, 0.98) 100%);
+  border: 1.5px solid #c084fc;
+  border-left: 3px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 213, 255, 0.24),
+    0 0 14px rgba(168, 85, 247, 0.36),
+    0 6px 16px rgba(0, 0, 0, 0.9);
+  pointer-events: auto;
+}
+
+.endless-merchant-card.hidden {
+  display: none !important;
+}
+
+.endless-merchant-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-merchant-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.endless-merchant-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-merchant-title {
+  font-size: 0.34rem;
+  letter-spacing: 0.03em;
+  color: #fde047;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-merchant-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.endless-merchant-timer {
+  font-size: 0.29rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(168, 85, 247, 0.24);
+  border: 1px solid rgba(192, 132, 252, 0.68);
+  color: #e9d5ff;
+  white-space: nowrap;
+}
+
+.endless-merchant-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: #fde047;
+  background: rgba(15, 19, 32, 0.95);
+  border: 1px solid rgba(212, 175, 55, 0.62);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.endless-merchant-close:hover {
+  background: rgba(127, 29, 29, 0.88);
+  border-color: #f87171;
+  color: #ffffff;
+}
+
+.endless-merchant-sub {
+  font-size: 0.29rem;
+  line-height: 1.25;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-merchant-track {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: #050712;
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.endless-merchant-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  background: linear-gradient(90deg, #a855f7 0%, #facc15 100%);
+  transition: width 0.1s linear;
+}
+
+.endless-merchant-buy-btn {
+  width: 100%;
+  padding: 5px 6px;
+  font-family: inherit;
+  font-size: 0.34rem;
+  letter-spacing: 0.04em;
+  color: #090c14;
+  background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
+  border: 1.5px solid #ffffff;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  text-shadow: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 10px rgba(250, 204, 21, 0.42);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: filter 0.12s ease, transform 0.08s ease;
+}
+
+.endless-merchant-buy-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.endless-merchant-buy-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-merchant-buy-btn:disabled {
+  color: #64748b;
+  background: linear-gradient(180deg, rgba(22, 28, 45, 0.92) 0%, rgba(12, 15, 26, 0.95) 100%);
+  border-color: #334155;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Wave 8 Responsive Ergonomics: Mobile Landscape (844x390) */
+@media (max-height: 500px) {
+  #endless-hud-root .endless-events-dock {
+    top: max(81px, calc(env(safe-area-inset-top) + 77px));
+    right: max(10px, env(safe-area-inset-right));
+    left: auto;
+    width: 184px;
+    gap: 3px;
+  }
+
+  #endless-hud-root.is-drawer-open .endless-events-dock {
+    display: none !important;
+  }
+
+  .endless-bounty-pill {
+    padding: 3px 5px;
+    gap: 3px;
+  }
+
+  .endless-bounty-label {
+    font-size: 0.30rem;
+  }
+
+  .endless-bounty-cta {
+    font-size: 0.27rem;
+    padding: 1px 4px;
+  }
+
+  .endless-bounty-track {
+    height: 3px;
+  }
+
+  .endless-buff-strip {
+    gap: 3px;
+  }
+
+  .endless-buff-pill {
+    padding: 2px 4px 5px;
+  }
+
+  .endless-buff-text {
+    font-size: 0.26rem;
+  }
+
+  .endless-merchant-card {
+    padding: 4px 5px;
+    gap: 3px;
+  }
+
+  .endless-merchant-title {
+    font-size: 0.29rem;
+  }
+
+  .endless-merchant-timer {
+    font-size: 0.25rem;
+    padding: 1px 3px;
+  }
+
+  .endless-merchant-close {
+    width: 16px;
+    height: 16px;
+  }
+
+  .endless-merchant-sub {
+    font-size: 0.25rem;
+  }
+
+  .endless-merchant-buy-btn {
+    padding: 3px 5px;
+    font-size: 0.29rem;
+  }
+}
+
+html.is-mobile-landscape #endless-hud-root .endless-events-dock {
+  top: max(81px, calc(env(safe-area-inset-top) + 77px));
+  right: max(10px, env(safe-area-inset-right));
+  left: auto;
+  width: 184px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape #endless-hud-root.is-drawer-open .endless-events-dock {
+  display: none !important;
+}
+
+html.is-mobile-landscape .endless-bounty-pill {
+  padding: 3px 5px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape .endless-bounty-label {
+  font-size: 0.30rem;
+}
+
+html.is-mobile-landscape .endless-bounty-cta {
+  font-size: 0.27rem;
+  padding: 1px 4px;
+}
+
+html.is-mobile-landscape .endless-bounty-track {
+  height: 3px;
+}
+
+html.is-mobile-landscape .endless-buff-strip {
+  gap: 3px;
+}
+
+html.is-mobile-landscape .endless-buff-pill {
+  padding: 2px 4px 5px;
+}
+
+html.is-mobile-landscape .endless-buff-text {
+  font-size: 0.26rem;
+}
+
+html.is-mobile-landscape .endless-merchant-card {
+  padding: 4px 5px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape .endless-merchant-title {
+  font-size: 0.29rem;
+}
+
+html.is-mobile-landscape .endless-merchant-timer {
+  font-size: 0.25rem;
+  padding: 1px 3px;
+}
+
+html.is-mobile-landscape .endless-merchant-close {
+  width: 16px;
+  height: 16px;
+}
+
+html.is-mobile-landscape .endless-merchant-sub {
+  font-size: 0.25rem;
+}
+
+html.is-mobile-landscape .endless-merchant-buy-btn {
+  padding: 3px 5px;
+  font-size: 0.29rem;
+}
+
+/* Wave 8 Responsive Ergonomics: Mobile Portrait (390x844) */
+@media (max-width: 560px) {
+  html:not(.is-mobile-landscape) #endless-hud-root .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-events-dock {
+    display: flex;
+    top: max(144px, calc(env(safe-area-inset-top) + 140px));
+    left: max(10px, env(safe-area-inset-left));
+    right: auto;
+    width: 214px;
+    max-width: calc(100vw - 156px);
+    gap: 4px;
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root .endless-events-dock.hidden,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-events-dock.hidden {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.is-drawer-open .endless-events-dock {
+    top: max(218px, calc(env(safe-area-inset-top) + 214px));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.has-active-synergies .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.has-active-synergies.is-drawer-open .endless-events-dock {
+    top: max(238px, calc(env(safe-area-inset-top) + 234px));
+  }
+
+  html:not(.is-mobile-landscape) .endless-bounty-pill {
+    padding: 4px 6px;
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-bounty-label {
+    font-size: 0.32rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-bounty-cta {
+    font-size: 0.29rem;
+    padding: 1px 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-buff-strip {
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-buff-pill {
+    padding: 2px 5px 5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-buff-text {
+    font-size: 0.28rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-merchant-card {
+    padding: 5px 6px;
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-merchant-title {
+    font-size: 0.31rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-merchant-timer {
+    font-size: 0.27rem;
+    padding: 1px 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-merchant-close {
+    width: 17px;
+    height: 17px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-merchant-sub {
+    font-size: 0.27rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-merchant-buy-btn {
+    padding: 4px 5px;
+    font-size: 0.31rem;
+  }
+}
 `;
 
 function setTextIfChanged(el, text) {
@@ -4678,6 +5353,7 @@ export class EndlessShopUI {
     this._gearSlotRefs = new Map();
     this._gearSetPillRefs = new Map();
     this._gearBagRowRefs = new Map();
+    this._buffPillRefs = new Map();
     this._tabBtnRefs = new Map();
     this._tabPanelRefs = new Map();
     this._bulkBtnRefs = new Map();
@@ -4697,6 +5373,9 @@ export class EndlessShopUI {
     this._lastGearSetSig = '';
     this._lastGearEquipSigs = new Map();
     this._lastResolvedAscension = null;
+    this._lastBountyCompleted = false;
+    this._lastMerchantUid = null;
+    this._lastMerchantOfferType = '';
     this._telemExpanded = false;
     this._lastSnapshot = null;
 
@@ -4921,6 +5600,7 @@ export class EndlessShopUI {
     this._gearSlotRefs.clear();
     this._gearSetPillRefs.clear();
     this._gearBagRowRefs.clear();
+    this._buffPillRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
@@ -4931,11 +5611,15 @@ export class EndlessShopUI {
     this._lastGearInvSig = '';
     this._lastGearSetSig = '';
     this._lastGearEquipSigs.clear();
+    this._lastBountyCompleted = false;
+    this._lastMerchantUid = null;
+    this._lastMerchantOfferType = '';
     this._modifierIconEntry = null;
     this._refs = {};
 
     this._buildTopStatusBar();
     this._buildActivePartyHud();
+    this._buildEventsDock();
     this._buildShopToggle();
     this._buildShopDrawer();
     this._buildFxLayer();
@@ -5181,6 +5865,152 @@ export class EndlessShopUI {
     this._refs.partyHud = partyHud;
     this._refs.partyStrip = strip;
     this._refs.synergyHud = synHud;
+  }
+
+  _buildEventsDock() {
+    const dock = document.createElement('div');
+    dock.className = 'endless-events-dock hidden';
+    dock.setAttribute('aria-label', 'Crusade Bounties, Shrine Buffs, and Merchant');
+
+    // Widget A: Compact Bounty Tracker Pill
+    const bountyPill = document.createElement('button');
+    bountyPill.type = 'button';
+    bountyPill.className = 'endless-bounty-pill hidden';
+    bountyPill.setAttribute('aria-label', 'Active Mini-Bounty');
+    bountyPill.setAttribute('aria-disabled', 'true');
+    stopEventLeak(bountyPill);
+
+    const bountyTop = document.createElement('div');
+    bountyTop.className = 'endless-bounty-top';
+
+    const bountyLead = document.createElement('div');
+    bountyLead.className = 'endless-bounty-lead';
+
+    const bountyIcon = document.createElement('span');
+    bountyIcon.className = 'endless-bounty-icon';
+    bountyIcon.innerHTML = BOUNTY_SVG;
+
+    const bountyLabel = document.createElement('span');
+    bountyLabel.className = 'endless-bounty-label';
+    bountyLabel.textContent = 'SLAY 0/15';
+
+    bountyLead.appendChild(bountyIcon);
+    bountyLead.appendChild(bountyLabel);
+
+    const bountyCta = document.createElement('span');
+    bountyCta.className = 'endless-bounty-cta';
+    bountyCta.textContent = '+0G';
+
+    bountyTop.appendChild(bountyLead);
+    bountyTop.appendChild(bountyCta);
+
+    const bountyTrack = document.createElement('div');
+    bountyTrack.className = 'endless-bounty-track';
+    const bountyFill = document.createElement('div');
+    bountyFill.className = 'endless-bounty-fill';
+    bountyTrack.appendChild(bountyFill);
+
+    bountyPill.appendChild(bountyTop);
+    bountyPill.appendChild(bountyTrack);
+
+    bountyPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleClaimActiveBounty();
+    });
+
+    // Widget B: Active Shrine / Elixir Buff Timer Strip
+    const buffStrip = document.createElement('div');
+    buffStrip.className = 'endless-buff-strip hidden';
+    buffStrip.setAttribute('aria-label', 'Active Shrine and Elixir Buffs');
+
+    // Widget C: Wandering Merchant Pop-Offer Strip
+    const merchantCard = document.createElement('div');
+    merchantCard.className = 'endless-merchant-card hidden';
+    merchantCard.setAttribute('aria-label', 'Wandering Arcane Merchant Offer');
+    stopEventLeak(merchantCard);
+
+    const merchantHead = document.createElement('div');
+    merchantHead.className = 'endless-merchant-head';
+
+    const merchantTitleWrap = document.createElement('div');
+    merchantTitleWrap.className = 'endless-merchant-title-wrap';
+
+    const merchantIcon = document.createElement('span');
+    merchantIcon.className = 'endless-merchant-icon';
+    merchantIcon.innerHTML = MERCHANT_SVG;
+
+    const merchantTitle = document.createElement('span');
+    merchantTitle.className = 'endless-merchant-title';
+    merchantTitle.textContent = 'ARCANE MERCHANT';
+
+    merchantTitleWrap.appendChild(merchantIcon);
+    merchantTitleWrap.appendChild(merchantTitle);
+
+    const merchantHeadRight = document.createElement('div');
+    merchantHeadRight.className = 'endless-merchant-head-right';
+
+    const merchantTimer = document.createElement('span');
+    merchantTimer.className = 'endless-merchant-timer';
+    merchantTimer.textContent = '20S';
+
+    const merchantClose = document.createElement('button');
+    merchantClose.type = 'button';
+    merchantClose.className = 'endless-merchant-close';
+    merchantClose.setAttribute('aria-label', 'Dismiss merchant offer');
+    merchantClose.innerHTML = CLOSE_SVG;
+    merchantClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleDismissMerchantOffer();
+    });
+
+    merchantHeadRight.appendChild(merchantTimer);
+    merchantHeadRight.appendChild(merchantClose);
+
+    merchantHead.appendChild(merchantTitleWrap);
+    merchantHead.appendChild(merchantHeadRight);
+
+    const merchantSub = document.createElement('div');
+    merchantSub.className = 'endless-merchant-sub';
+    merchantSub.textContent = 'LIMITED OFFER';
+
+    const merchantTrack = document.createElement('div');
+    merchantTrack.className = 'endless-merchant-track';
+    const merchantFill = document.createElement('div');
+    merchantFill.className = 'endless-merchant-fill';
+    merchantTrack.appendChild(merchantFill);
+
+    const merchantBuyBtn = document.createElement('button');
+    merchantBuyBtn.type = 'button';
+    merchantBuyBtn.className = 'endless-merchant-buy-btn';
+    merchantBuyBtn.textContent = 'BUY 0G';
+    merchantBuyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleBuyMerchantOffer();
+    });
+
+    merchantCard.appendChild(merchantHead);
+    merchantCard.appendChild(merchantSub);
+    merchantCard.appendChild(merchantTrack);
+    merchantCard.appendChild(merchantBuyBtn);
+
+    dock.appendChild(bountyPill);
+    dock.appendChild(buffStrip);
+    dock.appendChild(merchantCard);
+    this.root.appendChild(dock);
+
+    this._refs.eventsDock = dock;
+    this._refs.bountyPill = bountyPill;
+    this._refs.bountyLabel = bountyLabel;
+    this._refs.bountyCta = bountyCta;
+    this._refs.bountyFill = bountyFill;
+    this._refs.buffStrip = buffStrip;
+    this._refs.merchantCard = merchantCard;
+    this._refs.merchantTitle = merchantTitle;
+    this._refs.merchantTimer = merchantTimer;
+    this._refs.merchantClose = merchantClose;
+    this._refs.merchantSub = merchantSub;
+    this._refs.merchantFill = merchantFill;
+    this._refs.merchantBuyBtn = merchantBuyBtn;
   }
 
   _buildFxLayer() {
@@ -7337,6 +8167,49 @@ export class EndlessShopUI {
     this._resyncNow();
   }
 
+  _handleClaimActiveBounty() {
+    if (!this._lastBountyCompleted) return;
+    if (typeof this.manager?.claimActiveBounty !== 'function') return;
+    const res = this.manager.claimActiveBounty();
+    if (res === false || (res && typeof res === 'object' && res.ok === false)) {
+      return;
+    }
+    this._playSfx('playUiConfirm');
+    this._triggerBuyFeedback(
+      this._refs.bountyPill,
+      this._refs.bountyPill,
+      '+REWARD!',
+      false
+    );
+    this._resyncNow();
+  }
+
+  _handleBuyMerchantOffer() {
+    if (this._refs.merchantBuyBtn?.disabled) return;
+    if (typeof this.manager?.buyMerchantOffer !== 'function') return;
+    const res = this.manager.buyMerchantOffer();
+    if (res === false || (res && typeof res === 'object' && res.ok === false)) {
+      return;
+    }
+    this._playSfx('playUiConfirm');
+    const offerType = res?.offerType || this._lastMerchantOfferType || '';
+    const isElixir = offerType === 'dps_elixir';
+    const badgeText = isElixir ? '3X DPS!' : '+GEAR CHEST!';
+    this._triggerBuyFeedback(
+      this._refs.merchantCard,
+      this._refs.merchantBuyBtn,
+      badgeText,
+      isElixir
+    );
+    this._resyncNow();
+  }
+
+  _handleDismissMerchantOffer() {
+    this._playSfx('playUiBack');
+    this.manager?.dismissMerchantOffer?.();
+    this._resyncNow();
+  }
+
   _resyncNow() {
     const snap = typeof this.manager?.getUiSnapshot === 'function'
       ? this.manager.getUiSnapshot()
@@ -7372,6 +8245,9 @@ export class EndlessShopUI {
 
   setDrawerOpen(open) {
     this.drawerOpen = Boolean(open);
+    if (this.root) {
+      this.root.classList.toggle('is-drawer-open', Boolean(this.drawerOpen));
+    }
     if (this._refs.shopShell) {
       this._refs.shopShell.classList.toggle('hidden', !this.drawerOpen);
     }
@@ -7677,6 +8553,97 @@ export class EndlessShopUI {
         : (gear && (gear.hasUpgradeAvailable || gear.canEnhanceEquipped))
     );
 
+    const rawEvents = (snap && typeof snap.events === 'object' && snap.events)
+      ? snap.events
+      : (typeof mgr?.events?.getEventsSnapshot === 'function'
+        ? mgr.events.getEventsSnapshot(econ)
+        : null);
+
+    let events = null;
+    if (rawEvents && typeof rawEvents === 'object') {
+      let bounty = null;
+      if (rawEvents.bounty && typeof rawEvents.bounty === 'object') {
+        const b = rawEvents.bounty;
+        const target = Math.max(1, Math.floor(Number(b.target) || 1));
+        const progress = Math.max(0, Math.floor(Number(b.progress) || 0));
+        const ratio = Number.isFinite(Number(b.ratio))
+          ? Math.max(0, Math.min(1, Number(b.ratio)))
+          : Math.max(0, Math.min(1, progress / target));
+        const rw = (b.rewards && typeof b.rewards === 'object') ? b.rewards : {};
+        const rwGold = Math.max(0, Number(rw.gold) || 0);
+        bounty = {
+          uid: String(b.uid || b.templateId || 'bounty'),
+          templateId: String(b.templateId || ''),
+          title: String(b.title || 'CRUSADE BOUNTY').toUpperCase(),
+          shortLabel: String(b.shortLabel || b.title || 'BOUNTY').toUpperCase(),
+          accentHex: String(b.accentHex || '#facc15'),
+          progress,
+          target,
+          ratio,
+          completed: Boolean(b.completed || progress >= target),
+          rewards: {
+            gold: rwGold,
+            formattedGold: String(rw.formattedGold || formatEndlessNumber(rwGold)),
+            astralShards: Math.max(0, Math.floor(Number(rw.astralShards) || 0)),
+            forgeDust: Math.max(0, Math.floor(Number(rw.forgeDust) || 0))
+          }
+        };
+      }
+
+      const activeBuffs = Array.isArray(rawEvents.activeBuffs)
+        ? rawEvents.activeBuffs
+            .filter((bf) => bf && typeof bf === 'object')
+            .map((bf, idx) => {
+              const durationSec = Math.max(0.1, Number(bf.durationSec) || 20);
+              const remainingSec = Math.max(0, Number(bf.remainingSec) || 0);
+              const ratio = Number.isFinite(Number(bf.ratio))
+                ? Math.max(0, Math.min(1, Number(bf.ratio)))
+                : Math.max(0, Math.min(1, remainingSec / durationSec));
+              return {
+                id: String(bf.id || `${bf.source || 'buff'}_${idx}`),
+                source: String(bf.source || 'shrine'),
+                name: String(bf.name || bf.shortLabel || 'BLESSING').toUpperCase(),
+                shortLabel: String(bf.shortLabel || bf.name || 'BUFF').toUpperCase(),
+                accentHex: String(bf.accentHex || '#facc15'),
+                remainingSec,
+                durationSec,
+                ratio
+              };
+            })
+        : [];
+
+      let merchantOffer = null;
+      if (rawEvents.merchantOffer && typeof rawEvents.merchantOffer === 'object') {
+        const m = rawEvents.merchantOffer;
+        const costGold = Math.max(0, Number(m.costGold) || 0);
+        const durationSec = Math.max(0.1, Number(m.durationSec) || 25);
+        const remainingSec = Math.max(0, Number(m.remainingSec) || 0);
+        const ratio = Number.isFinite(Number(m.ratio))
+          ? Math.max(0, Math.min(1, Number(m.ratio)))
+          : Math.max(0, Math.min(1, remainingSec / durationSec));
+        merchantOffer = {
+          uid: String(m.uid || m.offerType || 'merchant'),
+          offerType: String(m.offerType || ''),
+          title: String(m.title || 'ARCANE OFFER').toUpperCase(),
+          subtitle: String(m.subtitle || '').toUpperCase(),
+          accentHex: String(m.accentHex || '#c084fc'),
+          costGold,
+          formattedCost: String(m.formattedCost || formatEndlessNumber(costGold)),
+          canAfford: m.canAfford !== undefined ? Boolean(m.canAfford) : gold >= costGold,
+          remainingSec,
+          durationSec,
+          ratio
+        };
+      }
+
+      events = {
+        bounty,
+        completedBounties: Math.max(0, Math.floor(Number(rawEvents.completedBounties) || 0)),
+        activeBuffs,
+        merchantOffer
+      };
+    }
+
     return {
       stage,
       bestStage,
@@ -7719,7 +8686,8 @@ export class EndlessShopUI {
       gear,
       forgeDust,
       formattedForgeDust,
-      hasGearAction
+      hasGearAction,
+      events
     };
   }
 
@@ -7774,7 +8742,12 @@ export class EndlessShopUI {
 
     const units = state.activeCompanionUnits || [];
     const hasUnits = units.length > 0;
+    const synergies = state.activeSynergies || [];
     partyHud.classList.toggle('hidden', !hasUnits);
+    if (this.root) {
+      this.root.classList.toggle('has-active-party', hasUnits);
+      this.root.classList.toggle('has-active-synergies', hasUnits && synergies.length > 0);
+    }
     if (!hasUnits) return;
 
     for (let i = 0; i < this._partySlotRefs.length; i++) {
@@ -7816,7 +8789,6 @@ export class EndlessShopUI {
     // Active Synergy Badges right underneath/beside the party strip
     const synHud = this._refs.synergyHud;
     if (!synHud) return;
-    const synergies = state.activeSynergies || [];
     synHud.classList.toggle('hidden', synergies.length === 0);
     const sig = synergies.map((s) => `${s.id}|${s.shortLabel}|${s.name}|${s.desc}|${s.color}`).join('||');
     if (sig === this._lastHudSynergySig) return;
@@ -7863,6 +8835,7 @@ export class EndlessShopUI {
       this._lastSnapshot = snapshot;
     }
     if (!this.mounted || !this._hasDom() || !this.root) return;
+    this.root.classList.toggle('is-drawer-open', Boolean(this.drawerOpen));
 
     const state = this._resolveState(snapshot ?? this._lastSnapshot);
 
@@ -7960,6 +8933,9 @@ export class EndlessShopUI {
     // 2B. Live Active Companion Mini-HUD & Synergy Badges (always synced, even when drawer closed)
     this._syncActivePartyHud(state);
 
+    // 2B2. Wave 8 Unified Events Dock (Bounty Tracker, Active Buffs, Wandering Merchant)
+    this._syncEventsDock(state);
+
     // 2C. Welcome Back Offline Loot Modal (always synced, even when drawer closed)
     this._syncOfflineLootModal(state);
 
@@ -8037,6 +9013,190 @@ export class EndlessShopUI {
       if (!t.builtIn && typeof t.syncContent === 'function' && (this.activeTab === t.id || forceRebuild)) {
         const panel = this._tabPanelRefs.get(t.id);
         if (panel) t.syncContent(panel, state, this);
+      }
+    }
+  }
+
+  _syncEventsDock(state) {
+    const dock = this._refs.eventsDock;
+    if (!dock) return;
+
+    const events = state?.events || null;
+    const bounty = events?.bounty || null;
+    const activeBuffs = Array.isArray(events?.activeBuffs) ? events.activeBuffs : [];
+    const merchantOffer = events?.merchantOffer || null;
+
+    const hasAny = Boolean(bounty || activeBuffs.length > 0 || merchantOffer);
+    dock.classList.toggle('hidden', !hasAny);
+
+    // Widget A: Compact Bounty Tracker Pill
+    const bountyPill = this._refs.bountyPill;
+    if (bountyPill) {
+      const showBounty = Boolean(bounty);
+      bountyPill.classList.toggle('hidden', !showBounty);
+      if (showBounty) {
+        const shownProg = Math.min(bounty.progress, bounty.target);
+        const completed = Boolean(bounty.completed);
+        this._lastBountyCompleted = completed;
+        bountyPill.classList.toggle('is-claimable', completed);
+        bountyPill.setAttribute('aria-disabled', completed ? 'false' : 'true');
+        bountyPill.style.borderLeftColor = completed
+          ? '#fef08a'
+          : (bounty.accentHex || '#facc15');
+
+        setTextIfChanged(this._refs.bountyLabel, `${bounty.shortLabel} ${shownProg}/${bounty.target}`);
+
+        if (completed) {
+          setTextIfChanged(this._refs.bountyCta, 'CLAIM!');
+        } else {
+          const rw = bounty.rewards || {};
+          let hintText = '+0G';
+          if (rw.gold > 0 || (rw.formattedGold && rw.formattedGold !== '0')) {
+            hintText = `+${formatGoldTag(rw.formattedGold, rw.gold)}`;
+          } else if (rw.forgeDust > 0) {
+            hintText = `+${rw.forgeDust}D`;
+          } else if (rw.astralShards > 0) {
+            hintText = `+${rw.astralShards}S`;
+          }
+          setTextIfChanged(this._refs.bountyCta, hintText);
+        }
+
+        if (this._refs.bountyFill) {
+          const pct = Math.max(0, Math.min(100, (Number(bounty.ratio) || 0) * 100));
+          this._refs.bountyFill.style.width = `${pct.toFixed(1)}%`;
+          this._refs.bountyFill.style.backgroundColor = completed
+            ? '#facc15'
+            : (bounty.accentHex || '#facc15');
+        }
+
+        const rw = bounty.rewards || {};
+        const rwParts = [];
+        if (rw.gold > 0) rwParts.push(`+${formatGoldTag(rw.formattedGold, rw.gold)}`);
+        if (rw.astralShards > 0) rwParts.push(`+${rw.astralShards} SHARDS`);
+        if (rw.forgeDust > 0) rwParts.push(`+${rw.forgeDust} DUST`);
+        const rewardSummary = rwParts.length > 0 ? ` | REWARD: ${rwParts.join(' ')}` : '';
+        const tip = `${bounty.title} (${shownProg}/${bounty.target})${rewardSummary}${completed ? ' | CLICK TO CLAIM!' : ''}`;
+        if (bountyPill.title !== tip) {
+          bountyPill.title = tip;
+        }
+      } else {
+        this._lastBountyCompleted = false;
+        bountyPill.classList.remove('is-claimable');
+        bountyPill.setAttribute('aria-disabled', 'true');
+      }
+    }
+
+    // Widget B: Active Shrine / Elixir Buff Timer Strip (keyed in-place DOM updates)
+    const buffStrip = this._refs.buffStrip;
+    if (buffStrip) {
+      const hasBuffs = activeBuffs.length > 0;
+      buffStrip.classList.toggle('hidden', !hasBuffs);
+
+      const seenKeys = new Set();
+      for (let i = 0; i < activeBuffs.length; i++) {
+        const bf = activeBuffs[i];
+        const key = String(bf.id || `${bf.source || 'buff'}_${i}`);
+        seenKeys.add(key);
+
+        let ref = this._buffPillRefs.get(key);
+        if (!ref) {
+          const pill = document.createElement('div');
+          pill.className = 'endless-buff-pill';
+          pill.dataset.buffId = key;
+          stopEventLeak(pill);
+
+          const row = document.createElement('div');
+          row.className = 'endless-buff-row';
+
+          const iconEl = document.createElement('span');
+          iconEl.className = 'endless-buff-icon';
+          iconEl.innerHTML = SHRINE_SVG;
+
+          const textEl = document.createElement('span');
+          textEl.className = 'endless-buff-text';
+
+          row.appendChild(iconEl);
+          row.appendChild(textEl);
+
+          const track = document.createElement('div');
+          track.className = 'endless-buff-bar-track';
+          const fillEl = document.createElement('div');
+          fillEl.className = 'endless-buff-bar-fill';
+          track.appendChild(fillEl);
+
+          pill.appendChild(row);
+          pill.appendChild(track);
+          buffStrip.appendChild(pill);
+
+          ref = { pill, iconEl, textEl, fillEl, lastAccent: '' };
+          this._buffPillRefs.set(key, ref);
+        }
+
+        const accent = bf.accentHex || '#facc15';
+        if (ref.lastAccent !== accent) {
+          ref.pill.style.borderColor = accent;
+          ref.iconEl.style.color = accent;
+          ref.fillEl.style.backgroundColor = accent;
+          ref.lastAccent = accent;
+        }
+
+        const secLeft = Math.max(0, Math.ceil(Number(bf.remainingSec) || 0));
+        setTextIfChanged(ref.textEl, `${bf.shortLabel} ${secLeft}S`);
+        const pct = Math.max(0, Math.min(100, (Number(bf.ratio) || 0) * 100));
+        ref.fillEl.style.width = `${pct.toFixed(1)}%`;
+
+        const tip = `${bf.name} (${secLeft}S LEFT)`;
+        if (ref.pill.title !== tip) {
+          ref.pill.title = tip;
+        }
+
+        if (
+          buffStrip.children &&
+          typeof buffStrip.insertBefore === 'function' &&
+          buffStrip.children[i] !== ref.pill
+        ) {
+          buffStrip.insertBefore(ref.pill, buffStrip.children[i] || null);
+        }
+      }
+
+      for (const [key, ref] of this._buffPillRefs.entries()) {
+        if (!seenKeys.has(key)) {
+          if (ref.pill && ref.pill.parentNode === buffStrip) {
+            buffStrip.removeChild(ref.pill);
+          }
+          this._buffPillRefs.delete(key);
+        }
+      }
+    }
+
+    // Widget C: Wandering Merchant Pop-Offer Card
+    const merchantCard = this._refs.merchantCard;
+    if (merchantCard) {
+      const showOffer = Boolean(merchantOffer);
+      merchantCard.classList.toggle('hidden', !showOffer);
+      if (showOffer) {
+        const accent = merchantOffer.accentHex || '#c084fc';
+        this._lastMerchantUid = merchantOffer.uid;
+        this._lastMerchantOfferType = merchantOffer.offerType;
+        merchantCard.style.borderLeftColor = accent;
+        setTextIfChanged(this._refs.merchantTitle, merchantOffer.title);
+        const secLeft = Math.max(0, Math.ceil(Number(merchantOffer.remainingSec) || 0));
+        setTextIfChanged(this._refs.merchantTimer, `${secLeft}S`);
+        setTextIfChanged(this._refs.merchantSub, merchantOffer.subtitle || 'ARCANE LIMITED OFFER');
+
+        if (this._refs.merchantFill) {
+          const pct = Math.max(0, Math.min(100, (Number(merchantOffer.ratio) || 0) * 100));
+          this._refs.merchantFill.style.width = `${pct.toFixed(1)}%`;
+        }
+        if (this._refs.merchantBuyBtn) {
+          const costTag = formatGoldTag(merchantOffer.formattedCost, merchantOffer.costGold);
+          setTextIfChanged(this._refs.merchantBuyBtn, `BUY ${costTag}`);
+          this._refs.merchantBuyBtn.disabled = !merchantOffer.canAfford;
+          this._refs.merchantBuyBtn.classList.toggle('is-affordable', Boolean(merchantOffer.canAfford));
+        }
+      } else {
+        this._lastMerchantUid = null;
+        this._lastMerchantOfferType = '';
       }
     }
   }
@@ -8640,6 +9800,7 @@ export class EndlessShopUI {
     if (this.root) {
       this.root.textContent = '';
       this.root.classList.add('hidden');
+      this.root.classList.remove('is-drawer-open', 'has-active-party', 'has-active-synergies');
       if (this._createdRoot && this.root.parentNode) {
         this.root.parentNode.removeChild(this.root);
       }
@@ -8654,6 +9815,7 @@ export class EndlessShopUI {
     this._gearSlotRefs.clear();
     this._gearSetPillRefs.clear();
     this._gearBagRowRefs.clear();
+    this._buffPillRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
@@ -8664,6 +9826,9 @@ export class EndlessShopUI {
     this._lastGearSetSig = '';
     this._lastGearEquipSigs.clear();
     this._lastResolvedAscension = null;
+    this._lastBountyCompleted = false;
+    this._lastMerchantUid = null;
+    this._lastMerchantOfferType = '';
     this._refs = {};
   }
 
