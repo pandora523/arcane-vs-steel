@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps173';
-import { PixelForge } from './PixelForge.js?v=30fps173';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps173';
+import { PixelFont } from './PixelFont.js?v=30fps174';
+import { PixelForge } from './PixelForge.js?v=30fps174';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps174';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -640,12 +640,42 @@ export class VFXManager {
 
   spawnDamageText(x, y, amount, isCrit = false, label = '', customColor = '') {
     if (this.texts.length >= 48) this.texts.shift();
+    const isCallout = Boolean(label);
+    const baseX = x + (Math.random() - 0.5) * (isCallout ? 14 : 26);
+    let spawnY = y - 24;
+    if (isCallout) {
+      // Vertically stagger simultaneous non-damage callouts near the same X/Y within 0.4s so text never overlaps
+      const laneOffsets = [0, -24, -48, -72, 24, -96];
+      const baseY = spawnY;
+      for (let li = 0; li < laneOffsets.length; li++) {
+        const candY = baseY + laneOffsets[li];
+        let collides = false;
+        for (let ti = 0; ti < this.texts.length; ti++) {
+          const existing = this.texts[ti];
+          if (
+            existing &&
+            existing.isCallout &&
+            existing.life < 0.4 &&
+            Math.abs(existing.x - baseX) <= 140 &&
+            Math.abs(existing.y - candY) < 22
+          ) {
+            collides = true;
+            break;
+          }
+        }
+        if (!collides) {
+          spawnY = candY;
+          break;
+        }
+      }
+    }
     this.texts.push({
-      x: x + (Math.random() - 0.5) * 26,
-      y: y - 24,
+      x: baseX,
+      y: spawnY,
       vy: isCrit ? -105 : -70,
       text: label || `${Math.round(amount)}${isCrit ? '!' : ''}`,
       isCrit,
+      isCallout,
       color: customColor || (label ? '#38bdf8' : isCrit ? '#facc15' : '#f8fafc'),
       life: 0,
       maxLife: isCrit ? 1.0 : 0.8

@@ -1,0 +1,372 @@
+{
+  "schemaVersion": "1.0.0",
+  "packId": "boss_rush_gauntlet",
+  "title": "ABYSSAL BOSS RUSH",
+  "subtitle": "Two-realm high-intensity trial: shatter twin Realm Wardens, then confront Behemoth Malphas Overlord",
+  "author": "Arcane vs Steel Campaign Forge",
+  "version": "1.0.0",
+  "zoneCount": 2,
+  "worldWidth": 4800,
+  "walkableCauseway": {
+    "zoneWidth": 2400,
+    "roadTopY": 436,
+    "minY": 442,
+    "midY": 561,
+    "maxY": 680,
+    "roadBotY": 686
+  },
+  "customPanoramas": {
+    "vistaPano": null,
+    "archPano": null,
+    "floorPano": null
+  },
+  "zones": [
+    {
+      "index": 0,
+      "id": "twin_warden_trial",
+      "stageId": "cathedral",
+      "biome": "cathedral",
+      "title": "ZONE I - TWIN WARDEN TRIAL",
+      "bloomPalette": "gold",
+      "minX": 0,
+      "maxX": 2400,
+      "triggerX": 0,
+      "midTriggerX": 1340,
+      "sub1LockMinX": 80,
+      "sub1LockMaxX": 1220,
+      "lockMinX": 1200,
+      "lockMaxX": 2360,
+      "isBossZone": false,
+      "customPanoramas": null,
+      "emissiveAnchors": [
+        {
+          "id": "br_z0_em_0",
+          "mode": "brazier",
+          "x": 380,
+          "artY": 214,
+          "paletteKey": "gold",
+          "tierSize": 3,
+          "vfxRow": 0,
+          "worldW": 162,
+          "worldH": 172
+        },
+        {
+          "id": "br_z0_em_1",
+          "mode": "prism",
+          "x": 1180,
+          "artY": 124,
+          "paletteKey": "cyan",
+          "tierSize": 2,
+          "vfxRow": 11,
+          "worldW": 76,
+          "worldH": 76
+        },
+        {
+          "id": "br_z0_em_2",
+          "mode": "brazier",
+          "x": 1920,
+          "artY": 202,
+          "paletteKey": "ember",
+          "tierSize": 3,
+          "vfxRow": 6,
+          "worldW": 162,
+          "worldH": 172
+        }
+      ],
+      "subWave0": [
+        {
+          "id": "br_z0_w0_0",
+          "type": "templar",
+          "engineKind": "templar",
+          "zone": 0,
+          "subWave": 0,
+          "x": 760,
+          "groundY": 494,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1120
+        },
+        {
+          "id": "br_z0_w0_1",
+          "type": "astrologer",
+          "engineKind": "astrologer",
+          "zone": 0,
+          "subWave": 0,
+          "x": 1020,
+          "groundY": 562,
+          "isElite": true,
+          "isMiniBoss": true,
+          "wardenName": "HIGH ASTROLOGER VEYR",
+          "wardenTitle": "TRIAL WARDEN",
+          "maxHp": 2550
+        },
+        {
+          "id": "br_z0_w0_2",
+          "type": "templar",
+          "engineKind": "templar",
+          "zone": 0,
+          "subWave": 0,
+          "x": 880,
+          "groundY": 632,
+          "isElite": false,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 780
+        }
+      ],
+      "subWave1": [
+        {
+          "id": "br_z0_w1_0",
+          "type": "treant",
+          "engineKind": "treant",
+          "zone": 0,
+          "subWave": 1,
+          "x": 1820,
+          "groundY": 496,
+          "isElite": true,
+          "isMiniBoss": true,
+          "wardenName": "ELDER BRIAR-SOVEREIGN",
+          "wardenTitle": "TWIN TRIAL WARDEN",
+          "maxHp": 2900
+        },
+        {
+          "id": "br_z0_w1_1",
+          "type": "lich",
+          "engineKind": "cultist",
+          "zone": 0,
+          "subWave": 1,
+          "x": 2080,
+          "groundY": 622,
+          "isElite": true,
+          "isMiniBoss": true,
+          "wardenName": "ARCH-LICH MORVATH",
+          "wardenTitle": "TWIN TRIAL WARDEN",
+          "maxHp": 2700
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "id": "overlord_throne",
+      "stageId": "clocktower",
+      "biome": "clocktower",
+      "title": "ZONE II - OVERLORD THRONE",
+      "bloomPalette": "ember",
+      "minX": 2400,
+      "maxX": 4800,
+      "triggerX": 2540,
+      "midTriggerX": 3720,
+      "sub1LockMinX": 2420,
+      "sub1LockMaxX": 3580,
+      "lockMinX": 3600,
+      "lockMaxX": 4720,
+      "isBossZone": true,
+      "customPanoramas": null,
+      "emissiveAnchors": [
+        {
+          "id": "br_z1_em_0",
+          "mode": "brazier",
+          "x": 2760,
+          "artY": 202,
+          "paletteKey": "ember",
+          "tierSize": 3,
+          "vfxRow": 6,
+          "worldW": 162,
+          "worldH": 172
+        },
+        {
+          "id": "br_z1_em_1",
+          "mode": "prism",
+          "x": 3540,
+          "artY": 128,
+          "paletteKey": "gold",
+          "tierSize": 3,
+          "vfxRow": 11,
+          "worldW": 76,
+          "worldH": 76
+        },
+        {
+          "id": "br_z1_em_2",
+          "mode": "brazier",
+          "x": 4220,
+          "artY": 202,
+          "paletteKey": "ember",
+          "tierSize": 3,
+          "vfxRow": 6,
+          "worldW": 162,
+          "worldH": 172
+        }
+      ],
+      "subWave0": [
+        {
+          "id": "br_z1_w0_0",
+          "type": "hellhound",
+          "engineKind": "brute",
+          "zone": 1,
+          "subWave": 0,
+          "x": 3080,
+          "groundY": 560,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 2120
+        },
+        {
+          "id": "br_z1_w0_1",
+          "type": "imp",
+          "engineKind": "fiend",
+          "zone": 1,
+          "subWave": 0,
+          "x": 3280,
+          "groundY": 484,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1240
+        },
+        {
+          "id": "br_z1_w0_2",
+          "type": "imp",
+          "engineKind": "fiend",
+          "zone": 1,
+          "subWave": 0,
+          "x": 3390,
+          "groundY": 636,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1240
+        }
+      ],
+      "subWave1": [
+        {
+          "id": "br_z1_w1_0",
+          "type": "hellhound",
+          "engineKind": "brute",
+          "zone": 1,
+          "subWave": 1,
+          "x": 4020,
+          "groundY": 562,
+          "isElite": true,
+          "isMiniBoss": true,
+          "wardenName": "IRON-MAW EXECUTIONER",
+          "wardenTitle": "THRONE VANGUARD WARDEN",
+          "maxHp": 3150
+        },
+        {
+          "id": "br_z1_w1_1",
+          "type": "imp",
+          "engineKind": "fiend",
+          "zone": 1,
+          "subWave": 1,
+          "x": 3860,
+          "groundY": 486,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1240
+        }
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "br_prop_0",
+      "kind": "eclipse_brazier",
+      "zone": 0,
+      "x": 420,
+      "groundY": 452,
+      "dropType": null,
+      "hazardType": "explosive_censer",
+      "ultAmt": 22,
+      "relicAmt": 16
+    },
+    {
+      "id": "br_prop_1",
+      "kind": "eclipse_astrolabe",
+      "zone": 0,
+      "x": 1060,
+      "groundY": 454,
+      "dropType": "relic",
+      "ultAmt": 22,
+      "relicAmt": 22
+    },
+    {
+      "id": "br_prop_2",
+      "kind": "eclipse_reliquary",
+      "zone": 0,
+      "x": 1660,
+      "groundY": 450,
+      "dropType": "ember",
+      "ultAmt": 26,
+      "relicAmt": 16
+    },
+    {
+      "id": "br_prop_3",
+      "kind": "eclipse_brazier",
+      "zone": 0,
+      "x": 2120,
+      "groundY": 452,
+      "dropType": "hp",
+      "ultAmt": 20,
+      "relicAmt": 16
+    },
+    {
+      "id": "br_prop_4",
+      "kind": "blackpit_brazier",
+      "zone": 1,
+      "x": 2740,
+      "groundY": 452,
+      "dropType": null,
+      "hazardType": "explosive_censer",
+      "ultAmt": 22,
+      "relicAmt": 16
+    },
+    {
+      "id": "br_prop_5",
+      "kind": "hellfire_pylon",
+      "zone": 1,
+      "x": 3340,
+      "groundY": 454,
+      "dropType": "relic",
+      "ultAmt": 22,
+      "relicAmt": 24
+    },
+    {
+      "id": "br_prop_6",
+      "kind": "soul_brazier",
+      "zone": 1,
+      "x": 3740,
+      "groundY": 452,
+      "dropType": null,
+      "hazardType": "cursed_pylon",
+      "ultAmt": 24,
+      "relicAmt": 16
+    },
+    {
+      "id": "br_prop_7",
+      "kind": "blackpit_brazier",
+      "zone": 1,
+      "x": 4080,
+      "groundY": 452,
+      "dropType": "hp",
+      "ultAmt": 20,
+      "relicAmt": 16
+    }
+  ],
+  "finalBoss": {
+    "enabled": true,
+    "kind": "archfiend",
+    "name": "BEHEMOTH MALPHAS OVERLORD",
+    "maxHp": 11200,
+    "anchorX": 4535,
+    "groundY": 561
+  }
+}

@@ -1,0 +1,449 @@
+{
+  "schemaVersion": "1.0.0",
+  "packId": "starwood_ossuary_siege",
+  "title": "STARWOOD & OSSUARY SIEGE",
+  "subtitle": "Cut through the Cursed Starwood dryad-treant ambush and break the Bone-Gate siege of Arch-Lich Malphas",
+  "author": "Arcane vs Steel Campaign Forge",
+  "version": "1.0.0",
+  "zoneCount": 2,
+  "worldWidth": 4800,
+  "walkableCauseway": {
+    "zoneWidth": 2400,
+    "roadTopY": 436,
+    "minY": 442,
+    "midY": 561,
+    "maxY": 680,
+    "roadBotY": 686
+  },
+  "customPanoramas": {
+    "vistaPano": null,
+    "archPano": null,
+    "floorPano": null
+  },
+  "zones": [
+    {
+      "index": 0,
+      "id": "cursed_starwood_ambush",
+      "stageId": "sylvan",
+      "biome": "sylvan",
+      "title": "ZONE I - CURSED STARWOOD AMBUSH",
+      "bloomPalette": "emerald",
+      "minX": 0,
+      "maxX": 2400,
+      "triggerX": 0,
+      "midTriggerX": 1340,
+      "sub1LockMinX": 80,
+      "sub1LockMaxX": 1220,
+      "lockMinX": 1200,
+      "lockMaxX": 2360,
+      "isBossZone": false,
+      "customPanoramas": null,
+      "emissiveAnchors": [
+        {
+          "id": "so_z0_em_0",
+          "mode": "prism",
+          "x": 380,
+          "artY": 116,
+          "paletteKey": "aqua",
+          "tierSize": 2,
+          "vfxRow": 11,
+          "worldW": 76,
+          "worldH": 76
+        },
+        {
+          "id": "so_z0_em_1",
+          "mode": "moonwell",
+          "x": 1160,
+          "artY": 260,
+          "paletteKey": "emerald",
+          "tierSize": 3,
+          "vfxRow": 7,
+          "worldW": 160,
+          "worldH": 78
+        },
+        {
+          "id": "so_z0_em_2",
+          "mode": "brazier",
+          "x": 1880,
+          "artY": 218,
+          "paletteKey": "emerald",
+          "tierSize": 3,
+          "vfxRow": 2,
+          "worldW": 162,
+          "worldH": 172
+        }
+      ],
+      "subWave0": [
+        {
+          "id": "so_z0_w0_0",
+          "type": "treant",
+          "engineKind": "treant",
+          "zone": 0,
+          "subWave": 0,
+          "x": 720,
+          "groundY": 562,
+          "isElite": false,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1460
+        },
+        {
+          "id": "so_z0_w0_1",
+          "type": "sylph",
+          "engineKind": "dryad",
+          "zone": 0,
+          "subWave": 0,
+          "x": 880,
+          "groundY": 480,
+          "isElite": false,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 680
+        },
+        {
+          "id": "so_z0_w0_2",
+          "type": "sylph",
+          "engineKind": "dryad",
+          "zone": 0,
+          "subWave": 0,
+          "x": 980,
+          "groundY": 640,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1060
+        },
+        {
+          "id": "so_z0_w0_3",
+          "type": "sylph",
+          "engineKind": "dryad",
+          "zone": 0,
+          "subWave": 0,
+          "x": 1090,
+          "groundY": 530,
+          "isElite": false,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 680
+        }
+      ],
+      "subWave1": [
+        {
+          "id": "so_z0_w1_0",
+          "type": "treant",
+          "engineKind": "treant",
+          "zone": 0,
+          "subWave": 1,
+          "x": 2040,
+          "groundY": 560,
+          "isElite": true,
+          "isMiniBoss": true,
+          "wardenName": "ELDER BRIAR-WARDEN",
+          "wardenTitle": "CURSED STARWOOD GUARDIAN",
+          "maxHp": 3150
+        },
+        {
+          "id": "so_z0_w1_1",
+          "type": "sylph",
+          "engineKind": "dryad",
+          "zone": 0,
+          "subWave": 1,
+          "x": 1760,
+          "groundY": 484,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1060
+        },
+        {
+          "id": "so_z0_w1_2",
+          "type": "sylph",
+          "engineKind": "dryad",
+          "zone": 0,
+          "subWave": 1,
+          "x": 1880,
+          "groundY": 638,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1060
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "id": "bone_gate_siege",
+      "stageId": "boneyard",
+      "biome": "boneyard",
+      "title": "ZONE II - ABYSSAL BONE-GATE SIEGE",
+      "bloomPalette": "violet",
+      "minX": 2400,
+      "maxX": 4800,
+      "triggerX": 2540,
+      "midTriggerX": 3720,
+      "sub1LockMinX": 2420,
+      "sub1LockMaxX": 3580,
+      "lockMinX": 3600,
+      "lockMaxX": 4720,
+      "isBossZone": true,
+      "customPanoramas": null,
+      "emissiveAnchors": [
+        {
+          "id": "so_z1_em_0",
+          "mode": "brazier",
+          "x": 2780,
+          "artY": 218,
+          "paletteKey": "violet",
+          "tierSize": 3,
+          "vfxRow": 4,
+          "worldW": 162,
+          "worldH": 172
+        },
+        {
+          "id": "so_z1_em_1",
+          "mode": "prism",
+          "x": 3610,
+          "artY": 132,
+          "paletteKey": "violet",
+          "tierSize": 2,
+          "vfxRow": 11,
+          "worldW": 76,
+          "worldH": 76
+        },
+        {
+          "id": "so_z1_em_2",
+          "mode": "brazier",
+          "x": 4240,
+          "artY": 218,
+          "paletteKey": "violet",
+          "tierSize": 3,
+          "vfxRow": 4,
+          "worldW": 162,
+          "worldH": 172
+        }
+      ],
+      "subWave0": [
+        {
+          "id": "so_z1_w0_0",
+          "type": "ghoul",
+          "engineKind": "ghoul",
+          "zone": 1,
+          "subWave": 0,
+          "x": 2920,
+          "groundY": 482,
+          "isElite": false,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 780
+        },
+        {
+          "id": "so_z1_w0_1",
+          "type": "ghoul",
+          "engineKind": "ghoul",
+          "zone": 1,
+          "subWave": 0,
+          "x": 3120,
+          "groundY": 564,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1220
+        },
+        {
+          "id": "so_z1_w0_2",
+          "type": "ghoul",
+          "engineKind": "ghoul",
+          "zone": 1,
+          "subWave": 0,
+          "x": 3290,
+          "groundY": 642,
+          "isElite": false,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 780
+        },
+        {
+          "id": "so_z1_w0_3",
+          "type": "lich",
+          "engineKind": "cultist",
+          "zone": 1,
+          "subWave": 0,
+          "x": 3440,
+          "groundY": 520,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1080
+        }
+      ],
+      "subWave1": [
+        {
+          "id": "so_z1_w1_0",
+          "type": "lich",
+          "engineKind": "cultist",
+          "zone": 1,
+          "subWave": 1,
+          "x": 4120,
+          "groundY": 556,
+          "isElite": true,
+          "isMiniBoss": true,
+          "wardenName": "CRYPT-LORD MORVATH",
+          "wardenTitle": "BONE-GATE SIEGE WARDEN",
+          "maxHp": 2950
+        },
+        {
+          "id": "so_z1_w1_1",
+          "type": "ghoul",
+          "engineKind": "ghoul",
+          "zone": 1,
+          "subWave": 1,
+          "x": 3840,
+          "groundY": 484,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1220
+        },
+        {
+          "id": "so_z1_w1_2",
+          "type": "ghoul",
+          "engineKind": "ghoul",
+          "zone": 1,
+          "subWave": 1,
+          "x": 3940,
+          "groundY": 638,
+          "isElite": true,
+          "isMiniBoss": false,
+          "wardenName": "",
+          "wardenTitle": "",
+          "maxHp": 1220
+        }
+      ]
+    }
+  ],
+  "props": [
+    {
+      "id": "so_prop_0",
+      "kind": "starwood_lantern",
+      "zone": 0,
+      "x": 400,
+      "groundY": 452,
+      "dropType": null,
+      "hazardType": "spore_pod",
+      "ultAmt": 20,
+      "relicAmt": 16
+    },
+    {
+      "id": "so_prop_1",
+      "kind": "starwood_crystal",
+      "zone": 0,
+      "x": 1040,
+      "groundY": 454,
+      "dropType": "relic",
+      "ultAmt": 20,
+      "relicAmt": 20
+    },
+    {
+      "id": "so_prop_2",
+      "kind": "starwood_lantern",
+      "zone": 0,
+      "x": 1520,
+      "groundY": 452,
+      "dropType": null,
+      "hazardType": "spore_pod",
+      "ultAmt": 22,
+      "relicAmt": 16
+    },
+    {
+      "id": "so_prop_3",
+      "kind": "starwood_lantern",
+      "zone": 0,
+      "x": 1840,
+      "groundY": 452,
+      "dropType": "ember",
+      "ultAmt": 24,
+      "relicAmt": 16
+    },
+    {
+      "id": "so_prop_4",
+      "kind": "starwood_crystal",
+      "zone": 0,
+      "x": 2160,
+      "groundY": 454,
+      "dropType": "hp",
+      "ultAmt": 20,
+      "relicAmt": 16
+    },
+    {
+      "id": "so_prop_5",
+      "kind": "soul_brazier",
+      "zone": 1,
+      "x": 2720,
+      "groundY": 452,
+      "dropType": null,
+      "hazardType": "cursed_pylon",
+      "ultAmt": 22,
+      "relicAmt": 16
+    },
+    {
+      "id": "so_prop_6",
+      "kind": "ossuary_obelisk",
+      "zone": 1,
+      "x": 3280,
+      "groundY": 454,
+      "dropType": "relic",
+      "ultAmt": 20,
+      "relicAmt": 22
+    },
+    {
+      "id": "so_prop_7",
+      "kind": "soul_brazier",
+      "zone": 1,
+      "x": 3680,
+      "groundY": 452,
+      "dropType": null,
+      "hazardType": "cursed_pylon",
+      "ultAmt": 24,
+      "relicAmt": 16
+    },
+    {
+      "id": "so_prop_8",
+      "kind": "ossuary_obelisk",
+      "zone": 1,
+      "x": 3960,
+      "groundY": 454,
+      "dropType": "ember",
+      "ultAmt": 24,
+      "relicAmt": 16
+    },
+    {
+      "id": "so_prop_9",
+      "kind": "soul_brazier",
+      "zone": 1,
+      "x": 4200,
+      "groundY": 452,
+      "dropType": "hp",
+      "ultAmt": 20,
+      "relicAmt": 16
+    }
+  ],
+  "finalBoss": {
+    "enabled": true,
+    "kind": "archfiend",
+    "name": "ARCH-LICH MALPHAS",
+    "maxHp": 12200,
+    "anchorX": 4535,
+    "groundY": 561
+  }
+}

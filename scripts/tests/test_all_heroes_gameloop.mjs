@@ -41,79 +41,83 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps173';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps173';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps173';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps173';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps173';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps173';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps173';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps173';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps173';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps173';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps173';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps173';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps173';
-import { Archer } from '../../src/entities/Archer.js?v=30fps173';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps173';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps173';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps173';
-import { Titan } from '../../src/entities/Titan.js?v=30fps173';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps173';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps173';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps173';
-import { Android } from '../../src/entities/Android.js?v=30fps173';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps173';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps173';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps173';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps173';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps174';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps174';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps174';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps174';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps174';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps174';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps174';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps174';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps174';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps174';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps174';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps174';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps174';
+import { Archer } from '../../src/entities/Archer.js?v=30fps174';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps174';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps174';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps174';
+import { Titan } from '../../src/entities/Titan.js?v=30fps174';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps174';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps174';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps174';
+import { Android } from '../../src/entities/Android.js?v=30fps174';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps174';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps174';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps174';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps174';
 import {
   EX_HERO_PALETTES,
   ExParticleSystem,
   drawExPixelParticles,
   drawExBayerHalo,
   drawExHitStarburst
-} from '../../src/engine/shaders/exNextGenFX.js?v=30fps173';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps173';
+} from '../../src/engine/shaders/exNextGenFX.js?v=30fps174';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps174';
 import {
   DeathFXManager,
   CHAMPION_DEATH_STYLES,
   getDeathStyleForHero
-} from '../../src/engine/DeathFXManager.js?v=30fps173';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps173';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps173';
+} from '../../src/engine/DeathFXManager.js?v=30fps174';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps174';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps174';
 import {
   Game,
   EX_HERO_KEYS,
   LEGACY_HERO_KEYS,
   CHAMPION_ROSTER,
   INTRO_DIALOGUE_SUBTITLES
-} from '../../src/main.js?v=30fps173';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps173';
+} from '../../src/main.js?v=30fps174';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps174';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH,
   ADVENTURE_RELIC_BOONS,
+  ADVENTURE_DIFFICULTY_TIERS,
+  ADVENTURE_MAX_RELICS,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
+  loadAdventureMedals,
+  saveAdventureMedal,
   normalizeAdventureCampaignPack
-} from '../../src/adventure/AdventureManager.js?v=30fps173';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps173';
+} from '../../src/adventure/AdventureManager.js?v=30fps174';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps174';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps173';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps173';
+} from '../../src/adventure/AdventureProgression.js?v=30fps174';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps174';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps173';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps174';
 import {
   HeroBuildSystem,
   SOVEREIGN_BUILD_HERO_IDS,
   HERO_BUILD_CATALOG,
   SOVEREIGN_STORAGE_KEY
-} from '../../src/combat/HeroBuildSystem.js?v=30fps173';
+} from '../../src/combat/HeroBuildSystem.js?v=30fps174';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -804,7 +808,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps173');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps174');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -11418,8 +11422,8 @@ if (!RUN_SUITE36_ONLY) {
         globalThis.HTMLImageElement = FakeBrowserImg;
         globalThis.window = { ...prevWin };
         const savedAssets = PixelForge.assets;
-        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps173');
-        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps173');
+        const sharedMeteor = new FakeBrowserImg('assets/sprites/meteor_cataclysm.png?v=30fps174');
+        const sharedWings = new FakeBrowserImg('assets/sprites/seraphim_wings.png?v=30fps174');
         const sharedCompanions = new FakeBrowserImg('assets/sprites/reaper_companions.png?v=30fps113');
         const testAssets = {};
         for (const hk of PixelForge.ALL_HERO_KEYS) {
@@ -12220,7 +12224,7 @@ if (!RUN_SUITE36_ONLY) {
         complete: true,
         naturalWidth: 640,
         naturalHeight: 360,
-        src: 'assets/sprites/arena_bg.png?v=30fps173'
+        src: 'assets/sprites/arena_bg.png?v=30fps174'
       };
 
       // Tick 1: race condition (`drawImage` produces all-zero `getImageData`) -> MUST return `null` & NOT cache!
@@ -12264,13 +12268,13 @@ if (!RUN_SUITE36_ONLY) {
 // ============================================================================
 // SUITE 36: Next-Gen HD-2D Ray-Light/Shadow, Anti-Crab/Anti-Skate Walk,
 //           Zero-Cutoff Pixel VFX, Choreography, Death, Sol/Sylvara/Freyja EX Parity
-//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps173`, `< 3.0s`)
+//           & Sylvara EX Flip / Lyra EX Glacial Transition (`?v=30fps174`, `< 3.0s`)
 // ============================================================================
 {
   const suite36StartMs = performance.now();
   const { Worker: Worker36 } = await import('node:worker_threads');
   const { resolveSurfaceToRGBA: resolveRgba36 } = await import(
-    '../../src/engine/ArcaneShaderFX.js?v=30fps173'
+    '../../src/engine/ArcaneShaderFX.js?v=30fps174'
   );
   const { CHRONO_EFFECT_REGISTRY } = await import(
     '../../src/engine/shaders/chronoShaders.js?v=30fps114'
@@ -15128,7 +15132,7 @@ if (!RUN_SUITE36_ONLY) {
       // (A.1) PixelForge.ensureImage automatic retry recovery + isImageReady
       const retryImg = new Image();
       retryImg.src = '';
-      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps173';
+      retryImg._origSrc = 'assets/sprites/warrior_ex_sheet.png?v=30fps174';
       retryImg._deferredSrc = retryImg._origSrc;
       retryImg.complete = false;
       retryImg.naturalWidth = 0;
@@ -15163,7 +15167,7 @@ if (!RUN_SUITE36_ONLY) {
       const assets3613 = PixelForge.initAssets();
       const prevWarriorSheet = assets3613.warrior_ex.sheet;
       const pendingSheet = new Image();
-      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps173';
+      pendingSheet._origSrc = prevWarriorSheet?._origSrc || 'assets/sprites/warrior_ex_sheet.png?v=30fps174';
       pendingSheet.complete = false;
       pendingSheet.naturalWidth = 0;
       pendingSheet.naturalHeight = 0;
@@ -15268,12 +15272,12 @@ if (!RUN_SUITE36_ONLY) {
       throw new Error('[Suite 36.13A] build/build_web_vault.mjs missing retry/cache/failure-tracking upgrades!');
     }
     if (
-      !indexHtmlSrc.includes('?v=30fps173') ||
-      !manifestSrc.includes('?v=30fps173') ||
+      !indexHtmlSrc.includes('?v=30fps174') ||
+      !manifestSrc.includes('?v=30fps174') ||
       manifestSrc.includes('30fps138') ||
       indexHtmlSrc.includes('30fps138')
     ) {
-      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps173 cache-bust sync!');
+      throw new Error('[Suite 36.13A] index.html / manifest.json missing ?v=30fps174 cache-bust sync!');
     }
 
     // (B) Shared ex_sprite_clean_utils.py, all-11 sheet builders, upright Row 4/9 weapons, & sheet metrics
@@ -16869,7 +16873,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.19: Batch ?v=30fps173 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
+  // 36.19: Batch ?v=30fps174 Adventure Campaign Stage Pack Loader (`schemaVersion: "1.0.0"`),
   //        `celestial_gauntlet.json` Full 8-Wave + 3-Warden + 12.8K Boss Live Run,
   //        Custom 2-Zone JSON Import, Vault Encryption & Clean Teardown to `'default'`
   // --------------------------------------------------------------------------
@@ -17401,7 +17405,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   // --------------------------------------------------------------------------
-  // 36.21: Batch ?v=30fps173 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
+  // 36.21: Batch ?v=30fps174 Dual Voice/SFX Audio Mixer (`avs_audio_mix_v1`),
   // Continuous `sfxDuckGain` Sidechain Ducking, Pre-Round Intro Standoff
   // (`beginLiveRoundIntro` / `skipRoundIntro`) & 9.0s Victory Screen Hold
   // --------------------------------------------------------------------------
@@ -18406,16 +18410,16 @@ if (!RUN_SUITE36_ONLY) {
       audio24.bgmDuckGain = makeGainMock24(1.0);
       audio24.master = audio24.sfxBus;
 
-      // Lazy BGM + Voice cache-bust ?v=30fps173 check
+      // Lazy BGM + Voice cache-bust ?v=30fps174 check
       await audio24.loadVoiceKey('nyx_select', 'en');
       await audio24.loadBgmTrack('bgm_title_select');
       if (
-        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps173')) ||
-        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps173')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/voices/nyx_select.mp3?v=30fps174')) ||
+        !fetchedUrls24.some((u) => u.includes('assets/bgm/bgm_title_select.mp3?v=30fps174')) ||
         fetchedUrls24.filter((u) => u.includes('assets/bgm/')).length !== 1
       ) {
         throw new Error(
-          `[Suite 36.24] Expected ?v=30fps173 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
+          `[Suite 36.24] Expected ?v=30fps174 on voice & single lazy BGM fetch, got ${JSON.stringify(fetchedUrls24)}`
         );
       }
 
@@ -19662,7 +19666,7 @@ if (!RUN_SUITE36_ONLY) {
 
   // ============================================================================
   // Suite 36.27: Grounded Lyra EX Ults, Blink/Warp AI Non-Starvation, De-Twitched AI,
-  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps173`)
+  // Ultimate Super-Armor & Graze/Pierce Overhaul, and 3-Tier Zoom Modes (`?v=30fps174`)
   // ============================================================================
   {
     const g27 = createMockGame();
@@ -20035,7 +20039,7 @@ if (!RUN_SUITE36_ONLY) {
   // Suite 36.28: 3-Act Match Intro Overhaul — Real-Time Voice Envelope Analyzer
   // (`AudioManager.getVoiceAmplitude`), Act 1 Colossal Split-Wing `NAME VS. NAME` Clash,
   // Act 2 Live Voice-Synced Close-Up Talking Portrait Cut-In & Stage Taunt Flourish,
-  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps173`)
+  // and Act 3 Massive Explosive `ENGAGE!` Slash-Burst (`?v=30fps174`)
   // ============================================================================
   {
     const created28 = [];
@@ -21132,8 +21136,8 @@ if (!RUN_SUITE36_ONLY) {
       }
 
       // 4. Sovereign Relic Altar 3-card draft, simMode/autoPlay auto-skip & clean stopCampaign() reset
-      if (!Array.isArray(ADVENTURE_RELIC_BOONS) || ADVENTURE_RELIC_BOONS.length !== 6) {
-        throw new Error(`[Suite 36.31] Expected 6 ADVENTURE_RELIC_BOONS, got ${ADVENTURE_RELIC_BOONS?.length}`);
+      if (!Array.isArray(ADVENTURE_RELIC_BOONS) || ADVENTURE_RELIC_BOONS.length !== 12) {
+        throw new Error(`[Suite 36.31] Expected 12 ADVENTURE_RELIC_BOONS, got ${ADVENTURE_RELIC_BOONS?.length}`);
       }
       adv31.unlockCurrentZone(0);
       if (adv31.isRelicDraftOpen) {
@@ -21164,6 +21168,265 @@ if (!RUN_SUITE36_ONLY) {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // 36.32: Adventure Depth, Polish & Replayability Pass (Slim HUD + Relic
+  //        Inspector + Callout De-Stacking + Ascension Tiers + Clear Medals +
+  //        12 Relic Boons / 4-Relic Cap + 4 Verified Stage Packs)
+  // -------------------------------------------------------------------------
+  {
+    const idxHtml32 = fs.readFileSync(`${REPO_ROOT}/index.html`, 'utf8');
+    const css32 = fs.readFileSync(`${REPO_ROOT}/style.css`, 'utf8');
+    for (const reqNeedle of [
+      'id="adv-st-relics-strip"',
+      'id="adv-st-relics-list"',
+      'id="pause-adv-relics"',
+      'id="adv-difficulty-selector"',
+      'data-adv-tier="heroic"',
+      'data-adv-tier="sovereign"'
+    ]) {
+      if (!idxHtml32.includes(reqNeedle)) {
+        throw new Error(`[Suite 36.32] Missing Adventure depth/polish DOM hook in index.html: ${reqNeedle}`);
+      }
+    }
+    for (const cssNeedle of [
+      '#app.is-adventure-active #hud-left .sub-row',
+      '#app.is-adventure-active #hud-left .finisher-frame',
+      '.landing-overlay:not([data-branch="adventure"]) .adv-clear-medal-pip'
+    ]) {
+      if (!css32.includes(cssNeedle)) {
+        throw new Error(`[Suite 36.32] Missing required CSS isolation/de-dup rule in style.css: ${cssNeedle}`);
+      }
+    }
+
+    // (A) Floating Callout Vertical Lane De-Stacking in VFXManager
+    const vfx32 = new VFXManager();
+    vfx32.spawnDamageText(500, 420, 0, true, 'GUARD BREAK!', '#fef08a');
+    vfx32.spawnDamageText(505, 420, 0, true, 'FROST SHATTER! +85', '#67e8f9');
+    vfx32.spawnDamageText(498, 420, 0, true, 'SIPHON BREAK! +10% HP', '#4ade80');
+    const ys32 = vfx32.texts.map((t) => t.y);
+    if (Math.abs(ys32[0] - ys32[1]) < 20 || Math.abs(ys32[1] - ys32[2]) < 20 || Math.abs(ys32[0] - ys32[2]) < 40) {
+      throw new Error(`[Suite 36.32] Callout vertical lane de-stacking failed: ys=${JSON.stringify(ys32)}`);
+    }
+
+    // (B) All 12 Relic Boons + New Proc Hooks + 4-Relic Cap
+    const uniqueRelicIds = new Set(ADVENTURE_RELIC_BOONS.map((b) => b.id));
+    if (ADVENTURE_RELIC_BOONS.length !== 12 || uniqueRelicIds.size !== 12 || ADVENTURE_MAX_RELICS !== 4) {
+      throw new Error(`[Suite 36.32] Expected 12 unique Relic Boons & max 4 relics, got ${uniqueRelicIds.size} / ${ADVENTURE_MAX_RELICS}`);
+    }
+    const mockBase32 = createMockGame();
+    const g32 = {
+      ...mockBase32,
+      simMode: true,
+      fighters: [],
+      leftFighter: null,
+      rightFighter: null,
+      isLandingOpen: false,
+      isMatchOver: false,
+      isPaused: false,
+      matchTime: 30,
+      updateHUD() {},
+      updateAdventureBossHUD() {},
+      isAdventureMode: () => true,
+      getEnemiesOf: (f) => (f?.isMonster && g32.leftFighter ? [g32.leftFighter] : [])
+    };
+    const adv32 = new AdventureManager(g32);
+    g32.adventure = adv32;
+    g32.onFighterDeath = (df) => {
+      if (df?.isMonster) adv32.onMonsterDeath(df);
+    };
+    const hero32 = new WarriorEx(300, 561, 1);
+    hero32.game = g32;
+    g32.leftFighter = hero32;
+
+    try {
+      // Icon render purity check across all 12 boons (0 smooth vector calls, non-zero fillRect draws)
+      for (const boon of ADVENTURE_RELIC_BOONS) {
+        let fillCalls = 0;
+        const iconCtx = {
+          imageSmoothingEnabled: true,
+          fillStyle: '',
+          clearRect() {},
+          fillRect() { fillCalls++; }
+        };
+        adv32.drawRelicIconCanvas(iconCtx, boon.id, boon.accentHex);
+        if (fillCalls < 10) {
+          throw new Error(`[Suite 36.32] Relic icon ${boon.id} drew too few fillRects (${fillCalls})!`);
+        }
+      }
+
+      adv32.startCampaign(hero32);
+      adv32.setAutoPlay(false, false);
+
+      // Verify 4-relic cap works cleanly
+      for (let i = 0; i < 4; i++) {
+        if (!adv32.openRelicDraft(i)) {
+          throw new Error(`[Suite 36.32] Failed to open Relic Draft #${i + 1}!`);
+        }
+        adv32.selectRelicBoon(0, false);
+      }
+      if (adv32.activeRelics.length !== 4 || adv32.openRelicDraft(3) !== false) {
+        throw new Error(`[Suite 36.32] 4-Relic cap invariant failed: active=${adv32.activeRelics.length}`);
+      }
+
+      // Test Frostbite Shatter + Guard-Break Siphon
+      adv32.activeRelics = ADVENTURE_RELIC_BOONS.filter((b) =>
+        ['frostbite_shatter', 'guard_break_siphon'].includes(b.id)
+      );
+      const gbWarden = adv32.spawnMonster('treant', 460, { isElite: true, isMiniBoss: true, maxHp: 4000, groundY: 561 });
+      hero32.hp = Math.round(hero32.maxHp * 0.5);
+      adv32.progression.spirit = 10;
+      adv32.progression.ultCharge = 10;
+      gbWarden.takeDamage(60, hero32, true, 0, 0);
+      if ((gbWarden._chillTimer || 0) < 2.2) {
+        throw new Error(`[Suite 36.32] Frostbite Shatter failed to chill on crit: timer=${gbWarden._chillTimer}`);
+      }
+      const hpPreBreak = gbWarden.hp;
+      const heroHpPreBreak = hero32.hp;
+      gbWarden.addStagger(gbWarden.maxStagger, hero32, g32);
+      if (
+        gbWarden.hp >= hpPreBreak ||
+        hero32.hp < heroHpPreBreak + Math.round(hero32.maxHp * 0.08) ||
+        adv32.progression.spirit < 55 ||
+        adv32.progression.ultCharge < 28
+      ) {
+        throw new Error(
+          `[Suite 36.32] Guard-Break Frost/Siphon failed: wardenDmg=${hpPreBreak - gbWarden.hp}, heal=${hero32.hp - heroHpPreBreak}, sp=${adv32.progression.spirit}, ult=${adv32.progression.ultCharge}`
+        );
+      }
+
+      // Test Phantom Counter-Wave (piercing 220px shockwave hitting distant second foe)
+      adv32.activeRelics = ADVENTURE_RELIC_BOONS.filter((b) => b.id === 'phantom_counter_wave');
+      const nearFoe = adv32.spawnMonster('templar', hero32.x + 65, { maxHp: 2000, groundY: 561 });
+      const farFoe = adv32.spawnMonster('templar', hero32.x + 195, { maxHp: 2000, groundY: 561 });
+      const farHpBefore = farFoe.hp;
+      hero32.facing = 1;
+      hero32._phantomEmpowerReady = true;
+      nearFoe.takeDamage(60, hero32, false, 0, 0);
+      if (farFoe.hp >= farHpBefore || adv32._relicCounterWaves.length < 1) {
+        throw new Error(`[Suite 36.32] Phantom Counter-Wave failed to pierce 220px to far foe!`);
+      }
+
+      // Test Solar Meteor Calldown (every 4th Skill/Overdrive)
+      adv32.activeRelics = ADVENTURE_RELIC_BOONS.filter((b) => b.id === 'meteor_calldown');
+      adv32._relicMeteorCastCount = 0;
+      const metTarget = adv32.spawnMonster('ghoul', hero32.x + 120, { maxHp: 2000, groundY: 561 });
+      const metHpBefore = metTarget.hp;
+      for (let c = 0; c < 4; c++) adv32.onPlayerCastSkillOrOverdrive(hero32);
+      if (adv32._relicMeteors.length !== 1) {
+        throw new Error(`[Suite 36.32] Solar Meteor Calldown did not queue on 4th cast!`);
+      }
+      adv32.updateRelicEffects(0.40, hero32);
+      if (metTarget.hp >= metHpBefore) {
+        throw new Error(`[Suite 36.32] Solar Meteor Calldown did not deal impact AoE damage!`);
+      }
+
+      // Test Overdrive Surge (+30% charge, +22% ult/superUlt mult) & Haste Momentum (+16% speed, -20% CDs after kill)
+      adv32.activeRelics = [];
+      const baseStats32 = adv32.progression.getComputedStats();
+      adv32.activeRelics = ADVENTURE_RELIC_BOONS.filter((b) =>
+        ['overdrive_surge', 'haste_momentum'].includes(b.id)
+      );
+      const killVictim = adv32.spawnMonster('ghoul', hero32.x + 90, { maxHp: 50, groundY: 561 });
+      adv32.onMonsterDeath(killVictim);
+      const boostedStats32 = adv32.progression.getComputedStats();
+      if (
+        boostedStats32.ultGainMult < baseStats32.ultGainMult * 1.28 ||
+        boostedStats32.ultMult < baseStats32.ultMult * 1.20 ||
+        boostedStats32.superUltMult < baseStats32.superUltMult * 1.20 ||
+        adv32._relicHasteTimer < 3.5 ||
+        boostedStats32.moveSpeedMult < baseStats32.moveSpeedMult * 1.14 ||
+        boostedStats32.mobilityCdMult > baseStats32.mobilityCdMult * 0.82 ||
+        boostedStats32.skillCdMult > 0.82
+      ) {
+        throw new Error(`[Suite 36.32] Overdrive Surge / Haste Momentum stat scaling failed!`);
+      }
+
+      // (C) Ascension Difficulty Tiers (`normal`, `heroic`, `sovereign`)
+      adv32.setDifficultyTier('normal');
+      const mNorm = adv32.spawnMonster('templar', 600, { maxHp: 1000, groundY: 561 });
+      adv32.setDifficultyTier('heroic');
+      const mHeroic = adv32.spawnMonster('templar', 620, { maxHp: 1000, groundY: 561 });
+      adv32.setDifficultyTier('sovereign');
+      const mSov = adv32.spawnMonster('templar', 640, { maxHp: 1000, groundY: 561 });
+      if (
+        mNorm.maxHp !== 1000 ||
+        mHeroic.maxHp !== 1350 ||
+        mSov.maxHp !== 1750 ||
+        mHeroic.dmgScale <= mNorm.dmgScale * 1.20 ||
+        mSov.dmgScale <= mNorm.dmgScale * 1.38 ||
+        mSov.autoInterval >= mNorm.autoInterval * 0.85
+      ) {
+        throw new Error(
+          `[Suite 36.32] Ascension difficulty scaling mismatch: hp=${mNorm.maxHp}/${mHeroic.maxHp}/${mSov.maxHp}`
+        );
+      }
+      adv32.setDifficultyTier('normal');
+
+      // (D) Per-Champion Clear Medal Persistence (Monotonic Rank/Tier/Score Merge)
+      const memStore = new Map();
+      const mockStorage = {
+        getItem: (k) => (memStore.has(k) ? memStore.get(k) : null),
+        setItem: (k, v) => memStore.set(k, String(v))
+      };
+      saveAdventureMedal('warrior_ex', { rank: 'A RANK', score: 5200, tier: 'normal' }, mockStorage);
+      saveAdventureMedal('warrior_ex', { rank: 'S RANK', score: 4900, tier: 'heroic' }, mockStorage);
+      saveAdventureMedal('warrior_ex', { rank: 'B RANK', score: 9100, tier: 'sovereign' }, mockStorage);
+      const savedMedals = loadAdventureMedals(mockStorage);
+      if (
+        savedMedals.warrior_ex?.rank !== 'S' ||
+        savedMedals.warrior_ex?.score !== 9100 ||
+        savedMedals.warrior_ex?.bestTier !== 'sovereign'
+      ) {
+        throw new Error(`[Suite 36.32] Clear Medal monotonic merge failed: ${JSON.stringify(savedMedals)}`);
+      }
+
+      // (E) All 4 Curated Stage Packs in assets/campaigns/index.json (SHA-256 + Normalization + Activation)
+      const catIndex = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'assets/campaigns/index.json'), 'utf8'));
+      const expectedPacks = [
+        { id: 'celestial_gauntlet', zones: 4, width: 9600, bossHp: 12800 },
+        { id: 'boss_rush_gauntlet', zones: 2, width: 4800, bossHp: 11200 },
+        { id: 'sovereign_nightmare', zones: 4, width: 9600, bossHp: 14500 },
+        { id: 'starwood_ossuary_siege', zones: 2, width: 4800, bossHp: 12200 }
+      ];
+      if (!Array.isArray(catIndex.packs) || catIndex.packs.length !== 4) {
+        throw new Error(`[Suite 36.32] Expected 4 packs in assets/campaigns/index.json, got ${catIndex.packs?.length}`);
+      }
+      const emojiCheck32 = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0E}\u{FE0F}]/u;
+      for (const exp of expectedPacks) {
+        const meta = catIndex.packs.find((p) => p.packId === exp.id);
+        if (!meta) throw new Error(`[Suite 36.32] Missing pack ${exp.id} in assets/campaigns/index.json!`);
+        const pBuf = fs.readFileSync(path.join(REPO_ROOT, 'assets/campaigns', meta.file));
+        const actualSha = crypto.createHash('sha256').update(pBuf).digest('hex');
+        if (actualSha !== meta.sha256) {
+          throw new Error(`[Suite 36.32] SHA-256 mismatch on ${meta.file}: ${actualSha} !== ${meta.sha256}`);
+        }
+        const pTxt = pBuf.toString('utf8');
+        if (emojiCheck32.test(pTxt)) {
+          throw new Error(`[Suite 36.32] Emoji found in campaign pack ${meta.file}!`);
+        }
+        const norm = normalizeAdventureCampaignPack(JSON.parse(pTxt));
+        adv32.startCampaign(hero32, norm);
+        if (
+          adv32.activeCampaignId !== exp.id ||
+          adv32.getActiveZones().length !== exp.zones ||
+          adv32.getWorldWidth() !== exp.width ||
+          adv32.getBossConfig().maxHp !== exp.bossHp
+        ) {
+          throw new Error(`[Suite 36.32] Pack ${exp.id} activation mismatch!`);
+        }
+        if (exp.id === 'sovereign_nightmare') {
+          const snHazards = adv32.destructibles.props.filter((p) => p.hazardType);
+          if (snHazards.length < 8) {
+            throw new Error(`[Suite 36.32] sovereign_nightmare expected >= 8 hazard monuments, got ${snHazards.length}`);
+          }
+        }
+      }
+      adv32.stopCampaign();
+    } finally {
+      hero32.fx?.dispose?.();
+    }
+  }
+
   const suite36ElapsedMs = performance.now() - suite36StartMs;
   if (suite36ElapsedMs >= 4800) {
     throw new Error(
@@ -21172,7 +21435,7 @@ if (!RUN_SUITE36_ONLY) {
   }
 
   console.log(
-    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-12 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19), Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20), Dual Voice/SFX Mixer + Sidechain Ducking + Pre-Round Intro Standoff + 9s Victory Hold Parity (36.21), Batch-1 6-Champion + Seraphina JP Voice Packs + EN/JP Toggle Parity (36.22), Batch-2 Final 5-Champion Full-Roster 312-MP3 EN/JP Voice Parity (36.23), Cute Nyx Recast + 11-Track Lyria 3 OST + Steady Non-Dipping BGM 3-Bus Mixer Parity (36.24), Kawaii JP Nyx + 96-Clip Snappy Arcade Barks + Contextual Layering Parity (36.25), True Zero-Dip BGM Compressor Bypass + Center VS Intro / All-23 Idle + Portrait-Free Side Cut-Ins + Cross-Speaker Anti-Overlap & Sequential End-of-Match Queue Parity (36.26), Grounded Lyra EX Ults + Blink/Warp Non-Starvation + De-Twitched AI + Ult Super-Armor/Graze/Pierce + 3-Tier Zoom Modes (36.27), 3-Act Match Intro Overhaul + Live Voice Envelope Analyzer + Close-Up Talking Portrait Cut-In + Explosive ENGAGE! Slash-Burst (36.28), Optional Playable 1P vs AI VS Mode + Slimmer HUD / Dramatic K.O. / Victory Overlay (36.29), 12 Bespoke Champion Death Animations + 3-Beat End-of-Match Camera Spotlight & Pacing (36.30) & Adventure Mode HD-2D Visual Overhaul, Odd-Effects Cleanup, Desktop RPG Hotbar / Slim HUD, Phantom Evade, Boss Stagger Break, Tactical Hazards & Sovereign Relic Altar (36.31) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
+    `[PASS] Suite 36: Zero Legacy Diff vs 8435209 + 0 Emojis (36.1), All-12 EX Row 1 WALK Bipedal Crossover + Anti-Skate Live Walk (36.2), Row 5 Prone Death / Row 9 Victory + Mid-Air Fatal Gravity Drop (36.3), 0/300 & 0/240 4px Clips + 0 Chrono 192px Box + Dynamic Viewport x=110/1090/7400 + 0 Vector Calls (36.4), 0 Torii + Sylvara/Freyja EX Choreography + HD-2D Ray-Projected Shadows/Rim-Light/Reflections (36.5), Sol/Sylvara/Freyja EX Overhaul Parity (36.6), Sylvara EX Flip / Lyra EX Glacial Transition (36.7), Batch v119 Parity (36.8), Batch v120 Parity (36.9), Batch v121 Sylvara Bow-Pull / Circle-Free / Slender Arrow (36.10), Batch v122 Sylvara Sculpted Hands & Feet (36.11), Batch v123 6-Hero Sculpted Hands/Feet + All-12 Ground-Snap (36.12), Batch v124 Asset Retry/Visibility + All-12 EX Leak/Hole/Prone Repair (36.13), Batch v125 4-Ranged EX + Nyx EX Separate Target VFX (36.14), Token-Efficient Rolling Docs (36.15), Champion #12 NYX EX Full Suite (36.16), Adventure Rebalanced Drops/Healing + Monster Sheets/VFX Parity (36.17), All-12 EX Sovereign Loadouts Parity (36.18), Adventure Campaign Stage Pack Loader + Celestial Gauntlet + Vault JSON Parity (36.19), Seraphina TTS Voice Pack + Priority Vocal Bus Parity (36.20), Dual Voice/SFX Mixer + Sidechain Ducking + Pre-Round Intro Standoff + 9s Victory Hold Parity (36.21), Batch-1 6-Champion + Seraphina JP Voice Packs + EN/JP Toggle Parity (36.22), Batch-2 Final 5-Champion Full-Roster 312-MP3 EN/JP Voice Parity (36.23), Cute Nyx Recast + 11-Track Lyria 3 OST + Steady Non-Dipping BGM 3-Bus Mixer Parity (36.24), Kawaii JP Nyx + 96-Clip Snappy Arcade Barks + Contextual Layering Parity (36.25), True Zero-Dip BGM Compressor Bypass + Center VS Intro / All-23 Idle + Portrait-Free Side Cut-Ins + Cross-Speaker Anti-Overlap & Sequential End-of-Match Queue Parity (36.26), Grounded Lyra EX Ults + Blink/Warp Non-Starvation + De-Twitched AI + Ult Super-Armor/Graze/Pierce + 3-Tier Zoom Modes (36.27), 3-Act Match Intro Overhaul + Live Voice Envelope Analyzer + Close-Up Talking Portrait Cut-In + Explosive ENGAGE! Slash-Burst (36.28), Optional Playable 1P vs AI VS Mode + Slimmer HUD / Dramatic K.O. / Victory Overlay (36.29), 12 Bespoke Champion Death Animations + 3-Beat End-of-Match Camera Spotlight & Pacing (36.30) & Adventure Mode HD-2D Visual Overhaul, Odd-Effects Cleanup, Desktop RPG Hotbar / Slim HUD, Phantom Evade, Boss Stagger Break, Tactical Hazards & Sovereign Relic Altar (36.31) & Adventure Depth/Polish Pass: Slim HUD, Relic Inspector, Callout De-Stacking, Ascension Tiers, Clear Medals, 12 Boons / 4-Relic Cap & 4 Stage Packs (36.32) verified in ${suite36ElapsedMs.toFixed(0)}ms!`
   );
 }
 

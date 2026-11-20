@@ -1,6 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps173';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps173';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps173';
+import { Fighter } from './Fighter.js?v=30fps174';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps174';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps174';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps174';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -297,6 +298,8 @@ export class Monster extends Fighter {
     this.staggerDecayDelay = 0;
     this._sporeVulnTimer = 0;
     this._cursedBuffTimer = 0;
+    this._chillTimer = 0;
+    this.cadenceMult = Number.isFinite(opts.cadenceMult) && opts.cadenceMult > 0 ? opts.cadenceMult : 1;
     this._deathBurstSpawned = false;
     this.deathBurstParticles = [];
   }
@@ -445,6 +448,7 @@ export class Monster extends Fighter {
         this.groundY || 561,
         { ultAmt: 22 }
       );
+      g?.adventure?.onMonsterGuardBroken?.(this, attacker);
       return true;
     }
     return false;
@@ -610,7 +614,9 @@ export class Monster extends Fighter {
           knockX,
           knockY
         );
-        this.game?.adventure?.onPlayerHitMonsterRelicProc?.(attacker, this, dealt, effectiveCrit);
+        this.game?.adventure?.onPlayerHitMonsterRelicProc?.(attacker, this, dealt, effectiveCrit, {
+          consumedPhantomEmpower
+        });
       }
     }
   }
@@ -723,6 +729,9 @@ export class Monster extends Fighter {
     if (this._cursedBuffTimer > 0) {
       this._cursedBuffTimer = Math.max(0, this._cursedBuffTimer - dt);
     }
+    if (this._chillTimer > 0) {
+      this._chillTimer = Math.max(0, this._chillTimer - dt);
+    }
     if (this.staggerBreakTimer > 0) {
       this.staggerBreakTimer = Math.max(0, this.staggerBreakTimer - dt);
     } else if (this.staggerDecayDelay > 0) {
@@ -802,6 +811,8 @@ export class Monster extends Fighter {
       return;
     }
 
+    const actDt = (this._chillTimer || 0) > 0 && !this.isDead ? dt * 0.72 : dt;
+
     // 3D Monster pack spacing so multiple enemies fan out organically across X and depth groundY
     if (game?.fighters && (this.state === 'IDLE' || this.state === 'WALK')) {
       for (const other of game.fighters) {
@@ -813,7 +824,7 @@ export class Monster extends Fighter {
           if (dist2D < minAllySep) {
             const nx = dist2D < 2 ? (this.x % 2 === 0 ? 1 : -1) : dx / dist2D;
             const nz = dist2D < 2 ? (Math.round(this.x) % 3 === 0 ? 0.6 : -0.6) : (dz * 1.45) / dist2D;
-            const pushMag = (minAllySep - dist2D) * 3.6 * dt;
+            const pushMag = (minAllySep - dist2D) * 3.6 * actDt;
             this.x += nx * pushMag;
             this.shiftMonsterDepth(nz * pushMag * 0.72, game);
           }
@@ -829,12 +840,12 @@ export class Monster extends Fighter {
       enemy &&
       !enemy.isDead
     ) {
-      this.runMonsterNeutralAI(dt, enemy, game);
+      this.runMonsterNeutralAI(actDt, enemy, game);
       if (this.state === 'IDLE' || this.state === 'WALK') {
         const savedState = this.state;
         const savedMoveDir = this.moveDir;
         const savedFacing = enemy.x >= this.x ? 1 : -1;
-        super.update(dt, null, game);
+        super.update(actDt, null, game);
         if (!this.isDead && !(this.stunTimer > 0) && !this.isRooted) {
           this.facing = savedFacing;
           this.state = savedState;
@@ -844,7 +855,7 @@ export class Monster extends Fighter {
       }
     }
 
-    super.update(dt, enemy, game);
+    super.update(actDt, enemy, game);
   }
 
   runMonsterNeutralAI(dt, enemy, game) {
@@ -2107,6 +2118,28 @@ export class Monster extends Fighter {
         }
         ctx.restore();
       }
+      if (!isReflection && !this.isDead && !this.isColossalBoss && (this._chillTimer || 0) > 0 && ctx?.fillRect) {
+        const scaleF = this.spriteScale || 1.0;
+        const gyF = Math.round(this.groundY || this.y || 561);
+        const mxF = Math.round(this.x);
+        const tF = renderer?.time || this.walkPhase || 0;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.fillStyle = 'rgba(103, 232, 249, 0.32)';
+        ctx.fillRect(mxF - Math.round(24 * scaleF), gyF - 5, Math.round(48 * scaleF), 6);
+        for (let fi = 0; fi < 3; fi++) {
+          const ang = tF * 3.4 + fi * 2.09;
+          const fx = Math.round(mxF + Math.cos(ang) * 24 * scaleF);
+          const fy = Math.round(gyF - 38 * scaleF - fi * 18 * scaleF + Math.sin(tF * 5 + fi) * 4);
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(fx - 3, fy - 4, 6, 8);
+          ctx.fillStyle = '#67e8f9';
+          ctx.fillRect(fx - 2, fy - 3, 4, 6);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(fx - 1, fy - 1, 2, 2);
+        }
+        ctx.restore();
+      }
     }
 
     if (!isReflection) {
@@ -2520,7 +2553,8 @@ export class ArchfiendBoss extends Monster {
     }
 
     this.walkPhase = (this.walkPhase || 0) + safeDt * 2.0;
-    this.ultCooldown = Math.max(0, this.ultCooldown - safeDt);
+    const bossCdDt = (this._chillTimer || 0) > 0 ? safeDt * 0.72 : safeDt;
+    this.ultCooldown = Math.max(0, this.ultCooldown - bossCdDt);
     this.roarFlashTimer = Math.max(0, (this.roarFlashTimer || 0) - safeDt);
 
     // Weighty, majestic Colossal Abyssal Wingbeat cadence (4 steps = 1 full Up-Mid-Down-Mid cycle)
@@ -2867,7 +2901,10 @@ export class ArchfiendBoss extends Monster {
     if (this.vulnerableTimer > 0) {
       this.state = 'IDLE';
       this.moveDir = 0;
-      this.telegraphLabel = 'HEART CORE EXPOSED! (+45% DMG)';
+      this.telegraphLabel =
+        (this.staggerBreakTimer || 0) > 0
+          ? 'GUARD BREAK! (+55% DMG)'
+          : 'HEART CORE EXPOSED! (+45% DMG)';
       this.telegraphTimer = Math.max(this.telegraphTimer, 0.14);
       return;
     }
@@ -2876,7 +2913,7 @@ export class ArchfiendBoss extends Monster {
 
     // Phase 2 & Phase 3 Colossal Signature Cataclysm (`ULTIMATE`)
     if (this.bossPhase >= 2 && this.ultCooldown <= 0) {
-      this.ultCooldown = this.bossPhase >= 3 ? 6.6 : 8.0;
+      this.ultCooldown = (this.bossPhase >= 3 ? 6.6 : 8.0) / Math.max(0.5, this.cadenceMult || 1);
       this.slamTargetX = Math.max(
         this.anchorX - 895,
         Math.min(this.anchorX - 145, enemy ? enemy.x : this.anchorX - 455)
@@ -4047,37 +4084,64 @@ export class ArchfiendBoss extends Monster {
       return;
     }
 
-    // 7. Colossal Boss Phase & Telegraph Callout Plate cleanly above Horns & Eclipse Crown Crest (`y = 128`)
+    // 7. Colossal Boss Crisp PixelFont Crimson-Gold Mini-Ribbon above Front Shoulder (never collides with top banners!)
     if (!this.isDead) {
       const hasRaidHud =
         Boolean(this.game?.adventure?.active) &&
         typeof document !== 'undefined' &&
         typeof document.getElementById === 'function' &&
         Boolean(document.getElementById('adv-boss-raid-hud'));
-      const bx = Math.round(this.anchorX + 10);
-      const by = 128;
+      const bx = Math.round(this.anchorX - 112);
+      const by = 242;
       const barW = 148;
       const barH = 8;
       const x0 = bx - Math.floor(barW * 0.5);
       const hpPct = Math.max(0, Math.min(1, this.hp / Math.max(1, this.maxHp)));
 
       ctx.save();
+      ctx.imageSmoothingEnabled = false;
       if (this.telegraphTimer > 0 && this.telegraphLabel) {
-        ctx.font = '8px "ArcanePixel", "Press Start 2P", monospace';
-        ctx.textAlign = 'center';
-        const tw = Math.max(108, this.telegraphLabel.length * 6 + 14);
-        ctx.fillStyle = '#090512';
-        ctx.fillRect(bx - Math.floor(tw * 0.5), by - 26, tw, 14);
-        ctx.strokeStyle = this.vulnerableTimer > 0 ? '#67e8f9' : '#facc15';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(bx - Math.floor(tw * 0.5), by - 26, tw, 14);
-        ctx.fillStyle = this.vulnerableTimer > 0 ? '#ecfeff' : '#fef08a';
-        ctx.fillText(this.telegraphLabel, bx, by - 16);
+        const labelStr = String(this.telegraphLabel).toUpperCase();
+        const isBreakOrVuln = (this.staggerBreakTimer || 0) > 0 || (this.vulnerableTimer || 0) > 0;
+        const txtW = PixelFont.measureWidth(labelStr, 1);
+        const ribW = Math.max(114, txtW + 24);
+        const ribH = 16;
+        const rx = bx - Math.floor(ribW * 0.5);
+        const ry = by - ribH - 6;
+
+        // Stepped bevel obsidian outline
+        ctx.fillStyle = '#05070e';
+        ctx.fillRect(rx + 2, ry - 1, ribW - 4, ribH + 2);
+        ctx.fillRect(rx - 1, ry + 2, ribW + 2, ribH - 4);
+        // Crimson-darkforge (or cyan-stagger) ribbon body
+        ctx.fillStyle = isBreakOrVuln ? 'rgba(6, 20, 36, 0.94)' : 'rgba(38, 7, 13, 0.94)';
+        ctx.fillRect(rx, ry, ribW, ribH);
+        // Top gold / cyan rail + bottom crimson / sky bevel
+        ctx.fillStyle = isBreakOrVuln ? '#67e8f9' : '#facc15';
+        ctx.fillRect(rx + 2, ry, ribW - 4, 2);
+        ctx.fillStyle = isBreakOrVuln ? '#0284c7' : '#dc2626';
+        ctx.fillRect(rx + 2, ry + ribH - 2, ribW - 4, 2);
+        // Side crimson-gold accent brackets & corner pips
+        ctx.fillStyle = isBreakOrVuln ? '#38bdf8' : '#ef4444';
+        ctx.fillRect(rx, ry + 2, 2, ribH - 4);
+        ctx.fillRect(rx + ribW - 2, ry + 2, 2, ribH - 4);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(rx + 3, ry + 6, 2, 4);
+        ctx.fillRect(rx + ribW - 5, ry + 6, 2, 4);
+
+        PixelFont.drawCentered(
+          ctx,
+          labelStr,
+          bx,
+          ry + Math.floor(ribH * 0.5),
+          1,
+          isBreakOrVuln ? '#ecfeff' : '#fef08a',
+          '#ffffff',
+          true
+        );
       } else if (!hasRaidHud) {
-        ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#fca5a5';
-        ctx.fillText(`COLOSSUS • PHASE ${this.bossPhase || 1}`, bx, by - 6);
+        const phaseTxt = `COLOSSUS • PHASE ${this.bossPhase || 1}`;
+        PixelFont.drawCentered(ctx, phaseTxt, bx, by - 10, 1, '#fca5a5', '#ffffff', true);
       }
 
       if (!hasRaidHud) {

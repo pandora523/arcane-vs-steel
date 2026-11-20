@@ -3647,7 +3647,7 @@ html.is-mobile-landscape .hud-build-badge {
 .adv-campaign-selector-bar {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 6px;
   padding: 3px 8px;
@@ -3656,6 +3656,57 @@ html.is-mobile-landscape .hud-build-badge {
   outline: 1px solid #000;
   box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.16), 0 3px 10px rgba(0, 0, 0, 0.72);
   min-width: 0;
+}
+
+.adv-difficulty-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: #060912;
+  border: 1px solid #3f5270;
+  flex-shrink: 0;
+}
+
+.adv-diff-btn {
+  height: 20px;
+  padding: 0 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  font-family: var(--font-pixel);
+  font-size: 0.23rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.adv-diff-btn:hover,
+.adv-diff-btn:focus-visible {
+  color: #f8fafc;
+  border-color: #64748b;
+  outline: none;
+}
+
+.adv-diff-btn.is-active[data-adv-tier="normal"] {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border-color: #cbd5e1;
+  color: #ffffff;
+}
+
+.adv-diff-btn.is-active[data-adv-tier="heroic"] {
+  background: linear-gradient(180deg, #a16207 0%, #713f12 100%);
+  border-color: #fde047;
+  color: #fef9c3;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.35);
+}
+
+.adv-diff-btn.is-active[data-adv-tier="sovereign"] {
+  background: linear-gradient(180deg, #be123c 0%, #881337 100%);
+  border-color: #fda4af;
+  color: #fff1f2;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.42);
 }
 
 .adv-campaign-kicker {
@@ -3919,6 +3970,44 @@ html.is-mobile-landscape .hud-build-badge {
 
 .card-Selected-ribbon:empty {
   display: none;
+}
+
+/* Adventure Mode Per-Champion Clear Rank / Ascension Medal Corner Pip (Strictly Hidden in VS Mode!) */
+.landing-overlay:not([data-branch="adventure"]) .adv-clear-medal-pip,
+.adv-clear-medal-pip.hidden,
+.adv-clear-medal-pip:empty {
+  display: none !important;
+}
+
+.adv-clear-medal-pip {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  z-index: 4;
+  font-family: var(--font-pixel);
+  font-size: 0.23rem;
+  line-height: 1;
+  padding: 2px 4px;
+  background: linear-gradient(180deg, #92400e 0%, #5c2808 100%);
+  border: 1px solid #f59e0b;
+  outline: 1px solid #000;
+  color: #fef3c7;
+  text-shadow: 0 1px 0 #000;
+  pointer-events: none;
+}
+
+.adv-clear-medal-pip[data-medal-tier="gold"] {
+  background: linear-gradient(180deg, #ca8a04 0%, #854d0e 100%);
+  border-color: #fef08a;
+  color: #ffffff;
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.45);
+}
+
+.adv-clear-medal-pip[data-medal-tier="crimson"] {
+  background: linear-gradient(180deg, #e11d48 0%, #881337 100%);
+  border-color: #fda4af;
+  color: #fff1f2;
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.55);
 }
 
 .champ-card.selected-p1 .card-Selected-ribbon {
@@ -4414,22 +4503,43 @@ html.is-mobile-landscape .hud-build-badge {
     font-size: 0.23rem;
   }
   html:not(.is-mobile-landscape) .adv-campaign-selector-bar {
-    gap: 4px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 3px 4px;
     padding: 3px 5px;
   }
   html:not(.is-mobile-landscape) .adv-campaign-kicker {
+    grid-row: 1;
+    grid-column: 1;
     font-size: 0.21rem;
     padding: 0 2px;
   }
   html:not(.is-mobile-landscape) .adv-campaign-select {
+    grid-row: 1;
+    grid-column: 2;
     height: 22px;
     font-size: 0.23rem;
     padding: 1px 4px;
   }
   html:not(.is-mobile-landscape) .adv-campaign-import-btn {
+    grid-row: 1;
+    grid-column: 3;
     height: 22px;
     font-size: 0.21rem;
     padding: 0 5px;
+  }
+  html:not(.is-mobile-landscape) .adv-difficulty-group {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    padding: 1px;
+  }
+  html:not(.is-mobile-landscape) .adv-diff-btn {
+    height: 18px;
+    padding: 0 4px;
+    font-size: 0.21rem;
+    text-align: center;
   }
 
   /* Single Focused Animated Hero Preview (Tap P1 / P2 above to switch) */
@@ -5697,6 +5807,12 @@ html.is-mobile-landscape .roster-config-chip {
 html.is-mobile-landscape .adv-campaign-selector-bar {
   padding: 2px 5px;
   gap: 4px;
+}
+
+html.is-mobile-landscape .adv-diff-btn {
+  height: 16px;
+  padding: 0 5px;
+  font-size: 0.19rem;
 }
 
 html.is-mobile-landscape .adv-campaign-kicker {
@@ -7846,10 +7962,25 @@ html[data-crt="arcade"] #game-canvas {
   gap: 8px;
 }
 
+/* Slim Top-Left Adventure HUD: Portrait + Name + HP Bar only (hide redundant VS Overdrive/Skill-CD/Finisher rows via CSS, keeping DOM IDs intact!) */
+#app.is-adventure-active #hud-left {
+  align-items: center;
+}
+
+#app.is-adventure-active #hud-left .sub-row,
+#app.is-adventure-active #hud-left .finisher-frame {
+  display: none !important;
+}
+
 #app.is-adventure-active .hud-top .portrait-frame {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-width: 1.5px;
+}
+
+html.is-mobile-landscape #app.is-adventure-active .hud-top .portrait-frame {
+  width: 30px;
+  height: 30px;
 }
 
 #app.is-adventure-active .hud-top .bars-column {
@@ -8476,4 +8607,203 @@ html.is-mobile-landscape .adv-relic-desc {
 
 html.is-mobile-landscape .adv-relic-foot {
   display: none;
+}
+
+/* 7. Active Relic Synergy Inspector (Inside #adv-skill-tree-modal & #pause-adv-section) */
+.adv-st-relics-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px 8px;
+  background: rgba(7, 11, 22, 0.88);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 6px;
+}
+
+.adv-st-relics-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.adv-st-relics-title {
+  font-family: var(--font-pixel);
+  font-size: 0.27rem;
+  letter-spacing: 0.06em;
+  color: #facc15;
+}
+
+.adv-st-relics-count {
+  font-family: var(--font-pixel);
+  font-size: 0.25rem;
+  color: #67e8f9;
+}
+
+.adv-st-relics-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.adv-st-relic-empty {
+  grid-column: 1 / -1;
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  color: #64748b;
+  letter-spacing: 0.03em;
+  padding: 2px 0;
+}
+
+.adv-st-relic-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: rgba(13, 20, 38, 0.92);
+  border: 1px solid color-mix(in srgb, var(--relic-accent, #facc15) 68%, #334155);
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.adv-st-relic-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.adv-st-relic-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.adv-st-relic-name {
+  font-family: var(--font-pixel);
+  font-size: 0.25rem;
+  color: var(--relic-accent, #fef08a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adv-st-relic-desc {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.63rem;
+  line-height: 1.18;
+  color: #cbd5e1;
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .adv-st-relics-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+html.is-mobile-landscape .adv-st-relics-strip {
+  padding: 2px 5px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .adv-st-relics-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+html.is-mobile-landscape .adv-st-relics-title,
+html.is-mobile-landscape .adv-st-relics-count {
+  font-size: 0.21rem;
+}
+
+html.is-mobile-landscape .adv-st-relic-chip {
+  padding: 2px 4px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .adv-st-relic-icon {
+  width: 16px;
+  height: 16px;
+}
+
+html.is-mobile-landscape .adv-st-relic-name {
+  font-size: 0.20rem;
+}
+
+html.is-mobile-landscape .adv-st-relic-desc {
+  font-size: 0.54rem;
+  line-height: 1.10;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Pause Menu Adventure Tier + Active Relics Compact Summary */
+.pause-adv-relics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  margin-top: 6px;
+  background: rgba(7, 11, 22, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 5px;
+}
+
+.pause-adv-tier-pill {
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid #64748b;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.pause-adv-tier-pill.tier-heroic {
+  background: #713f12;
+  border-color: #fde047;
+  color: #fef08a;
+}
+
+.pause-adv-tier-pill.tier-sovereign {
+  background: #881337;
+  border-color: #fda4af;
+  color: #fff1f2;
+}
+
+.pause-adv-relics-lbl {
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  color: #facc15;
+}
+
+.pause-adv-relic-none {
+  font-family: var(--font-pixel);
+  font-size: 0.23rem;
+  color: #64748b;
+}
+
+.pause-adv-relic-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  background: #0d1426;
+  border: 1px solid var(--relic-accent, #facc15);
+  border-radius: 3px;
+  font-family: var(--font-pixel);
+  font-size: 0.23rem;
+  color: var(--relic-accent, #fef08a);
+  cursor: help;
+}
+
+.pause-adv-relic-icon {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }

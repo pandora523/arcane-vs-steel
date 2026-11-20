@@ -1,15 +1,15 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps173';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps173';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps173';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps173';
+import { Fighter } from '../entities/Fighter.js?v=30fps174';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps174';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps174';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps174';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps173';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps173';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps173';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps173';
+} from './AdventureProgression.js?v=30fps174';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps174';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps174';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps174';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -18,6 +18,130 @@ export const ADVENTURE_DEPTH_MIN_Y = 442;
 export const ADVENTURE_DEPTH_MAX_Y = 680;
 export const ADVENTURE_DEPTH_MID_Y = 561;
 export const DEFAULT_ADVENTURE_CAMPAIGN_ID = 'default';
+export const ADVENTURE_MAX_RELICS = 4;
+export const ADVENTURE_MEDALS_STORAGE_KEY = 'avs_adv_medals_v1';
+export const ADVENTURE_TIER_STORAGE_KEY = 'avs_adv_tier_v1';
+
+export const ADVENTURE_DIFFICULTY_TIERS = {
+  normal: {
+    id: 'normal',
+    label: 'NORMAL',
+    shortLabel: 'NORM',
+    hpMult: 1.0,
+    dmgMult: 1.0,
+    cadenceMult: 1.0,
+    scoreMult: 1.0,
+    accentHex: '#94a3b8',
+    medalTier: 'bronze'
+  },
+  heroic: {
+    id: 'heroic',
+    label: 'HEROIC',
+    shortLabel: 'HEROIC',
+    hpMult: 1.35,
+    dmgMult: 1.22,
+    cadenceMult: 1.15,
+    scoreMult: 1.5,
+    accentHex: '#facc15',
+    medalTier: 'gold'
+  },
+  sovereign: {
+    id: 'sovereign',
+    label: 'SOVEREIGN',
+    shortLabel: 'SOV',
+    hpMult: 1.75,
+    dmgMult: 1.4,
+    cadenceMult: 1.25,
+    scoreMult: 2.25,
+    accentHex: '#f43f5e',
+    medalTier: 'crimson'
+  }
+};
+
+const ADV_RANK_ORDER = { B: 1, A: 2, S: 3, 'S+': 4 };
+const ADV_TIER_ORDER = { normal: 1, heroic: 2, sovereign: 3 };
+
+export function normalizeAdventureDifficultyId(rawTier) {
+  const clean = String(rawTier || 'normal').trim().toLowerCase();
+  return ADVENTURE_DIFFICULTY_TIERS[clean] ? clean : 'normal';
+}
+
+export function normalizeAdventureRankShort(rankStr) {
+  const s = String(rankStr || '').trim().toUpperCase();
+  if (s.startsWith('S+')) return 'S+';
+  if (s.startsWith('S')) return 'S';
+  if (s.startsWith('A')) return 'A';
+  return 'B';
+}
+
+function resolveMedalStorage(storageOverride = null) {
+  if (storageOverride) return storageOverride;
+  try {
+    if (typeof window !== 'undefined' && window && window.localStorage) {
+      return window.localStorage;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function loadAdventureMedals(storageOverride = null) {
+  const store = resolveMedalStorage(storageOverride);
+  if (!store || typeof store.getItem !== 'function') return {};
+  try {
+    const raw = store.getItem(ADVENTURE_MEDALS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out = {};
+    for (const [heroId, rec] of Object.entries(parsed)) {
+      if (!heroId || !rec || typeof rec !== 'object') continue;
+      out[heroId] = {
+        rank: normalizeAdventureRankShort(rec.rank),
+        score: Number.isFinite(rec.score) ? Math.max(0, Math.round(rec.score)) : 0,
+        bestTier: normalizeAdventureDifficultyId(rec.bestTier)
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function saveAdventureMedal(heroId, { rank = 'B', score = 0, tier = 'normal' } = {}, storageOverride = null) {
+  if (!heroId || typeof heroId !== 'string') return null;
+  const cleanHero = heroId.trim();
+  if (!cleanHero) return null;
+  const medals = loadAdventureMedals(storageOverride);
+  const prev = medals[cleanHero] || null;
+  const nextRank = normalizeAdventureRankShort(rank);
+  const nextTier = normalizeAdventureDifficultyId(tier);
+  const nextScore = Number.isFinite(score) ? Math.max(0, Math.round(score)) : 0;
+
+  const merged = {
+    rank:
+      prev && (ADV_RANK_ORDER[prev.rank] || 0) > (ADV_RANK_ORDER[nextRank] || 0)
+        ? prev.rank
+        : nextRank,
+    score: prev ? Math.max(prev.score || 0, nextScore) : nextScore,
+    bestTier:
+      prev && (ADV_TIER_ORDER[prev.bestTier] || 0) > (ADV_TIER_ORDER[nextTier] || 0)
+        ? prev.bestTier
+        : nextTier
+  };
+  medals[cleanHero] = merged;
+
+  const store = resolveMedalStorage(storageOverride);
+  if (store && typeof store.setItem === 'function') {
+    try {
+      store.setItem(ADVENTURE_MEDALS_STORAGE_KEY, JSON.stringify(medals));
+    } catch {
+      // Ignore storage quota or sandbox write errors safely
+    }
+  }
+  return merged;
+}
 
 export const ADVENTURE_RELIC_BOONS = [
   {
@@ -60,7 +184,49 @@ export const ADVENTURE_RELIC_BOONS = [
     name: 'SOUL-SIPHON CLEAVE',
     shortTag: 'SIPHON',
     accentHex: '#34d399',
-    desc: '+20% attack damage, +4 Spirit per hit, and restore 3.5% HP on every kill.'
+    desc: '+20% cleave damage, +4 Spirit per hit, and restore 3.5% HP on every kill.'
+  },
+  {
+    id: 'frostbite_shatter',
+    name: 'FROSTBITE SHATTER',
+    shortTag: 'FROST',
+    accentHex: '#67e8f9',
+    desc: 'Crits & Skills chill foes (-28% move/attack speed for 2.4s) and shatter for +85 frost DMG on Guard Break.'
+  },
+  {
+    id: 'phantom_counter_wave',
+    name: 'PHANTOM COUNTER-WAVE',
+    shortTag: 'WAVE',
+    accentHex: '#38bdf8',
+    desc: 'Phantom Evade empowers your next strike with a piercing 220px astral shockwave (+110 AoE DMG + 25 Stagger).'
+  },
+  {
+    id: 'guard_break_siphon',
+    name: 'GUARD-BREAK SIPHON',
+    shortTag: 'BREAK',
+    accentHex: '#4ade80',
+    desc: 'Triggering Guard Break restores 10% max HP, +35 Spirit, and +20% Overdrive charge.'
+  },
+  {
+    id: 'meteor_calldown',
+    name: 'SOLAR METEOR CALLDOWN',
+    shortTag: 'METEOR',
+    accentHex: '#f97316',
+    desc: 'Every 4th Skill or Overdrive calls down a pixel solar meteor on the nearest foe (210 AoE DMG + 24 Stagger).'
+  },
+  {
+    id: 'overdrive_surge',
+    name: 'OVERDRIVE SURGE',
+    shortTag: 'SURGE',
+    accentHex: '#fbbf24',
+    desc: '+30% Overdrive charge gain from all sources and +22% Overdrive & Supreme Ult damage.'
+  },
+  {
+    id: 'haste_momentum',
+    name: 'HASTE MOMENTUM',
+    shortTag: 'HASTE',
+    accentHex: '#2dd4bf',
+    desc: '+16% 3D move speed and -20% Skill & Dodge cooldowns after every kill (4s buff).'
   }
 ];
 
@@ -406,6 +572,12 @@ export function normalizeAdventureCampaignPack(rawPack) {
         p.dropType === 'ult'
           ? p.dropType
           : null;
+      const hazardType =
+        p.hazardType === 'explosive_censer' ||
+        p.hazardType === 'spore_pod' ||
+        p.hazardType === 'cursed_pylon'
+          ? p.hazardType
+          : null;
       return {
         id: sanitizeCampaignText(p.id, `prop_${pi}`, 48),
         zone: pZone,
@@ -413,6 +585,7 @@ export function normalizeAdventureCampaignPack(rawPack) {
         x: px,
         groundY: pGy,
         dropType,
+        hazardType,
         bonusDrop: p.bonusDrop ?? null,
         isArtifact: Boolean(p.isArtifact),
         maxHp: Number.isFinite(p.maxHp) && p.maxHp > 0 ? Math.round(p.maxHp) : null,
@@ -555,11 +728,18 @@ export class AdventureManager {
     this.isSkillTreeOpen = false;
     this.isRelicDraftOpen = false;
     this.relicDraftChoices = [];
+    this._relicDraftMeta = { source: 'zone', zoneIdx: 0, wardenName: '' };
+    this._lastRelicDraftKillCount = -1;
+    this._lastPauseRelicSig = '';
     this.activeRelics = [];
     this._relicHitCounter = 0;
+    this._relicMeteorCastCount = 0;
+    this._relicHasteTimer = 0;
     this._relicChainArcs = [];
     this._relicDodgeMines = [];
     this._relicSkillEchoes = [];
+    this._relicCounterWaves = [];
+    this._relicMeteors = [];
     this._relicAegisOrbitT = 0;
     this._relicAegisZapCd = 0;
     this._inRelicProc = false;
@@ -567,6 +747,7 @@ export class AdventureManager {
     this._perfectDodgeBannerTimer = 0;
     this.perfectDodgeCount = 0;
 
+    this.difficultyTier = 'normal';
     this.activeCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
     this.activeCampaignPack = null;
     this._campaignPackCache = new Map();
@@ -901,6 +1082,19 @@ export class AdventureManager {
     this.game.updateHUD?.();
   }
 
+  setDifficultyTier(tierId) {
+    this.difficultyTier = normalizeAdventureDifficultyId(tierId);
+    this._lastPauseRelicSig = '';
+    return this.getDifficultyConfig();
+  }
+
+  getDifficultyConfig() {
+    return (
+      ADVENTURE_DIFFICULTY_TIERS[this.difficultyTier] ||
+      ADVENTURE_DIFFICULTY_TIERS.normal
+    );
+  }
+
   hasRelic(relicId) {
     if (!relicId || !Array.isArray(this.activeRelics)) return false;
     for (let i = 0; i < this.activeRelics.length; i++) {
@@ -997,6 +1191,94 @@ export class AdventureManager {
       px(6, 12, 2, 2, '#ffffff');
       px(23, 17, 4, 4, '#38bdf8');
       px(24, 18, 2, 2, '#ffffff');
+    } else if (relicId === 'frostbite_shatter') {
+      // Faceted glacial snowflake crystal + shatter shards
+      px(14, 5, 4, 22, '#0d0f1c');
+      px(5, 14, 22, 4, '#0d0f1c');
+      px(9, 9, 14, 14, '#0d0f1c');
+      px(15, 6, 2, 20, '#38bdf8');
+      px(6, 15, 20, 2, '#38bdf8');
+      px(10, 10, 12, 12, '#0284c7');
+      px(12, 12, 8, 8, '#67e8f9');
+      px(14, 14, 4, 4, '#ffffff');
+      px(8, 8, 3, 3, '#67e8f9');
+      px(21, 8, 3, 3, '#67e8f9');
+      px(8, 21, 3, 3, '#67e8f9');
+      px(21, 21, 3, 3, '#67e8f9');
+    } else if (relicId === 'phantom_counter_wave') {
+      // Piercing forward astral crescent shockwave + speed trails
+      px(6, 11, 6, 2, '#0284c7');
+      px(5, 15, 8, 2, '#38bdf8');
+      px(6, 19, 6, 2, '#0284c7');
+      px(14, 6, 7, 20, '#0d0f1c');
+      px(18, 9, 8, 14, '#0d0f1c');
+      px(15, 7, 4, 3, '#38bdf8');
+      px(18, 9, 5, 4, '#67e8f9');
+      px(20, 13, 5, 6, '#e0f2fe');
+      px(18, 19, 5, 4, '#67e8f9');
+      px(15, 22, 4, 3, '#38bdf8');
+      px(21, 14, 3, 4, '#ffffff');
+      px(12, 14, 3, 4, '#fde047');
+    } else if (relicId === 'guard_break_siphon') {
+      // Cracked golden shield splitting open with rising emerald siphon core
+      px(7, 8, 8, 15, '#0d0f1c');
+      px(17, 8, 8, 15, '#0d0f1c');
+      px(8, 9, 6, 11, '#ca8a04');
+      px(18, 9, 6, 11, '#ca8a04');
+      px(9, 10, 4, 9, '#facc15');
+      px(19, 10, 4, 9, '#facc15');
+      px(10, 20, 4, 2, '#d97706');
+      px(18, 20, 4, 2, '#d97706');
+      // Rising emerald vitality beam between split halves
+      px(14, 6, 4, 20, '#10b981');
+      px(15, 7, 2, 18, '#4ade80');
+      px(15, 11, 2, 6, '#ecfdf5');
+      px(13, 9, 6, 2, '#6ee7b7');
+    } else if (relicId === 'meteor_calldown') {
+      // Blazing diagonal pixel solar meteor + fire tail
+      px(18, 5, 7, 3, '#fb923c');
+      px(15, 7, 7, 4, '#f97316');
+      px(12, 10, 8, 4, '#fde047');
+      px(8, 13, 13, 13, '#0d0f1c');
+      px(9, 14, 11, 11, '#ea580c');
+      px(10, 15, 9, 9, '#f97316');
+      px(11, 16, 6, 6, '#facc15');
+      px(12, 17, 4, 4, '#fef9c3');
+      px(13, 18, 2, 2, '#ffffff');
+      px(6, 23, 3, 2, '#fb923c');
+      px(21, 22, 3, 2, '#fde047');
+    } else if (relicId === 'overdrive_surge') {
+      // Radiant crowned solar surge core with 4-way overdrive spikes
+      px(14, 4, 4, 24, '#0d0f1c');
+      px(4, 14, 24, 4, '#0d0f1c');
+      px(9, 9, 14, 14, '#0d0f1c');
+      px(15, 5, 2, 22, '#f59e0b');
+      px(5, 15, 22, 2, '#f59e0b');
+      px(10, 10, 12, 12, '#f59e0b');
+      px(11, 11, 10, 10, '#fbbf24');
+      px(13, 13, 6, 6, '#fef08a');
+      px(14, 14, 4, 4, '#ffffff');
+      px(8, 8, 2, 2, '#fde047');
+      px(22, 8, 2, 2, '#fde047');
+      px(8, 22, 2, 2, '#fde047');
+      px(22, 22, 2, 2, '#fde047');
+    } else if (relicId === 'haste_momentum') {
+      // Twin aerodynamic teal wind chevrons + speed streaks
+      px(5, 11, 5, 2, '#0d9488');
+      px(4, 15, 6, 2, '#2dd4bf');
+      px(5, 19, 5, 2, '#0d9488');
+      // First chevron
+      px(10, 8, 4, 3, '#0d9488');
+      px(12, 11, 4, 3, '#2dd4bf');
+      px(14, 14, 4, 4, '#99f6e4');
+      px(12, 18, 4, 3, '#2dd4bf');
+      px(10, 21, 4, 3, '#0d9488');
+      // Lead bright chevron
+      px(18, 8, 4, 3, '#2dd4bf');
+      px(20, 11, 4, 3, '#5eead4');
+      px(22, 14, 4, 4, '#ffffff');
+      px(20, 18, 4, 3, '#5eead4');
+      px(18, 21, 4, 3, '#2dd4bf');
     } else {
       // Soul-Siphon Cleave: emerald crescent + rising vitality droplets
       px(9, 8, 14, 14, '#0d0f1c');
@@ -1011,8 +1293,9 @@ export class AdventureManager {
     }
   }
 
-  openRelicDraft(zoneIdx = this.zoneIndex) {
+  openRelicDraft(zoneIdx = this.zoneIndex, meta = {}) {
     if (!this.active || this.game.isLandingOpen || this.game.isMatchOver) return false;
+    if (this.activeRelics.length >= ADVENTURE_MAX_RELICS) return false;
     const ownedIds = new Set(this.activeRelics.map((r) => r.id));
     const pool = ADVENTURE_RELIC_BOONS.filter((b) => !ownedIds.has(b.id));
     if (!pool.length) return false;
@@ -1026,6 +1309,12 @@ export class AdventureManager {
       shuffled[j] = tmp;
     }
     this.relicDraftChoices = shuffled.slice(0, Math.min(3, shuffled.length));
+    this._relicDraftMeta = {
+      source: meta?.source === 'warden' ? 'warden' : 'zone',
+      zoneIdx: zoneIdx | 0,
+      wardenName: meta?.wardenName ? String(meta.wardenName).toUpperCase() : ''
+    };
+    this._lastRelicDraftKillCount = this.monstersKilled;
     this.isRelicDraftOpen = true;
     this.clearHeldInputs();
     this.renderRelicDraftModal(zoneIdx);
@@ -1040,9 +1329,18 @@ export class AdventureManager {
 
   renderRelicDraftModal(zoneIdx = this.zoneIndex) {
     if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const meta = this._relicDraftMeta || { source: 'zone', zoneIdx, wardenName: '' };
+    const eyebrowEl = document.getElementById('adv-relic-draft-eyebrow');
+    if (eyebrowEl) {
+      eyebrowEl.textContent = meta.source === 'warden' ? 'WARDEN SLAYER BOON' : 'ZONE CLEAR BOON';
+    }
     const subEl = document.getElementById('adv-relic-draft-sub');
     if (subEl) {
-      subEl.textContent = `ZONE ${Math.max(1, (zoneIdx | 0) + 1)} CLEARED • CHOOSE 1 SOVEREIGN RELIC BOON (${this.activeRelics.length + 1} / 3)`;
+      const slotText = `(${this.activeRelics.length + 1} / ${ADVENTURE_MAX_RELICS})`;
+      subEl.textContent =
+        meta.source === 'warden'
+          ? `${meta.wardenName || 'REALM WARDEN'} VANQUISHED • CHOOSE 1 SOVEREIGN RELIC BOON ${slotText}`
+          : `ZONE ${Math.max(1, (zoneIdx | 0) + 1)} CLEARED • CHOOSE 1 SOVEREIGN RELIC BOON ${slotText}`;
     }
     const container = document.getElementById('adv-relic-cards');
     if (!container || typeof document.createElement !== 'function') return;
@@ -1114,11 +1412,13 @@ export class AdventureManager {
         null;
     }
     if (!chosen) return null;
-    if (!this.hasRelic(chosen.id)) {
+    if (!this.hasRelic(chosen.id) && this.activeRelics.length < ADVENTURE_MAX_RELICS) {
       this.activeRelics.push(chosen);
     }
     this.isRelicDraftOpen = false;
     this.relicDraftChoices = [];
+    this._lastRelicDraftKillCount = this.monstersKilled;
+    this._lastPauseRelicSig = '';
     if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
       document.getElementById('adv-relic-draft-modal')?.classList?.add('hidden');
     }
@@ -1138,8 +1438,110 @@ export class AdventureManager {
         chosen.accentHex
       );
     }
+    this.renderActiveRelicsInspector();
     this.syncControlDeckUI();
     return chosen;
+  }
+
+  renderActiveRelicsInspector() {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const count = this.activeRelics.length;
+    const diffCfg = this.getDifficultyConfig();
+
+    // 1. Active Relics strip inside #adv-skill-tree-modal (icon + name + full description)
+    const countEl = document.getElementById('adv-st-relics-count');
+    if (countEl) {
+      countEl.textContent = `${count} / ${ADVENTURE_MAX_RELICS}`;
+    }
+    const listEl = document.getElementById('adv-st-relics-list');
+    if (listEl && typeof document.createElement === 'function') {
+      listEl.innerHTML = '';
+      if (count === 0) {
+        const emptyEl = document.createElement('div');
+        emptyEl.className = 'adv-st-relic-empty';
+        emptyEl.textContent = 'NO RELICS CLAIMED YET — CLEAR A REALM OR SLAY A WARDEN TO DRAFT BOONS';
+        listEl.appendChild(emptyEl);
+      } else {
+        for (let i = 0; i < count; i++) {
+          const boon = this.activeRelics[i];
+          const chip = document.createElement('div');
+          chip.className = 'adv-st-relic-chip';
+          chip.title = `${boon.name}: ${boon.desc}`;
+          if (chip.style?.setProperty) {
+            chip.style.setProperty('--relic-accent', boon.accentHex || '#facc15');
+          }
+          const cvs = document.createElement('canvas');
+          cvs.width = 32;
+          cvs.height = 32;
+          cvs.className = 'adv-st-relic-icon';
+          if (typeof cvs.getContext === 'function') {
+            this.drawRelicIconCanvas(cvs.getContext('2d'), boon.id, boon.accentHex);
+          }
+          const body = document.createElement('div');
+          body.className = 'adv-st-relic-body';
+          const nameEl = document.createElement('div');
+          nameEl.className = 'adv-st-relic-name';
+          nameEl.textContent = boon.name;
+          const descEl = document.createElement('div');
+          descEl.className = 'adv-st-relic-desc';
+          descEl.textContent = boon.desc;
+          body.appendChild(nameEl);
+          body.appendChild(descEl);
+          chip.appendChild(cvs);
+          chip.appendChild(body);
+          listEl.appendChild(chip);
+        }
+      }
+    }
+
+    // 2. Compact Relic & Ascension summary inside #pause-adv-section (with tooltips)
+    const pauseWrap = document.getElementById('pause-adv-relics');
+    if (pauseWrap && typeof document.createElement === 'function') {
+      const sig = `${diffCfg.id}|${this.activeRelics.map((r) => r.id).join(',')}`;
+      if (this._lastPauseRelicSig === sig && pauseWrap.childNodes?.length > 0) return;
+      this._lastPauseRelicSig = sig;
+      pauseWrap.innerHTML = '';
+
+      const tierPill = document.createElement('span');
+      tierPill.className = `pause-adv-tier-pill tier-${diffCfg.id}`;
+      tierPill.textContent = `TIER: ${diffCfg.label}`;
+      tierPill.title = `${diffCfg.label} (${diffCfg.hpMult}x HP, ${diffCfg.dmgMult}x DMG, ${diffCfg.scoreMult}x SCORE)`;
+      pauseWrap.appendChild(tierPill);
+
+      const lbl = document.createElement('span');
+      lbl.className = 'pause-adv-relics-lbl';
+      lbl.textContent = `RELICS (${count}/${ADVENTURE_MAX_RELICS}):`;
+      pauseWrap.appendChild(lbl);
+
+      if (count === 0) {
+        const noneEl = document.createElement('span');
+        noneEl.className = 'pause-adv-relic-none';
+        noneEl.textContent = 'NONE CLAIMED';
+        pauseWrap.appendChild(noneEl);
+      } else {
+        for (let i = 0; i < count; i++) {
+          const boon = this.activeRelics[i];
+          const pill = document.createElement('span');
+          pill.className = 'pause-adv-relic-pill';
+          pill.title = `${boon.name} — ${boon.desc}`;
+          if (pill.style?.setProperty) {
+            pill.style.setProperty('--relic-accent', boon.accentHex || '#facc15');
+          }
+          const miniCvs = document.createElement('canvas');
+          miniCvs.width = 32;
+          miniCvs.height = 32;
+          miniCvs.className = 'pause-adv-relic-icon';
+          if (typeof miniCvs.getContext === 'function') {
+            this.drawRelicIconCanvas(miniCvs.getContext('2d'), boon.id, boon.accentHex);
+          }
+          const txt = document.createElement('span');
+          txt.textContent = boon.shortTag;
+          pill.appendChild(miniCvs);
+          pill.appendChild(txt);
+          pauseWrap.appendChild(pill);
+        }
+      }
+    }
   }
 
   closeRelicDraft(playSound = false) {
@@ -1191,6 +1593,8 @@ export class AdventureManager {
       `${Math.floor(prog.ultCharge)}% / ${Math.floor(prog.astralCharge)}%`
     );
     setTxt('adv-st-stat-ward', `${Math.round(stats.wardReduction * 100)}% DR`);
+
+    this.renderActiveRelicsInspector();
 
     const grid = document.getElementById('adv-st-grid');
     if (!grid || typeof document.createElement !== 'function') return;
@@ -1608,6 +2012,9 @@ export class AdventureManager {
     }
 
     this.syncJoystickKnobUI();
+    if (visible) {
+      this.renderActiveRelicsInspector();
+    }
 
     const player = this.game.leftFighter;
     if (!player) return;
@@ -1780,7 +2187,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps173') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps174') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -1790,7 +2197,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps173') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps174') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
@@ -1882,11 +2289,18 @@ export class AdventureManager {
     this.isSkillTreeOpen = false;
     this.isRelicDraftOpen = false;
     this.relicDraftChoices = [];
+    this._relicDraftMeta = { source: 'zone', zoneIdx: 0, wardenName: '' };
+    this._lastRelicDraftKillCount = -1;
+    this._lastPauseRelicSig = '';
     this.activeRelics = [];
     this._relicHitCounter = 0;
+    this._relicMeteorCastCount = 0;
+    this._relicHasteTimer = 0;
     this._relicChainArcs = [];
     this._relicDodgeMines = [];
     this._relicSkillEchoes = [];
+    this._relicCounterWaves = [];
+    this._relicMeteors = [];
     this._relicAegisOrbitT = 0;
     this._relicAegisZapCd = 0;
     this._inRelicProc = false;
@@ -2008,10 +2422,17 @@ export class AdventureManager {
     this.closeRelicDraft(false);
     this.activeRelics = [];
     this.relicDraftChoices = [];
+    this._relicDraftMeta = { source: 'zone', zoneIdx: 0, wardenName: '' };
+    this._lastRelicDraftKillCount = -1;
+    this._lastPauseRelicSig = '';
     this._relicHitCounter = 0;
+    this._relicMeteorCastCount = 0;
+    this._relicHasteTimer = 0;
     this._relicChainArcs = [];
     this._relicDodgeMines = [];
     this._relicSkillEchoes = [];
+    this._relicCounterWaves = [];
+    this._relicMeteors = [];
     this._relicAegisOrbitT = 0;
     this._relicAegisZapCd = 0;
     this._inRelicProc = false;
@@ -2101,6 +2522,28 @@ export class AdventureManager {
       kind === 'archfiend'
         ? new ArchfiendBoss(spawnX, gy, facing, opts)
         : new Monster(kind, spawnX, gy, facing, opts);
+    // Apply Ascension Difficulty Tier scaling (`NORMAL: 1.0x`, `HEROIC: 1.35x HP / 1.22x DMG / +15% Cadence`, `SOVEREIGN: 1.75x HP / 1.40x DMG / +25% Cadence`)
+    const diff = this.getDifficultyConfig();
+    if (diff.hpMult !== 1) {
+      m.maxHp = Math.max(1, Math.round(m.maxHp * diff.hpMult));
+      m.hp = m.maxHp;
+    }
+    if (diff.dmgMult !== 1) {
+      m.dmgScale = (m.dmgScale || 1) * diff.dmgMult;
+    }
+    if (diff.cadenceMult !== 1) {
+      m.cadenceMult = diff.cadenceMult;
+      m.autoInterval = Math.max(0.35, (m.autoInterval || 1.0) / diff.cadenceMult);
+      m.skillMaxCooldown = Math.max(0.9, (m.skillMaxCooldown || 3.5) / diff.cadenceMult);
+      if (Number.isFinite(m.dashMaxCooldown) && m.dashMaxCooldown > 0) {
+        m.dashMaxCooldown = Math.max(0.9, m.dashMaxCooldown / diff.cadenceMult);
+      }
+      if (Number.isFinite(m.ultCooldown) && m.ultCooldown > 0) {
+        m.ultCooldown = Math.max(2.2, m.ultCooldown / diff.cadenceMult);
+      }
+      m.autoCooldown = Math.max(0.25, (m.autoCooldown || 0.5) / diff.cadenceMult);
+      m.skillCooldown = Math.max(0.5, (m.skillCooldown || 1.5) / diff.cadenceMult);
+    }
     m.game = this.game;
     m.team = 2;
     m.groundY = gy;
@@ -2483,7 +2926,8 @@ export class AdventureManager {
   onMonsterDeath(deadMonster) {
     if (!this.active) return;
     this.monstersKilled++;
-    const pts = deadMonster.scoreValue || 250;
+    const diff = this.getDifficultyConfig();
+    const pts = Math.round((deadMonster.scoreValue || 250) * (diff.scoreMult || 1));
     this.score += pts;
 
     const player = this.game.leftFighter;
@@ -2538,6 +2982,16 @@ export class AdventureManager {
     }
 
     if (player && !player.isDead) {
+      // Haste Momentum Relic Boon: +16% 3D move speed & -20% Skill & Dodge CDs for 4s after every kill
+      if (this.hasRelic('haste_momentum')) {
+        this._relicHasteTimer = 4.0;
+        if (player.skillCooldown > 0) {
+          player.skillCooldown = Math.max(0, player.skillCooldown * 0.88);
+        }
+        if (player.dodgeCooldown > 0) {
+          player.dodgeCooldown = Math.max(0, player.dodgeCooldown * 0.88);
+        }
+      }
       // Soul-Siphon Cleave Relic Boon: restore 3.5% max HP on every kill
       if (this.hasRelic('soul_siphon_cleave')) {
         player.heal(Math.max(12, Math.round(player.maxHp * 0.035)), 'SOUL SIPHON');
@@ -2592,6 +3046,26 @@ export class AdventureManager {
       return;
     }
 
+    // Warden Bonus Sovereign Relic Draft (up to 4 Relics per run; strictly auto-skipped in simMode/testMode/autoPlay)
+    if (deadMonster.isMiniBoss && !deadMonster.isBoss && !this.isRelicDraftOpen) {
+      const hasRelicModalDom =
+        typeof document !== 'undefined' &&
+        typeof document.getElementById === 'function' &&
+        Boolean(document.getElementById('adv-relic-draft-modal'));
+      if (
+        !this.game?.simMode &&
+        !this.game?.testModeUnlimitedHp &&
+        !this.autoPlay &&
+        this.activeRelics.length < ADVENTURE_MAX_RELICS &&
+        hasRelicModalDom
+      ) {
+        this.openRelicDraft(this.zoneIndex, {
+          source: 'warden',
+          wardenName: deadMonster.name || 'REALM WARDEN'
+        });
+      }
+    }
+
     this.syncRightHUD();
   }
 
@@ -2624,12 +3098,21 @@ export class AdventureManager {
       );
     }
 
-    // Calculate Arcade Rank
+    // Calculate Arcade Rank & Persist Champion Clear Medal
+    const diff = this.getDifficultyConfig();
     const clearSec = Math.max(1, Math.round(g.matchTime || 1));
-    const timeBonus = Math.max(0, (180 - clearSec) * 20);
+    const timeBonus = Math.round(Math.max(0, (180 - clearSec) * 20) * (diff.scoreMult || 1));
     this.score += timeBonus;
     const rank =
       this.score >= 8200 ? 'S+ SOLAR SOVEREIGN' : this.score >= 6500 ? 'S RANK' : this.score >= 4800 ? 'A RANK' : 'B RANK';
+    if (player?.heroId) {
+      saveAdventureMedal(player.heroId, {
+        rank,
+        score: this.score,
+        tier: diff.id
+      });
+      g.syncAdventureClearMedalsUI?.();
+    }
 
     const hasDom = typeof document !== 'undefined' && typeof document.getElementById === 'function';
     const victoryOverlay = hasDom ? document.getElementById('victory-overlay') : null;
@@ -2655,7 +3138,8 @@ export class AdventureManager {
     }
 
     if (eyebrowEl) {
-      eyebrowEl.textContent = `ADVENTURE CAMPAIGN CLEARED • ${rank} • SCORE: ${this.score}`;
+      const tierTag = diff.id !== 'normal' ? ` • ${diff.label}` : '';
+      eyebrowEl.textContent = `ADVENTURE CAMPAIGN CLEARED${tierTag} • ${rank} • SCORE: ${this.score}`;
     }
     if (winnerEl && player) {
       winnerEl.textContent = `${player.name.toUpperCase()} CONQUERS THE BLACK PIT`;
@@ -2878,20 +3362,24 @@ export class AdventureManager {
       this.game.audio.play('reflect', dropBaseX);
     }
 
-    // Zone-Clear Sovereign Relic Altar (Zones 1, 2, 3) — auto-skipped in simMode / testMode / autoPlay so automated runs never stall!
+    // Zone-Clear Sovereign Relic Altar (up to 4 Relics per run; auto-skipped in simMode / testMode / autoPlay or right after a final-kill Warden draft)
     const hasRelicModalDom =
       typeof document !== 'undefined' &&
       typeof document.getElementById === 'function' &&
       Boolean(document.getElementById('adv-relic-draft-modal'));
+    const justDraftedOnSameKill =
+      this._lastRelicDraftKillCount >= 0 && this._lastRelicDraftKillCount === this.monstersKilled;
     if (
       zoneIdx < activeZones.length - 1 &&
       !this.game?.simMode &&
       !this.game?.testModeUnlimitedHp &&
       !this.autoPlay &&
-      this.activeRelics.length < 3 &&
+      !this.isRelicDraftOpen &&
+      !justDraftedOnSameKill &&
+      this.activeRelics.length < ADVENTURE_MAX_RELICS &&
       hasRelicModalDom
     ) {
-      this.openRelicDraft(zoneIdx);
+      this.openRelicDraft(zoneIdx, { source: 'zone' });
     }
   }
 
@@ -2937,7 +3425,8 @@ export class AdventureManager {
         Math.abs(player.y - pk.y) <= 110
       ) {
         this.pickups.splice(i, 1);
-        this.score += 150;
+        const diffPk = this.getDifficultyConfig();
+        this.score += Math.round(150 * (diffPk.scoreMult || 1));
         if (this.game.audio) this.game.audio.play('holy_hit', pk.x);
         if (pk.type === 'hp') {
           player.heal(Math.round(player.maxHp * 0.18), 'SOLAR ELIXIR +HP!');
@@ -3057,15 +3546,17 @@ export class AdventureManager {
       }
     }
     if (g.hudEls?.modeBadge) {
+      const diffBadge = this.getDifficultyConfig();
+      const tierPrefix = diffBadge.id !== 'normal' ? `${diffBadge.shortLabel} • ` : '';
       let nextBadge;
       if (g.renderer?.isMobilePortrait) {
         const shortWave =
           this.totalWaveLabel === 'COLOSSAL BOSS'
             ? 'BOSS'
             : this.totalWaveLabel.replace('WAVE ', 'W').replace(/\s+/g, '');
-        nextBadge = `${shortWave} • ${this.score}P`;
+        nextBadge = `${tierPrefix}${shortWave} • ${this.score}P`;
       } else {
-        nextBadge = `LV.${this.progression.level} • ${this.totalWaveLabel} • ${this.score} PTS`;
+        nextBadge = `${tierPrefix}LV.${this.progression.level} • ${this.totalWaveLabel} • ${this.score} PTS`;
       }
       if (g.hudEls.modeBadge.textContent !== nextBadge) {
         g.hudEls.modeBadge.textContent = nextBadge;
@@ -3198,7 +3689,7 @@ export class AdventureManager {
     return true;
   }
 
-  onPlayerHitMonsterRelicProc(attacker, monster, dealt, isCrit = false) {
+  onPlayerHitMonsterRelicProc(attacker, monster, dealt, isCrit = false, procOpts = {}) {
     if (!this.active || !attacker || !monster || this._inRelicProc) return;
     this._inRelicProc = true;
     try {
@@ -3239,7 +3730,59 @@ export class AdventureManager {
         }
       }
 
-      // 2. Executioner Detonation: execute non-boss foes below 18% HP immediately
+      // 2. Frostbite Shatter: Crits & Skills chill foes (-28% move/attack speed for 2.4s)
+      if (
+        this.hasRelic('frostbite_shatter') &&
+        !monster.isDead &&
+        (isCrit || attacker.state === 'SKILL')
+      ) {
+        const wasChilled = (monster._chillTimer || 0) > 0;
+        monster._chillTimer = Math.max(monster._chillTimer || 0, 2.4);
+        if (!wasChilled && this.game?.vfx) {
+          const fxX = monster.isColossalBoss ? (monster.anchorX || monster.x) - 110 : monster.x;
+          const fxY = (monster.groundY || monster.y || 561) - 64;
+          this.game.vfx.spawnBurst(fxX, fxY, 8, '#67e8f9', 155, { upBias: 95, size: 4 });
+        }
+      }
+
+      // 3. Phantom Counter-Wave: Phantom Evade empowered strike unleashes a piercing 220px astral shockwave (+110 AoE DMG + 25 Stagger)
+      if (procOpts?.consumedPhantomEmpower && this.hasRelic('phantom_counter_wave')) {
+        const dir = (attacker.facing || 1) >= 0 ? 1 : -1;
+        const ox = attacker.x;
+        const ogy = Number.isFinite(attacker.groundY) ? attacker.groundY : attacker.y || ADVENTURE_DEPTH_MID_Y;
+        const waveRange = 220;
+        this._relicCounterWaves.push({
+          x: ox,
+          groundY: ogy,
+          dir,
+          range: waveRange,
+          age: 0,
+          maxLife: 0.28
+        });
+        this.game?.audio?.play?.('raijin_slash', ox);
+        this.game?.vfx?.spawnShockwave?.(ox + dir * 70, ogy - 22, 165, '#38bdf8', 0.30, true);
+        this.game?.vfx?.spawnDamageText?.(
+          ox + dir * 48,
+          ogy - 168,
+          0,
+          true,
+          'COUNTER-WAVE!',
+          '#38bdf8'
+        );
+        for (const m of this.getLivingMonsters()) {
+          if (m.isDead) continue;
+          const mx = m.isColossalBoss ? (m.anchorX || m.x) - 110 : m.x;
+          const mGy = m.groundY || m.y || ADVENTURE_DEPTH_MID_Y;
+          const along = (mx - ox) * dir;
+          const dz = m.isColossalBoss ? 0 : Math.abs(mGy - ogy);
+          if (along >= -28 && along <= waveRange + 24 && dz <= 95) {
+            m.takeDamage(110, attacker, true, dir * 135, 0);
+            m.addStagger?.(25, attacker, this.game);
+          }
+        }
+      }
+
+      // 4. Executioner Detonation: execute non-boss foes below 18% HP immediately
       if (
         this.hasRelic('executioner_detonation') &&
         !monster.isDead &&
@@ -3260,6 +3803,81 @@ export class AdventureManager {
     } finally {
       this._inRelicProc = false;
     }
+  }
+
+  onMonsterGuardBroken(monster, attacker = null) {
+    if (!this.active || !monster) return;
+    const player = attacker && !attacker.isMonster ? attacker : this.game?.leftFighter;
+    if (!player || player.isDead) return;
+
+    // Frostbite Shatter: Guard Break shatters chilled/staggered foes for +85 bonus frost DMG
+    if (this.hasRelic('frostbite_shatter') && !monster.isDead) {
+      const prevProc = this._inRelicProc;
+      this._inRelicProc = true;
+      try {
+        const sx = monster.isColossalBoss ? (monster.anchorX || monster.x) - 110 : monster.x;
+        const sy = (monster.groundY || monster.y || 561) - 68;
+        this.game?.audio?.play?.('ice_shatter', sx);
+        this.game?.vfx?.spawnShockwave?.(sx, sy + 42, 165, '#67e8f9', 0.34, true);
+        this.game?.vfx?.spawnBurst?.(sx, sy, 18, '#67e8f9', 240, { upBias: 145, size: 5 });
+        this.game?.vfx?.spawnDamageText?.(sx, sy - 92, 0, true, 'FROST SHATTER! +85', '#67e8f9');
+        monster.takeDamage(85, player, true, 0, 0);
+      } finally {
+        this._inRelicProc = prevProc;
+      }
+    }
+
+    // Guard-Break Siphon: restores 10% max HP, +35 Spirit, and +20% Overdrive charge
+    if (this.hasRelic('guard_break_siphon')) {
+      const healAmt = Math.max(20, Math.round((player.maxHp || 1040) * 0.10));
+      if (player._advOrig && typeof player._advOrig.heal === 'function') {
+        player._advOrig.heal(healAmt, 'GUARD SIPHON +HP');
+      } else {
+        player.heal?.(healAmt, 'GUARD SIPHON +HP');
+      }
+      this.progression.gainSpirit(35);
+      this.progression.gainAdventureUlt(20, player);
+      this.game?.vfx?.spawnBurst?.(player.x, (player.y || player.groundY || 561) - 72, 16, '#4ade80', 200, {
+        upBias: 135,
+        size: 5
+      });
+      this.game?.vfx?.spawnDamageText?.(
+        player.x,
+        (player.y || player.groundY || 561) - 172,
+        0,
+        true,
+        'SIPHON BREAK! +10% HP',
+        '#4ade80'
+      );
+    }
+  }
+
+  onPlayerCastSkillOrOverdrive(player) {
+    if (!this.active || !player || player.isDead) return;
+    if (!this.hasRelic('meteor_calldown')) return;
+    this._relicMeteorCastCount = (this._relicMeteorCastCount || 0) + 1;
+    if (this._relicMeteorCastCount % 4 !== 0) return;
+
+    const target = this.getNearestLivingMonster(player);
+    const dir = (player.facing || 1) >= 0 ? 1 : -1;
+    const tx = target
+      ? target.isColossalBoss
+        ? (target.anchorX || target.x) - 110
+        : target.x
+      : Math.max(90, Math.min(this.getWorldWidth() - 90, player.x + dir * 210));
+    const tgy = target
+      ? target.groundY || target.y || ADVENTURE_DEPTH_MID_Y
+      : player.groundY || ADVENTURE_DEPTH_MID_Y;
+
+    this._relicMeteors.push({
+      x: tx,
+      groundY: tgy,
+      timer: 0.34,
+      maxTimer: 0.34,
+      radius: 175
+    });
+    this.game?.audio?.play?.('eclipse_charge', tx);
+    this.game?.vfx?.spawnDamageText?.(tx, tgy - 165, 0, true, 'SOLAR METEOR!', '#f97316');
   }
 
   queueTwinSpiritEcho(player) {
@@ -3385,6 +4003,54 @@ export class AdventureManager {
             closest.addStagger?.(8, player, this.game);
           } finally {
             this._inRelicProc = false;
+          }
+        }
+      }
+    }
+
+    // 5. Decay Haste Momentum Kill Buff (4s)
+    if ((this._relicHasteTimer || 0) > 0) {
+      this._relicHasteTimer = Math.max(0, this._relicHasteTimer - dt);
+    }
+
+    // 6. Decay Phantom Counter-Wave visual sweeps
+    if (this._relicCounterWaves?.length > 0) {
+      for (let i = this._relicCounterWaves.length - 1; i >= 0; i--) {
+        const w = this._relicCounterWaves[i];
+        w.age += dt;
+        if (w.age >= w.maxLife) {
+          this._relicCounterWaves.splice(i, 1);
+        }
+      }
+    }
+
+    // 7. Tick Solar Meteor Calldown impacts (210 AoE DMG + 24 Stagger)
+    if (this._relicMeteors?.length > 0) {
+      for (let i = this._relicMeteors.length - 1; i >= 0; i--) {
+        const met = this._relicMeteors[i];
+        met.timer -= dt;
+        if (met.timer <= 0) {
+          this._relicMeteors.splice(i, 1);
+          this.game?.audio?.play?.('fire_hit', met.x);
+          this.game?.renderer?.triggerShake?.(10, 0.22);
+          this.game?.vfx?.spawnShockwave?.(met.x, met.groundY - 12, met.radius || 175, '#f97316', 0.36, true);
+          this.game?.vfx?.spawnBurst?.(met.x, met.groundY - 40, 22, '#fde047', 255, { upBias: 165, size: 6 });
+          if (player && !player.isDead) {
+            this._inRelicProc = true;
+            try {
+              for (const m of this.getLivingMonsters()) {
+                const mGy = m.groundY || m.y || 561;
+                const dist = m.isColossalBoss
+                  ? Math.abs((m.anchorX || m.x) - 110 - met.x)
+                  : Math.hypot(m.x - met.x, (mGy - met.groundY) * 1.35);
+                if (dist <= (met.radius || 175) + 16) {
+                  m.takeDamage(210, player, true, 125, 0);
+                  m.addStagger?.(24, player, this.game);
+                }
+              }
+            } finally {
+              this._inRelicProc = false;
+            }
           }
         }
       }
@@ -4473,6 +5139,7 @@ export class AdventureManager {
             this.progression.syncGaugesToPlayer(player);
             if (player.stats) player.stats.ultsUsed++;
             player.setState('ULTIMATE');
+            this.onPlayerCastSkillOrOverdrive(player);
             this.game.triggerUltimateCinematic(player);
           } else if (
             !midHackChain &&
@@ -4484,11 +5151,12 @@ export class AdventureManager {
             player._manualWalkActive = false;
             player._manualSpeedRatio = 0;
             player.facing = target.x >= player.x ? 1 : -1;
-            this.skillCdMax = Math.max(0.5, player.skillMaxCooldown * 0.78);
+            this.skillCdMax = Math.max(0.45, player.skillMaxCooldown * 0.78 * (stats.skillCdMult ?? 1));
             player.skillCooldown = this.skillCdMax;
             if (player.stats) player.stats.skillsUsed++;
             player.setState('SKILL');
             this.queueTwinSpiritEcho(player);
+            this.onPlayerCastSkillOrOverdrive(player);
           } else if (
             player.autoCooldown <= 0 &&
             (midHackChain || Math.hypot(avoidVx, avoidVz) < 235) &&
@@ -4865,6 +5533,7 @@ export class AdventureManager {
         this.progression.syncGaugesToPlayer(player);
         if (player.stats) player.stats.ultsUsed++;
         player.setState('ULTIMATE');
+        this.onPlayerCastSkillOrOverdrive(player);
         this.game.triggerUltimateCinematic(player);
       } else if (act === 'skill' && player.skillCooldown <= 0) {
         if (this.progression.trySpendSkillSpirit()) {
@@ -4874,11 +5543,12 @@ export class AdventureManager {
           } else if (moveDirX !== 0) {
             player.facing = moveDirX;
           }
-          this.skillCdMax = Math.max(0.5, player.skillMaxCooldown * 0.78);
+          this.skillCdMax = Math.max(0.45, player.skillMaxCooldown * 0.78 * (stats.skillCdMult ?? 1));
           player.skillCooldown = this.skillCdMax;
           if (player.stats) player.stats.skillsUsed++;
           player.setState('SKILL');
           this.queueTwinSpiritEcho(player);
+          this.onPlayerCastSkillOrOverdrive(player);
         } else {
           this.queuedAction = null;
           this.game.vfx?.spawnDamageText(
@@ -5819,6 +6489,87 @@ export class AdventureManager {
         ctx.fillRect(ex + hw - 2, ey - hh, 2, hh * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(ex - 2, ey - 2, 4, 4);
+      }
+      ctx.restore();
+    }
+
+    // 6. Phantom Counter-Wave piercing 220px pixel astral shockwaves (100% fillRect)
+    if (this._relicCounterWaves?.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const cw of this._relicCounterWaves) {
+        const u = Math.max(0, Math.min(1, cw.age / Math.max(0.05, cw.maxLife || 0.28)));
+        const wx = Math.round(cw.x + cw.dir * cw.range * u);
+        const wy = Math.round((cw.groundY || 561) - 54);
+        ctx.globalAlpha = Math.max(0, 1 - u * 0.85);
+        // Stepped pixel crescent blade
+        for (let row = -5; row <= 5; row++) {
+          const curve = Math.round((1 - (row * row) / 28) * 18) * cw.dir;
+          const bx = wx + curve;
+          const by = wy + row * 7;
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(bx - 6, by - 3, 12, 6);
+          ctx.fillStyle = '#67e8f9';
+          ctx.fillRect(bx - 3, by - 2, 6, 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(bx - 1, by - 1, 2, 2);
+        }
+      }
+      ctx.restore();
+    }
+
+    // 7. Solar Meteor Calldown descending pixel meteors & ground targeting rings (100% fillRect)
+    if (this._relicMeteors?.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const met of this._relicMeteors) {
+        const u = 1 - Math.max(0, met.timer / Math.max(0.05, met.maxTimer || 0.34));
+        const gx = Math.round(met.x);
+        const gy = Math.round(met.groundY || 561);
+        const dropH = Math.round((1 - u) * 380);
+        const mx = Math.round(gx - (1 - u) * 95);
+        const my = Math.round(gy - 28 - dropH);
+        const hw = Math.round(32 + u * 44);
+        const hh = Math.round(12 + u * 16);
+        // Ground danger rect
+        ctx.fillStyle = 'rgba(249, 115, 22, 0.28)';
+        ctx.fillRect(gx - hw, gy - hh, hw * 2, hh * 2);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(gx - hw, gy - hh, hw * 2, 2);
+        ctx.fillRect(gx - hw, gy + hh - 2, hw * 2, 2);
+        // Blazing pixel tail + molten rock core
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(mx - 18, my - 28, 12, 16);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(mx - 12, my - 18, 14, 14);
+        ctx.fillStyle = '#0d0f1c';
+        ctx.fillRect(mx - 11, my - 11, 22, 22);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(mx - 9, my - 9, 18, 18);
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(mx - 6, my - 6, 12, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(mx - 3, my - 3, 6, 6);
+      }
+      ctx.restore();
+    }
+
+    // 8. Haste Momentum teal pixel wind streaks around the hero while buff is active
+    if (playerRef && !playerRef.isDead && (this._relicHasteTimer || 0) > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      const px = Math.round(playerRef.x);
+      const py = Math.round((playerRef.y || playerRef.groundY || 561) - 48);
+      const dir = (playerRef.facing || 1) >= 0 ? 1 : -1;
+      ctx.globalAlpha = Math.min(0.85, (this._relicHasteTimer || 0) * 0.6);
+      for (let i = 0; i < 3; i++) {
+        const shift = ((tWorld * 140 + i * 24) % 44) * dir;
+        const sx = Math.round(px - dir * 18 - shift);
+        const sy = Math.round(py - 20 + i * 18);
+        ctx.fillStyle = '#2dd4bf';
+        ctx.fillRect(sx - 8, sy, 16, 2);
+        ctx.fillStyle = '#ccfbf1';
+        ctx.fillRect(sx - 4, sy, 8, 2);
       }
       ctx.restore();
     }

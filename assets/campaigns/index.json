@@ -22,6 +22,65 @@
       "finalBossMaxHp": 12800,
       "file": "celestial_gauntlet.json",
       "sha256": "0ad4fd2da42711ee53e5504ae6b4d770d11d2d646ece11533ec42561a0355818"
+    },
+    {
+      "packId": "boss_rush_gauntlet",
+      "title": "ABYSSAL BOSS RUSH",
+      "subtitle": "Two-realm high-intensity trial: shatter twin Realm Wardens, then confront Behemoth Malphas Overlord",
+      "version": "1.0.0",
+      "zoneCount": 2,
+      "worldWidth": 4800,
+      "biomes": [
+        "cathedral",
+        "clocktower"
+      ],
+      "totalProps": 8,
+      "totalMonsterSpawns": 10,
+      "totalWardens": 4,
+      "finalBossName": "BEHEMOTH MALPHAS OVERLORD",
+      "finalBossMaxHp": 11200,
+      "file": "boss_rush_gauntlet.json",
+      "sha256": "2a4a11b1fb475267759341ebc65cab166487d7dff9a705e206d8ee54d88329d2"
+    },
+    {
+      "packId": "sovereign_nightmare",
+      "title": "SOVEREIGN NIGHTMARE ASCENT",
+      "subtitle": "Four relentless realms of elite swarms, double-Warden gauntlets, extra cursed hazards & 14,500 HP Sovereign Malphas",
+      "version": "1.0.0",
+      "zoneCount": 4,
+      "worldWidth": 9600,
+      "biomes": [
+        "cathedral",
+        "sylvan",
+        "boneyard",
+        "clocktower"
+      ],
+      "totalProps": 20,
+      "totalMonsterSpawns": 28,
+      "totalWardens": 7,
+      "finalBossName": "SOVEREIGN MALPHAS",
+      "finalBossMaxHp": 14500,
+      "file": "sovereign_nightmare.json",
+      "sha256": "f50c3be85855568fdbd4f3614c626e58acb1ca808e2946bf8e355e231e7bb2db"
+    },
+    {
+      "packId": "starwood_ossuary_siege",
+      "title": "STARWOOD & OSSUARY SIEGE",
+      "subtitle": "Cut through the Cursed Starwood dryad-treant ambush and break the Bone-Gate siege of Arch-Lich Malphas",
+      "version": "1.0.0",
+      "zoneCount": 2,
+      "worldWidth": 4800,
+      "biomes": [
+        "sylvan",
+        "boneyard"
+      ],
+      "totalProps": 10,
+      "totalMonsterSpawns": 14,
+      "totalWardens": 2,
+      "finalBossName": "ARCH-LICH MALPHAS",
+      "finalBossMaxHp": 12200,
+      "file": "starwood_ossuary_siege.json",
+      "sha256": "ba47256533e11696723dc78df20f640407d794e6363f6057bd251585625fd5c0"
     }
   ]
 }

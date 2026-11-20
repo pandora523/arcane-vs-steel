@@ -1,39 +1,43 @@
-import { Renderer } from './engine/Renderer.js?v=30fps173';
-import { VFXManager } from './engine/VFXManager.js?v=30fps173';
-import { PixelForge } from './engine/PixelForge.js?v=30fps173';
-import { AudioManager } from './engine/AudioManager.js?v=30fps173';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps173';
-import { Fighter } from './entities/Fighter.js?v=30fps173';
-import { Warrior } from './entities/Warrior.js?v=30fps173';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps173';
-import { FireMage } from './entities/FireMage.js?v=30fps173';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps173';
-import { Archer } from './entities/Archer.js?v=30fps173';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps173';
-import { Priestess } from './entities/Priestess.js?v=30fps173';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps173';
-import { Reaper } from './entities/Reaper.js?v=30fps173';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps173';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps173';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps173';
-import { Titan } from './entities/Titan.js?v=30fps173';
-import { TitanEx } from './entities/TitanEx.js?v=30fps173';
-import { Ronin } from './entities/Ronin.js?v=30fps173';
-import { RoninEx } from './entities/RoninEx.js?v=30fps173';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps173';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps173';
-import { IceMage } from './entities/IceMage.js?v=30fps173';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps173';
-import { Android } from './entities/Android.js?v=30fps173';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps173';
-import { NyxEx } from './entities/NyxEx.js?v=30fps173';
+import { Renderer } from './engine/Renderer.js?v=30fps174';
+import { VFXManager } from './engine/VFXManager.js?v=30fps174';
+import { PixelForge } from './engine/PixelForge.js?v=30fps174';
+import { AudioManager } from './engine/AudioManager.js?v=30fps174';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps174';
+import { Fighter } from './entities/Fighter.js?v=30fps174';
+import { Warrior } from './entities/Warrior.js?v=30fps174';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps174';
+import { FireMage } from './entities/FireMage.js?v=30fps174';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps174';
+import { Archer } from './entities/Archer.js?v=30fps174';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps174';
+import { Priestess } from './entities/Priestess.js?v=30fps174';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps174';
+import { Reaper } from './entities/Reaper.js?v=30fps174';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps174';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps174';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps174';
+import { Titan } from './entities/Titan.js?v=30fps174';
+import { TitanEx } from './entities/TitanEx.js?v=30fps174';
+import { Ronin } from './entities/Ronin.js?v=30fps174';
+import { RoninEx } from './entities/RoninEx.js?v=30fps174';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps174';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps174';
+import { IceMage } from './entities/IceMage.js?v=30fps174';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps174';
+import { Android } from './entities/Android.js?v=30fps174';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps174';
+import { NyxEx } from './entities/NyxEx.js?v=30fps174';
 import {
   AdventureManager,
+  ADVENTURE_DIFFICULTY_TIERS,
+  ADVENTURE_TIER_STORAGE_KEY,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
-  normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps173';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps173';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps173';
+  loadAdventureMedals,
+  normalizeAdventureCampaignPack,
+  normalizeAdventureDifficultyId
+} from './adventure/AdventureManager.js?v=30fps174';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps174';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps174';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1032,6 +1036,19 @@ export class Game {
       typeof campaignParamRaw === 'string' && campaignParamRaw.trim()
         ? campaignParamRaw.trim()
         : null;
+    let savedAdvTier = 'normal';
+    try {
+      if (typeof window !== 'undefined' && window?.localStorage?.getItem) {
+        savedAdvTier = normalizeAdventureDifficultyId(window.localStorage.getItem(ADVENTURE_TIER_STORAGE_KEY));
+      }
+    } catch {
+      savedAdvTier = 'normal';
+    }
+    const tierParamRaw = params.get('tier') || params.get('ascension');
+    this.selectedAdvDifficulty = tierParamRaw
+      ? normalizeAdventureDifficultyId(tierParamRaw)
+      : savedAdvTier;
+    this.adventure?.setDifficultyTier?.(this.selectedAdvDifficulty);
     const versionParam = params.get('version');
     if (versionParam === 'legacy') {
       this.rosterVersion = 'legacy';
@@ -1861,6 +1878,9 @@ export class Game {
     }
     this.pauseVsSection?.classList.toggle('hidden', isAdv);
     this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
+    if (isAdv) {
+      this.adventure?.renderActiveRelicsInspector?.();
+    }
     this.syncMobileFullZoomUI?.();
     this.syncCrtUI?.();
     this.syncAudioMixerUI?.();
@@ -4223,6 +4243,17 @@ export class Game {
 
     this.advCampaignBar = document.getElementById('adv-campaign-selector-bar');
     this.advCampaignSelect = document.getElementById('adv-campaign-select');
+    this.advDifficultySelector = document.getElementById('adv-difficulty-selector');
+    this.advDiffBtns = this.advDifficultySelector
+      ? Array.from(this.advDifficultySelector.querySelectorAll('.adv-diff-btn[data-adv-tier]'))
+      : [];
+    this.advDiffBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tier = btn.getAttribute('data-adv-tier') || 'normal';
+        this.setAdventureDifficulty(tier, true);
+      });
+    });
+    this.syncAdventureDifficultyUI();
     this.btnImportCampaignJson = document.getElementById('btn-import-campaign-json');
     this.inputImportCampaignJson = document.getElementById('input-import-campaign-json');
     if (this.advCampaignSelect) {
@@ -4621,7 +4652,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps173');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps174');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -4641,6 +4672,68 @@ export class Game {
     } else {
       this.syncRosterSelectionUI(false);
     }
+  }
+
+  setAdventureDifficulty(tierId, playSound = true) {
+    const clean = normalizeAdventureDifficultyId(tierId);
+    this.selectedAdvDifficulty = clean;
+    this.adventure?.setDifficultyTier?.(clean);
+    try {
+      if (typeof window !== 'undefined' && window?.localStorage?.setItem) {
+        window.localStorage.setItem(ADVENTURE_TIER_STORAGE_KEY, clean);
+      }
+    } catch {
+      // Ignore storage errors safely
+    }
+    this.syncAdventureDifficultyUI();
+    this.syncRosterSelectionUI(false);
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+    return clean;
+  }
+
+  syncAdventureDifficultyUI() {
+    const cur = normalizeAdventureDifficultyId(this.selectedAdvDifficulty);
+    if (!Array.isArray(this.advDiffBtns)) return;
+    this.advDiffBtns.forEach((btn) => {
+      const t = btn.getAttribute('data-adv-tier') || 'normal';
+      const active = t === cur;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  syncAdventureClearMedalsUI() {
+    if (!this.cards || typeof document === 'undefined') return;
+    const isAdv = this.isAdventureMode();
+    const medals = isAdv ? loadAdventureMedals() : {};
+    Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
+      if (!cardEl) return;
+      const btn = cardEl.querySelector?.('.champ-tile-btn') || cardEl;
+      let pip = cardEl.querySelector?.('.adv-clear-medal-pip') || null;
+      const rec = isAdv ? medals[heroKey] : null;
+      if (!isAdv || !rec) {
+        if (pip) {
+          pip.textContent = '';
+          pip.classList.add('hidden');
+          pip.removeAttribute('data-medal-tier');
+        }
+        return;
+      }
+      if (!pip && typeof document.createElement === 'function') {
+        pip = document.createElement('span');
+        pip.className = 'adv-clear-medal-pip';
+        btn.appendChild(pip);
+      }
+      if (!pip) return;
+      const tierCfg =
+        ADVENTURE_DIFFICULTY_TIERS[rec.bestTier] || ADVENTURE_DIFFICULTY_TIERS.normal;
+      pip.textContent = rec.rank || 'B';
+      pip.setAttribute('data-medal-tier', tierCfg.medalTier || 'bronze');
+      pip.title = `Best Adventure Clear: ${rec.rank} (${tierCfg.label} • ${rec.score} PTS)`;
+      pip.classList.remove('hidden');
+    });
   }
 
   renderCampaignSelectorOptions() {
@@ -4717,7 +4810,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps173'
+          'v=30fps174'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -4947,7 +5040,11 @@ export class Game {
       }
       advCampaignSelectEl.value = this.selectedCampaignId || DEFAULT_ADVENTURE_CAMPAIGN_ID;
     }
+    this.syncAdventureDifficultyUI();
     const customPackSummary = isAdv ? this.getActiveSelectedCampaignSummary() : null;
+    const advDiffCfg =
+      ADVENTURE_DIFFICULTY_TIERS[normalizeAdventureDifficultyId(this.selectedAdvDifficulty)] ||
+      ADVENTURE_DIFFICULTY_TIERS.normal;
 
     const stageTitleStr = isAdv
       ? customPackSummary
@@ -5123,6 +5220,7 @@ export class Game {
                   : '';
       }
     });
+    this.syncAdventureClearMedalsUI();
 
     // 4. Populate Left (P1 / P1B) and Right (P2 / P2B or Adventure Final Boss) Profile Panels & Kit Drawers
     const romanTierMap = ['I', 'II', 'III'];
@@ -5240,14 +5338,18 @@ export class Game {
     const baseLeftInspected = is2v2 && this.inspectLeftRole === 'partner' ? c1b : c1;
     const leftInspected = baseLeftInspected;
     const leftOther = is2v2 && this.inspectLeftRole === 'partner' ? c1 : c1b;
+    const scaledAdvBossHp = Math.round(
+      (customPackSummary ? customPackSummary.bossMaxHp : 11800) * (advDiffCfg.hpMult || 1)
+    );
+    const advTierSuffix = advDiffCfg.id !== 'normal' ? ` • ${advDiffCfg.label}` : '';
     const rightInspected = isAdv
       ? {
           name: customPackSummary
             ? String(customPackSummary.bossName).toUpperCase()
             : 'BEHEMOTH MALPHAS',
           role: customPackSummary
-            ? `${String(customPackSummary.title).toUpperCase()} • ${customPackSummary.bossMaxHp.toLocaleString('en-US')} HP`
-            : 'COLOSSAL ABYSSAL TITAN • ZONE IV FINAL BOSS',
+            ? `${String(customPackSummary.title).toUpperCase()} • ${scaledAdvBossHp.toLocaleString('en-US')} HP${advTierSuffix}`
+            : `COLOSSAL ABYSSAL TITAN • ${scaledAdvBossHp.toLocaleString('en-US')} HP${advTierSuffix}`,
           theme: 'abyssal',
           style: customPackSummary
             ? `${customPackSummary.zoneCount}-REALM (${customPackSummary.worldWidth}PX) STAGE PACK`
@@ -6130,6 +6232,7 @@ export class Game {
       this.syncTestModeUI();
       this.syncVsControlUI?.();
       this.syncPauseMenuUI();
+      this.adventure.setDifficultyTier(this.selectedAdvDifficulty);
       if (
         !this.selectedCampaignId ||
         this.selectedCampaignId === DEFAULT_ADVENTURE_CAMPAIGN_ID

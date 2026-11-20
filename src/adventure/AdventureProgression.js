@@ -667,23 +667,33 @@ export class AdventureProgression {
     const rAegis2 = this.getRank('aegis_2');
     const rAegis3 = this.getRank('aegis_3');
 
+    const hasOverdriveSurge = Boolean(this.adventure?.hasRelic?.('overdrive_surge'));
+    const hasHasteActive = Boolean(
+      this.adventure?.hasRelic?.('haste_momentum') &&
+        (this.adventure?._relicHasteTimer || 0) > 0
+    );
+
     const maxHp = 1040 + (lv - 1) * 110 + rAegis1 * 240;
     const atkMult = 0.50 + (lv - 1) * 0.045 + rWrath1 * 0.15;
     const skillMult = 0.54 + (lv - 1) * 0.045 + rWrath1 * 0.08 + rWrath3 * 0.28;
-    const ultMult = 0.50 + (lv - 1) * 0.04 + rAstral2 * 0.28;
-    const superUltMult = 0.45 + (lv - 1) * 0.04 + rAstral3 * 0.35;
+    const ultMult = (0.50 + (lv - 1) * 0.04 + rAstral2 * 0.28) * (hasOverdriveSurge ? 1.22 : 1.0);
+    const superUltMult = (0.45 + (lv - 1) * 0.04 + rAstral3 * 0.35) * (hasOverdriveSurge ? 1.22 : 1.0);
 
     const skillSpiritCost = rWrath3 >= 2 ? 14 : rWrath3 === 1 ? 22 : 32;
     const basicSpiritGain = 12 + rWrath2 * 6;
     const basicSkillCdShave = 0.35 + rWrath2 * 0.55;
 
-    const ultGainMult = 1.0 + rAstral1 * 0.25;
+    const ultGainMult = (1.0 + rAstral1 * 0.25) * (hasOverdriveSurge ? 1.30 : 1.0);
     const bossHitUltGain = rAstral1 > 0 ? 0.5 + rAstral1 * 1.4 : 0.45;
     const ultResonanceAstral = 18 + rAstral2 * 14;
 
     const wardReduction = Math.min(0.42, 0.04 + (lv - 1) * 0.015 + rAegis1 * 0.07);
-    const moveSpeedMult = 1.0 + rAegis2 * 0.12;
-    const mobilityCdMult = Math.max(0.52, 1.0 - rAegis2 * 0.20);
+    const moveSpeedMult = (1.0 + rAegis2 * 0.12) * (hasHasteActive ? 1.16 : 1.0);
+    const mobilityCdMult = Math.max(
+      0.42,
+      Math.max(0.52, 1.0 - rAegis2 * 0.20) * (hasHasteActive ? 0.80 : 1.0)
+    );
+    const skillCdMult = hasHasteActive ? 0.80 : 1.0;
     const evasiveHealBonus = rAegis3 * 18;
     const emberHealPct = 0;
     const evasiveSpiritBonus = rAegis3 * 4;
@@ -703,6 +713,7 @@ export class AdventureProgression {
       wardReduction,
       moveSpeedMult,
       mobilityCdMult,
+      skillCdMult,
       evasiveHealBonus,
       emberHealPct,
       evasiveSpiritBonus,
