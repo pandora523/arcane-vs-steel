@@ -11,10 +11,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   icemage: Object.freeze({
     id: 'glacial_shatter',
     label: 'GLACIAL PETRIFACTION & SHATTER',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 4,
-    kneelEnd: 0.45,
+    kneelEnd: 0.72,
     primary: '#38bdf8',
     accent: '#e0f2fe',
     dark: '#0c4a6e'
@@ -22,10 +22,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   priestess: Object.freeze({
     id: 'golden_ascension',
     label: 'ASCENSION INTO GOLDEN LIGHT-DUST',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 3,
     holdCol: 10,
-    kneelEnd: 0.72,
+    kneelEnd: 1.08,
     primary: '#fde047',
     accent: '#fffbeb',
     dark: '#a16207'
@@ -33,10 +33,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   mage: Object.freeze({
     id: 'solar_cinder',
     label: 'SOLAR CINDER BURN-OUT',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 9,
-    kneelEnd: 0.65,
+    kneelEnd: 1.0,
     primary: '#f97316',
     accent: '#fef08a',
     dark: '#7c2d12'
@@ -44,10 +44,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   chronomancer: Object.freeze({
     id: 'temporal_unravel',
     label: 'TEMPORAL UNRAVEL',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 7,
-    kneelEnd: 0.55,
+    kneelEnd: 0.88,
     primary: '#2dd4bf',
     accent: '#facc15',
     dark: '#115e59'
@@ -55,10 +55,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   warrior: Object.freeze({
     id: 'knights_last_stand',
     label: "KNIGHT'S LAST STAND",
-    duration: 2.6,
+    duration: 3.85,
     startCol: 3,
     holdCol: 12,
-    kneelEnd: 0.68,
+    kneelEnd: 1.05,
     primary: '#38bdf8',
     accent: '#e0f2fe',
     dark: '#1e3a8a'
@@ -66,11 +66,11 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   ronin: Object.freeze({
     id: 'bushido_sakura',
     label: 'BUSHIDO SHEATHE & SAKURA WIND',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 1,
     holdCol: 11,
-    kneelDelay: 0.72,
-    kneelEnd: 1.18,
+    kneelDelay: 1.18,
+    kneelEnd: 1.9,
     primary: '#f472b6',
     accent: '#fdf2f8',
     dark: '#881337'
@@ -78,10 +78,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   valkyrie: Object.freeze({
     id: 'phoenix_pyre',
     label: 'PHOENIX FEATHER PYRE',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 9,
-    kneelEnd: 0.78,
+    kneelEnd: 1.12,
     primary: '#f43f5e',
     accent: '#fde047',
     dark: '#881337'
@@ -89,10 +89,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   titan: Object.freeze({
     id: 'obsidian_petrifaction',
     label: 'OBSIDIAN PETRIFACTION',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 10,
-    kneelEnd: 0.62,
+    kneelEnd: 0.96,
     primary: '#f97316',
     accent: '#71717a',
     dark: '#18181b'
@@ -100,10 +100,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   archer: Object.freeze({
     id: 'starwood_return',
     label: 'STARWOOD RETURN',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 8,
-    kneelEnd: 0.72,
+    kneelEnd: 1.06,
     primary: '#34d399',
     accent: '#d1fae5',
     dark: '#065f46'
@@ -111,10 +111,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   reaper: Object.freeze({
     id: 'abyssal_rift',
     label: 'ABYSSAL RIFT DRAG-DOWN',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 6,
-    kneelEnd: 0.55,
+    kneelEnd: 0.85,
     primary: '#d946ef',
     accent: '#f43f5e',
     dark: '#1e062c'
@@ -122,10 +122,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   android: Object.freeze({
     id: 'holographic_crash',
     label: 'HOLOGRAPHIC SYSTEM-CRASH',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 2,
     holdCol: 5,
-    kneelEnd: 0.45,
+    kneelEnd: 0.72,
     primary: '#00f0ff',
     accent: '#ff2a85',
     dark: '#0f172a'
@@ -133,10 +133,10 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
   nyx: Object.freeze({
     id: 'cob_os_eject',
     label: 'COB-OS EMERGENCY EJECT',
-    duration: 2.6,
+    duration: 3.85,
     startCol: 3,
     holdCol: 8,
-    kneelEnd: 0.52,
+    kneelEnd: 0.85,
     primary: '#f472b6',
     accent: '#22d3ee',
     dark: '#1e1b4b'
@@ -450,13 +450,13 @@ export class DeathFXManager {
       case 'bushido_sakura':
         return 0.88;
       case 'glacial_shatter':
-        return t < 1.6 ? 0.9 : Math.max(0, 1 - (t - 1.6) / 0.55);
+        return t < 2.35 ? 0.9 : Math.max(0, 1 - (t - 2.35) / 0.85);
       case 'abyssal_rift':
-        return t < 0.7 ? 0.85 : Math.max(0, 0.85 * (1 - (t - 0.7) / 1.35));
+        return t < 1.05 ? 0.88 : Math.max(0, 0.88 * (1 - (t - 1.05) / 2.0));
       case 'cob_os_eject':
-        return t < 1.65 ? Math.max(0.15, 0.9 - t * 0.42) : 0;
+        return t < 2.7 ? Math.max(0.18, 0.9 - smoothstep(1.15, 2.7, t) * 0.72) : 0;
       default:
-        return Math.max(0, 1 - smoothstep(0.85, 2.35, t));
+        return Math.max(0, 1 - smoothstep(1.35, 3.45, t));
     }
   }
 
@@ -484,46 +484,46 @@ export class DeathFXManager {
 
   _stepPhysics(inst, dt) {
     if (dt <= 0) return;
-    // Update Lyra ice shatter chunks
+    // Update Lyra ice shatter chunks (dramatic low-gravity slow-mo tumble & settle)
     if (inst.shatterChunks.length > 0) {
       const floorY = 2;
       for (let i = 0; i < inst.shatterChunks.length; i++) {
         const c = inst.shatterChunks[i];
         c.age += dt;
-        c.vy += 420 * dt;
+        c.vy += 265 * dt;
         c.x += c.vx * dt;
         c.y += c.vy * dt;
         if (c.y > floorY) {
           c.y = floorY;
-          if (!c.bounced && Math.abs(c.vy) > 45) {
-            c.vy = -c.vy * 0.34;
-            c.vx *= 0.62;
+          if (!c.bounced && Math.abs(c.vy) > 35) {
+            c.vy = -c.vy * 0.36;
+            c.vx *= 0.6;
             c.bounced = true;
           } else {
             c.vy = 0;
-            c.vx *= 0.82;
+            c.vx *= 0.84;
           }
         }
       }
     }
-    // Update Vex-09 falling neon voxels
+    // Update Vex-09 falling neon voxels (heavier cascading bounce & linger)
     if (inst.voxels.length > 0) {
       const floorY = 1;
       for (let i = 0; i < inst.voxels.length; i++) {
         const v = inst.voxels[i];
         v.age += dt;
-        v.vy += 520 * dt;
+        v.vy += 370 * dt;
         v.x += v.vx * dt;
         v.y += v.vy * dt;
         if (v.y > floorY) {
           v.y = floorY;
           if (!v.bounced) {
-            v.vy = -65 - (v.seed % 45);
-            v.vx *= 0.65;
+            v.vy = -58 - (v.seed % 42);
+            v.vx *= 0.64;
             v.bounced = true;
           } else {
             v.vy = 0;
-            v.vx *= 0.78;
+            v.vx *= 0.8;
           }
         }
       }
@@ -794,10 +794,10 @@ export class DeathFXManager {
         const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
 
         if (styleId === 'glacial_shatter') {
-          if (t >= 1.6) {
+          if (t >= 2.35) {
             outA = 0;
           } else {
-            const frostProg = smoothstep(0.05, 1.08, t);
+            const frostProg = smoothstep(0.12, 1.55, t);
             const ridge = Math.sin(x * 0.35 + inst.seed) * 0.065;
             const threshold = fromBottom + ridge + (bayer - 0.5) * 0.12;
             if (threshold <= frostProg) {
@@ -817,21 +817,21 @@ export class DeathFXManager {
               // Bright crystal frost-creep leading rim
               if (frostProg - threshold < 0.08 && frostProg < 0.99) {
                 r = 255; g = 255; b = 255;
-              } else if (t > 1.1 && ed <= 1) {
+              } else if (t > 1.55 && ed <= 1) {
                 r = 212; g = 246; b = 255;
               }
             }
           }
         } else if (styleId === 'golden_ascension') {
-          const glowIntro = smoothstep(0.0, 0.8, t);
+          const glowIntro = smoothstep(0.08, 1.25, t);
           if (ed <= 2) {
             r = Math.min(255, r + 95 * glowIntro);
             g = Math.min(255, g + 84 * glowIntro);
             b = Math.min(255, b + 28 * glowIntro);
           }
-          if (t > 0.78) {
-            const disP = smoothstep(0.78, 2.38, t);
-            // Dissolve gently upward from wingtips & hem edges
+          if (t > 1.25) {
+            const disP = smoothstep(1.25, 3.4, t);
+            // Dissolve slowly upward from wingtips & hem edges
             const score = (1 - normEdge) * 0.44 + normY * 0.38 + bayer * 0.18;
             const cut = 1.08 - disP * 1.18;
             if (score > cut) {
@@ -845,8 +845,8 @@ export class DeathFXManager {
             }
           }
         } else if (styleId === 'solar_cinder') {
-          if (t < 0.9) {
-            const heat = smoothstep(0.05, 0.88, t);
+          if (t < 1.32) {
+            const heat = smoothstep(0.08, 1.3, t);
             const coreBoost = clamp01(normEdge * 1.45) * heat;
             r = Math.min(255, r + (255 - r) * (0.28 * heat + 0.68 * coreBoost));
             g = Math.min(255, g + (244 - g) * (0.16 * heat + 0.62 * coreBoost));
@@ -855,8 +855,8 @@ export class DeathFXManager {
               r = 251; g = 146; b = 60;
             }
           } else {
-            const burnP = smoothstep(0.9, 2.45, t);
-            // Burn inward from outer edges & hem into charcoal ash + glowing ember rim
+            const burnP = smoothstep(1.32, 3.48, t);
+            // Slow smoldering inward burn from outer edges & hem into charcoal ash + glowing ember rim
             const score = normEdge * 0.62 + (1 - normY) * 0.18 + bayer * 0.2;
             const cut = burnP * 1.08;
             if (score < cut) {
@@ -876,15 +876,15 @@ export class DeathFXManager {
             }
           }
         } else if (styleId === 'temporal_unravel') {
-          if (t < 0.7) {
-            const flash = Math.sin(t * 24) > 0.4 ? 0.26 : 0.08;
+          if (t < 1.12) {
+            const flash = Math.sin(t * 20) > 0.35 ? 0.28 : 0.08;
             r = Math.min(255, r + (45 - r) * flash);
             g = Math.min(255, g + (212 - g) * flash);
             b = Math.min(255, b + (191 - b) * flash);
           } else {
-            const unP = smoothstep(0.7, 2.38, t);
-            // Stream sideways as golden hourglass sand
-            const wave = Math.sin(y * 0.26 + t * 5) * 0.07;
+            const unP = smoothstep(1.12, 3.38, t);
+            // Stream slowly sideways as golden hourglass sand
+            const wave = Math.sin(y * 0.26 + t * 4.5) * 0.07;
             const score = normX * 0.76 + bayer * 0.18 + wave;
             const cut = unP * 1.12;
             if (score < cut) {
@@ -896,8 +896,8 @@ export class DeathFXManager {
             }
           }
         } else if (styleId === 'knights_last_stand') {
-          // Frost glow drains downward from greatsword/pauldrons into dignified moonlit steel
-          const drainP = smoothstep(0.35, 1.85, t);
+          // Frost glow drains slowly downward from greatsword/pauldrons into dignified moonlit steel
+          const drainP = smoothstep(0.65, 2.95, t);
           const isGlowing = b > r + 28 || (g > 185 && b > 195);
           const wavePass = normY <= drainP * 1.25;
           if (wavePass) {
@@ -913,26 +913,26 @@ export class DeathFXManager {
             b = Math.min(255, b + 145);
           }
         } else if (styleId === 'bushido_sakura') {
-          // Crisp crimson slash flash at 0.14..0.34, then dignified cool moonlight tone
-          if (t >= 0.14 && t <= 0.34 && Math.abs(normY - (0.34 + normX * 0.28)) < 0.05) {
+          // Crisp crimson slash flash at 0.22..0.58, then dignified cool moonlight tone
+          if (t >= 0.22 && t <= 0.58 && Math.abs(normY - (0.34 + normX * 0.28)) < 0.05) {
             r = 255; g = 240; b = 245;
-          } else if (t > 0.75) {
-            const cool = smoothstep(0.75, 2.2, t) * 0.34;
+          } else if (t > 1.25) {
+            const cool = smoothstep(1.25, 3.25, t) * 0.36;
             const moon = Math.round(lum * 170);
             r = Math.round(r + (moon * 0.88 - r) * cool);
             g = Math.round(g + (moon * 0.9 - g) * cool);
             b = Math.round(b + (Math.min(255, moon * 1.12 + 12) - b) * cool);
           }
         } else if (styleId === 'phoenix_pyre') {
-          if (t < 0.9) {
-            const flare = smoothstep(0.08, 0.9, t);
+          if (t < 1.32) {
+            const flare = smoothstep(0.12, 1.32, t);
             if (ed <= 3) {
               r = Math.min(255, r + 135 * flare);
               g = Math.min(255, g + 80 * flare);
               b = Math.max(0, b - 35 * flare);
             }
           } else {
-            const pyreP = smoothstep(0.9, 2.42, t);
+            const pyreP = smoothstep(1.32, 3.42, t);
             const score = (1 - normEdge) * 0.42 + (1 - normY) * 0.38 + bayer * 0.2;
             const cut = 1.08 - pyreP * 1.18;
             if (score > cut) {
@@ -944,8 +944,8 @@ export class DeathFXManager {
             }
           }
         } else if (styleId === 'obsidian_petrifaction') {
-          // Molten glow cools to dull ember-red -> cracked dark basalt stone (stays solid & heroic!)
-          const coolP = smoothstep(0.1, 2.1, t);
+          // Molten glow cools slowly to dull ember-red -> cracked dark basalt stone (stays solid & heroic!)
+          const coolP = smoothstep(0.28, 3.15, t);
           const isMolten = r > b + 35 && r > 120;
           const isRunic = g > r + 20 && b > r + 15;
           const stone = Math.round(24 + lum * 78);
@@ -967,18 +967,18 @@ export class DeathFXManager {
             g = Math.round(g + (stone - g) * (coolP * 0.86));
             b = Math.round(b + (stone + 6 - b) * (coolP * 0.86));
           }
-          if (crackLine && t > 0.35 && t < 1.95) {
-            const emberPulse = (1 - smoothstep(1.2, 1.95, t)) * (0.7 + 0.3 * Math.sin(t * 14));
+          if (crackLine && t > 0.55 && t < 3.05) {
+            const emberPulse = (1 - smoothstep(1.9, 3.05, t)) * (0.7 + 0.3 * Math.sin(t * 10));
             r = Math.min(255, Math.round(r + 185 * emberPulse));
             g = Math.min(255, Math.round(g + 64 * emberPulse));
           }
         } else if (styleId === 'starwood_return') {
-          if (t < 0.8) {
-            const vineGlow = smoothstep(0.15, 0.8, t) * fromBottom;
+          if (t < 1.25) {
+            const vineGlow = smoothstep(0.2, 1.25, t) * fromBottom;
             g = Math.min(255, Math.round(g + 78 * vineGlow));
             b = Math.min(255, Math.round(b + 38 * vineGlow));
           } else {
-            const retP = smoothstep(0.8, 2.42, t);
+            const retP = smoothstep(1.25, 3.42, t);
             const score = (1 - normEdge) * 0.35 + normY * 0.45 + bayer * 0.2;
             const cut = 1.08 - retP * 1.18;
             if (score > cut) {
@@ -991,26 +991,26 @@ export class DeathFXManager {
           }
         } else if (styleId === 'abyssal_rift') {
           // Dark violet-crimson abyssal corruption creeps up boots while dragged down into rift
-          const dragP = smoothstep(0.55, 2.05, t);
+          const dragP = smoothstep(0.85, 3.0, t);
           if (ed <= 2) {
             r = Math.min(255, Math.round(r + 95 * dragP));
             g = Math.max(0, Math.round(g - 35 * dragP));
             b = Math.min(255, Math.round(b + 125 * dragP));
           }
-          if (fromBottom < dragP * 0.55) {
+          if (fromBottom < dragP * 0.58) {
             r = Math.round(r * 0.45 + 48);
             g = Math.round(g * 0.22);
             b = Math.round(b * 0.55 + 72);
           }
         } else if (styleId === 'holographic_crash') {
-          if (t < 0.72) {
+          if (t < 1.12) {
             const glitchBand = ((y + step30 * 5) & 15) < 2;
             if (glitchBand && (step30 & 3) === 0) {
               r = 255; g = 48; b = 96;
             }
           } else {
-            // Bottom-to-top voxel decompile scanline!
-            const decP = smoothstep(0.75, 2.28, t);
+            // Slow bottom-to-top voxel decompile scanline!
+            const decP = smoothstep(1.18, 3.25, t);
             const scanRow = 1 - decP;
             const jitter = (bayer - 0.5) * 0.08;
             if (normY > scanRow + jitter) {
@@ -1024,10 +1024,10 @@ export class DeathFXManager {
             }
           }
         } else if (styleId === 'cob_os_eject') {
-          if (t >= 1.78) {
+          if (t >= 2.72) {
             outA = 0;
-          } else if (t > 0.72) {
-            const digP = smoothstep(0.72, 1.76, t);
+          } else if (t > 1.15) {
+            const digP = smoothstep(1.15, 2.7, t);
             const cxDist = Math.hypot((normX - 0.5) * 1.4, (normY - 0.5) * 1.2);
             const score = (1 - cxDist * 0.8) * 0.55 + bayer * 0.45;
             if (score < digP * 1.05) {
@@ -1164,11 +1164,11 @@ export class DeathFXManager {
     const t = inst.elapsed;
     const box = this._getSpriteCenter(inst, metrics);
 
-    if (t < 1.6) {
-      const shiver = t > 1.1 ? (((Math.floor(t * 48) & 1) === 0 ? 1 : -1) * (t > 1.42 ? 2 : 1)) : 0;
-      // Tapered faceted crystal spires crystallizing around boots (0.0..1.6s — pointed pixel peaks, zero boxy bars!)
+    if (t < 2.35) {
+      const shiver = t > 1.55 ? (((Math.floor(t * 48) & 1) === 0 ? 1 : -1) * (t > 2.05 ? 2 : 1)) : 0;
+      // Tapered faceted crystal spires crystallizing around boots (0.0..2.35s — pointed pixel peaks, zero boxy bars!)
       if (!isReflection) {
-        const spikeP = smoothstep(0.05, 0.85, t);
+        const spikeP = smoothstep(0.12, 1.35, t);
         const spikes = [
           { cx: box.cx - 32, baseW: 12, h: 28 },
           { cx: box.cx - 14, baseW: 14, h: 42 },
@@ -1196,9 +1196,9 @@ export class DeathFXManager {
 
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, shiver, 0);
 
-      // Glowing white-cyan fissure cracks (1.1..1.6s)
-      if (!isReflection && t >= 1.1) {
-        const crackP = smoothstep(1.1, 1.56, t);
+      // Suspenseful glowing white-cyan fissure cracks branching across frozen statue (1.55..2.35s)
+      if (!isReflection && t >= 1.55) {
+        const crackP = smoothstep(1.55, 2.28, t);
         const lines = [
           [box.cx - 6, box.cy - 18, box.cx + 24, box.cy - 44],
           [box.cx - 6, box.cy - 18, box.cx - 28, box.cy + 16],
@@ -1217,9 +1217,9 @@ export class DeathFXManager {
           drawPixelLine(ctx, x0, y0, ex, ey, 2, '#ffffff');
         }
         // Cold frost mist puffs
-        for (let i = 0; i < 10; i++) {
-          const u = (t * 1.4 + i * 0.17) % 1;
-          ctx.globalAlpha = (1 - u) * 0.65;
+        for (let i = 0; i < 12; i++) {
+          const u = (t * 1.1 + i * 0.17) % 1;
+          ctx.globalAlpha = (1 - u) * 0.7;
           ctx.fillStyle = i % 2 === 0 ? '#e0f2fe' : '#7dd3fc';
           pxRect(ctx, box.cx + Math.sin(i * 4.1) * 34, box.cy - 30 + u * 55, 4, 4);
         }
@@ -1228,8 +1228,8 @@ export class DeathFXManager {
       return;
     }
 
-    // 1.6..2.6s: Slow-motion shatter of her ACTUAL sampled sprite pixel chunks!
-    const shatterT = t - 1.6;
+    // 2.35..3.85s+: Dramatic slow-motion shatter of her ACTUAL sampled sprite pixel chunks (lingering glittering on floor!)
+    const shatterT = t - 2.35;
     if (!inst.shatterSpawned) {
       inst.shatterSpawned = true;
       const samples = inst.samples;
@@ -1239,13 +1239,13 @@ export class DeathFXManager {
         const dx = s.lx - box.cx;
         const dy = s.ly - box.cy;
         const angle = Math.atan2(dy - 18, dx + (s.hash - 0.5) * 16);
-        const speed = 55 + s.hash * 145;
+        const speed = 42 + s.hash * 115;
         const colIdx = Math.min(4, Math.max(0, Math.floor((1 - s.lum) * 5)));
         inst.shatterChunks.push({
           x: s.lx,
           y: s.ly,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 65 - s.hash * 80,
+          vy: Math.sin(angle) * speed - 58 - s.hash * 68,
           w: 4 + Math.floor(s.hash * 5),
           h: 4 + Math.floor(hash01(i * 3.7) * 5),
           color: iceCols[colIdx],
@@ -1256,7 +1256,7 @@ export class DeathFXManager {
         });
       }
       if (shatterT > 0.03) {
-        let rem = Math.min(1.2, shatterT);
+        let rem = Math.min(1.6, shatterT);
         while (rem > 0.001) {
           const step = Math.min(0.025, rem);
           this._stepPhysics(inst, step);
@@ -1265,21 +1265,21 @@ export class DeathFXManager {
       }
     }
     // Brief crystalline burst cross right at shatter moment
-    if (!isReflection && shatterT < 0.28) {
-      const fA = 1 - shatterT / 0.28;
-      ctx.globalAlpha = fA * 0.85;
-      drawPixelSpark4(ctx, box.cx, box.cy - 8, Math.round(18 + shatterT * 95), '#7dd3fc', '#ffffff');
+    if (!isReflection && shatterT < 0.36) {
+      const fA = 1 - shatterT / 0.36;
+      ctx.globalAlpha = fA * 0.9;
+      drawPixelSpark4(ctx, box.cx, box.cy - 8, Math.round(18 + shatterT * 90), '#7dd3fc', '#ffffff');
       ctx.globalAlpha = 1;
     }
 
-    const fade = 1 - smoothstep(0.62, 1.0, shatterT);
+    const fade = 1 - smoothstep(1.15, 1.85, shatterT);
     const chunks = inst.shatterChunks;
     for (let i = 0; i < chunks.length; i++) {
       const c = chunks[i];
       if (isReflection && (i & 1) === 1) continue;
       ctx.globalAlpha = fade * (isReflection ? 0.55 : 0.96);
       // Tumbling aspect flip (pure discrete pixel swap, zero rotate!)
-      const flip = (Math.floor(c.age * 10 + c.seed) & 1) === 0;
+      const flip = (Math.floor(c.age * 8 + c.seed) & 1) === 0;
       const cw = flip ? c.w : c.h;
       const ch = flip ? c.h : c.w;
       ctx.fillStyle = c.dark;
@@ -1290,13 +1290,13 @@ export class DeathFXManager {
       pxRect(ctx, c.x, c.y, Math.max(1, cw >> 1), 2);
     }
 
-    // Drifting diamond snow mist
+    // Drifting diamond snow mist lingering softly
     if (!isReflection) {
-      for (let i = 0; i < 24; i++) {
-        const p = clamp01((shatterT + (i % 5) * 0.05) / 0.95);
-        const sx = box.cx + (hash01(i * 7.1) - 0.5) * 150 + Math.sin(t * 4 + i) * 12;
-        const sy = box.topY + hash01(i * 11.3) * box.h + p * 26;
-        ctx.globalAlpha = (1 - p) * 0.8;
+      for (let i = 0; i < 26; i++) {
+        const p = clamp01((shatterT + (i % 5) * 0.06) / 1.55);
+        const sx = box.cx + (hash01(i * 7.1) - 0.5) * 160 + Math.sin(t * 3.2 + i) * 14;
+        const sy = box.topY + hash01(i * 11.3) * box.h + p * 30;
+        ctx.globalAlpha = (1 - p) * 0.85;
         ctx.fillStyle = i % 3 === 0 ? '#ffffff' : '#bae6fd';
         pxRect(ctx, sx, sy, 3, 3);
       }
@@ -1313,7 +1313,7 @@ export class DeathFXManager {
 
     // Feathered ascending sanctuary pixel light-filaments behind her (zero hard box cutoff!)
     if (!isReflection) {
-      const beamA = smoothstep(0.05, 0.75, t) * (1 - smoothstep(1.9, 2.58, t));
+      const beamA = smoothstep(0.08, 1.15, t) * (1 - smoothstep(2.9, 3.85, t));
       if (beamA > 0.01) {
         const rays = [-24, -14, -4, 6, 16, 24];
         for (let r = 0; r < rays.length; r++) {
@@ -1333,38 +1333,38 @@ export class DeathFXManager {
       }
     }
 
-    // Dissolving live kneeling prayer silhouette
-    if (t < 2.42) {
+    // Dissolving live kneeling prayer silhouette (stays clearly visible through slow ascension!)
+    if (t < 3.45) {
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, 0, 0);
     }
 
-    // Softly fading golden pixel halo above her head
-    const haloA = smoothstep(0.1, 0.65, t) * (1 - smoothstep(2.05, 2.58, t));
+    // Softly fading golden pixel halo lingering gently skyward
+    const haloA = smoothstep(0.14, 0.95, t) * (1 - smoothstep(3.15, 3.85, t));
     if (!isReflection && haloA > 0.02) {
-      const haloY = box.topY - 12 - smoothstep(0.8, 2.5, t) * 28;
+      const haloY = box.topY - 12 - smoothstep(1.25, 3.7, t) * 38;
       ctx.globalAlpha = haloA * 0.92;
       drawPixelRing(ctx, box.cx, haloY, 22, 6, 2, '#facc15', 30);
       drawPixelRing(ctx, box.cx, haloY, 18, 4, 1, '#fffbeb', 24);
       ctx.globalAlpha = 1;
     }
 
-    // Rising warm golden light motes & drifting pixel feathers from her actual sprite samples (0.75..2.6s)
-    if (!isReflection && t > 0.72) {
-      const disP = clamp01((t - 0.72) / 1.88);
+    // Rising warm golden light motes & drifting pixel feathers (1.2..3.85s — slow graceful drift!)
+    if (!isReflection && t > 1.18) {
+      const disP = clamp01((t - 1.18) / 2.65);
       const samples = inst.samples;
       for (let i = 0; i < samples.length; i++) {
         const s = samples[i];
         const triggerP = (1 - s.normEdge) * 0.44 + s.normY * 0.38 + s.hash * 0.18;
-        const startT = 0.75 + (1 - triggerP) * 1.38;
+        const startT = 1.22 + (1 - triggerP) * 1.98;
         if (t < startT) continue;
         const age = t - startT;
-        const life = clamp01(1 - age / 1.15);
+        const life = clamp01(1 - age / 1.85);
         if (life <= 0.02) continue;
-        const sway = Math.sin(age * 4.2 + s.hash * 12) * (6 + age * 14);
+        const sway = Math.sin(age * 3.1 + s.hash * 12) * (6 + age * 14);
         const mx = s.lx + sway;
-        const my = s.ly - age * (48 + s.hash * 52);
-        ctx.globalAlpha = life * 0.92;
-        if (i % 7 === 0) {
+        const my = s.ly - age * (34 + s.hash * 38);
+        ctx.globalAlpha = life * 0.94;
+        if (i % 6 === 0) {
           drawPixelFeather(ctx, mx, my, i, '#fde047', '#ffffff');
         } else if (i % 5 === 0) {
           drawPixelSpark4(ctx, mx, my, 3, '#facc15', '#ffffff');
@@ -1374,11 +1374,11 @@ export class DeathFXManager {
         }
       }
       // Subtle extra rising sanctuary dust motes
-      for (let k = 0; k < 14; k++) {
-        const u = (disP * 1.4 + k * 0.13) % 1;
-        ctx.globalAlpha = Math.sin(u * Math.PI) * (1 - disP * 0.4) * 0.75;
+      for (let k = 0; k < 16; k++) {
+        const u = (disP * 1.15 + k * 0.13) % 1;
+        ctx.globalAlpha = Math.sin(u * Math.PI) * (1 - disP * 0.35) * 0.78;
         ctx.fillStyle = k % 2 === 0 ? '#fde047' : '#ffffff';
-        pxRect(ctx, box.cx + (hash01(k * 9.3) - 0.5) * 90, box.botY - u * 210, 2, 2);
+        pxRect(ctx, box.cx + (hash01(k * 9.3) - 0.5) * 95, box.botY - u * 220, 2, 2);
       }
       ctx.globalAlpha = 1;
     }
@@ -1391,9 +1391,9 @@ export class DeathFXManager {
     const t = inst.elapsed;
     const box = this._getSpriteCenter(inst, metrics);
 
-    // Subtle solar heat corona behind silhouette during 0.0..1.1s flare
-    if (!isReflection && t < 1.25) {
-      const flareA = smoothstep(0.05, 0.72, t) * (1 - smoothstep(0.85, 1.25, t));
+    // Subtle solar heat corona behind silhouette during 0.0..1.75s flare
+    if (!isReflection && t < 1.8) {
+      const flareA = smoothstep(0.08, 1.12, t) * (1 - smoothstep(1.28, 1.8, t));
       if (flareA > 0.02) {
         ctx.globalAlpha = flareA * 0.22;
         ctx.fillStyle = '#f97316';
@@ -1405,26 +1405,26 @@ export class DeathFXManager {
       }
     }
 
-    if (t < 2.48) {
+    if (t < 3.52) {
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, 0, 0);
     }
 
-    // Swirling orange embers & glowing charcoal ash lifting on a heat draft
+    // Swirling orange embers & glowing charcoal ash lifting slowly on a heat draft
     if (!isReflection) {
       const samples = inst.samples;
       for (let i = 0; i < samples.length; i++) {
         const s = samples[i];
         const score = s.normEdge * 0.62 + (1 - s.normY) * 0.18 + s.hash * 0.2;
-        const burnT = 0.9 + score * 1.45;
+        const burnT = 1.32 + score * 2.02;
         if (t < burnT) continue;
         const age = t - burnT;
-        const life = clamp01(1 - age / 1.15);
+        const life = clamp01(1 - age / 1.85);
         if (life <= 0.02) continue;
-        const spiral = Math.sin(age * 6.4 + s.hash * 10) * (10 + age * 28);
+        const spiral = Math.sin(age * 4.6 + s.hash * 10) * (10 + age * 26);
         const ex = s.lx + spiral;
-        const ey = s.ly - age * (68 + s.hash * 64);
+        const ey = s.ly - age * (46 + s.hash * 46);
         ctx.globalAlpha = life * 0.95;
-        if (age < 0.28) {
+        if (age < 0.42) {
           ctx.fillStyle = '#fef08a';
           pxRect(ctx, ex, ey, 4, 4);
           ctx.fillStyle = '#ffffff';
@@ -1436,14 +1436,14 @@ export class DeathFXManager {
           ctx.fillStyle = '#ea580c';
           pxRect(ctx, ex, ey, 2, 1);
         } else {
-          ctx.fillStyle = age < 0.65 ? '#f97316' : '#dc2626';
+          ctx.fillStyle = age < 0.95 ? '#f97316' : '#dc2626';
           pxRect(ctx, ex, ey, 3, 3);
         }
       }
-      // Early flare sparks (0.0..1.0s)
-      if (t < 1.15) {
-        for (let k = 0; k < 16; k++) {
-          const u = (t * 1.3 + k * 0.11) % 1;
+      // Early flare sparks (0.0..1.55s)
+      if (t < 1.65) {
+        for (let k = 0; k < 18; k++) {
+          const u = (t * 0.95 + k * 0.11) % 1;
           ctx.globalAlpha = Math.sin(u * Math.PI) * 0.85;
           ctx.fillStyle = k % 2 === 0 ? '#fef08a' : '#f97316';
           pxRect(ctx, box.cx + (hash01(k * 5.7) - 0.5) * box.w, box.botY - u * (box.h + 45), 3, 3);
@@ -1460,9 +1460,9 @@ export class DeathFXManager {
     const t = inst.elapsed;
     const box = this._getSpriteCenter(inst, metrics);
 
-    // Cracked pixel clock-dial flashing behind him (0.0..1.75s)
-    if (!isReflection && t < 1.85) {
-      const dialA = smoothstep(0.0, 0.18, t) * (1 - smoothstep(1.15, 1.85, t));
+    // Cracked pixel clock-dial flashing behind him (0.0..2.75s)
+    if (!isReflection && t < 2.85) {
+      const dialA = smoothstep(0.0, 0.28, t) * (1 - smoothstep(1.85, 2.85, t));
       const dCx = box.cx;
       const dCy = box.cy - 10;
       const dR = 54;
@@ -1480,25 +1480,25 @@ export class DeathFXManager {
       // Clock hands + fracture cracks
       drawPixelLine(ctx, dCx, dCy, dCx, dCy - 38, 3, '#fef08a');
       drawPixelLine(ctx, dCx, dCy, dCx + 24, dCy - 14, 2, '#facc15');
-      if (t > 0.28) {
+      if (t > 0.45) {
         drawPixelLine(ctx, dCx - 36, dCy - 34, dCx + 38, dCy + 30, 2, '#ffffff');
         drawPixelLine(ctx, dCx + 24, dCy - 42, dCx - 22, dCy + 38, 2, '#5eead4');
       }
       ctx.globalAlpha = 1;
     }
 
-    // 3 fading cyan-gold time-echo afterimages stuttering across (0.65..2.35s)
-    if (!isReflection && t >= 0.65 && t < 2.38) {
-      const unP = clamp01((t - 0.65) / 1.7);
-      const stutter = (Math.floor(t * 14) & 1) === 0 ? 0 : 4;
+    // 3 fading cyan-gold time-echo afterimages stuttering across (1.02..3.35s)
+    if (!isReflection && t >= 1.02 && t < 3.4) {
+      const unP = clamp01((t - 1.02) / 2.35);
+      const stutter = (Math.floor(t * 11) & 1) === 0 ? 0 : 4;
       const echoes = [
-        { ox: -44 - unP * 24 - stutter, a: 0.44, canvas: inst.tintACanvas },
-        { ox: -22 - unP * 12 + stutter, a: 0.56, canvas: inst.tintBCanvas },
-        { ox: 18 + unP * 16, a: 0.36, canvas: inst.tintACanvas }
+        { ox: -44 - unP * 26 - stutter, a: 0.48, canvas: inst.tintACanvas },
+        { ox: -22 - unP * 14 + stutter, a: 0.58, canvas: inst.tintBCanvas },
+        { ox: 18 + unP * 18, a: 0.38, canvas: inst.tintACanvas }
       ];
       for (let i = 0; i < echoes.length; i++) {
         const ec = echoes[i];
-        const ea = ec.a * (1 - unP * 0.92);
+        const ea = ec.a * (1 - unP * 0.9);
         if (ea <= 0.03) continue;
         ctx.globalAlpha = ea;
         if (ec.canvas) {
@@ -1521,26 +1521,26 @@ export class DeathFXManager {
       ctx.globalAlpha = 1;
     }
 
-    // Main sprite streaming sideways into sand
-    if (t < 2.42) {
+    // Main sprite streaming slowly sideways into sand
+    if (t < 3.42) {
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, 0, 0);
     }
 
-    // Sideways streaming golden hourglass sand & drifting pixel clock cogs (0.7..2.6s)
-    if (!isReflection && t > 0.68) {
+    // Sideways streaming golden hourglass sand & drifting pixel clock cogs (1.1..3.85s)
+    if (!isReflection && t > 1.08) {
       const samples = inst.samples;
-      const cogTick = Math.floor(t * 8);
+      const cogTick = Math.floor(t * 6);
       for (let i = 0; i < samples.length; i++) {
         const s = samples[i];
-        const startT = 0.7 + s.normX * 1.48;
+        const startT = 1.12 + s.normX * 2.08;
         if (t < startT) continue;
         const age = t - startT;
-        const life = clamp01(1 - age / 1.05);
+        const life = clamp01(1 - age / 1.75);
         if (life <= 0.02) continue;
-        const sx = s.lx - age * (92 + s.hash * 76);
-        const sy = s.ly + Math.sin(age * 6 + s.hash * 9) * 8 - age * 14;
+        const sx = s.lx - age * (68 + s.hash * 56);
+        const sy = s.ly + Math.sin(age * 4.5 + s.hash * 9) * 8 - age * 12;
         ctx.globalAlpha = life * 0.94;
-        if (i % 13 === 0) {
+        if (i % 12 === 0) {
           drawPixelCog(ctx, sx, sy, 5 + (i % 3), cogTick + i, '#facc15', '#5eead4');
         } else {
           ctx.fillStyle = i % 3 === 0 ? '#2dd4bf' : i % 2 === 0 ? '#fde047' : '#f59e0b';
@@ -1558,9 +1558,9 @@ export class DeathFXManager {
     const t = inst.elapsed;
     const box = this._getSpriteCenter(inst, metrics);
 
-    // Subtle celestial frost-rune ring beneath his kneeling stance that dims gently
+    // Subtle celestial frost-rune ring beneath his kneeling stance that dims solemnly
     if (!isReflection) {
-      const runeA = Math.max(0.08, 0.72 * (1 - smoothstep(0.6, 2.55, t)));
+      const runeA = Math.max(0.08, 0.72 * (1 - smoothstep(0.95, 3.75, t)));
       ctx.globalAlpha = runeA;
       drawPixelRing(ctx, box.cx, -2, 46, 10, 2, '#38bdf8', 36);
       drawPixelRing(ctx, box.cx, -2, 30, 6, 2, '#bae6fd', 24);
@@ -1573,9 +1573,9 @@ export class DeathFXManager {
     // Pale cyan & white-gold soul-sparks drifting solemnly upward off pauldrons & blade
     if (!isReflection) {
       for (let i = 0; i < 28; i++) {
-        const cycle = (t * (0.42 + (i % 4) * 0.08) + i * 0.13) % 1;
-        const fade = Math.sin(cycle * Math.PI) * (0.45 + 0.55 * (1 - smoothstep(1.8, 2.6, t)));
-        const sx = box.cx + (hash01(i * 11.7) - 0.5) * (box.w * 0.95) + Math.sin(t * 2.5 + i) * 5;
+        const cycle = (t * (0.3 + (i % 4) * 0.06) + i * 0.13) % 1;
+        const fade = Math.sin(cycle * Math.PI) * (0.45 + 0.55 * (1 - smoothstep(2.7, 3.85, t)));
+        const sx = box.cx + (hash01(i * 11.7) - 0.5) * (box.w * 0.95) + Math.sin(t * 2.0 + i) * 5;
         const sy = box.topY + 18 + hash01(i * 5.3) * (box.h * 0.6) - cycle * 95;
         ctx.globalAlpha = clamp01(fade);
         if (i % 5 === 0) {
@@ -1601,9 +1601,9 @@ export class DeathFXManager {
 
     if (isReflection) return;
 
-    // 0.12..0.38s: Crisp crimson-white iaijutsu slash glint across his silhouette
-    if (t >= 0.12 && t <= 0.42) {
-      const p = clamp01((t - 0.12) / 0.3);
+    // 0.20..0.62s: Crisp crimson-white iaijutsu slash glint across his haunting upright freeze
+    if (t >= 0.2 && t <= 0.64) {
+      const p = clamp01((t - 0.2) / 0.44);
       const a = Math.sin(p * Math.PI);
       ctx.globalAlpha = a * 0.95;
       drawPixelLine(ctx, box.leftX - 36, box.cy + 16, box.rightX + 38, box.cy - 28, 4, '#dc2626');
@@ -1611,40 +1611,40 @@ export class DeathFXManager {
       ctx.globalAlpha = 1;
     }
 
-    // 0.50..0.76s: Steel-white katana-sheathe cross-flash + white mist exhale
-    if (t >= 0.48 && t <= 0.85) {
-      const sp = clamp01((t - 0.48) / 0.28);
+    // 0.80..1.38s: Steel-white katana-sheathe cross-flash + lingering white breath-mist exhale
+    if (t >= 0.78 && t <= 1.45) {
+      const sp = clamp01((t - 0.78) / 0.36);
       if (sp < 1) {
         const a = Math.sin(sp * Math.PI);
         ctx.globalAlpha = a;
-        drawPixelSpark4(ctx, box.cx - 8, box.cy + 10, Math.round(6 + a * 18), '#bae6fd', '#ffffff');
+        drawPixelSpark4(ctx, box.cx - 8, box.cy + 10, Math.round(6 + a * 20), '#bae6fd', '#ffffff');
       }
       // Pale white breath-mist puff drifting forward from head/mouth height
-      const mp = clamp01((t - 0.52) / 0.35);
-      ctx.globalAlpha = (1 - mp) * 0.72;
+      const mp = clamp01((t - 0.84) / 0.6);
+      ctx.globalAlpha = (1 - mp) * 0.78;
       ctx.fillStyle = '#e2e8f0';
-      pxRect(ctx, box.cx + 12 + mp * 26, box.topY + 22 - mp * 10, 6, 4);
-      pxRect(ctx, box.cx + 18 + mp * 34, box.topY + 18 - mp * 14, 8, 4);
+      pxRect(ctx, box.cx + 12 + mp * 32, box.topY + 22 - mp * 12, 6, 4);
+      pxRect(ctx, box.cx + 18 + mp * 42, box.topY + 18 - mp * 16, 8, 4);
       ctx.fillStyle = '#ffffff';
-      pxRect(ctx, box.cx + 14 + mp * 28, box.topY + 20 - mp * 10, 4, 2);
+      pxRect(ctx, box.cx + 14 + mp * 34, box.topY + 20 - mp * 12, 4, 2);
       ctx.globalAlpha = 1;
     }
 
-    // 0.70..2.60s: Storm-lit gust of pixel sakura petals sweeping across silhouette!
-    if (t >= 0.68) {
-      const windT = t - 0.68;
+    // 1.08..3.85s: Storm-lit gust of pixel sakura petals sweeping slowly across kneeling silhouette!
+    if (t >= 1.08) {
+      const windT = t - 1.08;
       const petalCols = ['#fbcfe8', '#f472b6', '#fda4af', '#ffffff'];
-      for (let i = 0; i < 48; i++) {
-        const delay = (i % 12) * 0.065;
+      for (let i = 0; i < 56; i++) {
+        const delay = (i % 14) * 0.11;
         if (windT < delay) continue;
         const age = windT - delay;
-        const life = clamp01(1 - age / 1.85);
+        const life = clamp01(1 - age / 2.65);
         if (life <= 0.02) continue;
-        const startX = box.cx - 115 + (hash01(i * 3.1) - 0.5) * 65;
+        const startX = box.cx - 125 + (hash01(i * 3.1) - 0.5) * 70;
         const startY = box.topY - 30 + hash01(i * 7.9) * (box.h * 0.95);
-        const px = startX + age * (135 + hash01(i * 13.7) * 75);
-        const py = Math.min(2, startY + age * (36 + (i % 4) * 12) + Math.sin(age * 7 + i) * 10);
-        ctx.globalAlpha = Math.min(1, age * 4) * life * 0.95;
+        const px = startX + age * (98 + hash01(i * 13.7) * 58);
+        const py = Math.min(2, startY + age * (28 + (i % 4) * 10) + Math.sin(age * 5.2 + i) * 10);
+        ctx.globalAlpha = Math.min(1, age * 3) * life * 0.96;
         drawPixelPetal(ctx, px, py, i, petalCols[i % petalCols.length], '#ffffff');
       }
       ctx.globalAlpha = 1;
@@ -1658,11 +1658,11 @@ export class DeathFXManager {
     const t = inst.elapsed;
     const box = this._getSpriteCenter(inst, metrics);
 
-    // Flaring phoenix wing embers behind her (0.0..1.35s)
-    if (!isReflection && t < 1.45) {
-      const flareA = smoothstep(0.05, 0.75, t) * (1 - smoothstep(0.95, 1.45, t));
+    // Flaring phoenix wing embers behind her (0.0..2.05s)
+    if (!isReflection && t < 2.15) {
+      const flareA = smoothstep(0.1, 1.15, t) * (1 - smoothstep(1.4, 2.15, t));
       if (flareA > 0.02) {
-        const wingSpread = Math.round(28 + flareA * 46);
+        const wingSpread = Math.round(28 + flareA * 48);
         ctx.globalAlpha = flareA * 0.32;
         ctx.fillStyle = '#f43f5e';
         pxRect(ctx, box.cx - wingSpread, box.topY + 12, wingSpread * 2, 34);
@@ -1673,25 +1673,25 @@ export class DeathFXManager {
       }
     }
 
-    if (t < 2.44) {
+    if (t < 3.46) {
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, 0, 0);
     }
 
-    // 0.85..2.6s: Crimson-gold burning pixel phoenix feathers bursting into an upward spiral!
-    if (!isReflection && t >= 0.82) {
-      const pyreT = t - 0.82;
+    // 1.25..3.85s: Crimson-gold burning pixel phoenix feathers bursting into a slow majestic upward spiral!
+    if (!isReflection && t >= 1.22) {
+      const pyreT = t - 1.22;
       const featherCols = ['#ef4444', '#f97316', '#facc15', '#fb7185'];
-      for (let i = 0; i < 52; i++) {
-        const delay = (i % 13) * 0.05;
+      for (let i = 0; i < 58; i++) {
+        const delay = (i % 15) * 0.09;
         if (pyreT < delay) continue;
         const age = pyreT - delay;
-        const life = clamp01(1 - age / 1.48);
+        const life = clamp01(1 - age / 2.25);
         if (life <= 0.02) continue;
-        const ang = i * 0.72 + age * 4.4;
-        const rad = 14 + age * (48 + (i % 5) * 11);
+        const ang = i * 0.72 + age * 3.1;
+        const rad = 14 + age * (38 + (i % 5) * 9);
         const fx = box.cx + Math.cos(ang) * rad;
-        const fy = box.botY - 22 - age * (92 + (i % 6) * 24) + Math.sin(ang) * 10;
-        ctx.globalAlpha = Math.min(1, age * 5) * life * 0.96;
+        const fy = box.botY - 22 - age * (68 + (i % 6) * 18) + Math.sin(ang) * 10;
+        ctx.globalAlpha = Math.min(1, age * 4) * life * 0.96;
         if (i % 3 !== 0) {
           drawPixelFeather(ctx, fx, fy, i, featherCols[i % featherCols.length], '#fef08a');
         } else {
@@ -1716,12 +1716,12 @@ export class DeathFXManager {
 
     // Pixel volcanic ash & dark-grey stepped smoke puffs venting continuously from his cracked armor
     for (let i = 0; i < 32; i++) {
-      const cycle = (t * (0.48 + (i % 5) * 0.09) + i * 0.17) % 1;
-      const alpha = Math.sin(cycle * Math.PI) * 0.78;
-      const vx = box.cx + (hash01(i * 9.1) - 0.5) * (box.w * 0.9) + Math.sin(t * 2.2 + i) * 8;
+      const cycle = (t * (0.34 + (i % 5) * 0.07) + i * 0.17) % 1;
+      const alpha = Math.sin(cycle * Math.PI) * 0.8;
+      const vx = box.cx + (hash01(i * 9.1) - 0.5) * (box.w * 0.9) + Math.sin(t * 1.8 + i) * 8;
       const vy = box.topY + 14 + hash01(i * 4.7) * (box.h * 0.65) - cycle * 110;
       ctx.globalAlpha = alpha;
-      if (i % 4 === 0 && t < 1.65) {
+      if (i % 4 === 0 && t < 2.65) {
         // Dying magma ember venting out early
         ctx.fillStyle = '#f97316';
         pxRect(ctx, vx, vy, 3, 3);
@@ -1749,16 +1749,16 @@ export class DeathFXManager {
     const t = inst.elapsed;
     const box = this._getSpriteCenter(inst, metrics);
 
-    // Sinks to one knee & unravels gently into glowing emerald leaves
-    if (t < 2.44) {
+    // Sinks to one knee & unravels slowly into glowing emerald leaves
+    if (t < 3.46) {
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, 0, 0);
     }
 
     if (isReflection) return;
 
-    // Pixel emerald vines sprouting underfoot & curling gently upward (0.0..2.6s)
-    const vineP = smoothstep(0.05, 0.85, t);
-    const vineFade = 1 - smoothstep(2.15, 2.6, t) * 0.45;
+    // Pixel emerald vines sprouting underfoot & lingering warmly (0.0..3.85s)
+    const vineP = smoothstep(0.08, 1.32, t);
+    const vineFade = 1 - smoothstep(3.15, 3.85, t) * 0.38;
     const vineSeeds = [-34, -18, -4, 14, 30];
     ctx.globalAlpha = vineFade * 0.94;
     for (let v = 0; v < vineSeeds.length; v++) {
@@ -1780,23 +1780,23 @@ export class DeathFXManager {
       }
     }
 
-    // 0.8..2.6s: Unraveling glowing emerald leaves & moonlit forest fireflies
-    if (t >= 0.78) {
+    // 1.22..3.85s: Slow unraveling into drifting glowing emerald leaves & moonlit forest fireflies
+    if (t >= 1.22) {
       const samples = inst.samples;
       for (let i = 0; i < samples.length; i++) {
         const s = samples[i];
         const triggerP = (1 - s.normEdge) * 0.35 + s.normY * 0.45 + s.hash * 0.2;
-        const startT = 0.8 + (1 - triggerP) * 1.35;
+        const startT = 1.25 + (1 - triggerP) * 1.98;
         if (t < startT) continue;
         const age = t - startT;
-        const life = clamp01(1 - age / 1.25);
+        const life = clamp01(1 - age / 1.95);
         if (life <= 0.02) continue;
-        const lx = s.lx + age * (34 + s.hash * 30) + Math.sin(age * 4.5 + i) * 9;
-        const ly = s.ly - age * (38 + s.hash * 32) + Math.cos(age * 3.2 + i) * 5;
-        ctx.globalAlpha = life * 0.94;
+        const lx = s.lx + age * (24 + s.hash * 22) + Math.sin(age * 3.2 + i) * 9;
+        const ly = s.ly - age * (26 + s.hash * 24) + Math.cos(age * 2.4 + i) * 5;
+        ctx.globalAlpha = life * 0.95;
         if (i % 4 === 0) {
           // Moonlit forest firefly
-          const blink = 0.55 + 0.45 * Math.sin(t * 11 + i * 2.3);
+          const blink = 0.55 + 0.45 * Math.sin(t * 9 + i * 2.3);
           ctx.globalAlpha = life * blink;
           drawPixelSpark4(ctx, lx, ly, 2, '#67e8f9', '#fef08a');
         } else {
@@ -1817,11 +1817,11 @@ export class DeathFXManager {
       ? Math.max(0, inst.fighter.groundY - inst.fighter.y)
       : 0;
 
-    // Rift width: tears open 0.0..0.7s, holds open 0.7..2.2s, snaps shut 2.2..2.52s
-    const openP = smoothstep(0.04, 0.68, t);
-    const closeP = smoothstep(2.18, 2.48, t);
+    // Rift width: tears open 0.08..1.05s, holds open 1.05..3.22s, snaps shut violently 3.22..3.62s
+    const openP = smoothstep(0.08, 1.05, t);
+    const closeP = smoothstep(3.22, 3.62, t);
     const riftFrac = clamp01(openP * (1 - closeP));
-    const riftHalfW = Math.round(76 * riftFrac);
+    const riftHalfW = Math.round(78 * riftFrac);
     const riftH = Math.max(4, Math.round(16 * riftFrac));
 
     // Back abyssal void & tapered jagged Hellpit fissure lip (pointed dimensional tear ends!)
@@ -1846,13 +1846,15 @@ export class DeathFXManager {
     }
 
     // Back abyssal tendrils (3 sinuous pixel tentacles reaching up behind him)
-    const tendrilP = smoothstep(0.58, 1.05, t) * (1 - smoothstep(2.05, 2.38, t));
+    const tendrilP = smoothstep(0.85, 1.5, t) * (1 - smoothstep(3.05, 3.45, t));
     if (!isReflection && tendrilP > 0.02) {
       this._drawAbyssalTendrils(ctx, box.cx, groundYLocal, tendrilP, t, [-32, 0, 32], false);
     }
 
-    // Clipped sprite smoothly dragged downward INTO the rift (0.7..2.2s)!
-    const sinkP = smoothstep(0.7, 2.2, t);
+    // Clipped sprite slowly dragged downward INTO the rift (1.08..3.22s, dramatic mid-drag resistance!)
+    const rawSink = smoothstep(1.08, 3.22, t);
+    const struggle = rawSink > 0.2 && rawSink < 0.7 ? Math.sin(rawSink * Math.PI * 5) * 0.018 : 0;
+    const sinkP = clamp01(rawSink + struggle);
     const sinkOffset = Math.round(sinkP * (box.h + 46));
     if (sinkP < 0.995) {
       ctx.save();
@@ -1874,23 +1876,23 @@ export class DeathFXManager {
       this._drawAbyssalTendrils(ctx, box.cx, groundYLocal, tendrilP, t, [-20, 14, -4], true);
     }
 
-    // 2.2..2.6s: Rift snap-shut flash & burst of violet soul-sparks
-    if (!isReflection && t >= 2.16) {
-      const snapT = t - 2.16;
-      if (snapT < 0.24) {
-        const fa = 1 - snapT / 0.24;
+    // 3.20..3.85s: Rift snap-shut flash & burst of violet soul-sparks
+    if (!isReflection && t >= 3.2) {
+      const snapT = t - 3.2;
+      if (snapT < 0.34) {
+        const fa = 1 - snapT / 0.34;
         ctx.globalAlpha = fa;
         ctx.fillStyle = '#d946ef';
-        pxRect(ctx, box.cx - 88 * fa, groundYLocal - 3, 176 * fa, 6);
+        pxRect(ctx, box.cx - 94 * fa, groundYLocal - 3, 188 * fa, 6);
         ctx.fillStyle = '#fdf4ff';
-        pxRect(ctx, box.cx - 64 * fa, groundYLocal - 1, 128 * fa, 2);
+        pxRect(ctx, box.cx - 68 * fa, groundYLocal - 1, 136 * fa, 2);
       }
-      for (let i = 0; i < 36; i++) {
+      for (let i = 0; i < 42; i++) {
         const ang = -Math.PI * (0.08 + hash01(i * 4.3) * 0.84);
-        const spd = 75 + hash01(i * 9.7) * 165;
+        const spd = 72 + hash01(i * 9.7) * 165;
         const sx = box.cx + Math.cos(ang) * spd * snapT;
-        const sy = groundYLocal + Math.sin(ang) * spd * snapT + snapT * snapT * 180;
-        const life = clamp01(1 - snapT / 0.44);
+        const sy = groundYLocal + Math.sin(ang) * spd * snapT + snapT * snapT * 145;
+        const life = clamp01(1 - snapT / 0.68);
         ctx.globalAlpha = life;
         if (i % 4 === 0) {
           drawPixelSpark4(ctx, sx, sy, 3, '#d946ef', '#fdf4ff');
@@ -1931,8 +1933,8 @@ export class DeathFXManager {
     const box = this._getSpriteCenter(inst, metrics);
     const step30 = Math.floor(t * 30);
 
-    // 0.0..0.75s: Red short-circuit sparks & error pixel blocks popping off her silhouette
-    if (t < 0.72) {
+    // 0.0..1.12s: Red short-circuit sparks & error pixel blocks popping off her silhouette
+    if (t < 1.12) {
       const jolt = (step30 % 4) === 0 ? ((step30 & 4) === 0 ? 3 : -3) : 0;
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, jolt, 0);
       if (!isReflection) {
@@ -1954,8 +1956,8 @@ export class DeathFXManager {
       return;
     }
 
-    // 0.72..2.6s: Horizontal cyan/magenta RGB glitch scanline slices + bottom-to-top voxel decompile
-    const decP = smoothstep(0.75, 2.28, t);
+    // 1.12..3.85s: Horizontal cyan/magenta RGB glitch scanline slices + slow bottom-to-top voxel decompile
+    const decP = smoothstep(1.18, 3.25, t);
     const remainH = Math.max(0, 1 - decP);
 
     if (remainH > 0.01) {
@@ -1967,14 +1969,14 @@ export class DeathFXManager {
         if (bandNorm > remainH + 0.08) continue;
         const jitSeed = hash01(s * 19.3 + step30 * 3.7);
         const glitchOff = jitSeed > 0.52 ? Math.round((jitSeed - 0.76) * 44) : 0;
-        const rgbSplit = Math.round(5 + decP * 14 + (jitSeed > 0.7 ? 10 : 0));
+        const rgbSplit = Math.round(5 + decP * 16 + (jitSeed > 0.7 ? 10 : 0));
         const sy = Math.round(s * sliceSrcH);
         const sh = Math.max(1, Math.round(sliceSrcH));
         const dy = Math.round(metrics.baseY + s * sliceDstH);
         const dh = Math.max(1, Math.round(sliceDstH));
 
         if (!isReflection && inst.tintACanvas && inst.tintBCanvas) {
-          ctx.globalAlpha = 0.56;
+          ctx.globalAlpha = 0.58;
           ctx.drawImage(
             inst.tintACanvas,
             0, sy, inst.capW, sh,
@@ -2019,8 +2021,8 @@ export class DeathFXManager {
         const vox = {
           x: s.lx,
           y: s.ly,
-          vx: (s.hash - 0.5) * 90,
-          vy: -35 - s.hash * 55,
+          vx: (s.hash - 0.5) * 82,
+          vy: -32 - s.hash * 48,
           size: 4 + (i % 3) * 2,
           color: neonPick,
           wire: i % 4 === 0,
@@ -2028,23 +2030,23 @@ export class DeathFXManager {
           bounced: false,
           seed: i * 17
         };
-        const expectedSpawnT = 0.75 + (1 - s.normY) * 1.53;
-        let catchup = Math.min(1.0, Math.max(0, t - expectedSpawnT));
+        const expectedSpawnT = 1.18 + (1 - s.normY) * 2.07;
+        let catchup = Math.min(1.4, Math.max(0, t - expectedSpawnT));
         while (catchup > 0.03) {
           const step = Math.min(0.025, catchup);
           vox.age += step;
-          vox.vy += 520 * step;
+          vox.vy += 370 * step;
           vox.x += vox.vx * step;
           vox.y += vox.vy * step;
           if (vox.y > 1) {
             vox.y = 1;
             if (!vox.bounced) {
-              vox.vy = -65 - (vox.seed % 45);
-              vox.vx *= 0.65;
+              vox.vy = -58 - (vox.seed % 42);
+              vox.vx *= 0.64;
               vox.bounced = true;
             } else {
               vox.vy = 0;
-              vox.vx *= 0.78;
+              vox.vx *= 0.8;
             }
           }
           catchup -= step;
@@ -2053,15 +2055,15 @@ export class DeathFXManager {
       }
     }
 
-    // Render falling neon pixel voxels
+    // Render falling neon pixel voxels (lingering & blinking out slowly on the floor!)
     if (!isReflection) {
       const voxels = inst.voxels;
       for (let i = 0; i < voxels.length; i++) {
         const v = voxels[i];
-        const life = clamp01(1 - v.age / 1.05);
+        const life = clamp01(1 - v.age / 1.75);
         if (life <= 0.02) continue;
         if (life < 0.25 && ((step30 + i) & 1) === 0) continue; // crisp digital blink-out
-        ctx.globalAlpha = life * 0.95;
+        ctx.globalAlpha = life * 0.96;
         if (v.wire) {
           ctx.fillStyle = '#00f0ff';
           pxRect(ctx, v.x, v.y, v.size, 1);
@@ -2086,12 +2088,12 @@ export class DeathFXManager {
     const t = inst.elapsed;
     const box = this._getSpriteCenter(inst, metrics);
 
-    // Mini Cob-OS neon glitch window frame behind her (0.04..2.38s)
-    if (!isReflection && t >= 0.04 && t < 2.42) {
-      const popP = smoothstep(0.04, 0.26, t);
-      const shutP = smoothstep(1.85, 2.38, t);
-      const winW = Math.round(146 * popP * (1 - smoothstep(2.15, 2.38, t)));
-      const winH = Math.max(4, Math.round(166 * popP * (1 - smoothstep(1.85, 2.15, t))));
+    // Mini Cob-OS neon glitch window frame behind her (0.06..3.65s)
+    if (!isReflection && t >= 0.06 && t < 3.7) {
+      const popP = smoothstep(0.06, 0.36, t);
+      const shutP = smoothstep(2.92, 3.65, t);
+      const winW = Math.round(146 * popP * (1 - smoothstep(3.32, 3.65, t)));
+      const winH = Math.max(4, Math.round(166 * popP * (1 - smoothstep(2.92, 3.32, t))));
       const wx = Math.round(box.cx - winW * 0.5);
       const wy = Math.round(box.cy - winH * 0.5 - 4);
       if (winW > 4) {
@@ -2141,25 +2143,25 @@ export class DeathFXManager {
       }
     }
 
-    // Digitizing live sprite shrinking slightly into poof at 1.78s
-    if (t < 1.78) {
-      const shrink = t > 1.05 ? 1 - smoothstep(1.05, 1.78, t) * 0.24 : 1;
-      const jitX = t > 0.7 && (Math.floor(t * 24) & 3) === 0 ? 4 : 0;
+    // Digitizing live sprite shrinking gently into poof at 2.72s
+    if (t < 2.72) {
+      const shrink = t > 1.65 ? 1 - smoothstep(1.65, 2.72, t) * 0.26 : 1;
+      const jitX = t > 1.1 && (Math.floor(t * 22) & 3) === 0 ? 4 : 0;
       this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, jitX, 0, shrink, shrink);
     }
 
     if (isReflection) return;
 
-    // 0.68..1.95s: Swirling pastel pixel-hearts & neon glitch squares
-    if (t >= 0.68 && t < 2.2) {
-      const swT = t - 0.68;
-      const fade = 1 - smoothstep(1.12, 1.52, swT);
+    // 1.05..3.15s: Swirling pastel pixel-hearts & neon glitch squares
+    if (t >= 1.05 && t < 3.2) {
+      const swT = t - 1.05;
+      const fade = 1 - smoothstep(1.65, 2.15, swT);
       const cols = ['#f472b6', '#fda4af', '#67e8f9', '#fde047'];
-      for (let i = 0; i < 18; i++) {
-        const ang = i * 0.95 + swT * 4.8;
-        const rad = 18 + swT * 46 + (i % 3) * 14;
+      for (let i = 0; i < 20; i++) {
+        const ang = i * 0.95 + swT * 3.6;
+        const rad = 18 + swT * 38 + (i % 3) * 14;
         const hx = box.cx + Math.cos(ang) * rad;
-        const hy = box.cy - 6 + Math.sin(ang) * (rad * 0.65) - swT * 24;
+        const hy = box.cy - 6 + Math.sin(ang) * (rad * 0.65) - swT * 18;
         ctx.globalAlpha = fade * 0.96;
         if (i % 2 === 0) {
           drawPixelHeart(ctx, hx, hy, i % 4 === 0 ? 2 : 1, cols[i % cols.length], '#ffffff');
@@ -2173,21 +2175,21 @@ export class DeathFXManager {
       ctx.globalAlpha = 1;
     }
 
-    // 1.75..2.6s: Joyful starry cyber-confetti POOF!
-    if (t >= 1.75) {
-      const poofT = t - 1.75;
-      const life = clamp01(1 - poofT / 0.84);
+    // 2.70..3.85s: Joyful starry cyber-confetti POOF lingering softly!
+    if (t >= 2.7) {
+      const poofT = t - 2.7;
+      const life = clamp01(1 - poofT / 1.25);
       const confettiCols = ['#f472b6', '#22d3ee', '#fde047', '#c084fc', '#ffffff'];
-      if (poofT < 0.22) {
-        const fa = 1 - poofT / 0.22;
+      if (poofT < 0.3) {
+        const fa = 1 - poofT / 0.3;
         ctx.globalAlpha = fa;
-        drawPixelSpark4(ctx, box.cx, box.cy - 6, Math.round(14 + poofT * 110), '#f472b6', '#ffffff');
+        drawPixelSpark4(ctx, box.cx, box.cy - 6, Math.round(14 + poofT * 105), '#f472b6', '#ffffff');
       }
-      for (let i = 0; i < 38; i++) {
+      for (let i = 0; i < 42; i++) {
         const ang = hash01(i * 5.1) * Math.PI * 2;
-        const spd = 65 + hash01(i * 11.9) * 145;
+        const spd = 55 + hash01(i * 11.9) * 125;
         const cx = box.cx + Math.cos(ang) * spd * poofT;
-        const cy = box.cy - 6 + Math.sin(ang) * spd * poofT + poofT * poofT * 75;
+        const cy = box.cy - 6 + Math.sin(ang) * spd * poofT + poofT * poofT * 58;
         ctx.globalAlpha = life;
         if (i % 5 === 0) {
           drawPixelHeart(ctx, cx, cy, 1, confettiCols[i % 4], '#ffffff');

@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps171';
-import { PixelFont } from './PixelFont.js?v=30fps171';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps171';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps171';
+import { PixelForge } from './PixelForge.js?v=30fps172';
+import { PixelFont } from './PixelFont.js?v=30fps172';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps172';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps172';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps171';
+} from './shaders/exNextGenFX.js?v=30fps172';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -1011,7 +1011,7 @@ export class Renderer {
         const f = validFighters[i];
         if (
           !f.isBenched &&
-          (!f.isDead || (f.deathTimer || 0) < 3.4 || f === this.endMatchLoser)
+          (!f.isDead || (f.deathTimer || 0) < 4.6 || f === this.endMatchLoser)
         ) {
           activePool.push(f);
         }
@@ -1149,8 +1149,8 @@ export class Renderer {
         targetX = loser.x;
         targetY = loserGy - 102;
         if (!isFixedZoomMode) {
-          const defeatZoomCap = this.isMobile ? 0.9 : 1.18;
-          targetZoom = Math.max(0.56, Math.min(defeatZoomCap, Math.max(targetZoom, 0.96) * 1.12));
+          const defeatZoomCap = this.isMobile ? 0.92 : 1.22;
+          targetZoom = Math.max(0.56, Math.min(defeatZoomCap, Math.max(targetZoom, 0.98) * 1.16));
         }
       } else if (isWinnerSpotlight) {
         // Beat 2 & 3: Glide camera smoothly onto the winning champion performing full Row 9 VICTORY pose
