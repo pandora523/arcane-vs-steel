@@ -1,15 +1,15 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps184';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps184';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps184';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps184';
+import { Fighter } from '../entities/Fighter.js?v=30fps185';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps185';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps185';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps185';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps184';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps184';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps184';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps184';
+} from './AdventureProgression.js?v=30fps185';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps185';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps185';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps185';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -2187,7 +2187,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps184') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps185') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -2197,7 +2197,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps184') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps185') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;

@@ -1122,11 +1122,12 @@ def render_pose_160(rig: dict, pose: dict) -> np.ndarray:
     l_arm2 = pose.get("arm_l2", 14.4)
 
     # Layer 2: Rear arm (Raijin's lead/left jab arm, anchored at b_sh_160)
-    b_hand_off = pose.get("b_hand", (14.0, 5.0))
+    # Default bend_dir = +1 keeps human elbows anatomically DOWN & BACK on right-facing sprites (ZERO 180° elbow/hand flips!)
+    b_hand_off = pose.get("b_hand", (14.0, 2.0))
     b_tx = b_sh_160[0] + b_hand_off[0]
     b_ty = b_sh_160[1] + b_hand_off[1]
     b_ex, b_ey, b_wx, b_wy = solve_ik_2bone(
-        b_sh_160[0], b_sh_160[1], b_tx, b_ty, l_arm1, l_arm2, bend_dir=pose.get("b_bend", 0)
+        b_sh_160[0], b_sh_160[1], b_tx, b_ty, l_arm1, l_arm2, bend_dir=pose.get("b_bend", 1)
     )
     rear_in_front = pose.get("rear_arm_front", False)
     if not rear_in_front:
@@ -1156,11 +1157,11 @@ def render_pose_160(rig: dict, pose: dict) -> np.ndarray:
         )
 
     # Layer 4: Front arm (Raijin's right power arm, anchored at f_sh_160)
-    f_hand_off = pose.get("f_hand", (10.0, 12.0))
+    f_hand_off = pose.get("f_hand", (6.0, 8.0))
     f_tx = f_sh_160[0] + f_hand_off[0]
     f_ty = f_sh_160[1] + f_hand_off[1]
     f_ex, f_ey, f_wx, f_wy = solve_ik_2bone(
-        f_sh_160[0], f_sh_160[1], f_tx, f_ty, l_arm1, l_arm2, bend_dir=pose.get("f_bend", 0)
+        f_sh_160[0], f_sh_160[1], f_tx, f_ty, l_arm1, l_arm2, bend_dir=pose.get("f_bend", 1)
     )
     draw_brawler_arm_160(
         frame,
@@ -1246,9 +1247,9 @@ def build_row0_idle(rig: dict) -> list[np.ndarray]:
             "head_ang": -2.0 + 0.9 * math.sin(ph - 0.5),
             "l_foot": (-12.5, 0.0),
             "r_foot": (12.5, 0.0),
-            # Open heroic Ryu/Ken fighting guard: front power fist cocked cleanly at flank/ribs, lead fist out!
-            "f_hand": (2.0 + 2.0 * math.cos(ph), 9.5 + 1.4 * math.sin(ph)),
-            "b_hand": (18.5 + 1.8 * math.sin(ph), 0.0 + 1.4 * math.cos(ph)),
+            # Compact Ryu/Ken fighting guard: front power fist cocked cleanly at flank/ribs, lead fist bent ready!
+            "f_hand": (5.0 + 1.6 * math.cos(ph), 8.2 + 1.2 * math.sin(ph)),
+            "b_hand": (14.8 + 1.5 * math.sin(ph), 1.4 + 1.2 * math.cos(ph)),
             "f_charge": 0.32 + 0.22 * abs(math.sin(ph * 2.0)),
             "b_charge": 0.32 + 0.22 * abs(math.cos(ph * 2.0)),
             "wave_phase": ph,
@@ -1269,6 +1270,7 @@ def build_row1_walk(rig: dict) -> list[np.ndarray]:
       - walkStanceDelta <= -6.0px on BOTH half-cycles (stance foot sweeps -X while swing foot crosses +X!)
       - maxBootSpan >= 56px, minBootSpan <= maxBootSpan * 0.55
       - Smooth topY delta <= 4px, grounded maxY in 224..232
+      - Continuous natural bent-elbow martial guard arms (ZERO 180° elbow/hand flipping, ZERO zombie reach!)
     """
     frames = []
     for c in range(COLS):
@@ -1307,9 +1309,9 @@ def build_row1_walk(rig: dict) -> list[np.ndarray]:
             "r_foot": (rf_x, rf_y),
             "l_boot_ang": lb_ang,
             "r_boot_ang": rb_ang,
-            # Natural athletic swinging fists clearing chest silhouette cleanly!
-            "f_hand": (2.5 + 8.5 * arm_swing, 9.5 - 2.4 * arm_swing),
-            "b_hand": (14.5 - 8.5 * arm_swing, 2.5 + 2.4 * arm_swing),
+            # Compact counter-pumping martial fighting guard (elbows always naturally bent down-back, ZERO flipping!)
+            "f_hand": (7.2 + 4.2 * arm_swing, 6.8 - 1.8 * arm_swing),
+            "b_hand": (12.2 - 3.8 * arm_swing, 2.2 + 1.6 * arm_swing),
             "f_charge": 0.22,
             "b_charge": 0.22,
             "wave_phase": ph * 2.0,
@@ -1360,7 +1362,7 @@ def build_row2_auto(rig: dict) -> list[np.ndarray]:
                     "head_ang": -2.0,
                     "l_foot": (-15.5, 0.0),
                     "r_foot": (23.0, 0.0),
-                    "f_hand": (-5.0, 8.0),
+                    "f_hand": (0.5, 10.0),
                     "b_hand": (29.0 * ext, -3.5),
                     "rear_arm_front": True,
                     "b_charge": 1.0,
@@ -1380,7 +1382,7 @@ def build_row2_auto(rig: dict) -> list[np.ndarray]:
                     "head_ang": lerp(-2.0, 3.0, k),
                     "l_foot": (lerp(-15.0, -15.5, k), 0.0),
                     "r_foot": (lerp(22.0, 12.5, k), 0.0),
-                    "f_hand": (lerp(-3.0, -11.0, k), lerp(7.5, 3.0, k)),
+                    "f_hand": (lerp(2.0, 0.5, k), lerp(8.0, 10.0, k)),
                     "b_hand": (lerp(22.0, 13.0, k), lerp(-2.0, 4.0, k)),
                     "f_charge": lerp(0.4, 0.75, k),
                     "b_charge": 0.35 * (1.0 - k),
@@ -1400,7 +1402,7 @@ def build_row2_auto(rig: dict) -> list[np.ndarray]:
                     "head_ang": 4.0,
                     "l_foot": (-15.5, 0.0),
                     "r_foot": (12.0, 0.0),
-                    "f_hand": (-13.0, 2.0),
+                    "f_hand": (0.5, 10.5),
                     "b_hand": (13.0, 5.0),
                     "f_charge": 0.85,
                     "wave_phase": lc * 0.9 + 2.0,
@@ -1423,7 +1425,7 @@ def build_row2_auto(rig: dict) -> list[np.ndarray]:
                     "l_foot": (-15.5, 0.0),
                     "r_foot": (24.5, 0.0),
                     "f_hand": (lerp(26.0, 29.0, swing), lerp(-5.0, 0.0, swing)),
-                    "b_hand": (-9.0, 6.5),
+                    "b_hand": (-3.5, 8.0),
                     "f_charge": 1.0,
                     "wave_phase": lc * 1.2 + 2.0,
                     "scarf_amp": 36.0,
@@ -1485,11 +1487,11 @@ def build_row2_auto(rig: dict) -> list[np.ndarray]:
                     "r_foot": (16.5, lift * 0.9 - 12.0),
                     "l_boot_ang": 20.0,
                     "r_boot_ang": -22.0,
-                    "f_hand": (20.5 + 2.5 * u_rise, -24.5),
-                    "b_hand": (-8.5, 11.0),
+                    "f_hand": (23.0 + 2.5 * u_rise, -22.5),
+                    "b_hand": (0.5, 11.0),
                     "f_role": "uppercut",
                     "f_charge": 1.0,
-                    "f_bend": 0,
+                    "f_bend": 1,
                     "wave_phase": lc * 1.3 + 4.0,
                     "scarf_amp": 36.0,
                     "scarf_ang": 34.0,
@@ -1590,13 +1592,13 @@ def build_row3_skill(rig: dict) -> list[np.ndarray]:
             k = c / 4.0
             pose = {
                 "dx": lerp(-2.0, -8.5, k),
-                "dy": lerp(2.0, 9.5, k),
-                "torso_ang": lerp(8.0, 26.0, k),
+                "dy": lerp(2.0, 8.5, k),
+                "torso_ang": lerp(8.0, 24.0, k),
                 "head_ang": -8.0,
                 "l_foot": (-17.5, 0.0),
                 "r_foot": (14.5, 0.0),
-                "f_hand": (lerp(7.5, -12.0, k), lerp(4.0, 7.0, k)),
-                "b_hand": (17.0, 3.0),
+                "f_hand": (lerp(6.0, 0.5, k), lerp(6.0, 10.2, k)),
+                "b_hand": (15.5, 2.5),
                 "f_charge": 0.6 + 0.4 * k,
                 "b_charge": 0.5 + 0.4 * k,
                 "wave_phase": c * 1.1,
@@ -1612,13 +1614,13 @@ def build_row3_skill(rig: dict) -> list[np.ndarray]:
 
             pose = {
                 "dx": lerp(-3.0, 11.0, k),
-                "dy": 6.5 - 2.2 * abs(stride),
-                "torso_ang": 32.0,
-                "head_ang": -11.0,
+                "dy": 6.0 - 2.0 * abs(stride),
+                "torso_ang": 30.0,
+                "head_ang": -10.0,
                 "l_foot": (-18.5 + 12.0 * stride, -5.5 * max(0.0, stride)),
                 "r_foot": (19.5 - 12.0 * stride, -5.5 * max(0.0, -stride)),
-                "f_hand": (-10.0 + 18.0 * k, 4.0),
-                "b_hand": (22.0, 1.0),
+                "f_hand": (0.5 + 14.5 * k, 9.5 - 5.5 * k),
+                "b_hand": (19.0, 1.0),
                 "f_charge": 1.0,
                 "b_charge": 0.9,
                 "wave_phase": c * 1.7,
@@ -1642,7 +1644,7 @@ def build_row3_skill(rig: dict) -> list[np.ndarray]:
                 "l_foot": (-16.5, 0.0),
                 "r_foot": (25.0, 0.0),
                 "f_hand": (29.0, -2.5),
-                "b_hand": (-9.0, 7.0),
+                "b_hand": (-3.5, 8.0),
                 "f_charge": 1.0,
                 "b_charge": 0.6,
                 "wave_phase": c * 1.5,
@@ -1721,8 +1723,8 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
                 "head_ang": -3.0,
                 "l_foot": (-16.0, 0.0),
                 "r_foot": (22.5, 0.0),
-                "f_hand": (29.0 if alt else -4.0, (-6.0 if c % 4 == 0 else 2.0) if alt else 6.5),
-                "b_hand": (-2.0 if alt else 29.0, 5.5 if alt else (-6.0 if c % 4 == 1 else 2.0)),
+                "f_hand": (29.0 if alt else 0.5, (-6.0 if c % 4 == 0 else 2.0) if alt else 9.5),
+                "b_hand": (1.0 if alt else 29.0, 8.5 if alt else (-6.0 if c % 4 == 1 else 2.0)),
                 "rear_arm_front": not alt,
                 "f_charge": 1.0,
                 "b_charge": 1.0,
@@ -1745,11 +1747,11 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
                 "r_foot": (16.5, -16.0 if c == 10 else -10.5),
                 "l_boot_ang": 20.0,
                 "r_boot_ang": -22.0,
-                "f_hand": (20.5, -24.5),
-                "b_hand": (-8.0, 10.5),
+                "f_hand": (23.0, -22.5),
+                "b_hand": (0.5, 10.5),
                 "f_role": "uppercut",
                 "f_charge": 1.0,
-                "f_bend": 0,
+                "f_bend": 1,
                 "wave_phase": c * 1.5,
                 "scarf_amp": 36.0,
                 "scarf_ang": 34.0,
@@ -1804,13 +1806,13 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
             pose = {
                 "dx": -5.5 - 1.5 * k,
                 "dy": 6.5 + 1.2 * k,
-                "torso_ang": -12.0 - 4.0 * k,
-                "head_ang": 6.0,
+                "torso_ang": -10.0 - 4.0 * k,
+                "head_ang": 5.0,
                 "l_foot": (-17.5, 0.0),
                 "r_foot": (17.5, 0.0),
-                # Iconic martial arts charge: right power fist drawn deep back by hip, left open palm sighting forward!
-                "f_hand": (-12.0 - 2.0 * k, 7.5),
-                "b_hand": (22.0, -2.0),
+                # Iconic martial arts charge: right elbow cocked fiercely BACK at rib-height, power fist chambered forward-ready at hip; left palm sighting!
+                "f_hand": (1.0 - 0.8 * k, 10.2),
+                "b_hand": (20.5, -1.5),
                 "b_role": "palm",
                 "f_charge": 1.0,
                 "b_charge": 0.9,
@@ -1833,7 +1835,7 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
                 "l_foot": (-18.0, 0.0),
                 "r_foot": (25.5, 0.0),
                 "f_hand": (30.0, -2.5),
-                "b_hand": (-13.0, 5.0),
+                "b_hand": (-4.5, 8.0),
                 "f_charge": 1.0,
                 "b_charge": 0.9,
                 "wave_phase": c * 2.1,
@@ -1853,8 +1855,8 @@ def build_row4_ult_and_true_ult(rig: dict) -> list[np.ndarray]:
                 "r_foot": (lerp(22.0, 12.5, k), 0.0),
                 "l_boot_ang": 0.0,
                 "r_boot_ang": 0.0,
-                "f_hand": (lerp(24.0, 2.0, k), lerp(-1.0, 9.5, k)),
-                "b_hand": (lerp(-8.0, 18.5, k), lerp(5.0, 0.0, k)),
+                "f_hand": (lerp(24.0, 5.0, k), lerp(-1.0, 8.2, k)),
+                "b_hand": (lerp(-2.0, 14.8, k), lerp(7.0, 1.4, k)),
                 "f_charge": 0.85 * (1.0 - k),
                 "wave_phase": c * 1.0,
                 "scarf_amp": 28.0,
@@ -1959,42 +1961,38 @@ def build_row5_death(rig: dict) -> list[np.ndarray]:
 
 
 def build_row6_dash(rig: dict) -> list[np.ndarray]:
-    """Row 6 DASH: Sleek athletic lightning sprint-dash (tall stride, clean silhouette, trailing streaks!)."""
+    """Row 6 DASH: Sleek athletic lightning sprint-dash (tall pumping stride, clean silhouette, ZERO arm flip!)."""
     frames = []
     for c in range(COLS):
         u = c / float(COLS)
         ph = u * math.tau * 2.0
         stride = math.sin(ph)
-        def dash_vfx(arr, _fw, _bw, pelv, col=c):
-            # Subtle crisp speed-streaks BEHIND Raijin (never crossing his torso/face!)
-            draw_punch_smear_160(arr, pelv[0] - 34, pelv[1] - 10, pelv[0] - 14, pelv[1] - 10, half_w=2.0, phase=col)
-            draw_punch_smear_160(arr, pelv[0] - 30, pelv[1] + 6, pelv[0] - 12, pelv[1] + 6, half_w=1.8, phase=col + 2)
 
         pose = {
             "dx": 5.0 + 2.0 * math.cos(ph),
-            "dy": 5.5 - 1.8 * abs(stride),
-            "torso_ang": 28.0 + 2.5 * math.cos(ph),
-            "head_ang": -10.0,
+            "dy": 4.8 - 1.6 * abs(stride),
+            "torso_ang": 26.0 + 2.5 * math.cos(ph),
+            "head_ang": -9.0,
             "l_foot": (-17.5 + 17.5 * stride, -9.5 * max(0.0, stride)),
             "r_foot": (17.5 - 17.5 * stride, -9.5 * max(0.0, -stride)),
             "l_boot_ang": 16.0 if stride > 0 else -8.0,
             "r_boot_ang": 16.0 if stride < 0 else -8.0,
-            "f_hand": (-8.0 - 9.0 * stride, 5.5 + 3.0 * stride),
-            "b_hand": (16.0 + 8.0 * stride, 0.5 - 3.0 * stride),
+            # Natural athletic sprinting arms pumping counter to stride (bend_dir=+1 -> ZERO 180° elbow flip!)
+            "f_hand": (5.5 - 5.5 * stride, 7.2 + 2.2 * stride),
+            "b_hand": (13.0 + 5.0 * stride, 1.8 - 2.2 * stride),
             "f_charge": 0.75,
             "b_charge": 0.75,
             "wave_phase": ph * 1.5,
             "scarf_amp": 40.0,
             "scarf_ang": 28.0,
             "expr": "yell",
-            "vfx_fn": dash_vfx,
         }
         frames.append(render_pose_160(rig, pose))
     return frames
 
 
 def build_row7_crouch(rig: dict) -> list[np.ndarray]:
-    """Row 7 CROUCH: Deep Iron Guard — crossed armored taped forearms bracing & deflecting sparks."""
+    """Row 7 CROUCH: Fierce low Iron Guard — crossed armored taped forearms bracing forward."""
     frames = []
     for c in range(COLS):
         u = c / float(COLS)
@@ -2011,14 +2009,14 @@ def build_row7_crouch(rig: dict) -> list[np.ndarray]:
 
         pose = {
             "dx": -1.5,
-            "dy": 14.5 + 1.2 * math.sin(ph),
-            "torso_ang": 15.0 + 1.2 * math.sin(ph),
+            "dy": 10.2 + 1.1 * math.sin(ph),
+            "torso_ang": 14.0 + 1.2 * math.sin(ph),
             "head_ang": -2.0,
-            "l_foot": (-17.5, 0.0),
+            "l_foot": (-17.0, 0.0),
             "r_foot": (17.0, 0.0),
-            # Crossed Iron Guard forearms raised tightly across chest/brow!
-            "f_hand": (14.5 + 0.8 * math.sin(ph), -5.0),
-            "b_hand": (7.5 - 0.8 * math.sin(ph), -3.5),
+            # Braced Iron Guard forearms clearly framed in front of chest (not cramped sticks!)
+            "f_hand": (16.5 + 0.8 * math.sin(ph), -2.5),
+            "b_hand": (12.0 - 0.8 * math.sin(ph), -4.5),
             "rear_arm_front": False,
             "f_role": "guard",
             "b_role": "guard",
@@ -2034,39 +2032,35 @@ def build_row7_crouch(rig: dict) -> list[np.ndarray]:
 
 
 def build_row8_jump_dodge(rig: dict) -> list[np.ndarray]:
-    """Row 8 JUMP / DODGE: Explosive martial knee-tuck vault with billowing scarf & static spark trail."""
+    """Row 8 JUMP / DODGE: Clean athletic martial knee-tuck vault with billowing scarf (ZERO awkward crotch bolts!)."""
     frames = []
     for c in range(COLS):
         u = c / float(COLS)
         arc = math.sin(u * math.pi)
         lift = -17.5 * arc
-        def jmp_vfx(arr, _fw, _bw, pelv, col=c):
-            if 4 <= col <= 24:
-                draw_lightning_bolt_160(arr, pelv[0] - 18, pelv[1] + 14, pelv[0] + 6, pelv[1] + 18, seed=col * 17, jag=2.5, thick=1)
 
         pose = {
             "dx": 2.0 * math.sin(u * math.tau),
             "dy": 2.0 + lift,
-            "torso_ang": 18.0 * arc + 4.0,
+            "torso_ang": 16.0 * arc + 4.0,
             "head_ang": -4.0,
-            "l_foot": (-10.0, lift * 0.9 - 7.0 * arc),
-            "r_foot": (12.0, lift * 0.8 - 10.0 * arc),
-            "f_hand": (14.0, -4.0 * arc + 3.0),
-            "b_hand": (-4.0, 6.0 - 4.0 * arc),
+            "l_foot": (-11.0, lift * 0.9 - 7.0 * arc),
+            "r_foot": (13.0, lift * 0.8 - 11.0 * arc),
+            "f_hand": (13.5, 2.5 - 4.0 * arc),
+            "b_hand": (3.5, 5.5 - 2.5 * arc),
             "f_charge": 0.4 + 0.4 * arc,
             "b_charge": 0.4,
             "wave_phase": u * math.tau * 2.0,
             "scarf_amp": 34.0,
             "scarf_ang": 26.0 * arc,
             "expr": "focus",
-            "vfx_fn": jmp_vfx,
         }
         frames.append(render_pose_160(rig, pose))
     return frames
 
 
 def build_row9_victory(rig: dict) -> list[np.ndarray]:
-    """Row 9 VICTORY: Tall heroic upright fist-raise crackling with golden lightning (`minVictoryH >= 150px`)."""
+    """Row 9 VICTORY: Tall heroic upright fist-raise (`minVictoryH >= 150px`, face 100% clear of raised fist & sparks!)."""
     frames = []
     for c in range(COLS):
         u = c / float(COLS)
@@ -2075,27 +2069,30 @@ def build_row9_victory(rig: dict) -> list[np.ndarray]:
 
         def vic_vfx(arr, fw, _bw, _pelv, col=c, r_k=rise):
             if r_k > 0.65:
-                # Heroic crackling golden-indigo aura crown around raised victory fist!
-                draw_lightning_bolt_160(
-                    arr, fw[0] - 10, fw[1] - 4, fw[0] + 12, fw[1] - 10, seed=col * 19, jag=3.4, thick=1
-                )
-                draw_lightning_bolt_160(
-                    arr, fw[0] + 2, fw[1] + 6, fw[0] - 8, max(5, fw[1] - 14), seed=col * 23 + 4, jag=3.0, thick=1
-                )
-                if col % 4 in (0, 1):
-                    draw_shockwave_ring_160(arr, fw[0], fw[1] - 2, 7.0 + (col % 4) * 3.0, 7.0 + (col % 4) * 3.0, phase=col)
+                # Crisp golden-white star sparks floating cleanly ABOVE his raised victory fist (never across his face!)
+                fx, fy = int(round(fw[0])), int(round(fw[1] - 5))
+                if col % 3 in (0, 1):
+                    put_px(arr, fx, max(4, fy), C_WHITE)
+                    put_px(arr, fx - 2, max(4, fy), C_GOLD_LIT)
+                    put_px(arr, fx + 2, max(4, fy), C_GOLD_LIT)
+                    put_px(arr, fx, max(4, fy - 2), C_GOLD_LIT)
+                    put_px(arr, fx, max(4, fy + 2), C_GOLD)
+                sx = int(round(fw[0] + 6.0 * math.cos(col * 0.65)))
+                sy = max(4, int(round(fw[1] - 6.0 + 3.0 * math.sin(col * 0.85))))
+                put_px(arr, sx, sy, C_GOLD_LIT if col % 2 == 0 else C_INDIGO_ICE)
 
         pose = {
             "dx": 0.0,
-            "dy": lerp(4.0, -1.0, rise) + 0.8 * math.sin(ph),
-            "torso_ang": lerp(7.0, -5.0, rise),
-            "head_ang": lerp(-2.0, -6.0, rise),
-            "l_foot": (-11.0, 0.0),
+            "dy": lerp(3.0, -0.5, rise) + 0.8 * math.sin(ph),
+            "torso_ang": lerp(6.0, -5.0, rise),
+            "head_ang": lerp(-2.0, -5.0, rise),
+            "l_foot": (-11.5, 0.0),
             "r_foot": (12.0, 0.0),
-            "f_hand": (lerp(13.0, 18.0, rise), lerp(5.0, -22.0, rise) + 1.0 * math.sin(ph)),
-            "b_hand": (lerp(16.0, 11.0, rise), lerp(-1.0, 10.0, rise)),
+            # Raised power fist clears his grinning face cleanly; rear fist rests at athletic hip guard!
+            "f_hand": (lerp(11.0, 21.5, rise), lerp(5.0, -22.5, rise) + 1.0 * math.sin(ph)),
+            "b_hand": (lerp(15.0, 7.5, rise), lerp(1.0, 9.0, rise)),
             "f_role": "uppercut" if rise > 0.5 else "fist",
-            "f_bend": 0,
+            "f_bend": 1,
             "f_charge": 0.4 + 0.6 * rise,
             "b_charge": 0.2,
             "wave_phase": ph,
