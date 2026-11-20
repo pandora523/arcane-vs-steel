@@ -722,9 +722,21 @@ function sanitizeHeroProgressRecord(raw) {
   };
 }
 
+const MEMORY_HERO_PROGRESS_FALLBACK = new Map();
+
 export function loadAllAdventureHeroProgress(storageOverride = null) {
   const store = resolveProgressStorage(storageOverride);
-  if (!store || typeof store.getItem !== 'function') return {};
+  if (!store || typeof store.getItem !== 'function') {
+    if (!storageOverride && MEMORY_HERO_PROGRESS_FALLBACK.size > 0) {
+      const memOut = {};
+      for (const [heroId, rec] of MEMORY_HERO_PROGRESS_FALLBACK.entries()) {
+        const clean = sanitizeHeroProgressRecord(rec);
+        if (clean) memOut[heroId] = clean;
+      }
+      return memOut;
+    }
+    return {};
+  }
   try {
     const raw = store.getItem(ADVENTURE_HERO_PROGRESS_STORAGE_KEY);
     if (!raw) return {};
@@ -738,6 +750,14 @@ export function loadAllAdventureHeroProgress(storageOverride = null) {
     }
     return out;
   } catch {
+    if (!storageOverride && MEMORY_HERO_PROGRESS_FALLBACK.size > 0) {
+      const memOut = {};
+      for (const [heroId, rec] of MEMORY_HERO_PROGRESS_FALLBACK.entries()) {
+        const clean = sanitizeHeroProgressRecord(rec);
+        if (clean) memOut[heroId] = clean;
+      }
+      return memOut;
+    }
     return {};
   }
 }
@@ -758,13 +778,18 @@ export function saveAdventureHeroProgress(heroId, snapshot, storageOverride = nu
   if (!cleanRec) return null;
   const all = loadAllAdventureHeroProgress(storageOverride);
   all[cleanHero] = cleanRec;
+  let stored = false;
   const store = resolveProgressStorage(storageOverride);
   if (store && typeof store.setItem === 'function') {
     try {
       store.setItem(ADVENTURE_HERO_PROGRESS_STORAGE_KEY, JSON.stringify(all));
+      stored = true;
     } catch {
-      // Ignore storage quota or sandbox errors safely
+      // Fall back to in-memory per-session map if localStorage is restricted
     }
+  }
+  if (!storageOverride && !stored) {
+    MEMORY_HERO_PROGRESS_FALLBACK.set(cleanHero, cleanRec);
   }
   return cleanRec;
 }
@@ -774,8 +799,13 @@ export function resetAdventureHeroProgress(heroId, storageOverride = null) {
   const cleanHero = heroId.trim();
   if (!cleanHero) return false;
   const all = loadAllAdventureHeroProgress(storageOverride);
-  const existed = Object.prototype.hasOwnProperty.call(all, cleanHero);
+  const existed =
+    Object.prototype.hasOwnProperty.call(all, cleanHero) ||
+    (!storageOverride && MEMORY_HERO_PROGRESS_FALLBACK.has(cleanHero));
   delete all[cleanHero];
+  if (!storageOverride) {
+    MEMORY_HERO_PROGRESS_FALLBACK.delete(cleanHero);
+  }
   const store = resolveProgressStorage(storageOverride);
   if (store && typeof store.setItem === 'function') {
     try {
