@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps182';
-import { PixelFont } from './PixelFont.js?v=30fps182';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps182';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps182';
+import { PixelForge } from './PixelForge.js?v=30fps183';
+import { PixelFont } from './PixelFont.js?v=30fps183';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps183';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps183';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps182';
+} from './shaders/exNextGenFX.js?v=30fps183';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -6201,6 +6201,22 @@ export class Renderer {
       }
       ctx.fillStyle = boltCore;
       ctx.fillRect(cx - 28, cy - 28, 56, 56);
+      // Radiant HD-2D electric bloom core radiating from the impact center on midnight phase!
+      if (!isInverted) {
+        const cyanGlow = this.getGlowForColor('#38bdf8');
+        const goldGlow = this.getGlowForColor('#fbbf24');
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        if (cyanGlow) {
+          ctx.globalAlpha = 0.72;
+          ctx.drawImage(cyanGlow, cx - 340, cy - 340, 680, 680);
+        }
+        if (goldGlow) {
+          ctx.globalAlpha = 0.68;
+          ctx.drawImage(goldGlow, cx - 220, cy - 220, 440, 440);
+        }
+        ctx.restore();
+      }
     }
 
     // 4. Stark High-Contrast Fighter Silhouettes (so every character stands out in dramatic anime impact silhouette!)
