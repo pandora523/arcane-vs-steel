@@ -191,6 +191,88 @@ const MERCHANT_SVG =
   '<rect x="4" y="13" width="6" height="1" fill="#334155"/>' +
   '</svg>';
 
+const STAR_ON_SVG =
+  '<svg class="endless-px-svg" width="8" height="8" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="3" y="0" width="2" height="1" fill="#fef08a"/>' +
+  '<rect x="3" y="1" width="2" height="1" fill="#facc15"/>' +
+  '<rect x="0" y="2" width="8" height="1" fill="#facc15"/>' +
+  '<rect x="2" y="2" width="4" height="1" fill="#fef08a"/>' +
+  '<rect x="1" y="3" width="6" height="1" fill="#facc15"/>' +
+  '<rect x="3" y="3" width="2" height="1" fill="#ffffff"/>' +
+  '<rect x="2" y="4" width="4" height="1" fill="#facc15"/>' +
+  '<rect x="3" y="4" width="2" height="1" fill="#fef08a"/>' +
+  '<rect x="1" y="5" width="6" height="1" fill="#d97706"/>' +
+  '<rect x="2" y="5" width="4" height="1" fill="#facc15"/>' +
+  '<rect x="1" y="6" width="2" height="1" fill="#d97706"/>' +
+  '<rect x="5" y="6" width="2" height="1" fill="#d97706"/>' +
+  '<rect x="0" y="7" width="2" height="1" fill="#b45309"/>' +
+  '<rect x="6" y="7" width="2" height="1" fill="#b45309"/>' +
+  '</svg>';
+
+const STAR_OFF_SVG =
+  '<svg class="endless-px-svg" width="8" height="8" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="3" y="0" width="2" height="1" fill="#475569"/>' +
+  '<rect x="3" y="1" width="2" height="1" fill="#334155"/>' +
+  '<rect x="0" y="2" width="8" height="1" fill="#334155"/>' +
+  '<rect x="2" y="2" width="4" height="1" fill="#475569"/>' +
+  '<rect x="1" y="3" width="6" height="1" fill="#334155"/>' +
+  '<rect x="3" y="3" width="2" height="1" fill="#475569"/>' +
+  '<rect x="2" y="4" width="4" height="1" fill="#334155"/>' +
+  '<rect x="1" y="5" width="6" height="1" fill="#1e293b"/>' +
+  '<rect x="2" y="5" width="4" height="1" fill="#334155"/>' +
+  '<rect x="1" y="6" width="2" height="1" fill="#1e293b"/>' +
+  '<rect x="5" y="6" width="2" height="1" fill="#1e293b"/>' +
+  '<rect x="0" y="7" width="2" height="1" fill="#0f172a"/>' +
+  '<rect x="6" y="7" width="2" height="1" fill="#0f172a"/>' +
+  '</svg>';
+
+const OVERDRIVE_BOLT_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="5" y="0" width="2" height="1" fill="#facc15"/>' +
+  '<rect x="4" y="1" width="3" height="1" fill="#facc15"/>' +
+  '<rect x="5" y="1" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="3" y="2" width="3" height="1" fill="#fef08a"/>' +
+  '<rect x="4" y="2" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="2" y="3" width="3" height="1" fill="#facc15"/>' +
+  '<rect x="3" y="3" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="1" y="4" width="7" height="1" fill="#f43f5e"/>' +
+  '<rect x="2" y="4" width="5" height="1" fill="#facc15"/>' +
+  '<rect x="3" y="4" width="3" height="1" fill="#ffffff"/>' +
+  '<rect x="2" y="5" width="6" height="1" fill="#e11d48"/>' +
+  '<rect x="5" y="5" width="2" height="1" fill="#fef08a"/>' +
+  '<rect x="5" y="6" width="3" height="1" fill="#f43f5e"/>' +
+  '<rect x="6" y="6" width="1" height="1" fill="#fef08a"/>' +
+  '<rect x="4" y="7" width="3" height="1" fill="#f43f5e"/>' +
+  '<rect x="5" y="7" width="1" height="1" fill="#facc15"/>' +
+  '<rect x="3" y="8" width="3" height="1" fill="#e11d48"/>' +
+  '<rect x="4" y="8" width="1" height="1" fill="#facc15"/>' +
+  '<rect x="2" y="9" width="2" height="1" fill="#be123c"/>' +
+  '</svg>';
+
+const DEFAULT_SQUAD_FORMATIONS = Object.freeze([
+  Object.freeze({
+    id: 'vanguard_wall',
+    name: 'VANGUARD WALL',
+    shortLabel: 'VANGUARD',
+    accentHex: '#38bdf8',
+    desc: '+30% MAX HP, +2% HP/S REGEN, +15% HERO DMG'
+  }),
+  Object.freeze({
+    id: 'balanced_phalanx',
+    name: 'BALANCED PHALANX',
+    shortLabel: 'PHALANX',
+    accentHex: '#facc15',
+    desc: '+18% ALLY DMG, +15% GOLD, +10% HERO DMG'
+  }),
+  Object.freeze({
+    id: 'all_out_blitz',
+    name: 'ALL-OUT BLITZ',
+    shortLabel: 'BLITZ',
+    accentHex: '#f43f5e',
+    desc: '+35% ALLY DMG, +18% CRIT, +22% BOSS DMG'
+  })
+]);
+
 const GEAR_SLOT_ORDER = Object.freeze(['weapon', 'armor', 'amulet', 'ring']);
 
 const GEAR_SLOT_DEFAULTS = Object.freeze({
@@ -1436,6 +1518,7 @@ const ENDLESS_SHOP_CSS = `
 }
 
 .endless-party-port-wrap {
+  position: relative;
   width: 30px;
   height: 30px;
   padding: 1px;
@@ -1965,7 +2048,9 @@ const ENDLESS_SHOP_CSS = `
 .endless-gear-hdr-btn.is-buy-pulse,
 .endless-gear-enh-btn.is-buy-pulse,
 .endless-gear-act-btn.is-buy-pulse,
-.endless-merchant-buy-btn.is-buy-pulse {
+.endless-merchant-buy-btn.is-buy-pulse,
+.endless-formation-btn.is-buy-pulse,
+.endless-overdrive-btn.is-buy-pulse {
   animation: endlessBuyBtnPulse 0.38s ease-out;
 }
 
@@ -5077,12 +5162,12 @@ html.is-mobile-landscape .endless-merchant-buy-btn {
 
   html:not(.is-mobile-landscape) #endless-hud-root.has-active-party .endless-events-dock,
   html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.is-drawer-open .endless-events-dock {
-    top: max(218px, calc(env(safe-area-inset-top) + 214px));
+    top: max(244px, calc(env(safe-area-inset-top) + 240px));
   }
 
   html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.has-active-synergies .endless-events-dock,
   html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.has-active-synergies.is-drawer-open .endless-events-dock {
-    top: max(238px, calc(env(safe-area-inset-top) + 234px));
+    top: max(264px, calc(env(safe-area-inset-top) + 260px));
   }
 
   html:not(.is-mobile-landscape) .endless-bounty-pill {
@@ -5137,6 +5222,504 @@ html.is-mobile-landscape .endless-merchant-buy-btn {
   html:not(.is-mobile-landscape) .endless-merchant-buy-btn {
     padding: 4px 5px;
     font-size: 0.31rem;
+  }
+}
+
+/* =========================================================================
+   WAVE 9: COMPANION EVOLUTION, SQUAD FORMATIONS & OVERDRIVE
+   ========================================================================= */
+.endless-formation-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(212, 175, 55, 0.24);
+}
+
+.endless-formation-btns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.endless-formation-btn {
+  padding: 4px 4px;
+  font-family: inherit;
+  font-size: 0.33rem;
+  letter-spacing: 0.03em;
+  color: #94a3b8;
+  background: linear-gradient(180deg, rgba(14, 19, 34, 0.95) 0%, rgba(7, 10, 19, 0.98) 100%);
+  border: 1px solid rgba(100, 116, 139, 0.55);
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+  transition: border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
+}
+
+.endless-formation-btn:hover:not(.is-active) {
+  color: #e2e8f0;
+  border-color: rgba(212, 175, 55, 0.65);
+}
+
+.endless-formation-btn:active {
+  transform: translateY(1px);
+}
+
+.endless-formation-btn.is-active {
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(32, 26, 16, 0.96) 0%, rgba(12, 14, 26, 0.98) 100%);
+  border-width: 1.5px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 8px rgba(250, 204, 21, 0.32);
+}
+
+.endless-formation-desc {
+  font-size: 0.29rem;
+  color: #cbd5e1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 2px 0;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-comp-card.is-ex-evolved {
+  border-color: #38bdf8;
+  box-shadow:
+    inset 0 0 14px rgba(56, 189, 248, 0.18),
+    0 0 8px rgba(56, 189, 248, 0.2);
+}
+
+.endless-comp-card.is-deployed.is-ex-evolved {
+  border-color: #34d399;
+  box-shadow:
+    inset 0 0 14px rgba(52, 211, 153, 0.22),
+    0 0 10px rgba(56, 189, 248, 0.28);
+}
+
+.endless-comp-card.is-stage-locked {
+  opacity: 0.84;
+  border-color: rgba(71, 85, 105, 0.55);
+}
+
+.endless-comp-evo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.endless-comp-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 1;
+}
+
+.endless-comp-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  height: 8px;
+}
+
+.endless-comp-ex-badge {
+  font-size: 0.29rem;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  border: 1px solid rgba(100, 116, 139, 0.55);
+  background: rgba(15, 23, 42, 0.9);
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.15;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-comp-ex-badge.is-evolved {
+  color: #fef08a;
+  background: linear-gradient(180deg, rgba(14, 116, 144, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border-color: #38bdf8;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.36),
+    0 0 8px rgba(56, 189, 248, 0.62);
+  animation: endlessExBadgeGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes endlessExBadgeGlow {
+  0%, 100% {
+    border-color: #38bdf8;
+    box-shadow:
+      inset 0 1px 0 rgba(254, 240, 138, 0.32),
+      0 0 6px rgba(56, 189, 248, 0.5);
+  }
+  50% {
+    border-color: #fde047;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 0 11px rgba(250, 204, 21, 0.72);
+  }
+}
+
+.endless-comp-actions {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.endless-comp-btn.is-stage-locked {
+  color: #94a3b8;
+  background: linear-gradient(180deg, rgba(24, 29, 46, 0.95) 0%, rgba(11, 14, 25, 0.98) 100%);
+  border-color: #475569;
+  letter-spacing: 0.03em;
+}
+
+.endless-comp-promote-btn {
+  flex: 1 0 100%;
+  padding: 4px 6px;
+  font-size: 0.35rem;
+  color: #e0f2fe;
+  background: linear-gradient(180deg, #1e3a5f 0%, #0f172a 100%);
+  border-color: #38bdf8;
+}
+
+.endless-comp-promote-btn.is-ex-ready {
+  color: #fffbeb;
+  background: linear-gradient(180deg, #0369a1 0%, #713f12 100%);
+  border-color: #fde047;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.45),
+    0 0 10px rgba(56, 189, 248, 0.55);
+}
+
+.endless-comp-promote-btn.is-max-star,
+.endless-comp-promote-btn.is-max-star:disabled {
+  color: #fde047;
+  background: linear-gradient(180deg, rgba(52, 39, 14, 0.92) 0%, rgba(20, 16, 9, 0.96) 100%);
+  border-color: rgba(212, 175, 55, 0.72);
+  opacity: 0.92;
+  cursor: default;
+}
+
+.endless-comp-promote-btn.hidden {
+  display: none !important;
+}
+
+/* Active Companion Mini-HUD Star/EX Corner Badge & Overdrive Meter */
+.endless-party-card.is-ex-evolved {
+  border-color: #38bdf8;
+  box-shadow:
+    inset 0 1px 0 rgba(125, 211, 252, 0.28),
+    0 0 8px rgba(56, 189, 248, 0.28),
+    0 4px 12px rgba(0, 0, 0, 0.85);
+}
+
+.endless-party-star {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 2px;
+  font-size: 0.24rem;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: #fef08a;
+  background: rgba(7, 9, 18, 0.92);
+  border-top: 1px solid #d4af37;
+  border-left: 1px solid #d4af37;
+  border-top-left-radius: 2px;
+  text-shadow: 0 1px 0 #000;
+  pointer-events: none;
+}
+
+.endless-party-star.is-ex {
+  color: #7dd3fc;
+  border-color: #38bdf8;
+  background: rgba(8, 24, 42, 0.94);
+}
+
+.endless-party-star.hidden {
+  display: none !important;
+}
+
+.endless-party-star-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 6px;
+  height: 6px;
+}
+
+.endless-party-star-ico svg {
+  width: 6px;
+  height: 6px;
+}
+
+.endless-overdrive-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 23px;
+  padding: 4px 7px;
+  font-family: inherit;
+  color: #fef08a;
+  background: linear-gradient(180deg, rgba(16, 13, 28, 0.95) 0%, rgba(8, 9, 18, 0.98) 100%);
+  border: 1.5px solid rgba(244, 63, 94, 0.68);
+  outline: 1px solid #000;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.85);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
+}
+
+.endless-overdrive-btn.hidden {
+  display: none !important;
+}
+
+.endless-overdrive-btn:disabled {
+  cursor: default;
+}
+
+.endless-overdrive-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-overdrive-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(159, 18, 57, 0.88) 0%, rgba(225, 29, 72, 0.88) 55%, rgba(245, 158, 11, 0.92) 100%);
+  transition: width 0.12s linear;
+  pointer-events: none;
+}
+
+.endless-overdrive-content {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.endless-overdrive-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-overdrive-label {
+  font-size: 0.34rem;
+  letter-spacing: 0.03em;
+  color: #fffbeb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000;
+}
+
+.endless-overdrive-btn.is-ready {
+  border-color: #fde047;
+  cursor: pointer;
+  animation: endlessOverdrivePulse 1.05s ease-in-out infinite;
+}
+
+.endless-overdrive-btn.is-ready .endless-overdrive-fill {
+  width: 100% !important;
+  background: linear-gradient(90deg, #be123c 0%, #f43f5e 45%, #facc15 100%);
+}
+
+.endless-overdrive-btn.is-active {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 0 12px rgba(254, 240, 138, 0.6),
+    0 0 16px rgba(250, 204, 21, 0.9);
+}
+
+.endless-overdrive-btn.is-active .endless-overdrive-fill {
+  background: linear-gradient(90deg, #ca8a04 0%, #facc15 55%, #fef08a 100%);
+}
+
+.endless-overdrive-btn.is-active .endless-overdrive-label {
+  color: #ffffff;
+}
+
+@keyframes endlessOverdrivePulse {
+  0%, 100% {
+    border-color: #f43f5e;
+    box-shadow:
+      inset 0 1px 0 rgba(254, 240, 138, 0.35),
+      0 0 10px rgba(244, 63, 94, 0.65);
+  }
+  50% {
+    border-color: #fef08a;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 0 18px rgba(250, 204, 21, 0.95);
+  }
+}
+
+/* Wave 9 Responsive Ergonomics: Mobile Landscape (844x390) */
+@media (max-height: 500px) {
+  .endless-formation-bar {
+    padding-top: 3px;
+    gap: 2px;
+  }
+
+  .endless-formation-btn {
+    padding: 2px 3px;
+    font-size: 0.29rem;
+  }
+
+  .endless-formation-desc {
+    font-size: 0.26rem;
+  }
+
+  .endless-party-syn-list {
+    max-height: 38px;
+  }
+
+  .endless-comp-card {
+    padding: 5px 6px;
+    gap: 6px;
+  }
+
+  .endless-comp-promote-btn {
+    padding: 3px 5px;
+    font-size: 0.32rem;
+  }
+
+  .endless-party-star {
+    font-size: 0.22rem;
+    padding: 0 2px;
+  }
+
+  .endless-party-star-ico {
+    display: none;
+  }
+
+  .endless-overdrive-btn {
+    width: 92px;
+    max-width: 94px;
+    align-self: flex-start;
+    min-height: 18px;
+    padding: 2px 4px;
+  }
+
+  .endless-overdrive-content {
+    gap: 2px;
+  }
+
+  .endless-overdrive-icon svg {
+    width: 8px;
+    height: 8px;
+  }
+
+  .endless-overdrive-label {
+    font-size: 0.24rem;
+    letter-spacing: 0.01em;
+  }
+}
+
+html.is-mobile-landscape .endless-formation-bar {
+  padding-top: 3px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-formation-btn {
+  padding: 2px 3px;
+  font-size: 0.29rem;
+}
+
+html.is-mobile-landscape .endless-formation-desc {
+  font-size: 0.26rem;
+}
+
+html.is-mobile-landscape .endless-party-syn-list {
+  max-height: 38px;
+}
+
+html.is-mobile-landscape .endless-comp-card {
+  padding: 5px 6px;
+  gap: 6px;
+}
+
+html.is-mobile-landscape .endless-comp-promote-btn {
+  padding: 3px 5px;
+  font-size: 0.32rem;
+}
+
+html.is-mobile-landscape .endless-party-star {
+  font-size: 0.22rem;
+  padding: 0 2px;
+}
+
+html.is-mobile-landscape .endless-party-star-ico {
+  display: none;
+}
+
+html.is-mobile-landscape .endless-overdrive-btn {
+  width: 92px;
+  max-width: 94px;
+  align-self: flex-start;
+  min-height: 18px;
+  padding: 2px 4px;
+}
+
+html.is-mobile-landscape .endless-overdrive-content {
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-overdrive-icon svg {
+  width: 8px;
+  height: 8px;
+}
+
+html.is-mobile-landscape .endless-overdrive-label {
+  font-size: 0.24rem;
+  letter-spacing: 0.01em;
+}
+
+/* Wave 9 Responsive Ergonomics: Mobile Portrait (390x844) */
+@media (max-width: 560px) {
+  html:not(.is-mobile-landscape) .endless-party-star {
+    font-size: 0.22rem;
+    padding: 0 2px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-star-ico {
+    display: none;
+  }
+
+  html:not(.is-mobile-landscape) .endless-overdrive-btn {
+    width: 214px;
+    max-width: 100%;
+    align-self: flex-start;
+    min-height: 20px;
+    padding: 3px 6px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-overdrive-label {
+    font-size: 0.29rem;
   }
 }
 `;
@@ -5347,6 +5930,7 @@ export class EndlessShopUI {
     this._vfxFallbackImg = null;
     this._iconCanvases = [];
     this._partySlotRefs = [];
+    this._formationBtnRefs = new Map();
     this._relicRowRefs = new Map();
     this._companionCardRefs = new Map();
     this._artifactRowRefs = new Map();
@@ -5593,6 +6177,7 @@ export class EndlessShopUI {
     this.root.textContent = '';
     this._iconCanvases = [];
     this._partySlotRefs = [];
+    this._formationBtnRefs.clear();
     this._relicRowRefs.clear();
     this._relicSetPillRefs = new Map();
     this._companionCardRefs.clear();
@@ -5801,6 +6386,17 @@ export class EndlessShopUI {
       portCanvas.setAttribute('aria-hidden', 'true');
       portWrap.appendChild(portCanvas);
 
+      const starBadge = document.createElement('span');
+      starBadge.className = 'endless-party-star hidden';
+      const starIco = document.createElement('span');
+      starIco.className = 'endless-party-star-ico';
+      starIco.innerHTML = STAR_ON_SVG;
+      const starTxt = document.createElement('span');
+      starTxt.textContent = 'S2';
+      starBadge.appendChild(starIco);
+      starBadge.appendChild(starTxt);
+      portWrap.appendChild(starBadge);
+
       const meta = document.createElement('div');
       meta.className = 'endless-party-meta';
 
@@ -5846,6 +6442,8 @@ export class EndlessShopUI {
         card,
         portWrap,
         portCanvas,
+        starBadge,
+        starTxt,
         nameEl,
         lvEl,
         ultFill,
@@ -5858,13 +6456,48 @@ export class EndlessShopUI {
     synHud.setAttribute('aria-label', 'Active Party Synergies');
     stopEventLeak(synHud);
 
+    const overdriveBtn = document.createElement('button');
+    overdriveBtn.type = 'button';
+    overdriveBtn.className = 'endless-overdrive-btn hidden';
+    overdriveBtn.setAttribute('aria-label', 'Squad Overdrive');
+    overdriveBtn.disabled = true;
+    stopEventLeak(overdriveBtn);
+
+    const overdriveFill = document.createElement('div');
+    overdriveFill.className = 'endless-overdrive-fill';
+
+    const overdriveContent = document.createElement('span');
+    overdriveContent.className = 'endless-overdrive-content';
+
+    const overdriveIcon = document.createElement('span');
+    overdriveIcon.className = 'endless-overdrive-icon';
+    overdriveIcon.innerHTML = OVERDRIVE_BOLT_SVG;
+
+    const overdriveLabel = document.createElement('span');
+    overdriveLabel.className = 'endless-overdrive-label';
+    overdriveLabel.textContent = 'OVERDRIVE 0%';
+
+    overdriveContent.appendChild(overdriveIcon);
+    overdriveContent.appendChild(overdriveLabel);
+    overdriveBtn.appendChild(overdriveFill);
+    overdriveBtn.appendChild(overdriveContent);
+
+    overdriveBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleTriggerSquadOverdrive();
+    });
+
     partyHud.appendChild(strip);
     partyHud.appendChild(synHud);
+    partyHud.appendChild(overdriveBtn);
     this.root.appendChild(partyHud);
 
     this._refs.partyHud = partyHud;
     this._refs.partyStrip = strip;
     this._refs.synergyHud = synHud;
+    this._refs.overdriveBtn = overdriveBtn;
+    this._refs.overdriveFill = overdriveFill;
+    this._refs.overdriveLabel = overdriveLabel;
   }
 
   _buildEventsDock() {
@@ -6997,6 +7630,39 @@ export class EndlessShopUI {
     notice.className = 'endless-party-notice hidden';
     notice.textContent = '';
 
+    // Wave 9: Squad Formation Selector Bar (VANGUARD | PHALANX | BLITZ)
+    const formationBar = document.createElement('div');
+    formationBar.className = 'endless-formation-bar';
+    formationBar.setAttribute('aria-label', 'Squad Formation');
+
+    const formationBtns = document.createElement('div');
+    formationBtns.className = 'endless-formation-btns';
+
+    for (let i = 0; i < DEFAULT_SQUAD_FORMATIONS.length; i++) {
+      const f = DEFAULT_SQUAD_FORMATIONS[i];
+      const fBtn = document.createElement('button');
+      fBtn.type = 'button';
+      fBtn.className = f.id === 'balanced_phalanx'
+        ? 'endless-formation-btn is-active'
+        : 'endless-formation-btn';
+      fBtn.dataset.formationId = f.id;
+      fBtn.textContent = f.shortLabel;
+      fBtn.title = `${f.name}: ${f.desc}`;
+      fBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._handleSetSquadFormation(f.id);
+      });
+      formationBtns.appendChild(fBtn);
+      this._formationBtnRefs.set(f.id, fBtn);
+    }
+
+    const formationDesc = document.createElement('div');
+    formationDesc.className = 'endless-formation-desc';
+    formationDesc.textContent = DEFAULT_SQUAD_FORMATIONS[1].desc;
+
+    formationBar.appendChild(formationBtns);
+    formationBar.appendChild(formationDesc);
+
     // Active Party Synergies section in Companions tab header
     const synBox = document.createElement('div');
     synBox.className = 'endless-party-synergies-box';
@@ -7023,6 +7689,7 @@ export class EndlessShopUI {
     synBox.appendChild(synList);
 
     partyBar.appendChild(partyRow);
+    partyBar.appendChild(formationBar);
     partyBar.appendChild(synBox);
     partyBar.appendChild(notice);
 
@@ -7039,6 +7706,9 @@ export class EndlessShopUI {
 
     this._refs.partyCounter = counter;
     this._refs.partyNotice = notice;
+    this._refs.formationBar = formationBar;
+    this._refs.formationBtns = formationBtns;
+    this._refs.formationDesc = formationDesc;
     this._refs.partySynCount = synCount;
     this._refs.partySynList = synList;
     this._refs.companionList = list;
@@ -7080,6 +7750,30 @@ export class EndlessShopUI {
     top.appendChild(nameEl);
     top.appendChild(roleEl);
 
+    const evoRow = document.createElement('div');
+    evoRow.className = 'endless-comp-evo-row';
+
+    const starsWrap = document.createElement('div');
+    starsWrap.className = 'endless-comp-stars';
+    starsWrap.setAttribute('aria-label', 'Companion Star Rank');
+    const starEls = [];
+    for (let s = 0; s < 5; s++) {
+      const starEl = document.createElement('span');
+      starEl.className = 'endless-comp-star';
+      starEl.innerHTML = s === 0 ? STAR_ON_SVG : STAR_OFF_SVG;
+      starEl._lit = s === 0;
+      starsWrap.appendChild(starEl);
+      starEls.push(starEl);
+    }
+
+    const exBadge = document.createElement('span');
+    exBadge.className = 'endless-comp-ex-badge';
+    exBadge.textContent = 'EX @3';
+    exBadge.title = 'Promote to 3-Star to unlock EX Evolution';
+
+    evoRow.appendChild(starsWrap);
+    evoRow.appendChild(exBadge);
+
     const meta = document.createElement('div');
     meta.className = 'endless-comp-meta';
     const lvEl = document.createElement('span');
@@ -7116,10 +7810,21 @@ export class EndlessShopUI {
       this._handleCompanionDeploy(comp.id);
     });
 
+    const promoteBtn = document.createElement('button');
+    promoteBtn.type = 'button';
+    promoteBtn.className = 'endless-comp-btn endless-comp-promote-btn hidden';
+    promoteBtn.textContent = 'PROMOTE';
+    promoteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleCompanionPromote(comp.id);
+    });
+
     actions.appendChild(primaryBtn);
     actions.appendChild(deployBtn);
+    actions.appendChild(promoteBtn);
 
     body.appendChild(top);
+    body.appendChild(evoRow);
     body.appendChild(meta);
     body.appendChild(descEl);
     body.appendChild(actions);
@@ -7133,11 +7838,17 @@ export class EndlessShopUI {
 
     const ref = {
       card,
+      portWrap,
       portCanvas,
+      nameEl,
+      roleEl,
+      starEls,
+      exBadge,
       lvEl,
       dpsEl,
       primaryBtn,
       deployBtn,
+      promoteBtn,
       heroKey: comp.heroKey,
       accentHex: comp.accentHex
     };
@@ -7752,6 +8463,9 @@ export class EndlessShopUI {
       this._triggerBuyFeedback(ref?.card, ref?.primaryBtn, badgeText, !unlocked);
     } else {
       this._playSfx('playUiBack');
+      if (res?.reason === 'stage_locked' && res?.unlockStage) {
+        this._showPartyNotice(`REACH STAGE ${res.unlockStage} TO RECRUIT`);
+      }
     }
     this._resyncNow();
   }
@@ -7782,6 +8496,77 @@ export class EndlessShopUI {
     } else if (res?.reason === 'SLOTS_FULL') {
       this._playSfx('playUiBack');
       this._showPartyNotice('PARTY FULL (3/3) - BENCH A COMPANION FIRST');
+    }
+    this._resyncNow();
+  }
+
+  _handleCompanionPromote(companionId) {
+    let res = null;
+    if (typeof this.manager?.promoteCompanion === 'function') {
+      res = this.manager.promoteCompanion(companionId);
+    } else if (typeof this.manager?.companionEvo?.promoteCompanion === 'function') {
+      res = this.manager.companionEvo.promoteCompanion(
+        companionId,
+        this.manager?.economy || null,
+        this.manager?.gear || null
+      );
+      if (res?.ok) {
+        const hero = this.manager?.game?.fighters?.[0] || this.manager?.player || null;
+        if (hero && typeof this.manager?.companions?.syncEntitiesWithWorld === 'function') {
+          this.manager.companions.syncEntitiesWithWorld(hero);
+        }
+        this.manager?.saveNow?.();
+      }
+    }
+
+    if (res?.ok) {
+      this._playSfx('playUiConfirm');
+      const ref = this._companionCardRefs.get(companionId);
+      const unlockedEx = Boolean(res.unlockedEx);
+      const badgeText = unlockedEx ? 'EX EVOLVED!' : '+1 STAR!';
+      this._triggerBuyFeedback(ref?.card, ref?.promoteBtn, badgeText, unlockedEx);
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleSetSquadFormation(formationId) {
+    if (!formationId) return;
+    let res = null;
+    if (typeof this.manager?.setSquadFormation === 'function') {
+      res = this.manager.setSquadFormation(formationId);
+    } else if (typeof this.manager?.companionEvo?.setFormation === 'function') {
+      res = this.manager.companionEvo.setFormation(formationId);
+      this.manager?.saveNow?.();
+    }
+
+    if (res && res.ok === false) {
+      this._playSfx('playUiBack');
+    } else {
+      this._playSfx('playUiClick');
+      const btn = this._formationBtnRefs.get(formationId);
+      if (btn) {
+        this._triggerBuyFeedback(null, btn, null, false);
+      }
+    }
+    this._resyncNow();
+  }
+
+  _handleTriggerSquadOverdrive() {
+    let res = null;
+    if (typeof this.manager?.triggerSquadOverdrive === 'function') {
+      res = this.manager.triggerSquadOverdrive();
+    } else if (typeof this.manager?.companionEvo?.consumeOverdrive === 'function') {
+      const count = this.manager?.companions?.activeSlots?.length || 1;
+      res = this.manager.companionEvo.consumeOverdrive(count);
+    }
+
+    if (res?.ok) {
+      this._playSfx('playUiConfirm');
+      this._triggerBuyFeedback(this._refs.partyHud, this._refs.overdriveBtn, 'OVERDRIVE!', true);
+    } else {
+      this._playSfx('playUiBack');
     }
     this._resyncNow();
   }
@@ -8389,11 +9174,14 @@ export class EndlessShopUI {
         .map((c) => ({
           id: c.id,
           heroKey: c.heroKey,
+          activeHeroKey: c.activeHeroKey || c.heroKey,
           name: c.name,
           shortName: c.shortName || c.name,
           role: c.role,
           color: c.accentHex || c.color || '#facc15',
           level: c.level || 1,
+          star: c.star || 1,
+          isExEvolved: Boolean(c.isExEvolved),
           ultCharge: 0,
           ultPct: 0,
           isCastingUlt: false,
@@ -8411,14 +9199,20 @@ export class EndlessShopUI {
         ? Math.max(0, Math.min(100, rawUlt * 100))
         : Math.max(0, Math.min(100, rawUlt));
       const fullName = String(u?.name || u?.shortName || u?.id || `ALLY ${idx + 1}`);
+      const star = Math.max(1, Math.min(5, Math.floor(Number(u?.star) || 1)));
+      const heroKey = String(u?.heroKey || '');
+      const activeHeroKey = String(u?.activeHeroKey || heroKey);
       return {
         id: String(u?.id || u?.heroKey || `unit_${idx}`),
-        heroKey: String(u?.heroKey || ''),
+        heroKey,
+        activeHeroKey,
         name: fullName,
         shortName: String(u?.shortName || fullName),
         role: String(u?.role || 'ALLY'),
         color: String(u?.color || u?.accentHex || '#facc15'),
         level: Math.max(1, Math.floor(Number(u?.level) || 1)),
+        star,
+        isExEvolved: Boolean(u?.isExEvolved ?? (star >= 3)),
         ultCharge: Math.max(0, Math.min(100, Number(u?.ultCharge ?? ultPct) || 0)),
         ultPct,
         isCastingUlt: Boolean(u?.isCastingUlt),
@@ -8644,6 +9438,56 @@ export class EndlessShopUI {
       };
     }
 
+    const rawEvo = (snap && typeof snap.companionEvo === 'object' && snap.companionEvo)
+      ? snap.companionEvo
+      : (typeof mgr?.companionEvo?.getEvoSnapshot === 'function'
+        ? mgr.companionEvo.getEvoSnapshot(econ, mgr?.gear || null, activeSlotsCount)
+        : null);
+
+    const evoFormations = (Array.isArray(rawEvo?.formations) && rawEvo.formations.length > 0)
+      ? rawEvo.formations.map((f, idx) => ({
+          id: String(f?.id || `formation_${idx}`),
+          name: String(f?.name || f?.shortLabel || `FORMATION ${idx + 1}`).toUpperCase(),
+          shortLabel: String(f?.shortLabel || f?.name || `F${idx + 1}`).toUpperCase(),
+          accentHex: String(f?.accentHex || '#facc15'),
+          desc: String(f?.desc || '').toUpperCase()
+        }))
+      : DEFAULT_SQUAD_FORMATIONS;
+    const evoFormationId = String(rawEvo?.formationId || rawEvo?.formation?.id || 'balanced_phalanx');
+    const activeFormation = (rawEvo?.formation && typeof rawEvo.formation === 'object')
+      ? {
+          id: String(rawEvo.formation.id || evoFormationId),
+          name: String(rawEvo.formation.name || rawEvo.formation.shortLabel || 'BALANCED PHALANX').toUpperCase(),
+          shortLabel: String(rawEvo.formation.shortLabel || rawEvo.formation.name || 'PHALANX').toUpperCase(),
+          accentHex: String(rawEvo.formation.accentHex || '#facc15'),
+          desc: String(rawEvo.formation.desc || '').toUpperCase()
+        }
+      : (evoFormations.find((f) => f.id === evoFormationId) || evoFormations[1] || evoFormations[0]);
+    const overdriveCharge = Math.max(0, Math.min(100, Number(rawEvo?.overdriveCharge) || 0));
+    const overdriveRatio = Number.isFinite(Number(rawEvo?.overdriveRatio))
+      ? Math.max(0, Math.min(1, Number(rawEvo.overdriveRatio)))
+      : Math.max(0, Math.min(1, overdriveCharge / 100));
+    const overdriveActiveTimer = Math.max(0, Number(rawEvo?.overdriveActiveTimer) || 0);
+    const overdriveActive = Boolean(rawEvo?.overdriveActive ?? (overdriveActiveTimer > 0));
+    const overdriveReady = Boolean(
+      rawEvo?.overdriveReady !== undefined
+        ? rawEvo.overdriveReady
+        : (!overdriveActive && overdriveCharge >= 100 && activeCompanionUnits.length > 0)
+    );
+    const companionEvo = {
+      formationId: activeFormation.id,
+      formation: activeFormation,
+      formations: evoFormations,
+      overdriveCharge,
+      overdriveRatio,
+      overdriveReady,
+      overdriveActive,
+      overdriveActiveTimer,
+      totalOverdrives: Math.max(0, Math.floor(Number(rawEvo?.totalOverdrives) || 0)),
+      totalPromotions: Math.max(0, Math.floor(Number(rawEvo?.totalPromotions) || 0)),
+      starsById: (rawEvo?.starsById && typeof rawEvo.starsById === 'object') ? rawEvo.starsById : {}
+    };
+
     return {
       stage,
       bestStage,
@@ -8677,6 +9521,7 @@ export class EndlessShopUI {
       activeSynergies,
       activeSlotsCount,
       maxActiveSlots,
+      companionEvo,
       ascension,
       pendingOfflineLoot,
       realmModifier,
@@ -8748,27 +9593,48 @@ export class EndlessShopUI {
       this.root.classList.toggle('has-active-party', hasUnits);
       this.root.classList.toggle('has-active-synergies', hasUnits && synergies.length > 0);
     }
-    if (!hasUnits) return;
+    if (!hasUnits) {
+      if (this._refs.overdriveBtn) {
+        this._refs.overdriveBtn.classList.add('hidden');
+      }
+      return;
+    }
 
     for (let i = 0; i < this._partySlotRefs.length; i++) {
       const slot = this._partySlotRefs[i];
       const u = units[i];
       if (!u) {
         slot.card.classList.add('hidden');
-        slot.card.classList.remove('is-casting-ult');
+        slot.card.classList.remove('is-casting-ult', 'is-ex-evolved');
         continue;
       }
 
+      const star = Math.max(1, Math.min(5, Math.floor(Number(u.star) || 1)));
+      const isExEvolved = Boolean(u.isExEvolved);
+
       slot.card.classList.remove('hidden');
       slot.card.classList.toggle('is-casting-ult', u.isCastingUlt);
-      slot.portWrap.style.borderColor = u.isCastingUlt ? '#fef08a' : u.color;
+      slot.card.classList.toggle('is-ex-evolved', isExEvolved);
+      slot.portWrap.style.borderColor = u.isCastingUlt
+        ? '#fef08a'
+        : (isExEvolved ? '#38bdf8' : u.color);
 
       this._blitCompanionPortrait(
         slot.portCanvas,
-        u.heroKey,
+        u.activeHeroKey || u.heroKey,
         u.color,
         u.shortName || u.name
       );
+
+      if (slot.starBadge && slot.starTxt) {
+        const showStar = star >= 2 || isExEvolved;
+        slot.starBadge.classList.toggle('hidden', !showStar);
+        if (showStar) {
+          slot.starBadge.classList.toggle('is-ex', isExEvolved);
+          const badgeTxt = isExEvolved ? (star > 3 ? `EX${star}` : 'EX') : `S${star}`;
+          setTextIfChanged(slot.starTxt, badgeTxt);
+        }
+      }
 
       setTextIfChanged(slot.nameEl, u.shortName || u.name);
       setTextIfChanged(slot.lvEl, `LV.${u.level}`);
@@ -8777,12 +9643,51 @@ export class EndlessShopUI {
       slot.ultFill.style.width = `${ultPct.toFixed(1)}%`;
       setTextIfChanged(slot.ultTag, u.isCastingUlt ? 'ULT!' : `${Math.round(ultPct)}%`);
 
+      const starTag = isExEvolved ? ` | ${star}-STAR EX` : (star >= 2 ? ` | ${star}-STAR` : '');
       const tip =
-        `${u.name} (${u.role}) LV.${u.level} | DPS ${formatEndlessNumber(u.dpsEstimate)} | ULT ${Math.round(ultPct)}%` +
+        `${u.name} (${u.role}) LV.${u.level}${starTag} | DPS ${formatEndlessNumber(u.dpsEstimate)} | ULT ${Math.round(ultPct)}%` +
         (u.lastCallout ? ` | ${u.lastCallout}` : '') +
         ' - Click to manage party';
       if (slot.card.title !== tip) {
         slot.card.title = tip;
+      }
+    }
+
+    // Wave 9: Squad Overdrive Charge Meter & Activation Button
+    const overdriveBtn = this._refs.overdriveBtn;
+    const overdriveFill = this._refs.overdriveFill;
+    const overdriveLabel = this._refs.overdriveLabel;
+    if (overdriveBtn && overdriveFill && overdriveLabel) {
+      const evo = state.companionEvo || {};
+      const odRatio = Number.isFinite(Number(evo.overdriveRatio))
+        ? Number(evo.overdriveRatio)
+        : ((Number(evo.overdriveCharge) || 0) / 100);
+      const odPct = Math.max(0, Math.min(100, Math.round(odRatio * 100)));
+      const odActive = Boolean(evo.overdriveActive);
+      const odReady = Boolean(!odActive && evo.overdriveReady);
+
+      overdriveBtn.classList.remove('hidden');
+      overdriveBtn.classList.toggle('is-active', odActive);
+      overdriveBtn.classList.toggle('is-ready', odReady);
+      overdriveBtn.disabled = !odReady;
+
+      if (odActive) {
+        const timer = Math.max(0, Number(evo.overdriveActiveTimer) || 0);
+        const remPct = timer > 0 ? Math.max(6, Math.min(100, (timer / 2.4) * 100)) : 100;
+        overdriveFill.style.width = `${remPct.toFixed(1)}%`;
+        setTextIfChanged(overdriveLabel, 'SURGE ACTIVE!');
+        const odTip = 'SQUAD OVERDRIVE SURGE ACTIVE (+35% DMG & +25% HASTE)';
+        if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
+      } else if (odReady) {
+        overdriveFill.style.width = '100%';
+        setTextIfChanged(overdriveLabel, 'OVERDRIVE!');
+        const odTip = 'SQUAD OVERDRIVE READY - CLICK TO UNLEASH SYNCHRONIZED ULTIMATES!';
+        if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
+      } else {
+        overdriveFill.style.width = `${odPct}%`;
+        setTextIfChanged(overdriveLabel, `OVERDRIVE ${odPct}%`);
+        const odTip = `SQUAD OVERDRIVE CHARGING (${odPct}%) - ALLY ATTACKS & SKILLS CHARGE THE METER`;
+        if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
       }
     }
 
@@ -8974,7 +9879,10 @@ export class EndlessShopUI {
     if (!anyAffordable) {
       for (let i = 0; i < state.companions.length; i++) {
         const c = state.companions[i];
-        if ((!c.unlocked && c.canAffordRecruit) || (c.unlocked && c.canAffordUpgrade)) {
+        if (
+          (!c.unlocked && !c.stageLocked && c.canAffordRecruit) ||
+          (c.unlocked && (c.canAffordUpgrade || c.promoteQuote?.canPromote))
+        ) {
           anyAffordable = true;
           break;
         }
@@ -9608,6 +10516,56 @@ export class EndlessShopUI {
       `ACTIVE PARTY ${state.activeSlotsCount} / ${state.maxActiveSlots}`
     );
 
+    // Wave 9: Sync Squad Formation Selector Bar in-place
+    const evo = state.companionEvo;
+    if (evo && this._refs.formationBtns) {
+      const formations = Array.isArray(evo.formations) && evo.formations.length > 0
+        ? evo.formations
+        : DEFAULT_SQUAD_FORMATIONS;
+      const activeId = evo.formationId || evo.formation?.id || 'balanced_phalanx';
+      for (let i = 0; i < formations.length; i++) {
+        const f = formations[i];
+        let btn = this._formationBtnRefs.get(f.id);
+        if (!btn) {
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'endless-formation-btn';
+          btn.dataset.formationId = f.id;
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this._handleSetSquadFormation(f.id);
+          });
+          this._refs.formationBtns.appendChild(btn);
+          this._formationBtnRefs.set(f.id, btn);
+        }
+        const isActive = f.id === activeId;
+        const accent = f.accentHex || '#facc15';
+        btn.classList.toggle('is-active', isActive);
+        setTextIfChanged(btn, f.shortLabel || f.name || f.id);
+        btn.style.borderColor = isActive ? accent : '';
+        btn.style.color = isActive ? accent : '';
+        const glowTint = /^#[0-9a-fA-F]{6}$/.test(accent)
+          ? `${accent}55`
+          : 'rgba(250, 204, 21, 0.34)';
+        btn.style.boxShadow = isActive
+          ? `inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 8px ${glowTint}`
+          : '';
+        const fTip = f.desc ? `${f.name}: ${f.desc}` : f.name;
+        if (btn.title !== fTip) btn.title = fTip;
+      }
+
+      if (this._refs.formationDesc) {
+        const activeForm = evo.formation || formations.find((f) => f.id === activeId) || formations[0];
+        const summary = activeForm?.desc || '';
+        setTextIfChanged(this._refs.formationDesc, summary);
+        this._refs.formationDesc.style.color = activeForm?.accentHex || '#cbd5e1';
+        const descTip = activeForm ? `${activeForm.name}: ${summary}` : '';
+        if (this._refs.formationDesc.title !== descTip) {
+          this._refs.formationDesc.title = descTip;
+        }
+      }
+    }
+
     // Sync active Party Synergies header list
     const synergies = state.activeSynergies || [];
     if (this._refs.partySynCount) {
@@ -9665,32 +10623,113 @@ export class EndlessShopUI {
       const unlocked = Boolean(comp.unlocked);
       const deployed = Boolean(comp.deployed);
       const lv = Math.max(0, Math.floor(Number(comp.level) || 0));
+      const star = Math.max(1, Math.min(5, Math.floor(Number(comp.star) || 1)));
+      const maxStars = Math.max(1, Math.floor(Number(comp.maxStars) || 5));
+      const isExEvolved = Boolean(comp.isExEvolved ?? (star >= 3));
+      const unlockStage = Math.max(1, Math.floor(Number(comp.unlockStage) || 1));
+      const stageLocked = Boolean(!unlocked && comp.stageLocked);
+      const promoteQuote = (comp.promoteQuote && typeof comp.promoteQuote === 'object')
+        ? comp.promoteQuote
+        : null;
 
       ref.card.classList.toggle('is-unlocked', unlocked);
       ref.card.classList.toggle('is-deployed', deployed);
+      ref.card.classList.toggle('is-ex-evolved', isExEvolved);
+      ref.card.classList.toggle('is-stage-locked', stageLocked);
+
+      if (ref.portWrap) {
+        ref.portWrap.style.borderColor = isExEvolved ? '#38bdf8' : (comp.accentHex || '#d4af37');
+      }
 
       this._blitCompanionPortrait(
         ref.portCanvas,
-        comp.heroKey,
+        comp.activeHeroKey || comp.heroKey,
         comp.accentHex,
         comp.shortName || comp.name
       );
 
-      setTextIfChanged(ref.lvEl, unlocked ? `LV.${lv}` : 'LOCKED');
+      // Keyed in-place 5-star pixel SVG row
+      if (Array.isArray(ref.starEls)) {
+        for (let s = 0; s < ref.starEls.length; s++) {
+          const starEl = ref.starEls[s];
+          const isLit = s < star;
+          if (starEl._lit !== isLit) {
+            starEl.innerHTML = isLit ? STAR_ON_SVG : STAR_OFF_SVG;
+            starEl._lit = isLit;
+          }
+        }
+      }
+
+      if (ref.exBadge) {
+        ref.exBadge.classList.toggle('is-evolved', isExEvolved);
+        setTextIfChanged(ref.exBadge, isExEvolved ? 'EX' : 'EX @3');
+        const exTip = isExEvolved
+          ? `${comp.starTitle || 'EX ASCENDED'} (${star}/${maxStars} STARS)`
+          : 'PROMOTE TO 3-STAR TO EVOLVE INTO EX FORM';
+        if (ref.exBadge.title !== exTip) ref.exBadge.title = exTip;
+      }
+
+      setTextIfChanged(
+        ref.lvEl,
+        unlocked ? `LV.${lv}` : (stageLocked ? `STAGE ${unlockStage}+` : 'LOCKED')
+      );
       setTextIfChanged(ref.dpsEl, `DPS ${formatEndlessNumber(comp.dpsEstimate || 0)}`);
 
       if (!unlocked) {
-        const cost = Number(comp.recruitCost ?? 0) || 0;
-        setTextIfChanged(ref.primaryBtn, `RECRUIT ${formatEndlessNumber(cost)}G`);
-        ref.primaryBtn.disabled = !comp.canAffordRecruit;
+        if (stageLocked) {
+          setTextIfChanged(ref.primaryBtn, `REACH STAGE ${unlockStage}`);
+          ref.primaryBtn.disabled = true;
+          ref.primaryBtn.classList.add('is-stage-locked');
+        } else {
+          const cost = Number(comp.recruitCost ?? 0) || 0;
+          setTextIfChanged(ref.primaryBtn, `RECRUIT ${formatEndlessNumber(cost)}G`);
+          ref.primaryBtn.disabled = !comp.canAffordRecruit;
+          ref.primaryBtn.classList.remove('is-stage-locked');
+        }
         ref.deployBtn.classList.add('hidden');
+        if (ref.promoteBtn) {
+          ref.promoteBtn.classList.add('hidden');
+          ref.promoteBtn.classList.remove('is-ex-ready', 'is-max-star');
+        }
       } else {
         const cost = Number(comp.upgradeCost ?? 0) || 0;
         setTextIfChanged(ref.primaryBtn, `UPGRADE ${formatEndlessNumber(cost)}G`);
         ref.primaryBtn.disabled = !comp.canAffordUpgrade;
+        ref.primaryBtn.classList.remove('is-stage-locked');
         ref.deployBtn.classList.remove('hidden');
         ref.deployBtn.classList.toggle('is-deployed', deployed);
         setTextIfChanged(ref.deployBtn, deployed ? 'BENCH' : 'DEPLOY');
+
+        if (ref.promoteBtn) {
+          if (promoteQuote) {
+            ref.promoteBtn.classList.remove('hidden');
+            const isMax = Boolean(promoteQuote.isMaxStar);
+            const unlocksEx = Boolean(!isMax && promoteQuote.unlocksExForm);
+            const canPromote = Boolean(!isMax && promoteQuote.canPromote);
+            ref.promoteBtn.classList.toggle('is-max-star', isMax);
+            ref.promoteBtn.classList.toggle('is-ex-ready', unlocksEx);
+            ref.promoteBtn.disabled = isMax || !canPromote;
+
+            if (isMax) {
+              setTextIfChanged(ref.promoteBtn, `MAX ${maxStars}-STAR`);
+              ref.promoteBtn.title = `${comp.name || comp.id} REACHED MAXIMUM ${maxStars}-STAR RANK`;
+            } else {
+              const isDust = promoteQuote.payMode === 'dust';
+              const costText = isDust
+                ? `${formatEndlessNumber(promoteQuote.dustCost || 0)} DUST`
+                : `${formatEndlessNumber(promoteQuote.shardsCost || 0)} SHARDS`;
+              const btnLabel = unlocksEx
+                ? `EVOLVE EX! (${costText})`
+                : `PROMOTE (${costText})`;
+              setTextIfChanged(ref.promoteBtn, btnLabel);
+              const altTip = `PROMOTE TO ${promoteQuote.nextStar || (star + 1)}-STAR (${formatEndlessNumber(promoteQuote.shardsCost || 0)} SHARDS OR ${formatEndlessNumber(promoteQuote.dustCost || 0)} FORGE DUST)`;
+              if (ref.promoteBtn.title !== altTip) ref.promoteBtn.title = altTip;
+            }
+          } else {
+            ref.promoteBtn.classList.add('hidden');
+            ref.promoteBtn.classList.remove('is-ex-ready', 'is-max-star');
+          }
+        }
       }
     }
   }
@@ -9809,6 +10848,7 @@ export class EndlessShopUI {
     this.mounted = false;
     this._iconCanvases = [];
     this._partySlotRefs = [];
+    this._formationBtnRefs.clear();
     this._relicRowRefs.clear();
     this._companionCardRefs.clear();
     this._artifactRowRefs.clear();
