@@ -1,4 +1,4 @@
-import { drawExBayerHalo } from './exNextGenFX.js?v=30fps191';
+import { drawExBayerHalo } from './exNextGenFX.js?v=30fps192';
 
 /**
  * Behemoth Malphas 2.0 — Dedicated HD-2D Boss Shader & 30fps Overlay Atlas Renderer

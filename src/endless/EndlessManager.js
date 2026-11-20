@@ -1,11 +1,11 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps191';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps191';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps191';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps191';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps191';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps191';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps191';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps191';
+import { Fighter } from '../entities/Fighter.js?v=30fps192';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps192';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps192';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps192';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps192';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps192';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps192';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps192';
 
 export const ENDLESS_REALMS = [
   {
@@ -721,6 +721,43 @@ export class EndlessManager {
     return this.game?.leftFighter || null;
   }
 
+  get enemies() {
+    return this.getLivingMonsters();
+  }
+
+  _getEntityGameView() {
+    const baseGame = this.game;
+    if (!baseGame) return baseGame;
+    if (this._entityGameView && this._entityGameViewTarget === baseGame) {
+      return this._entityGameView;
+    }
+    const endlessMgr = this;
+    const isAdvTrue = () => true;
+    const isSideTrue = () => true;
+    const getSideMgr = () => endlessMgr;
+    const boundMethods = new Map();
+    this._entityGameViewTarget = baseGame;
+    this._entityGameView = new Proxy(baseGame, {
+      get(target, prop) {
+        if (prop === 'adventure') return endlessMgr;
+        if (prop === 'isAdventureMode') return isAdvTrue;
+        if (prop === 'isSideScrollMode') return isSideTrue;
+        if (prop === 'getActiveSideScrollManager') return getSideMgr;
+        const val = target[prop];
+        if (typeof val === 'function') {
+          let bound = boundMethods.get(prop);
+          if (!bound) {
+            bound = val.bind(target);
+            boundMethods.set(prop, bound);
+          }
+          return bound;
+        }
+        return val;
+      }
+    });
+    return this._entityGameView;
+  }
+
   getWorldWidth() {
     return Math.max(9600, this.corridorMaxX + 2400);
   }
@@ -763,8 +800,10 @@ export class EndlessManager {
   }
 
   _prewarmRealmAssets(realmIndex = 0) {
+    if (typeof HTMLImageElement === 'undefined') return;
     const idx = ((realmIndex | 0) % ENDLESS_REALMS.length + ENDLESS_REALMS.length) % ENDLESS_REALMS.length;
     PixelForge.ensureAdventureLoaded?.(idx);
+    PixelForge.ensureEndlessLoaded?.();
     const realm = ENDLESS_REALMS[idx];
     if (realm) {
       for (const mk of realm.monsters) {
@@ -907,6 +946,7 @@ export class EndlessManager {
 
     this.progression.resetForRun();
     if (playerFighter) {
+      playerFighter.game = this._getEntityGameView();
       this.skillSets.attachToFighter(playerFighter);
       this.progression.attachToFighter(playerFighter);
 
@@ -1039,6 +1079,7 @@ export class EndlessManager {
       player._grabbedByBoss = false;
       player._grabbedByBossTimer = 0;
       player.isInvulnerable = false;
+      player.game = this.game;
       this.progression.detachFromFighter(player);
       this.skillSets.detachFromFighter(player);
     }
@@ -1294,7 +1335,7 @@ export class EndlessManager {
         ? new ArchfiendBoss(x, gy, -1, spawnOpts)
         : new Monster(kind, x, gy, facing, spawnOpts);
 
-    m.game = this.game;
+    m.game = this._getEntityGameView();
     m.team = 2;
     m.groundY = gy;
     m.y = gy;
@@ -1986,7 +2027,9 @@ export class EndlessManager {
       y: tGy,
       groundY: tGy,
       facing: 1,
-      heroId: 'tap_smite'
+      heroId: 'tap_smite',
+      gainMana() {},
+      gainFinisher() {}
     };
 
     const knockDir = target.isColossalBoss ? 0 : target.x >= (this.game?.leftFighter?.x || 0) ? 1 : -1;
@@ -2511,11 +2554,12 @@ export class EndlessManager {
     if (player.state !== 'AUTO_ATTACK' || (player.stateTimer || 0) < 0.04) {
       player._advLv1FallbackShot = false;
     }
+    const entityGame = this._getEntityGameView();
     const prevDidAction = Boolean(player.didActionFrame);
     const prevProjLen = this.game?.vfx?.projectiles?.length || 0;
     const combatTarget = this.skillSets.resolveTarget(player, target);
     this.skillSets.beginPlayerStep(dt, player, combatTarget, isMovingCombat, 0);
-    player.update(dt, combatTarget, this.game);
+    player.update(dt, combatTarget, entityGame);
 
     let heroAlreadySpawnedProjectile = false;
     const curProjs = this.game?.vfx?.projectiles;
@@ -2529,7 +2573,7 @@ export class EndlessManager {
     }
     if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
       player._advLv1FallbackShot = true;
-      this.progression.onPlayerCastBasicAttack(player, combatTarget || target, this.game, {
+      this.progression.onPlayerCastBasicAttack(player, combatTarget || target, entityGame, {
         heroAlreadySpawnedProjectile
       });
     } else if (
@@ -2540,7 +2584,7 @@ export class EndlessManager {
       (player.stateTimer || 0) >= 0.16
     ) {
       player._advLv1FallbackShot = true;
-      this.progression.onPlayerCastBasicAttack(player, combatTarget || target, this.game, {
+      this.progression.onPlayerCastBasicAttack(player, combatTarget || target, entityGame, {
         heroAlreadySpawnedProjectile
       });
     }
@@ -2693,8 +2737,9 @@ export class EndlessManager {
         player.moveDir = 0;
         player.state = 'IDLE';
       }
+      const entityGame = this._getEntityGameView();
       this.skillSets.beginPlayerStep(dt, player, null, isMoving3D, rawDirY);
-      player.update(dt, null, this.game);
+      player.update(dt, null, entityGame);
     } else {
       player._manualWalkActive = false;
       player._manualSpeedRatio = 0;
@@ -2702,11 +2747,12 @@ export class EndlessManager {
         player.x += this.smoothVelX * 0.78 * dt;
         this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
       }
+      const entityGame = this._getEntityGameView();
       const prevDidAction = Boolean(player.didActionFrame);
       const prevProjLen = this.game?.vfx?.projectiles?.length || 0;
       const combatTarget = this.skillSets.resolveTarget(player, lockTarget);
       this.skillSets.beginPlayerStep(dt, player, combatTarget, isMoving3D, rawDirY);
-      player.update(dt, combatTarget, this.game);
+      player.update(dt, combatTarget, entityGame);
 
       let heroAlreadySpawnedProjectile = false;
       const curProjs = this.game?.vfx?.projectiles;
@@ -2719,7 +2765,7 @@ export class EndlessManager {
         }
       }
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
-        this.progression.onPlayerCastBasicAttack(player, lockTarget || combatTarget, this.game, {
+        this.progression.onPlayerCastBasicAttack(player, lockTarget || combatTarget, entityGame, {
           heroAlreadySpawnedProjectile
         });
       }
@@ -2869,10 +2915,11 @@ export class EndlessManager {
     if (player.x > bounds.maxX) player.x = bounds.maxX;
 
     // 6. Update Active Monsters
+    const entityGame = this._getEntityGameView();
     if (Array.isArray(g.fighters)) {
       for (const f of g.fighters) {
         if (!f || f === player) continue;
-        f.update(effDt, player, g);
+        f.update(effDt, player, entityGame);
         if (this.lockActive && f.isMonster && !f.isDead && !f.isColossalBoss) {
           const mMin = bounds.minX + 18;
           const mMax = Math.max(mMin, bounds.maxX - 18);
@@ -2883,7 +2930,7 @@ export class EndlessManager {
     }
 
     // 7. Update Autonomous HD-2D Companions
-    this.companions.update(effDt, player, this.getLivingMonsters(), this.economy, g);
+    this.companions.update(effDt, player, this.getLivingMonsters(), this.economy, entityGame);
 
     // 8. Update Magnetic Coins, Tap-Smites, Fever Bursts, Portals, Plumes & Floating Callouts
     this._updateCoins(effDt, player);

@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps191';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps192';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
@@ -1205,6 +1205,27 @@ export class AdventureMapRenderer {
         }
       }
       return weights;
+    }
+    if (wx > 9600) {
+      const w = ((wx % 9600) + 9600) % 9600;
+      const t01 = smoothstep(1920, 2880, w);
+      const t12 = smoothstep(4320, 5280, w);
+      const t23 = smoothstep(6720, 7680, w);
+      let w0 = 1 - t01;
+      let w1 = t01 * (1 - t12);
+      let w2 = t12 * (1 - t23);
+      let w3 = t23;
+      // Seamless wrap seam blending Black Pit (9120..9600) -> Eclipse Sanctum (0..480) on Ascended Loops
+      if (w >= 9120) {
+        const wrapBlend = smoothstep(9120, 9600, w) * 0.5;
+        w3 *= 1 - wrapBlend;
+        w0 += wrapBlend;
+      } else if (w <= 480) {
+        const wrapBlend = (1 - smoothstep(0, 480, w)) * 0.5;
+        w0 *= 1 - wrapBlend;
+        w3 += wrapBlend;
+      }
+      return [w0, w1, w2, w3];
     }
     const t01 = smoothstep(1920, 2880, wx);
     const t12 = smoothstep(4320, 5280, wx);

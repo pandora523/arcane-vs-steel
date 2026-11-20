@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps191';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps191';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps191';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps191';
+import { Fighter } from './Fighter.js?v=30fps192';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps192';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps192';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps192';
 import {
   MALPHAS_VFX_ROW,
   blitMalphasVfxCell,
@@ -10,7 +10,7 @@ import {
   drawMalphasRunicTelegraphs,
   drawMalphasActionVfxOverlay,
   drawMalphasGrabForegroundOverlay
-} from '../engine/shaders/malphasBossShaders.js?v=30fps191';
+} from '../engine/shaders/malphasBossShaders.js?v=30fps192';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -371,7 +371,7 @@ export class Monster extends Fighter {
   }
 
   clampMonsterX(targetX, game) {
-    const adv = game?.adventure;
+    const adv = game?.getActiveSideScrollManager?.() || game?.adventure;
     const colossalAlive = Boolean(
       adv?.bossEntity && !adv.bossEntity.isDead && adv.bossEntity.isColossalBoss
     );
@@ -450,14 +450,15 @@ export class Monster extends Fighter {
           '#fef08a'
         );
       }
-      g?.adventure?.progression?.gainSpirit?.(22);
-      g?.adventure?.spawnPickup?.(
+      const sideMgr = g?.getActiveSideScrollManager?.() || g?.adventure;
+      sideMgr?.progression?.gainSpirit?.(22);
+      sideMgr?.spawnPickup?.(
         'ember',
         this.x - (this.isBoss ? 140 : 0),
         this.groundY || 561,
         { ultAmt: 22 }
       );
-      g?.adventure?.onMonsterGuardBroken?.(this, attacker);
+      sideMgr?.onMonsterGuardBroken?.(this, attacker);
       return true;
     }
     return false;
@@ -544,7 +545,10 @@ export class Monster extends Fighter {
     let finalAmount = amount;
     let effectiveCrit = Boolean(isCrit);
     let consumedPhantomEmpower = false;
-    const prog = this.game?.isAdventureMode?.() ? this.game.adventure?.progression : null;
+    const sideMgr =
+      this.game?.getActiveSideScrollManager?.() ||
+      (this.game?.isAdventureMode?.() ? this.game.adventure : null);
+    const prog = sideMgr?.progression || null;
     const resolvedCastTier =
       prog && attacker && !attacker.isMonster
         ? prog.resolveOutgoingCastTier?.(amount, attacker, attacker._advActiveCastSource || null) || null
@@ -634,7 +638,7 @@ export class Monster extends Fighter {
         this.addStagger(stagAmt, attacker, this.game);
       }
       if (!this._isAdvCleaveSplash) {
-        this.game?.adventure?.skillSets?.onDirectMonsterHit?.(
+        sideMgr?.skillSets?.onDirectMonsterHit?.(
           attacker,
           this,
           amount,
@@ -642,7 +646,7 @@ export class Monster extends Fighter {
           knockX,
           knockY
         );
-        this.game?.adventure?.onPlayerHitMonsterRelicProc?.(attacker, this, dealt, effectiveCrit, {
+        sideMgr?.onPlayerHitMonsterRelicProc?.(attacker, this, dealt, effectiveCrit, {
           consumedPhantomEmpower
         });
       }
@@ -695,7 +699,8 @@ export class Monster extends Fighter {
           game.vfx.spawnGlyphBurst(ring.x, ring.y - 42, 6, glyphTheme);
           game.vfx.spawnDecal?.(ring.x, Math.round(ring.radius * 0.95), 'fissure', ring.color, 2.8, ring.y);
         }
-        game?.adventure?.spawnMonsterPlume?.(
+        const plumeMgr = game?.getActiveSideScrollManager?.() || game?.adventure;
+        plumeMgr?.spawnMonsterPlume?.(
           ring.x,
           ring.y,
           this.getMonsterStageVfxRow(),
@@ -705,7 +710,7 @@ export class Monster extends Fighter {
           this.isMiniBoss ? 12 : 8
         );
         if (this.isElite || this.isMiniBoss) {
-          game?.adventure?.spawnMonsterPlume?.(
+          plumeMgr?.spawnMonsterPlume?.(
             ring.x,
             ring.y - 8,
             this.getMonsterStageAccentRow(),
@@ -893,7 +898,7 @@ export class Monster extends Fighter {
     const absDz = Math.abs(dz);
     this.facing = enemy.x >= this.x ? 1 : -1;
 
-    const adv = game?.adventure;
+    const adv = game?.getActiveSideScrollManager?.() || game?.adventure;
     const colossalAlive = Boolean(
       adv?.bossEntity && !adv.bossEntity.isDead && adv.bossEntity.isColossalBoss
     );
@@ -1139,10 +1144,11 @@ export class Monster extends Fighter {
 
   startMonsterDash(enemy, game, dir, distance = 200) {
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const minX = game?.adventure?.lockActive ? game.adventure.lockMinX + 24 : 95;
-    const maxX = game?.adventure?.lockActive ? game.adventure.lockMaxX - 24 : ww - 95;
-    const minGy = (game?.adventure?.depthMinY || 442) + 14;
-    const maxGy = (game?.adventure?.depthMaxY || 680) - 14;
+    const dashMgr = game?.getActiveSideScrollManager?.() || game?.adventure;
+    const minX = dashMgr?.lockActive ? dashMgr.lockMinX + 24 : 95;
+    const maxX = dashMgr?.lockActive ? dashMgr.lockMaxX - 24 : ww - 95;
+    const minGy = (dashMgr?.depthMinY || 442) + 14;
+    const maxGy = (dashMgr?.depthMaxY || 680) - 14;
     this.dashCooldown = this.dashMaxCooldown;
     this.dashDir = dir || this.facing;
     this.dashStartX = this.x;
@@ -2794,7 +2800,7 @@ export class ArchfiendBoss extends Monster {
         );
         game.vfx.spawnShockwave(this.anchorX - 80, this.anchorGroundY - 54, 280, '#ef4444', 0.52, true);
       }
-      game?.adventure?.onBossPhaseShift?.(this, 2);
+      (game?.getActiveSideScrollManager?.() || game?.adventure)?.onBossPhaseShift?.(this, 2);
     }
 
     // Phase 3 Transition (`<= 30% HP`)
@@ -2833,7 +2839,7 @@ export class ArchfiendBoss extends Monster {
         );
         game.vfx.spawnShockwave(this.anchorX - 80, this.anchorGroundY - 58, 340, '#f59e0b', 0.62, true);
       }
-      game?.adventure?.onBossPhaseShift?.(this, 3);
+      (game?.getActiveSideScrollManager?.() || game?.adventure)?.onBossPhaseShift?.(this, 3);
     }
 
     // Autonomous Unavoidable Arena-Wide Blood-Pact Pulse (`HELLPIT SOUL-TITHE`) — deliberate unavoidable boss attrition!

@@ -620,3 +620,10 @@
 ### Archived Batch (`?v=30fps179–185` — `RAIJIN EX` Complete Visual, Proportions, 10-Row Arm IK Flip Fix, Razor-Sharp VFX & `'tempest'` Impact Frames)
 - **Batch `?v=30fps179–185` Web-Only Upgrade (`scripts/{build_brawler_ex_nextgen_sheet.py,build_brawler_ex_vfx_30fps.mjs}`, `assets/sprites/brawler_ex_{sheet,vfx}.png`, `src/engine/Renderer.js`, `src/entities/BrawlerEx.js`, `scripts/tests/test_all_heroes_gameloop.mjs`)**:
   - Raised `TARGET_HERO_H_160` (`89 -> 96`, `192px` tall matching `warrior_ex` & `ronin_ex`), locked anatomical arm IK `bend_dir=+1` across all 10 rows (`0/300` clips), rebuilt `brawler_ex_vfx.png` (`6240x1664`, `0/240` clips) in razor-sharp 4-tone storm-gold/azure hard pixels, added `'tempest'` impact frames in `Renderer.js`, razor-thin fractal lightning, ground fissures, bouncing debris, thunder slashes, and Raijin's `3.85s` 3-act Supreme Ultimate (`Suite 36.34`, live Chrome verified).
+
+---
+
+### Archived Batch (`?v=30fps186` — Adventure Mode Deliberate Skill Rhythm, Fair Normal & Tiered `BEHEMOTH MALPHAS` Boss Tuning, Optional Persistent `KEEP LVL` Carry-Over & Snappy Virtual Joystick Overhaul)
+- **Batch `?v=30fps186` Web-Only Upgrade (`src/adventure/{AdventureProgression,AdventureManager}.js`, `src/entities/Monster.js`, `src/main.js`, `index.html`, `style.css`, `scripts/tests/test_all_heroes_gameloop.mjs`)**:
+  - Replaced Adventure's `0.78x` skill CD discount with `1.15x` (min `3.8s`), toned `basicSkillCdShave`, re-tuned Spirit economy (`38/32/26`) & baseline impact (`atkMult: 0.64`, `skillMult: 0.74`), buffed player HP (`1040 -> 1320`, `+115/lv`), and added per-tier `BEHEMOTH MALPHAS` tuning (`normal`/`heroic`/`sovereign`) preserving `11,800 HP` & `Suite 29C`/`36.19`.
+  - Added optional persistent `KEEP LVL` (`avs_adv_hero_progress_v1`), `#adv-progress-mode-toggle`, `.adv-saved-lvl-pip`, `#adv-st-reset-lv`, and snappy virtual joystick curve overhaul (`deadzone = 0.06`, `pow(..., 0.72)`, `maxSpeedX = 316`, `maxSpeedZ = 192`, `Suite 36.35`, 3-viewport Chrome verified).

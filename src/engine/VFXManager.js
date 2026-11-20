@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps191';
-import { PixelForge } from './PixelForge.js?v=30fps191';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps191';
+import { PixelFont } from './PixelFont.js?v=30fps192';
+import { PixelForge } from './PixelForge.js?v=30fps192';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps192';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -421,7 +421,10 @@ export class VFXManager {
   spawnFlamePillar(x, groundY, owner, target, opts = {}) {
     if (this.pillars.length >= 24) this.pillars.shift();
     const resolvedGy =
-      owner?.game?.isAdventureMode?.() && target && Number.isFinite(target.groundY) && owner.team === 1
+      (owner?.game?.isAdventureMode?.() || owner?.game?.isEndlessMode?.()) &&
+      target &&
+      Number.isFinite(target.groundY) &&
+      owner.team === 1
         ? target.groundY
         : groundY;
     this.pillars.push({
@@ -574,7 +577,12 @@ export class VFXManager {
 
   _resolveAdvCastSource(owner, opts = null) {
     if (!owner || owner.isMonster) return null;
-    if (!owner.game?.isAdventureMode?.() && !opts?._advCastSource && !opts?.advCastSource) {
+    if (
+      !owner.game?.isAdventureMode?.() &&
+      !owner.game?.isEndlessMode?.() &&
+      !opts?._advCastSource &&
+      !opts?.advCastSource
+    ) {
       return null;
     }
     if (opts?._advCastSource) return opts._advCastSource;
@@ -1075,7 +1083,10 @@ export class VFXManager {
       pil.life += dt;
       if (!pil.erupted && pil.target && pil.scaleWidth >= 0.95) {
         pil.x += (pil.target.x - pil.x) * 3.5 * dt;
-        if (pil.owner?.game?.isAdventureMode?.() && Number.isFinite(pil.target.groundY)) {
+        if (
+          (pil.owner?.game?.isAdventureMode?.() || pil.owner?.game?.isEndlessMode?.()) &&
+          Number.isFinite(pil.target.groundY)
+        ) {
           pil.groundY = pilGy + (pil.target.groundY - pilGy) * 3.5 * dt;
         }
       }
@@ -1141,7 +1152,9 @@ export class VFXManager {
         pil.tickTimer += dt;
         if (pil.tickTimer >= 0.25) {
           pil.tickTimer = 0;
-          const isAdv = Boolean(pil.owner?.game?.isAdventureMode?.());
+          const isAdv = Boolean(
+            pil.owner?.game?.isAdventureMode?.() || pil.owner?.game?.isEndlessMode?.()
+          );
           const pilEnemies =
             pil.owner?.game?.getEnemiesOf ? pil.owner.game.getEnemiesOf(pil.owner) : pil.target ? [pil.target] : [];
           for (const foe of pilEnemies) {

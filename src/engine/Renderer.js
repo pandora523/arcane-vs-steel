@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps191';
-import { PixelFont } from './PixelFont.js?v=30fps191';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps191';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps191';
+import { PixelForge } from './PixelForge.js?v=30fps192';
+import { PixelFont } from './PixelFont.js?v=30fps192';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps192';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps192';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps191';
+} from './shaders/exNextGenFX.js?v=30fps192';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -1077,7 +1077,8 @@ export class Renderer {
       if (colossalBoss) {
         const bossRightEdge = (colossalBoss.anchorX || colossalBoss.x) + 195;
         if (bossRightEdge > maxX) maxX = bossRightEdge;
-        const leftEdge = Math.min(player ? player.x - 110 : 8820, 8820);
+        const bossLeftLim = (colossalBoss.anchorX || 9335) - 515;
+        const leftEdge = Math.min(player ? player.x - 110 : bossLeftLim, bossLeftLim);
         if (leftEdge < minX) minX = leftEdge;
       }
       const midX =

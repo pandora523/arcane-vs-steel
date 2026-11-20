@@ -1828,11 +1828,18 @@ html, body {
 }
 
 .sanctum-gateway-grid {
-  width: min(100%, 980px);
+  width: min(100%, 1140px);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(10px, 1.8vw, 20px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 1.3vw, 16px);
   align-items: stretch;
+}
+
+@media (max-width: 920px) {
+  html:not(.is-mobile-landscape) .sanctum-gateway-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
 }
 
 .gateway-pillar {
@@ -1928,6 +1935,26 @@ html, body {
     0 0 22px rgba(249, 115, 22, 0.24);
 }
 
+.gateway-endless {
+  background:
+    radial-gradient(ellipse 88% 64% at 88% 8%, rgba(192, 132, 252, 0.24) 0%, transparent 72%),
+    radial-gradient(ellipse 65% 50% at 18% 92%, rgba(250, 204, 21, 0.14) 0%, transparent 72%),
+    linear-gradient(180deg, rgba(24, 16, 44, 0.92) 0%, rgba(10, 8, 22, 0.96) 100%);
+  border: 1.5px solid #a855f7;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.22),
+    0 16px 36px rgba(0, 0, 0, 0.80);
+}
+
+.gateway-endless:hover,
+.gateway-endless:focus-visible {
+  border-color: #facc15;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.38),
+    0 18px 40px rgba(0, 0, 0, 0.88),
+    0 0 24px rgba(192, 132, 252, 0.34);
+}
+
 .gateway-top-row {
   width: 100%;
   display: flex;
@@ -1953,6 +1980,10 @@ html, body {
 
 .gateway-adventure .gateway-kicker {
   color: #fdba74;
+}
+
+.gateway-endless .gateway-kicker {
+  color: #d8b4fe;
 }
 
 .gateway-emblem {
@@ -2002,6 +2033,10 @@ html, body {
   color: #fbbf24;
 }
 
+.gateway-endless .gateway-format-line {
+  color: #fde047;
+}
+
 .gateway-cta-strip {
   width: 100%;
   margin-top: 4px;
@@ -2030,6 +2065,11 @@ html, body {
 .gateway-adventure .gateway-cta-strip {
   background: linear-gradient(180deg, #a63b14 0%, #5c1c08 100%);
   border-color: #fb923c;
+}
+
+.gateway-endless .gateway-cta-strip {
+  background: linear-gradient(180deg, #7e22ce 0%, #3b0764 100%);
+  border-color: #facc15;
 }
 
 .gateway-arrow {
@@ -4441,7 +4481,10 @@ html.is-mobile-landscape .hud-build-badge {
     font-size: 0.27rem;
     padding: 3px 9px;
   }
-  html:not(.is-mobile-landscape) .sanctum-gateway-grid,
+  html:not(.is-mobile-landscape) .sanctum-gateway-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
   html:not(.is-mobile-landscape) .mode-cards-grid {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -5744,8 +5787,8 @@ html.is-mobile-landscape .sanctum-subtitle {
 
 html.is-mobile-landscape .sanctum-gateway-grid {
   width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
 html.is-mobile-landscape .gateway-pillar {
@@ -6715,6 +6758,16 @@ html.is-mobile-landscape .adv-st-grid {
 }
 
 #app:not(.is-adventure-active) #pause-adv-section {
+  display: none !important;
+}
+
+#app.is-endless-active #adv-btn-skilltree,
+#app.is-endless-active #pause-adv-relics-section,
+#app.is-endless-active #pause-sp-badge {
+  display: none !important;
+}
+
+#app:not(.is-endless-active) .endless-hud-root {
   display: none !important;
 }
 
@@ -8984,7 +9037,7 @@ html.is-mobile-landscape .adv-st-relic-desc {
 /* =========================================================================
    PLAYER VS AI SUB-MODES (EXHIBITION / ARCADE 5 / TRAINING LAB),
    5-STAGE ARCADE LADDER HUD + VICTORY BRACKET + TROPHY PIPS,
-   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps191)
+   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps192)
    ========================================================================= */
 
 /* Sub-Mode Switcher in #vs-quick-config-bar (Strictly visible in PLAYER VS AI only!) */

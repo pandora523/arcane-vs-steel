@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps191';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps191';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps191';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps191';
+import { Fighter } from './Fighter.js?v=30fps192';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps192';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps192';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps192';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.22s): Explosive stepping storm jab -> snaps at F02/F03 (62/63)
@@ -417,9 +417,9 @@ export class BrawlerEx extends Fighter {
         return im;
       };
       assets.brawler_ex = {
-        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps191'),
-        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps191'),
-        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps191'),
+        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps192'),
+        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps192'),
+        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps192'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
