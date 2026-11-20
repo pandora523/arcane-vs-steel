@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps172';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps173';
 
 /**
  * Interactive Front-Facing Orthogonal 16-Bit HD-2D Destructible Shrines & Braziers (`AdventureDestructibles`)
@@ -207,28 +207,28 @@ const CURATED_PROP_LAYOUT = [
   { kind: 'eclipse_brazier', zone: 0, x: 360, groundY: 452, dropType: null },
   { kind: 'eclipse_reliquary', zone: 0, x: 780, groundY: 450, dropType: null },
   { kind: 'eclipse_astrolabe', zone: 0, x: 1320, groundY: 454, dropType: 'relic', relicAmt: 12 },
-  { kind: 'eclipse_brazier', zone: 0, x: 1740, groundY: 452, dropType: null },
+  { kind: 'eclipse_brazier', zone: 0, x: 1740, groundY: 452, dropType: null, hazardType: 'explosive_censer' },
   { kind: 'eclipse_reliquary', zone: 0, x: 2140, groundY: 450, dropType: null },
 
   // Zone II: Cursed Starwood Crossing (`2400..4800`) — Symmetrical Sylvan Shrine Lanterns & Moon-Crystal Cairns
   { kind: 'starwood_lantern', zone: 1, x: 2640, groundY: 452, dropType: null },
-  { kind: 'starwood_lantern', zone: 1, x: 3060, groundY: 450, dropType: null },
+  { kind: 'starwood_lantern', zone: 1, x: 3060, groundY: 450, dropType: null, hazardType: 'spore_pod' },
   { kind: 'starwood_crystal', zone: 1, x: 3440, groundY: 454, dropType: 'relic', relicAmt: 12 },
-  { kind: 'starwood_lantern', zone: 1, x: 4020, groundY: 452, dropType: null },
+  { kind: 'starwood_lantern', zone: 1, x: 4020, groundY: 452, dropType: null, hazardType: 'spore_pod' },
   { kind: 'starwood_crystal', zone: 1, x: 4480, groundY: 454, dropType: null },
 
   // Zone III: Abyssal Bone-Gate (`4800..7200`) — Necropolis Soul-Braziers & Ossuary Reliquary Altars
   { kind: 'soul_brazier', zone: 2, x: 5040, groundY: 452, dropType: null },
-  { kind: 'soul_brazier', zone: 2, x: 5460, groundY: 450, dropType: null },
+  { kind: 'soul_brazier', zone: 2, x: 5460, groundY: 450, dropType: null, hazardType: 'cursed_pylon' },
   { kind: 'ossuary_obelisk', zone: 2, x: 5840, groundY: 454, dropType: 'relic', relicAmt: 14 },
-  { kind: 'soul_brazier', zone: 2, x: 6420, groundY: 452, dropType: null },
+  { kind: 'soul_brazier', zone: 2, x: 6420, groundY: 452, dropType: null, hazardType: 'cursed_pylon' },
   { kind: 'ossuary_obelisk', zone: 2, x: 6880, groundY: 454, dropType: null },
 
   // Zone IV: Throne of the Black Pit (`7200..9600`, Boss at `9335`) — Obsidian Cauldrons & Chained Soul-Crucibles
   { kind: 'blackpit_brazier', zone: 3, x: 7420, groundY: 452, dropType: null },
-  { kind: 'blackpit_brazier', zone: 3, x: 7780, groundY: 450, dropType: null },
+  { kind: 'blackpit_brazier', zone: 3, x: 7780, groundY: 450, dropType: null, hazardType: 'explosive_censer' },
   { kind: 'hellfire_pylon', zone: 3, x: 8160, groundY: 454, dropType: 'relic', relicAmt: 14 },
-  { kind: 'blackpit_brazier', zone: 3, x: 8520, groundY: 452, dropType: null },
+  { kind: 'blackpit_brazier', zone: 3, x: 8520, groundY: 452, dropType: null, hazardType: 'explosive_censer' },
   { kind: 'hellfire_pylon', zone: 3, x: 8800, groundY: 454, dropType: null }
 ];
 
@@ -1190,25 +1190,61 @@ function drawHeadlessOrthogonalPropFallback(ctx, cx, by, halfW, height, primaryC
   seloutRect(ctx, cx - halfW + 2, by - height, baseW - 4, 12, '#475569', accentCol);
 }
 
+const PROP_LIGHT_POOL_CACHE = new Map();
+
+function getSoftPropPoolTex(hexCol) {
+  const key = hexCol || '#38bdf8';
+  if (PROP_LIGHT_POOL_CACHE.has(key)) return PROP_LIGHT_POOL_CACHE.get(key);
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+  try {
+    const c = document.createElement('canvas');
+    c.width = 96;
+    c.height = 96;
+    const gCtx = c.getContext && c.getContext('2d');
+    if (!gCtx || typeof gCtx.createRadialGradient !== 'function') {
+      PROP_LIGHT_POOL_CACHE.set(key, null);
+      return null;
+    }
+    const clean = key.replace('#', '');
+    const r = parseInt(clean.slice(0, 2), 16) || 56;
+    const g = parseInt(clean.slice(2, 4), 16) || 189;
+    const b = parseInt(clean.slice(4, 6), 16) || 248;
+    const grad = gCtx.createRadialGradient(48, 48, 2, 48, 48, 48);
+    grad.addColorStop(0, `rgba(${r},${g},${b},0.72)`);
+    grad.addColorStop(0.40, `rgba(${r},${g},${b},0.32)`);
+    grad.addColorStop(0.75, `rgba(${r},${g},${b},0.08)`);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    gCtx.fillStyle = grad;
+    gCtx.fillRect(0, 0, 96, 96);
+    PROP_LIGHT_POOL_CACHE.set(key, c);
+    return c;
+  } catch {
+    PROP_LIGHT_POOL_CACHE.set(key, null);
+    return null;
+  }
+}
+
 function drawSteppedPropPixelBloom(ctx, primaryCol, accentCol, cx, cy, rx, ry, alpha) {
   if (alpha <= 0.004) return;
-  const u = 4;
-  const sx = Math.round(cx / u) * u;
-  const sy = Math.round(cy / u) * u;
-  const hw = Math.max(u * 2, Math.round(rx / u) * u);
-  const hh = Math.max(u, Math.round(ry / u) * u);
   const capped = Math.max(0, Math.min(0.14, alpha));
-
+  const tex = getSoftPropPoolTex(primaryCol || accentCol || '#38bdf8');
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = primaryCol || '#38bdf8';
-  ctx.globalAlpha = capped * 0.48;
-  ctx.fillRect(sx - hw, sy - Math.max(u, hh >> 1), hw * 2, Math.max(u * 2, hh));
-  ctx.fillRect(sx - Math.max(u, hw >> 1), sy - hh, Math.max(u * 2, hw), hh * 2);
-
-  ctx.fillStyle = accentCol || primaryCol || '#fde047';
-  ctx.globalAlpha = capped * 0.78;
-  ctx.fillRect(sx - Math.max(u, hw >> 1), sy - Math.max(u, hh >> 1), Math.max(u * 2, hw), Math.max(u * 2, hh));
+  if (tex && ctx.drawImage) {
+    const w = Math.max(24, Math.round(rx * 2.4));
+    const h = Math.max(12, Math.round(ry * 2.8));
+    ctx.globalAlpha = capped;
+    ctx.drawImage(tex, Math.round(cx - w * 0.5), Math.round(cy - h * 0.5), w, h);
+  } else {
+    const u = 4;
+    const sx = Math.round(cx / u) * u;
+    const sy = Math.round(cy / u) * u;
+    const hw = Math.max(u * 2, Math.round(rx / u) * u);
+    const hh = Math.max(u, Math.round(ry / u) * u);
+    ctx.fillStyle = primaryCol || '#38bdf8';
+    ctx.globalAlpha = capped * 0.48;
+    ctx.fillRect(sx - hw, sy - Math.max(u, hh >> 1), hw * 2, Math.max(u * 2, hh));
+  }
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -1338,6 +1374,12 @@ export class AdventureDestructibles {
         maxHp: Number.isFinite(spec?.maxHp) && spec.maxHp > 0 ? Math.round(spec.maxHp) : arch.maxHp,
         hp: Number.isFinite(spec?.maxHp) && spec.maxHp > 0 ? Math.round(spec.maxHp) : arch.maxHp,
         isArtifact: Boolean(arch.isArtifact || spec?.isArtifact),
+        hazardType:
+          spec?.hazardType === 'explosive_censer' ||
+          spec?.hazardType === 'spore_pod' ||
+          spec?.hazardType === 'cursed_pylon'
+            ? spec.hazardType
+            : null,
         dropType: rawDrop,
         bonusDrop: spec?.bonusDrop ?? null,
         ultAmt: spec?.ultAmt || 20,
@@ -1524,25 +1566,111 @@ export class AdventureDestructibles {
       }
     }
 
+    // Interactive Tactical Hazard Detonation on Shatter (`explosive_censer`, `spore_pod`, `cursed_pylon`)
+    if (prop.hazardType && this.adventure) {
+      const living = this.adventure.getLivingMonsters?.() || [];
+      if (prop.hazardType === 'explosive_censer') {
+        vfx?.spawnShockwave?.(prop.x, prop.groundY - 12, 235, '#fb923c', 0.42, true);
+        vfx?.spawnBurst?.(prop.x, prop.groundY - 46, 26, '#fb923c', 290, { upBias: 165, size: 6.5, life: 0.48 });
+        vfx?.spawnBurst?.(prop.x, prop.groundY - 40, 14, '#fef08a', 230, { upBias: 140, size: 5, life: 0.36 });
+        audio?.play?.('meteor_impact', prop.x);
+        renderer?.triggerShake?.(12, 0.24);
+        for (const m of living) {
+          if (!m || m.isDead) continue;
+          const mGy = Number.isFinite(m.groundY) ? m.groundY : m.y;
+          if (Math.abs(m.x - prop.x) <= 265 && (m.isColossalBoss || Math.abs(mGy - prop.groundY) <= 175)) {
+            const rawBlast = m.isColossalBoss
+              ? 360
+              : Math.min(460, 240 + Math.round((m.maxHp || 800) * 0.14));
+            const knockDir = m.x >= prop.x ? 1 : -1;
+            m.takeDamage(rawBlast, hero, true, knockDir * 190, -120);
+            if (!m.isDead && !m.isColossalBoss) {
+              m.stunTimer = Math.max(m.stunTimer || 0, 1.55);
+            }
+            m.addStagger?.(38, hero, game);
+          }
+        }
+      } else if (prop.hazardType === 'spore_pod') {
+        vfx?.spawnShockwave?.(prop.x, prop.groundY - 12, 245, '#34d399', 0.44, true);
+        vfx?.spawnBurst?.(prop.x, prop.groundY - 44, 24, '#34d399', 240, { upBias: 140, size: 6, life: 0.54 });
+        vfx?.spawnBurst?.(prop.x, prop.groundY - 38, 12, '#67e8f9', 180, { upBias: 120, size: 4.5, life: 0.46 });
+        audio?.play?.('ice_shatter', prop.x);
+        renderer?.triggerShake?.(9, 0.20);
+        for (const m of living) {
+          if (!m || m.isDead) continue;
+          const mGy = Number.isFinite(m.groundY) ? m.groundY : m.y;
+          if (Math.abs(m.x - prop.x) <= 275 && (m.isColossalBoss || Math.abs(mGy - prop.groundY) <= 175)) {
+            m._sporeVulnTimer = Math.max(m._sporeVulnTimer || 0, 4.2);
+            m.takeDamage(190, hero, true, (m.x >= prop.x ? 1 : -1) * 120, -60);
+            if (!m.isDead && !m.isColossalBoss) {
+              m.stunTimer = Math.max(m.stunTimer || 0, 1.75);
+            }
+            m.addStagger?.(30, hero, game);
+          }
+        }
+      } else if (prop.hazardType === 'cursed_pylon') {
+        vfx?.spawnShockwave?.(prop.x, prop.groundY - 12, 260, '#c084fc', 0.44, true);
+        vfx?.spawnBurst?.(prop.x, prop.groundY - 48, 22, '#c084fc', 260, { upBias: 155, size: 6, life: 0.46 });
+        audio?.play?.('time_shatter', prop.x);
+        renderer?.triggerShake?.(10, 0.22);
+        this.adventure.progression?.gainSpirit?.(20);
+        for (const m of living) {
+          if (!m || m.isDead) continue;
+          if (Math.abs(m.x - prop.x) <= 560) {
+            m._cursedBuffTimer = 0;
+            m.takeDamage(180, hero, true, (m.x >= prop.x ? 1 : -1) * 130, -70);
+            if (!m.isDead && !m.isColossalBoss) {
+              m.stunTimer = Math.max(m.stunTimer || 0, 1.45);
+            }
+            m.addStagger?.(32, hero, game);
+          }
+        }
+      }
+    }
+
+    const hazardCallout =
+      prop.hazardType === 'explosive_censer'
+        ? 'CENSER BLAST! ENEMIES STUNNED!'
+        : prop.hazardType === 'spore_pod'
+          ? 'SPORE CLOUD! +25% VULN!'
+          : prop.hazardType === 'cursed_pylon'
+            ? 'CURSE PYLON SHATTERED! +SPIRIT'
+            : null;
     vfx?.spawnDamageText?.(
       prop.x,
       prop.groundY - prop.height - 24,
       0,
       true,
-      prop.breakCallout ||
+      hazardCallout ||
+        prop.breakCallout ||
         (prop.isArtifact ? 'ANCIENT ARTIFACT UNSEALED!' : 'SHRINE SHATTERED!'),
-      prop.calloutColor || (prop.isArtifact ? '#fde047' : '#fb923c')
+      prop.hazardType === 'spore_pod'
+        ? '#34d399'
+        : prop.hazardType === 'cursed_pylon'
+          ? '#e879f9'
+          : prop.calloutColor || (prop.isArtifact ? '#fde047' : '#fb923c')
     );
 
     return true;
   }
 
   update(dt, player, game) {
+    const livingForAura = this.adventure?.getLivingMonsters?.() || [];
     for (let i = 0; i < this.props.length; i++) {
       const p = this.props[i];
       p.y = p.groundY;
       if (p.hitShake > 0) p.hitShake = Math.max(0, p.hitShake - dt);
       if (p.hitFlash > 0) p.hitFlash = Math.max(0, p.hitFlash - dt);
+      // Zone III Cursed Buff Pylons empower nearby non-boss monsters until smashed!
+      if (!p.destroyed && p.hazardType === 'cursed_pylon' && livingForAura.length > 0) {
+        for (let mi = 0; mi < livingForAura.length; mi++) {
+          const m = livingForAura[mi];
+          if (!m || m.isDead || m.isColossalBoss) continue;
+          if (Math.abs(m.x - p.x) <= 520) {
+            m._cursedBuffTimer = Math.max(m._cursedBuffTimer || 0, 0.25);
+          }
+        }
+      }
     }
 
     for (let i = this.debris.length - 1; i >= 0; i--) {
@@ -1832,14 +1960,45 @@ export class AdventureDestructibles {
           const pulse = 0.78 + 0.22 * Math.sin(t * 4.5 + p.index);
           drawSteppedPropPixelBloom(
             ctx,
-            p.primaryColor,
+            p.hazardType === 'explosive_censer'
+              ? '#fb923c'
+              : p.hazardType === 'spore_pod'
+                ? '#34d399'
+                : p.hazardType === 'cursed_pylon'
+                  ? '#c084fc'
+                  : p.primaryColor,
             p.accentColor,
             cx,
             gy + 2,
-            p.halfW + 10,
-            8,
-            0.10 * pulse
+            p.halfW + (p.hazardType ? 18 : 10),
+            p.hazardType ? 12 : 8,
+            (p.hazardType ? 0.13 : 0.10) * pulse
           );
+        }
+        // Tactical Hazard visual ground ring & Zone III Cursed Buff Pylon violet tether beams!
+        if (p.hazardType === 'cursed_pylon') {
+          const living = this.adventure?.getLivingMonsters?.() || [];
+          const pPulse = 0.55 + 0.45 * Math.sin(t * 6.0 + p.index);
+          for (let mi = 0; mi < living.length; mi++) {
+            const m = living[mi];
+            if (!m || m.isDead || m.isColossalBoss || Math.abs(m.x - p.x) > 520) continue;
+            const tx = Math.round(m.x);
+            const ty = Math.round((m.groundY || m.y) - 52);
+            const sy = gy - 58;
+            const steps = Math.max(8, Math.min(28, Math.round(Math.hypot(tx - cx, ty - sy) / 16)));
+            for (let s = 1; s < steps; s++) {
+              const f = s / steps;
+              const wave = Math.round(Math.sin(t * 10 + f * 9 + mi) * 4);
+              const bx = Math.round(cx + (tx - cx) * f);
+              const by = Math.round(sy + (ty - sy) * f + wave);
+              ctx.fillStyle = '#0d0f1c';
+              ctx.fillRect(bx - 3, by - 3, 6, 6);
+              ctx.fillStyle = s % 2 === 0 ? '#e879f9' : '#a855f7';
+              ctx.globalAlpha = 0.55 + 0.35 * pPulse;
+              ctx.fillRect(bx - 2, by - 2, 4, 4);
+            }
+            ctx.globalAlpha = 1;
+          }
         }
         continue;
       }
@@ -2052,16 +2211,37 @@ export class AdventureDestructibles {
       ctx.globalAlpha = 1;
     }
 
-    // Subtle Ancient Artifact overhead diamond beacon + damaged mini pixel HP bar
+    // Subtle Ancient Artifact / Tactical Hazard overhead pixel beacon + damaged mini pixel HP bar
     if (!isRefl) {
       if (prop.isArtifact) {
         const ay = by - prop.height - 12 + bob;
         seloutRect(ctx, cx - 5, ay - 5, 10, 10, prop.accentColor, '#ffffff');
+      } else if (prop.hazardType) {
+        const ay = by - prop.height - 12 + bob;
+        const hCol =
+          prop.hazardType === 'explosive_censer'
+            ? '#fb923c'
+            : prop.hazardType === 'spore_pod'
+              ? '#34d399'
+              : '#e879f9';
+        const hCore =
+          prop.hazardType === 'explosive_censer'
+            ? '#fef08a'
+            : prop.hazardType === 'spore_pod'
+              ? '#d1fae5'
+              : '#fae8ff';
+        // Crisp 10x10 Selout pixel tactical hazard diamond emblem (0 text clutter, 0 rotate)
+        pxFill(ctx, cx - 6, ay - 2, 12, 4, SELOUT);
+        pxFill(ctx, cx - 4, ay - 4, 8, 8, SELOUT);
+        pxFill(ctx, cx - 2, ay - 6, 4, 12, SELOUT);
+        pxFill(ctx, cx - 4, ay - 2, 8, 4, hCol);
+        pxFill(ctx, cx - 2, ay - 4, 4, 8, hCol);
+        pxFill(ctx, cx - 1, ay - 1, 2, 2, hCore);
       }
       if (prop.hp < prop.maxHp) {
         const bw = 44;
         const bx = cx - (bw >> 1);
-        const barY = by - prop.height - (prop.isArtifact ? 24 : 10);
+        const barY = by - prop.height - (prop.isArtifact || prop.hazardType ? 24 : 10);
         const ratio = Math.max(0, Math.min(1, prop.hp / prop.maxHp));
         pxFill(ctx, bx - 1, barY - 1, bw + 2, 6, SELOUT);
         pxFill(ctx, bx, barY, bw, 4, '#1e293b');

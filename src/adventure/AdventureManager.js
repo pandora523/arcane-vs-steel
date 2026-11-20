@@ -1,14 +1,15 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps172';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps172';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps172';
+import { Fighter } from '../entities/Fighter.js?v=30fps173';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps173';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps173';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps173';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps172';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps172';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps172';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps172';
+} from './AdventureProgression.js?v=30fps173';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps173';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps173';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps173';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -17,6 +18,51 @@ export const ADVENTURE_DEPTH_MIN_Y = 442;
 export const ADVENTURE_DEPTH_MAX_Y = 680;
 export const ADVENTURE_DEPTH_MID_Y = 561;
 export const DEFAULT_ADVENTURE_CAMPAIGN_ID = 'default';
+
+export const ADVENTURE_RELIC_BOONS = [
+  {
+    id: 'chain_lightning',
+    name: 'CHAIN LIGHTNING STRIKES',
+    shortTag: 'CHAIN',
+    accentHex: '#38bdf8',
+    desc: 'Every 3rd hit arcs lightning to 2 nearby foes for 45% DMG + Stagger.'
+  },
+  {
+    id: 'exploding_dodge',
+    name: 'EXPLODING DODGE AFTERIMAGE',
+    shortTag: 'MIRAGE',
+    accentHex: '#fb923c',
+    desc: 'Evading leaves a solar mirage that detonates for 135 AoE DMG + Stagger.'
+  },
+  {
+    id: 'twin_spirit_echo',
+    name: 'TWIN SPIRIT ECHO',
+    shortTag: 'ECHO',
+    accentHex: '#c084fc',
+    desc: 'Skills unleash a delayed astral echo (+145 AoE DMG, +18 Stagger, +12 Spirit).'
+  },
+  {
+    id: 'executioner_detonation',
+    name: 'EXECUTIONER DETONATION',
+    shortTag: 'EXEC',
+    accentHex: '#f43f5e',
+    desc: 'Executes non-boss foes under 18% HP and detonates slain foes in a crimson blast.'
+  },
+  {
+    id: 'orbiting_aegis_runes',
+    name: 'ORBITING AEGIS RUNES',
+    shortTag: 'AEGIS',
+    accentHex: '#facc15',
+    desc: 'Twin orbiting runes grant +12% DR and zap nearby enemies for 42 DMG + Stagger.'
+  },
+  {
+    id: 'soul_siphon_cleave',
+    name: 'SOUL-SIPHON CLEAVE',
+    shortTag: 'SIPHON',
+    accentHex: '#34d399',
+    desc: '+20% attack damage, +4 Spirit per hit, and restore 3.5% HP on every kill.'
+  }
+];
 
 const CAMPAIGN_MONSTER_KIND_MAP = {
   templar: 'templar',
@@ -507,6 +553,19 @@ export class AdventureManager {
     this.skillSets = new AdventureSkillSets(this);
     this.destructibles = new AdventureDestructibles(this);
     this.isSkillTreeOpen = false;
+    this.isRelicDraftOpen = false;
+    this.relicDraftChoices = [];
+    this.activeRelics = [];
+    this._relicHitCounter = 0;
+    this._relicChainArcs = [];
+    this._relicDodgeMines = [];
+    this._relicSkillEchoes = [];
+    this._relicAegisOrbitT = 0;
+    this._relicAegisZapCd = 0;
+    this._inRelicProc = false;
+    this._perfectDodgeSlowTimer = 0;
+    this._perfectDodgeBannerTimer = 0;
+    this.perfectDodgeCount = 0;
 
     this.activeCampaignId = DEFAULT_ADVENTURE_CAMPAIGN_ID;
     this.activeCampaignPack = null;
@@ -634,6 +693,7 @@ export class AdventureManager {
             owner.game.isMatchOver ||
             owner.game.isPaused ||
             owner.isSkillTreeOpen ||
+            owner.isRelicDraftOpen ||
             !owner._hudStripRect
           ) {
             return;
@@ -703,6 +763,19 @@ export class AdventureManager {
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
     const code = e.code;
+    if (this.isRelicDraftOpen) {
+      if (code === 'Digit1' || code === 'Numpad1') {
+        this.selectRelicBoon(0, true);
+        e.preventDefault();
+      } else if (code === 'Digit2' || code === 'Numpad2') {
+        this.selectRelicBoon(1, true);
+        e.preventDefault();
+      } else if (code === 'Digit3' || code === 'Numpad3') {
+        this.selectRelicBoon(2, true);
+        e.preventDefault();
+      }
+      return;
+    }
     if (code === 'KeyT') {
       if (this.game.isPaused) {
         this.game.setPaused?.(false, false);
@@ -826,6 +899,258 @@ export class AdventureManager {
     this.renderSkillTreeModal();
     this.syncControlDeckUI();
     this.game.updateHUD?.();
+  }
+
+  hasRelic(relicId) {
+    if (!relicId || !Array.isArray(this.activeRelics)) return false;
+    for (let i = 0; i < this.activeRelics.length; i++) {
+      if (this.activeRelics[i]?.id === relicId) return true;
+    }
+    return false;
+  }
+
+  drawRelicIconCanvas(ctx, relicId, accentHex = '#facc15') {
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, 32, 32);
+    // Darkforge octagonal plaque background (100% stepped fillRect, 0 arc/ellipse)
+    ctx.fillStyle = '#070a14';
+    ctx.fillRect(4, 2, 24, 28);
+    ctx.fillRect(2, 4, 28, 24);
+    ctx.fillStyle = '#151c2e';
+    ctx.fillRect(5, 4, 22, 24);
+    ctx.fillRect(4, 5, 24, 22);
+    // Accent corner rivets
+    ctx.fillStyle = accentHex;
+    ctx.fillRect(4, 4, 2, 2);
+    ctx.fillRect(26, 4, 2, 2);
+    ctx.fillRect(4, 26, 2, 2);
+    ctx.fillRect(26, 26, 2, 2);
+
+    const px = (x, y, w, h, col) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(x, y, w, h);
+    };
+
+    if (relicId === 'chain_lightning') {
+      // Jagged storm bolt + spark pips
+      px(15, 5, 6, 3, '#0d0f1c');
+      px(12, 8, 8, 4, '#0d0f1c');
+      px(9, 12, 13, 4, '#0d0f1c');
+      px(13, 16, 8, 4, '#0d0f1c');
+      px(11, 20, 7, 7, '#0d0f1c');
+      px(16, 6, 4, 3, '#38bdf8');
+      px(13, 9, 5, 3, '#7dd3fc');
+      px(10, 12, 11, 3, '#e0f2fe');
+      px(15, 15, 5, 4, '#38bdf8');
+      px(12, 19, 5, 4, '#7dd3fc');
+      px(11, 23, 3, 3, '#ffffff');
+      px(6, 9, 2, 2, '#7dd3fc');
+      px(24, 21, 2, 2, '#7dd3fc');
+    } else if (relicId === 'exploding_dodge') {
+      // Blazing solar mirage burst + ember trail
+      px(6, 15, 6, 2, '#fb923c');
+      px(4, 18, 5, 2, '#f97316');
+      px(13, 7, 6, 18, '#0d0f1c');
+      px(9, 11, 14, 10, '#0d0f1c');
+      px(15, 8, 2, 16, '#f97316');
+      px(10, 14, 12, 4, '#f97316');
+      px(12, 11, 8, 10, '#fb923c');
+      px(14, 13, 4, 6, '#fef08a');
+      px(15, 14, 2, 4, '#ffffff');
+      px(22, 8, 2, 2, '#fde047');
+      px(23, 21, 2, 2, '#fb923c');
+    } else if (relicId === 'twin_spirit_echo') {
+      // Twin concentric astral diamonds (offset spectral echo)
+      px(11, 8, 8, 14, '#7e22ce');
+      px(9, 11, 12, 8, '#a855f7');
+      px(12, 11, 6, 8, '#151c2e');
+      px(16, 6, 8, 16, '#0d0f1c');
+      px(14, 9, 12, 10, '#0d0f1c');
+      px(17, 7, 6, 14, '#c084fc');
+      px(15, 10, 10, 8, '#e879f9');
+      px(18, 11, 4, 6, '#f5d0fe');
+      px(19, 12, 2, 4, '#ffffff');
+    } else if (relicId === 'executioner_detonation') {
+      // Crimson downward execution blade + shockwave shards
+      px(13, 5, 6, 17, '#0d0f1c');
+      px(10, 11, 12, 4, '#0d0f1c');
+      px(14, 6, 4, 4, '#facc15');
+      px(11, 12, 10, 2, '#facc15');
+      px(14, 14, 4, 8, '#f43f5e');
+      px(15, 14, 2, 9, '#fda4af');
+      px(15, 23, 2, 2, '#ffffff');
+      px(7, 21, 3, 2, '#f43f5e');
+      px(22, 21, 3, 2, '#f43f5e');
+      px(9, 25, 4, 2, '#fb7185');
+      px(19, 25, 4, 2, '#fb7185');
+    } else if (relicId === 'orbiting_aegis_runes') {
+      // Central shield crest flanked by twin orbiting golden-cyan runes
+      px(11, 8, 10, 14, '#0d0f1c');
+      px(13, 22, 6, 3, '#0d0f1c');
+      px(12, 9, 8, 12, '#d97706');
+      px(14, 21, 4, 3, '#d97706');
+      px(13, 10, 6, 10, '#facc15');
+      px(15, 12, 2, 6, '#fef9c3');
+      // Twin orbiting runes
+      px(5, 11, 4, 4, '#38bdf8');
+      px(6, 12, 2, 2, '#ffffff');
+      px(23, 17, 4, 4, '#38bdf8');
+      px(24, 18, 2, 2, '#ffffff');
+    } else {
+      // Soul-Siphon Cleave: emerald crescent + rising vitality droplets
+      px(9, 8, 14, 14, '#0d0f1c');
+      px(10, 9, 10, 3, '#10b981');
+      px(16, 10, 5, 10, '#34d399');
+      px(10, 19, 10, 3, '#10b981');
+      px(18, 12, 2, 6, '#a7f3d0');
+      px(9, 14, 4, 4, '#34d399');
+      px(10, 15, 2, 2, '#ecfdf5');
+      px(22, 7, 2, 3, '#6ee7b7');
+      px(21, 22, 2, 3, '#6ee7b7');
+    }
+  }
+
+  openRelicDraft(zoneIdx = this.zoneIndex) {
+    if (!this.active || this.game.isLandingOpen || this.game.isMatchOver) return false;
+    const ownedIds = new Set(this.activeRelics.map((r) => r.id));
+    const pool = ADVENTURE_RELIC_BOONS.filter((b) => !ownedIds.has(b.id));
+    if (!pool.length) return false;
+
+    // Fisher-Yates shuffle on a copy so every run offers fresh synergistic 3-card drafts
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = tmp;
+    }
+    this.relicDraftChoices = shuffled.slice(0, Math.min(3, shuffled.length));
+    this.isRelicDraftOpen = true;
+    this.clearHeldInputs();
+    this.renderRelicDraftModal(zoneIdx);
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      document.getElementById('adv-relic-draft-modal')?.classList?.remove('hidden');
+    }
+    if (this.game.audio) {
+      this.game.audio.play('holy_hit', this.game.leftFighter?.x || 600);
+    }
+    return true;
+  }
+
+  renderRelicDraftModal(zoneIdx = this.zoneIndex) {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const subEl = document.getElementById('adv-relic-draft-sub');
+    if (subEl) {
+      subEl.textContent = `ZONE ${Math.max(1, (zoneIdx | 0) + 1)} CLEARED • CHOOSE 1 SOVEREIGN RELIC BOON (${this.activeRelics.length + 1} / 3)`;
+    }
+    const container = document.getElementById('adv-relic-cards');
+    if (!container || typeof document.createElement !== 'function') return;
+    container.innerHTML = '';
+
+    for (let i = 0; i < this.relicDraftChoices.length; i++) {
+      const boon = this.relicDraftChoices[i];
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'adv-relic-card';
+      card.dataset.relicId = boon.id;
+      if (card.style?.setProperty) {
+        card.style.setProperty('--relic-accent', boon.accentHex);
+      }
+
+      const keyBadge = document.createElement('span');
+      keyBadge.className = 'adv-relic-key';
+      keyBadge.textContent = `[${i + 1}]`;
+
+      const iconWrap = document.createElement('div');
+      iconWrap.className = 'adv-relic-icon-wrap';
+      const cvs = document.createElement('canvas');
+      cvs.width = 32;
+      cvs.height = 32;
+      cvs.className = 'adv-relic-icon-canvas';
+      if (typeof cvs.getContext === 'function') {
+        this.drawRelicIconCanvas(cvs.getContext('2d'), boon.id, boon.accentHex);
+      }
+      iconWrap.appendChild(cvs);
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'adv-relic-name';
+      titleEl.textContent = boon.name;
+
+      const tagEl = document.createElement('div');
+      tagEl.className = 'adv-relic-tag';
+      tagEl.textContent = boon.shortTag;
+
+      const descEl = document.createElement('p');
+      descEl.className = 'adv-relic-desc';
+      descEl.textContent = boon.desc;
+
+      const ctaEl = document.createElement('span');
+      ctaEl.className = 'adv-relic-cta';
+      ctaEl.textContent = 'CLAIM BOON';
+
+      card.appendChild(keyBadge);
+      card.appendChild(iconWrap);
+      card.appendChild(titleEl);
+      card.appendChild(tagEl);
+      card.appendChild(descEl);
+      card.appendChild(ctaEl);
+      card.addEventListener('click', () => {
+        this.selectRelicBoon(i, true);
+      });
+      container.appendChild(card);
+    }
+  }
+
+  selectRelicBoon(indexOrId, playSound = true) {
+    if (!this.isRelicDraftOpen) return null;
+    let chosen = null;
+    if (typeof indexOrId === 'number') {
+      chosen = this.relicDraftChoices[indexOrId] || null;
+    } else if (typeof indexOrId === 'string') {
+      chosen =
+        this.relicDraftChoices.find((b) => b.id === indexOrId) ||
+        ADVENTURE_RELIC_BOONS.find((b) => b.id === indexOrId) ||
+        null;
+    }
+    if (!chosen) return null;
+    if (!this.hasRelic(chosen.id)) {
+      this.activeRelics.push(chosen);
+    }
+    this.isRelicDraftOpen = false;
+    this.relicDraftChoices = [];
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      document.getElementById('adv-relic-draft-modal')?.classList?.add('hidden');
+    }
+    const player = this.game.leftFighter;
+    if (playSound && this.game.audio) {
+      this.game.audio.play('reflect', player?.x || 600);
+    }
+    if (player && this.game.vfx) {
+      this.game.vfx.spawnShockwave(player.x, player.groundY - 12, 130, chosen.accentHex, 0.34, true);
+      this.game.vfx.spawnBurst(player.x, player.y - 68, 18, chosen.accentHex, 210, { upBias: 145, size: 5 });
+      this.game.vfx.spawnDamageText(
+        player.x,
+        player.y - 160,
+        0,
+        true,
+        `RELIC: ${chosen.shortTag}!`,
+        chosen.accentHex
+      );
+    }
+    this.syncControlDeckUI();
+    return chosen;
+  }
+
+  closeRelicDraft(playSound = false) {
+    this.isRelicDraftOpen = false;
+    this.relicDraftChoices = [];
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      document.getElementById('adv-relic-draft-modal')?.classList?.add('hidden');
+    }
+    if (playSound && this.game.audio) {
+      this.game.audio.play('clock_gear', this.game.leftFighter?.x || 600);
+    }
   }
 
   renderSkillTreeModal() {
@@ -1080,7 +1405,7 @@ export class AdventureManager {
   }
 
   triggerAction(actionName) {
-    if (!this.active || this.game.isMatchOver || this.isSkillTreeOpen) return;
+    if (!this.active || this.game.isMatchOver || this.isSkillTreeOpen || this.isRelicDraftOpen) return;
     this.queuedAction = actionName;
     this.queuedActionTimer = actionName === 'attack' ? 0.62 : 0.48;
   }
@@ -1455,7 +1780,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps172') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps173') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -1465,7 +1790,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps172') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps173') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
@@ -1555,10 +1880,24 @@ export class AdventureManager {
     this.bindDOMControls();
     this.active = true;
     this.isSkillTreeOpen = false;
+    this.isRelicDraftOpen = false;
+    this.relicDraftChoices = [];
+    this.activeRelics = [];
+    this._relicHitCounter = 0;
+    this._relicChainArcs = [];
+    this._relicDodgeMines = [];
+    this._relicSkillEchoes = [];
+    this._relicAegisOrbitT = 0;
+    this._relicAegisZapCd = 0;
+    this._inRelicProc = false;
+    this._perfectDodgeSlowTimer = 0;
+    this._perfectDodgeBannerTimer = 0;
+    this.perfectDodgeCount = 0;
     this.manualTargetLock = false;
     this.lockedMonster = null;
     this._hudStripRect = null;
     this.clearHeldInputs();
+    this.closeRelicDraft(false);
     if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
       document.getElementById('victory-overlay')?.classList?.remove('is-defeat-plaque');
       document.getElementById('hud-right')?.classList?.remove?.('hidden');
@@ -1631,6 +1970,11 @@ export class AdventureManager {
     playerFighter._advVaultVelZ = 0;
     playerFighter._advPureDodge = false;
     playerFighter._advPureDodgeTimer = 0;
+    playerFighter._advPerfectDodgeTriggered = false;
+    playerFighter._phantomEmpowerReady = false;
+    playerFighter._phantomEmpowerTimer = 0;
+    playerFighter._advDodgeStartX = null;
+    playerFighter._advDodgeStartGy = null;
     playerFighter._advAiVelX = 0;
     playerFighter._advAiVelZ = 0;
     playerFighter._advAiStuckTimer = 0;
@@ -1661,6 +2005,19 @@ export class AdventureManager {
 
   stopCampaign() {
     this.closeSkillTree(false);
+    this.closeRelicDraft(false);
+    this.activeRelics = [];
+    this.relicDraftChoices = [];
+    this._relicHitCounter = 0;
+    this._relicChainArcs = [];
+    this._relicDodgeMines = [];
+    this._relicSkillEchoes = [];
+    this._relicAegisOrbitT = 0;
+    this._relicAegisZapCd = 0;
+    this._inRelicProc = false;
+    this._perfectDodgeSlowTimer = 0;
+    this._perfectDodgeBannerTimer = 0;
+    this.perfectDodgeCount = 0;
     if (this.game.leftFighter) {
       if (this.game.leftFighter._advPureDodge) {
         this.finishHeroAdventureDodge(this.game.leftFighter, false);
@@ -1673,6 +2030,11 @@ export class AdventureManager {
       this.game.leftFighter._manualSpeedRatio = 0;
       this.game.leftFighter._advPureDodge = false;
       this.game.leftFighter._advPureDodgeTimer = 0;
+      this.game.leftFighter._advPerfectDodgeTriggered = false;
+      this.game.leftFighter._phantomEmpowerReady = false;
+      this.game.leftFighter._phantomEmpowerTimer = 0;
+      this.game.leftFighter._advDodgeStartX = null;
+      this.game.leftFighter._advDodgeStartGy = null;
       this.game.leftFighter._advAiVelX = 0;
       this.game.leftFighter._advAiVelZ = 0;
       this.game.leftFighter._advAiStuckTimer = 0;
@@ -2175,15 +2537,46 @@ export class AdventureManager {
       );
     }
 
-    if (player && !player.isDead && this.game.vfx) {
-      this.game.vfx.spawnDamageText(
-        deadMonster.x,
-        deadMonster.y - 165,
-        0,
-        false,
-        `+${xpGain} XP • +${pts}`,
-        '#fde047'
-      );
+    if (player && !player.isDead) {
+      // Soul-Siphon Cleave Relic Boon: restore 3.5% max HP on every kill
+      if (this.hasRelic('soul_siphon_cleave')) {
+        player.heal(Math.max(12, Math.round(player.maxHp * 0.035)), 'SOUL SIPHON');
+      }
+      // Executioner Detonation Relic Boon: slain non-boss foes detonate in a crimson blast
+      if (this.hasRelic('executioner_detonation') && !deadMonster.isBoss && !this._inRelicProc) {
+        this._inRelicProc = true;
+        try {
+          const blastDmg = Math.min(320, Math.max(55, Math.round((deadMonster.maxHp || 300) * 0.15)));
+          const gx = deadMonster.x;
+          const gy = deadMonster.groundY || deadMonster.y || 561;
+          this.game.vfx?.spawnShockwave?.(gx, gy - 14, 175, '#f43f5e', 0.30, true);
+          this.game.vfx?.spawnBurst?.(gx, gy - 42, 16, '#fb7185', 225, { upBias: 135, size: 5 });
+          this.game.audio?.play?.('fire_hit', gx);
+          for (const m of this.getLivingMonsters()) {
+            if (m === deadMonster || m.isDead) continue;
+            const mGy = m.groundY || m.y || 561;
+            const dist = m.isColossalBoss
+              ? Math.abs((m.anchorX || m.x) - 110 - gx)
+              : Math.hypot(m.x - gx, (mGy - gy) * 1.4);
+            if (dist <= 185) {
+              m.takeDamage(blastDmg, player, true, 120, 0);
+              m.addStagger?.(16, player, this.game);
+            }
+          }
+        } finally {
+          this._inRelicProc = false;
+        }
+      }
+      if (this.game.vfx) {
+        this.game.vfx.spawnDamageText(
+          deadMonster.x,
+          deadMonster.y - 165,
+          0,
+          false,
+          `+${xpGain} XP • +${pts}`,
+          '#fde047'
+        );
+      }
     }
 
     // If the Final Boss Malphas was slain, banish any remaining minions and trigger Campaign Victory!
@@ -2311,6 +2704,9 @@ export class AdventureManager {
     const g = this.game;
     if (this.isSkillTreeOpen) {
       this.closeSkillTree(false);
+    }
+    if (this.isRelicDraftOpen) {
+      this.closeRelicDraft(false);
     }
     if (player) {
       if (player._advPureDodge) {
@@ -2480,6 +2876,22 @@ export class AdventureManager {
 
     if (this.game.audio) {
       this.game.audio.play('reflect', dropBaseX);
+    }
+
+    // Zone-Clear Sovereign Relic Altar (Zones 1, 2, 3) — auto-skipped in simMode / testMode / autoPlay so automated runs never stall!
+    const hasRelicModalDom =
+      typeof document !== 'undefined' &&
+      typeof document.getElementById === 'function' &&
+      Boolean(document.getElementById('adv-relic-draft-modal'));
+    if (
+      zoneIdx < activeZones.length - 1 &&
+      !this.game?.simMode &&
+      !this.game?.testModeUnlimitedHp &&
+      !this.autoPlay &&
+      this.activeRelics.length < 3 &&
+      hasRelicModalDom
+    ) {
+      this.openRelicDraft(zoneIdx);
     }
   }
 
@@ -2679,14 +3091,319 @@ export class AdventureManager {
     });
   }
 
+  isImminentEnemyThreat(player) {
+    if (!player || player.isDead || !this.game) return false;
+    const pGy = Number.isFinite(player.groundY) ? player.groundY : player.y || ADVENTURE_DEPTH_MID_Y;
+    const fighters = this.game.fighters || [];
+    for (let i = 0; i < fighters.length; i++) {
+      const m = fighters[i];
+      if (!m || m.team !== 2 || m.isDead) continue;
+
+      // 1. Floor telegraph rings / seismic / charge zones nearing detonation
+      if (Array.isArray(m.telegraphRings)) {
+        for (let j = 0; j < m.telegraphRings.length; j++) {
+          const r = m.telegraphRings[j];
+          if (!r) continue;
+          const rx = Math.max(66, (r.radius || 76) + 46);
+          const rz = Math.max(54, (r.radius || 76) * 0.72 + 32);
+          const dur = Math.max(0.1, r.maxDuration || r.duration || 0.9);
+          const rem = Number.isFinite(r.timer) ? r.timer : 0.25;
+          const u = 1 - rem / dur;
+          if (Math.abs(player.x - r.x) <= rx && Math.abs(pGy - r.y) <= rz && (rem <= 0.36 || u >= 0.40)) {
+            return true;
+          }
+        }
+      }
+
+      // 2. Active enemy melee / bull-charge / skill attack envelope
+      if (m.state === 'AUTO_ATTACK' || m.state === 'SKILL' || m.state === 'DASH') {
+        const mGy = Number.isFinite(m.groundY) ? m.groundY : m.y || ADVENTURE_DEPTH_MID_Y;
+        const reachX = Math.max(155, (m.attackRange || 112) + 58);
+        if (
+          Math.abs(player.x - m.x) <= reachX &&
+          Math.abs(pGy - mGy) <= 78 &&
+          (!m.didActionFrame || (m.stateTimer || 0) <= 0.45)
+        ) {
+          return true;
+        }
+      }
+
+      // 3. Colossal Boss Malphas lane sweeps / siege grab / seismic slam
+      if (m.isColossalBoss) {
+        const laneGy =
+          m.rakeWarnOnly || m.rakeActive
+            ? m.rakeLaneGy || 561
+            : m.grabWarnOnly || m.grabActive || m.bossAction === 'claw_grab'
+              ? m.grabLaneGy || 561
+              : m.bossAction === 'claw_sweep'
+                ? m.sweepLane === 'upper'
+                  ? 504
+                  : 620
+                : null;
+        if (laneGy !== null && Math.abs(pGy - laneGy) <= 72) {
+          return true;
+        }
+        if (m.fistVisible) {
+          const sdx = Math.abs(player.x - (m.slamTargetX || 8920));
+          const sdz = Math.abs(pGy - (m.slamTargetGy || 561));
+          if (sdx <= 158 && sdz <= 76) return true;
+        }
+      }
+    }
+
+    // 4. Incoming hostile enemy projectiles within close evade window
+    const projs = this.game.vfx?.projectiles;
+    if (Array.isArray(projs)) {
+      for (let i = 0; i < projs.length; i++) {
+        const p = projs[i];
+        if (!p || !p.owner || p.owner.team !== 2) continue;
+        const pGyProj = Number.isFinite(p.owner.groundY) ? p.owner.groundY : p.y;
+        const dxP = player.x - p.x;
+        if (
+          Math.abs(dxP) <= 170 &&
+          Math.abs(pGy - pGyProj) <= 64 &&
+          (Math.abs(dxP) <= 72 || dxP * (p.vx || 0) >= 0)
+        ) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  triggerPerfectDodge(player) {
+    if (!player || player._advPerfectDodgeTriggered) return false;
+    player._advPerfectDodgeTriggered = true;
+    this._perfectDodgeSlowTimer = 0.20;
+    this._perfectDodgeBannerTimer = 1.10;
+    this.perfectDodgeCount = (this.perfectDodgeCount || 0) + 1;
+
+    // Pure non-attacking reward (Suite 17E compliant: 0 projectiles, 0 decoys, 0 damage during dodge!)
+    this.progression.gainSpirit(25);
+    player._phantomEmpowerReady = true;
+    player._phantomEmpowerTimer = 4.5;
+
+    this.game?.audio?.play?.('reflect', player.x);
+    this.game?.vfx?.spawnShockwave?.(player.x, (player.groundY || player.y) - 16, 118, '#67e8f9', 0.26, true);
+    this.game?.vfx?.spawnBurst?.(player.x, player.y - 68, 14, '#fef08a', 190, { upBias: 115, size: 4.5 });
+    this.game?.vfx?.spawnDamageText?.(
+      player.x,
+      player.y - 162,
+      0,
+      true,
+      'PHANTOM EVADE! +25 SP',
+      '#67e8f9'
+    );
+    return true;
+  }
+
+  onPlayerHitMonsterRelicProc(attacker, monster, dealt, isCrit = false) {
+    if (!this.active || !attacker || !monster || this._inRelicProc) return;
+    this._inRelicProc = true;
+    try {
+      // 1. Chain Lightning Strikes: every 3rd hit arcs to up to 2 nearby living monsters
+      if (this.hasRelic('chain_lightning')) {
+        this._relicHitCounter = (this._relicHitCounter || 0) + 1;
+        if (this._relicHitCounter % 3 === 0) {
+          const arcDmg = Math.max(18, Math.round((dealt || 40) * 0.45));
+          const sx = monster.isColossalBoss ? (monster.anchorX || monster.x) - 110 : monster.x;
+          const sy = (monster.groundY || monster.y || 561) - 62;
+          const candidates = this.getLivingMonsters()
+            .filter((m) => m !== monster && !m.isDead)
+            .map((m) => {
+              const mx = m.isColossalBoss ? (m.anchorX || m.x) - 110 : m.x;
+              const my = (m.groundY || m.y || 561) - 62;
+              return { m, mx, my, d: Math.hypot(mx - sx, (my - sy) * 1.3) };
+            })
+            .filter((c) => c.d <= 340)
+            .sort((a, b) => a.d - b.d)
+            .slice(0, 2);
+
+          if (candidates.length > 0) {
+            this.game?.audio?.play?.('raijin_slash', sx);
+            for (const c of candidates) {
+              this._relicChainArcs.push({
+                x1: sx,
+                y1: sy,
+                x2: c.mx,
+                y2: c.my,
+                age: 0,
+                maxLife: 0.24,
+                seed: (sx + c.mx) * 0.07
+              });
+              c.m.takeDamage(arcDmg, attacker, isCrit, 40, 0);
+              c.m.addStagger?.(8, attacker, this.game);
+            }
+          }
+        }
+      }
+
+      // 2. Executioner Detonation: execute non-boss foes below 18% HP immediately
+      if (
+        this.hasRelic('executioner_detonation') &&
+        !monster.isDead &&
+        !monster.isBoss &&
+        monster.hp > 0 &&
+        monster.hp / Math.max(1, monster.maxHp || 1) <= 0.18
+      ) {
+        this.game?.vfx?.spawnDamageText?.(
+          monster.x,
+          (monster.y || monster.groundY || 561) - 138,
+          0,
+          true,
+          'EXECUTED!',
+          '#f43f5e'
+        );
+        monster.takeDamage(monster.hp + 999, attacker, true, 0, 0);
+      }
+    } finally {
+      this._inRelicProc = false;
+    }
+  }
+
+  queueTwinSpiritEcho(player) {
+    if (!player || !this.hasRelic('twin_spirit_echo')) return;
+    const facing = player.facing || 1;
+    const ex = Math.max(
+      90,
+      Math.min(this.getWorldWidth() - 90, player.x + facing * 124)
+    );
+    const egy = Number.isFinite(player.groundY) ? player.groundY : ADVENTURE_DEPTH_MID_Y;
+    this._relicSkillEchoes.push({
+      x: ex,
+      groundY: egy,
+      timer: 0.38,
+      maxTimer: 0.38
+    });
+  }
+
+  updateRelicEffects(dt, player) {
+    // 1. Decay Chain Lightning arcs
+    for (let i = this._relicChainArcs.length - 1; i >= 0; i--) {
+      const arc = this._relicChainArcs[i];
+      arc.age += dt;
+      if (arc.age >= arc.maxLife) {
+        this._relicChainArcs.splice(i, 1);
+      }
+    }
+
+    // 2. Tick Exploding Dodge Mirage mines
+    for (let i = this._relicDodgeMines.length - 1; i >= 0; i--) {
+      const mine = this._relicDodgeMines[i];
+      mine.timer -= dt;
+      if (mine.timer <= 0) {
+        this._relicDodgeMines.splice(i, 1);
+        this.game?.audio?.play?.('fire_hit', mine.x);
+        this.game?.vfx?.spawnShockwave?.(mine.x, mine.groundY - 12, 165, '#fb923c', 0.30, true);
+        this.game?.vfx?.spawnBurst?.(mine.x, mine.groundY - 38, 16, '#fef08a', 220, { upBias: 140, size: 5 });
+        if (player && !player.isDead) {
+          this._inRelicProc = true;
+          try {
+            for (const m of this.getLivingMonsters()) {
+              const mGy = m.groundY || m.y || 561;
+              const dist = m.isColossalBoss
+                ? Math.abs((m.anchorX || m.x) - 110 - mine.x)
+                : Math.hypot(m.x - mine.x, (mGy - mine.groundY) * 1.35);
+              if (dist <= 170) {
+                m.takeDamage(135, player, true, 120, 0);
+                m.addStagger?.(14, player, this.game);
+              }
+            }
+          } finally {
+            this._inRelicProc = false;
+          }
+        }
+      }
+    }
+
+    // 3. Tick Twin Spirit Skill Echoes
+    for (let i = this._relicSkillEchoes.length - 1; i >= 0; i--) {
+      const echo = this._relicSkillEchoes[i];
+      echo.timer -= dt;
+      if (echo.timer <= 0) {
+        this._relicSkillEchoes.splice(i, 1);
+        this.game?.audio?.play?.('holy_hit', echo.x);
+        this.game?.vfx?.spawnShockwave?.(echo.x, echo.groundY - 14, 175, '#c084fc', 0.32, true);
+        this.game?.vfx?.spawnBurst?.(echo.x, echo.groundY - 44, 14, '#e879f9', 205, { upBias: 135, size: 4.5 });
+        this.progression.gainSpirit(12);
+        if (player && !player.isDead) {
+          this._inRelicProc = true;
+          try {
+            for (const m of this.getLivingMonsters()) {
+              const mGy = m.groundY || m.y || 561;
+              const dist = m.isColossalBoss
+                ? Math.abs((m.anchorX || m.x) - 110 - echo.x)
+                : Math.hypot(m.x - echo.x, (mGy - echo.groundY) * 1.35);
+              if (dist <= 185) {
+                m.takeDamage(145, player, true, 90, 0);
+                m.addStagger?.(18, player, this.game);
+              }
+            }
+          } finally {
+            this._inRelicProc = false;
+          }
+        }
+      }
+    }
+
+    // 4. Tick Orbiting Aegis Runes
+    if (this.hasRelic('orbiting_aegis_runes') && player && !player.isDead) {
+      this._relicAegisOrbitT += dt * 3.4;
+      this._relicAegisZapCd = Math.max(0, (this._relicAegisZapCd || 0) - dt);
+      if (this._relicAegisZapCd <= 0) {
+        const pGy = Number.isFinite(player.groundY) ? player.groundY : 561;
+        let closest = null;
+        let closestD = 148;
+        for (const m of this.getLivingMonsters()) {
+          const mGy = m.groundY || m.y || 561;
+          const d = m.isColossalBoss
+            ? Math.abs((m.anchorX || m.x) - 110 - player.x)
+            : Math.hypot(m.x - player.x, (mGy - pGy) * 1.35);
+          if (d < closestD) {
+            closestD = d;
+            closest = m;
+          }
+        }
+        if (closest) {
+          this._relicAegisZapCd = 0.90;
+          const mx = closest.isColossalBoss ? (closest.anchorX || closest.x) - 110 : closest.x;
+          const my = (closest.groundY || closest.y || 561) - 58;
+          this._relicChainArcs.push({
+            x1: player.x,
+            y1: (player.y || pGy) - 56,
+            x2: mx,
+            y2: my,
+            age: 0,
+            maxLife: 0.20,
+            seed: this._relicAegisOrbitT,
+            color: '#facc15'
+          });
+          this._inRelicProc = true;
+          try {
+            closest.takeDamage(42, player, false, 35, 0);
+            closest.addStagger?.(8, player, this.game);
+          } finally {
+            this._inRelicProc = false;
+          }
+        }
+      }
+    }
+  }
+
   finishHeroAdventureDodge(player, returnToIdle = true) {
     if (!player) return;
     const heroId = player.heroId || 'mage';
     const baseHeroId = heroId.endsWith('_ex') ? heroId.slice(0, -3) : heroId;
+    const dodgeOriginX = player._advDodgeStartX;
+    const dodgeOriginGy = player._advDodgeStartGy;
     player._advPureDodge = false;
     player._advDodgeFrameOverride = null;
     player._advDodgeGhostStep = 0;
     player._advDodgeArrivalDone = false;
+    player._advPerfectDodgeTriggered = false;
+    player._advDodgeStartX = null;
+    player._advDodgeStartGy = null;
     player.isInvulnerable = false;
     player.vx = 0;
     player.vy = 0;
@@ -2700,6 +3417,20 @@ export class AdventureManager {
     }
     if (returnToIdle && !player.isDead && player.state === 'DODGE') {
       player.setState('IDLE');
+    }
+    // Exploding Dodge Afterimage Relic Boon: detonates at dodge origin AFTER pure dodge finishes!
+    if (
+      returnToIdle &&
+      !player.isDead &&
+      this.hasRelic('exploding_dodge') &&
+      Number.isFinite(dodgeOriginX)
+    ) {
+      this._relicDodgeMines.push({
+        x: dodgeOriginX,
+        groundY: Number.isFinite(dodgeOriginGy) ? dodgeOriginGy : player.groundY || ADVENTURE_DEPTH_MID_Y,
+        timer: 0.22,
+        maxTimer: 0.22
+      });
     }
   }
 
@@ -2719,6 +3450,9 @@ export class AdventureManager {
     player._advPureDodgeDur = 0.28;
     player._advPureDodgeDirX = evadeX;
     player._advPureDodgeDirZ = evadeZ;
+    player._advDodgeStartX = player.x;
+    player._advDodgeStartGy = Number.isFinite(player.groundY) ? player.groundY : player.y;
+    player._advPerfectDodgeTriggered = false;
     player._advDodgeGhostStep = 0;
     player._advDodgeTrailAccum = 0;
     player._advDodgeArrivalDone = false;
@@ -2784,6 +3518,9 @@ export class AdventureManager {
     player.y = player.groundY;
 
     this.progression.gainSpirit(18);
+    if (this.isImminentEnemyThreat(player)) {
+      this.triggerPerfectDodge(player);
+    }
     const audio = this.game?.audio;
     const vfx = this.game?.vfx;
 
@@ -3016,6 +3753,13 @@ export class AdventureManager {
     const isExHero = heroId.endsWith('_ex');
     const dodgeStyle = heroId === 'warrior_ex' ? 'warrior_ex' : isExHero ? heroId.slice(0, -3) : heroId;
     player._advPureDodgeTimer = (player._advPureDodgeTimer || 0) + dt;
+    if (
+      !player._advPerfectDodgeTriggered &&
+      player._advPureDodgeTimer <= 0.24 &&
+      this.isImminentEnemyThreat(player)
+    ) {
+      this.triggerPerfectDodge(player);
+    }
     const dur = player._advPureDodgeDur || 0.28;
     const u = Math.min(1, player._advPureDodgeTimer / dur);
 
@@ -3744,6 +4488,7 @@ export class AdventureManager {
             player.skillCooldown = this.skillCdMax;
             if (player.stats) player.stats.skillsUsed++;
             player.setState('SKILL');
+            this.queueTwinSpiritEcho(player);
           } else if (
             player.autoCooldown <= 0 &&
             (midHackChain || Math.hypot(avoidVx, avoidVz) < 235) &&
@@ -4133,6 +4878,7 @@ export class AdventureManager {
           player.skillCooldown = this.skillCdMax;
           if (player.stats) player.stats.skillsUsed++;
           player.setState('SKILL');
+          this.queueTwinSpiritEcho(player);
         } else {
           this.queuedAction = null;
           this.game.vfx?.spawnDamageText(
@@ -4385,11 +5131,34 @@ export class AdventureManager {
         return;
       }
     }
+    if (this.isRelicDraftOpen) {
+      if (g.isMatchOver && player?.isDead) {
+        this.closeRelicDraft(false);
+      } else {
+        this.syncControlDeckUI();
+        return;
+      }
+    }
     if (!player) return;
 
+    let effDt = dt;
+    if (this._perfectDodgeSlowTimer > 0) {
+      this._perfectDodgeSlowTimer = Math.max(0, this._perfectDodgeSlowTimer - dt);
+      effDt = dt * 0.28;
+    }
+    if (this._perfectDodgeBannerTimer > 0) {
+      this._perfectDodgeBannerTimer = Math.max(0, this._perfectDodgeBannerTimer - dt);
+    }
+    if (player._phantomEmpowerReady) {
+      player._phantomEmpowerTimer = Math.max(0, (player._phantomEmpowerTimer || 0) - effDt);
+      if (player._phantomEmpowerTimer <= 0) {
+        player._phantomEmpowerReady = false;
+      }
+    }
+
     this.goBlinkTimer += dt;
-    this.progression.update(dt, player);
-    this.skillSets.update(dt, player);
+    this.progression.update(effDt, player);
+    this.skillSets.update(effDt, player);
 
     const activeZones = this.getActiveZones();
     const lastZoneIdx = Math.max(0, activeZones.length - 1);
@@ -4402,8 +5171,8 @@ export class AdventureManager {
 
     // 1. Boss Warning Countdown -> Boil the East Abyssal Throne Rim, then Spawn Colossal Boss (facing -1 LEFT)!
     if (this.bossWarningTimer > 0) {
-      this.bossWarningTimer = Math.max(0, this.bossWarningTimer - dt);
-      this._bossWarnPulseTimer = (this._bossWarnPulseTimer || 0) - dt;
+      this.bossWarningTimer = Math.max(0, this.bossWarningTimer - effDt);
+      this._bossWarnPulseTimer = (this._bossWarnPulseTimer || 0) - effDt;
       if (this._bossWarnPulseTimer <= 0) {
         this._bossWarnPulseTimer = 0.28;
         const gx = bossAnchorX - 70 + Math.round(Math.random() * 145);
@@ -4460,7 +5229,7 @@ export class AdventureManager {
       }
 
       // Check if player walked across the current zone's midTriggerX (SubWave 2) or next zone's triggerX (SubWave 1)
-      if (!this.lockActive) {
+      if (!this.lockActive && !this.isRelicDraftOpen) {
         const curZone = activeZones[this.zoneIndex];
         if (curZone && this.subWave === 1 && player.x >= curZone.midTriggerX) {
           this.spawnZoneEncounter(this.zoneIndex, 2);
@@ -4473,18 +5242,19 @@ export class AdventureManager {
       }
     }
 
-    // 4. Update Pickups, Dimensional Summoning Portals & Monster Plumes
-    this.updatePickups(dt, player);
+    // 4. Update Pickups, Dimensional Summoning Portals, Monster Plumes & Active Sovereign Relic Effects
+    this.updatePickups(effDt, player);
+    this.updateRelicEffects(effDt, player);
     for (let i = this.portals.length - 1; i >= 0; i--) {
       const p = this.portals[i];
-      p.age += dt;
+      p.age += effDt;
       if (p.age >= p.maxLife) {
         this.portals.splice(i, 1);
       }
     }
     for (let i = (this.monsterPlumes?.length || 0) - 1; i >= 0; i--) {
       const plume = this.monsterPlumes[i];
-      plume.age += dt;
+      plume.age += effDt;
       if (plume.age >= plume.maxLife) {
         this.monsterPlumes.splice(i, 1);
       }
@@ -4492,7 +5262,7 @@ export class AdventureManager {
 
     // 5. Update Player (Manual or Auto-Play) + Clamp Arena Walk Bounds + Update Active Monsters
     const nearestMonster = this.getNearestLivingMonster(player);
-    this.processPlayerControls(dt, player, nearestMonster);
+    this.processPlayerControls(effDt, player, nearestMonster);
 
     // Keep player out of the Right-Side Colossal Boss's throne parapet & inside wave locks!
     const colossalAlive = Boolean(
@@ -4510,13 +5280,13 @@ export class AdventureManager {
       : this.lockActive
         ? this.lockMaxX
         : worldW - 80;
-    this.skillSets.endPlayerStep(dt, player, minWalkX, maxWalkX, colossalAlive);
+    this.skillSets.endPlayerStep(effDt, player, minWalkX, maxWalkX, colossalAlive);
     if (player.x < minWalkX) player.x = minWalkX;
     if (player.x > maxWalkX) player.x = maxWalkX;
 
     for (const f of g.fighters) {
       if (!f || f === player) continue;
-      f.update(dt, player, g);
+      f.update(effDt, player, g);
       if (this.lockActive && f.isMonster && !f.isDead && !f.isColossalBoss) {
         const mMin = minWalkX + 18;
         const mMax = Math.max(mMin, maxWalkX - 18);
@@ -4525,8 +5295,8 @@ export class AdventureManager {
       }
     }
 
-    // 6. Update Interactive 2.5D Destructible Terrain, Reliquaries & Ancient Artifacts
-    this.destructibles.update(dt, player, g);
+    // 6. Update Interactive 2.5D Destructible Terrain, Reliquaries & Tactical Hazards
+    this.destructibles.update(effDt, player, g);
 
     this.syncRightHUD();
     this.syncControlDeckUI();
@@ -4925,6 +5695,134 @@ export class AdventureManager {
     this.skillSets.renderForeground(ctx);
     this.destructibles?.renderDebris(ctx, renderer);
 
+    // Sovereign Relic Boons & Phantom Evade Empower World VFX (100% nearest-neighbor stepped pixels, 0 arc/ellipse/rotate)
+    const tWorld = renderer?.time || 0;
+    const playerRef = this.game?.leftFighter;
+    if (playerRef && !playerRef.isDead) {
+      // 1. Phantom Evade Empower golden-cyan aura orbiting the hero until next crit strike
+      if (playerRef._phantomEmpowerReady) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        const px = Math.round(playerRef.x);
+        const py = Math.round((playerRef.y || playerRef.groundY || 561) - 62);
+        const pulse = 0.55 + 0.35 * Math.sin(tWorld * 14);
+        ctx.globalAlpha = pulse;
+        for (let i = 0; i < 4; i++) {
+          const ang = tWorld * 6.5 + i * (Math.PI * 0.5);
+          const ox = Math.round(px + Math.cos(ang) * 34);
+          const oy = Math.round(py + Math.sin(ang) * 18);
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(ox - 4, oy - 4, 8, 8);
+          ctx.fillStyle = i % 2 === 0 ? '#67e8f9' : '#fef08a';
+          ctx.fillRect(ox - 3, oy - 3, 6, 6);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(ox - 1, oy - 1, 2, 2);
+        }
+        ctx.restore();
+      }
+
+      // 2. Orbiting Aegis Runes Relic Boon: twin pixel runes orbiting the hero
+      if (this.hasRelic('orbiting_aegis_runes')) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        const px = Math.round(playerRef.x);
+        const py = Math.round((playerRef.y || playerRef.groundY || 561) - 56);
+        for (let r = 0; r < 2; r++) {
+          const ang = (this._relicAegisOrbitT || 0) + r * Math.PI;
+          const rx = Math.round(px + Math.cos(ang) * 46);
+          const ry = Math.round(py + Math.sin(ang) * 20);
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(rx - 5, ry - 5, 10, 10);
+          ctx.fillStyle = '#facc15';
+          ctx.fillRect(rx - 4, ry - 4, 8, 8);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(rx - 2, ry - 2, 4, 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(rx - 1, ry - 1, 2, 2);
+        }
+        ctx.restore();
+      }
+    }
+
+    // 3. Chain Lightning / Aegis Zap stepped pixel lightning arcs
+    if (this._relicChainArcs?.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const arc of this._relicChainArcs) {
+        const u = Math.max(0, Math.min(1, arc.age / Math.max(0.05, arc.maxLife)));
+        ctx.globalAlpha = Math.max(0, 1 - u);
+        const segs = 7;
+        let prevX = arc.x1;
+        let prevY = arc.y1;
+        const col = arc.color || '#38bdf8';
+        for (let s = 1; s <= segs; s++) {
+          const frac = s / segs;
+          const jag = s === segs ? 0 : Math.sin(arc.seed + s * 4.3 + u * 24) * 14;
+          const nx = arc.x1 + (arc.x2 - arc.x1) * frac;
+          const ny = arc.y1 + (arc.y2 - arc.y1) * frac + jag;
+          const steps = Math.max(2, Math.ceil(Math.hypot(nx - prevX, ny - prevY) / 5));
+          for (let k = 0; k <= steps; k++) {
+            const p = k / steps;
+            const bx = Math.round(prevX + (nx - prevX) * p);
+            const by = Math.round(prevY + (ny - prevY) * p);
+            ctx.fillStyle = col;
+            ctx.fillRect(bx - 2, by - 2, 5, 5);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(bx - 1, by - 1, 2, 2);
+          }
+          prevX = nx;
+          prevY = ny;
+        }
+      }
+      ctx.restore();
+    }
+
+    // 4. Exploding Dodge Afterimage solar mirage beacons
+    if (this._relicDodgeMines?.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const mine of this._relicDodgeMines) {
+        const u = 1 - Math.max(0, mine.timer / Math.max(0.05, mine.maxTimer || 0.22));
+        const mx = Math.round(mine.x);
+        const my = Math.round((mine.groundY || 561) - 34);
+        const r = Math.round(10 + u * 16);
+        ctx.fillStyle = 'rgba(251, 146, 60, 0.35)';
+        ctx.fillRect(mx - r, Math.round((mine.groundY || 561) - 5), r * 2, 10);
+        ctx.fillStyle = '#0d0f1c';
+        ctx.fillRect(mx - 7, my - 7, 14, 14);
+        ctx.fillStyle = '#fb923c';
+        ctx.fillRect(mx - 6, my - 6, 12, 12);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(mx - 3, my - 3, 6, 6);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(mx - 1, my - 1, 2, 2);
+      }
+      ctx.restore();
+    }
+
+    // 5. Twin Spirit Echo pending astral detonation seals
+    if (this._relicSkillEchoes?.length > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const echo of this._relicSkillEchoes) {
+        const u = 1 - Math.max(0, echo.timer / Math.max(0.05, echo.maxTimer || 0.38));
+        const ex = Math.round(echo.x);
+        const ey = Math.round(echo.groundY || 561);
+        const hw = Math.round(28 + u * 44);
+        const hh = Math.round(12 + u * 18);
+        ctx.fillStyle = 'rgba(192, 132, 252, 0.24)';
+        ctx.fillRect(ex - hw, ey - hh, hw * 2, hh * 2);
+        ctx.fillStyle = '#e879f9';
+        ctx.fillRect(ex - hw, ey - hh, hw * 2, 2);
+        ctx.fillRect(ex - hw, ey + hh - 2, hw * 2, 2);
+        ctx.fillRect(ex - hw, ey - hh, 2, hh * 2);
+        ctx.fillRect(ex + hw - 2, ey - hh, 2, hh * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ex - 2, ey - 2, 4, 4);
+      }
+      ctx.restore();
+    }
+
     // Crisp 16-bit Pixel Target-Lock Reticle (`0` emojis, `0` ctx.rotate — Selout corner brackets + 'LOCKED' pixel tag)
     if (!this.autoPlay && this.manualTargetLock && !this.game.isMatchOver) {
       const activeLockedTarget = this.getActiveLockedMonster(this.game.leftFighter);
@@ -5026,21 +5924,23 @@ export class AdventureManager {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Compact 4-Zone Campaign Progress + Solar Spirit & XP RPG Strip (safely below .hud-top!)
+    // 1. Single Sleek Razor-Thin Top-Center RPG Bar (Zone Pips + Spirit + Level/XP using crisp PixelFont!)
     const hudBottomY =
       typeof renderer.getHudBottomY === 'function'
         ? renderer.getHudBottomY()
         : renderer.isMobilePortrait
-          ? 142
+          ? 122
           : renderer.isMobileLandscape
-            ? 84
-            : 104;
-    const stripW = renderer.isMobilePortrait
-      ? Math.min(336, Math.max(244, Math.round(w * 0.80)))
-      : Math.min(renderer.isMobileLandscape ? 290 : 360, Math.round(w * 0.48));
-    const stripH = renderer.isMobileLandscape ? 25 : 29;
+            ? 70
+            : 82;
+    const isPortrait = Boolean(renderer.isMobilePortrait);
+    const isLandscapeMob = Boolean(renderer.isMobileLandscape);
+    const stripW = isPortrait
+      ? Math.min(342, Math.max(276, Math.round(w * 0.88)))
+      : Math.min(isLandscapeMob ? 364 : 426, Math.round(w * 0.50));
+    const stripH = isLandscapeMob ? 18 : 20;
     const stripX = Math.round((w - stripW) * 0.5);
-    const stripY = Math.round(hudBottomY + (renderer.isMobilePortrait ? 8 : 6));
+    const stripY = Math.round(hudBottomY + (isPortrait ? 5 : 4));
     if (!this._hudStripRect) {
       this._hudStripRect = { x: stripX, y: stripY, w: stripW, h: stripH };
     } else {
@@ -5049,165 +5949,288 @@ export class AdventureManager {
       this._hudStripRect.w = stripW;
       this._hudStripRect.h = stripH;
     }
-    ctx.fillStyle = 'rgba(6, 9, 18, 0.86)';
-    ctx.fillRect(stripX, stripY, stripW, stripH);
-    ctx.strokeStyle = '#d4af37';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(stripX, stripY, stripW, stripH);
 
+    const hasSpAlert = this.progression.skillPoints > 0;
+    const spPulse = hasSpAlert ? 0.5 + 0.5 * Math.sin(t * 7.5) : 0;
+
+    // Beveled darkforge chassis
+    ctx.fillStyle = '#05070e';
+    ctx.fillRect(stripX - 1, stripY - 1, stripW + 2, stripH + 2);
+    ctx.fillStyle = 'rgba(7, 11, 22, 0.90)';
+    ctx.fillRect(stripX, stripY, stripW, stripH);
+    ctx.fillStyle = hasSpAlert && spPulse > 0.5 ? '#fde047' : '#d4af37';
+    ctx.fillRect(stripX, stripY, stripW, 1);
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(stripX, stripY + stripH - 1, stripW, 1);
+    ctx.fillStyle = '#d4af37';
+    ctx.fillRect(stripX, stripY, 2, 2);
+    ctx.fillRect(stripX + stripW - 2, stripY, 2, 2);
+    ctx.fillRect(stripX, stripY + stripH - 2, 2, 2);
+    ctx.fillRect(stripX + stripW - 2, stripY + stripH - 2, 2, 2);
+
+    const innerY = stripY + 3;
+    const innerH = stripH - 6;
+    const textCy = innerY + Math.floor(innerH * 0.5);
+
+    // Left Section (~33%): Compact Zone Progress Pips (`Z1 Z2 Z3 BOSS`)
     const activeZones = this.getActiveZones();
     const zCount = Math.max(1, activeZones.length);
     const hasBoss = this.getBossConfig().enabled !== false;
-    const segW = Math.floor((stripW - (8 + (zCount - 1) * 2)) / zCount);
-    const segH = renderer.isMobileLandscape ? 9 : 10;
+    const zoneBlockW = Math.min(136, Math.max(98, Math.round(stripW * 0.33)));
+    const segW = Math.floor((zoneBlockW - (zCount - 1) * 2) / zCount);
     for (let i = 0; i < zCount; i++) {
       const sx = stripX + 4 + i * (segW + 2);
-      const sy = stripY + 3;
       const cleared = this.zonesCleared[i];
       const current = this.zoneIndex === i;
       const isBossSeg = i === zCount - 1 && hasBoss;
       ctx.fillStyle = cleared
-        ? '#22c55e'
+        ? '#16a34a'
         : current
           ? isBossSeg
-            ? '#ef4444'
-            : '#fb923c'
-          : '#1e293b';
-      ctx.fillRect(sx, sy, segW, segH);
-      ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = current || cleared ? '#ffffff' : '#94a3b8';
-      ctx.fillText(isBossSeg ? 'BOSS' : `Z${i + 1}`, sx + Math.floor(segW * 0.5), sy + 8);
+            ? '#dc2626'
+            : '#ea580c'
+          : '#111827';
+      ctx.fillRect(sx, innerY, segW, innerH);
+      if (current || cleared) {
+        ctx.fillStyle = cleared ? '#4ade80' : isBossSeg ? '#f87171' : '#fdba74';
+        ctx.fillRect(sx, innerY, segW, 1);
+      }
+      const zLabel = isBossSeg ? (segW >= 26 ? 'BOSS' : 'B') : `Z${i + 1}`;
+      PixelFont.drawCentered(
+        ctx,
+        zLabel,
+        sx + Math.floor(segW * 0.5),
+        textCy,
+        1,
+        current || cleared ? '#ffffff' : '#64748b',
+        null,
+        true
+      );
     }
 
-    // Bottom sub-row inside strip: Left = Solar Spirit (`SPIRIT`), Right = Level XP (`LV.X`)
-    const subY = stripY + segH + 6;
-    const halfBarW = Math.floor((stripW - 14) * 0.5);
+    // Divider 1
+    const div1X = stripX + 4 + zoneBlockW + 3;
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(div1X, innerY, 1, innerH);
+
+    // Middle & Right Sections: Solar Spirit Bar + Level / XP / +SP Bar (clickable to open Skill Tree)
+    const remW = stripW - (div1X - stripX) - 9;
+    const spBarW = Math.floor((remW - 5) * 0.48);
+    const xpBarW = remW - 5 - spBarW;
+    const spX = div1X + 4;
+    const xpX = spX + spBarW + 5;
+
     const spRatio = Math.max(0, Math.min(1, this.progression.spirit / this.progression.maxSpirit));
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(spX, innerY, spBarW, innerH);
+    const spFillW = Math.round(spBarW * spRatio);
+    if (spFillW > 0) {
+      ctx.fillStyle = '#9333ea';
+      ctx.fillRect(spX, innerY, spFillW, innerH);
+      ctx.fillStyle = '#d8b4fe';
+      ctx.fillRect(spX, innerY, spFillW, 2);
+    }
+    PixelFont.drawCentered(
+      ctx,
+      `SP ${Math.floor(this.progression.spirit)}`,
+      spX + Math.floor(spBarW * 0.5),
+      textCy,
+      1,
+      '#f8fafc',
+      '#e9d5ff',
+      true
+    );
+
     const xpRatio =
       this.progression.level >= this.progression.maxLevel
         ? 1
         : Math.max(0, Math.min(1, this.progression.xp / Math.max(1, this.progression.xpToNext)));
-
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(stripX + 4, subY, halfBarW, 7);
-    ctx.fillStyle = '#c084fc';
-    ctx.fillRect(stripX + 4, subY, Math.round(halfBarW * spRatio), 7);
-
-    const xpX = stripX + 8 + halfBarW;
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(xpX, subY, halfBarW, 7);
-    ctx.fillStyle = '#facc15';
-    ctx.fillRect(xpX, subY, Math.round(halfBarW * xpRatio), 7);
-
-    ctx.font = '6px "ArcanePixel", "Press Start 2P", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'left';
-    ctx.fillText(`SPIRIT ${Math.floor(this.progression.spirit)}`, stripX + 6, subY + 6);
-    ctx.textAlign = 'right';
-    ctx.fillText(
-      `LV.${this.progression.level}${this.progression.skillPoints > 0 ? ` (+${this.progression.skillPoints}SP)` : ''}`,
-      xpX + halfBarW - 2,
-      subY + 6
+    ctx.fillRect(xpX, innerY, xpBarW, innerH);
+    const xpFillW = Math.round(xpBarW * xpRatio);
+    if (xpFillW > 0) {
+      ctx.fillStyle = '#ca8a04';
+      ctx.fillRect(xpX, innerY, xpFillW, innerH);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(xpX, innerY, xpFillW, 2);
+    }
+    const lvLabel =
+      this.progression.skillPoints > 0
+        ? `LV${this.progression.level} +${this.progression.skillPoints}SP`
+        : `LV${this.progression.level} [T]`;
+    PixelFont.drawCentered(
+      ctx,
+      lvLabel,
+      xpX + Math.floor(xpBarW * 0.5),
+      textCy,
+      1,
+      hasSpAlert ? '#fef08a' : '#f8fafc',
+      '#ffffff',
+      true
     );
 
-    // 2. Classic Flashing "GO!" Arcade Advance Prompt with Crisp Pixel Arrow (zero overflow!)
-    if (this.goPromptActive && !this.game.isMatchOver) {
-      const blink = Math.sin(t * 9.5) > -0.25;
-      if (blink) {
-        const promptText = String(this.goPromptText || 'GO!');
-        let goFontPx = renderer.isMobilePortrait ? 9 : renderer.isMobileLandscape ? 10 : 11;
-        if (promptText.length > 16 && goFontPx > 9) {
-          goFontPx = 9;
-        }
-        ctx.font = `${goFontPx}px "ArcanePixel", "Press Start 2P", monospace`;
-        const measuredW = ctx.measureText?.(promptText)?.width || 0;
-        const estTextW = Math.max(measuredW, promptText.length * goFontPx * 0.94);
-        const arrowW = 24;
-        const boxW = Math.max(168, Math.min(252, Math.ceil(estTextW + arrowW + 26)));
-        const boxH = 38;
-        const gy = Math.max(
-          stripY + stripH + 34,
-          Math.round(h * (renderer.isMobileLandscape ? 0.36 : 0.38))
+    // Compact Active Sovereign Relic Pills right beneath the slim RPG strip (only when boons are claimed)
+    let belowStripY = stripY + stripH + 4;
+    if (this.activeRelics?.length > 0) {
+      const pillH = 12;
+      const pillGap = 4;
+      const pillWidths = this.activeRelics.map((r) =>
+        Math.max(40, PixelFont.measureWidth(r.shortTag, 1) + 10)
+      );
+      const totalRelicW =
+        pillWidths.reduce((a, b) => a + b, 0) + pillGap * (this.activeRelics.length - 1);
+      let rx = Math.round((w - totalRelicW) * 0.5);
+      for (let i = 0; i < this.activeRelics.length; i++) {
+        const relic = this.activeRelics[i];
+        const pw = pillWidths[i];
+        ctx.fillStyle = 'rgba(7, 10, 20, 0.88)';
+        ctx.fillRect(rx, belowStripY, pw, pillH);
+        ctx.fillStyle = relic.accentHex || '#facc15';
+        ctx.fillRect(rx, belowStripY, pw, 1);
+        ctx.fillRect(rx, belowStripY + pillH - 1, pw, 1);
+        PixelFont.drawCentered(
+          ctx,
+          relic.shortTag,
+          rx + Math.floor(pw * 0.5),
+          belowStripY + 6,
+          1,
+          relic.accentHex || '#fef08a',
+          '#ffffff',
+          true
         );
-        const shift = Math.round(Math.sin(t * 8.0) * 5);
-        const rightPad = renderer.isMobilePortrait ? 14 : renderer.isMobileLandscape ? 124 : 80;
-        const boxX = Math.max(
-          12,
-          Math.min(Math.max(12, w - boxW - 12), w - rightPad - boxW + shift)
-        );
-        const boxY = gy - Math.floor(boxH * 0.5);
-
-        ctx.fillStyle = 'rgba(9, 12, 22, 0.90)';
-        ctx.fillRect(boxX, boxY, boxW, boxH);
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-        const textRegionW = boxW - arrowW - 12;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#fef08a';
-        ctx.fillText(promptText, boxX + 6 + Math.floor(textRegionW * 0.5), gy + 4);
-
-        // Crisp 16-bit pixel arrow (zero OS dingbat glyph)
-        const ax = boxX + boxW - arrowW - 8;
-        const ay = gy - 2;
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(ax, ay - 2, 12, 4);
-        ctx.fillRect(ax + 10, ay - 6, 4, 12);
-        ctx.fillRect(ax + 14, ay - 4, 4, 8);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(ax + 18, ay - 2, 4, 4);
+        rx += pw + pillGap;
       }
+      belowStripY += pillH + 4;
     }
 
-    // 3. Dramatic Colossal Boss Approaching Arcade Alert Banner with Pixel Hazard Crests
+    // 1.5. Crisp PixelFont "PHANTOM EVADE!" Slow-Mo Flash Ribbon
+    if (this._perfectDodgeBannerTimer > 0 && !this.game.isMatchOver) {
+      const pAlpha = Math.min(1, this._perfectDodgeBannerTimer * 2.5);
+      const pText = isPortrait ? 'PHANTOM EVADE! 1.45X CRIT' : 'PHANTOM EVADE! +25 SP • 1.45X CRIT';
+      const pSz = isPortrait ? 1 : 2;
+      const pTextW = PixelFont.measureWidth(pText, pSz);
+      const pW = Math.min(w - 24, pTextW + 26);
+      const pH = pSz === 2 ? 24 : 18;
+      const pX = Math.round((w - pW) * 0.5);
+      const pY = Math.round(belowStripY + 2);
+      ctx.save();
+      ctx.globalAlpha = pAlpha;
+      ctx.fillStyle = 'rgba(6, 16, 30, 0.90)';
+      ctx.fillRect(pX, pY, pW, pH);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(pX, pY, pW, 2);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(pX, pY + pH - 2, pW, 2);
+      PixelFont.drawCentered(ctx, pText, Math.round(w * 0.5), pY + Math.floor(pH * 0.5), pSz, '#67e8f9', '#ffffff', true);
+      ctx.restore();
+    }
+
+    // 2. Sleek Forged-Gold PixelFont "GO!" Arcade Advance Ribbon (zero chunky yellow box!)
+    if (this.goPromptActive && !this.game.isMatchOver) {
+      const pulseAlpha = 0.74 + 0.26 * Math.sin(t * 8.5);
+      ctx.save();
+      ctx.globalAlpha = pulseAlpha;
+      const promptText = String(this.goPromptText || 'GO!').toUpperCase();
+      const goPixSz = !isPortrait && PixelFont.measureWidth(promptText, 2) + 46 <= 246 ? 2 : 1;
+      const textW = PixelFont.measureWidth(promptText, goPixSz);
+      const chevW = 24;
+      const ribW = Math.max(122, Math.min(Math.min(256, w - 28), textW + chevW + 26));
+      const ribH = goPixSz === 2 ? 28 : 22;
+      const gy = Math.max(
+        belowStripY + 24,
+        Math.round(h * (isLandscapeMob ? 0.34 : 0.35))
+      );
+      const shift = Math.round(Math.sin(t * 8.0) * 5);
+      const rightPad = isPortrait ? 12 : isLandscapeMob ? 98 : 48;
+      const ribX = Math.max(
+        12,
+        Math.min(Math.max(12, w - ribW - 12), w - rightPad - ribW + shift)
+      );
+      const ribY = gy - Math.floor(ribH * 0.5);
+
+      // Stepped beveled darkforge gold ribbon
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(ribX + 2, ribY - 1, ribW - 4, ribH + 2);
+      ctx.fillRect(ribX - 1, ribY + 2, ribW + 2, ribH - 4);
+      ctx.fillStyle = 'rgba(11, 15, 28, 0.92)';
+      ctx.fillRect(ribX, ribY, ribW, ribH);
+      // Forged gold top & bottom bevel trims
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(ribX + 2, ribY, ribW - 4, 2);
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(ribX + 2, ribY + ribH - 2, ribW - 4, 2);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(ribX, ribY + 3, 2, ribH - 6);
+      ctx.fillRect(ribX + ribW - 2, ribY + 3, 2, ribH - 6);
+
+      const textCx = ribX + 10 + Math.floor((ribW - chevW - 14) * 0.5);
+      PixelFont.drawCentered(ctx, promptText, textCx, gy, goPixSz, '#fde047', '#ffffff', true);
+
+      // Animated twin stepped pixel chevrons (>>)
+      const ax = ribX + ribW - chevW - 4;
+      const drawChevron = (cx, cy, col) => {
+        ctx.fillStyle = col;
+        ctx.fillRect(cx, cy - 5, 3, 2);
+        ctx.fillRect(cx + 2, cy - 3, 3, 2);
+        ctx.fillRect(cx + 4, cy - 1, 3, 2);
+        ctx.fillRect(cx + 2, cy + 1, 3, 2);
+        ctx.fillRect(cx, cy + 3, 3, 2);
+      };
+      const cPulse = Math.floor(t * 7) % 2 === 0;
+      drawChevron(ax, gy, cPulse ? '#facc15' : '#fef08a');
+      drawChevron(ax + 9, gy, cPulse ? '#ffffff' : '#facc15');
+      ctx.restore();
+    }
+
+    // 3. Forged Crimson-Gold PixelFont Boss Approaching Arcade Ribbon
     if (this.bossWarningTimer > 0) {
-      const flash = Math.abs(Math.sin(t * 12));
-      const by = Math.max(stripY + stripH + 46, Math.round(h * 0.36));
-      const isNarrowWarn = w < 560;
-      const banH = isNarrowWarn ? 64 : 60;
+      const flash = Math.abs(Math.sin(t * 11));
+      const by = Math.max(belowStripY + 34, Math.round(h * 0.34));
+      const bossWarnName = (this.getBossConfig().name || 'BEHEMOTH MALPHAS').toUpperCase();
+      const singleLine = `WARNING! ${bossWarnName} RISES!`;
+      const canSingleLine2 = PixelFont.measureWidth(singleLine, 2) + 64 <= w - 24;
+      const isTwoLine = !canSingleLine2 && w < 620;
+      const banH = isTwoLine ? 46 : 42;
+      const banW = Math.min(w - 20, Math.max(260, Math.round(w * (isPortrait ? 0.94 : 0.78))));
+      const banX = Math.round((w - banW) * 0.5);
       const banTop = by - Math.floor(banH * 0.5);
-      ctx.fillStyle = `rgba(69, 10, 10, ${(0.78 + flash * 0.16).toFixed(3)})`;
-      ctx.fillRect(0, banTop, w, banH);
+
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(banX - 2, banTop - 2, banW + 4, banH + 4);
+      ctx.fillStyle = `rgba(48, 8, 12, ${(0.84 + flash * 0.12).toFixed(3)})`;
+      ctx.fillRect(banX, banTop, banW, banH);
+      // Crimson + gold dual ribbon rails
       ctx.fillStyle = '#ef4444';
-      ctx.fillRect(0, banTop, w, 3);
-      ctx.fillRect(0, banTop + banH - 3, w, 3);
+      ctx.fillRect(banX, banTop, banW, 3);
+      ctx.fillRect(banX, banTop + banH - 3, banW, 3);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(banX + 6, banTop + 4, banW - 12, 1);
+      ctx.fillRect(banX + 6, banTop + banH - 5, banW - 12, 1);
 
       const drawHazardCrest = (cx, cy) => {
+        ctx.fillStyle = '#05070e';
+        ctx.fillRect(cx - 3, cy - 8, 6, 16);
+        ctx.fillRect(cx - 7, cy - 4, 14, 8);
         ctx.fillStyle = '#ef4444';
-        ctx.fillRect(cx - 2, cy - 8, 4, 16);
-        ctx.fillRect(cx - 6, cy - 4, 12, 8);
-        ctx.fillRect(cx - 8, cy - 2, 16, 4);
+        ctx.fillRect(cx - 2, cy - 7, 4, 14);
+        ctx.fillRect(cx - 6, cy - 3, 12, 6);
         ctx.fillStyle = '#fef08a';
-        ctx.fillRect(cx - 1, cy - 5, 2, 6);
-        ctx.fillRect(cx - 1, cy + 3, 2, 2);
+        ctx.fillRect(cx - 1, cy - 4, 2, 5);
+        ctx.fillRect(cx - 1, cy + 2, 2, 2);
       };
 
-      const bossWarnName = (this.getBossConfig().name || 'BEHEMOTH MALPHAS').toUpperCase();
       const centerX = Math.round(w * 0.5);
-      if (isNarrowWarn) {
-        const crestOffset = Math.min(Math.round(w * 0.45), Math.max(120, Math.floor(w * 0.5) - 18));
-        drawHazardCrest(centerX - crestOffset, by);
-        drawHazardCrest(centerX + crestOffset, by);
+      drawHazardCrest(banX + 18, by);
+      drawHazardCrest(banX + banW - 18, by);
 
-        const warnPx = bossWarnName.length > 22 || w < 375 ? 7 : 9;
-        ctx.font = `${warnPx}px "ArcanePixel", "Press Start 2P", monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#fef08a';
-        ctx.fillText(`WARNING! ${bossWarnName}`, centerX, by - 4);
-        ctx.fillText('RISES ON THE EAST!', centerX, by + 13);
+      if (isTwoLine) {
+        const line1 = `WARNING! ${bossWarnName}`;
+        const l1Sz = PixelFont.measureWidth(line1, 2) + 46 <= banW ? 2 : 1;
+        PixelFont.drawCentered(ctx, line1, centerX, by - 7, l1Sz, '#fde047', '#ffffff', true);
+        PixelFont.drawCentered(ctx, 'COLOSSAL SOVEREIGN RISES!', centerX, by + 9, 1, '#fca5a5', '#ffffff', true);
       } else {
-        const crestOffset = renderer.isMobile ? Math.min(Math.round(w * 0.45), 248) : Math.min(Math.round(w * 0.45), 292);
-        drawHazardCrest(centerX - crestOffset, by);
-        drawHazardCrest(centerX + crestOffset, by);
-
-        const baseWarnPx = w < 760 ? 10 : renderer.isMobile ? 10 : 14;
-        const warnPx = bossWarnName.length > 22 ? Math.min(baseWarnPx, 11) : baseWarnPx;
-        ctx.font = `${warnPx}px "ArcanePixel", "Press Start 2P", monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#fef08a';
-        ctx.fillText(`WARNING! ${bossWarnName} RISES ON THE EAST!`, centerX, by + 5);
+        const wSz = canSingleLine2 ? 2 : 1;
+        PixelFont.drawCentered(ctx, singleLine, centerX, by, wSz, '#fde047', '#ffffff', true);
       }
     }
 

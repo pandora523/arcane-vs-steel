@@ -745,12 +745,15 @@ export class AdventureProgression {
       return player._advOrig.heal(scaledAmt, label);
     };
 
-    // Wrap Adventure Incoming Damage for Solar Ward Armor Reduction + Flame Ward Spirit Counter!
+    // Wrap Adventure Incoming Damage for Solar Ward Armor Reduction + Cursed Pylon Buff + Aegis Runes Relic!
     player.takeDamage = (amount, attacker, isCrit = false, knockX = 95, knockY = 0) => {
       if (player.isDead || player.isBenched) return;
       const curStats = this.getComputedStats();
       const wasDeflecting = Boolean(player.isDeflecting);
-      const mitigated = Math.max(1, Math.round(amount * (1 - curStats.wardReduction)));
+      const cursedMult = attacker && (attacker._cursedBuffTimer || 0) > 0 ? 1.22 : 1.0;
+      const aegisRelicDr = this.adventure?.hasRelic?.('orbiting_aegis_runes') ? 0.12 : 0;
+      const totalDr = Math.min(0.56, curStats.wardReduction + aegisRelicDr);
+      const mitigated = Math.max(1, Math.round(amount * cursedMult * (1 - totalDr)));
       player._advOrig.takeDamage(mitigated, attacker, isCrit, knockX, knockY);
       if (wasDeflecting) {
         this.gainSpirit(18);
@@ -875,9 +878,17 @@ export class AdventureProgression {
       mult = stats.skillMult;
     }
 
-    // Colossal Boss Exposed Heart-Core Punish Bonus (+45% damage during Vulnerable Core Slump!)
-    if (monster?.isBoss && (monster.vulnerableTimer || 0) > 0) {
+    // Warden / Colossal Boss Guard-Break (+55% DMG) or Exposed Heart-Core (+45% DMG) + Starwood Spore Pod (+25% DMG)
+    if ((monster?.staggerBreakTimer || 0) > 0) {
+      mult *= 1.55;
+    } else if (monster?.isBoss && (monster.vulnerableTimer || 0) > 0) {
       mult *= 1.45;
+    }
+    if ((monster?._sporeVulnTimer || 0) > 0) {
+      mult *= 1.25;
+    }
+    if (monster?._isAdvCleaveSplash && this.adventure?.hasRelic?.('soul_siphon_cleave')) {
+      mult *= 1.20;
     }
     return Math.max(4, Math.round(rawAmount * mult));
   }
@@ -889,8 +900,9 @@ export class AdventureProgression {
     this.comboTimer = 3.0;
 
     const st = player.state;
+    const relicSpiritBonus = this.adventure?.hasRelic?.('soul_siphon_cleave') ? 4 : 0;
     if (st === 'AUTO_ATTACK' || st === 'IDLE' || st === 'WALK' || st === 'CROUCH' || st === 'JUMP') {
-      this.gainSpirit(stats.basicSpiritGain);
+      this.gainSpirit(stats.basicSpiritGain + relicSpiritBonus);
       if (player.skillCooldown > 0) {
         player.skillCooldown = Math.max(0, player.skillCooldown - stats.basicSkillCdShave);
       }

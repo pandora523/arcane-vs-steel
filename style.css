@@ -7833,3 +7833,647 @@ html[data-crt="arcade"] #game-canvas {
     display: none;
   }
 }
+
+/* =========================================================================
+   ADVENTURE MODE HD-2D UI DECLUTTER, DESKTOP RPG HOTBAR, SLIM TOP/BOSS HUD,
+   STAGGER GAUGE & SOVEREIGN RELIC ALTAR MODAL
+   ========================================================================= */
+
+/* 1. Slim & Unified Top HUD in Adventure Mode (Versus Mode .hud-top 100% untouched) */
+#app.is-adventure-active .hud-top {
+  padding-top: max(4px, env(safe-area-inset-top));
+  padding-bottom: 2px;
+  gap: 8px;
+}
+
+#app.is-adventure-active .hud-top .portrait-frame {
+  width: 38px;
+  height: 38px;
+  border-width: 1.5px;
+}
+
+#app.is-adventure-active .hud-top .bars-column {
+  gap: 2px;
+}
+
+#app.is-adventure-active .hud-top .plate-header {
+  margin-bottom: 0;
+}
+
+#app.is-adventure-active .hud-top .fighter-name {
+  font-size: clamp(0.38rem, 0.9vw, 0.48rem);
+}
+
+#app.is-adventure-active .hud-top .hp-num {
+  font-size: clamp(0.34rem, 0.8vw, 0.44rem);
+}
+
+#app.is-adventure-active .hud-top .hp-frame {
+  height: 12px;
+}
+
+#app.is-adventure-active .hud-top .sub-row {
+  gap: 4px;
+}
+
+#app.is-adventure-active .hud-top .ult-frame,
+#app.is-adventure-active .hud-top .cd-box {
+  height: 13px;
+}
+
+#app.is-adventure-active .hud-top .ult-label,
+#app.is-adventure-active .hud-top .cd-label {
+  font-size: 0.33rem;
+}
+
+#app.is-adventure-active .hud-top .finisher-frame {
+  height: 11px;
+}
+
+#app.is-adventure-active .hud-top .finisher-label {
+  font-size: 0.31rem;
+}
+
+#app.is-adventure-active .center-emblem {
+  gap: 2px;
+  padding: 2px 6px;
+}
+
+#app.is-adventure-active .hud-mode-tag {
+  font-size: 0.33rem;
+  padding: 1px 6px;
+}
+
+#app.is-adventure-active .hud-stage-tag {
+  font-size: 0.31rem;
+}
+
+#app.is-adventure-active .hud-pause-btn {
+  padding: 2px 8px;
+  font-size: 0.30rem;
+}
+
+/* 2. Slimmed Colossal Boss Raid Plaque + Golden Stagger / Guard-Break Gauge */
+.adv-boss-raid-hud {
+  width: clamp(220px, 31vw, 372px);
+  padding: 5px 8px;
+  gap: 7px;
+}
+
+.adv-boss-raid-portrait-frame {
+  width: 38px;
+  height: 38px;
+}
+
+.adv-boss-raid-track {
+  height: 11px;
+}
+
+.adv-boss-stagger-track {
+  position: relative;
+  height: 4px;
+  background: #070914;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  outline: 1px solid #000;
+  overflow: hidden;
+}
+
+.adv-boss-stagger-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ca8a04 0%, #facc15 65%, #fef08a 100%);
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.55);
+  transition: width 0.08s linear;
+}
+
+.adv-boss-raid-hud.is-guard-broken {
+  border-color: #67e8f9;
+  box-shadow:
+    inset 0 1px 0 rgba(224, 242, 254, 0.52),
+    0 0 18px rgba(56, 189, 248, 0.72),
+    0 6px 20px rgba(0, 0, 0, 0.92);
+}
+
+.adv-boss-raid-hud.is-guard-broken .adv-boss-stagger-fill {
+  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 55%, #ecfeff 100%);
+  box-shadow: 0 0 8px rgba(103, 232, 249, 0.9);
+}
+
+.adv-boss-raid-hud.is-guard-broken .adv-boss-raid-phase {
+  color: #67e8f9;
+}
+
+/* 3. Desktop PC Ergonomics (>= 901px wide & >= 541px tall, non-mobile):
+      - Hide virtual touch joystick via CSS (DOM ID preserved!)
+      - Restyle #adv-skill-cluster into a sleek bottom-center Action-RPG Hotbar */
+@media (min-width: 901px) and (min-height: 541px) {
+  html:not(.is-mobile-device) #adv-joystick-zone {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster {
+    left: 50%;
+    right: auto;
+    bottom: 10px;
+    transform: translateX(-50%);
+    width: auto;
+    height: auto;
+    padding: 6px 10px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: linear-gradient(180deg, rgba(13, 18, 34, 0.92) 0%, rgba(6, 9, 18, 0.96) 100%);
+    border: 1.5px solid rgba(212, 175, 55, 0.72);
+    outline: 1px solid #000;
+    border-radius: 8px;
+    box-shadow:
+      inset 0 1px 0 rgba(254, 240, 138, 0.24),
+      0 8px 24px rgba(0, 0, 0, 0.85);
+    pointer-events: auto;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-orb-btn {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 46px;
+    height: 46px;
+    border-radius: 6px;
+    border-width: 2px;
+    flex-shrink: 0;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-orb-face,
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-cd-sweep {
+    border-radius: 4px;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-cd-timer {
+    font-size: 0.38rem;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-orb-tag {
+    bottom: -8px;
+    padding: 1px 4px;
+    font-size: 0.28rem;
+    border-radius: 3px;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-key-hint {
+    top: -6px;
+    right: -4px;
+    min-width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    font-size: 0.28rem;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-lock-skill-btn,
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-auto-skill-btn {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    min-width: 68px;
+    height: 30px;
+    padding: 0 9px;
+    border-radius: 5px;
+    border-width: 1.5px;
+    font-size: 0.32rem;
+    flex-shrink: 0;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-lock-skill-btn {
+    margin-left: 4px;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-lock-skill-btn::after {
+    content: '[R]';
+    font-size: 0.27rem;
+    color: #94a3b8;
+    margin-left: 3px;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-auto-skill-btn::after {
+    content: '[P]';
+    font-size: 0.27rem;
+    color: #94a3b8;
+    margin-left: 3px;
+  }
+
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-lock-skill-btn.is-lock-on::after,
+  html:not(.is-mobile-device) #adv-skill-cluster .adv-auto-skill-btn.is-autoplay-on::after {
+    color: #fef08a;
+  }
+}
+
+/* 4. Trimmed Mobile Portrait & Mobile Landscape Touch Controls (More 2.5D Road Visibility!) */
+@media (max-width: 540px) and (orientation: portrait) {
+  html:not(.is-mobile-landscape) #app.is-adventure-active .hud-top .portrait-frame {
+    width: 32px;
+    height: 32px;
+  }
+  html:not(.is-mobile-landscape) .adv-joystick-zone {
+    transform: scale(0.80);
+    transform-origin: bottom left;
+    left: max(6px, env(safe-area-inset-left));
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  html:not(.is-mobile-landscape) .adv-skill-cluster {
+    transform: scale(0.78);
+    transform-origin: bottom right;
+    right: max(6px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+}
+
+html.is-mobile-landscape .adv-joystick-zone {
+  left: 12px;
+  bottom: 6px;
+  transform: scale(0.76);
+  transform-origin: bottom left;
+}
+
+html.is-mobile-landscape .adv-skill-cluster {
+  right: 10px;
+  bottom: 6px;
+  transform: scale(0.74);
+  transform-origin: bottom right;
+}
+
+/* 5. Tightened Adventure Skill Tree Modal (Zero Awkward Scroll/Clipping on Desktop & 844x390 Landscape) */
+.adv-st-plaque {
+  width: min(96%, 840px);
+  max-height: 94%;
+  padding: 9px 12px;
+  gap: 7px;
+}
+
+.adv-st-header {
+  padding-bottom: 6px;
+  gap: 6px;
+}
+
+.adv-st-level-badge {
+  padding: 4px 7px;
+  font-size: 0.42rem;
+}
+
+.adv-st-stat {
+  padding: 4px 6px;
+  gap: 2px;
+}
+
+.adv-st-economy-note {
+  padding: 4px 8px;
+  font-size: 0.66rem;
+  line-height: 1.28;
+}
+
+.adv-st-grid {
+  gap: 7px;
+}
+
+.adv-st-branch {
+  padding: 6px 7px;
+  gap: 5px;
+}
+
+.adv-st-node {
+  padding: 5px 7px;
+  gap: 3px;
+}
+
+.adv-st-node-desc {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.72rem;
+  line-height: 1.28;
+  color: #cbd5e1;
+}
+
+.adv-st-upgrade-btn {
+  padding: 3px 7px;
+  font-size: 0.27rem;
+}
+
+html.is-mobile-landscape .adv-skill-tree-modal {
+  padding: 4px 8px;
+}
+
+html.is-mobile-landscape .adv-st-plaque {
+  width: min(98%, 810px);
+  max-height: 98%;
+  padding: 5px 8px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .adv-st-header {
+  padding-bottom: 4px;
+}
+
+html.is-mobile-landscape .adv-st-economy-note {
+  display: none;
+}
+
+html.is-mobile-landscape .adv-st-stats-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+html.is-mobile-landscape .adv-st-stat {
+  padding: 2px 5px;
+  gap: 1px;
+}
+
+html.is-mobile-landscape .adv-st-branch {
+  padding: 4px 5px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape .adv-st-branch-hdr {
+  padding-bottom: 3px;
+}
+
+html.is-mobile-landscape .adv-st-icon-canvas {
+  width: 18px;
+  height: 18px;
+}
+
+html.is-mobile-landscape .adv-st-node {
+  padding: 3px 5px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .adv-st-node-desc {
+  font-size: 0.62rem;
+  line-height: 1.16;
+}
+
+html.is-mobile-landscape .adv-st-upgrade-btn {
+  padding: 2px 6px;
+  font-size: 0.24rem;
+}
+
+/* 6. Zone-Clear Sovereign Relic Altar Modal (#adv-relic-draft-modal) */
+.adv-relic-draft-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 44;
+  background: rgba(3, 5, 14, 0.84);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  pointer-events: auto;
+}
+
+.adv-relic-draft-modal.hidden {
+  display: none !important;
+}
+
+.adv-relic-plaque {
+  width: min(96%, 760px);
+  max-height: 94%;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #10162b 0%, #070a15 100%);
+  border: 2px solid #d4af37;
+  outline: 2px solid #000;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.34),
+    0 18px 46px rgba(0, 0, 0, 0.95);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adv-relic-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.34);
+}
+
+.adv-relic-eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  letter-spacing: 0.10em;
+  color: #67e8f9;
+  padding: 2px 8px;
+  background: rgba(14, 116, 144, 0.28);
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  border-radius: 4px;
+}
+
+.adv-relic-title {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.46rem, 1.35vw, 0.64rem);
+  color: #fef08a;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 0 #000;
+}
+
+.adv-relic-sub {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.25rem, 0.78vw, 0.33rem);
+  color: #cbd5e1;
+}
+
+.adv-relic-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adv-relic-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 7px;
+  padding: 12px 10px 10px;
+  background: linear-gradient(180deg, rgba(18, 26, 48, 0.94) 0%, rgba(9, 13, 25, 0.98) 100%);
+  border: 2px solid color-mix(in srgb, var(--relic-accent, #facc15) 62%, #334155);
+  outline: 1px solid #000;
+  border-radius: 8px;
+  color: #f8fafc;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.1s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.adv-relic-card:hover,
+.adv-relic-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--relic-accent, #fde047);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--relic-accent, #facc15) 42%, transparent),
+    0 8px 20px rgba(0, 0, 0, 0.85);
+  outline: none;
+}
+
+.adv-relic-key {
+  position: absolute;
+  top: 6px;
+  left: 7px;
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  color: #fef08a;
+  background: #070a14;
+  border: 1px solid rgba(212, 175, 55, 0.65);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+.adv-relic-icon-wrap {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070e;
+  border: 1.5px solid var(--relic-accent, #facc15);
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.82);
+}
+
+.adv-relic-icon-canvas {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.adv-relic-name {
+  font-family: var(--font-pixel);
+  font-size: 0.34rem;
+  line-height: 1.35;
+  color: #fef9c3;
+  text-shadow: 0 1px 0 #000;
+}
+
+.adv-relic-tag {
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  color: var(--relic-accent, #67e8f9);
+  padding: 2px 6px;
+  background: rgba(5, 8, 18, 0.9);
+  border: 1px solid color-mix(in srgb, var(--relic-accent, #67e8f9) 55%, #1e293b);
+  border-radius: 4px;
+}
+
+.adv-relic-desc {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.34;
+  color: #cbd5e1;
+  flex: 1;
+}
+
+.adv-relic-cta {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.88) 0%, rgba(120, 53, 15, 0.96) 100%);
+  border: 1px solid #facc15;
+  font-family: var(--font-pixel);
+  font-size: 0.27rem;
+  color: #ffffff;
+}
+
+.adv-relic-foot {
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 0.26rem;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 600px) and (orientation: portrait) {
+  .adv-relic-plaque {
+    padding: 10px;
+    gap: 8px;
+  }
+  .adv-relic-cards {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+  .adv-relic-card {
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    text-align: left;
+    gap: 4px 10px;
+    padding: 8px 10px;
+  }
+  .adv-relic-key {
+    display: none;
+  }
+  .adv-relic-icon-wrap {
+    grid-row: 1 / 3;
+    width: 44px;
+    height: 44px;
+  }
+  .adv-relic-icon-canvas {
+    width: 40px;
+    height: 40px;
+  }
+  .adv-relic-tag,
+  .adv-relic-cta {
+    display: none;
+  }
+  .adv-relic-desc {
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+}
+
+html.is-mobile-landscape .adv-relic-plaque {
+  width: min(96%, 720px);
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+html.is-mobile-landscape .adv-relic-header {
+  padding-bottom: 5px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .adv-relic-card {
+  padding: 7px 8px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .adv-relic-icon-wrap {
+  width: 38px;
+  height: 38px;
+}
+
+html.is-mobile-landscape .adv-relic-icon-canvas {
+  width: 34px;
+  height: 34px;
+}
+
+html.is-mobile-landscape .adv-relic-desc {
+  font-size: 0.61rem;
+  line-height: 1.22;
+}
+
+html.is-mobile-landscape .adv-relic-foot {
+  display: none;
+}

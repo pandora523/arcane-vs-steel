@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps172';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps172';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps172';
+import { Fighter } from './Fighter.js?v=30fps173';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps173';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps173';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -289,6 +289,16 @@ export class Monster extends Fighter {
     this.afterimages = [];
     this._skillCastCount = 0;
     this._skillStarted = false;
+
+    // Warden & Colossal Boss Stagger / Guard-Break Gauge + Tactical Hazard Statuses + Elemental Death Burst
+    this.maxStagger = isMiniBoss ? 100 : 0;
+    this.stagger = 0;
+    this.staggerBreakTimer = 0;
+    this.staggerDecayDelay = 0;
+    this._sporeVulnTimer = 0;
+    this._cursedBuffTimer = 0;
+    this._deathBurstSpawned = false;
+    this.deathBurstParticles = [];
   }
 
   shiftMonsterDepth(dz, game) {
@@ -363,12 +373,190 @@ export class Monster extends Fighter {
     return Math.max(mMin, Math.min(mMax, targetX));
   }
 
+  addStagger(amount, attacker = null, game = null) {
+    if (
+      this.maxStagger <= 0 ||
+      this.isDead ||
+      this.staggerBreakTimer > 0 ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      return false;
+    }
+    const g = game || this.game;
+    this.stagger = Math.min(this.maxStagger, this.stagger + amount);
+    this.staggerDecayDelay = 3.5;
+
+    if (this.stagger >= this.maxStagger) {
+      this.stagger = 0;
+      this.staggerBreakTimer = 3.2;
+      this.staggerDecayDelay = 0;
+
+      if (this.isColossalBoss) {
+        this.releaseGrabbedTarget?.();
+        this.rakeWarnOnly = false;
+        this.rakeActive = false;
+        this.fistVisible = false;
+        this.bossAction = null;
+        this.sweepLane = null;
+        this.vulnerableTimer = Math.max(this.vulnerableTimer || 0, 3.2);
+        this.telegraphLabel = 'GUARD BREAK! (+55% DMG)';
+        this.telegraphTimer = 3.2;
+        this.setState('IDLE');
+      } else {
+        this.stunTimer = Math.max(this.stunTimer || 0, 3.2);
+        this.telegraphTimer = 0;
+        this.setState('HURT');
+        this.hurtTimer = Math.max(this.hurtTimer || 0, 0.55);
+      }
+
+      if (g?.audio) g.audio.play('time_shatter', this.x);
+      if (g?.renderer) g.renderer.triggerShake(13, 0.26);
+      if (g?.vfx) {
+        g.vfx.spawnShockwave(
+          this.x - (this.isBoss ? 70 : 0),
+          (this.groundY || this.y) - 24,
+          this.isBoss ? 225 : 150,
+          '#fde047',
+          0.42,
+          true
+        );
+        g.vfx.spawnBurst(
+          this.x - (this.isBoss ? 70 : 0),
+          (this.groundY || this.y) - 72,
+          22,
+          '#facc15',
+          265,
+          { upBias: 155, size: 6 }
+        );
+        g.vfx.spawnDamageText(
+          this.x - (this.isBoss ? 70 : 0),
+          (this.y || this.groundY) - (this.isBoss ? 220 : 185),
+          0,
+          true,
+          'GUARD BREAK!',
+          '#fef08a'
+        );
+      }
+      g?.adventure?.progression?.gainSpirit?.(22);
+      g?.adventure?.spawnPickup?.(
+        'ember',
+        this.x - (this.isBoss ? 140 : 0),
+        this.groundY || 561,
+        { ultAmt: 22 }
+      );
+      return true;
+    }
+    return false;
+  }
+
+  spawnElementalDeathBurst() {
+    if (this._deathBurstSpawned || this.isColossalBoss) return;
+    this._deathBurstSpawned = true;
+    const style =
+      this.kind === 'ghoul'
+        ? 'bone'
+        : this.kind === 'dryad' || this.kind === 'treant'
+          ? 'leaf'
+          : this.kind === 'cultist' || this.kind === 'fiend'
+            ? 'soul_flame'
+            : 'cinder_shard';
+    const count = this.isMiniBoss ? 28 : this.isElite ? 22 : 16;
+    const gy = Number.isFinite(this.groundY) ? this.groundY : this.y || 561;
+    const scale = this.spriteScale || 1;
+    this.deathBurstParticles = [];
+
+    for (let i = 0; i < count; i++) {
+      const frac = i / Math.max(1, count);
+      const ang = frac * Math.PI * 2 + (i % 3) * 0.31;
+      const spd = (style === 'leaf' ? 75 : style === 'soul_flame' ? 58 : 135) + (i % 5) * 32;
+      let col;
+      let hi;
+      let w;
+      let h;
+      if (style === 'bone') {
+        col = i % 3 === 0 ? '#f1f5f9' : i % 3 === 1 ? '#cbd5e1' : '#94a3b8';
+        hi = '#ffffff';
+        w = i % 2 === 0 ? 10 : 6;
+        h = i % 2 === 0 ? 4 : 6;
+      } else if (style === 'leaf') {
+        col = i % 3 === 0 ? '#34d399' : i % 3 === 1 ? '#10b981' : '#2dd4bf';
+        hi = '#d1fae5';
+        w = 8;
+        h = 5;
+      } else if (style === 'soul_flame') {
+        col = this.kind === 'fiend' ? (i % 2 === 0 ? '#ef4444' : '#fb923c') : i % 2 === 0 ? '#c084fc' : '#e879f9';
+        hi = this.kind === 'fiend' ? '#fef08a' : '#fae8ff';
+        w = 6 + (i % 3) * 2;
+        h = 10 + (i % 3) * 3;
+      } else {
+        col =
+          this.kind === 'templar' || this.kind === 'astrologer'
+            ? i % 2 === 0
+              ? '#38bdf8'
+              : '#facc15'
+            : i % 2 === 0
+              ? '#fb923c'
+              : '#ef4444';
+        hi = '#fef08a';
+        w = 7 + (i % 2) * 3;
+        h = 5 + (i % 3) * 2;
+      }
+      this.deathBurstParticles.push({
+        style,
+        x: this.x + Math.cos(ang) * 18 * scale,
+        y: gy - 26 - (i % 6) * 16 * scale,
+        groundY: gy + ((i % 5) - 2) * 5,
+        vx: Math.cos(ang) * spd,
+        vy:
+          style === 'soul_flame'
+            ? -115 - (i % 4) * 38
+            : style === 'leaf'
+              ? -95 - (i % 4) * 30
+              : -165 - (i % 5) * 44,
+        w,
+        h,
+        col,
+        hi,
+        phase: i * 1.37,
+        bounces: 0,
+        age: 0,
+        maxLife: style === 'leaf' ? 1.35 + (i % 3) * 0.16 : 0.95 + (i % 4) * 0.16
+      });
+    }
+  }
+
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
     const prevHp = this.hp;
     let finalAmount = amount;
+    let effectiveCrit = Boolean(isCrit);
+    let consumedPhantomEmpower = false;
     const prog = this.game?.isAdventureMode?.() ? this.game.adventure?.progression : null;
     if (prog && attacker && !attacker.isMonster) {
-      finalAmount = prog.scaleOutgoingDamage(amount, attacker, this, isCrit);
+      if (attacker._phantomEmpowerReady && !this._isAdvCleaveSplash) {
+        attacker._phantomEmpowerReady = false;
+        attacker._phantomEmpowerTimer = 0;
+        consumedPhantomEmpower = true;
+        effectiveCrit = true;
+      }
+      finalAmount = prog.scaleOutgoingDamage(amount, attacker, this, effectiveCrit);
+      if (consumedPhantomEmpower) {
+        finalAmount = Math.max(4, Math.round(finalAmount * 1.45));
+        this.game?.vfx?.spawnShockwave?.(this.x, (this.groundY || this.y) - 52, 138, '#67e8f9', 0.30, true);
+        this.game?.vfx?.spawnBurst?.(this.x, (this.groundY || this.y) - 64, 16, '#fde047', 235, {
+          upBias: 115,
+          size: 5
+        });
+        this.game?.vfx?.spawnDamageText?.(
+          this.x,
+          (this.y || this.groundY) - 188,
+          0,
+          true,
+          'PHANTOM CRIT!',
+          '#67e8f9'
+        );
+        this.game?.audio?.play?.('holy_hit', this.x);
+      }
     }
     if (
       attacker &&
@@ -391,7 +579,7 @@ export class Monster extends Fighter {
       knockX = 0;
       knockY = 0;
     }
-    super.takeDamage(finalAmount, attacker, isCrit, knockX, knockY);
+    super.takeDamage(finalAmount, attacker, effectiveCrit, knockX, knockY);
     if (this.isColossalBoss) {
       this.x = this.anchorX;
       this.vx = 0;
@@ -400,18 +588,29 @@ export class Monster extends Fighter {
       this.groundY = this.anchorGroundY;
       this.facing = -1;
     }
+    if (this.isDead && !this._deathBurstSpawned) {
+      this.spawnElementalDeathBurst();
+    }
     const dealt = Math.max(0, prevHp - this.hp);
     if (dealt > 0 && prog && attacker && !attacker.isMonster) {
       prog.onPlayerHitMonster(attacker, this, dealt);
+      // Fill Warden / Colossal Boss Stagger Gauge on player hits (Skills, Overdrive, Perfect-Dodge counters)
+      if (this.maxStagger > 0 && !this.isDead && !this._isAdvCleaveSplash) {
+        const st = attacker.state;
+        let stagAmt = st === 'TRUE_ULTIMATE' ? 75 : st === 'ULTIMATE' ? 48 : st === 'SKILL' ? 26 : 6;
+        if (consumedPhantomEmpower) stagAmt += 42;
+        this.addStagger(stagAmt, attacker, this.game);
+      }
       if (!this._isAdvCleaveSplash) {
         this.game?.adventure?.skillSets?.onDirectMonsterHit?.(
           attacker,
           this,
           amount,
-          isCrit,
+          effectiveCrit,
           knockX,
           knockY
         );
+        this.game?.adventure?.onPlayerHitMonsterRelicProc?.(attacker, this, dealt, effectiveCrit);
       }
     }
   }
@@ -518,9 +717,66 @@ export class Monster extends Fighter {
     if (this.forgeArmorTimer > 0) {
       this.forgeArmorTimer = Math.max(0, this.forgeArmorTimer - dt);
     }
+    if (this._sporeVulnTimer > 0) {
+      this._sporeVulnTimer = Math.max(0, this._sporeVulnTimer - dt);
+    }
+    if (this._cursedBuffTimer > 0) {
+      this._cursedBuffTimer = Math.max(0, this._cursedBuffTimer - dt);
+    }
+    if (this.staggerBreakTimer > 0) {
+      this.staggerBreakTimer = Math.max(0, this.staggerBreakTimer - dt);
+    } else if (this.staggerDecayDelay > 0) {
+      this.staggerDecayDelay = Math.max(0, this.staggerDecayDelay - dt);
+    } else if (this.stagger > 0 && !this.isDead) {
+      this.stagger = Math.max(0, this.stagger - (this.isBoss ? 10 : 7) * dt);
+    }
+
+    // Update elemental death burst particles (bone fragments, dryad leaves, soul flames, cinder shards)
+    if (this.deathBurstParticles?.length) {
+      for (let i = this.deathBurstParticles.length - 1; i >= 0; i--) {
+        const dp = this.deathBurstParticles[i];
+        dp.age += dt;
+        if (dp.age >= dp.maxLife) {
+          this.deathBurstParticles.splice(i, 1);
+          continue;
+        }
+        if (dp.style === 'soul_flame') {
+          dp.x += (dp.vx * 0.45 + Math.sin(dp.age * 11 + dp.phase) * 34) * dt;
+          dp.y += dp.vy * dt;
+          dp.vy *= 1 - Math.min(0.4, dt * 1.2);
+        } else if (dp.style === 'leaf') {
+          dp.vy += 190 * dt;
+          dp.x += (dp.vx * 0.5 + Math.sin(dp.age * 7.5 + dp.phase) * 48) * dt;
+          dp.y += dp.vy * dt;
+          if (dp.y >= dp.groundY) {
+            dp.y = dp.groundY;
+            dp.vy = 0;
+            dp.vx *= 0.85;
+          }
+        } else {
+          dp.vy += 760 * dt;
+          dp.x += dp.vx * dt;
+          dp.y += dp.vy * dt;
+          if (dp.y >= dp.groundY && dp.vy > 0) {
+            dp.y = dp.groundY;
+            if (dp.bounces < 2) {
+              dp.vy *= -0.44;
+              dp.vx *= 0.70;
+              dp.bounces++;
+            } else {
+              dp.vy = 0;
+              dp.vx *= 0.80;
+            }
+          }
+        }
+      }
+    }
 
     // Physics, death, cooldowns, stun/root handled cleanly if we run custom monster AI before state dispatch
     if (this.isDead) {
+      if (!this._deathBurstSpawned) {
+        this.spawnElementalDeathBurst();
+      }
       this.portalSpawnTimer = 0;
       this.telegraphRings.length = 0;
       super.update(dt, enemy, game);
@@ -1303,7 +1559,7 @@ export class Monster extends Fighter {
   }
 
   drawTelegraphRings(ctx) {
-    if (!this.telegraphRings.length || !ctx) return;
+    if (!ctx) return;
     const assets = PixelForge.initAssets();
     const fxSheet = PixelForge.ensureImage?.(assets?.advFxSheet) || assets?.advFxSheet;
     const fxReady =
@@ -1315,6 +1571,105 @@ export class Monster extends Fighter {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+
+    // A. Crisp Pixel-Art Ground Danger-Zone Telegraphs for Heavy Bull-Charge, Seismic Slam & Vanguard Lunge!
+    if (!this.isDead && !this.isColossalBoss) {
+      if (this.isHeavyArchetype && this.state === 'DASH') {
+        const dur = Math.max(0.25, this.dashDuration || 0.62);
+        const fillU = Math.max(0, Math.min(1, (this.stateTimer || 0) / 0.22));
+        const x0 = Math.round(Math.min(this.dashStartX ?? this.x, this.dashTargetX ?? this.x) / 2) * 2;
+        const x1 = Math.round(Math.max(this.dashStartX ?? this.x, this.dashTargetX ?? this.x) / 2) * 2;
+        const laneW = Math.max(96, x1 - x0);
+        const laneH = 62;
+        const gy = Math.round((this.dashTargetGy ?? this.groundY) / 2) * 2;
+        const y0 = gy - (laneH >> 1);
+        const dir = (this.dashDir || this.facing || 1) >= 0 ? 1 : -1;
+        const isAmber = this.kind !== 'treant';
+        const colFill = isAmber ? 'rgba(245, 158, 11, 0.18)' : 'rgba(52, 211, 153, 0.18)';
+        const colMeter = isAmber ? 'rgba(239, 68, 68, 0.34)' : 'rgba(16, 185, 129, 0.34)';
+        const colBorder = fillU >= 0.85 ? '#fef08a' : isAmber ? '#ef4444' : '#34d399';
+
+        ctx.fillStyle = colFill;
+        ctx.fillRect(x0, y0, laneW, laneH);
+        const progW = Math.max(4, Math.round(laneW * fillU));
+        ctx.fillStyle = colMeter;
+        ctx.fillRect(dir > 0 ? x0 : x0 + laneW - progW, y0 + 2, progW, laneH - 4);
+
+        // Stepped crisp double pixel border
+        ctx.fillStyle = '#0d0f1c';
+        ctx.fillRect(x0 - 2, y0 - 2, laneW + 4, 4);
+        ctx.fillRect(x0 - 2, y0 + laneH - 2, laneW + 4, 4);
+        ctx.fillStyle = colBorder;
+        ctx.fillRect(x0, y0, laneW, 2);
+        ctx.fillRect(x0, y0 + laneH - 2, laneW, 2);
+        ctx.fillRect(x0, y0, 2, laneH);
+        ctx.fillRect(x0 + laneW - 2, y0, 2, laneH);
+
+        // Pulsing directional pixel chevrons showing exact bull-charge trajectory
+        ctx.fillStyle = '#fef08a';
+        const step = 64;
+        const scroll = Math.round(((this.stateTimer || 0) * 140) % step) * dir;
+        for (let cx = x0 + 26; cx < x0 + laneW - 24; cx += step) {
+          const px = Math.max(x0 + 10, Math.min(x0 + laneW - 14, cx + scroll));
+          ctx.fillRect(px - dir * 6, gy - 8, 4, 4);
+          ctx.fillRect(px - dir * 2, gy - 4, 4, 4);
+          ctx.fillRect(px + dir * 2, gy - 2, 4, 4);
+          ctx.fillRect(px - dir * 2, gy + 2, 4, 4);
+          ctx.fillRect(px - dir * 6, gy + 6, 4, 4);
+        }
+      } else if (this.isHeavyArchetype && this.state === 'SKILL' && (this.stateTimer || 0) < 0.46) {
+        const u = Math.max(0, Math.min(1, (this.stateTimer || 0) / 0.44));
+        const cx = Math.round((this.x + (this.facing || 1) * 76) / 2) * 2;
+        const gy = Math.round((this.groundY || this.y) / 2) * 2;
+        const hw = this.isMiniBoss ? 124 : 104;
+        const hh = 34;
+        const fhw = Math.max(8, Math.round(hw * u));
+        const fhh = Math.max(4, Math.round(hh * u));
+        const isTreant = this.kind === 'treant';
+        const rimCol = u > 0.78 ? '#fef08a' : isTreant ? '#34d399' : '#ef4444';
+
+        ctx.fillStyle = isTreant ? 'rgba(16, 185, 129, 0.16)' : 'rgba(239, 68, 68, 0.16)';
+        ctx.fillRect(cx - hw, gy - hh, hw * 2, hh * 2);
+        ctx.fillStyle = isTreant ? 'rgba(52, 211, 153, 0.36)' : 'rgba(249, 115, 22, 0.38)';
+        ctx.fillRect(cx - fhw, gy - fhh, fhw * 2, fhh * 2);
+
+        ctx.fillStyle = '#0d0f1c';
+        ctx.fillRect(cx - hw - 2, gy - hh - 2, hw * 2 + 4, 4);
+        ctx.fillRect(cx - hw - 2, gy + hh - 2, hw * 2 + 4, 4);
+        ctx.fillStyle = rimCol;
+        ctx.fillRect(cx - hw, gy - hh, hw * 2, 2);
+        ctx.fillRect(cx - hw, gy + hh - 2, hw * 2, 2);
+        ctx.fillRect(cx - hw, gy - hh, 2, hh * 2);
+        ctx.fillRect(cx + hw - 2, gy - hh, 2, hh * 2);
+      } else if (
+        !this.isHeavyArchetype &&
+        !this.isCasterArchetype &&
+        this.state === 'SKILL' &&
+        (this.stateTimer || 0) < 0.28
+      ) {
+        const u = Math.max(0, Math.min(1, (this.stateTimer || 0) / 0.24));
+        const dir = (this.facing || 1) >= 0 ? 1 : -1;
+        const len = 160;
+        const x0 = Math.round((dir > 0 ? this.x : this.x - len) / 2) * 2;
+        const gy = Math.round((this.groundY || this.y) / 2) * 2;
+        const y0 = gy - 22;
+        const progW = Math.max(6, Math.round(len * u));
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.16)';
+        ctx.fillRect(x0, y0, len, 44);
+        ctx.fillStyle = 'rgba(251, 146, 60, 0.36)';
+        ctx.fillRect(dir > 0 ? x0 : x0 + len - progW, y0 + 2, progW, 40);
+        ctx.fillStyle = u > 0.78 ? '#fef08a' : '#f43f5e';
+        ctx.fillRect(x0, y0, len, 2);
+        ctx.fillRect(x0, y0 + 42, len, 2);
+        ctx.fillRect(x0, y0, 2, 44);
+        ctx.fillRect(x0 + len - 2, y0, 2, 44);
+      }
+    }
+
+    if (!this.telegraphRings.length) {
+      ctx.restore();
+      return;
+    }
     for (const r of this.telegraphRings) {
       const u = Math.max(0, Math.min(1, r.timer / Math.max(0.05, r.maxTimer)));
       const rx = Math.round(r.x / 2) * 2;
@@ -1414,32 +1769,36 @@ export class Monster extends Fighter {
     const hpPct = Math.max(0, Math.min(1, this.hp / Math.max(1, this.maxHp)));
 
     ctx.save();
-    if (this.telegraphTimer > 0 && this.telegraphLabel) {
-      ctx.font = '8px "ArcanePixel", "Press Start 2P", monospace';
-      ctx.textAlign = 'center';
-      const tw = Math.max(68, this.telegraphLabel.length * 6 + 10);
+    if (this.telegraphTimer > 0 && !this.isBoss) {
+      // Crisp 14x14 pixel-art exclamation danger badge (replaces verbose text boxes!)
+      const pulse = Math.sin((this.walkPhase || 0) * 18) > -0.2;
+      const dy = by - 20;
       ctx.fillStyle = '#090512';
-      ctx.fillRect(bx - Math.floor(tw * 0.5), by - 25, tw, 12);
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(bx - Math.floor(tw * 0.5), by - 25, tw, 12);
+      ctx.fillRect(bx - 7, dy - 7, 14, 14);
+      ctx.fillStyle = pulse ? '#ef4444' : '#f59e0b';
+      ctx.fillRect(bx - 6, dy - 6, 12, 12);
+      ctx.fillStyle = '#090512';
+      ctx.fillRect(bx - 5, dy - 5, 10, 10);
       ctx.fillStyle = '#fef08a';
-      ctx.fillText(this.telegraphLabel, bx, by - 16);
-    } else if (this.isMiniBoss && !this.isBoss) {
+      ctx.fillRect(bx - 1, dy - 4, 2, 5);
+      ctx.fillRect(bx - 1, dy + 2, 2, 2);
+    }
+    if (this.isMiniBoss && !this.isBoss) {
       // Gold-Crowned Realm Mini-Boss Warden Nameplate (pure integer fillRect crown, 0 ctx.rotate!)
-      const tag = `WARDEN • ${this.name}`;
-      const tw = Math.max(92, tag.length * 5 + 14);
+      const tag = this.staggerBreakTimer > 0 ? 'GUARD BROKEN!' : this.name;
+      const tw = Math.max(84, tag.length * 5 + 14);
       const px0 = bx - Math.floor(tw * 0.5);
+      const labelY = this.telegraphTimer > 0 ? by - 36 : by - 16;
       ctx.fillStyle = '#070a14';
-      ctx.fillRect(px0, by - 16, tw, 12);
-      ctx.strokeStyle = '#d4af37';
+      ctx.fillRect(px0, labelY, tw, 12);
+      ctx.strokeStyle = this.staggerBreakTimer > 0 ? '#67e8f9' : '#d4af37';
       ctx.lineWidth = 1;
-      ctx.strokeRect(px0, by - 16, tw, 12);
+      ctx.strokeRect(px0, labelY, tw, 12);
       // 5-pixel sovereign crown crest centered above plaque
-      const cy = by - 22;
+      const cy = labelY - 6;
       ctx.fillStyle = '#05070e';
       ctx.fillRect(bx - 6, cy - 1, 12, 6);
-      ctx.fillStyle = '#facc15';
+      ctx.fillStyle = this.staggerBreakTimer > 0 ? '#67e8f9' : '#facc15';
       ctx.fillRect(bx - 5, cy + 2, 10, 2);
       ctx.fillRect(bx - 5, cy, 2, 2);
       ctx.fillRect(bx - 1, cy - 1, 2, 3);
@@ -1449,14 +1808,13 @@ export class Monster extends Fighter {
 
       ctx.font = '6px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#fef08a';
-      ctx.fillText(tag, bx, by - 8);
-    } else if (this.isElite || this.isBoss) {
-      ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
+      ctx.fillStyle = this.staggerBreakTimer > 0 ? '#67e8f9' : '#fef08a';
+      ctx.fillText(tag, bx, labelY + 8);
+    } else if (this.isElite && !this.isBoss && this.telegraphTimer <= 0) {
+      ctx.font = '6px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
-      const tag = this.isBoss ? `BOSS • PHASE ${this.bossPhase || 1}` : 'ELITE';
-      ctx.fillStyle = this.isBoss ? '#fca5a5' : '#fde047';
-      ctx.fillText(tag, bx, by - 5);
+      ctx.fillStyle = '#fde047';
+      ctx.fillText('ELITE', bx, by - 4);
     }
 
     ctx.fillStyle = '#05070e';
@@ -1480,6 +1838,38 @@ export class Monster extends Fighter {
       for (const frac of [0.25, 0.5, 0.75]) {
         ctx.fillRect(x0 + Math.round(barW * frac), by, 1, barH);
       }
+    }
+
+    // Slim golden Stagger / Guard-Break Gauge beneath Mini-Boss Wardens (`maxStagger > 0`)
+    if (this.maxStagger > 0 && !this.isBoss) {
+      const sy = by + barH + 3;
+      const sh = 4;
+      const stRatio =
+        this.staggerBreakTimer > 0
+          ? Math.max(0, Math.min(1, this.staggerBreakTimer / 3.2))
+          : Math.max(0, Math.min(1, this.stagger / Math.max(1, this.maxStagger)));
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(x0 - 1, sy - 1, barW + 2, sh + 2);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(x0, sy, barW, sh);
+      ctx.fillStyle = this.staggerBreakTimer > 0 ? '#67e8f9' : '#facc15';
+      ctx.fillRect(x0, sy, Math.round(barW * stRatio), sh);
+      ctx.fillStyle = this.staggerBreakTimer > 0 ? '#ffffff' : '#fef08a';
+      ctx.fillRect(x0, sy, Math.round(barW * stRatio), 1);
+    }
+
+    // Compact tactical hazard status pips beside HP bar (Cursed Pylon Buff / Spore Vulnerability)
+    if (this._cursedBuffTimer > 0) {
+      ctx.fillStyle = '#0d0f1c';
+      ctx.fillRect(x0 - 9, by - 1, 7, 7);
+      ctx.fillStyle = '#e879f9';
+      ctx.fillRect(x0 - 8, by, 5, 5);
+    }
+    if (this._sporeVulnTimer > 0) {
+      ctx.fillStyle = '#0d0f1c';
+      ctx.fillRect(x0 + barW + 2, by - 1, 7, 7);
+      ctx.fillStyle = '#34d399';
+      ctx.fillRect(x0 + barW + 3, by, 5, 5);
     }
     ctx.restore();
   }
@@ -1618,6 +2008,9 @@ export class Monster extends Fighter {
         }
       }
 
+      const deathAlpha = this.isDead
+        ? Math.max(0.03, 1 - Math.max(0, (this.deathTimer || 0) - 0.12) / 0.48)
+        : 1;
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.translate(Math.round(this.x + shakeX), Math.round(this.y));
@@ -1626,20 +2019,70 @@ export class Monster extends Fighter {
       if (emergeU < 1 && !isReflection) {
         ctx.globalAlpha *= 0.45 + 0.55 * emergeU;
       }
-      if (this.isDead && this.deathTimer > 1.2) {
-        const fade = Math.max(0.12, 1 - (this.deathTimer - 1.2) * 0.55);
-        ctx.globalAlpha *= fade;
+      if (this.isDead) {
+        ctx.globalAlpha *= deathAlpha;
       }
 
       PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, isReflection, renderer);
 
-      if (!isReflection && (this.hitFlash > 0 || emergeU < 0.75)) {
+      if (!isReflection && (this.hitFlash > 0 || emergeU < 0.75 || (this.isDead && (this.deathTimer || 0) < 0.28))) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha =
-          this.hitFlash > 0 ? Math.min(0.42, this.hitFlash * 2.2) : (1 - emergeU) * 0.18;
+        ctx.globalAlpha = this.isDead
+          ? Math.min(0.42, (1 - (this.deathTimer || 0) / 0.28) * 0.42)
+          : this.hitFlash > 0
+            ? Math.min(0.42, this.hitFlash * 2.2)
+            : (1 - emergeU) * 0.18;
         PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, true, renderer);
       }
       ctx.restore();
+
+      // Render Distinct Elemental Monster Death Burst Particles (bone fragments, dryad leaves, soul flames, cinder shards)
+      if (!isReflection && this.deathBurstParticles?.length && ctx?.fillRect) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        for (let i = 0; i < this.deathBurstParticles.length; i++) {
+          const dp = this.deathBurstParticles[i];
+          const rem = Math.max(0, 1 - dp.age / Math.max(0.05, dp.maxLife));
+          const a = rem < 0.30 ? rem / 0.30 : 1;
+          const px = Math.round(dp.x);
+          const py = Math.round(dp.y);
+          ctx.globalAlpha = a * 0.94;
+          if (dp.style === 'bone') {
+            ctx.fillStyle = '#0d0f1c';
+            ctx.fillRect(px - (dp.w >> 1) - 1, py - (dp.h >> 1) - 1, dp.w + 2, dp.h + 2);
+            ctx.fillStyle = dp.col;
+            ctx.fillRect(px - (dp.w >> 1), py - (dp.h >> 1), dp.w, dp.h);
+            ctx.fillStyle = dp.hi;
+            ctx.fillRect(px - (dp.w >> 1), py - (dp.h >> 1), Math.max(2, dp.w - 2), 1);
+          } else if (dp.style === 'leaf') {
+            const flip = (Math.floor(dp.age * 8 + dp.phase) & 1) === 0;
+            const lw = flip ? dp.w : dp.h;
+            const lh = flip ? dp.h : dp.w;
+            ctx.fillStyle = '#052e2b';
+            ctx.fillRect(px - (lw >> 1) - 1, py - (lh >> 1) - 1, lw + 2, lh + 2);
+            ctx.fillStyle = dp.col;
+            ctx.fillRect(px - (lw >> 1), py - (lh >> 1), lw, lh);
+            ctx.fillStyle = dp.hi;
+            ctx.fillRect(px - 1, py - 1, 2, 2);
+          } else if (dp.style === 'soul_flame') {
+            const fh = Math.max(4, Math.round(dp.h * (0.65 + 0.35 * rem)));
+            ctx.fillStyle = '#0d0f1c';
+            ctx.fillRect(px - (dp.w >> 1) - 1, py - fh - 1, dp.w + 2, fh + 2);
+            ctx.fillStyle = dp.col;
+            ctx.fillRect(px - (dp.w >> 1), py - fh, dp.w, fh);
+            ctx.fillStyle = dp.hi;
+            ctx.fillRect(px - 1, py - Math.round(fh * 0.7), 2, Math.max(2, Math.round(fh * 0.45)));
+          } else {
+            ctx.fillStyle = '#0d0f1c';
+            ctx.fillRect(px - (dp.w >> 1) - 1, py - (dp.h >> 1) - 1, dp.w + 2, dp.h + 2);
+            ctx.fillStyle = dp.col;
+            ctx.fillRect(px - (dp.w >> 1), py - (dp.h >> 1), dp.w, dp.h);
+            ctx.fillStyle = dp.hi;
+            ctx.fillRect(px - 1, py - 1, 2, 2);
+          }
+        }
+        ctx.restore();
+      }
 
       if (!isReflection && !this.isDead && !this.isColossalBoss && (this.isElite || this.isMiniBoss) && ctx?.fillRect) {
         const moteCount = this.isMiniBoss ? 3 : 2;
@@ -1728,6 +2171,10 @@ export class ArchfiendBoss extends Monster {
     this.didPhase2 = false;
     this.didPhase3 = false;
     this.vulnerableTimer = 0;
+    this.maxStagger = 220;
+    this.stagger = 0;
+    this.staggerBreakTimer = 0;
+    this.staggerDecayDelay = 0;
 
     // Dramatic Appearing Eruption & Parapet Climb (`isInvulnerable` stays false for immediate hit reachability!)
     this.emergeTimer = 1.60;
@@ -3059,7 +3506,7 @@ export class ArchfiendBoss extends Monster {
       ctx.restore();
     }
 
-    // 2. 3D Target-Lane Danger Corridor for Abyssal Siege Grab (`skillVariant === 2`)
+    // 2. 3D Target-Lane Danger Corridor for Abyssal Siege Grab (`skillVariant === 2`) with Live Fill-Up Meter
     if (this.grabWarnOnly || (this.grabActive && !this.grabbedTarget)) {
       ctx.save();
       const gyTop = Math.round(this.grabLaneGy - 50);
@@ -3067,14 +3514,23 @@ export class ArchfiendBoss extends Monster {
       const gxEnd = Math.round(this.anchorX - 95);
       const gxStart = Math.round(this.anchorX - 905);
       const gBandW = gxEnd - gxStart;
-      const gPulse = 0.18 + 0.10 * Math.sin((this.walkPhase || 0) * 16);
+      const gProg = this.grabActive ? 1 : Math.max(0, Math.min(1, (this.stateTimer || 0) / 0.42));
+      const gPulse = 0.16 + 0.10 * Math.sin((this.walkPhase || 0) * 16);
       ctx.fillStyle = this.grabActive
         ? 'rgba(192, 132, 252, 0.28)'
         : `rgba(168, 85, 247, ${gPulse.toFixed(3)})`;
       ctx.fillRect(gxStart, gyTop, gBandW, gBandH);
-      ctx.strokeStyle = this.grabActive ? '#fef08a' : '#e879f9';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(gxStart, gyTop, gBandW, gBandH);
+      const gFillW = Math.max(6, Math.round(gBandW * gProg));
+      ctx.fillStyle = this.grabActive ? 'rgba(232, 121, 249, 0.34)' : 'rgba(217, 70, 239, 0.26)';
+      ctx.fillRect(gxEnd - gFillW, gyTop + 3, gFillW, gBandH - 6);
+      ctx.fillStyle = '#0d0f1c';
+      ctx.fillRect(gxStart - 2, gyTop - 2, gBandW + 4, 4);
+      ctx.fillRect(gxStart - 2, gyTop + gBandH - 2, gBandW + 4, 4);
+      ctx.fillStyle = this.grabActive || gProg > 0.8 ? '#fef08a' : '#e879f9';
+      ctx.fillRect(gxStart, gyTop, gBandW, 2);
+      ctx.fillRect(gxStart, gyTop + gBandH - 2, gBandW, 2);
+      ctx.fillRect(gxStart, gyTop, 2, gBandH);
+      ctx.fillRect(gxEnd - 2, gyTop, 2, gBandH);
       ctx.fillStyle = '#fef08a';
       for (let cx = gxStart + 90; cx < gxStart + gBandW - 70; cx += 170) {
         const cy = Math.round(this.grabLaneGy);
@@ -3090,21 +3546,30 @@ export class ArchfiendBoss extends Monster {
 
     if (!this.rakeWarnOnly && !this.rakeActive) return;
 
-    // 3. Clear 3D Full-Lane Danger Corridor for Leftward Colossal Claw Sweep (`x: anchorX-935 .. anchorX-95`)
+    // 3. Clear 3D Full-Lane Danger Corridor for Leftward Colossal Claw Sweep (`x: anchorX-935 .. anchorX-95`) with Live Fill-Up Meter
     ctx.save();
     const yTop = Math.round(this.rakeLaneGy - 54);
     const bandH = 108;
     const xEnd = Math.round(this.anchorX - 95);
     const xStart = Math.round(this.anchorX - 935);
     const bandW = xEnd - xStart;
-    const pulse = 0.20 + 0.12 * Math.sin((this.walkPhase || 0) * 14);
+    const rProg = this.rakeActive ? 1 : Math.max(0, Math.min(1, (this.stateTimer || 0) / 0.48));
+    const pulse = 0.16 + 0.10 * Math.sin((this.walkPhase || 0) * 14);
     ctx.fillStyle = this.rakeActive
-      ? 'rgba(239, 68, 68, 0.30)'
+      ? 'rgba(239, 68, 68, 0.28)'
       : `rgba(249, 115, 22, ${pulse.toFixed(3)})`;
     ctx.fillRect(xStart, yTop, bandW, bandH);
-    ctx.strokeStyle = this.rakeActive ? '#fef08a' : '#fb923c';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(xStart, yTop, bandW, bandH);
+    const rFillW = Math.max(8, Math.round(bandW * rProg));
+    ctx.fillStyle = this.rakeActive ? 'rgba(239, 68, 68, 0.36)' : 'rgba(251, 146, 60, 0.30)';
+    ctx.fillRect(xEnd - rFillW, yTop + 3, rFillW, bandH - 6);
+    ctx.fillStyle = '#0d0f1c';
+    ctx.fillRect(xStart - 2, yTop - 2, bandW + 4, 4);
+    ctx.fillRect(xStart - 2, yTop + bandH - 2, bandW + 4, 4);
+    ctx.fillStyle = this.rakeActive || rProg > 0.8 ? '#fef08a' : '#fb923c';
+    ctx.fillRect(xStart, yTop, bandW, 2);
+    ctx.fillRect(xStart, yTop + bandH - 2, bandW, 2);
+    ctx.fillRect(xStart, yTop, 2, bandH);
+    ctx.fillRect(xEnd - 2, yTop, 2, bandH);
 
     // Pixel directional chevrons indicating leftward claw rake (`<<<`)
     ctx.fillStyle = '#fef08a';

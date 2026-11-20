@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps172';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps173';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
@@ -139,8 +139,91 @@ const ARCH_EMISSIVE_ANCHORS = [
 
 // Lazy cache for coarse pixel-grid emissive bloom canvases extracted from the painted panoramas
 const PIXEL_BLOOM_CACHE = new Map();
+const SOFT_ATMO_TEX_CACHE = new Map();
 const CUSTOM_PANO_CACHE = new Map();
 let ACTIVE_CAMPAIGN_PACK = null;
+
+// Soft feathered offscreen atmospheric mist / floor-light-pool / smoke texture specs (`128x128`, 0 vector arc/ellipse)
+const SOFT_ATMO_SPECS = {
+  gold: ['rgba(254,240,138,0.68)', 'rgba(234,179,8,0.34)', 'rgba(161,98,7,0.08)'],
+  cyan: ['rgba(125,211,252,0.64)', 'rgba(14,165,233,0.30)', 'rgba(7,89,133,0.07)'],
+  aqua: ['rgba(94,234,212,0.62)', 'rgba(20,184,166,0.28)', 'rgba(13,148,136,0.07)'],
+  emerald: ['rgba(110,231,183,0.62)', 'rgba(16,185,129,0.28)', 'rgba(5,150,105,0.07)'],
+  violet: ['rgba(216,180,254,0.64)', 'rgba(147,51,234,0.30)', 'rgba(88,28,135,0.07)'],
+  ember: ['rgba(253,186,116,0.68)', 'rgba(234,88,12,0.34)', 'rgba(153,27,27,0.08)'],
+  crimson: ['rgba(251,113,133,0.62)', 'rgba(225,29,72,0.28)', 'rgba(136,19,55,0.07)'],
+  mistCyan: ['rgba(125,211,252,0.44)', 'rgba(56,189,248,0.20)', 'rgba(14,116,144,0.05)'],
+  mistTeal: ['rgba(94,234,212,0.44)', 'rgba(20,184,166,0.19)', 'rgba(15,118,110,0.05)'],
+  mistViolet: ['rgba(192,132,252,0.44)', 'rgba(126,34,206,0.20)', 'rgba(59,7,100,0.05)'],
+  mistEmber: ['rgba(251,146,60,0.46)', 'rgba(194,65,12,0.20)', 'rgba(124,45,18,0.05)'],
+  mistRose: ['rgba(251,164,185,0.42)', 'rgba(244,114,182,0.18)', 'rgba(136,19,55,0.05)'],
+  smokeDark: ['rgba(20,10,12,0.74)', 'rgba(15,8,10,0.40)', 'rgba(10,5,8,0.10)'],
+  bossHaze: ['rgba(127,29,29,0.56)', 'rgba(69,10,10,0.28)', 'rgba(24,6,12,0.07)']
+};
+
+function getSoftAtmoTex(key) {
+  const k = Object.prototype.hasOwnProperty.call(SOFT_ATMO_SPECS, key) ? key : 'cyan';
+  if (SOFT_ATMO_TEX_CACHE.has(k)) return SOFT_ATMO_TEX_CACHE.get(k);
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+  try {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 128;
+    const gCtx = c.getContext && c.getContext('2d');
+    if (!gCtx || typeof gCtx.createRadialGradient !== 'function') {
+      SOFT_ATMO_TEX_CACHE.set(k, null);
+      return null;
+    }
+    const [hot, mid, outer] = SOFT_ATMO_SPECS[k];
+    const grad = gCtx.createRadialGradient(64, 64, 2, 64, 64, 64);
+    grad.addColorStop(0, hot);
+    grad.addColorStop(0.34, mid);
+    grad.addColorStop(0.70, outer);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    gCtx.fillStyle = grad;
+    gCtx.fillRect(0, 0, 128, 128);
+    SOFT_ATMO_TEX_CACHE.set(k, c);
+    return c;
+  } catch {
+    SOFT_ATMO_TEX_CACHE.set(k, null);
+    return null;
+  }
+}
+
+function drawSoftAtmoPool(ctx, wx, wy, w, h, texKey, alpha, composite = 'lighter') {
+  if (alpha <= 0.004) return false;
+  const tex = getSoftAtmoTex(texKey);
+  if (!tex || !ctx.drawImage) return false;
+  const maxA = composite === 'lighter' ? 0.16 : 0.72;
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
+  ctx.globalCompositeOperation = composite;
+  ctx.globalAlpha = Math.min(maxA, alpha);
+  ctx.drawImage(
+    tex,
+    Math.round(wx - w * 0.5),
+    Math.round(wy - h * 0.5),
+    Math.max(4, Math.round(w)),
+    Math.max(4, Math.round(h))
+  );
+  ctx.globalCompositeOperation = prevComp;
+  ctx.globalAlpha = prevAlpha;
+  return true;
+}
+
+function drawSteppedPixelLine(ctx, x0, y0, x1, y1, color, pxUnit = 2) {
+  const u = Math.max(2, pxUnit | 0);
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / u));
+  ctx.fillStyle = color;
+  for (let s = 0; s <= steps; s++) {
+    const f = s / steps;
+    const px = snapPx(x0 + dx * f, u);
+    const py = snapPx(y0 + dy * f, u);
+    ctx.fillRect(px, py, u, u);
+  }
+}
 
 const BIOME_SLOT_BY_ID = {
   cathedral: 0,
@@ -287,48 +370,47 @@ function seloutBlock(ctx, x, y, w, h, bodyCol, topCol = null, botCol = null) {
 }
 
 /**
- * Renders a crisp stepped HD-2D pixel-grid diamond/octagonal bloom cluster using integer
- * `fillRect` blocks and `'lighter'` additive blending (zero smooth radial circles/orbs).
+ * Renders a warm, flickering soft feathered light pool (never a chunky `+` stamp!)
+ * using cached offscreen radial light textures (`alpha <= 0.14`) plus a subtle 2px core glint.
  */
-function drawSteppedPixelBloom(ctx, wx, wy, palKey, pxUnit, tierSize, alpha) {
+function drawSteppedPixelBloom(ctx, wx, wy, palKey, pxUnit, tierSize, alpha, isFloorPool = false) {
   if (alpha <= 0.004) return;
   const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.cyan;
-  const u = Math.max(2, pxUnit | 0);
+  const capped = Math.min(0.14, alpha);
+  const wPool = isFloorPool
+    ? tierSize >= 3
+      ? 148
+      : 108
+    : tierSize >= 3
+      ? 112
+      : 82;
+  const hPool = isFloorPool
+    ? tierSize >= 3
+      ? 42
+      : 32
+    : tierSize >= 3
+      ? 96
+      : 70;
+
+  const drewSoft = drawSoftAtmoPool(ctx, wx, wy, wPool, hPool, palKey, capped, 'lighter');
+  if (drewSoft && !isFloorPool) {
+    drawSoftAtmoPool(ctx, wx, wy, wPool * 0.45, hPool * 0.45, palKey, capped * 0.65, 'lighter');
+  }
+
+  // Tiny crisp 2px jewel-core sparkle (keeps pixel-art focal sparkle crisp without blocky `+` slabs)
+  const u = Math.max(2, Math.min(4, pxUnit | 0));
   const cx = snapPx(wx, u);
   const cy = snapPx(wy, u);
-  const capped = Math.min(0.14, alpha);
-
-  const rCore = u * (tierSize >= 3 ? 2 : 1);
-  const rMid = u * (tierSize >= 3 ? 4 : 3);
-  const rOuter = u * (tierSize >= 3 ? 7 : 5);
-  const rDiag = u * (tierSize >= 3 ? 5 : 4);
-
   const prevComp = ctx.globalCompositeOperation;
   const prevAlpha = ctx.globalAlpha;
   const prevFill = ctx.fillStyle;
   ctx.globalCompositeOperation = 'lighter';
-
-  // 1. Stepped outer pixel cross + octagonal shoulder blocks
-  ctx.fillStyle = pal[0];
-  ctx.globalAlpha = capped * 0.42;
-  ctx.fillRect(cx - rOuter, cy - rCore, rOuter * 2, rCore * 2);
-  ctx.fillRect(cx - rCore, cy - rOuter, rCore * 2, rOuter * 2);
-  ctx.fillRect(cx - rDiag, cy - rMid, rDiag * 2, rMid * 2);
-  ctx.fillRect(cx - rMid, cy - rDiag, rMid * 2, rDiag * 2);
-
-  // 2. Stepped mid-tier pixel diamond
   ctx.fillStyle = pal[1];
-  ctx.globalAlpha = capped * 0.62;
-  ctx.fillRect(cx - rMid, cy - rCore, rMid * 2, rCore * 2);
-  ctx.fillRect(cx - rCore, cy - rMid, rCore * 2, rMid * 2);
-  ctx.fillRect(cx - (rMid - u), cy - (rMid - u), (rMid - u) * 2, (rMid - u) * 2);
-
-  // 3. Crisp bright pixel core block
+  ctx.globalAlpha = Math.min(0.13, capped * (drewSoft ? 0.55 : 0.72));
+  ctx.fillRect(cx - u, cy - (u >> 1), u * 2, u);
   ctx.fillStyle = pal[2];
-  ctx.globalAlpha = capped * 0.85;
-  ctx.fillRect(cx - rCore, cy - u, rCore * 2, u * 2);
-  ctx.fillRect(cx - u, cy - rCore, u * 2, rCore * 2);
-
+  ctx.globalAlpha = Math.min(0.15, capped * (drewSoft ? 0.72 : 0.88));
+  ctx.fillRect(cx - (u >> 1), cy - (u >> 1), u, u);
   ctx.globalCompositeOperation = prevComp;
   ctx.globalAlpha = prevAlpha;
   ctx.fillStyle = prevFill;
@@ -354,7 +436,7 @@ function drawPixelCrossGlint(ctx, wx, wy, colHex, coreHex, pxUnit, armSteps, alp
   ctx.fillRect(cx, cy - arm, u, arm * 2 + u);
 
   ctx.fillStyle = coreHex;
-  ctx.globalAlpha = Math.min(0.18, alpha);
+  ctx.globalAlpha = Math.min(0.16, alpha);
   ctx.fillRect(cx, cy, u, u);
   ctx.globalCompositeOperation = prevComp;
   ctx.globalAlpha = prevAlpha;
@@ -362,28 +444,357 @@ function drawPixelCrossGlint(ctx, wx, wy, colHex, coreHex, pxUnit, armSteps, alp
 }
 
 /**
- * Renders a diagonal quantized pixel-staircase light shaft (`pxUnit`-snapped steps) above the background.
+ * Renders an angled volumetric feathered light shaft (`0` blocky stair-step rectangles, `0` ctx.rotate)
+ * by compositing overlapping soft feathered light ellipses along the diagonal beam axis.
  */
 function drawPixelStaircaseRay(ctx, topX, topY, stepDx, stepDy, widthPx, steps, colHex, alpha) {
   if (alpha <= 0.004) return;
-  const u = 6;
-  const rw = snapPx(widthPx, u);
-  const rh = snapPx(stepDy + u, u);
+  const texKey =
+    colHex === '#fde047' || colHex === '#facc15'
+      ? 'gold'
+      : colHex === '#2dd4bf' || colHex === '#34d399'
+        ? 'mistTeal'
+        : colHex === '#c084fc' || colHex === '#a855f7'
+          ? 'mistViolet'
+          : colHex === '#fb923c' || colHex === '#ef4444'
+            ? 'mistEmber'
+            : 'mistCyan';
+  const tex = getSoftAtmoTex(texKey);
   const prevComp = ctx.globalCompositeOperation;
   const prevAlpha = ctx.globalAlpha;
   const prevFill = ctx.fillStyle;
   ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = colHex;
-  for (let s = 0; s < steps; s++) {
-    const fade = Math.sin(((s + 0.5) / steps) * Math.PI);
-    ctx.globalAlpha = Math.min(0.065, alpha * fade);
-    const sx = snapPx(topX + s * stepDx, u);
-    const sy = snapPx(topY + s * stepDy, u);
-    ctx.fillRect(sx, sy, rw, rh);
+  const beamSteps = Math.max(5, steps + 2);
+  for (let s = 0; s < beamSteps; s++) {
+    const f = (s + 0.5) / beamSteps;
+    const fade = Math.sin(f * Math.PI);
+    const bx = topX + f * steps * stepDx;
+    const by = topY + f * steps * stepDy;
+    const bw = widthPx * (1.55 + f * 0.95);
+    const bh = Math.max(76, Math.abs(stepDy) * 1.95);
+    if (tex && ctx.drawImage) {
+      ctx.globalAlpha = Math.min(0.062, alpha * 1.15 * fade);
+      ctx.drawImage(tex, Math.round(bx - bw * 0.5), Math.round(by - bh * 0.5), Math.round(bw), Math.round(bh));
+    } else {
+      ctx.fillStyle = colHex;
+      ctx.globalAlpha = Math.min(0.045, alpha * fade);
+      ctx.fillRect(snapPx(bx - widthPx * 0.4, 4), snapPx(by - 20, 4), snapPx(widthPx * 0.8, 4), 40);
+    }
   }
   ctx.globalCompositeOperation = prevComp;
   ctx.globalAlpha = prevAlpha;
   ctx.fillStyle = prevFill;
+}
+
+/**
+ * Zone 1: Gently swaying tattered royal cathedral banner suspended beneath Gothic arches (`Plane 2`, `0` rotate).
+ */
+function drawSwayingRoyalBanner(ctx, x, topY, t, seed, isWarm = false, isGlacial = false) {
+  const bx = Math.round(x);
+  const ty = Math.round(topY);
+  const bw = 26;
+  const mainCol = isWarm ? '#7f1d1d' : isGlacial ? '#0c4a6e' : '#6b1224';
+  const hiCol = isWarm ? '#b91c1c' : isGlacial ? '#0284c7' : '#9f1239';
+  const shadowCol = isWarm ? '#450a0a' : isGlacial ? '#082f49' : '#3b0716';
+  const trimCol = isGlacial ? '#7dd3fc' : '#d4af37';
+  const crestCol = isGlacial ? '#e0f2fe' : '#fde047';
+
+  // Twin vertical iron suspension chains anchoring the banner cleanly up into the Gothic vault masonry
+  for (const chainOff of [-12, 10]) {
+    const chX = bx + chainOff;
+    for (let cy = ty - 76; cy < ty - 2; cy += 6) {
+      ctx.fillStyle = SELOUT;
+      ctx.fillRect(chX - 1, cy, 4, 5);
+      ctx.fillStyle = (cy & 2) === 0 ? '#64748b' : '#334155';
+      ctx.fillRect(chX, cy + 1, 2, 3);
+    }
+  }
+
+  // Forged horizontal iron mounting rod
+  ctx.fillStyle = SELOUT;
+  ctx.fillRect(bx - 18, ty - 2, 36, 6);
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(bx - 17, ty - 1, 34, 3);
+  ctx.fillStyle = trimCol;
+  ctx.fillRect(bx - 18, ty - 1, 4, 4);
+  ctx.fillRect(bx + 14, ty - 1, 4, 4);
+
+  // 6 vertical cloth strips swaying smoothly with phase lag down the banner (`y: ty+4 .. ty+82`)
+  const stripH = 12;
+  for (let s = 0; s < 6; s++) {
+    const u = (s + 1) / 6;
+    const sway = Math.round(Math.sin(t * 2.1 + seed - s * 0.52) * (1.2 + u * 4.8));
+    const sx = bx - (bw >> 1) + sway;
+    const sy = ty + 3 + s * stripH;
+    const curH = s === 5 ? 10 : stripH + 1;
+
+    ctx.fillStyle = SELOUT;
+    ctx.fillRect(sx - 2, sy, bw + 4, curH);
+    ctx.fillStyle = mainCol;
+    ctx.fillRect(sx, sy, bw, curH);
+    // Fabric fold highlight & shadow
+    ctx.fillStyle = hiCol;
+    ctx.fillRect(sx + 4, sy, 6, curH);
+    ctx.fillStyle = shadowCol;
+    ctx.fillRect(sx + bw - 6, sy, 5, curH);
+    // Gold edge trim stripes
+    ctx.fillStyle = trimCol;
+    ctx.fillRect(sx + 1, sy, 2, curH);
+    ctx.fillRect(sx + bw - 3, sy, 2, curH);
+
+    // Royal eclipse diamond crest on mid strips (`s === 2 || s === 3`)
+    if (s === 2) {
+      ctx.fillStyle = crestCol;
+      ctx.fillRect(sx + 11, sy + 2, 4, 8);
+      ctx.fillRect(sx + 9, sy + 5, 8, 4);
+      ctx.fillStyle = trimCol;
+      ctx.fillRect(sx + 12, sy + 4, 2, 4);
+    } else if (s === 3) {
+      ctx.fillStyle = trimCol;
+      ctx.fillRect(sx + 11, sy, 4, 4);
+      ctx.fillRect(sx + 7, sy + 7, 12, 2);
+    }
+  }
+
+  // Tattered notched swallowtail hem (`s === 6`)
+  const hemSway = Math.round(Math.sin(t * 2.1 + seed - 3.3) * 6.2);
+  const hx = bx - (bw >> 1) + hemSway;
+  const hy = ty + 3 + 6 * stripH;
+  ctx.fillStyle = SELOUT;
+  ctx.fillRect(hx - 1, hy, 9, 10);
+  ctx.fillRect(hx + 10, hy, 6, 7);
+  ctx.fillRect(hx + 18, hy, 9, 12);
+  ctx.fillStyle = mainCol;
+  ctx.fillRect(hx, hy, 7, 8);
+  ctx.fillRect(hx + 11, hy, 4, 5);
+  ctx.fillRect(hx + 19, hy, 7, 10);
+  ctx.fillStyle = trimCol;
+  ctx.fillRect(hx + 1, hy + 6, 4, 2);
+  ctx.fillRect(hx + 21, hy + 8, 4, 2);
+}
+
+/**
+ * Zone 2: Shimmering moonlit moss & rainwater puddle nestled into causeway flagstones (`0` arc/ellipse).
+ */
+function drawMoonlitRoadPuddle(ctx, cx, cy, halfW, halfH, t, seed) {
+  const rx = snapPx(cx, 2);
+  const ry = snapPx(cy, 2);
+  const hw = Math.max(24, snapPx(halfW, 4));
+  const hh = Math.max(8, snapPx(halfH, 2));
+
+  // Stepped pixel oval basin with deep moonlit teal water & mossy flagstone rim
+  for (let dy = -hh; dy <= hh; dy += 2) {
+    const ny = dy / Math.max(2, hh);
+    const span = snapPx(Math.sqrt(Math.max(0, 1 - ny * ny)) * hw, 2);
+    if (span < 4) continue;
+    ctx.fillStyle = 'rgba(5, 16, 22, 0.56)';
+    ctx.fillRect(rx - span - 2, ry + dy, span * 2 + 4, 2);
+    ctx.fillStyle = dy < 0 ? 'rgba(13, 56, 66, 0.52)' : 'rgba(8, 36, 48, 0.56)';
+    ctx.fillRect(rx - span, ry + dy, span * 2, 2);
+  }
+
+  // Mossy emerald edge tufts along top stone seam
+  ctx.fillStyle = 'rgba(16, 185, 129, 0.48)';
+  ctx.fillRect(rx - Math.round(hw * 0.65), ry - hh, 10, 2);
+  ctx.fillRect(rx + Math.round(hw * 0.28), ry - hh + 2, 12, 2);
+  ctx.fillStyle = 'rgba(52, 211, 153, 0.45)';
+  ctx.fillRect(rx - Math.round(hw * 0.55), ry + hh - 2, 8, 2);
+
+  // Gently drifting moonlit aqua shimmer ripples across water surface
+  const ripShift = Math.round(Math.sin(t * 2.2 + seed) * 10);
+  const shimA = 0.24 + 0.18 * Math.sin(t * 3.4 + seed * 1.7);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = Math.min(0.14, shimA * 0.36);
+  ctx.fillStyle = '#5eead4';
+  ctx.fillRect(rx - Math.round(hw * 0.42) + ripShift, ry - 2, Math.round(hw * 0.46), 2);
+  ctx.fillStyle = '#ccfbf1';
+  ctx.fillRect(rx - Math.round(hw * 0.14) - Math.round(ripShift * 0.6), ry + 2, Math.round(hw * 0.32), 2);
+  ctx.restore();
+
+  drawSoftAtmoPool(ctx, rx, ry, hw * 2.1, hh * 2.6, 'aqua', 0.055 + 0.025 * Math.sin(t * 2.6 + seed), 'lighter');
+}
+
+/**
+ * Zone 3: Rising jagged violet soul-flames emerging from cracked ossuary flagstones (`0` rotate/arc).
+ */
+function drawCrackedSoulFlame(ctx, cx, cy, t, seed) {
+  const rx = snapPx(cx, 2);
+  const ry = snapPx(cy, 2);
+  const flick = 0.65 + 0.35 * Math.sin(t * 7.2 + seed * 2.1);
+
+  // Jagged dark basalt flagstone fissure
+  drawSteppedPixelLine(ctx, rx - 22, ry + 2, rx - 6, ry - 2, '#070412', 2);
+  drawSteppedPixelLine(ctx, rx - 6, ry - 2, rx + 8, ry + 2, '#070412', 2);
+  drawSteppedPixelLine(ctx, rx + 8, ry + 2, rx + 24, ry - 2, '#070412', 2);
+  drawSteppedPixelLine(ctx, rx - 4, ry, rx + 10, ry, '#7e22ce', 2);
+
+  // Soft feathered violet ground glow around fissure
+  drawSoftAtmoPool(ctx, rx, ry - 4, 86, 30, 'violet', 0.095 * flick, 'lighter');
+
+  // 3 rising jagged pixel soul-flame tongues (`source-over` crisp pixels + restrained top highlight)
+  const tongues = [
+    { ox: -8, h: 20 + Math.round(Math.sin(t * 9.0 + seed) * 5), w: 6 },
+    { ox: 1, h: 28 + Math.round(Math.cos(t * 10.4 + seed * 1.4) * 6), w: 8 },
+    { ox: 10, h: 17 + Math.round(Math.sin(t * 8.2 + seed * 2.3) * 4), w: 6 }
+  ];
+  for (let i = 0; i < tongues.length; i++) {
+    const tg = tongues[i];
+    const segs = 5;
+    for (let s = 0; s < segs; s++) {
+      const u = s / segs;
+      const sway = Math.round(Math.sin(t * 7.5 + seed + i * 1.7 + u * 3.8) * (2 + u * 4));
+      const sw = Math.max(2, Math.round(tg.w * (1 - u * 0.72)));
+      const sh = Math.max(3, Math.ceil(tg.h / segs) + 1);
+      const px = rx + tg.ox + sway - (sw >> 1);
+      const py = ry - Math.round(u * tg.h) - sh;
+      ctx.fillStyle = s === 0 ? '#581c87' : s <= 2 ? '#a855f7' : s === 3 ? '#e879f9' : '#fae8ff';
+      ctx.globalAlpha = 0.86 - u * 0.25;
+      ctx.fillRect(px, py, sw, sh);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/**
+ * Zone 3 Horizon: Occasional distant crimson eclipse lightning fork on `Plane 1` (`0` vector stroke).
+ */
+function drawHorizonEclipseLightning(ctx, topX, topY, botY, t, seed) {
+  const win = (t * 0.42 + seed * 0.37) % 1;
+  if (win > 0.14) return;
+  const flash = Math.sin((win / 0.14) * Math.PI);
+  if (flash <= 0.06) return;
+
+  // Brief subtle crimson horizon cloud flash
+  drawSoftAtmoPool(ctx, topX, topY + 24, 240, 120, 'crimson', 0.12 * flash, 'lighter');
+
+  // Jagged multi-segment pixel lightning bolt
+  const segs = 6;
+  const dy = (botY - topY) / segs;
+  let px = topX;
+  let py = topY;
+  const stepSeed = Math.floor(t * 14 + seed * 7);
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  for (let s = 0; s < segs; s++) {
+    const nx = px + (((hash2D(stepSeed + s, Math.round(seed * 10)) - 0.5) * 46) | 0);
+    const ny = py + dy;
+    ctx.globalAlpha = 0.75 * flash;
+    drawSteppedPixelLine(ctx, px, py, nx, ny, '#f43f5e', 4);
+    ctx.globalAlpha = 0.92 * flash;
+    drawSteppedPixelLine(ctx, px, py, nx, ny, '#ffe4e6', 2);
+    if (s === 2 || s === 4) {
+      const dir = s === 2 ? -1 : 1;
+      ctx.globalAlpha = 0.58 * flash;
+      drawSteppedPixelLine(ctx, nx, ny, nx + dir * 24, ny + dy * 0.85, '#fb7185', 2);
+    }
+    px = nx;
+    py = ny;
+  }
+  ctx.restore();
+}
+
+/**
+ * Zone 4: Organic jagged animated pixel magma fissure pulsing along the obsidian causeway (`0` stiff horizontal bars!).
+ */
+function drawOrganicMagmaCrack(ctx, fx, fy, len, dir, pulse, t, seed, isGlacial = false) {
+  const x0 = snapPx(fx - len * 0.52, 2);
+  const y0 = snapPx(fy + dir * 2, 2);
+  const x1 = snapPx(fx - len * 0.18, 2);
+  const y1 = snapPx(fy - dir * 4, 2);
+  const x2 = snapPx(fx + len * 0.16, 2);
+  const y2 = snapPx(fy + dir * 4, 2);
+  const x3 = snapPx(fx + len * 0.50, 2);
+  const y3 = snapPx(fy - dir * 2, 2);
+  const bx = snapPx(x1 + len * 0.14, 2);
+  const by = snapPx(y1 + dir * 14, 2);
+  const bx2 = snapPx(x2 + len * 0.12, 2);
+  const by2 = snapPx(y2 - dir * 12, 2);
+
+  // Restrained warm soft ember floor light pool (`<= 0.12`)
+  drawSoftAtmoPool(ctx, fx, fy, len * 1.45, 36, isGlacial ? 'cyan' : 'ember', 0.11 * pulse, 'lighter');
+
+  // Deep obsidian fissure edge (`4px`) + glowing molten core (`2px`) + traveling hot pulse knot
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 0.78;
+  const edgeCol = isGlacial ? '#082f49' : '#1f0706';
+  drawSteppedPixelLine(ctx, x0, y0 + 1, x1, y1 + 1, edgeCol, 4);
+  drawSteppedPixelLine(ctx, x1, y1 + 1, x2, y2 + 1, edgeCol, 4);
+  drawSteppedPixelLine(ctx, x2, y2 + 1, x3, y3 + 1, edgeCol, 4);
+  drawSteppedPixelLine(ctx, x1, y1 + 1, bx, by + 1, edgeCol, 2);
+  drawSteppedPixelLine(ctx, x2, y2 + 1, bx2, by2 + 1, edgeCol, 2);
+
+  ctx.globalAlpha = 0.62 + 0.30 * pulse;
+  const midCol = isGlacial ? '#38bdf8' : '#ea580c';
+  const hotCol = isGlacial ? '#e0f2fe' : '#fde047';
+  drawSteppedPixelLine(ctx, x0, y0, x1, y1, midCol, 2);
+  drawSteppedPixelLine(ctx, x1, y1, x2, y2, midCol, 2);
+  drawSteppedPixelLine(ctx, x2, y2, x3, y3, midCol, 2);
+  drawSteppedPixelLine(ctx, x1, y1, bx, by, midCol, 2);
+  drawSteppedPixelLine(ctx, x2, y2, bx2, by2, midCol, 2);
+
+  // Animated traveling incandescent vein surge along the fissure
+  const surgeU = (t * 0.55 + seed * 0.31) % 1;
+  const sx = snapPx(x0 + (x3 - x0) * surgeU, 2);
+  const sy = snapPx(fy + Math.sin(surgeU * Math.PI * 3) * 3 * dir, 2);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = Math.min(0.15, 0.13 * pulse);
+  ctx.fillStyle = hotCol;
+  ctx.fillRect(sx - 6, sy - 1, 12, 2);
+  ctx.fillRect(sx - 2, sy - 2, 4, 4);
+  ctx.restore();
+}
+
+/**
+ * Zone 4: Multi-lobe feathered volcanic smoke & ember plume rising organically (`0` dark boxes!).
+ */
+function drawVolcanicSmokePlume(ctx, baseX, baseY, t, seed, heightPx = 150, scale = 1.0) {
+  for (let p = 0; p < 4; p++) {
+    const cyc = (t * (0.22 + (p % 2) * 0.05) + seed + p * 0.25) % 1;
+    const px = baseX + Math.sin(t * 1.4 + seed * 3 + p * 1.8) * (10 + cyc * 24) - cyc * 14;
+    const py = baseY - cyc * heightPx;
+    const sz = (36 + cyc * 68) * scale;
+    const env = Math.sin(cyc * Math.PI);
+    drawSoftAtmoPool(ctx, px, py, sz * 1.35, sz * 0.92, 'smokeDark', 0.42 * env, 'source-over');
+    if (cyc < 0.42) {
+      drawSoftAtmoPool(ctx, px, py + 8, sz * 0.85, sz * 0.55, 'ember', 0.095 * (1 - cyc / 0.42), 'lighter');
+    }
+  }
+}
+
+/**
+ * Zone 2 Foreground (`1.24x`): Gently swaying hanging Starwood willow vines anchored strictly above combat lane.
+ */
+function drawHangingWillowVine(ctx, anchorX, topY, lengthPx, t, seed) {
+  const segs = Math.max(5, Math.floor(lengthPx / 16));
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  for (let s = 0; s < segs; s++) {
+    const u = s / segs;
+    const sway = Math.round(Math.sin(t * 1.55 + seed - u * 2.1) * (2 + u * 11));
+    const vx = snapPx(anchorX + sway, 2);
+    const vy = Math.round(topY + s * 16);
+    const topFade = Math.min(1, (s + 1) / 3);
+    ctx.globalAlpha = 0.78 * topFade;
+    // Main hanging vine stem
+    ctx.fillStyle = '#061a14';
+    ctx.fillRect(vx - 2, vy, 4, 17);
+    ctx.fillStyle = '#0f3d32';
+    ctx.fillRect(vx - 1, vy, 2, 16);
+    // Alternating stepped willow leaf clusters
+    const side = s % 2 === 0 ? -1 : 1;
+    ctx.fillStyle = '#052e2b';
+    ctx.fillRect(vx + side * 2, vy + 3, 6, 8);
+    ctx.fillStyle = s % 3 === 0 ? '#10b981' : '#047857';
+    ctx.fillRect(vx + side * 3, vy + 4, 4, 6);
+    if (s === segs - 1 || s % 4 === 2) {
+      ctx.fillStyle = '#5eead4';
+      ctx.globalAlpha = (0.45 + 0.35 * Math.sin(t * 3.2 + seed + s)) * topFade;
+      ctx.fillRect(vx + side * 4, vy + 6, 2, 2);
+    }
+  }
+  ctx.restore();
 }
 
 function isImageReadyForBlit(img) {
@@ -723,6 +1134,13 @@ export class AdventureMapRenderer {
       }
     }
     PIXEL_BLOOM_CACHE.clear();
+    for (const tex of SOFT_ATMO_TEX_CACHE.values()) {
+      if (tex && typeof tex === 'object' && 'width' in tex) {
+        tex.width = 0;
+        tex.height = 0;
+      }
+    }
+    SOFT_ATMO_TEX_CACHE.clear();
   }
 
   static getBiomeWeights(wx) {
@@ -968,6 +1386,8 @@ export class AdventureMapRenderer {
               0.14
             );
           }
+          // Occasional distant crimson eclipse lightning flash on the Zone III horizon
+          drawHorizonEclipseLightning(ctx, spX + 34, archTopY + 52, spY - 8, t, sp * 1.9 + k * 0.7);
         }
       }
 
@@ -982,8 +1402,9 @@ export class AdventureMapRenderer {
       ];
       for (let cr = 0; cr < volcanoCraters.length; cr++) {
         const crX = baseWx + volcanoCraters[cr][0] * PANO_SCALE;
-        if (crX + 90 < viewLeft || crX - 90 > viewRight) continue;
+        if (crX + 120 < viewLeft || crX - 120 > viewRight) continue;
         const crY = ARCH_WORLD_TOP_Y + volcanoCraters[cr][1] * PANO_SCALE;
+        drawVolcanicSmokePlume(ctx, crX, crY - 10, t, cr * 0.67 + k * 0.4, 138, 0.85);
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
@@ -1338,6 +1759,8 @@ export class AdventureMapRenderer {
                 Math.sin(sCyc * Math.PI) * 0.86
               );
             }
+            // Warm flickering soft light pool cast onto the upper 2.5D road beneath each standing brazier
+            drawSteppedPixelBloom(ctx, wx, ADVENTURE_ROAD_TOP_Y + 18, palKey, 3, tierSize, 0.088 * flick, true);
           }
 
           const tw = 0.5 + 0.5 * Math.sin(t * 6.2 + i * 2.1);
@@ -1349,7 +1772,7 @@ export class AdventureMapRenderer {
         }
       }
 
-      // 3. Per-Bay Stepped Pixel-Staircase Light Rays & Midground Atmospheric Pixel Streams
+      // 3. Per-Bay Angled Volumetric Cathedral Sunbeams, Swaying Royal Banners & Realm Animations
       for (let b = 0; b < 10; b++) {
         const bayCenterPx = 124 + b * 393;
         const cx = baseWx + bayCenterPx * PANO_SCALE;
@@ -1370,8 +1793,11 @@ export class AdventureMapRenderer {
         const rayBreath = 0.72 + 0.28 * Math.sin(t * 1.85 + b * 1.4);
 
         if (z === 0) {
-          drawPixelStaircaseRay(ctx, cx - 84, -72, 18, 66, 42, 7, '#7dd3fc', 0.046 * rayBreath);
-          drawPixelStaircaseRay(ctx, cx + 48, -54, 18, 66, 36, 6, '#fde047', 0.038 * rayBreath);
+          // Zone I (Eclipse Sanctuary): Angled volumetric golden sunbeams + arch-anchored swaying royal banners + incense embers
+          drawPixelStaircaseRay(ctx, cx - 108, -76, 26, 72, 48, 7, '#fde047', 0.056 * rayBreath);
+          drawPixelStaircaseRay(ctx, cx + 44, -58, 22, 68, 40, 6, '#7dd3fc', 0.044 * rayBreath);
+          drawSwayingRoyalBanner(ctx, cx - 228, 34, t, b * 1.7 + k, infernoAlpha > 0.4, isGlacialPerm);
+          drawSwayingRoyalBanner(ctx, cx + 344, 34, t, b * 1.7 + k + 2.3, infernoAlpha > 0.4, isGlacialPerm);
           const windX = cx - 220 + ((t * 42 + b * 170) % 440);
           blitStageOverlayPixelCell(
             ctx,
@@ -1382,19 +1808,20 @@ export class AdventureMapRenderer {
             216 + (b % 2) * 44,
             144,
             82,
-            0.46,
-            0.09
+            0.40,
+            0.08
           );
-          for (let m = 0; m < 5; m++) {
-            const cyc = (t * (0.17 + (m % 3) * 0.05) + m * 0.29 + b) % 1;
-            const mx = snapPx(cx - 220 + m * 108 + Math.sin(t * 1.5 + m) * 16, 4);
-            const my = snapPx(398 - cyc * 336, 4);
-            const col = m % 2 === 0 ? '#7dd3fc' : '#fde047';
+          for (let m = 0; m < 6; m++) {
+            const cyc = (t * (0.15 + (m % 3) * 0.05) + m * 0.23 + b) % 1;
+            const mx = snapPx(cx - 220 + m * 92 + cyc * 34 + Math.sin(t * 1.6 + m) * 14, 2);
+            const my = snapPx(406 - cyc * 346, 2);
+            const col = m % 3 === 0 ? '#7dd3fc' : '#fde047';
             drawPixelCrossGlint(ctx, mx, my, col, '#ffffff', 3, 1, Math.sin(cyc * Math.PI) * 0.14);
           }
         } else if (z === 1) {
-          drawPixelStaircaseRay(ctx, cx - 96, -66, 16, 64, 42, 7, '#2dd4bf', 0.045 * rayBreath);
-          drawPixelStaircaseRay(ctx, cx + 64, -48, 16, 64, 36, 6, '#34d399', 0.040 * rayBreath);
+          // Zone II (Cursed Starwood): Moonlit volumetric shafts + drifting bioluminescent teal/emerald fireflies
+          drawPixelStaircaseRay(ctx, cx - 96, -66, 18, 64, 44, 7, '#2dd4bf', 0.048 * rayBreath);
+          drawPixelStaircaseRay(ctx, cx + 64, -48, 18, 64, 38, 6, '#34d399', 0.042 * rayBreath);
           for (let wIdx = 0; wIdx < 2; wIdx++) {
             const windX = cx - 260 + ((t * (36 + wIdx * 12) + b * 140 + wIdx * 230) % 520);
             blitStageOverlayPixelCell(
@@ -1406,19 +1833,23 @@ export class AdventureMapRenderer {
               186 + wIdx * 96,
               156,
               88,
-              0.54,
-              0.10
+              0.46,
+              0.09
             );
           }
-          for (let s = 0; s < 6; s++) {
-            const cyc = (t * (0.21 + (s % 3) * 0.06) + s * 0.31 + b) % 1;
-            const sx = snapPx(cx - 250 + s * 98 + cyc * 48 + Math.sin(t * 2.0 + s) * 16, 4);
-            const sy = snapPx(84 + cyc * 326, 4);
+          for (let s = 0; s < 8; s++) {
+            const cyc = (t * (0.14 + (s % 3) * 0.04) + s * 0.27 + b) % 1;
+            const sx = snapPx(cx - 260 + s * 74 + Math.sin(t * 1.8 + s * 1.9 + b) * 32, 2);
+            const sy = snapPx(140 + ((s * 53) % 240) + Math.cos(t * 2.4 + s * 1.4) * 26, 2);
+            const blink = 0.45 + 0.55 * Math.sin(t * 4.6 + s * 2.1 + b);
+            const env = Math.sin(cyc * Math.PI) * blink;
             const col = s % 2 === 0 ? '#2dd4bf' : '#34d399';
-            drawPixelCrossGlint(ctx, sx, sy, col, '#ecfeff', 3, 1, Math.sin(cyc * Math.PI) * 0.15);
+            drawSoftAtmoPool(ctx, sx, sy, 22, 22, s % 2 === 0 ? 'aqua' : 'emerald', 0.11 * env, 'lighter');
+            drawPixelCrossGlint(ctx, sx, sy, col, '#ecfeff', 2, 1, env * 0.15);
           }
         } else if (z === 2) {
-          drawPixelStaircaseRay(ctx, cx - 64, -60, 12, 66, 42, 7, '#c084fc', 0.042 * rayBreath);
+          // Zone III (Abyssal Necropolis): Spectral shafts + drifting bone ash + crypt wraith wisps
+          drawPixelStaircaseRay(ctx, cx - 64, -60, 12, 66, 44, 7, '#c084fc', 0.044 * rayBreath);
           for (let mIdx = 0; mIdx < 2; mIdx++) {
             const mistX = cx - 250 + ((t * (28 + mIdx * 9) + b * 160 + mIdx * 260) % 500);
             blitStageOverlayPixelCell(
@@ -1430,8 +1861,8 @@ export class AdventureMapRenderer {
               256 + mIdx * 68,
               164,
               94,
-              0.56,
-              0.11
+              0.48,
+              0.10
             );
           }
           if (((t * 0.65 + b * 0.41) % 1) < 0.36) {
@@ -1444,10 +1875,22 @@ export class AdventureMapRenderer {
               18,
               96,
               112,
-              0.56,
+              0.52,
               0.12
             );
           }
+          // Drifting pale bone ash flakes + rising violet soul sparks
+          ctx.save();
+          ctx.globalCompositeOperation = 'source-over';
+          for (let a = 0; a < 7; a++) {
+            const cyc = (t * (0.14 + (a % 3) * 0.04) + a * 0.19 + b * 0.37) % 1;
+            const ax = snapPx(cx - 250 + a * 80 - cyc * 58 + Math.sin(t * 1.9 + a * 2.1) * 18, 2);
+            const ay = snapPx(64 + cyc * 348, 2);
+            ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.56;
+            ctx.fillStyle = a % 2 === 0 ? '#cbd5e1' : '#94a3b8';
+            ctx.fillRect(ax, ay, a % 3 === 0 ? 4 : 2, 2);
+          }
+          ctx.restore();
           for (let w = 0; w < 5; w++) {
             const cyc = (t * (0.26 + (w % 2) * 0.08) + w * 0.27 + b) % 1;
             const wxM = snapPx(cx - 230 + w * 108 + Math.cos(t * 2.1 + w) * 16, 4);
@@ -1455,8 +1898,9 @@ export class AdventureMapRenderer {
             drawPixelCrossGlint(ctx, wxM, wyM, '#c084fc', '#f3e8ff', 3, 1, Math.sin(cyc * Math.PI) * 0.15);
           }
         } else {
-          // Zone IV: Molten forge heat-columns + colonnade curb magma surges (`y = 396..444`) + rising pixel cinders
-          drawPixelStaircaseRay(ctx, cx - 72, 42, -10, 58, 42, 6, '#fb923c', 0.044 * rayBreath);
+          // Zone IV (Throne of the Black Pit): Molten heat haze + volcanic smoke plumes + rising cinders
+          drawPixelStaircaseRay(ctx, cx - 72, 42, -10, 58, 44, 6, '#fb923c', 0.046 * rayBreath);
+          drawVolcanicSmokePlume(ctx, cx - 140, 412, t, b * 1.1 + k, 195, 0.95);
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
@@ -1466,8 +1910,8 @@ export class AdventureMapRenderer {
             396,
             144,
             68,
-            0.58,
-            0.11
+            0.54,
+            0.10
           );
           for (let e = 0; e < 6; e++) {
             const cyc = (t * (0.42 + (e % 3) * 0.10) + e * 0.21 + b) % 1;
@@ -1562,7 +2006,9 @@ export class AdventureMapRenderer {
       const pulse = 0.58 + 0.42 * Math.sin(t * 3.4 + s * 1.3);
 
       if (z === 0) {
-        drawSteppedPixelBloom(ctx, baseX + 146, 483, s % 2 === 0 ? 'cyan' : 'gold', 5, 2, 0.065 * pulse);
+        // Zone I (Eclipse Sanctuary): Soft warm sunlit & astral floor light pools + gentle breeze wisps (0 rigid 44x3 bars!)
+        drawSteppedPixelBloom(ctx, baseX + 146, 484, s % 2 === 0 ? 'gold' : 'cyan', 4, 2, 0.075 * pulse, true);
+        drawSteppedPixelBloom(ctx, baseX + 332, 558, s % 2 === 0 ? 'cyan' : 'gold', 4, 2, 0.068 * pulse, true);
         const slipX = baseX + ((t * 46 + Math.abs(s) * 137) % segSpan);
         const runeY = s % 2 === 0 ? 483 : 551;
         blitStageOverlayPixelCell(
@@ -1574,23 +2020,18 @@ export class AdventureMapRenderer {
           runeY - 29,
           144,
           58,
-          0.44,
-          0.08
+          0.38,
+          0.07
         );
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.16, 0.13 * pulse);
-        ctx.fillStyle = s % 2 === 0 ? '#38bdf8' : '#eab308';
-        ctx.fillRect(baseX + 116, 482, 44, 3);
-        ctx.fillRect(baseX + 296, 550, 44, 3);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
-        ctx.restore();
+        drawSoftAtmoPool(ctx, baseX + 240, 514, 180, 44, s % 2 === 0 ? 'gold' : 'cyan', 0.068 * pulse, 'lighter');
       } else if (z === 1) {
-        drawSteppedPixelBloom(ctx, baseX + 112, 483, 'emerald', 5, 2, 0.075 * pulse);
-        drawSteppedPixelBloom(ctx, baseX + 356, 663, 'aqua', 5, 2, 0.075 * pulse);
+        // Zone II (Cursed Starwood): Shimmering moonlit moss/water puddles + soft aqua pools + gentle sylvan wisps
+        drawMoonlitRoadPuddle(ctx, baseX + 132, 488, 52, 12, t, s * 1.7);
+        drawMoonlitRoadPuddle(ctx, baseX + 344, 636, 58, 13, t, s * 1.7 + 2.4);
+        drawSteppedPixelBloom(ctx, baseX + 112, 483, 'emerald', 4, 2, 0.070 * pulse, true);
+        drawSteppedPixelBloom(ctx, baseX + 356, 650, 'aqua', 4, 2, 0.070 * pulse, true);
         const slipX = baseX + ((t * 38 + Math.abs(s) * 163) % segSpan);
-        const sylvY = s % 3 === 0 ? 483 : s % 3 === 1 ? 551 : 663;
+        const sylvY = s % 3 === 0 ? 483 : s % 3 === 1 ? 551 : 656;
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
@@ -1600,12 +2041,15 @@ export class AdventureMapRenderer {
           sylvY - 32,
           152,
           64,
-          0.50,
-          0.10
+          0.44,
+          0.08
         );
       } else if (z === 2) {
-        const driftX = snapPx(baseX + ((t * 26 + Math.abs(s) * 97) % segSpan), 6);
+        // Zone III (Abyssal Necropolis): Rising jagged violet soul-flames from cracked flagstones + feathered crypt ground mist (0 168x6 / 108x6 slabs!)
+        const driftX = baseX + ((t * 24 + Math.abs(s) * 97) % segSpan);
         const mistY = 492 + (Math.abs(s) % 3) * 44;
+        drawCrackedSoulFlame(ctx, baseX + 148, 496 + (Math.abs(s) % 2) * 32, t, s * 1.9);
+        drawCrackedSoulFlame(ctx, baseX + 356, 616 - (Math.abs(s) % 2) * 28, t, s * 1.9 + 3.1);
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
@@ -1615,25 +2059,21 @@ export class AdventureMapRenderer {
           mistY - 34,
           168,
           72,
-          0.54,
-          0.10
+          0.46,
+          0.09
         );
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = '#a855f7';
-        ctx.globalAlpha = Math.min(0.16, 0.055 * pulse);
-        ctx.fillRect(driftX - 84, mistY, 168, 6);
-        ctx.fillRect(driftX - 54, mistY - 6, 108, 6);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
-        ctx.restore();
+        drawSoftAtmoPool(ctx, driftX, mistY, 240, 48, 'mistViolet', 0.095 * pulse, 'lighter');
+        drawSoftAtmoPool(ctx, driftX + 52, mistY + 12, 176, 36, 'mistRose', 0.065 * pulse, 'lighter');
       } else {
-        // Locked 0.0px onto Zone IV's main horizontal lava vein (`y = 567`) & secondary cracks (`y = 496, 615`)!
+        // Zone IV (Throne of the Black Pit): Organic jagged animated pixel magma cracks pulsing along the road + volcanic ember surge!
         const hotPulse = 0.64 + 0.36 * Math.sin(t * 5.0 + s * 1.9);
-        drawSteppedPixelBloom(ctx, baseX + 140, 567, 'ember', 5, 2, 0.085 * hotPulse);
-        drawSteppedPixelBloom(ctx, baseX + 350, s % 2 === 0 ? 496 : 615, 'ember', 5, 2, 0.085 * hotPulse);
+        const isGlacialRoad = isGlacialPerm && infernoAlpha <= 0.5;
+        drawOrganicMagmaCrack(ctx, baseX + 142, 567, 134, s % 2 === 0 ? 1 : -1, hotPulse, t, s * 1.7, isGlacialRoad);
+        const secVeinY = s % 2 === 0 ? 496 : 622;
+        drawOrganicMagmaCrack(ctx, baseX + 346, secVeinY, 118, s % 2 === 0 ? -1 : 1, hotPulse * 0.92, t, s * 1.7 + 2.3, isGlacialRoad);
+        drawSteppedPixelBloom(ctx, baseX + 140, 567, isGlacialRoad ? 'cyan' : 'ember', 4, 2, 0.080 * hotPulse, true);
 
-        const surgeRow = isGlacialPerm && infernoAlpha <= 0.5 ? 1 : 9;
+        const surgeRow = isGlacialRoad ? 1 : 9;
         // Row 9 crack line sits at `0.5625` (`36/64`) of cell height -> `567 - 68 * 0.5625 = 529`!
         blitStageOverlayPixelCell(
           ctx,
@@ -1644,10 +2084,9 @@ export class AdventureMapRenderer {
           567 - 38,
           136,
           68,
-          0.68,
-          0.12
+          0.60,
+          0.11
         );
-        const secVeinY = s % 2 === 0 ? 496 : 615;
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
@@ -1657,8 +2096,8 @@ export class AdventureMapRenderer {
           secVeinY - 36,
           128,
           64,
-          0.64,
-          0.12
+          0.56,
+          0.10
         );
 
         const cyc = (t * 0.72 + (Math.abs(s) % 5) * 0.2) % 1;
@@ -1666,8 +2105,8 @@ export class AdventureMapRenderer {
           ctx,
           baseX + 140,
           567 - cyc * 38,
-          '#fb923c',
-          '#fde047',
+          isGlacialRoad ? '#38bdf8' : '#fb923c',
+          isGlacialRoad ? '#e0f2fe' : '#fde047',
           3,
           1,
           Math.sin(cyc * Math.PI) * 0.14
@@ -1909,46 +2348,47 @@ export class AdventureMapRenderer {
     ctx.fillStyle = canyonMist;
     ctx.fillRect(viewLeft, 175, viewW, roadTopY - 167);
 
-    // Stepped pixel-band atmospheric horizon shimmer (`0` circular radial gradients!)
+    // Soft feathered drifting canyon mist banks (`0` blocky horizontal `216x6`/`144x6` fillRect slabs!)
     const mistAnchor = (1 - 0.70) * camX - t * 18;
-    const mistStep = 420;
+    const mistStep = 380;
     const mStart = Math.floor((viewLeft - mistAnchor) / mistStep) - 1;
     const mEnd = Math.ceil((viewRight - mistAnchor) / mistStep) + 1;
     const activeZone = getCampaignZoneAtX(camX);
-    const customZoneMistHex =
-      activeZone?.bloomPalette && PIXEL_BLOOM_PALETTES[activeZone.bloomPalette]
-        ? PIXEL_BLOOM_PALETTES[activeZone.bloomPalette][1]
-        : null;
-    const mistHex =
+    const customZonePal = activeZone?.bloomPalette || null;
+    const mistKeyA =
       infernoAlpha > 0.45 || (camWeights[3] > 0.45 && !isGlacialPerm)
-        ? '#fb923c'
+        ? 'mistEmber'
         : isGlacialPerm
-          ? '#67e8f9'
+          ? 'mistCyan'
           : isShogunatePerm
-            ? '#fda4af'
-            : customZoneMistHex
-              ? customZoneMistHex
-              : camWeights[2] > 0.45
-                ? '#a855f7'
-                : camWeights[1] > 0.45
-                  ? '#2dd4bf'
-                  : '#38bdf8';
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = mistHex;
+            ? 'mistRose'
+            : customZonePal === 'violet'
+              ? 'mistViolet'
+              : customZonePal === 'emerald' || customZonePal === 'aqua'
+                ? 'mistTeal'
+                : customZonePal === 'ember'
+                  ? 'mistEmber'
+                  : camWeights[2] > 0.45
+                    ? 'mistViolet'
+                    : camWeights[1] > 0.45
+                      ? 'mistTeal'
+                      : 'mistCyan';
+    const mistKeyB =
+      mistKeyA === 'mistEmber'
+        ? 'mistRose'
+        : mistKeyA === 'mistViolet'
+          ? 'mistRose'
+          : mistKeyA === 'mistTeal'
+            ? 'mistCyan'
+            : 'gold';
     for (let m = mStart; m <= mEnd; m++) {
-      const mx = snapPx(mistAnchor + m * mistStep + Math.sin(t * 0.9 + m) * 24, 6);
-      const my = snapPx(300 + (Math.abs(m) % 3) * 30, 6);
-      const mp = 0.036 + 0.018 * Math.sin(t * 1.6 + m);
-      ctx.globalAlpha = mp;
-      ctx.fillRect(mx - 108, my, 216, 6);
-      ctx.globalAlpha = mp * 0.65;
-      ctx.fillRect(mx - 72, my - 6, 144, 6);
-      ctx.fillRect(mx - 72, my + 6, 144, 6);
+      const mx = mistAnchor + m * mistStep + Math.sin(t * 0.75 + m * 1.4) * 32;
+      const my = 296 + (Math.abs(m) % 3) * 36 + Math.cos(t * 0.9 + m) * 8;
+      const mw = 310 + (Math.abs(m) % 3) * 56;
+      const mh = 72 + (Math.abs(m) % 2) * 22;
+      const mp = 0.055 + 0.025 * Math.sin(t * 1.4 + m * 1.3);
+      drawSoftAtmoPool(ctx, mx, my, mw, mh, m % 2 === 0 ? mistKeyA : mistKeyB, mp, 'lighter');
     }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    ctx.restore();
 
     // =========================================================================
     // PLANE 2 (`0.86x`): GOTHIC PILGRIMAGE COLONNADE (`advArchPano`, `3930x272` RGBA)
@@ -2077,10 +2517,16 @@ export class AdventureMapRenderer {
     const bossAnchorX = Number.isFinite(bossCfg?.anchorX) ? bossCfg.anchorX : 9335;
     const bossSealX = bossAnchorX - 415;
     const bossSealY = Number.isFinite(bossCfg?.groundY) ? bossCfg.groundY : roadMidY;
-    if (bossSealEnabled && bossSealX + 260 > viewLeft && bossSealX - 260 < viewRight) {
+    if (bossSealEnabled && bossSealX + 520 > viewLeft && bossSealX - 420 < viewRight) {
       const sealPulse = 0.65 + 0.35 * Math.sin(t * 3.1);
       const runeHex = isGlacialPerm && infernoAlpha <= 0.4 ? '#38bdf8' : infernoAlpha > 0.4 ? '#fb923c' : '#ef4444';
       const coreHex = isGlacialPerm && infernoAlpha <= 0.4 ? '#e0f2fe' : '#fef08a';
+
+      // Ominous abyssal boss haze framing BEHEMOTH MALPHAS along the eastern throne parapet (combat lane stays razor-sharp!)
+      drawSoftAtmoPool(ctx, bossAnchorX - 40, 418, 520, 320, 'bossHaze', 0.42 + 0.12 * sealPulse, 'source-over');
+      drawSoftAtmoPool(ctx, bossAnchorX - 70, 560, 420, 210, isGlacialPerm && infernoAlpha <= 0.4 ? 'cyan' : 'ember', 0.095 * sealPulse, 'lighter');
+      drawVolcanicSmokePlume(ctx, bossAnchorX - 180, roadTopY + 12, t, 4.2, 210, 1.15);
+      drawVolcanicSmokePlume(ctx, bossAnchorX + 35, roadTopY + 26, t, 7.9, 240, 1.25);
 
       // Continuous quantized 4px pixel-stepped inlaid rune rings carved into the obsidian causeway
       ctx.save();
@@ -2238,15 +2684,24 @@ export class AdventureMapRenderer {
       const fx = Math.round(fgAnchor + f * fgPeriod);
       const z = isInferno ? 3 : getBiomeSlotAtX(fx);
 
-      // 1. Near-Camera Foreground Abyssal Cliff Buttress Silhouette (`y = 690 .. viewBot`)
-      const buttW = 92;
+      // 1. Near-Camera Foreground Abyssal Cliff Buttress Silhouette (`y = 690 .. viewBot`, strictly below combat lane!)
+      const buttW = 88;
       const buttH = Math.max(90, viewBot - (fgRoadBotY + 2));
-      ctx.fillStyle = 'rgba(5, 7, 14, 0.86)';
-      ctx.fillRect(fx - 46, fgRoadBotY + 6, buttW, buttH);
-      ctx.fillStyle = 'rgba(22, 30, 48, 0.55)';
-      ctx.fillRect(fx - 42, fgRoadBotY + 4, buttW - 8, 5);
+      const rimCol =
+        z === 3
+          ? 'rgba(92, 34, 28, 0.52)'
+          : z === 2
+            ? 'rgba(72, 48, 108, 0.50)'
+            : z === 1
+              ? 'rgba(24, 72, 66, 0.52)'
+              : 'rgba(34, 48, 76, 0.52)';
+      ctx.fillStyle = 'rgba(5, 7, 14, 0.88)';
+      ctx.fillRect(fx - 44, fgRoadBotY + 8, buttW, buttH);
+      ctx.fillRect(fx - 36, fgRoadBotY + 4, buttW - 16, 6);
+      ctx.fillStyle = rimCol;
+      ctx.fillRect(fx - 34, fgRoadBotY + 4, buttW - 20, 3);
 
-      // 2. Near-Camera `1.24x` Parallax Pixel Wind-Wisp / Crypt-Mist / Chasm-Ember Overlay (`adv_stage_vfx.png`)
+      // 2. Near-Camera `1.24x` Parallax Pixel Wind-Wisp / Crypt-Mist / Volcanic Plumes (`adv_stage_vfx.png`)
       const fgWispRow = isGlacial ? 7 : z === 3 ? 9 : z === 2 ? 8 : 7;
       const fgDriftX = fx - 210 + ((t * 54 + Math.abs(f) * 173) % 420);
       blitStageOverlayPixelCell(
@@ -2255,26 +2710,30 @@ export class AdventureMapRenderer {
         fgWispRow,
         Math.floor(t * 12 + Math.abs(f) * 5),
         fgDriftX - 82,
-        fgRoadBotY - 50,
+        fgRoadBotY - 46,
         164,
-        78,
-        0.44,
-        0.08
+        74,
+        0.38,
+        0.07
       );
+      if (z === 3) {
+        // Rising volcanic ember/smoke plumes along the lower Black Pit abyssal parapet
+        drawVolcanicSmokePlume(ctx, fx + 84, fgRoadBotY + 12, t, Math.abs(f) * 1.37, 155, 0.85);
+      }
 
-      // 3. Drifting Near-Camera Foreground Pixel Cross-Motes / Raining Shogunate Cherry Blossoms (`1.24x` depth)
-      const moteCount = isShogunate || isGlacial ? 8 : 4;
+      // 3. Drifting Near-Camera Foreground Bioluminescent Fireflies / Bone Ash / Embers / Sakura (`1.24x` depth)
+      const moteCount = isShogunate || isGlacial ? 8 : z === 1 ? 6 : 5;
       for (let m = 0; m < moteCount; m++) {
         const cyc = (t * (0.18 + (m % 3) * 0.05) + m * 0.17 + Math.abs(f) * 0.19) % 1;
         const mx = snapPx(
           fx -
             220 +
-            m * (isShogunate || isGlacial ? 68 : 126) +
-            (isShogunate || isGlacial ? cyc * 135 : 0) +
+            m * (isShogunate || isGlacial ? 68 : 104) +
+            (isShogunate || isGlacial ? cyc * 135 : z === 2 ? -cyc * 64 : 0) +
             Math.sin(t * 1.8 + m + f) * 26,
           2
         );
-        const my = snapPx(isShogunate || isGlacial || z === 1 ? 80 + cyc * 560 : 640 - cyc * 460, 2);
+        const my = snapPx(isShogunate || isGlacial || z === 1 || z === 2 ? 96 + cyc * 540 : 648 - cyc * 450, 2);
         if (isShogunate) {
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.82;
@@ -2305,6 +2764,17 @@ export class AdventureMapRenderer {
           ctx.globalAlpha = 1;
           continue;
         }
+        if (z === 2 && !isGlacial && m % 2 === 0) {
+          // Zone III Foreground Drifting Bone Ash flake
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.62;
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(mx - 1, my - 1, 5, 4);
+          ctx.fillStyle = m % 4 === 0 ? '#e2e8f0' : '#94a3b8';
+          ctx.fillRect(mx, my, 3, 2);
+          ctx.globalAlpha = 1;
+          continue;
+        }
         const col = isGlacial
           ? m % 3 === 0
             ? '#e879f9'
@@ -2316,22 +2786,40 @@ export class AdventureMapRenderer {
             : z === 2
               ? '#c084fc'
               : z === 1
-                ? '#5eead4'
-                : '#7dd3fc';
-        drawPixelCrossGlint(
-          ctx,
-          mx,
-          my,
-          col,
-          '#ffffff',
-          3,
-          1,
-          Math.sin(cyc * Math.PI) * (isGlacial ? 0.34 : 0.16)
-        );
+                ? m % 2 === 0
+                  ? '#2dd4bf'
+                  : '#34d399'
+                : '#fde047';
+        if (z === 1 && !isGlacial) {
+          const ffEnv = Math.sin(cyc * Math.PI) * (0.48 + 0.52 * Math.sin(t * 4.4 + m * 2.1 + f));
+          drawSoftAtmoPool(ctx, mx, my, 24, 24, m % 2 === 0 ? 'aqua' : 'emerald', 0.11 * ffEnv, 'lighter');
+          drawPixelCrossGlint(ctx, mx, my, col, '#ecfeff', 2, 1, ffEnv * 0.15);
+        } else {
+          drawPixelCrossGlint(
+            ctx,
+            mx,
+            my,
+            col,
+            '#ffffff',
+            3,
+            1,
+            Math.sin(cyc * Math.PI) * (isGlacial ? 0.34 : 0.16)
+          );
+        }
       }
 
-      // 4. Overhead Vaulted Chain Silhouette anchored strictly under `archTopY` (`y = -248 .. -56`)
-      if (viewTop < -48 && z !== 1) {
+      // 4. Overhead Framing Silhouettes strictly above playable road (`y <= 110`, NEVER blocking combat lane!):
+      //    - Zone II (Starwood): Swaying hanging willow vines in foreground parallax (`1.24x`)
+      //    - Zones I / III / IV: Overhead vaulted iron chains (`y = fgArchTopY + 10 .. -56`)
+      if (z === 1 && viewTop < 115) {
+        const vineTop = Math.max(viewTop, fgArchTopY + 12);
+        const maxVineLen = Math.min(250, Math.max(88, 108 - vineTop));
+        if (maxVineLen >= 72) {
+          drawHangingWillowVine(ctx, fx - 120, vineTop, maxVineLen * 0.85, t, f * 1.9);
+          drawHangingWillowVine(ctx, fx + 46, vineTop, maxVineLen, t, f * 1.9 + 2.2);
+          drawHangingWillowVine(ctx, fx + 178, vineTop, maxVineLen * 0.72, t, f * 1.9 + 4.1);
+        }
+      } else if (viewTop < -48 && z !== 1) {
         const sway = Math.round(Math.sin(t * 1.4 + f * 1.7) * 4);
         const chainTop = Math.max(viewTop, fgArchTopY + 10);
         for (let ly = chainTop; ly < -56; ly += 14) {

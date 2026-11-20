@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps172';
-import { VFXManager } from './engine/VFXManager.js?v=30fps172';
-import { PixelForge } from './engine/PixelForge.js?v=30fps172';
-import { AudioManager } from './engine/AudioManager.js?v=30fps172';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps172';
-import { Fighter } from './entities/Fighter.js?v=30fps172';
-import { Warrior } from './entities/Warrior.js?v=30fps172';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps172';
-import { FireMage } from './entities/FireMage.js?v=30fps172';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps172';
-import { Archer } from './entities/Archer.js?v=30fps172';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps172';
-import { Priestess } from './entities/Priestess.js?v=30fps172';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps172';
-import { Reaper } from './entities/Reaper.js?v=30fps172';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps172';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps172';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps172';
-import { Titan } from './entities/Titan.js?v=30fps172';
-import { TitanEx } from './entities/TitanEx.js?v=30fps172';
-import { Ronin } from './entities/Ronin.js?v=30fps172';
-import { RoninEx } from './entities/RoninEx.js?v=30fps172';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps172';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps172';
-import { IceMage } from './entities/IceMage.js?v=30fps172';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps172';
-import { Android } from './entities/Android.js?v=30fps172';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps172';
-import { NyxEx } from './entities/NyxEx.js?v=30fps172';
+import { Renderer } from './engine/Renderer.js?v=30fps173';
+import { VFXManager } from './engine/VFXManager.js?v=30fps173';
+import { PixelForge } from './engine/PixelForge.js?v=30fps173';
+import { AudioManager } from './engine/AudioManager.js?v=30fps173';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps173';
+import { Fighter } from './entities/Fighter.js?v=30fps173';
+import { Warrior } from './entities/Warrior.js?v=30fps173';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps173';
+import { FireMage } from './entities/FireMage.js?v=30fps173';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps173';
+import { Archer } from './entities/Archer.js?v=30fps173';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps173';
+import { Priestess } from './entities/Priestess.js?v=30fps173';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps173';
+import { Reaper } from './entities/Reaper.js?v=30fps173';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps173';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps173';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps173';
+import { Titan } from './entities/Titan.js?v=30fps173';
+import { TitanEx } from './entities/TitanEx.js?v=30fps173';
+import { Ronin } from './entities/Ronin.js?v=30fps173';
+import { RoninEx } from './entities/RoninEx.js?v=30fps173';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps173';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps173';
+import { IceMage } from './entities/IceMage.js?v=30fps173';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps173';
+import { Android } from './entities/Android.js?v=30fps173';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps173';
+import { NyxEx } from './entities/NyxEx.js?v=30fps173';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps172';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps172';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps172';
+} from './adventure/AdventureManager.js?v=30fps173';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps173';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps173';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1881,6 +1881,9 @@ export class Game {
     if (nextPaused && this.isAdventureMode() && this.adventure?.isSkillTreeOpen) {
       this.adventure.closeSkillTree(false);
     }
+    if (nextPaused && this.isAdventureMode() && this.adventure?.isRelicDraftOpen) {
+      nextPaused = false;
+    }
     const changed = this.isPaused !== nextPaused;
     this.isPaused = nextPaused;
     if (changed) {
@@ -2917,7 +2920,7 @@ export class Game {
         !this.isMatchOver &&
         !this.isVsManualP1Active() &&
         !(this.victoryOverlay && !this.victoryOverlay.classList.contains('hidden')) &&
-        !(this.isAdventureMode() && this.adventure?.isSkillTreeOpen)
+        !(this.isAdventureMode() && (this.adventure?.isSkillTreeOpen || this.adventure?.isRelicDraftOpen))
       ) {
         e.preventDefault();
         const nextMode = this.cycleCameraZoomMode(true);
@@ -2951,6 +2954,10 @@ export class Game {
       if (this.isAdventureMode() && this.adventure?.isSkillTreeOpen) {
         e.preventDefault();
         this.adventure.closeSkillTree(true);
+        return;
+      }
+      if (this.isAdventureMode() && this.adventure?.isRelicDraftOpen) {
+        e.preventDefault();
         return;
       }
       e.preventDefault();
@@ -3255,6 +3262,7 @@ export class Game {
       phase: document.getElementById('adv-boss-raid-phase'),
       bar: document.getElementById('adv-boss-raid-bar'),
       ghost: document.getElementById('adv-boss-raid-ghost'),
+      staggerBar: document.getElementById('adv-boss-stagger-bar'),
       hp: document.getElementById('adv-boss-raid-hp')
     };
     this.btnTestUlt = document.getElementById('btn-test-ult');
@@ -4613,7 +4621,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps172');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps173');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -4709,7 +4717,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps172'
+          'v=30fps173'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -7442,6 +7450,7 @@ export class Game {
             phase: document.getElementById('adv-boss-raid-phase'),
             bar: document.getElementById('adv-boss-raid-bar'),
             ghost: document.getElementById('adv-boss-raid-ghost'),
+            staggerBar: document.getElementById('adv-boss-stagger-bar'),
             hp: document.getElementById('adv-boss-raid-hp')
           }
         : null);
@@ -7474,11 +7483,14 @@ export class Game {
 
     const phaseNum = Math.max(1, Math.min(3, Number(boss?.bossPhase) || 1));
     const roman = phaseNum === 3 ? 'III' : phaseNum === 2 ? 'II' : 'I';
-    const isCoreExposed = Boolean(!isWarningOnly && (boss?.vulnerableTimer || 0) > 0);
+    const isGuardBroken = Boolean(!isWarningOnly && (boss?.staggerBreakTimer || 0) > 0);
+    const isCoreExposed = Boolean(!isWarningOnly && ((boss?.vulnerableTimer || 0) > 0 || isGuardBroken));
     let nextPhaseText = 'INCOMING SIEGE';
     if (!isWarningOnly) {
       let statusText = 'ABYSSAL SOVEREIGN';
-      if (isCoreExposed) {
+      if (isGuardBroken) {
+        statusText = 'GUARD BREAK! (+55% DMG)';
+      } else if ((boss?.vulnerableTimer || 0) > 0) {
         statusText = 'CORE EXPOSED!';
       } else if ((boss?.telegraphTimer || 0) > 0 && boss?.telegraphLabel) {
         statusText = String(boss.telegraphLabel)
@@ -7496,6 +7508,14 @@ export class Game {
 
     if (els.bar?.style) els.bar.style.width = hpPctStr;
     if (els.ghost?.style) els.ghost.style.width = hpPctStr;
+    if (els.staggerBar?.style) {
+      const stagRatio = isWarningOnly
+        ? 0
+        : isGuardBroken
+          ? Math.max(0, Math.min(1, (boss?.staggerBreakTimer || 0) / 3.2))
+          : Math.max(0, Math.min(1, (boss?.stagger || 0) / Math.max(1, boss?.maxStagger || 220)));
+      els.staggerBar.style.width = `${(stagRatio * 100).toFixed(1)}%`;
+    }
 
     const nextHpText = `${curHp.toLocaleString('en-US')} / ${maxHp.toLocaleString('en-US')}`;
     if (els.hp && els.hp.textContent !== nextHpText) {
@@ -7504,6 +7524,7 @@ export class Game {
 
     els.root.classList?.toggle('is-boss-warning', isWarningOnly);
     els.root.classList?.toggle('is-core-exposed', isCoreExposed);
+    els.root.classList?.toggle('is-guard-broken', isGuardBroken);
     els.root.classList?.toggle('is-phase-2', !isWarningOnly && phaseNum === 2);
     els.root.classList?.toggle('is-phase-3', !isWarningOnly && phaseNum >= 3);
 
@@ -10434,7 +10455,7 @@ export class Game {
     if (
       !this.isPaused &&
       !this.isSimPaused &&
-      !(this.isAdventureMode() && this.adventure?.isSkillTreeOpen)
+      !(this.isAdventureMode() && (this.adventure?.isSkillTreeOpen || this.adventure?.isRelicDraftOpen))
     ) {
       if (this._matchAssetGateUntil > 0) {
         const ready =
