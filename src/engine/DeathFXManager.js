@@ -140,6 +140,17 @@ export const CHAMPION_DEATH_STYLES = Object.freeze({
     primary: '#f472b6',
     accent: '#22d3ee',
     dark: '#1e1b4b'
+  }),
+  brawler: Object.freeze({
+    id: 'tempest_discharge',
+    label: 'TEMPEST STATIC DISCHARGE',
+    duration: 3.85,
+    startCol: 3,
+    holdCol: 10,
+    kneelEnd: 1.05,
+    primary: '#fbbf24',
+    accent: '#6366f1',
+    dark: '#0f172a'
   })
 });
 
@@ -455,6 +466,8 @@ export class DeathFXManager {
         return t < 1.05 ? 0.88 : Math.max(0, 0.88 * (1 - (t - 1.05) / 2.0));
       case 'cob_os_eject':
         return t < 2.7 ? Math.max(0.18, 0.9 - smoothstep(1.15, 2.7, t) * 0.72) : 0;
+      case 'tempest_discharge':
+        return t < 2.95 ? Math.max(0.15, 0.9 - smoothstep(1.3, 2.95, t) * 0.75) : 0;
       default:
         return Math.max(0, 1 - smoothstep(1.35, 3.45, t));
     }
@@ -1040,6 +1053,31 @@ export class DeathFXManager {
               }
             }
           }
+        } else if (styleId === 'tempest_discharge') {
+          if (t >= 3.05) {
+            outA = 0;
+          } else if (t > 1.25) {
+            const disP = smoothstep(1.25, 3.02, t);
+            const score = (1 - normY) * 0.52 + bayer * 0.48;
+            if (score < disP * 1.06) {
+              outA = 0;
+            } else if (score < disP * 1.06 + 0.14) {
+              if (((x + y + step30 * 2) & 3) === 0) {
+                r = 255; g = 255; b = 255;
+              } else if (((x + step30) & 1) === 0) {
+                r = 251; g = 191; b = 36; // storm-gold discharge rim
+              } else {
+                r = 99; g = 102; b = 241; // electric indigo arc rim
+              }
+            } else if (((y + step30 * 3) & 7) === 0) {
+              r = Math.min(255, r + 48);
+              g = Math.min(255, g + 42);
+              b = Math.min(255, b + 88);
+            }
+          } else if (t > 0.35 && ((x + y + step30 * 3) & 15) === 0) {
+            // Subtle crackling static highlights during Act 1 one-knee defiance
+            r = 254; g = 240; b = 138;
+          }
         }
 
         dst[p] = r;
@@ -1115,6 +1153,9 @@ export class DeathFXManager {
         break;
       case 'cob_os_eject':
         this._renderCobOsEject(ctx, inst, sheet, metrics, hasWork, isReflection);
+        break;
+      case 'tempest_discharge':
+        this._renderTempestDischarge(ctx, inst, sheet, metrics, hasWork, isReflection);
         break;
       default:
         this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, 0, 0);
@@ -2198,6 +2239,106 @@ export class DeathFXManager {
         } else {
           ctx.fillStyle = confettiCols[i % confettiCols.length];
           pxRect(ctx, cx - 2, cy - 2, 4, 4);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 13. RAIJIN EX (`brawler_ex`) — Tempest Static Discharge (`3.85s` 3-Act)
+  // Act 1 (0.0–1.25s): One-knee martial defiance crackling with erratic static arcs
+  // Act 2 (1.25–3.25s): Surging golden-indigo lightning discharge dissolving sprite upward
+  // Act 3 (3.25–3.85s): Lingering rising pixel lightning sparks, storm-ash & fading floor ring
+  // ---------------------------------------------------------------------------
+  _renderTempestDischarge(ctx, inst, sheet, metrics, hasWork, isReflection) {
+    const t = inst.elapsed;
+    const step30 = Math.floor(t * 30);
+    const box = this._getSpriteCenter(inst, metrics);
+
+    // Subtle ground static floor ring pulsing during Act 1–2 and fading smoothly in Act 3
+    if (!isReflection && t >= 0.14 && t < 3.82) {
+      const ringGrow = smoothstep(0.14, 1.4, t);
+      const ringFade = 1 - smoothstep(2.95, 3.82, t);
+      const rx = 28 + ringGrow * 44;
+      const ry = 8 + ringGrow * 10;
+      ctx.globalAlpha = ringFade * (t > 1.25 && t < 2.9 ? 0.84 : 0.48);
+      drawPixelRing(ctx, box.cx, -4, rx, ry, 2, '#6366f1', 36);
+      drawPixelRing(ctx, box.cx, -4, rx * 0.72, ry * 0.72, 2, '#fbbf24', 28);
+      ctx.globalAlpha = 1;
+    }
+
+    // Live sprite (crisp one-knee defiance -> static-jitters during surge -> dissolves cleanly by 3.05s)
+    if (t < 3.06) {
+      const surgeJit =
+        t > 1.15 && t < 2.95 && ((step30 & 1) === 0)
+          ? Math.round((hash01(step30 * 9.1) - 0.5) * 8)
+          : 0;
+      this._drawWorkOrPose(ctx, inst, sheet, metrics, hasWork, surgeJit, 0);
+    }
+
+    if (isReflection) return;
+
+    // Act 1..2 (0.28..2.98s): Jagged golden-indigo static lightning arcs snapping across Raijin!
+    if (t >= 0.28 && t < 3.0) {
+      const arcIntensity = t < 1.25 ? smoothstep(0.28, 1.25, t) * 0.75 : 1 - smoothstep(2.45, 3.0, t);
+      const boltCount = t < 1.25 ? 3 : 6;
+      for (let b = 0; b < boltCount; b++) {
+        const s0 = step30 * 1.7 + b * 19.3;
+        if (hash01(s0) < 0.28) continue;
+        const x0 = box.cx + (hash01(s0 + 1.1) - 0.5) * (box.w * 0.85);
+        const y0 = box.topY + hash01(s0 + 2.2) * (box.h * 0.9);
+        const x1 = x0 + (hash01(s0 + 3.3) - 0.5) * 56;
+        const y1 = y0 - 18 - hash01(s0 + 4.4) * 52;
+        const mx = (x0 + x1) * 0.5 + (hash01(s0 + 5.5) - 0.5) * 26;
+        const my = (y0 + y1) * 0.5 + (hash01(s0 + 6.6) - 0.5) * 14;
+        ctx.globalAlpha = arcIntensity * 0.85;
+        drawPixelLine(ctx, x0, y0, mx, my, 3, '#4338ca');
+        drawPixelLine(ctx, mx, my, x1, y1, 3, '#4338ca');
+        drawPixelLine(ctx, x0, y0, mx, my, 2, b % 2 === 0 ? '#fbbf24' : '#fef08a');
+        drawPixelLine(ctx, mx, my, x1, y1, 2, '#ffffff');
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Discharge peak flash starburst at t = 1.25..1.70s & 2.65..3.10s
+    for (const peakT of [1.28, 2.75]) {
+      if (t >= peakT && t < peakT + 0.36) {
+        const pu = (t - peakT) / 0.36;
+        ctx.globalAlpha = (1 - pu) * 0.92;
+        drawPixelSpark4(ctx, box.cx, box.cy - 8, Math.round(12 + pu * 58), '#fbbf24', '#ffffff');
+        drawPixelSpark4(ctx, box.cx, box.cy - 8, Math.round(8 + pu * 36), '#6366f1', '#fef08a');
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Act 2..3 (1.22..3.85s): Rising golden-indigo pixel lightning sparks & storm-ash embers!
+    if (t >= 1.22) {
+      const driftT = t - 1.22;
+      const samples = inst.samples;
+      const ashCols = ['#fbbf24', '#fef08a', '#6366f1', '#4338ca', '#94a3b8', '#ffffff'];
+      const count = Math.min(48, Math.max(24, samples.length));
+      for (let i = 0; i < count; i++) {
+        const s = samples.length > 0 ? samples[i % samples.length] : null;
+        const seed = i * 7.31;
+        const delay = hash01(seed + 1.2) * 1.35;
+        const age = driftT - delay;
+        if (age <= 0) continue;
+        const life = clamp01(1 - age / 1.55);
+        if (life <= 0.02) continue;
+        const sx0 = s ? s.lx : box.cx + (hash01(seed + 2.4) - 0.5) * box.w * 0.7;
+        const sy0 = s ? s.ly : box.cy + (hash01(seed + 3.6) - 0.5) * box.h * 0.7;
+        const zig = Math.sin(age * 16 + seed) * 12;
+        const px = sx0 + (hash01(seed + 4.8) - 0.5) * 44 * age + zig;
+        const py = sy0 - (58 + hash01(seed + 6.1) * 92) * age;
+        const col = ashCols[i % ashCols.length];
+        ctx.globalAlpha = life * 0.94;
+        if (i % 4 === 0) {
+          drawPixelSpark4(ctx, px, py, 3, col, '#ffffff');
+        } else {
+          ctx.fillStyle = col;
+          const sz = i % 3 === 0 ? 4 : 2;
+          pxRect(ctx, px, py, sz, sz);
         }
       }
       ctx.globalAlpha = 1;

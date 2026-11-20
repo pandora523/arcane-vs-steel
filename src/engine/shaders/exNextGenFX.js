@@ -115,6 +115,14 @@ export const EX_HERO_PALETTES = {
     shadow: '#1e1038',
     ambientShapes: ['star4', 'diamond', 'rune'],
     hitShapes: ['star4', 'bolt', 'diamond']
+  },
+  brawler_ex: {
+    primary: '#fbbf24',
+    accent: '#6366f1',
+    core: '#ffffff',
+    shadow: '#1e1b4b',
+    ambientShapes: ['bolt', 'diamond', 'star4'],
+    hitShapes: ['bolt', 'ring', 'star4']
   }
 };
 

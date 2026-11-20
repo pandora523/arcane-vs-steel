@@ -1,4 +1,4 @@
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps176';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps177';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   ArcaneShaderFX,
   ShaderPen
-} from '../../src/engine/ArcaneShaderFX.js?v=30fps176';
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps177';
 import {
   ShaderPen as ShaderPen114
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps114';
@@ -18,29 +18,30 @@ import {
   ShaderPen as ShaderPen112
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
 import { Warrior } from '../../src/entities/Warrior.js';
-import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps176';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps177';
 import { Titan } from '../../src/entities/Titan.js';
-import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps176';
+import { TitanEx } from '../../src/entities/TitanEx.js?v=30fps177';
 import { Ronin } from '../../src/entities/Ronin.js';
-import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps176';
+import { RoninEx } from '../../src/entities/RoninEx.js?v=30fps177';
 import { FireMage } from '../../src/entities/FireMage.js';
-import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps176';
+import { FireMageEx } from '../../src/entities/FireMageEx.js?v=30fps177';
 import { Archer } from '../../src/entities/Archer.js';
-import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps176';
+import { ArcherEx } from '../../src/entities/ArcherEx.js?v=30fps177';
 import { Priestess } from '../../src/entities/Priestess.js';
-import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps176';
+import { PriestessEx } from '../../src/entities/PriestessEx.js?v=30fps177';
 import { Valkyrie } from '../../src/entities/Valkyrie.js';
-import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps176';
+import { ValkyrieEx } from '../../src/entities/ValkyrieEx.js?v=30fps177';
 import { IceMage } from '../../src/entities/IceMage.js';
-import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps176';
+import { IceMageEx } from '../../src/entities/IceMageEx.js?v=30fps177';
 import { Reaper } from '../../src/entities/Reaper.js';
-import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps176';
+import { ReaperEx } from '../../src/entities/ReaperEx.js?v=30fps177';
 import { Chronomancer } from '../../src/entities/Chronomancer.js';
-import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps176';
+import { ChronomancerEx } from '../../src/entities/ChronomancerEx.js?v=30fps177';
 import { Android } from '../../src/entities/Android.js';
-import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps176';
-import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps176';
-import { HeroBuildSystem } from '../../src/combat/HeroBuildSystem.js?v=30fps176';
+import { AndroidEx } from '../../src/entities/AndroidEx.js?v=30fps177';
+import { NyxEx } from '../../src/entities/NyxEx.js?v=30fps177';
+import { BrawlerEx } from '../../src/entities/BrawlerEx.js?v=30fps177';
+import { HeroBuildSystem } from '../../src/combat/HeroBuildSystem.js?v=30fps177';
 
 const HEROES = [
   ['warrior', Warrior],
@@ -65,7 +66,8 @@ const HEROES = [
   ['chronomancer_ex', ChronomancerEx],
   ['android', Android],
   ['android_ex', AndroidEx],
-  ['nyx_ex', NyxEx]
+  ['nyx_ex', NyxEx],
+  ['brawler_ex', BrawlerEx]
 ];
 
 // Track shadeBox boundary hits and viewport buffer edge hits during live ULTIMATE + TRUE_ULTIMATE
@@ -199,7 +201,8 @@ const HERO_CLASS_FILE = {
   chronomancer_ex: 'src/entities/ChronomancerEx.js',
   android: 'src/entities/Android.js',
   android_ex: 'src/entities/AndroidEx.js',
-  nyx_ex: 'src/entities/NyxEx.js'
+  nyx_ex: 'src/entities/NyxEx.js',
+  brawler_ex: 'src/entities/BrawlerEx.js'
 };
 
 function hashNormalizedJs(relPath) {
@@ -342,7 +345,8 @@ const SOVEREIGN_SHADER_HEROES = [
   ['archer_ex', ArcherEx],
   ['android_ex', AndroidEx],
   ['chronomancer_ex', ChronomancerEx],
-  ['titan_ex', TitanEx]
+  ['titan_ex', TitanEx],
+  ['brawler_ex', BrawlerEx]
 ];
 for (const [id, Cls] of SOVEREIGN_SHADER_HEROES) {
   const sovDigest = getHeroShaderDigest(id, 'sovereign_ult_v1');
@@ -429,16 +433,16 @@ try {
 const targetShadeClips = [...shadeBoxClips.keys()].filter(
   (k) => k.startsWith('reaper:') || k.includes('_ex:')
 );
-console.log('=== REAPER & ALL 11 EX SHADEBOX CLIPS ===', targetShadeClips.length);
+console.log('=== REAPER & ALL 13 EX SHADEBOX CLIPS ===', targetShadeClips.length);
 for (const k of targetShadeClips) {
   const v = shadeBoxClips.get(k);
   console.log(`  ${k}: edgeAlbedo=${v.edgeAlbedo} edgeGlow=${v.edgeGlow}`);
 }
-console.log('=== VIEWPORT BUFFER CLIPS (ALL 23 HEROES) ===', viewportClips.size);
+console.log('=== VIEWPORT BUFFER CLIPS (ALL 24 HEROES) ===', viewportClips.size);
 for (const [k, v] of viewportClips.entries()) {
   console.log(`  ${k}: top=${v.topH} bot=${v.botH} left=${v.leftH} right=${v.rightH}`);
 }
-if (HEROES.length !== 23 || targetShadeClips.length > 0 || viewportClips.size > 0) {
+if (HEROES.length !== 24 || targetShadeClips.length > 0 || viewportClips.size > 0) {
   process.exit(1);
 }
-console.log('[PASS] Zero viewport border leaks across all 23 champions (11 Legacy + 12 EX) AND zero shadeBox/viewport clips across Malakor & all 12 EX Champions!');
+console.log('[PASS] Zero viewport border leaks across all 24 champions (11 Legacy + 13 EX) AND zero shadeBox/viewport clips across Malakor & all 13 EX Champions!');

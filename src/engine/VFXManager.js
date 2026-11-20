@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps176';
-import { PixelForge } from './PixelForge.js?v=30fps176';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps176';
+import { PixelFont } from './PixelFont.js?v=30fps177';
+import { PixelForge } from './PixelForge.js?v=30fps177';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps177';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -1364,6 +1364,13 @@ export class VFXManager {
           f,
           false
         );
+      }
+      if (f.heroId === 'brawler_ex' && (f.state === 'ULTIMATE' || f.state === 'TRUE_ULTIMATE' || f._stormCrashTimer > 0)) {
+        const isTrue = f.state === 'TRUE_ULTIMATE' || f._stormCrashTimer > 0;
+        const radG = isTrue ? 480 : 320;
+        const radI = isTrue ? 420 : 280;
+        pushLight(f.x, f.y - 92, radG, 'gold', isTrue ? 1.65 : 1.32, 98, fGy, f, false);
+        pushLight(f.x + f.facing * 64, fGy - 48, radI, 'violet', isTrue ? 1.45 : 1.18, 98, fGy, f, false);
       }
       // Harvest up to 6 active lights from f.fx.active (ArcaneShaderFX) & f.activeVfxAnims!
       let harvestedCount = 0;
@@ -3305,6 +3312,42 @@ export class VFXManager {
           ctx.fillRect(-12, -8, 24, 16);
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(-6, -2, 12, 4);
+        }
+        ctx.restore();
+      } else if (proj.type === 'thunderclap_wave') {
+        const brawlerVfx = this.resolveHeroVfx(assets, 'brawler', projHeroId);
+        const dir = (proj.vx || 1) >= 0 ? 1 : -1;
+        const qx = Math.round(px / 4) * 4;
+        const qy = Math.round(py / 4) * 4;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(qx, qy);
+        ctx.scale(dir, 1);
+        if (brawlerVfx && brawlerVfx.complete && brawlerVfx.naturalWidth) {
+          const waveSize = 144;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            brawlerVfx,
+            pCol * 208,
+            0,
+            208,
+            208,
+            -waveSize * 0.5,
+            -waveSize * 0.5,
+            waveSize,
+            waveSize,
+            '#fbbf24',
+            0.98,
+            isReflection
+          );
+        } else {
+          ctx.fillStyle = '#4338ca';
+          ctx.fillRect(-10, -24, 20, 48);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(-4, -18, 12, 36);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, -12, 6, 24);
         }
         ctx.restore();
       } else if (proj.type === 'monster_orb') {

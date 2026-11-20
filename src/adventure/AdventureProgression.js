@@ -550,6 +550,24 @@ export const HERO_SKILL_TREE_THEMES = {
       aegis_2: 'CTRL+Z AFK DECOY',
       aegis_3: 'COSMIC KERNEL LOCK'
     }
+  },
+  brawler_ex: {
+    branches: {
+      wrath: { title: 'THUNDER WRATH', sub: 'STORM FISTS & PALM', iconSlot: 'attack' },
+      astral: { title: 'TEMPEST FOOTWORK', sub: 'STEP & HUNDRED FISTS', iconSlot: 'ultimate' },
+      aegis: { title: 'IRON MANTRA', sub: 'IRON GUARD & BARRIER', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CRACKLING KNUCKLES',
+      wrath_2: 'SKY-BREAKER UPPER',
+      wrath_3: 'ONE-INCH THUNDERCLAP',
+      astral_1: 'THUNDERSTEP SURGE',
+      astral_2: 'TEMPEST HUNDRED FISTS',
+      astral_3: 'HEAVEN-SPLITTING CRASH',
+      aegis_1: 'IRON-BODY STANCE',
+      aegis_2: 'STATIC PARRY REFLEX',
+      aegis_3: 'UNBREAKABLE TEMPEST'
+    }
   }
 };
 
@@ -1075,10 +1093,16 @@ export class AdventureProgression {
       ronin_ex: { type: 'ronin_slash', color: '#38bdf8', coreColor: '#fef08a', radius: 18, pierce: true },
       mage: { type: 'fireball', color: '#fb923c', coreColor: '#fef08a', radius: 12, pierce: false },
       mage_ex: { type: 'fireball', color: '#fb923c', coreColor: '#ffffff', radius: 14, pierce: false },
-      nyx_ex: { type: 'nebula_packet', color: '#c084fc', coreColor: '#22d3ee', radius: 14, pierce: true }
+      nyx_ex: { type: 'nebula_packet', color: '#c084fc', coreColor: '#22d3ee', radius: 14, pierce: true },
+      brawler_ex: { type: 'thunderclap_wave', color: '#fbbf24', coreColor: '#ffffff', radius: 18, pierce: true }
     };
     const cfg = HERO_SEEKER_CONFIG[player.heroId] || HERO_SEEKER_CONFIG.mage;
-    const isGroundWave = cfg.type === 'blade_wave' || cfg.type === 'forge_wave' || cfg.type === 'phantom_scythe' || cfg.type === 'cyber_disc';
+    const isGroundWave =
+      cfg.type === 'blade_wave' ||
+      cfg.type === 'forge_wave' ||
+      cfg.type === 'phantom_scythe' ||
+      cfg.type === 'cyber_disc' ||
+      cfg.type === 'thunderclap_wave';
 
     const sx = player.x + dir * 46;
     const sy = (player.y || player.groundY) - (isGroundWave ? 82 : 112);

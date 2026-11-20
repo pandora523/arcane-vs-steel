@@ -50,6 +50,7 @@ CROPS_1024: dict[str, tuple[int, int, int, int]] = {
     "titan":        (0, 0, 1024, 1024),
     "icemage":      (0, 0, 1024, 1024),
     "android":      (0, 0, 1024, 1024),
+    "brawler":      (0, 0, 1024, 1024),
 }
 
 
@@ -1129,6 +1130,44 @@ def build_android_talk_sheet() -> np.ndarray:
     ])
 
 
+# ==============================================================================
+# 13. BRAWLER (RAIJIN EX — GLOWING STORM-GOLD EYES, FIERCE MARTIAL SHOUT & FIST BOLTS)
+# ==============================================================================
+
+def build_brawler_talk_sheet() -> np.ndarray:
+    f0 = quantize_crisp_320(SPRITES_DIR / "brawler_ex_portrait_raw.jpg", CROPS_1024["brawler"])
+
+    eye_kw = dict(
+        left_box=(169, 117, 185, 125),
+        right_box=(199, 121, 213, 128),
+        cheek_y=133,
+        lash_dark=(22, 16, 26),
+        lash_soft=(74, 48, 38),
+        crease_col=(118, 72, 48),
+        skin_shad=(184, 122, 86),
+    )
+    f1 = sculpt_human_eyelids(f0, True, **eye_kw)
+    f2 = sculpt_human_eyelids(f0, False, **eye_kw)
+
+    mouth_kw = dict(
+        mx0=180, mx1=199, my_top=154,
+        erase_y0=153, erase_y1=160, skin_ref_y=150,
+        chin_box=(173, 160, 203, 174),
+        lip_col=(96, 42, 32),
+        cavity_col=(56, 16, 22),
+        tongue_mid=(198, 72, 74),
+        tongue_lit=(236, 120, 112),
+        skin_shad=(172, 108, 76),
+        sparkles=[(276, 176, 5, (251, 191, 36)), (242, 194, 4, (99, 102, 241))],
+    )
+    return pack_sheet([
+        f0, f1, f2,
+        sculpt_human_vowel_mouth(f0, "small", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "mid", **mouth_kw),
+        sculpt_human_vowel_mouth(f0, "wide", **mouth_kw),
+    ])
+
+
 def _boost_masked_pixels(
     frame: np.ndarray,
     mask: np.ndarray,
@@ -1439,6 +1478,24 @@ def apply_living_hero_motion(persona: str, sheet: np.ndarray) -> np.ndarray:
                     draw_px(fr, bx_hud, by_hud, (56, 189, 248) if (row_i + idx) % 2 == 0 else (244, 114, 182))
             draw_star_sparkle(fr, 184, 260, 2 + (idx >= 4), (34, 211, 238))
 
+    elif persona == "brawler":
+        eye_glow = (xx >= 166) & (xx <= 216) & (yy >= 115) & (yy <= 130) & (r0 >= 200) & (g0 >= 170) & (b0 <= 140)
+        fist_arcs = (xx >= 232) & (yy >= 120) & ((r0 >= 210) & (g0 >= 185) | (b0 >= 195))
+        bolt_sets = [
+            [(250, 164), (266, 152), (282, 160), (298, 142)],
+            [(244, 188), (262, 178), (274, 192), (294, 176)],
+            [(256, 150), (272, 162), (288, 148), (306, 158)],
+            [(240, 172), (258, 158), (276, 174), (296, 154)],
+            [(248, 158), (268, 142), (284, 162), (308, 138)],
+            [(238, 182), (258, 164), (278, 180), (304, 156)],
+        ]
+        for idx, fr in enumerate(out_frames):
+            if idx not in (1, 2):
+                _boost_masked_pixels(fr, eye_glow, (255, 252, 210), [0.0, 0.0, 0.0, 0.35, 0.62, 0.85][idx])
+            _boost_masked_pixels(fr, fist_arcs, (255, 245, 190), [0.0, 0.16, 0.12, 0.36, 0.56, 0.78][idx])
+            _draw_pixel_bolt(fr, bolt_sets[idx], (251, 191, 36) if idx % 2 == 0 else (99, 102, 241))
+            draw_star_sparkle(fr, 258 + (idx % 3) * 8, 184 - (idx % 2) * 14, 2 + (idx >= 4), (251, 191, 36))
+
     return pack_sheet(out_frames)
 
 
@@ -1455,6 +1512,7 @@ BUILDERS = {
     "titan":        build_titan_talk_sheet,
     "icemage":      build_icemage_talk_sheet,
     "android":      build_android_talk_sheet,
+    "brawler":      build_brawler_talk_sheet,
 }
 
 QA_FACE_ROIS: dict[str, tuple[int, int, int, int]] = {
@@ -1470,6 +1528,7 @@ QA_FACE_ROIS: dict[str, tuple[int, int, int, int]] = {
     "titan":        (114, 122, 206, 202),
     "icemage":      (118, 120, 210, 200),
     "android":      (142, 84, 234, 164),
+    "brawler":      (140, 96, 232, 176),
 }
 
 
@@ -1993,12 +2052,20 @@ def render_all_qa_strips(built: dict[str, np.ndarray], layers_map: dict[str, np.
 
 
 def main() -> None:
+    import sys
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    only_arg = None
+    if "--only" in sys.argv:
+        idx_o = sys.argv.index("--only")
+        if idx_o + 1 < len(sys.argv):
+            only_arg = sys.argv[idx_o + 1].strip()
     vision_dir = ensure_vision_masks()
     built: dict[str, np.ndarray] = {}
     layers_map: dict[str, np.ndarray] = {}
 
     for persona, fn in BUILDERS.items():
+        if only_arg and persona != only_arg:
+            continue
         base_sheet = fn()
         f0_rgb = base_sheet[:, 0:CELL, :3].copy()
         fg_mask, cob_mask = load_vision_subject_mask(persona, f0_rgb, vision_dir)

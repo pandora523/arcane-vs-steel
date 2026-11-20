@@ -144,6 +144,16 @@ export const ADVENTURE_HERO_KITS = {
       ultimate: 'COB-OS'
     }
   },
+  brawler_ex: {
+    id: 'brawler_ex',
+    tags: {
+      attack: 'FISTS',
+      dodge: 'STEP',
+      skill: 'BREAKER',
+      overdrive: '100FIST',
+      ultimate: 'RAIJIN'
+    }
+  },
   mage: {
     id: 'mage',
     tags: {

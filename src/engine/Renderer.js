@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps176';
-import { PixelFont } from './PixelFont.js?v=30fps176';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps176';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps176';
+import { PixelForge } from './PixelForge.js?v=30fps177';
+import { PixelFont } from './PixelFont.js?v=30fps177';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps177';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps177';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps176';
+} from './shaders/exNextGenFX.js?v=30fps177';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -19,6 +19,7 @@ const STORM_FIRE_PAL = ['#312e81', '#4f46e5', '#818cf8', '#38bdf8'];
 const CRIMSON_FIRE_PAL = ['#881337', '#be123c', '#f43f5e', '#fbbf24'];
 const GLACIAL_FIRE_PAL = ['#0369a1', '#0284c7', '#67e8f9', '#e879f9'];
 const NEBULA_FIRE_PAL = ['#3b1f6e', '#a855f7', '#d946ef', '#22d3ee'];
+const TEMPEST_FIRE_PAL = ['#1e1b4b', '#4338ca', '#fbbf24', '#fef08a'];
 const GLACIAL_WIPE_BAYER_4X4 = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -6290,8 +6291,10 @@ export class Renderer {
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
     const isNebula = f.heroId === 'nyx_ex' || f.theme === 'nebula';
+    const isTempest = f.heroId === 'brawler_ex' || f.theme === 'tempest';
     const isAbyssal =
       !isNebula &&
+      !isTempest &&
       (f.primaryColor === '#c084fc' ||
         f.primaryColor === '#d946ef' ||
         f.heroId === 'reaper' ||
@@ -6300,7 +6303,9 @@ export class Renderer {
     const isForge = f.primaryColor === '#f59e0b';
     const isCrimson = f.primaryColor === '#f43f5e';
     const isGlacial = f.primaryColor === '#67e8f9';
-    const pal = isBlue
+    const pal = isTempest
+      ? TEMPEST_FIRE_PAL
+      : isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
         ? EMERALD_FIRE_PAL
@@ -6358,8 +6363,10 @@ export class Renderer {
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
     const isNebula = f.heroId === 'nyx_ex' || f.theme === 'nebula';
+    const isTempest = f.heroId === 'brawler_ex' || f.theme === 'tempest';
     const isAbyssal =
       !isNebula &&
+      !isTempest &&
       (f.primaryColor === '#c084fc' ||
         f.primaryColor === '#d946ef' ||
         f.heroId === 'reaper' ||
@@ -6368,7 +6375,9 @@ export class Renderer {
     const isForge = f.primaryColor === '#f59e0b';
     const isCrimson = f.primaryColor === '#f43f5e';
     const isGlacial = f.primaryColor === '#67e8f9';
-    const pal = isBlue
+    const pal = isTempest
+      ? TEMPEST_FIRE_PAL
+      : isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
         ? EMERALD_FIRE_PAL

@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps176';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps177';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -495,6 +495,17 @@ export class Fighter {
           midLeapMax: 0,
           midLeapChance: 0,
           postStyle: 'nebula_ai'
+        };
+      case 'brawler_ex':
+        return {
+          comboGoal: 4,
+          sweetMin: 78,
+          sweetMax: 122,
+          counterCrouchBias: 0.56,
+          midLeapMin: 165,
+          midLeapMax: 330,
+          midLeapChance: 0.42,
+          postStyle: 'brawler'
         };
       default:
         return {

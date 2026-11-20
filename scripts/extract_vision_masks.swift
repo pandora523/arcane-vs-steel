@@ -14,7 +14,7 @@ try FileManager.default.createDirectory(atPath: outputDir, withIntermediateDirec
 
 let personas = [
     "nyx", "warrior", "mage", "priestess", "chronomancer", "valkyrie",
-    "ronin", "archer", "reaper", "titan", "icemage", "android"
+    "ronin", "archer", "reaper", "titan", "icemage", "android", "brawler"
 ]
 
 let ciCtx = CIContext()

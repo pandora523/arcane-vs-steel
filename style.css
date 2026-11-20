@@ -529,6 +529,10 @@ html, body {
   background: linear-gradient(180deg, #a5f3fc 0%, #c084fc 48%, #d946ef 100%);
 }
 
+.fill-tempest {
+  background: linear-gradient(180deg, #fef08a 0%, #fbbf24 50%, #4338ca 100%);
+}
+
 .frame-steel {
   border-color: #38bdf8;
 }
@@ -579,6 +583,10 @@ html, body {
 
 .frame-nebula {
   border-color: #c084fc;
+}
+
+.frame-tempest {
+  border-color: #fbbf24;
 }
 
 /* 10% Segmented Tick Notches */
@@ -2961,6 +2969,7 @@ html, body {
 .halo-glacial { background: radial-gradient(circle, #67e8f9 0%, #38bdf8 45%, transparent 72%); }
 .halo-cyber { background: radial-gradient(circle, #00f0ff 0%, #fb7185 45%, transparent 72%); }
 .halo-nebula { background: radial-gradient(circle, #c084fc 0%, #22d3ee 45%, transparent 72%); }
+.halo-tempest { background: radial-gradient(circle, #fbbf24 0%, #6366f1 48%, transparent 72%); }
 
 .profile-identity {
   display: flex;
@@ -3864,7 +3873,7 @@ html.is-mobile-landscape .hud-build-badge {
   display: none !important;
 }
 
-/* Desktop Compact 6 x 2 Square Portrait Grid (12 EX = 6+6; 11 Legacy = 6+5 Centered) */
+/* Desktop Compact Square Portrait Grid (Legacy 11 = 6+5; EX 13 = 7+6 Centered) */
 .champion-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -3873,6 +3882,11 @@ html.is-mobile-landscape .hud-build-badge {
   width: 100%;
   min-width: 0;
   min-height: 0;
+}
+
+.champion-grid.roster-group-ex {
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .champ-card {
@@ -3889,6 +3903,11 @@ html.is-mobile-landscape .hud-build-badge {
   min-width: 0;
   min-height: 0;
   transition: transform 0.12s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+/* Symmetrical 7 + 6 second-row centering for EX 13 heroes on Desktop 2-row grid */
+.champion-grid.roster-group-ex #card-reaper_ex {
+  grid-column: 2 / span 2;
 }
 
 /* Symmetrical 5-card second row centering for Legacy 11 heroes on Desktop 6x2 grid */
@@ -4662,6 +4681,11 @@ html.is-mobile-landscape .hud-build-badge {
     align-content: start;
     gap: 6px;
   }
+  /* Symmetrical 5 + 5 + 3 EX 13-card grid on Mobile Portrait (0px scroll overflow!) */
+  html:not(.is-mobile-landscape) .champion-grid.roster-group-ex {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 5px;
+  }
   html:not(.is-mobile-landscape) .champ-card {
     grid-column: span 6;
     max-height: none;
@@ -4669,6 +4693,15 @@ html.is-mobile-landscape .hud-build-badge {
     width: 100%;
     aspect-ratio: 1 / 1;
     margin: 0;
+  }
+  html:not(.is-mobile-landscape) .champion-grid.roster-group-ex .champ-card[data-roster-group="ex"] {
+    grid-column: span 2;
+  }
+  html:not(.is-mobile-landscape) .champion-grid.roster-group-ex #card-reaper_ex {
+    grid-column: span 2;
+  }
+  html:not(.is-mobile-landscape) .champion-grid.roster-group-ex #card-android_ex {
+    grid-column: 3 / span 2;
   }
   html:not(.is-mobile-landscape) #card-archer[data-roster-group="legacy"] {
     grid-column: span 6;
@@ -5982,11 +6015,30 @@ html.is-mobile-landscape .champion-grid {
   gap: 4px;
 }
 
+/* Symmetrical 5 + 5 + 3 EX 13-card grid on Mobile Landscape (0px scroll overflow!) */
+html.is-mobile-landscape .champion-grid.roster-group-ex {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
 html.is-mobile-landscape .champ-card {
   grid-column: span 6;
   aspect-ratio: auto;
   max-height: none;
   height: 100%;
+}
+
+html.is-mobile-landscape .champion-grid.roster-group-ex .champ-card[data-roster-group="ex"] {
+  grid-column: span 2;
+}
+
+html.is-mobile-landscape .champion-grid.roster-group-ex #card-reaper_ex {
+  grid-column: span 2;
+}
+
+html.is-mobile-landscape .champion-grid.roster-group-ex #card-android_ex {
+  grid-column: 3 / span 2;
 }
 
 html.is-mobile-landscape #card-archer[data-roster-group="legacy"] {
@@ -8811,7 +8863,7 @@ html.is-mobile-landscape .adv-st-relic-desc {
 /* =========================================================================
    PLAYER VS AI SUB-MODES (EXHIBITION / ARCADE 5 / TRAINING LAB),
    5-STAGE ARCADE LADDER HUD + VICTORY BRACKET + TROPHY PIPS,
-   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps176)
+   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps177)
    ========================================================================= */
 
 /* Sub-Mode Switcher in #vs-quick-config-bar (Strictly visible in PLAYER VS AI only!) */

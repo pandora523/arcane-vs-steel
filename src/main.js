@@ -1,32 +1,33 @@
-import { Renderer } from './engine/Renderer.js?v=30fps176';
-import { VFXManager } from './engine/VFXManager.js?v=30fps176';
-import { PixelForge } from './engine/PixelForge.js?v=30fps176';
-import { AudioManager } from './engine/AudioManager.js?v=30fps176';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps176';
-import { Fighter } from './entities/Fighter.js?v=30fps176';
-import { Warrior } from './entities/Warrior.js?v=30fps176';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps176';
-import { FireMage } from './entities/FireMage.js?v=30fps176';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps176';
-import { Archer } from './entities/Archer.js?v=30fps176';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps176';
-import { Priestess } from './entities/Priestess.js?v=30fps176';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps176';
-import { Reaper } from './entities/Reaper.js?v=30fps176';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps176';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps176';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps176';
-import { Titan } from './entities/Titan.js?v=30fps176';
-import { TitanEx } from './entities/TitanEx.js?v=30fps176';
-import { Ronin } from './entities/Ronin.js?v=30fps176';
-import { RoninEx } from './entities/RoninEx.js?v=30fps176';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps176';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps176';
-import { IceMage } from './entities/IceMage.js?v=30fps176';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps176';
-import { Android } from './entities/Android.js?v=30fps176';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps176';
-import { NyxEx } from './entities/NyxEx.js?v=30fps176';
+import { Renderer } from './engine/Renderer.js?v=30fps177';
+import { VFXManager } from './engine/VFXManager.js?v=30fps177';
+import { PixelForge } from './engine/PixelForge.js?v=30fps177';
+import { AudioManager } from './engine/AudioManager.js?v=30fps177';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps177';
+import { Fighter } from './entities/Fighter.js?v=30fps177';
+import { Warrior } from './entities/Warrior.js?v=30fps177';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps177';
+import { FireMage } from './entities/FireMage.js?v=30fps177';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps177';
+import { Archer } from './entities/Archer.js?v=30fps177';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps177';
+import { Priestess } from './entities/Priestess.js?v=30fps177';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps177';
+import { Reaper } from './entities/Reaper.js?v=30fps177';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps177';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps177';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps177';
+import { Titan } from './entities/Titan.js?v=30fps177';
+import { TitanEx } from './entities/TitanEx.js?v=30fps177';
+import { Ronin } from './entities/Ronin.js?v=30fps177';
+import { RoninEx } from './entities/RoninEx.js?v=30fps177';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps177';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps177';
+import { IceMage } from './entities/IceMage.js?v=30fps177';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps177';
+import { Android } from './entities/Android.js?v=30fps177';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps177';
+import { NyxEx } from './entities/NyxEx.js?v=30fps177';
+import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps177';
 import {
   AdventureManager,
   ADVENTURE_DIFFICULTY_TIERS,
@@ -35,9 +36,9 @@ import {
   loadAdventureMedals,
   normalizeAdventureCampaignPack,
   normalizeAdventureDifficultyId
-} from './adventure/AdventureManager.js?v=30fps176';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps176';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps176';
+} from './adventure/AdventureManager.js?v=30fps177';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps177';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps177';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -51,7 +52,8 @@ export const EX_HERO_KEYS = [
   'titan_ex',
   'icemage_ex',
   'android_ex',
-  'nyx_ex'
+  'nyx_ex',
+  'brawler_ex'
 ];
 
 export const LEGACY_HERO_KEYS = [
@@ -84,7 +86,8 @@ export const ARCADE_FINAL_RIVAL_MAP = {
   titan_ex: { rival: 'valkyrie_ex', stage: 'boneyard', title: 'TITANBREAKER SKY-LANCE' },
   icemage_ex: { rival: 'mage_ex', stage: 'cathedral', title: 'FROST CROWN VS SOLAR FLARE' },
   android_ex: { rival: 'nyx_ex', stage: 'clocktower', title: 'SINGULARITY PROTOCOL' },
-  nyx_ex: { rival: 'priestess_ex', stage: 'sanctuary', title: 'COB-OS OVERRIDE: HOLY KERNEL' }
+  nyx_ex: { rival: 'priestess_ex', stage: 'sanctuary', title: 'COB-OS OVERRIDE: HOLY KERNEL' },
+  brawler_ex: { rival: 'titan_ex', stage: 'cathedral', title: 'UNSTOPPABLE FIST VS UNBREAKABLE ANVIL' }
 };
 
 const ARCADE_RANK_ORDER = { A: 1, S: 2, 'S+': 3 };
@@ -298,6 +301,10 @@ export const INTRO_DIALOGUE_SUBTITLES = {
   nyx: {
     en: 'Target locked! Combat prompt executing right now, nya!',
     ja: 'えへへ、ターゲットロック完了！バトルプロンプト、いっくよーっ！'
+  },
+  brawler: {
+    en: 'Step into the storm! My iron fists answer only to thunder!',
+    ja: '嵐へ踏み込め！俺の鉄拳に応えるのは雷鳴だけだ！'
   }
 };
 
@@ -754,6 +761,41 @@ export const CHAMPION_ROSTER = {
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Summons a 6-Window Orbital Hologram Ring firing converging prism lasers into a central Cob Creator Holo-Crest burst.'
+      }
+    ]
+  },
+  brawler_ex: {
+    id: 'brawler_ex',
+    name: 'RAIJIN EX',
+    role: 'THE TEMPEST FIST',
+    style: 'CLOSE-RANGE THUNDER BRAWLER',
+    trait: 'PASSIVE: IRON GUARD COUNTER & STATIC BARRIER',
+    cls: BrawlerEx,
+    theme: 'tempest',
+    color: '#fbbf24',
+    selectSfx: 'thunder_slam',
+    victoryLine: 'Heaven and earth bow before the unstoppable fury of the Tempest Fist!',
+    trueUltName: 'HEAVEN-SPLITTING RAIJIN CRASH',
+    trueUltDesc:
+      'Launches skyward inside a blazing storm pillar before diving straight down in a jagged golden-indigo lightning meteor-slam shattering the arena!',
+    skills: [
+      {
+        name: 'TEMPEST FIST QUARTET',
+        type: '4-BEAT THUNDER COMBO',
+        vfxCell: 0,
+        desc: 'Snappy stepping storm jab, spinning thunder backfist, rising sky-breaker uppercut & one-inch Thunderclap Palm shockwave finisher.'
+      },
+      {
+        name: 'THUNDERSTEP BREAKER',
+        type: 'SKILL • 4.2S CD',
+        vfxCell: 1,
+        desc: 'Coiled golden-indigo lightning dash-rush leaving afterimage arcs before detonating an explosive storm cross-punch.'
+      },
+      {
+        name: 'TEMPEST HUNDRED FISTS',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Opens a Raijin Storm-Crest seal and unleashes a blistering multi-hit golden-indigo phantom fist barrage capped by a sky-breaker uppercut.'
       }
     ]
   },
@@ -1835,6 +1877,15 @@ export class Game {
       const isLegacy = activeVer === 'legacy';
       this.btnRosterVersionLegacy.classList.toggle('active-version-tab', isLegacy);
       this.btnRosterVersionLegacy.setAttribute('aria-selected', String(isLegacy));
+    }
+    const gridEl =
+      this.championGridEl ||
+      (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('champion-grid')
+        : null);
+    if (gridEl?.classList) {
+      gridEl.classList.toggle('roster-group-ex', activeVer === 'ex');
+      gridEl.classList.toggle('roster-group-legacy', activeVer === 'legacy');
     }
     if (this.cards) {
       Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
@@ -4089,6 +4140,7 @@ export class Game {
       icemage_ex: document.getElementById('card-icemage_ex'),
       android_ex: document.getElementById('card-android_ex'),
       nyx_ex: document.getElementById('card-nyx_ex'),
+      brawler_ex: document.getElementById('card-brawler_ex'),
       warrior: document.getElementById('card-warrior'),
       mage: document.getElementById('card-mage'),
       priestess: document.getElementById('card-priestess'),
@@ -4114,6 +4166,7 @@ export class Game {
       icemage_ex: document.getElementById('ribbon-icemage_ex'),
       android_ex: document.getElementById('ribbon-android_ex'),
       nyx_ex: document.getElementById('ribbon-nyx_ex'),
+      brawler_ex: document.getElementById('ribbon-brawler_ex'),
       warrior: document.getElementById('ribbon-warrior'),
       mage: document.getElementById('ribbon-mage'),
       priestess: document.getElementById('ribbon-priestess'),
@@ -4139,6 +4192,7 @@ export class Game {
       icemage_ex: document.getElementById('preview-icemage_ex'),
       android_ex: document.getElementById('preview-android_ex'),
       nyx_ex: document.getElementById('preview-nyx_ex'),
+      brawler_ex: document.getElementById('preview-brawler_ex'),
       warrior: document.getElementById('preview-warrior'),
       mage: document.getElementById('preview-mage'),
       priestess: document.getElementById('preview-priestess'),
@@ -5651,7 +5705,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps176');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps177');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -5809,7 +5863,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps176'
+          'v=30fps177'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -10080,6 +10134,19 @@ export class Game {
         fillRectClamped(sx - 2, sy, 5, 1);
       }
       ctx.restore();
+    } else if (baseHero === 'brawler') {
+      // RAIJIN EX BACK: Storm-indigo cloud flash & golden-indigo electric halo strictly behind Raijin's shoulders!
+      drawMagicBloom(bCx, bCy, Math.round(bustSize * 0.5), '#fbbf24', '#4338ca', turnAlpha * (0.22 + pulse * 0.1 + amp * 0.16));
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let sp = 0; sp < 10; sp++) {
+        const prog = (elapsed * (0.52 + (sp % 3) * 0.14) + sp * 0.13) % 1;
+        const sx = bustX + 14 + ((sp * 61) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 5 + sp) * 8);
+        const sy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 20));
+        ctx.globalAlpha = turnAlpha * (0.6 - prog * 0.36);
+        drawStar4(sx, sy, 2, sp % 2 === 0 ? '#fbbf24' : '#6366f1');
+      }
+      ctx.restore();
     } else {
       // ANDROID: Deep-space twinkling stars + warp star-streaks + blinking holographic cockpit HUD panels strictly BEHIND her shoulders!
       drawMagicBloom(bCx, bCy, Math.round(bustSize * 0.48), '#67e8f9', '#ec4899', turnAlpha * (0.20 + pulse * 0.08 + amp * 0.16));
@@ -10548,6 +10615,27 @@ export class Game {
         const sy = bustY + 6 + Math.round(prog * (bustSize - 16));
         ctx.globalAlpha = turnAlpha * (0.62 - prog * 0.28);
         drawPixelSnowflake(sx, sy, sn % 3 === 0 ? 4 : 3, sn % 2 === 0 ? '#bae6fd' : '#67e8f9');
+      }
+      ctx.restore();
+    } else if (baseHero === 'brawler') {
+      // UNIQUE TO RAIJIN EX: Crackling golden-indigo storm lightning bolts & rising tempest static sparks!
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const boltTick = Math.floor(elapsed * 12);
+      if (boltTick % 2 === 0 || amp > 0.35) {
+        ctx.globalAlpha = turnAlpha * 0.65;
+        drawStepLightning(bustX + 26, bustY + 18, 6, 14, 5, '#fbbf24');
+        drawStepLightning(bustX + bustSize - 24, bustY + 26, 6, 13, 5, '#6366f1');
+      }
+      for (let sp = 0; sp < 10; sp++) {
+        const prog = (elapsed * (0.58 + (sp % 3) * 0.14) + sp * 0.13) % 1;
+        const sx = bustX + 14 + ((sp * 61) % Math.max(24, bustSize - 28)) + Math.round(Math.sin(elapsed * 6 + sp) * 8);
+        const sy = bustY + bustSize - 10 - Math.round(prog * (bustSize - 20));
+        ctx.globalAlpha = turnAlpha * (0.64 - prog * 0.42);
+        ctx.fillStyle = sp % 2 === 0 ? '#fbbf24' : '#6366f1';
+        fillRectClamped(sx - 2, sy - 2, 4, 4);
+        ctx.fillStyle = '#ffffff';
+        fillRectClamped(sx - 1, sy - 1, 2, 2);
       }
       ctx.restore();
     } else {

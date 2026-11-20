@@ -30,7 +30,8 @@ export const SOVEREIGN_BUILD_HERO_IDS = [
   'archer_ex',
   'android_ex',
   'chronomancer_ex',
-  'titan_ex'
+  'titan_ex',
+  'brawler_ex'
 ];
 
 const SOVEREIGN_BUILD_HERO_SET = new Set(SOVEREIGN_BUILD_HERO_IDS);
@@ -242,6 +243,58 @@ export const HERO_BUILD_CATALOG = {
         name: 'COB-OS: SANCTUARY RESTORE',
         type: 'OVERDRIVE ULT',
         desc: 'Projects a 6-Drone Firewall Dome restoring +52 HP (+36 Tag-Ally HP) & 130 HP Holo-Patch Shield (-18% burst).'
+      }
+    ]
+  },
+
+  brawler_ex: {
+    heroId: 'brawler_ex',
+    presets: [
+      { index: 0, roman: 'I', shortName: 'RUSHDOWN', name: 'TEMPEST RUSHDOWN', aspect: 0, skill: 0, ult: 0 },
+      { index: 1, roman: 'II', shortName: 'EMPEROR', name: 'STORM-EMPEROR BURST', aspect: 1, skill: 1, ult: 1 },
+      { index: 2, roman: 'III', shortName: 'IRON-BODY', name: 'IRON-BODY COUNTER', aspect: 2, skill: 2, ult: 2 }
+    ],
+    aspect: [
+      null,
+      {
+        trait: 'ASPECT II: STORM-EMPEROR BURST (ZERO-HEAL OVERVOLT RUSH)',
+        name: 'STORM-EMPEROR OVERVOLT QUARTET',
+        type: 'HIGH-SPEED SHOCKWAVE BURST',
+        desc: 'Boosts move speed to 226 & tightens combo link; Beat 4 Thunderclap Palm fires a piercing lightning shockwave (-220 max HP).'
+      },
+      {
+        trait: 'ASPECT III: IRON-BODY COUNTER (STATIC BARRIER & GUARD PARRY)',
+        name: 'IRON-BODY THUNDER QUARTET',
+        type: 'ARMORED COUNTER-BRAWLER',
+        desc: 'Raises max HP to 4,160, grants +34 HP Static Barrier on Beat 3 Uppercut & extends Iron Guard parry window (+78 Barrier on reflect).'
+      }
+    ],
+    skill: [
+      null,
+      {
+        name: 'RAIL-STEP OVERVOLT',
+        type: 'SKILL • 3.9S CD',
+        cooldown: 3.9,
+        desc: 'Zero heal & zero barrier; blazing high-voltage thunderstep punch releasing a piercing long-range Thunderclap shockwave follow-up.'
+      },
+      {
+        name: 'IRON-BODY BREAKER',
+        type: 'SKILL • 4.5S CD',
+        cooldown: 4.5,
+        desc: 'Surges forward with Unstoppable Poise & +95 HP Static Barrier into a heavy braced storm cross-punch (-10% strike dmg).'
+      }
+    ],
+    ult: [
+      null,
+      {
+        name: 'EMPEROR: SKY-PILLAR HUNDRED FISTS',
+        type: 'OVERDRIVE ULT',
+        desc: 'Zero heal; overclocks Tempest Hundred Fists with +15% barrage voltage and calls down a blazing Heaven-Splitting Sky Pillar on uppercut climax!'
+      },
+      {
+        name: 'IRON-BODY: RETRIBUTION FISTS',
+        type: 'OVERDRIVE ULT',
+        desc: 'Wraps Raijin in +115 HP Static Barrier & +48 HP martial recovery while unleashing an unstoppable phantom fist barrage (-12% climax dmg).'
       }
     ]
   },
