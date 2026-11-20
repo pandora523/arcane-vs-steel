@@ -9,6 +9,154 @@ const FEVER_DURATION_SEC = 7.5;
 const FEVER_TIER2_THRESHOLD_TAPS = 10;
 const FEVER_DECAY_PER_SEC = 6.5;
 
+export const RELIC_MILESTONE_BREAKPOINTS = Object.freeze([
+  Object.freeze({ level: 10, mult: 1.5, tag: 'LV.10 X1.5' }),
+  Object.freeze({ level: 25, mult: 2.25, tag: 'LV.25 X2.25' }),
+  Object.freeze({ level: 50, mult: 3.5, tag: 'LV.50 X3.5' }),
+  Object.freeze({ level: 100, mult: 6.0, tag: 'LV.100 X6.0' })
+]);
+
+export const ENDLESS_RELIC_SETS = Object.freeze([
+  Object.freeze({
+    id: 'warlords_wrath',
+    name: "WARLORD'S WRATH",
+    color: '#ef4444',
+    sigilCol: 4,
+    relicIds: Object.freeze(['sovereign_blade', 'executioner_crit', 'boss_breaker']),
+    tiers: Object.freeze([
+      Object.freeze({
+        tier: 1,
+        minLevel: 5,
+        tierLabel: 'TIER I',
+        bonusDesc: '+25% HERO & BOSS DMG',
+        bonuses: Object.freeze({ heroDmgMult: 1.25, bossDmgMult: 1.25 })
+      }),
+      Object.freeze({
+        tier: 2,
+        minLevel: 15,
+        tierLabel: 'TIER II',
+        bonusDesc: '+65% HERO & BOSS DMG',
+        bonuses: Object.freeze({ heroDmgMult: 1.65, bossDmgMult: 1.65 })
+      }),
+      Object.freeze({
+        tier: 3,
+        minLevel: 30,
+        tierLabel: 'TIER III',
+        bonusDesc: '+140% HERO & BOSS DMG',
+        bonuses: Object.freeze({ heroDmgMult: 2.40, bossDmgMult: 2.40 })
+      })
+    ])
+  }),
+  Object.freeze({
+    id: 'sovereigns_greed',
+    name: "SOVEREIGN'S GREED",
+    color: '#facc15',
+    sigilCol: 5,
+    relicIds: Object.freeze(['avarice_magnet', 'merchant_crest', 'soul_siphon']),
+    tiers: Object.freeze([
+      Object.freeze({
+        tier: 1,
+        minLevel: 5,
+        tierLabel: 'TIER I',
+        bonusDesc: '+35% GOLD & +30PX MAGNET',
+        bonuses: Object.freeze({ goldMult: 1.35, coinMagnetBonus: 30 })
+      }),
+      Object.freeze({
+        tier: 2,
+        minLevel: 15,
+        tierLabel: 'TIER II',
+        bonusDesc: '+85% GOLD & +65PX MAGNET',
+        bonuses: Object.freeze({ goldMult: 1.85, coinMagnetBonus: 65 })
+      }),
+      Object.freeze({
+        tier: 3,
+        minLevel: 30,
+        tierLabel: 'TIER III',
+        bonusDesc: '+180% GOLD & +120PX MAGNET',
+        bonuses: Object.freeze({ goldMult: 2.80, coinMagnetBonus: 120 })
+      })
+    ])
+  }),
+  Object.freeze({
+    id: 'arcane_tempest',
+    name: 'ARCANE TEMPEST',
+    color: '#38bdf8',
+    sigilCol: 6,
+    relicIds: Object.freeze(['arcane_tap_sigil', 'tempest_haste', 'companion_banner']),
+    tiers: Object.freeze([
+      Object.freeze({
+        tier: 1,
+        minLevel: 5,
+        tierLabel: 'TIER I',
+        bonusDesc: '+30% TAP & ALLY DMG / +8% HASTE',
+        bonuses: Object.freeze({ tapDmgMult: 1.30, companionDmgMult: 1.30, hasteMult: 1.08 })
+      }),
+      Object.freeze({
+        tier: 2,
+        minLevel: 15,
+        tierLabel: 'TIER II',
+        bonusDesc: '+75% TAP & ALLY DMG / +16% HASTE',
+        bonuses: Object.freeze({ tapDmgMult: 1.75, companionDmgMult: 1.75, hasteMult: 1.16 })
+      }),
+      Object.freeze({
+        tier: 3,
+        minLevel: 30,
+        tierLabel: 'TIER III',
+        bonusDesc: '+160% TAP & ALLY DMG / +25% HASTE',
+        bonuses: Object.freeze({ tapDmgMult: 2.60, companionDmgMult: 2.60, hasteMult: 1.25 })
+      })
+    ])
+  })
+]);
+
+function computeRelicMilestoneInfo(relicId, rawLevel) {
+  const level = Math.max(0, Math.floor(Number(rawLevel) || 0));
+  let reachedCount = 0;
+  for (let i = 0; i < RELIC_MILESTONE_BREAKPOINTS.length; i++) {
+    if (level >= RELIC_MILESTONE_BREAKPOINTS[i].level) {
+      reachedCount = i + 1;
+    } else {
+      break;
+    }
+  }
+  const activeBp = reachedCount > 0 ? RELIC_MILESTONE_BREAKPOINTS[reachedCount - 1] : null;
+  const nextBp = reachedCount < RELIC_MILESTONE_BREAKPOINTS.length
+    ? RELIC_MILESTONE_BREAKPOINTS[reachedCount]
+    : null;
+
+  let progressPct = 100;
+  if (nextBp) {
+    const prevLevel = activeBp ? activeBp.level : 0;
+    const span = Math.max(1, nextBp.level - prevLevel);
+    const rawPct = ((level - prevLevel) / span) * 100;
+    progressPct = Math.max(0, Math.min(100, Math.round(rawPct * 10) / 10));
+  }
+
+  return {
+    relicId: typeof relicId === 'string' ? relicId : '',
+    level,
+    reachedCount,
+    activeMult: activeBp ? activeBp.mult : 1.0,
+    nextLevel: nextBp ? nextBp.level : null,
+    nextTag: nextBp ? nextBp.tag : '',
+    progressPct,
+    activeTag: activeBp ? activeBp.tag : ''
+  };
+}
+
+function getMilestoneMultForLevel(level) {
+  const lv = Math.max(0, Math.floor(Number(level) || 0));
+  let mult = 1.0;
+  for (let i = 0; i < RELIC_MILESTONE_BREAKPOINTS.length; i++) {
+    if (lv >= RELIC_MILESTONE_BREAKPOINTS[i].level) {
+      mult = RELIC_MILESTONE_BREAKPOINTS[i].mult;
+    } else {
+      break;
+    }
+  }
+  return mult;
+}
+
 export const ENDLESS_RELICS = Object.freeze([
   Object.freeze({
     id: 'sovereign_blade',
@@ -20,7 +168,8 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+18% HERO DMG / LV',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      return `+${Math.round(lv * 18)}% HERO DMG`;
+      const mult = getMilestoneMultForLevel(lv);
+      return `+${Math.round(lv * 18 * mult)}% HERO DMG`;
     }
   }),
   Object.freeze({
@@ -33,7 +182,8 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+8 BASE & +28% TAP DMG / LV',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      return `+${lv * 8} BASE / +${Math.round(lv * 28)}% TAP`;
+      const mult = getMilestoneMultForLevel(lv);
+      return `+${lv * 8} BASE / +${Math.round(lv * 28 * mult)}% TAP`;
     }
   }),
   Object.freeze({
@@ -46,7 +196,8 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+16% GOLD & +22PX MAGNET / LV',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      return `+${Math.round(lv * 16)}% GOLD / +${lv * 22}PX`;
+      const mult = getMilestoneMultForLevel(lv);
+      return `+${Math.round(lv * 16 * mult)}% GOLD / +${Math.round(lv * 22 * mult)}PX`;
     }
   }),
   Object.freeze({
@@ -59,8 +210,9 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+2.2% CRIT (75% CAP) & +14% CDMG',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      const chancePct = Math.min(75, 5 + lv * 2.2);
-      const dmgPct = Math.round((1.75 + lv * 0.14) * 100);
+      const mult = getMilestoneMultForLevel(lv);
+      const chancePct = Math.min(75, 5 + lv * 2.2 * mult);
+      const dmgPct = Math.round((1.75 + lv * 0.14 * mult) * 100);
       return `${chancePct.toFixed(1)}% CRIT / ${dmgPct}% DMG`;
     }
   }),
@@ -74,7 +226,8 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+6% HASTE & +4% MOVE SPD / LV',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      return `+${Math.round(lv * 6)}% HASTE / +${Math.round(lv * 4)}% SPD`;
+      const mult = getMilestoneMultForLevel(lv);
+      return `+${Math.round(lv * 6 * mult)}% HASTE / +${Math.round(Math.min(160, lv * 4 * mult))}% SPD`;
     }
   }),
   Object.freeze({
@@ -87,7 +240,8 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+20% MAX HP & +3% HP/S REGEN',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      return `+${Math.round(lv * 20)}% HP / +${Math.round(lv * 3)}% REGEN`;
+      const mult = getMilestoneMultForLevel(lv);
+      return `+${Math.round(lv * 20 * mult)}% HP / +${Math.round(lv * 3 * mult)}% REGEN`;
     }
   }),
   Object.freeze({
@@ -100,7 +254,8 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+24% COMPANION DMG & HEAL / LV',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      return `+${Math.round(lv * 24)}% ALLY PWR`;
+      const mult = getMilestoneMultForLevel(lv);
+      return `+${Math.round(lv * 24 * mult)}% ALLY PWR`;
     }
   }),
   Object.freeze({
@@ -113,8 +268,9 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+22% BOSS DMG & +1.5S / 2LV (+20S)',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      const bonusSec = Math.min(20, Math.floor(lv / 2) * 1.5);
-      return `+${Math.round(lv * 22)}% BOSS / +${bonusSec.toFixed(1)}S`;
+      const mult = getMilestoneMultForLevel(lv);
+      const bonusSec = Math.min(20, Math.floor(lv / 2) * 1.5 * mult);
+      return `+${Math.round(lv * 22 * mult)}% BOSS / +${bonusSec.toFixed(1)}S`;
     }
   }),
   Object.freeze({
@@ -127,8 +283,9 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '+1.5% LEECH (25%) & +10% ULT GAIN',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      const leech = Math.min(25, lv * 1.5);
-      return `${leech.toFixed(1)}% LEECH / +${Math.round(lv * 10)}% ULT`;
+      const mult = getMilestoneMultForLevel(lv);
+      const leech = Math.min(25, lv * 1.5 * mult);
+      return `${leech.toFixed(1)}% LEECH / +${Math.round(lv * 10 * mult)}% ULT`;
     }
   }),
   Object.freeze({
@@ -141,8 +298,9 @@ export const ENDLESS_RELICS = Object.freeze([
     shortDesc: '-2.5% COST (50% CAP) & +10% BGOLD',
     formatBonus(level) {
       const lv = Math.max(0, Math.floor(level || 0));
-      const discPct = 50 * (1 - Math.pow(0.95, lv));
-      return `-${discPct.toFixed(1)}% COST / +${Math.round(lv * 10)}% BGOLD`;
+      const mult = getMilestoneMultForLevel(lv);
+      const discPct = 50 * (1 - Math.pow(0.95, lv * mult));
+      return `-${discPct.toFixed(1)}% COST / +${Math.round(lv * 10 * mult)}% BGOLD`;
     }
   })
 ]);
@@ -319,10 +477,63 @@ export class EndlessEconomy {
     return Math.max(0, Math.floor(Number(this.relicLevels[relicId]) || 0));
   }
 
+  getRelicMilestoneInfo(relicId) {
+    const level = this.getRelicLevel(relicId);
+    return computeRelicMilestoneInfo(relicId, level);
+  }
+
+  getRelicSetSynergies() {
+    const result = [];
+    for (let i = 0; i < ENDLESS_RELIC_SETS.length; i++) {
+      const setDef = ENDLESS_RELIC_SETS[i];
+      let minLevel = Infinity;
+      for (let j = 0; j < setDef.relicIds.length; j++) {
+        const lv = this.getRelicLevel(setDef.relicIds[j]);
+        if (lv < minLevel) minLevel = lv;
+      }
+      if (!Number.isFinite(minLevel)) minLevel = 0;
+
+      let activeTier = null;
+      let nextTier = null;
+      for (let t = 0; t < setDef.tiers.length; t++) {
+        const tierDef = setDef.tiers[t];
+        if (minLevel >= tierDef.minLevel) {
+          activeTier = tierDef;
+        } else {
+          nextTier = tierDef;
+          break;
+        }
+      }
+
+      const tier = activeTier ? activeTier.tier : 0;
+      const active = tier > 0;
+      const firstTier = setDef.tiers[0];
+      result.push({
+        id: setDef.id,
+        name: setDef.name,
+        color: setDef.color,
+        sigilCol: setDef.sigilCol,
+        relicIds: setDef.relicIds.slice(),
+        minLevel,
+        tier,
+        maxTier: setDef.tiers.length,
+        nextTierLevel: nextTier ? nextTier.minLevel : null,
+        active,
+        tierLabel: activeTier ? activeTier.tierLabel : 'LOCKED',
+        bonusDesc: activeTier
+          ? activeTier.bonusDesc
+          : `ALL LV.${firstTier.minLevel}: ${firstTier.bonusDesc}`,
+        bonuses: activeTier ? { ...activeTier.bonuses } : {}
+      });
+    }
+    return result;
+  }
+
   getCostDiscountMult() {
     const lv = this.getRelicLevel('merchant_crest');
-    // -2.5% on Lv.1, smoothly diminishing toward strict 50% cap (0.50x floor)
-    const relicDiscount = Math.max(0.5, 1 - 0.5 * (1 - Math.pow(0.95, lv)));
+    const mMerchant = getMilestoneMultForLevel(lv);
+    // -2.5% on Lv.1, smoothly diminishing toward strict 50% cap (0.50x floor); Lv.0..9 mMerchant === 1.0
+    const relicDiscount = Math.max(0.5, 1 - 0.5 * (1 - Math.pow(0.95, lv * mMerchant)));
     const extDiscount = this._extMult('relicDiscountMult', 1.0);
     return Math.max(0.15, Math.min(1.5, relicDiscount * extDiscount));
   }
@@ -401,23 +612,38 @@ export class EndlessEconomy {
 
   buyRelic(relicId, bulkModeOverride = null) {
     if (!RELIC_BY_ID.has(relicId)) {
-      return { ok: false, bought: 0, spent: 0, newLevel: 0 };
+      return { ok: false, bought: 0, spent: 0, newLevel: 0, milestoneReached: null, setsUpgraded: [] };
     }
     const currentLv = this.getRelicLevel(relicId);
     const quote = this.getRelicCost(relicId, bulkModeOverride);
     if (!quote.canAfford || quote.count <= 0 || quote.totalCost <= 0) {
-      return { ok: false, bought: 0, spent: 0, newLevel: currentLv };
+      return { ok: false, bought: 0, spent: 0, newLevel: currentLv, milestoneReached: null, setsUpgraded: [] };
     }
+    const prevMilestoneCount = computeRelicMilestoneInfo(relicId, currentLv).reachedCount;
+    const prevSetTiers = this.getRelicSetSynergies().map((s) => s.tier);
     if (!this.spendGold(quote.totalCost)) {
-      return { ok: false, bought: 0, spent: 0, newLevel: currentLv };
+      return { ok: false, bought: 0, spent: 0, newLevel: currentLv, milestoneReached: null, setsUpgraded: [] };
     }
     const newLevel = currentLv + quote.count;
     this.relicLevels[relicId] = newLevel;
+    const nextMilestone = this.getRelicMilestoneInfo(relicId);
+    const milestoneReached = nextMilestone.reachedCount > prevMilestoneCount
+      ? RELIC_MILESTONE_BREAKPOINTS[nextMilestone.reachedCount - 1]
+      : null;
+    const nextSets = this.getRelicSetSynergies();
+    const setsUpgraded = [];
+    for (let i = 0; i < nextSets.length; i++) {
+      if (nextSets[i].tier > prevSetTiers[i]) {
+        setsUpgraded.push(nextSets[i]);
+      }
+    }
     return {
       ok: true,
       bought: quote.count,
       spent: quote.totalCost,
-      newLevel
+      newLevel,
+      milestoneReached,
+      setsUpgraded
     };
   }
 
@@ -433,6 +659,39 @@ export class EndlessEconomy {
     const lvSiphon = this.getRelicLevel('soul_siphon');
     const lvMerchant = this.getRelicLevel('merchant_crest');
 
+    const mBlade = getMilestoneMultForLevel(lvBlade);
+    const mTap = getMilestoneMultForLevel(lvTap);
+    const mMagnet = getMilestoneMultForLevel(lvMagnet);
+    const mCrit = getMilestoneMultForLevel(lvCrit);
+    const mHaste = getMilestoneMultForLevel(lvHaste);
+    const mVitality = getMilestoneMultForLevel(lvVitality);
+    const mBanner = getMilestoneMultForLevel(lvBanner);
+    const mBoss = getMilestoneMultForLevel(lvBoss);
+    const mSiphon = getMilestoneMultForLevel(lvSiphon);
+    const mMerchant = getMilestoneMultForLevel(lvMerchant);
+
+    const relicSets = this.getRelicSetSynergies();
+    let setHeroDmgMult = 1.0;
+    let setBossDmgMult = 1.0;
+    let setGoldMult = 1.0;
+    let setCoinMagnetBonus = 0;
+    let setTapDmgMult = 1.0;
+    let setCompanionDmgMult = 1.0;
+    let setHasteMult = 1.0;
+
+    for (let i = 0; i < relicSets.length; i++) {
+      const s = relicSets[i];
+      if (!s.active || !s.bonuses) continue;
+      const b = s.bonuses;
+      if (Number.isFinite(b.heroDmgMult) && b.heroDmgMult > 0) setHeroDmgMult *= b.heroDmgMult;
+      if (Number.isFinite(b.bossDmgMult) && b.bossDmgMult > 0) setBossDmgMult *= b.bossDmgMult;
+      if (Number.isFinite(b.goldMult) && b.goldMult > 0) setGoldMult *= b.goldMult;
+      if (Number.isFinite(b.coinMagnetBonus) && b.coinMagnetBonus > 0) setCoinMagnetBonus += b.coinMagnetBonus;
+      if (Number.isFinite(b.tapDmgMult) && b.tapDmgMult > 0) setTapDmgMult *= b.tapDmgMult;
+      if (Number.isFinite(b.companionDmgMult) && b.companionDmgMult > 0) setCompanionDmgMult *= b.companionDmgMult;
+      if (Number.isFinite(b.hasteMult) && b.hasteMult > 0) setHasteMult *= b.hasteMult;
+    }
+
     const extGlobalDps = this._extMult('globalDpsMult', 1.0);
     const extGold = this._extMult('goldMult', 1.0);
     const extTap = this._extMult('tapMult', 1.0);
@@ -446,26 +705,27 @@ export class EndlessEconomy {
     const feverDmgMult = feverActive ? (this.tapFeverLevel >= 2 ? 1.85 : 1.45) : 1.0;
 
     return {
-      heroDmgMult: (1 + lvBlade * 0.18) * extGlobalDps,
+      heroDmgMult: (1 + lvBlade * 0.18 * mBlade) * setHeroDmgMult * extGlobalDps,
       tapBaseDmg: 12 + lvTap * 8,
-      tapDmgMult: (1 + lvTap * 0.28) * extTap * extGlobalDps,
-      goldMult: (1 + lvMagnet * 0.16) * extGold,
-      bossGoldMult: 1 + lvMerchant * 0.10,
-      coinMagnetRadius: 150 + lvMagnet * 22,
-      critChance: Math.min(0.75, Math.max(0, 0.05 + lvCrit * 0.022 + extCritChance)),
-      critMult: (1.75 + lvCrit * 0.14) * extCritDmg,
-      hasteMult: 1 + lvHaste * 0.06,
-      moveSpeedMult: Math.min(2.6, 1 + lvHaste * 0.04),
-      maxHpMult: 1 + lvVitality * 0.20,
-      hpRegenPct: lvVitality * 0.03,
-      companionDmgMult: (1 + lvBanner * 0.24) * extCompanion * extGlobalDps,
-      bossDmgMult: 1 + lvBoss * 0.22,
-      bossTimerBonusSec: Math.min(20, Math.floor(lvBoss / 2) * 1.5) + extBossTimer,
-      lifestealPct: Math.min(0.25, lvSiphon * 0.015),
-      gaugeGainMult: 1 + lvSiphon * 0.10,
+      tapDmgMult: (1 + lvTap * 0.28 * mTap) * setTapDmgMult * extTap * extGlobalDps,
+      goldMult: (1 + lvMagnet * 0.16 * mMagnet) * setGoldMult * extGold,
+      bossGoldMult: 1 + lvMerchant * 0.10 * mMerchant,
+      coinMagnetRadius: 150 + Math.round(lvMagnet * 22 * mMagnet) + setCoinMagnetBonus,
+      critChance: Math.min(0.75, Math.max(0, 0.05 + lvCrit * 0.022 * mCrit + extCritChance)),
+      critMult: (1.75 + lvCrit * 0.14 * mCrit) * extCritDmg,
+      hasteMult: (1 + lvHaste * 0.06 * mHaste) * setHasteMult,
+      moveSpeedMult: Math.min(2.6, 1 + lvHaste * 0.04 * mHaste),
+      maxHpMult: 1 + lvVitality * 0.20 * mVitality,
+      hpRegenPct: lvVitality * 0.03 * mVitality,
+      companionDmgMult: (1 + lvBanner * 0.24 * mBanner) * setCompanionDmgMult * extCompanion * extGlobalDps,
+      bossDmgMult: (1 + lvBoss * 0.22 * mBoss) * setBossDmgMult,
+      bossTimerBonusSec: Math.min(20, Math.floor(lvBoss / 2) * 1.5 * mBoss) + extBossTimer,
+      lifestealPct: Math.min(0.25, lvSiphon * 0.015 * mSiphon),
+      gaugeGainMult: 1 + lvSiphon * 0.10 * mSiphon,
       feverGoldMult,
       feverDmgMult,
-      costDiscountMult: this.getCostDiscountMult()
+      costDiscountMult: this.getCostDiscountMult(),
+      relicSets
     };
   }
 

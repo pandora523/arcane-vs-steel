@@ -2,24 +2,26 @@
 /**
  * Endless Crusade — Dedicated 30fps HD-2D VFX & Relic HUD Icon Atlas Builder
  * Output: `assets/sprites/endless_crusade_vfx.png`
- * Layout: 12 cols x 8 rows @ 128x128 (`1536x1024` lossless RGBA PNG)
+ * Layout: 12 cols x 10 rows @ 128x128 (`1536x1280` lossless RGBA PNG)
  *         Authored at `64x64` logical pixels -> exact `2x` nearest-neighbor upscale.
  *
  * Mandatory Invariants:
  *   - 100% lossless nearest-neighbor pixel art, ZERO external APIs, ZERO npm dependencies
  *   - ZERO `ctx.rotate()` / `ctx.ellipse()` / `ctx.arc()`, ZERO Unicode emojis
- *   - Strict >= 2 logical px (>= 4 output px) transparent inner safety margin on all 96 cells
- *   - Crisp `#0d0f1c` dark selout outlines on coins, shards, boss gate, and HUD/Relic icons
+ *   - Strict >= 2 logical px (>= 4 output px) transparent inner safety margin on all 120 cells
+ *   - Crisp `#0d0f1c` dark selout outlines on coins, shards, boss gate, and HUD/Relic/Sigil icons
  *
- * 8-Row Atlas Specification (12 cols x 8 rows @ 128x128):
- *   Row 0: GOLD_COIN_SPIN       (12f) — Sovereign Gold Coin 360-deg spin with stamped crown crest & glint sweep
- *   Row 1: ASTRAL_SHARD_SPIN    (12f) — Faceted diamond-crystal Astral Shard rotation with prismatic facets & star motes
- *   Row 2: TAP_SMITE_SKYBOLT    (12f) — Arcane Tap-Smite telegraph (f0-1), piercing sky-bolt (f2-5), ground burst (f6-11)
- *   Row 3: CRIT_STARBURST       (12f) — Crisp 8-point pixel Crit Starburst + expanding diamond shockwave ring
- *   Row 4: GOLD_FEVER_BURST     (12f) — Radiant Gold Fever Overdrive Burst: golden sunburst, crown flares & diamond sparks
- *   Row 5: COMPANION_AURA_RING  (12f) — 2.5D isometric oval floor rings (0..3 Summon, 4..7 Heal, 8..11 Attack Buff)
- *   Row 6: BOSS_GATE_PORTAL     (12f) — Gothic crowned obsidian Boss Gate arch with swirling crimson-gold vortex & runes
- *   Row 7: HUD_ICONS            (12 static icons) — Coin, Shard, Blade, Tap Sigil, Magnet, Crit, Haste, Aegis, Banner, Crown, Siphon, Chest
+ * 10-Row Atlas Specification (12 cols x 10 rows @ 128x128):
+ *   Row 0: GOLD_COIN_SPIN             (12f) — Sovereign Gold Coin 360-deg spin with stamped crown crest & glint sweep
+ *   Row 1: ASTRAL_SHARD_SPIN          (12f) — Faceted diamond-crystal Astral Shard rotation with prismatic facets & star motes
+ *   Row 2: TAP_SMITE_SKYBOLT          (12f) — Arcane Tap-Smite telegraph (f0-1), piercing sky-bolt (f2-5), ground burst (f6-11)
+ *   Row 3: CRIT_STARBURST             (12f) — Crisp 8-point pixel Crit Starburst + expanding diamond shockwave ring
+ *   Row 4: GOLD_FEVER_BURST           (12f) — Radiant Gold Fever Overdrive Burst: golden sunburst, crown flares & diamond sparks
+ *   Row 5: COMPANION_AURA_RING        (12f) — 2.5D isometric oval floor rings (0..3 Summon, 4..7 Heal, 8..11 Attack Buff)
+ *   Row 6: BOSS_GATE_PORTAL           (12f) — Gothic crowned obsidian Boss Gate arch with swirling crimson-gold vortex & runes
+ *   Row 7: HUD_ICONS                  (12 static icons) — Coin, Shard, Blade, Tap Sigil, Magnet, Crit, Haste, Aegis, Banner, Crown, Siphon, Chest
+ *   Row 8: GOBLIN_BURST_AND_ASCENSION (12f) — Cols 0..5 Treasure Goblin Coin Burst (6f), Cols 6..11 Ascension Starburst Emblem (6f)
+ *   Row 9: WAVE4_SIGILS_AND_EMBLEMS   (12 static sigils) — Blood Moon, Tempest Surge, Titan Horde, Eclipse Frenzy, Warlord's Wrath, Sovereign's Greed, Arcane Tempest, Best-Stage Trophy Crown, Gilded Treasure Goblin, Ascension Star, Ascended Boss Skull, Eternal Vault Key
  */
 
 import fs from 'node:fs';
@@ -44,12 +46,12 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const OUT_PNG = path.join(REPO_ROOT, 'assets/sprites/endless_crusade_vfx.png');
 
 const COLS = 12;
-const ROWS = 8;
+const ROWS = 10;
 const LOGICAL_SZ = 64;
 const SCALE = 2;
 const CELL_SZ = LOGICAL_SZ * SCALE; // 128
 const SHEET_W = COLS * CELL_SZ; // 1536
-const SHEET_H = ROWS * CELL_SZ; // 1024
+const SHEET_H = ROWS * CELL_SZ; // 1280
 const SAFE_LPX = 2; // >= 4 output px transparent inner safety margin on every cell
 const SAFE_OUT_PX = SAFE_LPX * SCALE; // 4
 
@@ -96,6 +98,14 @@ const RAMP_TEAL_WIND = buildColorRamp(
 );
 const RAMP_LEATHER = buildColorRamp(
   ['#0d0f1c', '#29150e', '#4a2518', '#6b3624', '#8c4b32', '#b36b4c', '#d99b7c', '#fef08a'],
+  8
+);
+const RAMP_VIOLET = buildColorRamp(
+  ['#0d0f1c', '#230b3d', '#4c1d95', '#6d28d9', '#9333ea', '#c084fc', '#e9d5ff', '#ffffff'],
+  8
+);
+const RAMP_SAPPHIRE = buildColorRamp(
+  ['#0d0f1c', '#172554', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#bfdbfe', '#ffffff'],
   8
 );
 
@@ -2213,6 +2223,1629 @@ function renderRow7HudIcons(pen, surface, col) {
   ICON_RENDERERS[col](pen, surface);
 }
 
+// =========================================================================
+// WAVE 4 PIXEL ART HELPERS (Rows 8 & 9 — pure integer/scalar pixel shaders)
+// =========================================================================
+function drawQuadBezierThick(pen, p0, p1, p2, r0, r1, steps, colFn) {
+  const qx = (u) => (1 - u) * (1 - u) * p0[0] + 2 * (1 - u) * u * p1[0] + u * u * p2[0];
+  const qy = (u) => (1 - u) * (1 - u) * p0[1] + 2 * (1 - u) * u * p1[1] + u * u * p2[1];
+  for (let s = 0; s < steps; s++) {
+    const u0 = s / steps;
+    const u1 = (s + 1) / steps;
+    const ra = r0 + (r1 - r0) * u0;
+    const rb = r0 + (r1 - r0) * u1;
+    drawThickSeg(pen, qx(u0), qy(u0), qx(u1), qy(u1), ra, rb, (x, y, d, rad, segT) => {
+      colFn(x, y, d, rad, u0 + (u1 - u0) * segT);
+    });
+  }
+}
+
+function drawMiniTumblingCoin(pen, cx, cy, rx, ry, tiltRad = 0, glint = false) {
+  const cosT = Math.cos(tiltRad);
+  const sinT = Math.sin(tiltRad);
+  const maxR = Math.max(rx, ry) + 1.5;
+  const ix0 = Math.max(SAFE_LPX + 1, Math.floor(cx - maxR));
+  const ix1 = Math.min(LOGICAL_SZ - SAFE_LPX - 2, Math.ceil(cx + maxR));
+  const iy0 = Math.max(SAFE_LPX + 1, Math.floor(cy - maxR));
+  const iy1 = Math.min(LOGICAL_SZ - SAFE_LPX - 2, Math.ceil(cy + maxR));
+  for (let y = iy0; y <= iy1; y++) {
+    for (let x = ix0; x <= ix1; x++) {
+      const dx = x - cx;
+      const dy = y - cy;
+      const lx = dx * cosT + dy * sinT;
+      const ly = -dx * sinT + dy * cosT;
+      const u = lx / Math.max(1.0, rx);
+      const v = ly / Math.max(1.0, ry);
+      const r = Math.hypot(u, v);
+      if (r > 1.0) continue;
+      const light = -u * 0.58 - v * 0.72;
+      let idx;
+      if (rx < 1.9) {
+        // Near edge-on golden coin gleam
+        idx = v < -0.15 ? 7 : v < 0.35 ? 5 : 2;
+      } else if (r >= 0.68) {
+        idx = light > 0.35 ? 6 : light > -0.1 ? 5 : light > -0.45 ? 4 : 2;
+      } else {
+        idx = light > 0.25 ? 5 : light > -0.25 ? 4 : 2;
+        if (Math.abs(u) < 0.28 && Math.abs(v) < 0.38) {
+          idx = light > -0.1 ? 6 : 5;
+        }
+      }
+      if (glint && u < -0.1 && v < -0.1 && r < 0.78) idx = 7;
+      setPx(pen, x, y, RAMP_GOLD[idx], 1.0, 0);
+    }
+  }
+}
+
+function drawMiniFacetedGem(pen, cx, cy, rx, ry, ramp) {
+  const ix0 = Math.max(SAFE_LPX + 1, Math.floor(cx - rx - 1));
+  const ix1 = Math.min(LOGICAL_SZ - SAFE_LPX - 2, Math.ceil(cx + rx + 1));
+  const iy0 = Math.max(SAFE_LPX + 1, Math.floor(cy - ry - 1));
+  const iy1 = Math.min(LOGICAL_SZ - SAFE_LPX - 2, Math.ceil(cy + ry + 1));
+  for (let y = iy0; y <= iy1; y++) {
+    for (let x = ix0; x <= ix1; x++) {
+      const nx = (x - cx) / Math.max(1.0, rx);
+      const ny = (y - cy) / Math.max(1.0, ry);
+      const dm = Math.abs(nx) + Math.abs(ny);
+      if (dm > 1.0) continue;
+      let idx;
+      if (dm <= 0.42) {
+        idx = nx < 0.15 && ny < 0.15 ? 7 : 6;
+      } else if (nx <= 0 && ny <= 0) {
+        idx = 6;
+      } else if (nx > 0 && ny <= 0) {
+        idx = 5;
+      } else if (nx <= 0 && ny > 0) {
+        idx = 4;
+      } else {
+        idx = 2;
+      }
+      setPx(pen, x, y, ramp[idx], 1.0, 0);
+    }
+  }
+}
+
+function drawTeardrop(pen, cx, topY, botY, maxR, ramp) {
+  const h = Math.max(2, botY - topY);
+  const ix0 = Math.max(SAFE_LPX + 1, Math.floor(cx - maxR - 1));
+  const ix1 = Math.min(LOGICAL_SZ - SAFE_LPX - 2, Math.ceil(cx + maxR + 1));
+  const iy0 = Math.max(SAFE_LPX + 1, Math.floor(topY));
+  const iy1 = Math.min(LOGICAL_SZ - SAFE_LPX - 2, Math.ceil(botY));
+  for (let y = iy0; y <= iy1; y++) {
+    const t = clamp01((y - topY) / h); // 0 = sharp top tip, 1 = rounded bottom
+    const halfW = maxR * Math.pow(t, 0.72) * Math.sqrt(Math.max(0, 1 - Math.pow(Math.max(0, (t - 0.62) / 0.38), 2)));
+    for (let x = ix0; x <= ix1; x++) {
+      const dx = x - cx;
+      if (Math.abs(dx) > halfW + 0.15) continue;
+      const u = halfW > 0.2 ? dx / halfW : 0;
+      const light = -u * 0.55 - (t - 0.55) * 0.75;
+      let idx;
+      if (Math.hypot(u + 0.34, (t - 0.66) * 2.1) < 0.34) {
+        idx = 7;
+      } else if (light > 0.35) {
+        idx = 5;
+      } else if (light > -0.1) {
+        idx = 4;
+      } else if (light > -0.45) {
+        idx = 3;
+      } else {
+        idx = 2;
+      }
+      setPx(pen, x, y, ramp[idx], 1.0, 0);
+    }
+  }
+}
+
+// =========================================================================
+// ROW 8: GOBLIN_BURST_AND_ASCENSION (12 animated cells @ 64x64 -> 128x128)
+//   Cols 0..5  (6f): Treasure Goblin Coin Burst
+//   Cols 6..11 (6f): Ascension Starburst Emblem
+// =========================================================================
+function renderRow8GoblinAndAscension(pen, surface, col) {
+  if (col < 6) {
+    // ---------------------------------------------------------------------
+    // Cols 0..5 (6f): TREASURE GOBLIN COIN BURST
+    // Explosive outward shower of tumbling gold coins, crimson/sapphire gems,
+    // leather sack wisps & golden diamond sparks!
+    // ---------------------------------------------------------------------
+    const f = col; // 0..5
+    const u = f / 5; // 0.0 -> 1.0
+    const cx = 31.5;
+    const cy = 33.5;
+    const clampInner = (v) => Math.max(SAFE_LPX + 5, Math.min(LOGICAL_SZ - SAFE_LPX - 6, v));
+
+    // 1. Warm torn leather treasure-sack wisps & curling pouch ribbons (f0..f4)
+    if (f <= 4) {
+      const wispFade = clamp01(1 - f / 4.8);
+      const wispDefs = [
+        { ang: -2.42, dist0: 5.5, dist1: 18.5, r0: 2.6, r1: 0.9, curve: -4.2 },
+        { ang: -0.72, dist0: 5.5, dist1: 18.5, r0: 2.6, r1: 0.9, curve: 4.2 },
+        { ang: 2.48, dist0: 5.0, dist1: 17.0, r0: 2.4, r1: 0.9, curve: -3.4 },
+        { ang: 0.66, dist0: 5.0, dist1: 17.0, r0: 2.4, r1: 0.9, curve: 3.4 }
+      ];
+      for (let i = 0; i < wispDefs.length; i++) {
+        const w = wispDefs[i];
+        const dStart = w.dist0 + u * (w.dist1 - w.dist0) * 0.55;
+        const dEnd = w.dist0 + 5.0 + u * (w.dist1 - w.dist0);
+        const rad = w.r0 * (1 - u * 0.6) + w.r1 * u * 0.4;
+        const x0 = clampInner(cx + Math.cos(w.ang) * dStart);
+        const y0 = clampInner(cy + Math.sin(w.ang) * dStart + u * 2.5);
+        const x2 = clampInner(cx + Math.cos(w.ang) * dEnd);
+        const y2 = clampInner(cy + Math.sin(w.ang) * dEnd + u * 4.5);
+        const mx = clampInner((x0 + x2) * 0.5 + w.curve * (0.4 + u * 0.7));
+        const my = clampInner((y0 + y2) * 0.5 - 2.4);
+        if (f <= 2) {
+          drawQuadBezierThick(pen, [x0, y0], [mx, my], [x2, y2], rad, rad * 0.35, 7, (x, y, d, r, bt) => {
+            const colIdx = bt > 0.65 ? 6 : d < r * 0.5 ? 5 : 4;
+            setPx(pen, x, y, RAMP_LEATHER[colIdx], 1.0, 0);
+          });
+        } else {
+          // Dissolving warm leather wisps curling outward
+          fillOvalPx(pen, x2, y2, Math.max(1.3, rad), Math.max(1.1, rad * 0.8), (x, y, nx, ny, r) => {
+            if (f === 4 && ((x + y) & 1) === 1 && r > 0.5) return;
+            const colIdx = r < 0.48 ? 6 : ny < 0 ? 5 : 4;
+            setPx(pen, x, y, RAMP_LEATHER[colIdx], wispFade > 0.25 ? 1.0 : 0.85, 0);
+          });
+        }
+      }
+
+      // Torn stitched leather sack cuff bursting open at f0
+      if (f === 0) {
+        fillOvalPx(pen, cx, cy + 4.5, 6.2, 4.4, (x, y, nx, ny, r) => {
+          const idx = ny < -0.2 ? 6 : r < 0.55 ? 5 : 4;
+          setPx(pen, x, y, RAMP_LEATHER[idx], 1.0, 0);
+        });
+      }
+    }
+
+    // 2. Staggered Multi-Layer Fountain of 11 Tumbling 3D Gold Coins (outer lead + inner trail!)
+    const coinSpecs = [
+      // Outer fast spray ring
+      { ang: -2.58, d0: 7.5, d1: 24.5, grav: 7.5, rx: 4.1, ry: 4.1, spin: 0.2, tilt: -0.45 },
+      { ang: -2.02, d0: 8.2, d1: 25.5, grav: 5.0, rx: 4.3, ry: 4.3, spin: 1.4, tilt: -0.22 },
+      { ang: -1.57, d0: 8.8, d1: 26.0, grav: 3.8, rx: 4.4, ry: 4.4, spin: 2.5, tilt: 0.08 },
+      { ang: -1.10, d0: 8.2, d1: 25.2, grav: 5.2, rx: 4.2, ry: 4.2, spin: 0.8, tilt: 0.30 },
+      { ang: -0.56, d0: 7.5, d1: 24.5, grav: 7.2, rx: 4.1, ry: 4.1, spin: 2.1, tilt: 0.50 },
+      { ang: 2.86, d0: 6.8, d1: 22.8, grav: 8.8, rx: 3.8, ry: 3.8, spin: 1.9, tilt: -0.60 },
+      { ang: 0.28, d0: 6.8, d1: 22.8, grav: 8.8, rx: 3.8, ry: 3.8, spin: 0.5, tilt: 0.62 },
+      // Mid-radius trailing coins filling the burst volume naturally (never an empty ring!)
+      { ang: -2.28, d0: 4.2, d1: 14.5, grav: 7.5, rx: 3.7, ry: 3.7, spin: 2.8, tilt: -0.35 },
+      { ang: -0.84, d0: 4.2, d1: 14.5, grav: 7.5, rx: 3.7, ry: 3.7, spin: 1.1, tilt: 0.35 },
+      { ang: 2.15, d0: 5.2, d1: 17.5, grav: 7.5, rx: 3.6, ry: 3.6, spin: 0.6, tilt: -0.28 },
+      { ang: 0.99, d0: 5.2, d1: 17.5, grav: 7.5, rx: 3.6, ry: 3.6, spin: 2.3, tilt: 0.28 }
+    ];
+    const coinScale = f === 0 ? 0.84 : f === 5 ? 0.78 : f === 4 ? 0.9 : 1.0;
+    const easeOut = 1 - Math.pow(1 - u, 1.65);
+    for (let i = 0; i < coinSpecs.length; i++) {
+      if (f === 5 && (i === 0 || i === 4 || i === 5 || i === 6)) continue;
+      const c = coinSpecs[i];
+      const dist = c.d0 + easeOut * (c.d1 - c.d0);
+      const px = clampInner(cx + Math.cos(c.ang) * dist);
+      const py = clampInner(cy + Math.sin(c.ang) * dist + u * u * c.grav);
+      const spinCos = Math.abs(Math.cos(f * 0.92 + c.spin));
+      const rx = Math.max(1.5, c.rx * coinScale * (0.34 + 0.66 * spinCos));
+      const ry = c.ry * coinScale;
+      const glint = (f + i) % 3 === 0;
+      drawMiniTumblingCoin(pen, px, py, rx, ry, c.tilt + f * 0.16 * (i % 2 === 0 ? 1 : -1), glint);
+    }
+
+    // 3. Faceted Crimson Rubies & Royal Sapphire Gems bursting in staggered arcs!
+    const gemSpecs = [
+      { ang: -2.32, d0: 6.2, d1: 22.0, grav: 6.0, ramp: RAMP_CRIMSON, rx: 3.7, ry: 4.6 },
+      { ang: -0.80, d0: 6.2, d1: 22.0, grav: 6.0, ramp: RAMP_SAPPHIRE, rx: 3.7, ry: 4.6 },
+      { ang: -1.57, d0: 3.2, d1: 12.8, grav: 6.5, ramp: RAMP_SAPPHIRE, rx: 3.3, ry: 4.1 },
+      { ang: 2.52, d0: 5.5, d1: 19.5, grav: 7.2, ramp: RAMP_SAPPHIRE, rx: 3.3, ry: 4.1 },
+      { ang: 0.62, d0: 5.5, d1: 19.5, grav: 7.2, ramp: RAMP_CRIMSON, rx: 3.3, ry: 4.1 }
+    ];
+    const gemScale = f === 0 ? 0.82 : f === 5 ? 0.76 : 1.0;
+    for (let i = 0; i < gemSpecs.length; i++) {
+      if (f === 5 && i >= 3) continue;
+      const g = gemSpecs[i];
+      const dist = g.d0 + easeOut * (g.d1 - g.d0);
+      const gx = clampInner(cx + Math.cos(g.ang) * dist);
+      const gy = clampInner(cy + Math.sin(g.ang) * dist + u * u * g.grav);
+      drawMiniFacetedGem(pen, gx, gy, g.rx * gemScale, g.ry * gemScale, g.ramp);
+    }
+
+    // Crisp #0d0f1c selout outlining every tumbling coin, faceted gem & leather wisp!
+    applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+
+    // 4. Crisp Golden Burst Flash Core (compact on f0 so surrounding coins gleam clearly!)
+    if (f <= 2) {
+      const coreR = f === 0 ? 6.2 : f === 1 ? 4.8 : 2.8;
+      drawDiamond(pen, cx, cy - 1, coreR, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+      drawStar4(pen, cx, cy - 1, f === 0 ? 11 : f === 1 ? 8 : 5, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+    }
+    if (f >= 1 && f <= 3) {
+      const ringR = 12.5 + (f - 1) * 6.2;
+      const ringThick = 1.75 - (f - 1) * 0.35;
+      pen.shadeBox(SAFE_LPX + 1, SAFE_LPX + 1, LOGICAL_SZ - SAFE_LPX - 2, LOGICAL_SZ - SAFE_LPX - 2, (x, y, out) => {
+        const dx = x - cx;
+        const dy = y - cy;
+        const dr = Math.abs(dx) + Math.abs(dy);
+        const dRing = Math.abs(dr - ringR);
+        if (dRing > ringThick) return null;
+        const ang = Math.atan2(dy, dx);
+        if (Math.sin(ang * 8 + f * 0.9) < (f === 1 ? -0.3 : 0.15)) return null;
+        out.color = dRing <= 0.55 ? RAMP_GOLD[7] : RAMP_GOLD[5];
+        out.alpha = f === 3 ? 0.72 : 0.94;
+        out.glowStrength = 0.12;
+        return out.color;
+      });
+    }
+
+    // Radiating & interior golden diamond sparks + 4-pt star glints filling the coin shower
+    const sparkCount = 12;
+    for (let i = 0; i < sparkCount; i++) {
+      const a = (i / sparkCount) * Math.PI * 2 + 0.22 + f * 0.15;
+      const ringLayer = i % 3 === 0 ? 0.52 : 1.0;
+      const dist = Math.min(25.5, (7.5 + u * 18.0) * ringLayer + (i % 2) * 1.8);
+      const sx = cx + Math.cos(a) * dist;
+      const sy = cy + Math.sin(a) * dist;
+      if (!inSafe(Math.round(sx), Math.round(sy), SAFE_LPX + 3)) continue;
+      if (i % 2 === 0) {
+        drawStar4(pen, sx, sy, f <= 3 && i % 4 === 0 ? 3 : 2, RAMP_GOLD[4], RAMP_GOLD[7], 0.16);
+      } else {
+        drawDiamond(pen, sx, sy, f <= 2 ? 2.0 : 1.5, RAMP_GOLD[4], RAMP_GOLD[6], 0.14);
+      }
+    }
+    return;
+  }
+
+  // -------------------------------------------------------------------------
+  // Cols 6..11 (6f): ASCENSION STARBURST EMBLEM
+  // Radiant violet-gold astral supernova starburst with dramatic pulsing
+  // celestial diamond rays & orbiting astral motes!
+  // -------------------------------------------------------------------------
+  const sub = col - 6; // 0..5
+  const phase = (sub / 6) * Math.PI * 2;
+  const pulse = 0.5 + 0.5 * Math.sin(phase);
+  const pulse2 = 0.5 + 0.5 * Math.cos(phase);
+  const cx = 31.5;
+  const cy = 31.5;
+
+  // Dynamic breathing pulse across all 6 frames while staying cleanly inside safe bounds
+  const rCard = 21.8 + pulse * 5.2; // 21.8..27.0
+  const rDiag = 14.8 + pulse2 * 6.4; // 14.8..21.2
+  const haloR = 15.8 + pulse * 2.8; // 15.8..18.6
+  const coreLim = 6.2 + pulse * 2.8; // 6.2..9.0
+
+  pen.shadeBox(SAFE_LPX + 1, SAFE_LPX + 1, LOGICAL_SZ - SAFE_LPX - 2, LOGICAL_SZ - SAFE_LPX - 2, (x, y, out) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const adx = Math.abs(dx);
+    const ady = Math.abs(dy);
+    const r = Math.hypot(dx, dy);
+    if (r > 27.6) return null;
+    const ang = Math.atan2(dy, dx);
+    const diamondR = adx + ady;
+
+    // 1. Central blazing violet-gold astral supernova diamond core
+    if (diamondR <= coreLim) {
+      const q = 1 - diamondR / coreLim;
+      if (q > 0.64) out.color = RAMP_GOLD[7];
+      else if (q > 0.40) out.color = RAMP_GOLD[6];
+      else if (q > 0.20) out.color = RAMP_GOLD[5];
+      else out.color = RAMP_VIOLET[5];
+      out.alpha = 1.0;
+      out.glowStrength = q > 0.5 ? 0.16 : 0.08;
+      return out.color;
+    }
+
+    // 2. Pulsing 4 Primary Cardinal Celestial Diamond Rays (gold-white lit / violet-gold bevel)
+    if (r <= rCard) {
+      const dCard = Math.min(adx, ady);
+      const tLen = r / rCard;
+      const maxCardW = (4.8 + pulse * 1.4) * Math.pow(clamp01(1 - tLen), 0.9);
+      if (dCard <= maxCardW && maxCardW >= 0.42) {
+        const isVert = ady >= adx;
+        const litHalf = isVert ? dx < 0 : dy < 0;
+        const edgeFrac = dCard / Math.max(0.5, maxCardW);
+        if (edgeFrac < 0.28) {
+          out.color = tLen < 0.7 ? RAMP_GOLD[7] : RAMP_GOLD[6];
+        } else if (edgeFrac < 0.68) {
+          out.color = litHalf ? RAMP_GOLD[6] : RAMP_GOLD[5];
+        } else {
+          out.color = litHalf ? RAMP_GOLD[4] : RAMP_VIOLET[4];
+        }
+        out.alpha = 1.0;
+        out.glowStrength = edgeFrac < 0.35 ? 0.14 : 0.06;
+        return out.color;
+      }
+    }
+
+    // 3. Counter-Pulsing 4 Diagonal Astral Diamond Rays (prismatic cyan-violet bevels)
+    if (r <= rDiag) {
+      const dDiag = Math.min(Math.abs(dx - dy), Math.abs(dx + dy)) * 0.7071;
+      const tLen = r / rDiag;
+      const maxDiagW = (3.6 + pulse2 * 1.3) * Math.pow(clamp01(1 - tLen), 0.9);
+      if (dDiag <= maxDiagW && maxDiagW >= 0.4) {
+        const signedSide = Math.abs(dx - dy) < Math.abs(dx + dy) ? dx - dy : dx + dy;
+        const litHalf = signedSide < 0;
+        const edgeFrac = dDiag / Math.max(0.5, maxDiagW);
+        if (edgeFrac < 0.30) {
+          out.color = RAMP_ASTRAL[7];
+        } else if (edgeFrac < 0.68) {
+          out.color = litHalf ? RAMP_ASTRAL[5] : RAMP_VIOLET[5];
+        } else {
+          out.color = litHalf ? RAMP_VIOLET[4] : RAMP_VIOLET[3];
+        }
+        out.alpha = 1.0;
+        out.glowStrength = edgeFrac < 0.35 ? 0.12 : 0.05;
+        return out.color;
+      }
+    }
+
+    // 4. Outer Breathing Double Celestial Astral Halo Ring (violet outer + gold inner + rotating beads)
+    const dHalo = Math.abs(r - haloR);
+    if (dHalo <= 2.1) {
+      const bead = Math.cos(ang * 8 + phase * 2);
+      if (dHalo <= 0.62) {
+        out.color = bead > 0.3 ? RAMP_GOLD[7] : RAMP_GOLD[5];
+      } else if (r < haloR) {
+        out.color = bead > 0.05 ? RAMP_GOLD[5] : RAMP_GOLD[4];
+      } else {
+        out.color = bead > 0.15 ? RAMP_VIOLET[5] : RAMP_VIOLET[3];
+      }
+      out.alpha = 0.96;
+      out.glowStrength = bead > 0.35 ? 0.14 : 0.05;
+      return out.color;
+    }
+
+    // 5. Swirling 8-petal violet astral nebula corona rotating seamlessly around the core
+    const nebulaWave = Math.pow(Math.max(0, Math.cos(ang * 8 - phase)), 3.0);
+    const nebMaxR = 11.5 + nebulaWave * (8.5 + pulse * 3.0);
+    if (r >= 7.5 && r <= nebMaxR && nebulaWave > 0.25) {
+      const q = clamp01(1 - (r - 7.5) / Math.max(1, nebMaxR - 7.5));
+      out.color = q > 0.6 ? RAMP_VIOLET[5] : q > 0.3 ? RAMP_VIOLET[4] : RAMP_VIOLET[2];
+      out.alpha = clamp01(q * 0.95);
+      out.glowStrength = 0.06;
+      return out.color;
+    }
+
+    return null;
+  });
+
+  // 6. Six Seamless Orbiting Astral Motes (alternating cyan-white stars & golden diamonds)
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + phase + 0.35;
+    const dist = i % 2 === 0 ? 23.2 : 19.6 + pulse2 * 1.8;
+    const mx = cx + Math.cos(a) * dist;
+    const my = cy + Math.sin(a) * dist;
+    if (!inSafe(Math.round(mx), Math.round(my), SAFE_LPX + 3)) continue;
+    if (i % 2 === 0) {
+      drawStar4(pen, mx, my, (sub + i) % 2 === 0 ? 4 : 2, RAMP_ASTRAL[5], RAMP_ASTRAL[7], 0.16);
+    } else {
+      drawDiamond(pen, mx, my, (sub + i) % 2 === 0 ? 2.4 : 1.6, RAMP_GOLD[4], RAMP_GOLD[7], 0.15);
+    }
+  }
+
+  // 4 inner counter-rotating lavender-gold diamond sparkles
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 - phase + Math.PI * 0.25;
+    const mx = cx + Math.cos(a) * (11.2 + pulse * 1.8);
+    const my = cy + Math.sin(a) * (11.2 + pulse * 1.8);
+    drawDiamond(pen, mx, my, 1.7, RAMP_VIOLET[4], RAMP_GOLD[7], 0.14);
+  }
+}
+
+// =========================================================================
+// ROW 9: WAVE4_SIGILS_AND_EMBLEMS (12 crisp static HUD sigils @ 64x64 -> 128x128)
+// Bold high-contrast silhouettes readable at 24x24..44x44 UI scale with `#0d0f1c` selout!
+// =========================================================================
+
+// Col 0: Blood Moon Sigil (crimson crescent eclipse + blood droplets)
+function renderSigil0BloodMoon(pen, surface) {
+  const moonCx = 31.5;
+  const moonCy = 27.5;
+  const moonR = 20.5;
+  const cutCx = 39.5;
+  const cutCy = 22.5;
+  const cutR = 16.2;
+
+  // 1. Razor-Crisp Crimson Crescent Eclipse Moon (transparent inner bite for unmistakable C-crescent!)
+  for (let y = 6; y <= 50; y++) {
+    for (let x = 9; x <= 54; x++) {
+      const dx = x - moonCx;
+      const dy = y - moonCy;
+      const r = Math.hypot(dx, dy);
+      if (r > moonR) continue;
+      const dCut = Math.hypot(x - cutCx, y - cutCy);
+      if (dCut <= cutR) continue;
+
+      const u = dx / moonR;
+      const v = dy / moonR;
+      const light = -u * 0.62 - v * 0.68;
+      const crater1 = Math.hypot(x - 19.5, y - 27.5) < 2.2;
+      const crater2 = Math.hypot(x - 24.5, y - 38.5) < 1.9;
+      const innerEclipseGlow = dCut < cutR + 2.2;
+      let idx;
+      if (innerEclipseGlow && (y < 36 || x > 28)) idx = 6; // luminous inner crimson-rose eclipse edge!
+      else if (crater1 || crater2) idx = 2;
+      else if (r > moonR - 2.3 && light > 0.12) idx = 6;
+      else if (light > 0.34) idx = 5;
+      else if (light > -0.1) idx = 4;
+      else if (light > -0.46) idx = 3;
+      else idx = 2;
+      setPx(pen, x, y, RAMP_CRIMSON[idx], 1.0, 0);
+    }
+  }
+
+  // 2. Subtle Golden-Crimson Eclipse Star nestled inside the crescent's hollow!
+  drawStar4(pen, 41.5, 22.5, 6, RAMP_CRIMSON[5], RAMP_GOLD[7], 0);
+  drawDiamond(pen, 41.5, 22.5, 2.8, RAMP_GOLD[5], RAMP_GOLD[7], 0);
+
+  // 3. Three Crisp Stylized Crimson Blood Droplets dripping below the crescent!
+  drawTeardrop(pen, 34.5, 44.0, 56.5, 4.1, RAMP_CRIMSON);
+  drawTeardrop(pen, 22.5, 45.5, 55.0, 3.2, RAMP_CRIMSON);
+  drawTeardrop(pen, 45.5, 41.0, 51.0, 3.0, RAMP_CRIMSON);
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+
+  // Delicate crimson-gold eclipse star glints
+  drawStar4(pen, 41.5, 22.5, 5, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+  drawStar4(pen, 13.0, 14.0, 2, RAMP_CRIMSON[4], RAMP_CRIMSON[7], 0.14);
+}
+
+// Col 1: Tempest Surge Sigil (forked electric azure-gold storm bolt crest)
+function renderSigil1TempestSurge(pen, surface) {
+  const cx = 31.5;
+
+  // 1. Symmetric Heraldic Storm-Wing Crest Backing (deep azure-obsidian & burnished gold)
+  for (const side of [-1, 1]) {
+    const outerWing = [
+      [cx + side * 6, 22],
+      [cx + side * 24, 14],
+      [cx + side * 20, 26],
+      [cx + side * 24, 30],
+      [cx + side * 16, 40],
+      [cx + side * 7, 36]
+    ];
+    fillPolygon(pen, outerWing, (x, y) => {
+      const dist = Math.abs(x - cx);
+      const topRim = y < 19 || (dist > 18 && y < 27);
+      const col = topRim
+        ? RAMP_GOLD[5]
+        : dist > 16
+          ? RAMP_CYAN_BOLT[3]
+          : y < 28
+            ? RAMP_CYAN_BOLT[2]
+            : RAMP_OBSIDIAN[3];
+      setPx(pen, x, y, col, 1.0, 0);
+    });
+    // Gilded upper crest bevel along each storm wing
+    drawThickSeg(pen, cx + side * 6, 21, cx + side * 23, 14, 1.4, 0.9, (x, y) => {
+      setPx(pen, x, y, side < 0 ? RAMP_GOLD[6] : RAMP_GOLD[5], 1.0, 0);
+    });
+  }
+
+  // 2. Bold Forked Side-Bolts branching left & right out of the storm crest
+  const leftFork = [
+    [25, 29],
+    [13, 39],
+    [18, 39],
+    [11, 49],
+    [25, 36],
+    [20, 36]
+  ];
+  const rightFork = [
+    [38, 25],
+    [51, 35],
+    [45, 35],
+    [52, 46],
+    [38, 32],
+    [43, 32]
+  ];
+  for (const forkPoly of [leftFork, rightFork]) {
+    fillPolygon(pen, forkPoly, (x, y) => {
+      const col = y < 35 ? RAMP_GOLD[6] : RAMP_CYAN_BOLT[4];
+      setPx(pen, x, y, col, 1.0, 0);
+    });
+  }
+  drawLinePx(pen, 23, 32, 13, 46, RAMP_CYAN_BOLT[7], 1.0, 0);
+  drawLinePx(pen, 40, 28, 50, 43, RAMP_CYAN_BOLT[7], 1.0, 0);
+
+  // 3. Central Piercing Azure-Gold Master Storm Bolt (gold shell + vivid azure + white spine)
+  const mainOuter = [
+    [38, 6],
+    [19, 30],
+    [31, 30],
+    [22, 57],
+    [45, 26],
+    [33, 26]
+  ];
+  fillPolygon(pen, mainOuter, (x, y) => {
+    setPx(pen, x, y, y < 29 ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+  });
+  const mainInner = [
+    [35, 12],
+    [23, 28],
+    [35, 28],
+    [26, 51],
+    [41, 28],
+    [29, 28]
+  ];
+  fillPolygon(pen, mainInner, (x, y) => {
+    const midX = y < 29 ? 34 - (y - 12) * 0.55 : 35 - (y - 29) * 0.45;
+    const d = Math.abs(x - midX);
+    const col = d < 1.3 ? RAMP_CYAN_BOLT[7] : d < 3.0 ? RAMP_CYAN_BOLT[4] : RAMP_CYAN_BOLT[3];
+    setPx(pen, x, y, col, 1.0, 0);
+  });
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+
+  drawStar4(pen, 12, 14, 3, RAMP_CYAN_BOLT[3], RAMP_CYAN_BOLT[7], 0.16);
+  drawStar4(pen, 51, 50, 3, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+}
+
+// Col 2: Titan Horde Sigil (horned obsidian war-helm with glowing ember visor)
+function renderSigil2TitanHorde(pen, surface) {
+  const cx = 31.5;
+
+  // 1. Twin Massive Curved Titan War-Horns sweeping outward & upward
+  for (const side of [-1, 1]) {
+    drawQuadBezierThick(
+      pen,
+      [cx + side * 12.5, 29.0],
+      [cx + side * 25.5, 24.5],
+      [cx + side * 21.5, 8.5],
+      4.6,
+      1.1,
+      16,
+      (x, y, d, rad, u) => {
+        if (Math.abs(u - 0.18) < 0.08) {
+          setPx(pen, x, y, y < 27 ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+          return;
+        }
+        const lit = d < rad * 0.48 || u > 0.72;
+        const col = u > 0.65 ? (lit ? RAMP_STEEL[7] : RAMP_STEEL[4]) : lit ? RAMP_OBSIDIAN[5] : RAMP_OBSIDIAN[2];
+        setPx(pen, x, y, col, 1.0, 0);
+      }
+    );
+  }
+
+  // 2. Sculpted Obsidian War-Helm Cranium, Cheekplates & Armored Chin Guard
+  for (let y = 15; y <= 55; y++) {
+    let halfW;
+    if (y <= 27) {
+      const t = (27 - y) / 12;
+      halfW = 14.2 * Math.sqrt(Math.max(0.08, 1 - t * t * 0.88));
+    } else if (y <= 44) {
+      halfW = 14.2 + ((y - 27) / 17) * 1.4;
+    } else {
+      const t = (y - 44) / 11;
+      halfW = 15.6 * (1 - t * 0.56);
+    }
+    const x0 = Math.round(cx - halfW);
+    const x1 = Math.round(cx + halfW);
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - cx;
+      const adx = Math.abs(dx);
+      const isTrim = adx >= halfW - 1.8 || y === 29 || y >= 53;
+      const isRidge = adx <= 1.8 && y <= 38;
+      if (isRidge) {
+        setPx(pen, x, y, dx < 0 || y < 22 ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+      } else if (isTrim) {
+        setPx(pen, x, y, dx < 0 ? RAMP_GOLD[5] : RAMP_GOLD[4], 1.0, 0);
+      } else {
+        const col = dx < -4 ? RAMP_OBSIDIAN[5] : dx < 2 ? RAMP_OBSIDIAN[4] : dx < 8 ? RAMP_OBSIDIAN[3] : RAMP_OBSIDIAN[2];
+        setPx(pen, x, y, col, 1.0, 0);
+      }
+    }
+  }
+
+  // Crowned golden brow spike crest atop helm
+  fillPolygon(
+    pen,
+    [
+      [cx, 10],
+      [cx + 4.2, 18],
+      [cx, 22],
+      [cx - 4.2, 18]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, x < cx ? RAMP_GOLD[7] : RAMP_GOLD[5], 1.0, 0);
+    }
+  );
+
+  // 3. Deep Recessed Fierce V-Shaped Visor Cavity + Blazing Molten Ember Eyes!
+  for (let y = 30; y <= 41; y++) {
+    for (let x = 19; x <= 44; x++) {
+      const dx = x - cx;
+      const adx = Math.abs(dx);
+      const slitTop = 30.5 + (1 - adx / 13) * 3.0;
+      const slitBot = 35.8 + (1 - adx / 13) * 3.2;
+      const noseSlit = adx <= 1.7 && y >= 35 && y <= 41;
+      if ((adx <= 11.5 && y >= slitTop && y <= slitBot) || noseSlit) {
+        setPx(pen, x, y, COL_SELOUT, 1.0, 0);
+      }
+    }
+  }
+  // Glowing molten ember predator eyes inside visor slit
+  for (const side of [-1, 1]) {
+    const ex0 = cx + side * 3.6;
+    const ey0 = 35.6;
+    const ex1 = cx + side * 9.8;
+    const ey1 = 33.2;
+    drawThickSeg(pen, ex0, ey0, ex1, ey1, 1.65, 1.25, (x, y, d, rad, t) => {
+      const col = d < 0.55 && t > 0.15 && t < 0.85 ? RAMP_CRIT[7] : d < 1.0 ? RAMP_CRIT[5] : RAMP_CRIT[2];
+      setPx(pen, x, y, col, 1.0, 0.14);
+    });
+  }
+
+  // Lower jaw breathing vents & golden cheek rivets
+  for (const vx of [25, 28, 35, 38]) {
+    drawLinePx(pen, vx, 44, vx, 50, COL_SELOUT, 1.0, 0);
+  }
+  setPx(pen, 21, 45, RAMP_GOLD[6], 1.0, 0);
+  setPx(pen, 42, 45, RAMP_GOLD[5], 1.0, 0);
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, 15, 48, 2, RAMP_CRIT[4], RAMP_GOLD[7], 0.14);
+  drawStar4(pen, 49, 47, 2, RAMP_CRIT[2], RAMP_GOLD[6], 0.14);
+}
+
+// Col 3: Eclipse Frenzy Sigil (violet-gold blazing solar corona ring)
+function renderSigil3EclipseFrenzy(pen, surface) {
+  const cx = 31.5;
+  const cy = 31.5;
+
+  // 1. Swirling 12-Tongue Blazing Violet-Gold Solar Corona Ring
+  for (let y = 5; y <= 58; y++) {
+    for (let x = 5; x <= 58; x++) {
+      const dx = x - cx;
+      const dy = y - cy;
+      const r = Math.hypot(dx, dy);
+      if (r > 26.5) continue;
+      const ang = Math.atan2(dy, dx);
+
+      // Bold curved primary & secondary prominence flares
+      const swirl = ang - (r - 12) * 0.048;
+      const wave6 = Math.pow(Math.max(0, Math.cos(swirl * 6)), 1.6);
+      const wave6Alt = Math.pow(Math.max(0, Math.sin(swirl * 6)), 2.2) * 0.72;
+      const outerR = 15.6 + Math.max(wave6 * 10.6, wave6Alt * 7.5);
+      if (r > outerR) continue;
+
+      if (r < 11.4) {
+        // Pitch-obsidian eclipsed moon disc with subtle deep violet umbra rim
+        const col = r > 9.4 ? RAMP_VIOLET[2] : r > 7.5 ? RAMP_OBSIDIAN[1] : RAMP_OBSIDIAN[0];
+        setPx(pen, x, y, col, 1.0, 0);
+      } else if (r <= 14.5) {
+        // Blazing incandescent golden-white inner solar corona ring
+        const q = (r - 11.4) / 3.1;
+        const col = q < 0.36 ? RAMP_GOLD[7] : q < 0.72 ? RAMP_GOLD[6] : RAMP_GOLD[5];
+        setPx(pen, x, y, col, 1.0, 0);
+      } else {
+        // Violet-gold solar corona flame tongues
+        const q = clamp01(1 - (r - 14.5) / Math.max(1.5, outerR - 14.5));
+        const isPrimary = wave6 >= wave6Alt;
+        let col;
+        if (q > 0.72 && isPrimary) col = RAMP_GOLD[6];
+        else if (q > 0.50 && isPrimary) col = RAMP_GOLD[5];
+        else if (q > 0.34) col = RAMP_VIOLET[5];
+        else if (q > 0.16) col = RAMP_VIOLET[4];
+        else col = RAMP_VIOLET[3];
+        setPx(pen, x, y, col, 1.0, 0);
+      }
+    }
+  }
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+
+  // Dazzling diamond-ring flare star on upper-left eclipse corona rim + astral corner motes
+  drawStar4(pen, cx - 8.5, cy - 8.5, 5, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+  drawStar4(pen, 51, 13, 3, RAMP_VIOLET[5], RAMP_GOLD[7], 0.14);
+  drawStar4(pen, 12, 50, 3, RAMP_VIOLET[4], RAMP_ASTRAL[7], 0.14);
+}
+
+// Col 4: Warlord's Wrath Set Crest (crossed flaming crimson-gold greatswords)
+function renderSigil4WarlordsWrath(pen, surface) {
+  const cx = 31.5;
+  const cy = 31.5;
+
+  // 1. Sculpted 3-Spire Roaring Crimson-Gold War Flames rising cleanly behind crossed swords
+  const drawFlameSpire = (baseX, baseY, tipX, tipY, halfW, curve) => {
+    const steps = 18;
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const sy = baseY + (tipY - baseY) * t;
+      const sx = baseX + (tipX - baseX) * t + Math.sin(t * Math.PI) * curve;
+      const rad = halfW * Math.pow(1 - t, 0.78);
+      if (rad < 0.6) continue;
+      fillOvalPx(pen, sx, sy, rad, Math.max(1.2, rad * 0.75), (x, y, nx, ny, r) => {
+        const heat = clamp01((1 - t) * 0.55 + (1 - r) * 0.55);
+        const col =
+          heat > 0.82
+            ? RAMP_GOLD[6]
+            : heat > 0.60
+              ? RAMP_CRIT[4]
+              : heat > 0.34
+                ? RAMP_CRIT[2]
+                : RAMP_CRIT[1];
+        setPx(pen, x, y, col, 1.0, 0);
+      });
+    }
+  };
+  // Tall pointed central flame + twin curved flanking flame licks
+  drawFlameSpire(cx, 38, cx, 7, 10.5, 1.8);
+  drawFlameSpire(cx - 8, 39, cx - 15, 16, 6.2, -2.5);
+  drawFlameSpire(cx + 8, 39, cx + 15, 16, 6.2, 2.5);
+
+  // Helper to paint one flaming greatsword (`dir = -1` top-left tip, `+1` top-right tip)
+  const drawGreatsword = (dir) => {
+    const tipX = dir > 0 ? 52 : 11;
+    const tipY = 10;
+    const hiltX = dir > 0 ? 15 : 48;
+    const hiltY = 47;
+    const guardX = dir > 0 ? 22 : 41;
+    const guardY = 40;
+
+    // Broad forged steel blade with razor dark steel fuller & fiery crimson aura edge
+    const perpX = -dir * 0.7071;
+    const perpY = -0.7071;
+    const baseL = [guardX + perpX * 4.0, guardY + perpY * 4.0];
+    const baseR = [guardX - perpX * 4.0, guardY - perpY * 4.0];
+    const shL = [tipX - dir * 7.5 + perpX * 3.3, tipY + 7.5 + perpY * 3.3];
+    const shR = [tipX - dir * 7.5 - perpX * 3.3, tipY + 7.5 - perpY * 3.3];
+    fillPolygon(pen, [baseL, shL, [tipX, tipY], shR, baseR], (x, y) => {
+      const { d } = distToSeg(x, y, guardX, guardY, tipX, tipY);
+      const signed = (x - guardX) * perpX + (y - guardY) * perpY;
+      let col;
+      if (d < 0.8) col = RAMP_GOLD[5]; // inlaid golden war fuller
+      else if (d > 2.8) col = RAMP_CRIT[2]; // fiery crimson razor rim
+      else if (signed > 0) col = RAMP_STEEL[7]; // gleaming platinum-steel upper bevel
+      else col = RAMP_STEEL[3]; // deep steel shadow bevel for sharp contrast!
+      setPx(pen, x, y, col, 1.0, 0);
+    });
+
+    // Leather war grip
+    drawThickSeg(pen, hiltX, hiltY, guardX, guardY, 2.3, 2.1, (x, y, d) => {
+      setPx(pen, x, y, d < 1.0 ? RAMP_LEATHER[4] : RAMP_LEATHER[2], 1.0, 0);
+    });
+
+    // Heavy gilded crossguard
+    const gx0 = guardX + perpX * 8.4;
+    const gy0 = guardY + perpY * 8.4;
+    const gx1 = guardX - perpX * 8.4;
+    const gy1 = guardY - perpY * 8.4;
+    drawThickSeg(pen, gx0, gy0, gx1, gy1, 2.5, 2.5, (x, y, d) => {
+      setPx(pen, x, y, y < guardY ? RAMP_GOLD[6] : d < 1.2 ? RAMP_GOLD[5] : RAMP_GOLD[2], 1.0, 0);
+    });
+
+    // Ruby-set gold pommel
+    drawDiamond(pen, hiltX - dir * 2.2, hiltY + 2.2, 3.6, RAMP_GOLD[4], RAMP_GOLD[6], 0);
+    setPx(pen, hiltX - dir * 2.2, hiltY + 2.2, RAMP_CRIMSON[5], 1.0, 0);
+  };
+
+  drawGreatsword(-1);
+  drawGreatsword(1);
+
+  // Blazing central crimson-gold war crest gem locking the crossed blades
+  drawDiamond(pen, cx, cy - 1.5, 5.2, RAMP_GOLD[4], RAMP_GOLD[6], 0);
+  drawDiamond(pen, cx, cy - 1.5, 3.3, RAMP_CRIT[2], RAMP_GOLD[7], 0.14);
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, cx, 7.5, 3, RAMP_CRIT[4], RAMP_GOLD[7], 0.15);
+  drawStar4(pen, 11, 27, 2, RAMP_CRIT[2], RAMP_GOLD[6], 0.12);
+  drawStar4(pen, 52, 27, 2, RAMP_CRIT[2], RAMP_GOLD[6], 0.12);
+}
+
+// Col 5: Sovereign's Greed Set Crest (overflowing gilded sovereign chalice & coins)
+function renderSigil5SovereignsGreed(pen, surface) {
+  const cx = 31.5;
+
+  // 1. Overflowing Mountain of Gold Coins & Royal Gems piled proudly above rim (y = 11..28)
+  const pileCoins = [
+    [22, 23, 4.3, 4.0],
+    [41, 23, 4.3, 4.0],
+    [31.5, 23, 4.6, 4.3],
+    [26.5, 18.5, 4.4, 4.1],
+    [36.5, 18.5, 4.4, 4.1],
+    [31.5, 14.2, 4.4, 4.2]
+  ];
+  for (let i = 0; i < pileCoins.length; i++) {
+    const [mx, my, rx, ry] = pileCoins[i];
+    // Dark coin separation rim so each stacked coin reads distinctly
+    fillOvalPx(pen, mx, my, rx + 0.85, ry + 0.85, (x, y) => {
+      setPx(pen, x, y, RAMP_GOLD[1], 1.0, 0);
+    });
+    drawMiniTumblingCoin(pen, mx, my, rx, ry, (i % 2 === 0 ? -0.2 : 0.2), i === 5 || i === 3);
+  }
+  // Nestled royal ruby & emerald peeking out of the coin heap
+  drawMiniFacetedGem(pen, 20.5, 19.5, 3.1, 3.6, RAMP_CRIMSON);
+  drawMiniFacetedGem(pen, 42.5, 19.5, 3.1, 3.6, RAMP_EMERALD);
+
+  // 2. Curved Ornate Golden Goblet Handles on Left & Right
+  for (const side of [-1, 1]) {
+    drawQuadBezierThick(
+      pen,
+      [cx + side * 13.5, 28.5],
+      [cx + side * 21.5, 32.5],
+      [cx + side * 11.5, 40.5],
+      2.2,
+      1.8,
+      12,
+      (x, y, d) => {
+        setPx(pen, x, y, side < 0 || d < 0.8 ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+      }
+    );
+  }
+
+  // 3. Wide Gilded Sovereign Chalice Bowl, Stem & Stepped Pedestal
+  for (let y = 25; y <= 44; y++) {
+    const t = clamp01((y - 25) / 19);
+    const halfW = y <= 27 ? 15.8 : 15.0 * Math.pow(Math.max(0.12, 1 - t * t * 0.78), 0.72);
+    const x0 = Math.round(cx - halfW);
+    const x1 = Math.round(cx + halfW);
+    for (let x = x0; x <= x1; x++) {
+      const nx = (x - cx) / Math.max(1, halfW);
+      let idx;
+      if (y === 25 || y === 26) idx = nx < 0.2 ? 7 : 6;
+      else if (y === 28 || y === 43) idx = 2;
+      else if (nx > -0.58 && nx < -0.22) idx = 7; // gleaming vertical specular highlight
+      else if (nx < 0.05) idx = 6;
+      else if (nx < 0.45) idx = 5;
+      else if (nx < 0.78) idx = 4;
+      else idx = 2;
+      setPx(pen, x, y, RAMP_GOLD[idx], 1.0, 0);
+    }
+  }
+  // Royal crimson ruby set into chalice front
+  drawDiamond(pen, cx, 35.0, 3.8, RAMP_CRIMSON[3], RAMP_CRIMSON[6], 0);
+  setPx(pen, cx - 1, 34.0, RAMP_CRIMSON[7], 1.0, 0);
+
+  // Fluted golden stem & knop
+  drawThickSeg(pen, cx, 43.5, cx, 51.0, 3.0, 3.2, (x, y) => {
+    setPx(pen, x, y, x < cx - 0.5 ? RAMP_GOLD[6] : x < cx + 1.2 ? RAMP_GOLD[5] : RAMP_GOLD[2], 1.0, 0);
+  });
+  drawDiamond(pen, cx, 47.0, 3.6, RAMP_GOLD[4], RAMP_GOLD[7], 0);
+
+  // Heavy gilded pedestal base
+  fillPolygon(
+    pen,
+    [
+      [20, 50],
+      [43, 50],
+      [47, 56],
+      [16, 56]
+    ],
+    (x, y) => {
+      const col = y === 50 ? RAMP_GOLD[6] : y === 56 ? RAMP_GOLD[2] : x < cx ? RAMP_GOLD[5] : RAMP_GOLD[4];
+      setPx(pen, x, y, col, 1.0, 0);
+    }
+  );
+
+  // 4. Spilling Coins Cascading Over Lip & Resting by Pedestal!
+  const spillCoins = [
+    [13.5, 25.5, 3.2, 3.2, -0.35],
+    [49.5, 26.5, 3.2, 3.2, 0.35],
+    [14.5, 52.5, 3.4, 2.7, -0.2],
+    [48.5, 52.5, 3.4, 2.7, 0.2]
+  ];
+  for (const [sx, sy, rx, ry, tilt] of spillCoins) {
+    fillOvalPx(pen, sx, sy, rx + 0.7, ry + 0.7, (x, y) => setPx(pen, x, y, RAMP_GOLD[1], 1.0, 0));
+    drawMiniTumblingCoin(pen, sx, sy, rx, ry, tilt, true);
+  }
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, 17, 11, 3, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+  drawStar4(pen, 46, 11, 3, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+  drawStar4(pen, cx, 7.5, 2, RAMP_GOLD[5], RAMP_GOLD[7], 0.14);
+}
+
+// Col 6: Arcane Tempest Set Crest (azure-violet storm orb & twin lightning wings)
+function renderSigil6ArcaneTempest(pen, surface) {
+  const cx = 31.5;
+  const cy = 34.5;
+
+  // 1. Twin Dramatic Symmetric Jagged Electric Lightning Wings
+  for (const side of [-1, 1]) {
+    const wingPinions = [
+      // Upper sweeping lightning pinion
+      [
+        [cx + side * 8, 28],
+        [cx + side * 20, 17],
+        [cx + side * 26, 12],
+        [cx + side * 22, 22],
+        [cx + side * 12, 33]
+      ],
+      // Middle jagged storm pinion
+      [
+        [cx + side * 9, 32],
+        [cx + side * 25, 24],
+        [cx + side * 27, 29],
+        [cx + side * 19, 34],
+        [cx + side * 11, 38]
+      ],
+      // Lower sweeping electric pinion
+      [
+        [cx + side * 8, 37],
+        [cx + side * 22, 36],
+        [cx + side * 23, 42],
+        [cx + side * 14, 44],
+        [cx + side * 9, 41]
+      ]
+    ];
+    for (let p = 0; p < wingPinions.length; p++) {
+      fillPolygon(pen, wingPinions[p], (x, y) => {
+        const u = clamp01((Math.abs(x - cx) - 8) / 19);
+        let col;
+        if (u > 0.74) col = RAMP_CYAN_BOLT[7];
+        else if (u > 0.48) col = RAMP_CYAN_BOLT[4];
+        else if (u > 0.25) col = RAMP_CYAN_BOLT[3];
+        else col = p === 2 ? RAMP_VIOLET[4] : RAMP_VIOLET[5];
+        setPx(pen, x, y, col, 1.0, 0);
+      });
+    }
+    // Bright white-cyan lightning vein crackling down each upper pinion
+    drawLinePx(pen, cx + side * 11, 29, cx + side * 24, 15, RAMP_CYAN_BOLT[7], 1.0, 0);
+  }
+
+  // 2. Burnished Gold Winged Collar & Top Storm-Crest Finial cradling the orb
+  fillPolygon(
+    pen,
+    [
+      [cx, 11],
+      [cx + 5, 21],
+      [cx, 25],
+      [cx - 5, 21]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, x < cx ? RAMP_GOLD[7] : RAMP_GOLD[5], 1.0, 0);
+    }
+  );
+  fillOvalPx(pen, cx, cy, 13.0, 13.0, (x, y, nx, ny, r) => {
+    if (r < 0.80) return;
+    const col = nx < 0 || ny < -0.2 ? RAMP_GOLD[6] : RAMP_GOLD[4];
+    setPx(pen, x, y, col, 1.0, 0);
+  });
+  // Lower golden crescent claw cradling orb bottom
+  fillPolygon(
+    pen,
+    [
+      [cx - 8, 45],
+      [cx + 8, 45],
+      [cx, 54]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, x < cx ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+    }
+  );
+
+  // 3. Swirling Saturated Azure-Violet Arcane Storm Orb
+  fillOvalPx(pen, cx, cy, 10.6, 10.6, (x, y, nx, ny, r) => {
+    const ang = Math.atan2(ny, nx);
+    const swirl = Math.sin(ang * 2 + r * 4.8);
+    let col;
+    if (r < 0.28) {
+      col = RAMP_CYAN_BOLT[7];
+    } else if (swirl > 0.05) {
+      col = r < 0.65 ? RAMP_CYAN_BOLT[4] : RAMP_CYAN_BOLT[3];
+    } else {
+      col = r < 0.65 ? RAMP_VIOLET[5] : RAMP_VIOLET[3];
+    }
+    if (Math.hypot(nx + 0.36, ny + 0.38) < 0.22) {
+      col = RAMP_CYAN_BOLT[7];
+    }
+    setPx(pen, x, y, col, 1.0, 0);
+  });
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, 12, 11, 3, RAMP_CYAN_BOLT[4], RAMP_CYAN_BOLT[7], 0.15);
+  drawStar4(pen, 51, 11, 3, RAMP_VIOLET[5], RAMP_CYAN_BOLT[7], 0.15);
+}
+
+// Col 7: Best-Stage Trophy Crown (jeweled gilded victory chalice/crown)
+function renderSigil7BestStageTrophy(pen, surface) {
+  const cx = 31.5;
+
+  // 1. Curved Victory Trophy Handles on Left & Right
+  for (const side of [-1, 1]) {
+    drawQuadBezierThick(
+      pen,
+      [cx + side * 12.0, 26.5],
+      [cx + side * 22.0, 29.0],
+      [cx + side * 10.5, 41.0],
+      2.2,
+      1.7,
+      12,
+      (x, y, d) => {
+        setPx(pen, x, y, side < 0 || d < 0.8 ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+      }
+    );
+  }
+
+  // 2. Crimson Velvet Crown Cap peeking behind royal crown spires
+  fillPolygon(
+    pen,
+    [
+      [18, 23],
+      [23, 14],
+      [cx, 12],
+      [40, 14],
+      [45, 23]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, x < cx ? RAMP_CRIMSON[4] : RAMP_CRIMSON[2], 1.0, 0);
+    }
+  );
+
+  // 3. 5-Spire Jeweled Royal Victory Crown perched atop chalice rim (y = 8..25)
+  fillPolygon(
+    pen,
+    [
+      [16, 25],
+      [14, 13],
+      [21, 19],
+      [25, 11],
+      [28, 17],
+      [cx, 8],
+      [35, 17],
+      [38, 11],
+      [42, 19],
+      [49, 13],
+      [47, 25]
+    ],
+    (x, y) => {
+      const isBand = y >= 21;
+      let col;
+      if (y === 21 || y === 25) col = RAMP_GOLD[2];
+      else if (isBand) col = x < cx ? RAMP_GOLD[6] : RAMP_GOLD[5];
+      else col = x < cx - 2 || y < 14 ? RAMP_GOLD[7] : x < cx + 5 ? RAMP_GOLD[6] : RAMP_GOLD[4];
+      setPx(pen, x, y, col, 1.0, 0);
+    }
+  );
+  // Crown spire pearls & tricolor royal jewels (sapphire, ruby, emerald)
+  drawDiamond(pen, cx, 7.5, 2.2, RAMP_GOLD[5], RAMP_GOLD[7], 0);
+  drawDiamond(pen, 14, 12.5, 1.7, RAMP_GOLD[5], RAMP_GOLD[7], 0);
+  drawDiamond(pen, 49, 12.5, 1.7, RAMP_GOLD[4], RAMP_GOLD[6], 0);
+  drawDiamond(pen, cx, 23.0, 2.3, RAMP_SAPPHIRE[4], RAMP_SAPPHIRE[7], 0);
+  drawDiamond(pen, 22.0, 23.0, 1.9, RAMP_CRIMSON[4], RAMP_CRIMSON[7], 0);
+  drawDiamond(pen, 41.0, 23.0, 1.9, RAMP_EMERALD[3], RAMP_EMERALD[7], 0);
+
+  // 4. Gleaming Sculpted Golden Victory Chalice Bowl (y = 25..44)
+  for (let y = 25; y <= 44; y++) {
+    const t = clamp01((y - 25) / 19);
+    const halfW = 14.5 * Math.pow(Math.max(0.14, 1 - t * t * 0.8), 0.72);
+    const x0 = Math.round(cx - halfW);
+    const x1 = Math.round(cx + halfW);
+    for (let x = x0; x <= x1; x++) {
+      const nx = (x - cx) / Math.max(1, halfW);
+      let idx;
+      if (nx > -0.58 && nx < -0.22) idx = 7;
+      else if (nx < 0.05) idx = 6;
+      else if (nx < 0.48) idx = 5;
+      else if (nx < 0.78) idx = 4;
+      else idx = 2;
+      setPx(pen, x, y, RAMP_GOLD[idx], 1.0, 0);
+    }
+  }
+  // Crimson victory medallion & star embossed on cup front
+  drawDiamond(pen, cx, 34.0, 4.4, RAMP_CRIMSON[3], RAMP_CRIMSON[5], 0);
+  drawStar4(pen, cx, 34.0, 3, RAMP_GOLD[5], RAMP_GOLD[7], 0);
+
+  // 5. Stem & Stepped Obsidian-Gold Championship Plinth (y = 43..56)
+  drawThickSeg(pen, cx, 43, cx, 49, 2.8, 3.0, (x, y) => {
+    setPx(pen, x, y, x < cx ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+  });
+  fillPolygon(
+    pen,
+    [
+      [19, 49],
+      [44, 49],
+      [47, 56],
+      [16, 56]
+    ],
+    (x, y) => {
+      const isPlaque = y >= 51 && y <= 54 && Math.abs(x - cx) <= 8;
+      if (isPlaque) {
+        setPx(pen, x, y, x < cx ? RAMP_GOLD[6] : RAMP_GOLD[5], 1.0, 0);
+      } else {
+        const col = y === 49 || y === 56 ? RAMP_GOLD[5] : x < cx ? RAMP_OBSIDIAN[4] : RAMP_OBSIDIAN[2];
+        setPx(pen, x, y, col, 1.0, 0);
+      }
+    }
+  );
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, 10, 17, 3, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+  drawStar4(pen, 53, 17, 3, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+}
+
+// Col 8: Gilded Treasure Goblin Emblem (grinning horned golden goblin silhouette + coin eyes)
+function renderSigil8TreasureGoblin(pen, surface) {
+  const cx = 31.5;
+
+  // 1. Long Swept Pointed Golden-Bronze Goblin Ears flaring wickedly outward
+  for (const side of [-1, 1]) {
+    const earPoly = [
+      [cx + side * 11.5, 25],
+      [cx + side * 26.0, 18],
+      [cx + side * 23.0, 29],
+      [cx + side * 13.5, 36]
+    ];
+    fillPolygon(pen, earPoly, (x, y) => {
+      const dist = Math.abs(x - cx);
+      const col = y < 25 ? RAMP_GOLD[6] : dist > 18 ? RAMP_GOLD[5] : RAMP_GOLD[4];
+      setPx(pen, x, y, col, 1.0, 0);
+    });
+    drawLinePx(pen, cx + side * 14, 30, cx + side * 23, 21, RAMP_GOLD[2], 1.0, 0);
+  }
+
+  // 2. Twin Mischievous Curved Goblin Horns on Brow (obsidian-gold base -> bright gold tips)
+  for (const side of [-1, 1]) {
+    drawQuadBezierThick(
+      pen,
+      [cx + side * 8.5, 20.5],
+      [cx + side * 14.5, 13.0],
+      [cx + side * 10.5, 7.5],
+      3.4,
+      1.0,
+      10,
+      (x, y, d, rad, u) => {
+        const col = u > 0.65 ? RAMP_GOLD[7] : d < rad * 0.5 ? RAMP_GOLD[5] : RAMP_GOLD[2];
+        setPx(pen, x, y, col, 1.0, 0);
+      }
+    );
+  }
+
+  // 3. Sculpted Angular Gilded Cast-Gold Goblin Head (sharp cheekbones & wicked chin)
+  for (let y = 17; y <= 54; y++) {
+    let halfW;
+    if (y <= 26) {
+      const t = (26 - y) / 9;
+      halfW = 14.2 * Math.sqrt(Math.max(0.18, 1 - t * t * 0.72));
+    } else if (y <= 36) {
+      halfW = 14.2 + Math.sin(((y - 26) / 10) * Math.PI) * 1.5;
+    } else {
+      const t = (y - 36) / 18;
+      halfW = 14.5 * Math.pow(Math.max(0.05, 1 - t * 0.9), 0.72);
+    }
+    const x0 = Math.round(cx - halfW);
+    const x1 = Math.round(cx + halfW);
+    for (let x = x0; x <= x1; x++) {
+      const nx = (x - cx) / Math.max(1, halfW);
+      const ny = (y - 34) / 18;
+      const light = -nx * 0.52 - ny * 0.55;
+      let idx;
+      if (light > 0.44) idx = 6;
+      else if (light > 0.08) idx = 5;
+      else if (light > -0.28) idx = 4;
+      else idx = 2;
+      setPx(pen, x, y, RAMP_GOLD[idx], 1.0, 0);
+    }
+  }
+
+  // 4. Twin Gleaming Gold Coin Eyes!
+  for (const side of [-1, 1]) {
+    const ex = cx + side * 6.8;
+    const ey = 31.8;
+    fillOvalPx(pen, ex, ey, 5.0, 5.0, (x, y) => {
+      setPx(pen, x, y, COL_SELOUT, 1.0, 0);
+    });
+    fillOvalPx(pen, ex, ey, 4.0, 4.0, (x, y, nx, ny, r) => {
+      const light = -nx * 0.5 - ny * 0.65;
+      let idx;
+      if (Math.abs(nx) < 0.22 && Math.abs(ny) < 0.58) idx = 7; // embossed vertical coin glint bar
+      else if (r > 0.72) idx = light > 0 ? 6 : 4;
+      else idx = light > 0.15 ? 6 : 5;
+      setPx(pen, x, y, RAMP_GOLD[idx], 1.0, 0);
+    });
+  }
+
+  // Fierce Greedy V-Slanted Mischievous Goblin Eyebrows overlapping top-inner edge of coin eyes!
+  for (const side of [-1, 1]) {
+    drawThickSeg(pen, cx + side * 2.0, 29.8, cx + side * 12.2, 24.8, 1.65, 1.35, (x, y, d) => {
+      setPx(pen, x, y, y < 27.5 && d < 0.9 ? RAMP_GOLD[6] : RAMP_GOLD[1], 1.0, 0);
+    });
+  }
+
+  // Hooked sculpted goblin nose
+  fillPolygon(
+    pen,
+    [
+      [cx, 33],
+      [cx + 3.0, 39],
+      [cx, 41],
+      [cx - 3.0, 39]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, x < cx ? RAMP_GOLD[6] : RAMP_GOLD[2], 1.0, 0);
+    }
+  );
+
+  // 5. Wide Wicked Cheshire Fanged Toothy Smirk!
+  for (let y = 40; y <= 50; y++) {
+    for (let x = 20; x <= 43; x++) {
+      const dx = x - cx;
+      const smileTop = 42.2 - (dx * dx) / 72; // corners curl wickedly UP!
+      const smileBot = 48.6 - (dx * dx) / 26;
+      if (y >= smileTop && y <= smileBot) {
+        setPx(pen, x, y, COL_SELOUT, 1.0, 0);
+      }
+    }
+  }
+  // Sharp gleaming white-gold goblin fangs along upper smirk
+  const fangs = [
+    [23.5, 42.2, 2.6],
+    [27.5, 43.2, 2.0],
+    [31.5, 43.5, 2.0],
+    [35.5, 43.2, 2.0],
+    [39.5, 42.2, 2.6]
+  ];
+  for (const [fx, fy, fh] of fangs) {
+    drawThickSeg(pen, fx, fy, fx, fy + fh, 1.15, 0.45, (x, y) => {
+      setPx(pen, x, y, y <= fy + 1.1 ? RAMP_GOLD[7] : RAMP_GOLD[6], 1.0, 0);
+    });
+  }
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, 24.5, 30.0, 2, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+  drawStar4(pen, 38.5, 30.0, 2, RAMP_GOLD[5], RAMP_GOLD[7], 0.16);
+  drawStar4(pen, 13, 12, 3, RAMP_GOLD[5], RAMP_GOLD[7], 0.14);
+}
+
+// Col 9: Ascension Star Emblem (prismatic 8-point violet-cyan astral star)
+function renderSigil9AscensionStar(pen, surface) {
+  const cx = 31.5;
+  const cy = 31.5;
+
+  // 1. Burnished Gold Celestial Halo Ring peeking cleanly behind the 8 star blades
+  for (let y = 16; y <= 47; y++) {
+    for (let x = 16; x <= 47; x++) {
+      const r = Math.hypot(x - cx, y - cy);
+      if (r >= 10.6 && r <= 13.6) {
+        const lit = x - cx + (y - cy) < 0;
+        const col = Math.abs(r - 12.1) < 0.7 ? RAMP_GOLD[7] : lit ? RAMP_GOLD[6] : RAMP_GOLD[4];
+        setPx(pen, x, y, col, 1.0, 0);
+      }
+    }
+  }
+
+  // 2. Four Diagonal Prismatic Astral Star Points (split cyan/violet 3D compass bevels)
+  const diagLen = 19.2;
+  const diagBase = 5.4;
+  const diagDirs = [
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+    [-1, -1]
+  ];
+  for (const [sx, sy] of diagDirs) {
+    const ux = sx * 0.7071;
+    const uy = sy * 0.7071;
+    const px = -uy;
+    const py = ux;
+    const tip = [cx + ux * diagLen, cy + uy * diagLen];
+    const sideA = [cx + px * diagBase, cy + py * diagBase];
+    const sideB = [cx - px * diagBase, cy - py * diagBase];
+    fillPolygon(pen, [[cx, cy], sideA, tip], (x, y) => {
+      const dist = Math.hypot(x - cx, y - cy) / diagLen;
+      setPx(pen, x, y, dist > 0.6 ? RAMP_ASTRAL[6] : RAMP_ASTRAL[5], 1.0, 0);
+    });
+    fillPolygon(pen, [[cx, cy], tip, sideB], (x, y) => {
+      const dist = Math.hypot(x - cx, y - cy) / diagLen;
+      setPx(pen, x, y, dist > 0.6 ? RAMP_VIOLET[5] : RAMP_VIOLET[3], 1.0, 0);
+    });
+  }
+
+  // 3. Four Long Primary Cardinal Prismatic Star Points (gleaming cyan-white vs amethyst-violet)
+  const cardLen = 25.2;
+  const cardBase = 6.2;
+  const cardDirs = [
+    [0, -1],
+    [1, 0],
+    [0, 1],
+    [-1, 0]
+  ];
+  for (const [ux, uy] of cardDirs) {
+    const px = -uy;
+    const py = ux;
+    const tip = [cx + ux * cardLen, cy + uy * cardLen];
+    const sideA = [cx + px * cardBase, cy + py * cardBase];
+    const sideB = [cx - px * cardBase, cy - py * cardBase];
+    fillPolygon(pen, [[cx, cy], sideA, tip], (x, y) => {
+      const dist = Math.hypot(x - cx, y - cy) / cardLen;
+      setPx(pen, x, y, dist > 0.65 ? RAMP_ASTRAL[7] : dist > 0.3 ? RAMP_ASTRAL[6] : RAMP_ASTRAL[5], 1.0, 0);
+    });
+    fillPolygon(pen, [[cx, cy], tip, sideB], (x, y) => {
+      const dist = Math.hypot(x - cx, y - cy) / cardLen;
+      setPx(pen, x, y, dist > 0.65 ? RAMP_VIOLET[5] : dist > 0.3 ? RAMP_VIOLET[4] : RAMP_VIOLET[3], 1.0, 0);
+    });
+    // Razor bright central ridge highlight down every cardinal point
+    drawLinePx(pen, cx, cy, tip[0], tip[1], RAMP_ASTRAL[7], 1.0, 0);
+  }
+
+  // 4. Prismatic White-Gold Ascension Diamond Heart at exact center
+  drawDiamond(pen, cx, cy, 5.5, RAMP_GOLD[5], RAMP_GOLD[7], 0);
+  drawDiamond(pen, cx, cy, 2.8, RAMP_ASTRAL[6], RAMP_GOLD[7], 0);
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+
+  // 4 crisp floating astral motes in the open quadrants
+  drawStar4(pen, 13, 13, 2, RAMP_ASTRAL[5], RAMP_ASTRAL[7], 0.14);
+  drawStar4(pen, 50, 13, 2, RAMP_VIOLET[5], RAMP_GOLD[7], 0.14);
+  drawStar4(pen, 13, 50, 2, RAMP_VIOLET[5], RAMP_GOLD[7], 0.14);
+  drawStar4(pen, 50, 50, 2, RAMP_ASTRAL[5], RAMP_ASTRAL[7], 0.14);
+}
+
+// Col 10: Ascended Boss Skull (crowned blazing obsidian-crimson raid skull)
+function renderSigil10AscendedBossSkull(pen, surface) {
+  const cx = 31.5;
+
+  // 1. Symmetric Blazing Crimson-Ember Raid Aura Flames licking upward behind skull & crown
+  const drawAuraTongue = (bx, by, tx, ty, halfW, curve) => {
+    const steps = 16;
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const sy = by + (ty - by) * t;
+      const sx = bx + (tx - bx) * t + Math.sin(t * Math.PI) * curve;
+      const rad = halfW * Math.pow(1 - t, 0.78);
+      if (rad < 0.6) continue;
+      fillOvalPx(pen, sx, sy, rad, Math.max(1.1, rad * 0.8), (x, y, nx, ny, r) => {
+        const heat = clamp01((1 - t) * 0.52 + (1 - r) * 0.58);
+        const col =
+          heat > 0.84
+            ? RAMP_GOLD[6]
+            : heat > 0.60
+              ? RAMP_CRIT[4]
+              : heat > 0.34
+                ? RAMP_CRIMSON[5]
+                : RAMP_CRIMSON[3];
+        setPx(pen, x, y, col, 1.0, 0);
+      });
+    }
+  };
+  // Tall symmetric 5-tongue blazing raid crown fire behind skull
+  drawAuraTongue(cx, 30, cx, 6.0, 10.0, 0);
+  drawAuraTongue(cx - 8, 34, cx - 14, 11.0, 6.5, -2.5);
+  drawAuraTongue(cx + 8, 34, cx + 14, 11.0, 6.5, 2.5);
+  drawAuraTongue(cx - 12, 39, cx - 19, 21.0, 4.8, -2.2);
+  drawAuraTongue(cx + 12, 39, cx + 19, 21.0, 4.8, 2.2);
+
+  // 2. Jagged Burnished-Gold & Obsidian Boss Crown atop skull brow (y = 11..24)
+  fillPolygon(
+    pen,
+    [
+      [18, 24],
+      [16, 13],
+      [24, 18],
+      [cx, 10],
+      [39, 18],
+      [47, 13],
+      [45, 24]
+    ],
+    (x, y) => {
+      const isBand = y >= 20;
+      const lit = x < cx - 1 || y < 15;
+      const col = y === 20 ? RAMP_GOLD[2] : isBand ? (lit ? RAMP_GOLD[6] : RAMP_GOLD[4]) : lit ? RAMP_GOLD[7] : RAMP_GOLD[5];
+      setPx(pen, x, y, col, 1.0, 0);
+    }
+  );
+  // Blood-ruby crown centerpiece
+  drawDiamond(pen, cx, 19.5, 2.8, RAMP_CRIMSON[3], RAMP_GOLD[7], 0.12);
+
+  // 3. Sculpted Gothic Obsidian-Steel Raid Skull Cranium & Chiseled Cheekbones (y = 22..46)
+  for (let y = 22; y <= 46; y++) {
+    let halfW;
+    if (y <= 34) {
+      const t = (34 - y) / 12;
+      halfW = 14.2 * Math.sqrt(Math.max(0.28, 1 - t * t * 0.52));
+    } else if (y <= 40) {
+      // Sharp flared cheekbones tapering inward into gaunt skull hollows!
+      halfW = 14.2 - ((y - 34) / 6) * 2.4;
+    } else {
+      const t = (y - 40) / 6;
+      halfW = 11.8 - t * 3.2;
+    }
+    const x0 = Math.round(cx - halfW);
+    const x1 = Math.round(cx + halfW);
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - cx;
+      const adx = Math.abs(dx);
+      const isRim = adx >= halfW - 1.5;
+      let col;
+      if (isRim) {
+        col = RAMP_CRIMSON[4]; // blazing crimson raid rim-lighting on skull edges!
+      } else if (dx < -4 && y < 34) {
+        col = RAMP_OBSIDIAN[6];
+      } else if (dx < 2) {
+        col = RAMP_OBSIDIAN[5];
+      } else if (dx < 8) {
+        col = RAMP_OBSIDIAN[4];
+      } else {
+        col = RAMP_OBSIDIAN[2];
+      }
+      setPx(pen, x, y, col, 1.0, 0);
+    }
+  }
+
+  // Fierce scowling dark eye cavities + blazing molten crimson-gold predator eyes!
+  for (const side of [-1, 1]) {
+    const eyePoly = [
+      [cx + side * 3.0, 35.2],
+      [cx + side * 11.4, 30.8],
+      [cx + side * 11.0, 36.6],
+      [cx + side * 3.8, 38.2]
+    ];
+    fillPolygon(pen, eyePoly, (x, y) => {
+      setPx(pen, x, y, COL_SELOUT, 1.0, 0);
+    });
+    drawThickSeg(pen, cx + side * 4.6, 36.0, cx + side * 9.8, 33.4, 1.65, 1.2, (x, y, d) => {
+      setPx(pen, x, y, d < 0.6 ? RAMP_GOLD[7] : d < 1.1 ? RAMP_CRIT[5] : RAMP_CRIT[2], 1.0, 0.14);
+    });
+  }
+
+  // Inverted-heart hollow nasal cavity
+  fillPolygon(
+    pen,
+    [
+      [cx, 38.2],
+      [cx + 2.4, 42.8],
+      [cx, 41.8],
+      [cx - 2.4, 42.8]
+    ],
+    (x, y) => setPx(pen, x, y, COL_SELOUT, 1.0, 0)
+  );
+
+  // 4. Tapered Gothic Fanged Skull Teeth & Obsidian Lower Jaw Ridge (y = 45..55)
+  for (let y = 45; y <= 53; y++) {
+    const t = clamp01((y - 45) / 8);
+    const halfW = 8.8 - t * 2.2;
+    for (let x = Math.round(cx - halfW); x <= Math.round(cx + halfW); x++) {
+      setPx(pen, x, y, COL_SELOUT, 1.0, 0);
+    }
+  }
+  const toothXs = [24.8, 28.1, 31.5, 34.9, 38.2];
+  for (let i = 0; i < toothXs.length; i++) {
+    const tx = toothXs[i];
+    const fangLen = i === 0 || i === 4 ? 6.2 : 4.8;
+    drawThickSeg(pen, tx, 45.6, tx, 45.6 + fangLen, 1.15, 0.65, (x, y) => {
+      const col = y < 48.2 ? RAMP_STEEL[7] : y < 50.2 ? RAMP_STEEL[5] : RAMP_STEEL[3];
+      setPx(pen, x, y, col, 1.0, 0);
+    });
+  }
+  // Tapered obsidian jawbone chin rim framing the teeth cleanly
+  fillPolygon(
+    pen,
+    [
+      [24, 52],
+      [39, 52],
+      [36, 55],
+      [27, 55]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, x < cx ? RAMP_OBSIDIAN[5] : RAMP_OBSIDIAN[3], 1.0, 0);
+    }
+  );
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, 11, 16, 2, RAMP_CRIMSON[5], RAMP_GOLD[7], 0.14);
+  drawStar4(pen, 52, 16, 2, RAMP_CRIT[4], RAMP_GOLD[7], 0.14);
+}
+
+// Col 11: Eternal Vault Key (ornate gothic gold-violet skeleton key)
+function renderSigil11EternalVaultKey(pen, surface) {
+  const cx = 31.5;
+  const bowCy = 19.5;
+
+  // 1. Gothic Crown Fleur Finial at Apex (y = 6..12)
+  fillPolygon(
+    pen,
+    [
+      [cx, 6],
+      [cx + 4.0, 11],
+      [cx, 13],
+      [cx - 4.0, 11]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, x < cx ? RAMP_GOLD[7] : RAMP_GOLD[5], 1.0, 0);
+    }
+  );
+
+  // 2. Ornate Gothic Quatrefoil / Cathedral Arch Key Bow (hollow filigree ring + side lobes)
+  for (let y = 9; y <= 30; y++) {
+    for (let x = 14; x <= 49; x++) {
+      const dx = x - cx;
+      const dy = y - bowCy;
+      const rOuter = Math.hypot(dx / 13.8, dy / 10.6);
+      const rInner = Math.hypot(dx / 8.8, dy / 6.4);
+      const sideLobeL = Math.hypot(x - (cx - 13.5), y - bowCy) <= 3.6;
+      const sideLobeR = Math.hypot(x - (cx + 13.5), y - bowCy) <= 3.6;
+      const onRing = (rOuter <= 1.0 && rInner >= 1.0) || sideLobeL || sideLobeR;
+      if (!onRing) continue;
+      const light = -dx * 0.05 - dy * 0.08;
+      let idx;
+      if (light > 0.35) idx = 7;
+      else if (light > 0.05) idx = 6;
+      else if (light > -0.35) idx = 5;
+      else idx = 4;
+      setPx(pen, x, y, RAMP_GOLD[idx], 1.0, 0);
+    }
+  }
+  // Ornate inner gothic crossbars anchoring the central violet crystal
+  drawThickSeg(pen, cx - 9, bowCy, cx + 9, bowCy, 1.3, 1.3, (x, y) => {
+    setPx(pen, x, y, y < bowCy ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+  });
+  drawThickSeg(pen, cx, bowCy - 7, cx, bowCy + 7, 1.3, 1.3, (x, y) => {
+    setPx(pen, x, y, x < cx ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+  });
+
+  // 3. Faceted Royal Violet Astral Crystal suspended in Key Bow Center!
+  drawMiniFacetedGem(pen, cx, bowCy, 5.4, 5.8, RAMP_VIOLET);
+  setPx(pen, cx - 1, bowCy - 2, RAMP_ASTRAL[7], 1.0, 0);
+
+  // 4. Fluted Golden Key Shaft & Ornate Raised Collar Rings (y = 28..56)
+  for (let y = 28; y <= 55; y++) {
+    const isCollar = y === 31 || y === 32 || y === 37 || y === 38;
+    const halfW = isCollar ? 4.6 : y >= 53 ? Math.max(1.2, 2.8 - (y - 52) * 0.6) : 2.6;
+    for (let x = Math.round(cx - halfW); x <= Math.round(cx + halfW); x++) {
+      const dx = x - cx;
+      let idx;
+      if (isCollar) {
+        idx = dx < 0 ? 7 : dx < 2 ? 5 : 2;
+      } else {
+        idx = dx < -0.5 ? 6 : dx < 1.0 ? 5 : 4;
+      }
+      setPx(pen, x, y, RAMP_GOLD[idx], 1.0, 0);
+    }
+  }
+  // Small symmetric gothic counterbalance spur on left of shaft
+  fillPolygon(
+    pen,
+    [
+      [cx - 2.5, 42],
+      [cx - 7.5, 44.5],
+      [cx - 2.5, 47]
+    ],
+    (x, y) => {
+      setPx(pen, x, y, y < 44.5 ? RAMP_GOLD[6] : RAMP_GOLD[4], 1.0, 0);
+    }
+  );
+
+  // 5. Ornate Gothic Skeleton Key Bit (stepped warded teeth jutting right + violet rune inlays!)
+  for (let y = 41; y <= 53; y++) {
+    for (let x = 34; x <= 48; x++) {
+      // Cut intricate gothic skeleton-key wards cleanly
+      const inUpperBar = y >= 41 && y <= 44 && x <= 48;
+      const inLowerBar = y >= 49 && y <= 53 && x <= 48;
+      const inOuterSpine = x >= 44 && x <= 48 && y >= 41 && y <= 53 && !(y >= 46 && y <= 47 && x >= 47);
+      const inMidBridge = x >= 34 && x <= 40 && y >= 44 && y <= 49;
+      if (!(inUpperBar || inLowerBar || inOuterSpine || inMidBridge)) continue;
+      // Leave crisp gothic keyhole-ward cutout inside bit at x=41..43, y=45..48
+      const lit = y <= 43 || x <= 37;
+      const col = y === 41 || y === 49 ? RAMP_GOLD[7] : lit ? RAMP_GOLD[6] : y >= 52 ? RAMP_GOLD[2] : RAMP_GOLD[5];
+      setPx(pen, x, y, col, 1.0, 0);
+    }
+  }
+  // Glowing violet rune gems inlaid into key bit & shaft collar!
+  drawDiamond(pen, 37.5, 46.5, 2.0, RAMP_VIOLET[4], RAMP_VIOLET[7], 0);
+  drawDiamond(pen, cx, 34.5, 1.6, RAMP_VIOLET[4], RAMP_ASTRAL[7], 0);
+
+  applyDarkSelout(surface, COL_SELOUT, SAFE_LPX);
+  drawStar4(pen, 15, 11, 3, RAMP_VIOLET[5], RAMP_GOLD[7], 0.15);
+  drawStar4(pen, 49, 37, 3, RAMP_GOLD[5], RAMP_VIOLET[7], 0.15);
+}
+
+const WAVE4_SIGIL_RENDERERS = [
+  renderSigil0BloodMoon,
+  renderSigil1TempestSurge,
+  renderSigil2TitanHorde,
+  renderSigil3EclipseFrenzy,
+  renderSigil4WarlordsWrath,
+  renderSigil5SovereignsGreed,
+  renderSigil6ArcaneTempest,
+  renderSigil7BestStageTrophy,
+  renderSigil8TreasureGoblin,
+  renderSigil9AscensionStar,
+  renderSigil10AscendedBossSkull,
+  renderSigil11EternalVaultKey
+];
+
+function renderRow9Wave4Sigils(pen, surface, col) {
+  WAVE4_SIGIL_RENDERERS[col](pen, surface);
+}
+
 const ROW_RENDERERS = [
   renderRow0GoldCoinSpin,
   renderRow1AstralShardSpin,
@@ -2221,7 +3854,9 @@ const ROW_RENDERERS = [
   renderRow4GoldFeverBurst,
   renderRow5CompanionAuraRing,
   renderRow6BossGatePortal,
-  renderRow7HudIcons
+  renderRow7HudIcons,
+  renderRow8GoblinAndAscension,
+  renderRow9Wave4Sigils
 ];
 
 const ROW_NAMES = [
@@ -2232,7 +3867,9 @@ const ROW_NAMES = [
   'GOLD_FEVER_BURST',
   'COMPANION_AURA_RING',
   'BOSS_GATE_PORTAL',
-  'HUD_ICONS'
+  'HUD_ICONS',
+  'GOBLIN_BURST_AND_ASCENSION',
+  'WAVE4_SIGILS_AND_EMBLEMS'
 ];
 
 // =========================================================================
@@ -2324,7 +3961,7 @@ function main() {
     }
   }
 
-  // Final output-space audit directly across all 96 cells of the 1536x1024 RGBA buffer
+  // Final output-space audit directly across all 120 cells of the 1536x1280 RGBA buffer
   let outClips = 0;
   let outEmpty = 0;
   let minOutMargin = CELL_SZ;
