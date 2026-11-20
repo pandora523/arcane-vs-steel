@@ -1,11 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps170';
-import { PixelFont } from './PixelFont.js?v=30fps170';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps170';
+import { PixelForge } from './PixelForge.js?v=30fps171';
+import { PixelFont } from './PixelFont.js?v=30fps171';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps171';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps171';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps170';
+} from './shaders/exNextGenFX.js?v=30fps171';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -126,6 +127,14 @@ export class Renderer {
     this._activePool = [];
     this._framePool = [];
     this._victoryPool = [];
+    this.deathFX = new DeathFXManager();
+    this.endMatchPhase = 'none'; // 'none' | 'defeat_spotlight' | 'winner_showcase' | 'overlay'
+    this.endMatchLoser = null;
+    this.endMatchWinner = null;
+    this.endMatchWinnerLabel = '';
+    this.endMatchWinnerColor = '#facc15';
+    this.endMatchShowcaseTimer = 0;
+    this.endMatchCanSkip = false;
 
     // Supreme Finisher Stage Transformation, Whole-Stage Katana Slice, Impact Frame & White-Out Deletion State
     this.trueUltStageOverride = null;
@@ -855,12 +864,44 @@ export class Renderer {
   triggerKOFinisher(x, y, color = '#facc15', winnerName = '', winnerHeroId = 'warrior') {
     this.koFocusX = x;
     this.koFocusY = y;
-    this.koZoomTimer = 1.95;
-    this.koMaxTimer = 1.95;
+    this.koZoomTimer = 1.4;
+    this.koMaxTimer = 1.4;
     this.koColor = color;
     this.koWinnerName = winnerName;
     this.koWinnerHeroId = winnerHeroId;
-    this.ultDim = Math.max(this.ultDim, 0.56);
+    this.ultDim = Math.max(this.ultDim, 0.52);
+  }
+
+  setEndMatchSpotlight(phase, loser = null, winner = null, opts = {}) {
+    this.endMatchPhase = phase || 'none';
+    if (loser !== undefined) this.endMatchLoser = loser;
+    if (winner !== undefined) this.endMatchWinner = winner;
+    if (opts && typeof opts.winnerLabel === 'string') {
+      this.endMatchWinnerLabel = opts.winnerLabel;
+    } else if (winner?.name) {
+      this.endMatchWinnerLabel = `${winner.name.toUpperCase()} WINS!`;
+    }
+    if (opts && opts.winnerColor) {
+      this.endMatchWinnerColor = opts.winnerColor;
+    } else if (winner?.primaryColor) {
+      this.endMatchWinnerColor = winner.primaryColor;
+    }
+    if (phase === 'winner_showcase') {
+      this.endMatchShowcaseTimer = 0;
+    }
+    if (opts && typeof opts.canSkip === 'boolean') {
+      this.endMatchCanSkip = opts.canSkip;
+    }
+  }
+
+  clearEndMatchSpotlight() {
+    this.endMatchPhase = 'none';
+    this.endMatchLoser = null;
+    this.endMatchWinner = null;
+    this.endMatchWinnerLabel = '';
+    this.endMatchWinnerColor = '#facc15';
+    this.endMatchShowcaseTimer = 0;
+    this.endMatchCanSkip = false;
   }
 
   triggerClashCamera(x, y, hero1 = 'warrior', hero2 = 'mage', col1 = '#38bdf8', col2 = '#fb923c') {
@@ -902,6 +943,10 @@ export class Renderer {
     if (this.ultZoomTimer > 0) this.ultZoomTimer = Math.max(0, this.ultZoomTimer - rawDt);
     if (this.cutInTimer > 0) this.cutInTimer = Math.max(0, this.cutInTimer - rawDt);
     if (this.koZoomTimer > 0) this.koZoomTimer = Math.max(0, this.koZoomTimer - rawDt);
+    if (this.endMatchPhase === 'winner_showcase') {
+      this.endMatchShowcaseTimer = (this.endMatchShowcaseTimer || 0) + rawDt;
+    }
+    this.deathFX?.update?.(rawDt, fighters, this.hitStopTimer > 0);
     if (this.clashZoomTimer > 0) this.clashZoomTimer = Math.max(0, this.clashZoomTimer - rawDt);
     if (this.stageEventTimer > 0) this.stageEventTimer = Math.max(0, this.stageEventTimer - rawDt);
     if (this.stageEventBannerTimer > 0) {
@@ -964,7 +1009,10 @@ export class Renderer {
       activePool.length = 0;
       for (let i = 0; i < validFighters.length; i++) {
         const f = validFighters[i];
-        if (!f.isBenched && (!f.isDead || (f.deathTimer || 0) < 2.8)) {
+        if (
+          !f.isBenched &&
+          (!f.isDead || (f.deathTimer || 0) < 3.4 || f === this.endMatchLoser)
+        ) {
           activePool.push(f);
         }
       }
@@ -1081,41 +1129,91 @@ export class Renderer {
         targetY = Math.min(targetY, skyTargetY);
       }
 
-      if (this.koZoomTimer > 0) {
-        // Dramatic K.O. Finisher focus (skip zoom-in when Zoom Mode is fixed at FULL or MID)
-        if (!isFixedZoomMode) {
-          targetZoom *= 1.12;
-        }
-        if (Number.isFinite(this.koFocusX)) {
-          targetX = midX * 0.45 + this.koFocusX * 0.55;
-        }
-      } else if (this.clashZoomTimer > 0 && !isFixedZoomMode) {
-        targetZoom *= 1.045;
-      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0 && !isFixedZoomMode) {
-        // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
-        targetZoom *= 1.025;
-      }
-
-      // Cinematic Winner Camera Framing during Victory Pose (`f.state === 'VICTORY'`)
-      const victoryFighters = this._victoryPool;
-      victoryFighters.length = 0;
-      for (let i = 0; i < pool.length; i++) {
-        const f = pool[i];
-        if (!f.isBenched && !f.isDead && f.state === 'VICTORY') {
-          victoryFighters.push(f);
-        }
-      }
-      const holdColossalDeath = Boolean(
-        colossalBoss && colossalBoss.isDead && (colossalBoss.deathTimer || 0) < 2.38
+      const isDefeatSpotlight = Boolean(
+        !this.adventureMode &&
+          this.endMatchPhase === 'defeat_spotlight' &&
+          this.endMatchLoser &&
+          Number.isFinite(this.endMatchLoser.x)
       );
-      if (victoryFighters.length > 0 && (this.koZoomTimer || 0) <= 0.85 && !holdColossalDeath) {
-        let winSumX = 0;
-        for (let i = 0; i < victoryFighters.length; i++) winSumX += victoryFighters[i].x;
-        const winMidX = winSumX / victoryFighters.length;
-        targetX = targetX * 0.20 + winMidX * 0.80;
+      const isWinnerSpotlight = Boolean(
+        !this.adventureMode &&
+          (this.endMatchPhase === 'winner_showcase' || this.endMatchPhase === 'overlay') &&
+          this.endMatchWinner &&
+          Number.isFinite(this.endMatchWinner.x)
+      );
+
+      if (isDefeatSpotlight) {
+        // Beat 1: Focus camera unobstructed onto the defeated champion's full bespoke death animation
+        const loser = this.endMatchLoser;
+        const loserGy = Number.isFinite(loser.groundY) ? loser.groundY : this.groundY;
+        targetX = loser.x;
+        targetY = loserGy - 102;
         if (!isFixedZoomMode) {
-          const winZoomCap = this.isMobile ? 0.88 : 1.15;
-          targetZoom = Math.max(0.52, Math.min(winZoomCap, targetZoom * 1.08));
+          const defeatZoomCap = this.isMobile ? 0.9 : 1.18;
+          targetZoom = Math.max(0.56, Math.min(defeatZoomCap, Math.max(targetZoom, 0.96) * 1.12));
+        }
+      } else if (isWinnerSpotlight) {
+        // Beat 2 & 3: Glide camera smoothly onto the winning champion performing full Row 9 VICTORY pose
+        const victoryFighters = this._victoryPool;
+        victoryFighters.length = 0;
+        for (let i = 0; i < pool.length; i++) {
+          const f = pool[i];
+          if (!f.isBenched && !f.isDead && f.team === this.endMatchWinner.team) {
+            victoryFighters.push(f);
+          }
+        }
+        let winFocusX = this.endMatchWinner.x;
+        if (victoryFighters.length > 0) {
+          let sumX = 0;
+          for (let i = 0; i < victoryFighters.length; i++) sumX += victoryFighters[i].x;
+          winFocusX = sumX / victoryFighters.length;
+        }
+        const winGy = Number.isFinite(this.endMatchWinner.groundY)
+          ? this.endMatchWinner.groundY
+          : this.groundY;
+        targetX = winFocusX;
+        targetY = winGy - 102;
+        if (!isFixedZoomMode) {
+          const winZoomCap = this.isMobile ? 0.9 : 1.18;
+          targetZoom = Math.max(0.56, Math.min(winZoomCap, Math.max(targetZoom, 0.98) * 1.14));
+        }
+      } else {
+        if (this.koZoomTimer > 0) {
+          // Dramatic K.O. Finisher focus (skip zoom-in when Zoom Mode is fixed at FULL or MID)
+          if (!isFixedZoomMode) {
+            targetZoom *= 1.12;
+          }
+          if (Number.isFinite(this.koFocusX)) {
+            targetX = midX * 0.45 + this.koFocusX * 0.55;
+          }
+        } else if (this.clashZoomTimer > 0 && !isFixedZoomMode) {
+          targetZoom *= 1.045;
+        } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0 && !isFixedZoomMode) {
+          // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
+          targetZoom *= 1.025;
+        }
+
+        // Cinematic Winner Camera Framing during Victory Pose (`f.state === 'VICTORY'`)
+        const victoryFighters = this._victoryPool;
+        victoryFighters.length = 0;
+        for (let i = 0; i < pool.length; i++) {
+          const f = pool[i];
+          if (!f.isBenched && !f.isDead && f.state === 'VICTORY') {
+            victoryFighters.push(f);
+          }
+        }
+        const holdColossalDeath = Boolean(
+          colossalBoss && colossalBoss.isDead && (colossalBoss.deathTimer || 0) < 2.38
+        );
+        if (victoryFighters.length > 0 && (this.koZoomTimer || 0) <= 0.85 && !holdColossalDeath) {
+          let winSumX = 0;
+          for (let i = 0; i < victoryFighters.length; i++) winSumX += victoryFighters[i].x;
+          const winMidX = winSumX / victoryFighters.length;
+          targetX = targetX * 0.20 + winMidX * 0.80;
+          if (!isFixedZoomMode) {
+            const winZoomCap = this.isMobile ? 0.88 : 1.15;
+            targetZoom = Math.max(0.52, Math.min(winZoomCap, targetZoom * 1.08));
+          }
         }
       }
 
@@ -1158,7 +1256,15 @@ export class Renderer {
         }
       }
 
-      const camSpeed = maxSkyFocus > 0 ? 7.5 : this.adventureMode ? 7.0 : 6;
+      const camSpeed = isWinnerSpotlight
+        ? 4.2
+        : isDefeatSpotlight
+          ? 5.2
+          : maxSkyFocus > 0
+            ? 7.5
+            : this.adventureMode
+              ? 7.0
+              : 6;
       const lerpFactor = Math.min(1, Math.max(0, rawDt * camSpeed));
       if (isFixedZoomMode) {
         this.zoom = targetZoom;
@@ -1336,12 +1442,16 @@ export class Renderer {
         ctx.restore();
         continue;
       }
+      const isBespokeDeath = Boolean(f.isDead && !f.isMonster && this.deathFX?.isHandlingFighter?.(f));
+      const bespokeDeathVis = isBespokeDeath ? this.deathFX.getShadowAlpha(f) : 1;
       const isExHero = Boolean(f.heroId && f.heroId.endsWith('_ex'));
       if (isExHero) {
         const exPal = getExHeroPalette(f.heroId, f.primaryColor);
-        const deathFade = f.isDead
-          ? Math.min(1, Math.max(0.06, 1 - (f.deathTimer || 0) * 0.7))
-          : 1;
+        const deathFade = isBespokeDeath
+          ? bespokeDeathVis * 0.42
+          : f.isDead
+            ? Math.min(1, Math.max(0.06, 1 - (f.deathTimer || 0) * 0.7))
+            : 1;
         const benchScale = f.isBenched ? 0.55 : 1;
         const isUltAct = f.state === 'ULTIMATE' || f.state === 'TRUE_ULTIMATE';
         const isSkillAct = f.state === 'SKILL' || f.state === 'AUTO_ATTACK';
@@ -1395,7 +1505,11 @@ export class Renderer {
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
+      const deathFade = isBespokeDeath
+        ? bespokeDeathVis * 0.36
+        : f.isDead
+          ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65))
+          : 1;
       const isChrono = f.heroId === 'chronomancer' || f.heroId === 'chronomancer_ex';
       const isExUlt = f.state === 'ULTIMATE' || f.state === 'TRUE_ULTIMATE';
       const isExSkillOrAuto = f.state === 'SKILL' || f.state === 'AUTO_ATTACK';
@@ -1414,17 +1528,17 @@ export class Renderer {
             : 0.26;
       ctx.globalAlpha = baseAlpha * deathFade * (f.isBenched ? 0.65 : 1);
       const glow = this.getGlowForColor(f.primaryColor);
-      ctx.drawImage(glow, f.x - 125, f.y - (f.isDead ? 95 : 175), 250, 250);
+      ctx.drawImage(glow, f.x - 125, f.y - (f.isDead && !isBespokeDeath ? 95 : 175), 250, 250);
       if (isChrono && !f.isDead) {
         ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.22 : 0.34) * deathFade;
         ctx.drawImage(this.glowGold, f.x - 105, f.y - 165, 210, 210);
       }
       ctx.restore();
 
-      if (f.heroId !== 'reaper' && f.heroId !== 'reaper_ex') {
+      if (f.heroId !== 'reaper' && f.heroId !== 'reaper_ex' && !isBespokeDeath) {
         this.drawCharacterGroundHalo(ctx, f);
       }
-      if (!f.isMonster) {
+      if (!f.isMonster && !isBespokeDeath) {
         this.drawCharacterPixelFlames(ctx, f);
       }
     }
@@ -8143,6 +8257,70 @@ export class Renderer {
       ctx.restore();
     }
 
+    // 4. Crisp Slim Bottom Pixel Banner during Beat 2 Winner Victory Showcase (100% pixel-pure, clears fighter!)
+    if (!this.adventureMode && this.endMatchPhase === 'winner_showcase') {
+      this.drawWinnerShowcaseBanner(ctx, w, h);
+    }
+
+    ctx.restore();
+  }
+
+  drawWinnerShowcaseBanner(ctx, w = this.width, h = this.height) {
+    if (!ctx?.fillRect || this.endMatchPhase !== 'winner_showcase') return;
+    const label = (this.endMatchWinnerLabel || `${this.endMatchWinner?.name || 'CHAMPION'} WINS!`).toUpperCase();
+    const accent = this.endMatchWinnerColor || this.endMatchWinner?.primaryColor || '#facc15';
+    const t = Math.max(0, this.endMatchShowcaseTimer || 0);
+    const enterP = Math.min(1, t / 0.26);
+    const ease = 1 - (1 - enterP) * (1 - enterP);
+    const slideY = Math.round((1 - ease) * 18);
+
+    const compact = this.isMobileLandscape || h < 480;
+    const barH = compact ? 36 : this.endMatchCanSkip ? 52 : 42;
+    const barW = Math.min(w - 28, compact ? 420 : 560);
+    const bx = Math.round((w - barW) * 0.5);
+    const by = Math.round(h - barH - (compact ? 12 : 22) + slideY);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = ease * 0.96;
+
+    // Stepped obsidian pixel banner plate with 2px outer ink & winner-accent trim (zero arc/ellipse/rotate!)
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(bx - 2, by - 2, barW + 4, barH + 4);
+    ctx.fillStyle = 'rgba(7, 11, 22, 0.92)';
+    ctx.fillRect(bx, by, barW, barH);
+    ctx.fillStyle = accent;
+    ctx.fillRect(bx, by, barW, 2);
+    ctx.fillRect(bx, by + barH - 2, barW, 2);
+    ctx.fillRect(bx, by, 4, barH);
+    ctx.fillRect(bx + barW - 4, by, 4, barH);
+    // Corner highlight pixel pips
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(bx + 6, by + 4, 4, 4);
+    ctx.fillRect(bx + barW - 10, by + 4, 4, 4);
+    ctx.fillRect(bx + 6, by + barH - 8, 4, 4);
+    ctx.fillRect(bx + barW - 10, by + barH - 8, 4, 4);
+
+    const maxTextW = Math.max(120, barW - 36);
+    const titlePx = Math.max(9, Math.min(compact ? 11 : 15, Math.floor(maxTextW / Math.max(1, label.length * 1.04))));
+    const titleY = this.endMatchCanSkip ? by + Math.round(barH * 0.48) : by + Math.round(barH * 0.62);
+    ctx.textAlign = 'center';
+    ctx.font = `${titlePx}px "Press Start 2P", monospace`;
+    ctx.fillStyle = '#020617';
+    ctx.fillText(label, Math.round(w * 0.5) + 2, titleY + 2, maxTextW);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillText(label, Math.round(w * 0.5), titleY, maxTextW);
+
+    if (this.endMatchCanSkip) {
+      const pulse = 0.58 + 0.42 * Math.sin((this.time || t) * 5.2);
+      ctx.globalAlpha = ease * pulse;
+      const hintPx = compact ? 7 : 8;
+      ctx.font = `${hintPx}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#bae6fd';
+      ctx.fillText('PRESS SPACE OR TAP FOR RESULTS', Math.round(w * 0.5), by + barH - 8, maxTextW);
+    }
+
     ctx.restore();
   }
 
@@ -8185,7 +8363,11 @@ export class Renderer {
       const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
       const jumpH = Math.max(0, fGy - f.y);
       const scale = Math.max(0.25, 1 - jumpH / 320);
-      const deadStretch = f.isDead ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;
+      const isBespokeDeath = Boolean(f.isDead && !f.isMonster && this.deathFX?.isHandlingFighter?.(f));
+      const bespokeShadowVis = isBespokeDeath ? this.deathFX.getShadowAlpha(f) : 1;
+      if (isBespokeDeath && bespokeShadowVis <= 0.02) continue;
+      const deadStretch =
+        f.isDead && !isBespokeDeath ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;
 
       // 1. Real-Time Ray-Projected Ground Silhouette Cast Shadows (up to 2 strongest nearby dynamic lights)
       const sprites = f.heroId ? assets[f.heroId] : null;
@@ -8222,13 +8404,16 @@ export class Renderer {
           }
         }
         if (bestL1) {
-          const frameIdx = PixelForge.getFrameIndex(f, f.walkPhase || f.runeOrbit || 0);
+          const frameIdx = isBespokeDeath
+            ? this.deathFX.getPoseFrameIndex(f)
+            : PixelForge.getFrameIndex(f, f.walkPhase || f.runeOrbit || 0);
           const castForLight = (L) => {
             const dist = Math.hypot(f.x - L.x, f.y - 70 - L.y);
             const atten = Math.max(0, 1 - dist / 520);
             const alpha =
               Math.max(0, Math.min(0.36, 0.14 + 0.16 * atten * (L.intensity - 1.0))) *
               scale *
+              bespokeShadowVis *
               (f.isBenched ? 0.5 : 1);
             if (alpha <= 0.015) return;
             // Note: sprite local Y is negative (-198..-230 at head, 0 at boots), so shear c=(L.x-f.x)/260
@@ -8259,6 +8444,10 @@ export class Renderer {
       shiftX = Math.max(-24, Math.min(24, shiftX));
       const rx = 68 * scale * deadStretch;
       const ry = 17 * scale;
+      if (isBespokeDeath && bespokeShadowVis < 0.99) {
+        ctx.save();
+        ctx.globalAlpha = bespokeShadowVis;
+      }
       ctx.drawImage(this.shadowTex, f.x + shiftX - rx, fGy - ry + 4, rx * 2, ry * 2);
       if (jumpH < 8) {
         ctx.drawImage(
@@ -8268,6 +8457,9 @@ export class Renderer {
           92 * deadStretch,
           18
         );
+      }
+      if (isBespokeDeath && bespokeShadowVis < 0.99) {
+        ctx.restore();
       }
     }
   }

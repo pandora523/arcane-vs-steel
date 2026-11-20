@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps170';
-import { VFXManager } from './engine/VFXManager.js?v=30fps170';
-import { PixelForge } from './engine/PixelForge.js?v=30fps170';
-import { AudioManager } from './engine/AudioManager.js?v=30fps170';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps170';
-import { Fighter } from './entities/Fighter.js?v=30fps170';
-import { Warrior } from './entities/Warrior.js?v=30fps170';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps170';
-import { FireMage } from './entities/FireMage.js?v=30fps170';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps170';
-import { Archer } from './entities/Archer.js?v=30fps170';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps170';
-import { Priestess } from './entities/Priestess.js?v=30fps170';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps170';
-import { Reaper } from './entities/Reaper.js?v=30fps170';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps170';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps170';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps170';
-import { Titan } from './entities/Titan.js?v=30fps170';
-import { TitanEx } from './entities/TitanEx.js?v=30fps170';
-import { Ronin } from './entities/Ronin.js?v=30fps170';
-import { RoninEx } from './entities/RoninEx.js?v=30fps170';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps170';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps170';
-import { IceMage } from './entities/IceMage.js?v=30fps170';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps170';
-import { Android } from './entities/Android.js?v=30fps170';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps170';
-import { NyxEx } from './entities/NyxEx.js?v=30fps170';
+import { Renderer } from './engine/Renderer.js?v=30fps171';
+import { VFXManager } from './engine/VFXManager.js?v=30fps171';
+import { PixelForge } from './engine/PixelForge.js?v=30fps171';
+import { AudioManager } from './engine/AudioManager.js?v=30fps171';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps171';
+import { Fighter } from './entities/Fighter.js?v=30fps171';
+import { Warrior } from './entities/Warrior.js?v=30fps171';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps171';
+import { FireMage } from './entities/FireMage.js?v=30fps171';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps171';
+import { Archer } from './entities/Archer.js?v=30fps171';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps171';
+import { Priestess } from './entities/Priestess.js?v=30fps171';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps171';
+import { Reaper } from './entities/Reaper.js?v=30fps171';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps171';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps171';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps171';
+import { Titan } from './entities/Titan.js?v=30fps171';
+import { TitanEx } from './entities/TitanEx.js?v=30fps171';
+import { Ronin } from './entities/Ronin.js?v=30fps171';
+import { RoninEx } from './entities/RoninEx.js?v=30fps171';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps171';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps171';
+import { IceMage } from './entities/IceMage.js?v=30fps171';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps171';
+import { Android } from './entities/Android.js?v=30fps171';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps171';
+import { NyxEx } from './entities/NyxEx.js?v=30fps171';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps170';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps170';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps170';
+} from './adventure/AdventureManager.js?v=30fps171';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps171';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps171';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -983,6 +983,14 @@ export class Game {
     this.deadMatchFighter = null;
     this.postDeathHoldTimer = 0;
     this.matchOverSafetyTimer = 0;
+    this.matchEndPhase = 'none'; // 'none' | 'defeat_spotlight' | 'winner_showcase' | 'overlay'
+    this.matchEndElapsed = 0;
+    this.winnerShowcaseTimer = 0;
+    this.matchEndWinner = null;
+    this.matchEndWinnerLabel = '';
+    this._victoryAudioPlayedInShowcase = false;
+    this._winnerVoiceWasBusy = false;
+    this._postWinnerVoiceBreathRemaining = 0;
     this.fighters = [];
     this.leftFighter = null;
     this.rightFighter = null;
@@ -1343,6 +1351,9 @@ export class Game {
         this.stepSimulation(0.02);
       }
       if (params.get('victory') === '1') {
+        this.victoryRevealPending = false;
+        this.matchEndPhase = 'overlay';
+        this.renderer?.setEndMatchSpotlight?.('overlay', victim, attacker, { canSkip: false });
         this.victoryOverlay.classList.remove('hidden');
         if (this.btnSwapSides) {
           this.btnSwapSides.classList.toggle('hidden', this.isAdventureMode());
@@ -1935,6 +1946,16 @@ export class Game {
     this.deadMatchFighter = null;
     this.postDeathHoldTimer = 0;
     this.matchOverSafetyTimer = 0;
+    this.matchEndPhase = 'none'; // 'none' | 'defeat_spotlight' | 'winner_showcase' | 'overlay'
+    this.matchEndElapsed = 0;
+    this.winnerShowcaseTimer = 0;
+    this.matchEndWinner = null;
+    this.matchEndWinnerLabel = '';
+    this._victoryAudioPlayedInShowcase = false;
+    this._winnerVoiceWasBusy = false;
+    this._postWinnerVoiceBreathRemaining = 0;
+    this.renderer?.clearEndMatchSpotlight?.();
+    this.renderer?.deathFX?.clear?.();
     this._pausedFrameRendered = false;
     this.victoryOverlay?.classList.remove('is-defeat-plaque');
     this.victoryOverlay?.classList.add('hidden');
@@ -2865,6 +2886,15 @@ export class Game {
     window.addEventListener('keydown', (e) => {
       if (
         (e.code === 'Space' || e.code === 'Enter') &&
+        !e.repeat &&
+        this.trySkipEndMatchToOverlay()
+      ) {
+        e.preventDefault();
+        e.stopImmediatePropagation?.();
+        return;
+      }
+      if (
+        (e.code === 'Space' || e.code === 'Enter') &&
         !this.isLandingOpen &&
         !this.isPaused &&
         !this.isMatchOver &&
@@ -2926,6 +2956,12 @@ export class Game {
       e.preventDefault();
       this.togglePause(true);
     });
+
+    if (this.canvas) {
+      this.canvas.addEventListener('pointerdown', () => {
+        this.trySkipEndMatchToOverlay();
+      });
+    }
 
     if (this.btnTestMode) {
       this.btnTestMode.addEventListener('click', () => this.toggleTestModeUnlimitedHp(true));
@@ -4577,7 +4613,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps170');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps171');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -4673,7 +4709,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps170'
+          'v=30fps171'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -6067,6 +6103,16 @@ export class Game {
       this.deadMatchFighter = null;
       this.postDeathHoldTimer = 0;
       this.matchOverSafetyTimer = 0;
+      this.matchEndPhase = 'none';
+      this.matchEndElapsed = 0;
+      this.winnerShowcaseTimer = 0;
+      this.matchEndWinner = null;
+      this.matchEndWinnerLabel = '';
+      this._victoryAudioPlayedInShowcase = false;
+      this._winnerVoiceWasBusy = false;
+      this._postWinnerVoiceBreathRemaining = 0;
+      this.renderer?.clearEndMatchSpotlight?.();
+      this.renderer?.deathFX?.clear?.();
       this.victoryOverlay.classList.remove('is-defeat-plaque');
       this.victoryOverlay.classList.add('hidden');
       if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
@@ -6301,6 +6347,16 @@ export class Game {
     this.deadMatchFighter = null;
     this.postDeathHoldTimer = 0;
     this.matchOverSafetyTimer = 0;
+    this.matchEndPhase = 'none'; // 'none' | 'defeat_spotlight' | 'winner_showcase' | 'overlay'
+    this.matchEndElapsed = 0;
+    this.winnerShowcaseTimer = 0;
+    this.matchEndWinner = null;
+    this.matchEndWinnerLabel = '';
+    this._victoryAudioPlayedInShowcase = false;
+    this._winnerVoiceWasBusy = false;
+    this._postWinnerVoiceBreathRemaining = 0;
+    this.renderer?.clearEndMatchSpotlight?.();
+    this.renderer?.deathFX?.clear?.();
     this.victoryOverlay.classList.remove('is-defeat-plaque');
     this.victoryOverlay.classList.add('hidden');
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
@@ -6692,6 +6748,10 @@ export class Game {
       }
     }
 
+    if (!deadFighter.isMonster) {
+      this.renderer?.deathFX?.trigger?.(deadFighter);
+    }
+
     if (this.isAdventureMode() && this.adventure?.active) {
       if (deadFighter.isMonster) {
         this.adventure.onMonsterDeath(deadFighter);
@@ -6781,6 +6841,25 @@ export class Game {
       winner;
     this.lastMatchWinnerHeroId = voicedWinner?.heroId || winner?.heroId || null;
     const winnerCfg = CHAMPION_ROSTER[winner.heroId] || CHAMPION_ROSTER.warrior;
+    const winnerBannerLabel =
+      this.is2v2Mode() && winningFighters.length >= 2
+        ? `${winningFighters[0].name.toUpperCase()} & ${winningFighters[1].name.toUpperCase()} WIN!`
+        : `${winner.name.toUpperCase()} WINS!`;
+    this.matchEndPhase = 'defeat_spotlight';
+    this.matchEndElapsed = 0;
+    this.winnerShowcaseTimer = 0;
+    this.matchEndWinner = winner;
+    this.matchEndWinnerLabel = winnerBannerLabel;
+    this._victoryAudioPlayedInShowcase = false;
+    this._winnerVoiceWasBusy = false;
+    this._postWinnerVoiceBreathRemaining = 0;
+    if (typeof this.renderer.setEndMatchSpotlight === 'function') {
+      this.renderer.setEndMatchSpotlight('defeat_spotlight', deadFighter, winner, {
+        winnerLabel: winnerBannerLabel,
+        winnerColor: winner.primaryColor,
+        canSkip: false
+      });
+    }
     if (typeof this.renderer.triggerKOFinisher === 'function') {
       this.renderer.triggerKOFinisher(
         deadFighter.x,
@@ -6887,18 +6966,91 @@ export class Game {
     this._clearAutoNextTimers?.();
   }
 
+  trySkipEndMatchToOverlay() {
+    if (
+      !this.isMatchOver ||
+      !this.victoryRevealPending ||
+      this.isAdventureMode() ||
+      this.isLandingOpen ||
+      this.isPaused ||
+      (this.matchEndElapsed || 0) < 1.6
+    ) {
+      return false;
+    }
+    this.revealVictoryOverlay();
+    return true;
+  }
+
+  enterWinnerShowcase() {
+    if (!this.isMatchOver || !this.victoryRevealPending) return;
+    if (this.matchEndPhase === 'winner_showcase') return;
+    this.matchEndPhase = 'winner_showcase';
+    this.winnerShowcaseTimer = 0;
+    this._winnerVoiceWasBusy = false;
+    this._postWinnerVoiceBreathRemaining = 0;
+
+    const winner =
+      this.matchEndWinner ||
+      this.fighters.find((f) => f && !f.isDead && !f.isBenched) ||
+      this.leftFighter;
+    this.matchEndWinner = winner;
+    if (winner) {
+      const winTeamFighters = this.getTeamFighters?.(winner.team) || [winner];
+      for (const f of winTeamFighters) {
+        if (!f || f.isDead || f.isBenched) continue;
+        if (f.state !== 'VICTORY') {
+          f.setState('VICTORY');
+        }
+        // Start Row 9 VICTORY flourish cleanly from Frame 0 right as the camera glides onto the winner!
+        f.stateTimer = 0;
+        f._victoryFlourishPlayed = false;
+      }
+    }
+
+    this.renderer?.setEndMatchSpotlight?.('winner_showcase', this.deadMatchFighter, winner, {
+      winnerLabel: this.matchEndWinnerLabel || `${winner?.name || 'CHAMPION'} WINS!`,
+      winnerColor: winner?.primaryColor || '#facc15',
+      canSkip: (this.matchEndElapsed || 0) >= 1.6
+    });
+
+    if (this.audio && !this._victoryAudioPlayedInShowcase) {
+      this._victoryAudioPlayedInShowcase = true;
+      this.audio.stopAllHeroVoices?.(0.06);
+      const victorHeroId = this.lastMatchWinnerHeroId || winner?.heroId || null;
+      if (victorHeroId && this.audio.hasVoicePack?.(victorHeroId)) {
+        this.audio.preDuckSfxForVoice?.(4, 550);
+      }
+      this.audio.play?.('victory_fanfare');
+      if (victorHeroId) {
+        this.audio.playHeroVoice?.(victorHeroId, 'victory', {
+          speakerKey: 'victory_ui',
+          priority: 4,
+          cooldownMs: 300,
+          duckSfx: true,
+          maxAsyncDelayMs: 1200
+        });
+      }
+    }
+  }
+
   revealVictoryOverlay() {
     if (!this.isMatchOver || !this.victoryRevealPending) return;
     this.setPaused(false, false);
     this.victoryRevealPending = false;
+    this.matchEndPhase = 'overlay';
     this.matchOverSafetyTimer = 0;
     this._deathVoiceWasBusy = false;
     this._postDeathVoiceBreathRemaining = 0;
+    this._winnerVoiceWasBusy = false;
+    this._postWinnerVoiceBreathRemaining = 0;
+    this.renderer?.setEndMatchSpotlight?.('overlay', this.deadMatchFighter, this.matchEndWinner, {
+      canSkip: false
+    });
     this.victoryOverlay.classList.remove('hidden');
     if (this.btnSwapSides) {
       this.btnSwapSides.classList.toggle('hidden', this.isAdventureMode());
     }
-    if (this.audio) {
+    if (this.audio && !this._victoryAudioPlayedInShowcase) {
       this.audio.stopAllHeroVoices?.(0.06);
       const isDefeat = Boolean(this.victoryOverlay?.classList?.contains('is-defeat-plaque'));
       const victorHeroId = !isDefeat
@@ -7842,18 +7994,19 @@ export class Game {
       }
     }
 
-    // Reveal the Victory / Rematch / Defeat plaque ONLY after all 30 death frames (F00..F29) have finished
-    // AND the winning champion has showcased their Row 9 VICTORY flourish & pose (snappier 0.65s hold on Adventure defeat)!
+    // Cinematic 3-Beat End-of-Match Pacing in Live Versus / Player vs AI:
+    //   Beat 1 (0.0..2.6s): Defeat Spotlight — watch defeated champion's full bespoke pixel death unobstructed.
+    //   Beat 2 (2.6..5.1s): Winner Showcase — glide camera onto winner performing Row 9 VICTORY pose & voice line.
+    //   Beat 3 (~5.1s+):    Victory Overlay Reveal (instant-skip via Space/Enter/Click/Tap after 1.6s).
+    // Keeps `simMode` fast for automated suites & Adventure defeat snappy (0.65s hold)!
     if (this.isMatchOver && this.victoryRevealPending && !this.isSimPaused) {
       this.matchOverSafetyTimer = (this.matchOverSafetyTimer || 0) + rawDt;
       const fallen = this.deadMatchFighter || this.fighters.find((f) => f && f.isDead);
-      const fullDeathDur = fallen?.isColossalBoss ? 2.4 : PixelForge.DEATH_DURATION || 1.55;
       const targetFloorY =
         this.isAdventureMode() && Number.isFinite(fallen?.groundY)
           ? fallen.groundY
           : this.renderer.groundY;
       const onFloor = !fallen || fallen.isColossalBoss || fallen.y >= targetFloorY - 4;
-      const holdNeeded = this.isAdventureMode() && fallen && !fallen.isMonster ? 0.65 : 1.35;
       const canGateOnDeathVoice =
         Boolean(this._enforceLiveVoiceQueueInTest) ||
         (!this.simMode && typeof HTMLImageElement !== 'undefined');
@@ -7872,22 +8025,75 @@ export class Game {
         canGateOnDeathVoice &&
         (deathVoiceBusy ||
           (this._deathVoiceWasBusy && (this._postDeathVoiceBreathRemaining || 0) > 0));
-      const safetyCeiling =
-        canGateOnDeathVoice && (deathVoiceBusy || this._deathVoiceWasBusy) ? 10.5 : 3.4;
 
-      if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
-        this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
-        if (this.postDeathHoldTimer >= holdNeeded && !holdForDeathVoice) {
+      const useCinematic3Beat =
+        !this.isAdventureMode() && (!this.simMode || Boolean(this._forceCinematicVictoryPacing));
+
+      if (useCinematic3Beat) {
+        this.matchEndElapsed = (this.matchEndElapsed || 0) + rawDt;
+        if (this.renderer) {
+          this.renderer.endMatchCanSkip = this.matchEndElapsed >= 1.6;
+        }
+        const defeatSpotlightDur = 2.6;
+        const winnerShowcaseDur = 2.5;
+        if (this.matchEndPhase !== 'winner_showcase') {
+          if (
+            (this.matchEndElapsed >= defeatSpotlightDur && onFloor && !holdForDeathVoice) ||
+            this.matchEndElapsed >= 6.0
+          ) {
+            this.enterWinnerShowcase();
+          }
+        } else {
+          this.winnerShowcaseTimer = (this.winnerShowcaseTimer || 0) + rawDt;
+          this.postDeathHoldTimer = this.winnerShowcaseTimer;
+          const winnerVoiceBusy =
+            canGateOnDeathVoice && Boolean(this.audio?.isHeroVoiceBusy?.());
+          if (winnerVoiceBusy) {
+            this._winnerVoiceWasBusy = true;
+            this._postWinnerVoiceBreathRemaining = 0.25;
+          } else if (
+            this._winnerVoiceWasBusy &&
+            (this._postWinnerVoiceBreathRemaining || 0) > 0
+          ) {
+            this._postWinnerVoiceBreathRemaining = Math.max(
+              0,
+              this._postWinnerVoiceBreathRemaining - rawDt
+            );
+          }
+          const holdForWinnerVoice =
+            canGateOnDeathVoice &&
+            (winnerVoiceBusy ||
+              (this._winnerVoiceWasBusy && (this._postWinnerVoiceBreathRemaining || 0) > 0));
+          if (this.winnerShowcaseTimer >= winnerShowcaseDur && !holdForWinnerVoice) {
+            this.revealVictoryOverlay();
+          }
+        }
+        const cinematicSafetyCeiling = 11.5;
+        if (this.victoryRevealPending && this.matchOverSafetyTimer >= cinematicSafetyCeiling) {
           this.revealVictoryOverlay();
         }
-      }
-      if (this.victoryRevealPending && this.matchOverSafetyTimer >= safetyCeiling) {
-        this.revealVictoryOverlay();
+      } else {
+        const fullDeathDur = fallen?.isColossalBoss ? 2.4 : PixelForge.DEATH_DURATION || 1.55;
+        const holdNeeded = this.isAdventureMode() && fallen && !fallen.isMonster ? 0.65 : 1.35;
+        const safetyCeiling =
+          canGateOnDeathVoice && (deathVoiceBusy || this._deathVoiceWasBusy) ? 10.5 : 3.4;
+
+        if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
+          this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
+          if (this.postDeathHoldTimer >= holdNeeded && !holdForDeathVoice) {
+            this.revealVictoryOverlay();
+          }
+        }
+        if (this.victoryRevealPending && this.matchOverSafetyTimer >= safetyCeiling) {
+          this.revealVictoryOverlay();
+        }
       }
     } else if (!this.isMatchOver || !this.victoryRevealPending) {
       this.matchOverSafetyTimer = 0;
       this._deathVoiceWasBusy = false;
       this._postDeathVoiceBreathRemaining = 0;
+      this._winnerVoiceWasBusy = false;
+      this._postWinnerVoiceBreathRemaining = 0;
     }
 
     // Check Simultaneous Melee / Skill Blade Clash across opposing active fighters

@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps170';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps171';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -1268,10 +1268,14 @@ export class Fighter {
       this.setState('DEATH');
       this.isDead = true;
       this.deathTimer = 0;
+      this.wraithAlpha = 1.0;
       this.vy = this.y >= this.groundY - 4 ? 0 : Math.max(0, (this.vy || 0) * 0.35);
       this.vx = dir * 115;
       this.torsoVel = dir * 10;
       if (this.game) {
+        if (!this.isMonster) {
+          this.game.renderer?.deathFX?.trigger?.(this);
+        }
         this.game.renderer.triggerShake(12, 0.25);
         this.game.renderer.triggerAberration(8);
         this.game.renderer.triggerHitStop(0.11, true);
@@ -2484,7 +2488,8 @@ export class Fighter {
         this.vy = 0;
       }
       this.torsoAngle += (Math.PI * 0.48 * -this.facing - this.torsoAngle) * 6 * dt;
-      if (this.deathTimer < 2.6 && Math.random() < 0.22 && game?.vfx) {
+      const handledByDeathFX = Boolean(!this.isMonster && game?.renderer?.deathFX);
+      if (!handledByDeathFX && this.deathTimer < 2.6 && Math.random() < 0.22 && game?.vfx) {
         game.vfx.spawnParticle({
           x: this.x + (Math.random() - 0.5) * 64,
           y: this.y - 12 - Math.random() * 24,
@@ -3240,7 +3245,7 @@ export class Fighter {
             upBias: 95,
             size: 5
           });
-          if (game.isMatchOver) {
+          if (game.isMatchOver && game.matchEndPhase !== 'defeat_spotlight') {
             game.vfx.spawnDamageText?.(
               this.x,
               this.y - 196,
