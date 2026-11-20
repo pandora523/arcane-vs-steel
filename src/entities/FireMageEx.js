@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps197';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps197';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps197';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps197';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps197';
+import { Fighter } from './Fighter.js?v=30fps198';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps198';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps198';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps198';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps198';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Golden Solar Rune Magic Circle + Blazing Solar Fireball Comet -> snaps at F03 (63)
@@ -2365,9 +2365,9 @@ export class FireMageEx extends Fighter {
         return img;
       };
       assets.mage_ex = {
-        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps197'),
-        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps197'),
-        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps197'),
+        sheet: mkImg('assets/sprites/mage_ex_sheet.png?v=30fps198'),
+        vfx: mkImg('assets/sprites/mage_ex_vfx.png?v=30fps198'),
+        portrait: mkImg('assets/sprites/mage_ex_portrait.png?v=30fps198'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
