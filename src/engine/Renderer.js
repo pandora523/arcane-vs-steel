@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps183';
-import { PixelFont } from './PixelFont.js?v=30fps183';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps183';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps183';
+import { PixelForge } from './PixelForge.js?v=30fps184';
+import { PixelFont } from './PixelFont.js?v=30fps184';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps184';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps184';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps183';
+} from './shaders/exNextGenFX.js?v=30fps184';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -6129,13 +6129,25 @@ export class Renderer {
       ctx.fillRect(rx - 6, ry - 6, 12, 12);
     }
 
-    // 3b. Dedicated 'tempest' Anime Lightning-Shatter Layer (drawn BEHIND stark fighter silhouettes so hero poses pop 100% clean!)
+    // 3b. Dedicated 'tempest' Anime Lightning-Shatter Layer (razor-sharp forked cracks BEHIND stark silhouettes!)
     if (pal.lightning) {
       const boltCount = 12;
       const boltCore = isInverted ? '#040614' : '#ffffff';
       const boltEdge = isInverted ? pal.accent : pal.alt;
       const boltSub = isInverted ? pal.alt : pal.accent;
       const phaseSeed = isInverted ? 13 : 29;
+      const drawForkSeg = (ax, ay, bx, by, edgeCol, coreCol, edgeHalf, coreHalf) => {
+        const steps = Math.max(6, Math.ceil(Math.hypot(bx - ax, by - ay) / 3));
+        for (let k = 0; k <= steps; k++) {
+          const u = k / steps;
+          const px = Math.round((ax + (bx - ax) * u) / 2) * 2;
+          const py = Math.round((ay + (by - ay) * u) / 2) * 2;
+          ctx.fillStyle = edgeCol;
+          ctx.fillRect(px - edgeHalf, py - edgeHalf, edgeHalf * 2, edgeHalf * 2);
+          ctx.fillStyle = coreCol;
+          ctx.fillRect(px - coreHalf, py - coreHalf, coreHalf * 2, coreHalf * 2);
+        }
+      };
       for (let b = 0; b < boltCount; b++) {
         const ang = (b / boltCount) * Math.PI * 2 + (b % 2 === 0 ? 0.14 : -0.09);
         const dirX = Math.cos(ang);
@@ -6143,27 +6155,32 @@ export class Renderer {
         const perpX = -dirY;
         const perpY = dirX;
         const maxLen = b % 2 === 0 ? 680 : 480;
-        const segs = 9;
+        const segs = 11;
         let prevX = cx;
         let prevY = cy;
+        const eCol = b % 3 === 0 ? boltSub : boltEdge;
         for (let s = 1; s <= segs; s++) {
           const tFrac = s / segs;
           const jag =
             s === segs
               ? 0
-              : Math.sin((b + 1) * 19.3 + s * 7.1 + phaseSeed) * (24 + tFrac * 44);
+              : Math.sin((b + 1) * 19.3 + s * 7.1 + phaseSeed) * (18 + tFrac * 36);
           const nx = cx + dirX * maxLen * tFrac + perpX * jag;
           const ny = cy + dirY * maxLen * tFrac + perpY * jag;
-          const steps = Math.max(8, Math.ceil(Math.hypot(nx - prevX, ny - prevY) / 6));
-          const thick = s <= 3 ? 10 : s <= 6 ? 6 : 4;
-          for (let k = 0; k <= steps; k++) {
-            const u = k / steps;
-            const px = Math.round((prevX + (nx - prevX) * u) / 4) * 4;
-            const py = Math.round((prevY + (ny - prevY) * u) / 4) * 4;
-            ctx.fillStyle = b % 3 === 0 ? boltSub : boltEdge;
-            ctx.fillRect(px - thick, py - thick, thick * 2, thick * 2);
-            ctx.fillStyle = boltCore;
-            ctx.fillRect(px - (thick >> 1), py - (thick >> 1), thick, thick);
+          const edgeH = s <= 3 ? 5 : s <= 7 ? 3 : 2;
+          const coreH = s <= 3 ? 2 : 1;
+          drawForkSeg(prevX, prevY, nx, ny, eCol, boltCore, edgeH, coreH);
+          // Crisp acute secondary lightning fork branching off mid-elbows!
+          if (s === 4 || s === 7) {
+            const side = (b + s) % 2 === 0 ? 1 : -1;
+            const bAng = ang + side * (0.42 + (b % 3) * 0.12);
+            const bLen = (s === 4 ? 135 : 92) * (b % 2 === 0 ? 1.0 : 0.78);
+            const midX = nx + Math.cos(bAng) * (bLen * 0.52) - Math.sin(bAng) * side * 16;
+            const midY = ny + Math.sin(bAng) * (bLen * 0.52) + Math.cos(bAng) * side * 16;
+            const tipX = nx + Math.cos(bAng) * bLen;
+            const tipY = ny + Math.sin(bAng) * bLen;
+            drawForkSeg(nx, ny, midX, midY, eCol, boltCore, 2, 1);
+            drawForkSeg(midX, midY, tipX, tipY, eCol, boltCore, 1, 1);
           }
           prevX = nx;
           prevY = ny;

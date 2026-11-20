@@ -1,33 +1,33 @@
-import { Renderer } from './engine/Renderer.js?v=30fps183';
-import { VFXManager } from './engine/VFXManager.js?v=30fps183';
-import { PixelForge } from './engine/PixelForge.js?v=30fps183';
-import { AudioManager } from './engine/AudioManager.js?v=30fps183';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps183';
-import { Fighter } from './entities/Fighter.js?v=30fps183';
-import { Warrior } from './entities/Warrior.js?v=30fps183';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps183';
-import { FireMage } from './entities/FireMage.js?v=30fps183';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps183';
-import { Archer } from './entities/Archer.js?v=30fps183';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps183';
-import { Priestess } from './entities/Priestess.js?v=30fps183';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps183';
-import { Reaper } from './entities/Reaper.js?v=30fps183';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps183';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps183';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps183';
-import { Titan } from './entities/Titan.js?v=30fps183';
-import { TitanEx } from './entities/TitanEx.js?v=30fps183';
-import { Ronin } from './entities/Ronin.js?v=30fps183';
-import { RoninEx } from './entities/RoninEx.js?v=30fps183';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps183';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps183';
-import { IceMage } from './entities/IceMage.js?v=30fps183';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps183';
-import { Android } from './entities/Android.js?v=30fps183';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps183';
-import { NyxEx } from './entities/NyxEx.js?v=30fps183';
-import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps183';
+import { Renderer } from './engine/Renderer.js?v=30fps184';
+import { VFXManager } from './engine/VFXManager.js?v=30fps184';
+import { PixelForge } from './engine/PixelForge.js?v=30fps184';
+import { AudioManager } from './engine/AudioManager.js?v=30fps184';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps184';
+import { Fighter } from './entities/Fighter.js?v=30fps184';
+import { Warrior } from './entities/Warrior.js?v=30fps184';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps184';
+import { FireMage } from './entities/FireMage.js?v=30fps184';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps184';
+import { Archer } from './entities/Archer.js?v=30fps184';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps184';
+import { Priestess } from './entities/Priestess.js?v=30fps184';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps184';
+import { Reaper } from './entities/Reaper.js?v=30fps184';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps184';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps184';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps184';
+import { Titan } from './entities/Titan.js?v=30fps184';
+import { TitanEx } from './entities/TitanEx.js?v=30fps184';
+import { Ronin } from './entities/Ronin.js?v=30fps184';
+import { RoninEx } from './entities/RoninEx.js?v=30fps184';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps184';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps184';
+import { IceMage } from './entities/IceMage.js?v=30fps184';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps184';
+import { Android } from './entities/Android.js?v=30fps184';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps184';
+import { NyxEx } from './entities/NyxEx.js?v=30fps184';
+import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps184';
 import {
   AdventureManager,
   ADVENTURE_DIFFICULTY_TIERS,
@@ -36,9 +36,9 @@ import {
   loadAdventureMedals,
   normalizeAdventureCampaignPack,
   normalizeAdventureDifficultyId
-} from './adventure/AdventureManager.js?v=30fps183';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps183';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps183';
+} from './adventure/AdventureManager.js?v=30fps184';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps184';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps184';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -5705,7 +5705,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps183');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps184');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -5863,7 +5863,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps183'
+          'v=30fps184'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);

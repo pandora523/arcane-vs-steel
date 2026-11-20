@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps183';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps183';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps183';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps183';
+import { Fighter } from './Fighter.js?v=30fps184';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps184';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps184';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps184';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.22s): Explosive stepping storm jab -> snaps at F02/F03 (62/63)
@@ -150,21 +150,23 @@ const BRAWLER_TEMPEST_EFFECT_REGISTRY = {
 };
 
 /**
- * Multi-segment stepped pixel lightning bolt rendered in 3 full passes (`0` chevrons, `0` canvas rotation).
+ * Razor-sharp fractal-forked pixel lightning bolt (`2px` white core + `4px` electric rim + acute hairline sub-branches).
+ * Zero fat noodles, zero chevrons, zero canvas rotation!
  */
-function drawTempestPixelBolt(ctx, x0, y0, x1, y1, segs, jagAmp, seed, alpha = 0.94) {
+function drawTempestPixelBolt(ctx, x0, y0, x1, y1, segs, jagAmp, seed, alpha = 0.94, opts = null) {
   if (alpha <= 0.02) return;
   const dx = x1 - x0;
   const dy = y1 - y0;
   const len = Math.hypot(dx, dy) || 1;
   const nx = -dy / len;
   const ny = dx / len;
+  const segCount = Math.max(4, segs || 7);
   const pts = [[Math.round(x0), Math.round(y0)]];
-  for (let s = 1; s < segs; s++) {
-    const f = s / segs;
+  for (let s = 1; s < segCount; s++) {
+    const f = s / segCount;
     const env = Math.sin(f * Math.PI);
-    const h = Math.sin((seed + s * 13.7) * 127.1) * 43758.5453;
-    const off = ((h - Math.floor(h)) * 2 - 1) * jagAmp * (0.4 + 0.6 * env);
+    const h = Math.sin((seed + s * 17.3) * 127.1) * 43758.5453;
+    const off = ((h - Math.floor(h)) * 2 - 1) * jagAmp * (0.35 + 0.65 * env);
     pts.push([
       Math.round((x0 + dx * f + nx * off) / 2) * 2,
       Math.round((y0 + dy * f + ny * off) / 2) * 2
@@ -172,13 +174,18 @@ function drawTempestPixelBolt(ctx, x0, y0, x1, y1, segs, jagAmp, seed, alpha = 0
   }
   pts.push([Math.round(x1), Math.round(y1)]);
 
-  const tracePass = (fillHex, passAlpha, size) => {
+  const rimHex = opts?.rimColor || (seed % 2 === 0 ? '#38bdf8' : '#fbbf24');
+  const haloHex = opts?.haloColor || (seed % 2 === 0 ? '#6366f1' : '#f59e0b');
+  const allowForks = opts?.forks !== false && len >= 68;
+
+  const tracePoly = (poly, fillHex, passAlpha, size) => {
+    if (passAlpha <= 0.01) return;
     ctx.fillStyle = fillHex;
     ctx.globalAlpha = passAlpha;
     const half = Math.floor(size * 0.5);
-    for (let s = 0; s < pts.length - 1; s++) {
-      const [ax, ay] = pts[s];
-      const [bx, by] = pts[s + 1];
+    for (let s = 0; s < poly.length - 1; s++) {
+      const [ax, ay] = poly[s];
+      const [bx, by] = poly[s + 1];
       const steps = Math.max(2, Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) / 2));
       for (let k = 0; k <= steps; k++) {
         const u = k / steps;
@@ -189,15 +196,53 @@ function drawTempestPixelBolt(ctx, x0, y0, x1, y1, segs, jagAmp, seed, alpha = 0
     }
   };
 
+  // Build 2-3 razor-thin acute fractal sub-branches off mid-elbows!
+  const forks = [];
+  if (allowForks) {
+    const mainAng = Math.atan2(dy, dx);
+    for (let s = 1; s < pts.length - 1; s++) {
+      if ((s + seed) % 2 !== 0 && pts.length > 5) continue;
+      if (forks.length >= 3) break;
+      const [ex, ey] = pts[s];
+      const side = (s + seed) % 2 === 0 ? 1 : -1;
+      const h2 = Math.sin((seed * 3.1 + s * 29.7) * 91.7) * 43758.5453;
+      const r01 = h2 - Math.floor(h2);
+      const bAng = mainAng + side * (0.44 + r01 * 0.36);
+      const bLen = Math.min(82, len * (0.24 + r01 * 0.18));
+      const mx = Math.round((ex + Math.cos(bAng) * bLen * 0.52 - Math.sin(bAng) * side * 9) / 2) * 2;
+      const my = Math.round((ey + Math.sin(bAng) * bLen * 0.52 + Math.cos(bAng) * side * 9) / 2) * 2;
+      const tx = Math.round((ex + Math.cos(bAng) * bLen) / 2) * 2;
+      const ty = Math.round((ey + Math.sin(bAng) * bLen) / 2) * 2;
+      forks.push([
+        [ex, ey],
+        [mx, my],
+        [tx, ty]
+      ]);
+    }
+  }
+
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  // Additive electric-cyan & storm-gold HD-2D glow corona so every bolt radiates real luminescence!
+  // 1. Subtle narrow electric aura (`6px` @ low alpha — silky rim, ZERO blobby pipe!)
   ctx.globalCompositeOperation = 'lighter';
-  tracePass('#38bdf8', Math.min(0.32, alpha * 0.34), 12);
-  tracePass('#fbbf24', Math.min(0.56, alpha * 0.58), 8);
-  tracePass('#fef08a', Math.min(0.92, alpha * 0.94), 4);
+  tracePoly(pts, haloHex, Math.min(0.24, alpha * 0.24), 6);
+  tracePoly(pts, rimHex, Math.min(0.76, alpha * 0.78), 4);
+  for (let f = 0; f < forks.length; f++) {
+    tracePoly(forks[f], rimHex, Math.min(0.62, alpha * 0.64), 2);
+  }
+  // 2. Razor-sharp `2px` incandescent white core on main bolt + tiny elbow sparks
   ctx.globalCompositeOperation = 'source-over';
-  tracePass('#ffffff', Math.min(1.0, alpha), 2);
+  tracePoly(pts, '#ffffff', Math.min(0.98, alpha), 2);
+  for (let f = 0; f < forks.length; f++) {
+    tracePoly(forks[f].slice(0, 2), '#ffffff', Math.min(0.84, alpha * 0.85), 2);
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = '#fef08a';
+  ctx.globalAlpha = Math.min(0.92, alpha * 0.92);
+  for (let s = 1; s < pts.length - 1; s += 2) {
+    const [ex, ey] = pts[s];
+    ctx.fillRect(ex - 2, ey - 2, 4, 4);
+  }
   ctx.restore();
 }
 
@@ -295,7 +340,10 @@ export class BrawlerEx extends Fighter {
     this._sonicRail = null;      // { x0, x1, y, age, maxLife, dir }
     this._shockWall = null;      // { x, groundY, age, maxLife, dir }
     this._shockWallZaps = 0;
-    this._lightningImpacts = []; // Blinding radial lightning impact domes + cross-flares + jagged arcs!
+    this._lightningImpacts = []; // Blinding radial lightning impact domes + cross-flares + fractal arcs!
+    this._groundCracks = [];     // Animated perspective glowing stone fissures zipping outward across groundY!
+    this._debrisShards = [];     // Physically tumbling pixel stone slabs & electric embers!
+    this._thunderSlashes = [];   // Sweeping Zenitsu-style razor-tapered thunderclap slash ribbons!
     this._stormCrashTimer = 0;
 
     this._overrideFrameIdx = null;
@@ -369,9 +417,9 @@ export class BrawlerEx extends Fighter {
         return im;
       };
       assets.brawler_ex = {
-        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps183'),
-        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps183'),
-        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps183'),
+        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps184'),
+        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps184'),
+        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps184'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -502,6 +550,64 @@ export class BrawlerEx extends Fighter {
     });
   }
 
+  spawnGroundCrackNetwork(cx, gy, radius = 180, count = 8, maxLife = 1.25) {
+    for (let i = 0; i < count; i++) {
+      if (this._groundCracks.length >= 28) this._groundCracks.shift();
+      const ang = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+      const len = radius * (0.62 + Math.random() * 0.48);
+      const segs = 5;
+      const pts = [[Math.round(cx), Math.round(gy - 2)]];
+      for (let s = 1; s <= segs; s++) {
+        const f = s / segs;
+        const jx = (Math.random() - 0.5) * 26 * f;
+        const jy = (Math.random() - 0.5) * 8 * f;
+        pts.push([
+          Math.round((cx + Math.cos(ang) * len * f + jx) / 2) * 2,
+          Math.round((gy - 2 + Math.sin(ang) * len * 0.24 * f + jy) / 2) * 2
+        ]);
+      }
+      this._groundCracks.push({
+        pts,
+        age: 0,
+        maxLife,
+        isGold: i % 2 === 0
+      });
+    }
+  }
+
+  spawnDebrisBurst(cx, gy, count = 16, power = 1.0) {
+    for (let i = 0; i < count; i++) {
+      if (this._debrisShards.length >= 48) this._debrisShards.shift();
+      const dir = (Math.random() - 0.5) * 2;
+      this._debrisShards.push({
+        x: cx + (Math.random() - 0.5) * 56,
+        y: gy - 4 - Math.random() * 14,
+        vx: dir * (120 + Math.random() * 260) * power,
+        vy: -(220 + Math.random() * 340) * power,
+        w: 4 + Math.floor(Math.random() * 3) * 2,
+        h: 4 + Math.floor(Math.random() * 2) * 2,
+        groundY: gy,
+        age: 0,
+        maxLife: 0.58 + Math.random() * 0.46,
+        rimHex: i % 2 === 0 ? '#fbbf24' : '#38bdf8'
+      });
+    }
+  }
+
+  spawnThunderSlash(x0, y0, x1, y1, maxLife = 0.32, width = 10, isGold = true) {
+    if (this._thunderSlashes.length >= 16) this._thunderSlashes.shift();
+    this._thunderSlashes.push({
+      x0: Math.round(x0),
+      y0: Math.round(y0),
+      x1: Math.round(x1),
+      y1: Math.round(y1),
+      age: 0,
+      maxLife,
+      width,
+      isGold
+    });
+  }
+
   takeDamage(amount, attacker, isCrit = false, knockX = 0, knockY = 0) {
     const preHp = this.hp;
     let finalAmt = Math.max(0, Math.round(amount || 0));
@@ -621,6 +727,9 @@ export class BrawlerEx extends Fighter {
       this._shockWall = null;
       this._shockWallZaps = 0;
       this._lightningImpacts.length = 0;
+      this._groundCracks.length = 0;
+      this._debrisShards.length = 0;
+      this._thunderSlashes.length = 0;
       this._trueUltStartX = this.x;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
@@ -641,6 +750,9 @@ export class BrawlerEx extends Fighter {
       this._shockWall = null;
       this._shockWallZaps = 0;
       this._lightningImpacts.length = 0;
+      this._groundCracks.length = 0;
+      this._debrisShards.length = 0;
+      this._thunderSlashes.length = 0;
       this._raijinDrumsAlpha = 0;
       this.groundSeals.length = 0;
       this._stormCrashTimer = 0;
@@ -1057,6 +1169,9 @@ export class BrawlerEx extends Fighter {
       this.spawnVfxAnim(5, hitX, this.groundY - 16, 186, 114, 0.44, { inFront: false });
       this.spawnGroundSeal(hitX, this.groundY, 96, 0.48);
       this.spawnLightningImpact(hitX, this.y - 88, 126, 0.32, 8);
+      this.spawnThunderSlash(this.x - this.facing * 20, this.y - 124, hitX + this.facing * 80, this.y - 52, 0.28, 10, true);
+      this.spawnGroundCrackNetwork(hitX, this.groundY, 125, 6, 0.85);
+      this.spawnDebrisBurst(hitX, this.groundY, 10, 0.72);
       game?.renderer?.triggerImpactFrame?.(hitX, this.y - 88, 0.06, 'tempest');
       this.fx?.spawn('tempestBurst', this._safeFxX(hitX, game), this.y - 88, {
         extra: { radius: 56 }
@@ -1186,6 +1301,9 @@ export class BrawlerEx extends Fighter {
       this.spawnVfxAnim(1, finX, this.groundY - 120, 196, 224, 0.48, { inFront: true });
       this.spawnVfxAnim(5, finX, this.groundY - 18, 210, 124, 0.52, { inFront: false });
       this.spawnLightningImpact(finX, this.groundY - 108, 178, 0.44, 10);
+      this.spawnThunderSlash(finX - this.facing * 50, this.groundY - 24, finX + this.facing * 60, this.groundY - 210, 0.36, 12, true);
+      this.spawnGroundCrackNetwork(finX, this.groundY, 165, 8, 1.05);
+      this.spawnDebrisBurst(finX, this.groundY, 14, 0.90);
       game?.renderer?.triggerImpactFrame?.(finX, this.groundY - 108, 0.10, 'tempest');
       this.fx?.spawn('tempestBurst', this._safeFxX(finX, game), this.groundY - 104, {
         extra: { radius: 68 }
@@ -1308,6 +1426,9 @@ export class BrawlerEx extends Fighter {
           const gutHitX = this.x + dir * 70;
           game?.renderer?.triggerImpactFrame?.(gutHitX, this.groundY - 92, 0.08, 'tempest');
           this.spawnLightningImpact(gutHitX, this.groundY - 92, 138, 0.38, 8);
+          this.spawnThunderSlash(gutHitX - dir * 55, this.groundY - 135, wallX + dir * 30, this.groundY - 58, 0.34, 10, true);
+          this.spawnGroundCrackNetwork(gutHitX, this.groundY, 150, 7, 1.15);
+          this.spawnDebrisBurst(gutHitX, this.groundY, 12, 0.85);
           this.spawnVfxAnim(0, gutHitX, this.groundY - 92, 224, 224, 0.34, {
             flipX: dir < 0,
             inFront: true
@@ -1373,6 +1494,8 @@ export class BrawlerEx extends Fighter {
       if (this._trueUltStage < 2) {
         this._trueUltStage = 2;
         this.spawnGroundSeal(this.x, this.groundY, 156, 1.32);
+        this.spawnGroundCrackNetwork(this.x, this.groundY, 195, 9, 1.45);
+        this.spawnDebrisBurst(this.x, this.groundY, 10, 0.65);
         // Lossless 30fps Row 7 Spinning Raijin Tomoe Drum Storm-Crest Mandala behind Raijin's shoulders!
         this.spawnVfxAnim(7, this.x - dir * 4, this.groundY - 102, 276, 276, 1.28, {
           inFront: false,
@@ -1528,7 +1651,11 @@ export class BrawlerEx extends Fighter {
           cooldownMs: 200,
           duckSfx: true
         });
-        this.spawnLightningImpact(hitX, this.groundY - 94, 215, 0.54, 12);
+        this.spawnLightningImpact(hitX, this.groundY - 94, 215, 0.54, 10);
+        this.spawnThunderSlash(this._trueUltChargeX - dir * 40, this.groundY - 122, this._trueUltSkidX + dir * 90, this.groundY - 68, 0.44, 12, true);
+        this.spawnThunderSlash(this._trueUltChargeX - dir * 20, this.groundY - 66, this._trueUltSkidX + dir * 70, this.groundY - 124, 0.42, 10, false);
+        this.spawnGroundCrackNetwork(hitX, this.groundY, 210, 9, 1.35);
+        this.spawnDebrisBurst(hitX, this.groundY, 18, 1.12);
         this.spawnVfxAnim(0, hitX, this.groundY - 94, 320, 320, 0.46, {
           flipX: dir < 0,
           inFront: true
@@ -1632,7 +1759,13 @@ export class BrawlerEx extends Fighter {
       game?.vfx?.spawnDecal?.(blastX, this.groundY, 'crater', 210);
       game?.vfx?.spawnShockwave?.(blastX, this.groundY - 94, 320, '#fbbf24', 0.48);
       game?.vfx?.spawnShockwave?.(blastX, this.groundY - 4, 360, '#38bdf8', 0.54);
-      this.spawnLightningImpact(blastX, this.groundY - 94, 285, 0.92, 16);
+      this.spawnLightningImpact(blastX, this.groundY - 94, 285, 0.92, 12);
+      // Crossing Zenitsu-style razor thunderclap slash ribbons + shattering stone debris + glowing ground crack network!
+      this.spawnThunderSlash(blastX - dir * 240, this.groundY - 210, blastX + dir * 110, this.groundY - 16, 0.72, 12, true);
+      this.spawnThunderSlash(blastX - dir * 230, this.groundY - 18, blastX + dir * 105, this.groundY - 215, 0.72, 10, false);
+      this.spawnThunderSlash(blastX - dir * 270, this.groundY - 96, blastX + dir * 115, this.groundY - 92, 0.66, 10, true);
+      this.spawnGroundCrackNetwork(blastX, this.groundY, 260, 12, 1.65);
+      this.spawnDebrisBurst(blastX, this.groundY, 26, 1.35);
       this.spawnVfxAnim(1, blastX, this.groundY - 148, 270, 340, 0.62, { flipX: dir < 0, inFront: true });
       this.spawnVfxAnim(0, blastX, this.groundY - 94, 340, 340, 0.50, { flipX: dir < 0, inFront: true });
       this.spawnVfxAnim(6, blastX, this.groundY - 94, 330, 330, 0.44, { inFront: true });
@@ -1962,6 +2095,27 @@ export class BrawlerEx extends Fighter {
       this._lightningImpacts[i].age += dt;
       if (this._lightningImpacts[i].age >= this._lightningImpacts[i].maxLife) this._lightningImpacts.splice(i, 1);
     }
+    for (let i = this._groundCracks.length - 1; i >= 0; i--) {
+      this._groundCracks[i].age += dt;
+      if (this._groundCracks[i].age >= this._groundCracks[i].maxLife) this._groundCracks.splice(i, 1);
+    }
+    for (let i = this._debrisShards.length - 1; i >= 0; i--) {
+      const d = this._debrisShards[i];
+      d.age += dt;
+      d.vy += 980 * dt;
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      if (d.y > d.groundY - 2) {
+        d.y = d.groundY - 2;
+        d.vy = -Math.abs(d.vy) * 0.36;
+        d.vx *= 0.68;
+      }
+      if (d.age >= d.maxLife) this._debrisShards.splice(i, 1);
+    }
+    for (let i = this._thunderSlashes.length - 1; i >= 0; i--) {
+      this._thunderSlashes[i].age += dt;
+      if (this._thunderSlashes[i].age >= this._thunderSlashes[i].maxLife) this._thunderSlashes.splice(i, 1);
+    }
     if (this._sonicRail) {
       this._sonicRail.age += dt;
       if (this._sonicRail.age >= this._sonicRail.maxLife) this._sonicRail = null;
@@ -2082,22 +2236,40 @@ export class BrawlerEx extends Fighter {
       ctx.fillRect(Math.round(cx - 1050), by, 2100, 86);
     }
 
-    // Horizontal vacuum wind-streaks pulling INWARD into Raijin's clenched fist during Act 2 charge!
-    const dir = this._trueUltFacing || this.facing || 1;
-    ctx.globalAlpha = 0.42 * a;
-    for (let i = 0; i < 20; i++) {
-      const len = 18 + (i % 4) * 10;
-      const rx = Math.round(cx - 640 + (((i * 197 - Math.floor(t * 920 * dir)) % 1280) + 1280) % 1280);
-      const ry = Math.round(gy - 30 - ((i * 47) % 320));
-      ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#38bdf8';
-      ctx.fillRect(rx, ry, len, 2);
+    // Soft upper-vault storm atmosphere glow (NO blocky cloud rectangles cluttering cathedral architecture!)
+    const flashIdx = Math.floor(t * 7.5);
+    const stormPulse = flashIdx % 3 === 0 ? 1.0 : 0.38;
+    if (renderer) {
+      this._drawBloomGlow(ctx, renderer, cx - 220, gy - 350, 560, 220, '#38bdf8', 0.20 * stormPulse * a);
+      this._drawBloomGlow(ctx, renderer, cx + 220, gy - 340, 560, 220, '#6366f1', 0.24 * stormPulse * a);
+      if (flashIdx % 3 === 0) {
+        this._drawBloomGlow(ctx, renderer, cx, gy - 330, 620, 240, '#fbbf24', 0.16 * a);
+      }
     }
 
-    // Periodic distant horizon sky-lightning flashes behind the fighters
-    const flashIdx = Math.floor(t * 7.5);
+    // Horizontal anime Mach speedlines & vacuum wind-streaks (top & bottom dramatic framing!)
+    const dir = this._trueUltFacing || this.facing || 1;
+    const isMachDash = Boolean(this._sonicRail);
+    ctx.globalCompositeOperation = 'lighter';
+    const streakCount = isMachDash ? 34 : 22;
+    for (let i = 0; i < streakCount; i++) {
+      const speed = isMachDash ? 1850 : 940;
+      const len = isMachDash ? 42 + (i % 4) * 26 : 18 + (i % 4) * 12;
+      const rx = Math.round(cx - 680 + (((i * 197 - Math.floor(t * speed * dir)) % 1360) + 1360) % 1360);
+      const inBand = i < 12;
+      const ry = inBand
+        ? (i % 2 === 0 ? Math.round(gy - 372 + (i * 9)) : Math.round(gy - 22 - (i * 5)))
+        : Math.round(gy - 36 - ((i * 47) % 310));
+      ctx.globalAlpha = (inBand ? 0.56 : 0.38) * a;
+      ctx.fillStyle = i % 3 === 0 ? '#fef08a' : i % 2 === 0 ? '#38bdf8' : '#818cf8';
+      ctx.fillRect(rx, ry, len, 2);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Periodic distant horizon forked sky-lightning flashes behind the fighters
     if (flashIdx % 3 === 0) {
       const bx = Math.round(cx + Math.sin(flashIdx * 3.7) * 340);
-      drawTempestPixelBolt(ctx, bx, gy - 440, bx + Math.sin(flashIdx) * 48, gy - 40, 7, 20, flashIdx * 11, 0.40 * a);
+      drawTempestPixelBolt(ctx, bx, gy - 410, bx + Math.sin(flashIdx) * 52, gy - 34, 8, 22, flashIdx * 11, 0.52 * a);
     }
     ctx.restore();
 
@@ -2153,10 +2325,39 @@ export class BrawlerEx extends Fighter {
       const drumR = 132;
       const drumPts = [];
       // Radiant golden-azure Thunder-God bloom illuminating the storm backdrop behind Raijin!
-      this._drawBloomGlow(ctx, renderer, arcCx, arcCy + 10, 480, 420, '#38bdf8', 0.34 * da);
-      this._drawBloomGlow(ctx, renderer, arcCx, arcCy + 8, 360, 340, '#fbbf24', 0.42 * da);
+      this._drawBloomGlow(ctx, renderer, arcCx, arcCy + 10, 460, 400, '#38bdf8', 0.34 * da);
+      this._drawBloomGlow(ctx, renderer, arcCx, arcCy + 8, 340, 320, '#fbbf24', 0.42 * da);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
+      // Counter-rotating dashed Raijin electric circuit rings + orbiting pixel diamond glyphs behind Tomoe Mandala!
+      ctx.globalCompositeOperation = 'lighter';
+      for (let ring = 0; ring < 2; ring++) {
+        const rad = ring === 0 ? 114 : 148;
+        const rot = t * (ring === 0 ? 1.8 : -1.35);
+        const segs = ring === 0 ? 36 : 48;
+        for (let k = 0; k < segs; k++) {
+          if (k % 3 === 2) continue;
+          const a0 = rot + (k / segs) * Math.PI * 2;
+          const px = Math.round((arcCx + Math.cos(a0) * rad) / 2) * 2;
+          const py = Math.round((arcCy + 6 + Math.sin(a0) * rad * 0.92) / 2) * 2;
+          ctx.globalAlpha = (ring === 0 ? 0.62 : 0.44) * da;
+          ctx.fillStyle = ring === 0 ? '#38bdf8' : '#fbbf24';
+          ctx.fillRect(px - 1, py - 1, 2, 2);
+        }
+        // 4 crisp orbiting diamond glyph nodes on each circuit ring
+        for (let g = 0; g < 4; g++) {
+          const ga = rot * 1.4 + (g * Math.PI) / 2;
+          const gx = Math.round((arcCx + Math.cos(ga) * rad) / 2) * 2;
+          const gy2 = Math.round((arcCy + 6 + Math.sin(ga) * rad * 0.92) / 2) * 2;
+          ctx.globalAlpha = 0.85 * da;
+          ctx.fillStyle = ring === 0 ? '#fef08a' : '#bae6fd';
+          ctx.fillRect(gx - 4, gy2 - 1, 8, 2);
+          ctx.fillRect(gx - 1, gy2 - 4, 2, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(gx - 1, gy2 - 1, 2, 2);
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over';
       for (let d = 0; d < 6; d++) {
         // High sweeping crown (-160° .. -20°) framing Raijin from cleanly above & outside!
         const ang = (-160 + d * 28) * (Math.PI / 180) + Math.sin(t * 3.2) * 0.035;
@@ -2253,8 +2454,144 @@ export class BrawlerEx extends Fighter {
     ctx.restore();
   }
 
+  _drawGroundCracks(ctx, renderer = null) {
+    if (this._groundCracks.length === 0) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < this._groundCracks.length; i++) {
+      const cr = this._groundCracks[i];
+      const u = Math.min(1, cr.age / Math.max(0.01, cr.maxLife));
+      const grow = Math.min(1, cr.age / 0.14);
+      const fade = u > 0.65 ? Math.max(0, (1 - u) / 0.35) : 1.0;
+      if (fade <= 0.02) continue;
+      const pts = cr.pts;
+      const maxSeg = Math.max(1, Math.ceil((pts.length - 1) * grow));
+      const glowHex = cr.isGold ? '#fbbf24' : '#38bdf8';
+      for (let s = 0; s < maxSeg; s++) {
+        const [ax, ay] = pts[s];
+        const [bx, by] = pts[s + 1];
+        const segFrac = s === maxSeg - 1 ? Math.min(1, (pts.length - 1) * grow - s) : 1;
+        const ex = ax + (bx - ax) * segFrac;
+        const ey = ay + (by - ay) * segFrac;
+        const steps = Math.max(3, Math.ceil(Math.hypot(ex - ax, ey - ay) / 2));
+        for (let k = 0; k <= steps; k++) {
+          const f = k / steps;
+          const px = Math.round((ax + (ex - ax) * f) / 2) * 2;
+          const py = Math.round((ay + (ey - ay) * f) / 2) * 2;
+          // Dark shattered stone seam underneath
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 0.78 * fade;
+          ctx.fillStyle = '#090b18';
+          ctx.fillRect(px - 2, py - 1, 4, 4);
+          // Glowing electric fissure core inside the crack
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.84 * fade;
+          ctx.fillStyle = glowHex;
+          ctx.fillRect(px - 1, py - 1, 2, 2);
+          if (k % 3 === 0) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(px, py, 2, 2);
+          }
+        }
+        // Tiny electric embers drifting upward out of the cracked stone
+        if (s >= 1 && s % 2 === 1 && fade > 0.25) {
+          const rise = Math.round((cr.age * 42 + i * 7) % 24);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.78 * fade * (1 - rise / 24);
+          ctx.fillStyle = cr.isGold ? '#fef08a' : '#bae6fd';
+          ctx.fillRect(Math.round(ex), Math.round(ey - rise), 2, 2);
+        }
+      }
+      if (i % 4 === 0 && renderer) {
+        this._drawBloomGlow(ctx, renderer, pts[0][0], pts[0][1], 140, 38, glowHex, 0.22 * fade);
+      }
+    }
+    ctx.restore();
+  }
+
+  _drawDebrisShards(ctx) {
+    if (this._debrisShards.length === 0) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < this._debrisShards.length; i++) {
+      const d = this._debrisShards[i];
+      const u = Math.min(1, d.age / Math.max(0.01, d.maxLife));
+      const fade = u > 0.72 ? Math.max(0, (1 - u) / 0.28) : 1.0;
+      if (fade <= 0.02) continue;
+      const px = Math.round(d.x / 2) * 2;
+      const py = Math.round(d.y / 2) * 2;
+      // Dark sculpted cathedral stone slab + blazing golden/cyan electric rim highlight!
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.94 * fade;
+      ctx.fillStyle = '#14122b';
+      ctx.fillRect(px - (d.w >> 1), py - (d.h >> 1), d.w, d.h);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(px - (d.w >> 1), py - (d.h >> 1), d.w - 2, d.h - 2);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.92 * fade;
+      ctx.fillStyle = d.rimHex;
+      ctx.fillRect(px - (d.w >> 1), py - (d.h >> 1), d.w, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - (d.w >> 1), py - (d.h >> 1), 2, 2);
+    }
+    ctx.restore();
+  }
+
+  _drawThunderSlashes(ctx, renderer = null) {
+    if (this._thunderSlashes.length === 0) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < this._thunderSlashes.length; i++) {
+      const sl = this._thunderSlashes[i];
+      const u = Math.min(1, sl.age / Math.max(0.01, sl.maxLife));
+      const env = u < 0.14 ? u / 0.14 : Math.max(0, 1 - (u - 0.14) / 0.86);
+      if (env <= 0.02) continue;
+      // Head sweeps rapidly (`0 -> 1` in first 28%), tail chases cleanly behind for anime ribbon feel!
+      const headT = Math.min(1, u / 0.28);
+      const tailT = Math.max(0, (u - 0.18) / 0.82);
+      if (headT <= tailT + 0.02) continue;
+      const dx = sl.x1 - sl.x0;
+      const dy = sl.y1 - sl.y0;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const midT = (headT + tailT) * 0.5;
+      const mx = sl.x0 + dx * midT;
+      const my = sl.y0 + dy * midT;
+      const edgeHex = sl.isGold ? '#fbbf24' : '#38bdf8';
+      const innerHex = sl.isGold ? '#fef08a' : '#bae6fd';
+      this._drawBloomGlow(ctx, renderer, mx, my, len * 0.72, 96, edgeHex, 0.30 * env);
+
+      const segs = 36;
+      ctx.globalCompositeOperation = 'lighter';
+      for (let s = 0; s <= segs; s++) {
+        const localF = s / segs;
+        const t = tailT + (headT - tailT) * localF;
+        // Slight graceful anime ribbon curve + razor taper to needle points at both ends!
+        const bow = Math.sin(t * Math.PI) * 14 * (sl.isGold ? 1 : -1);
+        const taper = Math.sin(localF * Math.PI);
+        const halfW = Math.max(1, Math.round(sl.width * 0.5 * taper * env));
+        const px = Math.round((sl.x0 + dx * t + nx * bow) / 2) * 2;
+        const py = Math.round((sl.y0 + dy * t + ny * bow) / 2) * 2;
+        // Electric edge ribbon
+        ctx.globalAlpha = 0.72 * env * taper;
+        ctx.fillStyle = edgeHex;
+        ctx.fillRect(px - halfW, py - halfW, halfW * 2, halfW * 2);
+        // Inner razor spine
+        const coreW = Math.max(1, Math.round(halfW * 0.48));
+        ctx.globalAlpha = 0.94 * env * taper;
+        ctx.fillStyle = innerHex;
+        ctx.fillRect(px - coreW, py - coreW, coreW * 2, coreW * 2);
+        ctx.globalAlpha = 1.0 * env;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+      }
+    }
+    ctx.restore();
+  }
+
   _drawSonicTunnelPunch(ctx, renderer = null) {
-    // Blazing tapered horizontal Mach Shock-Beam + Radiant HD-2D Corridor Bloom!
+    // Razor-tapered horizontal Mach Shock-Lance + Silky HD-2D Corridor Bloom!
     if (this._sonicRail) {
       const sr = this._sonicRail;
       const u = Math.min(1, sr.age / Math.max(0.01, sr.maxLife));
@@ -2264,53 +2601,53 @@ export class BrawlerEx extends Fighter {
         const spanW = Math.max(80, Math.round(Math.abs(sr.x1 - sr.x0)));
         const midX = minX + spanW * 0.5;
         const ry = Math.round(sr.y);
-        const hOuter = Math.max(4, Math.round(48 * env));
-        const hMid = Math.max(4, Math.round(26 * env));
-        const hCore = Math.max(2, Math.round(12 * env));
+        const hOuter = Math.max(4, Math.round(28 * env));
+        const hMid = Math.max(2, Math.round(14 * env));
+        const hCore = Math.max(2, Math.round(6 * env));
 
-        // Blazing horizontal HD-2D electric corridor glow lighting up the entire arena!
-        this._drawBloomGlow(ctx, renderer, midX, ry, spanW * 1.35, 220 * env + 70, '#38bdf8', 0.54 * env);
-        this._drawBloomGlow(ctx, renderer, midX, ry, spanW * 1.15, 130 * env + 44, '#fbbf24', 0.62 * env);
+        // Silky horizontal HD-2D electric corridor glow lighting up the entire arena (NO thick white wall!)
+        this._drawBloomGlow(ctx, renderer, midX, ry, spanW * 1.32, 180 * env + 60, '#38bdf8', 0.44 * env);
+        this._drawBloomGlow(ctx, renderer, midX, ry, spanW * 1.12, 108 * env + 36, '#fbbf24', 0.48 * env);
 
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.globalCompositeOperation = 'lighter';
-        // Draw tapered pixel lance segments (tapers smoothly to sharp needle tips at both ends!)
-        const segs = 28;
+        // Draw razor-tapered pixel lance segments (needle tips at both ends!)
+        const segs = 32;
         const segW = Math.ceil(spanW / segs);
         for (let s = 0; s < segs; s++) {
           const f = (s + 0.5) / segs;
-          const endTaper = Math.min(1, Math.min(f, 1 - f) / 0.16);
+          const endTaper = Math.min(1, Math.min(f, 1 - f) / 0.20);
           const sx = minX + Math.round((s / segs) * spanW);
           const ho = Math.max(2, Math.round((hOuter * endTaper) / 2) * 2);
           const hm = Math.max(2, Math.round((hMid * endTaper) / 2) * 2);
           const hc = Math.max(2, Math.round((hCore * endTaper) / 2) * 2);
-          ctx.globalAlpha = 0.66 * env * endTaper;
+          ctx.globalAlpha = 0.52 * env * endTaper;
           ctx.fillStyle = '#38bdf8';
           ctx.fillRect(sx, ry - Math.round(ho * 0.5), segW, ho);
-          ctx.globalAlpha = 0.90 * env * endTaper;
+          ctx.globalAlpha = 0.84 * env * endTaper;
           ctx.fillStyle = '#fbbf24';
           ctx.fillRect(sx, ry - Math.round(hm * 0.5), segW, hm);
-          ctx.globalAlpha = 1.0 * env * endTaper;
+          ctx.globalAlpha = 0.98 * env * endTaper;
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(sx, ry - Math.round(hc * 0.5), segW, hc);
         }
-        // Horizontal Mach shock-streaks flanking top & bottom of the rail
-        for (let i = 0; i < 6; i++) {
-          const syOff = (i % 2 === 0 ? -1 : 1) * (Math.round(hOuter * 0.55) + 8 + (i * 5));
-          const sx = minX + 24 + ((i * 89 + Math.floor(sr.age * 700)) % Math.max(60, spanW - 96));
-          ctx.globalAlpha = 0.85 * env;
+        // Razor horizontal Mach air-shear filaments flanking top & bottom of the rail
+        for (let i = 0; i < 8; i++) {
+          const syOff = (i % 2 === 0 ? -1 : 1) * (Math.round(hOuter * 0.65) + 10 + (i * 6));
+          const sx = minX + 20 + ((i * 89 + Math.floor(sr.age * 820)) % Math.max(60, spanW - 96));
+          ctx.globalAlpha = 0.78 * env;
           ctx.fillStyle = i % 2 === 0 ? '#fef08a' : '#38bdf8';
-          ctx.fillRect(sx, ry + syOff, 54, 2);
+          ctx.fillRect(sx, ry + syOff, 58, 2);
         }
         ctx.restore();
-        // Twin crackling lightning rails along the horizontal tunnel
-        drawTempestPixelBolt(ctx, sr.x0 + 24, ry - Math.round(hMid * 0.45), sr.x1 - 24, ry - Math.round(hMid * 0.45), 9, 10, Math.floor(sr.age * 28) * 5, 0.92 * env);
-        drawTempestPixelBolt(ctx, sr.x0 + 24, ry + Math.round(hMid * 0.45), sr.x1 - 24, ry + Math.round(hMid * 0.45), 9, 10, Math.floor(sr.age * 28) * 11 + 7, 0.92 * env);
+        // Twin razor-thin forked crackling lightning filaments spiraling along the Mach corridor!
+        drawTempestPixelBolt(ctx, sr.x0 + 28, ry - 12, sr.x1 - 28, ry - 10, 10, 11, Math.floor(sr.age * 28) * 5, 0.88 * env, { rimColor: '#38bdf8' });
+        drawTempestPixelBolt(ctx, sr.x0 + 28, ry + 12, sr.x1 - 28, ry + 10, 10, 11, Math.floor(sr.age * 28) * 11 + 7, 0.88 * env, { rimColor: '#fbbf24' });
       }
     }
 
-    // 5 Stacked Vertical Expanding Solid Crisp 2px Sonic-Boom Pressure Rings + Glowing Ring Halos!
+    // 5 Stacked Vertical Expanding Razor-Sharp 2px Sonic-Boom Pressure Rings + Silky Halos!
     if (this._sonicRings.length > 0) {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
@@ -2323,19 +2660,16 @@ export class BrawlerEx extends Fighter {
         if (env <= 0.02) continue;
         const rx = 8 + u * rg.maxRx;
         const ry = 26 + Math.pow(u, 0.62) * rg.maxRy;
-        this._drawBloomGlow(ctx, renderer, rg.x, rg.y, rx * 5.2, ry * 2.5, rg.isGold ? '#fbbf24' : '#38bdf8', 0.28 * env);
-        const steps = 112;
+        this._drawBloomGlow(ctx, renderer, rg.x, rg.y, rx * 4.8, ry * 2.3, rg.isGold ? '#fbbf24' : '#38bdf8', 0.24 * env);
+        const steps = 120;
         for (let k = 0; k < steps; k++) {
           const ang = (k / steps) * Math.PI * 2;
           const px = Math.round((rg.x + Math.cos(ang) * rx) / 2) * 2;
           const py = Math.round((rg.y + Math.sin(ang) * ry) / 2) * 2;
-          ctx.globalAlpha = 0.46 * env;
+          ctx.globalAlpha = 0.68 * env;
           ctx.fillStyle = rg.isGold ? '#fbbf24' : '#38bdf8';
-          ctx.fillRect(px - 4, py - 4, 8, 8);
-          ctx.globalAlpha = 0.86 * env;
-          ctx.fillStyle = rg.isGold ? '#fef08a' : '#bae6fd';
           ctx.fillRect(px - 2, py - 2, 4, 4);
-          ctx.globalAlpha = 1.0 * env;
+          ctx.globalAlpha = 0.98 * env;
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(px - 1, py - 1, 2, 2);
         }
@@ -2357,75 +2691,88 @@ export class BrawlerEx extends Fighter {
       const cy = imp.y;
       const curR = 24 + Math.pow(u, 0.56) * imp.maxR;
 
-      // 0. HUGE MULTI-LAYER HD-2D RADIANT BLOOM LIGHTMAPS illuminating the arena, floor & cathedral!
-      this._drawBloomGlow(ctx, renderer, cx, cy, curR * 4.0, curR * 3.5, '#38bdf8', 0.72 * env);
-      this._drawBloomGlow(ctx, renderer, cx, cy, curR * 2.8, curR * 2.4, '#fbbf24', 0.82 * env);
-      if (u < 0.85) {
-        const coreB = Math.pow(1 - u / 0.85, 0.8);
-        this._drawBloomGlow(ctx, renderer, cx, cy, curR * 1.75, curR * 1.75, '#fef08a', 0.92 * coreB);
+      // 0. SILKY MULTI-LAYER HD-2D RADIANT BLOOM LIGHTMAPS illuminating the arena, floor & cathedral!
+      this._drawBloomGlow(ctx, renderer, cx, cy, curR * 3.8, curR * 3.3, '#38bdf8', 0.56 * env);
+      this._drawBloomGlow(ctx, renderer, cx, cy, curR * 2.5, curR * 2.2, '#fbbf24', 0.64 * env);
+      if (u < 0.80) {
+        const coreB = Math.pow(1 - u / 0.80, 0.85);
+        this._drawBloomGlow(ctx, renderer, cx, cy, curR * 1.5, curR * 1.5, '#fef08a', 0.78 * coreB);
       }
 
-      // 1. Blinding Initial Lightning Core + Additive Tapered 4-Point Pixel Cross-Flare (`u < 0.60`)
+      // 1. Razor-Tapered Needle-Tip 4-Point Anime Lens-Flare Cross (`u < 0.55`)
       ctx.globalCompositeOperation = 'lighter';
-      if (u < 0.60) {
-        const coreEnv = 1 - u / 0.60;
-        const flareW = Math.round(imp.maxR * (1.25 + u * 1.1) * coreEnv);
-        const flareH = Math.round(imp.maxR * (0.90 + u * 0.75) * coreEnv);
-        ctx.globalAlpha = 0.72 * coreEnv;
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(cx - flareW, cy - 8, flareW * 2, 16);
-        ctx.fillRect(cx - 8, cy - flareH, 16, flareH * 2);
-        ctx.globalAlpha = 0.94 * coreEnv;
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(cx - Math.round(flareW * 0.76), cy - 4, Math.round(flareW * 1.52), 8);
-        ctx.fillRect(cx - 4, cy - Math.round(flareH * 0.76), 8, Math.round(flareH * 1.52));
-        ctx.globalAlpha = 1.0 * coreEnv;
+      if (u < 0.55) {
+        const coreEnv = 1 - u / 0.55;
+        const flareW = Math.round(imp.maxR * (1.2 + u * 0.95) * coreEnv);
+        const flareH = Math.round(imp.maxR * (0.85 + u * 0.65) * coreEnv);
+        const segs = 12;
+        for (let s = 0; s < segs; s++) {
+          const f0 = s / segs;
+          const f1 = (s + 1) / segs;
+          const fall = Math.pow(1 - f0, 1.5);
+          const hh = Math.max(1, Math.round(6 * fall));
+          const x0 = Math.round(flareW * f0);
+          const x1 = Math.round(flareW * f1);
+          const dx = Math.max(2, x1 - x0);
+          ctx.globalAlpha = 0.76 * coreEnv * fall;
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(cx + x0, cy - hh, dx, hh * 2);
+          ctx.fillRect(cx - x1, cy - hh, dx, hh * 2);
+          ctx.globalAlpha = 0.98 * coreEnv * fall;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(cx + x0, cy - 1, dx, 2);
+          ctx.fillRect(cx - x1, cy - 1, dx, 2);
+
+          const y0 = Math.round(flareH * f0);
+          const y1 = Math.round(flareH * f1);
+          const dy = Math.max(2, y1 - y0);
+          ctx.globalAlpha = 0.76 * coreEnv * fall;
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(cx - hh, cy + y0, hh * 2, dy);
+          ctx.fillRect(cx - hh, cy - y1, hh * 2, dy);
+          ctx.globalAlpha = 0.98 * coreEnv * fall;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(cx - 1, cy + y0, 2, dy);
+          ctx.fillRect(cx - 1, cy - y1, 2, dy);
+        }
+        const cr = Math.round(12 + 16 * coreEnv);
+        ctx.globalAlpha = 0.95 * coreEnv;
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(cx - Math.round(flareW * 0.52), cy - 2, Math.round(flareW * 1.04), 4);
-        ctx.fillRect(cx - 2, cy - Math.round(flareH * 0.52), 4, Math.round(flareH * 1.04));
-        const cr = Math.round(20 + 28 * coreEnv);
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(cx - cr, cy - Math.round(cr * 0.65), cr * 2, Math.round(cr * 1.3));
-        ctx.fillRect(cx - Math.round(cr * 0.65), cy - cr, Math.round(cr * 1.3), cr * 2);
-        ctx.fillStyle = '#ffffff';
-        const inner = Math.round(cr * 0.64);
-        ctx.fillRect(cx - inner, cy - inner, inner * 2, inner * 2);
+        ctx.fillRect(cx - cr, cy - Math.round(cr * 0.5), cr * 2, Math.round(cr));
+        ctx.fillRect(cx - Math.round(cr * 0.5), cy - cr, Math.round(cr), cr * 2);
       }
 
-      // 2. Dual Expanding Additive Glowing Jagged Electric Shock-Rings (solid crisp 2px pixel electric plasma dome!)
+      // 2. Crisp Razor-Thin Dual Expanding Jagged Electric Wave-Fronts (`2px` white + `4px` rim — ZERO thick ring blobs!)
       const ringSteps = 148;
       const tick = Math.floor(imp.age * 32);
       for (let k = 0; k < ringSteps; k++) {
         const ang = (k / ringSteps) * Math.PI * 2;
-        const jag1 = Math.sin(k * 5.7 + imp.seed + tick) * (6 + 9 * env);
+        const jag1 = Math.sin(k * 7.3 + imp.seed + tick) * (4 + 7 * env);
         const r1 = curR + jag1;
         const px1 = Math.round((cx + Math.cos(ang) * r1) / 2) * 2;
         const py1 = Math.round((cy + Math.sin(ang) * r1 * 0.88) / 2) * 2;
-        ctx.globalAlpha = 0.42 * env;
+        ctx.globalAlpha = 0.76 * env;
         ctx.fillStyle = k % 2 === 0 ? '#38bdf8' : '#fbbf24';
-        ctx.fillRect(px1 - 5, py1 - 5, 10, 10);
-        ctx.globalAlpha = 0.90 * env;
-        ctx.fillStyle = k % 2 === 0 ? '#bae6fd' : '#fef08a';
-        ctx.fillRect(px1 - 3, py1 - 3, 6, 6);
-        ctx.globalAlpha = 1.0 * env;
+        ctx.fillRect(px1 - 2, py1 - 2, 4, 4);
+        ctx.globalAlpha = 0.98 * env;
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(px1 - 1, py1 - 1, 2, 2);
 
-        if (k % 2 === 0) {
-          const r2 = curR * 0.72 - jag1 * 0.6;
+        if (k % 3 !== 2) {
+          const r2 = curR * 0.68 - jag1 * 0.5;
           const px2 = Math.round((cx + Math.cos(ang) * r2) / 2) * 2;
           const py2 = Math.round((cy + Math.sin(ang) * r2 * 0.88) / 2) * 2;
-          ctx.globalAlpha = 0.86 * env;
+          ctx.globalAlpha = 0.72 * env;
           ctx.fillStyle = '#fef08a';
-          ctx.fillRect(px2 - 2, py2 - 2, 4, 4);
+          ctx.fillRect(px2 - 1, py2 - 1, 2, 2);
         }
       }
 
-      // 3. Radial Shattering Forked Glowing Lightning Rays exploding outward from core!
+      // 3. Razor-Sharp Fractal-Forked Radial Lightning Bolts exploding outward from core!
       const rays = imp.rayCount || 10;
       for (let r = 0; r < rays; r++) {
         const ang = (r / rays) * Math.PI * 2 + (imp.seed % 7) * 0.19;
-        const rayLen = curR * (0.85 + (r % 3) * 0.22);
+        const rayLen = curR * (0.86 + (r % 3) * 0.24);
         const startR = curR * 0.14;
         drawTempestPixelBolt(
           ctx,
@@ -2433,10 +2780,11 @@ export class BrawlerEx extends Fighter {
           cy + Math.sin(ang) * startR * 0.88,
           cx + Math.cos(ang) * rayLen,
           cy + Math.sin(ang) * rayLen * 0.88,
-          6,
-          14 + Math.round(env * 8),
+          7,
+          16 + Math.round(env * 8),
           imp.seed + r * 17 + tick * 3,
-          0.95 * env
+          0.92 * env,
+          { rimColor: r % 2 === 0 ? '#38bdf8' : '#fbbf24' }
         );
       }
     }
@@ -2460,6 +2808,7 @@ export class BrawlerEx extends Fighter {
     }
 
     this._drawGroundSeals(ctx, renderer);
+    this._drawGroundCracks(ctx, renderer);
     this._exParticles?.renderBack(ctx);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
@@ -2500,7 +2849,9 @@ export class BrawlerEx extends Fighter {
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
+    this._drawDebrisShards(ctx);
     this._drawSonicTunnelPunch(ctx, renderer);
+    this._drawThunderSlashes(ctx, renderer);
     this._drawLightningImpacts(ctx, renderer);
     this._drawFistChargeCore(ctx, renderer);
     this._drawVfxLayer(ctx, sprites, true, renderer);
@@ -2508,7 +2859,7 @@ export class BrawlerEx extends Fighter {
     for (let i = 0; i < this.tempestBolts.length; i++) {
       const b = this.tempestBolts[i];
       const alpha = Math.max(0, 1 - b.age / Math.max(0.001, b.maxLife));
-      drawTempestPixelBolt(ctx, b.x0, b.y0, b.x1, b.y1, 7, b.jag, b.seed, alpha);
+      drawTempestPixelBolt(ctx, b.x0, b.y0, b.x1, b.y1, 8, b.jag, b.seed, alpha);
     }
 
     this._exParticles?.renderFront(ctx);
