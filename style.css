@@ -8807,3 +8807,811 @@ html.is-mobile-landscape .adv-st-relic-desc {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+
+/* =========================================================================
+   PLAYER VS AI SUB-MODES (EXHIBITION / ARCADE 5 / TRAINING LAB),
+   5-STAGE ARCADE LADDER HUD + VICTORY BRACKET + TROPHY PIPS,
+   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps175)
+   ========================================================================= */
+
+/* Sub-Mode Switcher in #vs-quick-config-bar (Strictly visible in PLAYER VS AI only!) */
+.p1-submode-group.hidden,
+.p1-submode-only.hidden,
+.p1-arcade-summary-chip.hidden,
+.quick-cfg-group.hidden,
+.quick-cfg-sep.hidden,
+#btn-quick-hp-mode.hidden,
+#btn-roster-config-badge.hidden {
+  display: none !important;
+}
+
+.landing-overlay:not([data-vs-control="1p"]) .p1-submode-group,
+.landing-overlay:not([data-vs-control="1p"]) .p1-submode-only,
+.landing-overlay:not([data-vs-control="1p"]) .p1-arcade-summary-chip,
+.landing-overlay[data-branch="adventure"] .p1-submode-group,
+.landing-overlay[data-branch="adventure"] .p1-submode-only,
+.landing-overlay[data-branch="adventure"] .p1-arcade-summary-chip {
+  display: none !important;
+}
+
+.p1-submode-group {
+  gap: 3px;
+}
+
+.p1-submode-pill {
+  border-color: #1e3a5f;
+  background: #0a1424;
+  color: #93c5fd;
+  padding: 4px 6px;
+  font-size: 0.24rem;
+}
+
+.p1-submode-pill:hover {
+  border-color: #38bdf8;
+  color: #e0f2fe;
+}
+
+.p1-submode-pill.is-active[data-p1-submode="exhibition"] {
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  border-color: #38bdf8;
+  color: #f0f9ff;
+  box-shadow: inset 0 1px 0 rgba(186, 230, 253, 0.35);
+}
+
+.p1-submode-pill.is-active[data-p1-submode="arcade"] {
+  background: linear-gradient(180deg, #78350f 0%, #3b1905 100%);
+  border-color: #facc15;
+  color: #fef08a;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.4), 0 0 8px rgba(250, 204, 21, 0.28);
+}
+
+.p1-submode-pill.is-active[data-p1-submode="training"] {
+  background: linear-gradient(180deg, #065f46 0%, #052e23 100%);
+  border-color: #34d399;
+  color: #ecfdf5;
+  box-shadow: inset 0 1px 0 rgba(167, 243, 208, 0.36), 0 0 8px rgba(52, 211, 153, 0.25);
+}
+
+.p1-arcade-summary-chip {
+  flex: 1 1 auto;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  letter-spacing: 0.05em;
+  color: #fde68a;
+  background: linear-gradient(180deg, rgba(69, 26, 3, 0.84) 0%, rgba(28, 12, 6, 0.92) 100%);
+  border: 1px solid #b45309;
+  padding: 4px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Per-Champion Persistent Arcade Trophy Crown Pip on PLAYER VS AI Character Select Tiles */
+.landing-overlay:not([data-vs-control="1p"]) .p1-arcade-trophy-pip,
+.landing-overlay[data-branch="adventure"] .p1-arcade-trophy-pip,
+.p1-arcade-trophy-pip.hidden {
+  display: none !important;
+}
+
+.p1-arcade-trophy-pip {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-pixel);
+  font-size: 0.21rem;
+  line-height: 1;
+  padding: 2px 3px;
+  background: linear-gradient(180deg, #854d0e 0%, #422006 100%);
+  border: 1px solid #facc15;
+  outline: 1px solid #000;
+  color: #fef9c3;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.42);
+  pointer-events: none;
+}
+
+.p1-arcade-trophy-pip[data-trophy-rank="S+"] {
+  background: linear-gradient(180deg, #b45309 0%, #7c2d12 100%);
+  border-color: #fef08a;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(254, 240, 138, 0.65);
+}
+
+.p1-arcade-trophy-pip[data-trophy-rank="A"] {
+  background: linear-gradient(180deg, #1e3a5f 0%, #0f172a 100%);
+  border-color: #7dd3fc;
+  color: #e0f2fe;
+  box-shadow: none;
+}
+
+.p1-arcade-trophy-pip svg {
+  width: 8px;
+  height: 7px;
+  flex-shrink: 0;
+}
+
+/* Stage 5 FINAL RIVAL Golden-Crimson HUD Nameplate Badge & Mode Badge Variants */
+.hud-rival-badge {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.24rem, 0.56vw, 0.34rem);
+  line-height: 1;
+  letter-spacing: 0.05em;
+  padding: 2px 5px;
+  background: linear-gradient(180deg, #991b1b 0%, #450a0a 100%);
+  border: 1px solid #facc15;
+  outline: 1px solid #000;
+  color: #fef08a;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.55);
+  white-space: nowrap;
+}
+
+.hud-rival-badge.hidden,
+#app.is-adventure-active .hud-rival-badge {
+  display: none !important;
+}
+
+.fighter-plate.is-final-rival-plate .portrait-frame {
+  border-color: #facc15 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.65), inset 0 0 8px rgba(250, 204, 21, 0.35);
+}
+
+.hud-mode-tag.is-arcade-final {
+  border-color: #facc15;
+  background: linear-gradient(180deg, #7f1d1d 0%, #3b0808 100%);
+  color: #fef08a;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.48);
+}
+
+.hud-mode-tag.is-training-lab {
+  border-color: #34d399;
+  background: linear-gradient(180deg, #064e3b 0%, #022c22 100%);
+  color: #a7f3d0;
+}
+
+/* Victory Overlay: 5-Stage Arcade Ladder Mini Progress Strip & Champion Clear Plaque */
+.victory-arcade-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  background: rgba(6, 10, 20, 0.92);
+  border: 1px solid #475569;
+  outline: 1px solid #000;
+}
+
+.victory-arcade-strip.hidden {
+  display: none !important;
+}
+
+.victory-arcade-rank-badge {
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, #a16207 0%, #451a03 100%);
+  border: 2px solid #fef08a;
+  outline: 1px solid #000;
+  color: #ffffff;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.55);
+}
+
+.victory-arcade-rank-badge.hidden {
+  display: none !important;
+}
+
+.victory-arcade-nodes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+
+.arcade-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 3px;
+  background: #0b1120;
+  border: 1px solid #334155;
+  position: relative;
+}
+
+.arcade-node-port-wrap {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #475569;
+  background: #050811;
+  overflow: hidden;
+}
+
+.arcade-node-port {
+  width: 32px;
+  height: 32px;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.arcade-node-tag {
+  font-family: var(--font-pixel);
+  font-size: 0.22rem;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.arcade-node-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  color: #fef08a;
+  background: rgba(5, 8, 17, 0.62);
+  text-shadow: 0 1px 0 #000;
+}
+
+.arcade-node.is-defeated {
+  border-color: #15803d;
+  background: rgba(6, 36, 22, 0.72);
+}
+
+.arcade-node.is-defeated .arcade-node-port {
+  filter: grayscale(0.55) brightness(0.75);
+}
+
+.arcade-node.is-defeated .arcade-node-status {
+  color: #4ade80;
+}
+
+.arcade-node.is-current-win {
+  border-color: #facc15;
+  background: rgba(66, 32, 6, 0.8);
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.35);
+}
+
+.arcade-node.is-current-win.is-final-rival {
+  border-color: #fef08a;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.62);
+}
+
+.arcade-node.is-current-loss {
+  border-color: #ef4444;
+  background: rgba(69, 10, 10, 0.85);
+}
+
+.arcade-node.is-current-loss .arcade-node-status {
+  color: #fca5a5;
+}
+
+.arcade-node.is-next {
+  border-color: #38bdf8;
+  background: rgba(8, 47, 73, 0.86);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.42);
+}
+
+.arcade-node.is-next .arcade-node-tag {
+  color: #7dd3fc;
+}
+
+.arcade-node.is-final-rival {
+  border-color: #b91c1c;
+}
+
+.arcade-node.is-final-rival .arcade-node-tag {
+  color: #fde047;
+}
+
+.victory-overlay.is-arcade-champion-plaque .victory-plaque {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 0 0 1px #b45309,
+    inset 0 0 28px rgba(250, 204, 21, 0.18),
+    0 0 32px rgba(250, 204, 21, 0.34),
+    0 20px 50px rgba(0, 0, 0, 0.92);
+}
+
+#btn-next-challenger.is-arcade-primary {
+  background: linear-gradient(180deg, #b45309 0%, #713f12 100%);
+  border-color: #fef08a;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.42), 0 0 12px rgba(250, 204, 21, 0.38);
+}
+
+/* =========================================================================
+   TRAINING / COMBO LAB TOOLBAR & LIVE PRACTICE TELEMETRY
+   Strictly Visible ONLY in PLAYER VS AI -> TRAINING LAB (0 Leak into VS!)
+   ========================================================================= */
+.training-lab-bar,
+.training-lab-telemetry {
+  position: absolute;
+  z-index: 15;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.training-lab-bar.hidden,
+.training-lab-telemetry.hidden,
+#app.is-landing-open .training-lab-bar,
+#app.is-landing-open .training-lab-telemetry,
+#app.is-adventure-active .training-lab-bar,
+#app.is-adventure-active .training-lab-telemetry,
+#app:not(.is-training-lab-active) .training-lab-bar,
+#app:not(.is-training-lab-active) .training-lab-telemetry {
+  display: none !important;
+}
+
+/* Desktop Collapsible Toolbar: tucked cleanly directly beneath top HUD center */
+.training-lab-bar {
+  top: 104px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  background: rgba(7, 11, 21, 0.9);
+  border: 1px solid #334155;
+  outline: 1px solid #000;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.72);
+  max-width: min(94vw, 680px);
+}
+
+.training-lab-tray {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.training-lab-bar.is-collapsed .training-lab-tray {
+  display: none;
+}
+
+.lab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #0d1526;
+  border: 1px solid #3b4b66;
+  color: #cbd5e1;
+  padding: 4px 7px;
+  font-family: var(--font-pixel);
+  font-size: 0.25rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+
+.lab-pill:hover {
+  border-color: #facc15;
+  color: #ffffff;
+}
+
+.lab-collapse-btn {
+  background: linear-gradient(180deg, #064e3b 0%, #022c22 100%);
+  border-color: #34d399;
+  color: #a7f3d0;
+}
+
+.lab-gem {
+  width: 5px;
+  height: 5px;
+  background: #64748b;
+  flex-shrink: 0;
+}
+
+.lab-pill-dummy[data-dummy-mode="idle"] .lab-gem {
+  background: #38bdf8;
+  box-shadow: 0 0 5px #38bdf8;
+}
+
+.lab-pill-dummy[data-dummy-mode="auto_guard"] {
+  border-color: #facc15;
+  color: #fef08a;
+  background: linear-gradient(180deg, #3c2b0b 0%, #1a1306 100%);
+}
+
+.lab-pill-dummy[data-dummy-mode="auto_guard"] .lab-gem {
+  background: #facc15;
+  box-shadow: 0 0 5px #facc15;
+}
+
+.lab-pill-dummy[data-dummy-mode="fight"] {
+  border-color: #f87171;
+  color: #fecaca;
+  background: linear-gradient(180deg, #450a0a 0%, #1f0608 100%);
+}
+
+.lab-pill-dummy[data-dummy-mode="fight"] .lab-gem {
+  background: #f87171;
+  box-shadow: 0 0 5px #f87171;
+}
+
+.lab-pill-gauge.is-active,
+.lab-pill-hp.is-active {
+  border-color: #34d399;
+  color: #ecfdf5;
+  background: linear-gradient(180deg, #065f46 0%, #052e23 100%);
+}
+
+.lab-pill-gauge.is-active .lab-gem,
+.lab-pill-hp.is-active .lab-gem {
+  background: #34d399;
+  box-shadow: 0 0 5px #34d399;
+}
+
+.lab-pill-reset {
+  border-color: #d4af37;
+  color: #fef08a;
+  background: linear-gradient(180deg, #3b2a09 0%, #1b1204 100%);
+}
+
+/* Live Practice Telemetry Widget (Left-Side Below Top HUD, Strictly Training Lab Only!) */
+.training-lab-telemetry {
+  top: 106px;
+  left: 16px;
+  width: 196px;
+  padding: 7px 9px;
+  background: rgba(6, 10, 20, 0.9);
+  border: 1px solid rgba(52, 211, 153, 0.68);
+  outline: 1px solid #000;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+}
+
+.lab-tel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.lab-tel-kicker {
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  color: #34d399;
+  letter-spacing: 0.05em;
+}
+
+.lab-tel-combo-badge {
+  font-family: var(--font-pixel);
+  font-size: 0.34rem;
+  color: #94a3b8;
+  padding: 2px 6px;
+  background: #0f172a;
+  border: 1px solid #334155;
+}
+
+.lab-tel-combo-badge strong {
+  color: #f8fafc;
+  font-weight: normal;
+}
+
+.lab-tel-combo-badge.is-hot {
+  border-color: #facc15;
+  background: linear-gradient(180deg, #713f12 0%, #3b1905 100%);
+  color: #fde047;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.42);
+}
+
+.lab-tel-combo-badge.is-hot strong {
+  color: #ffffff;
+}
+
+.lab-tel-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lab-tel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: var(--font-pixel);
+  font-size: 0.27rem;
+}
+
+.lab-tel-lbl {
+  color: #94a3b8;
+}
+
+.lab-tel-row strong {
+  color: #f8fafc;
+  font-weight: normal;
+  font-size: 0.30rem;
+}
+
+/* Pause Menu Training Lab Settings Bar */
+.pause-training-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 10px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: rgba(6, 12, 22, 0.9);
+  border: 1px solid rgba(52, 211, 153, 0.55);
+  outline: 1px solid #000;
+}
+
+.pause-training-bar.hidden {
+  display: none !important;
+}
+
+.pause-lab-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pause-lab-lbl {
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  color: #34d399;
+  margin-right: 2px;
+}
+
+.pause-lab-btn {
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  padding: 4px 6px;
+  background: #0d1526;
+  border: 1px solid #3b4b66;
+  color: #cbd5e1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pause-lab-btn.is-active {
+  background: linear-gradient(180deg, #065f46 0%, #052e23 100%);
+  border-color: #34d399;
+  color: #ecfdf5;
+}
+
+.pause-lab-reset-btn {
+  background: linear-gradient(180deg, #3b2a09 0%, #1b1204 100%);
+  border-color: #d4af37;
+  color: #fef08a;
+}
+
+/* =========================================================================
+   RESPONSIVE COMPACT LAYOUTS: MOBILE PORTRAIT (390x844) & LANDSCAPE (844x390)
+   Guarantees 100% Zero-Scroll Character Select & Zero HUD / Touch Overlap
+   ========================================================================= */
+@media (max-width: 760px) {
+  html:not(.is-mobile-landscape) .landing-overlay[data-vs-control="1p"] .vs-mode-origin-chip {
+    display: none;
+  }
+  html:not(.is-mobile-landscape) .p1-submode-group {
+    order: 0;
+    flex: 1 0 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+  }
+  html:not(.is-mobile-landscape) .p1-submode-pill {
+    justify-content: center;
+    padding: 3px 3px;
+    font-size: 0.21rem;
+  }
+  html:not(.is-mobile-landscape) .p1-arcade-summary-chip {
+    order: 2;
+    flex: 1 0 100%;
+    font-size: 0.20rem;
+    padding: 3px 5px;
+  }
+  html:not(.is-mobile-landscape) .landing-overlay[data-vs-control="1p"][data-p1-submode="exhibition"] .vs-quick-config-bar {
+    gap: 3px 4px;
+    padding: 3px 4px;
+  }
+  html:not(.is-mobile-landscape) .landing-overlay[data-vs-control="1p"][data-p1-submode="exhibition"] .quick-stage-strip {
+    order: 3;
+    padding-top: 0;
+  }
+  html:not(.is-mobile-landscape) .landing-overlay[data-vs-control="1p"][data-p1-submode="exhibition"] .quick-cfg-pill,
+  html:not(.is-mobile-landscape) .landing-overlay[data-vs-control="1p"][data-p1-submode="exhibition"] .quick-stage-pill,
+  html:not(.is-mobile-landscape) .landing-overlay[data-vs-control="1p"][data-p1-submode="exhibition"] .roster-config-chip {
+    padding: 2px 4px;
+    font-size: 0.20rem;
+  }
+  html:not(.is-mobile-landscape) .training-lab-bar {
+    top: 84px;
+    left: auto;
+    right: 6px;
+    transform: none;
+    max-width: calc(100vw - 12px);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    padding: 3px 5px;
+    gap: 3px;
+  }
+  html:not(.is-mobile-landscape) .training-lab-bar .lab-pill {
+    padding: 3px 5px;
+    font-size: 0.22rem;
+  }
+  html:not(.is-mobile-landscape) .training-lab-telemetry {
+    top: 84px;
+    left: 6px;
+    width: 162px;
+    padding: 5px 7px;
+  }
+  html:not(.is-mobile-landscape) .lab-tel-kicker,
+  html:not(.is-mobile-landscape) .lab-tel-row {
+    font-size: 0.22rem;
+  }
+  html:not(.is-mobile-landscape) .lab-tel-row strong {
+    font-size: 0.24rem;
+  }
+  html:not(.is-mobile-landscape) .lab-tel-combo-badge {
+    font-size: 0.25rem;
+    padding: 2px 4px;
+  }
+  html:not(.is-mobile-landscape) .victory-arcade-strip {
+    padding: 5px 6px;
+    margin-bottom: 7px;
+  }
+  html:not(.is-mobile-landscape) .arcade-node-port-wrap,
+  html:not(.is-mobile-landscape) .arcade-node-port {
+    width: 26px;
+    height: 26px;
+  }
+  html:not(.is-mobile-landscape) .arcade-node-tag {
+    font-size: 0.19rem;
+  }
+  html:not(.is-mobile-landscape) .hud-rival-badge {
+    font-size: 0.19rem;
+    padding: 1px 3px;
+  }
+  html:not(.is-mobile-landscape) .fighter-plate.is-final-rival-plate .hud-build-badge {
+    display: none !important;
+  }
+}
+
+html.is-mobile-landscape .p1-submode-pill {
+  padding: 2px 5px;
+  font-size: 0.21rem;
+}
+
+html.is-mobile-landscape .p1-arcade-summary-chip {
+  font-size: 0.20rem;
+  padding: 2px 6px;
+}
+
+html.is-mobile-landscape .training-lab-bar {
+  top: 70px;
+  left: auto;
+  right: 8px;
+  transform: none;
+  padding: 2px 4px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape .training-lab-bar .lab-pill {
+  padding: 2px 5px;
+  font-size: 0.20rem;
+}
+
+html.is-mobile-landscape .training-lab-telemetry {
+  top: 70px;
+  left: 8px;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+}
+
+html.is-mobile-landscape .training-lab-telemetry .lab-tel-head {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+  border-right: 1px solid #1e293b;
+  padding-right: 7px;
+}
+
+html.is-mobile-landscape .training-lab-telemetry .lab-tel-grid {
+  flex-direction: row;
+  gap: 8px;
+}
+
+html.is-mobile-landscape .training-lab-telemetry .lab-tel-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 0.21rem;
+}
+
+html.is-mobile-landscape .training-lab-telemetry .lab-tel-row strong {
+  font-size: 0.23rem;
+}
+
+html.is-mobile-landscape .victory-arcade-strip {
+  padding: 4px 6px;
+  margin-bottom: 6px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .arcade-node {
+  padding: 2px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .arcade-node-port-wrap,
+html.is-mobile-landscape .arcade-node-port {
+  width: 24px;
+  height: 24px;
+}
+
+html.is-mobile-landscape .victory-arcade-rank-badge {
+  font-size: 0.30rem;
+  padding: 2px 6px;
+}
+
+html.is-mobile-landscape .hud-rival-badge {
+  font-size: 0.20rem;
+  padding: 1px 4px;
+}
+
+@media (max-height: 520px) and (min-width: 600px) {
+  .training-lab-bar {
+    top: 72px;
+    left: auto;
+    right: 8px;
+    transform: none;
+    padding: 2px 4px;
+    gap: 3px;
+  }
+  .training-lab-bar .lab-pill {
+    padding: 2px 5px;
+    font-size: 0.20rem;
+  }
+  .training-lab-telemetry {
+    top: 72px;
+    left: 8px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+  }
+  .training-lab-telemetry .lab-tel-head {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-bottom: none;
+    border-right: 1px solid #1e293b;
+    padding-right: 7px;
+  }
+  .training-lab-telemetry .lab-tel-grid {
+    flex-direction: row;
+    gap: 8px;
+  }
+  .training-lab-telemetry .lab-tel-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    font-size: 0.21rem;
+  }
+  .training-lab-telemetry .lab-tel-row strong {
+    font-size: 0.23rem;
+  }
+}

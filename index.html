@@ -9,11 +9,11 @@
   <meta name="theme-color" content="#05070c" />
   <title>Arcane vs. Steel — HD-2D Pixel Auto-Battler</title>
   <meta name="description" content="HD-2D pixel-art idle auto-battler featuring articulated 40-frame sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
-  <link rel="icon" type="image/png" href="assets/sprites/avs_brand_logo.png?v=30fps174" />
-  <link rel="apple-touch-icon" href="assets/sprites/avs_brand_logo.png?v=30fps174" />
+  <link rel="icon" type="image/png" href="assets/sprites/avs_brand_logo.png?v=30fps175" />
+  <link rel="apple-touch-icon" href="assets/sprites/avs_brand_logo.png?v=30fps175" />
   <link rel="manifest" href="manifest.json" />
   <link rel="preload" href="assets/fonts/pixel_art.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="style.css?v=30fps174" />
+  <link rel="stylesheet" href="style.css?v=30fps175" />
 </head>
 <body>
   <main id="app" class="is-landing-open" data-landing-step="title">
@@ -116,6 +116,7 @@
           <div class="plate-header">
             <span class="hp-num" id="right-hp-text">3900</span>
             <div class="name-row name-row-right">
+              <span class="hud-rival-badge hidden" id="right-rival-badge">FINAL RIVAL</span>
               <span class="hud-build-badge hidden" id="right-build-badge">I-I-I</span>
               <h2 class="fighter-name" id="right-name">MALAKOR</h2>
             </div>
@@ -401,6 +402,57 @@
       </span>
     </div>
 
+    <!-- Training / Combo Lab Compact Collapsible Toolbar (Strictly Visible ONLY in PLAYER VS AI -> TRAINING LAB) -->
+    <section id="training-lab-bar" class="training-lab-bar hidden" aria-label="Training Lab Controls">
+      <button id="btn-lab-collapse" class="lab-pill lab-collapse-btn" type="button" aria-expanded="true" title="Collapse or Expand Training Lab Toolbar">
+        <svg class="px-ui-icon" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+          <rect x="0" y="1" width="10" height="2" fill="currentColor" />
+          <rect x="2" y="0" width="2" height="4" fill="#38bdf8" />
+          <rect x="0" y="7" width="10" height="2" fill="currentColor" />
+          <rect x="6" y="6" width="2" height="4" fill="#facc15" />
+        </svg>
+        <span id="lab-collapse-label">LAB</span>
+      </button>
+      <div class="training-lab-tray" id="training-lab-tray">
+        <button id="btn-lab-dummy" class="lab-pill lab-pill-dummy" type="button" data-dummy-mode="idle" title="Cycle Training Dummy AI: IDLE / AUTO-GUARD / FIGHT">
+          <span class="lab-gem" aria-hidden="true"></span>
+          <span id="lab-dummy-label">DUMMY: IDLE</span>
+        </button>
+        <button id="btn-lab-gauge" class="lab-pill lab-pill-gauge is-active" type="button" data-gauge-mode="instant" title="Toggle Gauges: INSTANT FULL (1.5s idle refill) / NORMAL">
+          <span class="lab-gem" aria-hidden="true"></span>
+          <span id="lab-gauge-label">GAUGE: FULL</span>
+        </button>
+        <button id="btn-lab-hp" class="lab-pill lab-pill-hp is-active" type="button" data-hp-mode="auto_heal" title="Toggle HP: AUTO-HEAL (1.8s idle refill) / MORTAL">
+          <span class="lab-gem" aria-hidden="true"></span>
+          <span id="lab-hp-label">HP: AUTO-HEAL</span>
+        </button>
+        <button id="btn-lab-reset" class="lab-pill lab-pill-reset" type="button" title="Reset Center Standoff (x=460/740) &amp; Clear Projectiles [Backspace]">
+          <svg class="px-ui-icon" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="3" y="1" width="5" height="2" fill="currentColor" />
+            <rect x="1" y="1" width="2" height="4" fill="currentColor" />
+            <rect x="1" y="3" width="4" height="2" fill="currentColor" />
+            <rect x="7" y="3" width="2" height="5" fill="currentColor" />
+            <rect x="2" y="7" width="6" height="2" fill="currentColor" />
+          </svg>
+          <span>RESET</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Training / Combo Lab Live Practice Telemetry Widget (Strictly Visible ONLY in TRAINING LAB — Zero Leak into Standard VS!) -->
+    <aside id="training-lab-telemetry" class="training-lab-telemetry hidden" aria-label="Live Training Combo Telemetry">
+      <div class="lab-tel-head">
+        <span class="lab-tel-kicker">COMBO LAB</span>
+        <span class="lab-tel-combo-badge" id="lab-tel-combo-badge"><strong id="lab-tel-combo">0</strong> HIT</span>
+      </div>
+      <div class="lab-tel-grid">
+        <div class="lab-tel-row"><span class="lab-tel-lbl">COMBO DMG</span><strong id="lab-tel-combo-dmg">0</strong></div>
+        <div class="lab-tel-row"><span class="lab-tel-lbl">LAST HIT</span><strong id="lab-tel-last-hit">0</strong></div>
+        <div class="lab-tel-row"><span class="lab-tel-lbl">MAX COMBO</span><strong id="lab-tel-max-combo">0</strong></div>
+        <div class="lab-tel-row"><span class="lab-tel-lbl">PARRY / DODGE</span><strong id="lab-tel-def">0 / 0</strong></div>
+      </div>
+    </aside>
+
     <!-- Playable 1P Versus Mode Mobile Touch Control Cluster (Strictly Shown on Touch/Mobile When PLAY 1P is Active) -->
     <section id="vs-touch-controls" class="vs-touch-controls hidden" aria-label="Versus 1P Touch Controls">
       <!-- Bottom-Left Circular Virtual Stick / D-Pad (Walk Left/Right, Flick Up Jump, Pull Down Parry) -->
@@ -539,6 +591,26 @@
         <!-- VS Mode Controls Section (Strictly Isolated to VS Arena & Player vs AI Modes) -->
         <section id="pause-vs-section" class="pause-section" aria-label="Versus Arena Controls">
           <div class="pause-section-label" id="pause-vs-section-label">ARENA SPECTATOR &amp; SANDBOX CONTROLS</div>
+          <!-- Dedicated Training Lab Controls Row inside Pause Menu (Visible strictly in TRAINING LAB) -->
+          <div id="pause-training-bar" class="pause-training-bar hidden" role="group" aria-label="Training Lab Settings">
+            <div class="pause-lab-group">
+              <span class="pause-lab-lbl">DUMMY</span>
+              <button type="button" class="pause-lab-btn is-active" id="pause-lab-dummy-idle" data-pause-lab-dummy="idle">IDLE</button>
+              <button type="button" class="pause-lab-btn" id="pause-lab-dummy-guard" data-pause-lab-dummy="auto_guard">AUTO-GUARD</button>
+              <button type="button" class="pause-lab-btn" id="pause-lab-dummy-fight" data-pause-lab-dummy="fight">FIGHT</button>
+            </div>
+            <div class="pause-lab-group">
+              <span class="pause-lab-lbl">GAUGES</span>
+              <button type="button" class="pause-lab-btn is-active" id="pause-lab-gauge-instant" data-pause-lab-gauge="instant">INSTANT FULL</button>
+              <button type="button" class="pause-lab-btn" id="pause-lab-gauge-normal" data-pause-lab-gauge="normal">NORMAL</button>
+            </div>
+            <div class="pause-lab-group">
+              <span class="pause-lab-lbl">HP</span>
+              <button type="button" class="pause-lab-btn is-active" id="pause-lab-hp-auto" data-pause-lab-hp="auto_heal">AUTO-HEAL</button>
+              <button type="button" class="pause-lab-btn" id="pause-lab-hp-mortal" data-pause-lab-hp="mortal">MORTAL</button>
+              <button type="button" class="pause-lab-btn pause-lab-reset-btn" id="pause-lab-reset">RESET [BKSP]</button>
+            </div>
+          </div>
           <footer class="hud-bottom pause-hud-bottom">
             <div class="iron-bar">
               <button id="btn-mode-cycle" class="iron-btn iron-btn-mode" type="button" title="Cycle Versus Format: 1v1 Duel / Tag VS">
@@ -746,7 +818,7 @@
       <!-- Persistent Top Forged-Brass Arcade Step Bar (Branch-Isolated) -->
       <nav class="arcade-step-nav" aria-label="Arcade Setup Navigation">
         <div class="step-nav-brand" id="step-nav-brand" title="Return to Title Screen">
-          <img src="assets/sprites/avs_brand_logo.png?v=30fps174" class="brand-crest-nav" alt="" width="26" height="26" />
+          <img src="assets/sprites/avs_brand_logo.png?v=30fps175" class="brand-crest-nav" alt="" width="26" height="26" />
           <span class="brand-wordmark">ARCANE <span>VS.</span> STEEL</span>
         </div>
 
@@ -945,7 +1017,7 @@
               <span class="crest-line crest-line-left"></span>
               <div class="sanctum-crest-aura">
                 <img
-                  src="assets/sprites/avs_brand_logo.png?v=30fps174"
+                  src="assets/sprites/avs_brand_logo.png?v=30fps175"
                   class="sanctum-brand-logo"
                   alt=""
                   width="84"
@@ -983,7 +1055,7 @@
                 </span>
               </div>
               <strong class="gateway-title">PLAYER VS AI</strong>
-              <span class="gateway-format-line">1P CONTROL • 1V1 &amp; TAG VS</span>
+              <span class="gateway-format-line">1P • EXHIBITION • ARCADE 5 • LAB</span>
               <div class="gateway-cta-strip">
                 <span>PLAY VS AI</span>
                 <span class="gateway-arrow" aria-hidden="true">
@@ -1208,7 +1280,7 @@
             <div class="stage-gallery-grid" id="stage-gallery-grid" role="group" aria-label="Arena Stage Gallery">
               <button type="button" class="stage-card stage-pill active-stage" id="stage-btn-auto" data-stage="auto">
                 <div class="stage-thumb-wrap stage-thumb-auto">
-                  <img src="assets/sprites/arena_bg.png?v=30fps174" alt="Auto Rotating Realm" decoding="async" />
+                  <img src="assets/sprites/arena_bg.png?v=30fps175" alt="Auto Rotating Realm" decoding="async" />
                   <span class="stage-auto-emblem" aria-hidden="true">
                     <svg class="px-ui-icon" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
                       <rect x="7" y="1" width="2" height="14" fill="#fde047" />
@@ -1226,7 +1298,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-cathedral" data-stage="cathedral">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_bg.png?v=30fps174" alt="Eclipse Cathedral" decoding="async" />
+                  <img src="assets/sprites/arena_bg.png?v=30fps175" alt="Eclipse Cathedral" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ECLIPSE CATHEDRAL</strong>
@@ -1236,7 +1308,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-sanctuary" data-stage="sanctuary">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_sanctuary.png?v=30fps174" alt="Radiant Sanctuary" decoding="async" />
+                  <img src="assets/sprites/arena_sanctuary.png?v=30fps175" alt="Radiant Sanctuary" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">RADIANT SANCTUARY</strong>
@@ -1246,7 +1318,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-sylvan" data-stage="sylvan">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_sylvan.png?v=30fps174" alt="Sylvan Starwood" decoding="async" />
+                  <img src="assets/sprites/arena_sylvan.png?v=30fps175" alt="Sylvan Starwood" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">SYLVAN STARWOOD</strong>
@@ -1256,7 +1328,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-boneyard" data-stage="boneyard">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_boneyard.png?v=30fps174" alt="Abyssal Necropolis" decoding="async" />
+                  <img src="assets/sprites/arena_boneyard.png?v=30fps175" alt="Abyssal Necropolis" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ABYSSAL NECROPOLIS</strong>
@@ -1266,7 +1338,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-clocktower" data-stage="clocktower">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_clocktower.png?v=30fps174" alt="Astral Clocktower" decoding="async" />
+                  <img src="assets/sprites/arena_clocktower.png?v=30fps175" alt="Astral Clocktower" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ASTRAL CLOCKTOWER</strong>
@@ -1366,13 +1438,27 @@
               </div>
             </header>
 
-            <!-- Inline VS Quick-Config Bar (Mode Badge • 1V1 / TAG VS • Stage Strip • HP • Setup) -->
+            <!-- Inline VS Quick-Config Bar (Mode Badge • P1 Sub-Modes • 1V1 / TAG VS • Stage Strip • HP • Setup) -->
             <div class="vs-quick-config-bar" id="vs-quick-config-bar" role="region" aria-label="Versus Quick Config">
               <span class="vs-mode-origin-chip is-ai-arena" id="vs-mode-origin-chip">AI ARENA</span>
 
-              <span class="quick-cfg-sep" aria-hidden="true"></span>
+              <span class="quick-cfg-sep p1-submode-only hidden" id="p1-submode-sep" aria-hidden="true"></span>
 
-              <div class="quick-cfg-group quick-mode-group" role="group" aria-label="Versus Format">
+              <div class="quick-cfg-group p1-submode-group hidden" id="p1-submode-group" role="group" aria-label="Player vs AI Sub-Mode">
+                <button type="button" class="quick-cfg-pill p1-submode-pill is-active" id="p1-submode-exhibition" data-p1-submode="exhibition" aria-pressed="true">
+                  EXHIBITION
+                </button>
+                <button type="button" class="quick-cfg-pill p1-submode-pill" id="p1-submode-arcade" data-p1-submode="arcade" aria-pressed="false">
+                  ARCADE 5
+                </button>
+                <button type="button" class="quick-cfg-pill p1-submode-pill" id="p1-submode-training" data-p1-submode="training" aria-pressed="false">
+                  TRAINING LAB
+                </button>
+              </div>
+
+              <span class="quick-cfg-sep" id="quick-mode-sep" aria-hidden="true"></span>
+
+              <div class="quick-cfg-group quick-mode-group" id="quick-mode-group" role="group" aria-label="Versus Format">
                 <button type="button" class="quick-cfg-pill active-quick-mode" id="quick-mode-1v1" data-quick-mode="1v1" aria-pressed="true">
                   1V1
                 </button>
@@ -1381,9 +1467,9 @@
                 </button>
               </div>
 
-              <span class="quick-cfg-sep" aria-hidden="true"></span>
+              <span class="quick-cfg-sep" id="quick-stage-sep" aria-hidden="true"></span>
 
-              <div class="quick-cfg-group quick-stage-strip" role="group" aria-label="Arena Stage">
+              <div class="quick-cfg-group quick-stage-strip" id="quick-stage-strip" role="group" aria-label="Arena Stage">
                 <span class="quick-cfg-kicker">STAGE</span>
                 <button type="button" class="quick-stage-pill active-stage" data-stage="auto" aria-pressed="true">AUTO</button>
                 <button type="button" class="quick-stage-pill" data-stage="cathedral" aria-pressed="false">CATHEDRAL</button>
@@ -1393,9 +1479,13 @@
                 <button type="button" class="quick-stage-pill" data-stage="clocktower" aria-pressed="false">CLOCKTOWER</button>
               </div>
 
-              <span class="quick-cfg-sep" aria-hidden="true"></span>
+              <div class="p1-arcade-summary-chip hidden" id="p1-arcade-summary-chip">
+                5-STAGE LADDER • 4 EX RIVALS + FINAL SOVEREIGN RIVAL
+              </div>
 
-              <div class="quick-cfg-group quick-rules-group">
+              <span class="quick-cfg-sep" id="quick-rules-sep" aria-hidden="true"></span>
+
+              <div class="quick-cfg-group quick-rules-group" id="quick-rules-group">
                 <button
                   type="button"
                   class="quick-cfg-pill quick-hp-pill"
@@ -2135,7 +2225,7 @@
               <div class="skill-card skill-card-supreme" id="p1-true-ult-box" data-drawer-slot="3">
                 <div class="supreme-crest-box" aria-hidden="true">
                   <canvas id="p1-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
-                  <img src="assets/sprites/avs_brand_logo.png?v=30fps174" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
+                  <img src="assets/sprites/avs_brand_logo.png?v=30fps175" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
                   <span class="supreme-tier">III</span>
                 </div>
                 <div class="skill-info">
@@ -2250,7 +2340,7 @@
               <div class="skill-card skill-card-supreme" id="p2-true-ult-box" data-drawer-slot="3">
                 <div class="supreme-crest-box" aria-hidden="true">
                   <canvas id="p2-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
-                  <img src="assets/sprites/avs_brand_logo.png?v=30fps174" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
+                  <img src="assets/sprites/avs_brand_logo.png?v=30fps175" class="supreme-star supreme-brand-crest" alt="" width="30" height="30" />
                   <span class="supreme-tier">III</span>
                 </div>
                 <div class="skill-info">
@@ -2277,6 +2367,12 @@
         <div class="victory-eyebrow" id="victory-eyebrow">DUEL CONCLUDED • KING OF THE SANCTUARY</div>
         <h2 class="victory-winner" id="victory-winner">AETHELGARD TRIUMPHS</h2>
         <p class="victory-stats" id="victory-stats">Steel prevails over the Tempest</p>
+
+        <!-- 5-Stage Arcade Ladder Mini Progress Strip & Champion Rank Plaque (Strictly Visible in Arcade Ladder) -->
+        <div id="victory-arcade-strip" class="victory-arcade-strip hidden" aria-label="Arcade Ladder Progress">
+          <div id="victory-arcade-rank-badge" class="victory-arcade-rank-badge hidden">ARCADE CHAMPION • RANK S+</div>
+          <div id="victory-arcade-nodes" class="victory-arcade-nodes"></div>
+        </div>
 
         <div class="victory-telemetry" id="victory-telemetry">
           <div class="telemetry-col" id="telemetry-left">
@@ -2328,6 +2424,6 @@
     </div>
   </main>
 
-  <script type="module" src="src/main.js?v=30fps174"></script>
+  <script type="module" src="src/main.js?v=30fps175"></script>
 </body>
 </html>

@@ -1,32 +1,32 @@
-import { Renderer } from './engine/Renderer.js?v=30fps174';
-import { VFXManager } from './engine/VFXManager.js?v=30fps174';
-import { PixelForge } from './engine/PixelForge.js?v=30fps174';
-import { AudioManager } from './engine/AudioManager.js?v=30fps174';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps174';
-import { Fighter } from './entities/Fighter.js?v=30fps174';
-import { Warrior } from './entities/Warrior.js?v=30fps174';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps174';
-import { FireMage } from './entities/FireMage.js?v=30fps174';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps174';
-import { Archer } from './entities/Archer.js?v=30fps174';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps174';
-import { Priestess } from './entities/Priestess.js?v=30fps174';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps174';
-import { Reaper } from './entities/Reaper.js?v=30fps174';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps174';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps174';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps174';
-import { Titan } from './entities/Titan.js?v=30fps174';
-import { TitanEx } from './entities/TitanEx.js?v=30fps174';
-import { Ronin } from './entities/Ronin.js?v=30fps174';
-import { RoninEx } from './entities/RoninEx.js?v=30fps174';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps174';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps174';
-import { IceMage } from './entities/IceMage.js?v=30fps174';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps174';
-import { Android } from './entities/Android.js?v=30fps174';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps174';
-import { NyxEx } from './entities/NyxEx.js?v=30fps174';
+import { Renderer } from './engine/Renderer.js?v=30fps175';
+import { VFXManager } from './engine/VFXManager.js?v=30fps175';
+import { PixelForge } from './engine/PixelForge.js?v=30fps175';
+import { AudioManager } from './engine/AudioManager.js?v=30fps175';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps175';
+import { Fighter } from './entities/Fighter.js?v=30fps175';
+import { Warrior } from './entities/Warrior.js?v=30fps175';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps175';
+import { FireMage } from './entities/FireMage.js?v=30fps175';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps175';
+import { Archer } from './entities/Archer.js?v=30fps175';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps175';
+import { Priestess } from './entities/Priestess.js?v=30fps175';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps175';
+import { Reaper } from './entities/Reaper.js?v=30fps175';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps175';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps175';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps175';
+import { Titan } from './entities/Titan.js?v=30fps175';
+import { TitanEx } from './entities/TitanEx.js?v=30fps175';
+import { Ronin } from './entities/Ronin.js?v=30fps175';
+import { RoninEx } from './entities/RoninEx.js?v=30fps175';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps175';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps175';
+import { IceMage } from './entities/IceMage.js?v=30fps175';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps175';
+import { Android } from './entities/Android.js?v=30fps175';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps175';
+import { NyxEx } from './entities/NyxEx.js?v=30fps175';
 import {
   AdventureManager,
   ADVENTURE_DIFFICULTY_TIERS,
@@ -35,9 +35,9 @@ import {
   loadAdventureMedals,
   normalizeAdventureCampaignPack,
   normalizeAdventureDifficultyId
-} from './adventure/AdventureManager.js?v=30fps174';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps174';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps174';
+} from './adventure/AdventureManager.js?v=30fps175';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps175';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps175';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -67,6 +67,187 @@ export const LEGACY_HERO_KEYS = [
   'icemage',
   'android'
 ];
+
+export const ARCADE_TROPHY_STORAGE_KEY = 'avs_arcade_trophies_v1';
+export const ARCADE_ARENA_STAGES = ['cathedral', 'sanctuary', 'sylvan', 'boneyard', 'clocktower'];
+
+// Curated Stage 5 FINAL SOVEREIGN RIVAL matchup & dramatic arena per EX champion
+export const ARCADE_FINAL_RIVAL_MAP = {
+  warrior_ex: { rival: 'reaper_ex', stage: 'boneyard', title: 'OATH OF THE BLACK GATE' },
+  mage_ex: { rival: 'icemage_ex', stage: 'cathedral', title: 'SOLSTICE VS ABSOLUTE ZERO' },
+  priestess_ex: { rival: 'nyx_ex', stage: 'sanctuary', title: 'DIVINE LIGHT VS DIGITAL CHAOS' },
+  chronomancer_ex: { rival: 'ronin_ex', stage: 'clocktower', title: 'THE TWELFTH STROKE' },
+  valkyrie_ex: { rival: 'titan_ex', stage: 'cathedral', title: 'VALHALLA MEETS THE WORLD-FORGE' },
+  ronin_ex: { rival: 'chronomancer_ex', stage: 'clocktower', title: 'BLADE THAT CUTS ETERNITY' },
+  archer_ex: { rival: 'android_ex', stage: 'sylvan', title: 'STARWOOD VS POSITRON LOCK' },
+  reaper_ex: { rival: 'warrior_ex', stage: 'sanctuary', title: 'SOUL REAPER AT THE SANCTUARY' },
+  titan_ex: { rival: 'valkyrie_ex', stage: 'boneyard', title: 'TITANBREAKER SKY-LANCE' },
+  icemage_ex: { rival: 'mage_ex', stage: 'cathedral', title: 'FROST CROWN VS SOLAR FLARE' },
+  android_ex: { rival: 'nyx_ex', stage: 'clocktower', title: 'SINGULARITY PROTOCOL' },
+  nyx_ex: { rival: 'priestess_ex', stage: 'sanctuary', title: 'COB-OS OVERRIDE: HOLY KERNEL' }
+};
+
+const ARCADE_RANK_ORDER = { A: 1, S: 2, 'S+': 3 };
+
+export function normalizeArcadeRank(rawRank) {
+  const s = String(rawRank || 'A').trim().toUpperCase();
+  if (s.startsWith('S+')) return 'S+';
+  if (s.startsWith('S')) return 'S';
+  return 'A';
+}
+
+export function computeArcadeRank(continuesUsed = 0, totalTimeSec = 0) {
+  const cont = Math.max(0, Math.floor(Number(continuesUsed) || 0));
+  const sec = Math.max(0, Number(totalTimeSec) || 0);
+  if (cont === 0 && sec <= 185) return 'S+';
+  if (cont === 0) return 'S';
+  return 'A';
+}
+
+export function getArcadeFinalRivalConfig(heroId) {
+  const cleanId = String(heroId || 'warrior_ex');
+  const exKey = cleanId.endsWith('_ex') ? cleanId : `${cleanId}_ex`;
+  if (ARCADE_FINAL_RIVAL_MAP[exKey]) {
+    return ARCADE_FINAL_RIVAL_MAP[exKey];
+  }
+  return { rival: 'reaper_ex', stage: 'boneyard', title: 'FINAL SOVEREIGN DUEL' };
+}
+
+function resolveArcadeStorage(storageOverride = null) {
+  if (storageOverride) return storageOverride;
+  try {
+    if (typeof window !== 'undefined' && window && window.localStorage) {
+      return window.localStorage;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function loadArcadeTrophies(storageOverride = null) {
+  const store = resolveArcadeStorage(storageOverride);
+  if (!store || typeof store.getItem !== 'function') return {};
+  try {
+    const raw = store.getItem(ARCADE_TROPHY_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out = {};
+    for (const [heroId, rec] of Object.entries(parsed)) {
+      if (!heroId || !rec || typeof rec !== 'object') continue;
+      out[heroId] = {
+        rank: normalizeArcadeRank(rec.rank),
+        clears: Math.max(1, Math.floor(Number(rec.clears) || 1)),
+        bestTimeSec: Number.isFinite(rec.bestTimeSec) ? Math.max(0, Math.round(rec.bestTimeSec)) : 0,
+        bestContinues: Number.isFinite(rec.bestContinues) ? Math.max(0, Math.floor(rec.bestContinues)) : 0
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function saveArcadeTrophy(heroId, record = {}, storageOverride = null) {
+  if (!heroId || typeof heroId !== 'string') return loadArcadeTrophies(storageOverride);
+  const store = resolveArcadeStorage(storageOverride);
+  const current = loadArcadeTrophies(store);
+  const prev = current[heroId];
+  const nextRank = normalizeArcadeRank(record.rank);
+  const nextTime = Math.max(0, Math.round(Number(record.totalTimeSec) || 0));
+  const nextCont = Math.max(0, Math.floor(Number(record.continuesUsed) || 0));
+
+  if (!prev) {
+    current[heroId] = {
+      rank: nextRank,
+      clears: 1,
+      bestTimeSec: nextTime,
+      bestContinues: nextCont
+    };
+  } else {
+    const bestRank =
+      (ARCADE_RANK_ORDER[nextRank] || 1) >= (ARCADE_RANK_ORDER[prev.rank] || 1)
+        ? nextRank
+        : prev.rank;
+    current[heroId] = {
+      rank: bestRank,
+      clears: (prev.clears || 1) + 1,
+      bestTimeSec:
+        prev.bestTimeSec > 0 && nextTime > 0
+          ? Math.min(prev.bestTimeSec, nextTime)
+          : nextTime || prev.bestTimeSec,
+      bestContinues: Math.min(prev.bestContinues ?? nextCont, nextCont)
+    };
+  }
+
+  if (store && typeof store.setItem === 'function') {
+    try {
+      store.setItem(ARCADE_TROPHY_STORAGE_KEY, JSON.stringify(current));
+    } catch {
+      // Ignore quota / sandbox errors safely
+    }
+  }
+  return current;
+}
+
+export function buildArcadeLadder(playerHeroId, rngFn = Math.random) {
+  const cleanPlayer = String(playerHeroId || 'warrior_ex');
+  const playerBaseEx = cleanPlayer.endsWith('_ex') ? cleanPlayer : `${cleanPlayer}_ex`;
+  const finalCfg = getArcadeFinalRivalConfig(cleanPlayer);
+  const finalRivalId = finalCfg.rival;
+
+  // Build 4 distinct EX rivals excluding the player's champion (and EX counterpart) and the Stage 5 Final Rival
+  const pool = EX_HERO_KEYS.filter(
+    (k) => k !== cleanPlayer && k !== playerBaseEx && k !== finalRivalId
+  );
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor((typeof rngFn === 'function' ? rngFn() : Math.random()) * (i + 1));
+    const tmp = pool[i];
+    pool[i] = pool[j];
+    pool[j] = tmp;
+  }
+  const openingRivals = pool.slice(0, 4);
+
+  // Cycle across all 4 non-final arenas in varied order, culminating on the curated Stage 5 arena
+  const openingStages = ARCADE_ARENA_STAGES.filter((s) => s !== finalCfg.stage);
+  for (let i = openingStages.length - 1; i > 0; i--) {
+    const j = Math.floor((typeof rngFn === 'function' ? rngFn() : Math.random()) * (i + 1));
+    const tmp = openingStages[i];
+    openingStages[i] = openingStages[j];
+    openingStages[j] = tmp;
+  }
+
+  const stages = openingRivals.map((heroId, idx) => ({
+    stageNumber: idx + 1,
+    heroId,
+    stageId: openingStages[idx % openingStages.length] || 'cathedral',
+    isFinalRival: false,
+    hpMult: 1.0,
+    rivalTitle: `STAGE ${idx + 1} CHALLENGER`,
+    defeated: false
+  }));
+
+  stages.push({
+    stageNumber: 5,
+    heroId: finalRivalId,
+    stageId: finalCfg.stage || 'boneyard',
+    isFinalRival: true,
+    hpMult: 1.18,
+    rivalTitle: finalCfg.title || 'FINAL SOVEREIGN RIVAL',
+    defeated: false
+  });
+
+  return {
+    playerHeroId: cleanPlayer,
+    stages,
+    currentStageIndex: 0,
+    continuesUsed: 0,
+    totalTimeSec: 0,
+    cleared: false,
+    bestRank: null
+  };
+}
 
 // Verbatim spoken match-intro subtitles for all 12 champions (shared across EX & Legacy personas, EN + JP)
 export const INTRO_DIALOGUE_SUBTITLES = {
@@ -951,6 +1132,23 @@ export class Game {
     this.koSlowMaxTimer = 0.85;
     this.clashCooldown = 0;
     this.vsControlMode = 'ai'; // '1p' | 'ai' (default 'ai' for full AI-vs-AI & automated test compatibility)
+    this.p1SubMode = 'exhibition'; // 'exhibition' | 'arcade' | 'training' (strictly active in PLAYER VS AI)
+    this.arcadeRun = null;
+    const isCompactViewport =
+      typeof window !== 'undefined' &&
+      ((window.innerWidth || 1280) <= 960 || (window.innerHeight || 800) <= 560);
+    this.trainingLab = {
+      dummyMode: 'idle', // 'idle' | 'auto_guard' | 'fight'
+      gaugeMode: 'instant', // 'instant' | 'normal'
+      hpMode: 'auto_heal', // 'auto_heal' | 'mortal'
+      collapsed: Boolean(isCompactViewport),
+      idleGaugeTimer: 0,
+      currentCombo: 0,
+      comboDamage: 0,
+      lastHit: 0,
+      maxCombo: 0,
+      comboDisplayTimer: 0
+    };
     this.vsInput = {
       heldLeft: false,
       heldRight: false,
@@ -1074,6 +1272,14 @@ export class Game {
     if (modeParam === 'p1_vs_ai' || modeParam === 'player_vs_ai' || modeParam === 'p1') {
       this.gameMode = '1v1';
       this.vsControlMode = '1p';
+    } else if (modeParam === 'arcade' || modeParam === 'arcade5' || modeParam === 'arcade_5') {
+      this.gameMode = '1v1';
+      this.vsControlMode = '1p';
+      this.p1SubMode = 'arcade';
+    } else if (modeParam === 'training' || modeParam === 'lab' || modeParam === 'training_lab') {
+      this.gameMode = '1v1';
+      this.vsControlMode = '1p';
+      this.p1SubMode = 'training';
     } else if (modeParam === '1v1' || modeParam === 'duel') {
       this.gameMode = '1v1';
     } else if (modeParam === '2v2_tag' || modeParam === 'tag') {
@@ -1089,6 +1295,18 @@ export class Game {
       this.slot1Hero = this.rosterVersion === 'legacy' ? 'mage' : 'warrior_ex';
       this.activeAssignSlot = 1;
       this.testModeUnlimitedHp = Boolean(this.explicitAdvUnlimitedHp);
+    }
+    const p1SubParam = (params.get('p1mode') || params.get('submode') || '').toLowerCase();
+    if (p1SubParam === 'arcade' || p1SubParam === 'arcade5') {
+      this.gameMode = '1v1';
+      this.vsControlMode = '1p';
+      this.p1SubMode = 'arcade';
+    } else if (p1SubParam === 'training' || p1SubParam === 'lab') {
+      this.gameMode = '1v1';
+      this.vsControlMode = '1p';
+      this.p1SubMode = 'training';
+    } else if (p1SubParam === 'exhibition') {
+      this.p1SubMode = 'exhibition';
     }
     if (campaignParam) {
       this.selectedCampaignId = campaignParam;
@@ -1221,6 +1439,15 @@ export class Game {
     ) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
+      const arcadeStageParam = Number(params.get('arcadestage') || params.get('arcadeStage') || 0);
+      if (this.isArcadeLadderActive() && arcadeStageParam >= 2 && arcadeStageParam <= 5) {
+        for (let st = 0; st < arcadeStageParam - 1; st++) {
+          this.arcadeRun.stages[st].defeated = true;
+        }
+        this.arcadeRun.currentStageIndex = arcadeStageParam - 1;
+        this.slot2Hero = this.arcadeRun.stages[this.arcadeRun.currentStageIndex].heroId;
+        this.resetMatch();
+      }
     }
 
     if (forceWalk) {
@@ -1373,7 +1600,10 @@ export class Game {
         this.renderer?.setEndMatchSpotlight?.('overlay', victim, attacker, { canSkip: false });
         this.victoryOverlay.classList.remove('hidden');
         if (this.btnSwapSides) {
-          this.btnSwapSides.classList.toggle('hidden', this.isAdventureMode());
+          this.btnSwapSides.classList.toggle(
+            'hidden',
+            Boolean(this.isAdventureMode() || this.isArcadeLadderActive() || this.isP1TrainingMode())
+          );
         }
       }
       this.updateHUD();
@@ -1857,24 +2087,45 @@ export class Game {
   syncPauseMenuUI() {
     const isAdv = this.isAdventureMode();
     const isP1 = this.isVsManualP1Active();
+    const isArcade = this.isArcadeLadderActive();
+    const isTraining = this.isP1TrainingMode();
+    const curStage = this.getCurrentArcadeStage?.();
     const subtitleEl = document.getElementById('pause-mode-subtitle');
     if (subtitleEl) {
       subtitleEl.textContent = isAdv
         ? 'SOLO ADVENTURE CAMPAIGN'
-        : isP1
-          ? this.gameMode === '2v2_tag'
-            ? 'PLAYER VS AI • TAG VS'
-            : 'PLAYER VS AI • 1V1 DUEL'
-          : this.gameMode === '2v2_brawl'
-            ? '2V2 CHAOS BRAWL'
-            : this.gameMode === '2v2_tag'
-              ? 'TAG VS'
-              : '1V1 SOVEREIGN DUEL';
+        : isArcade && curStage
+          ? curStage.isFinalRival
+            ? 'ARCADE LADDER • FINAL RIVAL 5 / 5'
+            : `ARCADE LADDER • STAGE ${curStage.stageNumber} / 5`
+          : isTraining
+            ? 'PLAYER VS AI • TRAINING LAB'
+            : isP1
+              ? this.gameMode === '2v2_tag'
+                ? 'PLAYER VS AI • TAG VS'
+                : 'PLAYER VS AI • 1V1 DUEL'
+              : this.gameMode === '2v2_brawl'
+                ? '2V2 CHAOS BRAWL'
+                : this.gameMode === '2v2_tag'
+                  ? 'TAG VS'
+                  : '1V1 SOVEREIGN DUEL';
     }
     if (this.pauseVsSectionLabel) {
-      this.pauseVsSectionLabel.textContent = isP1
-        ? 'PLAYER VS AI • MATCH CONTROLS'
-        : 'ARENA SPECTATOR & SANDBOX CONTROLS';
+      this.pauseVsSectionLabel.textContent = isTraining
+        ? 'TRAINING LAB • DUMMY & SANDBOX CONTROLS'
+        : isArcade
+          ? 'ARCADE LADDER • MATCH CONTROLS'
+          : isP1
+            ? 'PLAYER VS AI • MATCH CONTROLS'
+            : 'ARENA SPECTATOR & SANDBOX CONTROLS';
+    }
+    const lockVsFormatToggles = Boolean(isArcade || isTraining);
+    this.btnModeCycle?.classList?.toggle('hidden', lockVsFormatToggles);
+    this.btnTestMode?.classList?.toggle('hidden', lockVsFormatToggles);
+    this.btnAutoTourney?.classList?.toggle('hidden', lockVsFormatToggles);
+    this.pauseTrainingBar?.classList?.toggle('hidden', !isTraining);
+    if (isTraining) {
+      this.syncTrainingLabUI?.();
     }
     this.pauseVsSection?.classList.toggle('hidden', isAdv);
     this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
@@ -1981,14 +2232,32 @@ export class Game {
     this.renderer?.deathFX?.clear?.();
     this._pausedFrameRendered = false;
     this.victoryOverlay?.classList.remove('is-defeat-plaque');
+    this.victoryOverlay?.classList.remove('is-arcade-champion-plaque');
     this.victoryOverlay?.classList.add('hidden');
+    if (this.victoryArcadeStrip) this.victoryArcadeStrip.classList.add('hidden');
+    if (this.btnNextChallenger) {
+      this.btnNextChallenger.classList.remove('is-arcade-primary');
+      this.btnNextChallenger.textContent = 'NEXT CHALLENGER';
+    }
+    if (this.rightRivalBadge) this.rightRivalBadge.classList.add('hidden');
+    if (this.hudRightPlate) this.hudRightPlate.classList.remove('is-final-rival-plate');
+    if (this.trainingLab) {
+      this.trainingLab.idleGaugeTimer = 0;
+      this.trainingLab.currentCombo = 0;
+      this.trainingLab.comboDamage = 0;
+      this.trainingLab.lastHit = 0;
+      this.trainingLab.maxCombo = 0;
+      this.trainingLab.comboDisplayTimer = 0;
+    }
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.appEl?.classList?.toggle('is-adventure-active', Boolean(this.isAdventureMode() && !this.isLandingOpen));
     this.syncVsControlUI?.();
+    this.syncTrainingLabUI?.();
     this.updateAdventureBossHUD?.();
     if (releaseMemory) {
+      this.arcadeRun = null;
       this._matchAssetGateUntil = 0;
       this.renderer?.releaseStageCutoutCaches?.(true);
       PixelForge.releaseInactiveAssets?.([], [], false);
@@ -2000,8 +2269,11 @@ export class Game {
 
   goToTitleScreen(playSound = true) {
     this.setPaused(false, false);
+    this.arcadeRun = null;
+    this.p1SubMode = 'exhibition';
     this.teardownActiveMatch(true);
     this.openLanding('title');
+    this.syncP1SubModeUI?.();
     if (typeof window !== 'undefined' && typeof HTMLImageElement !== 'undefined' && !this.simMode) {
       setTimeout(() => this.prewarmSelectedAssets(), 150);
     }
@@ -2148,6 +2420,14 @@ export class Game {
 
   formatModeBadgeText() {
     const isP1 = this.vsControlMode === '1p' && !this.isAdventureMode();
+    if (isP1 && this.isArcadeLadderActive?.()) {
+      const stage = this.getCurrentArcadeStage?.();
+      if (stage?.isFinalRival) return 'ARCADE • FINAL 5 / 5';
+      return `ARCADE • STAGE ${stage?.stageNumber || 1} / 5`;
+    }
+    if (isP1 && this.isP1TrainingMode?.()) {
+      return 'TRAINING LAB';
+    }
     const base =
       this.gameMode === 'adventure'
         ? 'ADVENTURE'
@@ -2284,6 +2564,9 @@ export class Game {
     const isAdv = this.isAdventureMode();
     const activeInMatch = Boolean(is1P && !isAdv && !this.isLandingOpen && !this.isMatchOver);
     const isTag = this.gameMode === '2v2_tag';
+    const isArcade = this.isArcadeLadderActive?.();
+    const isTraining = this.isP1TrainingMode?.();
+    const curStage = this.getCurrentArcadeStage?.();
 
     if (this.vsModeOriginChip) {
       this.vsModeOriginChip.textContent = is1P ? 'PLAYER VS AI' : 'AI ARENA';
@@ -2297,6 +2580,8 @@ export class Game {
     }
     if (this.hudEls?.modeBadge && !isAdv) {
       this.hudEls.modeBadge.textContent = this.formatModeBadgeText();
+      this.hudEls.modeBadge.classList.toggle('is-arcade-final', Boolean(isArcade && curStage?.isFinalRival));
+      this.hudEls.modeBadge.classList.toggle('is-training-lab', Boolean(isTraining));
     }
     if (this.appEl) {
       this.appEl.classList.toggle('is-vs-manual-active', activeInMatch);
@@ -2310,8 +2595,14 @@ export class Game {
     if (this.vsKeyHintTextEl) {
       const baseHtml =
         '<kbd>A/D</kbd> MOVE • <kbd>W/SPC</kbd> JUMP • <kbd>S</kbd> PARRY • <kbd>J/Z</kbd> COMBO • <kbd>K/X</kbd> SKILL • <kbd>L/SHFT</kbd> DODGE • <kbd>U/Q</kbd> DRIVE • <kbd>I/E</kbd> ULT';
-      this.vsKeyHintTextEl.innerHTML = isTag ? `${baseHtml} • <kbd>TAB</kbd> TAG` : baseHtml;
+      this.vsKeyHintTextEl.innerHTML = isTraining
+        ? `${baseHtml} • <kbd>BKSP</kbd> RESET`
+        : isTag
+          ? `${baseHtml} • <kbd>TAB</kbd> TAG`
+          : baseHtml;
     }
+    this.syncP1SubModeUI?.();
+    this.syncTrainingLabUI?.();
     if (activeInMatch) {
       this.refreshVsTouchIcons();
       this.syncVsTouchDeckUI();
@@ -2764,6 +3055,586 @@ export class Game {
     if (attacker.stats) {
       attacker.stats.maxCombo = Math.max(attacker.stats.maxCombo || 0, atkSlot.hits);
     }
+    if (this.isP1TrainingMode?.() && attacker.team === 1 && this.trainingLab) {
+      this.trainingLab.currentCombo = atkSlot.hits;
+      this.trainingLab.comboDamage = atkSlot.damage;
+      this.trainingLab.lastHit = Math.round(dealt);
+      this.trainingLab.maxCombo = Math.max(this.trainingLab.maxCombo || 0, atkSlot.hits);
+      this.trainingLab.comboDisplayTimer = 2.4;
+      this.syncTrainingLabTelemetryUI?.();
+    }
+  }
+
+  // =========================================================================
+  // PLAYER VS AI SUB-MODES (EXHIBITION / 5-STAGE ARCADE LADDER / TRAINING LAB)
+  // =========================================================================
+  isP1ArcadeMode() {
+    return Boolean(this.isVsManualP1Active() && this.p1SubMode === 'arcade');
+  }
+
+  isArcadeLadderActive() {
+    return Boolean(
+      this.isP1ArcadeMode() &&
+        this.arcadeRun &&
+        Array.isArray(this.arcadeRun.stages) &&
+        this.arcadeRun.stages.length === 5
+    );
+  }
+
+  getCurrentArcadeStage() {
+    if (!this.isArcadeLadderActive()) return null;
+    const idx = Math.max(0, Math.min(4, this.arcadeRun.currentStageIndex || 0));
+    return this.arcadeRun.stages[idx] || null;
+  }
+
+  isP1TrainingMode() {
+    return Boolean(this.isVsManualP1Active() && this.p1SubMode === 'training');
+  }
+
+  isTrainingAutoHealActive() {
+    return Boolean(
+      this.isP1TrainingMode() &&
+        !this.isLandingOpen &&
+        (this.trainingLab?.hpMode || 'auto_heal') === 'auto_heal'
+    );
+  }
+
+  setP1SubMode(subMode, playSound = true) {
+    const valid = subMode === 'arcade' || subMode === 'training' ? subMode : 'exhibition';
+    this.p1SubMode = valid;
+    if (valid !== 'arcade') {
+      this.arcadeRun = null;
+    }
+    if (valid === 'arcade' || valid === 'training') {
+      this.gameMode = '1v1';
+      this.inspectLeftRole = 'lead';
+      this.inspectRightRole = 'lead';
+      if (valid === 'arcade' || this.activeAssignSlot > 2) {
+        this.activeAssignSlot = 1;
+      }
+    }
+    this.syncP1SubModeUI();
+    this.syncRosterSelectionUI(false);
+    this.syncVsControlUI();
+    this.syncPauseMenuUI();
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+    return this.p1SubMode;
+  }
+
+  syncP1SubModeUI() {
+    const isAdv = this.isAdventureMode();
+    const is1P = this.vsControlMode === '1p' && !isAdv;
+    const sub = is1P ? this.p1SubMode || 'exhibition' : 'exhibition';
+    const isArcade = is1P && sub === 'arcade';
+    const isTraining = is1P && sub === 'training';
+
+    if (this.landingOverlay) {
+      this.landingOverlay.setAttribute('data-vs-control', is1P ? '1p' : 'ai');
+      this.landingOverlay.setAttribute('data-p1-submode', sub);
+    }
+    this.p1SubmodeGroup?.classList?.toggle('hidden', !is1P);
+    this.p1SubmodeSep?.classList?.toggle('hidden', !is1P);
+    if (Array.isArray(this.p1SubmodeBtns)) {
+      for (const btn of this.p1SubmodeBtns) {
+        const key = btn.getAttribute('data-p1-submode') || 'exhibition';
+        const active = is1P && key === sub;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
+      }
+    }
+    this.p1ArcadeSummaryChip?.classList?.toggle('hidden', !isArcade);
+
+    const hideFormatMode = Boolean(isArcade || isTraining);
+    const hideStageStrip = Boolean(isArcade);
+    const hideRulesGroup = Boolean(isArcade || isTraining);
+    this.quickModeGroupEl?.classList?.toggle('hidden', hideFormatMode);
+    this.quickModeSepEl?.classList?.toggle('hidden', hideFormatMode);
+    this.quickStageStripEl?.classList?.toggle('hidden', hideStageStrip);
+    this.quickStageSepEl?.classList?.toggle('hidden', hideStageStrip || hideFormatMode);
+    this.quickRulesGroupEl?.classList?.toggle('hidden', hideRulesGroup);
+    this.quickRulesSepEl?.classList?.toggle('hidden', hideRulesGroup);
+  }
+
+  syncArcadeTrophyPipsUI() {
+    if (!this.cards || typeof document === 'undefined') return;
+    const showTrophies = Boolean(this.vsControlMode === '1p' && !this.isAdventureMode());
+    const trophies = showTrophies ? loadArcadeTrophies() : {};
+    Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
+      if (!cardEl) return;
+      const btn = cardEl.querySelector?.('.champ-tile-btn') || cardEl;
+      let pip = cardEl.querySelector?.('.p1-arcade-trophy-pip') || null;
+      const rec = showTrophies ? trophies[heroKey] : null;
+      if (!showTrophies || !rec) {
+        if (pip) {
+          pip.classList.add('hidden');
+          pip.removeAttribute('data-trophy-rank');
+        }
+        return;
+      }
+      if (!pip && typeof document.createElement === 'function') {
+        pip = document.createElement('span');
+        pip.className = 'p1-arcade-trophy-pip';
+        btn.appendChild(pip);
+      }
+      if (!pip) return;
+      const rank = normalizeArcadeRank(rec.rank);
+      pip.setAttribute('data-trophy-rank', rank);
+      pip.innerHTML = `<svg width="8" height="7" viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><rect x="0" y="1" width="1" height="4" fill="#fef08a"/><rect x="3" y="0" width="2" height="5" fill="#fef08a"/><rect x="7" y="1" width="1" height="4" fill="#fef08a"/><rect x="1" y="3" width="6" height="2" fill="#facc15"/><rect x="0" y="5" width="8" height="2" fill="#d97706"/></svg><span>${rank}</span>`;
+      const clearLabel = rec.clears === 1 ? '1 CLEAR' : `${rec.clears} CLEARS`;
+      pip.title = `Arcade 5 Trophy: RANK ${rank} (${clearLabel})`;
+      pip.classList.remove('hidden');
+    });
+  }
+
+  startArcadeRun(playerHeroId = this.slot1Hero) {
+    this.gameMode = '1v1';
+    this.vsControlMode = '1p';
+    this.p1SubMode = 'arcade';
+    this.arcadeRun = buildArcadeLadder(playerHeroId);
+    this.slot1Hero = this.arcadeRun.playerHeroId;
+    this.slot2Hero = this.arcadeRun.stages[0].heroId;
+    return this.arcadeRun;
+  }
+
+  advanceArcadeStage() {
+    if (!this.isArcadeLadderActive()) return false;
+    clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
+    this.audio?.stopAllHeroVoices?.(0.03);
+    if (this.arcadeRun.currentStageIndex >= 4) return false;
+    this.arcadeRun.currentStageIndex += 1;
+    const nextStage = this.getCurrentArcadeStage();
+    if (!nextStage) return false;
+    this.slot2Hero = nextStage.heroId;
+    this.resetMatch();
+    this.beginLiveRoundIntro?.({ preferChallenger: true });
+    return true;
+  }
+
+  retryArcadeStage() {
+    if (!this.isArcadeLadderActive()) return false;
+    clearTimeout(this.autoNextTimeout);
+    this.autoNextTimeout = null;
+    this._clearAutoNextTimers?.();
+    this.audio?.stopAllHeroVoices?.(0.03);
+    this.arcadeRun.continuesUsed = (this.arcadeRun.continuesUsed || 0) + 1;
+    this.resetMatch();
+    this.beginLiveRoundIntro?.();
+    return true;
+  }
+
+  renderVictoryArcadeStrip(isPlayerWin) {
+    if (!this.victoryArcadeStrip || !this.victoryArcadeNodes) return;
+    if (!this.isArcadeLadderActive()) {
+      this.victoryArcadeStrip.classList.add('hidden');
+      if (this.victoryArcadeRankBadge) this.victoryArcadeRankBadge.classList.add('hidden');
+      return;
+    }
+    this.victoryArcadeStrip.classList.remove('hidden');
+    const run = this.arcadeRun;
+    const curIdx = run.currentStageIndex || 0;
+    const nextIdx = isPlayerWin && curIdx < 4 ? curIdx + 1 : -1;
+
+    if (this.victoryArcadeRankBadge) {
+      if (run.cleared && run.bestRank) {
+        this.victoryArcadeRankBadge.textContent = `ARCADE CHAMPION • RANK ${run.bestRank}`;
+        this.victoryArcadeRankBadge.classList.remove('hidden');
+      } else {
+        this.victoryArcadeRankBadge.classList.add('hidden');
+      }
+    }
+
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    this.victoryArcadeNodes.innerHTML = '';
+    const assets = PixelForge.initAssets();
+
+    run.stages.forEach((stg, idx) => {
+      const node = document.createElement('div');
+      node.className = 'arcade-node';
+      if (stg.isFinalRival) node.classList.add('is-final-rival');
+      if (stg.defeated && idx !== curIdx) node.classList.add('is-defeated');
+      if (idx === curIdx) {
+        node.classList.add(isPlayerWin ? 'is-current-win' : 'is-current-loss');
+      } else if (idx === nextIdx) {
+        node.classList.add('is-next');
+      }
+
+      const portWrap = document.createElement('div');
+      portWrap.className = 'arcade-node-port-wrap';
+      const cvs = document.createElement('canvas');
+      cvs.className = 'arcade-node-port';
+      cvs.width = 32;
+      cvs.height = 32;
+      const pctx = cvs.getContext?.('2d');
+      const port = PixelForge.ensureImage?.(assets[stg.heroId]?.portrait) || assets[stg.heroId]?.portrait;
+      if (pctx) {
+        pctx.imageSmoothingEnabled = false;
+        if (port && port.complete && port.naturalWidth > 0) {
+          pctx.drawImage(port, 0, 0, 32, 32);
+        } else if (port && typeof port.addEventListener === 'function') {
+          port.addEventListener(
+            'load',
+            () => {
+              pctx.imageSmoothingEnabled = false;
+              pctx.clearRect(0, 0, 32, 32);
+              pctx.drawImage(port, 0, 0, 32, 32);
+            },
+            { once: true }
+          );
+        }
+      }
+      portWrap.appendChild(cvs);
+
+      let statusTxt = '';
+      if (idx === curIdx) {
+        statusTxt = isPlayerWin ? 'WIN' : 'KO';
+      } else if (stg.defeated) {
+        statusTxt = 'CLR';
+      } else if (idx === nextIdx) {
+        statusTxt = 'NEXT';
+      }
+      if (statusTxt) {
+        const stEl = document.createElement('span');
+        stEl.className = 'arcade-node-status';
+        stEl.textContent = statusTxt;
+        portWrap.appendChild(stEl);
+      }
+
+      const tag = document.createElement('span');
+      tag.className = 'arcade-node-tag';
+      tag.textContent = stg.isFinalRival ? 'FINAL' : `STG ${stg.stageNumber}`;
+
+      node.appendChild(portWrap);
+      node.appendChild(tag);
+      this.victoryArcadeNodes.appendChild(node);
+    });
+  }
+
+  _ensureTrainingLabState() {
+    if (!this.trainingLab) {
+      this.trainingLab = {
+        dummyMode: 'idle',
+        gaugeMode: 'instant',
+        hpMode: 'auto_heal',
+        collapsed: false,
+        idleGaugeTimer: 0,
+        currentCombo: 0,
+        comboDamage: 0,
+        lastHit: 0,
+        maxCombo: 0,
+        comboDisplayTimer: 0
+      };
+    }
+    return this.trainingLab;
+  }
+
+  setTrainingDummyMode(mode, playSound = false) {
+    const lab = this._ensureTrainingLabState();
+    const valid = mode === 'auto_guard' || mode === 'fight' ? mode : 'idle';
+    lab.dummyMode = valid;
+    const dummy = this.getPointFighter?.(2) || this.rightFighter;
+    if (dummy && !dummy.isDead && this.isP1TrainingMode()) {
+      dummy.trainingDummyMode = valid;
+      if (valid !== 'fight') {
+        dummy.isCrouching = false;
+        dummy.isDeflecting = false;
+        dummy._trainingGuardHold = 0;
+        if (dummy.state !== 'IDLE' && dummy.state !== 'HURT') {
+          dummy.vx = 0;
+          dummy.vy = 0;
+          if (Number.isFinite(dummy.groundY)) dummy.y = dummy.groundY;
+          dummy.setState('IDLE');
+        }
+      }
+    }
+    this.syncTrainingLabUI();
+    if (playSound && this.audio) this.audio.play('clock_gear', 600);
+    return lab.dummyMode;
+  }
+
+  cycleTrainingDummyMode(playSound = true) {
+    const cur = this._ensureTrainingLabState().dummyMode;
+    const next = cur === 'idle' ? 'auto_guard' : cur === 'auto_guard' ? 'fight' : 'idle';
+    return this.setTrainingDummyMode(next, playSound);
+  }
+
+  setTrainingGaugeMode(mode, playSound = false) {
+    const lab = this._ensureTrainingLabState();
+    lab.gaugeMode = mode === 'normal' ? 'normal' : 'instant';
+    lab.idleGaugeTimer = 0;
+    if (lab.gaugeMode === 'instant' && this.isP1TrainingMode()) {
+      const p1 = this.getPointFighter?.(1) || this.leftFighter;
+      if (p1 && !p1.isDead) {
+        p1.mana = p1.maxMana;
+        if (p1.hasTrueUltimate) p1.finisherGauge = p1.maxFinisherGauge;
+        p1.skillCooldown = 0;
+      }
+    }
+    this.syncTrainingLabUI();
+    if (this.fighters && this.hudEls) this.updateHUD();
+    if (playSound && this.audio) this.audio.play('reflect', 600);
+    return lab.gaugeMode;
+  }
+
+  toggleTrainingGaugeMode(playSound = true) {
+    const cur = this._ensureTrainingLabState().gaugeMode;
+    return this.setTrainingGaugeMode(cur === 'instant' ? 'normal' : 'instant', playSound);
+  }
+
+  setTrainingHpMode(mode, playSound = false) {
+    const lab = this._ensureTrainingLabState();
+    lab.hpMode = mode === 'mortal' ? 'mortal' : 'auto_heal';
+    if (lab.hpMode === 'auto_heal' && this.isP1TrainingMode() && Array.isArray(this.fighters)) {
+      for (const f of this.fighters) {
+        if (f && !f.isDead && !f.isMonster) {
+          f.hp = f.maxHp;
+          f.isBerserk = false;
+        }
+      }
+    }
+    this.syncTrainingLabUI();
+    if (this.fighters && this.hudEls) this.updateHUD();
+    if (playSound && this.audio) this.audio.play('clock_gear', 600);
+    return lab.hpMode;
+  }
+
+  toggleTrainingHpMode(playSound = true) {
+    const cur = this._ensureTrainingLabState().hpMode;
+    return this.setTrainingHpMode(cur === 'auto_heal' ? 'mortal' : 'auto_heal', playSound);
+  }
+
+  setTrainingLabCollapsed(collapsed, playSound = false) {
+    const lab = this._ensureTrainingLabState();
+    lab.collapsed = Boolean(collapsed);
+    this.syncTrainingLabUI();
+    if (playSound && this.audio) this.audio.play('clock_gear', 600);
+    return lab.collapsed;
+  }
+
+  resetTrainingLabPositions(playSound = true) {
+    if (!this.isP1TrainingMode()) return false;
+    const lab = this._ensureTrainingLabState();
+    const gy = this.renderer?.groundY || 520;
+    const p1 = this.getPointFighter?.(1) || this.leftFighter;
+    const p2 = this.getPointFighter?.(2) || this.rightFighter;
+
+    const resetEntity = (f, targetX, facingDir, isDummy) => {
+      if (!f) return;
+      f.isDead = false;
+      f.deathTimer = 0;
+      f.x = targetX;
+      f.y = gy;
+      f.groundY = gy;
+      f.vx = 0;
+      f.vy = 0;
+      f.facing = facingDir;
+      f.hp = f.maxHp;
+      f.stunTimer = 0;
+      f.hurtTimer = 0;
+      f.hitFlash = 0;
+      f.isRooted = false;
+      f.buildRootTimer = 0;
+      f.chronoTimeStopTimer = 0;
+      f.forgeArmorTimer = 0;
+      f.isBerserk = false;
+      f.buildShieldHp = 0;
+      f.buildShieldTimer = 0;
+      f.isCrouching = false;
+      f.isDeflecting = false;
+      f.isInvulnerable = false;
+      f.unstoppablePoise = false;
+      f.isFullyBurrowed = false;
+      f._trainingGuardHold = 0;
+      f.comboStep = 0;
+      f._activeComboStage = 0;
+      f._queuedNextBeat = false;
+      f.skillCooldown = 0;
+      f.dodgeCooldown = 0;
+      f.dashCooldown = 0;
+      f.autoCooldown = 0;
+      f.crouchCooldown = 0;
+      f.jumpCooldown = 0;
+      f._vsManualJumpCd = 0;
+      f._vsManualGuardCd = 0;
+      f.timeSinceLastHit = 0;
+      f.setState('IDLE');
+      if (isDummy) {
+        f.trainingDummyMode = lab.dummyMode;
+        f.mana = 0;
+        if (f.hasTrueUltimate) f.finisherGauge = 0;
+      } else {
+        f.trainingDummyMode = null;
+        if (lab.gaugeMode === 'instant') {
+          f.mana = f.maxMana;
+          if (f.hasTrueUltimate) f.finisherGauge = f.maxFinisherGauge;
+        }
+      }
+    };
+
+    resetEntity(p1, 460, 1, false);
+    resetEntity(p2, 740, -1, true);
+    this.vfx?.clear?.();
+    this.clearVsManualInputs?.();
+    if (this.vsComboState) {
+      this.vsComboState.left.hits = 0;
+      this.vsComboState.left.damage = 0;
+      this.vsComboState.left.timer = 0;
+      this.vsComboState.right.hits = 0;
+      this.vsComboState.right.damage = 0;
+      this.vsComboState.right.timer = 0;
+    }
+    lab.currentCombo = 0;
+    lab.comboDamage = 0;
+    lab.comboDisplayTimer = 0;
+    lab.idleGaugeTimer = 0;
+    this.ultSlowTimer = 0;
+    this.koSlowTimer = 0;
+    this.isMatchOver = false;
+    this.victoryRevealPending = false;
+    this.victoryOverlay?.classList?.add('hidden');
+    if (this.renderer) {
+      this.renderer.hitStopTimer = 0;
+      this.renderer.camX = 600;
+      this.renderer.clearEndMatchSpotlight?.();
+      this.renderer.deathFX?.clear?.();
+    }
+    this.syncVsManualControlFlags();
+    this.syncTrainingLabUI();
+    if (this.fighters && this.hudEls) this.updateHUD();
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+    return true;
+  }
+
+  updateTrainingLab(dt) {
+    if (!this.isP1TrainingMode() || this.isMatchOver) return;
+    const lab = this._ensureTrainingLabState();
+    const p1 = this.getPointFighter?.(1) || this.leftFighter;
+    const p2 = this.getPointFighter?.(2) || this.rightFighter;
+
+    if (p2 && !p2.isDead) {
+      p2.trainingDummyMode = lab.dummyMode;
+    }
+
+    // Instant Full Gauges: auto-refill Overdrive & Supreme Ult after 1.5s idle
+    if (lab.gaugeMode === 'instant' && p1 && !p1.isDead) {
+      const isNeutral = p1.state === 'IDLE' || p1.state === 'WALK';
+      if (isNeutral) {
+        lab.idleGaugeTimer = (lab.idleGaugeTimer || 0) + dt;
+        if (lab.idleGaugeTimer >= 1.5) {
+          if (p1.mana < p1.maxMana) p1.mana = p1.maxMana;
+          if (p1.hasTrueUltimate && p1.finisherGauge < p1.maxFinisherGauge) {
+            p1.finisherGauge = p1.maxFinisherGauge;
+          }
+          if ((p1.skillCooldown || 0) > 0) p1.skillCooldown = 0;
+        }
+      } else {
+        lab.idleGaugeTimer = 0;
+      }
+    } else {
+      lab.idleGaugeTimer = 0;
+    }
+
+    // Decay live combo display cleanly after combo drops
+    if ((this.vsComboState?.left?.hits || 0) <= 0 && lab.comboDisplayTimer > 0) {
+      lab.comboDisplayTimer = Math.max(0, lab.comboDisplayTimer - dt);
+      if (lab.comboDisplayTimer <= 0) {
+        lab.currentCombo = 0;
+        lab.comboDamage = 0;
+      }
+    }
+  }
+
+  syncTrainingLabTelemetryUI() {
+    if (!this.isP1TrainingMode()) return;
+    const lab = this._ensureTrainingLabState();
+    const p1 = this.getPointFighter?.(1) || this.leftFighter;
+    const parries = (p1?.stats?.parries || 0) + (p1?.stats?.clashes || 0);
+    const dodges = p1?.stats?.dodges || 0;
+    const activeHits = this.vsComboState?.left?.hits || 0;
+    const displayHits = activeHits > 0 ? activeHits : lab.comboDisplayTimer > 0 ? lab.currentCombo || 0 : 0;
+    const displayDmg = activeHits > 0 ? this.vsComboState.left.damage || 0 : lab.comboDisplayTimer > 0 ? lab.comboDamage || 0 : 0;
+
+    if (this.labTelComboEl) this.labTelComboEl.textContent = String(displayHits);
+    if (this.labTelComboBadgeEl) {
+      this.labTelComboBadgeEl.classList.toggle('is-hot', displayHits >= 2);
+    }
+    if (this.labTelComboDmgEl) this.labTelComboDmgEl.textContent = String(displayDmg);
+    if (this.labTelLastHitEl) this.labTelLastHitEl.textContent = String(lab.lastHit || 0);
+    if (this.labTelMaxComboEl) {
+      const bestMax = Math.max(lab.maxCombo || 0, p1?.stats?.maxCombo || 0);
+      lab.maxCombo = bestMax;
+      this.labTelMaxComboEl.textContent = String(bestMax);
+    }
+    if (this.labTelDefEl) this.labTelDefEl.textContent = `${parries} / ${dodges}`;
+  }
+
+  syncTrainingLabUI() {
+    const lab = this._ensureTrainingLabState();
+    const active = Boolean(this.isP1TrainingMode() && !this.isLandingOpen && !this.isAdventureMode());
+    if (this.appEl) {
+      this.appEl.classList.toggle('is-training-lab-active', active);
+    }
+    if (this.trainingLabBarEl) {
+      this.trainingLabBarEl.classList.toggle('hidden', !active || this.isMatchOver);
+      this.trainingLabBarEl.classList.toggle('is-collapsed', Boolean(lab.collapsed));
+    }
+    if (this.btnLabCollapse) {
+      this.btnLabCollapse.setAttribute('aria-expanded', String(!lab.collapsed));
+    }
+    if (this.labCollapseLabel) {
+      this.labCollapseLabel.textContent = lab.collapsed ? 'LAB +' : 'LAB -';
+    }
+    if (this.trainingLabTelemetryEl) {
+      this.trainingLabTelemetryEl.classList.toggle('hidden', !active || this.isMatchOver);
+    }
+    const dummyLabelMap = {
+      idle: 'DUMMY: IDLE',
+      auto_guard: 'DUMMY: GUARD',
+      fight: 'DUMMY: FIGHT'
+    };
+    if (this.btnLabDummy) {
+      this.btnLabDummy.setAttribute('data-dummy-mode', lab.dummyMode);
+    }
+    if (this.labDummyLabel) {
+      this.labDummyLabel.textContent = dummyLabelMap[lab.dummyMode] || 'DUMMY: IDLE';
+    }
+    if (this.btnLabGauge) {
+      this.btnLabGauge.setAttribute('data-gauge-mode', lab.gaugeMode);
+      this.btnLabGauge.classList.toggle('is-active', lab.gaugeMode === 'instant');
+    }
+    if (this.labGaugeLabel) {
+      this.labGaugeLabel.textContent = lab.gaugeMode === 'instant' ? 'GAUGE: FULL' : 'GAUGE: NORMAL';
+    }
+    if (this.btnLabHp) {
+      this.btnLabHp.setAttribute('data-hp-mode', lab.hpMode);
+      this.btnLabHp.classList.toggle('is-active', lab.hpMode === 'auto_heal');
+    }
+    if (this.labHpLabel) {
+      this.labHpLabel.textContent = lab.hpMode === 'auto_heal' ? 'HP: AUTO-HEAL' : 'HP: MORTAL';
+    }
+    if (Array.isArray(this.pauseLabDummyBtns)) {
+      for (const b of this.pauseLabDummyBtns) {
+        b.classList.toggle('is-active', b.getAttribute('data-pause-lab-dummy') === lab.dummyMode);
+      }
+    }
+    if (Array.isArray(this.pauseLabGaugeBtns)) {
+      for (const b of this.pauseLabGaugeBtns) {
+        b.classList.toggle('is-active', b.getAttribute('data-pause-lab-gauge') === lab.gaugeMode);
+      }
+    }
+    if (Array.isArray(this.pauseLabHpBtns)) {
+      for (const b of this.pauseLabHpBtns) {
+        b.classList.toggle('is-active', b.getAttribute('data-pause-lab-hp') === lab.hpMode);
+      }
+    }
+    if (active) {
+      this.syncTrainingLabTelemetryUI();
+    }
   }
 
   swapSides(playSound = true) {
@@ -2857,6 +3728,43 @@ export class Game {
     this.btnNextChallenger = document.getElementById('btn-next-challenger');
     this.btnSwapSides = document.getElementById('btn-swap-sides');
     this.vsModeOriginChip = document.getElementById('vs-mode-origin-chip');
+    this.p1SubmodeGroup = document.getElementById('p1-submode-group');
+    this.p1SubmodeSep = document.getElementById('p1-submode-sep');
+    this.p1SubmodeBtns = Array.from(document.querySelectorAll('[data-p1-submode]'));
+    this.p1ArcadeSummaryChip = document.getElementById('p1-arcade-summary-chip');
+    this.quickModeGroupEl = document.getElementById('quick-mode-group');
+    this.quickModeSepEl = document.getElementById('quick-mode-sep');
+    this.quickStageStripEl = document.getElementById('quick-stage-strip');
+    this.quickStageSepEl = document.getElementById('quick-stage-sep');
+    this.quickRulesGroupEl = document.getElementById('quick-rules-group');
+    this.quickRulesSepEl = document.getElementById('quick-rules-sep');
+    this.rightRivalBadge = document.getElementById('right-rival-badge');
+    this.hudRightPlate = document.getElementById('hud-right');
+    this.victoryArcadeStrip = document.getElementById('victory-arcade-strip');
+    this.victoryArcadeRankBadge = document.getElementById('victory-arcade-rank-badge');
+    this.victoryArcadeNodes = document.getElementById('victory-arcade-nodes');
+    this.trainingLabBarEl = document.getElementById('training-lab-bar');
+    this.btnLabCollapse = document.getElementById('btn-lab-collapse');
+    this.labCollapseLabel = document.getElementById('lab-collapse-label');
+    this.btnLabDummy = document.getElementById('btn-lab-dummy');
+    this.labDummyLabel = document.getElementById('lab-dummy-label');
+    this.btnLabGauge = document.getElementById('btn-lab-gauge');
+    this.labGaugeLabel = document.getElementById('lab-gauge-label');
+    this.btnLabHp = document.getElementById('btn-lab-hp');
+    this.labHpLabel = document.getElementById('lab-hp-label');
+    this.btnLabReset = document.getElementById('btn-lab-reset');
+    this.trainingLabTelemetryEl = document.getElementById('training-lab-telemetry');
+    this.labTelComboBadgeEl = document.getElementById('lab-tel-combo-badge');
+    this.labTelComboEl = document.getElementById('lab-tel-combo');
+    this.labTelComboDmgEl = document.getElementById('lab-tel-combo-dmg');
+    this.labTelLastHitEl = document.getElementById('lab-tel-last-hit');
+    this.labTelMaxComboEl = document.getElementById('lab-tel-max-combo');
+    this.labTelDefEl = document.getElementById('lab-tel-def');
+    this.pauseTrainingBar = document.getElementById('pause-training-bar');
+    this.pauseLabDummyBtns = Array.from(document.querySelectorAll('[data-pause-lab-dummy]'));
+    this.pauseLabGaugeBtns = Array.from(document.querySelectorAll('[data-pause-lab-gauge]'));
+    this.pauseLabHpBtns = Array.from(document.querySelectorAll('[data-pause-lab-hp]'));
+    this.pauseLabResetBtn = document.getElementById('pause-lab-reset');
     this.pauseVsSectionLabel = document.getElementById('pause-vs-section-label');
     this.vsKeyHintBarEl = document.getElementById('vs-keyhint-bar');
     this.vsKeyHintTextEl = document.getElementById('vs-keyhint-text');
@@ -3023,7 +3931,7 @@ export class Game {
     }
     if (profileRightEl) {
       profileRightEl.addEventListener('click', (e) => {
-        if (this.isAdventureMode() || e.target.closest('button')) return;
+        if (this.isAdventureMode() || this.isP1ArcadeMode() || e.target.closest('button')) return;
         this.setActiveSlot(this.is2v2Mode() && this.inspectRightRole === 'partner' ? 4 : 2);
       });
     }
@@ -3327,7 +4235,7 @@ export class Game {
     }
     if (this.slotBtnRight) {
       this.slotBtnRight.addEventListener('click', () => {
-        if (this.isAdventureMode()) {
+        if (this.isAdventureMode() || this.isP1ArcadeMode()) {
           this.inspectLeftRole = 'lead';
           this.setActiveSlot(1);
           return;
@@ -3424,7 +4332,7 @@ export class Game {
     Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
       if (!cardEl) return;
       cardEl.addEventListener('click', () => {
-        if (this.isAdventureMode()) {
+        if (this.isAdventureMode() || this.isP1ArcadeMode()) {
           this.assignHeroToSlot(1, heroKey, true);
           this.setActiveSlot(1);
           return;
@@ -3514,6 +4422,8 @@ export class Game {
         if (this.isAdventureMode() || this.gameMode === '2v2_brawl') {
           this.setGameMode('1v1', false);
         }
+        this.p1SubMode = 'exhibition';
+        this.arcadeRun = null;
         this.setVsControlMode('1p', { playSound: false });
         this.syncRosterSelectionUI(false);
         this.setLandingStep('roster', true);
@@ -3525,6 +4435,8 @@ export class Game {
         if (this.isAdventureMode() || this.gameMode === '2v2_brawl') {
           this.setGameMode('1v1', false);
         }
+        this.p1SubMode = 'exhibition';
+        this.arcadeRun = null;
         this.setVsControlMode('ai', { playSound: false });
         this.syncRosterSelectionUI(false);
         this.setLandingStep('roster', true);
@@ -3533,9 +4445,64 @@ export class Game {
     const btnTitleAdventure = document.getElementById('btn-title-adventure');
     if (btnTitleAdventure) {
       btnTitleAdventure.addEventListener('click', () => {
+        this.p1SubMode = 'exhibition';
+        this.arcadeRun = null;
         this.setVsControlMode('ai', { playSound: false });
         this.setGameMode('adventure', false);
         this.setLandingStep('roster', true);
+      });
+    }
+    if (Array.isArray(this.p1SubmodeBtns)) {
+      for (const btn of this.p1SubmodeBtns) {
+        btn.addEventListener('click', () => {
+          if (!this.isVsManualP1Active()) return;
+          const nextSub = btn.getAttribute('data-p1-submode') || 'exhibition';
+          this.setP1SubMode(nextSub, true);
+        });
+      }
+    }
+    if (this.btnLabCollapse) {
+      this.btnLabCollapse.addEventListener('click', () => {
+        this.setTrainingLabCollapsed(!this._ensureTrainingLabState().collapsed, true);
+      });
+    }
+    if (this.btnLabDummy) {
+      this.btnLabDummy.addEventListener('click', () => this.cycleTrainingDummyMode(true));
+    }
+    if (this.btnLabGauge) {
+      this.btnLabGauge.addEventListener('click', () => this.toggleTrainingGaugeMode(true));
+    }
+    if (this.btnLabHp) {
+      this.btnLabHp.addEventListener('click', () => this.toggleTrainingHpMode(true));
+    }
+    if (this.btnLabReset) {
+      this.btnLabReset.addEventListener('click', () => this.resetTrainingLabPositions(true));
+    }
+    if (Array.isArray(this.pauseLabDummyBtns)) {
+      for (const btn of this.pauseLabDummyBtns) {
+        btn.addEventListener('click', () =>
+          this.setTrainingDummyMode(btn.getAttribute('data-pause-lab-dummy') || 'idle', true)
+        );
+      }
+    }
+    if (Array.isArray(this.pauseLabGaugeBtns)) {
+      for (const btn of this.pauseLabGaugeBtns) {
+        btn.addEventListener('click', () =>
+          this.setTrainingGaugeMode(btn.getAttribute('data-pause-lab-gauge') || 'instant', true)
+        );
+      }
+    }
+    if (Array.isArray(this.pauseLabHpBtns)) {
+      for (const btn of this.pauseLabHpBtns) {
+        btn.addEventListener('click', () =>
+          this.setTrainingHpMode(btn.getAttribute('data-pause-lab-hp') || 'auto_heal', true)
+        );
+      }
+    }
+    if (this.pauseLabResetBtn) {
+      this.pauseLabResetBtn.addEventListener('click', () => {
+        this.setPaused(false, false);
+        this.resetTrainingLabPositions(true);
       });
     }
     const btnModeBack = document.getElementById('btn-mode-back');
@@ -3792,7 +4759,13 @@ export class Game {
     }
 
     if (this.btnNextChallenger) {
-      this.btnNextChallenger.addEventListener('click', () => this.advanceTourneyChallenger());
+      this.btnNextChallenger.addEventListener('click', () => {
+        if (this.isArcadeLadderActive()) {
+          this.advanceArcadeStage();
+          return;
+        }
+        this.advanceTourneyChallenger();
+      });
     }
     if (this.btnSwapSides) {
       this.btnSwapSides.addEventListener('click', () => this.swapSides(true));
@@ -3864,6 +4837,9 @@ export class Game {
         e.preventDefault();
       } else if (code === 'Tab' && this.gameMode === '2v2_tag') {
         if (!e.repeat) this.triggerVsManualAction('tag');
+        e.preventDefault();
+      } else if (code === 'Backspace' && this.isP1TrainingMode()) {
+        if (!e.repeat) this.resetTrainingLabPositions(true);
         e.preventDefault();
       }
     });
@@ -4039,11 +5015,29 @@ export class Game {
     this.btnReset.addEventListener('click', () => {
       this.setPaused(false, false);
       this.audio?.stopAllHeroVoices?.(0.03);
+      if (this.isP1TrainingMode()) {
+        this.resetTrainingLabPositions(true);
+        return;
+      }
       this.resetMatch();
       this.beginLiveRoundIntro();
     });
     this.btnPlayAgain.addEventListener('click', () => {
       this.audio?.stopAllHeroVoices?.(0.03);
+      if (this.isArcadeLadderActive()) {
+        if (this.arcadeRun.cleared) {
+          this.startArcadeRun(this.slot1Hero);
+          this.resetMatch();
+          this.beginLiveRoundIntro();
+        } else {
+          this.retryArcadeStage();
+        }
+        return;
+      }
+      if (this.isP1TrainingMode()) {
+        this.resetMatch();
+        return;
+      }
       this.resetMatch();
       this.beginLiveRoundIntro();
     });
@@ -4652,7 +5646,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps174');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps175');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -4810,7 +5804,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps174'
+          'v=30fps175'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -5065,8 +6059,23 @@ export class Game {
     if (modeSummaryEl) modeSummaryEl.textContent = summaryStr;
     const rosterBadgeTextEl = document.getElementById('roster-config-badge-text');
     if (rosterBadgeTextEl) rosterBadgeTextEl.textContent = summaryStr;
+    const isP1Mode = !isAdv && this.vsControlMode === '1p';
+    const isP1Arcade = isP1Mode && this.p1SubMode === 'arcade';
+    const isP1Training = isP1Mode && this.p1SubMode === 'training';
+    const arcadeFinalCfg = isP1Arcade ? getArcadeFinalRivalConfig(this.slot1Hero) : null;
+    const arcadeFinalHeroCfg = arcadeFinalCfg ? CHAMPION_ROSTER[arcadeFinalCfg.rival] || c2 : null;
     const matchupVsEl = document.getElementById('matchup-vs-text');
-    if (matchupVsEl) matchupVsEl.textContent = isAdv ? 'SOLO' : is2v2 ? 'TAG VS' : '1V1';
+    if (matchupVsEl) {
+      matchupVsEl.textContent = isAdv
+        ? 'SOLO'
+        : isP1Arcade
+          ? 'ARCADE 5'
+          : isP1Training
+            ? 'LAB'
+            : is2v2
+              ? 'TAG VS'
+              : '1V1';
+    }
 
     const slotLabelMap = {
       1: 'P1 LEAD',
@@ -5078,21 +6087,36 @@ export class Game {
     if (gridPromptEl) {
       gridPromptEl.textContent = isAdv
         ? '23 CHAMPIONS (12 EX • 11 LEGACY)'
-        : `PICKING: ${slotLabelMap[this.activeAssignSlot] || 'P1 LEAD'}`;
+        : isP1Arcade
+          ? 'PICK YOUR ARCADE CHAMPION'
+          : isP1Training
+            ? this.activeAssignSlot === 2
+              ? 'PICKING: TRAINING DUMMY'
+              : 'PICKING: YOUR CHAMPION (1P)'
+            : `PICKING: ${slotLabelMap[this.activeAssignSlot] || 'P1 LEAD'}`;
     }
 
     const activeSide =
-      isAdv || this.activeAssignSlot === 1 || this.activeAssignSlot === 3 ? 'left' : 'right';
+      isAdv || isP1Arcade || this.activeAssignSlot === 1 || this.activeAssignSlot === 3 ? 'left' : 'right';
     if (this.versusLayoutEl) {
       this.versusLayoutEl.setAttribute('data-active-side', activeSide);
     }
 
     // 2. Matchup Banner 4-Slot Names, Tags & Active Slot Highlight
-    const isP1Mode = !isAdv && this.vsControlMode === '1p';
     const slotLeftTagEl = document.getElementById('slot-left-tag');
     const slotRightTagEl = document.getElementById('slot-right-tag');
     if (slotLeftTagEl) slotLeftTagEl.textContent = isAdv ? 'HERO' : isP1Mode ? 'YOU' : 'P1';
-    if (slotRightTagEl) slotRightTagEl.textContent = isAdv ? 'BOSS' : isP1Mode ? 'CPU' : 'P2';
+    if (slotRightTagEl) {
+      slotRightTagEl.textContent = isAdv
+        ? 'BOSS'
+        : isP1Arcade
+          ? 'STAGE 5'
+          : isP1Training
+            ? 'DUMMY'
+            : isP1Mode
+              ? 'CPU'
+              : 'P2';
+    }
 
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
@@ -5101,7 +6125,9 @@ export class Game {
         ? customPackSummary
           ? String(customPackSummary.bossName).toUpperCase()
           : 'BEHEMOTH MALPHAS'
-        : c2.name;
+        : isP1Arcade && arcadeFinalHeroCfg
+          ? arcadeFinalHeroCfg.name
+          : c2.name;
     }
     if (this.slotRightPartnerName) this.slotRightPartnerName.textContent = c2b.name;
 
@@ -5110,16 +6136,16 @@ export class Game {
     if (this.p1DuoTabs) this.p1DuoTabs.classList.toggle('hidden', !is2v2);
     if (this.p2DuoTabs) this.p2DuoTabs.classList.toggle('hidden', !is2v2);
 
-    if (this.slotBtnLeft) this.slotBtnLeft.classList.toggle('active-slot', isAdv || this.activeAssignSlot === 1);
+    if (this.slotBtnLeft) this.slotBtnLeft.classList.toggle('active-slot', isAdv || isP1Arcade || this.activeAssignSlot === 1);
     if (this.slotBtnLeftPartner)
-      this.slotBtnLeftPartner.classList.toggle('active-slot', !isAdv && this.activeAssignSlot === 3);
+      this.slotBtnLeftPartner.classList.toggle('active-slot', !isAdv && !isP1Arcade && this.activeAssignSlot === 3);
     if (this.slotBtnRight) {
-      this.slotBtnRight.classList.toggle('active-slot', !isAdv && this.activeAssignSlot === 2);
-      this.slotBtnRight.classList.toggle('is-boss-slot', isAdv);
-      this.slotBtnRight.setAttribute('aria-disabled', String(isAdv));
+      this.slotBtnRight.classList.toggle('active-slot', !isAdv && !isP1Arcade && this.activeAssignSlot === 2);
+      this.slotBtnRight.classList.toggle('is-boss-slot', isAdv || isP1Arcade);
+      this.slotBtnRight.setAttribute('aria-disabled', String(isAdv || isP1Arcade));
     }
     if (this.slotBtnRightPartner)
-      this.slotBtnRightPartner.classList.toggle('active-slot', !isAdv && this.activeAssignSlot === 4);
+      this.slotBtnRightPartner.classList.toggle('active-slot', !isAdv && !isP1Arcade && this.activeAssignSlot === 4);
 
     const p1CornerTagEl = document.getElementById('p1-corner-tag');
     const p2CornerTagEl = document.getElementById('p2-corner-tag');
@@ -5141,13 +6167,37 @@ export class Game {
         ? customPackSummary
           ? `STAGE PACK • ${customPackSummary.zoneCount}Z`
           : 'ZONE IV BOSS'
-        : isP1Mode
-          ? is2v2
-            ? 'CPU TEAM'
-            : 'CPU'
-          : is2v2
-            ? 'TEAM 2'
-            : 'P2 LEAD';
+        : isP1Arcade
+          ? 'STAGE 5 FINAL RIVAL'
+          : isP1Training
+            ? 'TRAINING DUMMY'
+            : isP1Mode
+              ? is2v2
+                ? 'CPU TEAM'
+                : 'CPU'
+              : is2v2
+                ? 'TEAM 2'
+                : 'P2 LEAD';
+    }
+    const ctaHeadlineEl = document.getElementById('cta-headline-text');
+    if (ctaHeadlineEl) {
+      ctaHeadlineEl.textContent = isAdv
+        ? 'START CAMPAIGN'
+        : isP1Arcade
+          ? 'START ARCADE 5'
+          : isP1Training
+            ? 'ENTER TRAINING LAB'
+            : 'START FIGHT';
+    }
+    const navCommenceLbl = document.getElementById('nav-commence-label');
+    if (navCommenceLbl) {
+      navCommenceLbl.textContent = isAdv
+        ? 'START CAMPAIGN'
+        : isP1Arcade
+          ? 'START ARCADE 5'
+          : isP1Training
+            ? 'ENTER LAB'
+            : 'START MATCH';
     }
     if (p2SkillsHeaderEl) {
       p2SkillsHeaderEl.textContent = isAdv
@@ -5158,14 +6208,16 @@ export class Game {
       p2KitToggleLabelEl.textContent = isAdv ? 'BOSS KIT' : 'KIT & TIERS';
     }
 
-    if (this.btnNextChallenger) {
-      this.btnNextChallenger.classList.toggle('hidden', isAdv);
-    }
-    if (this.btnSwapSides) {
-      this.btnSwapSides.classList.toggle('hidden', isAdv);
-    }
-    if (this.btnPlayAgain) {
-      this.btnPlayAgain.textContent = isAdv ? 'RETRY CAMPAIGN' : 'REMATCH';
+    if (!this.isMatchOver) {
+      if (this.btnNextChallenger) {
+        this.btnNextChallenger.classList.toggle('hidden', Boolean(isAdv || isP1Training));
+      }
+      if (this.btnSwapSides) {
+        this.btnSwapSides.classList.toggle('hidden', Boolean(isAdv || isP1Arcade || isP1Training));
+      }
+      if (this.btnPlayAgain) {
+        this.btnPlayAgain.textContent = isAdv ? 'RETRY CAMPAIGN' : 'REMATCH';
+      }
     }
     this.syncVsControlUI?.();
 
@@ -5196,7 +6248,7 @@ export class Game {
       const ribbon = this.ribbons[key];
       const isP1 = this.slot1Hero === key;
       const isP1B = !isAdv && is2v2 && this.slot1PartnerHero === key;
-      const isP2 = !isAdv && this.slot2Hero === key;
+      const isP2 = !isAdv && !isP1Arcade && this.slot2Hero === key;
       const isP2B = !isAdv && is2v2 && this.slot2PartnerHero === key;
       if (card) {
         card.classList.toggle('selected-p1', isP1);
@@ -5209,18 +6261,25 @@ export class Game {
           ? isP1
             ? 'HERO'
             : ''
-          : isP1
-            ? 'P1'
-            : isP1B
-              ? 'P1B'
-              : isP2
-                ? 'P2'
-                : isP2B
-                  ? 'P2B'
-                  : '';
+          : isP1Arcade
+            ? isP1
+              ? '1P'
+              : ''
+            : isP1
+              ? 'P1'
+              : isP1B
+                ? 'P1B'
+                : isP2
+                  ? isP1Training
+                    ? 'DUMMY'
+                    : 'P2'
+                  : isP2B
+                    ? 'P2B'
+                    : '';
       }
     });
     this.syncAdventureClearMedalsUI();
+    this.syncArcadeTrophyPipsUI();
 
     // 4. Populate Left (P1 / P1B) and Right (P2 / P2B or Adventure Final Boss) Profile Panels & Kit Drawers
     const romanTierMap = ['I', 'II', 'III'];
@@ -5376,19 +6435,28 @@ export class Game {
             }
           ]
         }
-      : is2v2 && this.inspectRightRole === 'partner'
-        ? c2b
-        : c2;
+      : isP1Arcade && arcadeFinalHeroCfg
+        ? {
+            ...arcadeFinalHeroCfg,
+            role: `${arcadeFinalCfg.title} • +18% BOSS HP`
+          }
+        : is2v2 && this.inspectRightRole === 'partner'
+          ? c2b
+          : c2;
     const rightOther = is2v2 && this.inspectRightRole === 'partner' ? c2 : c2b;
 
     syncProfilePanel('p1', 'left', leftInspected, leftOther, leftSlotKey);
-    syncProfilePanel('p2', 'right', rightInspected, isAdv ? null : rightOther, rightSlotKey);
+    syncProfilePanel('p2', 'right', rightInspected, isAdv || isP1Arcade ? null : rightOther, rightSlotKey);
 
     if (this.startDuelText) {
       if (this.isAdventureMode()) {
         this.startDuelText.textContent = customPackSummary
           ? `START PACK • ${c1.name}`
           : `START ADVENTURE • ${c1.name}`;
+      } else if (isP1Arcade) {
+        this.startDuelText.textContent = `5-STAGE LADDER • ${c1.name} -> ${arcadeFinalHeroCfg?.name || c2.name}`;
+      } else if (isP1Training) {
+        this.startDuelText.textContent = `${c1.name} VS. ${c2.name} (DUMMY)`;
       } else if (this.gameMode === '2v2_brawl') {
         this.startDuelText.textContent = `${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
       } else if (this.gameMode === '2v2_tag') {
@@ -5418,6 +6486,7 @@ export class Game {
     if (
       !forceInTest &&
       (this.simMode ||
+        this.isP1TrainingMode?.() ||
         typeof window === 'undefined' ||
         typeof HTMLImageElement === 'undefined' ||
         this.isLandingOpen)
@@ -5519,6 +6588,22 @@ export class Game {
     this.audio?.stopAllHeroVoices?.(0.03);
     clearTimeout(this._introVoiceTimeout);
     this.victoryOverlay?.classList.remove('is-defeat-plaque');
+    this.victoryOverlay?.classList.remove('is-arcade-champion-plaque');
+    if (this.isP1ArcadeMode()) {
+      this.startArcadeRun(this.slot1Hero);
+    } else if (this.isP1TrainingMode()) {
+      this.gameMode = '1v1';
+      this.arcadeRun = null;
+      const lab = this._ensureTrainingLabState();
+      lab.idleGaugeTimer = 0;
+      lab.currentCombo = 0;
+      lab.comboDamage = 0;
+      lab.lastHit = 0;
+      lab.maxCombo = 0;
+      lab.comboDisplayTimer = 0;
+    } else {
+      this.arcadeRun = null;
+    }
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
@@ -5873,7 +6958,11 @@ export class Game {
 
     const p1Front = is2v2 && this.inspectLeftRole === 'partner' ? this.slot1PartnerHero : this.slot1Hero;
     const p1Back = is2v2 && this.inspectLeftRole === 'partner' ? this.slot1Hero : this.slot1PartnerHero;
-    const p2Front = is2v2 && this.inspectRightRole === 'partner' ? this.slot2PartnerHero : this.slot2Hero;
+    const p2Front = this.isP1ArcadeMode()
+      ? getArcadeFinalRivalConfig(this.slot1Hero).rival
+      : is2v2 && this.inspectRightRole === 'partner'
+        ? this.slot2PartnerHero
+        : this.slot2Hero;
     const p2Back = is2v2 && this.inspectRightRole === 'partner' ? this.slot2Hero : this.slot2PartnerHero;
 
     drawSideProfileVisuals('p1', p1Front, p1Back, false);
@@ -6263,19 +7352,35 @@ export class Game {
     if (this.adventure?.active) {
       this.adventure.stopCampaign();
     }
+    const isArcade = this.isArcadeLadderActive();
+    const arcadeStage = isArcade ? this.getCurrentArcadeStage() : null;
+    const isTraining = this.isP1TrainingMode();
+    if (isArcade && arcadeStage) {
+      this.slot2Hero = arcadeStage.heroId;
+      this.testModeUnlimitedHp = false;
+    } else if (isTraining) {
+      this.testModeUnlimitedHp = false;
+    }
     if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
       document.getElementById('hud-right')?.classList?.remove?.('hidden');
     }
     this.pauseSpBadge?.classList.add('hidden');
-    if (this.btnNextChallenger) this.btnNextChallenger.classList.remove('hidden');
+    if (this.btnNextChallenger) {
+      this.btnNextChallenger.classList.remove('hidden', 'is-arcade-primary');
+      this.btnNextChallenger.textContent = 'NEXT CHALLENGER';
+    }
     if (this.btnSwapSides) this.btnSwapSides.classList.remove('hidden');
-    if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'REMATCH';
+    if (this.btnPlayAgain) {
+      this.btnPlayAgain.classList.remove('hidden');
+      this.btnPlayAgain.textContent = 'REMATCH';
+    }
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
+    if (this.victoryArcadeStrip) this.victoryArcadeStrip.classList.add('hidden');
 
     if (this.renderer) {
       if (typeof this.renderer.pickRandomStage === 'function') {
-        this.renderer.pickRandomStage(this.forcedStage);
+        this.renderer.pickRandomStage(isArcade && arcadeStage ? arcadeStage.stageId : this.forcedStage);
       }
       if (this._wasAdventureMatch || this._lastActiveVsStageId !== this.renderer.stageId) {
         this.renderer.releaseStageCutoutCaches?.(true);
@@ -6337,8 +7442,10 @@ export class Game {
         ? Date.now() + 1400
         : 0;
 
-    this.leftFighter = new c1.cls(is2v2 ? ww * 0.25 : ww * 0.2, gy, 1);
-    this.rightFighter = new c2.cls(is2v2 ? ww * 0.75 : ww * 0.8, gy, -1);
+    const p1SpawnX = isTraining ? 460 : is2v2 ? ww * 0.25 : ww * 0.2;
+    const p2SpawnX = isTraining ? 740 : is2v2 ? ww * 0.75 : ww * 0.8;
+    this.leftFighter = new c1.cls(p1SpawnX, gy, 1);
+    this.rightFighter = new c2.cls(p2SpawnX, gy, -1);
     this.leftFighter.game = this;
     this.rightFighter.game = this;
     this.leftFighter.team = 1;
@@ -6363,6 +7470,37 @@ export class Game {
       HeroBuildSystem.resolveMatchBuild('p2', c2.id, { isAdventure: false }),
       false
     );
+
+    const isFinalRivalStage = Boolean(isArcade && arcadeStage?.isFinalRival);
+    if (isFinalRivalStage) {
+      const bossHpMult = Number(arcadeStage.hpMult) || 1.18;
+      const boostedMaxHp = Math.round(this.rightFighter.maxHp * bossHpMult);
+      this.rightFighter.maxHp = boostedMaxHp;
+      this.rightFighter.hp = boostedMaxHp;
+    }
+    if (this.rightRivalBadge) {
+      this.rightRivalBadge.classList.toggle('hidden', !isFinalRivalStage);
+    }
+    if (this.hudRightPlate) {
+      this.hudRightPlate.classList.toggle('is-final-rival-plate', isFinalRivalStage);
+    }
+
+    if (isTraining) {
+      const lab = this._ensureTrainingLabState();
+      this.leftFighter.trainingDummyMode = null;
+      this.rightFighter.trainingDummyMode = lab.dummyMode;
+      lab.idleGaugeTimer = 0;
+      if (lab.gaugeMode === 'instant') {
+        this.leftFighter.mana = this.leftFighter.maxMana;
+        if (this.leftFighter.hasTrueUltimate) {
+          this.leftFighter.finisherGauge = this.leftFighter.maxFinisherGauge;
+        }
+        this.leftFighter.skillCooldown = 0;
+      }
+    } else {
+      this.leftFighter.trainingDummyMode = null;
+      this.rightFighter.trainingDummyMode = null;
+    }
 
     if (is2v2) {
       const isTag = this.gameMode === '2v2_tag';
@@ -6469,12 +7607,14 @@ export class Game {
     this.renderer?.clearEndMatchSpotlight?.();
     this.renderer?.deathFX?.clear?.();
     this.victoryOverlay.classList.remove('is-defeat-plaque');
+    this.victoryOverlay.classList.remove('is-arcade-champion-plaque');
     this.victoryOverlay.classList.add('hidden');
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.syncVsManualControlFlags();
     this.syncVsControlUI();
+    this.syncTrainingLabUI();
     if (this.isVsManualP1Active() && !this.isLandingOpen && !this.simMode) {
       this.showVsKeyHintBar(4.0);
     } else {
@@ -7064,11 +8204,111 @@ export class Game {
     fillTel('right', 2);
 
     const autoLabel = document.getElementById('victory-auto-next');
-    if (autoLabel) {
-      autoLabel.classList.remove('hidden');
-      autoLabel.textContent = this.autoTourney
-        ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 9S...'
-        : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
+    if (this.isArcadeLadderActive()) {
+      const run = this.arcadeRun;
+      const curStage = this.getCurrentArcadeStage();
+      const stageNum = curStage?.stageNumber || (run.currentStageIndex || 0) + 1;
+      const isPlayerWin = winningTeam === 1;
+      this.victoryOverlay?.classList.remove('is-defeat-plaque', 'is-arcade-champion-plaque');
+      if (this.btnSwapSides) this.btnSwapSides.classList.add('hidden');
+      if (autoLabel) autoLabel.classList.add('hidden');
+
+      if (isPlayerWin) {
+        if (curStage) curStage.defeated = true;
+        run.totalTimeSec = (run.totalTimeSec || 0) + (this.matchTime || 0);
+        if (stageNum < 5) {
+          const nextStage = run.stages[run.currentStageIndex + 1];
+          const nextCfg = CHAMPION_ROSTER[nextStage?.heroId] || CHAMPION_ROSTER.reaper_ex;
+          if (eyebrowEl) eyebrowEl.textContent = `ARCADE LADDER • STAGE ${stageNum} / 5 CLEARED`;
+          const winEl = document.getElementById('victory-winner');
+          if (winEl) winEl.textContent = `${winner.name.toUpperCase()} ADVANCES!`;
+          const statsEl = document.getElementById('victory-stats');
+          if (statsEl) {
+            statsEl.textContent = nextStage?.isFinalRival
+              ? `FINAL SOVEREIGN RIVAL AWAITS: ${nextCfg.name} (${nextStage.rivalTitle})`
+              : `NEXT CHALLENGER (STAGE ${stageNum + 1} / 5): ${nextCfg.name}`;
+          }
+          if (this.btnPlayAgain) this.btnPlayAgain.classList.add('hidden');
+          if (this.btnNextChallenger) {
+            this.btnNextChallenger.classList.remove('hidden');
+            this.btnNextChallenger.classList.add('is-arcade-primary');
+            this.btnNextChallenger.textContent =
+              stageNum === 4
+                ? 'FINAL RIVAL (STAGE 5/5)'
+                : `NEXT CHALLENGER (STAGE ${stageNum + 1}/5)`;
+          }
+        } else {
+          run.cleared = true;
+          const rank = computeArcadeRank(run.continuesUsed || 0, run.totalTimeSec || 0);
+          run.bestRank = rank;
+          saveArcadeTrophy(run.playerHeroId, {
+            rank,
+            totalTimeSec: run.totalTimeSec || 0,
+            continuesUsed: run.continuesUsed || 0
+          });
+          this.victoryOverlay?.classList.add('is-arcade-champion-plaque');
+          const mins = String(Math.floor((run.totalTimeSec || 0) / 60)).padStart(2, '0');
+          const secs = String(Math.floor((run.totalTimeSec || 0) % 60)).padStart(2, '0');
+          if (eyebrowEl) eyebrowEl.textContent = `ARCADE CHAMPION CLEAR • RANK ${rank}`;
+          const winEl = document.getElementById('victory-winner');
+          if (winEl) winEl.textContent = `${winner.name.toUpperCase()} — ARCADE CHAMPION!`;
+          const statsEl = document.getElementById('victory-stats');
+          if (statsEl) {
+            statsEl.textContent = `5/5 CLEARED • TIME ${mins}:${secs} • CONTINUES: ${run.continuesUsed || 0} • TROPHY SAVED!`;
+          }
+          if (this.btnNextChallenger) {
+            this.btnNextChallenger.classList.add('hidden');
+            this.btnNextChallenger.classList.remove('is-arcade-primary');
+          }
+          if (this.btnPlayAgain) {
+            this.btnPlayAgain.classList.remove('hidden');
+            this.btnPlayAgain.textContent = 'NEW ARCADE RUN';
+          }
+          this.syncArcadeTrophyPipsUI?.();
+        }
+      } else {
+        this.victoryOverlay?.classList.add('is-defeat-plaque');
+        if (eyebrowEl) {
+          eyebrowEl.textContent = `ARCADE LADDER • STAGE ${stageNum} / 5 DEFEAT • CONTINUES: ${run.continuesUsed || 0}`;
+        }
+        const winEl = document.getElementById('victory-winner');
+        if (winEl) winEl.textContent = `DEFEATED ON STAGE ${stageNum}`;
+        const statsEl = document.getElementById('victory-stats');
+        if (statsEl) {
+          statsEl.textContent = `${winner.name.toUpperCase()} HALTED YOUR RUN — RETRY STAGE ${stageNum} WITHOUT RESTARTING!`;
+        }
+        if (this.btnNextChallenger) {
+          this.btnNextChallenger.classList.add('hidden');
+          this.btnNextChallenger.classList.remove('is-arcade-primary');
+        }
+        if (this.btnPlayAgain) {
+          this.btnPlayAgain.classList.remove('hidden');
+          this.btnPlayAgain.textContent = 'RETRY STAGE (CONTINUE)';
+        }
+      }
+      this.renderVictoryArcadeStrip(isPlayerWin);
+    } else if (this.isP1TrainingMode()) {
+      if (this.victoryArcadeStrip) this.victoryArcadeStrip.classList.add('hidden');
+      if (this.btnNextChallenger) this.btnNextChallenger.classList.add('hidden');
+      if (this.btnSwapSides) this.btnSwapSides.classList.add('hidden');
+      if (this.btnPlayAgain) {
+        this.btnPlayAgain.classList.remove('hidden');
+        this.btnPlayAgain.textContent = 'RESET TRAINING';
+      }
+      if (autoLabel) autoLabel.classList.add('hidden');
+    } else {
+      if (this.victoryArcadeStrip) this.victoryArcadeStrip.classList.add('hidden');
+      if (this.btnNextChallenger) {
+        this.btnNextChallenger.classList.remove('hidden', 'is-arcade-primary');
+        this.btnNextChallenger.textContent = 'NEXT CHALLENGER';
+      }
+      if (this.btnPlayAgain) this.btnPlayAgain.classList.remove('hidden');
+      if (autoLabel) {
+        autoLabel.classList.remove('hidden');
+        autoLabel.textContent = this.autoTourney
+          ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 9S...'
+          : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
+      }
     }
 
     clearTimeout(this.victoryTimeout);
@@ -7159,7 +8399,10 @@ export class Game {
     });
     this.victoryOverlay.classList.remove('hidden');
     if (this.btnSwapSides) {
-      this.btnSwapSides.classList.toggle('hidden', this.isAdventureMode());
+      this.btnSwapSides.classList.toggle(
+        'hidden',
+        Boolean(this.isAdventureMode() || this.isArcadeLadderActive() || this.isP1TrainingMode())
+      );
     }
     if (this.audio && !this._victoryAudioPlayedInShowcase) {
       this.audio.stopAllHeroVoices?.(0.06);
@@ -7183,7 +8426,13 @@ export class Game {
         });
       }
     }
-    if (this.autoTourney && !this.isAdventureMode() && !this.isSimPaused) {
+    if (
+      this.autoTourney &&
+      !this.isAdventureMode() &&
+      !this.isArcadeLadderActive() &&
+      !this.isP1TrainingMode() &&
+      !this.isSimPaused
+    ) {
       this._scheduleAutoNext(9000);
     }
   }
@@ -7789,6 +9038,9 @@ export class Game {
     if (!isAdv) {
       sync(this.hudEls.right, rightPoint, rightPartner);
       this.syncVsTouchDeckUI?.();
+      if (this.isP1TrainingMode()) {
+        this.syncTrainingLabTelemetryUI?.();
+      }
     }
     this.updateAdventureBossHUD();
 
@@ -8014,6 +9266,7 @@ export class Game {
     // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when any active fighter drops below 58% HP (Arena Duel/2v2 modes)
     if (
       !this.isAdventureMode() &&
+      !this.isP1TrainingMode() &&
       !this.isMatchOver &&
       !this.stageEventTriggered &&
       activeFighters.length >= 2 &&
@@ -8087,10 +9340,20 @@ export class Game {
       if (this.isVsManualP1Active() && !this.isMatchOver) {
         this.updateVsManualP1(dt);
       }
+      if (this.isP1TrainingMode() && !this.isMatchOver) {
+        this.updateTrainingLab(dt);
+      }
       for (const f of this.fighters) {
         if (!f) continue;
         const target = this.getTargetFor(f);
         if (f.chronoTimeStopTimer > 0 && !f.isDead && f.state !== 'TRUE_ULTIMATE') {
+          Fighter.prototype.update.call(f, dt, target, this);
+        } else if (
+          this.isP1TrainingMode() &&
+          (f.trainingDummyMode === 'idle' || f.trainingDummyMode === 'auto_guard') &&
+          !f.isDead
+        ) {
+          f.fx?.update?.(dt);
           Fighter.prototype.update.call(f, dt, target, this);
         } else if (
           this.isVsManualP1Active() &&

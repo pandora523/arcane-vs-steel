@@ -1,4 +1,4 @@
-import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps174';
+import { ExParticleSystem, getExHeroPalette } from '../engine/shaders/exNextGenFX.js?v=30fps175';
 
 const FIGHTER_BRAND = Symbol.for('avs.Fighter');
 
@@ -990,6 +990,7 @@ export class Fighter {
     if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'boneyard') {
       amount *= 1.18;
     }
+    let trainingAutoGuarded = false;
     if (this.state === 'TRUE_ULTIMATE') {
       // Sovereign Super Armor: 65% DR, 0 knockback/interrupt
       amount *= 0.35;
@@ -1013,6 +1014,32 @@ export class Fighter {
         this._isThornReflect = false;
         if (this.game && this.game.vfx) {
           this.game.vfx.spawnDamageText(this.x, this.y - 210, 0, false, 'MAGMA ARMOR!', '#f59e0b');
+        }
+      }
+    } else if (
+      this.trainingDummyMode === 'auto_guard' &&
+      !this.isMonster &&
+      !this.isDead &&
+      !(this.stunTimer > 0)
+    ) {
+      trainingAutoGuarded = true;
+      if (attacker && Math.abs(attacker.x - this.x) > 8) {
+        this.facing = attacker.x >= this.x ? 1 : -1;
+      }
+      this.state = 'CROUCH';
+      this.stateTimer = 0;
+      this.isCrouching = true;
+      this.isDeflecting = true;
+      this._trainingGuardHold = Math.max(this._trainingGuardHold || 0, 0.48);
+      amount *= 0.15;
+      knockX *= 0.32;
+      knockY = 0;
+      if (this.game) {
+        this.game.audio?.play?.('clang', this.x);
+        this.game.vfx?.spawnShockwave?.(this.x + this.facing * 12, this.y - 96, 68, '#38bdf8', 0.22);
+        if ((this._trainingGuardTextCd || 0) <= 0) {
+          this._trainingGuardTextCd = 0.34;
+          this.game.vfx?.spawnDamageText?.(this.x, this.y - 196, 0, false, 'GUARD!', '#38bdf8');
         }
       }
     } else if (
@@ -1089,7 +1116,11 @@ export class Fighter {
         return;
       }
     }
-    const unlimitedHp = Boolean(this.game && this.game.testModeUnlimitedHp && !this.isMonster);
+    const unlimitedHp = Boolean(
+      this.game &&
+        !this.isMonster &&
+        (this.game.testModeUnlimitedHp || this.game.isTrainingAutoHealActive?.())
+    );
     const clampTrueUltFloor = this.state === 'TRUE_ULTIMATE' && this.isTrueUltPreImpact();
     const prevHp = this.hp;
     this.hp =
@@ -1179,6 +1210,7 @@ export class Fighter {
 
     if (
       this.hp > 0 &&
+      !trainingAutoGuarded &&
       !this.isDeflecting &&
       !(this.forgeArmorTimer > 0) &&
       !this.unstoppablePoise &&
@@ -2298,8 +2330,22 @@ export class Fighter {
       return;
     }
 
-    // Test Mode (Unlimited HP): smoothly restore HP after brief impact hold or out-of-combat window
-    if (game && game.testModeUnlimitedHp && !this.isMonster && !this.isDead) {
+    if (this._trainingGuardTextCd > 0) {
+      this._trainingGuardTextCd = Math.max(0, this._trainingGuardTextCd - dt);
+    }
+
+    // Training Lab Auto-Heal: refill HP cleanly to max after 1.8s out of hitstun
+    if (game && game.isTrainingAutoHealActive?.() && !this.isMonster && !this.isDead) {
+      if (this.state !== 'HURT' && !(this.stunTimer > 0)) {
+        this.timeSinceLastHit = (this.timeSinceLastHit || 0) + dt;
+        if (this.timeSinceLastHit >= 1.8 && this.hp < this.maxHp) {
+          this.hp = this.maxHp;
+          this.isBerserk = false;
+          this.game?.vfx?.spawnShockwave?.(this.x, this.y - 84, 72, '#34d399', 0.24);
+        }
+      }
+    } else if (game && game.testModeUnlimitedHp && !this.isMonster && !this.isDead) {
+      // Test Mode (Unlimited HP): smoothly restore HP after brief impact hold or out-of-combat window
       this.timeSinceLastHit = (this.timeSinceLastHit || 0) + dt;
       if (this._testModeRefillTimer > 0) {
         this._testModeRefillTimer = Math.max(0, this._testModeRefillTimer - dt);
@@ -2675,6 +2721,41 @@ export class Fighter {
         } else {
           this.state = 'IDLE';
           this.moveDir = 0;
+        }
+      } else if (this.trainingDummyMode === 'idle' || this.trainingDummyMode === 'auto_guard') {
+        this.moveDir = 0;
+        this.vx *= Math.pow(0.0005, dt);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) > 12) {
+          this.facing = enemy.x >= this.x ? 1 : -1;
+        }
+        if (this.trainingDummyMode === 'auto_guard' && enemy && !enemy.isDead) {
+          const incomingAttack =
+            (enemy.state === 'AUTO_ATTACK' ||
+              enemy.state === 'SKILL' ||
+              enemy.state === 'ULTIMATE' ||
+              enemy.state === 'TRUE_ULTIMATE') &&
+            dist <= Math.max(260, (enemy.attackRange || 160) + 95);
+          const incomingProj = Boolean(
+            game?.vfx?.projectiles?.some(
+              (p) =>
+                p &&
+                p.owner !== this &&
+                (!this.team || p.owner?.team !== this.team) &&
+                Math.abs(p.x - this.x) < 220 &&
+                (p.x - this.x) * (p.vx || 0) < 0
+            )
+          );
+          if (incomingAttack || incomingProj) {
+            this.state = 'CROUCH';
+            this.stateTimer = 0;
+            this.isCrouching = true;
+            this.isDeflecting = true;
+            this._trainingGuardHold = 0.45;
+          } else {
+            this.state = 'IDLE';
+          }
+        } else {
+          this.state = 'IDLE';
         }
       } else if (enemy && !enemy.isDead) {
         const isAdvMode = Boolean(game?.isAdventureMode?.());
@@ -3284,7 +3365,17 @@ export class Fighter {
         this.setState('IDLE');
       }
     } else if (this.state === 'CROUCH') {
-      if (this.updateCrouch) {
+      if (this.trainingDummyMode === 'auto_guard') {
+        this.isCrouching = true;
+        this.isDeflecting = true;
+        this.vx *= Math.pow(0.001, dt);
+        this._trainingGuardHold = Math.max(0, (this._trainingGuardHold || 0) - dt);
+        if (this._trainingGuardHold <= 0) {
+          this.isCrouching = false;
+          this.isDeflecting = false;
+          this.setState('IDLE');
+        }
+      } else if (this.updateCrouch) {
         this.updateCrouch(dt, enemy, game);
       } else if (this.stateTimer >= (this.crouchDuration || 0.96)) {
         this.setState('IDLE');
