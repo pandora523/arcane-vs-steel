@@ -1,39 +1,39 @@
-import { Renderer } from './engine/Renderer.js?v=30fps169';
-import { VFXManager } from './engine/VFXManager.js?v=30fps169';
-import { PixelForge } from './engine/PixelForge.js?v=30fps169';
-import { AudioManager } from './engine/AudioManager.js?v=30fps169';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps169';
-import { Fighter } from './entities/Fighter.js?v=30fps169';
-import { Warrior } from './entities/Warrior.js?v=30fps169';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps169';
-import { FireMage } from './entities/FireMage.js?v=30fps169';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps169';
-import { Archer } from './entities/Archer.js?v=30fps169';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps169';
-import { Priestess } from './entities/Priestess.js?v=30fps169';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps169';
-import { Reaper } from './entities/Reaper.js?v=30fps169';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps169';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps169';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps169';
-import { Titan } from './entities/Titan.js?v=30fps169';
-import { TitanEx } from './entities/TitanEx.js?v=30fps169';
-import { Ronin } from './entities/Ronin.js?v=30fps169';
-import { RoninEx } from './entities/RoninEx.js?v=30fps169';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps169';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps169';
-import { IceMage } from './entities/IceMage.js?v=30fps169';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps169';
-import { Android } from './entities/Android.js?v=30fps169';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps169';
-import { NyxEx } from './entities/NyxEx.js?v=30fps169';
+import { Renderer } from './engine/Renderer.js?v=30fps170';
+import { VFXManager } from './engine/VFXManager.js?v=30fps170';
+import { PixelForge } from './engine/PixelForge.js?v=30fps170';
+import { AudioManager } from './engine/AudioManager.js?v=30fps170';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps170';
+import { Fighter } from './entities/Fighter.js?v=30fps170';
+import { Warrior } from './entities/Warrior.js?v=30fps170';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps170';
+import { FireMage } from './entities/FireMage.js?v=30fps170';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps170';
+import { Archer } from './entities/Archer.js?v=30fps170';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps170';
+import { Priestess } from './entities/Priestess.js?v=30fps170';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps170';
+import { Reaper } from './entities/Reaper.js?v=30fps170';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps170';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps170';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps170';
+import { Titan } from './entities/Titan.js?v=30fps170';
+import { TitanEx } from './entities/TitanEx.js?v=30fps170';
+import { Ronin } from './entities/Ronin.js?v=30fps170';
+import { RoninEx } from './entities/RoninEx.js?v=30fps170';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps170';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps170';
+import { IceMage } from './entities/IceMage.js?v=30fps170';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps170';
+import { Android } from './entities/Android.js?v=30fps170';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps170';
+import { NyxEx } from './entities/NyxEx.js?v=30fps170';
 import {
   AdventureManager,
   DEFAULT_ADVENTURE_CAMPAIGN_ID,
   normalizeAdventureCampaignPack
-} from './adventure/AdventureManager.js?v=30fps169';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps169';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps169';
+} from './adventure/AdventureManager.js?v=30fps170';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps170';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps170';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -1078,6 +1078,23 @@ export class Game {
       this.vsControlMode = 'ai';
     }
 
+    this.crtMode = 'off';
+    const crtParam = (params.get('crt') || '').toLowerCase();
+    if (crtParam === 'off' || crtParam === '0' || crtParam === 'false') {
+      this.crtMode = 'off';
+    } else if (crtParam === 'subtle' || crtParam === 'pvm' || crtParam === 'soft') {
+      this.crtMode = 'subtle';
+    } else if (crtParam === 'arcade' || crtParam === '1' || crtParam === 'true' || crtParam === 'on') {
+      this.crtMode = 'arcade';
+    } else if (!this.simMode && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const savedCrt = window.localStorage.getItem('avs_crt_mode');
+        if (savedCrt === 'off' || savedCrt === 'subtle' || savedCrt === 'arcade') {
+          this.crtMode = savedCrt;
+        }
+      } catch (_err) {}
+    }
+
     const p1 = params.get('p1');
     const p1b = params.get('p1b');
     const p2 = params.get('p2');
@@ -1616,6 +1633,58 @@ export class Game {
     }
   }
 
+  syncCrtUI() {
+    const mode = this.crtMode === 'subtle' || this.crtMode === 'arcade' ? this.crtMode : 'off';
+    const rootEl = typeof document !== 'undefined' ? document.documentElement : null;
+    if (rootEl?.dataset) {
+      if (mode === 'off') {
+        delete rootEl.dataset.crt;
+      } else {
+        rootEl.dataset.crt = mode;
+      }
+    }
+    if (this.btnPauseCrt) {
+      this.btnPauseCrt.classList.toggle('is-crt-subtle', mode === 'subtle');
+      this.btnPauseCrt.classList.toggle('is-crt-arcade', mode === 'arcade');
+      this.btnPauseCrt.setAttribute('aria-pressed', String(mode !== 'off'));
+    }
+    if (this.pauseCrtLabel) {
+      this.pauseCrtLabel.textContent =
+        mode === 'arcade' ? 'CRT: ARCADE' : mode === 'subtle' ? 'CRT: SUBTLE' : 'CRT: OFF';
+    }
+    if (Array.isArray(this.navCrtBtns)) {
+      for (const btn of this.navCrtBtns) {
+        if (!btn) continue;
+        const active = btn.dataset?.crtMode === mode;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
+      }
+    }
+  }
+
+  setCrtMode(mode, opts = {}) {
+    const { persist = true, playSound = false } = opts;
+    const next = mode === 'subtle' || mode === 'arcade' ? mode : 'off';
+    this.crtMode = next;
+    if (persist && !this.simMode && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem('avs_crt_mode', next);
+      } catch (_err) {}
+    }
+    this.syncCrtUI();
+    if (playSound && this.audio) {
+      this.audio.play(next === 'off' ? 'clock_gear' : 'reflect', 600);
+    }
+    return this.crtMode;
+  }
+
+  cycleCrtMode(playSound = true) {
+    const order = ['off', 'subtle', 'arcade'];
+    const idx = order.indexOf(this.crtMode);
+    const next = order[(idx + 1) % order.length];
+    return this.setCrtMode(next, { persist: true, playSound });
+  }
+
   syncMobileFullZoomUI() {
     this.syncCameraZoomUI();
   }
@@ -1782,6 +1851,7 @@ export class Game {
     this.pauseVsSection?.classList.toggle('hidden', isAdv);
     this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
     this.syncMobileFullZoomUI?.();
+    this.syncCrtUI?.();
     this.syncAudioMixerUI?.();
     const showPause = Boolean(this.isPaused && !this.isLandingOpen);
     this.pauseModal?.classList.toggle('hidden', !showPause);
@@ -2680,6 +2750,13 @@ export class Game {
     this.btnPauseTitle = document.getElementById('btn-pause-title');
     this.btnPauseFullZoom = document.getElementById('btn-pause-full-zoom');
     this.pauseFullZoomLabel = document.getElementById('pause-full-zoom-label');
+    this.btnPauseCrt = document.getElementById('btn-pause-crt');
+    this.pauseCrtLabel = document.getElementById('pause-crt-label');
+    this.navCrtBtns = [
+      document.getElementById('btn-nav-crt-off'),
+      document.getElementById('btn-nav-crt-subtle'),
+      document.getElementById('btn-nav-crt-arcade')
+    ].filter(Boolean);
     this.pauseVsSection = document.getElementById('pause-vs-section');
     this.pauseAdvSection = document.getElementById('pause-adv-section');
     this.btnVsPauseLandscape = document.getElementById('btn-vs-pause-landscape');
@@ -2764,6 +2841,17 @@ export class Game {
       this.btnPauseFullZoom.addEventListener('click', () => this.cycleCameraZoomMode(true));
     }
     this.syncCameraZoomUI();
+    if (this.btnPauseCrt) {
+      this.btnPauseCrt.addEventListener('click', () => this.cycleCrtMode(true));
+    }
+    if (Array.isArray(this.navCrtBtns)) {
+      for (const btn of this.navCrtBtns) {
+        btn.addEventListener('click', () =>
+          this.setCrtMode(btn.dataset?.crtMode || 'off', { persist: true, playSound: true })
+        );
+      }
+    }
+    this.syncCrtUI();
     if (this.btnVictoryTitle) {
       this.btnVictoryTitle.addEventListener('click', () => this.goToTitleScreen(true));
     }
@@ -4489,7 +4577,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps169');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps170');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -4585,7 +4673,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps169'
+          'v=30fps170'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
