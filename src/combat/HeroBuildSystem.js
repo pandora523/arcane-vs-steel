@@ -260,13 +260,13 @@ export const HERO_BUILD_CATALOG = {
         trait: 'ASPECT II: STORM-EMPEROR BURST (ZERO-HEAL OVERVOLT RUSH)',
         name: 'STORM-EMPEROR OVERVOLT QUARTET',
         type: 'HIGH-SPEED SHOCKWAVE BURST',
-        desc: 'Boosts move speed to 226 & tightens combo link; Beat 4 Thunderclap Palm fires a piercing lightning shockwave (-220 max HP).'
+        desc: 'Boosts move speed to 234 & tightens combo link; Beat 4 Thunderclap Palm fires a piercing lightning shockwave (-200 max HP).'
       },
       {
         trait: 'ASPECT III: IRON-BODY COUNTER (STATIC BARRIER & GUARD PARRY)',
         name: 'IRON-BODY THUNDER QUARTET',
         type: 'ARMORED COUNTER-BRAWLER',
-        desc: 'Raises max HP to 4,160, grants +34 HP Static Barrier on Beat 3 Uppercut & extends Iron Guard parry window (+78 Barrier on reflect).'
+        desc: 'Raises max HP to 3,980, grants +24 HP Static Barrier on Beat 3 Uppercut & extends Iron Guard parry window (+48 Barrier on reflect).'
       }
     ],
     skill: [
@@ -281,7 +281,7 @@ export const HERO_BUILD_CATALOG = {
         name: 'IRON-BODY BREAKER',
         type: 'SKILL • 4.5S CD',
         cooldown: 4.5,
-        desc: 'Surges forward with Unstoppable Poise & +95 HP Static Barrier into a heavy braced storm cross-punch (-10% strike dmg).'
+        desc: 'Surges forward with Unstoppable Poise, +40 HP Static Barrier & +10 HP recovery into a heavy braced storm cross-punch (-12% strike dmg).'
       }
     ],
     ult: [
@@ -294,7 +294,7 @@ export const HERO_BUILD_CATALOG = {
       {
         name: 'IRON-BODY: RETRIBUTION FISTS',
         type: 'OVERDRIVE ULT',
-        desc: 'Wraps Raijin in +115 HP Static Barrier & +48 HP martial recovery while unleashing an unstoppable phantom fist barrage (-12% climax dmg).'
+        desc: 'Wraps Raijin in +54 HP Static Barrier & +24 HP martial recovery while unleashing an unstoppable phantom fist barrage (-12% climax dmg).'
       }
     ]
   },

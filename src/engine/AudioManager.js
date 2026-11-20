@@ -15,7 +15,7 @@ const DEFAULT_VOICE_VOLUME = 1.0;
 const DEFAULT_BGM_VOLUME = 0.38;
 const VOICE_PRESENCE_TRIM = 1.42;
 const BGM_CROSSFADE_SEC = 0.65;
-const AUDIO_ASSET_CACHE_BUST = 'v=30fps177';
+const AUDIO_ASSET_CACHE_BUST = 'v=30fps178';
 const MAX_CACHED_BGM_BUFFERS = 4;
 
 export class AudioManager {
@@ -184,7 +184,8 @@ export class AudioManager {
       chronomancer_ex: 'chronos',
       chronomancer: 'chronos',
       titan_ex: 'torgar',
-      titan: 'torgar'
+      titan: 'torgar',
+      brawler_ex: 'raijin'
     };
     this.voiceVolumes = {
       seraphina_select: 0.94,
@@ -216,7 +217,8 @@ export class AudioManager {
       'sylvara',
       'vex09',
       'chronos',
-      'torgar'
+      'torgar',
+      'raijin'
     ]) {
       Object.assign(this.voiceVolumes, {
         [`${prefix}_select`]: 0.94,

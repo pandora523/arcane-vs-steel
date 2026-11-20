@@ -138,10 +138,10 @@ const [
   { EX_HERO_KEYS, LEGACY_HERO_KEYS, CHAMPION_ROSTER, Game },
   { HeroBuildSystem, SOVEREIGN_BUILD_HERO_IDS, HERO_BUILD_CATALOG }
 ] = await Promise.all([
-  import('../../src/entities/Fighter.js?v=30fps177'),
-  import('../../src/engine/VFXManager.js?v=30fps177'),
-  import('../../src/main.js?v=30fps177'),
-  import('../../src/combat/HeroBuildSystem.js?v=30fps177')
+  import('../../src/entities/Fighter.js?v=30fps178'),
+  import('../../src/engine/VFXManager.js?v=30fps178'),
+  import('../../src/main.js?v=30fps178'),
+  import('../../src/combat/HeroBuildSystem.js?v=30fps178')
 ]);
 
 const STAGES = ['cathedral', 'sylvan', 'boneyard', 'clocktower'];
@@ -413,6 +413,9 @@ class HeadlessArenaSim {
 
     this.audio = { play: noop };
     this.hudEls = { left: {}, right: {}, stageBadge: { textContent: '' } };
+    this.vsInput = { lastTouchHeroId: null };
+    this.syncVsManualControlFlags = noop;
+    this.syncVsControlUI = noop;
     this.applySideHUDTheme = noop;
     this.renderer = new HeadlessRenderer(stageId, groundY, 1200);
     this.fighters = [];
@@ -821,6 +824,11 @@ if (!isMainThread) {
   const results = executeTaskBatch(workerData.tasks, workerData.isLegacy);
   parentPort.postMessage(results);
 } else if (process.argv.includes('--builds')) {
+  const heroFilterArg = process.argv.find((a) => a.startsWith('--hero='));
+  const buildTargetIds = heroFilterArg
+    ? heroFilterArg.slice('--hero='.length).split(',').map((s) => s.trim()).filter(Boolean)
+    : SOVEREIGN_BUILD_HERO_IDS;
+  const buildTargetSet = new Set(buildTargetIds);
   const ROSTER = buildRoster(false);
   const N = ROSTER.length;
   const heroIdxById = new Map(ROSTER.map((r, idx) => [r.id, idx]));
@@ -850,8 +858,8 @@ if (!isMainThread) {
     }
   }
 
-  // 1) Symmetric 1v1 Round-Robin for every EX Sovereign Hero x Presets [II] & [III] (24 * 88 = 2,112 duels)
-  for (const heroId of SOVEREIGN_BUILD_HERO_IDS) {
+  // 1) Symmetric 1v1 Round-Robin for target EX Sovereign Heroes x Presets [II] & [III]
+  for (const heroId of buildTargetIds) {
     const hIdx = heroIdxById.get(heroId);
     for (const presetIdx of [1, 2]) {
       const bSpec = { aspect: presetIdx, skill: presetIdx, ult: presetIdx };
@@ -918,60 +926,66 @@ if (!isMainThread) {
         const h2Id = ROSTER[team2[0]].id;
         for (const presetIdx of [1, 2]) {
           const bSpec = { aspect: presetIdx, skill: presetIdx, ult: presetIdx };
-          tasks.push({
-            type: '2v2',
-            mode,
-            team1,
-            team2,
-            stageId,
-            seed,
-            teamBuilds: { p1: bSpec, p1b: null, p2: null, p2b: null },
-            tagMeta: { heroId: h1Id, presetIdx, side: 1 }
-          });
-          tasks.push({
-            type: '2v2',
-            mode,
-            team1,
-            team2,
-            stageId,
-            seed,
-            teamBuilds: { p1: null, p1b: null, p2: bSpec, p2b: null },
-            tagMeta: { heroId: h2Id, presetIdx, side: 2 }
-          });
+          if (buildTargetSet.has(h1Id)) {
+            tasks.push({
+              type: '2v2',
+              mode,
+              team1,
+              team2,
+              stageId,
+              seed,
+              teamBuilds: { p1: bSpec, p1b: null, p2: null, p2b: null },
+              tagMeta: { heroId: h1Id, presetIdx, side: 1 }
+            });
+          }
+          if (buildTargetSet.has(h2Id)) {
+            tasks.push({
+              type: '2v2',
+              mode,
+              team1,
+              team2,
+              stageId,
+              seed,
+              teamBuilds: { p1: null, p1b: null, p2: bSpec, p2b: null },
+              tagMeta: { heroId: h2Id, presetIdx, side: 2 }
+            });
+          }
         }
       }
     }
   }
 
-  // 2C) Hybrid 4-slot 2v2 cross-build smoke matches (24 matches mixing I/II/III across all 4 slots)
-  const buildIdxList = SOVEREIGN_BUILD_HERO_IDS.map((id) => heroIdxById.get(id));
-  for (const mode of ['2v2_tag', '2v2_brawl']) {
-    for (let m = 0; m < 12; m++) {
-      const i0 = buildIdxList[m % buildIdxList.length];
-      const i1 = buildIdxList[(m + 3) % buildIdxList.length];
-      const i2 = buildIdxList[(m + 6) % buildIdxList.length];
-      const i3 = buildIdxList[(m + 9) % buildIdxList.length];
-      tasks.push({
-        type: '2v2',
-        mode,
-        team1: [i0, i1],
-        team2: [i2, i3],
-        stageId: STAGES[m % STAGES.length],
-        seed: 9100 + m,
-        teamBuilds: {
-          p1: { aspect: 1, skill: 1, ult: 1 },
-          p1b: { aspect: 2, skill: 0, ult: 2 },
-          p2: { aspect: 0, skill: 2, ult: 1 },
-          p2b: { aspect: 1, skill: 2, ult: 0 }
-        }
-      });
+  // 2C) Hybrid 4-slot 2v2 cross-build smoke matches (skipped when filtering a single --hero=)
+  if (!heroFilterArg) {
+    const buildIdxList = SOVEREIGN_BUILD_HERO_IDS.map((id) => heroIdxById.get(id));
+    for (const mode of ['2v2_tag', '2v2_brawl']) {
+      for (let m = 0; m < 12; m++) {
+        const i0 = buildIdxList[m % buildIdxList.length];
+        const i1 = buildIdxList[(m + 3) % buildIdxList.length];
+        const i2 = buildIdxList[(m + 6) % buildIdxList.length];
+        const i3 = buildIdxList[(m + 9) % buildIdxList.length];
+        tasks.push({
+          type: '2v2',
+          mode,
+          team1: [i0, i1],
+          team2: [i2, i3],
+          stageId: STAGES[m % STAGES.length],
+          seed: 9100 + m,
+          teamBuilds: {
+            p1: { aspect: 1, skill: 1, ult: 1 },
+            p1b: { aspect: 2, skill: 0, ult: 2 },
+            p2: { aspect: 0, skill: 2, ult: 1 },
+            p2b: { aspect: 1, skill: 2, ult: 0 }
+          }
+        });
+      }
     }
   }
 
   const { allResults, workerCount, elapsedSec } = await dispatchTasksInParallel(tasks, false);
 
   const presetStats = new Map();
-  for (const heroId of SOVEREIGN_BUILD_HERO_IDS) {
+  for (const heroId of buildTargetIds) {
     const cfg = CHAMPION_ROSTER[heroId];
     const cat = HERO_BUILD_CATALOG[heroId];
     for (const presetIdx of [0, 1, 2]) {

@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps177';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps177';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps177';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps177';
+import { Fighter } from './Fighter.js?v=30fps178';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps178';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps178';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps178';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.30s): Snappy stepping storm jab -> snaps at F03 (63)
@@ -209,9 +209,9 @@ export class BrawlerEx extends Fighter {
       ...opts,
       name: opts.name || 'Raijin EX',
       maxHp: 3940,
-      attackRange: 118,
-      moveSpeed: 214,
-      autoInterval: 0.90,
+      attackRange: 128,
+      moveSpeed: 224,
+      autoInterval: 0.85,
       lightColor: 'rgba(251, 191, 36, 1)',
       primaryColor: '#fbbf24',
       secondaryColor: '#6366f1',
@@ -226,13 +226,13 @@ export class BrawlerEx extends Fighter {
     this.hasPoise = true;
 
     this.autoDuration = BEAT_DURATIONS[0];
-    this._postFlurryInterval = 1.28;
+    this._postFlurryInterval = 1.04;
 
     this.skillName = 'THUNDERSTEP BREAKER';
-    this.skillMaxCooldown = 4.20;
+    this.skillMaxCooldown = 3.90;
     this.skillCooldown = 1.05;
     this.skillDuration = 0.94;
-    this.skillTriggerRange = 360;
+    this.skillTriggerRange = 390;
 
     this.ultName = 'TEMPEST HUNDRED FISTS';
     this.ultSub = 'PHANTOM THUNDER FIST BARRAGE & SKY-BREAKER';
@@ -317,16 +317,16 @@ export class BrawlerEx extends Fighter {
   applySovereignAspectStats(aspect) {
     if (aspect === 1) {
       // Aspect II: STORM-EMPEROR BURST (zero-heal high-speed shockwave burst)
-      this.maxHp = 3720;
+      this.maxHp = 3740;
       this.hp = this.maxHp;
-      this.moveSpeed = 226;
-      this._postFlurryInterval = 1.18;
+      this.moveSpeed = 234;
+      this._postFlurryInterval = 0.96;
     } else if (aspect === 2) {
       // Aspect III: IRON-BODY COUNTER (fortified armor & guard parry)
-      this.maxHp = 4160;
+      this.maxHp = 3980;
       this.hp = this.maxHp;
-      this.moveSpeed = 204;
-      this._postFlurryInterval = 1.34;
+      this.moveSpeed = 212;
+      this._postFlurryInterval = 1.15;
     }
   }
 
@@ -354,9 +354,9 @@ export class BrawlerEx extends Fighter {
         return im;
       };
       assets.brawler_ex = {
-        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps177'),
-        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps177'),
-        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps177'),
+        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps178'),
+        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps178'),
+        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps178'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -793,12 +793,18 @@ export class BrawlerEx extends Fighter {
       if ((this._beatHitMask & 1) === 0 && u >= 0.34) {
         this._beatHitMask |= 1;
         this.didActionFrame = true;
-        const dmg = vsAspect === 1 ? 32 : vsAspect === 2 ? 26 : 29;
+        const dmg = vsAspect === 1 ? 56 : vsAspect === 2 ? 42 : 49;
+        game?.audio?.playHeroVoice?.(this.heroId, 'attack', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 1,
+          cooldownMs: 3600
+        });
         this.spawnVfxAnim(0, this.x + this.facing * 68, this.y - 88, 128, 128, 0.24, { inFront: true });
         this.spawnTempestBolt(this.x + this.facing * 24, this.y - 92, this.x + this.facing * 108, this.y - 90, 0.16, 8);
         this._applyTempestStrike(enemy, game, {
           damage: dmg,
-          reachFront: 142,
+          reachFront: 152,
           hitStop: 0.028,
           shakeDur: 0.036,
           knockX: 34,
@@ -813,8 +819,8 @@ export class BrawlerEx extends Fighter {
         this.didActionFrame = true;
         this.spawnVfxAnim(0, this.x + this.facing * 72, this.y - 90, 144, 144, 0.26, { inFront: true });
         this._applyTempestStrike(enemy, game, {
-          damage: vsAspect === 1 ? 22 : 19,
-          reachFront: 148,
+          damage: vsAspect === 1 ? 39 : vsAspect === 2 ? 30 : 34,
+          reachFront: 156,
           hitStop: 0.024,
           shakeDur: 0.03,
           knockX: 28,
@@ -826,8 +832,8 @@ export class BrawlerEx extends Fighter {
         this._beatHitMask |= 2;
         this.spawnTempestBolt(this.x + this.facing * 18, this.y - 98, this.x + this.facing * 116, this.y - 80, 0.18, 11);
         this._applyTempestStrike(enemy, game, {
-          damage: vsAspect === 1 ? 24 : 21,
-          reachFront: 152,
+          damage: vsAspect === 1 ? 44 : vsAspect === 2 ? 33 : 38,
+          reachFront: 160,
           hitStop: 0.032,
           shakeDur: 0.04,
           knockX: 46,
@@ -843,8 +849,8 @@ export class BrawlerEx extends Fighter {
         this.spawnVfxAnim(1, this.x + this.facing * 64, this.y - 108, 152, 168, 0.34, { inFront: true });
         this.spawnTempestBolt(this.x + this.facing * 52, this.groundY - 12, this.x + this.facing * 68, this.y - 156, 0.24, 14);
         this._applyTempestStrike(enemy, game, {
-          damage: vsAspect === 1 ? 42 : 37,
-          reachFront: 146,
+          damage: vsAspect === 1 ? 73 : vsAspect === 2 ? 54 : 64,
+          reachFront: 158,
           hitStop: 0.042,
           shakeDur: 0.052,
           knockX: 42,
@@ -853,9 +859,7 @@ export class BrawlerEx extends Fighter {
           sfx: 'heavy_cleave'
         });
         if (vsAspect === 2 && !game?.isAdventureMode?.()) {
-          this.staticBarrier = Math.min(140, this.staticBarrier + 34);
-          this.staticBarrierTimer = Math.max(this.staticBarrierTimer, 3.0);
-          this.grantBuildShield?.(34, 3.0, 'STATIC BARRIER!', '#fbbf24');
+          this.grantBuildShield?.(24, 2.4, 'STATIC BARRIER!', '#fbbf24');
         }
       }
     } else {
@@ -873,8 +877,8 @@ export class BrawlerEx extends Fighter {
         this.spawnTempestBolt(this.x + this.facing * 36, this.y - 90, impactX + this.facing * 52, this.y - 110, 0.22, 13);
         this.spawnTempestBolt(this.x + this.facing * 36, this.y - 86, impactX + this.facing * 52, this.y - 68, 0.22, 13);
         this._applyTempestStrike(enemy, game, {
-          damage: vsAspect === 1 ? 56 : vsAspect === 2 ? 46 : 51,
-          reachFront: 178,
+          damage: vsAspect === 1 ? 98 : vsAspect === 2 ? 76 : 92,
+          reachFront: 192,
           hitStop: 0.056,
           shakeDur: 0.072,
           knockX: 112,
@@ -882,16 +886,18 @@ export class BrawlerEx extends Fighter {
           isCrit: true,
           sfx: 'thunder_slam'
         });
-        // Aspect II: Storm-Emperor Burst launches a piercing Thunderclap shockwave!
+        // Aspect II: Storm-Emperor Burst launches a piercing Thunderclap shockwave (0 heal)
         if (vsAspect === 1 && !game?.isAdventureMode?.()) {
           this._fireThunderclapWave(game, {
             x: impactX,
             y: this.y - 88,
-            damage: 32,
-            speed: 680,
-            maxRange: 340,
+            damage: 54,
+            speed: 740,
+            maxRange: 390,
             pierce: true
           });
+        } else if (!game?.isAdventureMode?.()) {
+          this.heal(vsAspect === 2 ? 8 : 15, 'TEMPEST BREATH');
         }
       }
     }
@@ -927,18 +933,32 @@ export class BrawlerEx extends Fighter {
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
         const dist = Math.abs(enemy.x - this.x);
-        const desiredDist = Math.min(280, Math.max(92, dist - 78));
+        const desiredDist = Math.min(340, Math.max(96, dist - 74));
         this._skillTargetX = this._clampArenaX(this.x + this.facing * desiredDist, game);
       } else {
-        this._skillTargetX = this._clampArenaX(this.x + this.facing * 180, game);
+        this._skillTargetX = this._clampArenaX(this.x + this.facing * 200, game);
       }
-      if (game?.audio) game.audio.play('storm_leap', this.x);
+      if (game?.audio) {
+        game.audio.play('storm_leap', this.x);
+        game.audio.playHeroVoice?.(this.heroId, vsSkill === 1 ? 'skill_alt' : 'skill_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 2,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       this.spawnGroundSeal(this.x, this.groundY, 76, 0.36);
       if (vsSkill === 2 && !game?.isAdventureMode?.()) {
-        // Skill III: IRON-BODY BREAKER — fortified barrier & unstoppable surge
-        this.staticBarrier = Math.min(180, this.staticBarrier + 95);
-        this.staticBarrierTimer = Math.max(this.staticBarrierTimer, 3.8);
-        this.grantBuildShield?.(95, 3.8, 'IRON-BODY BARRIER!', '#fbbf24');
+        // Skill III: IRON-BODY BREAKER — single clean buildShield + recovery & unstoppable surge
+        this.grantBuildShield?.(40, 2.6, 'IRON-BODY BARRIER!', '#fbbf24');
+        this.heal(10, 'IRON-BODY');
+        this.unstoppablePoise = true;
+      } else if (vsSkill === 0 && !game?.isAdventureMode?.()) {
+        // Baseline Skill I: balanced static barrier + martial vitality breath
+        this.staticBarrier = Math.min(130, this.staticBarrier + 54);
+        this.staticBarrierTimer = Math.max(this.staticBarrierTimer, 2.9);
+        this.heal(22, 'STORM BREATH');
         this.unstoppablePoise = true;
       }
     }
@@ -977,10 +997,10 @@ export class BrawlerEx extends Fighter {
       this.spawnTempestBolt(this.x + this.facing * 24, this.y - 96, hitX + this.facing * 56, this.y - 122, 0.26, 15);
       this.spawnTempestBolt(this.x + this.facing * 24, this.y - 80, hitX + this.facing * 56, this.y - 62, 0.26, 15);
 
-      const baseDmg = vsSkill === 1 ? 78 : vsSkill === 2 ? 66 : 74;
+      const baseDmg = vsSkill === 1 ? 150 : vsSkill === 2 ? 112 : 138;
       this._applyTempestStrike(enemy, game, {
         damage: baseDmg,
-        reachFront: 192,
+        reachFront: 215,
         hitStop: 0.056,
         shakeDur: 0.078,
         knockX: 118,
@@ -994,9 +1014,9 @@ export class BrawlerEx extends Fighter {
         this._fireThunderclapWave(game, {
           x: hitX,
           y: this.y - 88,
-          damage: 38,
-          speed: 740,
-          maxRange: 420,
+          damage: 60,
+          speed: 780,
+          maxRange: 440,
           isCrit: true,
           pierce: true
         });
@@ -1036,13 +1056,22 @@ export class BrawlerEx extends Fighter {
       this.spawnGroundSeal(this.x, this.groundY, 118, 0.96);
       game?.vfx?.triggerCinematicCutIn?.(this, this.ultName, '#fbbf24');
       game?.vfx?.spawnSpecialCastAura?.(this, this.ultName, this.ultSub, 'tempest', false);
-      if (game?.audio) game.audio.play('ult_cast', this.x);
+      if (game?.audio) {
+        game.audio.play('ult_cast', this.x);
+        game.audio.playHeroVoice?.(this.heroId, vsUlt === 1 ? 'ult_alt' : 'ult_std', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 3,
+          cooldownMs: 400,
+          duckSfx: true
+        });
+      }
       if (vsUlt === 2 && !game?.isAdventureMode?.()) {
-        // Ult III: IRON-BODY: RETRIBUTION FISTS — barrier + martial recovery
-        this.staticBarrier = Math.min(200, this.staticBarrier + 115);
-        this.staticBarrierTimer = Math.max(this.staticBarrierTimer, 4.4);
-        this.grantBuildShield?.(115, 4.4, 'IRON-BODY BARRIER!', '#fbbf24');
-        this.heal(48, 'IRON-BODY');
+        // Ult III: IRON-BODY: RETRIBUTION FISTS — single clean buildShield + martial recovery
+        this.grantBuildShield?.(54, 3.0, 'IRON-BODY BARRIER!', '#fbbf24');
+        this.heal(24, 'IRON-BODY');
+      } else if (vsUlt === 0 && !game?.isAdventureMode?.()) {
+        this.heal(50, 'TEMPEST SURGE');
       }
     }
 
@@ -1061,14 +1090,14 @@ export class BrawlerEx extends Fighter {
       this.spawnVfxAnim(3, strikeX, strikeY, 188, 178, 0.28, { inFront: true });
       this.spawnAfterimage(this.x - this.facing * 10, this.y, this.facing, 4, 3 + (idx % 6), 0.18);
       this.spawnTempestBolt(this.x + this.facing * 26, this.y - 90, strikeX + this.facing * 32, strikeY, 0.16, 12);
-      const hitDmg = vsUlt === 1 ? 29 : vsUlt === 2 ? 23 : 26;
+      const hitDmg = vsUlt === 1 ? 48 : vsUlt === 2 ? 37 : 43;
       this._applyTempestStrike(enemy, game, {
         damage: hitDmg,
-        reachFront: 215,
+        reachFront: 235,
         hitStop: 0.022,
         shakeDur: 0.032,
-        knockX: 16,
-        knockY: -12,
+        knockX: 14,
+        knockY: -10,
         sfx: 'slash',
         tier: 'ULTIMATE'
       });
@@ -1101,8 +1130,8 @@ export class BrawlerEx extends Fighter {
       }
       this.spawnTempestBolt(finX - 24, this.groundY - 220, finX + 18, this.groundY - 10, 0.34, 18);
       this._applyTempestStrike(enemy, game, {
-        damage: vsUlt === 1 ? 98 : vsUlt === 2 ? 74 : 84,
-        reachFront: 240,
+        damage: vsUlt === 1 ? 186 : vsUlt === 2 ? 134 : 152,
+        reachFront: 260,
         hitStop: 0.072,
         shakeDur: 0.11,
         knockX: 145,
@@ -1161,7 +1190,19 @@ export class BrawlerEx extends Fighter {
       this.fx?.spawn('tempestPillar', this._safeFxX(this.x, game), this.groundY - 8, {
         extra: { halfW: 30, height: 176 }
       });
-      if (game?.audio) game.audio.play('ult_cast', this.x);
+      if (game?.audio) {
+        game.audio.play('ult_cast', this.x);
+        game.audio.playHeroVoice?.(this.heroId, 'true_ult_charge', {
+          worldX: this.x,
+          speakerKey: this,
+          priority: 4,
+          cooldownMs: 300,
+          duckSfx: true
+        });
+      }
+      if (!game?.isAdventureMode?.()) {
+        this.heal(Math.round(this.maxHp * 0.072), 'RAIJIN SECOND WIND');
+      }
       game?.renderer?.addShake?.(7, 0.24);
     }
 
@@ -1258,11 +1299,18 @@ export class BrawlerEx extends Fighter {
 
       game?.renderer?.triggerFlash?.('rgba(254, 240, 138, 0.52)', 0.16);
       game?.renderer?.addShake?.(16, 0.34);
+      game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
+        worldX: crashX,
+        speakerKey: this,
+        priority: 4,
+        cooldownMs: 200,
+        duckSfx: true
+      });
 
       this._applyTempestStrike(enemy, game, {
-        damage: 255,
-        reachFront: 320,
-        reachBack: 140,
+        damage: 445,
+        reachFront: 340,
+        reachBack: 150,
         hitStop: 0.095,
         shakeDur: 0.24,
         knockX: 165,
@@ -1281,9 +1329,9 @@ export class BrawlerEx extends Fighter {
       const crashX = this._clampArenaX(this.x + this.facing * 58, game);
       this.spawnVfxAnim(0, crashX, this.groundY - 88, 224, 224, 0.42, { inFront: true });
       this._applyTempestStrike(enemy, game, {
-        damage: 145,
-        reachFront: 340,
-        reachBack: 150,
+        damage: 255,
+        reachFront: 360,
+        reachBack: 160,
         hitStop: 0.068,
         shakeDur: 0.16,
         knockX: 120,
@@ -1356,9 +1404,7 @@ export class BrawlerEx extends Fighter {
           this.gainMana(14);
           this.gainFinisher(8);
           if (vsAspect === 2 && !game?.isAdventureMode?.()) {
-            this.staticBarrier = Math.min(180, this.staticBarrier + 78);
-            this.staticBarrierTimer = Math.max(this.staticBarrierTimer, 3.4);
-            this.grantBuildShield?.(78, 3.4, 'IRON-BODY PARRY!', '#fbbf24');
+            this.grantBuildShield?.(48, 2.8, 'IRON-BODY PARRY!', '#fbbf24');
           }
           this.spawnVfxAnim(6, proj.x, proj.y, 146, 146, 0.28, { inFront: true });
           this.spawnHitStarburst(proj.x, proj.y, '#fbbf24', '#6366f1');
@@ -1372,8 +1418,8 @@ export class BrawlerEx extends Fighter {
       const hitX = this._clampArenaX(this.x + this.facing * 72, game);
       this.spawnVfxAnim(0, hitX, this.y - 86, 152, 152, 0.28, { inFront: true });
       this._applyTempestStrike(enemy, game, {
-        damage: vsAspect === 2 ? 48 : 38,
-        reachFront: 168,
+        damage: vsAspect === 2 ? 88 : vsAspect === 1 ? 88 : 74,
+        reachFront: 178,
         hitStop: 0.044,
         shakeDur: 0.056,
         knockX: 94,
@@ -1381,6 +1427,9 @@ export class BrawlerEx extends Fighter {
         isCrit: true,
         sfx: 'thunder_slam'
       });
+      if (vsAspect !== 1 && !game?.isAdventureMode?.()) {
+        this.heal(vsAspect === 2 ? 10 : 20, 'IRON GUARD');
+      }
     }
 
     if (t >= dur) {
