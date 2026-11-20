@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps181';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps181';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps181';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps181';
+import { Fighter } from './Fighter.js?v=30fps182';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps182';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps182';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps182';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.22s): Explosive stepping storm jab -> snaps at F02/F03 (62/63)
@@ -291,6 +291,7 @@ export class BrawlerEx extends Fighter {
     this._sonicRail = null;      // { x0, x1, y, age, maxLife, dir }
     this._shockWall = null;      // { x, groundY, age, maxLife, dir }
     this._shockWallZaps = 0;
+    this._lightningImpacts = []; // Blinding radial lightning impact domes + cross-flares + jagged arcs!
     this._stormCrashTimer = 0;
 
     this._overrideFrameIdx = null;
@@ -364,9 +365,9 @@ export class BrawlerEx extends Fighter {
         return im;
       };
       assets.brawler_ex = {
-        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps181'),
-        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps181'),
-        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps181'),
+        sheet: mkImg('assets/sprites/brawler_ex_sheet.png?v=30fps182'),
+        vfx: mkImg('assets/sprites/brawler_ex_vfx.png?v=30fps182'),
+        portrait: mkImg('assets/sprites/brawler_ex_portrait.png?v=30fps182'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,
@@ -482,6 +483,19 @@ export class BrawlerEx extends Fighter {
 
   spawnHitStarburst(x, y, primaryHex = '#fbbf24', accentHex = '#6366f1') {
     this._exParticles?.spawnHitStarburst(Math.round(x), Math.round(y), primaryHex, accentHex, 0.18);
+  }
+
+  spawnLightningImpact(x, y, maxRadius = 160, maxLife = 0.42, rayCount = 10) {
+    if (this._lightningImpacts.length >= 8) this._lightningImpacts.shift();
+    this._lightningImpacts.push({
+      x: Math.round(x),
+      y: Math.round(y),
+      age: 0,
+      maxLife,
+      maxR: maxRadius,
+      rayCount,
+      seed: Math.floor(Math.random() * 997) + 1
+    });
   }
 
   takeDamage(amount, attacker, isCrit = false, knockX = 0, knockY = 0) {
@@ -602,6 +616,7 @@ export class BrawlerEx extends Fighter {
       this._sonicRail = null;
       this._shockWall = null;
       this._shockWallZaps = 0;
+      this._lightningImpacts.length = 0;
       this._trueUltStartX = this.x;
       this.isInvulnerable = true;
       this.unstoppablePoise = true;
@@ -621,6 +636,7 @@ export class BrawlerEx extends Fighter {
       this._sonicRail = null;
       this._shockWall = null;
       this._shockWallZaps = 0;
+      this._lightningImpacts.length = 0;
       this._raijinDrumsAlpha = 0;
       this.groundSeals.length = 0;
       this._stormCrashTimer = 0;
@@ -1036,8 +1052,10 @@ export class BrawlerEx extends Fighter {
       this.spawnVfxAnim(0, hitX, this.y - 88, 192, 192, 0.38, { inFront: true });
       this.spawnVfxAnim(5, hitX, this.groundY - 16, 186, 114, 0.44, { inFront: false });
       this.spawnGroundSeal(hitX, this.groundY, 96, 0.48);
+      this.spawnLightningImpact(hitX, this.y - 88, 126, 0.32, 8);
+      game?.renderer?.triggerImpactFrame?.(hitX, this.y - 88, 0.06, 'tempest');
       this.fx?.spawn('tempestBurst', this._safeFxX(hitX, game), this.y - 88, {
-        extra: { radius: 52 }
+        extra: { radius: 56 }
       });
       this.spawnTempestBolt(this.x + this.facing * 24, this.y - 96, hitX + this.facing * 56, this.y - 122, 0.26, 15);
       this.spawnTempestBolt(this.x + this.facing * 24, this.y - 80, hitX + this.facing * 56, this.y - 62, 0.26, 15);
@@ -1163,8 +1181,10 @@ export class BrawlerEx extends Fighter {
       const finX = this._clampArenaX(this.x + this.facing * 86, game);
       this.spawnVfxAnim(1, finX, this.groundY - 120, 196, 224, 0.48, { inFront: true });
       this.spawnVfxAnim(5, finX, this.groundY - 18, 210, 124, 0.52, { inFront: false });
+      this.spawnLightningImpact(finX, this.groundY - 108, 178, 0.44, 10);
+      game?.renderer?.triggerImpactFrame?.(finX, this.groundY - 108, 0.10, 'tempest');
       this.fx?.spawn('tempestBurst', this._safeFxX(finX, game), this.groundY - 104, {
-        extra: { radius: 64 }
+        extra: { radius: 68 }
       });
       if (vsUlt === 1 && !game?.isAdventureMode?.()) {
         // Ult II: EMPEROR: SKY-PILLAR HUNDRED FISTS — twin sky-lightning pillars!
@@ -1281,13 +1301,22 @@ export class BrawlerEx extends Fighter {
             this._trueUltSkidX = this._clampArenaX(wallX + dir * 105, game);
           }
 
-          this.spawnVfxAnim(0, this.x + dir * 68, this.groundY - 92, 196, 196, 0.30, {
+          const gutHitX = this.x + dir * 70;
+          game?.renderer?.triggerImpactFrame?.(gutHitX, this.groundY - 92, 0.08, 'tempest');
+          this.spawnLightningImpact(gutHitX, this.groundY - 92, 138, 0.38, 8);
+          this.spawnVfxAnim(0, gutHitX, this.groundY - 92, 224, 224, 0.34, {
             flipX: dir < 0,
             inFront: true
           });
-          this.spawnVfxAnim(6, this.x + dir * 74, this.groundY - 92, 150, 150, 0.26, {
+          this.spawnVfxAnim(6, gutHitX, this.groundY - 92, 178, 178, 0.28, {
             inFront: true
           });
+          this.fx?.spawn('tempestBurst', this._safeFxX(gutHitX, game), this.groundY - 92, {
+            extra: { radius: 66 }
+          });
+          for (const dy of [-55, -18, 18, 52]) {
+            this.spawnTempestBolt(gutHitX, this.groundY - 92, wallX, this.groundY - 92 + dy, 0.28, 15);
+          }
           this._shockWall = { x: wallX, groundY: this.groundY, age: 0, maxLife: 1.75, dir };
 
           this._applyTempestStrike(enemy, game, {
@@ -1369,13 +1398,15 @@ export class BrawlerEx extends Fighter {
       while (this._shockWallZaps < zapTimes.length && t >= zapTimes[this._shockWallZaps]) {
         this._shockWallZaps++;
         const zx = foeAlive ? enemy.x : this._trueUltWallX;
-        this.spawnVfxAnim(6, zx, this.groundY - 90, 118, 118, 0.20, { inFront: true });
+        this.spawnLightningImpact(zx, this.groundY - 90, 96, 0.26, 6);
+        this.spawnVfxAnim(6, zx, this.groundY - 90, 146, 146, 0.22, { inFront: true });
+        this.spawnTempestBolt(zx - dir * 30, this.groundY - 260, zx, this.groundY - 90, 0.22, 16);
         this._applyTempestStrike(enemy, game, {
           damage: 25,
           reachFront: 460,
           reachBack: 120,
-          hitStop: 0.018,
-          shakeDur: 0.06,
+          hitStop: 0.022,
+          shakeDur: 0.08,
           knockX: 6,
           knockY: -8,
           isCrit: false,
@@ -1385,11 +1416,11 @@ export class BrawlerEx extends Fighter {
       }
 
       this.afterimageAccum += dt;
-      if (this.afterimageAccum >= 0.08) {
+      if (this.afterimageAccum >= 0.072) {
         this.afterimageAccum = 0;
-        // Lightning bolts rushing INWARD from across the storm arena straight into Raijin's clenched hip-fist!
+        // Lightning bolts rushing INWARD from across the storm arena & Raijin's 6 drums straight into his clenched hip-fist!
         const ang = Math.random() * Math.PI * 2;
-        const rad = 165 + Math.random() * 110;
+        const rad = 165 + Math.random() * 125;
         const fistX = this.x - dir * 16;
         const fistY = this.groundY - 82;
         this.spawnTempestBolt(
@@ -1397,15 +1428,20 @@ export class BrawlerEx extends Fighter {
           fistY + Math.sin(ang) * rad * 0.62,
           fistX,
           fistY,
-          0.16,
-          14
+          0.18,
+          15
         );
+        // Periodic dramatic sky-to-ground lightning strike cracking behind the charge stance!
+        if (Math.random() < 0.45) {
+          const sx = this.x + (Math.random() - 0.5) * 340;
+          this.spawnTempestBolt(sx, this.groundY - 420, sx + (Math.random() - 0.5) * 70, this.groundY - 6, 0.22, 22);
+        }
         this._exParticles?.burst(fistX, fistY, {
-          count: 4,
-          shapes: ['bolt', 'diamond'],
-          speedMin: 40,
-          speedMax: 120,
-          upBias: 18,
+          count: 6,
+          shapes: ['bolt', 'star4', 'diamond'],
+          speedMin: 45,
+          speedMax: 145,
+          upBias: 22,
           color: '#fbbf24',
           accent: '#38bdf8',
           core: '#ffffff',
@@ -1473,14 +1509,14 @@ export class BrawlerEx extends Fighter {
         this.spawnAfterimage(this.x, this.y, dir, 4, 23, 0.38);
       }
 
-      // Mid-corridor chest penetration impact (`t >= 2.02s`)!
+      // Mid-corridor chest penetration impact (`t >= 2.02s`) — EPIC 'tempest' Anime Lightning-Shatter Impact Frame!
       if (this._trueUltStage === 3 && t >= 2.02) {
         this._trueUltStage = 4;
         this.didActionFrame = true;
         const hitX = foeAlive ? enemy.x : (this._trueUltChargeX + this._trueUltSkidX) * 0.5;
-        game?.renderer?.triggerImpactFrame?.(hitX, this.groundY - 94, 0.14, 'chrono');
-        game?.renderer?.triggerShake?.(26, 0.44);
-        game?.renderer?.triggerHitStop?.(0.085);
+        game?.renderer?.triggerImpactFrame?.(hitX, this.groundY - 94, 0.18, 'tempest');
+        game?.renderer?.triggerShake?.(30, 0.50);
+        game?.renderer?.triggerHitStop?.(0.11);
         game?.audio?.playHeroVoice?.(this.heroId, 'true_ult_fire', {
           worldX: hitX,
           speakerKey: this,
@@ -1488,22 +1524,46 @@ export class BrawlerEx extends Fighter {
           cooldownMs: 200,
           duckSfx: true
         });
-        this.spawnVfxAnim(0, hitX, this.groundY - 94, 280, 280, 0.44, {
+        this.spawnLightningImpact(hitX, this.groundY - 94, 215, 0.54, 12);
+        this.spawnVfxAnim(0, hitX, this.groundY - 94, 320, 320, 0.46, {
           flipX: dir < 0,
           inFront: true
         });
-        this.spawnVfxAnim(6, hitX, this.groundY - 94, 230, 230, 0.34, {
+        this.spawnVfxAnim(6, hitX, this.groundY - 94, 290, 290, 0.36, {
           inFront: true
         });
+        game?.vfx?.spawnShockwave?.(hitX, this.groundY - 94, 240, '#fbbf24', 0.38);
         this.fx?.spawn('tempestBurst', this._safeFxX(hitX, game), this.groundY - 94, {
-          extra: { radius: 88 }
+          extra: { radius: 108 }
+        });
+        for (let b = 0; b < 8; b++) {
+          const ang = (b / 8) * Math.PI * 2 + 0.25;
+          this.spawnTempestBolt(
+            hitX,
+            this.groundY - 94,
+            hitX + Math.cos(ang) * 210,
+            this.groundY - 94 + Math.sin(ang) * 165,
+            0.34,
+            18
+          );
+        }
+        this._exParticles?.burst(hitX, this.groundY - 94, {
+          count: 28,
+          shapes: ['bolt', 'star4', 'diamond'],
+          speedMin: 130,
+          speedMax: 340,
+          upBias: 55,
+          color: '#fbbf24',
+          accent: '#38bdf8',
+          core: '#ffffff',
+          layer: 'front'
         });
         this._applyTempestStrike(enemy, game, {
           damage: 350,
           reachFront: 480,
           reachBack: 420,
-          hitStop: 0.085,
-          shakeDur: 0.26,
+          hitStop: 0.095,
+          shakeDur: 0.28,
           knockX: 30,
           knockY: -40,
           isCrit: true,
@@ -1514,7 +1574,7 @@ export class BrawlerEx extends Fighter {
       return;
     }
 
-    // ==================== ACT 3B/C (2.24..3.85s): HEROIC SKID-STOP & BEHIND-THE-BACK DETONATION ====================
+    // ==================== ACT 3B/C (2.24..3.85s): HEROIC SKID-STOP & BEHIND-THE-BACK LIGHTNING CATACLYSM ====================
     this.x = this._trueUltSkidX;
     this.facing = dir;
     this._raijinDrumsAlpha = 0;
@@ -1523,6 +1583,34 @@ export class BrawlerEx extends Fighter {
     if (t < 2.86) {
       this.trueUltFrameOverride = 145;
       this._overrideFrameIdx = 145;
+      // Tension buildup (`2.24..2.74s`): unstable electric spider-web crackling across the opponent BEHIND Raijin!
+      if (this._trueUltStage < 5) {
+        this.afterimageAccum += dt;
+        if (this.afterimageAccum >= 0.095) {
+          this.afterimageAccum = 0;
+          const bx = foeAlive ? enemy.x : this._clampArenaX(this._trueUltSkidX - dir * 170, game);
+          const ang = Math.random() * Math.PI * 2;
+          this.spawnTempestBolt(
+            bx + Math.cos(ang) * 110,
+            this.groundY - 94 + Math.sin(ang) * 84,
+            bx - Math.cos(ang) * 70,
+            this.groundY - 94 - Math.sin(ang) * 60,
+            0.18,
+            16
+          );
+          this._exParticles?.burst(bx, this.groundY - 94, {
+            count: 6,
+            shapes: ['bolt', 'star4'],
+            speedMin: 60,
+            speedMax: 180,
+            upBias: 30,
+            color: '#38bdf8',
+            accent: '#fbbf24',
+            core: '#ffffff',
+            layer: 'front'
+          });
+        }
+      }
     } else {
       const recU = Math.min(1, (t - 2.86) / Math.max(0.1, dur - 2.86));
       const recFrame = 146 + Math.min(3, Math.floor(recU * 4));
@@ -1533,38 +1621,45 @@ export class BrawlerEx extends Fighter {
     if (this._trueUltStage < 5 && t >= 2.76) {
       this._trueUltStage = 5;
       const blastX = foeAlive ? enemy.x : this._clampArenaX(this._trueUltSkidX - dir * 170, game);
-      // Delayed Thunder-Tunnel Detonation erupting BEHIND Raijin's back!
-      game?.renderer?.triggerShake?.(22, 0.36);
-      game?.renderer?.triggerHitStop?.(0.065);
-      game?.vfx?.spawnDecal?.(blastX, this.groundY, 'crater', 186);
-      game?.vfx?.spawnShockwave?.(blastX, this.groundY - 94, 250, '#fbbf24', 0.44);
-      game?.vfx?.spawnShockwave?.(blastX, this.groundY - 4, 280, '#38bdf8', 0.48);
-      this.spawnVfxAnim(0, blastX, this.groundY - 94, 300, 300, 0.46, { flipX: dir < 0, inFront: true });
-      this.spawnVfxAnim(6, blastX, this.groundY - 94, 260, 260, 0.38, { inFront: true });
-      this.spawnVfxAnim(5, blastX, this.groundY - 18, 360, 185, 0.85, { inFront: false });
+      // SECOND EPIC 'tempest' Anime Lightning-Shatter Impact Frame + Behind-the-Back Lightning Cataclysm!
+      game?.renderer?.triggerImpactFrame?.(blastX, this.groundY - 94, 0.20, 'tempest');
+      game?.renderer?.triggerShake?.(32, 0.55);
+      game?.renderer?.triggerHitStop?.(0.11);
+      game?.vfx?.spawnDecal?.(blastX, this.groundY, 'crater', 210);
+      game?.vfx?.spawnShockwave?.(blastX, this.groundY - 94, 320, '#fbbf24', 0.48);
+      game?.vfx?.spawnShockwave?.(blastX, this.groundY - 4, 360, '#38bdf8', 0.54);
+      this.spawnLightningImpact(blastX, this.groundY - 94, 275, 0.72, 16);
+      this.spawnVfxAnim(1, blastX, this.groundY - 148, 270, 340, 0.62, { flipX: dir < 0, inFront: true });
+      this.spawnVfxAnim(0, blastX, this.groundY - 94, 340, 340, 0.50, { flipX: dir < 0, inFront: true });
+      this.spawnVfxAnim(6, blastX, this.groundY - 94, 330, 330, 0.44, { inFront: true });
+      this.spawnVfxAnim(5, blastX, this.groundY - 18, 420, 210, 0.88, { inFront: false });
       this.fx?.spawn('tempestBurst', this._safeFxX(blastX, game), this.groundY - 92, {
-        extra: { radius: 96 }
+        extra: { radius: 120 }
       });
       this.fx?.spawn('tempestCrater', this._safeFxX(blastX, game), this.groundY - 6, {
-        extra: { rx: 126, ry: 26 }
+        extra: { rx: 148, ry: 30 }
       });
+      // Dual Diagonal Cross-Sky Thunderbolts converging straight into the detonation BEHIND Raijin's back!
+      this.spawnTempestBolt(blastX - dir * 230, this.groundY - 430, blastX, this.groundY - 94, 0.46, 26);
+      this.spawnTempestBolt(blastX + dir * 130, this.groundY - 430, blastX, this.groundY - 94, 0.46, 26);
+      this.spawnTempestBolt(blastX - dir * 140, this.groundY - 420, blastX - dir * 20, this.groundY - 12, 0.44, 24);
       // Horizontal floor & chest-height lightning shock-fissures bursting cleanly BEHIND Raijin's back!
-      for (const dyOff of [-132, -94, -56, -22]) {
+      for (const dyOff of [-144, -104, -64, -22]) {
         this.spawnTempestBolt(
-          this._clampArenaX(blastX - dir * 220, game),
-          this.groundY + dyOff + (Math.random() - 0.5) * 28,
+          this._clampArenaX(blastX - dir * 250, game),
+          this.groundY + dyOff + (Math.random() - 0.5) * 32,
           this._clampArenaX(blastX + dir * 88, game),
           this.groundY + dyOff + (Math.random() - 0.5) * 26,
-          0.42,
-          18
+          0.48,
+          20
         );
       }
       this._exParticles?.burst(blastX, this.groundY - 86, {
-        count: 34,
+        count: 48,
         shapes: ['bolt', 'star4', 'diamond'],
-        speedMin: 120,
-        speedMax: 370,
-        upBias: 95,
+        speedMin: 140,
+        speedMax: 420,
+        upBias: 110,
         color: '#fbbf24',
         accent: '#38bdf8',
         core: '#ffffff',
@@ -1575,8 +1670,8 @@ export class BrawlerEx extends Fighter {
         damage: 210,
         reachFront: 480,
         reachBack: 480,
-        hitStop: 0.06,
-        shakeDur: 0.24,
+        hitStop: 0.085,
+        shakeDur: 0.30,
         knockX: 190,
         knockY: -140,
         isCrit: true,
@@ -1858,6 +1953,10 @@ export class BrawlerEx extends Fighter {
     for (let i = this._sonicRings.length - 1; i >= 0; i--) {
       this._sonicRings[i].age += dt;
       if (this._sonicRings[i].age >= this._sonicRings[i].maxLife) this._sonicRings.splice(i, 1);
+    }
+    for (let i = this._lightningImpacts.length - 1; i >= 0; i--) {
+      this._lightningImpacts[i].age += dt;
+      if (this._lightningImpacts[i].age >= this._lightningImpacts[i].maxLife) this._lightningImpacts.splice(i, 1);
     }
     if (this._sonicRail) {
       this._sonicRail.age += dt;
@@ -2186,6 +2285,93 @@ export class BrawlerEx extends Fighter {
     }
   }
 
+  _drawLightningImpacts(ctx) {
+    if (this._lightningImpacts.length === 0) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < this._lightningImpacts.length; i++) {
+      const imp = this._lightningImpacts[i];
+      const u = Math.min(1, imp.age / Math.max(0.01, imp.maxLife));
+      const env = u < 0.14 ? u / 0.14 : Math.max(0, 1 - (u - 0.14) / 0.86);
+      if (env <= 0.02) continue;
+      const cx = imp.x;
+      const cy = imp.y;
+      const curR = 24 + Math.pow(u, 0.56) * imp.maxR;
+
+      // 1. Blinding Initial Lightning Core + Tapered 4-Point Pixel Cross-Flare (`u < 0.55`)
+      if (u < 0.55) {
+        const coreEnv = 1 - u / 0.55;
+        const flareW = Math.round(imp.maxR * (1.2 + u * 1.1) * coreEnv);
+        const flareH = Math.round(imp.maxR * (0.85 + u * 0.7) * coreEnv);
+        ctx.globalAlpha = 0.65 * coreEnv;
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(cx - flareW, cy - 6, flareW * 2, 12);
+        ctx.fillRect(cx - 6, cy - flareH, 12, flareH * 2);
+        ctx.globalAlpha = 0.90 * coreEnv;
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(cx - Math.round(flareW * 0.76), cy - 4, Math.round(flareW * 1.52), 8);
+        ctx.fillRect(cx - 4, cy - Math.round(flareH * 0.76), 8, Math.round(flareH * 1.52));
+        ctx.globalAlpha = 1.0 * coreEnv;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(cx - Math.round(flareW * 0.52), cy - 2, Math.round(flareW * 1.04), 4);
+        ctx.fillRect(cx - 2, cy - Math.round(flareH * 0.52), 4, Math.round(flareH * 1.04));
+        const cr = Math.round(18 + 26 * coreEnv);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(cx - cr, cy - Math.round(cr * 0.65), cr * 2, Math.round(cr * 1.3));
+        ctx.fillRect(cx - Math.round(cr * 0.65), cy - cr, Math.round(cr * 1.3), cr * 2);
+        ctx.fillStyle = '#ffffff';
+        const inner = Math.round(cr * 0.62);
+        ctx.fillRect(cx - inner, cy - inner, inner * 2, inner * 2);
+      }
+
+      // 2. Dual Expanding Jagged Electric Shock-Rings (solid crisp 2px pixel electric plasma dome!)
+      const ringSteps = 148;
+      const tick = Math.floor(imp.age * 32);
+      for (let k = 0; k < ringSteps; k++) {
+        const ang = (k / ringSteps) * Math.PI * 2;
+        const jag1 = Math.sin(k * 5.7 + imp.seed + tick) * (6 + 9 * env);
+        const r1 = curR + jag1;
+        const px1 = Math.round((cx + Math.cos(ang) * r1) / 2) * 2;
+        const py1 = Math.round((cy + Math.sin(ang) * r1 * 0.88) / 2) * 2;
+        ctx.globalAlpha = 0.88 * env;
+        ctx.fillStyle = k % 2 === 0 ? '#38bdf8' : '#fbbf24';
+        ctx.fillRect(px1 - 3, py1 - 3, 6, 6);
+        ctx.globalAlpha = 1.0 * env;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px1 - 1, py1 - 1, 2, 2);
+
+        if (k % 2 === 0) {
+          const r2 = curR * 0.72 - jag1 * 0.6;
+          const px2 = Math.round((cx + Math.cos(ang) * r2) / 2) * 2;
+          const py2 = Math.round((cy + Math.sin(ang) * r2 * 0.88) / 2) * 2;
+          ctx.globalAlpha = 0.90 * env;
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(px2 - 2, py2 - 2, 4, 4);
+        }
+      }
+
+      // 3. Radial Shattering Forked Lightning Rays exploding outward from core!
+      const rays = imp.rayCount || 10;
+      for (let r = 0; r < rays; r++) {
+        const ang = (r / rays) * Math.PI * 2 + (imp.seed % 7) * 0.19;
+        const rayLen = curR * (0.85 + (r % 3) * 0.22);
+        const startR = curR * 0.14;
+        drawTempestPixelBolt(
+          ctx,
+          cx + Math.cos(ang) * startR,
+          cy + Math.sin(ang) * startR * 0.88,
+          cx + Math.cos(ang) * rayLen,
+          cy + Math.sin(ang) * rayLen * 0.88,
+          6,
+          14 + Math.round(env * 8),
+          imp.seed + r * 17 + tick * 3,
+          0.92 * env
+        );
+      }
+    }
+    ctx.restore();
+  }
+
   /**
    * Called by `Fighter.prototype.draw` BEFORE drawing Raijin EX's sprite frame (inherits DeathFX,
    * floor reflections, rim-light, hit-flashes, and shadow projection automatically!).
@@ -2241,6 +2427,7 @@ export class BrawlerEx extends Fighter {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
     this._drawSonicTunnelPunch(ctx);
+    this._drawLightningImpacts(ctx);
     this._drawFistChargeCore(ctx);
     this._drawVfxLayer(ctx, sprites, true);
 

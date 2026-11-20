@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps181';
-import { PixelFont } from './PixelFont.js?v=30fps181';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps181';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps181';
+import { PixelForge } from './PixelForge.js?v=30fps182';
+import { PixelFont } from './PixelFont.js?v=30fps182';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps182';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps182';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps181';
+} from './shaders/exNextGenFX.js?v=30fps182';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -6076,7 +6076,8 @@ export class Renderer {
       forge: { accent: '#f59e0b', alt: '#34d399', bg: '#0b0502' },
       glacial: { accent: '#67e8f9', alt: '#ecfeff', bg: '#082f49' },
       cyber: { accent: '#00f0ff', alt: '#f43f5e', bg: '#02060c' },
-      nebula: { accent: '#22d3ee', alt: '#d946ef', bg: '#050214' }
+      nebula: { accent: '#22d3ee', alt: '#d946ef', bg: '#050214' },
+      tempest: { accent: '#fbbf24', alt: '#38bdf8', bg: '#040614', lightning: true }
     };
     const pal = IMPACT_STYLE_PALETTES[this.impactFrameStyle] || IMPACT_STYLE_PALETTES.inferno;
     const accentCol = pal.accent;
@@ -6126,6 +6127,80 @@ export class Renderer {
       const rx = Math.round((cx + Math.cos(a) * ringR) / pxGrid) * pxGrid;
       const ry = Math.round((cy + Math.sin(a) * ringR) / pxGrid) * pxGrid;
       ctx.fillRect(rx - 6, ry - 6, 12, 12);
+    }
+
+    // 3b. Dedicated 'tempest' Anime Lightning-Shatter Layer (drawn BEHIND stark fighter silhouettes so hero poses pop 100% clean!)
+    if (pal.lightning) {
+      const boltCount = 12;
+      const boltCore = isInverted ? '#040614' : '#ffffff';
+      const boltEdge = isInverted ? pal.accent : pal.alt;
+      const boltSub = isInverted ? pal.alt : pal.accent;
+      const phaseSeed = isInverted ? 13 : 29;
+      for (let b = 0; b < boltCount; b++) {
+        const ang = (b / boltCount) * Math.PI * 2 + (b % 2 === 0 ? 0.14 : -0.09);
+        const dirX = Math.cos(ang);
+        const dirY = Math.sin(ang);
+        const perpX = -dirY;
+        const perpY = dirX;
+        const maxLen = b % 2 === 0 ? 680 : 480;
+        const segs = 9;
+        let prevX = cx;
+        let prevY = cy;
+        for (let s = 1; s <= segs; s++) {
+          const tFrac = s / segs;
+          const jag =
+            s === segs
+              ? 0
+              : Math.sin((b + 1) * 19.3 + s * 7.1 + phaseSeed) * (24 + tFrac * 44);
+          const nx = cx + dirX * maxLen * tFrac + perpX * jag;
+          const ny = cy + dirY * maxLen * tFrac + perpY * jag;
+          const steps = Math.max(8, Math.ceil(Math.hypot(nx - prevX, ny - prevY) / 6));
+          const thick = s <= 3 ? 10 : s <= 6 ? 6 : 4;
+          for (let k = 0; k <= steps; k++) {
+            const u = k / steps;
+            const px = Math.round((prevX + (nx - prevX) * u) / 4) * 4;
+            const py = Math.round((prevY + (ny - prevY) * u) / 4) * 4;
+            ctx.fillStyle = b % 3 === 0 ? boltSub : boltEdge;
+            ctx.fillRect(px - thick, py - thick, thick * 2, thick * 2);
+            ctx.fillStyle = boltCore;
+            ctx.fillRect(px - (thick >> 1), py - (thick >> 1), thick, thick);
+          }
+          prevX = nx;
+          prevY = ny;
+        }
+      }
+      // Razor-tapered 4-point anime flash cross centered on impact (tapers smoothly to needle tips!)
+      const crossW = Math.round((500 + p * 160) / 4) * 4;
+      const crossH = Math.round((340 + p * 110) / 4) * 4;
+      const taperSteps = 16;
+      for (let i = 0; i < taperSteps; i++) {
+        const f0 = i / taperSteps;
+        const f1 = (i + 1) / taperSteps;
+        const falloff = Math.pow(1 - f0, 1.35);
+        const halfH = Math.max(2, Math.round((16 * falloff) / 2) * 2);
+        const halfCoreH = Math.max(2, Math.round((8 * falloff) / 2) * 2);
+        const x0 = Math.round(crossW * f0);
+        const x1 = Math.round(crossW * f1);
+        const segLenX = Math.max(4, x1 - x0);
+        ctx.fillStyle = boltEdge;
+        ctx.fillRect(cx + x0, cy - halfH, segLenX, halfH * 2);
+        ctx.fillRect(cx - x1, cy - halfH, segLenX, halfH * 2);
+        ctx.fillStyle = boltCore;
+        ctx.fillRect(cx + x0, cy - halfCoreH, segLenX, halfCoreH * 2);
+        ctx.fillRect(cx - x1, cy - halfCoreH, segLenX, halfCoreH * 2);
+
+        const y0 = Math.round(crossH * f0);
+        const y1 = Math.round(crossH * f1);
+        const segLenY = Math.max(4, y1 - y0);
+        ctx.fillStyle = boltEdge;
+        ctx.fillRect(cx - halfH, cy + y0, halfH * 2, segLenY);
+        ctx.fillRect(cx - halfH, cy - y1, halfH * 2, segLenY);
+        ctx.fillStyle = boltCore;
+        ctx.fillRect(cx - halfCoreH, cy + y0, halfCoreH * 2, segLenY);
+        ctx.fillRect(cx - halfCoreH, cy - y1, halfCoreH * 2, segLenY);
+      }
+      ctx.fillStyle = boltCore;
+      ctx.fillRect(cx - 28, cy - 28, 56, 56);
     }
 
     // 4. Stark High-Contrast Fighter Silhouettes (so every character stands out in dramatic anime impact silhouette!)
