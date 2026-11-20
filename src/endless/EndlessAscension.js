@@ -1,7 +1,7 @@
 // Endless Crusade Astral Ascension Prestige, Eternal Artifacts & Offline Crusade Loot
 // Node-safe (zero browser globals required), zero external deps, zero Unicode emojis.
 
-import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps198';
+import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps199';
 
 export const ASCENSION_UNLOCK_STAGE = 5;
 export const OFFLINE_MIN_AWAY_SEC = 60;

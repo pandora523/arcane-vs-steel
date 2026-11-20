@@ -1,15 +1,15 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps198';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps198';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps198';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps198';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps198';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps198';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps198';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps198';
-import { EndlessAscension } from './EndlessAscension.js?v=30fps198';
-import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps198';
-import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps198';
-import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps198';
+import { Fighter } from '../entities/Fighter.js?v=30fps199';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps199';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps199';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps199';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps199';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps199';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps199';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps199';
+import { EndlessAscension } from './EndlessAscension.js?v=30fps199';
+import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps199';
+import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps199';
+import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps199';
 
 export const ENDLESS_REALMS = [
   {
