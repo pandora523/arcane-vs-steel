@@ -627,3 +627,10 @@
 - **Batch `?v=30fps186` Web-Only Upgrade (`src/adventure/{AdventureProgression,AdventureManager}.js`, `src/entities/Monster.js`, `src/main.js`, `index.html`, `style.css`, `scripts/tests/test_all_heroes_gameloop.mjs`)**:
   - Replaced Adventure's `0.78x` skill CD discount with `1.15x` (min `3.8s`), toned `basicSkillCdShave`, re-tuned Spirit economy (`38/32/26`) & baseline impact (`atkMult: 0.64`, `skillMult: 0.74`), buffed player HP (`1040 -> 1320`, `+115/lv`), and added per-tier `BEHEMOTH MALPHAS` tuning (`normal`/`heroic`/`sovereign`) preserving `11,800 HP` & `Suite 29C`/`36.19`.
   - Added optional persistent `KEEP LVL` (`avs_adv_hero_progress_v1`), `#adv-progress-mode-toggle`, `.adv-saved-lvl-pip`, `#adv-st-reset-lv`, and snappy virtual joystick curve overhaul (`deadzone = 0.06`, `pow(..., 0.72)`, `maxSpeedX = 316`, `maxSpeedZ = 192`, `Suite 36.35`, 3-viewport Chrome verified).
+
+---
+
+### Archived Batch (`?v=30fps187` — Adventure Mode Dramatic Ability Impact Hierarchy & Spacious Mobile Portrait Action Cluster)
+- **Batch `?v=30fps187` Web-Only Upgrade (`src/adventure/{AdventureProgression,AdventureSkillSets}.js`, `src/entities/Monster.js`, `index.html`, `style.css`, `scripts/tests/test_all_heroes_gameloop.mjs`)**:
+  - Inverted Adventure ability power hierarchy (`skillMult: 1.15`, `ultMult: 1.28`, `superUltMult: 1.52`, enhanced pack cleave & Warden/Boss stagger `6/34/62/95`) while keeping Auto animations & Colossal Boss `12% maxHp` caps untouched.
+  - Replaced cramped portrait `#adv-skill-cluster` `scale(0.78)` with spacious `scale(0.98)` (`218x278`) & `62px` clear gap to `.adv-joystick-zone` across `390x844` (`Suite 36.35`, 3-viewport Chrome QA verified).

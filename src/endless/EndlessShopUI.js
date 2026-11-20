@@ -2,10 +2,10 @@
 // Strictly Node-test safe (all DOM/window/Image accesses guarded), zero emojis,
 // pure nearest-neighbor blits & fillRect fallbacks, in-place DOM patching (zero 60fps click drops).
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps192';
-import { ENDLESS_RELICS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps192';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps193';
+import { ENDLESS_RELICS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps193';
 
-const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps192';
+const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps193';
 const ENDLESS_ICON_ROW = 7;
 const ENDLESS_ICON_CELL = 128;
 const STYLE_ELEMENT_ID = 'endless-shop-ui-styles';
@@ -1742,7 +1742,7 @@ const ENDLESS_SHOP_CSS = `
     left: max(8px, env(safe-area-inset-left));
     top: max(108px, calc(env(safe-area-inset-top) + 104px));
     width: auto;
-    max-width: min(440px, calc(100vw - 16px));
+    max-width: min(306px, calc(100vw - 16px));
     gap: 3px;
   }
 
@@ -1753,9 +1753,9 @@ const ENDLESS_SHOP_CSS = `
   }
 
   .endless-party-card {
-    width: 120px;
+    width: 94px;
     padding: 3px 4px;
-    gap: 4px;
+    gap: 3px;
   }
 
   .endless-party-port-wrap {
@@ -1821,7 +1821,7 @@ html.is-mobile-landscape .endless-party-hud {
   left: 8px;
   top: 108px;
   width: auto;
-  max-width: min(440px, calc(100vw - 16px));
+  max-width: min(306px, calc(100vw - 16px));
   gap: 3px;
 }
 
@@ -1832,9 +1832,9 @@ html.is-mobile-landscape .endless-party-strip {
 }
 
 html.is-mobile-landscape .endless-party-card {
-  width: 120px;
+  width: 94px;
   padding: 3px 4px;
-  gap: 4px;
+  gap: 3px;
 }
 
 html.is-mobile-landscape .endless-party-port-wrap {
@@ -2233,7 +2233,20 @@ export class EndlessShopUI {
   }
 
   _hasDom() {
-    return typeof document !== 'undefined' && typeof document.createElement === 'function';
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return false;
+    if (typeof this._hasRealDom === 'boolean') return this._hasRealDom;
+    try {
+      const probe = document.createElement('div');
+      this._hasRealDom = Boolean(
+        probe &&
+          typeof probe.setAttribute === 'function' &&
+          typeof probe.appendChild === 'function' &&
+          typeof probe.addEventListener === 'function'
+      );
+    } catch {
+      this._hasRealDom = false;
+    }
+    return this._hasRealDom;
   }
 
   _injectStyles() {

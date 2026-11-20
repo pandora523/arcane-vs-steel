@@ -15,7 +15,7 @@ const DEFAULT_VOICE_VOLUME = 1.0;
 const DEFAULT_BGM_VOLUME = 0.38;
 const VOICE_PRESENCE_TRIM = 1.42;
 const BGM_CROSSFADE_SEC = 0.65;
-const AUDIO_ASSET_CACHE_BUST = 'v=30fps192';
+const AUDIO_ASSET_CACHE_BUST = 'v=30fps193';
 const MAX_CACHED_BGM_BUFFERS = 4;
 
 export class AudioManager {

@@ -1,11 +1,11 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps192';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps192';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps192';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps192';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps192';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps192';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps192';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps192';
+import { Fighter } from '../entities/Fighter.js?v=30fps193';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps193';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps193';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps193';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps193';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps193';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps193';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps193';
 
 export const ENDLESS_REALMS = [
   {
