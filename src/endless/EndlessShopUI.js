@@ -57,6 +57,218 @@ const ASCEND_STAR_SVG =
   '<rect x="5" y="5" width="2" height="2" fill="#ffffff"/>' +
   '</svg>';
 
+const GEAR_WEAPON_SVG =
+  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="11" y="1" width="2" height="2" fill="#ffffff"/>' +
+  '<rect x="10" y="2" width="2" height="2" fill="#f8fafc"/>' +
+  '<rect x="9" y="3" width="2" height="2" fill="#e2e8f0"/>' +
+  '<rect x="11" y="3" width="1" height="1" fill="#94a3b8"/>' +
+  '<rect x="8" y="4" width="2" height="2" fill="#e2e8f0"/>' +
+  '<rect x="10" y="4" width="1" height="1" fill="#94a3b8"/>' +
+  '<rect x="7" y="5" width="2" height="2" fill="#cbd5e1"/>' +
+  '<rect x="9" y="5" width="1" height="1" fill="#64748b"/>' +
+  '<rect x="6" y="6" width="2" height="2" fill="#cbd5e1"/>' +
+  '<rect x="8" y="6" width="1" height="1" fill="#64748b"/>' +
+  '<rect x="3" y="6" width="2" height="2" fill="#facc15"/>' +
+  '<rect x="4" y="7" width="3" height="2" fill="#fef08a"/>' +
+  '<rect x="6" y="9" width="2" height="2" fill="#d97706"/>' +
+  '<rect x="3" y="9" width="2" height="2" fill="#78350f"/>' +
+  '<rect x="2" y="10" width="2" height="2" fill="#92400e"/>' +
+  '<rect x="1" y="11" width="2" height="2" fill="#f43f5e"/>' +
+  '<rect x="2" y="12" width="1" height="1" fill="#facc15"/>' +
+  '</svg>';
+
+const GEAR_ARMOR_SVG =
+  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="1" y="2" width="3" height="4" fill="#64748b"/>' +
+  '<rect x="10" y="2" width="3" height="4" fill="#64748b"/>' +
+  '<rect x="2" y="2" width="2" height="1" fill="#facc15"/>' +
+  '<rect x="10" y="2" width="2" height="1" fill="#facc15"/>' +
+  '<rect x="3" y="3" width="8" height="7" fill="#334155"/>' +
+  '<rect x="4" y="4" width="6" height="3" fill="#475569"/>' +
+  '<rect x="5" y="2" width="4" height="2" fill="#0f172a"/>' +
+  '<rect x="6" y="4" width="2" height="6" fill="#facc15"/>' +
+  '<rect x="6" y="5" width="2" height="2" fill="#fef08a"/>' +
+  '<rect x="3" y="10" width="8" height="1" fill="#d4af37"/>' +
+  '<rect x="3" y="11" width="3" height="2" fill="#475569"/>' +
+  '<rect x="8" y="11" width="3" height="2" fill="#475569"/>' +
+  '<rect x="6" y="11" width="2" height="2" fill="#92400e"/>' +
+  '</svg>';
+
+const GEAR_AMULET_SVG =
+  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="3" y="1" width="2" height="1" fill="#d4af37"/>' +
+  '<rect x="9" y="1" width="2" height="1" fill="#d4af37"/>' +
+  '<rect x="4" y="2" width="1" height="2" fill="#facc15"/>' +
+  '<rect x="9" y="2" width="1" height="2" fill="#facc15"/>' +
+  '<rect x="5" y="3" width="4" height="2" fill="#facc15"/>' +
+  '<rect x="4" y="5" width="6" height="7" fill="#d4af37"/>' +
+  '<rect x="3" y="6" width="8" height="5" fill="#facc15"/>' +
+  '<rect x="4" y="6" width="6" height="5" fill="#0f172a"/>' +
+  '<rect x="5" y="6" width="4" height="5" fill="#0284c7"/>' +
+  '<rect x="6" y="5" width="2" height="7" fill="#38bdf8"/>' +
+  '<rect x="5" y="7" width="4" height="3" fill="#7dd3fc"/>' +
+  '<rect x="6" y="6" width="2" height="2" fill="#ffffff"/>' +
+  '<rect x="6" y="12" width="2" height="1" fill="#fef08a"/>' +
+  '</svg>';
+
+const GEAR_RING_SVG =
+  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="5" y="1" width="4" height="4" fill="#facc15"/>' +
+  '<rect x="6" y="2" width="2" height="2" fill="#f43f5e"/>' +
+  '<rect x="6" y="2" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="3" y="4" width="2" height="2" fill="#fef08a"/>' +
+  '<rect x="9" y="4" width="2" height="2" fill="#facc15"/>' +
+  '<rect x="2" y="6" width="2" height="4" fill="#facc15"/>' +
+  '<rect x="10" y="6" width="2" height="4" fill="#d4af37"/>' +
+  '<rect x="3" y="10" width="2" height="2" fill="#d97706"/>' +
+  '<rect x="9" y="10" width="2" height="2" fill="#b45309"/>' +
+  '<rect x="5" y="11" width="4" height="2" fill="#ca8a04"/>' +
+  '<rect x="5" y="11" width="4" height="1" fill="#facc15"/>' +
+  '</svg>';
+
+const FORGE_DUST_SVG =
+  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="6" y="1" width="2" height="3" fill="#38bdf8"/>' +
+  '<rect x="5" y="2" width="4" height="2" fill="#7dd3fc"/>' +
+  '<rect x="6" y="2" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="3" y="2" width="1" height="1" fill="#facc15"/>' +
+  '<rect x="10" y="2" width="1" height="1" fill="#fb923c"/>' +
+  '<rect x="1" y="5" width="12" height="2" fill="#94a3b8"/>' +
+  '<rect x="3" y="5" width="9" height="1" fill="#e2e8f0"/>' +
+  '<rect x="6" y="5" width="2" height="1" fill="#fb923c"/>' +
+  '<rect x="4" y="7" width="6" height="3" fill="#475569"/>' +
+  '<rect x="5" y="7" width="4" height="2" fill="#64748b"/>' +
+  '<rect x="2" y="10" width="10" height="3" fill="#334155"/>' +
+  '<rect x="3" y="10" width="8" height="1" fill="#d4af37"/>' +
+  '</svg>';
+
+const GEAR_SLOT_ORDER = Object.freeze(['weapon', 'armor', 'amulet', 'ring']);
+
+const GEAR_SLOT_DEFAULTS = Object.freeze({
+  weapon: Object.freeze({ id: 'weapon', label: 'WEAPON', shortLabel: 'WPN' }),
+  armor: Object.freeze({ id: 'armor', label: 'ARMOR', shortLabel: 'ARM' }),
+  amulet: Object.freeze({ id: 'amulet', label: 'AMULET', shortLabel: 'AMU' }),
+  ring: Object.freeze({ id: 'ring', label: 'RELIC RING', shortLabel: 'RNG' })
+});
+
+const GEAR_SLOT_SVG_MAP = Object.freeze({
+  weapon: GEAR_WEAPON_SVG,
+  armor: GEAR_ARMOR_SVG,
+  amulet: GEAR_AMULET_SVG,
+  ring: GEAR_RING_SVG
+});
+
+const DEFAULT_MYTHIC_SETS = Object.freeze([
+  Object.freeze({
+    id: 'stormcaller',
+    name: 'STORMCALLER',
+    accentHex: '#38bdf8',
+    shortDesc: 'TAP CHAIN-LIGHTNING (+3 JUMPS, 1.35X DMG)',
+    fullDesc: 'Taps arc extra Chain-Lightning bolts to 3 foes even outside Fever.',
+    pieces: 0,
+    requiredPieces: 2,
+    active: false,
+    empowered: false
+  }),
+  Object.freeze({
+    id: 'blood_reaver',
+    name: 'BLOOD-REAVER',
+    accentHex: '#f43f5e',
+    shortDesc: 'KILL NOVA + 8% LIFESTEAL ON SLAY',
+    fullDesc: 'Slaying foes unleashes a crimson shockwave (45% AoE) and heals 8% max HP.',
+    pieces: 0,
+    requiredPieces: 2,
+    active: false,
+    empowered: false
+  }),
+  Object.freeze({
+    id: 'titan_slayer',
+    name: 'TITAN-SLAYER',
+    accentHex: '#facc15',
+    shortDesc: 'BOSS EXECUTE <15% HP (+30% BOSS DMG)',
+    fullDesc: 'Executes bosses below 15% HP instantly and grants +30% Boss Damage.',
+    pieces: 0,
+    requiredPieces: 2,
+    active: false,
+    empowered: false
+  })
+]);
+
+const GEAR_BONUS_SPECS = Object.freeze([
+  Object.freeze({ key: 'heroDmgPct', label: 'HERO', isCrit: false, priority: 7 }),
+  Object.freeze({ key: 'tapDmgPct', label: 'TAP', isCrit: false, priority: 6 }),
+  Object.freeze({ key: 'companionDmgPct', label: 'ALLY', isCrit: false, priority: 5 }),
+  Object.freeze({ key: 'bossDmgPct', label: 'BOSS', isCrit: false, priority: 4 }),
+  Object.freeze({ key: 'goldPct', label: 'GOLD', isCrit: false, priority: 3 }),
+  Object.freeze({ key: 'maxHpPct', label: 'HP', isCrit: false, priority: 2 }),
+  Object.freeze({ key: 'critBonus', label: 'CRIT', isCrit: true, priority: 1 })
+]);
+
+function getGearSlotSvg(slot) {
+  return GEAR_SLOT_SVG_MAP[slot] || GEAR_WEAPON_SVG;
+}
+
+function formatGearBonusPercent(val, isCrit) {
+  const pct = val * 100;
+  if (isCrit) {
+    const rounded1 = Math.round(pct * 10) / 10;
+    return Number.isInteger(rounded1) ? `+${rounded1}%` : `+${rounded1.toFixed(1)}%`;
+  }
+  const rounded = Math.round(pct);
+  if (rounded >= 10000) {
+    return `+${formatEndlessNumber(rounded)}%`;
+  }
+  return `+${rounded}%`;
+}
+
+function formatGearBonuses(bonuses, maxCount = 2) {
+  if (!bonuses || typeof bonuses !== 'object') return '';
+  const entries = [];
+  for (let i = 0; i < GEAR_BONUS_SPECS.length; i++) {
+    const spec = GEAR_BONUS_SPECS[i];
+    const raw = Number(bonuses[spec.key]);
+    if (!Number.isFinite(raw) || raw <= 0.0001) continue;
+    const score = spec.isCrit ? raw * 4 : raw;
+    entries.push({ spec, raw, score });
+  }
+  if (entries.length === 0) return '';
+  entries.sort((a, b) => (b.score - a.score) || (b.spec.priority - a.spec.priority));
+  const slice = maxCount > 0 ? entries.slice(0, maxCount) : entries;
+  return slice.map((e) => `${formatGearBonusPercent(e.raw, e.spec.isCrit)} ${e.spec.label}`).join(' • ');
+}
+
+function computeGearItemSignature(item) {
+  if (!item || typeof item !== 'object') return 'EMPTY';
+  const eb = item.effectiveBonuses || item.bonuses || {};
+  return [
+    item.uid || '',
+    item.slot || '',
+    item.rarity || '',
+    item.name || '',
+    item.stage || 1,
+    item.enhanceLevel || 0,
+    item.power || 0,
+    item.enhanceCost || 0,
+    item.canEnhance ? 1 : 0,
+    item.isMaxEnhanced ? 1 : 0,
+    item.salvageValue || 0,
+    item.isUpgradeOverEquipped ? 1 : 0,
+    item.setId || '',
+    item.setMeta?.name || '',
+    item.setMeta?.accentHex || '',
+    item.rarityMeta?.label || '',
+    item.rarityMeta?.color || '',
+    Math.round((Number(eb.heroDmgPct) || 0) * 1000),
+    Math.round((Number(eb.tapDmgPct) || 0) * 1000),
+    Math.round((Number(eb.companionDmgPct) || 0) * 1000),
+    Math.round((Number(eb.goldPct) || 0) * 1000),
+    Math.round((Number(eb.critBonus) || 0) * 1000),
+    Math.round((Number(eb.bossDmgPct) || 0) * 1000),
+    Math.round((Number(eb.maxHpPct) || 0) * 1000)
+  ].join(':');
+}
+
 const ETERNAL_ARTIFACT_ICON_MAP = Object.freeze({
   eternal_blade: { row: 7, col: 2, accentHex: '#f97316' },
   sovereign_vault: { row: 7, col: 11, accentHex: '#facc15' },
@@ -524,25 +736,27 @@ const ENDLESS_SHOP_CSS = `
 /* Tab Bar */
 .endless-tab-bar {
   display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
-  gap: 3px;
-  padding: 5px 6px;
+  gap: 2px;
+  padding: 5px 5px;
   background: rgba(6, 8, 15, 0.94);
   border-bottom: 1px solid rgba(212, 175, 55, 0.35);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .endless-tab-btn {
-  flex: 1 1 0;
+  flex: 0.92 1 0;
   min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 6px 3px;
+  gap: 2px;
+  padding: 6px 2px;
   font-family: inherit;
-  font-size: 0.37rem;
-  letter-spacing: 0.02em;
+  font-size: 0.34rem;
+  letter-spacing: 0.01em;
   color: #94a3b8;
   background: rgba(13, 17, 30, 0.9);
   border: 1.5px solid #334155;
@@ -552,12 +766,18 @@ const ENDLESS_SHOP_CSS = `
   overflow: hidden;
 }
 
+.endless-tab-btn[data-tab-id="gear"] {
+  flex: 0.96 1 0;
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #fde68a;
+}
+
 .endless-tab-btn[data-tab-id="companions"] {
-  flex: 1.42 1 0;
+  flex: 1.56 1 0;
 }
 
 .endless-tab-btn[data-tab-id="ascend"] {
-  flex: 1.08 1 0;
+  flex: 1.12 1 0;
   border-color: rgba(168, 85, 247, 0.55);
   color: #d8b4fe;
 }
@@ -578,6 +798,12 @@ const ENDLESS_SHOP_CSS = `
   animation: endlessDotPulse 1.1s ease-in-out infinite;
 }
 
+.endless-tab-dot.is-gear {
+  background: #facc15;
+  border-color: #fef08a;
+  box-shadow: 0 0 8px #facc15, 0 0 3px #34d399;
+}
+
 .endless-tab-dot.hidden {
   display: none;
 }
@@ -587,6 +813,15 @@ const ENDLESS_SHOP_CSS = `
   border-color: #facc15;
   background: linear-gradient(180deg, rgba(66, 46, 12, 0.92) 0%, rgba(28, 20, 8, 0.96) 100%);
   box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.3);
+}
+
+.endless-tab-btn[data-tab-id="gear"].is-active {
+  color: #fffbeb;
+  border-color: #fde047;
+  background: linear-gradient(180deg, rgba(92, 54, 10, 0.96) 0%, rgba(36, 22, 6, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.38),
+    0 0 8px rgba(250, 204, 21, 0.35);
 }
 
 .endless-tab-btn[data-tab-id="ascend"].is-active {
@@ -1659,14 +1894,19 @@ const ENDLESS_SHOP_CSS = `
    ========================================================================= */
 .endless-relic-row.is-buy-pulse,
 .endless-comp-card.is-buy-pulse,
-.endless-artifact-row.is-buy-pulse {
+.endless-artifact-row.is-buy-pulse,
+.endless-gear-slot-card.is-buy-pulse,
+.endless-gear-bag-row.is-buy-pulse {
   animation: endlessBuyPulse 0.44s ease-out;
 }
 
 .endless-buy-btn.is-buy-pulse,
 .endless-comp-btn.is-buy-pulse,
 .endless-artifact-buy-btn.is-buy-pulse,
-.endless-ascend-btn.is-buy-pulse {
+.endless-ascend-btn.is-buy-pulse,
+.endless-gear-hdr-btn.is-buy-pulse,
+.endless-gear-enh-btn.is-buy-pulse,
+.endless-gear-act-btn.is-buy-pulse {
   animation: endlessBuyBtnPulse 0.38s ease-out;
 }
 
@@ -3477,6 +3717,753 @@ html.is-mobile-landscape .endless-relic-milestone {
     padding: 4px 5px;
   }
 }
+
+/* =========================================================================
+   WAVE 7: ENDLESS GEAR FORGE, EQUIPPED SLOTS, MYTHIC SETS & INVENTORY BAG
+   ========================================================================= */
+.endless-gear-header {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 7px;
+  background: linear-gradient(180deg, rgba(16, 19, 34, 0.96) 0%, rgba(8, 10, 19, 0.98) 100%);
+  border-bottom: 1.5px solid rgba(212, 175, 55, 0.42);
+  flex-shrink: 0;
+}
+
+.endless-gear-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.endless-gear-metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 4px 6px;
+  background: rgba(7, 9, 18, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 3px;
+  min-width: 0;
+}
+
+.endless-gear-metric.is-dust {
+  border-color: rgba(56, 189, 248, 0.58);
+}
+
+.endless-gear-metric.is-power {
+  border-color: rgba(250, 204, 21, 0.58);
+}
+
+.endless-gear-metric-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-gear-metric-lbl {
+  font-size: 0.29rem;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-gear-metric-val {
+  font-size: 0.39rem;
+  color: #7dd3fc;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.endless-gear-metric.is-power .endless-gear-metric-val {
+  color: #fde047;
+}
+
+.endless-gear-actions-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.endless-gear-hdr-btn {
+  padding: 5px 6px;
+  font-family: inherit;
+  font-size: 0.34rem;
+  letter-spacing: 0.03em;
+  color: #cbd5e1;
+  background: linear-gradient(180deg, #1b2236 0%, #0d1221 100%);
+  border: 1.5px solid #475569;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+  transition: border-color 0.14s ease, color 0.14s ease, transform 0.08s ease;
+}
+
+.endless-gear-hdr-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-gear-hdr-btn.is-highlight {
+  color: #fffbeb;
+  background: linear-gradient(180deg, #a16207 0%, #5c3208 100%);
+  border-color: #facc15;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.42),
+    0 0 10px rgba(250, 204, 21, 0.38);
+}
+
+.endless-gear-hdr-btn.is-salvage:not(:disabled) {
+  color: #fed7aa;
+  background: linear-gradient(180deg, #431407 0%, #240c06 100%);
+  border-color: #f97316;
+}
+
+.endless-gear-hdr-btn:disabled {
+  color: #64748b;
+  background: linear-gradient(180deg, #141926 0%, #0b0e17 100%);
+  border-color: #2d3748;
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.endless-gear-scroll {
+  gap: 6px;
+}
+
+/* 4 Equipped Slots Grid (2x2 compact cards) */
+.endless-gear-equipped-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.endless-gear-slot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px 6px;
+  min-width: 0;
+  background: linear-gradient(180deg, rgba(17, 22, 38, 0.96) 0%, rgba(9, 12, 22, 0.98) 100%);
+  border: 1.5px solid #475569;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.endless-gear-slot-card.is-empty {
+  background: linear-gradient(180deg, rgba(11, 14, 25, 0.88) 0%, rgba(7, 9, 16, 0.94) 100%);
+  border-style: dashed;
+  border-color: rgba(71, 85, 105, 0.65);
+  box-shadow: none;
+}
+
+.endless-gear-slot-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-gear-slot-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #070912;
+  border: 1px solid #475569;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.endless-gear-slot-card.is-empty .endless-gear-slot-icon {
+  opacity: 0.55;
+}
+
+.endless-gear-slot-badges {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.endless-gear-rarity-pill {
+  font-size: 0.27rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(7, 10, 20, 0.92);
+  border: 1px solid #64748b;
+  color: #cbd5e1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-gear-enh-lv {
+  font-size: 0.29rem;
+  color: #fef08a;
+  background: rgba(250, 204, 21, 0.18);
+  border: 1px solid rgba(250, 204, 21, 0.65);
+  border-radius: 2px;
+  padding: 1px 3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.endless-gear-enh-lv.hidden {
+  display: none;
+}
+
+.endless-gear-slot-name {
+  font-size: 0.33rem;
+  color: #f8fafc;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-gear-slot-card.is-empty .endless-gear-slot-name {
+  color: #64748b;
+  font-size: 0.30rem;
+}
+
+.endless-gear-slot-stats {
+  font-size: 0.28rem;
+  color: #93c5fd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 11px;
+}
+
+.endless-gear-slot-card.is-empty .endless-gear-slot-stats {
+  color: #475569;
+}
+
+.endless-gear-slot-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 2px;
+  border-top: 1px solid rgba(71, 85, 105, 0.28);
+  min-width: 0;
+}
+
+.endless-gear-slot-card.is-empty .endless-gear-slot-foot {
+  display: none;
+}
+
+.endless-gear-set-tag {
+  font-size: 0.25rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(8, 11, 22, 0.94);
+  border: 1px solid #64748b;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.endless-gear-set-tag.is-pwr {
+  border-color: rgba(212, 175, 55, 0.38);
+  color: #fde68a;
+}
+
+.endless-gear-set-tag.hidden {
+  display: none;
+}
+
+.endless-gear-enh-btn {
+  padding: 3px 5px;
+  font-family: inherit;
+  font-size: 0.29rem;
+  letter-spacing: 0.02em;
+  color: #fef08a;
+  background: linear-gradient(180deg, #0369a1 0%, #0c4a6e 100%);
+  border: 1px solid #38bdf8;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+  transition: transform 0.08s ease;
+}
+
+.endless-gear-enh-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-gear-enh-btn:disabled {
+  color: #64748b;
+  background: #111626;
+  border-color: #334155;
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.endless-gear-enh-btn.is-maxed,
+.endless-gear-enh-btn.is-maxed:disabled {
+  color: #fef08a;
+  background: linear-gradient(180deg, #422006 0%, #1c1205 100%);
+  border-color: #d4af37;
+  opacity: 1;
+}
+
+/* Mythic Set Passives Strip (3 compact pills) */
+.endless-gear-sets-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.endless-gear-set-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 5px;
+  min-width: 0;
+  background: rgba(11, 14, 26, 0.92);
+  border: 1px solid #334155;
+  border-radius: 3px;
+  opacity: 0.72;
+  transition: border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.endless-gear-set-pill.is-active {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(24, 22, 38, 0.96) 0%, rgba(10, 12, 22, 0.98) 100%);
+}
+
+.endless-gear-set-pill.is-empowered {
+  opacity: 1;
+  background: linear-gradient(180deg, rgba(38, 28, 18, 0.96) 0%, rgba(12, 13, 24, 0.99) 100%);
+}
+
+.endless-gear-set-name {
+  font-size: 0.27rem;
+  color: #cbd5e1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-gear-set-status {
+  align-self: flex-start;
+  font-size: 0.25rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(7, 9, 18, 0.92);
+  border: 1px solid #334155;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.endless-gear-set-pill.is-active .endless-gear-set-status {
+  color: #fef08a;
+  background: rgba(250, 204, 21, 0.14);
+}
+
+.endless-gear-set-desc {
+  font-size: 0.24rem;
+  color: #94a3b8;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.endless-gear-set-pill.is-active .endless-gear-set-desc {
+  color: #e2e8f0;
+}
+
+/* Inventory Bag Section */
+.endless-gear-bag-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 2px 1px;
+  border-top: 1px solid rgba(212, 175, 55, 0.26);
+  flex-shrink: 0;
+}
+
+.endless-gear-bag-title {
+  font-size: 0.36rem;
+  color: #fde047;
+  letter-spacing: 0.04em;
+}
+
+.endless-gear-bag-hint {
+  font-size: 0.28rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-gear-bag-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.endless-gear-bag-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 6px;
+  padding: 5px 6px;
+  background: linear-gradient(180deg, rgba(16, 20, 35, 0.95) 0%, rgba(9, 12, 22, 0.97) 100%);
+  border: 1.5px solid #475569;
+  border-radius: 4px;
+  min-width: 0;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.endless-gear-bag-row.is-upgrade {
+  box-shadow: inset 0 0 12px rgba(52, 211, 153, 0.14);
+}
+
+.endless-gear-bag-icon-wrap {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #070912;
+  border: 1.5px solid #64748b;
+  border-radius: 3px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.endless-gear-bag-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.endless-gear-bag-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.endless-gear-bag-name {
+  font-size: 0.35rem;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.endless-gear-up-badge {
+  font-size: 0.28rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  color: #052e16;
+  background: linear-gradient(180deg, #6ee7b7 0%, #10b981 100%);
+  border: 1px solid #d1fae5;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.endless-gear-up-badge.hidden {
+  display: none;
+}
+
+.endless-gear-bag-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.endless-gear-bag-stats {
+  font-size: 0.29rem;
+  color: #93c5fd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.endless-gear-bag-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.endless-gear-act-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px 5px;
+  font-family: inherit;
+  font-size: 0.30rem;
+  letter-spacing: 0.02em;
+  color: #f8fafc;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #64748b;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+  transition: transform 0.08s ease;
+}
+
+.endless-gear-act-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-gear-act-btn.hidden {
+  display: none;
+}
+
+.endless-gear-act-btn.is-equip {
+  color: #fef08a;
+  background: linear-gradient(180deg, #713f12 0%, #3b1f08 100%);
+  border-color: #d4af37;
+}
+
+.endless-gear-act-btn.is-equip.is-upgrade {
+  color: #ecfdf5;
+  background: linear-gradient(180deg, #059669 0%, #065f46 100%);
+  border-color: #6ee7b7;
+}
+
+.endless-gear-act-btn.is-enhance {
+  flex: 0.9 1 0;
+  color: #e0f2fe;
+  background: linear-gradient(180deg, #0369a1 0%, #0c4a6e 100%);
+  border-color: #38bdf8;
+}
+
+.endless-gear-act-btn.is-salvage {
+  color: #fed7aa;
+  background: linear-gradient(180deg, #431407 0%, #240c06 100%);
+  border-color: #ea580c;
+}
+
+/* Wave 7 Responsive Ergonomics: Mobile Landscape (844x390) & Portrait (390x844) */
+@media (max-height: 500px) {
+  .endless-tab-bar {
+    padding: 3px 4px;
+    gap: 2px;
+  }
+
+  .endless-tab-btn {
+    font-size: 0.29rem;
+    padding: 4px 1px;
+    gap: 2px;
+  }
+
+  .endless-tab-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .endless-gear-header {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .endless-gear-metric {
+    padding: 3px 5px;
+  }
+
+  .endless-gear-metric-lbl {
+    font-size: 0.26rem;
+  }
+
+  .endless-gear-metric-val {
+    font-size: 0.34rem;
+  }
+
+  .endless-gear-hdr-btn {
+    padding: 4px 5px;
+    font-size: 0.30rem;
+  }
+
+  .endless-gear-slot-card {
+    padding: 4px 5px;
+    gap: 3px;
+  }
+
+  .endless-gear-slot-name {
+    font-size: 0.30rem;
+  }
+
+  .endless-gear-slot-stats {
+    font-size: 0.26rem;
+  }
+
+  .endless-gear-enh-btn {
+    padding: 2px 4px;
+    font-size: 0.26rem;
+  }
+
+  .endless-gear-set-pill {
+    padding: 3px 4px;
+  }
+
+  .endless-gear-bag-row {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 5px;
+    padding: 4px 5px;
+  }
+
+  .endless-gear-bag-icon-wrap {
+    width: 26px;
+    height: 26px;
+  }
+
+  .endless-gear-act-btn {
+    padding: 3px 4px;
+    font-size: 0.27rem;
+  }
+}
+
+html.is-mobile-landscape .endless-tab-bar {
+  padding: 3px 4px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-tab-btn {
+  font-size: 0.29rem;
+  padding: 4px 1px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-tab-dot {
+  width: 5px;
+  height: 5px;
+}
+
+html.is-mobile-landscape .endless-gear-header {
+  padding: 4px 6px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-gear-metric {
+  padding: 3px 5px;
+}
+
+html.is-mobile-landscape .endless-gear-metric-lbl {
+  font-size: 0.26rem;
+}
+
+html.is-mobile-landscape .endless-gear-metric-val {
+  font-size: 0.34rem;
+}
+
+html.is-mobile-landscape .endless-gear-hdr-btn {
+  padding: 4px 5px;
+  font-size: 0.30rem;
+}
+
+html.is-mobile-landscape .endless-gear-slot-card {
+  padding: 4px 5px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape .endless-gear-slot-name {
+  font-size: 0.30rem;
+}
+
+html.is-mobile-landscape .endless-gear-slot-stats {
+  font-size: 0.26rem;
+}
+
+html.is-mobile-landscape .endless-gear-enh-btn {
+  padding: 2px 4px;
+  font-size: 0.26rem;
+}
+
+html.is-mobile-landscape .endless-gear-set-pill {
+  padding: 3px 4px;
+}
+
+html.is-mobile-landscape .endless-gear-bag-row {
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 5px;
+  padding: 4px 5px;
+}
+
+html.is-mobile-landscape .endless-gear-bag-icon-wrap {
+  width: 26px;
+  height: 26px;
+}
+
+html.is-mobile-landscape .endless-gear-act-btn {
+  padding: 3px 4px;
+  font-size: 0.27rem;
+}
+
+@media (max-width: 560px) {
+  html:not(.is-mobile-landscape) .endless-tab-bar {
+    padding: 4px 4px;
+    gap: 2px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-tab-btn {
+    font-size: 0.33rem;
+    padding: 5px 2px;
+    gap: 2px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-gear-header {
+    padding: 5px 6px;
+    gap: 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-gear-slot-card {
+    padding: 5px 5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-gear-act-btn {
+    padding: 5px 4px;
+    font-size: 0.30rem;
+  }
+}
 `;
 
 function setTextIfChanged(el, text) {
@@ -3688,6 +4675,9 @@ export class EndlessShopUI {
     this._relicRowRefs = new Map();
     this._companionCardRefs = new Map();
     this._artifactRowRefs = new Map();
+    this._gearSlotRefs = new Map();
+    this._gearSetPillRefs = new Map();
+    this._gearBagRowRefs = new Map();
     this._tabBtnRefs = new Map();
     this._tabPanelRefs = new Map();
     this._bulkBtnRefs = new Map();
@@ -3703,13 +4693,17 @@ export class EndlessShopUI {
     this._ephemeralTimers = new Set();
     this._lastHudSynergySig = '';
     this._lastDrawerSynergySig = '';
+    this._lastGearInvSig = '';
+    this._lastGearSetSig = '';
+    this._lastGearEquipSigs = new Map();
     this._lastResolvedAscension = null;
     this._telemExpanded = false;
     this._lastSnapshot = null;
 
-    // Built-in 4-tab registry: ITEMS | COMPANIONS | ASCEND | STATS
+    // Built-in 5-tab registry: ITEMS | GEAR | COMPANIONS | ASCEND | STATS
     this.tabs = [
       { id: 'items', label: 'ITEMS', builtIn: true },
+      { id: 'gear', label: 'GEAR', builtIn: true },
       { id: 'companions', label: 'COMPANIONS', builtIn: true },
       { id: 'ascend', label: 'ASCEND', builtIn: true },
       { id: 'stats', label: 'STATS', builtIn: true }
@@ -3924,6 +4918,9 @@ export class EndlessShopUI {
     this._relicSetPillRefs = new Map();
     this._companionCardRefs.clear();
     this._artifactRowRefs.clear();
+    this._gearSlotRefs.clear();
+    this._gearSetPillRefs.clear();
+    this._gearBagRowRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
@@ -3931,6 +4928,9 @@ export class EndlessShopUI {
     this._lastHudSynergySig = '';
     this._lastDrawerSynergySig = '';
     this._lastTrophySig = '';
+    this._lastGearInvSig = '';
+    this._lastGearSetSig = '';
+    this._lastGearEquipSigs.clear();
     this._modifierIconEntry = null;
     this._refs = {};
 
@@ -4519,6 +5519,14 @@ export class EndlessShopUI {
       btn.appendChild(labelSpan);
       btn._labelSpan = labelSpan;
 
+      if (tabDef.id === 'gear') {
+        const dot = document.createElement('span');
+        dot.className = 'endless-tab-dot is-gear hidden';
+        dot.setAttribute('aria-hidden', 'true');
+        btn.appendChild(dot);
+        this._refs.gearTabDot = dot;
+      }
+
       if (tabDef.id === 'ascend') {
         const dot = document.createElement('span');
         dot.className = 'endless-tab-dot hidden';
@@ -4547,6 +5555,8 @@ export class EndlessShopUI {
 
       if (tabDef.id === 'items') {
         this._buildItemsPanel(panel);
+      } else if (tabDef.id === 'gear') {
+        this._buildGearPanel(panel);
       } else if (tabDef.id === 'companions') {
         this._buildCompanionsPanel(panel);
       } else if (tabDef.id === 'ascend') {
@@ -4717,6 +5727,425 @@ export class EndlessShopUI {
     panel.appendChild(bulkBar);
     panel.appendChild(setsStrip);
     panel.appendChild(list);
+  }
+
+  _buildGearPanel(panel) {
+    // 1. Pinned Gear Forge Header Strip
+    const header = document.createElement('div');
+    header.className = 'endless-gear-header';
+
+    const metricsRow = document.createElement('div');
+    metricsRow.className = 'endless-gear-metrics-row';
+
+    const dustMetric = document.createElement('div');
+    dustMetric.className = 'endless-gear-metric is-dust';
+    dustMetric.title = 'Forge Dust used to enhance equipped or bagged gear up to +20';
+    const dustLeft = document.createElement('span');
+    dustLeft.className = 'endless-gear-metric-left';
+    const dustIcon = document.createElement('span');
+    dustIcon.innerHTML = FORGE_DUST_SVG;
+    const dustLbl = document.createElement('span');
+    dustLbl.className = 'endless-gear-metric-lbl';
+    dustLbl.textContent = 'FORGE DUST';
+    dustLeft.appendChild(dustIcon);
+    dustLeft.appendChild(dustLbl);
+    const dustVal = document.createElement('span');
+    dustVal.className = 'endless-gear-metric-val';
+    dustVal.textContent = '0';
+    dustMetric.appendChild(dustLeft);
+    dustMetric.appendChild(dustVal);
+
+    const powerMetric = document.createElement('div');
+    powerMetric.className = 'endless-gear-metric is-power';
+    powerMetric.title = 'Combined Gear Power across all 4 equipped slots';
+    const powerLbl = document.createElement('span');
+    powerLbl.className = 'endless-gear-metric-lbl';
+    powerLbl.textContent = 'GEAR POWER';
+    const powerVal = document.createElement('span');
+    powerVal.className = 'endless-gear-metric-val';
+    powerVal.textContent = '0';
+    powerMetric.appendChild(powerLbl);
+    powerMetric.appendChild(powerVal);
+
+    metricsRow.appendChild(dustMetric);
+    metricsRow.appendChild(powerMetric);
+
+    const actionsRow = document.createElement('div');
+    actionsRow.className = 'endless-gear-actions-row';
+
+    const equipBestBtn = document.createElement('button');
+    equipBestBtn.type = 'button';
+    equipBestBtn.className = 'endless-gear-hdr-btn is-equip-best';
+    equipBestBtn.textContent = 'EQUIP BEST';
+    equipBestBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleEquipBestGear();
+    });
+
+    const salvageLowerBtn = document.createElement('button');
+    salvageLowerBtn.type = 'button';
+    salvageLowerBtn.className = 'endless-gear-hdr-btn is-salvage';
+    salvageLowerBtn.textContent = 'SALVAGE LOWER';
+    salvageLowerBtn.disabled = true;
+    salvageLowerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleSalvageAllLowerGear();
+    });
+
+    actionsRow.appendChild(equipBestBtn);
+    actionsRow.appendChild(salvageLowerBtn);
+
+    header.appendChild(metricsRow);
+    header.appendChild(actionsRow);
+
+    // 2. Scrollable Gear Forge Body (Equipped 2x2 + Mythic Sets + Bag)
+    const scroll = document.createElement('div');
+    scroll.className = 'endless-scroll-list endless-gear-scroll';
+
+    // 2A. 4 Equipped Slots Grid (2x2 compact cards)
+    const equippedGrid = document.createElement('div');
+    equippedGrid.className = 'endless-gear-equipped-grid';
+
+    this._gearSlotRefs.clear();
+    for (let i = 0; i < GEAR_SLOT_ORDER.length; i++) {
+      const slotId = GEAR_SLOT_ORDER[i];
+      const slotDef = GEAR_SLOT_DEFAULTS[slotId];
+
+      const card = document.createElement('div');
+      card.className = 'endless-gear-slot-card is-empty';
+      card.dataset.gearSlot = slotId;
+
+      const top = document.createElement('div');
+      top.className = 'endless-gear-slot-top';
+
+      const iconWrap = document.createElement('span');
+      iconWrap.className = 'endless-gear-slot-icon';
+      iconWrap.innerHTML = getGearSlotSvg(slotId);
+
+      const badges = document.createElement('div');
+      badges.className = 'endless-gear-slot-badges';
+
+      const rarityPill = document.createElement('span');
+      rarityPill.className = 'endless-gear-rarity-pill';
+      rarityPill.textContent = slotDef.label;
+
+      const enhLvEl = document.createElement('span');
+      enhLvEl.className = 'endless-gear-enh-lv hidden';
+      enhLvEl.textContent = '+0';
+
+      badges.appendChild(rarityPill);
+      badges.appendChild(enhLvEl);
+      top.appendChild(iconWrap);
+      top.appendChild(badges);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'endless-gear-slot-name';
+      nameEl.textContent = 'EMPTY SLOT';
+
+      const statsEl = document.createElement('div');
+      statsEl.className = 'endless-gear-slot-stats';
+      statsEl.textContent = 'NO ITEM EQUIPPED';
+
+      const foot = document.createElement('div');
+      foot.className = 'endless-gear-slot-foot';
+
+      const setTagEl = document.createElement('span');
+      setTagEl.className = 'endless-gear-set-tag is-pwr';
+      setTagEl.textContent = 'PWR 0';
+
+      const enhBtn = document.createElement('button');
+      enhBtn.type = 'button';
+      enhBtn.className = 'endless-gear-enh-btn';
+      enhBtn.textContent = '+1';
+      enhBtn.disabled = true;
+
+      const slotRef = {
+        slotId,
+        card,
+        iconWrap,
+        rarityPill,
+        enhLvEl,
+        nameEl,
+        statsEl,
+        foot,
+        setTagEl,
+        enhBtn,
+        currentUid: null,
+        currentItem: null
+      };
+
+      enhBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (slotRef.currentUid) {
+          this._handleEnhanceGear(slotRef.currentUid, slotRef.card, slotRef.enhBtn, slotRef.currentItem);
+        }
+      });
+
+      foot.appendChild(setTagEl);
+      foot.appendChild(enhBtn);
+
+      card.appendChild(top);
+      card.appendChild(nameEl);
+      card.appendChild(statsEl);
+      card.appendChild(foot);
+      equippedGrid.appendChild(card);
+
+      this._gearSlotRefs.set(slotId, slotRef);
+    }
+
+    // 2B. Mythic Set Passives Strip (3 compact pills)
+    const setsStrip = document.createElement('div');
+    setsStrip.className = 'endless-gear-sets-strip';
+    this._gearSetPillRefs.clear();
+
+    for (let i = 0; i < DEFAULT_MYTHIC_SETS.length; i++) {
+      const def = DEFAULT_MYTHIC_SETS[i];
+      const pill = document.createElement('div');
+      pill.className = 'endless-gear-set-pill';
+      pill.dataset.mythicSetId = def.id;
+      pill.title = `${def.name}: ${def.fullDesc}`;
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'endless-gear-set-name';
+      nameEl.textContent = def.name;
+
+      const statusEl = document.createElement('span');
+      statusEl.className = 'endless-gear-set-status';
+      statusEl.textContent = `0/${def.requiredPieces}`;
+
+      const descEl = document.createElement('div');
+      descEl.className = 'endless-gear-set-desc';
+      descEl.textContent = def.shortDesc;
+
+      pill.appendChild(nameEl);
+      pill.appendChild(statusEl);
+      pill.appendChild(descEl);
+      setsStrip.appendChild(pill);
+
+      this._gearSetPillRefs.set(def.id, { pill, nameEl, statusEl, descEl, def });
+    }
+
+    // 2C. Inventory Section (BAG x/24)
+    const bagHead = document.createElement('div');
+    bagHead.className = 'endless-gear-bag-head';
+    const bagCount = document.createElement('span');
+    bagCount.className = 'endless-gear-bag-title';
+    bagCount.textContent = 'BAG 0/24';
+    const bagHint = document.createElement('span');
+    bagHint.className = 'endless-gear-bag-hint';
+    bagHint.textContent = 'LOOT INVENTORY';
+    bagHead.appendChild(bagCount);
+    bagHead.appendChild(bagHint);
+
+    const bagEmpty = document.createElement('div');
+    bagEmpty.className = 'endless-empty-msg';
+    bagEmpty.textContent = 'SLAY BOSSES, ELITES & GOBLINS FOR LOOT';
+
+    const bagItems = document.createElement('div');
+    bagItems.className = 'endless-gear-bag-items';
+
+    scroll.appendChild(equippedGrid);
+    scroll.appendChild(setsStrip);
+    scroll.appendChild(bagHead);
+    scroll.appendChild(bagEmpty);
+    scroll.appendChild(bagItems);
+
+    panel.appendChild(header);
+    panel.appendChild(scroll);
+
+    this._refs.gearHeader = header;
+    this._refs.gearDustMetric = dustMetric;
+    this._refs.gearDustVal = dustVal;
+    this._refs.gearPowerVal = powerVal;
+    this._refs.gearEquipBestBtn = equipBestBtn;
+    this._refs.gearSalvageLowerBtn = salvageLowerBtn;
+    this._refs.gearEquippedGrid = equippedGrid;
+    this._refs.gearSetsStrip = setsStrip;
+    this._refs.gearBagCount = bagCount;
+    this._refs.gearBagHint = bagHint;
+    this._refs.gearBagEmpty = bagEmpty;
+    this._refs.gearBagItems = bagItems;
+  }
+
+  _createGearBagRow(item) {
+    const row = document.createElement('div');
+    row.className = 'endless-gear-bag-row';
+    row.dataset.gearUid = String(item.uid || '');
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'endless-gear-bag-icon-wrap';
+    iconWrap.innerHTML = getGearSlotSvg(item.slot);
+
+    const body = document.createElement('div');
+    body.className = 'endless-gear-bag-body';
+
+    const top = document.createElement('div');
+    top.className = 'endless-gear-bag-top';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'endless-gear-bag-name';
+    nameEl.textContent = item.name || 'GEAR ITEM';
+
+    const enhLvEl = document.createElement('span');
+    enhLvEl.className = 'endless-gear-enh-lv hidden';
+    enhLvEl.textContent = '+0';
+
+    const upBadge = document.createElement('span');
+    upBadge.className = 'endless-gear-up-badge hidden';
+    upBadge.textContent = 'UP!';
+
+    top.appendChild(nameEl);
+    top.appendChild(enhLvEl);
+    top.appendChild(upBadge);
+
+    const sub = document.createElement('div');
+    sub.className = 'endless-gear-bag-sub';
+
+    const rarityPill = document.createElement('span');
+    rarityPill.className = 'endless-gear-rarity-pill';
+    rarityPill.textContent = 'COMMON';
+
+    const setTagEl = document.createElement('span');
+    setTagEl.className = 'endless-gear-set-tag hidden';
+    setTagEl.textContent = '';
+
+    const statsEl = document.createElement('span');
+    statsEl.className = 'endless-gear-bag-stats';
+    statsEl.textContent = '';
+
+    sub.appendChild(rarityPill);
+    sub.appendChild(setTagEl);
+    sub.appendChild(statsEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'endless-gear-bag-actions';
+
+    const equipBtn = document.createElement('button');
+    equipBtn.type = 'button';
+    equipBtn.className = 'endless-gear-act-btn is-equip';
+    equipBtn.textContent = 'EQUIP';
+
+    const enhBtn = document.createElement('button');
+    enhBtn.type = 'button';
+    enhBtn.className = 'endless-gear-act-btn is-enhance hidden';
+    enhBtn.textContent = '+1';
+
+    const salvageBtn = document.createElement('button');
+    salvageBtn.type = 'button';
+    salvageBtn.className = 'endless-gear-act-btn is-salvage';
+    salvageBtn.textContent = 'SALVAGE';
+
+    const rowRef = {
+      uid: String(item.uid || ''),
+      renderedSlot: item.slot || 'weapon',
+      item,
+      row,
+      iconWrap,
+      nameEl,
+      enhLvEl,
+      upBadge,
+      rarityPill,
+      setTagEl,
+      statsEl,
+      equipBtn,
+      enhBtn,
+      salvageBtn
+    };
+
+    equipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleEquipGear(rowRef.uid, rowRef.row, rowRef.equipBtn, rowRef.item);
+    });
+
+    enhBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleEnhanceGear(rowRef.uid, rowRef.row, rowRef.enhBtn, rowRef.item);
+    });
+
+    salvageBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleSalvageGear(rowRef.uid, rowRef.row, rowRef.salvageBtn, rowRef.item);
+    });
+
+    actions.appendChild(equipBtn);
+    actions.appendChild(enhBtn);
+    actions.appendChild(salvageBtn);
+
+    body.appendChild(top);
+    body.appendChild(sub);
+    body.appendChild(actions);
+
+    row.appendChild(iconWrap);
+    row.appendChild(body);
+
+    return rowRef;
+  }
+
+  _patchGearBagRow(rowRef, item) {
+    rowRef.item = item;
+    if (rowRef.renderedSlot !== item.slot) {
+      rowRef.renderedSlot = item.slot;
+      rowRef.iconWrap.innerHTML = getGearSlotSvg(item.slot);
+    }
+
+    const rarityColor = item.rarityMeta?.color || '#94a3b8';
+    const rarityLabel = item.rarityMeta?.label || String(item.rarity || 'COMMON').toUpperCase();
+    const slotLabel = item.slotMeta?.label || GEAR_SLOT_DEFAULTS[item.slot]?.label || String(item.slot || 'GEAR').toUpperCase();
+    const lv = Math.max(0, Math.floor(Number(item.enhanceLevel) || 0));
+    const isUpgrade = Boolean(item.isUpgradeOverEquipped);
+
+    rowRef.row.classList.toggle('is-upgrade', isUpgrade);
+    rowRef.row.style.borderColor = rarityColor;
+    rowRef.iconWrap.style.borderColor = rarityColor;
+
+    setTextIfChanged(rowRef.nameEl, item.name || `${rarityLabel} ${slotLabel}`);
+    rowRef.enhLvEl.classList.toggle('hidden', lv <= 0);
+    if (lv > 0) {
+      setTextIfChanged(rowRef.enhLvEl, `+${lv}`);
+    }
+    rowRef.upBadge.classList.toggle('hidden', !isUpgrade);
+
+    rowRef.rarityPill.style.borderColor = rarityColor;
+    rowRef.rarityPill.style.color = rarityColor;
+    setTextIfChanged(rowRef.rarityPill, rarityLabel);
+
+    if (item.setMeta && item.setMeta.name) {
+      const accent = item.setMeta.accentHex || '#facc15';
+      rowRef.setTagEl.classList.remove('hidden');
+      rowRef.setTagEl.style.borderColor = accent;
+      rowRef.setTagEl.style.color = accent;
+      setTextIfChanged(rowRef.setTagEl, item.setMeta.name);
+    } else {
+      rowRef.setTagEl.classList.add('hidden');
+    }
+
+    const bonuses = item.effectiveBonuses || item.bonuses;
+    const compactStats = formatGearBonuses(bonuses, 2) || `PWR ${formatEndlessNumber(item.power || 0)}`;
+    setTextIfChanged(rowRef.statsEl, compactStats);
+
+    rowRef.equipBtn.classList.toggle('is-upgrade', isUpgrade);
+    setTextIfChanged(rowRef.equipBtn, 'EQUIP');
+
+    const canEnhance = Boolean(item.canEnhance && !item.isMaxEnhanced);
+    rowRef.enhBtn.classList.toggle('hidden', !canEnhance);
+    if (canEnhance) {
+      const enhCost = Math.max(0, Math.floor(Number(item.enhanceCost) || 0));
+      setTextIfChanged(rowRef.enhBtn, `+1 (${formatEndlessNumber(enhCost)}D)`);
+      rowRef.enhBtn.disabled = false;
+    }
+
+    const salvageVal = Math.max(0, Math.floor(Number(item.salvageValue) || 0));
+    setTextIfChanged(rowRef.salvageBtn, `SALVAGE +${formatEndlessNumber(salvageVal)}`);
+
+    const fullStats = formatGearBonuses(bonuses, 0);
+    const tip =
+      `${item.name || slotLabel}${lv > 0 ? ` +${lv}` : ''} [${rarityLabel} ${slotLabel}] ` +
+      `STG ${item.stage || 1} | PWR ${formatEndlessNumber(item.power || 0)}` +
+      (fullStats ? ` | ${fullStats}` : '') +
+      (item.setMeta?.name ? ` | SET: ${item.setMeta.name}` : '');
+    if (rowRef.row.title !== tip) {
+      rowRef.row.title = tip;
+    }
   }
 
   _buildCompanionsPanel(panel) {
@@ -5721,6 +7150,152 @@ export class EndlessShopUI {
     this._resyncNow();
   }
 
+  _handleEquipGear(uid, rowEl = null, btnEl = null, itemHint = null) {
+    if (!uid) return;
+    let res = null;
+    if (typeof this.manager?.equipGearItem === 'function') {
+      res = this.manager.equipGearItem(uid);
+    } else if (typeof this.manager?.gear?.equipItem === 'function') {
+      res = this.manager.gear.equipItem(uid);
+      if (res?.ok && typeof this.manager?.saveNow === 'function') {
+        this.manager.saveNow();
+      }
+    }
+
+    const ok = res === undefined
+      ? typeof this.manager?.equipGearItem === 'function'
+      : Boolean(res?.ok);
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      const slotId = res?.equippedItem?.slot || itemHint?.slot || null;
+      const slotRef = slotId ? this._gearSlotRefs.get(slotId) : null;
+      const anchor = slotRef?.card || (btnEl?.isConnected ? btnEl : this._refs.gearEquipBestBtn);
+      const isUp = Boolean(itemHint?.isUpgradeOverEquipped);
+      this._triggerBuyFeedback(slotRef?.card || rowEl, anchor, isUp ? 'UPGRADED!' : 'EQUIPPED!', isUp);
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleEquipBestGear() {
+    let res = null;
+    if (typeof this.manager?.equipBestGear === 'function') {
+      res = this.manager.equipBestGear();
+    } else if (typeof this.manager?.gear?.equipBest === 'function') {
+      res = this.manager.gear.equipBest();
+      if (res?.ok && typeof this.manager?.saveNow === 'function') {
+        this.manager.saveNow();
+      }
+    }
+
+    const changed = Math.max(0, Math.floor(Number(res?.changedCount) || 0));
+    const ok = Boolean(res?.ok) && changed > 0;
+    const btn = this._refs.gearEquipBestBtn;
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      this._triggerBuyFeedback(this._refs.gearHeader, btn, `EQUIPPED ${changed}!`, true);
+    } else if (res?.ok || res === undefined) {
+      this._playSfx('playUiClick');
+      if (btn) {
+        this._spawnFloatingMicroBadge(btn, 'BEST EQUIPPED', false);
+      }
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleEnhanceGear(uid, cardEl = null, btnEl = null, itemHint = null) {
+    if (!uid) return;
+    let res = null;
+    if (typeof this.manager?.enhanceGearItem === 'function') {
+      res = this.manager.enhanceGearItem(uid);
+    } else if (typeof this.manager?.gear?.enhanceItem === 'function') {
+      res = this.manager.gear.enhanceItem(uid);
+      if (res?.ok && typeof this.manager?.saveNow === 'function') {
+        this.manager.saveNow();
+      }
+    }
+
+    const ok = res === undefined
+      ? typeof this.manager?.enhanceGearItem === 'function'
+      : Boolean(res?.ok);
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      const nextLv = Math.max(
+        1,
+        Math.floor(Number(res?.enhanceLevel ?? res?.item?.enhanceLevel ?? ((itemHint?.enhanceLevel || 0) + 1)) || 1)
+      );
+      const isMilestone = nextLv >= 20 || nextLv % 5 === 0;
+      const anchor = (btnEl && btnEl.isConnected !== false) ? btnEl : this._refs.gearDustMetric;
+      this._triggerBuyFeedback(cardEl, anchor, `+${nextLv}!`, isMilestone);
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleSalvageGear(uid, rowEl = null, btnEl = null, itemHint = null) {
+    if (!uid) return;
+    let res = null;
+    if (typeof this.manager?.salvageGearItem === 'function') {
+      res = this.manager.salvageGearItem(uid);
+    } else if (typeof this.manager?.gear?.salvageItem === 'function') {
+      res = this.manager.gear.salvageItem(uid);
+      if (res?.ok && typeof this.manager?.saveNow === 'function') {
+        this.manager.saveNow();
+      }
+    }
+
+    const ok = res === undefined
+      ? typeof this.manager?.salvageGearItem === 'function'
+      : Boolean(res?.ok);
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      const dust = Math.max(0, Math.floor(Number(res?.dustGained ?? itemHint?.salvageValue) || 0));
+      const badge = dust > 0 ? `+${formatEndlessNumber(dust)} DUST` : 'SALVAGED!';
+      const hasLiveBtn = Boolean(
+        btnEl &&
+          btnEl.isConnected !== false &&
+          typeof btnEl.getBoundingClientRect === 'function' &&
+          btnEl.getBoundingClientRect().width > 0
+      );
+      const anchor = hasLiveBtn ? btnEl : (this._refs.gearDustMetric || this._refs.gearSalvageLowerBtn);
+      this._triggerBuyFeedback(this._refs.gearDustMetric, anchor, badge, false);
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleSalvageAllLowerGear() {
+    let res = null;
+    if (typeof this.manager?.salvageAllLowerGear === 'function') {
+      res = this.manager.salvageAllLowerGear();
+    } else if (typeof this.manager?.gear?.salvageAllLower === 'function') {
+      res = this.manager.gear.salvageAllLower();
+      if (res?.ok && typeof this.manager?.saveNow === 'function') {
+        this.manager.saveNow();
+      }
+    }
+
+    const count = Math.max(0, Math.floor(Number(res?.count) || 0));
+    const dust = Math.max(0, Math.floor(Number(res?.dustGained) || 0));
+    const ok = Boolean(res?.ok) && (count > 0 || dust > 0);
+    const btn = this._refs.gearSalvageLowerBtn;
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      const badge = dust > 0
+        ? `+${formatEndlessNumber(dust)} DUST (${count})`
+        : `SALVAGED ${count}!`;
+      this._triggerBuyFeedback(this._refs.gearDustMetric, btn || this._refs.gearDustMetric, badge, true);
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
   _handleCollectOfflineLoot() {
     this._playSfx('playUiConfirm');
     let claimed = false;
@@ -6089,6 +7664,19 @@ export class EndlessShopUI {
             return map;
           })();
 
+    const gear = (snap && typeof snap.gear === 'object' && snap.gear)
+      ? snap.gear
+      : (typeof mgr?.gear?.getGearSnapshot === 'function' ? mgr.gear.getGearSnapshot() : null);
+    const forgeDust = Math.max(0, Math.floor(Number(snap?.forgeDust ?? gear?.forgeDust ?? mgr?.gear?.forgeDust ?? 0) || 0));
+    const formattedForgeDust = String(
+      snap?.formattedForgeDust ?? gear?.formattedForgeDust ?? formatEndlessNumber(forgeDust)
+    );
+    const hasGearAction = Boolean(
+      snap?.hasGearAction !== undefined
+        ? snap.hasGearAction
+        : (gear && (gear.hasUpgradeAvailable || gear.canEnhanceEquipped))
+    );
+
     return {
       stage,
       bestStage,
@@ -6127,7 +7715,11 @@ export class EndlessShopUI {
       realmModifier,
       bestStageTrophies,
       relicSets,
-      relicMilestones
+      relicMilestones,
+      gear,
+      forgeDust,
+      formattedForgeDust,
+      hasGearAction
     };
   }
 
@@ -6371,7 +7963,7 @@ export class EndlessShopUI {
     // 2C. Welcome Back Offline Loot Modal (always synced, even when drawer closed)
     this._syncOfflineLootModal(state);
 
-    // 3. Check affordability dot on Shop Toggle & ASCEND Tab Notification Dot
+    // 3. Check affordability dot on Shop Toggle, GEAR Tab Dot & ASCEND Tab Notification Dot
     const asc = state.ascension;
     let anyArtifactAffordable = false;
     if (asc && Array.isArray(asc.artifacts)) {
@@ -6388,7 +7980,12 @@ export class EndlessShopUI {
       this._refs.ascendTabDot.classList.toggle('hidden', !ascendNotify);
     }
 
-    let anyAffordable = ascendNotify;
+    const gearNotify = Boolean(state.hasGearAction);
+    if (this._refs.gearTabDot) {
+      this._refs.gearTabDot.classList.toggle('hidden', !gearNotify);
+    }
+
+    let anyAffordable = ascendNotify || gearNotify;
     if (!anyAffordable) {
       for (let i = 0; i < state.relicsView.length; i++) {
         const item = state.relicsView[i];
@@ -6420,6 +8017,9 @@ export class EndlessShopUI {
     // 4. Sync Active Tab Contents In-Place
     if (this.activeTab === 'items' || forceRebuild) {
       this._syncItemsTab(state);
+    }
+    if (this.activeTab === 'gear' || forceRebuild) {
+      this._syncGearPanel(state, forceRebuild);
     }
     if (this.activeTab === 'companions' || forceRebuild) {
       this._syncCompanionsTab(state);
@@ -6610,6 +8210,235 @@ export class EndlessShopUI {
       setTextIfChanged(ref.countSpan, `+${count}`);
       setTextIfChanged(ref.costSpan, `${formatEndlessNumber(cost)}G`);
       ref.buyBtn.disabled = !canAfford;
+    }
+  }
+
+  _syncGearPanel(snapOrState, forceRebuild = false) {
+    if (!this._refs.gearHeader) return;
+    const gear = snapOrState && typeof snapOrState.gear === 'object' ? snapOrState.gear : null;
+
+    // 1. Header Strip: Forge Dust, Gear Power, Equip Best, Salvage Lower
+    const dustNum = Math.max(0, Math.floor(Number(gear?.forgeDust ?? snapOrState?.forgeDust ?? 0) || 0));
+    const dustFormatted = String(
+      gear?.formattedForgeDust ?? snapOrState?.formattedForgeDust ?? formatEndlessNumber(dustNum)
+    );
+    const totalPower = Math.max(0, Math.floor(Number(gear?.totalPower) || 0));
+    setTextIfChanged(this._refs.gearDustVal, dustFormatted);
+    setTextIfChanged(this._refs.gearPowerVal, formatEndlessNumber(totalPower));
+
+    if (this._refs.gearEquipBestBtn) {
+      this._refs.gearEquipBestBtn.classList.toggle('is-highlight', Boolean(gear?.hasUpgradeAvailable));
+    }
+    if (this._refs.gearSalvageLowerBtn) {
+      this._refs.gearSalvageLowerBtn.disabled = !Boolean(gear?.hasSalvageableLower);
+    }
+
+    // 2. 4 Equipped Slots Grid (in-place patching with per-slot signature diffing)
+    const equippedMap = gear?.equipped && typeof gear.equipped === 'object' ? gear.equipped : null;
+    for (let i = 0; i < GEAR_SLOT_ORDER.length; i++) {
+      const slotId = GEAR_SLOT_ORDER[i];
+      const slotRef = this._gearSlotRefs.get(slotId);
+      if (!slotRef) continue;
+      const item = equippedMap ? equippedMap[slotId] || null : null;
+      const sig = computeGearItemSignature(item);
+      if (!forceRebuild && this._lastGearEquipSigs.get(slotId) === sig) {
+        continue;
+      }
+      this._lastGearEquipSigs.set(slotId, sig);
+
+      const slotDef = GEAR_SLOT_DEFAULTS[slotId];
+      if (!item) {
+        slotRef.currentUid = null;
+        slotRef.currentItem = null;
+        slotRef.card.classList.add('is-empty');
+        slotRef.card.style.borderColor = '';
+        slotRef.card.style.boxShadow = '';
+        slotRef.iconWrap.style.borderColor = '';
+        slotRef.rarityPill.style.borderColor = '';
+        slotRef.rarityPill.style.color = '';
+        setTextIfChanged(slotRef.rarityPill, slotDef.label);
+        slotRef.enhLvEl.classList.add('hidden');
+        setTextIfChanged(slotRef.nameEl, 'EMPTY SLOT');
+        setTextIfChanged(slotRef.statsEl, 'NO ITEM EQUIPPED');
+        slotRef.enhBtn.disabled = true;
+        slotRef.enhBtn.classList.remove('is-maxed');
+        const emptyTip = `${slotDef.label}: Empty Slot`;
+        if (slotRef.card.title !== emptyTip) {
+          slotRef.card.title = emptyTip;
+        }
+        continue;
+      }
+
+      slotRef.currentUid = String(item.uid || '');
+      slotRef.currentItem = item;
+      slotRef.card.classList.remove('is-empty');
+
+      const rarityColor = item.rarityMeta?.color || '#94a3b8';
+      const rarityLabel = item.rarityMeta?.label || String(item.rarity || 'COMMON').toUpperCase();
+      const slotLabel = item.slotMeta?.label || slotDef.label;
+      const lv = Math.max(0, Math.floor(Number(item.enhanceLevel) || 0));
+
+      slotRef.card.style.borderColor = rarityColor;
+      if (item.rarity === 'mythic' || item.rarity === 'sovereign') {
+        slotRef.card.style.boxShadow = `inset 0 0 12px ${rarityColor}33, 0 0 8px ${rarityColor}33`;
+      } else {
+        slotRef.card.style.boxShadow = '';
+      }
+      slotRef.iconWrap.style.borderColor = rarityColor;
+      slotRef.rarityPill.style.borderColor = rarityColor;
+      slotRef.rarityPill.style.color = rarityColor;
+      setTextIfChanged(slotRef.rarityPill, rarityLabel);
+
+      slotRef.enhLvEl.classList.toggle('hidden', lv <= 0);
+      if (lv > 0) {
+        setTextIfChanged(slotRef.enhLvEl, `+${lv}`);
+      }
+
+      setTextIfChanged(slotRef.nameEl, item.name || `${rarityLabel} ${slotLabel}`);
+
+      const bonuses = item.effectiveBonuses || item.bonuses;
+      const topStats = formatGearBonuses(bonuses, 2) || `PWR ${formatEndlessNumber(item.power || 0)}`;
+      setTextIfChanged(slotRef.statsEl, topStats);
+
+      if (item.setMeta && item.setMeta.name) {
+        const setAccent = item.setMeta.accentHex || '#facc15';
+        slotRef.setTagEl.classList.remove('is-pwr', 'hidden');
+        slotRef.setTagEl.style.borderColor = setAccent;
+        slotRef.setTagEl.style.color = setAccent;
+        setTextIfChanged(slotRef.setTagEl, item.setMeta.name);
+      } else {
+        slotRef.setTagEl.classList.add('is-pwr');
+        slotRef.setTagEl.classList.remove('hidden');
+        slotRef.setTagEl.style.borderColor = '';
+        slotRef.setTagEl.style.color = '';
+        setTextIfChanged(slotRef.setTagEl, `PWR ${formatEndlessNumber(item.power || 0)}`);
+      }
+
+      const isMax = Boolean(item.isMaxEnhanced || lv >= 20);
+      slotRef.enhBtn.classList.toggle('is-maxed', isMax);
+      if (isMax) {
+        setTextIfChanged(slotRef.enhBtn, 'MAX');
+        slotRef.enhBtn.disabled = true;
+      } else {
+        const cost = Math.max(0, Math.floor(Number(item.enhanceCost) || 0));
+        setTextIfChanged(slotRef.enhBtn, `+1 • ${formatEndlessNumber(cost)}D`);
+        slotRef.enhBtn.disabled = !item.canEnhance;
+      }
+
+      const fullStats = formatGearBonuses(bonuses, 0);
+      const tip =
+        `${item.name || slotLabel}${lv > 0 ? ` +${lv}` : ''} [${rarityLabel} ${slotLabel}] ` +
+        `STG ${item.stage || 1} | PWR ${formatEndlessNumber(item.power || 0)}` +
+        (fullStats ? ` | ${fullStats}` : '') +
+        (item.setMeta?.name ? ` | SET: ${item.setMeta.name}` : '');
+      if (slotRef.card.title !== tip) {
+        slotRef.card.title = tip;
+      }
+    }
+
+    // 3. Mythic Set Passives Strip (3 compact pills)
+    const activeSets = Array.isArray(gear?.activeSets) && gear.activeSets.length > 0
+      ? gear.activeSets
+      : DEFAULT_MYTHIC_SETS;
+    const setSig = activeSets
+      .map((s) => `${s.id}:${s.pieces || 0}:${s.requiredPieces || 2}:${s.active ? 1 : 0}:${s.empowered ? 1 : 0}:${s.shortDesc || ''}`)
+      .join('|');
+    if (forceRebuild || setSig !== this._lastGearSetSig) {
+      this._lastGearSetSig = setSig;
+      for (let i = 0; i < activeSets.length; i++) {
+        const s = activeSets[i];
+        const ref = this._gearSetPillRefs.get(s.id);
+        if (!ref) continue;
+        const pieces = Math.max(0, Math.floor(Number(s.pieces) || 0));
+        const req = Math.max(1, Math.floor(Number(s.requiredPieces) || 2));
+        const active = Boolean(s.active);
+        const empowered = Boolean(s.empowered);
+        const accent = s.accentHex || ref.def.accentHex || '#facc15';
+        const statusText = empowered ? 'EMPOWERED' : (active ? 'ACTIVE' : `${pieces}/${req}`);
+
+        ref.pill.classList.toggle('is-active', active);
+        ref.pill.classList.toggle('is-empowered', empowered);
+        ref.pill.style.borderColor = (active || empowered) ? accent : '#334155';
+        ref.pill.style.boxShadow = empowered
+          ? `inset 0 0 12px ${accent}40, 0 0 8px ${accent}55`
+          : active
+            ? `inset 0 0 10px ${accent}30, 0 0 6px ${accent}38`
+            : '';
+        ref.nameEl.style.color = (active || empowered) ? accent : '#cbd5e1';
+        ref.statusEl.style.borderColor = (active || empowered) ? accent : '#334155';
+        ref.statusEl.style.color = empowered ? '#ffffff' : active ? accent : '#94a3b8';
+
+        setTextIfChanged(ref.nameEl, s.name || ref.def.name);
+        setTextIfChanged(ref.statusEl, statusText);
+        setTextIfChanged(ref.descEl, s.shortDesc || ref.def.shortDesc || '');
+
+        const setTip = `${s.name || ref.def.name} (${statusText}): ${s.fullDesc || s.shortDesc || ref.def.fullDesc} [${pieces}/${req}]`;
+        if (ref.pill.title !== setTip) {
+          ref.pill.title = setTip;
+        }
+      }
+    }
+
+    // 4. Inventory Bag List (smart signature diff + in-place keyed reconciliation so clicks NEVER drop)
+    const inventory = Array.isArray(gear?.inventory) ? gear.inventory : [];
+    const invCount = Number.isFinite(Number(gear?.inventoryCount))
+      ? Math.max(0, Math.floor(Number(gear.inventoryCount)))
+      : inventory.length;
+    const maxInv = Math.max(1, Math.floor(Number(gear?.maxInventory) || 24));
+    setTextIfChanged(this._refs.gearBagCount, `BAG ${invCount}/${maxInv}`);
+    if (this._refs.gearBagHint) {
+      const dropped = Math.max(0, Math.floor(Number(gear?.totalDropped) || 0));
+      setTextIfChanged(
+        this._refs.gearBagHint,
+        dropped > 0 ? `${formatEndlessNumber(dropped)} FOUND` : 'LOOT INVENTORY'
+      );
+    }
+
+    if (this._refs.gearBagEmpty) {
+      this._refs.gearBagEmpty.classList.toggle('hidden', inventory.length > 0);
+    }
+
+    const container = this._refs.gearBagItems;
+    if (!container) return;
+
+    const invSig = inventory.map((it) => computeGearItemSignature(it)).join('|');
+    if (!forceRebuild && invSig === this._lastGearInvSig) {
+      return;
+    }
+    this._lastGearInvSig = invSig;
+
+    const seenUids = new Set();
+    for (let i = 0; i < inventory.length; i++) {
+      const it = inventory[i];
+      if (!it || !it.uid) continue;
+      seenUids.add(String(it.uid));
+    }
+
+    // Remove rows for items no longer in bag
+    for (const [uid, rowRef] of this._gearBagRowRefs.entries()) {
+      if (!seenUids.has(uid)) {
+        if (rowRef.row.parentNode === container) {
+          container.removeChild(rowRef.row);
+        }
+        this._gearBagRowRefs.delete(uid);
+      }
+    }
+
+    // Create or patch in-place and preserve exact inventory order without detaching unchanged rows
+    for (let i = 0; i < inventory.length; i++) {
+      const it = inventory[i];
+      if (!it || !it.uid) continue;
+      const uid = String(it.uid);
+      let rowRef = this._gearBagRowRefs.get(uid);
+      if (!rowRef) {
+        rowRef = this._createGearBagRow(it);
+        this._gearBagRowRefs.set(uid, rowRef);
+      }
+      this._patchGearBagRow(rowRef, it);
+      const currentAtIdx = container.children[i] || null;
+      if (currentAtIdx !== rowRef.row) {
+        container.insertBefore(rowRef.row, currentAtIdx);
+      }
     }
   }
 
@@ -6822,12 +8651,18 @@ export class EndlessShopUI {
     this._relicRowRefs.clear();
     this._companionCardRefs.clear();
     this._artifactRowRefs.clear();
+    this._gearSlotRefs.clear();
+    this._gearSetPillRefs.clear();
+    this._gearBagRowRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
     this._statRefs.clear();
     this._lastHudSynergySig = '';
     this._lastDrawerSynergySig = '';
+    this._lastGearInvSig = '';
+    this._lastGearSetSig = '';
+    this._lastGearEquipSigs.clear();
     this._lastResolvedAscension = null;
     this._refs = {};
   }
