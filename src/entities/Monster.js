@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps186';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps186';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps186';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps186';
+import { Fighter } from './Fighter.js?v=30fps187';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps187';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps187';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps187';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -601,7 +601,7 @@ export class Monster extends Fighter {
       // Fill Warden / Colossal Boss Stagger Gauge on player hits (Skills, Overdrive, Perfect-Dodge counters)
       if (this.maxStagger > 0 && !this.isDead && !this._isAdvCleaveSplash) {
         const st = attacker.state;
-        let stagAmt = st === 'TRUE_ULTIMATE' ? 75 : st === 'ULTIMATE' ? 48 : st === 'SKILL' ? 26 : 6;
+        let stagAmt = st === 'TRUE_ULTIMATE' ? 95 : st === 'ULTIMATE' ? 62 : st === 'SKILL' ? 34 : 6;
         if (consumedPhantomEmpower) stagAmt += 42;
         this.addStagger(stagAmt, attacker, this.game);
       }

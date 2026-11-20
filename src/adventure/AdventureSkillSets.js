@@ -757,20 +757,20 @@ export class AdventureSkillSets {
     const st = attacker.state;
     let radX = attacker.hasHackAndSlashCombo?.() || (attacker.attackRange || 180) < 300 ? 155 : 130;
     let radZ = 100;
-    let splashMult = 0.75;
+    let splashMult = 0.45;
 
     if (st === 'TRUE_ULTIMATE') {
-      radX = 400;
-      radZ = 185;
-      splashMult = 0.50;
+      radX = 460;
+      radZ = 220;
+      splashMult = 1.00;
     } else if (st === 'ULTIMATE') {
-      radX = 310;
-      radZ = 175;
-      splashMult = 0.72;
+      radX = 360;
+      radZ = 195;
+      splashMult = 0.95;
     } else if (st === 'SKILL') {
-      radX = 215;
-      radZ = 128;
-      splashMult = 0.80;
+      radX = 255;
+      radZ = 150;
+      splashMult = 0.90;
     }
 
     const srcX = primaryMonster.x;

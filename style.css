@@ -8324,23 +8324,74 @@ html.is-mobile-landscape #app.is-adventure-active .hud-top .portrait-frame {
   }
 }
 
-/* 4. Trimmed Mobile Portrait & Mobile Landscape Touch Controls (More 2.5D Road Visibility!) */
+/* 4. Trimmed Mobile Portrait & Mobile Landscape Touch Controls (Spacious Portrait Action Deck + Crisp Landscape) */
 @media (max-width: 540px) and (orientation: portrait) {
   html:not(.is-mobile-landscape) #app.is-adventure-active .hud-top .portrait-frame {
     width: 32px;
     height: 32px;
   }
   html:not(.is-mobile-landscape) .adv-joystick-zone {
-    transform: scale(0.80);
+    transform: scale(0.84);
     transform-origin: bottom left;
-    left: max(6px, env(safe-area-inset-left));
-    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(10px, env(safe-area-inset-left));
+    bottom: max(22px, env(safe-area-inset-bottom));
   }
   html:not(.is-mobile-landscape) .adv-skill-cluster {
     transform: scale(0.78);
     transform-origin: bottom right;
     right: max(6px, env(safe-area-inset-right));
     bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  /* Spacious, easy-to-tap Adventure Portrait action cluster fanned cleanly across the lower black deck */
+  html:not(.is-mobile-landscape) #adv-skill-cluster {
+    transform: scale(0.98);
+    transform-origin: bottom right;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: 218px;
+    height: 278px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-orb-attack {
+    width: 78px;
+    height: 78px;
+    right: 4px;
+    bottom: 8px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-orb-dodge {
+    width: 60px;
+    height: 60px;
+    right: 126px;
+    bottom: 14px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-orb-skill {
+    width: 62px;
+    height: 62px;
+    right: 112px;
+    bottom: 96px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-orb-overdrive {
+    width: 60px;
+    height: 60px;
+    right: 14px;
+    bottom: 112px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-orb-ultimate {
+    width: 62px;
+    height: 62px;
+    right: 84px;
+    bottom: 178px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-lock-skill-btn,
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-auto-skill-btn {
+    bottom: 250px;
+    width: 74px;
+    height: 28px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-auto-skill-btn {
+    right: 8px;
+  }
+  html:not(.is-mobile-landscape) #adv-skill-cluster .adv-lock-skill-btn {
+    right: 92px;
   }
 }
 
@@ -8933,7 +8984,7 @@ html.is-mobile-landscape .adv-st-relic-desc {
 /* =========================================================================
    PLAYER VS AI SUB-MODES (EXHIBITION / ARCADE 5 / TRAINING LAB),
    5-STAGE ARCADE LADDER HUD + VICTORY BRACKET + TROPHY PIPS,
-   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps186)
+   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps187)
    ========================================================================= */
 
 /* Sub-Mode Switcher in #vs-quick-config-bar (Strictly visible in PLAYER VS AI only!) */

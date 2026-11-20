@@ -53,7 +53,7 @@ export const ADVENTURE_SKILL_TREE = [
     iconSlot: 'skill',
     name: 'SEARING MASTERY',
     summary: (r) =>
-      `Skill Spirit cost ${r === 2 ? '26' : r === 1 ? '32' : '32/26'} (from 38) & +${(r || 1) * 28}% Skill Damage`
+      `Skill Spirit cost ${r === 2 ? '26' : r === 1 ? '32' : '32/26'} (from 38) & +${(r || 1) * 32}% Skill Damage`
   },
 
   // =========================================================================
@@ -79,7 +79,7 @@ export const ADVENTURE_SKILL_TREE = [
     iconSlot: 'overdrive',
     name: 'ECLIPSE OVERCHARGE',
     summary: (r) =>
-      `+${(r || 1) * 28}% Overdrive Ultimate Damage & +${(r || 1) * 14}% bonus Astral Seal resonance`
+      `+${(r || 1) * 30}% Overdrive Ultimate Damage & +${(r || 1) * 14}% bonus Astral Seal resonance`
   },
   {
     id: 'astral_3',
@@ -90,7 +90,7 @@ export const ADVENTURE_SKILL_TREE = [
     iconSlot: 'ultimate',
     name: 'CATACLYSM SOVEREIGN',
     summary: (r) =>
-      `Unseals +${(r || 1) * 34}% Astral Relic immediately & +${(r || 1) * 35}% Supreme Ultimate Damage`
+      `Unseals +${(r || 1) * 34}% Astral Relic immediately & +${(r || 1) * 38}% Supreme Ultimate Damage`
   },
 
   // =========================================================================
@@ -928,10 +928,10 @@ export class AdventureProgression {
     );
 
     const maxHp = 1320 + (lv - 1) * 115 + rAegis1 * 240;
-    const atkMult = 0.64 + (lv - 1) * 0.045 + rWrath1 * 0.15;
-    const skillMult = 0.74 + (lv - 1) * 0.045 + rWrath1 * 0.08 + rWrath3 * 0.28;
-    const ultMult = (0.50 + (lv - 1) * 0.04 + rAstral2 * 0.28) * (hasOverdriveSurge ? 1.22 : 1.0);
-    const superUltMult = (0.45 + (lv - 1) * 0.04 + rAstral3 * 0.35) * (hasOverdriveSurge ? 1.22 : 1.0);
+    const atkMult = 0.58 + (lv - 1) * 0.045 + rWrath1 * 0.15;
+    const skillMult = 1.15 + (lv - 1) * 0.06 + rWrath1 * 0.10 + rWrath3 * 0.32;
+    const ultMult = (1.28 + (lv - 1) * 0.05 + rAstral2 * 0.30) * (hasOverdriveSurge ? 1.22 : 1.0);
+    const superUltMult = (1.52 + (lv - 1) * 0.05 + rAstral3 * 0.38) * (hasOverdriveSurge ? 1.22 : 1.0);
 
     const skillSpiritCost = rWrath3 >= 2 ? 26 : rWrath3 === 1 ? 32 : 38;
     const basicSpiritGain = 8 + rWrath2 * 3;
