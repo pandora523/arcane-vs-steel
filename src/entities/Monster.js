@@ -1,7 +1,16 @@
-import { Fighter } from './Fighter.js?v=30fps189';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps189';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps189';
-import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps189';
+import { Fighter } from './Fighter.js?v=30fps190';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps190';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps190';
+import { drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps190';
+import {
+  MALPHAS_VFX_ROW,
+  blitMalphasVfxCell,
+  drawMalphasBackdropAura,
+  drawMalphasBodyAuraOverlays,
+  drawMalphasRunicTelegraphs,
+  drawMalphasActionVfxOverlay,
+  drawMalphasGrabForegroundOverlay
+} from '../engine/shaders/malphasBossShaders.js?v=30fps190';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -2269,6 +2278,8 @@ export class ArchfiendBoss extends Monster {
     this.grabbedTarget = null;
     this._grabCrushTicks = 0;
     this._grabInitDone = false;
+    this._grabSqueezeFlash = 0;
+    this._phaseShiftFlashTimer = 0;
 
     this.soulTitheBaseCd =
       Number.isFinite(opts?.soulTitheBaseCd) && opts.soulTitheBaseCd > 0
@@ -2307,11 +2318,13 @@ export class ArchfiendBoss extends Monster {
     this.grabActive = false;
     this._grabCrushTicks = 0;
     this._grabInitDone = false;
+    this._grabSqueezeFlash = 0;
     if (this.bossAction === 'claw_grab') {
       this.bossAction = null;
     }
     if (target) {
       target._grabbedByBoss = false;
+      target._grabbedByBossTimer = 0;
       target.vx = 0;
       target.vy = 0;
       target.y = target.groundY || target.y || 561;
@@ -2345,6 +2358,7 @@ export class ArchfiendBoss extends Monster {
     }
     const dealt = prevHp - target.hp;
     target.hitFlash = 0.24;
+    target.timeSinceLastHit = 0;
     if (target.stats) {
       target.stats.damageTaken = (target.stats.damageTaken || 0) + dealt;
     }
@@ -2496,6 +2510,8 @@ export class ArchfiendBoss extends Monster {
     this.stepBossMagmaFX(safeDt, game);
     this.impactRecoilTimer = Math.max(0, (this.impactRecoilTimer || 0) - safeDt);
     this.soulTitheFlashTimer = Math.max(0, (this.soulTitheFlashTimer || 0) - safeDt);
+    this._grabSqueezeFlash = Math.max(0, (this._grabSqueezeFlash || 0) - safeDt);
+    this._phaseShiftFlashTimer = Math.max(0, (this._phaseShiftFlashTimer || 0) - safeDt);
 
     if (this.isDead) {
       this.releaseGrabbedTarget();
@@ -2721,6 +2737,7 @@ export class ArchfiendBoss extends Monster {
       this.jawOpen = 1.0;
       this.roarFlashTimer = 0.72;
       this.impactRecoilTimer = 0.30;
+      this._phaseShiftFlashTimer = 1.15;
       this.spawnBossMagmaSpire(this.anchorX - 192, 512, 1.02, 1.15);
       this.spawnBossMagmaSpire(this.anchorX - 228, 616, 1.06, 1.15);
       this.spawnBossMagmaBoulders(this.anchorX - 120, 520, 565, 5, 1.08);
@@ -2758,6 +2775,7 @@ export class ArchfiendBoss extends Monster {
       this.jawOpen = 1.0;
       this.roarFlashTimer = 0.85;
       this.impactRecoilTimer = 0.34;
+      this._phaseShiftFlashTimer = 1.15;
       this.spawnBossMagmaSpire(this.anchorX - 185, 498, 1.14, 1.25);
       this.spawnBossMagmaSpire(this.anchorX - 265, 572, 1.18, 1.25);
       this.spawnBossMagmaSpire(this.anchorX - 210, 632, 1.12, 1.25);
@@ -2991,7 +3009,7 @@ export class ArchfiendBoss extends Monster {
     if (this.skillCooldown <= 0) {
       this.skillCooldown = this.skillMaxCooldown * (this.bossPhase >= 3 ? 0.76 : 1.0);
       this.skillVariant = ((this.skillVariant ?? 0) + 1) % 3;
-      this.skillDuration = this.skillVariant === 2 ? 1.48 : 1.08;
+      this.skillDuration = this.skillVariant === 2 ? 2.20 : 1.08;
       if (this.skillVariant === 1) {
         this.rakeLaneGy = enemyGy <= 561 ? 500 : 624;
         this.sweepLane = this.rakeLaneGy <= 561 ? 'upper' : 'lower';
@@ -3126,11 +3144,12 @@ export class ArchfiendBoss extends Monster {
     const t = this.stateTimer;
 
     if (this.skillVariant === 2) {
-      // Variant C: Abyssal Siege-Claw Grab -> Clenched Air-Hoist -> Twin Vise Crushes -> Violent Leftward Hurl Slam!
+      // Variant C: Abyssal Siege-Claw Grab -> Dramatic Air-Hoist & Hold (`0.68s..1.92s`) -> 3 Vise-Crush Beats -> Violent Leftward Hurl (`t=1.92s`)!
       if (!this._grabInitDone) {
         this._grabInitDone = true;
-        this.skillDuration = 1.48;
+        this.skillDuration = 2.20;
         this._grabCrushTicks = 0;
+        this._grabSqueezeFlash = 0;
         const initGy = enemy ? enemy.groundY || enemy.y || 561 : 561;
         this.grabLaneGy = Math.max(468, Math.min(654, this.grabLaneGy || initGy));
         this.grabTargetX = Math.max(
@@ -3140,6 +3159,7 @@ export class ArchfiendBoss extends Monster {
       }
 
       if (t < 0.42) {
+        // 0.00s–0.42s: Fair Telegraph Coil (100% dodgeable)
         this.grabWarnOnly = true;
         this.grabActive = false;
         this.bossAction = 'claw_grab';
@@ -3147,6 +3167,7 @@ export class ArchfiendBoss extends Monster {
         this.clawWorldX = this.anchorX - 118 + coil * 44;
         this.clawWorldY = this.grabLaneGy + 12 - Math.sin(coil * Math.PI * 0.5) * 18;
       } else if (t < 0.68) {
+        // 0.42s–0.68s: Snatch Lunge across target lane (dodge/invuln evades cleanly!)
         this.grabWarnOnly = false;
         this.grabActive = true;
         this.bossAction = 'claw_grab';
@@ -3177,21 +3198,24 @@ export class ArchfiendBoss extends Monster {
         ) {
           this.grabbedTarget = enemy;
           enemy._grabbedByBoss = true;
+          enemy._grabbedByBossTimer = 1.65;
           enemy.vx = 0;
           enemy.vy = 0;
           enemy.moveDir = 0;
           enemy.facing = 1;
           enemy.setState('HURT');
-          enemy.hurtTimer = 0.95;
+          enemy.hurtTimer = 1.55;
+          this._grabSqueezeFlash = 0.22;
           this.telegraphLabel = 'GRABBED! SIEGE CLAW VISE!';
-          this.telegraphTimer = 0.85;
+          this.telegraphTimer = 1.35;
           if (game?.audio) game.audio.play('thunder_slam', enemy.x);
           if (game?.renderer) game.renderer.triggerShake(14, 0.26);
           game?.vfx?.spawnShockwave(enemy.x, this.grabLaneGy - 20, 128, '#c084fc', 0.30, true);
-          this.applyBossGuaranteedDamage(enemy, Math.round(44 * this.dmgScale), game, 'GRABBED!');
+          this.applyBossGuaranteedDamage(enemy, Math.round(40 * this.dmgScale), game, 'GRABBED!');
         }
 
         if (this.grabbedTarget && !this.grabbedTarget.isDead) {
+          this.grabbedTarget._grabbedByBossTimer = Math.max(this.grabbedTarget._grabbedByBossTimer || 0, 1.35);
           this.grabbedTarget.x = Math.round(this.clawWorldX - 18);
           this.grabbedTarget.y = Math.round(
             Math.min((this.grabbedTarget.groundY || this.grabLaneGy) - 18, this.clawWorldY + 8)
@@ -3199,49 +3223,72 @@ export class ArchfiendBoss extends Monster {
           this.grabbedTarget.vx = 0;
           this.grabbedTarget.vy = 0;
         }
-      } else if (t < 1.24) {
+      } else if (t < 1.92) {
         if (this.grabbedTarget && !this.grabbedTarget.isDead) {
+          // 0.68s–1.92s (`1.24s` total hoist+hold, ~`0.92s` visibly held aloft at apex with 3 vise-crush squeeze beats!)
           this.grabWarnOnly = false;
           this.grabActive = true;
           this.bossAction = 'claw_grab';
           const uHoist = Math.min(1, (t - 0.68) / 0.32);
           const easeH = 1 - Math.pow(1 - uHoist, 2);
           const startX = Math.max(this.anchorX - 880, this.grabTargetX);
-          const hoistX = this.anchorX - 228;
-          const hoistY = 446;
-          this.clawWorldX = startX + (hoistX - startX) * easeH + Math.sin(t * 28) * 4;
-          this.clawWorldY = this.grabLaneGy + 10 + (hoistY - (this.grabLaneGy + 10)) * easeH;
+          const hoistX = this.anchorX - 246;
+          const hoistY = 408;
+          const squeezeShake = (this._grabSqueezeFlash || 0) > 0 ? Math.sin(t * 78) * 6 : Math.sin(t * 16) * 3;
+          const apexHoverY = uHoist >= 1 ? Math.sin((t - 1.0) * 6.5) * 6 : 0;
+          this.clawWorldX = startX + (hoistX - startX) * easeH + squeezeShake;
+          this.clawWorldY = this.grabLaneGy + 10 + (hoistY - (this.grabLaneGy + 10)) * easeH + apexHoverY;
 
           const victim = this.grabbedTarget;
           const pinGy = Math.round(this.grabLaneGy + (561 - this.grabLaneGy) * easeH);
           victim.groundY = pinGy;
-          victim.x = Math.round(this.clawWorldX - 18);
-          victim.y = Math.round(Math.min(pinGy - 28, this.clawWorldY + 12));
+          victim.x = Math.round(this.clawWorldX - 24);
+          // Cradle victim's chest (`y - 68`) squarely inside Malphas's clenched siege-claw palm (`clawWorldY`) so boots dangle aloft!
+          victim.y = Math.round(Math.min(pinGy - 30, this.clawWorldY + 58));
           victim.vx = 0;
           victim.vy = 0;
           victim.facing = 1;
+          victim._grabbedByBoss = true;
+          victim._grabbedByBossTimer = Math.max(victim._grabbedByBossTimer || 0, 0.35);
           if (!victim.isDead && victim.state !== 'VICTORY') {
             victim.state = 'HURT';
-            victim.hurtTimer = 0.40;
+            victim.stateTimer = Math.min(victim.stateTimer || 0, 0.12);
+            victim.hurtTimer = 0.42;
           }
 
-          if (
-            (this._grabCrushTicks === 0 && t >= 0.84) ||
-            (this._grabCrushTicks === 1 && t >= 1.06)
-          ) {
-            this._grabCrushTicks++;
-            this.impactRecoilTimer = 0.18;
+          // 3 distinct dramatic vise-crush squeeze beats at t = 0.94s, 1.30s, 1.66s (total grab raw = 40 + 32*3 + 76 = 212!)
+          const crushBeats = [
+            { time: 0.94, label: 'VISE CRUSH!' },
+            { time: 1.30, label: 'SOUL VISE!' },
+            { time: 1.66, label: 'CRUSHING GRIP!' }
+          ];
+          const beatIdx = this._grabCrushTicks || 0;
+          if (beatIdx < crushBeats.length && t >= crushBeats[beatIdx].time) {
+            this._grabCrushTicks = beatIdx + 1;
+            this._grabSqueezeFlash = 0.24;
+            this.impactRecoilTimer = 0.20;
+            this.roarFlashTimer = Math.max(this.roarFlashTimer || 0, 0.16);
+            this.telegraphLabel = crushBeats[beatIdx].label;
+            this.telegraphTimer = 0.42;
             if (game?.audio) game.audio.play('heavy_cleave', victim.x);
-            if (game?.renderer) game.renderer.triggerShake(11, 0.18);
+            if (game?.renderer) {
+              game.renderer.triggerShake(12 + beatIdx * 2, 0.20);
+              game.renderer.triggerAberration?.(5 + beatIdx * 2);
+            }
+            if (game?.vfx) {
+              game.vfx.spawnShockwave(victim.x, victim.y - 78, 118 + beatIdx * 18, '#d946ef', 0.26, true);
+              game.vfx.spawnBurst(victim.x, victim.y - 78, 12, '#f5d0fe', 220, { upBias: 90, size: 5.5 });
+              game.vfx.spawnGlyphBurst(victim.x, victim.y - 84, 5, 'abyssal');
+            }
             this.applyBossGuaranteedDamage(
               victim,
-              Math.round(46 * this.dmgScale),
+              Math.round(32 * this.dmgScale),
               game,
-              'VISE CRUSH!'
+              crushBeats[beatIdx].label
             );
           }
         } else {
-          // Player evaded / dodged the grab snatch -> retract claw cleanly!
+          // Player evaded / dodged the grab snatch -> retract claw cleanly at t = 1.00s!
           this.grabWarnOnly = false;
           this.grabActive = false;
           this.bossAction = null;
@@ -3256,6 +3303,7 @@ export class ArchfiendBoss extends Monster {
           }
         }
       } else {
+        // t >= 1.92s: Violent Leftward Abyssal Hurl Slam (`skillDuration = 2.20s`)!
         if (!this.didActionFrame) {
           this.didActionFrame = true;
           const victim = this.grabbedTarget;
@@ -3264,10 +3312,10 @@ export class ArchfiendBoss extends Monster {
             const slamGy = Math.max(468, Math.min(654, victim.groundY || 561));
             victim.groundY = slamGy;
             victim.y = Math.min(slamGy - 18, victim.y);
-            victim.vx = -640;
-            victim.vy = -195;
+            victim.vx = -655;
+            victim.vy = -205;
             victim.setState('HURT');
-            victim.hurtTimer = 0.48;
+            victim.hurtTimer = 0.50;
             this.impactRecoilTimer = 0.28;
             this.spawnBossMagmaSpire(
               Math.max(this.anchorX - 880, victim.x - 120),
@@ -3298,13 +3346,13 @@ export class ArchfiendBoss extends Monster {
             );
           }
         }
-        const uThrow = Math.min(1, (t - 1.24) / 0.24);
+        const uThrow = Math.min(1, (t - 1.92) / 0.28);
         this.clawWorldX =
-          (this.anchorX - 330) * (1 - uThrow) + (this.anchorX - 166) * uThrow;
-        this.clawWorldY = 468 + uThrow * 68;
+          (this.anchorX - 340) * (1 - uThrow) + (this.anchorX - 166) * uThrow;
+        this.clawWorldY = 456 + uThrow * 80;
       }
 
-      if (t >= 1.48) {
+      if (t >= 2.20) {
         this.releaseGrabbedTarget();
         this.skillDuration = 1.08;
         this.setState('IDLE');
@@ -3568,109 +3616,296 @@ export class ArchfiendBoss extends Monster {
     }
   }
 
+  computeColossusPoseCoords(t) {
+    const torsoSize = 456;
+    const anchorBaseX = Math.round(this.anchorX - 201);
+    const rimBaseY = 654 - torsoSize; // 198 -> bottom of 456px parapet rim lands cleanly on y = 654
+
+    let riseY = 0;
+    let emergeU = 1;
+    if (!this.isDead && this.emergeTimer > 0) {
+      emergeU = Math.max(0, Math.min(1, 1 - this.emergeTimer / Math.max(0.01, this.emergeMax || 1.6)));
+      const climbPhase = Math.min(1, emergeU / 0.78);
+      riseY = Math.round(Math.pow(1 - climbPhase, 2.15) * 310);
+    }
+
+    const dtDeath = this.isDead ? Math.max(0, this.deathTimer || 0) : 0;
+    const deathProgress = this.isDead ? Math.min(1, dtDeath / 2.15) : 0;
+    const sinkY = this.isDead ? Math.round(Math.pow(deathProgress, 1.42) * 336) : 0;
+
+    const hurtShakeX =
+      !this.isDead && this.hurtTimer > 0 ? Math.round(Math.sin(this.hurtTimer * 34) * 3) : 0;
+    const deathShakeX = this.isDead
+      ? Math.round(Math.sin(dtDeath * 42) * (1 - deathProgress * 0.65) * 7)
+      : 0;
+    const emergeShakeX =
+      !this.isDead && this.emergeTimer > 0 && emergeU < 0.76
+        ? Math.round(Math.sin(t * 32) * 2)
+        : 0;
+    const recU =
+      !this.isDead && this.impactRecoilTimer > 0
+        ? Math.max(0, Math.min(1, this.impactRecoilTimer / 0.30))
+        : 0;
+    const recImpulse = Math.sin(recU * Math.PI) * recU;
+    const recoilX = Math.round(recImpulse * 6);
+    const recoilY = Math.round(recImpulse * 4);
+
+    const isVulnerable = !this.isDead && this.vulnerableTimer > 0;
+    const isRoaring =
+      (!this.isDead && this.roarFlashTimer > 0) ||
+      (!this.isDead && this.emergeTimer > 0 && emergeU >= 0.68 && emergeU <= 0.96) ||
+      (!this.isDead &&
+        this.state === 'SKILL' &&
+        this.skillVariant === 0 &&
+        this.stateTimer >= 0.22 &&
+        this.stateTimer <= 0.84);
+
+    const breathAmp = this.bossPhase >= 3 ? 6 : 4.5;
+    const breatheY = !this.isDead ? Math.sin(t * 2.1) * breathAmp : 0;
+
+    const poseBodyX = this.isDead ? 0 : this._poseBodyX || (isVulnerable ? 14 : 0);
+    const poseBodyY = this.isDead ? 0 : this._poseBodyY || (isVulnerable ? 18 : 0);
+    const poseShrugY = this.isDead ? 0 : this._poseShrugY || 0;
+    const poseFrontShX = this.isDead ? 0 : this._poseFrontShX || 0;
+    const poseSkullX = this.isDead ? 0 : this._poseSkullX || 0;
+    const poseSkullY = this.isDead ? 0 : this._poseSkullY || 0;
+
+    const torsoX = Math.round(
+      anchorBaseX + hurtShakeX + deathShakeX + emergeShakeX + recoilX + poseBodyX
+    );
+    const torsoY = Math.round(rimBaseY + breatheY + poseBodyY + recoilY + riseY + sinkY);
+
+    const rearPauldronX = Math.round(
+      torsoX +
+        Math.cos(t * 2.1 - 0.45) * (this.isDead ? 1 : 3) +
+        (this.isDead ? -8 * deathProgress : 0)
+    );
+    const rearPauldronY = Math.round(
+      torsoY +
+        (this.isDead
+          ? Math.round(18 * deathProgress)
+          : Math.sin(t * 2.1 - 0.35) * 4 + poseShrugY)
+    );
+    const frontPauldronX = Math.round(
+      torsoX +
+        Math.sin(t * 2.1 + 0.35) * (this.isDead ? 1 : 3) +
+        (this.isDead ? Math.round(10 * deathProgress) : poseFrontShX)
+    );
+    const frontPauldronY = Math.round(
+      torsoY +
+        (this.isDead
+          ? Math.round(20 * deathProgress)
+          : Math.sin(t * 2.1 - 0.25) * 4.5 + poseShrugY)
+    );
+
+    const hurtRecoilX = !this.isDead && this.hurtTimer > 0 ? 4 : 0;
+    const skullX = Math.round(
+      torsoX + (this.isDead ? 0 : Math.cos(t * 2.1) * 2 + poseSkullX) + hurtRecoilX
+    );
+    const skullY = Math.round(
+      torsoY +
+        (this.isDead
+          ? Math.round(12 * deathProgress)
+          : Math.sin(t * 2.1 - 0.20) * 2.5 + poseSkullY)
+    );
+
+    const jawRatio = this.isDead ? 0.95 : Math.max(0, Math.min(1, this.jawOpen || 0));
+    const jawDropPx = Math.round(jawRatio * 20);
+    const jawX = Math.round(skullX + (jawRatio > 0.55 ? -2 : 0));
+    const jawY = Math.round(skullY + jawDropPx);
+
+    const wingStep = Math.floor(this.wingPhase || 0) & 3;
+    const wingPoseCol = [0, 1, 2, 1][wingStep];
+    const wingFrame12 = Math.floor((this.wingPhase || 0) * 3) % 12;
+    const wingCollapseY = this.isDead ? Math.round(30 * deathProgress) : 0;
+    const wingBreathY = Math.round(Math.sin((this.wingPhase || 0) * Math.PI * 0.5) * 6);
+
+    const wingRSize = 376;
+    const wingRX = frontPauldronX + 294;
+    const wingRY = frontPauldronY - 38 - wingBreathY + wingCollapseY;
+    const wingLSize = 396;
+    const wingLX = rearPauldronX - 236;
+    const wingLY = rearPauldronY - 42 - Math.round(wingBreathY * 0.65) + wingCollapseY;
+
+    return {
+      torsoSize,
+      anchorBaseX,
+      rimBaseY,
+      riseY,
+      emergeU,
+      dtDeath,
+      deathProgress,
+      sinkY,
+      deathShakeX,
+      isVulnerable,
+      isRoaring,
+      torsoX,
+      torsoY,
+      rearPauldronX,
+      rearPauldronY,
+      frontPauldronX,
+      frontPauldronY,
+      skullX,
+      skullY,
+      jawDropPx,
+      jawX,
+      jawY,
+      wingStep,
+      wingPoseCol,
+      wingFrame12,
+      wingRSize,
+      wingRX,
+      wingRY,
+      wingLSize,
+      wingLX,
+      wingLY
+    };
+  }
+
   drawTelegraphRings(ctx) {
-    super.drawTelegraphRings(ctx);
     if (!ctx) return;
+    const assets = PixelForge.initAssets();
+    const bossVfxImg = PixelForge.ensureImage(assets?.archfiend?.bossVfx);
+    const t = Number.isFinite(this.animTime) ? this.animTime : (this.walkPhase || 0) / 2.0;
+    drawMalphasRunicTelegraphs(ctx, this, t, bossVfxImg);
+  }
 
-    // 1. Arena-Wide Unavoidable Hellpit Soul-Tithe Blood-Pact Floor Seal (`0` .ellipse, `0` rotate)
-    if ((this.soulTitheWindupTimer || 0) > 0 || (this.soulTitheFlashTimer || 0) > 0) {
+  drawForegroundOverlay(ctx, renderer = null) {
+    // Step 5 (BEHIND Malphas's 512x512 body rig): Volumetric caldera aura, Phase II Burning Eclipse,
+    // Phase III Abyssal Lightning, Phase-Shift Shockwave & 12-frame articulated Right Counter-Wing!
+    if (!ctx) return;
+    const assets = PixelForge.initAssets();
+    const bossVfxImg = PixelForge.ensureImage(assets?.archfiend?.bossVfx);
+    const bossVfxReady = Boolean(bossVfxImg && bossVfxImg.complete && bossVfxImg.naturalWidth > 0);
+    const rawT = renderer?.time;
+    const t = Math.max(
+      Number.isFinite(rawT) && rawT > 0 ? rawT : 0,
+      Number.isFinite(this.animTime) ? this.animTime : (this.walkPhase || 0) / 2.0
+    );
+    const p = this.computeColossusPoseCoords(t);
+    this._lastBackVfxFrame = bossVfxReady;
+
+    drawMalphasBackdropAura(ctx, this, t, p, renderer, bossVfxImg);
+
+    // Draw the 12-frame articulated Right Counter-Wing inside the exact same Chasm Clip Mask (`y <= 641`)
+    // on non-mid frames (`wingFrame12 !== 3 && wingFrame12 !== 9`); mid-beats draw `(3,2)` inside `draw()` -> 0 ghosting!
+    if (bossVfxReady && (!this.isDead || p.dtDeath < 2.22) && p.wingFrame12 !== 3 && p.wingFrame12 !== 9) {
       ctx.save();
-      const isFlash = (this.soulTitheFlashTimer || 0) > 0;
-      const sx0 = Math.round(this.anchorX - 960);
-      const sx1 = Math.round(this.anchorX - 96);
-      const sw = sx1 - sx0;
-      const sy0 = 456;
-      const sh = 212;
-      const alpha = isFlash
-        ? Math.min(0.32, (this.soulTitheFlashTimer || 0) * 0.65)
-        : 0.14 + 0.08 * Math.sin((this.walkPhase || 0) * 18);
-      ctx.fillStyle = isFlash
-        ? `rgba(244, 63, 94, ${alpha.toFixed(3)})`
-        : `rgba(220, 38, 38, ${alpha.toFixed(3)})`;
-      ctx.fillRect(sx0, sy0, sw, sh);
-      ctx.strokeStyle = isFlash ? '#fef08a' : '#f43f5e';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(sx0, sy0, sw, sh);
-      ctx.strokeRect(sx0 + 8, sy0 + 8, sw - 16, sh - 16);
+      ctx.imageSmoothingEnabled = false;
+      ctx.beginPath();
+      ctx.rect(p.anchorBaseX - 380, -600, 1450, 1241);
+      ctx.clip();
+      blitMalphasVfxCell(
+        ctx,
+        bossVfxImg,
+        p.wingFrame12,
+        MALPHAS_VFX_ROW.RIGHT_WING_FLAP,
+        p.wingRX,
+        p.wingRY,
+        p.wingRSize,
+        p.wingRSize
+      );
       ctx.restore();
     }
+  }
 
-    // 2. 3D Target-Lane Danger Corridor for Abyssal Siege Grab (`skillVariant === 2`) with Live Fill-Up Meter
-    if (this.grabWarnOnly || (this.grabActive && !this.grabbedTarget)) {
-      ctx.save();
-      const gyTop = Math.round(this.grabLaneGy - 50);
-      const gBandH = 100;
-      const gxEnd = Math.round(this.anchorX - 95);
-      const gxStart = Math.round(this.anchorX - 905);
-      const gBandW = gxEnd - gxStart;
-      const gProg = this.grabActive ? 1 : Math.max(0, Math.min(1, (this.stateTimer || 0) / 0.42));
-      const gPulse = 0.16 + 0.10 * Math.sin((this.walkPhase || 0) * 16);
-      ctx.fillStyle = this.grabActive
-        ? 'rgba(192, 132, 252, 0.28)'
-        : `rgba(168, 85, 247, ${gPulse.toFixed(3)})`;
-      ctx.fillRect(gxStart, gyTop, gBandW, gBandH);
-      const gFillW = Math.max(6, Math.round(gBandW * gProg));
-      ctx.fillStyle = this.grabActive ? 'rgba(232, 121, 249, 0.34)' : 'rgba(217, 70, 239, 0.26)';
-      ctx.fillRect(gxEnd - gFillW, gyTop + 3, gFillW, gBandH - 6);
-      ctx.fillStyle = '#0d0f1c';
-      ctx.fillRect(gxStart - 2, gyTop - 2, gBandW + 4, 4);
-      ctx.fillRect(gxStart - 2, gyTop + gBandH - 2, gBandW + 4, 4);
-      ctx.fillStyle = this.grabActive || gProg > 0.8 ? '#fef08a' : '#e879f9';
-      ctx.fillRect(gxStart, gyTop, gBandW, 2);
-      ctx.fillRect(gxStart, gyTop + gBandH - 2, gBandW, 2);
-      ctx.fillRect(gxStart, gyTop, 2, gBandH);
-      ctx.fillRect(gxEnd - 2, gyTop, 2, gBandH);
-      ctx.fillStyle = '#fef08a';
-      for (let cx = gxStart + 90; cx < gxStart + gBandW - 70; cx += 170) {
-        const cy = Math.round(this.grabLaneGy);
-        ctx.fillRect(cx - 12, cy - 12, 10, 4);
-        ctx.fillRect(cx - 12, cy - 12, 4, 24);
-        ctx.fillRect(cx - 12, cy + 8, 10, 4);
-        ctx.fillRect(cx + 8, cy - 12, 10, 4);
-        ctx.fillRect(cx + 14, cy - 12, 4, 24);
-        ctx.fillRect(cx + 8, cy + 8, 10, 4);
+  drawUltimateForeground(ctx, renderer = null) {
+    // Step 7 (IN FRONT OF Malphas & Heroes):
+    //   1. Left-Wing ember shimmer + breathing furnace/throat Bayer glow + rising Sovereign embers
+    //   2. High-frame-rate 30fps Hellfire Torrent, 3-Talon Slash Wave, Magma Plume & Vulnerable Heart-Core Shatter Vortex
+    //   3. Foreground Clamping Siege-Claw Talons, Abyssal Chains & Contracting Violet Rune-Vise OVER grabbed hero!
+    if (!ctx) return;
+    const assets = PixelForge.initAssets();
+    const bossVfxImg = PixelForge.ensureImage(assets?.archfiend?.bossVfx);
+    const rawT = renderer?.time;
+    const t = Math.max(
+      Number.isFinite(rawT) && rawT > 0 ? rawT : 0,
+      Number.isFinite(this.animTime) ? this.animTime : (this.walkPhase || 0) / 2.0
+    );
+    const p = this.computeColossusPoseCoords(t);
+
+    if (!this.isDead) {
+      drawMalphasBodyAuraOverlays(ctx, this, t, p, bossVfxImg);
+
+      // 30fps Exposed Heart-Core Shatter Vortex (`Row 11` — strictly when `isVulnerable`!)
+      if (p.isVulnerable) {
+        const coreX = Math.round(p.torsoX + 197);
+        const coreY = Math.round(p.torsoY + 256);
+        drawMalphasActionVfxOverlay(
+          ctx,
+          this,
+          t,
+          'heart_vortex',
+          { x: coreX - 118, y: coreY - 118, w: 236, h: 236, alpha: 0.72 },
+          bossVfxImg
+        );
       }
-      ctx.restore();
+
+      // 30fps Open-Jaw Hellfire Torrent overlay (`Row 6`)
+      const showJawHellfire =
+        (this.state === 'SKILL' &&
+          this.skillVariant === 0 &&
+          this.stateTimer >= 0.24 &&
+          this.stateTimer <= 0.84) ||
+        (this.emergeTimer > 0 && p.emergeU >= 0.69 && p.emergeU <= 0.95) ||
+        this.roarFlashTimer > 0.18;
+      if (showJawHellfire) {
+        const mouthWorldX = p.skullX + 180;
+        const mouthWorldY = p.skullY + 148 + Math.round(p.jawDropPx * 0.45);
+        const coneW = 392;
+        const coneH = 276;
+        const coneX = Math.round(mouthWorldX - coneW * 0.91);
+        const coneY = Math.round(mouthWorldY - coneH * 0.50);
+        drawMalphasActionVfxOverlay(
+          ctx,
+          this,
+          t,
+          'hellfire',
+          { x: coneX - 24, y: coneY - 8, w: coneW + 28, h: coneH + 16, alpha: 0.66 },
+          bossVfxImg
+        );
+      }
+
+      // 30fps Road-Impact Magma Eruption Plume (`Row 8`)
+      const showImpactGeyser =
+        (this.state === 'AUTO_ATTACK' && this.stateTimer >= 0.58 && this.stateTimer <= 0.90) ||
+        (this.state === 'ULTIMATE' && this.stateTimer >= 1.00 && this.stateTimer <= 1.52);
+      if (showImpactGeyser) {
+        const gSz = this.state === 'ULTIMATE' ? 324 : 268;
+        const gx = this.slamTargetX - gSz * 0.5;
+        const gy = this.slamTargetGy - gSz + 22;
+        drawMalphasActionVfxOverlay(
+          ctx,
+          this,
+          t,
+          'magma_plume',
+          { x: gx - 12, y: gy - 18, w: gSz + 24, h: gSz + 24, alpha: 0.62 },
+          bossVfxImg
+        );
+      }
+
+      // 30fps Triple-Talon Slash Wave (`Row 7`) during Claw Sweep
+      if (this.rakeActive && !this.fistVisible) {
+        const clawSz = 252;
+        const cx = Math.round(this.clawWorldX - clawSz * 0.44);
+        const cy = Math.round(this.clawWorldY - clawSz * 0.52);
+        const slashW = 324;
+        const slashH = 276;
+        const slashX = Math.round(cx - slashW * 0.44);
+        const slashY = Math.round(cy + clawSz * 0.50 - slashH * 0.52);
+        drawMalphasActionVfxOverlay(
+          ctx,
+          this,
+          t,
+          'slash',
+          { x: slashX - 18, y: slashY - 10, w: slashW + 24, h: slashH + 20, alpha: 0.72 },
+          bossVfxImg
+        );
+      }
     }
 
-    if (!this.rakeWarnOnly && !this.rakeActive) return;
-
-    // 3. Clear 3D Full-Lane Danger Corridor for Leftward Colossal Claw Sweep (`x: anchorX-935 .. anchorX-95`) with Live Fill-Up Meter
-    ctx.save();
-    const yTop = Math.round(this.rakeLaneGy - 54);
-    const bandH = 108;
-    const xEnd = Math.round(this.anchorX - 95);
-    const xStart = Math.round(this.anchorX - 935);
-    const bandW = xEnd - xStart;
-    const rProg = this.rakeActive ? 1 : Math.max(0, Math.min(1, (this.stateTimer || 0) / 0.48));
-    const pulse = 0.16 + 0.10 * Math.sin((this.walkPhase || 0) * 14);
-    ctx.fillStyle = this.rakeActive
-      ? 'rgba(239, 68, 68, 0.28)'
-      : `rgba(249, 115, 22, ${pulse.toFixed(3)})`;
-    ctx.fillRect(xStart, yTop, bandW, bandH);
-    const rFillW = Math.max(8, Math.round(bandW * rProg));
-    ctx.fillStyle = this.rakeActive ? 'rgba(239, 68, 68, 0.36)' : 'rgba(251, 146, 60, 0.30)';
-    ctx.fillRect(xEnd - rFillW, yTop + 3, rFillW, bandH - 6);
-    ctx.fillStyle = '#0d0f1c';
-    ctx.fillRect(xStart - 2, yTop - 2, bandW + 4, 4);
-    ctx.fillRect(xStart - 2, yTop + bandH - 2, bandW + 4, 4);
-    ctx.fillStyle = this.rakeActive || rProg > 0.8 ? '#fef08a' : '#fb923c';
-    ctx.fillRect(xStart, yTop, bandW, 2);
-    ctx.fillRect(xStart, yTop + bandH - 2, bandW, 2);
-    ctx.fillRect(xStart, yTop, 2, bandH);
-    ctx.fillRect(xEnd - 2, yTop, 2, bandH);
-
-    // Pixel directional chevrons indicating leftward claw rake (`<<<`)
-    ctx.fillStyle = '#fef08a';
-    for (let cx = xStart + 70; cx < xStart + bandW - 60; cx += 150) {
-      const cy = Math.round(this.rakeLaneGy);
-      ctx.fillRect(cx + 12, cy - 10, 8, 4);
-      ctx.fillRect(cx + 6, cy - 6, 8, 4);
-      ctx.fillRect(cx, cy - 2, 8, 4);
-      ctx.fillRect(cx + 6, cy + 2, 8, 4);
-      ctx.fillRect(cx + 12, cy + 6, 8, 4);
-    }
-    ctx.restore();
+    // Foreground Clamping Siege-Claw Talons, Taut Abyssal Chains & Contracting Violet Rune-Vise OVER grabbed hero!
+    drawMalphasGrabForegroundOverlay(ctx, this, t, renderer, bossVfxImg);
   }
 
   draw(ctx, isReflection = false, renderer = null) {
@@ -3681,7 +3916,7 @@ export class ArchfiendBoss extends Monster {
     const colossusImg = PixelForge.ensureImage(charSet?.colossus);
 
     if (colossusImg && colossusImg.complete && colossusImg.naturalWidth > 0) {
-      // Strict 9-arg 512x512 integer pixel blit helper (obeys Suite 17C/20D spy & zero ctx.rotate!)
+      // Strict 9-arg 512x512 integer pixel blit helper (obeys Suite 17C/20D/27B spy & zero ctx.rotate!)
       const blitCell = (col, row, dx, dy, dw, dh) => {
         if (
           !Number.isFinite(dx) ||
@@ -3709,66 +3944,39 @@ export class ArchfiendBoss extends Monster {
         Number.isFinite(rawT) && rawT > 0 ? rawT : 0,
         Number.isFinite(this.animTime) ? this.animTime : (this.walkPhase || 0) / 2.0
       );
-      const torsoSize = 456;
-      const anchorBaseX = Math.round(this.anchorX - 201);
-      const rimBaseY = 654 - torsoSize; // 198 -> bottom of 456px parapet rim lands cleanly on y = 654
-
-      // Emerge (`+310 -> 0`) & Collapse (`0 -> +336`) vertical chasm offsets
-      let riseY = 0;
-      let emergeU = 1;
-      if (!this.isDead && this.emergeTimer > 0) {
-        emergeU = Math.max(0, Math.min(1, 1 - this.emergeTimer / Math.max(0.01, this.emergeMax || 1.6)));
-        const climbPhase = Math.min(1, emergeU / 0.78);
-        riseY = Math.round(Math.pow(1 - climbPhase, 2.15) * 310);
-      }
-
-      const dtDeath = this.isDead ? Math.max(0, this.deathTimer || 0) : 0;
-      const deathProgress = this.isDead ? Math.min(1, dtDeath / 2.15) : 0;
-      const sinkY = this.isDead ? Math.round(Math.pow(deathProgress, 1.42) * 336) : 0;
-
-      // Clean damped single-impulse recoil & subtle hurt/death tremor (`0` high-frequency 74 rad/s vibration!)
-      const hurtShakeX =
-        !this.isDead && this.hurtTimer > 0 ? Math.round(Math.sin(this.hurtTimer * 34) * 3) : 0;
-      const deathShakeX = this.isDead
-        ? Math.round(Math.sin(dtDeath * 42) * (1 - deathProgress * 0.65) * 7)
-        : 0;
-      const emergeShakeX =
-        !this.isDead && this.emergeTimer > 0 && emergeU < 0.76
-          ? Math.round(Math.sin(t * 32) * 2)
-          : 0;
-      const recU =
-        !this.isDead && this.impactRecoilTimer > 0
-          ? Math.max(0, Math.min(1, this.impactRecoilTimer / 0.30))
-          : 0;
-      const recImpulse = Math.sin(recU * Math.PI) * recU;
-      const recoilX = Math.round(recImpulse * 6);
-      const recoilY = Math.round(recImpulse * 4);
-
-      const isVulnerable = !this.isDead && this.vulnerableTimer > 0;
-      const isRoaring =
-        (!this.isDead && this.roarFlashTimer > 0) ||
-        (!this.isDead && this.emergeTimer > 0 && emergeU >= 0.68 && emergeU <= 0.96) ||
-        (!this.isDead &&
-          this.state === 'SKILL' &&
-          this.skillVariant === 0 &&
-          this.stateTimer >= 0.22 &&
-          this.stateTimer <= 0.84);
-
-      const breathAmp = this.bossPhase >= 3 ? 6 : 4.5;
-      const breatheY = !this.isDead ? Math.sin(t * 2.1) * breathAmp : 0;
-
-      // Smooth damped body & limb channels (`_pose*` updated continuously in `update(dt)`, safe fallback if drawn directly)
-      const poseBodyX = this.isDead ? 0 : this._poseBodyX || (isVulnerable ? 14 : 0);
-      const poseBodyY = this.isDead ? 0 : this._poseBodyY || (isVulnerable ? 18 : 0);
-      const poseShrugY = this.isDead ? 0 : this._poseShrugY || 0;
-      const poseFrontShX = this.isDead ? 0 : this._poseFrontShX || 0;
-      const poseSkullX = this.isDead ? 0 : this._poseSkullX || 0;
-      const poseSkullY = this.isDead ? 0 : this._poseSkullY || 0;
-
-      const torsoX = Math.round(
-        anchorBaseX + hurtShakeX + deathShakeX + emergeShakeX + recoilX + poseBodyX
-      );
-      const torsoY = Math.round(rimBaseY + breatheY + poseBodyY + recoilY + riseY + sinkY);
+      const p = this.computeColossusPoseCoords(t);
+      const {
+        torsoSize,
+        anchorBaseX,
+        rimBaseY,
+        riseY,
+        emergeU,
+        dtDeath,
+        deathProgress,
+        sinkY,
+        deathShakeX,
+        isVulnerable,
+        isRoaring,
+        torsoX,
+        torsoY,
+        rearPauldronX,
+        rearPauldronY,
+        frontPauldronX,
+        frontPauldronY,
+        skullX,
+        skullY,
+        jawDropPx,
+        jawX,
+        jawY,
+        wingPoseCol,
+        wingFrame12,
+        wingRSize,
+        wingRX,
+        wingRY,
+        wingLSize,
+        wingLX,
+        wingLY
+      } = p;
 
       // Select Torso Cell: (3,0) Cracked Dying, or living pulsing heartbeat between (1,0) & (2,0)!
       let torsoCol = 1;
@@ -3786,48 +3994,6 @@ export class ArchfiendBoss extends Monster {
           : Math.sin(t * 3.6) + 0.45 * Math.sin(t * 7.2) > 0.35;
         torsoCol = heartWave ? 2 : 1;
       }
-
-      // Tightly Registered Articulated Pauldron Offsets (harmonized breathing + smooth shrug)
-      const rearPauldronX = Math.round(
-        torsoX +
-          Math.cos(t * 2.1 - 0.45) * (this.isDead ? 1 : 3) +
-          (this.isDead ? -8 * deathProgress : 0)
-      );
-      const rearPauldronY = Math.round(
-        torsoY +
-          (this.isDead
-            ? Math.round(18 * deathProgress)
-            : Math.sin(t * 2.1 - 0.35) * 4 + poseShrugY)
-      );
-
-      const frontPauldronX = Math.round(
-        torsoX +
-          Math.sin(t * 2.1 + 0.35) * (this.isDead ? 1 : 3) +
-          (this.isDead ? Math.round(10 * deathProgress) : poseFrontShX)
-      );
-      const frontPauldronY = Math.round(
-        torsoY +
-          (this.isDead
-            ? Math.round(20 * deathProgress)
-            : Math.sin(t * 2.1 - 0.25) * 4.5 + poseShrugY)
-      );
-
-      // Tightly Registered Demon Skull & Articulated Mandible (`0..20px` jaw drop reveals painted hellfire throat!)
-      const hurtRecoilX = !this.isDead && this.hurtTimer > 0 ? 4 : 0;
-      const skullX = Math.round(
-        torsoX + (this.isDead ? 0 : Math.cos(t * 2.1) * 2 + poseSkullX) + hurtRecoilX
-      );
-      const skullY = Math.round(
-        torsoY +
-          (this.isDead
-            ? Math.round(12 * deathProgress)
-            : Math.sin(t * 2.1 - 0.20) * 2.5 + poseSkullY)
-      );
-
-      const jawRatio = this.isDead ? 0.95 : Math.max(0, Math.min(1, this.jawOpen || 0));
-      const jawDropPx = Math.round(jawRatio * 20);
-      const jawX = Math.round(skullX + (jawRatio > 0.55 ? -2 : 0));
-      const jawY = Math.round(skullY + jawDropPx);
 
       const geyserCol = Math.floor(t * 10) % 2 === 0 ? 4 : 5;
       const showCalderaGeyser =
@@ -3858,28 +4024,21 @@ export class ArchfiendBoss extends Monster {
 
       // Only draw clipped body rig while above the chasm floor (`deathProgress < 0.98`)
       if (!this.isDead || dtDeath < 2.22) {
-        // 2a. Root-Locked Colossal Abyssal Great-Wings (`Cell 3,2` Right Counter-Span + `Cells 0..2,2` 3-Pose Left Wingbeat!)
-        // Shoulder sockets are pinned at `(484, 320)` on `(0..2, 2)` and `(28, 320)` on `(3, 2)` -> ZERO shoulder jumping!
-        const wingStep = Math.floor(this.wingPhase || 0) & 3;
-        const wingPoseCol = [0, 1, 2, 1][wingStep];
-        const wingCollapseY = this.isDead ? Math.round(30 * deathProgress) : 0;
-        const wingBreathY = Math.round(Math.sin((this.wingPhase || 0) * Math.PI * 0.5) * 5);
+        // 2a. Root-Locked Synchronized Colossal Abyssal Great-Wings:
+        //     - Right Counter-Wing: `drawForegroundOverlay` renders 12-frame fluid flapping from `boss_malphas_vfx_30fps.png`
+        //       on non-mid beats; on mid-beats (`3, 9`) or when `drawForegroundOverlay` didn't run, blit `(3,2)` -> 0 ghosting!
+        if (!this._lastBackVfxFrame || wingFrame12 === 3 || wingFrame12 === 9) {
+          blitCell(3, 2, wingRX, wingRY, wingRSize, wingRSize);
+        }
+        this._lastBackVfxFrame = false;
 
-        const wingRSize = 368;
-        const wingRX = frontPauldronX + 298;
-        const wingRY = frontPauldronY - 34 - wingBreathY + wingCollapseY;
-        blitCell(3, 2, wingRX, wingRY, wingRSize, wingRSize);
-
-        const wingLSize = 388;
-        const wingLX = rearPauldronX - 231;
-        const wingLY = rearPauldronY - 39 + wingCollapseY;
         blitCell(wingPoseCol, 2, wingLX, wingLY, wingLSize, wingLSize);
 
-        // 2b. Phase II/III Sovereign Burning Eclipse Crown Crest (`Cell 6,3`) crowning cleanly ABOVE Malphas's horns!
+        // 2b. Phase II/III Sovereign Burning Eclipse Crown Diadem (`Cell 6,3`) floating cleanly ABOVE Malphas's horns!
         if (!this.isDead && this.bossPhase >= 2) {
-          const crestSz = this.bossPhase >= 3 ? 236 : 216;
-          const crestCx = skullX + 211;
-          const crestArchY = skullY + 52 + Math.round(Math.sin(t * 3.4) * 3);
+          const crestSz = this.bossPhase >= 3 ? 232 : 212;
+          const crestCx = skullX + 204;
+          const crestArchY = skullY + 28 + Math.round(Math.sin(t * 3.4) * 4);
           blitCell(6, 3, crestCx - crestSz * 0.5, crestArchY - crestSz * 0.52, crestSz, crestSz);
         }
 
@@ -3915,11 +4074,11 @@ export class ArchfiendBoss extends Monster {
         blitCell(7, 0, jawX, jawY, torsoSize, torsoSize);
         blitCell(5, 0, frontPauldronX, frontPauldronY, torsoSize, torsoSize);
 
-        // Subtle <=0.14 Neo-Vision EX additive molten-gold & abyssal-violet rim catchlight + rising hell-embers
+        // Restrained <=0.16 Neo-Vision EX additive molten-gold & abyssal-violet catchlight + stepped-pixel rising hell-embers
         if (!this.isDead) {
           const exAlpha = this.hitFlash > 0
             ? Math.min(0.16, 0.08 + this.hitFlash * 0.9)
-            : 0.07 + 0.04 * Math.sin(t * 4.2);
+            : 0.06 + 0.04 * Math.sin(t * 4.2);
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = exAlpha;
@@ -3927,10 +4086,9 @@ export class ArchfiendBoss extends Monster {
           blitCell(6, 0, skullX, skullY, torsoSize, torsoSize);
           ctx.restore();
 
-          // Rising 2x4 stepped-pixel Sovereign Hellfire embers around Malphas (0 rotate/vector calls)
           const emberBase = Math.floor(t * 20);
           for (let ei = 0; ei < 6; ei++) {
-            const ph = ((t * 1.45 + ei * 0.17) % 1.0);
+            const ph = (t * 1.45 + ei * 0.17) % 1.0;
             const ex = Math.round((torsoX + 90 + ((ei * 73 + emberBase) % 270)) / 2) * 2;
             const ey = Math.round((torsoY + 340 - ph * 220) / 2) * 2;
             ctx.fillStyle = ei % 2 === 0 ? '#fde047' : '#f43f5e';
@@ -4003,8 +4161,8 @@ export class ArchfiendBoss extends Monster {
           (this.emergeTimer > 0 && emergeU >= 0.69 && emergeU <= 0.95) ||
           this.roarFlashTimer > 0.18);
       if (showJawHellfire) {
-        const mouthWorldX = skullX + 194;
-        const mouthWorldY = skullY + 138 + Math.round(jawDropPx * 0.45);
+        const mouthWorldX = skullX + 180;
+        const mouthWorldY = skullY + 148 + Math.round(jawDropPx * 0.45);
         const hfFrames = [
           [6, 1],
           [6, 2],
@@ -4012,8 +4170,8 @@ export class ArchfiendBoss extends Monster {
         ];
         const hfStep = Math.floor(t * 12) % 3;
         const [hfCol, hfRow] = hfFrames[hfStep];
-        const coneW = 376;
-        const coneH = 268;
+        const coneW = 392;
+        const coneH = 276;
         const coneX = Math.round(mouthWorldX - coneW * 0.91);
         const coneY = Math.round(mouthWorldY - coneH * 0.50);
         blitCell(hfCol, hfRow, coneX, coneY, coneW, coneH);
@@ -4025,7 +4183,7 @@ export class ArchfiendBoss extends Monster {
         ((this.state === 'AUTO_ATTACK' && this.stateTimer >= 0.58 && this.stateTimer <= 0.90) ||
           (this.state === 'ULTIMATE' && this.stateTimer >= 1.00 && this.stateTimer <= 1.52));
       if (showImpactGeyser) {
-        const gSz = this.state === 'ULTIMATE' ? 312 : 260;
+        const gSz = this.state === 'ULTIMATE' ? 324 : 268;
         blitCell(
           geyserCol,
           1,
@@ -4103,8 +4261,8 @@ export class ArchfiendBoss extends Monster {
             ];
             const sStep = Math.floor(t * 12) % 3;
             const [sCol, sRow] = slashFrames[sStep];
-            const slashW = 316;
-            const slashH = 268;
+            const slashW = 324;
+            const slashH = 276;
             const slashX = Math.round(cx - slashW * 0.44);
             const slashY = Math.round(cy + clawSz * 0.50 - slashH * 0.52);
             blitCell(sCol, sRow, slashX, slashY, slashW, slashH);
@@ -4143,8 +4301,8 @@ export class ArchfiendBoss extends Monster {
         typeof document !== 'undefined' &&
         typeof document.getElementById === 'function' &&
         Boolean(document.getElementById('adv-boss-raid-hud'));
-      const bx = Math.round(this.anchorX - 112);
-      const by = 242;
+      const bx = Math.round(this.anchorX - 168);
+      const by = 216;
       const barW = 148;
       const barH = 8;
       const x0 = bx - Math.floor(barW * 0.5);

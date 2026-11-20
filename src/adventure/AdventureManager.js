@@ -1,7 +1,7 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps189';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps189';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps189';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps189';
+import { Fighter } from '../entities/Fighter.js?v=30fps190';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps190';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps190';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps190';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
@@ -15,10 +15,10 @@ import {
   loadAdventureHeroProgress,
   saveAdventureHeroProgress,
   resetAdventureHeroProgress
-} from './AdventureProgression.js?v=30fps189';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps189';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps189';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps189';
+} from './AdventureProgression.js?v=30fps190';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps190';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps190';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps190';
 
 export {
   ADVENTURE_HERO_PROGRESS_STORAGE_KEY,
@@ -2318,7 +2318,7 @@ export class AdventureManager {
     this.destructibles.resetToDefaultProps();
   }
 
-  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps189') {
+  async fetchCampaignIndex(url = 'assets/campaigns/index.json?v=30fps190') {
     if (typeof fetch !== 'function') return [];
     const res = await fetch(url);
     if (!res.ok) {
@@ -2328,7 +2328,7 @@ export class AdventureManager {
     return Array.isArray(json?.packs) ? json.packs : [];
   }
 
-  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps189') {
+  async loadCampaignPackById(packId, fileHint = null, cacheBust = 'v=30fps190') {
     if (!packId || packId === DEFAULT_ADVENTURE_CAMPAIGN_ID) {
       this.clearCampaignPack();
       return null;
