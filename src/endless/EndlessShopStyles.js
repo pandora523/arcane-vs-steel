@@ -76,16 +76,16 @@ export const ENDLESS_SHOP_CSS = [
 .endless-top-stack {
   position: absolute;
   top: max(62px, calc(env(safe-area-inset-top) + 58px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: min(880px, calc(100% - 316px));
+  left: 0;
+  right: 0;
+  width: auto;
+  max-width: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   pointer-events: none;
-  z-index: 23;
+  z-index: 28;
 }
 
 .endless-top-bar {
@@ -95,7 +95,7 @@ export const ENDLESS_SHOP_CSS = [
   flex-wrap: wrap;
   gap: 5px 8px;
   padding: 4px 9px;
-  max-width: 100%;
+  max-width: min(880px, calc(100% - 316px));
   background: linear-gradient(180deg, rgba(14, 18, 34, 0.94) 0%, rgba(7, 9, 18, 0.97) 100%);
   border: 2px solid #d4af37;
   outline: 1px solid #000;
@@ -105,6 +105,10 @@ export const ENDLESS_SHOP_CSS = [
     inset 0 0 12px rgba(212, 175, 55, 0.14),
     0 5px 16px rgba(0, 0, 0, 0.86);
   pointer-events: auto;
+}
+
+.endless-top-break {
+  display: none;
 }
 
 .endless-stage-badge {
@@ -337,10 +341,10 @@ export const ENDLESS_SHOP_CSS = [
   }
 }
 
-/* Floating Shop Toggle Button */
+/* Floating Shop Toggle Button (Docked at top-right on Desktop; inline in Top Bar on Mobile) */
 #endless-shop-toggle {
   position: absolute;
-  top: max(62px, calc(env(safe-area-inset-top) + 58px));
+  top: 0;
   right: max(12px, env(safe-area-inset-right));
   z-index: 28;
   pointer-events: auto;
@@ -362,6 +366,14 @@ export const ENDLESS_SHOP_CSS = [
     inset 0 1px 0 rgba(254, 240, 138, 0.32),
     0 5px 16px rgba(0, 0, 0, 0.88);
   white-space: nowrap;
+}
+
+.endless-toggle-label-full {
+  display: inline;
+}
+
+.endless-toggle-label-short {
+  display: none;
 }
 
 #endless-shop-toggle.is-open {
@@ -455,6 +467,21 @@ export const ENDLESS_SHOP_CSS = [
   letter-spacing: 0.05em;
   text-shadow: 0 1px 0 #000;
   white-space: nowrap;
+}
+
+.endless-drawer-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.endless-drawer-autoboss-btn {
+  font-size: 0.34rem;
+  padding: 3px 6px;
+  border-width: 1.5px;
+  border-radius: 3px;
+  line-height: 1.1;
 }
 
 .endless-drawer-close {
@@ -4648,6 +4675,13 @@ buildLandscapeCss(`  #endless-hud-root .endless-events-dock {
   height: 8px;
 }
 
+.endless-comp-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
 .endless-comp-ex-badge {
   font-size: 0.29rem;
   letter-spacing: 0.04em;
@@ -4670,6 +4704,59 @@ buildLandscapeCss(`  #endless-hud-root .endless-events-dock {
     inset 0 1px 0 rgba(254, 240, 138, 0.36),
     0 0 8px rgba(56, 189, 248, 0.62);
   animation: endlessExBadgeGlow 1.8s ease-in-out infinite;
+}
+
+.endless-comp-aura-badge {
+  font-size: 0.27rem;
+  letter-spacing: 0.03em;
+  padding: 1px 4px;
+  border-radius: 2px;
+  border: 1px solid #38bdf8;
+  background: rgba(14, 34, 58, 0.95);
+  color: #7dd3fc;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.15;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-comp-aura-badge.hidden {
+  display: none !important;
+}
+
+.endless-comp-aura-badge.is-tier-3 {
+  border-color: #38bdf8;
+  color: #bae6fd;
+  background: linear-gradient(180deg, rgba(12, 74, 110, 0.94) 0%, rgba(12, 20, 38, 0.98) 100%);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.45);
+}
+
+.endless-comp-aura-badge.is-tier-4 {
+  border-color: #c084fc;
+  color: #f3e8ff;
+  background: linear-gradient(180deg, rgba(88, 28, 135, 0.94) 0%, rgba(22, 12, 42, 0.98) 100%);
+  box-shadow: 0 0 7px rgba(192, 132, 252, 0.55);
+}
+
+.endless-comp-aura-badge.is-tier-5 {
+  border-color: #facc15;
+  color: #fffbeb;
+  background: linear-gradient(180deg, rgba(159, 18, 57, 0.96) 0%, rgba(66, 32, 6, 0.98) 100%);
+  box-shadow: 0 0 9px rgba(250, 204, 21, 0.68);
+}
+
+.endless-comp-card.is-aura-4 {
+  border-color: #c084fc;
+  box-shadow:
+    inset 0 0 14px rgba(192, 132, 252, 0.2),
+    0 0 9px rgba(192, 132, 252, 0.25);
+}
+
+.endless-comp-card.is-aura-5 {
+  border-color: #facc15;
+  box-shadow:
+    inset 0 0 16px rgba(244, 63, 94, 0.24),
+    0 0 11px rgba(250, 204, 21, 0.34);
 }
 
 @keyframes endlessExBadgeGlow {
@@ -4759,10 +4846,56 @@ buildLandscapeCss(`  #endless-hud-root .endless-events-dock {
   pointer-events: none;
 }
 
-.endless-party-star.is-ex {
+.endless-party-star.is-ex,
+.endless-party-star.is-aura-3 {
   color: #7dd3fc;
   border-color: #38bdf8;
   background: rgba(8, 24, 42, 0.94);
+}
+
+.endless-party-star.is-aura-4 {
+  color: #e9d5ff;
+  border-color: #c084fc;
+  background: rgba(34, 14, 58, 0.95);
+}
+
+.endless-party-star.is-aura-5 {
+  color: #fef08a;
+  border-color: #f43f5e;
+  background: rgba(68, 12, 26, 0.96);
+}
+
+.endless-party-syn-chip {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 5px;
+  font-family: inherit;
+  font-size: 0.28rem;
+  letter-spacing: 0.02em;
+  color: #fef08a;
+  background: linear-gradient(180deg, rgba(16, 22, 40, 0.95) 0%, rgba(8, 10, 20, 0.98) 100%);
+  border: 1.5px solid #d4af37;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.82);
+}
+
+.endless-party-syn-chip.hidden {
+  display: none !important;
+}
+
+.endless-party-syn-chip-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #facc15;
 }
 
 .endless-party-star.hidden {
@@ -4854,6 +4987,17 @@ buildLandscapeCss(`  #endless-hud-root .endless-events-dock {
   text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000;
 }
 
+.endless-overdrive-label-short {
+  display: none;
+  font-size: 0.29rem;
+  letter-spacing: 0.02em;
+  color: #fffbeb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000;
+}
+
 .endless-overdrive-btn.is-ready {
   border-color: #fde047;
   cursor: pointer;
@@ -4876,13 +5020,17 @@ buildLandscapeCss(`  #endless-hud-root .endless-events-dock {
   background: linear-gradient(90deg, #9a3412 0%, #d97706 52%, #eab308 100%);
 }
 
-.endless-overdrive-btn.is-active .endless-overdrive-label {
-  color: #fffef2;
+.endless-overdrive-btn.is-active .endless-overdrive-label,
+.endless-overdrive-btn.is-active .endless-overdrive-label-short {
+  color: #ffffff;
+  background: rgba(5, 8, 18, 0.64);
+  padding: 1px 6px;
+  border-radius: 2px;
   text-shadow:
-    -1px -1px 0 #050711,
-    1px -1px 0 #050711,
-    -1px 1px 0 #050711,
-    1px 1px 0 #050711,
+    -1px 0 0 #000000,
+    1px 0 0 #000000,
+    0 -1px 0 #000000,
+    0 1px 0 #000000,
     0 1px 2px rgba(0, 0, 0, 0.95);
 }
 
@@ -6124,11 +6272,8 @@ buildLandscapeCss(`  .endless-tab-bar {
 
 /* Wave 11 Narrow-Desktop Guard (561px..1024px wide, >500px tall) */
 @media (max-width: 1024px) and (min-width: 561px) and (min-height: 501px) {
-  .endless-top-stack {
-    max-width: calc(100% - 296px);
-  }
-
   .endless-top-bar {
+    max-width: calc(100% - 296px);
     padding: 3px 6px;
     gap: 3px 5px;
   }
@@ -6164,9 +6309,11 @@ buildLandscapeCss(`  .endless-tab-bar {
   }
 
   #endless-hud-root.is-drawer-open .endless-top-stack {
-    left: 10px;
-    transform: none;
+    padding-left: 10px;
     align-items: flex-start;
+  }
+
+  #endless-hud-root.is-drawer-open .endless-top-bar {
     max-width: calc(100% - 376px);
   }
 
@@ -6182,6 +6329,994 @@ buildLandscapeCss(`  .endless-tab-bar {
 
   #endless-hud-root.is-trial-active.is-drawer-open .endless-events-dock {
     top: max(186px, calc(env(safe-area-inset-top) + 182px));
+  }
+}
+
+/* =========================================================================
+   WAVE 12: MOBILE COMPACT EVENTS STRIP, DISMISSIBLE POP-CARDS & CLEAN HUD
+   Desktop 1280x800 keeps full Events Dock & Party HUD; Mobile uses slim bars
+   ========================================================================= */
+.endless-mobile-events-strip {
+  display: none;
+  position: absolute;
+  z-index: 25;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  height: 24px;
+  max-height: 26px;
+  pointer-events: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.endless-mobile-events-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.endless-mobile-events-strip.hidden {
+  display: none !important;
+}
+
+.endless-m-buff-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.endless-m-buff-list.hidden {
+  display: none !important;
+}
+
+.endless-m-evt-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 5px;
+  font-family: inherit;
+  font-size: 0.27rem;
+  letter-spacing: 0.02em;
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(14, 18, 34, 0.95) 0%, rgba(7, 9, 18, 0.98) 100%);
+  border: 1.5px solid rgba(212, 175, 55, 0.72);
+  outline: 1px solid #000;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.84);
+  pointer-events: auto;
+}
+
+.endless-m-evt-pill.hidden {
+  display: none !important;
+}
+
+.endless-m-evt-pill.is-bounty,
+.endless-m-evt-pill.is-merchant {
+  cursor: pointer;
+}
+
+.endless-m-evt-pill.is-bounty.is-claimable {
+  color: #090c14;
+  background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
+  border-color: #ffffff;
+  text-shadow: none;
+  animation: endlessBountyClaimPulse 1.15s ease-in-out infinite;
+}
+
+.endless-m-evt-pill.is-merchant {
+  color: #fef08a;
+  background: linear-gradient(180deg, rgba(44, 20, 74, 0.96) 0%, rgba(12, 10, 26, 0.98) 100%);
+  border-color: #c084fc;
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.55), 0 2px 8px rgba(0, 0, 0, 0.86);
+}
+
+.endless-m-evt-pill.is-merchant.is-affordable {
+  border-color: #facc15;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.65), 0 2px 8px rgba(0, 0, 0, 0.88);
+}
+
+.endless-m-evt-pill.is-pop-open {
+  border-color: #ffffff;
+  filter: brightness(1.12);
+}
+
+.endless-m-evt-pill.is-buff {
+  padding: 0 5px 2px;
+}
+
+.endless-m-evt-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-m-evt-ico svg {
+  width: 10px;
+  height: 10px;
+}
+
+.endless-m-evt-txt {
+  line-height: 1;
+}
+
+.endless-m-buff-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(5, 7, 18, 0.92);
+}
+
+.endless-m-buff-fill {
+  height: 100%;
+  width: 100%;
+  background: #facc15;
+  transition: width 0.1s linear;
+}
+
+/* Mobile Dismissible Pop-Card Layer */
+.endless-mobile-popcard-layer {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  pointer-events: none;
+}
+
+.endless-mobile-popcard-layer.hidden {
+  display: none !important;
+}
+
+.endless-mobile-popcard {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 5px 7px;
+  background: linear-gradient(180deg, rgba(18, 16, 36, 0.97) 0%, rgba(8, 10, 20, 0.99) 100%);
+  border: 1.5px solid #d4af37;
+  border-left: 3px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.26),
+    0 8px 22px rgba(0, 0, 0, 0.94);
+  pointer-events: auto;
+}
+
+.endless-mobile-popcard.hidden {
+  display: none !important;
+}
+
+.endless-mobile-popcard.is-merchant {
+  border-color: #c084fc;
+  box-shadow:
+    inset 0 1px 0 rgba(233, 213, 255, 0.24),
+    0 0 14px rgba(168, 85, 247, 0.4),
+    0 8px 22px rgba(0, 0, 0, 0.94);
+}
+
+.endless-m-pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  min-width: 0;
+}
+
+.endless-m-pop-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.endless-m-pop-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-m-pop-ico svg {
+  width: 11px;
+  height: 11px;
+}
+
+.endless-m-pop-title {
+  font-size: 0.31rem;
+  color: #fde047;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-m-pop-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.endless-m-pop-timer {
+  font-size: 0.26rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: rgba(168, 85, 247, 0.26);
+  border: 1px solid rgba(192, 132, 252, 0.72);
+  color: #e9d5ff;
+  white-space: nowrap;
+}
+
+.endless-m-pop-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  color: #fde047;
+  background: rgba(15, 19, 32, 0.96);
+  border: 1px solid rgba(212, 175, 55, 0.65);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.endless-m-pop-close svg {
+  width: 9px;
+  height: 9px;
+}
+
+.endless-m-pop-prog-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.28rem;
+  min-width: 0;
+}
+
+.endless-m-pop-prog-txt {
+  color: #f8fafc;
+  white-space: nowrap;
+}
+
+.endless-m-pop-reward {
+  color: #fde047;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-m-pop-sub {
+  font-size: 0.26rem;
+  color: #cbd5e1;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-m-pop-track {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  background: #050712;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.endless-m-pop-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: #facc15;
+  transition: width 0.1s linear;
+}
+
+.endless-m-pop-fill.is-merchant {
+  background: linear-gradient(90deg, #a855f7 0%, #facc15 100%);
+}
+
+.endless-m-pop-cta {
+  width: 100%;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 0.30rem;
+  letter-spacing: 0.04em;
+  color: #090c14;
+  background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
+  border: 1.5px solid #ffffff;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.endless-m-pop-cta.hidden {
+  display: none !important;
+}
+
+.endless-m-pop-cta:disabled {
+  color: #64748b;
+  background: linear-gradient(180deg, rgba(22, 28, 45, 0.92) 0%, rgba(12, 15, 26, 0.95) 100%);
+  border-color: #334155;
+  cursor: not-allowed;
+}
+`,
+buildLandscapeCss(`  /* Wave 12 Mobile Landscape (844x390): Unified Slim Top Bar + Single-Row Party Strip + Edge Events Strip */
+  .endless-top-stack {
+    top: max(52px, calc(env(safe-area-inset-top) + 48px));
+    left: max(6px, env(safe-area-inset-left));
+    right: max(6px, env(safe-area-inset-right));
+    width: auto;
+    max-width: none;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .endless-top-bar {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    padding: 2px 5px;
+    gap: 4px;
+    border-width: 1.5px;
+  }
+
+  .endless-stage-badge {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.33rem;
+    padding: 2px 5px;
+    gap: 4px;
+  }
+
+  .endless-stage-badge > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .endless-modifier-pill {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.29rem;
+    padding: 1px 4px 1px 3px;
+    gap: 3px;
+  }
+
+  .endless-wave-meter {
+    flex-shrink: 0;
+    min-width: 72px;
+    height: 15px;
+    padding: 0 4px;
+  }
+
+  .endless-currency-group {
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .endless-currency-pill {
+    font-size: 0.34rem;
+    padding: 1px 5px 1px 3px;
+    gap: 3px;
+  }
+
+  .endless-fever-meter {
+    flex-shrink: 0;
+    width: 68px;
+    height: 14px;
+  }
+
+  #endless-shop-toggle {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    flex-shrink: 0;
+    padding: 2px 6px 2px 4px;
+    font-size: 0.32rem;
+    gap: 4px;
+    border-width: 1.5px;
+    box-shadow: none;
+  }
+
+  .endless-toggle-label-full {
+    display: none;
+  }
+
+  .endless-toggle-label-short {
+    display: inline;
+  }
+
+  .endless-toggle-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .endless-boss-controls .endless-autoboss-btn {
+    display: none !important;
+  }
+
+  .endless-boss-controls:not(.has-challenge) {
+    display: none !important;
+  }
+
+  .endless-drawer-autoboss-btn {
+    font-size: 0.27rem;
+    padding: 2px 5px;
+  }
+
+  .endless-shop-shell {
+    top: max(81px, calc(env(safe-area-inset-top) + 77px));
+    right: max(6px, env(safe-area-inset-right));
+    bottom: max(6px, env(safe-area-inset-bottom));
+    width: min(332px, 50vw);
+  }
+
+  /* Ultra-Compact Single-Row Party Strip (height <= 34px, clears left battlefield) */
+  #endless-hud-root .endless-party-hud {
+    left: max(6px, env(safe-area-inset-left));
+    top: max(81px, calc(env(safe-area-inset-top) + 77px));
+    width: auto;
+    max-width: calc(100vw - 16px);
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+
+  #endless-hud-root.is-trial-active .endless-party-hud {
+    top: max(114px, calc(env(safe-area-inset-top) + 110px));
+  }
+
+  .endless-party-strip {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .endless-party-card {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+
+  .endless-party-port-wrap {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+  }
+
+  .endless-party-portrait {
+    width: 30px;
+    height: 30px;
+  }
+
+  .endless-party-meta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    gap: 0;
+    pointer-events: none;
+  }
+
+  .endless-party-head,
+  .endless-party-ult-tag {
+    display: none !important;
+  }
+
+  .endless-party-ult-row {
+    gap: 0;
+  }
+
+  .endless-party-ult-track {
+    height: 4px;
+    border: none;
+    border-top: 1px solid #000;
+    border-radius: 0;
+  }
+
+  .endless-party-star {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    padding: 0 2px;
+    font-size: 0.22rem;
+    border-top: none;
+    border-bottom: 1px solid #d4af37;
+    border-left: 1px solid #d4af37;
+    border-radius: 0 0 0 2px;
+  }
+
+  .endless-party-star-ico {
+    display: inline-flex;
+    width: 5px;
+    height: 5px;
+  }
+
+  .endless-party-star-ico svg {
+    width: 5px;
+    height: 5px;
+  }
+
+  .endless-synergy-hud {
+    display: none !important;
+  }
+
+  .endless-party-syn-chip {
+    display: inline-flex;
+    height: 26px;
+    padding: 0 5px;
+    font-size: 0.27rem;
+  }
+
+  .endless-overdrive-btn {
+    width: auto;
+    min-width: 64px;
+    max-width: 98px;
+    height: 28px;
+    min-height: 26px;
+    align-self: center;
+    padding: 2px 6px;
+  }
+
+  .endless-overdrive-label {
+    display: none;
+  }
+
+  .endless-overdrive-label-short {
+    display: inline;
+    font-size: 0.27rem;
+  }
+
+  .endless-overdrive-btn.is-active .endless-overdrive-label-short {
+    padding: 1px 4px;
+  }
+
+  /* Replace Desktop Events Dock with Slim Top-Right Mobile Icon Strip (clear of #adv-skill-cluster) */
+  #endless-hud-root .endless-events-dock,
+  #endless-hud-root .endless-events-dock.has-merchant,
+  #endless-hud-root.is-trial-active .endless-events-dock.has-merchant {
+    display: none !important;
+  }
+
+  #endless-hud-root .endless-mobile-events-strip {
+    display: flex;
+    top: max(81px, calc(env(safe-area-inset-top) + 77px));
+    right: max(6px, env(safe-area-inset-right));
+    left: auto;
+    max-width: min(340px, calc(100vw - 260px));
+    justify-content: flex-end;
+  }
+
+  #endless-hud-root.has-challenge-boss .endless-mobile-events-strip {
+    max-width: min(326px, calc(50vw - 90px));
+  }
+
+  #endless-hud-root.is-trial-active .endless-mobile-events-strip {
+    top: max(114px, calc(env(safe-area-inset-top) + 110px));
+  }
+
+  #endless-hud-root .endless-mobile-popcard-layer {
+    display: block;
+  }
+
+  #endless-hud-root .endless-mobile-popcard {
+    top: max(108px, calc(env(safe-area-inset-top) + 104px));
+    right: max(6px, env(safe-area-inset-right));
+    left: auto;
+    width: 204px;
+  }
+
+  #endless-hud-root.is-trial-active .endless-mobile-popcard {
+    top: max(141px, calc(env(safe-area-inset-top) + 137px));
+  }
+
+  #endless-hud-root.is-drawer-open .endless-mobile-events-strip,
+  #endless-hud-root.is-drawer-open .endless-mobile-popcard-layer {
+    display: none !important;
+  }
+
+  /* Fix Landscape ALLIES Tab PARTY SYNERGIES Right-Edge Clipping (0px overflow, clean wrap) */
+  .endless-party-synergies-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding-top: 2px;
+  }
+
+  .endless-party-syn-head {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .endless-party-syn-list {
+    flex: 0 0 auto;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    overflow: visible;
+    max-height: none;
+    gap: 3px;
+  }
+
+  .endless-party-syn-pill {
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+    padding: 2px 5px;
+    gap: 0;
+  }
+
+  .endless-party-syn-name {
+    font-size: 0.25rem;
+    gap: 3px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .endless-comp-ex-badge {
+    font-size: 0.24rem;
+    padding: 0 4px;
+  }
+
+  .endless-comp-aura-badge {
+    font-size: 0.23rem;
+    padding: 0 3px;
+  }`),
+`
+/* Wave 12 Mobile Portrait (390x844): Unified Slim Top Bar, Compact Party Strip, Slim Events Strip & Clean Split-Screen Armory */
+@media (max-width: 560px) {
+  html:not(.is-mobile-landscape) .endless-top-stack {
+    top: max(54px, calc(env(safe-area-inset-top) + 50px));
+    left: 6px;
+    right: 6px;
+    width: auto;
+    max-width: none;
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-top-bar {
+    width: 100%;
+    max-width: 100%;
+    padding: 3px 5px;
+    gap: 3px 4px;
+    justify-content: space-between;
+    border-width: 1.5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-stage-badge {
+    order: 1;
+    flex: 1 1 118px;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.34rem;
+    padding: 2px 5px;
+    gap: 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-stage-badge > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  html:not(.is-mobile-landscape) .endless-wave-meter {
+    order: 2;
+    flex: 0 0 auto;
+    min-width: 66px;
+    height: 15px;
+    padding: 0 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-wave-label {
+    font-size: 0.31rem;
+  }
+
+  html:not(.is-mobile-landscape) #endless-shop-toggle,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active #endless-shop-toggle {
+    order: 3;
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    flex: 0 0 auto;
+    padding: 2px 6px 2px 4px;
+    font-size: 0.34rem;
+    gap: 4px;
+    border-width: 1.5px;
+    box-shadow: none;
+  }
+
+  html:not(.is-mobile-landscape) .endless-toggle-label-full {
+    display: none;
+  }
+
+  html:not(.is-mobile-landscape) .endless-toggle-label-short {
+    display: inline;
+  }
+
+  html:not(.is-mobile-landscape) .endless-toggle-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-top-break {
+    display: block;
+    flex-basis: 100%;
+    height: 0;
+    order: 4;
+  }
+
+  html:not(.is-mobile-landscape) .endless-currency-group {
+    order: 5;
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-currency-pill {
+    font-size: 0.35rem;
+    padding: 1px 5px 1px 3px;
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-currency-icon {
+    width: 13px;
+    height: 13px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-fever-meter {
+    order: 6;
+    flex: 1 1 68px;
+    max-width: 108px;
+    height: 14px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-fever-label {
+    font-size: 0.28rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-modifier-pill {
+    order: 7;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.29rem;
+    padding: 1px 4px 1px 3px;
+    gap: 3px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-modifier-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-boss-controls .endless-autoboss-btn {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-landscape) .endless-boss-controls:not(.has-challenge) {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-landscape) .endless-drawer-autoboss-btn {
+    font-size: 0.30rem;
+    padding: 3px 6px;
+  }
+
+  /* Ultra-Compact Single-Row Mobile Party Strip (height <= 36px) */
+  html:not(.is-mobile-landscape) #endless-hud-root .endless-party-hud {
+    left: 6px;
+    right: 6px;
+    top: var(--endless-mobile-party-top, calc(max(106px, calc(env(safe-area-inset-top) + 102px)) + var(--endless-boss-hud-h, 0px)));
+    width: auto;
+    max-width: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active .endless-party-hud {
+    top: var(--endless-mobile-party-top, calc(max(146px, calc(env(safe-area-inset-top) + 142px)) + var(--endless-boss-hud-h, 0px)));
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-strip {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-card {
+    position: relative;
+    flex: 0 0 34px;
+    width: 34px;
+    max-width: 34px;
+    height: 34px;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-port-wrap {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-portrait {
+    width: 32px;
+    height: 32px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-meta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    gap: 0;
+    pointer-events: none;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-head,
+  html:not(.is-mobile-landscape) .endless-party-ult-tag {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-ult-row {
+    gap: 0;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-ult-track {
+    height: 4px;
+    border: none;
+    border-top: 1px solid #000;
+    border-radius: 0;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-star {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    padding: 0 2px;
+    font-size: 0.22rem;
+    border-top: none;
+    border-bottom: 1px solid #d4af37;
+    border-left: 1px solid #d4af37;
+    border-radius: 0 0 0 2px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-star-ico {
+    display: inline-flex;
+    width: 5px;
+    height: 5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-star-ico svg {
+    width: 5px;
+    height: 5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-synergy-hud {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-landscape) .endless-party-syn-chip {
+    display: inline-flex;
+    height: 28px;
+    padding: 0 6px;
+    font-size: 0.29rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-overdrive-btn {
+    width: auto;
+    min-width: 72px;
+    max-width: 112px;
+    height: 30px;
+    min-height: 28px;
+    align-self: center;
+    padding: 2px 7px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-overdrive-label {
+    display: none;
+  }
+
+  html:not(.is-mobile-landscape) .endless-overdrive-label-short {
+    display: inline;
+    font-size: 0.29rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-overdrive-btn.is-active .endless-overdrive-label-short {
+    padding: 1px 4px;
+  }
+
+  /* Slim Mobile Events Strip + Dismissible Pop-Cards (Hide Desktop Events Dock) */
+  html:not(.is-mobile-landscape) #endless-hud-root .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.is-drawer-open .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.is-drawer-open .endless-events-dock {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root .endless-mobile-events-strip {
+    display: flex;
+    left: 6px;
+    right: 6px;
+    top: var(--endless-mobile-events-top, calc(max(106px, calc(env(safe-area-inset-top) + 102px)) + var(--endless-boss-hud-h, 0px)));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party .endless-mobile-events-strip {
+    top: var(--endless-mobile-events-top, calc(max(144px, calc(env(safe-area-inset-top) + 140px)) + var(--endless-boss-hud-h, 0px)));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root .endless-mobile-popcard-layer {
+    display: block;
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root .endless-mobile-popcard {
+    top: var(--endless-mobile-pop-top, calc(max(172px, calc(env(safe-area-inset-top) + 168px)) + var(--endless-boss-hud-h, 0px)));
+    left: 6px;
+    right: auto;
+    width: min(244px, calc(100vw - 12px));
+  }
+
+  /* Clean Portrait Split-Screen Armory: Hide Middle HUD Widgets so Top ~48% Shows Unobstructed Combat */
+  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-party-hud,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-mobile-events-strip,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-mobile-popcard-layer {
+    display: none !important;
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open.has-event-alert #endless-shop-toggle .endless-event-alert-dot {
+    display: inline-block;
+  }
+
+  html:not(.is-mobile-landscape) .endless-shop-shell {
+    top: auto;
+    left: 6px;
+    right: 6px;
+    bottom: max(6px, env(safe-area-inset-bottom));
+    height: min(50vh, 422px);
+  }
+
+  html:not(.is-mobile-landscape) #app.is-endless-boss-hud-visible #endless-hud-root.is-drawer-open .endless-shop-shell,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.is-drawer-open .endless-shop-shell {
+    height: min(48vh, 408px);
   }
 }`
 ].join("\n");

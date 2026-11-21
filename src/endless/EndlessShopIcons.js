@@ -155,6 +155,132 @@ export const BOUNTY_SVG =
   '<rect x="2" y="11" width="10" height="1" fill="#facc15"/>' +
   '</svg>';
 
+export const BOUNTY_TARGET_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="3" y="0" width="4" height="1" fill="#facc15"/>' +
+  '<rect x="1" y="1" width="2" height="1" fill="#facc15"/>' +
+  '<rect x="7" y="1" width="2" height="1" fill="#facc15"/>' +
+  '<rect x="0" y="3" width="1" height="4" fill="#facc15"/>' +
+  '<rect x="9" y="3" width="1" height="4" fill="#facc15"/>' +
+  '<rect x="1" y="8" width="2" height="1" fill="#d97706"/>' +
+  '<rect x="7" y="8" width="2" height="1" fill="#d97706"/>' +
+  '<rect x="3" y="9" width="4" height="1" fill="#d97706"/>' +
+  '<rect x="3" y="2" width="4" height="1" fill="#ef4444"/>' +
+  '<rect x="2" y="3" width="6" height="4" fill="#ef4444"/>' +
+  '<rect x="3" y="7" width="4" height="1" fill="#ef4444"/>' +
+  '<rect x="3" y="3" width="4" height="4" fill="#f8fafc"/>' +
+  '<rect x="4" y="4" width="2" height="2" fill="#dc2626"/>' +
+  '<rect x="4" y="4" width="1" height="1" fill="#fef08a"/>' +
+  '</svg>';
+
+export const BUFF_BOLT_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="5" y="0" width="2" height="1" fill="#7dd3fc"/>' +
+  '<rect x="4" y="1" width="3" height="1" fill="#38bdf8"/>' +
+  '<rect x="5" y="1" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="3" y="2" width="3" height="1" fill="#38bdf8"/>' +
+  '<rect x="2" y="3" width="4" height="1" fill="#7dd3fc"/>' +
+  '<rect x="1" y="4" width="7" height="1" fill="#38bdf8"/>' +
+  '<rect x="3" y="4" width="3" height="1" fill="#ffffff"/>' +
+  '<rect x="4" y="5" width="4" height="1" fill="#0ea5e9"/>' +
+  '<rect x="5" y="6" width="2" height="1" fill="#38bdf8"/>' +
+  '<rect x="4" y="7" width="2" height="1" fill="#7dd3fc"/>' +
+  '<rect x="3" y="8" width="2" height="1" fill="#38bdf8"/>' +
+  '<rect x="2" y="9" width="2" height="1" fill="#0284c7"/>' +
+  '</svg>';
+
+export const BUFF_COIN_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="3" y="0" width="4" height="1" fill="#facc15"/>' +
+  '<rect x="2" y="1" width="6" height="8" fill="#d97706"/>' +
+  '<rect x="1" y="2" width="8" height="6" fill="#facc15"/>' +
+  '<rect x="3" y="2" width="4" height="6" fill="#fef08a"/>' +
+  '<rect x="4" y="3" width="2" height="4" fill="#d97706"/>' +
+  '<rect x="3" y="2" width="2" height="1" fill="#ffffff"/>' +
+  '<rect x="3" y="9" width="4" height="1" fill="#b45309"/>' +
+  '</svg>';
+
+export const BUFF_CRIT_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="4" y="0" width="2" height="2" fill="#f43f5e"/>' +
+  '<rect x="4" y="8" width="2" height="2" fill="#f43f5e"/>' +
+  '<rect x="0" y="4" width="2" height="2" fill="#f43f5e"/>' +
+  '<rect x="8" y="4" width="2" height="2" fill="#f43f5e"/>' +
+  '<rect x="2" y="2" width="6" height="6" fill="#e11d48"/>' +
+  '<rect x="3" y="3" width="4" height="4" fill="#facc15"/>' +
+  '<rect x="4" y="4" width="2" height="2" fill="#ffffff"/>' +
+  '</svg>';
+
+export const BUFF_SHIELD_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="2" y="0" width="6" height="1" fill="#a7f3d0"/>' +
+  '<rect x="1" y="1" width="8" height="4" fill="#10b981"/>' +
+  '<rect x="2" y="2" width="6" height="3" fill="#34d399"/>' +
+  '<rect x="4" y="2" width="2" height="4" fill="#ffffff"/>' +
+  '<rect x="3" y="3" width="4" height="1" fill="#ffffff"/>' +
+  '<rect x="2" y="5" width="6" height="2" fill="#059669"/>' +
+  '<rect x="3" y="7" width="4" height="2" fill="#047857"/>' +
+  '<rect x="4" y="9" width="2" height="1" fill="#065f46"/>' +
+  '</svg>';
+
+export const BUFF_DPS_SVG =
+  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="3" y="0" width="4" height="1" fill="#facc15"/>' +
+  '<rect x="4" y="1" width="2" height="2" fill="#e2e8f0"/>' +
+  '<rect x="3" y="3" width="4" height="1" fill="#c084fc"/>' +
+  '<rect x="2" y="4" width="6" height="4" fill="#9333ea"/>' +
+  '<rect x="3" y="5" width="4" height="3" fill="#c084fc"/>' +
+  '<rect x="3" y="5" width="2" height="1" fill="#ffffff"/>' +
+  '<rect x="5" y="6" width="1" height="1" fill="#fef08a"/>' +
+  '<rect x="2" y="8" width="6" height="1" fill="#7e22ce"/>' +
+  '<rect x="3" y="9" width="4" height="1" fill="#581c87"/>' +
+  '</svg>';
+
+export const MOBILE_BUFF_SVG_MAP = Object.freeze({
+  tempest: BUFF_BOLT_SVG,
+  greed: BUFF_COIN_SVG,
+  fury: BUFF_CRIT_SVG,
+  sanctuary: BUFF_SHIELD_SVG,
+  dps_elixir: BUFF_DPS_SVG
+});
+
+export function getMobileBuffSvg(buffId) {
+  return MOBILE_BUFF_SVG_MAP[String(buffId || '').toLowerCase()] || SHRINE_SVG;
+}
+
+export function resolveCompanionAuraMeta(star, rawAuraTier = null) {
+  const s = Math.max(1, Math.min(5, Math.floor(Number(star) || 1)));
+  if (rawAuraTier && typeof rawAuraTier === 'object' && rawAuraTier.shortLabel) {
+    const tier = Number.isFinite(Number(rawAuraTier.tier))
+      ? Math.max(0, Math.floor(Number(rawAuraTier.tier)))
+      : (s >= 5 ? 3 : s >= 4 ? 2 : s >= 3 ? 1 : 0);
+    return {
+      tier,
+      shortLabel: String(rawAuraTier.shortLabel).toUpperCase(),
+      title: String(rawAuraTier.title || rawAuraTier.shortLabel).toUpperCase(),
+      label: String(rawAuraTier.label || rawAuraTier.title || rawAuraTier.shortLabel).toUpperCase()
+    };
+  }
+  if (s >= 5) {
+    return { tier: 3, shortLabel: 'MYTHIC', title: 'MYTHIC CROWN', label: '5-STAR MYTHIC CROWN' };
+  }
+  if (s >= 4) {
+    return { tier: 2, shortLabel: 'ASCENDED', title: 'ASCENDED HALO', label: '4-STAR ASCENDED HALO' };
+  }
+  if (s >= 3) {
+    return { tier: 1, shortLabel: 'SOVEREIGN', title: 'SOVEREIGN AURA', label: '3-STAR SOVEREIGN AURA' };
+  }
+  return { tier: 0, shortLabel: 'EX', title: 'NEXT-GEN EX', label: 'EX' };
+}
+
+export function resolvePromoteCta(nextStar, promoteQuote = null) {
+  if (promoteQuote && typeof promoteQuote.promoteCta === 'string' && promoteQuote.promoteCta.trim()) {
+    return promoteQuote.promoteCta.trim().toUpperCase();
+  }
+  const ns = Math.max(2, Math.min(5, Math.floor(Number(nextStar) || 2)));
+  return ns >= 3 ? `ASCEND ${ns}-STAR` : `PROMOTE ${ns}-STAR`;
+}
+
 export const SHRINE_SVG =
   '<svg class="endless-px-svg" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">' +
   '<rect x="6" y="0" width="2" height="2" fill="currentColor"/>' +
