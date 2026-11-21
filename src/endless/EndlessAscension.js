@@ -12,6 +12,8 @@ const ACTIVE_WAVE_MONSTER_GOLD_PER_SEC = 0.65;
 const OFFLINE_SHARD_INTERVAL_SEC = 1200;
 const OFFLINE_MAX_SHARDS = 36;
 const OFFLINE_SEC_PER_SIM_STAGE = 90;
+const MAX_OFFLINE_STAGE_EXP = 220;
+const MAX_OFFLINE_GOLD = 1e15;
 
 export const ETERNAL_ARTIFACTS = Object.freeze([
   Object.freeze({
@@ -407,7 +409,7 @@ export class EndlessAscension {
     };
   }
 
-  computeOfflineLoot(savedAtMs, nowMs, stage, economy = null) {
+  computeOfflineLoot(savedAtMs, nowMs, stage, economy = null, opts = {}) {
     const saved = Number(savedAtMs);
     const now = Number(nowMs);
     if (!Number.isFinite(saved) || saved <= 0 || !Number.isFinite(now)) {
@@ -420,32 +422,62 @@ export class EndlessAscension {
     }
 
     const cappedSec = Math.min(OFFLINE_MAX_AWAY_SEC, awaySec);
-    const resolvedStage = Math.max(1, Math.floor(Number(stage ?? economy?.stage) || 1));
+    const resolvedStage = Math.max(
+      1,
+      Math.min(100000, Math.floor(Number(stage ?? economy?.stage) || 1))
+    );
+    const stageExp = Math.min(MAX_OFFLINE_STAGE_EXP, Math.max(0, resolvedStage - 1));
 
-    const monsterBaseGold =
+    const monsterBaseGoldRaw =
       economy && typeof economy.computeMonsterGoldReward === 'function'
-        ? economy.computeMonsterGoldReward(resolvedStage)
-        : Math.max(1, Math.round(7 * Math.pow(1.25, resolvedStage - 1)));
+        ? Number(economy.computeMonsterGoldReward(resolvedStage))
+        : Math.round(7 * Math.pow(1.25, stageExp));
+    const monsterBaseGold =
+      Number.isFinite(monsterBaseGoldRaw) && monsterBaseGoldRaw > 0
+        ? Math.min(MAX_OFFLINE_GOLD, monsterBaseGoldRaw)
+        : MAX_OFFLINE_GOLD;
 
     const permMods = this.getPermanentModifiers();
+    const options = opts && typeof opts === 'object' ? opts : {};
+    const explicitPermGold = Number(options.permanentGoldMult);
+    const eventsGoldFromObj =
+      options.events && typeof options.events.getEventModifiers === 'function'
+        ? Number(options.events.getEventModifiers()?.goldMult)
+        : NaN;
+    const explicitTransientGold = Number(
+      options.transientGoldMult ?? options.eventGoldMult ?? eventsGoldFromObj
+    );
+    const extTransientGold = Number(
+      economy?._externalModifiers?.eventGoldMult ?? economy?._externalModifiers?.transientGoldMult
+    );
+    const transientDivisor =
+      Number.isFinite(explicitTransientGold) && explicitTransientGold > 1
+        ? explicitTransientGold
+        : Number.isFinite(extTransientGold) && extTransientGold > 1
+          ? extTransientGold
+          : 1.0;
+
     let goldMult = permMods.goldMult;
-    if (economy && typeof economy.getComputedStats === 'function') {
+    if (Number.isFinite(explicitPermGold) && explicitPermGold > 0) {
+      goldMult = explicitPermGold;
+    } else if (economy && typeof economy.getComputedStats === 'function') {
       const stats = economy.getComputedStats();
       const hasExtGold =
         Number.isFinite(economy._externalModifiers?.goldMult) &&
         economy._externalModifiers.goldMult > 0;
       const statsGoldMult =
         Number.isFinite(stats?.goldMult) && stats.goldMult > 0 ? stats.goldMult : 1.0;
-      goldMult = hasExtGold ? statsGoldMult : statsGoldMult * permMods.goldMult;
+      const combined = hasExtGold ? statsGoldMult : statsGoldMult * permMods.goldMult;
+      goldMult = Math.max(1.0, combined / transientDivisor);
     } else if (economy && Number.isFinite(economy.goldMult) && economy.goldMult > 0) {
-      goldMult = economy.goldMult * permMods.goldMult;
+      goldMult = Math.max(1.0, (economy.goldMult * permMods.goldMult) / transientDivisor);
     }
 
     const activeWaveGoldPerSec = monsterBaseGold * ACTIVE_WAVE_MONSTER_GOLD_PER_SEC;
     const rawGold = activeWaveGoldPerSec * OFFLINE_EFFICIENCY_RATE * goldMult * cappedSec;
     const gold = Number.isFinite(rawGold)
-      ? Math.max(1, Math.round(rawGold))
-      : Number.MAX_SAFE_INTEGER;
+      ? Math.max(1, Math.min(MAX_OFFLINE_GOLD, Math.round(rawGold)))
+      : MAX_OFFLINE_GOLD;
 
     const astralShards =
       resolvedStage >= ASCENSION_UNLOCK_STAGE
