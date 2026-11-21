@@ -1,18 +1,18 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps204';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps204';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps205';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps205';
 import {
   COMPANION_BASE_TO_EX_KEY,
   COMPANION_AURA_TIERS,
   ELITE_EX_COMPANION_DEFS,
   COMPANION_MAX_STARS,
   getAuraTier
-} from './EndlessCompanionEvo.js?v=30fps204';
-import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps204';
+} from './EndlessCompanionEvo.js?v=30fps205';
+import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps205';
 import {
   EndlessCompanionAI,
   COMPANION_ENGAGE_SIGHTLINE,
   isTargetAlive
-} from './EndlessCompanionAI.js?v=30fps204';
+} from './EndlessCompanionAI.js?v=30fps205';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
 
@@ -379,6 +379,14 @@ function safeEnsureHeroLoaded(heroKey) {
   if (!heroKey) return;
   if (typeof Image === 'undefined' && !PixelForge.assets) return;
   try {
+    // Load ONLY sprite sheet + portrait for Endless companions (avoid eager wings/meteor/companions VRAM waste on mobile)
+    const assets = PixelForge.assets || PixelForge.initAssets?.();
+    const entry = assets?.[heroKey];
+    if (entry) {
+      if (entry.sheet) PixelForge.ensureImage?.(entry.sheet);
+      if (entry.portrait) PixelForge.ensureImage?.(entry.portrait);
+      return;
+    }
     PixelForge.ensureHeroLoaded?.(heroKey);
   } catch {
     // Ignore asset preload errors in headless/test contexts
@@ -1101,13 +1109,26 @@ export class EndlessCompanionEntity {
   draw(ctx, isReflection = false, _renderer = null) {
     if (!ctx) return;
 
-    safeEnsureHeroLoaded(this.heroId);
-    this._squad?.vfx?.preload?.(this.heroId);
     const assets = getSafePixelForgeAssets();
     let charSet = assets?.[this.heroId] || null;
     const rawSheet = charSet?.sheet || null;
-    let sheet = rawSheet ? PixelForge.ensureImage?.(rawSheet) || rawSheet : null;
+    let sheet = rawSheet;
     let hasSheet = isSheetReady(sheet);
+
+    if (!hasSheet) {
+      safeEnsureHeroLoaded(this.heroId);
+      if (rawSheet) {
+        sheet = PixelForge.ensureImage?.(rawSheet) || rawSheet;
+        hasSheet = isSheetReady(sheet);
+      }
+    }
+    if (!isReflection && this._preloadedVfxHeroId !== this.heroId) {
+      this._preloadedVfxHeroId = this.heroId;
+      this._squad?.vfx?.preload?.(this.heroId);
+    }
+    if (_renderer && typeof _renderer.isMobile === 'boolean') {
+      this._squad?.vfx?.setMobileMode?.(_renderer.isMobile);
+    }
 
     if (hasSheet) {
       this._lastReadyHeroId = this.heroId;
@@ -1315,6 +1336,15 @@ export class EndlessCompanions {
   getOverheadLayoutFor(entity) {
     if (!entity || !Array.isArray(this.entities) || this.entities.length === 0) return null;
     const ents = this.entities;
+    // Reuse per-frame layout calculation across all 3 companions (1x/frame instead of 3x/frame)
+    if (
+      this._overheadLayoutMap &&
+      this._overheadCacheTime === this._time &&
+      this._overheadCacheCount === ents.length &&
+      this._overheadLayoutMap.has(entity)
+    ) {
+      return this._overheadLayoutMap.get(entity);
+    }
     const items = [];
     for (let i = 0; i < ents.length; i++) {
       const e = ents[i];
@@ -1521,20 +1551,31 @@ export class EndlessCompanions {
       placedCallouts.push(cur);
     }
 
+    if (!this._overheadLayoutMap) {
+      this._overheadLayoutMap = new Map();
+    } else {
+      this._overheadLayoutMap.clear();
+    }
+    this._overheadCacheTime = this._time;
+    this._overheadCacheCount = ents.length;
+
+    let result = null;
     for (let i = 0; i < items.length; i++) {
+      const entry = {
+        pillY: items[i].pillY,
+        calloutX: items[i].calloutX,
+        calloutY: items[i].calloutY,
+        suppressCallout: items[i].suppressCallout,
+        suppressNameplate: items[i].suppressNameplate,
+        suppressMicroBar: items[i].suppressMicroBar,
+        isClustered: items[i].isClustered
+      };
+      this._overheadLayoutMap.set(items[i].entity, entry);
       if (items[i].entity === entity) {
-        return {
-          pillY: items[i].pillY,
-          calloutX: items[i].calloutX,
-          calloutY: items[i].calloutY,
-          suppressCallout: items[i].suppressCallout,
-          suppressNameplate: items[i].suppressNameplate,
-          suppressMicroBar: items[i].suppressMicroBar,
-          isClustered: items[i].isClustered
-        };
+        result = entry;
       }
     }
-    return null;
+    return result;
   }
 
   _playSkillSfx(role, worldX, game) {
@@ -2149,8 +2190,10 @@ export class EndlessCompanions {
       }
     }
 
+    let removedAny = false;
     for (const [oldId, oldEnt] of existingById.entries()) {
       if (!keptIds.has(oldId) && oldEnt) {
+        removedAny = true;
         if (Array.isArray(oldEnt.activeProjectiles)) oldEnt.activeProjectiles.length = 0;
         if (Array.isArray(oldEnt.activeStrikes)) oldEnt.activeStrikes.length = 0;
         oldEnt.targetMonster = null;
@@ -2159,6 +2202,22 @@ export class EndlessCompanions {
     }
 
     this.entities = nextEntities;
+    if (this._overheadLayoutMap) {
+      this._overheadLayoutMap.clear();
+      this._overheadCacheTime = -1;
+    }
+
+    if (removedAny) {
+      const activeHeroKeys = nextEntities.map((e) => e.heroId).filter(Boolean);
+      const playerHeroKey = player?.heroId || this.manager?.game?.slot1Hero || null;
+      const keepAll = playerHeroKey ? [playerHeroKey, ...activeHeroKeys] : activeHeroKeys;
+      this.vfx?.pruneInactiveSheets?.(keepAll);
+      try {
+        PixelForge.releaseInactiveAssets?.(keepAll, [], true);
+      } catch {
+        // ignore in headless/test environments
+      }
+    }
     return this.entities;
   }
 
@@ -3879,9 +3938,13 @@ export class EndlessCompanions {
 
   renderFloorAuras(ctx, _renderer = null) {
     if (!ctx) return;
+    const isMobile = Boolean(_renderer?.isMobile);
+    if (_renderer && typeof _renderer.isMobile === 'boolean') {
+      this.vfx?.setMobileMode?.(isMobile);
+    }
     const assets = getSafePixelForgeAssets();
     const rawVfx = assets?.endlessVfx || null;
-    const vfxImg = rawVfx ? PixelForge.ensureImage?.(rawVfx) || rawVfx : null;
+    const vfxImg = rawVfx && rawVfx.complete ? rawVfx : rawVfx ? PixelForge.ensureImage?.(rawVfx) || rawVfx : null;
     const hasVfx = Boolean(
       vfxImg &&
         vfxImg.complete &&
@@ -3943,12 +4006,14 @@ export class EndlessCompanions {
           const innerRx = Math.round(40 * pulse);
           const innerRy = Math.round(13 * pulse);
 
-          ctx.save();
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = 0.14;
-          ctx.fillStyle = '#facc15';
-          ctx.fillRect(cx - innerRx, cy - Math.round(innerRy * 0.55), innerRx * 2, Math.max(4, Math.round(innerRy * 1.1)));
-          ctx.restore();
+          if (!isMobile) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.14;
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(cx - innerRx, cy - Math.round(innerRy * 0.55), innerRx * 2, Math.max(4, Math.round(innerRy * 1.1)));
+            ctx.restore();
+          }
 
           drawSteppedPixelAuraRing(ctx, cx, cy, outerRx, outerRy, '#facc15', '#fef08a', 0.72);
           drawSteppedPixelAuraRing(ctx, cx, cy, innerRx, innerRy, '#f43f5e', '#fef9c3', 0.64);
@@ -4046,11 +4111,14 @@ export class EndlessCompanions {
 
   renderForegroundFX(ctx, _renderer = null) {
     if (!ctx) return;
+    const vfx = this.vfx || null;
+    if (_renderer && typeof _renderer.isMobile === 'boolean') {
+      vfx?.setMobileMode?.(_renderer.isMobile);
+    }
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    const vfx = this.vfx || null;
     for (const ent of this.entities) {
       ctx.globalAlpha = 1;
       for (const p of ent.activeProjectiles) {

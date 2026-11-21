@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps204';
-import { PixelFont } from './PixelFont.js?v=30fps204';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps204';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps204';
+import { PixelForge } from './PixelForge.js?v=30fps205';
+import { PixelFont } from './PixelFont.js?v=30fps205';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps205';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps205';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps204';
+} from './shaders/exNextGenFX.js?v=30fps205';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -811,7 +811,9 @@ export class Renderer {
     if (fixedOnResize !== null) {
       this.zoom = fixedOnResize;
     }
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    // Cap mobile DPR at 1.5 (pixel-pure nearest-neighbor stays razor-sharp while cutting iOS Safari GPU fill-rate by ~64%)
+    const maxDpr = this.isMobile ? 1.5 : 2.5;
+    const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     this.canvas.width = Math.round(this.width * dpr);
     this.canvas.height = Math.round(this.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

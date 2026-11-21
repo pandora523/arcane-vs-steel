@@ -209,10 +209,35 @@ export class EndlessCompanionAI {
     this._pendingFacing = 1;
     this._pendingFacingTimer = 0;
     this._pendingFacingOriginX = null;
+    // Pre-allocated reusable scratch structures (zero per-frame Map/Set/array churn at 60Hz on mobile)
+    this._assignmentsScratch = new Map();
+    this._anchorsScratch = new Map();
+    this._livingScratch = [];
+    this._activeKeysScratch = new Set();
+    this._clumpCountsScratch = new Map();
+    this._claimCountsScratch = new Map();
+    this._evalOrderScratch = [];
+    this._candidatesScratch = [];
+    this._validEntitiesScratch = [];
+    this._candidateSlotsScratch = [];
+    this._rangedListScratch = [];
+    this._rangedLaneScratch = new Map();
   }
 
   reset() {
     this._memoryByKey.clear();
+    this._assignmentsScratch.clear();
+    this._anchorsScratch.clear();
+    this._livingScratch.length = 0;
+    this._activeKeysScratch.clear();
+    this._clumpCountsScratch.clear();
+    this._claimCountsScratch.clear();
+    this._evalOrderScratch.length = 0;
+    this._candidatesScratch.length = 0;
+    this._validEntitiesScratch.length = 0;
+    this._candidateSlotsScratch.length = 0;
+    this._rangedListScratch.length = 0;
+    this._rangedLaneScratch.clear();
     this.squadFacing = 1;
     this._facingInit = false;
     this._pendingFacing = 1;
@@ -283,12 +308,20 @@ export class EndlessCompanionAI {
   }
 
   assignSquadTargets(entities = [], player = null, targets = [], dt = 0) {
-    const assignments = new Map();
+    const assignments = this._assignmentsScratch;
+    assignments.clear();
     if (!Array.isArray(entities) || entities.length === 0) return assignments;
 
     const safeDt = clampNum(Number(dt) || 0, 0, 0.25);
-    const livingTargets = Array.isArray(targets) ? targets.filter(isTargetAlive) : [];
-    const activeKeys = new Set();
+    const livingTargets = this._livingScratch;
+    livingTargets.length = 0;
+    if (Array.isArray(targets)) {
+      for (let i = 0; i < targets.length; i++) {
+        if (isTargetAlive(targets[i])) livingTargets.push(targets[i]);
+      }
+    }
+    const activeKeys = this._activeKeysScratch;
+    activeKeys.clear();
 
     for (let i = 0; i < entities.length; i++) {
       const ent = entities[i];
@@ -329,7 +362,8 @@ export class EndlessCompanionAI {
     const py = getEntityY(player, 561);
 
     // Precompute clump densities within 190px for Ranged AoE prioritization
-    const clumpCounts = new Map();
+    const clumpCounts = this._clumpCountsScratch;
+    clumpCounts.clear();
     for (let i = 0; i < livingTargets.length; i++) {
       const a = livingTargets[i];
       const ax = getEntityX(a, px);
@@ -350,27 +384,29 @@ export class EndlessCompanionAI {
     }
 
     // Evaluate Tanks first, then Flankers (who split away from Tank claims), then Ranged
-    const evalOrder = entities
-      .map((ent, idx) => ({
+    const evalOrder = this._evalOrderScratch;
+    evalOrder.length = 0;
+    for (let idx = 0; idx < entities.length; idx++) {
+      const ent = entities[idx];
+      if (!ent) continue;
+      const archetype = getRoleArchetype(ent.role);
+      evalOrder.push({
         ent,
         idx,
-        archetype: getRoleArchetype(ent?.role),
-        order:
-          getRoleArchetype(ent?.role) === 'TANK'
-            ? 0
-            : getRoleArchetype(ent?.role) === 'FLANKER'
-              ? 1
-              : 2
-      }))
-      .filter((item) => Boolean(item.ent))
-      .sort((a, b) => {
-        if (a.order !== b.order) return a.order - b.order;
-        const sa = Number.isFinite(a.ent.slotIndex) ? a.ent.slotIndex : a.idx;
-        const sb = Number.isFinite(b.ent.slotIndex) ? b.ent.slotIndex : b.idx;
-        return sa - sb || a.idx - b.idx;
+        archetype,
+        order: archetype === 'TANK' ? 0 : archetype === 'FLANKER' ? 1 : 2
       });
+    }
+    evalOrder.sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      const sa = Number.isFinite(a.ent.slotIndex) ? a.ent.slotIndex : a.idx;
+      const sb = Number.isFinite(b.ent.slotIndex) ? b.ent.slotIndex : b.idx;
+      return sa - sb || a.idx - b.idx;
+    });
 
-    const claimCounts = new Map();
+    const claimCounts = this._claimCountsScratch;
+    claimCounts.clear();
+    const candidates = this._candidatesScratch;
 
     for (let k = 0; k < evalOrder.length; k++) {
       const { ent, idx, archetype } = evalOrder[k];
@@ -379,7 +415,7 @@ export class EndlessCompanionAI {
       const ey = getEntityY(ent, py);
 
       // Filter targets within expanded 1050px sightline from either companion or Hero
-      const candidates = [];
+      candidates.length = 0;
       for (let tIdx = 0; tIdx < livingTargets.length; tIdx++) {
         const cand = livingTargets[tIdx];
         const tx = getEntityX(cand, px);
@@ -484,7 +520,8 @@ export class EndlessCompanionAI {
   }
 
   computeFormationAnchors(entities = [], player = null, formationOffsets = null, bounds = null, dt = 0) {
-    const anchors = new Map();
+    const anchors = this._anchorsScratch;
+    anchors.clear();
     const squadFacing = this.updateSquadFacing(player, dt);
     if (!Array.isArray(entities) || entities.length === 0) return anchors;
 
@@ -497,24 +534,29 @@ export class EndlessCompanionAI {
         ? formationOffsets
         : FALLBACK_FORMATION_OFFSETS;
 
-    const validEntities = entities
-      .map((ent, idx) => ({
+    const sortedEntities = this._validEntitiesScratch;
+    sortedEntities.length = 0;
+    for (let idx = 0; idx < entities.length; idx++) {
+      const ent = entities[idx];
+      if (!ent) continue;
+      sortedEntities.push({
         ent,
         idx,
-        rolePriority: getRoleFormationPriority(ent?.role),
-        archetype: getRoleArchetype(ent?.role),
-        slotIndex: Number.isFinite(ent?.slotIndex) ? ent.slotIndex : idx
-      }))
-      .filter((item) => Boolean(item.ent));
+        rolePriority: getRoleFormationPriority(ent.role),
+        archetype: getRoleArchetype(ent.role),
+        slotIndex: Number.isFinite(ent.slotIndex) ? ent.slotIndex : idx
+      });
+    }
 
     // Sort entities by role priority: Tank (0) -> Brawler/Flanker (1) -> Vanguard (2) -> Ranged/Healer (3)
-    const sortedEntities = [...validEntities].sort(
+    sortedEntities.sort(
       (a, bItem) =>
         a.rolePriority - bItem.rolePriority || a.slotIndex - bItem.slotIndex || a.idx - bItem.idx
     );
 
     // Pair highest-priority vanguard roles with forward-most formation slots (highest dx)
-    const candidateSlots = [];
+    const candidateSlots = this._candidateSlotsScratch;
+    candidateSlots.length = 0;
     for (let i = 0; i < sortedEntities.length; i++) {
       const src = rawOffsets[i % rawOffsets.length];
       candidateSlots.push({
@@ -533,8 +575,15 @@ export class EndlessCompanionAI {
     const innerMaxY = Math.max(innerMinY + 20, b.maxLaneY - LANE_INNER_PAD_Y);
     const innerSpan = innerMaxY - innerMinY;
 
-    const rangedList = sortedEntities.filter((item) => item.archetype === 'RANGED');
-    const rangedLaneByEnt = new Map();
+    const rangedList = this._rangedListScratch;
+    rangedList.length = 0;
+    for (let i = 0; i < sortedEntities.length; i++) {
+      if (sortedEntities[i].archetype === 'RANGED') {
+        rangedList.push(sortedEntities[i]);
+      }
+    }
+    const rangedLaneByEnt = this._rangedLaneScratch;
+    rangedLaneByEnt.clear();
     if (rangedList.length === 1) {
       const only = rangedList[0];
       const roleKey = normalizeRole(only.ent.role);

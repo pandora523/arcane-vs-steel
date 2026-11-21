@@ -1,17 +1,17 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps204';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps204';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps204';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps204';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps204';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps204';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps204';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps204';
-import { EndlessAscension } from './EndlessAscension.js?v=30fps204';
-import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps204';
-import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps204';
-import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps204';
-import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps204';
-import { EndlessTrials, ENDLESS_TRIAL_DEFS, ENDLESS_TRIAL_BY_ID } from './EndlessTrials.js?v=30fps204';
+import { Fighter } from '../entities/Fighter.js?v=30fps205';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps205';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps205';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps205';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps205';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps205';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps205';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps205';
+import { EndlessAscension } from './EndlessAscension.js?v=30fps205';
+import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps205';
+import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps205';
+import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps205';
+import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps205';
+import { EndlessTrials, ENDLESS_TRIAL_DEFS, ENDLESS_TRIAL_BY_ID } from './EndlessTrials.js?v=30fps205';
 
 export const ENDLESS_REALMS = [
   {
@@ -2213,6 +2213,7 @@ export class EndlessManager {
     this._clearSynergyFromEconomy();
     this._baseExternalModifiers = {};
     this.clearHeldInputs();
+    this.companions?.vfx?.releaseAllSheets?.();
 
     this.shopUI?.setVisible?.(false);
 

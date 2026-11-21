@@ -1,13 +1,13 @@
 // Endless Crusade 30fps Next-Gen EX Companion VFX Renderer (`*_ex_vfx.png`, 6240x1664 = 8x30 @ 208x208)
 // 100% lossless nearest-neighbor pixel purity, Node-safe, zero-leak ring pool, pure ASCII.
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps204';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps205';
 
 export const COMPANION_VFX_CELL_SIZE = 208;
 export const COMPANION_VFX_COLS = 30;
 export const COMPANION_VFX_ROWS = 8;
 
-const VFX_ASSET_QUERY = '?v=30fps204';
+const VFX_ASSET_QUERY = '?v=30fps205';
 const MAX_BLOOM_ALPHA = 0.18;
 const DEFAULT_MAX_INSTANCES = 76;
 const MAX_DT_STEP = 0.1;
@@ -1135,9 +1135,24 @@ function extractLivingTargets(targets, primaryTarget, maxCount = 4) {
   return out;
 }
 
+function detectMobileViewport() {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (typeof document !== 'undefined' && document.documentElement?.classList?.contains('is-mobile-device')) {
+      return true;
+    }
+    const w = window.innerWidth || 1280;
+    const h = window.innerHeight || 800;
+    return w < 768 || h < 540;
+  } catch {
+    return false;
+  }
+}
+
 export class EndlessCompanionVfx {
-  constructor({ maxInstances = DEFAULT_MAX_INSTANCES } = {}) {
+  constructor({ maxInstances = DEFAULT_MAX_INSTANCES, isMobile = null } = {}) {
     this.maxInstances = clampInt(maxInstances, 8, 256, DEFAULT_MAX_INSTANCES);
+    this.isMobile = typeof isMobile === 'boolean' ? isMobile : detectMobileViewport();
     this._pool = new Array(this.maxInstances);
     for (let i = 0; i < this.maxInstances; i++) {
       this._pool[i] = createEmptyPoolSlot();
@@ -1145,6 +1160,52 @@ export class EndlessCompanionVfx {
     this._activeCount = 0;
     this._seqCounter = 0;
     this._sheetCache = Object.create(null);
+    this._readySheetCache = Object.create(null);
+  }
+
+  setMobileMode(isMobile) {
+    this.isMobile = Boolean(isMobile);
+  }
+
+  getEffectiveMaxInstances() {
+    return this.isMobile ? Math.min(this.maxInstances, 30) : this.maxInstances;
+  }
+
+  pruneInactiveSheets(keepHeroKeys = []) {
+    const keep = new Set();
+    if (Array.isArray(keepHeroKeys)) {
+      for (let i = 0; i < keepHeroKeys.length; i++) {
+        const prof = getCompanionVfxProfile(keepHeroKeys[i]);
+        if (prof) keep.add(prof.heroKey);
+      }
+    }
+    let released = 0;
+    for (const key of Object.keys(this._sheetCache)) {
+      if (keep.has(key)) continue;
+      const img = this._sheetCache[key];
+      if (img) {
+        try {
+          img.onload = null;
+          img.onerror = null;
+          img.src = '';
+        } catch {
+          // ignore
+        }
+      }
+      delete this._sheetCache[key];
+      delete this._readySheetCache[key];
+      released++;
+    }
+    for (const key of Object.keys(this._readySheetCache)) {
+      if (!keep.has(key)) {
+        delete this._readySheetCache[key];
+      }
+    }
+    return released;
+  }
+
+  releaseAllSheets() {
+    return this.pruneInactiveSheets([]);
   }
 
   preload(heroKeyOrId) {
@@ -1168,6 +1229,15 @@ export class EndlessCompanionVfx {
     if (!profile) return null;
     const key = profile.heroKey;
 
+    // 0. Fast O(1) path once verified ready (avoids PixelForge/ensureImage lookup overhead every slot/frame)
+    const fastReady = this._readySheetCache[key];
+    if (fastReady) {
+      if (isValidVfxImage(fastReady)) {
+        return fastReady;
+      }
+      delete this._readySheetCache[key];
+    }
+
     // 1. Prefer already-loaded PixelForge VFX sheet (avoids duplicate GPU textures)
     let pfImg = null;
     try {
@@ -1175,6 +1245,7 @@ export class EndlessCompanionVfx {
       if (pfImg && !pfImg._loadFailed && !pfImg.__avsFailed) {
         PixelForge?.ensureImage?.(pfImg);
         if (isValidVfxImage(pfImg)) {
+          this._readySheetCache[key] = pfImg;
           return pfImg;
         }
       }
@@ -1186,6 +1257,7 @@ export class EndlessCompanionVfx {
     const cached = this._sheetCache[key] || null;
     if (cached) {
       if (isValidVfxImage(cached)) {
+        this._readySheetCache[key] = cached;
         return cached;
       }
       if (cached._loadFailed && typeof Image !== 'undefined' && (cached._retries || 0) < 2) {
@@ -1217,6 +1289,9 @@ export class EndlessCompanionVfx {
     img._nextRetryAt = 0;
     img.onload = () => {
       img._loadFailed = false;
+      if (isValidVfxImage(img)) {
+        this._readySheetCache[key] = img;
+      }
     };
     img.onerror = () => {
       img._loadFailed = true;
@@ -1289,16 +1364,17 @@ export class EndlessCompanionVfx {
   }
 
   _allocSlot() {
-    // 1. Grab any inactive slot first
-    for (let i = 0; i < this._pool.length; i++) {
+    const cap = this.getEffectiveMaxInstances();
+    // 1. Grab any inactive slot within active mobile/desktop cap first
+    for (let i = 0; i < cap; i++) {
       if (!this._pool[i].active) {
         return this._pool[i];
       }
     }
 
-    // 2. Pool saturated: evict oldest lowest-priority active slot so memory stays strictly bounded
+    // 2. Pool saturated: evict oldest lowest-priority active slot so GPU draw count stays strictly bounded
     let victim = this._pool[0];
-    for (let i = 1; i < this._pool.length; i++) {
+    for (let i = 1; i < cap; i++) {
       const cand = this._pool[i];
       if (
         cand.priority < victim.priority ||
@@ -1401,7 +1477,12 @@ export class EndlessCompanionVfx {
       priority: 1
     });
 
-    if (isCrit && profile.projectile?.impactRow !== undefined && profile.projectile.impactRow !== autoCfg.row) {
+    if (
+      isCrit &&
+      !this.isMobile &&
+      profile.projectile?.impactRow !== undefined &&
+      profile.projectile.impactRow !== autoCfg.row
+    ) {
       this._spawnInstance(profile, {
         row: profile.projectile.impactRow,
         x: spawnX,
@@ -1474,17 +1555,24 @@ export class EndlessCompanionVfx {
       const half = Math.round(drawSize * 0.5);
       const flip = projCfg.flipWithVel !== false && dir < 0;
 
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = 0.98;
+      const doBloom = !this.isMobile;
       if (flip) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = 0.98;
         ctx.translate(px, py);
         ctx.scale(-1, 1);
         ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -half, -half, drawSize, drawSize);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.14;
-        ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -half, -half, drawSize, drawSize);
-      } else {
+        if (doBloom) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.14;
+          ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -half, -half, drawSize, drawSize);
+        }
+        ctx.restore();
+      } else if (doBloom) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = 0.98;
         ctx.drawImage(
           sheet,
           sx,
@@ -1498,6 +1586,20 @@ export class EndlessCompanionVfx {
         );
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.14;
+        ctx.drawImage(
+          sheet,
+          sx,
+          sy,
+          COMPANION_VFX_CELL_SIZE,
+          COMPANION_VFX_CELL_SIZE,
+          px - half,
+          py - half,
+          drawSize,
+          drawSize
+        );
+        ctx.restore();
+      } else {
+        ctx.globalAlpha = 0.98;
         ctx.drawImage(
           sheet,
           sx,
@@ -1510,7 +1612,6 @@ export class EndlessCompanionVfx {
           drawSize
         );
       }
-      ctx.restore();
       return true;
     }
 
@@ -1595,7 +1696,8 @@ export class EndlessCompanionVfx {
 
     // 3. Primary target strike / pillar / volley / multi-slash
     const mainY = sk.anchorBottom ? targetY : targetY + (sk.targetOffsetY ?? -82);
-    const multiCount = clampInt(sk.multiCount ?? 1, 1, 3, 1);
+    const rawMultiCount = clampInt(sk.multiCount ?? 1, 1, 3, 1);
+    const multiCount = this.isMobile ? Math.min(2, rawMultiCount) : rawMultiCount;
 
     this._spawnInstance(profile, {
       row: sk.targetRow,
@@ -1729,8 +1831,8 @@ export class EndlessCompanionVfx {
     const tFallback = getTargetCoords(target, ent.x + ent.facing * 185, ent.groundY);
     const targetX = Number.isFinite(tx) ? tx : tFallback.x;
     const targetY = Number.isFinite(ty) ? ty : tFallback.groundY;
-    const living = extractLivingTargets(targets, target, 4);
-    const maxSec = isSquadOverdrive ? 2 : 4;
+    const living = extractLivingTargets(targets, target, this.isMobile ? 2 : 4);
+    const maxSec = this.isMobile ? (isSquadOverdrive ? 1 : 2) : (isSquadOverdrive ? 2 : 4);
     const dur = uCfg.duration * durGrow;
 
     // Universal Layer 1: Authentic Ground Mandala / Seal beneath impact
@@ -2420,7 +2522,7 @@ export class EndlessCompanionVfx {
       const drawSize = Math.round(COMPANION_VFX_CELL_SIZE * 0.92 * sizeGrow);
       const half = Math.round(drawSize * 0.5);
       const baseAlpha = clampNum(0.42 + flashFrac * 0.48, 0.25, 0.92);
-      const bloomAlpha = clampNum(0.14 * flashFrac, 0, MAX_BLOOM_ALPHA);
+      const bloomAlpha = this.isMobile ? 0 : clampNum(0.14 * flashFrac, 0, MAX_BLOOM_ALPHA);
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
@@ -2519,12 +2621,12 @@ export class EndlessCompanionVfx {
         : Math.round(slot.y - drawH * 0.5);
       const halfW = Math.round(drawW * 0.5);
       const bloomCap = slot.layer === 'ground' ? 0.16 : MAX_BLOOM_ALPHA;
-      const bloomAlpha = clampNum(slot.bloom * finalAlpha, 0, bloomCap);
+      const bloomAlpha = this.isMobile ? 0 : clampNum(slot.bloom * finalAlpha, 0, bloomCap);
 
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = finalAlpha;
       if (slot.facing < 0) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = finalAlpha;
         ctx.translate(cx, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -halfW, destY, drawW, drawH);
@@ -2533,7 +2635,11 @@ export class EndlessCompanionVfx {
           ctx.globalAlpha = bloomAlpha;
           ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -halfW, destY, drawW, drawH);
         }
-      } else {
+        ctx.restore();
+      } else if (bloomAlpha > 0.01) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = finalAlpha;
         ctx.drawImage(
           sheet,
           sx,
@@ -2545,23 +2651,35 @@ export class EndlessCompanionVfx {
           drawW,
           drawH
         );
-        if (bloomAlpha > 0.01) {
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = bloomAlpha;
-          ctx.drawImage(
-            sheet,
-            sx,
-            sy,
-            COMPANION_VFX_CELL_SIZE,
-            COMPANION_VFX_CELL_SIZE,
-            cx - halfW,
-            destY,
-            drawW,
-            drawH
-          );
-        }
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = bloomAlpha;
+        ctx.drawImage(
+          sheet,
+          sx,
+          sy,
+          COMPANION_VFX_CELL_SIZE,
+          COMPANION_VFX_CELL_SIZE,
+          cx - halfW,
+          destY,
+          drawW,
+          drawH
+        );
+        ctx.restore();
+      } else {
+        // Zero-save single-pass blit (used for all non-flipped mobile slots & non-bloom slots)
+        ctx.globalAlpha = finalAlpha;
+        ctx.drawImage(
+          sheet,
+          sx,
+          sy,
+          COMPANION_VFX_CELL_SIZE,
+          COMPANION_VFX_CELL_SIZE,
+          cx - halfW,
+          destY,
+          drawW,
+          drawH
+        );
       }
-      ctx.restore();
       return true;
     }
 
@@ -2594,26 +2712,32 @@ export class EndlessCompanionVfx {
   }
 
   renderGroundLayer(ctx) {
-    if (!ctx) return 0;
+    if (!ctx || this._activeCount <= 0) return 0;
     let drawn = 0;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
     for (let i = 0; i < this._pool.length; i++) {
       const slot = this._pool[i];
       if (!slot.active || slot.delay > 0 || slot.layer !== 'ground') continue;
       this._renderSlot(ctx, slot);
       drawn++;
     }
+    ctx.restore();
     return drawn;
   }
 
   renderForegroundLayer(ctx) {
-    if (!ctx) return 0;
+    if (!ctx || this._activeCount <= 0) return 0;
     let drawn = 0;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
     for (let i = 0; i < this._pool.length; i++) {
       const slot = this._pool[i];
       if (!slot.active || slot.delay > 0 || slot.layer === 'ground') continue;
       this._renderSlot(ctx, slot);
       drawn++;
     }
+    ctx.restore();
     return drawn;
   }
 }

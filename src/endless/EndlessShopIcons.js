@@ -2,9 +2,9 @@
 // Formatting Utilities & Nearest-Neighbor Canvas Fallback Drawers.
 // Strictly Node-test safe (all DOM/Canvas accesses guarded), zero emojis/dingbats.
 
-import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps204';
+import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps205';
 
-export const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps204';
+export const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps205';
 export const ENDLESS_ICON_ROW = 7;
 export const ENDLESS_SIGIL_ROW = 9;
 export const ENDLESS_ICON_CELL = 128;
