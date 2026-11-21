@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps200';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps200';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps200';
-import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps200';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps200';
+import { Fighter } from './Fighter.js?v=30fps201';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps201';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps201';
+import { NEBULA_EFFECT_REGISTRY } from '../engine/shaders/nebulaShaders.js?v=30fps201';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps201';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Coil + Forward lunge + finger-tap -> Twin Star-Packet Bolts
@@ -212,9 +212,9 @@ export class NyxEx extends Fighter {
         return im;
       };
       assets.nyx_ex = {
-        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps200'),
-        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps200'),
-        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps200'),
+        sheet: mkImg('assets/sprites/nyx_ex_sheet.png?v=30fps201'),
+        vfx: mkImg('assets/sprites/nyx_ex_vfx.png?v=30fps201'),
+        portrait: mkImg('assets/sprites/nyx_ex_portrait.png?v=30fps201'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

@@ -1,7 +1,7 @@
 // Endless Crusade Dynamic Events: Rotating Mini-Bounties, World Shrines & Wandering Merchant
 // Node-safe (zero browser globals required), zero external deps, pure ASCII (zero Unicode emojis).
 
-import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps200';
+import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps201';
 
 const MAX_ACTIVE_BUFFS = 6;
 const MAX_STAGE_FOR_SCALING = 100000;
