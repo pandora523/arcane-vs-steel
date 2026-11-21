@@ -1,6 +1,7 @@
 import { PixelForge } from '../engine/PixelForge.js?v=30fps201';
 import { PixelFont } from '../engine/PixelFont.js?v=30fps201';
 import {
+  COMPANION_BASE_TO_EX_KEY,
   ELITE_EX_COMPANION_DEFS,
   COMPANION_MAX_STARS
 } from './EndlessCompanionEvo.js?v=30fps201';
@@ -313,6 +314,22 @@ const ULT_DAMAGE_MULTIPLIER_BY_ROLE = {
   VANGUARD: 8.4
 };
 
+const SKILL_SFX_BY_ROLE = Object.freeze({
+  TANK: 'parry_clang',
+  HEALER: 'holy_heal',
+  BLASTER: 'flame_pillar',
+  ARCHER: 'arrow_rain',
+  LANCER: 'holy_spear',
+  STRIKER: 'blade_wave',
+  WEAVER: 'hourglass_trap',
+  BRAWLER: 'storm_leap',
+  ASSASSIN: 'blink',
+  REAPER: 'scythe_reap',
+  'CRYO MAGE': 'ice_shatter',
+  VANGUARD: 'cyber_slash'
+});
+const COMPANION_SKILL_SFX_COOLDOWN_SEC = 0.35;
+
 const COMPANION_DRAW_SCALE = 0.88;
 const COMPANION_ENGAGE_RANGE = 640;
 const FORMATION_LANE_OFFSETS = [-62, 60, -8];
@@ -367,6 +384,14 @@ function getSafePixelForgeAssets() {
   } catch {
     return null;
   }
+}
+
+function isSheetReady(sheet) {
+  if (!sheet || !sheet.complete) return false;
+  if (typeof sheet.naturalWidth === 'number') {
+    return sheet.naturalWidth > 0;
+  }
+  return (sheet.width || 0) > 0;
 }
 
 function drawPixelDiamond(ctx, cx, cy, halfSize, color) {
@@ -466,6 +491,13 @@ export class EndlessCompanionEntity {
     this.isBenched = false;
     this.team = 1;
     this.heroId = heroKey || cfg.heroKey;
+    const baseMapping =
+      cfg?.id && Object.prototype.hasOwnProperty.call(COMPANION_BASE_TO_EX_KEY, cfg.id)
+        ? COMPANION_BASE_TO_EX_KEY[cfg.id]
+        : null;
+    this.baseHeroId = baseMapping?.baseHeroKey || cfg.heroKey;
+    this._lastReadyHeroId = null;
+    this._squad = null;
     this.isEx = Boolean(this.heroId && this.heroId.endsWith('_ex'));
     this.star = clampNum(Math.floor(Number(star) || 1), 1, COMPANION_MAX_STARS || 5);
     this.isExEvolved = Boolean(isExEvolved || this.star >= 3);
@@ -539,8 +571,8 @@ export class EndlessCompanionEntity {
     };
   }
 
-  setState(newState) {
-    if (this.state !== newState) {
+  setState(newState, force = false) {
+    if (force || this.state !== newState) {
       this.state = newState;
       this.stateTimer = 0;
       this.didActionHit = false;
@@ -649,6 +681,7 @@ export class EndlessCompanionEntity {
 
   _drawRoleOverheadUI(ctx) {
     if (!ctx || typeof ctx.fillRect !== 'function') return;
+    const layout = this._squad?.getOverheadLayoutFor?.(this) || null;
     const cx = Math.round(this.x);
     const headY = Math.round(this.y - 164);
 
@@ -659,7 +692,7 @@ export class EndlessCompanionEntity {
     const pillW = Math.max(46, textW + 10);
     const pillH = 13;
     const pillX = Math.round(cx - pillW * 0.5);
-    const pillY = headY - pillH;
+    const pillY = Number.isFinite(layout?.pillY) ? layout.pillY : headY - pillH;
     const castingUlt = Boolean(this.isCastingUlt || this.ultFlashTimer > 0);
     const starCount = clampNum(Math.floor(Number(this.star) || 1), 1, COMPANION_MAX_STARS || 5);
 
@@ -758,17 +791,19 @@ export class EndlessCompanionEntity {
       ctx.fillRect(barX - 5, ultY, 3, 3);
     }
 
-    // Crisp ability or bold gilded Ultimate Assist callout flash
-    if (this.calloutTimer > 0 && this.calloutText) {
+    // Crisp ability or bold gilded Ultimate Assist callout flash (staggered & de-overlapped)
+    if (this.calloutTimer > 0 && this.calloutText && !layout?.suppressCallout) {
       if (this.calloutIsUlt) {
         const fade = clampNum(this.calloutTimer / 0.32, 0, 1);
-        const lift = Math.round((1.55 - Math.min(1.55, this.calloutTimer)) * 24);
+        const lift = Math.round((1.55 - Math.min(1.55, this.calloutTimer)) * 22);
         const ultScale = 1;
         const cW = PixelFont.measureWidth(this.calloutText, ultScale, 1);
         const plaqueW = Math.max(76, cW + 16);
         const plaqueH = 16;
         const px = Math.round(cx - plaqueW * 0.5);
-        const py = pillY - 26 - lift;
+        const py = Number.isFinite(layout?.calloutY)
+          ? layout.calloutY
+          : pillY - 26 - lift - (this.slotIndex || 0) * 3;
 
         ctx.globalAlpha = fade;
         ctx.fillStyle = '#050712';
@@ -793,13 +828,16 @@ export class EndlessCompanionEntity {
         );
       } else {
         const fade = clampNum(this.calloutTimer / 0.35, 0, 1);
-        const lift = Math.round((1.15 - Math.min(1.15, this.calloutTimer)) * 18);
+        const lift = Math.round((1.15 - Math.min(1.15, this.calloutTimer)) * 16);
+        const textCenterY = Number.isFinite(layout?.calloutY)
+          ? layout.calloutY + 6
+          : pillY - 11 - lift - (this.slotIndex || 0) * 3;
         ctx.globalAlpha = fade;
         PixelFont.drawCentered(
           ctx,
           this.calloutText,
           cx,
-          pillY - 11 - lift,
+          textCenterY,
           1,
           '#fef9c3',
           this.calloutColor,
@@ -816,12 +854,33 @@ export class EndlessCompanionEntity {
 
     safeEnsureHeroLoaded(this.heroId);
     const assets = getSafePixelForgeAssets();
-    const charSet = assets?.[this.heroId] || null;
+    let charSet = assets?.[this.heroId] || null;
     const rawSheet = charSet?.sheet || null;
-    const sheet = rawSheet ? PixelForge.ensureImage?.(rawSheet) || rawSheet : null;
-    const hasSheet = Boolean(
-      sheet && sheet.complete && (sheet.naturalWidth || sheet.width) > 0
-    );
+    let sheet = rawSheet ? PixelForge.ensureImage?.(rawSheet) || rawSheet : null;
+    let hasSheet = isSheetReady(sheet);
+
+    if (hasSheet) {
+      this._lastReadyHeroId = this.heroId;
+    } else if (assets) {
+      // Hold already-loaded base/previous sprite sheet while newly evolved *_ex_sheet.png downloads (zero silhouette flash)
+      const fallbackKeys = [
+        this._lastReadyHeroId,
+        this.baseHeroId,
+        COMPANION_BASE_TO_EX_KEY[this.companionId]?.baseHeroKey
+      ];
+      for (let f = 0; f < fallbackKeys.length; f++) {
+        const fbKey = fallbackKeys[f];
+        if (!fbKey || fbKey === this.heroId) continue;
+        const fbSet = assets[fbKey] || null;
+        const fbSheet = fbSet?.sheet || null;
+        if (isSheetReady(fbSheet)) {
+          charSet = fbSet;
+          sheet = fbSheet;
+          hasSheet = true;
+          break;
+        }
+      }
+    }
 
     const drawX = Math.round(this.x);
     const drawY = Math.round((Number.isFinite(this.y) ? this.y : this.groundY) + 3);
@@ -930,6 +989,7 @@ export class EndlessCompanions {
     this._ultEffects = [];
     this._time = 0;
     this._formationShiftTimer = 0;
+    this._lastSkillSfxTime = -1;
     this.reset();
   }
 
@@ -985,6 +1045,7 @@ export class EndlessCompanions {
     this._floorRipples.length = 0;
     this._ultEffects.length = 0;
     this._formationShiftTimer = 0;
+    this._lastSkillSfxTime = -1;
     if (Array.isArray(this.entities)) {
       for (let i = 0; i < this.entities.length; i++) {
         const ent = this.entities[i];
@@ -994,6 +1055,176 @@ export class EndlessCompanions {
         ent.targetMonster = null;
       }
     }
+  }
+
+  getOverheadLayoutFor(entity) {
+    if (!entity || !Array.isArray(this.entities) || this.entities.length === 0) return null;
+    const ents = this.entities;
+    const items = [];
+    for (let i = 0; i < ents.length; i++) {
+      const e = ents[i];
+      if (!e) continue;
+      const cx = Math.round(Number.isFinite(e.x) ? e.x : 0);
+      const ey = Number.isFinite(e.y) ? e.y : Number.isFinite(e.groundY) ? e.groundY : 558;
+      const headY = Math.round(ey - 164);
+      const roleLabel = e.isExEvolved
+        ? `EX ${e.role} LV.${e.level}`
+        : `${e.role} LV.${e.level}`;
+      const textW = PixelFont.measureWidth(roleLabel, 1, 1);
+      const pillW = Math.max(46, textW + 10);
+      const pillH = 13;
+      const starCount = clampNum(Math.floor(Number(e.star) || 1), 1, COMPANION_MAX_STARS || 5);
+      items.push({
+        entity: e,
+        slotIndex: Number.isFinite(e.slotIndex) ? e.slotIndex : i,
+        cx,
+        pillW,
+        pillH,
+        pillY: headY - pillH,
+        topPad: starCount >= 2 ? 7 : 2,
+        botPad: 11,
+        calloutY: null,
+        calloutW: 0,
+        calloutH: 0,
+        suppressCallout: false
+      });
+    }
+    if (items.length === 0) return null;
+
+    // 1. De-overlap role nameplate clusters bottom-up so clustered foreground/background tags never collide
+    const bottomUp = items
+      .map((_, idx) => idx)
+      .sort((a, b) => items[b].pillY - items[a].pillY || items[b].slotIndex - items[a].slotIndex);
+    const placedPills = [];
+    for (let k = 0; k < bottomUp.length; k++) {
+      const cur = items[bottomUp[k]];
+      let guard = 0;
+      let shifted = true;
+      while (shifted && guard < 4) {
+        shifted = false;
+        guard++;
+        const curTop = cur.pillY - cur.topPad;
+        const curBot = cur.pillY + cur.pillH + cur.botPad;
+        for (let p = 0; p < placedPills.length; p++) {
+          const obs = placedPills[p];
+          if (Math.abs(cur.cx - obs.cx) >= (cur.pillW + obs.pillW) * 0.5 + 8) continue;
+          const obsTop = obs.pillY - obs.topPad;
+          const obsBot = obs.pillY + obs.pillH + obs.botPad;
+          if (curBot > obsTop - 4 && curTop < obsBot + 4) {
+            cur.pillY = obsTop - 4 - cur.pillH - cur.botPad;
+            shifted = true;
+          }
+        }
+      }
+      cur.pillY = Math.max(88, cur.pillY);
+      placedPills.push(cur);
+    }
+
+    // 2. Suppress duplicate simultaneous labels across clustered allies & de-overlap callouts vs nameplates/callouts
+    const calloutOrder = items
+      .map((_, idx) => idx)
+      .filter((idx) => items[idx].entity.calloutTimer > 0 && Boolean(items[idx].entity.calloutText))
+      .sort((a, b) => {
+        const ea = items[a].entity;
+        const eb = items[b].entity;
+        if (Boolean(eb.calloutIsUlt) !== Boolean(ea.calloutIsUlt)) {
+          return eb.calloutIsUlt ? 1 : -1;
+        }
+        return items[a].pillY - items[b].pillY || items[a].slotIndex - items[b].slotIndex;
+      });
+
+    const placedCallouts = [];
+    for (let k = 0; k < calloutOrder.length; k++) {
+      const cur = items[calloutOrder[k]];
+      const e = cur.entity;
+      let duplicate = false;
+      for (let p = 0; p < placedCallouts.length; p++) {
+        const prev = placedCallouts[p];
+        if (prev.entity.calloutText === e.calloutText && Math.abs(cur.cx - prev.cx) <= 280) {
+          duplicate = true;
+          break;
+        }
+      }
+      if (duplicate) {
+        cur.suppressCallout = true;
+        continue;
+      }
+
+      const cW = PixelFont.measureWidth(e.calloutText, 1, 1);
+      if (e.calloutIsUlt) {
+        const lift = Math.round((1.55 - Math.min(1.55, e.calloutTimer)) * 22);
+        cur.calloutW = Math.max(76, cW + 16) + 4;
+        cur.calloutH = 20;
+        cur.calloutY = cur.pillY - cur.topPad - 22 - lift - cur.slotIndex * 3;
+      } else {
+        const lift = Math.round((1.15 - Math.min(1.15, e.calloutTimer)) * 16);
+        cur.calloutW = Math.max(44, cW + 8);
+        cur.calloutH = 12;
+        cur.calloutY = cur.pillY - cur.topPad - 12 - lift - cur.slotIndex * 3;
+      }
+
+      let guard = 0;
+      let shifted = true;
+      while (shifted && guard < 6) {
+        shifted = false;
+        guard++;
+        // Avoid colliding with ANY ally's role nameplate + bars
+        for (let j = 0; j < items.length; j++) {
+          const tag = items[j];
+          if (Math.abs(cur.cx - tag.cx) >= (cur.calloutW + tag.pillW) * 0.5 + 8) continue;
+          const tagTop = tag.pillY - tag.topPad;
+          const tagBot = tag.pillY + tag.pillH + tag.botPad;
+          if (cur.calloutY + cur.calloutH > tagTop - 4 && cur.calloutY < tagBot + 4) {
+            cur.calloutY = tagTop - 4 - cur.calloutH;
+            shifted = true;
+          }
+        }
+        // Avoid colliding with already-placed sibling callouts
+        for (let p = 0; p < placedCallouts.length; p++) {
+          const prev = placedCallouts[p];
+          if (Math.abs(cur.cx - prev.cx) >= (cur.calloutW + prev.calloutW) * 0.5 + 8) continue;
+          const prevTop = prev.calloutY;
+          const prevBot = prev.calloutY + prev.calloutH;
+          if (cur.calloutY + cur.calloutH > prevTop - 4 && cur.calloutY < prevBot + 4) {
+            cur.calloutY = prevTop - 4 - cur.calloutH;
+            shifted = true;
+          }
+        }
+      }
+      cur.calloutY = Math.max(66, cur.calloutY);
+      placedCallouts.push(cur);
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].entity === entity) {
+        return {
+          pillY: items[i].pillY,
+          calloutY: items[i].calloutY,
+          suppressCallout: items[i].suppressCallout
+        };
+      }
+    }
+    return null;
+  }
+
+  _playSkillSfx(role, worldX, game) {
+    const now = Number.isFinite(this._time) ? this._time : 0;
+    if (now - (Number.isFinite(this._lastSkillSfxTime) ? this._lastSkillSfxTime : -1) < COMPANION_SKILL_SFX_COOLDOWN_SEC) {
+      return false;
+    }
+    const audio = game?.audio || this.manager?.game?.audio || null;
+    if (!audio) return false;
+    const playFn =
+      typeof audio.play === 'function'
+        ? audio.play
+        : typeof audio.playSFX === 'function'
+          ? audio.playSFX
+          : null;
+    if (!playFn) return false;
+    const sfxKey = SKILL_SFX_BY_ROLE[role] || 'skill_cast';
+    this._lastSkillSfxTime = now;
+    playFn.call(audio, sfxKey, Number.isFinite(worldX) ? worldX : null);
+    return true;
   }
 
   reset() {
@@ -1009,6 +1240,7 @@ export class EndlessCompanions {
     this._ultEffects = [];
     this._time = 0;
     this._formationShiftTimer = 0;
+    this._lastSkillSfxTime = -1;
   }
 
   _getDiscountMult(economy) {
@@ -1150,6 +1382,8 @@ export class EndlessCompanions {
 
   getActiveHudUnits(economy = null) {
     const eco = economy || this.manager?.economy || null;
+    const stats = typeof eco?.getComputedStats === 'function' ? eco.getComputedStats() : null;
+    const synMods = this.getPartySynergyModifiers();
     const entityById = new Map();
     for (const ent of this.entities) {
       entityById.set(ent.companionId, ent);
@@ -1168,7 +1402,7 @@ export class EndlessCompanions {
       const st = this.rosterState[id] || { unlocked: true, level: 1 };
       const ent = entityById.get(id) || null;
       const level = Math.max(1, Math.floor(Number(ent?.level || st.level) || 1));
-      const power = this.computeCompanionPower(id, level, eco);
+      const power = this.computeCompanionPower(id, level, eco, stats, synMods);
       const starInfo = this._getStarInfo(id);
       const activeHeroKey = ent?.heroId || this._resolveActiveHeroKey(cfg);
 
@@ -1209,15 +1443,23 @@ export class EndlessCompanions {
     return units;
   }
 
-  computeCompanionPower(id, level = 1, economy = null) {
+  computeCompanionPower(id, level = 1, economy = null, precomputedStats = null, precomputedSynMods = null) {
     const normId = this.normalizeId(id);
     const cfg = ROSTER_BY_ID[normId];
     if (!cfg) {
       return { attackDmg: 0, skillDmg: 0, ultDmg: 0, healAmount: 0, dpsEstimate: 0 };
     }
     const lv = Math.max(1, Math.min(1e6, Math.floor(Number(level) || 1)));
-    const stats = typeof economy?.getComputedStats === 'function' ? economy.getComputedStats() : null;
-    const synMods = this.getPartySynergyModifiers();
+    const stats =
+      precomputedStats && typeof precomputedStats === 'object'
+        ? precomputedStats
+        : typeof economy?.getComputedStats === 'function'
+          ? economy.getComputedStats()
+          : null;
+    const synMods =
+      precomputedSynMods && typeof precomputedSynMods === 'object'
+        ? precomputedSynMods
+        : this.getPartySynergyModifiers();
 
     // Avoid double-multiplying if EndlessManager already folded synergy modifiers into economy._externalModifiers
     const extMod = economy?._externalModifiers;
@@ -1259,7 +1501,9 @@ export class EndlessCompanions {
 
     const autoDps = attackDmg / Math.max(0.25, cfg.attackInterval);
     const skillDps = skillDmg / Math.max(1.5, cfg.skillCooldown);
-    const safeHaste = safeBoundedFloat(synMods.hasteMult, 0.25, 25, 1);
+    const rawEcoHaste = Number(stats?.hasteMult);
+    const ecoHasteMult = Number.isFinite(rawEcoHaste) && rawEcoHaste > 0 ? rawEcoHaste : 1;
+    const safeHaste = safeBoundedFloat(ecoHasteMult * synMods.hasteMult, 0.25, 25, 1);
     const dpsEstimate = safeBoundedInt((autoDps + skillDps) * safeHaste, 1, ENDLESS_COMPANION_MAX_STAT);
 
     return { attackDmg, skillDmg, ultDmg, healAmount, dpsEstimate };
@@ -1267,6 +1511,8 @@ export class EndlessCompanions {
 
   getRosterView(economy = null) {
     const eco = economy || this.manager?.economy || null;
+    const stats = typeof eco?.getComputedStats === 'function' ? eco.getComputedStats() : null;
+    const synMods = this.getPartySynergyModifiers();
     const evo = this._getEvo();
     const gear = this.manager?.gear || null;
     const gold = Number.isFinite(eco?.gold) ? eco.gold : 0;
@@ -1285,7 +1531,7 @@ export class EndlessCompanions {
       const stageLocked = !unlocked && reachedStage < unlockStage;
       const recruitCost = this.getRecruitCost(cfg.id, eco);
       const upgradeCost = this.getUpgradeCost(cfg.id, eco);
-      const power = this.computeCompanionPower(cfg.id, Math.max(1, level), eco);
+      const power = this.computeCompanionPower(cfg.id, Math.max(1, level), eco, stats, synMods);
       const starInfo = this._getStarInfo(cfg.id);
       const activeHeroKey = this._resolveActiveHeroKey(cfg);
       const promoteQuote =
@@ -1476,6 +1722,7 @@ export class EndlessCompanions {
       const activeHeroKey = this._resolveActiveHeroKey(cfg);
       let ent = existingById.get(id);
       if (ent) {
+        ent._squad = this;
         ent.level = level;
         ent.slotIndex = i;
         ent.star = starInfo.star;
@@ -1515,6 +1762,7 @@ export class EndlessCompanions {
           star: starInfo.star,
           isExEvolved: Boolean(starInfo.isExEvolved)
         });
+        ent._squad = this;
         ent.triggerAuraRing('summon', 1.35);
         safeEnsureHeroLoaded(activeHeroKey);
         nextEntities.push(ent);
@@ -1615,6 +1863,7 @@ export class EndlessCompanions {
       style: opts.style || 'bolt',
       splashRadius: opts.splashRadius || 0,
       fromUlt: Boolean(opts.fromUlt),
+      overdriveGain: Number.isFinite(Number(opts.overdriveGain)) ? Number(opts.overdriveGain) : 0,
       life: 0,
       maxLife: clampNum(Number(opts.maxLife) || 0.85, 0.15, 3.0)
     });
@@ -1666,23 +1915,22 @@ export class EndlessCompanions {
     }
 
     let dealt = Number.isFinite(target.hp) ? Math.max(0, prevHp - target.hp) : dmg;
-    if (dealt <= 0 && prevHp > 0 && target.hp === prevHp) {
-      dealt = dmg;
-    }
     dealt = safeBoundedInt(dealt, 0, ENDLESS_COMPANION_MAX_STAT, 0);
 
     if (dealt > 0) {
       if (recordDirectly) {
         economy.recordDamageSample('companion', dealt);
       }
-      entity.stats.damageDealt = safeBoundedInt(
-        (entity.stats.damageDealt || 0) + dealt,
-        0,
-        ENDLESS_COMPANION_MAX_STAT,
-        0
-      );
-      if (isCrit) entity.stats.critsLanded += 1;
-      if (dealt > entity.stats.biggestHit) entity.stats.biggestHit = dealt;
+      if (!opts.skipEntityStats && entity?.stats) {
+        entity.stats.damageDealt = safeBoundedInt(
+          (entity.stats.damageDealt || 0) + dealt,
+          0,
+          ENDLESS_COMPANION_MAX_STAT,
+          0
+        );
+        if (isCrit) entity.stats.critsLanded += 1;
+        if (dealt > entity.stats.biggestHit) entity.stats.biggestHit = dealt;
+      }
 
       if (!opts.fromUlt && !entity.isCastingUlt) {
         const gaugeMult = clampNum(Number(opts.gaugeMult) || 1, 0.5, 25);
@@ -1691,6 +1939,10 @@ export class EndlessCompanions {
           0,
           100
         );
+        const odGain = Number(opts.overdriveGain) || 0;
+        if (odGain > 0) {
+          this._getEvo()?.addOverdriveCharge?.(odGain, this.activeSlots.length);
+        }
       }
 
       if (!willProgRecord && game?.vfx?.spawnDamageText) {
@@ -1768,6 +2020,7 @@ export class EndlessCompanions {
     }
     this._getEvo()?.addOverdriveCharge?.(14, this.activeSlots.length);
     entity.triggerCallout(entity.cfg.abilityName, entity.primaryColor, 1.15, false);
+    this._playSkillSfx(role, tx, game);
 
     if (role === 'TANK') {
       // Aethelgard: AEGIS BASTION — party shield + nearby monster taunt & bastion shockwave
@@ -2070,8 +2323,18 @@ export class EndlessCompanions {
     entity.ultCharge = 0;
     entity.ultFlashTimer = ULT_FLASH_DURATION;
     entity.isCastingUlt = true;
+    if (entity.state === 'SKILL') {
+      if (entity.didSkillHit && !entity._castingUltState) {
+        entity.skillCooldown = entity.skillMaxCooldown;
+      }
+      entity.stateTimer = 0;
+      entity.animFrame = 0;
+      entity.didActionHit = false;
+      entity.skillBeatMask = 0;
+    } else {
+      entity.setState('SKILL');
+    }
     entity._castingUltState = true;
-    entity.setState('SKILL');
     entity.didSkillHit = true;
 
     this._getEvo()?.addOverdriveCharge?.(14, this.activeSlots.length);
@@ -2712,6 +2975,22 @@ export class EndlessCompanions {
       return { ok: false, reason: 'no_companions', hitCount: 0, totalDamage: 0, activeCount: 0 };
     }
 
+    const rawTargets = Array.isArray(aliveMonsters)
+      ? aliveMonsters
+      : this.manager?.getLivingMonsters?.() || [];
+    const livingTargets = rawTargets.filter(
+      (m) => m && !m.isDead && !(Number.isFinite(m.hp) && m.hp <= 0)
+    );
+    if (livingTargets.length === 0) {
+      return {
+        ok: false,
+        reason: 'no_targets',
+        hitCount: 0,
+        totalDamage: 0,
+        activeCount
+      };
+    }
+
     const consumed = evo.consumeOverdrive(activeCount);
     if (!consumed?.ok) {
       return {
@@ -2723,25 +3002,25 @@ export class EndlessCompanions {
       };
     }
 
-    const rawTargets = Array.isArray(aliveMonsters)
-      ? aliveMonsters
-      : this.manager?.getLivingMonsters?.() || [];
-    const livingTargets = rawTargets.filter(
-      (m) => m && !m.isDead && !(Number.isFinite(m.hp) && m.hp <= 0)
-    );
-
     const burstMult = safeBoundedFloat(consumed.burstMult, 1.5, 50, 4.0);
+    const stats = typeof eco?.getComputedStats === 'function' ? eco.getComputedStats() : null;
+    const synMods = this.getPartySynergyModifiers();
     let combinedPartyDps = 0;
+    const entityDpsShares = [];
+    let totalEntityDps = 0;
     if (this.entities.length > 0) {
       for (const ent of this.entities) {
-        const pow = this.computeCompanionPower(ent.companionId, ent.level, eco);
+        const pow = this.computeCompanionPower(ent.companionId, ent.level, eco, stats, synMods);
+        const dps = Math.max(1, Number(pow.dpsEstimate) || 0);
         combinedPartyDps += pow.dpsEstimate || 0;
+        entityDpsShares.push(dps);
+        totalEntityDps += dps;
       }
     } else {
       for (const rawId of this.activeSlots) {
         const id = this.normalizeId(rawId);
         const lv = Math.max(1, Math.floor(Number(this.rosterState[id]?.level) || 1));
-        const pow = this.computeCompanionPower(id, lv, eco);
+        const pow = this.computeCompanionPower(id, lv, eco, stats, synMods);
         combinedPartyDps += pow.dpsEstimate || 0;
       }
     }
@@ -2752,6 +3031,18 @@ export class EndlessCompanions {
     const pFacing = (p?.facing || 1) < 0 ? -1 : 1;
     const fxOriginX = Number.isFinite(p?.x) ? p.x : this.entities[0]?.x || 360;
     const fxOriginY = Number.isFinite(p?.groundY) ? p.groundY : this.entities[0]?.groundY || 561;
+
+    // Pick topmost ally (smallest groundY) to display the single crisp OVERDRIVE! plaque so labels never pile up
+    let calloutLeaderIdx = 0;
+    for (let i = 1; i < this.entities.length; i++) {
+      const a = this.entities[i];
+      const b = this.entities[calloutLeaderIdx];
+      const ay = Number.isFinite(a?.groundY) ? a.groundY : 558;
+      const by = Number.isFinite(b?.groundY) ? b.groundY : 558;
+      if (ay < by) {
+        calloutLeaderIdx = i;
+      }
+    }
 
     // Synchronize all deployed allies into heroic Row 4 ULTIMATE pose + converging pixel beams
     for (let i = 0; i < this.entities.length; i++) {
@@ -2764,10 +3055,17 @@ export class EndlessCompanions {
       ent.ultFlashTimer = Math.max(Number(ent.ultFlashTimer) || 0, 1.25);
       ent.isCastingUlt = true;
       ent._castingUltState = true;
-      ent.setState('ULTIMATE');
+      ent.setState('ULTIMATE', true);
       ent.didSkillHit = true;
       ent.triggerAuraRing('buff', 1.55);
-      ent.triggerCallout('OVERDRIVE!', '#facc15', 1.4, true);
+      if (i === calloutLeaderIdx) {
+        ent.triggerCallout('OVERDRIVE!', '#facc15', 1.4, true);
+      } else {
+        ent.lastCallout = 'OVERDRIVE!';
+        ent.calloutText = '';
+        ent.calloutTimer = 0;
+        ent.calloutIsUlt = false;
+      }
 
       const beamEndX = Number.isFinite(leadTarget?.x)
         ? leadTarget.x + ent.facing * 120
@@ -2804,7 +3102,7 @@ export class EndlessCompanions {
         isCastingUlt: true,
         stats: { damageDealt: 0, critsLanded: 0, biggestHit: 0 }
       };
-    const stats = typeof eco?.getComputedStats === 'function' ? eco.getComputedStats() : null;
+    const distributeStats = this.entities.length > 1 && totalEntityDps > 0;
 
     let hitCount = 0;
     let totalDamage = 0;
@@ -2814,11 +3112,39 @@ export class EndlessCompanions {
       const bossBonus = isBoss ? 1.45 : 1.0;
       const hit = this._scaleHit(baseBurst * bossBonus, m, stats, true, eco);
       const dealt = this._applyCompanionDamage(leadEnt, m, hit.dmg, true, 140, eco, g, {
-        fromUlt: true
+        fromUlt: true,
+        skipEntityStats: distributeStats
       });
       if (dealt > 0) {
         hitCount++;
         totalDamage = safeBoundedInt(totalDamage + dealt, 0, ENDLESS_COMPANION_MAX_STAT, totalDamage);
+        if (distributeStats) {
+          let remaining = dealt;
+          for (let k = 0; k < this.entities.length; k++) {
+            const ally = this.entities[k];
+            if (!ally || !ally.stats) continue;
+            const isLast = k === this.entities.length - 1;
+            const share = isLast
+              ? Math.max(0, remaining)
+              : Math.max(
+                  0,
+                  Math.min(remaining, Math.round((dealt * entityDpsShares[k]) / totalEntityDps))
+                );
+            remaining = Math.max(0, remaining - share);
+            if (share > 0) {
+              ally.stats.damageDealt = safeBoundedInt(
+                (ally.stats.damageDealt || 0) + share,
+                0,
+                ENDLESS_COMPANION_MAX_STAT,
+                0
+              );
+              ally.stats.critsLanded = (ally.stats.critsLanded || 0) + 1;
+              if (share > (ally.stats.biggestHit || 0)) {
+                ally.stats.biggestHit = share;
+              }
+            }
+          }
+        }
       }
       if (isBoss && typeof m.addStagger === 'function') {
         m.addStagger(120, leadEnt, g);
@@ -2839,21 +3165,6 @@ export class EndlessCompanions {
           maxAge: 0.86
         });
       }
-    }
-
-    if (livingTargets.length === 0) {
-      const focalX = fxOriginX + pFacing * 280;
-      this._spawnFloorRipple(focalX, fxOriginY, 'buff', 1.15, 1.55);
-      this._spawnUltEffect({
-        kind: 'sky_cataclysm',
-        x: focalX,
-        y: fxOriginY,
-        width: 64,
-        height: 390,
-        color: '#f43f5e',
-        subColor: '#facc15',
-        maxAge: 0.84
-      });
     }
 
     // Screen shake, crisp dual SFX, callout & banner
@@ -2942,7 +3253,8 @@ export class EndlessCompanions {
       if (hitMonster) {
         this._applyCompanionDamage(entity, hitMonster, p.dmg, p.isCrit, p.knockX, economy, game, {
           fromUlt: Boolean(p.fromUlt),
-          gaugeMult
+          gaugeMult,
+          overdriveGain: p.overdriveGain || 0
         });
         this._spawnStrikeFX(
           entity,
@@ -3115,7 +3427,7 @@ export class EndlessCompanions {
 
       // Trigger signature Role Ultimate Assist burst immediately at 100% charge when monsters exist
       if (ent.ultCharge >= 100 && aliveMonsters.length > 0 && !ent.isCastingUlt && ent.state !== 'ULTIMATE') {
-        const power = this.computeCompanionPower(ent.companionId, ent.level, economy);
+        const power = this.computeCompanionPower(ent.companionId, ent.level, economy, stats, synMods);
         const ultLead = target || aliveMonsters[0];
         this._triggerRoleUltimate(ent, player, ultLead, aliveMonsters, power, stats, economy, game);
       }
@@ -3152,7 +3464,7 @@ export class EndlessCompanions {
         }
         if (!ent.didSkillHit && ent.stateTimer >= ent.skillDuration * 0.40) {
           ent.didSkillHit = true;
-          const power = this.computeCompanionPower(ent.companionId, ent.level, economy);
+          const power = this.computeCompanionPower(ent.companionId, ent.level, economy, stats, synMods);
           this._executeRoleSkill(ent, player, target, aliveMonsters, power, stats, economy, game);
         }
         if (ent.stateTimer >= ent.skillDuration) {
@@ -3170,8 +3482,7 @@ export class EndlessCompanions {
         if (!ent.didActionHit && ent.stateTimer >= ent.autoDuration * 0.42) {
           ent.didActionHit = true;
           if (target) {
-            evo?.addOverdriveCharge?.(4, this.activeSlots.length);
-            const power = this.computeCompanionPower(ent.companionId, ent.level, economy);
+            const power = this.computeCompanionPower(ent.companionId, ent.level, economy, stats, synMods);
             const hit = this._scaleHit(power.attackDmg, target, stats, false, economy);
             const distToTarget = Math.abs((target.x || 0) - ent.x);
             if (ent.isRanged && distToTarget > 95) {
@@ -3180,11 +3491,13 @@ export class EndlessCompanions {
                 color: ent.primaryColor,
                 coreColor: '#ffffff',
                 style: ent.role === 'ARCHER' ? 'arrow' : 'bolt',
-                knockX: 36
+                knockX: 36,
+                overdriveGain: 4
               });
             } else {
               this._applyCompanionDamage(ent, target, hit.dmg, hit.isCrit, 48, economy, game, {
-                gaugeMult
+                gaugeMult,
+                overdriveGain: 4
               });
               this._spawnStrikeFX(
                 ent,
