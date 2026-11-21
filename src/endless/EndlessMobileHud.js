@@ -9,7 +9,7 @@ import {
   formatGoldTag,
   setTextIfChanged,
   stopEventLeak
-} from './EndlessShopIcons.js?v=30fps203';
+} from './EndlessShopIcons.js?v=30fps204';
 
 function setStyleIfChanged(el, prop, value) {
   if (!el || !el.style) return;

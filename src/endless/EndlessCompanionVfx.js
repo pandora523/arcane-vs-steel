@@ -1,13 +1,13 @@
 // Endless Crusade 30fps Next-Gen EX Companion VFX Renderer (`*_ex_vfx.png`, 6240x1664 = 8x30 @ 208x208)
 // 100% lossless nearest-neighbor pixel purity, Node-safe, zero-leak ring pool, pure ASCII.
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps203';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps204';
 
 export const COMPANION_VFX_CELL_SIZE = 208;
 export const COMPANION_VFX_COLS = 30;
 export const COMPANION_VFX_ROWS = 8;
 
-const VFX_ASSET_QUERY = '?v=30fps203';
+const VFX_ASSET_QUERY = '?v=30fps204';
 const MAX_BLOOM_ALPHA = 0.18;
 const DEFAULT_MAX_INSTANCES = 76;
 const MAX_DT_STEP = 0.1;

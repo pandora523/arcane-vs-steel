@@ -1,18 +1,18 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps203';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps203';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps204';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps204';
 import {
   COMPANION_BASE_TO_EX_KEY,
   COMPANION_AURA_TIERS,
   ELITE_EX_COMPANION_DEFS,
   COMPANION_MAX_STARS,
   getAuraTier
-} from './EndlessCompanionEvo.js?v=30fps203';
-import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps203';
+} from './EndlessCompanionEvo.js?v=30fps204';
+import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps204';
 import {
   EndlessCompanionAI,
   COMPANION_ENGAGE_SIGHTLINE,
   isTargetAlive
-} from './EndlessCompanionAI.js?v=30fps203';
+} from './EndlessCompanionAI.js?v=30fps204';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
 
