@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps205';
-import { PixelForge } from './PixelForge.js?v=30fps205';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps205';
+import { PixelFont } from './PixelFont.js?v=30fps206';
+import { PixelForge } from './PixelForge.js?v=30fps206';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps206';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -234,11 +234,21 @@ export class VFXManager {
     }
   }
 
+  _isEndlessMobile() {
+    if (!this._endlessPerfMode) return false;
+    if (typeof window === 'undefined') return false;
+    if (typeof document !== 'undefined' && document.documentElement?.classList?.contains('is-mobile-device')) {
+      return true;
+    }
+    return (window.innerWidth || 1280) < 768 || (window.innerHeight || 800) < 540;
+  }
+
   spawnParticle(opts) {
     if (!opts || !Number.isFinite(opts.x) || !Number.isFinite(opts.y)) return;
-    if (this.particles.length >= 750) {
-      const slot = this.particles[this._particleRingIdx];
-      this._particleRingIdx = (this._particleRingIdx + 1) % 750;
+    const maxParticles = this._endlessPerfMode && this._isEndlessMobile() ? 240 : 750;
+    if (this.particles.length >= maxParticles) {
+      const slot = this.particles[this._particleRingIdx % maxParticles];
+      this._particleRingIdx = (this._particleRingIdx + 1) % maxParticles;
       if (slot) {
         slot.x = opts.x;
         slot.y = opts.y;
@@ -678,8 +688,18 @@ export class VFXManager {
   }
 
   spawnDamageText(x, y, amount, isCrit = false, label = '', customColor = '') {
-    if (this.texts.length >= 48) this.texts.shift();
     const isCallout = Boolean(label);
+    const maxTexts = this._endlessPerfMode && this._isEndlessMobile() ? 16 : 48;
+    // In mobile Endless Mode, prefer keeping crits/callouts visible and capping total simultaneous damage numbers
+    if (this._endlessPerfMode && this._isEndlessMobile() && !isCrit && !isCallout && this.texts.length >= 12) {
+      for (let ti = 0; ti < this.texts.length; ti++) {
+        if (!this.texts[ti].isCrit && !this.texts[ti].isCallout) {
+          this.texts.splice(ti, 1);
+          break;
+        }
+      }
+    }
+    while (this.texts.length >= maxTexts) this.texts.shift();
     const baseX = x + (Math.random() - 0.5) * (isCallout ? 14 : 26);
     let spawnY = y - 24;
     if (isCallout) {
@@ -4205,16 +4225,35 @@ export class VFXManager {
         ctx.restore();
       }
 
+      const drawFont = this._endlessPerfMode ? PixelFont.drawCenteredCached : PixelFont.drawCentered;
       // Top micro-tag showing Champion Name in 1px bitmap font
-      PixelFont.drawCentered(ctx, headerTag, headX, headY - 10, tagScale, ca.coreColor, '#ffffff', true);
+      drawFont(ctx, headerTag, headX, headY - 10, tagScale, ca.coreColor, '#ffffff', true);
 
       // Main ability name in 2px bitmap font with 2-tone pixel highlight & drop-shadow
-      PixelFont.drawCentered(ctx, ca.title, headX, headY + 6, titleScale, ca.coreColor, '#ffffff', true);
+      drawFont(ctx, ca.title, headX, headY + 6, titleScale, ca.coreColor, '#ffffff', true);
 
       ctx.restore();
     }
 
     // 2. DAMAGE & DODGE/DASH FLOATING TEXTS (100% Crisp Pixel Font)
+    if (this._endlessPerfMode) {
+      if (this.texts.length > 0) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        for (let i = 0; i < this.texts.length; i++) {
+          const t = this.texts[i];
+          const p = t.life / t.maxLife;
+          const pxScale = t.isCrit ? 3 : 2;
+          const tx = Math.round(t.x / 2) * 2;
+          const ty = Math.round(t.y / 2) * 2;
+          ctx.globalAlpha = Math.min(1, (1 - p) * 2);
+          PixelFont.drawCenteredCached(ctx, t.text, tx, ty, pxScale, t.color, '#ffffff', true);
+        }
+        ctx.restore();
+      }
+      return;
+    }
+
     for (const t of this.texts) {
       const p = t.life / t.maxLife;
       const isLabel = /[A-Z]/.test(t.text);

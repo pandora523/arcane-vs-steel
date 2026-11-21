@@ -134,4 +134,116 @@ export class PixelFont {
       }
     }
   }
+
+  static _spriteCache = new Map();
+  static _spriteCacheMax = 192;
+
+  static clearCache() {
+    PixelFont._spriteCache.clear();
+  }
+
+  /**
+   * Offscreen sprite-cached variant of drawCentered (100% pixel-identical nearest-neighbor bitmap).
+   * Used exclusively in Endless Mode so damage numbers & floating callouts blit in 1 drawImage()
+   * instead of 340-2,000 individual ctx.fillRect() calls per frame on iPhone Safari.
+   */
+  static drawCenteredCached(
+    ctx,
+    text,
+    cx,
+    cy,
+    pixelSize = 2,
+    mainColor = '#ffffff',
+    topColor = null,
+    outline = true,
+    heavyOutline = false
+  ) {
+    if (!text || !ctx) return;
+    if (
+      typeof document === 'undefined' ||
+      typeof document.createElement !== 'function' ||
+      typeof ctx.drawImage !== 'function'
+    ) {
+      PixelFont.drawCentered(ctx, text, cx, cy, pixelSize, mainColor, topColor, outline);
+      return;
+    }
+
+    const str = String(text).toUpperCase();
+    const p = Math.max(1, Math.round(pixelSize));
+    const key = `${str}|${p}|${mainColor || ''}|${topColor || ''}|${outline ? 1 : 0}|${heavyOutline ? 1 : 0}`;
+    const cache = PixelFont._spriteCache;
+    let entry = cache.get(key);
+
+    if (!entry) {
+      const charStep = 6 * p;
+      const totalW = Math.max(1, str.length * charStep - p);
+      const totalH = 7 * p;
+      const pad = heavyOutline ? Math.max(3, p + 2) : outline ? p + 1 : 1;
+      const w = totalW + pad * 2;
+      const h = totalH + pad * 2 + (heavyOutline ? 1 : 0);
+      const off = document.createElement('canvas');
+      off.width = w;
+      off.height = h;
+      const octx = off.getContext('2d');
+      if (!octx) {
+        PixelFont.drawCentered(ctx, str, cx, cy, p, mainColor, topColor, outline);
+        return;
+      }
+      octx.imageSmoothingEnabled = false;
+      const midX = w * 0.5;
+      const midY = pad + totalH * 0.5;
+
+      if (heavyOutline) {
+        const offsets =
+          p === 1
+            ? [
+                [-2, 0],
+                [2, 0],
+                [0, -2],
+                [0, 2],
+                [-1, -1],
+                [1, -1],
+                [-1, 1],
+                [1, 1],
+                [0, 3]
+              ]
+            : [
+                [-2, -2],
+                [2, -2],
+                [-2, 2],
+                [2, 2],
+                [0, 3],
+                [2, 3]
+              ];
+        for (let i = 0; i < offsets.length; i++) {
+          PixelFont.drawCentered(
+            octx,
+            str,
+            midX + offsets[i][0],
+            midY + offsets[i][1],
+            p,
+            '#050712',
+            '#050712',
+            false
+          );
+        }
+        PixelFont.drawCentered(octx, str, midX, midY, p, mainColor, topColor, true);
+      } else {
+        PixelFont.drawCentered(octx, str, midX, midY, p, mainColor, topColor, outline);
+      }
+
+      if (cache.size >= PixelFont._spriteCacheMax) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey !== undefined) cache.delete(oldestKey);
+      }
+      entry = { canvas: off, w, h, anchorX: Math.round(midX), anchorY: Math.round(midY) };
+      cache.set(key, entry);
+    } else {
+      // Refresh LRU recency
+      cache.delete(key);
+      cache.set(key, entry);
+    }
+
+    ctx.drawImage(entry.canvas, Math.round(cx - entry.anchorX), Math.round(cy - entry.anchorY));
+  }
 }

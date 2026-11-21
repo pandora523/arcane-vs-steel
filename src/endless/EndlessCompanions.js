@@ -1,18 +1,18 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps205';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps205';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps206';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps206';
 import {
   COMPANION_BASE_TO_EX_KEY,
   COMPANION_AURA_TIERS,
   ELITE_EX_COMPANION_DEFS,
   COMPANION_MAX_STARS,
   getAuraTier
-} from './EndlessCompanionEvo.js?v=30fps205';
-import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps205';
+} from './EndlessCompanionEvo.js?v=30fps206';
+import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps206';
 import {
   EndlessCompanionAI,
   COMPANION_ENGAGE_SIGHTLINE,
   isTargetAlive
-} from './EndlessCompanionAI.js?v=30fps205';
+} from './EndlessCompanionAI.js?v=30fps206';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
 
@@ -969,7 +969,7 @@ export class EndlessCompanionEntity {
         }
       }
 
-      PixelFont.drawCentered(
+      PixelFont.drawCenteredCached(
         ctx,
         roleLabel,
         cx,
@@ -1073,7 +1073,7 @@ export class EndlessCompanionEntity {
         ctx.fillStyle = this.calloutColor || '#fef08a';
         ctx.fillRect(px - 1, py + 2, 2, plaqueH - 4);
         ctx.fillRect(px + plaqueW - 1, py + 2, 2, plaqueH - 4);
-        PixelFont.drawCentered(
+        PixelFont.drawCenteredCached(
           ctx,
           this.calloutText,
           calloutCx,
@@ -1090,7 +1090,7 @@ export class EndlessCompanionEntity {
           ? layout.calloutY + 6
           : headY - 12 - lift - (this.slotIndex || 0) * 3;
         ctx.globalAlpha = fade;
-        PixelFont.drawCentered(
+        PixelFont.drawCenteredCached(
           ctx,
           this.calloutText,
           calloutCx,

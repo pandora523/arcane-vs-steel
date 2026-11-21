@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps205';
-import { PixelFont } from './PixelFont.js?v=30fps205';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps205';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps205';
+import { PixelForge } from './PixelForge.js?v=30fps206';
+import { PixelFont } from './PixelFont.js?v=30fps206';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps206';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps206';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps205';
+} from './shaders/exNextGenFX.js?v=30fps206';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -9067,14 +9067,126 @@ export class Renderer {
     ctx.globalAlpha = alpha;
   }
 
+  _clearEndlessCutInCache() {
+    if (this._endlessCutInLineCache) {
+      this._endlessCutInLineCache.clear();
+    }
+  }
+
+  _pickEndlessCutInGlowTex(hexColor) {
+    const h = String(hexColor || '').toLowerCase();
+    if (h.includes('f43') || h.includes('ef4') || h.includes('dc2') || h.includes('e11')) {
+      return this.glowCrimson || this.glowOrange || this.glowGold;
+    }
+    if (h.includes('fb9') || h.includes('ea5') || h.includes('f97')) {
+      return this.glowOrange || this.glowGold;
+    }
+    if (h.includes('c08') || h.includes('a85') || h.includes('e87') || h.includes('d94')) {
+      return this.glowViolet || this.glowCyan || this.glowGold;
+    }
+    if (h.includes('34d') || h.includes('10b') || h.includes('22c') || h.includes('4ad')) {
+      return this.glowEmerald || this.glowCyan || this.glowGold;
+    }
+    if (h.includes('38b') || h.includes('22d') || h.includes('67e') || h.includes('00f') || h.includes('06b')) {
+      return this.glowCyan || this.glowGold;
+    }
+    return this.glowGold || this.glowCyan;
+  }
+
+  _getCachedEndlessCutInLine(txt, fontPx, maxW, bevelCol, rimCol, topCol, midCol, botCol) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+    if (!this._endlessCutInLineCache) this._endlessCutInLineCache = new Map();
+    const cache = this._endlessCutInLineCache;
+    const key = `${txt}|${fontPx}|${maxW}|${bevelCol}|${rimCol}|${topCol}|${midCol}|${botCol}`;
+    const hit = cache.get(key);
+    if (hit) return hit;
+
+    const stroke = Math.max(2, Math.round(fontPx * 0.09));
+    const dDeep = Math.max(2, Math.round(fontPx * 0.14));
+    const dMid = Math.max(1, Math.round(fontPx * 0.08));
+    const rimOff = fontPx <= 16 ? 1 : 2;
+    const padX = stroke + dDeep + 6;
+    const padY = stroke + dDeep + 6;
+    const estW = Math.min(maxW, Math.max(32, Math.ceil(txt.length * fontPx * 1.06)));
+    const w = estW + padX * 2;
+    const h = Math.ceil(fontPx * 1.45) + padY * 2;
+
+    const off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    const octx = off.getContext('2d');
+    if (!octx) return null;
+    octx.imageSmoothingEnabled = false;
+    octx.font = `bold ${fontPx}px "Press Start 2P", monospace`;
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+
+    const cx = Math.round(w * 0.5);
+    const cy = Math.round(h * 0.5);
+
+    // Crisp 8-way pixel ink outline + 3D block shadow (0 shadowBlur!)
+    octx.fillStyle = '#020617';
+    octx.fillText(txt, cx - stroke, cy, maxW);
+    octx.fillText(txt, cx + stroke, cy, maxW);
+    octx.fillText(txt, cx, cy - stroke, maxW);
+    octx.fillText(txt, cx, cy + stroke, maxW);
+    octx.fillText(txt, cx - stroke, cy - stroke, maxW);
+    octx.fillText(txt, cx + stroke, cy - stroke, maxW);
+    octx.fillText(txt, cx - stroke, cy + stroke, maxW);
+    octx.fillText(txt, cx + stroke, cy + stroke, maxW);
+    octx.fillText(txt, cx + dDeep, cy + dDeep, maxW);
+
+    // Hero Elemental 3D Bevel + Rim + 3-Stop Metallic/Elemental Gradient Face
+    octx.fillStyle = bevelCol;
+    octx.fillText(txt, cx + dMid, cy + dMid, maxW);
+    octx.fillStyle = rimCol;
+    octx.fillText(txt, cx + rimOff, cy + rimOff, maxW);
+
+    let faceGrad = midCol;
+    if (typeof octx.createLinearGradient === 'function') {
+      const lg = octx.createLinearGradient(0, cy - Math.round(fontPx * 0.62), 0, cy + Math.round(fontPx * 0.62));
+      if (lg && typeof lg.addColorStop === 'function') {
+        lg.addColorStop(0, topCol);
+        lg.addColorStop(0.46, midCol);
+        lg.addColorStop(1, botCol);
+        faceGrad = lg;
+      }
+    }
+    octx.fillStyle = faceGrad;
+    octx.fillText(txt, cx, cy, maxW);
+
+    if (cache.size >= 16) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    const entry = { canvas: off, halfW: Math.round(w * 0.5), halfH: Math.round(h * 0.5) };
+    cache.set(key, entry);
+    return entry;
+  }
+
   _drawCutInCalloutContent(ctx, cfg) {
     const { p, alpha, isTrue, elemCol, accCol, halfW, halfH, slideDir, eyebrowFallback } = cfg;
     const baseHero = String(this.cutInHeroId || 'warrior').replace(/_ex$/, '');
     const typo = this._getCutInHeroTypography(baseHero, elemCol, accCol);
     const bloomPulse = 0.5 + 0.5 * Math.sin(p * 18);
+    const endlessFast = Boolean(this._endlessPerfMode);
 
     const drawBloomOrb = (gx, gy, rad, innerCol, midCol, orbAlpha, scaleY = 1) => {
-      if (typeof ctx.createRadialGradient !== 'function' || orbAlpha <= 0.005 || rad <= 2) return;
+      if (orbAlpha <= 0.005 || rad <= 2) return;
+      if (endlessFast && typeof ctx.drawImage === 'function') {
+        const tex = this._pickEndlessCutInGlowTex(midCol || innerCol);
+        if (tex) {
+          const rw = Math.round(rad * 2);
+          const rh = Math.max(8, Math.round(rad * 2 * scaleY));
+          ctx.save();
+          if (!this.isMobile) ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.max(0, Math.min(1, orbAlpha * (this.isMobile ? 0.55 : 0.82)));
+          ctx.drawImage(tex, Math.round(gx - rw * 0.5), Math.round(gy - rh * 0.5), rw, rh);
+          ctx.restore();
+        }
+        return;
+      }
+      if (typeof ctx.createRadialGradient !== 'function') return;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = Math.max(0, Math.min(1, orbAlpha));
@@ -9092,7 +9204,7 @@ export class Renderer {
     };
 
     const drawStar4 = (gx, gy, arm, col, withBloom = false) => {
-      if (withBloom) {
+      if (withBloom && !(endlessFast && this.isMobile)) {
         drawBloomOrb(gx, gy, Math.max(16, arm * 3), '#ffffff', col, alpha * (isTrue ? 0.42 : 0.30));
       }
       ctx.fillStyle = col;
@@ -9115,6 +9227,28 @@ export class Renderer {
       midCol,
       botCol
     ) => {
+      if (endlessFast && typeof ctx.drawImage === 'function') {
+        // Endless Mode Fast Path: 1 cached offscreen blit (0 shadowBlur, 0 per-frame 14x fillText!)
+        const cachedLine = this._getCachedEndlessCutInLine(
+          txt,
+          fontPx,
+          maxW,
+          bevelCol,
+          rimCol,
+          topCol,
+          midCol,
+          botCol
+        );
+        if (cachedLine) {
+          ctx.drawImage(
+            cachedLine.canvas,
+            Math.round(ox - cachedLine.halfW),
+            Math.round(ty - cachedLine.halfH)
+          );
+          return;
+        }
+      }
+
       const stroke = Math.max(2, Math.round(fontPx * 0.09));
       const dDeep = Math.max(2, Math.round(fontPx * 0.14));
       const dMid = Math.max(1, Math.round(fontPx * 0.08));
@@ -9252,10 +9386,12 @@ export class Renderer {
       ctx.globalAlpha = alpha;
     }
 
-    // 3. Living 12-Frame Animated Ultimate Crest with Subtle Rim Lift (never blurring crisp pixel edges!)
+    // 3. Living 12-Frame Animated Ultimate Crest with Subtle Rim Lift (zero shadowBlur in Endless Mode for iPhone FPS!)
     ctx.save();
-    ctx.shadowColor = typo.rim;
-    ctx.shadowBlur = isTrue ? 6 : 4;
+    if (!endlessFast) {
+      ctx.shadowColor = typo.rim;
+      ctx.shadowBlur = isTrue ? 6 : 4;
+    }
     this._drawCutInHeroThemeFX(ctx, {
       baseHero,
       p,
@@ -9274,7 +9410,9 @@ export class Renderer {
     if (p >= 0.12 && p <= 0.88 && typeof ctx.createLinearGradient === 'function') {
       const ribW = Math.round(halfW * (1.72 + bloomPulse * 0.18));
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
+      if (!(endlessFast && this.isMobile)) {
+        ctx.globalCompositeOperation = 'lighter';
+      }
       ctx.globalAlpha = alpha * ((isTrue ? 0.36 : 0.25) + bloomPulse * 0.12);
       const rgLine = ctx.createLinearGradient(-(ribW >> 1), 0, ribW >> 1, 0);
       if (rgLine && typeof rgLine.addColorStop === 'function') {
@@ -9290,7 +9428,7 @@ export class Renderer {
     }
 
     // 4. Outward-Flying Glowing Elemental Pixel Sparks (streaming outward from caster's side!)
-    const sparkCount = isTrue ? 16 : 10;
+    const sparkCount = endlessFast && this.isMobile ? (isTrue ? 6 : 4) : (isTrue ? 16 : 10);
     for (let s = 0; s < sparkCount; s++) {
       const cyc = (p * 2.5 + s * 0.15) % 1;
       const dir = s % 3 === 0 ? slideDir : -slideDir;
@@ -9300,7 +9438,7 @@ export class Renderer {
       ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? typo.mid : typo.bot;
       ctx.fillRect(sx - 9, sy, 18, 3);
       ctx.fillRect(sx + dir * 10, sy - 1, 4, 4);
-      if (s % 4 === 0) {
+      if (s % 4 === 0 && !(endlessFast && this.isMobile)) {
         drawBloomOrb(sx, sy + 1, 14, '#ffffff', typo.mid, alpha * (1 - cyc) * 0.36);
       }
     }

@@ -1,17 +1,17 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps205';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps205';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps205';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps205';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps205';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps205';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps205';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps205';
-import { EndlessAscension } from './EndlessAscension.js?v=30fps205';
-import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps205';
-import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps205';
-import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps205';
-import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps205';
-import { EndlessTrials, ENDLESS_TRIAL_DEFS, ENDLESS_TRIAL_BY_ID } from './EndlessTrials.js?v=30fps205';
+import { Fighter } from '../entities/Fighter.js?v=30fps206';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps206';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps206';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps206';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps206';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps206';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps206';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps206';
+import { EndlessAscension } from './EndlessAscension.js?v=30fps206';
+import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps206';
+import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps206';
+import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps206';
+import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps206';
+import { EndlessTrials, ENDLESS_TRIAL_DEFS, ENDLESS_TRIAL_BY_ID } from './EndlessTrials.js?v=30fps206';
 
 export const ENDLESS_REALMS = [
   {
@@ -1194,7 +1194,8 @@ export class EndlessManager {
     if (!text) return;
     const safeX = Number.isFinite(x) ? Math.round(x) : Math.round(this.corridorOriginX || 240);
     let safeY = Number.isFinite(y) ? Math.round(y) : Math.round(this.depthMidY - 100);
-    while (this.floatingCallouts.length >= FLOATING_CALLOUT_MAX_COUNT) {
+    const maxCallouts = this.game?.renderer?.isMobile ? 12 : FLOATING_CALLOUT_MAX_COUNT;
+    while (this.floatingCallouts.length >= maxCallouts) {
       this.floatingCallouts.shift();
     }
     const minGapY = scale >= 2 ? 26 : 18;
@@ -2117,6 +2118,8 @@ export class EndlessManager {
 
     this.shopUI?.mount?.();
     this.shopUI?.setVisible?.(true);
+    if (this.game?.vfx) this.game.vfx._endlessPerfMode = true;
+    if (this.game?.renderer) this.game.renderer._endlessPerfMode = true;
 
     this._spawnWaveMonsters();
     this.showBanner(
@@ -2214,6 +2217,12 @@ export class EndlessManager {
     this._baseExternalModifiers = {};
     this.clearHeldInputs();
     this.companions?.vfx?.releaseAllSheets?.();
+    if (this.game?.vfx) this.game.vfx._endlessPerfMode = false;
+    if (this.game?.renderer) {
+      this.game.renderer._endlessPerfMode = false;
+      this.game.renderer._clearEndlessCutInCache?.();
+    }
+    PixelFont.clearCache?.();
 
     this.shopUI?.setVisible?.(false);
 
@@ -8713,7 +8722,7 @@ export class EndlessManager {
         bar(cx - hw, cy + hh - arm, 3, arm, '#38bdf8');
         bar(cx + hw - arm, cy + hh - 3, arm, 3, '#38bdf8');
         bar(cx + hw - 3, cy + hh - arm, 3, arm, '#38bdf8');
-        PixelFont.drawCentered(ctx, 'LOCKED', cx, cy - hh - 10, 1, '#fde047', '#ffffff', true);
+        PixelFont.drawCenteredCached(ctx, 'LOCKED', cx, cy - hh - 10, 1, '#fde047', '#ffffff', true);
         ctx.restore();
       }
     }
@@ -9271,38 +9280,8 @@ export class EndlessManager {
     const p = Math.max(1, Math.round(pixelSize || 1));
     const ix = Math.round(cx);
     const iy = Math.round(cy);
-    if (p === 1) {
-      // Crisp 2px dark #050712 pixel ring around 1x glyphs + 1px bottom drop weight
-      const ring = [
-        [-2, 0],
-        [2, 0],
-        [0, -2],
-        [0, 2],
-        [-1, -1],
-        [1, -1],
-        [-1, 1],
-        [1, 1],
-        [0, 3]
-      ];
-      for (let i = 0; i < ring.length; i++) {
-        PixelFont.drawCentered(ctx, text, ix + ring[i][0], iy + ring[i][1], 1, '#050712', '#050712', false);
-      }
-      PixelFont.drawCentered(ctx, text, ix, iy, 1, mainColor, topColor, true);
-    } else {
-      // 2x glyphs already have a 2px cardinal outline; add crisp diagonal corners & drop shadow in #050712
-      const diag = [
-        [-2, -2],
-        [2, -2],
-        [-2, 2],
-        [2, 2],
-        [0, 3],
-        [2, 3]
-      ];
-      for (let i = 0; i < diag.length; i++) {
-        PixelFont.drawCentered(ctx, text, ix + diag[i][0], iy + diag[i][1], p, '#050712', '#050712', false);
-      }
-      PixelFont.drawCentered(ctx, text, ix, iy, p, mainColor, topColor, true);
-    }
+    // Single cached offscreen bitmap blit (100% identical heavy 2px #050712 outline, 1 drawImage vs ~1,500 fillRects!)
+    PixelFont.drawCenteredCached(ctx, text, ix, iy, p, mainColor, topColor, true, true);
   }
 
   _fitPixelText(text, pixelSize, maxPx) {
@@ -9999,7 +9978,7 @@ export class EndlessManager {
 
       let cursorY = banY + topPad;
       for (let i = 0; i < titleLines.length; i++) {
-        PixelFont.drawCentered(
+        PixelFont.drawCenteredCached(
           ctx,
           titleLines[i],
           banCx,
@@ -10014,7 +9993,7 @@ export class EndlessManager {
       if (subLines.length > 0) {
         cursorY += sectionGap;
         for (let i = 0; i < subLines.length; i++) {
-          PixelFont.drawCentered(
+          PixelFont.drawCenteredCached(
             ctx,
             subLines[i],
             banCx,
@@ -10107,7 +10086,7 @@ export class EndlessManager {
         ctx.fillRect(stampX + 4, stampY + stampH - 5, barW, 1);
 
         // Crisp outlined stamp label
-        PixelFont.drawCentered(
+        PixelFont.drawCenteredCached(
           ctx,
           stampText,
           stampCx,
