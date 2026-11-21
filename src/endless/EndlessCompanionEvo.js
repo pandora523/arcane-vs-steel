@@ -94,7 +94,7 @@ export const ELITE_EX_COMPANION_DEFS = Object.freeze([
     skillCooldown: 4.8,
     abilityName: 'VOID PHANTOM',
     ultName: 'ECLIPSE REQUIEM!',
-    ultSfx: 'nyx_ult',
+    ultSfx: 'raijin_slash',
     ultDmgMult: 7.2,
     ultColor: '#e879f9',
     ultSubColor: '#38bdf8',
@@ -142,7 +142,7 @@ export const ELITE_EX_COMPANION_DEFS = Object.freeze([
     skillCooldown: 5.6,
     abilityName: 'GLACIAL SPIRE',
     ultName: 'ABSOLUTE ZERO!',
-    ultSfx: 'ice_ult',
+    ultSfx: 'prism_beam',
     ultDmgMult: 7.8,
     ultColor: '#67e8f9',
     ultSubColor: '#e0f2fe',
@@ -166,7 +166,7 @@ export const ELITE_EX_COMPANION_DEFS = Object.freeze([
     skillCooldown: 5.2,
     abilityName: 'ORBITAL FUNNELS',
     ultName: 'OMEGA RAILCANNON!',
-    ultSfx: 'android_ult',
+    ultSfx: 'cyber_beam',
     ultDmgMult: 8.4,
     ultColor: '#22d3ee',
     ultSubColor: '#facc15',
@@ -484,7 +484,14 @@ export class EndlessCompanionEvo {
         : `${formatEndlessNumber(shardsCost)} SHARDS`;
     }
 
-    const unlocksExForm = !isMaxStar && star < COMPANION_EX_UNLOCK_STAR && nextStar >= COMPANION_EX_UNLOCK_STAR;
+    const mapping = normId && Object.prototype.hasOwnProperty.call(COMPANION_BASE_TO_EX_KEY, normId)
+      ? COMPANION_BASE_TO_EX_KEY[normId]
+      : null;
+    const unlocksExForm =
+      !isMaxStar &&
+      !(mapping && mapping.isNativeEx) &&
+      star < COMPANION_EX_UNLOCK_STAR &&
+      nextStar >= COMPANION_EX_UNLOCK_STAR;
 
     return {
       id: normId,
@@ -572,7 +579,13 @@ export class EndlessCompanionEvo {
     this.totalPromotions = clampInt(this.totalPromotions + 1, 0, MAX_COUNTER, this.totalPromotions + 1);
 
     const nextTier = COMPANION_STAR_TIERS[nextStar - 1] || COMPANION_STAR_TIERS[COMPANION_STAR_TIERS.length - 1];
-    const unlockedEx = prevStar < COMPANION_EX_UNLOCK_STAR && nextStar >= COMPANION_EX_UNLOCK_STAR;
+    const mapping = normId && Object.prototype.hasOwnProperty.call(COMPANION_BASE_TO_EX_KEY, normId)
+      ? COMPANION_BASE_TO_EX_KEY[normId]
+      : null;
+    const unlockedEx =
+      !(mapping && mapping.isNativeEx) &&
+      prevStar < COMPANION_EX_UNLOCK_STAR &&
+      nextStar >= COMPANION_EX_UNLOCK_STAR;
     const heroKey = this.getSpriteHeroKey(normId);
 
     return {
