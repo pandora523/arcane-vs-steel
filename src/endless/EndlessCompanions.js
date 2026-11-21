@@ -7,6 +7,12 @@ import {
   COMPANION_MAX_STARS,
   getAuraTier
 } from './EndlessCompanionEvo.js?v=30fps203';
+import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps203';
+import {
+  EndlessCompanionAI,
+  COMPANION_ENGAGE_SIGHTLINE,
+  isTargetAlive
+} from './EndlessCompanionAI.js?v=30fps203';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
 
@@ -333,10 +339,11 @@ const SKILL_SFX_BY_ROLE = Object.freeze({
 const COMPANION_SKILL_SFX_COOLDOWN_SEC = 0.35;
 
 const COMPANION_DRAW_SCALE = 0.88;
-const COMPANION_ENGAGE_RANGE = 640;
+const COMPANION_ENGAGE_RANGE = COMPANION_ENGAGE_SIGHTLINE;
 const FORMATION_LANE_OFFSETS = [-62, 60, -8];
 const SPAWN_X_OFFSETS = [-102, -124, -138];
 const SPAWN_LANE_Y = [492, 622, 558];
+const ROLE_ULT_IMPACT_BEAT_SEC = 0.42;
 
 const FLOOR_RIPPLE_MAX_COUNT = 24;
 const COMPANION_STRIKES_MAX_COUNT = 16;
@@ -396,17 +403,6 @@ function isSheetReady(sheet) {
   return (sheet.width || 0) > 0;
 }
 
-function drawPixelDiamond(ctx, cx, cy, halfSize, color) {
-  const s = Math.max(2, Math.round(halfSize));
-  const ix = Math.round(cx);
-  const iy = Math.round(cy);
-  ctx.fillStyle = color;
-  for (let row = -s; row <= s; row += 2) {
-    const span = Math.max(2, (s - Math.abs(row)) * 2);
-    ctx.fillRect(ix - Math.round(span * 0.5), iy + row, span, 2);
-  }
-}
-
 function drawSteppedPixelAuraRing(ctx, cx, cy, rx, ry, outerColor, innerColor, alpha) {
   const ix = Math.round(cx);
   const iy = Math.round(cy);
@@ -444,41 +440,6 @@ function drawSteppedPixelAuraRing(ctx, cx, cy, rx, ry, outerColor, innerColor, a
     }
   }
   ctx.restore();
-}
-
-function drawSteppedLightningArc(ctx, x0, y0, x1, y1, color, coreColor, seed = 1) {
-  const segs = 10;
-  const pts = [];
-  for (let i = 0; i <= segs; i++) {
-    const t = i / segs;
-    const bx = x0 + (x1 - x0) * t;
-    const by = y0 + (y1 - y0) * t;
-    const jitter =
-      i === 0 || i === segs
-        ? 0
-        : Math.round(Math.sin(i * 2.7 + seed * 4.3) * 18 + Math.cos(i * 5.1 + seed) * 8);
-    pts.push({ x: Math.round(bx), y: Math.round(by + jitter) });
-  }
-
-  const drawPass = (fillColor, thickness) => {
-    ctx.fillStyle = fillColor;
-    const half = Math.floor(thickness * 0.5);
-    for (let i = 0; i < segs; i++) {
-      const a = pts[i];
-      const b = pts[i + 1];
-      const steps = Math.max(4, Math.ceil(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) / 6));
-      for (let s = 0; s <= steps; s++) {
-        const frac = s / steps;
-        const px = Math.round(a.x + (b.x - a.x) * frac);
-        const py = Math.round(a.y + (b.y - a.y) * frac);
-        ctx.fillRect(px - half, py - half, thickness, thickness);
-      }
-    }
-  };
-
-  drawPass('#0d0f1c', 7);
-  drawPass(color || '#38bdf8', 5);
-  drawPass(coreColor || '#ffffff', 2);
 }
 
 function drawPixelFourPointStar(ctx, cx, cy, armLen, outerColor, coreColor = '#ffffff') {
@@ -727,6 +688,7 @@ export class EndlessCompanionEntity {
     this.ultFlashTimer = 0;
     this.isCastingUlt = false;
     this._castingUltState = false;
+    this._pendingRoleUlt = null;
 
     this.auraRingTimer = 1.35;
     this.auraRingMax = 1.35;
@@ -1140,6 +1102,7 @@ export class EndlessCompanionEntity {
     if (!ctx) return;
 
     safeEnsureHeroLoaded(this.heroId);
+    this._squad?.vfx?.preload?.(this.heroId);
     const assets = getSafePixelForgeAssets();
     let charSet = assets?.[this.heroId] || null;
     const rawSheet = charSet?.sheet || null;
@@ -1170,34 +1133,33 @@ export class EndlessCompanionEntity {
       this._drawBehindAura(ctx, drawX, drawY, auraTime);
     }
 
-    if (castingUlt && typeof ctx.fillRect === 'function') {
-      const u = clampNum(this.ultFlashTimer / ULT_FLASH_DURATION, 0, 1);
-      const colAccent = this.cfg?.ultColor || this.primaryColor || '#facc15';
-      const colSub = this.cfg?.ultSubColor || '#fef08a';
-      const flareScale = 1 + (ultVfxMult - 1) * 0.55;
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = clampNum(0.28 + u * 0.55, 0, 0.85);
-      const colW = Math.max(14, Math.round((34 * u + 12) * flareScale));
-      const colH = Math.round((176 + (1 - u) * 34) * (1 + (ultVfxMult - 1) * 0.25));
-      ctx.fillStyle = colAccent;
-      ctx.fillRect(drawX - colW, drawY - colH, colW * 2, colH);
-      const coreW = Math.max(6, Math.round(colW * 0.45));
-      ctx.fillStyle = colSub;
-      ctx.fillRect(drawX - coreW, drawY - colH + 6, coreW * 2, colH - 6);
-      // Rising crisp pixel spark diamonds / 4-point stars flanking the caster (scaled by auraTier.ultVfxMult)
-      const sparkRad = Math.max(4, Math.round(4 * flareScale));
-      for (let k = -1; k <= 1; k += 2) {
-        const sparkX = drawX + k * Math.round((28 + (1 - u) * 18) * flareScale);
-        const sparkY = drawY - Math.round(32 + ((1 - u) * 130 + (k > 0 ? 44 : 0)) % 148);
-        if (auraTier.tier >= 3) {
-          drawPixelFourPointStar(ctx, sparkX, sparkY, sparkRad + 2, '#facc15', '#ffffff');
-        } else {
-          drawPixelDiamond(ctx, sparkX, sparkY, sparkRad + 2, '#0d0f1c');
-          drawPixelDiamond(ctx, sparkX, sparkY, sparkRad, '#fef08a');
+    if (castingUlt) {
+      const vfxRenderer = this._squad?.vfx || null;
+      if (vfxRenderer && typeof vfxRenderer.drawCasterUltOverlay === 'function') {
+        vfxRenderer.drawCasterUltOverlay(ctx, this, auraTime);
+      } else if (typeof ctx.fillRect === 'function') {
+        // Minimal crisp 4-point spark glints fallback ONLY when vfx renderer is absent (no vertical slab)
+        const u = clampNum(this.ultFlashTimer / ULT_FLASH_DURATION, 0, 1);
+        const flareScale = 1 + (ultVfxMult - 1) * 0.45;
+        const sparkRad = Math.max(3, Math.round(3.5 * flareScale));
+        const colAccent = this.cfg?.ultColor || this.primaryColor || '#facc15';
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = clampNum(0.35 + u * 0.55, 0, 0.9);
+        for (let k = -1; k <= 1; k += 2) {
+          const sparkX = drawX + k * Math.round((28 + (1 - u) * 16) * flareScale);
+          const sparkY = drawY - Math.round(36 + ((1 - u) * 124 + (k > 0 ? 44 : 0)) % 140);
+          drawPixelFourPointStar(
+            ctx,
+            sparkX,
+            sparkY,
+            auraTier.tier >= 3 ? sparkRad + 1 : sparkRad,
+            colAccent,
+            '#ffffff'
+          );
         }
+        ctx.restore();
       }
-      ctx.restore();
     }
 
     ctx.save();
@@ -1275,6 +1237,8 @@ export class EndlessCompanions {
     this._formationShiftTimer = 0;
     this._lastSkillSfxTime = -1;
     this._activeUltVfxMult = 1.0;
+    this.vfx = new EndlessCompanionVfx({ maxInstances: 76 });
+    this.ai = new EndlessCompanionAI();
     this.reset();
   }
 
@@ -1334,6 +1298,8 @@ export class EndlessCompanions {
     this._ultEffects.length = 0;
     this._formationShiftTimer = 0;
     this._lastSkillSfxTime = -1;
+    this.vfx?.clear?.();
+    this.ai?.reset?.();
     if (Array.isArray(this.entities)) {
       for (let i = 0; i < this.entities.length; i++) {
         const ent = this.entities[i];
@@ -1341,6 +1307,7 @@ export class EndlessCompanions {
         if (Array.isArray(ent.activeProjectiles)) ent.activeProjectiles.length = 0;
         if (Array.isArray(ent.activeStrikes)) ent.activeStrikes.length = 0;
         ent.targetMonster = null;
+        ent._pendingRoleUlt = null;
       }
     }
   }
@@ -1988,7 +1955,9 @@ export class EndlessCompanions {
       autoDeployed = true;
     }
 
-    safeEnsureHeroLoaded(this._resolveActiveHeroKey(cfg));
+    const activeKey = this._resolveActiveHeroKey(cfg);
+    safeEnsureHeroLoaded(activeKey);
+    this.vfx?.preload?.(activeKey);
     if (autoDeployed && this.manager?.player) {
       this.syncEntitiesWithWorld(this.manager.player);
     }
@@ -2067,7 +2036,9 @@ export class EndlessCompanions {
     }
 
     this.activeSlots.push(normId);
-    safeEnsureHeroLoaded(this._resolveActiveHeroKey(cfg));
+    const activeKey = this._resolveActiveHeroKey(cfg);
+    safeEnsureHeroLoaded(activeKey);
+    this.vfx?.preload?.(activeKey);
     if (this.manager?.player) {
       this.syncEntitiesWithWorld(this.manager.player);
     }
@@ -2089,6 +2060,7 @@ export class EndlessCompanions {
 
     const keptIds = new Set();
     const nextEntities = [];
+    const newlyCreated = [];
     for (let i = 0; i < this.activeSlots.length && nextEntities.length < ENDLESS_MAX_ACTIVE_SLOTS; i++) {
       const id = this.normalizeId(this.activeSlots[i]);
       const cfg = ROSTER_BY_ID[id];
@@ -2117,6 +2089,7 @@ export class EndlessCompanions {
         } else if (starInfo.star > prevStar && starInfo.star >= 3) {
           ent.triggerAuraRing('buff', 1.45);
         }
+        this.vfx?.preload?.(activeHeroKey);
         if (bounds && Number.isFinite(bounds.minX) && Number.isFinite(bounds.maxX)) {
           ent.x = clampNum(ent.x, bounds.minX + 28, bounds.maxX - 28);
         }
@@ -2150,7 +2123,29 @@ export class EndlessCompanions {
         ent._squad = this;
         ent.triggerAuraRing('summon', 1.35);
         safeEnsureHeroLoaded(activeHeroKey);
+        this.vfx?.preload?.(activeHeroKey);
         nextEntities.push(ent);
+        newlyCreated.push(ent);
+      }
+    }
+
+    if (newlyCreated.length > 0 && this.ai && typeof this.ai.computeFormationAnchors === 'function') {
+      const minLaneY = Math.max(475, (this.manager?.depthMinY || 442) + 33);
+      const maxLaneY = Math.min(645, (this.manager?.depthMaxY || 680) - 35);
+      const anchors = this.ai.computeFormationAnchors(
+        nextEntities,
+        player,
+        this._getFormationOffsets(evo),
+        { minX: bounds?.minX, maxX: bounds?.maxX, minLaneY, maxLaneY },
+        0
+      );
+      for (const created of newlyCreated) {
+        const anc = anchors.get(created);
+        if (!anc) continue;
+        created.x = anc.x;
+        created.groundY = created.isRanged ? anc.independentLaneY : anc.y;
+        created.y = created.groundY;
+        created.facing = anc.squadFacing || pFacing;
       }
     }
 
@@ -2159,6 +2154,7 @@ export class EndlessCompanions {
         if (Array.isArray(oldEnt.activeProjectiles)) oldEnt.activeProjectiles.length = 0;
         if (Array.isArray(oldEnt.activeStrikes)) oldEnt.activeStrikes.length = 0;
         oldEnt.targetMonster = null;
+        oldEnt._pendingRoleUlt = null;
       }
     }
 
@@ -2394,8 +2390,30 @@ export class EndlessCompanions {
     return { dmg: total, isCrit };
   }
 
+  _getFormationOffsets(evo) {
+    if (!evo) return null;
+    const form = typeof evo.getFormation === 'function' ? evo.getFormation() : null;
+    if (Array.isArray(form?.slotOffsets) && form.slotOffsets.length > 0) {
+      return form.slotOffsets;
+    }
+    if (typeof evo.getSlotOffset === 'function') {
+      const list = [];
+      for (let i = 0; i < ENDLESS_MAX_ACTIVE_SLOTS; i++) {
+        const off = evo.getSlotOffset(i);
+        if (off && Number.isFinite(off.dx) && Number.isFinite(off.dy)) {
+          list.push(off);
+        }
+      }
+      if (list.length > 0) return list;
+    }
+    return null;
+  }
+
   _findTarget(entity, player, aliveMonsters) {
-    if (!aliveMonsters.length) return null;
+    if (!entity || !Array.isArray(aliveMonsters) || !aliveMonsters.length) return null;
+    if (this.ai && typeof this.ai.assignSquadTargets === 'function') {
+      return this.ai.assignSquadTargets([entity], player, aliveMonsters, 0).get(entity) || null;
+    }
     const refX = Number.isFinite(player?.x) ? player.x : entity.x;
     let best = null;
     let bestScore = Infinity;
@@ -2431,18 +2449,19 @@ export class EndlessCompanions {
     this._playSkillSfx(role, tx, game);
 
     if (role === 'TANK') {
-      // Aethelgard: AEGIS BASTION — party shield + nearby monster taunt & bastion shockwave
+      // Aethelgard: AEGIS BASTION - party shield + nearby monster taunt & bastion shockwave
       this.activeBuffTimers.shieldTimer = Math.max(this.activeBuffTimers.shieldTimer, 5.5);
       entity.triggerAuraRing('buff', 1.45);
       if (player) {
         this._spawnFloorRipple(player.x, player.groundY || 561, 'buff', 1.15, 1.12);
       }
-      this._spawnStrikeFX(entity, 'shockwave', entity.x, entity.groundY - 12, '#38bdf8', entity.facing, 0.34, 1.25);
 
+      const hitTargets = [];
       for (const m of aliveMonsters) {
         const dx = Math.abs((m.x || 0) - entity.x);
         const dy = Math.abs((m.groundY || m.y || 561) - entity.groundY);
         if (dx <= 270 && dy <= 145) {
+          hitTargets.push(m);
           m._tauntedTimer = Math.max(m._tauntedTimer || 0, 3.5);
           m._tauntTarget = entity;
           if (!m.isColossalBoss && Math.abs((m.x || 0) - entity.x) > 12) {
@@ -2455,11 +2474,19 @@ export class EndlessCompanions {
           }
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: hitTargets.length > 0 ? hitTargets : target ? [target] : [],
+        tx: entity.x,
+        ty: entity.groundY,
+        scaleMult: 1.0
+      });
       return;
     }
 
     if (role === 'HEALER') {
-      // Seraphina: SERAPHIC MEND — restores hero HP + radiant smite burst
+      // Seraphina: SERAPHIC MEND - restores hero HP + radiant smite burst
       entity.triggerAuraRing('heal', 1.5);
       if (player && !player.isDead && Number.isFinite(player.hp) && Number.isFinite(player.maxHp)) {
         const pctFloor = Math.round(player.maxHp * 0.14);
@@ -2481,36 +2508,51 @@ export class EndlessCompanions {
       }
       if (target) {
         const hit = this._scaleHit(power.skillDmg, target, stats, false, economy);
-        this._spawnStrikeFX(entity, 'pillar', tx, ty, '#fde047', entity.facing, 0.34, 1.1);
         this._applyCompanionDamage(entity, target, hit.dmg, hit.isCrit, 48, economy, game, { gaugeMult });
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.0
+      });
       return;
     }
 
     if (role === 'BLASTER') {
-      // Ignis Sol: SOLAR FLARE — scorching AoE flame burst across monster pack
+      // Ignis Sol: SOLAR FLARE - scorching AoE flame burst across monster pack
       entity.triggerAuraRing('buff', 1.15);
       this._spawnFloorRipple(tx, ty, 'buff', 0.8, 1.25);
-      this._spawnStrikeFX(entity, 'pillar', tx, ty, '#fb923c', entity.facing, 0.38, 1.35);
-      this._spawnStrikeFX(entity, 'burst', tx, ty - 68, '#fde047', entity.facing, 0.32, 1.3);
 
+      const hitTargets = [];
       let hitCount = 0;
       for (const m of aliveMonsters) {
         if (hitCount >= 6) break;
         const dx = Math.abs((m.x || 0) - tx);
         const dy = Math.abs((m.groundY || m.y || 561) - ty);
         if (m === target || (dx <= 215 && dy <= 130)) {
+          hitTargets.push(m);
           const splashMult = m === target ? 1.0 : 0.82;
           const hit = this._scaleHit(power.skillDmg * splashMult, m, stats, false, economy);
           this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 72, economy, game, { gaugeMult });
           hitCount++;
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: hitTargets.length > 0 ? hitTargets : target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.05
+      });
       return;
     }
 
     if (role === 'ARCHER') {
-      // Sylvanis: STARFALL VOLLEY — 3-bolt piercing salvo across up to 3 targets
+      // Sylvanis: STARFALL VOLLEY - 3-bolt piercing salvo across up to 3 targets
       entity.triggerAuraRing('buff', 1.05);
       const sortedTargets = [...aliveMonsters].sort((a, b) => {
         const da = Math.abs((a.x || 0) - entity.x);
@@ -2531,11 +2573,19 @@ export class EndlessCompanions {
           });
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: salvoTargets.slice(0, 3),
+        tx,
+        ty,
+        scaleMult: 1.0
+      });
       return;
     }
 
     if (role === 'LANCER') {
-      // Freyja: VALKYRIE DIVE — lunging sky-lance thrust with heavy boss stagger
+      // Freyja: VALKYRIE DIVE - lunging sky-lance thrust with heavy boss stagger
       entity.triggerAuraRing('buff', 1.15);
       if (target) {
         const lungeDist = clampNum((tx - entity.x) * 0.45, -110, 110);
@@ -2543,8 +2593,6 @@ export class EndlessCompanions {
         entity.groundY = clampNum(entity.groundY + (ty - entity.groundY) * 0.5, 465, 655);
         entity.y = entity.groundY;
         const hit = this._scaleHit(power.skillDmg, target, stats, false, economy);
-        this._spawnStrikeFX(entity, 'slash', tx, ty - 76, '#facc15', entity.facing, 0.32, 1.35);
-        this._spawnStrikeFX(entity, 'shockwave', tx, ty - 8, '#fde047', entity.facing, 0.30, 1.15);
         this._applyCompanionDamage(entity, target, hit.dmg, hit.isCrit, 110, economy, game, { gaugeMult });
         if (typeof target.addStagger === 'function') {
           target.addStagger(55, entity, game);
@@ -2552,11 +2600,19 @@ export class EndlessCompanions {
           target.stunTimer = Math.max(target.stunTimer || 0, 0.45);
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.05
+      });
       return;
     }
 
     if (role === 'STRIKER') {
-      // Kaze-Maru: IAIDO FLASH — guaranteed-crit rapid 3-slash single-target shredder
+      // Kaze-Maru: IAIDO FLASH - guaranteed-crit rapid 3-slash single-target shredder
       entity.triggerAuraRing('buff', 1.05);
       if (target) {
         const dashDx = clampNum((tx - entity.x) * 0.55, -135, 135);
@@ -2565,24 +2621,22 @@ export class EndlessCompanions {
         entity.y = entity.groundY;
         for (let s = 0; s < 3; s++) {
           const hit = this._scaleHit(power.skillDmg * 0.42, target, stats, true, economy);
-          this._spawnStrikeFX(
-            entity,
-            'slash',
-            tx + (s - 1) * 18,
-            ty - 88 + s * 14,
-            s === 1 ? '#fde047' : '#22d3ee',
-            s % 2 === 0 ? entity.facing : -entity.facing,
-            0.28 + s * 0.05,
-            1.2
-          );
           this._applyCompanionDamage(entity, target, hit.dmg, true, s === 2 ? 90 : 28, economy, game, { gaugeMult });
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.05
+      });
       return;
     }
 
     if (role === 'WEAVER') {
-      // Chronos: CHRONO HASTE — temporal slow field on monsters + party haste acceleration
+      // Chronos: CHRONO HASTE - temporal slow field on monsters + party haste acceleration
       this.activeBuffTimers.hasteTimer = Math.max(this.activeBuffTimers.hasteTimer, 6.0);
       entity.triggerAuraRing('buff', 1.45);
       if (player) {
@@ -2590,15 +2644,24 @@ export class EndlessCompanions {
       }
       this._spawnFloorRipple(tx, ty, 'summon', 1.1, 1.35);
 
+      const hitTargets = [];
       for (const m of aliveMonsters) {
         const dx = Math.abs((m.x || 0) - entity.x);
         if (dx <= 440) {
+          hitTargets.push(m);
           m._chillTimer = Math.max(m._chillTimer || 0, 4.5);
           const hit = this._scaleHit(power.skillDmg * 0.72, m, stats, false, economy);
-          this._spawnStrikeFX(entity, 'burst', m.x || tx, (m.groundY || ty) - 74, '#c084fc', entity.facing, 0.28, 0.95);
           this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 35, economy, game, { gaugeMult });
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: hitTargets.length > 0 ? hitTargets : target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.0
+      });
       return;
     }
 
@@ -2612,33 +2675,31 @@ export class EndlessCompanions {
         entity.y = entity.groundY;
         for (let s = 0; s < 3; s++) {
           const hit = this._scaleHit(power.skillDmg * 0.44, target, stats, true, economy);
-          this._spawnStrikeFX(
-            entity,
-            'slash',
-            tx + (s - 1) * 20,
-            ty - 86 + s * 12,
-            s === 1 ? '#38bdf8' : '#e879f9',
-            s % 2 === 0 ? entity.facing : -entity.facing,
-            0.28 + s * 0.05,
-            1.25
-          );
           this._applyCompanionDamage(entity, target, hit.dmg, true, s === 2 ? 84 : 26, economy, game, { gaugeMult });
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.05
+      });
       return;
     }
 
     if (role === 'REAPER') {
       // Malakor EX: SOUL SCYTHE - crimson reaping cleave + hero soul siphon heal
       entity.triggerAuraRing('buff', 1.25);
-      this._spawnStrikeFX(entity, 'slash', tx, ty - 76, '#f43f5e', entity.facing, 0.36, 1.45);
-      this._spawnStrikeFX(entity, 'shockwave', tx, ty - 10, '#c084fc', entity.facing, 0.34, 1.3);
+      const hitTargets = [];
       let cleaved = 0;
       for (const m of aliveMonsters) {
         if (cleaved >= 6) break;
         const dx = Math.abs((m.x || 0) - tx);
         const dy = Math.abs((m.groundY || m.y || 561) - ty);
         if (m === target || (dx <= 230 && dy <= 135)) {
+          hitTargets.push(m);
           const hit = this._scaleHit(power.skillDmg * (m === target ? 1.0 : 0.84), m, stats, m === target, economy);
           this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 82, economy, game, { gaugeMult });
           cleaved++;
@@ -2648,6 +2709,14 @@ export class EndlessCompanions {
         const healAmt = Math.max(20, Math.round(player.maxHp * 0.06));
         player.hp = Math.min(player.maxHp, player.hp + healAmt);
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: hitTargets.length > 0 ? hitTargets : target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.1
+      });
       return;
     }
 
@@ -2655,20 +2724,28 @@ export class EndlessCompanions {
       // Lyra EX: GLACIAL SPIRE - chilling cryo burst freezing monster pack
       entity.triggerAuraRing('buff', 1.2);
       this._spawnFloorRipple(tx, ty, 'summon', 0.9, 1.3);
-      this._spawnStrikeFX(entity, 'pillar', tx, ty, '#67e8f9', entity.facing, 0.38, 1.35);
-      this._spawnStrikeFX(entity, 'burst', tx, ty - 68, '#e0f2fe', entity.facing, 0.32, 1.25);
+      const hitTargets = [];
       let hitCount = 0;
       for (const m of aliveMonsters) {
         if (hitCount >= 7) break;
         const dx = Math.abs((m.x || 0) - tx);
         const dy = Math.abs((m.groundY || m.y || 561) - ty);
         if (m === target || (dx <= 235 && dy <= 135)) {
+          hitTargets.push(m);
           m._chillTimer = Math.max(m._chillTimer || 0, 4.5);
           const hit = this._scaleHit(power.skillDmg * (m === target ? 1.0 : 0.84), m, stats, false, economy);
           this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 62, economy, game, { gaugeMult });
           hitCount++;
         }
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: hitTargets.length > 0 ? hitTargets : target ? [target] : [],
+        tx,
+        ty,
+        scaleMult: 1.05
+      });
       return;
     }
 
@@ -2692,17 +2769,25 @@ export class EndlessCompanions {
           knockX: 46
         });
       }
+      this.vfx?.spawnRoleSkill?.(entity, {
+        player,
+        target,
+        targets: salvoTargets.slice(0, 4),
+        tx,
+        ty,
+        scaleMult: 1.0
+      });
       return;
     }
 
     // BRAWLER (Raijin EX): THUNDER BARRAGE - lightning-fist shockwave barrage
     entity.triggerAuraRing('buff', 1.2);
-    this._spawnStrikeFX(entity, 'pillar', tx, ty, '#fbbf24', entity.facing, 0.34, 1.25);
-    this._spawnStrikeFX(entity, 'shockwave', entity.x + entity.facing * 42, entity.groundY - 10, '#38bdf8', entity.facing, 0.34, 1.35);
+    const hitTargets = [];
     for (const m of aliveMonsters) {
       const dx = Math.abs((m.x || 0) - tx);
       const dy = Math.abs((m.groundY || m.y || 561) - ty);
       if (m === target || (dx <= 200 && dy <= 125)) {
+        hitTargets.push(m);
         const hit = this._scaleHit(power.skillDmg * (m === target ? 1.0 : 0.78), m, stats, false, economy);
         this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 88, economy, game, { gaugeMult });
         if (typeof m.addStagger === 'function') {
@@ -2710,19 +2795,28 @@ export class EndlessCompanions {
         }
       }
     }
+    this.vfx?.spawnRoleSkill?.(entity, {
+      player,
+      target,
+      targets: hitTargets.length > 0 ? hitTargets : target ? [target] : [],
+      tx,
+      ty,
+      scaleMult: 1.05
+    });
   }
 
-  _triggerRoleUltimate(entity, player, leadTarget, aliveMonsters, power, stats, economy, game) {
-    if (!entity || !aliveMonsters.length) return 0;
+  _beginRoleUltimate(entity, player, leadTarget, aliveMonsters, _power, _stats, _economy, game) {
+    if (!entity || !Array.isArray(aliveMonsters) || !aliveMonsters.length) return false;
 
     const cfg = entity.cfg || ROSTER_BY_ID[entity.companionId] || {};
     const role = entity.role;
-    const target = leadTarget || aliveMonsters[0];
+    const target = leadTarget && isTargetAlive(leadTarget) ? leadTarget : aliveMonsters[0];
     const tx = Number.isFinite(target?.x) ? target.x : entity.x + entity.facing * 180;
     const ty = Number.isFinite(target?.groundY) ? target.groundY : entity.groundY;
     const ultColor = cfg.ultColor || entity.primaryColor || '#facc15';
-    const ultSubColor = cfg.ultSubColor || '#fef08a';
     const callout = cfg.ultName || `${entity.name} OVERDRIVE!`;
+    const auraTier = getAuraTier(entity.star);
+    const ultVfxMult = clampNum(Number(auraTier?.ultVfxMult) || 1.0, 1.0, 2.2);
 
     if (Math.abs(tx - entity.x) > 4) {
       entity.facing = tx >= entity.x ? 1 : -1;
@@ -2731,114 +2825,91 @@ export class EndlessCompanions {
     entity.ultCharge = 0;
     entity.ultFlashTimer = ULT_FLASH_DURATION;
     entity.isCastingUlt = true;
-    if (entity.state === 'SKILL') {
-      if (entity.didSkillHit && !entity._castingUltState) {
-        entity.skillCooldown = entity.skillMaxCooldown;
-      }
-      entity.stateTimer = 0;
-      entity.animFrame = 0;
-      entity.didActionHit = false;
-      entity.skillBeatMask = 0;
-    } else {
-      entity.setState('SKILL');
-    }
     entity._castingUltState = true;
+    entity.setState('ULTIMATE', true);
     entity.didSkillHit = true;
 
     this._getEvo()?.addOverdriveCharge?.(14, this.activeSlots.length);
     entity.triggerAuraRing(role === 'HEALER' ? 'heal' : 'buff', 1.45);
     entity.triggerCallout(callout, ultColor, 1.55, true);
 
-    // Play crisp AudioManager SFX (verified WAV-backed keys)
     game?.audio?.play?.('ult_cast', entity.x);
+    this.vfx?.spawnUltCastAura?.(entity, { ultVfxMult });
+
+    entity._pendingRoleUlt = {
+      target,
+      tx,
+      ty,
+      ultVfxMult,
+      resolved: false
+    };
+    return true;
+  }
+
+  _executeRoleUltimateImpact(entity, player, leadTarget, aliveMonsters, power, stats, economy, game, opts = {}) {
+    if (!entity) return 0;
+
+    const living = Array.isArray(aliveMonsters) ? aliveMonsters.filter(isTargetAlive) : [];
+    const cfg = entity.cfg || ROSTER_BY_ID[entity.companionId] || {};
+    const role = entity.role;
+    const fallbackTx = Number.isFinite(opts.fallbackTx) ? opts.fallbackTx : entity.x + entity.facing * 180;
+    const fallbackTy = Number.isFinite(opts.fallbackTy) ? opts.fallbackTy : entity.groundY;
+
+    let target = leadTarget && isTargetAlive(leadTarget) ? leadTarget : null;
+    if (!target && living.length > 0) {
+      // Cleanly retarget to the nearest living foe if original target died during the 0.42s wind-up
+      let bestDist = Infinity;
+      for (const m of living) {
+        const d = Math.abs((m.x || 0) - fallbackTx) + Math.abs((m.groundY || m.y || fallbackTy) - fallbackTy) * 0.35;
+        if (d < bestDist) {
+          bestDist = d;
+          target = m;
+        }
+      }
+    }
+
+    const tx = Number.isFinite(target?.x) ? target.x : fallbackTx;
+    const ty = Number.isFinite(target?.groundY) ? target.groundY : fallbackTy;
+    if (Math.abs(tx - entity.x) > 4) {
+      entity.facing = tx >= entity.x ? 1 : -1;
+    }
+
     if (cfg.ultSfx && cfg.ultSfx !== 'ult_cast') {
       game?.audio?.play?.(cfg.ultSfx, tx);
     }
 
-    // Sort living targets closest to impact/caster so multi-target Ultimates feel responsive
-    const sortedTargets = [...aliveMonsters].sort((a, b) => {
+    const sortedTargets = [...living].sort((a, b) => {
       const da = Math.abs((a.x || 0) - tx) + Math.abs((a.groundY || a.y || 561) - ty) * 0.3;
       const db = Math.abs((b.x || 0) - tx) + Math.abs((b.groundY || b.y || 561) - ty) * 0.3;
       return da - db;
     });
 
     const baseUltDmg = safeBoundedInt(
-      power.ultDmg || Math.round(power.skillDmg * 2.1),
+      power?.ultDmg || Math.round((power?.skillDmg || 10) * 2.1),
       4,
       ENDLESS_COMPANION_MAX_STAT
     );
     let totalDealt = 0;
     const auraTier = getAuraTier(entity.star);
-    const ultVfxMult = clampNum(Number(auraTier?.ultVfxMult) || 1.0, 1.0, 2.2);
-    this._activeUltVfxMult = ultVfxMult;
-
-    try {
-    // Signature gold/role starburst flare on caster (scaled by auraTier.ultVfxMult)
-    this._spawnUltEffect({
-      kind: 'atlas_burst',
-      row: 4,
-      x: entity.x,
-      y: entity.groundY - 72,
-      scale: 1.35,
-      color: ultColor,
-      subColor: ultSubColor,
-      maxAge: 0.72
-    });
-    if (auraTier.tier >= 2) {
-      // 4-STAR ASCENDED HALO / 5-STAR MYTHIC CROWN bonus radiant sovereign detonation on primary impact
-      this._spawnUltEffect({
-        kind: 'atlas_burst',
-        row: 4,
-        x: tx,
-        y: ty - 76,
-        scale: auraTier.tier >= 3 ? 1.55 : 1.3,
-        color: '#facc15',
-        subColor: auraTier.tier >= 3 ? '#f43f5e' : '#ffffff',
-        maxAge: 0.74
-      });
-    }
+    const ultVfxMult = clampNum(
+      Number.isFinite(Number(opts.ultVfxMult)) ? Number(opts.ultVfxMult) : Number(auraTier?.ultVfxMult) || 1.0,
+      1.0,
+      2.2
+    );
+    const affectedTargets = [];
 
     if (role === 'TANK') {
-      // Aethelgard: AEGIS CATACLYSM! — fortress shield + massive sky-cathedral bastion shatter across lane
+      // Aethelgard: AEGIS CATACLYSM! - fortress shield + bastion shatter across lane
       this.activeBuffTimers.shieldTimer = Math.max(this.activeBuffTimers.shieldTimer, 7.5);
       if (player) {
         this._spawnFloorRipple(player.x, player.groundY || 561, 'buff', 1.35, 1.35);
       }
       this._spawnFloorRipple(tx, ty, 'summon', 1.15, 1.55);
-      this._spawnUltEffect({
-        kind: 'sky_cataclysm',
-        x: tx,
-        y: ty,
-        width: 56,
-        height: 360,
-        color: '#38bdf8',
-        subColor: '#fef08a',
-        maxAge: 0.85
-      });
-      this._spawnUltEffect({
-        kind: 'lane_beam',
-        x0: entity.x - 160,
-        x1: entity.x + entity.facing * 520,
-        y: entity.groundY - 26,
-        thickness: 22,
-        color: '#38bdf8',
-        subColor: '#fef08a',
-        maxAge: 0.68
-      });
-      this._spawnUltEffect({
-        kind: 'atlas_burst',
-        row: 2,
-        x: tx,
-        y: ty - 62,
-        scale: 1.75,
-        color: '#38bdf8',
-        subColor: '#fef08a',
-        maxAge: 0.78
-      });
 
       const targets = sortedTargets.slice(0, 8);
       for (const m of targets) {
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 640) continue;
+        affectedTargets.push(m);
         m._tauntedTimer = Math.max(m._tauntedTimer || 0, 5.5);
         m._tauntTarget = entity;
         const mult = m === target ? 1.0 : 0.84;
@@ -2846,19 +2917,15 @@ export class EndlessCompanions {
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 125, economy, game, {
           fromUlt: true
         });
-        this._spawnStrikeFX(entity, 'shockwave', m.x || tx, (m.groundY || ty) - 10, '#38bdf8', entity.facing, 0.42, 1.45);
         if (typeof m.addStagger === 'function') {
           m.addStagger(85, entity, game);
         }
       }
-      return totalDealt;
-    }
-
-    if (role === 'HEALER') {
-      // Seraphina: SERAPHIC NOVA! — massive hero sanctuary heal + celestial judgment columns across battlefield
+    } else if (role === 'HEALER') {
+      // Seraphina: SERAPHIC NOVA! - massive hero sanctuary heal + celestial judgment across battlefield
       if (player && !player.isDead && Number.isFinite(player.hp) && Number.isFinite(player.maxHp)) {
         const pctHeal = Math.round(player.maxHp * 0.32);
-        const healAmt = Math.max(Math.round(power.healAmount * 2.2), pctHeal);
+        const healAmt = Math.max(Math.round((power?.healAmount || 60) * 2.2), pctHeal);
         const before = player.hp;
         player.hp = Math.min(player.maxHp, player.hp + healAmt);
         const actualHeal = Math.max(0, Math.round(player.hp - before));
@@ -2879,261 +2946,92 @@ export class EndlessCompanions {
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 720) continue;
-        const mx = Number.isFinite(m.x) ? m.x : tx;
-        const my = Number.isFinite(m.groundY) ? m.groundY : ty;
+        affectedTargets.push(m);
         const hit = this._scaleHit(baseUltDmg * (m === target ? 1.0 : 0.82), m, stats, i === 0, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 82, economy, game, {
           fromUlt: true
         });
-        if (i < 4) {
-          this._spawnUltEffect({
-            kind: 'sky_cataclysm',
-            x: mx,
-            y: my,
-            width: 44,
-            height: 340,
-            color: '#fde047',
-            subColor: '#4ade80',
-            maxAge: 0.78
-          });
-          this._spawnUltEffect({
-            kind: 'atlas_burst',
-            row: 3,
-            x: mx,
-            y: my - 72,
-            scale: 1.5,
-            color: '#fde047',
-            subColor: '#ffffff',
-            maxAge: 0.68
-          });
-        }
       }
-      return totalDealt;
-    }
-
-    if (role === 'BLASTER') {
-      // Ignis Sol: SOLAR APOCALYPSE! — triple colossal solar pillars + blazing ember shockwaves
+    } else if (role === 'BLASTER') {
+      // Ignis Sol: SOLAR APOCALYPSE! - scorching solar cataclysm across monster pack
+      this._spawnFloorRipple(tx, ty, 'buff', 1.05, 1.45);
       const targets = sortedTargets.slice(0, 10);
-      for (let k = -1; k <= 1; k++) {
-        const cx = tx + k * 115;
-        this._spawnFloorRipple(cx, ty, 'buff', 1.05, 1.45);
-        this._spawnUltEffect({
-          kind: 'sky_cataclysm',
-          x: cx,
-          y: ty,
-          width: k === 0 ? 64 : 44,
-          height: 380,
-          color: '#fb923c',
-          subColor: '#fde047',
-          maxAge: 0.88
-        });
-      }
-      this._spawnUltEffect({
-        kind: 'atlas_burst',
-        row: 4,
-        x: tx,
-        y: ty - 84,
-        scale: 1.85,
-        color: '#fb923c',
-        subColor: '#fde047',
-        maxAge: 0.82
-      });
-
       for (const m of targets) {
         if (m !== target && Math.abs((m.x || 0) - tx) > 380) continue;
+        affectedTargets.push(m);
         const mult = m === target ? 1.05 : 0.88;
         const hit = this._scaleHit(baseUltDmg * mult, m, stats, m === target, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 118, economy, game, {
           fromUlt: true
         });
-        this._spawnStrikeFX(entity, 'burst', m.x || tx, (m.groundY || ty) - 70, '#fb923c', entity.facing, 0.42, 1.55);
       }
-      return totalDealt;
-    }
-
-    if (role === 'ARCHER') {
-      // Sylvanis: STARFALL VOLLEY! — piercing starlight lane beam + sky-arrow barrage across all monsters
+    } else if (role === 'ARCHER') {
+      // Sylvanis: STARFALL VOLLEY! - piercing starlight volley + tracer arrows across all monsters
       const targets = sortedTargets.slice(0, 8);
-      this._spawnUltEffect({
-        kind: 'lane_beam',
-        x0: entity.x + entity.facing * 24,
-        x1: entity.x + entity.facing * 640,
-        y: ty - 74,
-        thickness: 20,
-        color: '#34d399',
-        subColor: '#fef08a',
-        maxAge: 0.72
-      });
-
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 780) continue;
-        const mx = Number.isFinite(m.x) ? m.x : tx;
-        const my = Number.isFinite(m.groundY) ? m.groundY : ty;
+        affectedTargets.push(m);
         const hit = this._scaleHit(baseUltDmg * (m === target ? 1.0 : 0.82), m, stats, i < 2, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 68, economy, game, {
           fromUlt: true
         });
-        if (i < 4) {
-          this._spawnUltEffect({
-            kind: 'atlas_burst',
-            row: 3,
-            x: mx,
-            y: my - 72,
-            scale: 1.45,
+      }
+      if (targets.length > 0) {
+        for (let a = 0; a < Math.min(5, Math.max(3, targets.length)); a++) {
+          const tMon = targets[a % targets.length];
+          const boltHit = this._scaleHit(baseUltDmg * 0.22, tMon, stats, a === 0, economy);
+          this._spawnProjectile(entity, tMon, boltHit.dmg, boltHit.isCrit, {
+            speed: 980 + a * 60,
             color: '#34d399',
-            subColor: '#fef08a',
-            maxAge: 0.65
+            coreColor: '#fef08a',
+            style: 'arrow',
+            knockX: 46,
+            fromUlt: true
           });
-          this._spawnStrikeFX(entity, 'pillar', mx, my, '#34d399', entity.facing, 0.36, 1.25);
         }
       }
-      // Bonus visual starfall tracer arrows flying down-lane
-      for (let a = 0; a < Math.min(5, Math.max(3, targets.length)); a++) {
-        const tMon = targets[a % targets.length];
-        const boltHit = this._scaleHit(baseUltDmg * 0.22, tMon, stats, a === 0, economy);
-        this._spawnProjectile(entity, tMon, boltHit.dmg, boltHit.isCrit, {
-          speed: 980 + a * 60,
-          color: '#34d399',
-          coreColor: '#fef08a',
-          style: 'arrow',
-          knockX: 46,
-          fromUlt: true
-        });
-      }
-      return totalDealt;
-    }
-
-    if (role === 'LANCER') {
-      // Freyja: VALKYRIE VALHALLA! — sky-lance judgment spear beam + gilded valkyrie shockwave across lane
-      this._spawnUltEffect({
-        kind: 'lane_beam',
-        x0: entity.x - entity.facing * 40,
-        x1: entity.x + entity.facing * 580,
-        y: ty - 68,
-        thickness: 28,
-        color: '#facc15',
-        subColor: '#38bdf8',
-        maxAge: 0.78
-      });
-      this._spawnUltEffect({
-        kind: 'sky_cataclysm',
-        x: tx,
-        y: ty,
-        width: 50,
-        height: 360,
-        color: '#facc15',
-        subColor: '#38bdf8',
-        maxAge: 0.82
-      });
-      this._spawnUltEffect({
-        kind: 'atlas_burst',
-        row: 2,
-        x: tx,
-        y: ty - 66,
-        scale: 1.75,
-        color: '#facc15',
-        subColor: '#38bdf8',
-        maxAge: 0.78
-      });
-
+    } else if (role === 'LANCER') {
+      // Freyja: VALKYRIE VALHALLA! - sky-lance judgment & valkyrie shockwave across lane
       const targets = sortedTargets.slice(0, 8);
       for (const m of targets) {
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 660) continue;
+        affectedTargets.push(m);
         const hit = this._scaleHit(baseUltDmg * (m === target ? 1.05 : 0.85), m, stats, m === target, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 145, economy, game, {
           fromUlt: true
         });
-        this._spawnStrikeFX(entity, 'slash', m.x || tx, (m.groundY || ty) - 76, '#facc15', entity.facing, 0.42, 1.55);
         if (typeof m.addStagger === 'function') {
           m.addStagger(110, entity, game);
         } else if (!this._isBossTarget(m)) {
           m.stunTimer = Math.max(m.stunTimer || 0, 0.75);
         }
       }
-      return totalDealt;
-    }
-
-    if (role === 'STRIKER') {
-      // Kaze-Maru: SHOGUN TEMPEST! — guaranteed-crit razor iaido cyclone & twin cross-tempest slashes
-      this._spawnUltEffect({
-        kind: 'lane_beam',
-        x0: entity.x - 100,
-        x1: entity.x + entity.facing * 560,
-        y: ty - 76,
-        thickness: 18,
-        color: '#22d3ee',
-        subColor: '#fef08a',
-        maxAge: 0.68
-      });
-
+    } else if (role === 'STRIKER') {
+      // Kaze-Maru: SHOGUN TEMPEST! - guaranteed-crit razor iaido cyclone
       const targets = sortedTargets.slice(0, 8);
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 640) continue;
-        const mx = Number.isFinite(m.x) ? m.x : tx;
-        const my = Number.isFinite(m.groundY) ? m.groundY : ty;
-        // Guaranteed critical Shogun iaido cuts
+        affectedTargets.push(m);
         const hit = this._scaleHit(baseUltDmg * (m === target ? 1.05 : 0.82), m, stats, true, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, true, 108, economy, game, {
           fromUlt: true
         });
-        if (i < 4) {
-          this._spawnUltEffect({
-            kind: 'cross_tempest',
-            x: mx,
-            y: my - 78,
-            span: 68,
-            color: '#22d3ee',
-            subColor: '#fef08a',
-            maxAge: 0.74
-          });
-          this._spawnUltEffect({
-            kind: 'atlas_burst',
-            row: 3,
-            x: mx,
-            y: my - 78,
-            scale: 1.55,
-            color: '#22d3ee',
-            subColor: '#fef08a',
-            maxAge: 0.66
-          });
-        }
       }
-      return totalDealt;
-    }
-
-    if (role === 'WEAVER') {
-      // Chronos: CHRONO RIFT! — party overdrive haste + temporal rift freeze & clockwork pillars across lane
+    } else if (role === 'WEAVER') {
+      // Chronos: CHRONO RIFT! - party overdrive haste + temporal rift freeze across lane
       this.activeBuffTimers.hasteTimer = Math.max(this.activeBuffTimers.hasteTimer, 8.5);
       if (player) {
         this._spawnFloorRipple(player.x, player.groundY || 561, 'buff', 1.4, 1.35);
       }
       this._spawnFloorRipple(tx, ty, 'summon', 1.35, 1.65);
-      this._spawnUltEffect({
-        kind: 'cross_tempest',
-        x: tx,
-        y: ty - 84,
-        span: 86,
-        color: '#c084fc',
-        subColor: '#38bdf8',
-        maxAge: 0.86
-      });
-      this._spawnUltEffect({
-        kind: 'sky_cataclysm',
-        x: tx,
-        y: ty,
-        width: 54,
-        height: 360,
-        color: '#c084fc',
-        subColor: '#38bdf8',
-        maxAge: 0.84
-      });
 
       const targets = sortedTargets.slice(0, 10);
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 740) continue;
+        affectedTargets.push(m);
         m._chillTimer = Math.max(m._chillTimer || 0, 6.5);
         if (!this._isBossTarget(m)) {
           m.stunTimer = Math.max(m.stunTimer || 0, 0.7);
@@ -3142,120 +3040,44 @@ export class EndlessCompanions {
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 65, economy, game, {
           fromUlt: true
         });
-        if (i < 4) {
-          this._spawnUltEffect({
-            kind: 'atlas_burst',
-            row: 3,
-            x: m.x || tx,
-            y: (m.groundY || ty) - 74,
-            scale: 1.45,
-            color: '#c084fc',
-            subColor: '#38bdf8',
-            maxAge: 0.70
-          });
-        }
       }
-      return totalDealt;
-    }
-
-    if (role === 'ASSASSIN') {
+    } else if (role === 'ASSASSIN') {
       // Nyx EX: ECLIPSE REQUIEM! - void cross-slash barrage across living foes
-      this._spawnUltEffect({
-        kind: 'lane_beam',
-        x0: entity.x - 90,
-        x1: entity.x + entity.facing * 580,
-        y: ty - 76,
-        thickness: 20,
-        color: '#e879f9',
-        subColor: '#38bdf8',
-        maxAge: 0.72
-      });
       const targets = sortedTargets.slice(0, 8);
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 680) continue;
-        const mx = Number.isFinite(m.x) ? m.x : tx;
-        const my = Number.isFinite(m.groundY) ? m.groundY : ty;
+        affectedTargets.push(m);
         const hit = this._scaleHit(baseUltDmg * (m === target ? 1.08 : 0.85), m, stats, true, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, true, 112, economy, game, {
           fromUlt: true
         });
-        if (i < 4) {
-          this._spawnUltEffect({
-            kind: 'cross_tempest',
-            x: mx,
-            y: my - 78,
-            span: 74,
-            color: '#e879f9',
-            subColor: '#38bdf8',
-            maxAge: 0.76
-          });
-        }
       }
-      return totalDealt;
-    }
-
-    if (role === 'REAPER') {
+    } else if (role === 'REAPER') {
       // Malakor EX: ABYSSAL HARVEST! - crimson soul cataclysm + hero siphon heal
       this._spawnFloorRipple(tx, ty, 'buff', 1.25, 1.55);
-      this._spawnUltEffect({
-        kind: 'sky_cataclysm',
-        x: tx,
-        y: ty,
-        width: 58,
-        height: 380,
-        color: '#f43f5e',
-        subColor: '#c084fc',
-        maxAge: 0.84
-      });
-      this._spawnUltEffect({
-        kind: 'cross_tempest',
-        x: tx,
-        y: ty - 78,
-        span: 84,
-        color: '#f43f5e',
-        subColor: '#c084fc',
-        maxAge: 0.80
-      });
       const targets = sortedTargets.slice(0, 10);
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 680) continue;
+        affectedTargets.push(m);
         const hit = this._scaleHit(baseUltDmg * (m === target ? 1.08 : 0.86), m, stats, i < 2, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 124, economy, game, {
           fromUlt: true
         });
-        if (i < 4) {
-          this._spawnStrikeFX(entity, 'slash', m.x || tx, (m.groundY || ty) - 74, '#f43f5e', entity.facing, 0.4, 1.5);
-        }
       }
       if (player && !player.isDead && Number.isFinite(player.hp) && Number.isFinite(player.maxHp)) {
         const healAmt = Math.max(40, Math.round(player.maxHp * 0.12));
         player.hp = Math.min(player.maxHp, player.hp + healAmt);
       }
-      return totalDealt;
-    }
-
-    if (role === 'CRYO MAGE') {
-      // Lyra EX: ABSOLUTE ZERO! - triple glacial pillars + deep cryo freeze across lane
-      for (let k = -1; k <= 1; k++) {
-        const cx = tx + k * 118;
-        this._spawnFloorRipple(cx, ty, 'summon', 1.1, 1.45);
-        this._spawnUltEffect({
-          kind: 'sky_cataclysm',
-          x: cx,
-          y: ty,
-          width: k === 0 ? 60 : 44,
-          height: 370,
-          color: '#67e8f9',
-          subColor: '#e0f2fe',
-          maxAge: 0.86
-        });
-      }
+    } else if (role === 'CRYO MAGE') {
+      // Lyra EX: ABSOLUTE ZERO! - glacial cataclysm + deep cryo freeze across lane
+      this._spawnFloorRipple(tx, ty, 'summon', 1.1, 1.45);
       const targets = sortedTargets.slice(0, 10);
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 740) continue;
+        affectedTargets.push(m);
         m._chillTimer = Math.max(m._chillTimer || 0, 6.5);
         if (!this._isBossTarget(m)) {
           m.stunTimer = Math.max(m.stunTimer || 0, 0.85);
@@ -3265,39 +3087,13 @@ export class EndlessCompanions {
           fromUlt: true
         });
       }
-      return totalDealt;
-    }
-
-    if (role === 'VANGUARD') {
-      // Aegis-09 EX: OMEGA RAILCANNON! - heavy orbital lane beam + railgun lightning arcs
-      this._spawnUltEffect({
-        kind: 'lane_beam',
-        x0: entity.x - entity.facing * 36,
-        x1: entity.x + entity.facing * 720,
-        y: ty - 74,
-        thickness: 32,
-        color: '#22d3ee',
-        subColor: '#facc15',
-        maxAge: 0.84
-      });
-      this._spawnUltEffect({
-        kind: 'atlas_burst',
-        row: 2,
-        x: tx,
-        y: ty - 70,
-        scale: 1.9,
-        color: '#22d3ee',
-        subColor: '#facc15',
-        maxAge: 0.82
-      });
+    } else if (role === 'VANGUARD') {
+      // Aegis-09 EX: OMEGA RAILCANNON! - orbital railcannon surge across lane
       const targets = sortedTargets.slice(0, 10);
-      let prevX = entity.x + entity.facing * 24;
-      let prevY = entity.groundY - 78;
       for (let i = 0; i < targets.length; i++) {
         const m = targets[i];
         if (m !== target && Math.abs((m.x || 0) - entity.x) > 760) continue;
-        const mx = Number.isFinite(m.x) ? m.x : tx;
-        const my = Number.isFinite(m.groundY) ? m.groundY : ty;
+        affectedTargets.push(m);
         const hit = this._scaleHit(baseUltDmg * (m === target ? 1.1 : 0.88), m, stats, i < 2, economy);
         totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 140, economy, game, {
           fromUlt: true
@@ -3305,83 +3101,59 @@ export class EndlessCompanions {
         if (typeof m.addStagger === 'function') {
           m.addStagger(115, entity, game);
         }
-        if (i < 5) {
-          this._spawnUltEffect({
-            kind: 'thunder_chain',
-            x0: prevX,
-            y0: prevY,
-            x1: mx,
-            y1: my - 72,
-            color: i % 2 === 0 ? '#22d3ee' : '#facc15',
-            subColor: '#ffffff',
-            seed: i + 3 + Math.floor(this._time * 10),
-            maxAge: 0.64
-          });
-          prevX = mx;
-          prevY = my - 72;
+      }
+    } else {
+      // BRAWLER (Raijin EX): RAIJIN THUNDERCLAP! - cascading thunderclap barrage
+      this._spawnFloorRipple(tx, ty, 'buff', 1.2, 1.55);
+      const targets = sortedTargets.slice(0, 8);
+      for (let i = 0; i < targets.length; i++) {
+        const m = targets[i];
+        if (m !== target && Math.abs((m.x || 0) - entity.x) > 680) continue;
+        affectedTargets.push(m);
+        const hit = this._scaleHit(baseUltDmg * (m === target ? 1.05 : 0.86), m, stats, i < 2, economy);
+        totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 132, economy, game, {
+          fromUlt: true
+        });
+        if (typeof m.addStagger === 'function') {
+          m.addStagger(95, entity, game);
         }
       }
-      return totalDealt;
     }
 
-    // BRAWLER (Raijin EX): RAIJIN THUNDERCLAP! - cascading gilded-cyan thunderbolts & sky-smite barrage
-    this._spawnFloorRipple(tx, ty, 'buff', 1.2, 1.55);
-    this._spawnUltEffect({
-      kind: 'atlas_burst',
-      row: 2,
-      x: tx,
-      y: ty - 68,
-      scale: 1.9,
-      color: '#fbbf24',
-      subColor: '#38bdf8',
-      maxAge: 0.84
-    });
-    this._spawnUltEffect({
-      kind: 'sky_cataclysm',
-      x: tx,
-      y: ty,
-      width: 58,
-      height: 380,
-      color: '#fbbf24',
-      subColor: '#38bdf8',
-      maxAge: 0.82
+    this.vfx?.spawnRoleUltimate?.(entity, {
+      player,
+      target,
+      targets: affectedTargets.length > 0 ? affectedTargets : sortedTargets.slice(0, 6),
+      tx,
+      ty,
+      ultVfxMult,
+      isSquadOverdrive: false
     });
 
-    const targets = sortedTargets.slice(0, 8);
-    let prevX = entity.x;
-    let prevY = entity.groundY - 76;
-    for (let i = 0; i < targets.length; i++) {
-      const m = targets[i];
-      if (m !== target && Math.abs((m.x || 0) - entity.x) > 680) continue;
-      const mx = Number.isFinite(m.x) ? m.x : tx;
-      const my = Number.isFinite(m.groundY) ? m.groundY : ty;
-      const hit = this._scaleHit(baseUltDmg * (m === target ? 1.05 : 0.86), m, stats, i < 2, economy);
-      totalDealt += this._applyCompanionDamage(entity, m, hit.dmg, hit.isCrit, 132, economy, game, {
-        fromUlt: true
-      });
-      if (typeof m.addStagger === 'function') {
-        m.addStagger(95, entity, game);
-      }
-      if (i < 5) {
-        this._spawnUltEffect({
-          kind: 'thunder_chain',
-          x0: prevX,
-          y0: prevY,
-          x1: mx,
-          y1: my - 72,
-          color: i % 2 === 0 ? '#fbbf24' : '#38bdf8',
-          subColor: '#ffffff',
-          seed: i + 1 + Math.floor(this._time * 10),
-          maxAge: 0.62
-        });
-        prevX = mx;
-        prevY = my - 72;
-      }
-    }
     return totalDealt;
-    } finally {
-      this._activeUltVfxMult = 1.0;
+  }
+
+  _triggerRoleUltimate(entity, player, leadTarget, aliveMonsters, power, stats, economy, game) {
+    if (!this._beginRoleUltimate(entity, player, leadTarget, aliveMonsters, power, stats, economy, game)) {
+      return 0;
     }
+    const pending = entity._pendingRoleUlt;
+    if (pending) pending.resolved = true;
+    return this._executeRoleUltimateImpact(
+      entity,
+      player,
+      pending?.target || leadTarget,
+      aliveMonsters,
+      power,
+      stats,
+      economy,
+      game,
+      {
+        fallbackTx: pending?.tx,
+        fallbackTy: pending?.ty,
+        ultVfxMult: pending?.ultVfxMult
+      }
+    );
   }
 
   triggerSquadOverdrive(player = null, aliveMonsters = null, economy = null, game = null) {
@@ -3472,7 +3244,7 @@ export class EndlessCompanions {
       }
     }
 
-    // Synchronize all deployed allies into heroic Row 4 ULTIMATE pose + converging pixel beams
+    // Synchronize all deployed allies into heroic Row 4 ULTIMATE pose + authentic EX VFX bursts
     for (let i = 0; i < this.entities.length; i++) {
       const ent = this.entities[i];
       if (leadTarget && Math.abs((leadTarget.x || 0) - ent.x) > 4) {
@@ -3483,6 +3255,7 @@ export class EndlessCompanions {
       ent.ultFlashTimer = Math.max(Number(ent.ultFlashTimer) || 0, 1.25);
       ent.isCastingUlt = true;
       ent._castingUltState = true;
+      ent._pendingRoleUlt = null;
       ent.setState('ULTIMATE', true);
       ent.didSkillHit = true;
       ent.triggerAuraRing('buff', 1.55);
@@ -3494,38 +3267,12 @@ export class EndlessCompanions {
         ent.calloutTimer = 0;
         ent.calloutIsUlt = false;
       }
-
-      const beamEndX = Number.isFinite(leadTarget?.x)
-        ? leadTarget.x + ent.facing * 120
-        : ent.x + ent.facing * 620;
-      const entUltVfxMult = clampNum(Number(getAuraTier(ent.star)?.ultVfxMult) || 1.0, 1.0, 2.2);
-      this._spawnUltEffect(
-        {
-          kind: 'lane_beam',
-          x0: ent.x,
-          x1: beamEndX,
-          y: ent.groundY - 72,
-          thickness: 24,
-          color: ent.primaryColor || '#facc15',
-          subColor: '#fef08a',
-          maxAge: 0.78
-        },
-        entUltVfxMult
-      );
-      this._spawnUltEffect(
-        {
-          kind: 'atlas_burst',
-          row: 4,
-          x: ent.x,
-          y: ent.groundY - 72,
-          scale: 1.45,
-          color: '#facc15',
-          subColor: '#ffffff',
-          maxAge: 0.72
-        },
-        entUltVfxMult
-      );
     }
+
+    this.vfx?.spawnSquadOverdriveBurst?.(this.entities, {
+      leadTarget,
+      targets: livingTargets
+    });
 
     const leadEnt =
       this.entities[0] || {
@@ -3588,17 +3335,6 @@ export class EndlessCompanions {
         const mx = Number.isFinite(m.x) ? m.x : fxOriginX + pFacing * 240;
         const my = Number.isFinite(m.groundY) ? m.groundY : fxOriginY;
         this._spawnFloorRipple(mx, my, 'buff', 1.1, 1.5);
-        this._spawnUltEffect({
-          kind: i % 2 === 0 ? 'sky_cataclysm' : 'cross_tempest',
-          x: mx,
-          y: i % 2 === 0 ? my : my - 74,
-          width: isBoss ? 68 : 52,
-          height: 390,
-          span: 86,
-          color: '#f43f5e',
-          subColor: '#facc15',
-          maxAge: 0.86
-        });
       }
     }
 
@@ -3691,15 +3427,15 @@ export class EndlessCompanions {
           gaugeMult,
           overdriveGain: p.overdriveGain || 0
         });
-        this._spawnStrikeFX(
+        this.vfx?.spawnProjectileImpact?.(
           entity,
-          'burst',
           hitMonster.x,
           (hitMonster.groundY || entity.groundY) - 70,
-          p.color,
-          p.vx < 0 ? -1 : 1,
-          0.22,
-          p.isCrit ? 1.15 : 0.85
+          {
+            facing: p.vx < 0 ? -1 : 1,
+            isCrit: Boolean(p.isCrit),
+            scaleMult: p.isCrit ? 1.15 : 0.92
+          }
         );
         p.target = null;
         entity.activeProjectiles.splice(i, 1);
@@ -3724,6 +3460,7 @@ export class EndlessCompanions {
 
     this.activeBuffTimers.shieldTimer = Math.max(0, this.activeBuffTimers.shieldTimer - safeDt);
     this.activeBuffTimers.hasteTimer = Math.max(0, this.activeBuffTimers.hasteTimer - safeDt);
+    this.vfx?.update?.(safeDt);
 
     for (let i = this._floorRipples.length - 1; i >= 0; i--) {
       const r = this._floorRipples[i];
@@ -3765,9 +3502,7 @@ export class EndlessCompanions {
 
     if (this.entities.length === 0) return;
 
-    const aliveMonsters = Array.isArray(monsters)
-      ? monsters.filter((m) => m && !m.isDead && !(Number.isFinite(m.hp) && m.hp <= 0))
-      : [];
+    const aliveMonsters = Array.isArray(monsters) ? monsters.filter(isTargetAlive) : [];
 
     const stats = typeof economy?.getComputedStats === 'function' ? economy.getComputedStats() : null;
     const synMods = this.getPartySynergyModifiers();
@@ -3788,6 +3523,27 @@ export class EndlessCompanions {
     const pFacing = (player?.facing || 1) < 0 ? -1 : 1;
     const evo = this._getEvo();
 
+    const aiBounds = {
+      minX: bounds?.minX,
+      maxX: bounds?.maxX,
+      minLaneY,
+      maxLaneY
+    };
+    const formationOffsets = this._getFormationOffsets(evo);
+    const anchors = this.ai.computeFormationAnchors(
+      this.entities,
+      player,
+      formationOffsets,
+      aiBounds,
+      safeDt
+    );
+    const assignedTargets = this.ai.assignSquadTargets(
+      this.entities,
+      player,
+      aliveMonsters,
+      safeDt
+    );
+
     for (let i = 0; i < this.entities.length; i++) {
       const ent = this.entities[i];
       const st = this.rosterState[ent.companionId];
@@ -3807,6 +3563,7 @@ export class EndlessCompanions {
         ent.heroId = activeKey;
         ent.isEx = true;
         safeEnsureHeroLoaded(activeKey);
+        this.vfx?.preload?.(activeKey);
         ent.triggerAuraRing('buff', 1.45);
       } else if (starInfo.star > prevStar && starInfo.star >= 3) {
         ent.triggerAuraRing('buff', 1.45);
@@ -3828,52 +3585,47 @@ export class EndlessCompanions {
 
       this._updateProjectilesAndStrikes(ent, safeDt, aliveMonsters, economy, game, gaugeMult);
 
-      // Squad Formation slot around the hero (falls back to role-aware offsets if evo absent)
-      const slotOff = evo && typeof evo.getSlotOffset === 'function' ? evo.getSlotOffset(i) : null;
-      const offsetX =
-        slotOff && Number.isFinite(slotOff.dx)
-          ? slotOff.dx
-          : ent.role === 'TANK'
-            ? 56
-            : ent.isRanged
-              ? -(98 + i * 20)
-              : -(54 + i * 24);
-      const offsetY =
-        slotOff && Number.isFinite(slotOff.dy)
-          ? slotOff.dy
-          : FORMATION_LANE_OFFSETS[i % FORMATION_LANE_OFFSETS.length];
-      const rawFormX = px + offsetX * pFacing;
-      const formX =
-        bounds && Number.isFinite(bounds.minX) && Number.isFinite(bounds.maxX)
-          ? clampNum(rawFormX, bounds.minX + 28, bounds.maxX - 28)
-          : rawFormX;
-      const formY = clampNum(py + offsetY, minLaneY, maxLaneY);
+      const anchor = anchors.get(ent) || {
+        x: px,
+        y: py,
+        independentLaneY: py,
+        squadFacing: pFacing
+      };
+      const formX = anchor.x;
+      const formY = anchor.y;
 
-      const distToPlayerX = Math.abs(px - ent.x);
-      if (!Number.isFinite(ent.x) || !Number.isFinite(ent.groundY) || distToPlayerX > 960) {
+      // Emergency teleport clamp for extreme stage warps (> 1250px) or non-finite coords
+      if (this.ai.shouldEmergencyTeleport(ent, player)) {
         ent.x = formX;
         ent.groundY = formY;
         ent.y = formY;
-        ent.facing = pFacing;
+        ent.facing = anchor.squadFacing || pFacing;
         ent._castingUltState = false;
+        ent._pendingRoleUlt = null;
         ent.targetMonster = null;
         ent.setState('IDLE');
         ent.triggerAuraRing('summon', 1.0);
         continue;
       }
 
-      const target = this._findTarget(ent, player, aliveMonsters);
+      const target = assignedTargets.get(ent) || null;
       ent.targetMonster = target;
 
-      // Trigger signature Role Ultimate Assist burst immediately at 100% charge when monsters exist
+      // Begin signature Role Ultimate Assist (Row 4 wind-up -> synchronized impact at 0.42s)
       if (ent.ultCharge >= 100 && aliveMonsters.length > 0 && !ent.isCastingUlt && ent.state !== 'ULTIMATE') {
         const power = this.computeCompanionPower(ent.companionId, ent.level, economy, stats, synMods);
         const ultLead = target || aliveMonsters[0];
-        this._triggerRoleUltimate(ent, player, ultLead, aliveMonsters, power, stats, economy, game);
+        this._beginRoleUltimate(ent, player, ultLead, aliveMonsters, power, stats, economy, game);
       }
 
-      // Rapid catch-up sprint whenever player surges far ahead
-      if (distToPlayerX > 380 && ent.state !== 'SKILL' && ent.state !== 'ULTIMATE') {
+      // Smart rubber-band DASH ONLY when truly left behind (> 680px AND no active target within 360px)
+      if (
+        ent.state !== 'SKILL' &&
+        ent.state !== 'ULTIMATE' &&
+        ent.state !== 'AUTO_ATTACK' &&
+        ent.state !== 'DASH' &&
+        this.ai.shouldRubberBandDash(ent, player, aliveMonsters)
+      ) {
         ent.setState('DASH');
       }
 
@@ -3891,10 +3643,50 @@ export class EndlessCompanions {
           ent.animFrame = (ent.animFrame + safeDt * 30) % 30;
         }
       } else if (ent.state === 'ULTIMATE') {
-        if (target && Math.abs((target.x || 0) - ent.x) > 4) {
-          ent.facing = target.x >= ent.x ? 1 : -1;
+        const liveFocus =
+          ent._pendingRoleUlt?.target && isTargetAlive(ent._pendingRoleUlt.target)
+            ? ent._pendingRoleUlt.target
+            : target;
+        if (liveFocus && Math.abs((liveFocus.x || 0) - ent.x) > 4) {
+          ent.facing = liveFocus.x >= ent.x ? 1 : -1;
+        }
+        if (
+          ent._pendingRoleUlt &&
+          !ent._pendingRoleUlt.resolved &&
+          ent.stateTimer >= ROLE_ULT_IMPACT_BEAT_SEC
+        ) {
+          ent._pendingRoleUlt.resolved = true;
+          const pending = ent._pendingRoleUlt;
+          const liveTargets = aliveMonsters.filter(isTargetAlive);
+          const supportSelfUlt =
+            ent.role === 'HEALER' || ent.role === 'TANK' || ent.role === 'WEAVER';
+          if (liveTargets.length > 0 || supportSelfUlt) {
+            const resolvedLead =
+              pending.target && isTargetAlive(pending.target)
+                ? pending.target
+                : target && isTargetAlive(target)
+                  ? target
+                  : liveTargets[0] || null;
+            const power = this.computeCompanionPower(ent.companionId, ent.level, economy, stats, synMods);
+            this._executeRoleUltimateImpact(
+              ent,
+              player,
+              resolvedLead,
+              liveTargets,
+              power,
+              stats,
+              economy,
+              game,
+              {
+                fallbackTx: pending.tx,
+                fallbackTy: pending.ty,
+                ultVfxMult: pending.ultVfxMult
+              }
+            );
+          }
         }
         if (ent.stateTimer >= (ent.ultDuration || 1.15)) {
+          ent._pendingRoleUlt = null;
           ent._castingUltState = false;
           ent.setState('IDLE');
         }
@@ -3921,7 +3713,7 @@ export class EndlessCompanions {
         }
         if (!ent.didActionHit && ent.stateTimer >= ent.autoDuration * 0.42) {
           ent.didActionHit = true;
-          if (target) {
+          if (target && isTargetAlive(target)) {
             const power = this.computeCompanionPower(ent.companionId, ent.level, economy, stats, synMods);
             const hit = this._scaleHit(power.attackDmg, target, stats, false, economy);
             const distToTarget = Math.abs((target.x || 0) - ent.x);
@@ -3934,21 +3726,25 @@ export class EndlessCompanions {
                 knockX: 36,
                 overdriveGain: 4
               });
+              this.vfx?.spawnAutoAttack?.(ent, target, {
+                x: ent.x + ent.facing * 26,
+                y: ent.groundY - 76,
+                facing: ent.facing,
+                isCrit: Boolean(hit.isCrit),
+                scaleMult: hit.isCrit ? 1.05 : 0.9
+              });
             } else {
               this._applyCompanionDamage(ent, target, hit.dmg, hit.isCrit, 48, economy, game, {
                 gaugeMult,
                 overdriveGain: 4
               });
-              this._spawnStrikeFX(
-                ent,
-                ent.role === 'BRAWLER' ? 'burst' : 'slash',
-                target.x,
-                (target.groundY || ent.groundY) - 76,
-                ent.primaryColor,
-                ent.facing,
-                0.24,
-                hit.isCrit ? 1.15 : 0.9
-              );
+              this.vfx?.spawnAutoAttack?.(ent, target, {
+                x: target.x,
+                y: (target.groundY || ent.groundY) - 76,
+                facing: ent.facing,
+                isCrit: Boolean(hit.isCrit),
+                scaleMult: hit.isCrit ? 1.18 : 0.95
+              });
             }
           }
         }
@@ -3957,107 +3753,71 @@ export class EndlessCompanions {
           ent.setState('IDLE');
         }
       } else {
-        // IDLE / WALK decision pass
-        const shiftDx = formX - ent.x;
-        const shiftDy = formY - ent.groundY;
-        const shiftDist = Math.hypot(shiftDx, shiftDy);
-        if (this._formationShiftTimer > 0 && shiftDist > 18) {
-          const shiftSpd = 340 * moveBoost;
-          ent.x += (shiftDx / shiftDist) * Math.min(shiftDist, shiftSpd * safeDt);
-          ent.groundY = clampNum(
-            ent.groundY + (shiftDy / shiftDist) * Math.min(Math.abs(shiftDy), shiftSpd * 0.72 * safeDt),
-            minLaneY,
-            maxLaneY
-          );
-          ent.facing = Math.abs(shiftDx) > 6 ? (shiftDx > 0 ? 1 : -1) : pFacing;
-          ent.moveDir = 1;
-          ent.setState('WALK');
-          ent.walkPhase += safeDt * 5.0;
-          ent.animFrame = (ent.animFrame + safeDt * 26) % 30;
-        } else {
-          const playerNeedsHeal = Boolean(
-            ent.role === 'HEALER' &&
-              player &&
-              !player.isDead &&
-              Number.isFinite(player.hp) &&
-              Number.isFinite(player.maxHp) &&
-              player.hp < player.maxHp * 0.88
-          );
-          const targetDistX = target ? Math.abs((target.x || 0) - ent.x) : Infinity;
-          const targetDistY = target
-            ? Math.abs((Number.isFinite(target.groundY) ? target.groundY : py) - ent.groundY)
-            : Infinity;
-          const skillRange = Math.max(ent.attackRange + 55, 220);
+        // Tactical AI IDLE / WALK / KITE / SKILL / AUTO_ATTACK decision pass
+        const step = this.ai.computeMovementStep(ent, {
+          player,
+          target,
+          targets: aliveMonsters,
+          entities: this.entities,
+          anchor,
+          bounds: aiBounds,
+          dt: safeDt,
+          moveBoost,
+          formationShiftActive: this._formationShiftTimer > 0
+        });
 
-          if (
-            ent.skillCooldown <= 0 &&
-            (playerNeedsHeal ||
-              (target &&
-                (targetDistX <= skillRange ||
-                  ((ent.role === 'TANK' || ent.role === 'WEAVER') && targetDistX <= 460))))
-          ) {
-            if (target && Math.abs((target.x || 0) - ent.x) > 4) {
-              ent.facing = target.x >= ent.x ? 1 : -1;
-            }
-            ent.setState('SKILL');
-          } else if (target) {
-            const laneTol = ent.isRanged ? 120 : 54;
-            if (targetDistX <= ent.attackRange && targetDistY <= laneTol) {
-              if (Math.abs((target.x || 0) - ent.x) > 4) {
-                ent.facing = target.x >= ent.x ? 1 : -1;
-              }
-              if (ent.attackCooldown <= 0) {
-                ent.setState('AUTO_ATTACK');
-              } else {
-                ent.setState('IDLE');
-                ent.animFrame = (ent.animFrame + safeDt * 12) % 30;
-              }
-            } else {
-              const desiredStandX =
-                target.x - Math.sign(target.x - ent.x || ent.facing || 1) * (ent.attackRange * 0.78);
-              const desiredStandY = ent.isRanged
-                ? formY
-                : clampNum(Number.isFinite(target.groundY) ? target.groundY : formY, minLaneY, maxLaneY);
-              const dx = desiredStandX - ent.x;
-              const dy = desiredStandY - ent.groundY;
-              const dist = Math.hypot(dx, dy) || 1;
-              const walkSpd = (ent.isRanged ? 235 : 268) * moveBoost;
-              ent.x += (dx / dist) * Math.min(dist, walkSpd * safeDt);
-              ent.groundY = clampNum(
-                ent.groundY + (dy / dist) * Math.min(Math.abs(dy), walkSpd * 0.62 * safeDt),
-                minLaneY,
-                maxLaneY
-              );
-              ent.facing = (target.x || 0) >= ent.x ? 1 : -1;
-              ent.moveDir = dx * ent.facing >= 0 ? 1 : -1;
-              ent.setState('WALK');
-              ent.walkPhase += safeDt * 4.4;
-              ent.animFrame = (ent.animFrame + safeDt * 24) % 30;
-            }
-          } else {
-            // Follow tidy Squad Formation around player
-            const dx = formX - ent.x;
-            const dy = formY - ent.groundY;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 14) {
-              const followSpd = 255 * moveBoost;
-              ent.x += (dx / dist) * Math.min(dist, followSpd * safeDt);
-              ent.groundY = clampNum(
-                ent.groundY + (dy / dist) * Math.min(Math.abs(dy), followSpd * 0.65 * safeDt),
-                minLaneY,
-                maxLaneY
-              );
-              ent.facing = Math.abs(dx) > 6 ? (dx > 0 ? 1 : -1) : pFacing;
-              ent.moveDir = 1;
-              ent.setState('WALK');
-              ent.walkPhase += safeDt * 4.2;
-              ent.animFrame = (ent.animFrame + safeDt * 24) % 30;
-            } else {
-              ent.facing = pFacing;
-              ent.setState('IDLE');
-              ent.animFrame = (ent.animFrame + safeDt * 11) % 30;
-            }
+        const playerNeedsHeal = Boolean(
+          ent.role === 'HEALER' &&
+            player &&
+            !player.isDead &&
+            Number.isFinite(player.hp) &&
+            Number.isFinite(player.maxHp) &&
+            player.hp < player.maxHp * 0.88
+        );
+        const targetDistX = target ? Math.abs((target.x || 0) - ent.x) : Infinity;
+        const skillRange = Math.max(ent.attackRange + 55, 220);
+        const canCastSkill =
+          this._formationShiftTimer <= 0 &&
+          ent.skillCooldown <= 0 &&
+          (playerNeedsHeal ||
+            (target &&
+              (targetDistX <= skillRange ||
+                ((ent.role === 'TANK' || ent.role === 'WEAVER') && targetDistX <= 460))));
+
+        if (canCastSkill) {
+          if (target && Math.abs((target.x || 0) - ent.x) > 4) {
+            ent.facing = target.x >= ent.x ? 1 : -1;
           }
+          ent.setState('SKILL');
+        } else if (step.action === 'IN_RANGE' && target) {
+          ent.x = step.nextX;
+          ent.groundY = step.nextGroundY;
+          ent.facing = step.facing;
+          if (ent.attackCooldown <= 0) {
+            ent.setState('AUTO_ATTACK');
+          } else if (step.moved) {
+            ent.moveDir = step.moveDir;
+            ent.setState('WALK');
+            ent.walkPhase += safeDt * 3.8;
+            ent.animFrame = (ent.animFrame + safeDt * 20) % 30;
+          } else {
+            ent.setState('IDLE');
+            ent.animFrame = (ent.animFrame + safeDt * 12) % 30;
+          }
+        } else if (step.action === 'KITE' || step.action === 'WALK') {
+          ent.x = step.nextX;
+          ent.groundY = step.nextGroundY;
+          ent.facing = step.facing;
+          ent.moveDir = step.moveDir;
+          ent.setState('WALK');
+          ent.walkPhase += safeDt * (step.isKiting ? 5.2 : 4.4);
+          ent.animFrame = (ent.animFrame + safeDt * (step.isKiting ? 28 : 24)) % 30;
+        } else {
+          ent.x = step.nextX;
+          ent.groundY = step.nextGroundY;
+          ent.facing = step.facing;
+          ent.setState('IDLE');
+          ent.animFrame = (ent.animFrame + safeDt * 11) % 30;
         }
       }
 
@@ -4279,271 +4039,39 @@ export class EndlessCompanions {
       this._drawAuraRingInstance(ctx, vfxImg, hasVfx, r.x, r.y + 2, r.kind, 0.78 * fade, grow, r.age * 1.4);
     }
 
+    this.vfx?.renderGroundLayer?.(ctx);
+
     ctx.restore();
   }
 
   renderForegroundFX(ctx, _renderer = null) {
-    if (!ctx || typeof ctx.fillRect !== 'function') return;
-
-    const assets = getSafePixelForgeAssets();
-    const rawVfx = assets?.endlessVfx || null;
-    const vfxImg = rawVfx ? PixelForge.ensureImage?.(rawVfx) || rawVfx : null;
-    const hasVfx = Boolean(
-      vfxImg &&
-        vfxImg.complete &&
-        (vfxImg.naturalWidth || vfxImg.width) >= 1536 &&
-        (vfxImg.naturalHeight || vfxImg.height) >= 768
-    );
+    if (!ctx) return;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
+    const vfx = this.vfx || null;
     for (const ent of this.entities) {
-      // 1. Crisp ranged pixel bolts & arrows (multi-pass dark selout -> accent -> white core)
       ctx.globalAlpha = 1;
       for (const p of ent.activeProjectiles) {
-        const px = Math.round(p.x);
-        const py = Math.round(p.y);
-        const speed = Math.hypot(p.vx, p.vy) || 1;
-        const nx = p.vx / speed;
-        const ny = p.vy / speed;
-        const tailLen = p.style === 'arrow' ? 28 : 22;
-
-        // Pass 1: dark selout body & tail
-        ctx.fillStyle = '#0d0f1c';
-        for (let s = 0; s <= 4; s++) {
-          const frac = s / 4;
-          const bx = Math.round(px - nx * tailLen * frac);
-          const by = Math.round(py - ny * tailLen * frac);
-          const sz = Math.max(4, 10 - s * 2);
-          ctx.fillRect(bx - Math.round(sz * 0.5) - 1, by - Math.round(sz * 0.5) - 1, sz + 2, sz + 2);
-        }
-
-        // Pass 2: colored energy streak
-        ctx.fillStyle = p.color;
-        for (let s = 0; s <= 4; s++) {
-          const frac = s / 4;
-          const bx = Math.round(px - nx * tailLen * frac);
-          const by = Math.round(py - ny * tailLen * frac);
-          const sz = Math.max(3, 8 - s * 1.5);
-          const isz = Math.round(sz);
-          ctx.fillRect(bx - Math.round(isz * 0.5), by - Math.round(isz * 0.5), isz, isz);
-        }
-
-        // Pass 3: incandescent white core + 4-pt pixel glint tip
-        ctx.fillStyle = p.coreColor || '#ffffff';
-        ctx.fillRect(px - 3, py - 3, 6, 6);
-        ctx.fillRect(px - 7, py - 1, 14, 2);
-        ctx.fillRect(px - 1, py - 7, 2, 14);
-      }
-
-      // 2. Crisp pixel melee slashes, starbursts, vertical pillars & ground shockwaves
-      for (const st of ent.activeStrikes) {
-        const u = clampNum(st.age / st.maxAge, 0, 1);
-        const alpha = u < 0.25 ? 1 : clampNum(1 - (u - 0.25) / 0.75, 0, 1);
-        if (alpha <= 0.03) continue;
-        const sx = Math.round(st.x);
-        const sy = Math.round(st.y);
-        const sc = st.scale || 1;
-
-        ctx.globalAlpha = alpha;
-
-        if (st.kind === 'slash') {
-          const steps = 7;
-          const spanX = Math.round(32 * sc);
-          const spanY = Math.round(28 * sc);
-          // Separate full-geometry passes: dark selout -> accent -> white core
+        if (vfx && typeof vfx.drawProjectile === 'function') {
+          vfx.drawProjectile(ctx, ent, p, this._time);
+        } else if (typeof ctx.fillRect === 'function') {
+          // Compact 3-step pixel needle fallback ONLY when vfx renderer is absent
+          const px = Math.round(p.x);
+          const py = Math.round(p.y);
+          const dir = (p.vx || 1) < 0 ? -1 : 1;
           ctx.fillStyle = '#0d0f1c';
-          for (let k = -steps; k <= steps; k++) {
-            const t = k / steps;
-            const bx = sx + Math.round(t * spanX * st.facing);
-            const by = sy + Math.round(t * spanY);
-            ctx.fillRect(bx - 4, by - 4, 8, 8);
-          }
-          ctx.fillStyle = st.color;
-          for (let k = -steps; k <= steps; k++) {
-            const t = k / steps;
-            const bx = sx + Math.round(t * spanX * st.facing);
-            const by = sy + Math.round(t * spanY);
-            ctx.fillRect(bx - 3, by - 3, 6, 6);
-          }
-          ctx.fillStyle = '#ffffff';
-          for (let k = -steps + 1; k <= steps - 1; k++) {
-            const t = k / steps;
-            const bx = sx + Math.round(t * spanX * st.facing);
-            const by = sy + Math.round(t * spanY);
-            ctx.fillRect(bx - 1, by - 1, 3, 3);
-          }
-        } else if (st.kind === 'pillar') {
-          const halfW = Math.max(6, Math.round((20 - u * 10) * sc));
-          const beamH = Math.round(210 * sc);
-          ctx.fillStyle = '#0d0f1c';
-          ctx.fillRect(sx - halfW - 2, sy - beamH, (halfW + 2) * 2, beamH);
-          ctx.fillStyle = st.color;
-          ctx.fillRect(sx - halfW, sy - beamH, halfW * 2, beamH);
-          ctx.fillStyle = '#ffffff';
-          const coreW = Math.max(4, Math.round(halfW * 0.45));
-          ctx.fillRect(sx - coreW, sy - beamH, coreW * 2, beamH);
-          drawPixelDiamond(ctx, sx, sy - Math.round(16 * sc), Math.round(18 * sc * (1 - u * 0.4)), '#fef08a');
-        } else if (st.kind === 'shockwave') {
-          const halfW = Math.round((26 + u * 78) * sc);
-          ctx.fillStyle = '#0d0f1c';
-          ctx.fillRect(sx - halfW - 2, sy - 4, (halfW + 2) * 2, 8);
-          ctx.fillStyle = st.color;
-          ctx.fillRect(sx - halfW, sy - 3, halfW * 2, 6);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(sx - Math.round(halfW * 0.55), sy - 1, Math.round(halfW * 1.1), 2);
-        } else {
-          // 4-point pixel diamond starburst
-          const r = Math.round((10 + u * 16) * sc);
-          drawPixelDiamond(ctx, sx, sy, r + 2, '#0d0f1c');
-          drawPixelDiamond(ctx, sx, sy, r, st.color);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(sx - Math.round(r * 1.3), sy - 1, Math.round(r * 2.6), 2);
-          ctx.fillRect(sx - 1, sy - Math.round(r * 1.3), 2, Math.round(r * 2.6));
+          ctx.fillRect(px - (dir > 0 ? 11 : 3), py - 3, 14, 6);
+          ctx.fillStyle = p.color || ent.primaryColor || '#38bdf8';
+          ctx.fillRect(px - (dir > 0 ? 9 : 2), py - 2, 11, 4);
+          ctx.fillStyle = p.coreColor || '#ffffff';
+          ctx.fillRect(px - 2, py - 1, 4, 2);
         }
       }
     }
 
-    // 3. Signature Companion Ultimate Assist Multi-Target & Lane Pixel VFX Bursts
-    for (const ef of this._ultEffects) {
-      const u = clampNum(ef.age / ef.maxAge, 0, 1);
-      const alpha = u < 0.18 ? clampNum(u / 0.18, 0.25, 1) : clampNum(1 - (u - 0.18) / 0.82, 0, 1);
-      if (alpha <= 0.03) continue;
-
-      ctx.globalAlpha = alpha;
-
-      if (ef.kind === 'atlas_burst') {
-        const cx = Math.round(ef.x);
-        const cy = Math.round(ef.y);
-        const sc = ef.scale || 1.4;
-        if (hasVfx && typeof ctx.drawImage === 'function') {
-          const frame = clampNum(Math.floor(u * 12), 0, 11);
-          const row = clampNum(Math.floor(ef.row ?? 3), 0, 7);
-          const drawSize = Math.round(128 * sc);
-          ctx.drawImage(
-            vfxImg,
-            frame * 128,
-            row * 128,
-            128,
-            128,
-            Math.round(cx - drawSize * 0.5),
-            Math.round(cy - drawSize * 0.5),
-            drawSize,
-            drawSize
-          );
-        } else {
-          const rad = Math.round((22 + u * 38) * sc);
-          drawPixelDiamond(ctx, cx, cy, rad + 3, '#0d0f1c');
-          drawPixelDiamond(ctx, cx, cy, rad, ef.color || '#facc15');
-          drawPixelDiamond(ctx, cx, cy, Math.max(6, Math.round(rad * 0.52)), ef.subColor || '#ffffff');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(cx - Math.round(rad * 1.35), cy - 2, Math.round(rad * 2.7), 4);
-          ctx.fillRect(cx - 2, cy - Math.round(rad * 1.35), 4, Math.round(rad * 2.7));
-        }
-      } else if (ef.kind === 'lane_beam') {
-        const left = Math.round(Math.min(ef.x0, ef.x1));
-        const right = Math.round(Math.max(ef.x0, ef.x1));
-        const len = Math.max(24, right - left);
-        const cy = Math.round(ef.y);
-        const halfH = Math.max(3, Math.round((ef.thickness || 22) * 0.5 * (1 - u * 0.55)));
-        const midH = Math.max(2, Math.round(halfH * 0.62));
-        const coreH = Math.max(2, Math.round(halfH * 0.3));
-
-        ctx.fillStyle = '#0d0f1c';
-        ctx.fillRect(left - 2, cy - halfH - 2, len + 4, (halfH + 2) * 2);
-        ctx.fillStyle = ef.color || '#38bdf8';
-        ctx.fillRect(left, cy - halfH, len, halfH * 2);
-        ctx.fillStyle = ef.subColor || '#fef08a';
-        ctx.fillRect(left, cy - midH, len, midH * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(left, cy - coreH, len, coreH * 2);
-
-        // Marching crisp diamond pulse crests down the beam
-        const crests = 5;
-        for (let c = 0; c < crests; c++) {
-          const frac = ((c / crests) + u * 0.65) % 1;
-          const dx = Math.round(left + frac * len);
-          drawPixelDiamond(ctx, dx, cy, Math.max(5, halfH + 4), '#0d0f1c');
-          drawPixelDiamond(ctx, dx, cy, Math.max(3, halfH + 2), '#fef08a');
-        }
-      } else if (ef.kind === 'sky_cataclysm') {
-        const cx = Math.round(ef.x);
-        const groundY = Math.round(ef.y);
-        const beamH = Math.round(ef.height || 360);
-        const halfW = Math.max(6, Math.round((ef.width || 52) * 0.5 * (1 - u * 0.45)));
-        const midW = Math.max(4, Math.round(halfW * 0.62));
-        const coreW = Math.max(2, Math.round(halfW * 0.3));
-
-        ctx.fillStyle = '#0d0f1c';
-        ctx.fillRect(cx - halfW - 3, groundY - beamH, (halfW + 3) * 2, beamH);
-        ctx.fillStyle = ef.color || '#fb923c';
-        ctx.fillRect(cx - halfW, groundY - beamH, halfW * 2, beamH);
-        ctx.fillStyle = ef.subColor || '#fde047';
-        ctx.fillRect(cx - midW, groundY - beamH, midW * 2, beamH);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(cx - coreW, groundY - beamH, coreW * 2, beamH);
-
-        // Stepped ground shatter shockwave bars + rising pixel diamond sparks
-        const shatterW = Math.round((halfW * 2.2) + u * 96);
-        ctx.fillStyle = '#0d0f1c';
-        ctx.fillRect(cx - shatterW - 2, groundY - 8, (shatterW + 2) * 2, 12);
-        ctx.fillStyle = ef.color || '#fb923c';
-        ctx.fillRect(cx - shatterW, groundY - 6, shatterW * 2, 8);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(cx - Math.round(shatterW * 0.6), groundY - 3, Math.round(shatterW * 1.2), 3);
-
-        for (let k = -1; k <= 1; k++) {
-          const sx = cx + k * Math.round(halfW + 18 + u * 26);
-          const sy = groundY - Math.round(28 + u * 185 + Math.abs(k) * 32);
-          drawPixelDiamond(ctx, sx, sy, 8, '#0d0f1c');
-          drawPixelDiamond(ctx, sx, sy, 6, ef.subColor || '#fef08a');
-        }
-      } else if (ef.kind === 'thunder_chain') {
-        drawSteppedLightningArc(
-          ctx,
-          ef.x0,
-          ef.y0,
-          ef.x1,
-          ef.y1,
-          ef.color || '#fbbf24',
-          ef.subColor || '#ffffff',
-          ef.seed || 1
-        );
-        const rad = Math.round(14 + (1 - u) * 14);
-        drawPixelDiamond(ctx, ef.x1, ef.y1, rad + 2, '#0d0f1c');
-        drawPixelDiamond(ctx, ef.x1, ef.y1, rad, ef.color || '#38bdf8');
-        drawPixelDiamond(ctx, ef.x1, ef.y1, Math.max(4, Math.round(rad * 0.45)), '#ffffff');
-      } else if (ef.kind === 'cross_tempest') {
-        const cx = Math.round(ef.x);
-        const cy = Math.round(ef.y);
-        const span = Math.round((ef.span || 72) * (0.7 + u * 0.45));
-        const steps = 10;
-
-        const drawXArm = (dirY, color, size) => {
-          ctx.fillStyle = color;
-          const half = Math.floor(size * 0.5);
-          for (let k = -steps; k <= steps; k++) {
-            const frac = k / steps;
-            const bx = cx + Math.round(frac * span);
-            const by = cy + Math.round(frac * span * 0.72 * dirY);
-            ctx.fillRect(bx - half, by - half, size, size);
-          }
-        };
-
-        drawXArm(1, '#0d0f1c', 10);
-        drawXArm(-1, '#0d0f1c', 10);
-        drawXArm(1, ef.color || '#22d3ee', 7);
-        drawXArm(-1, ef.subColor || '#fef08a', 7);
-        drawXArm(1, '#ffffff', 3);
-        drawXArm(-1, '#ffffff', 3);
-
-        const coreR = Math.round(16 * (1 - u * 0.35));
-        drawPixelDiamond(ctx, cx, cy, coreR + 2, '#0d0f1c');
-        drawPixelDiamond(ctx, cx, cy, coreR, ef.subColor || '#fef08a');
-        drawPixelDiamond(ctx, cx, cy, Math.max(4, Math.round(coreR * 0.5)), '#ffffff');
-      }
-    }
+    vfx?.renderForegroundLayer?.(ctx);
 
     ctx.restore();
   }
@@ -4588,7 +4116,9 @@ export class EndlessCompanions {
       if (!ROSTER_BY_ID[id] || !this.rosterState[id]?.unlocked) continue;
       seen.add(id);
       this.activeSlots.push(id);
-      safeEnsureHeroLoaded(this._resolveActiveHeroKey(ROSTER_BY_ID[id]));
+      const activeKey = this._resolveActiveHeroKey(ROSTER_BY_ID[id]);
+      safeEnsureHeroLoaded(activeKey);
+      this.vfx?.preload?.(activeKey);
     }
 
     if (this.manager?.player) {
