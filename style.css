@@ -9047,7 +9047,7 @@ html.is-mobile-landscape .adv-st-relic-desc {
 /* =========================================================================
    PLAYER VS AI SUB-MODES (EXHIBITION / ARCADE 5 / TRAINING LAB),
    5-STAGE ARCADE LADDER HUD + VICTORY BRACKET + TROPHY PIPS,
-   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps202)
+   & TRAINING / COMBO LAB TOOLBAR + LIVE TELEMETRY (?v=30fps203)
    ========================================================================= */
 
 /* Sub-Mode Switcher in #vs-quick-config-bar (Strictly visible in PLAYER VS AI only!) */
@@ -10115,5 +10115,12 @@ html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-rai
   html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-phase {
     font-size: 0.28rem;
     line-height: 1.1;
+  }
+
+  /* Portrait Split-Screen Armory Mode: lift 16:9 canvas into the upper letterbox band so Hero, EX Allies & Boss fight cleanly above the open Armory */
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #arena-canvas,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #arena-canvas {
+    transform: translateY(-96px);
+    transition: transform 0.16s ease-out;
   }
 }

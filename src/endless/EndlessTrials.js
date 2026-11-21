@@ -1,8 +1,8 @@
 // Endless Crusade Replayable Challenge Trials: Gold Vault, Malphas Gauntlet & Abyssal Horde
 // Node-safe (zero browser globals required), zero external deps, 100% pure ASCII (zero emojis or dingbats).
 
-import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps202';
-import { GEAR_RARITY_BY_ID } from './EndlessGear.js?v=30fps202';
+import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps203';
+import { GEAR_RARITY_BY_ID } from './EndlessGear.js?v=30fps203';
 
 const MAX_STAGE_FOR_SCALING = 100000;
 const MAX_STAGE_EXPONENT = 160;

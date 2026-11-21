@@ -1,8 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps202';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps202';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps202';
-import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps202';
-import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps202';
+import { Fighter } from './Fighter.js?v=30fps203';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps203';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps203';
+import { SERAPHIC_EFFECT_REGISTRY } from '../engine/shaders/seraphicShaders.js?v=30fps203';
+import { ExParticleSystem, drawExBayerHalo } from '../engine/shaders/exNextGenFX.js?v=30fps203';
 
 const AUTO_SLICES_EX = [
   [60, 8], // Beat 1 (V0, 0.38s): Grounded Rose-Window Magic Circle + Sanctum Light-Ray -> snaps at F03 (63)
@@ -2215,10 +2215,10 @@ export class PriestessEx extends Fighter {
         return img;
       };
       assets.priestess_ex = {
-        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps202'),
-        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps202'),
-        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps202'),
-        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps202'),
+        sheet: mkImg('assets/sprites/priestess_ex_sheet.png?v=30fps203'),
+        vfx: mkImg('assets/sprites/priestess_ex_vfx.png?v=30fps203'),
+        wings: assets.priestess?.wings || mkImg('assets/sprites/seraphim_wings.png?v=30fps203'),
+        portrait: mkImg('assets/sprites/priestess_ex_portrait.png?v=30fps203'),
         cellW: 320,
         cellH: 240,
         anchorX: 112,

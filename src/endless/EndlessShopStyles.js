@@ -50,6 +50,12 @@ export const ENDLESS_SHOP_CSS = [
   overflow: hidden;
 }
 
+/* Raise Endless HUD stacking context above #adv-boss-raid-hud (z-index: 24) when Trial/Offline modals are open */
+#endless-hud-root:has(.endless-trial-modal:not(.hidden)),
+#endless-hud-root:has(.endless-offline-modal:not(.hidden)) {
+  z-index: 55;
+}
+
 #endless-hud-root *,
 #endless-hud-root *::before,
 #endless-hud-root *::after {
