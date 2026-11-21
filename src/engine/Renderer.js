@@ -1,12 +1,12 @@
-import { PixelForge } from './PixelForge.js?v=30fps206';
-import { PixelFont } from './PixelFont.js?v=30fps206';
-import { DeathFXManager } from './DeathFXManager.js?v=30fps206';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps206';
+import { PixelForge } from './PixelForge.js?v=30fps207';
+import { PixelFont } from './PixelFont.js?v=30fps207';
+import { DeathFXManager } from './DeathFXManager.js?v=30fps207';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps207';
 import {
   drawExBayerHalo,
   getExHeroPalette,
   releaseExHaloCache
-} from './shaders/exNextGenFX.js?v=30fps206';
+} from './shaders/exNextGenFX.js?v=30fps207';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -8520,9 +8520,11 @@ export class Renderer {
         f.isDead && !isBespokeDeath ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;
 
       // 1. Real-Time Ray-Projected Ground Silhouette Cast Shadows (up to 2 strongest nearby dynamic lights)
+      // Strictly skipped on mobile Endless Mode to eliminate heavy offscreen silhouette blits (grounded contact shadows stay crisp below)
       const sprites = f.heroId ? assets[f.heroId] : null;
       const sheetImg = sprites?.sheet ? PixelForge.ensureImage(sprites.sheet) : null;
       if (
+        !(this._endlessPerfMode && this.isMobile) &&
         sheetImg?.complete &&
         sheetImg.naturalWidth > 0 &&
         Array.isArray(lights) &&

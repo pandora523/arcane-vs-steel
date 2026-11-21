@@ -1,7 +1,7 @@
 // Endless Crusade Companion Star Promotion, EX Sprite Evolution, Squad Formations & Squad Overdrive
 // Node-safe (zero browser globals required), zero external deps, 100% pure ASCII (zero Unicode emojis or dingbats).
 
-import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps206';
+import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps207';
 
 export const COMPANION_MAX_STARS = 5;
 export const COMPANION_EX_UNLOCK_STAR = 1;

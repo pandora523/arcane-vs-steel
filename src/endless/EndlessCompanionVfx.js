@@ -1,13 +1,13 @@
 // Endless Crusade 30fps Next-Gen EX Companion VFX Renderer (`*_ex_vfx.png`, 6240x1664 = 8x30 @ 208x208)
 // 100% lossless nearest-neighbor pixel purity, Node-safe, zero-leak ring pool, pure ASCII.
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps206';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps207';
 
 export const COMPANION_VFX_CELL_SIZE = 208;
 export const COMPANION_VFX_COLS = 30;
 export const COMPANION_VFX_ROWS = 8;
 
-const VFX_ASSET_QUERY = '?v=30fps206';
+const VFX_ASSET_QUERY = '?v=30fps207';
 const MAX_BLOOM_ALPHA = 0.18;
 const DEFAULT_MAX_INSTANCES = 76;
 const MAX_DT_STEP = 0.1;
@@ -1135,6 +1135,38 @@ function extractLivingTargets(targets, primaryTarget, maxCount = 4) {
   return out;
 }
 
+const COMPANION_VFX_BAKED_COLS = 15;
+
+function collectProfileUsedRows(profile) {
+  const rows = new Set();
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    for (const key of Object.keys(node)) {
+      const val = node[key];
+      if ((key === 'row' || key.endsWith('Row')) && Number.isInteger(val) && val >= 0 && val < COMPANION_VFX_ROWS) {
+        rows.add(val);
+      } else if (val && typeof val === 'object') {
+        walk(val);
+      }
+    }
+  };
+  walk(profile);
+  if (rows.size === 0) {
+    return [0, 1, 2, 3, 4, 5, 6, 7];
+  }
+  return Array.from(rows).sort((a, b) => a - b);
+}
+
+function disposeBakedCanvas(entry) {
+  if (!entry || !entry.canvas) return;
+  try {
+    entry.canvas.width = 0;
+    entry.canvas.height = 0;
+  } catch {
+    // ignore
+  }
+}
+
 function detectMobileViewport() {
   if (typeof window === 'undefined') return false;
   try {
@@ -1161,14 +1193,181 @@ export class EndlessCompanionVfx {
     this._seqCounter = 0;
     this._sheetCache = Object.create(null);
     this._readySheetCache = Object.create(null);
+    this._bakedAtlasCache = Object.create(null);
+    this._mainHeroKey = null;
   }
 
   setMobileMode(isMobile) {
     this.isMobile = Boolean(isMobile);
   }
 
+  setMainHeroKey(heroKey) {
+    this._mainHeroKey = resolveHeroKey(heroKey) || null;
+  }
+
   getEffectiveMaxInstances() {
     return this.isMobile ? Math.min(this.maxInstances, 30) : this.maxInstances;
+  }
+
+  _tryBakeCompactAtlas(heroKey, rawImg) {
+    if (!heroKey || !rawImg) return null;
+    const existing = this._bakedAtlasCache[heroKey];
+    if (existing && existing.canvas && existing.canvas.width > 0) {
+      return existing;
+    }
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      return null;
+    }
+    if (!isValidVfxImage(rawImg)) return null;
+    const natW = Number(rawImg.naturalWidth) || 0;
+    const natH = Number(rawImg.naturalHeight) || 0;
+    if (natW < 4000 || natH < COMPANION_VFX_CELL_SIZE * 2) {
+      return null;
+    }
+
+    const srcCell = COMPANION_VFX_CELL_SIZE;
+    const srcCols = Math.max(1, Math.floor(natW / srcCell));
+    const srcRows = Math.max(1, Math.floor(natH / srcCell));
+    const profile = COMPANION_EX_VFX_MANIFEST[heroKey] || null;
+    const usedRows = collectProfileUsedRows(profile).filter((r) => r >= 0 && r < srcRows);
+    if (usedRows.length === 0) return null;
+
+    const dstCols = Math.min(srcCols, COMPANION_VFX_BAKED_COLS);
+    const dstCell = this.isMobile ? 104 : 156;
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = dstCols * dstCell;
+      canvas.height = usedRows.length * dstCell;
+      const bctx = canvas.getContext('2d');
+      if (!bctx) return null;
+      bctx.imageSmoothingEnabled = false;
+
+      const rowMap = Object.create(null);
+      for (let rIdx = 0; rIdx < usedRows.length; rIdx++) {
+        const srcRow = usedRows[rIdx];
+        rowMap[srcRow] = rIdx;
+        const sy = srcRow * srcCell;
+        const dy = rIdx * dstCell;
+        for (let c = 0; c < dstCols; c++) {
+          const srcCol = Math.min(srcCols - 1, Math.floor((c * srcCols) / dstCols));
+          bctx.drawImage(
+            rawImg,
+            srcCol * srcCell,
+            sy,
+            srcCell,
+            srcCell,
+            c * dstCell,
+            dy,
+            dstCell,
+            dstCell
+          );
+        }
+      }
+
+      const baked = {
+        canvas,
+        cellW: dstCell,
+        cellH: dstCell,
+        cols: dstCols,
+        rows: usedRows.length,
+        rowMap,
+        isBaked: true
+      };
+      this._bakedAtlasCache[heroKey] = baked;
+
+      // Immediately release the raw 39.6 MB PNG now that the compact GPU-resident atlas is baked
+      const owned = this._sheetCache[heroKey];
+      if (owned) {
+        try {
+          owned.onload = null;
+          owned.onerror = null;
+          if (typeof owned.removeAttribute === 'function') {
+            owned.removeAttribute('src');
+          } else {
+            owned.src = '';
+          }
+        } catch {
+          // ignore
+        }
+        delete this._sheetCache[heroKey];
+      }
+      delete this._readySheetCache[heroKey];
+
+      if (heroKey !== this._mainHeroKey) {
+        try {
+          const pfImg = PixelForge?.assets?.[heroKey]?.vfx || null;
+          if (pfImg) {
+            if (!pfImg._origSrc && pfImg.src) pfImg._origSrc = pfImg.src;
+            PixelForge?.releaseImage?.(pfImg);
+          }
+        } catch {
+          // ignore
+        }
+      }
+      return baked;
+    } catch {
+      return null;
+    }
+  }
+
+  _resolveDrawableSource(heroKeyOrId) {
+    const profile = getCompanionVfxProfile(heroKeyOrId);
+    if (!profile) return null;
+    const key = profile.heroKey;
+
+    const cachedBaked = this._bakedAtlasCache[key];
+    if (cachedBaked && cachedBaked.canvas && cachedBaked.canvas.width > 0) {
+      return {
+        img: cachedBaked.canvas,
+        cellW: cachedBaked.cellW,
+        cellH: cachedBaked.cellH,
+        cols: cachedBaked.cols,
+        rows: cachedBaked.rows,
+        rowMap: cachedBaked.rowMap,
+        isBaked: true
+      };
+    }
+
+    const sheet = this.getVfxSheet(key);
+    const afterBaked = this._bakedAtlasCache[key];
+    if (afterBaked && afterBaked.canvas && afterBaked.canvas.width > 0) {
+      return {
+        img: afterBaked.canvas,
+        cellW: afterBaked.cellW,
+        cellH: afterBaked.cellH,
+        cols: afterBaked.cols,
+        rows: afterBaked.rows,
+        rowMap: afterBaked.rowMap,
+        isBaked: true
+      };
+    }
+
+    if (isValidVfxImage(sheet)) {
+      const newlyBaked = this._tryBakeCompactAtlas(key, sheet);
+      if (newlyBaked && newlyBaked.canvas && newlyBaked.canvas.width > 0) {
+        return {
+          img: newlyBaked.canvas,
+          cellW: newlyBaked.cellW,
+          cellH: newlyBaked.cellH,
+          cols: newlyBaked.cols,
+          rows: newlyBaked.rows,
+          rowMap: newlyBaked.rowMap,
+          isBaked: true
+        };
+      }
+      return {
+        img: sheet,
+        cellW: COMPANION_VFX_CELL_SIZE,
+        cellH: COMPANION_VFX_CELL_SIZE,
+        cols: Math.max(1, Math.floor(sheet.naturalWidth / COMPANION_VFX_CELL_SIZE)),
+        rows: Math.max(1, Math.floor(sheet.naturalHeight / COMPANION_VFX_CELL_SIZE)),
+        rowMap: null,
+        isBaked: false
+      };
+    }
+
+    return null;
   }
 
   pruneInactiveSheets(keepHeroKeys = []) {
@@ -1179,7 +1378,7 @@ export class EndlessCompanionVfx {
         if (prof) keep.add(prof.heroKey);
       }
     }
-    let released = 0;
+    const releasedKeys = new Set();
     for (const key of Object.keys(this._sheetCache)) {
       if (keep.has(key)) continue;
       const img = this._sheetCache[key];
@@ -1187,21 +1386,31 @@ export class EndlessCompanionVfx {
         try {
           img.onload = null;
           img.onerror = null;
-          img.src = '';
+          if (typeof img.removeAttribute === 'function') {
+            img.removeAttribute('src');
+          } else {
+            img.src = '';
+          }
         } catch {
           // ignore
         }
       }
       delete this._sheetCache[key];
       delete this._readySheetCache[key];
-      released++;
+      releasedKeys.add(key);
+    }
+    for (const key of Object.keys(this._bakedAtlasCache)) {
+      if (keep.has(key)) continue;
+      disposeBakedCanvas(this._bakedAtlasCache[key]);
+      delete this._bakedAtlasCache[key];
+      releasedKeys.add(key);
     }
     for (const key of Object.keys(this._readySheetCache)) {
       if (!keep.has(key)) {
         delete this._readySheetCache[key];
       }
     }
-    return released;
+    return releasedKeys.size;
   }
 
   releaseAllSheets() {
@@ -1209,7 +1418,13 @@ export class EndlessCompanionVfx {
   }
 
   preload(heroKeyOrId) {
-    const sheet = this.getVfxSheet(heroKeyOrId);
+    const profile = getCompanionVfxProfile(heroKeyOrId);
+    if (!profile) return false;
+    const baked = this._bakedAtlasCache[profile.heroKey];
+    if (baked && baked.canvas && baked.canvas.width > 0) return true;
+    const sheet = this.getVfxSheet(profile.heroKey);
+    const bakedAfter = this._bakedAtlasCache[profile.heroKey];
+    if (bakedAfter && bakedAfter.canvas && bakedAfter.canvas.width > 0) return true;
     return isValidVfxImage(sheet);
   }
 
@@ -1229,11 +1444,18 @@ export class EndlessCompanionVfx {
     if (!profile) return null;
     const key = profile.heroKey;
 
-    // 0. Fast O(1) path once verified ready (avoids PixelForge/ensureImage lookup overhead every slot/frame)
+    // 0a. Compact GPU-resident baked atlas takes absolute priority (never re-loads released 39.6 MB raw PNG!)
+    const baked = this._bakedAtlasCache[key];
+    if (baked && baked.canvas && baked.canvas.width > 0) {
+      return baked.canvas;
+    }
+
+    // 0b. Fast O(1) path once verified ready (avoids PixelForge/ensureImage lookup overhead every slot/frame)
     const fastReady = this._readySheetCache[key];
     if (fastReady) {
       if (isValidVfxImage(fastReady)) {
-        return fastReady;
+        const bakedNow = this._tryBakeCompactAtlas(key, fastReady);
+        return bakedNow ? bakedNow.canvas : fastReady;
       }
       delete this._readySheetCache[key];
     }
@@ -1245,6 +1467,8 @@ export class EndlessCompanionVfx {
       if (pfImg && !pfImg._loadFailed && !pfImg.__avsFailed) {
         PixelForge?.ensureImage?.(pfImg);
         if (isValidVfxImage(pfImg)) {
+          const bakedNow = this._tryBakeCompactAtlas(key, pfImg);
+          if (bakedNow) return bakedNow.canvas;
           this._readySheetCache[key] = pfImg;
           return pfImg;
         }
@@ -1257,6 +1481,8 @@ export class EndlessCompanionVfx {
     const cached = this._sheetCache[key] || null;
     if (cached) {
       if (isValidVfxImage(cached)) {
+        const bakedNow = this._tryBakeCompactAtlas(key, cached);
+        if (bakedNow) return bakedNow.canvas;
         this._readySheetCache[key] = cached;
         return cached;
       }
@@ -1290,7 +1516,10 @@ export class EndlessCompanionVfx {
     img.onload = () => {
       img._loadFailed = false;
       if (isValidVfxImage(img)) {
-        this._readySheetCache[key] = img;
+        const bakedNow = this._tryBakeCompactAtlas(key, img);
+        if (!bakedNow) {
+          this._readySheetCache[key] = img;
+        }
       }
     };
     img.onerror = () => {
@@ -1302,7 +1531,13 @@ export class EndlessCompanionVfx {
   }
 
   isSheetReady(heroKeyOrId) {
-    const sheet = this.getVfxSheet(heroKeyOrId);
+    const profile = getCompanionVfxProfile(heroKeyOrId);
+    if (!profile) return false;
+    const baked = this._bakedAtlasCache[profile.heroKey];
+    if (baked && baked.canvas && baked.canvas.width > 0) return true;
+    const sheet = this.getVfxSheet(profile.heroKey);
+    const bakedAfter = this._bakedAtlasCache[profile.heroKey];
+    if (bakedAfter && bakedAfter.canvas && bakedAfter.canvas.width > 0) return true;
     return isValidVfxImage(sheet);
   }
 
@@ -1535,21 +1770,25 @@ export class EndlessCompanionVfx {
     const vy = Number.isFinite(projectile.vy) ? projectile.vy : 0;
     const dir = Math.abs(vx) > 1 ? (vx < 0 ? -1 : 1) : ((Number(entity?.facing) || 1) < 0 ? -1 : 1);
 
-    const sheet = profile ? this.getVfxSheet(profile.heroKey) : null;
-    if (profile && isValidVfxImage(sheet) && typeof ctx.drawImage === 'function') {
+    const src = profile ? this._resolveDrawableSource(profile.heroKey) : null;
+    if (profile && src && typeof ctx.drawImage === 'function') {
       const projCfg = profile.projectile;
-      const maxCols = Math.max(1, Math.floor(sheet.naturalWidth / COMPANION_VFX_CELL_SIZE));
-      const maxRows = Math.max(1, Math.floor(sheet.naturalHeight / COMPANION_VFX_CELL_SIZE));
       const animSec =
         Number.isFinite(projectile.life) && projectile.life >= 0
           ? projectile.life
           : Number.isFinite(time)
             ? time
             : 0;
-      const col = Math.abs(Math.floor(animSec * 30)) % maxCols;
-      const row = clampInt(projCfg.row, 0, maxRows - 1, 0);
-      const sx = col * COMPANION_VFX_CELL_SIZE;
-      const sy = row * COMPANION_VFX_CELL_SIZE;
+      const rawCol = Math.abs(Math.floor(animSec * 30)) % COMPANION_VFX_COLS;
+      const col = src.isBaked
+        ? Math.min(src.cols - 1, Math.floor((rawCol / COMPANION_VFX_COLS) * src.cols))
+        : rawCol % Math.max(1, src.cols);
+      const rawRow = clampInt(projCfg.row, 0, COMPANION_VFX_ROWS - 1, 0);
+      const row = src.rowMap
+        ? (src.rowMap[rawRow] ?? clampInt(rawRow, 0, src.rows - 1, 0))
+        : clampInt(rawRow, 0, src.rows - 1, 0);
+      const sx = col * src.cellW;
+      const sy = row * src.cellH;
       const scaleMult = projectile.fromUlt ? 1.24 : 1.0;
       const drawSize = Math.max(48, Math.round(COMPANION_VFX_CELL_SIZE * projCfg.scale * scaleMult));
       const half = Math.round(drawSize * 0.5);
@@ -1562,11 +1801,11 @@ export class EndlessCompanionVfx {
         ctx.globalAlpha = 0.98;
         ctx.translate(px, py);
         ctx.scale(-1, 1);
-        ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -half, -half, drawSize, drawSize);
+        ctx.drawImage(src.img, sx, sy, src.cellW, src.cellH, -half, -half, drawSize, drawSize);
         if (doBloom) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = 0.14;
-          ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -half, -half, drawSize, drawSize);
+          ctx.drawImage(src.img, sx, sy, src.cellW, src.cellH, -half, -half, drawSize, drawSize);
         }
         ctx.restore();
       } else if (doBloom) {
@@ -1574,11 +1813,11 @@ export class EndlessCompanionVfx {
         ctx.imageSmoothingEnabled = false;
         ctx.globalAlpha = 0.98;
         ctx.drawImage(
-          sheet,
+          src.img,
           sx,
           sy,
-          COMPANION_VFX_CELL_SIZE,
-          COMPANION_VFX_CELL_SIZE,
+          src.cellW,
+          src.cellH,
           px - half,
           py - half,
           drawSize,
@@ -1587,11 +1826,11 @@ export class EndlessCompanionVfx {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.14;
         ctx.drawImage(
-          sheet,
+          src.img,
           sx,
           sy,
-          COMPANION_VFX_CELL_SIZE,
-          COMPANION_VFX_CELL_SIZE,
+          src.cellW,
+          src.cellH,
           px - half,
           py - half,
           drawSize,
@@ -1601,11 +1840,11 @@ export class EndlessCompanionVfx {
       } else {
         ctx.globalAlpha = 0.98;
         ctx.drawImage(
-          sheet,
+          src.img,
           sx,
           sy,
-          COMPANION_VFX_CELL_SIZE,
-          COMPANION_VFX_CELL_SIZE,
+          src.cellW,
+          src.cellH,
           px - half,
           py - half,
           drawSize,
@@ -2504,19 +2743,24 @@ export class EndlessCompanionVfx {
     const cx = Math.round(ent.x);
     const cy = Math.round(ent.y - 82);
 
-    const sheet = profile ? this.getVfxSheet(profile.heroKey) : null;
-    if (profile && isValidVfxImage(sheet) && typeof ctx.drawImage === 'function') {
+    const src = profile ? this._resolveDrawableSource(profile.heroKey) : null;
+    if (profile && src && typeof ctx.drawImage === 'function') {
       const uCfg = profile.ult;
-      const maxCols = Math.max(1, Math.floor(sheet.naturalWidth / COMPANION_VFX_CELL_SIZE));
-      const maxRows = Math.max(1, Math.floor(sheet.naturalHeight / COMPANION_VFX_CELL_SIZE));
-      const cStart = clampInt(uCfg.castStartCol ?? 0, 0, maxCols - 1, 0);
-      const cEnd = clampInt(uCfg.castEndCol ?? maxCols - 1, cStart, maxCols - 1, maxCols - 1);
+      const logicalCols = src.isBaked ? COMPANION_VFX_COLS : Math.max(1, src.cols);
+      const cStart = clampInt(uCfg.castStartCol ?? 0, 0, logicalCols - 1, 0);
+      const cEnd = clampInt(uCfg.castEndCol ?? logicalCols - 1, cStart, logicalCols - 1, logicalCols - 1);
       const span = Math.max(1, cEnd - cStart + 1);
       const animSec = Number.isFinite(time) ? time : 0;
-      const col = cStart + (Math.abs(Math.floor(animSec * 30)) % span);
-      const row = clampInt(uCfg.castRow, 0, maxRows - 1, 0);
-      const sx = col * COMPANION_VFX_CELL_SIZE;
-      const sy = row * COMPANION_VFX_CELL_SIZE;
+      const rawCol = cStart + (Math.abs(Math.floor(animSec * 30)) % span);
+      const col = src.isBaked
+        ? Math.min(src.cols - 1, Math.floor((rawCol / COMPANION_VFX_COLS) * src.cols))
+        : Math.min(src.cols - 1, rawCol);
+      const rawRow = clampInt(uCfg.castRow, 0, COMPANION_VFX_ROWS - 1, 0);
+      const row = src.rowMap
+        ? (src.rowMap[rawRow] ?? clampInt(rawRow, 0, src.rows - 1, 0))
+        : clampInt(rawRow, 0, src.rows - 1, 0);
+      const sx = col * src.cellW;
+      const sy = row * src.cellH;
 
       const sizeGrow = 1 + (uMult - 1) * 0.40;
       const drawSize = Math.round(COMPANION_VFX_CELL_SIZE * 0.92 * sizeGrow);
@@ -2530,19 +2774,19 @@ export class EndlessCompanionVfx {
       if (ent.facing < 0) {
         ctx.translate(cx, cy);
         ctx.scale(-1, 1);
-        ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -half, -half, drawSize, drawSize);
+        ctx.drawImage(src.img, sx, sy, src.cellW, src.cellH, -half, -half, drawSize, drawSize);
         if (bloomAlpha > 0.01) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = bloomAlpha;
-          ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -half, -half, drawSize, drawSize);
+          ctx.drawImage(src.img, sx, sy, src.cellW, src.cellH, -half, -half, drawSize, drawSize);
         }
       } else {
         ctx.drawImage(
-          sheet,
+          src.img,
           sx,
           sy,
-          COMPANION_VFX_CELL_SIZE,
-          COMPANION_VFX_CELL_SIZE,
+          src.cellW,
+          src.cellH,
           cx - half,
           cy - half,
           drawSize,
@@ -2552,11 +2796,11 @@ export class EndlessCompanionVfx {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = bloomAlpha;
           ctx.drawImage(
-            sheet,
+            src.img,
             sx,
             sy,
-            COMPANION_VFX_CELL_SIZE,
-            COMPANION_VFX_CELL_SIZE,
+            src.cellW,
+            src.cellH,
             cx - half,
             cy - half,
             drawSize,
@@ -2600,21 +2844,26 @@ export class EndlessCompanionVfx {
     const finalAlpha = clampNum(slot.alpha * env, 0, 1);
     if (finalAlpha <= 0.02) return false;
 
-    const sheet = this.getVfxSheet(slot.heroKey);
+    const src = this._resolveDrawableSource(slot.heroKey);
     const cx = Math.round(slot.x);
     const drawW = Math.max(24, Math.round(COMPANION_VFX_CELL_SIZE * slot.scale));
     const drawH = Math.max(16, Math.round(COMPANION_VFX_CELL_SIZE * slot.scale * slot.aspectY));
 
-    if (isValidVfxImage(sheet) && typeof ctx.drawImage === 'function') {
-      const maxCols = Math.max(1, Math.floor(sheet.naturalWidth / COMPANION_VFX_CELL_SIZE));
-      const maxRows = Math.max(1, Math.floor(sheet.naturalHeight / COMPANION_VFX_CELL_SIZE));
-      const cStart = clampInt(slot.startCol, 0, maxCols - 1, 0);
-      const cEnd = clampInt(slot.endCol, cStart, maxCols - 1, maxCols - 1);
+    if (src && typeof ctx.drawImage === 'function') {
+      const logicalCols = src.isBaked ? COMPANION_VFX_COLS : Math.max(1, src.cols);
+      const cStart = clampInt(slot.startCol, 0, logicalCols - 1, 0);
+      const cEnd = clampInt(slot.endCol, cStart, logicalCols - 1, logicalCols - 1);
       const span = Math.max(1, cEnd - cStart + 1);
-      const col = cStart + Math.min(span - 1, Math.floor(u * span));
-      const row = clampInt(slot.row, 0, maxRows - 1, 0);
-      const sx = col * COMPANION_VFX_CELL_SIZE;
-      const sy = row * COMPANION_VFX_CELL_SIZE;
+      const rawCol = cStart + Math.min(span - 1, Math.floor(u * span));
+      const col = src.isBaked
+        ? Math.min(src.cols - 1, Math.floor((rawCol / COMPANION_VFX_COLS) * src.cols))
+        : Math.min(src.cols - 1, rawCol);
+      const rawRow = clampInt(slot.row, 0, COMPANION_VFX_ROWS - 1, 0);
+      const row = src.rowMap
+        ? (src.rowMap[rawRow] ?? clampInt(rawRow, 0, src.rows - 1, 0))
+        : clampInt(rawRow, 0, src.rows - 1, 0);
+      const sx = col * src.cellW;
+      const sy = row * src.cellH;
 
       const destY = slot.anchorBottom
         ? Math.round(slot.y - drawH * 0.90)
@@ -2629,11 +2878,11 @@ export class EndlessCompanionVfx {
         ctx.globalAlpha = finalAlpha;
         ctx.translate(cx, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -halfW, destY, drawW, drawH);
+        ctx.drawImage(src.img, sx, sy, src.cellW, src.cellH, -halfW, destY, drawW, drawH);
         if (bloomAlpha > 0.01) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = bloomAlpha;
-          ctx.drawImage(sheet, sx, sy, COMPANION_VFX_CELL_SIZE, COMPANION_VFX_CELL_SIZE, -halfW, destY, drawW, drawH);
+          ctx.drawImage(src.img, sx, sy, src.cellW, src.cellH, -halfW, destY, drawW, drawH);
         }
         ctx.restore();
       } else if (bloomAlpha > 0.01) {
@@ -2641,11 +2890,11 @@ export class EndlessCompanionVfx {
         ctx.imageSmoothingEnabled = false;
         ctx.globalAlpha = finalAlpha;
         ctx.drawImage(
-          sheet,
+          src.img,
           sx,
           sy,
-          COMPANION_VFX_CELL_SIZE,
-          COMPANION_VFX_CELL_SIZE,
+          src.cellW,
+          src.cellH,
           cx - halfW,
           destY,
           drawW,
@@ -2654,11 +2903,11 @@ export class EndlessCompanionVfx {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = bloomAlpha;
         ctx.drawImage(
-          sheet,
+          src.img,
           sx,
           sy,
-          COMPANION_VFX_CELL_SIZE,
-          COMPANION_VFX_CELL_SIZE,
+          src.cellW,
+          src.cellH,
           cx - halfW,
           destY,
           drawW,
@@ -2669,11 +2918,11 @@ export class EndlessCompanionVfx {
         // Zero-save single-pass blit (used for all non-flipped mobile slots & non-bloom slots)
         ctx.globalAlpha = finalAlpha;
         ctx.drawImage(
-          sheet,
+          src.img,
           sx,
           sy,
-          COMPANION_VFX_CELL_SIZE,
-          COMPANION_VFX_CELL_SIZE,
+          src.cellW,
+          src.cellH,
           cx - halfW,
           destY,
           drawW,

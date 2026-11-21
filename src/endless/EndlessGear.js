@@ -1,7 +1,7 @@
 // Endless Crusade Gear Drops, Equipment Slots, Forge Dust Enhancement & Mythic Set Passives
 // Node-safe (zero browser globals required), zero external deps, pure ASCII (zero Unicode emojis).
 
-import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps206';
+import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps207';
 
 export const GEAR_SLOTS = Object.freeze(['weapon', 'armor', 'amulet', 'ring']);
 

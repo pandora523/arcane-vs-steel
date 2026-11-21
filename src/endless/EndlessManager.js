@@ -1,17 +1,17 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps206';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps206';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps206';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps206';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps206';
-import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps206';
-import { EndlessCompanions } from './EndlessCompanions.js?v=30fps206';
-import { EndlessShopUI } from './EndlessShopUI.js?v=30fps206';
-import { EndlessAscension } from './EndlessAscension.js?v=30fps206';
-import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps206';
-import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps206';
-import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps206';
-import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps206';
-import { EndlessTrials, ENDLESS_TRIAL_DEFS, ENDLESS_TRIAL_BY_ID } from './EndlessTrials.js?v=30fps206';
+import { Fighter } from '../entities/Fighter.js?v=30fps207';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps207';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps207';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps207';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from '../adventure/AdventureSkillSets.js?v=30fps207';
+import { EndlessEconomy, formatEndlessNumber } from './EndlessEconomy.js?v=30fps207';
+import { EndlessCompanions } from './EndlessCompanions.js?v=30fps207';
+import { EndlessShopUI } from './EndlessShopUI.js?v=30fps207';
+import { EndlessAscension } from './EndlessAscension.js?v=30fps207';
+import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps207';
+import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps207';
+import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps207';
+import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps207';
+import { EndlessTrials, ENDLESS_TRIAL_DEFS, ENDLESS_TRIAL_BY_ID } from './EndlessTrials.js?v=30fps207';
 
 export const ENDLESS_REALMS = [
   {
@@ -1157,29 +1157,68 @@ export class EndlessManager {
     };
   }
 
-  _prewarmRealmAssets(realmIndex = 0) {
+  _prewarmRealmAssets(realmIndex = 0, { forceMalphas = false, keepExtraMonsters = null } = {}) {
     if (typeof HTMLImageElement === 'undefined') return;
     const idx = ((realmIndex | 0) % ENDLESS_REALMS.length + ENDLESS_REALMS.length) % ENDLESS_REALMS.length;
-    PixelForge.ensureAdventureLoaded?.(idx);
-    PixelForge.ensureEndlessLoaded?.();
+    const assets = PixelForge.initAssets?.();
+    if (!assets) return;
+
+    // 1. Load ONLY shared Endless stage panoramas, props & shared VFX (never preload all 4 realms' monsters at once!)
+    PixelForge.ensureImage?.(assets.advVistaPano);
+    PixelForge.ensureImage?.(assets.advArchPano);
+    PixelForge.ensureImage?.(assets.advFloorPano);
+    PixelForge.ensureImage?.(assets.advPropsSheet);
+    PixelForge.ensureImage?.(assets.advFxSheet);
+    PixelForge.ensureImage?.(assets.advStageVfx);
+    PixelForge.ensureImage?.(assets.monsterVfx);
+    PixelForge.ensureImage?.(assets.endlessVfx);
+    if (idx >= 2) {
+      PixelForge.ensureImage?.(assets.advInfernoPano);
+    }
+
+    // 2. Load ONLY the 2 active monster kinds for the current Realm (plus archfiend ONLY during/entering Malphas)
+    const keepMonsters = new Set();
     const realm = ENDLESS_REALMS[idx];
     if (realm) {
       for (const mk of realm.monsters) {
+        keepMonsters.add(mk);
         PixelForge.ensureMonsterLoaded?.(mk);
       }
-      PixelForge.ensureMonsterLoaded?.(realm.warden);
+      if (realm.warden) {
+        keepMonsters.add(realm.warden);
+        PixelForge.ensureMonsterLoaded?.(realm.warden);
+      }
     }
-    if (this.stage % 5 === 0 || (this.stage + 1) % 5 === 0) {
+    if (Array.isArray(keepExtraMonsters)) {
+      for (let i = 0; i < keepExtraMonsters.length; i++) {
+        const extraMk = keepExtraMonsters[i];
+        if (!extraMk) continue;
+        keepMonsters.add(extraMk);
+        PixelForge.ensureMonsterLoaded?.(extraMk);
+      }
+    }
+    const isMalphasTrial = this.trials?.activeTrial?.id === 'malphas_gauntlet';
+    const isMalphasBossNow = Boolean(
+      forceMalphas ||
+        isMalphasTrial ||
+        (this.isBossEncounter && (this.bossEntity?.isColossalBoss || this.stage % 5 === 0))
+    );
+    if (isMalphasBossNow) {
+      keepMonsters.add('archfiend');
       PixelForge.ensureHeroLoaded?.('archfiend');
-      PixelForge.ensureMonsterLoaded?.('fiend');
     }
-    const assets = PixelForge.initAssets?.();
-    if (assets?.endlessVfx) {
-      PixelForge.ensureImage?.(assets.endlessVfx);
-    }
-    const compKeys = this.companions?.getActiveHeroKeys?.() || [];
-    for (const hk of compKeys) {
-      PixelForge.ensureHeroLoaded?.(hk);
+
+    // 3. Evict all inactive realm monster sheets + unused 103MB Colossal Malphas assets to keep iPhone Safari VRAM lean!
+    const allMonsters = ['templar', 'astrologer', 'treant', 'dryad', 'ghoul', 'cultist', 'brute', 'fiend', 'archfiend'];
+    for (let i = 0; i < allMonsters.length; i++) {
+      const mk = allMonsters[i];
+      if (keepMonsters.has(mk)) continue;
+      const entry = assets[mk];
+      if (!entry) continue;
+      PixelForge.releaseImage?.(entry.sheet);
+      PixelForge.releaseImage?.(entry.colossus);
+      PixelForge.releaseImage?.(entry.bossVfx);
+      PixelForge._releaseCharSetNormalMap?.(entry);
     }
   }
 
@@ -2016,7 +2055,6 @@ export class EndlessManager {
     const realm = this.getCurrentRealm();
     this.zoneIndex = realm.realmIndex;
     this._prewarmRealmAssets(this.zoneIndex);
-    this._prewarmRealmAssets((this.zoneIndex + 1) % ENDLESS_REALMS.length);
 
     // Initialize infinite corridor origin aligned cleanly to the active Realm's 2400px biome band
     const resumeWaveOffset = Math.max(0, Math.min(this.wavesPerStage - 1, this.waveInStage - 1)) * ENDLESS_CORRIDOR_STEP_X;
@@ -2106,6 +2144,7 @@ export class EndlessManager {
 
     this._prewarmRealmAssets(this.zoneIndex);
     if (playerFighter) {
+      this.companions?.setMainHeroKey?.(playerFighter.heroId || this.game?.slot1Hero || null);
       this.companions.syncEntitiesWithWorld(playerFighter);
       this._lastCompanionSyncSig = this._computeCompanionSyncSig();
       const initSyn = this.companions?.getPartySynergyModifiers?.() || null;
@@ -2217,6 +2256,7 @@ export class EndlessManager {
     this._baseExternalModifiers = {};
     this.clearHeldInputs();
     this.companions?.vfx?.releaseAllSheets?.();
+    this.companions?.releaseAllBakedSheets?.();
     if (this.game?.vfx) this.game.vfx._endlessPerfMode = false;
     if (this.game?.renderer) {
       this.game.renderer._endlessPerfMode = false;
@@ -2850,7 +2890,7 @@ export class EndlessManager {
     const curRealm = this.getCurrentRealm();
     const nextIdx = (curRealm.realmIndex + 1) % ENDLESS_REALMS.length;
     const nextRealm = ENDLESS_REALMS[nextIdx] || curRealm;
-    this._prewarmRealmAssets(nextIdx);
+    this._prewarmRealmAssets(nextIdx, { keepExtraMonsters: curRealm.monsters });
 
     const kindPool = [
       ...(Array.isArray(curRealm.monsters) ? curRealm.monsters : ['templar']),
@@ -3147,6 +3187,7 @@ export class EndlessManager {
       respawnWave: true,
       restoreRenderer: true
     });
+    this._prewarmRealmAssets(this.zoneIndex);
 
     if (!this.game?.isLandingOpen && !this.game?.simMode) {
       const nextBgm =
@@ -3924,6 +3965,9 @@ export class EndlessManager {
         ? this.bossDirector.getBossProfileForStage(stageNum, realm)
         : null;
     const isColossal = Boolean(bossProfile ? bossProfile.isColossal : stageNum % 5 === 0);
+    if (isColossal) {
+      this._prewarmRealmAssets(this.zoneIndex, { forceMalphas: true });
+    }
     if (player) {
       const safeRight = isColossal ? bossX - 165 : bossX - 240;
       if (!Number.isFinite(player.x) || player.x > safeRight) player.x = Math.max(this.lockMinX + 60, safeRight);

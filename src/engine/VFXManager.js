@@ -1,6 +1,6 @@
-import { PixelFont } from './PixelFont.js?v=30fps206';
-import { PixelForge } from './PixelForge.js?v=30fps206';
-import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps206';
+import { PixelFont } from './PixelFont.js?v=30fps207';
+import { PixelForge } from './PixelForge.js?v=30fps207';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps207';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -29,16 +29,16 @@ export class VFXManager {
     if (!assets) return null;
     if (preferredHeroId && assets[preferredHeroId]?.vfx) {
       const pImg = assets[preferredHeroId].vfx;
-      if (ensure) PixelForge.ensureImage?.(pImg);
+      if (ensure && !this._endlessPerfMode) PixelForge.ensureImage?.(pImg);
       if (pImg.complete && (pImg.naturalWidth || pImg.width)) return pImg;
-      if (ensure) return pImg;
+      if (ensure && !this._endlessPerfMode) return pImg;
     }
     const exImg = assets[`${baseKey}_ex`]?.vfx || null;
     const legImg = assets[baseKey]?.vfx || null;
     if (exImg && exImg.complete && (exImg.naturalWidth || exImg.width)) return exImg;
     if (legImg && legImg.complete && (legImg.naturalWidth || legImg.width)) return legImg;
     const fallback = preferredHeroId?.endsWith('_ex') ? exImg || legImg : legImg || exImg;
-    if (ensure && fallback) PixelForge.ensureImage?.(fallback);
+    if (ensure && !this._endlessPerfMode && fallback) PixelForge.ensureImage?.(fallback);
     return fallback;
   }
   constructor() {
@@ -3822,7 +3822,9 @@ export class VFXManager {
             ctx.drawImage(glowTex, ix - 92, iy - 92, 184, 184);
           }
           const exImpVfx = assets[imp.heroId]?.vfx;
-          PixelForge.ensureImage?.(exImpVfx);
+          if (!this._endlessPerfMode) {
+            PixelForge.ensureImage?.(exImpVfx);
+          }
           if (exImpVfx && exImpVfx.complete && exImpVfx.naturalWidth) {
             const impCol = Math.min(29, Math.floor(t * 30));
             const impSz = Math.round(((imp.isCrit ? 156 : 124) * (0.78 + 0.34 * Math.min(1, t * 2.4))) / 4) * 4;

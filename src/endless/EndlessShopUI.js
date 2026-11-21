@@ -2,10 +2,10 @@
 // Strictly Node-test safe (all DOM/window/Image accesses guarded), zero emojis,
 // pure nearest-neighbor blits & fillRect fallbacks, in-place DOM patching (zero 60fps click drops).
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps206';
-import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps206';
-import { ENDLESS_SHOP_CSS } from './EndlessShopStyles.js?v=30fps206';
-import { EndlessMobileHud } from './EndlessMobileHud.js?v=30fps206';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps207';
+import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps207';
+import { ENDLESS_SHOP_CSS } from './EndlessShopStyles.js?v=30fps207';
+import { EndlessMobileHud } from './EndlessMobileHud.js?v=30fps207';
 import {
   ENDLESS_VFX_SHEET_URL,
   ENDLESS_ICON_ROW,
@@ -48,7 +48,7 @@ import {
   drawFallbackPixelIcon,
   drawFallbackPortrait,
   drawMonogramPortrait
-} from './EndlessShopIcons.js?v=30fps206';
+} from './EndlessShopIcons.js?v=30fps207';
 
 const STYLE_ELEMENT_ID = 'endless-shop-ui-styles';
 const ROOT_ELEMENT_ID = 'endless-hud-root';
@@ -153,9 +153,21 @@ export class EndlessShopUI {
   }
 
   _resolveVfxSheet() {
-    const forged = PixelForge?.assets?.endlessVfx;
-    if (forged && forged.complete && forged.naturalWidth >= ENDLESS_ICON_CELL * 12) {
-      return forged;
+    const forged = PixelForge?.assets?.endlessVfx || PixelForge?.initAssets?.()?.endlessVfx || null;
+    if (forged) {
+      PixelForge?.ensureImage?.(forged);
+      if (forged.complete && forged.naturalWidth >= ENDLESS_ICON_CELL * 12) {
+        return forged;
+      }
+      if (!forged._endlessShopHooked) {
+        forged._endlessShopHooked = true;
+        const prevOnLoad = forged.onload;
+        forged.onload = (ev) => {
+          if (typeof prevOnLoad === 'function') prevOnLoad.call(forged, ev);
+          this._blitAllIcons(true);
+        };
+      }
+      return null;
     }
     if (!this._vfxFallbackImg && typeof Image !== 'undefined') {
       const img = new Image();

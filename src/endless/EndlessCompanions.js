@@ -1,18 +1,18 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps206';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps206';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps207';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps207';
 import {
   COMPANION_BASE_TO_EX_KEY,
   COMPANION_AURA_TIERS,
   ELITE_EX_COMPANION_DEFS,
   COMPANION_MAX_STARS,
   getAuraTier
-} from './EndlessCompanionEvo.js?v=30fps206';
-import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps206';
+} from './EndlessCompanionEvo.js?v=30fps207';
+import { EndlessCompanionVfx } from './EndlessCompanionVfx.js?v=30fps207';
 import {
   EndlessCompanionAI,
   COMPANION_ENGAGE_SIGHTLINE,
   isTargetAlive
-} from './EndlessCompanionAI.js?v=30fps206';
+} from './EndlessCompanionAI.js?v=30fps207';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
 
@@ -344,6 +344,19 @@ const FORMATION_LANE_OFFSETS = [-62, 60, -8];
 const SPAWN_X_OFFSETS = [-102, -124, -138];
 const SPAWN_LANE_Y = [492, 622, 558];
 const ROLE_ULT_IMPACT_BEAT_SEC = 0.42;
+const COMPANION_BAKED_ROWS = Object.freeze([0, 1, 2, 3, 4, 6]);
+const COMPANION_ROW_TO_PACKED = Object.freeze({ 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 6: 5 });
+const COMPANION_BAKED_COLS = 15;
+
+function disposeBakedCompanionSheet(entry) {
+  if (!entry || !entry.canvas) return;
+  try {
+    entry.canvas.width = 0;
+    entry.canvas.height = 0;
+  } catch {
+    // ignore
+  }
+}
 
 const FLOOR_RIPPLE_MAX_COUNT = 24;
 const COMPANION_STRIKES_MAX_COUNT = 16;
@@ -1109,36 +1122,69 @@ export class EndlessCompanionEntity {
   draw(ctx, isReflection = false, _renderer = null) {
     if (!ctx) return;
 
-    const assets = getSafePixelForgeAssets();
-    let charSet = assets?.[this.heroId] || null;
-    const rawSheet = charSet?.sheet || null;
-    let sheet = rawSheet;
-    let hasSheet = isSheetReady(sheet);
-
-    if (!hasSheet) {
-      safeEnsureHeroLoaded(this.heroId);
-      if (rawSheet) {
-        sheet = PixelForge.ensureImage?.(rawSheet) || rawSheet;
-        hasSheet = isSheetReady(sheet);
-      }
-    }
-    if (!isReflection && this._preloadedVfxHeroId !== this.heroId) {
-      this._preloadedVfxHeroId = this.heroId;
-      this._squad?.vfx?.preload?.(this.heroId);
-    }
+    const isMobile =
+      _renderer && typeof _renderer.isMobile === 'boolean'
+        ? _renderer.isMobile
+        : Boolean(this._squad?.vfx?.isMobile);
     if (_renderer && typeof _renderer.isMobile === 'boolean') {
-      this._squad?.vfx?.setMobileMode?.(_renderer.isMobile);
+      this._squad?.vfx?.setMobileMode?.(isMobile);
     }
 
-    if (hasSheet) {
+    let baked = this._squad?._bakedSheetCache?.[this.heroId] || null;
+    if (!(baked && baked.canvas && baked.canvas.width > 0)) {
+      baked = null;
+    }
+
+    let charSet = null;
+    let sheet = null;
+    let hasSheet = false;
+
+    if (!baked) {
+      const assets = getSafePixelForgeAssets();
+      charSet = assets?.[this.heroId] || null;
+      const rawSheet = charSet?.sheet || null;
+      sheet = rawSheet;
+      hasSheet = isSheetReady(sheet);
+
+      if (!hasSheet) {
+        safeEnsureHeroLoaded(this.heroId);
+        if (rawSheet) {
+          sheet = PixelForge.ensureImage?.(rawSheet) || rawSheet;
+          hasSheet = isSheetReady(sheet);
+        }
+      }
+
+      if (hasSheet) {
+        const newlyBaked = this._squad?._getOrBakeCompactSheet?.(this.heroId, charSet, sheet, isMobile) || null;
+        if (newlyBaked && newlyBaked.canvas && newlyBaked.canvas.width > 0) {
+          baked = newlyBaked;
+        }
+        this._lastReadyHeroId = this.heroId;
+      } else if (this._lastReadyHeroId && this._lastReadyHeroId !== this.heroId) {
+        const fbBaked = this._squad?._bakedSheetCache?.[this._lastReadyHeroId] || null;
+        if (fbBaked && fbBaked.canvas && fbBaked.canvas.width > 0) {
+          baked = fbBaked;
+        } else if (assets) {
+          const fbSet = assets[this._lastReadyHeroId] || null;
+          const fbSheet = fbSet?.sheet || null;
+          if (isSheetReady(fbSheet)) {
+            charSet = fbSet;
+            sheet = fbSheet;
+            hasSheet = true;
+          }
+        }
+      }
+    } else {
       this._lastReadyHeroId = this.heroId;
-    } else if (assets && this._lastReadyHeroId && this._lastReadyHeroId !== this.heroId) {
-      const fbSet = assets[this._lastReadyHeroId] || null;
-      const fbSheet = fbSet?.sheet || null;
-      if (isSheetReady(fbSheet)) {
-        charSet = fbSet;
-        sheet = fbSheet;
-        hasSheet = true;
+    }
+
+    if (!isReflection) {
+      if (this._preloadedVfxHeroId !== this.heroId) {
+        this._preloadedVfxHeroId = this.heroId;
+        this._squad?.vfx?.preload?.(this.heroId);
+      } else {
+        // O(1) once baked; immediately bakes & frees raw 39.6 MB VFX PNG on the first frame it finishes loading
+        this._squad?.vfx?.isSheetReady?.(this.heroId);
       }
     }
 
@@ -1188,7 +1234,28 @@ export class EndlessCompanionEntity {
     ctx.translate(drawX, drawY);
     ctx.scale(this.facing < 0 ? -1 : 1, 1);
 
-    if (hasSheet && typeof ctx.drawImage === 'function') {
+    if (baked && typeof ctx.drawImage === 'function') {
+      const anim = this.getAnimRowAndCol();
+      const packedRow = Object.prototype.hasOwnProperty.call(COMPANION_ROW_TO_PACKED, anim.row)
+        ? COMPANION_ROW_TO_PACKED[anim.row]
+        : 0;
+      const bakedCol = clampNum(Math.floor((anim.col / 30) * baked.cols), 0, baked.cols - 1);
+      const sx = bakedCol * baked.cellW;
+      const sy = packedRow * baked.cellH;
+      const drawW = Math.round(baked.srcCellW * scale);
+      const drawH = Math.round(baked.srcCellH * scale);
+      const baseX = Math.round(-baked.anchorX * scale);
+      const baseY = Math.round(-baked.anchorY * scale);
+
+      if (!isReflection && this.state === 'DASH') {
+        const prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = prevAlpha * 0.34;
+        ctx.drawImage(baked.canvas, sx, sy, baked.cellW, baked.cellH, baseX - 18, baseY, drawW, drawH);
+        ctx.globalAlpha = prevAlpha;
+      }
+
+      ctx.drawImage(baked.canvas, sx, sy, baked.cellW, baked.cellH, baseX, baseY, drawW, drawH);
+    } else if (hasSheet && typeof ctx.drawImage === 'function') {
       const natW = sheet.naturalWidth || sheet.width;
       const natH = sheet.naturalHeight || sheet.height;
       let cellW = charSet?.cellW || 320;
@@ -1258,9 +1325,139 @@ export class EndlessCompanions {
     this._formationShiftTimer = 0;
     this._lastSkillSfxTime = -1;
     this._activeUltVfxMult = 1.0;
+    this._mainHeroKey = null;
+    this._bakedSheetCache = Object.create(null);
     this.vfx = new EndlessCompanionVfx({ maxInstances: 76 });
     this.ai = new EndlessCompanionAI();
     this.reset();
+  }
+
+  setMainHeroKey(heroKey) {
+    const next = typeof heroKey === 'string' && heroKey.trim() ? heroKey.trim() : null;
+    this._mainHeroKey = next;
+    this.vfx?.setMainHeroKey?.(next);
+  }
+
+  _ensureCompanionHeroReady(heroKey) {
+    if (!heroKey) return;
+    const baked = this._bakedSheetCache?.[heroKey];
+    if (baked && baked.canvas && baked.canvas.width > 0) {
+      return;
+    }
+    safeEnsureHeroLoaded(heroKey);
+  }
+
+  _getOrBakeCompactSheet(heroKey, charSet, rawSheet, isMobile = false) {
+    if (!heroKey) return null;
+    const existing = this._bakedSheetCache[heroKey];
+    if (existing && existing.canvas && existing.canvas.width > 0) {
+      return existing;
+    }
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      return null;
+    }
+    if (!isSheetReady(rawSheet)) return null;
+    const natW = Number(rawSheet.naturalWidth || rawSheet.width) || 0;
+    const natH = Number(rawSheet.naturalHeight || rawSheet.height) || 0;
+    if (natW < 4800 || natH < 1200) return null;
+
+    let srcCellW = charSet?.cellW || 320;
+    let srcCellH = charSet?.cellH || 240;
+    let anchorX = charSet?.anchorX ?? 112;
+    let anchorY = charSet?.anchorY ?? 230;
+    if (
+      (natW % srcCellW !== 0 || natH % srcCellH !== 0) &&
+      natW % 30 === 0 &&
+      natH % 10 === 0
+    ) {
+      const nextCellW = natW / 30;
+      const nextCellH = natH / 10;
+      anchorX = Math.round(anchorX * (nextCellW / srcCellW));
+      anchorY = Math.round(anchorY * (nextCellH / srcCellH));
+      srcCellW = nextCellW;
+      srcCellH = nextCellH;
+    }
+
+    const srcCols = Math.max(1, Math.round(natW / srcCellW));
+    const srcRows = Math.max(1, Math.round(natH / srcCellH));
+    const dstCols = Math.min(srcCols, COMPANION_BAKED_COLS);
+    const bakeScale = isMobile ? 0.5 : 0.75;
+    const dstCellW = Math.max(32, Math.round(srcCellW * bakeScale));
+    const dstCellH = Math.max(32, Math.round(srcCellH * bakeScale));
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = dstCols * dstCellW;
+      canvas.height = COMPANION_BAKED_ROWS.length * dstCellH;
+      const bctx = canvas.getContext('2d');
+      if (!bctx) return null;
+      bctx.imageSmoothingEnabled = false;
+
+      for (let rIdx = 0; rIdx < COMPANION_BAKED_ROWS.length; rIdx++) {
+        const srcRow = clampNum(COMPANION_BAKED_ROWS[rIdx], 0, srcRows - 1);
+        const sy = srcRow * srcCellH;
+        const dy = rIdx * dstCellH;
+        for (let c = 0; c < dstCols; c++) {
+          const srcCol = Math.min(srcCols - 1, Math.floor((c * srcCols) / dstCols));
+          bctx.drawImage(
+            rawSheet,
+            srcCol * srcCellW,
+            sy,
+            srcCellW,
+            srcCellH,
+            c * dstCellW,
+            dy,
+            dstCellW,
+            dstCellH
+          );
+        }
+      }
+
+      const baked = {
+        canvas,
+        cellW: dstCellW,
+        cellH: dstCellH,
+        srcCellW,
+        srcCellH,
+        cols: dstCols,
+        rows: COMPANION_BAKED_ROWS.length,
+        anchorX,
+        anchorY
+      };
+      this._bakedSheetCache[heroKey] = baked;
+
+      // Immediately release the raw 87.9 MB PNG unless actively used by the Main Hero
+      if (heroKey !== this._mainHeroKey) {
+        try {
+          if (!rawSheet._origSrc && rawSheet.src) rawSheet._origSrc = rawSheet.src;
+          PixelForge.releaseImage?.(rawSheet);
+          PixelForge._releaseCharSetNormalMap?.(charSet);
+        } catch {
+          // ignore
+        }
+      }
+      return baked;
+    } catch {
+      return null;
+    }
+  }
+
+  _pruneBakedSheets(keepHeroKeys = []) {
+    const keep = new Set(Array.isArray(keepHeroKeys) ? keepHeroKeys.filter(Boolean) : []);
+    let released = 0;
+    for (const key of Object.keys(this._bakedSheetCache)) {
+      if (keep.has(key)) continue;
+      disposeBakedCompanionSheet(this._bakedSheetCache[key]);
+      delete this._bakedSheetCache[key];
+      released++;
+    }
+    return released;
+  }
+
+  releaseAllBakedSheets() {
+    const releasedSheets = this._pruneBakedSheets([]);
+    const releasedVfx = this.vfx?.releaseAllSheets?.() || 0;
+    return releasedSheets + releasedVfx;
   }
 
   normalizeId(rawId) {
@@ -1997,7 +2194,7 @@ export class EndlessCompanions {
     }
 
     const activeKey = this._resolveActiveHeroKey(cfg);
-    safeEnsureHeroLoaded(activeKey);
+    this._ensureCompanionHeroReady(activeKey);
     this.vfx?.preload?.(activeKey);
     if (autoDeployed && this.manager?.player) {
       this.syncEntitiesWithWorld(this.manager.player);
@@ -2078,7 +2275,7 @@ export class EndlessCompanions {
 
     this.activeSlots.push(normId);
     const activeKey = this._resolveActiveHeroKey(cfg);
-    safeEnsureHeroLoaded(activeKey);
+    this._ensureCompanionHeroReady(activeKey);
     this.vfx?.preload?.(activeKey);
     if (this.manager?.player) {
       this.syncEntitiesWithWorld(this.manager.player);
@@ -2125,7 +2322,7 @@ export class EndlessCompanions {
         if (activeHeroKey && ent.heroId !== activeHeroKey) {
           ent.heroId = activeHeroKey;
           ent.isEx = true;
-          safeEnsureHeroLoaded(activeHeroKey);
+          this._ensureCompanionHeroReady(activeHeroKey);
           ent.triggerAuraRing('buff', 1.45);
         } else if (starInfo.star > prevStar && starInfo.star >= 3) {
           ent.triggerAuraRing('buff', 1.45);
@@ -2163,7 +2360,7 @@ export class EndlessCompanions {
         ent.auraTier = starInfo.auraTier || getAuraTier(starInfo.star);
         ent._squad = this;
         ent.triggerAuraRing('summon', 1.35);
-        safeEnsureHeroLoaded(activeHeroKey);
+        this._ensureCompanionHeroReady(activeHeroKey);
         this.vfx?.preload?.(activeHeroKey);
         nextEntities.push(ent);
         newlyCreated.push(ent);
@@ -2211,6 +2408,7 @@ export class EndlessCompanions {
       const activeHeroKeys = nextEntities.map((e) => e.heroId).filter(Boolean);
       const playerHeroKey = player?.heroId || this.manager?.game?.slot1Hero || null;
       const keepAll = playerHeroKey ? [playerHeroKey, ...activeHeroKeys] : activeHeroKeys;
+      this._pruneBakedSheets(activeHeroKeys);
       this.vfx?.pruneInactiveSheets?.(keepAll);
       try {
         PixelForge.releaseInactiveAssets?.(keepAll, [], true);
@@ -3621,7 +3819,7 @@ export class EndlessCompanions {
       if (activeKey && ent.heroId !== activeKey) {
         ent.heroId = activeKey;
         ent.isEx = true;
-        safeEnsureHeroLoaded(activeKey);
+        this._ensureCompanionHeroReady(activeKey);
         this.vfx?.preload?.(activeKey);
         ent.triggerAuraRing('buff', 1.45);
       } else if (starInfo.star > prevStar && starInfo.star >= 3) {
@@ -4185,7 +4383,7 @@ export class EndlessCompanions {
       seen.add(id);
       this.activeSlots.push(id);
       const activeKey = this._resolveActiveHeroKey(ROSTER_BY_ID[id]);
-      safeEnsureHeroLoaded(activeKey);
+      this._ensureCompanionHeroReady(activeKey);
       this.vfx?.preload?.(activeKey);
     }
 
