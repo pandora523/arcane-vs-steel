@@ -2,9 +2,9 @@
 // Strictly Node-test safe (all DOM/window/Image accesses guarded), zero emojis,
 // pure nearest-neighbor blits & fillRect fallbacks, in-place DOM patching (zero 60fps click drops).
 
-import { PixelForge } from '../engine/PixelForge.js?v=30fps201';
-import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps201';
-import { ENDLESS_SHOP_CSS } from './EndlessShopStyles.js?v=30fps201';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps202';
+import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps202';
+import { ENDLESS_SHOP_CSS } from './EndlessShopStyles.js?v=30fps202';
 import {
   ENDLESS_VFX_SHEET_URL,
   ENDLESS_ICON_ROW,
@@ -45,7 +45,7 @@ import {
   drawFallbackPixelIcon,
   drawFallbackPortrait,
   drawMonogramPortrait
-} from './EndlessShopIcons.js?v=30fps201';
+} from './EndlessShopIcons.js?v=30fps202';
 
 const STYLE_ELEMENT_ID = 'endless-shop-ui-styles';
 const ROOT_ELEMENT_ID = 'endless-hud-root';

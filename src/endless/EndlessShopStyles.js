@@ -4351,13 +4351,13 @@ buildLandscapeCss(`  #endless-hud-root .endless-events-dock {
   }
 
   .endless-buff-strip {
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow: hidden;
     gap: 2px;
   }
 
   .endless-buff-pill {
-    flex: 1 1 0;
     min-width: 0;
     padding: 2px 3px 4px;
   }
@@ -4873,12 +4873,17 @@ buildLandscapeCss(`  #endless-hud-root .endless-events-dock {
 }
 
 .endless-overdrive-btn.is-active .endless-overdrive-fill {
-  background: linear-gradient(90deg, #ca8a04 0%, #facc15 55%, #fef08a 100%);
+  background: linear-gradient(90deg, #9a3412 0%, #d97706 52%, #eab308 100%);
 }
 
 .endless-overdrive-btn.is-active .endless-overdrive-label {
-  color: #0a0d18;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: #fffef2;
+  text-shadow:
+    -1px -1px 0 #050711,
+    1px -1px 0 #050711,
+    -1px 1px 0 #050711,
+    1px 1px 0 #050711,
+    0 1px 2px rgba(0, 0, 0, 0.95);
 }
 
 @keyframes endlessOverdrivePulse {

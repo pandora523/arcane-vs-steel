@@ -1,33 +1,33 @@
-import { Renderer } from './engine/Renderer.js?v=30fps201';
-import { VFXManager } from './engine/VFXManager.js?v=30fps201';
-import { PixelForge } from './engine/PixelForge.js?v=30fps201';
-import { AudioManager } from './engine/AudioManager.js?v=30fps201';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps201';
-import { Fighter } from './entities/Fighter.js?v=30fps201';
-import { Warrior } from './entities/Warrior.js?v=30fps201';
-import { WarriorEx } from './entities/WarriorEx.js?v=30fps201';
-import { FireMage } from './entities/FireMage.js?v=30fps201';
-import { FireMageEx } from './entities/FireMageEx.js?v=30fps201';
-import { Archer } from './entities/Archer.js?v=30fps201';
-import { ArcherEx } from './entities/ArcherEx.js?v=30fps201';
-import { Priestess } from './entities/Priestess.js?v=30fps201';
-import { PriestessEx } from './entities/PriestessEx.js?v=30fps201';
-import { Reaper } from './entities/Reaper.js?v=30fps201';
-import { ReaperEx } from './entities/ReaperEx.js?v=30fps201';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps201';
-import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps201';
-import { Titan } from './entities/Titan.js?v=30fps201';
-import { TitanEx } from './entities/TitanEx.js?v=30fps201';
-import { Ronin } from './entities/Ronin.js?v=30fps201';
-import { RoninEx } from './entities/RoninEx.js?v=30fps201';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps201';
-import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps201';
-import { IceMage } from './entities/IceMage.js?v=30fps201';
-import { IceMageEx } from './entities/IceMageEx.js?v=30fps201';
-import { Android } from './entities/Android.js?v=30fps201';
-import { AndroidEx } from './entities/AndroidEx.js?v=30fps201';
-import { NyxEx } from './entities/NyxEx.js?v=30fps201';
-import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps201';
+import { Renderer } from './engine/Renderer.js?v=30fps202';
+import { VFXManager } from './engine/VFXManager.js?v=30fps202';
+import { PixelForge } from './engine/PixelForge.js?v=30fps202';
+import { AudioManager } from './engine/AudioManager.js?v=30fps202';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps202';
+import { Fighter } from './entities/Fighter.js?v=30fps202';
+import { Warrior } from './entities/Warrior.js?v=30fps202';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps202';
+import { FireMage } from './entities/FireMage.js?v=30fps202';
+import { FireMageEx } from './entities/FireMageEx.js?v=30fps202';
+import { Archer } from './entities/Archer.js?v=30fps202';
+import { ArcherEx } from './entities/ArcherEx.js?v=30fps202';
+import { Priestess } from './entities/Priestess.js?v=30fps202';
+import { PriestessEx } from './entities/PriestessEx.js?v=30fps202';
+import { Reaper } from './entities/Reaper.js?v=30fps202';
+import { ReaperEx } from './entities/ReaperEx.js?v=30fps202';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps202';
+import { ChronomancerEx } from './entities/ChronomancerEx.js?v=30fps202';
+import { Titan } from './entities/Titan.js?v=30fps202';
+import { TitanEx } from './entities/TitanEx.js?v=30fps202';
+import { Ronin } from './entities/Ronin.js?v=30fps202';
+import { RoninEx } from './entities/RoninEx.js?v=30fps202';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps202';
+import { ValkyrieEx } from './entities/ValkyrieEx.js?v=30fps202';
+import { IceMage } from './entities/IceMage.js?v=30fps202';
+import { IceMageEx } from './entities/IceMageEx.js?v=30fps202';
+import { Android } from './entities/Android.js?v=30fps202';
+import { AndroidEx } from './entities/AndroidEx.js?v=30fps202';
+import { NyxEx } from './entities/NyxEx.js?v=30fps202';
+import { BrawlerEx } from './entities/BrawlerEx.js?v=30fps202';
 import {
   AdventureManager,
   ADVENTURE_DIFFICULTY_TIERS,
@@ -40,10 +40,10 @@ import {
   normalizeAdventureCampaignPack,
   normalizeAdventureDifficultyId,
   normalizeAdventureProgressMode
-} from './adventure/AdventureManager.js?v=30fps201';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps201';
-import { EndlessManager } from './endless/EndlessManager.js?v=30fps201';
-import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps201';
+} from './adventure/AdventureManager.js?v=30fps202';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps202';
+import { EndlessManager } from './endless/EndlessManager.js?v=30fps202';
+import { HeroBuildSystem } from './combat/HeroBuildSystem.js?v=30fps202';
 
 export const EX_HERO_KEYS = [
   'warrior_ex',
@@ -6146,7 +6146,7 @@ export class Game {
   async initCampaignCatalog(initialCampaignParam = null) {
     if (typeof fetch !== 'function') return;
     try {
-      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps201');
+      const packs = await this.adventure.fetchCampaignIndex('assets/campaigns/index.json?v=30fps202');
       if (Array.isArray(packs)) {
         const importedOnly = this.campaignIndexPacks.filter((p) => p?.isImported);
         this.campaignIndexPacks = [
@@ -6373,7 +6373,7 @@ export class Game {
         normalized = await this.adventure.loadCampaignPackById(
           targetId,
           meta?.file || null,
-          'v=30fps201'
+          'v=30fps202'
         );
       } catch (err) {
         console.warn(`Campaign pack "${targetId}" failed to load, reverting to default:`, err);
@@ -9605,8 +9605,9 @@ export class Game {
     const boss = adv?.bossEntity || null;
     const warningActive = Boolean(adv && (adv.bossWarningTimer || 0) > 0);
     const bossAlive = Boolean(boss && !boss.isDead);
+    const trialActiveInEndless = Boolean(isEndless && adv?.trials?.isActive?.());
     const showBossHud = Boolean(
-      adv?.active && !this.isLandingOpen && !this.isMatchOver && (warningActive || bossAlive)
+      adv?.active && !this.isLandingOpen && !this.isMatchOver && !trialActiveInEndless && (warningActive || bossAlive)
     );
 
     els.root.classList?.toggle('hidden', !showBossHud);
@@ -9731,7 +9732,7 @@ export class Game {
             : null;
         const shopToggleEl =
           typeof document !== 'undefined' && typeof document.getElementById === 'function'
-            ? document.getElementById('endless-shop-toggle')
+            ? document.querySelector('#endless-shop-toggle')
             : null;
         for (const el of [topStackEl, shopToggleEl]) {
           if (el && typeof el.getBoundingClientRect === 'function') {

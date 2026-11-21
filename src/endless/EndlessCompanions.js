@@ -1,10 +1,10 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps201';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps201';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps202';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps202';
 import {
   COMPANION_BASE_TO_EX_KEY,
   ELITE_EX_COMPANION_DEFS,
   COMPANION_MAX_STARS
-} from './EndlessCompanionEvo.js?v=30fps201';
+} from './EndlessCompanionEvo.js?v=30fps202';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
 
