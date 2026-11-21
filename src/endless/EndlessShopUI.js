@@ -4,7379 +4,57 @@
 
 import { PixelForge } from '../engine/PixelForge.js?v=30fps201';
 import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps201';
+import { ENDLESS_SHOP_CSS } from './EndlessShopStyles.js?v=30fps201';
+import {
+  ENDLESS_VFX_SHEET_URL,
+  ENDLESS_ICON_ROW,
+  ENDLESS_SIGIL_ROW,
+  ENDLESS_ICON_CELL,
+  CLOSE_SVG,
+  BOSS_CROWN_SVG,
+  SYNERGY_DIAMOND_SVG,
+  DPS_BAR_SVG,
+  ASCEND_STAR_SVG,
+  FORGE_DUST_SVG,
+  BOUNTY_SVG,
+  SHRINE_SVG,
+  MERCHANT_SVG,
+  STAR_ON_SVG,
+  STAR_OFF_SVG,
+  OVERDRIVE_BOLT_SVG,
+  TRIAL_VAULT_SVG,
+  DEFAULT_SQUAD_FORMATIONS,
+  DEFAULT_TRIAL_DEFS,
+  TRIAL_RARITY_COLORS,
+  GEAR_SLOT_ORDER,
+  GEAR_SLOT_DEFAULTS,
+  DEFAULT_MYTHIC_SETS,
+  getTrialSvg,
+  formatTrialBestScore,
+  formatTrialHudScore,
+  formatTrialResultPerf,
+  getGearSlotSvg,
+  formatGearBonuses,
+  resolveGearPowerDelta,
+  computeGearItemSignature,
+  formatAwayTime,
+  formatGoldTag,
+  resolveArtifactIconSpec,
+  setTextIfChanged,
+  stopEventLeak,
+  drawFallbackPixelIcon,
+  drawFallbackPortrait,
+  drawMonogramPortrait
+} from './EndlessShopIcons.js?v=30fps201';
 
-const ENDLESS_VFX_SHEET_URL = 'assets/sprites/endless_crusade_vfx.png?v=30fps201';
-const ENDLESS_ICON_ROW = 7;
-const ENDLESS_SIGIL_ROW = 9;
-const ENDLESS_ICON_CELL = 128;
 const STYLE_ELEMENT_ID = 'endless-shop-ui-styles';
 const ROOT_ELEMENT_ID = 'endless-hud-root';
 const RELIC_DEF_BY_ID = new Map(ENDLESS_RELICS.map((r) => [r.id, r]));
 
-const CLOSE_SVG =
-  '<svg class="endless-px-svg" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="2" y="2" width="2" height="2" fill="currentColor"/>' +
-  '<rect x="4" y="4" width="4" height="4" fill="currentColor"/>' +
-  '<rect x="8" y="2" width="2" height="2" fill="currentColor"/>' +
-  '<rect x="2" y="8" width="2" height="2" fill="currentColor"/>' +
-  '<rect x="8" y="8" width="2" height="2" fill="currentColor"/>' +
-  '</svg>';
-
-const BOSS_CROWN_SVG =
-  '<svg class="endless-px-svg" width="12" height="10" viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="1" y="2" width="2" height="6" fill="#facc15"/>' +
-  '<rect x="5" y="1" width="2" height="7" fill="#fef08a"/>' +
-  '<rect x="9" y="2" width="2" height="6" fill="#facc15"/>' +
-  '<rect x="1" y="6" width="10" height="3" fill="#d97706"/>' +
-  '<rect x="2" y="5" width="8" height="2" fill="#facc15"/>' +
-  '<rect x="5" y="6" width="2" height="2" fill="#ef4444"/>' +
-  '</svg>';
-
-const SYNERGY_DIAMOND_SVG =
-  '<svg class="endless-px-svg" width="8" height="8" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="3" y="0" width="2" height="8" fill="currentColor"/>' +
-  '<rect x="1" y="2" width="6" height="4" fill="currentColor"/>' +
-  '<rect x="0" y="3" width="8" height="2" fill="currentColor"/>' +
-  '<rect x="3" y="3" width="2" height="2" fill="#ffffff"/>' +
-  '</svg>';
-
-const DPS_BAR_SVG =
-  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="1" y="5" width="2" height="4" fill="#38bdf8"/>' +
-  '<rect x="4" y="2" width="2" height="7" fill="#facc15"/>' +
-  '<rect x="7" y="4" width="2" height="5" fill="#c084fc"/>' +
-  '<rect x="0" y="9" width="10" height="1" fill="#d4af37"/>' +
-  '</svg>';
-
-const ASCEND_STAR_SVG =
-  '<svg class="endless-px-svg" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="5" y="0" width="2" height="12" fill="#e9d5ff"/>' +
-  '<rect x="0" y="5" width="12" height="2" fill="#c084fc"/>' +
-  '<rect x="3" y="3" width="6" height="6" fill="#a855f7"/>' +
-  '<rect x="4" y="4" width="4" height="4" fill="#fef08a"/>' +
-  '<rect x="5" y="5" width="2" height="2" fill="#ffffff"/>' +
-  '</svg>';
-
-const GEAR_WEAPON_SVG =
-  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="11" y="1" width="2" height="2" fill="#ffffff"/>' +
-  '<rect x="10" y="2" width="2" height="2" fill="#f8fafc"/>' +
-  '<rect x="9" y="3" width="2" height="2" fill="#e2e8f0"/>' +
-  '<rect x="11" y="3" width="1" height="1" fill="#94a3b8"/>' +
-  '<rect x="8" y="4" width="2" height="2" fill="#e2e8f0"/>' +
-  '<rect x="10" y="4" width="1" height="1" fill="#94a3b8"/>' +
-  '<rect x="7" y="5" width="2" height="2" fill="#cbd5e1"/>' +
-  '<rect x="9" y="5" width="1" height="1" fill="#64748b"/>' +
-  '<rect x="6" y="6" width="2" height="2" fill="#cbd5e1"/>' +
-  '<rect x="8" y="6" width="1" height="1" fill="#64748b"/>' +
-  '<rect x="3" y="6" width="2" height="2" fill="#facc15"/>' +
-  '<rect x="4" y="7" width="3" height="2" fill="#fef08a"/>' +
-  '<rect x="6" y="9" width="2" height="2" fill="#d97706"/>' +
-  '<rect x="3" y="9" width="2" height="2" fill="#78350f"/>' +
-  '<rect x="2" y="10" width="2" height="2" fill="#92400e"/>' +
-  '<rect x="1" y="11" width="2" height="2" fill="#f43f5e"/>' +
-  '<rect x="2" y="12" width="1" height="1" fill="#facc15"/>' +
-  '</svg>';
-
-const GEAR_ARMOR_SVG =
-  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="1" y="2" width="3" height="4" fill="#64748b"/>' +
-  '<rect x="10" y="2" width="3" height="4" fill="#64748b"/>' +
-  '<rect x="2" y="2" width="2" height="1" fill="#facc15"/>' +
-  '<rect x="10" y="2" width="2" height="1" fill="#facc15"/>' +
-  '<rect x="3" y="3" width="8" height="7" fill="#334155"/>' +
-  '<rect x="4" y="4" width="6" height="3" fill="#475569"/>' +
-  '<rect x="5" y="2" width="4" height="2" fill="#0f172a"/>' +
-  '<rect x="6" y="4" width="2" height="6" fill="#facc15"/>' +
-  '<rect x="6" y="5" width="2" height="2" fill="#fef08a"/>' +
-  '<rect x="3" y="10" width="8" height="1" fill="#d4af37"/>' +
-  '<rect x="3" y="11" width="3" height="2" fill="#475569"/>' +
-  '<rect x="8" y="11" width="3" height="2" fill="#475569"/>' +
-  '<rect x="6" y="11" width="2" height="2" fill="#92400e"/>' +
-  '</svg>';
-
-const GEAR_AMULET_SVG =
-  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="3" y="1" width="2" height="1" fill="#d4af37"/>' +
-  '<rect x="9" y="1" width="2" height="1" fill="#d4af37"/>' +
-  '<rect x="4" y="2" width="1" height="2" fill="#facc15"/>' +
-  '<rect x="9" y="2" width="1" height="2" fill="#facc15"/>' +
-  '<rect x="5" y="3" width="4" height="2" fill="#facc15"/>' +
-  '<rect x="4" y="5" width="6" height="7" fill="#d4af37"/>' +
-  '<rect x="3" y="6" width="8" height="5" fill="#facc15"/>' +
-  '<rect x="4" y="6" width="6" height="5" fill="#0f172a"/>' +
-  '<rect x="5" y="6" width="4" height="5" fill="#0284c7"/>' +
-  '<rect x="6" y="5" width="2" height="7" fill="#38bdf8"/>' +
-  '<rect x="5" y="7" width="4" height="3" fill="#7dd3fc"/>' +
-  '<rect x="6" y="6" width="2" height="2" fill="#ffffff"/>' +
-  '<rect x="6" y="12" width="2" height="1" fill="#fef08a"/>' +
-  '</svg>';
-
-const GEAR_RING_SVG =
-  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="5" y="1" width="4" height="4" fill="#facc15"/>' +
-  '<rect x="6" y="2" width="2" height="2" fill="#f43f5e"/>' +
-  '<rect x="6" y="2" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="3" y="4" width="2" height="2" fill="#fef08a"/>' +
-  '<rect x="9" y="4" width="2" height="2" fill="#facc15"/>' +
-  '<rect x="2" y="6" width="2" height="4" fill="#facc15"/>' +
-  '<rect x="10" y="6" width="2" height="4" fill="#d4af37"/>' +
-  '<rect x="3" y="10" width="2" height="2" fill="#d97706"/>' +
-  '<rect x="9" y="10" width="2" height="2" fill="#b45309"/>' +
-  '<rect x="5" y="11" width="4" height="2" fill="#ca8a04"/>' +
-  '<rect x="5" y="11" width="4" height="1" fill="#facc15"/>' +
-  '</svg>';
-
-const FORGE_DUST_SVG =
-  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="6" y="1" width="2" height="3" fill="#38bdf8"/>' +
-  '<rect x="5" y="2" width="4" height="2" fill="#7dd3fc"/>' +
-  '<rect x="6" y="2" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="3" y="2" width="1" height="1" fill="#facc15"/>' +
-  '<rect x="10" y="2" width="1" height="1" fill="#fb923c"/>' +
-  '<rect x="1" y="5" width="12" height="2" fill="#94a3b8"/>' +
-  '<rect x="3" y="5" width="9" height="1" fill="#e2e8f0"/>' +
-  '<rect x="6" y="5" width="2" height="1" fill="#fb923c"/>' +
-  '<rect x="4" y="7" width="6" height="3" fill="#475569"/>' +
-  '<rect x="5" y="7" width="4" height="2" fill="#64748b"/>' +
-  '<rect x="2" y="10" width="10" height="3" fill="#334155"/>' +
-  '<rect x="3" y="10" width="8" height="1" fill="#d4af37"/>' +
-  '</svg>';
-
-const BOUNTY_SVG =
-  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="1" y="1" width="12" height="2" fill="#d4af37"/>' +
-  '<rect x="2" y="1" width="10" height="1" fill="#fef08a"/>' +
-  '<rect x="2" y="3" width="10" height="8" fill="#e2c799"/>' +
-  '<rect x="3" y="3" width="8" height="8" fill="#f5e6c8"/>' +
-  '<rect x="11" y="3" width="1" height="8" fill="#b49263"/>' +
-  '<rect x="5" y="4" width="4" height="6" fill="#dc2626"/>' +
-  '<rect x="4" y="5" width="6" height="4" fill="#ef4444"/>' +
-  '<rect x="5" y="5" width="4" height="4" fill="#f8fafc"/>' +
-  '<rect x="6" y="6" width="2" height="2" fill="#dc2626"/>' +
-  '<rect x="6" y="6" width="1" height="1" fill="#fef08a"/>' +
-  '<rect x="1" y="11" width="12" height="2" fill="#b45309"/>' +
-  '<rect x="2" y="11" width="10" height="1" fill="#facc15"/>' +
-  '</svg>';
-
-const SHRINE_SVG =
-  '<svg class="endless-px-svg" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="6" y="0" width="2" height="2" fill="currentColor"/>' +
-  '<rect x="5" y="2" width="3" height="2" fill="currentColor"/>' +
-  '<rect x="3" y="4" width="6" height="2" fill="currentColor"/>' +
-  '<rect x="4" y="4" width="3" height="2" fill="#fef08a"/>' +
-  '<rect x="2" y="6" width="8" height="2" fill="currentColor"/>' +
-  '<rect x="4" y="6" width="4" height="2" fill="#ffffff"/>' +
-  '<rect x="4" y="8" width="4" height="2" fill="currentColor"/>' +
-  '<rect x="5" y="8" width="2" height="2" fill="#fef08a"/>' +
-  '<rect x="4" y="10" width="2" height="2" fill="currentColor"/>' +
-  '</svg>';
-
-const MERCHANT_SVG =
-  '<svg class="endless-px-svg" width="14" height="14" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="5" y="0" width="4" height="1" fill="#facc15"/>' +
-  '<rect x="6" y="1" width="2" height="1" fill="#d4af37"/>' +
-  '<rect x="3" y="2" width="8" height="2" fill="#334155"/>' +
-  '<rect x="4" y="2" width="6" height="1" fill="#d4af37"/>' +
-  '<rect x="3" y="4" width="1" height="7" fill="#475569"/>' +
-  '<rect x="10" y="4" width="1" height="7" fill="#475569"/>' +
-  '<rect x="4" y="4" width="6" height="7" fill="#f59e0b"/>' +
-  '<rect x="5" y="5" width="4" height="5" fill="#facc15"/>' +
-  '<rect x="6" y="5" width="2" height="4" fill="#fef08a"/>' +
-  '<rect x="6" y="6" width="2" height="2" fill="#ffffff"/>' +
-  '<rect x="1" y="5" width="1" height="1" fill="#c084fc"/>' +
-  '<rect x="12" y="6" width="1" height="1" fill="#fef08a"/>' +
-  '<rect x="2" y="11" width="10" height="2" fill="#b45309"/>' +
-  '<rect x="3" y="11" width="8" height="1" fill="#facc15"/>' +
-  '<rect x="4" y="13" width="6" height="1" fill="#334155"/>' +
-  '</svg>';
-
-const STAR_ON_SVG =
-  '<svg class="endless-px-svg" width="8" height="8" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="3" y="0" width="2" height="1" fill="#fef08a"/>' +
-  '<rect x="3" y="1" width="2" height="1" fill="#facc15"/>' +
-  '<rect x="0" y="2" width="8" height="1" fill="#facc15"/>' +
-  '<rect x="2" y="2" width="4" height="1" fill="#fef08a"/>' +
-  '<rect x="1" y="3" width="6" height="1" fill="#facc15"/>' +
-  '<rect x="3" y="3" width="2" height="1" fill="#ffffff"/>' +
-  '<rect x="2" y="4" width="4" height="1" fill="#facc15"/>' +
-  '<rect x="3" y="4" width="2" height="1" fill="#fef08a"/>' +
-  '<rect x="1" y="5" width="6" height="1" fill="#d97706"/>' +
-  '<rect x="2" y="5" width="4" height="1" fill="#facc15"/>' +
-  '<rect x="1" y="6" width="2" height="1" fill="#d97706"/>' +
-  '<rect x="5" y="6" width="2" height="1" fill="#d97706"/>' +
-  '<rect x="0" y="7" width="2" height="1" fill="#b45309"/>' +
-  '<rect x="6" y="7" width="2" height="1" fill="#b45309"/>' +
-  '</svg>';
-
-const STAR_OFF_SVG =
-  '<svg class="endless-px-svg" width="8" height="8" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="3" y="0" width="2" height="1" fill="#475569"/>' +
-  '<rect x="3" y="1" width="2" height="1" fill="#334155"/>' +
-  '<rect x="0" y="2" width="8" height="1" fill="#334155"/>' +
-  '<rect x="2" y="2" width="4" height="1" fill="#475569"/>' +
-  '<rect x="1" y="3" width="6" height="1" fill="#334155"/>' +
-  '<rect x="3" y="3" width="2" height="1" fill="#475569"/>' +
-  '<rect x="2" y="4" width="4" height="1" fill="#334155"/>' +
-  '<rect x="1" y="5" width="6" height="1" fill="#1e293b"/>' +
-  '<rect x="2" y="5" width="4" height="1" fill="#334155"/>' +
-  '<rect x="1" y="6" width="2" height="1" fill="#1e293b"/>' +
-  '<rect x="5" y="6" width="2" height="1" fill="#1e293b"/>' +
-  '<rect x="0" y="7" width="2" height="1" fill="#0f172a"/>' +
-  '<rect x="6" y="7" width="2" height="1" fill="#0f172a"/>' +
-  '</svg>';
-
-const OVERDRIVE_BOLT_SVG =
-  '<svg class="endless-px-svg" width="10" height="10" viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="5" y="0" width="2" height="1" fill="#facc15"/>' +
-  '<rect x="4" y="1" width="3" height="1" fill="#facc15"/>' +
-  '<rect x="5" y="1" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="3" y="2" width="3" height="1" fill="#fef08a"/>' +
-  '<rect x="4" y="2" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="2" y="3" width="3" height="1" fill="#facc15"/>' +
-  '<rect x="3" y="3" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="1" y="4" width="7" height="1" fill="#f43f5e"/>' +
-  '<rect x="2" y="4" width="5" height="1" fill="#facc15"/>' +
-  '<rect x="3" y="4" width="3" height="1" fill="#ffffff"/>' +
-  '<rect x="2" y="5" width="6" height="1" fill="#e11d48"/>' +
-  '<rect x="5" y="5" width="2" height="1" fill="#fef08a"/>' +
-  '<rect x="5" y="6" width="3" height="1" fill="#f43f5e"/>' +
-  '<rect x="6" y="6" width="1" height="1" fill="#fef08a"/>' +
-  '<rect x="4" y="7" width="3" height="1" fill="#f43f5e"/>' +
-  '<rect x="5" y="7" width="1" height="1" fill="#facc15"/>' +
-  '<rect x="3" y="8" width="3" height="1" fill="#e11d48"/>' +
-  '<rect x="4" y="8" width="1" height="1" fill="#facc15"/>' +
-  '<rect x="2" y="9" width="2" height="1" fill="#be123c"/>' +
-  '</svg>';
-
-const DEFAULT_SQUAD_FORMATIONS = Object.freeze([
-  Object.freeze({
-    id: 'vanguard_wall',
-    name: 'VANGUARD WALL',
-    shortLabel: 'VANGUARD',
-    accentHex: '#38bdf8',
-    desc: '+30% MAX HP, +2% HP/S REGEN, +15% HERO DMG'
-  }),
-  Object.freeze({
-    id: 'balanced_phalanx',
-    name: 'BALANCED PHALANX',
-    shortLabel: 'PHALANX',
-    accentHex: '#facc15',
-    desc: '+18% ALLY DMG, +15% GOLD, +10% HERO DMG'
-  }),
-  Object.freeze({
-    id: 'all_out_blitz',
-    name: 'ALL-OUT BLITZ',
-    shortLabel: 'BLITZ',
-    accentHex: '#f43f5e',
-    desc: '+35% ALLY DMG, +18% CRIT, +22% BOSS DMG'
-  })
-]);
-
-const TRIAL_VAULT_SVG =
-  '<svg class="endless-px-svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="4" y="1" width="2" height="2" fill="#fef08a"/>' +
-  '<rect x="7" y="0" width="3" height="3" fill="#facc15"/>' +
-  '<rect x="8" y="1" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="10" y="1" width="2" height="2" fill="#fde047"/>' +
-  '<rect x="2" y="3" width="12" height="2" fill="#d97706"/>' +
-  '<rect x="1" y="4" width="14" height="3" fill="#92400e"/>' +
-  '<rect x="2" y="4" width="12" height="1" fill="#facc15"/>' +
-  '<rect x="3" y="5" width="10" height="2" fill="#78350f"/>' +
-  '<rect x="1" y="7" width="14" height="7" fill="#78350f"/>' +
-  '<rect x="2" y="7" width="12" height="1" fill="#fef08a"/>' +
-  '<rect x="4" y="8" width="8" height="5" fill="#451a03"/>' +
-  '<rect x="2" y="4" width="2" height="9" fill="#facc15"/>' +
-  '<rect x="12" y="4" width="2" height="9" fill="#eab308"/>' +
-  '<rect x="6" y="6" width="4" height="5" fill="#facc15"/>' +
-  '<rect x="7" y="7" width="2" height="3" fill="#f43f5e"/>' +
-  '<rect x="7" y="7" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="1" y="13" width="14" height="2" fill="#b45309"/>' +
-  '<rect x="2" y="13" width="12" height="1" fill="#facc15"/>' +
-  '</svg>';
-
-const TRIAL_MALPHAS_SVG =
-  '<svg class="endless-px-svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="1" y="1" width="2" height="3" fill="#e2e8f0"/>' +
-  '<rect x="2" y="3" width="2" height="3" fill="#94a3b8"/>' +
-  '<rect x="13" y="1" width="2" height="3" fill="#e2e8f0"/>' +
-  '<rect x="12" y="3" width="2" height="3" fill="#94a3b8"/>' +
-  '<rect x="6" y="1" width="1" height="2" fill="#facc15"/>' +
-  '<rect x="9" y="1" width="1" height="2" fill="#facc15"/>' +
-  '<rect x="7" y="2" width="2" height="2" fill="#f43f5e"/>' +
-  '<rect x="4" y="4" width="8" height="2" fill="#be123c"/>' +
-  '<rect x="3" y="5" width="10" height="5" fill="#9f1239"/>' +
-  '<rect x="4" y="5" width="8" height="4" fill="#e11d48"/>' +
-  '<rect x="4" y="6" width="8" height="1" fill="#4c0519"/>' +
-  '<rect x="4" y="7" width="3" height="2" fill="#facc15"/>' +
-  '<rect x="5" y="7" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="9" y="7" width="3" height="2" fill="#facc15"/>' +
-  '<rect x="10" y="7" width="1" height="1" fill="#ffffff"/>' +
-  '<rect x="4" y="10" width="8" height="3" fill="#881337"/>' +
-  '<rect x="5" y="10" width="6" height="2" fill="#4c0519"/>' +
-  '<rect x="5" y="11" width="1" height="3" fill="#f8fafc"/>' +
-  '<rect x="7" y="11" width="2" height="2" fill="#fda4af"/>' +
-  '<rect x="10" y="11" width="1" height="3" fill="#f8fafc"/>' +
-  '<rect x="5" y="14" width="6" height="1" fill="#be123c"/>' +
-  '</svg>';
-
-const TRIAL_HORDE_SVG =
-  '<svg class="endless-px-svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' +
-  '<rect x="5" y="1" width="6" height="2" fill="#c084fc"/>' +
-  '<rect x="3" y="2" width="10" height="2" fill="#9333ea"/>' +
-  '<rect x="2" y="4" width="12" height="8" fill="#7e22ce"/>' +
-  '<rect x="3" y="12" width="10" height="2" fill="#9333ea"/>' +
-  '<rect x="5" y="13" width="6" height="2" fill="#c084fc"/>' +
-  '<rect x="4" y="4" width="8" height="8" fill="#1e1b4b"/>' +
-  '<rect x="5" y="3" width="6" height="10" fill="#3b0764"/>' +
-  '<rect x="5" y="5" width="6" height="6" fill="#0f172a"/>' +
-  '<rect x="3" y="3" width="2" height="2" fill="#e9d5ff"/>' +
-  '<rect x="11" y="3" width="2" height="2" fill="#e9d5ff"/>' +
-  '<rect x="5" y="5" width="2" height="2" fill="#38bdf8"/>' +
-  '<rect x="9" y="5" width="2" height="2" fill="#38bdf8"/>' +
-  '<rect x="6" y="6" width="4" height="4" fill="#c084fc"/>' +
-  '<rect x="7" y="7" width="2" height="2" fill="#ffffff"/>' +
-  '<rect x="5" y="9" width="2" height="2" fill="#38bdf8"/>' +
-  '<rect x="9" y="9" width="2" height="2" fill="#38bdf8"/>' +
-  '<rect x="3" y="11" width="2" height="2" fill="#e9d5ff"/>' +
-  '<rect x="11" y="11" width="2" height="2" fill="#e9d5ff"/>' +
-  '<rect x="1" y="6" width="1" height="2" fill="#facc15"/>' +
-  '<rect x="14" y="8" width="1" height="2" fill="#38bdf8"/>' +
-  '</svg>';
-
-const TRIAL_SVG_MAP = Object.freeze({
-  gold_vault: TRIAL_VAULT_SVG,
-  malphas_gauntlet: TRIAL_MALPHAS_SVG,
-  abyssal_horde: TRIAL_HORDE_SVG
-});
-
-const DEFAULT_TRIAL_DEFS = Object.freeze([
-  Object.freeze({
-    id: 'gold_vault',
-    name: 'GILDED VAULT SPRINT',
-    shortName: 'GOLD VAULT',
-    durationSec: 30,
-    cooldownSec: 30,
-    accentHex: '#facc15',
-    glowHex: '#fef08a',
-    rewardTag: 'MASSIVE GOLD JACKPOT',
-    desc: '30S non-stop Treasure Goblins and Gold Chests for huge Gold jackpots.'
-  }),
-  Object.freeze({
-    id: 'malphas_gauntlet',
-    name: 'COLOSSAL MALPHAS GAUNTLET',
-    shortName: 'MALPHAS RUSH',
-    durationSec: 45,
-    cooldownSec: 30,
-    accentHex: '#f43f5e',
-    glowHex: '#fda4af',
-    rewardTag: 'ASTRAL SHARDS + MYTHIC DUST',
-    desc: '45S pure DPS check vs Behemoth Malphas paying Shards and Forge Dust per damage tier.'
-  }),
-  Object.freeze({
-    id: 'abyssal_horde',
-    name: 'ABYSSAL HORDE SURVIVAL',
-    shortName: 'HORDE SURVIVAL',
-    durationSec: 45,
-    cooldownSec: 30,
-    accentHex: '#c084fc',
-    glowHex: '#e9d5ff',
-    rewardTag: 'GUARANTEED HEROIC+ GEAR',
-    desc: '45S dense monster swarm awarding guaranteed Heroic, Sovereign or Mythic Gear.'
-  })
-]);
-
-const TRIAL_RARITY_COLORS = Object.freeze({
-  common: '#94a3b8',
-  arcane: '#38bdf8',
-  heroic: '#c084fc',
-  sovereign: '#facc15',
-  mythic: '#f43f5e'
-});
-
-function getTrialSvg(trialId) {
-  return TRIAL_SVG_MAP[trialId] || TRIAL_VAULT_SVG;
-}
-
-function formatTrialBestScore(trial) {
-  const score = Math.max(0, Number(trial?.bestScore) || 0);
-  if (score <= 0) return 'BEST: --';
-  const rawFmt = trial?.formattedBestScore
-    ? String(trial.formattedBestScore).trim().toUpperCase()
-    : formatEndlessNumber(score).toUpperCase();
-  if (trial?.id === 'gold_vault') {
-    const tag = rawFmt.endsWith('G') ? rawFmt : `${rawFmt}G`;
-    return `BEST: ${tag}`;
-  }
-  if (trial?.id === 'malphas_gauntlet') {
-    return `BEST: ${rawFmt} DMG`;
-  }
-  if (trial?.id === 'abyssal_horde') {
-    return `BEST: ${rawFmt} KILLS`;
-  }
-  return `BEST: ${rawFmt}`;
-}
-
-function formatTrialHudScore(active) {
-  if (!active || typeof active !== 'object') return '';
-  if (active.id === 'gold_vault') {
-    const goldStr = String(active.formattedGoldEarned || formatEndlessNumber(active.goldEarned || 0)).toUpperCase();
-    const gobs = Math.max(0, Math.floor(Number(active.goblinsSlain) || 0));
-    const chests = Math.max(0, Math.floor(Number(active.chestsCracked) || 0));
-    if (chests > 0) {
-      return `GOLD +${goldStr} | GOB ${gobs} | CHEST ${chests}`;
-    }
-    return `GOLD +${goldStr} | GOBLINS ${gobs}`;
-  }
-  if (active.id === 'malphas_gauntlet') {
-    const dmgStr = String(active.formattedDamageDealt || formatEndlessNumber(active.damageDealt || 0)).toUpperCase();
-    const tier = Math.max(0, Math.floor(Number(active.currentTier) || 0));
-    return `DMG ${dmgStr} | TIER ${tier}`;
-  }
-  const kills = Math.max(0, Math.floor(Number(active.kills) || 0));
-  if (active.id === 'abyssal_horde') {
-    const tierTag = kills >= 28 ? 'MYTHIC' : kills >= 12 ? 'SOVEREIGN' : 'HEROIC';
-    return `KILLS ${kills} | ${tierTag}`;
-  }
-  return `KILLS ${kills}`;
-}
-
-function formatTrialResultPerf(res) {
-  if (!res || typeof res !== 'object') return '';
-  const usedSec = Math.max(0, Number(res.durationUsedSec) || 0);
-  const durTag = `${usedSec.toFixed(1)}S`;
-  if (res.trialId === 'gold_vault') {
-    const gobs = Math.max(0, Math.floor(Number(res.goblinsSlain) || 0));
-    const chests = Math.max(0, Math.floor(Number(res.chestsCracked) || 0));
-    return `GOBLINS ${gobs} | CHESTS ${chests} | ${durTag}`;
-  }
-  if (res.trialId === 'malphas_gauntlet') {
-    const dmgStr = String(
-      res.formattedDamageDealt || res.formattedDamage || formatEndlessNumber(res.damageDealt || 0)
-    ).toUpperCase();
-    const tier = Math.max(0, Math.floor(Number(res.tierReached) || 0));
-    return `DMG ${dmgStr} | TIER ${tier} | ${durTag}`;
-  }
-  const kills = Math.max(0, Math.floor(Number(res.kills) || 0));
-  return `MONSTERS SLAIN ${kills} | ${durTag}`;
-}
-
-const GEAR_SLOT_ORDER = Object.freeze(['weapon', 'armor', 'amulet', 'ring']);
-
-const GEAR_SLOT_DEFAULTS = Object.freeze({
-  weapon: Object.freeze({ id: 'weapon', label: 'WEAPON', shortLabel: 'WPN' }),
-  armor: Object.freeze({ id: 'armor', label: 'ARMOR', shortLabel: 'ARM' }),
-  amulet: Object.freeze({ id: 'amulet', label: 'AMULET', shortLabel: 'AMU' }),
-  ring: Object.freeze({ id: 'ring', label: 'RELIC RING', shortLabel: 'RNG' })
-});
-
-const GEAR_SLOT_SVG_MAP = Object.freeze({
-  weapon: GEAR_WEAPON_SVG,
-  armor: GEAR_ARMOR_SVG,
-  amulet: GEAR_AMULET_SVG,
-  ring: GEAR_RING_SVG
-});
-
-const DEFAULT_MYTHIC_SETS = Object.freeze([
-  Object.freeze({
-    id: 'stormcaller',
-    name: 'STORMCALLER',
-    accentHex: '#38bdf8',
-    shortDesc: 'TAP CHAIN-LIGHTNING (+3 JUMPS, 1.35X DMG)',
-    fullDesc: 'Taps arc extra Chain-Lightning bolts to 3 foes even outside Fever.',
-    pieces: 0,
-    requiredPieces: 2,
-    active: false,
-    empowered: false
-  }),
-  Object.freeze({
-    id: 'blood_reaver',
-    name: 'BLOOD-REAVER',
-    accentHex: '#f43f5e',
-    shortDesc: 'KILL NOVA + 8% LIFESTEAL ON SLAY',
-    fullDesc: 'Slaying foes unleashes a crimson shockwave (45% AoE) and heals 8% max HP.',
-    pieces: 0,
-    requiredPieces: 2,
-    active: false,
-    empowered: false
-  }),
-  Object.freeze({
-    id: 'titan_slayer',
-    name: 'TITAN-SLAYER',
-    accentHex: '#facc15',
-    shortDesc: 'BOSS EXECUTE <15% HP (+30% BOSS DMG)',
-    fullDesc: 'Executes bosses below 15% HP instantly and grants +30% Boss Damage.',
-    pieces: 0,
-    requiredPieces: 2,
-    active: false,
-    empowered: false
-  })
-]);
-
-const GEAR_BONUS_SPECS = Object.freeze([
-  Object.freeze({ key: 'heroDmgPct', label: 'HERO', isCrit: false, priority: 7 }),
-  Object.freeze({ key: 'tapDmgPct', label: 'TAP', isCrit: false, priority: 6 }),
-  Object.freeze({ key: 'companionDmgPct', label: 'ALLY', isCrit: false, priority: 5 }),
-  Object.freeze({ key: 'bossDmgPct', label: 'BOSS', isCrit: false, priority: 4 }),
-  Object.freeze({ key: 'goldPct', label: 'GOLD', isCrit: false, priority: 3 }),
-  Object.freeze({ key: 'maxHpPct', label: 'HP', isCrit: false, priority: 2 }),
-  Object.freeze({ key: 'critBonus', label: 'CRIT', isCrit: true, priority: 1 })
-]);
-
-function getGearSlotSvg(slot) {
-  return GEAR_SLOT_SVG_MAP[slot] || GEAR_WEAPON_SVG;
-}
-
-function formatGearBonusPercent(val, isCrit) {
-  const pct = val * 100;
-  if (isCrit) {
-    const rounded1 = Math.round(pct * 10) / 10;
-    return Number.isInteger(rounded1) ? `+${rounded1}%` : `+${rounded1.toFixed(1)}%`;
-  }
-  const rounded = Math.round(pct);
-  if (rounded >= 10000) {
-    return `+${formatEndlessNumber(rounded)}%`;
-  }
-  return `+${rounded}%`;
-}
-
-function formatGearBonuses(bonuses, maxCount = 2) {
-  if (!bonuses || typeof bonuses !== 'object') return '';
-  const entries = [];
-  for (let i = 0; i < GEAR_BONUS_SPECS.length; i++) {
-    const spec = GEAR_BONUS_SPECS[i];
-    const raw = Number(bonuses[spec.key]);
-    if (!Number.isFinite(raw) || raw <= 0.0001) continue;
-    const score = spec.isCrit ? raw * 4 : raw;
-    entries.push({ spec, raw, score });
-  }
-  if (entries.length === 0) return '';
-  entries.sort((a, b) => (b.score - a.score) || (b.spec.priority - a.spec.priority));
-  const slice = maxCount > 0 ? entries.slice(0, maxCount) : entries;
-  return slice.map((e) => `${formatGearBonusPercent(e.raw, e.spec.isCrit)} ${e.spec.label}`).join(' • ');
-}
-
-function computeGearItemSignature(item) {
-  if (!item || typeof item !== 'object') return 'EMPTY';
-  const eb = item.effectiveBonuses || item.bonuses || {};
-  return [
-    item.uid || '',
-    item.slot || '',
-    item.rarity || '',
-    item.name || '',
-    item.stage || 1,
-    item.enhanceLevel || 0,
-    item.power || 0,
-    item.enhanceCost || 0,
-    item.canEnhance ? 1 : 0,
-    item.isMaxEnhanced ? 1 : 0,
-    item.salvageValue || 0,
-    item.isUpgradeOverEquipped ? 1 : 0,
-    item.setId || '',
-    item.setMeta?.name || '',
-    item.setMeta?.accentHex || '',
-    item.rarityMeta?.label || '',
-    item.rarityMeta?.color || '',
-    Math.round((Number(eb.heroDmgPct) || 0) * 1000),
-    Math.round((Number(eb.tapDmgPct) || 0) * 1000),
-    Math.round((Number(eb.companionDmgPct) || 0) * 1000),
-    Math.round((Number(eb.goldPct) || 0) * 1000),
-    Math.round((Number(eb.critBonus) || 0) * 1000),
-    Math.round((Number(eb.bossDmgPct) || 0) * 1000),
-    Math.round((Number(eb.maxHpPct) || 0) * 1000)
-  ].join(':');
-}
-
-const ETERNAL_ARTIFACT_ICON_MAP = Object.freeze({
-  eternal_blade: { row: 7, col: 2, accentHex: '#f97316' },
-  sovereign_vault: { row: 7, col: 11, accentHex: '#facc15' },
-  banner_of_oaths: { row: 7, col: 8, accentHex: '#f43f5e' },
-  astral_spark: { row: 7, col: 3, accentHex: '#c084fc' },
-  chronos_hourglass: { row: 7, col: 9, accentHex: '#38bdf8' },
-  gilded_ledger: { row: 7, col: 0, accentHex: '#fde047' }
-});
-
-function formatAwayTime(sec) {
-  const s = Math.max(0, Math.floor(Number(sec) || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const rem = s % 60;
-  if (h > 0) return `${h}H ${m}M`;
-  if (m > 0) return rem > 0 ? `${m}M ${rem}S` : `${m}M`;
-  return `${rem}S`;
-}
-
-function formatGoldTag(formatted, rawGold) {
-  const base = formatted
-    ? String(formatted).trim()
-    : formatEndlessNumber(Math.max(0, Number(rawGold) || 0));
-  const upper = base.toUpperCase();
-  return upper.endsWith('G') ? upper : `${upper}G`;
-}
-
-function resolveArtifactIconSpec(art) {
-  if (art && art.id && ETERNAL_ARTIFACT_ICON_MAP[art.id]) {
-    return ETERNAL_ARTIFACT_ICON_MAP[art.id];
-  }
-  const rawCol = Number(art?.iconCol);
-  if (Number.isFinite(rawCol)) {
-    return {
-      row: ENDLESS_ICON_ROW,
-      col: Math.max(0, Math.min(11, Math.floor(rawCol))),
-      accentHex: '#c084fc'
-    };
-  }
-  return { row: 1, col: 0, accentHex: '#c084fc' };
-}
-
-const ENDLESS_SHOP_CSS = `
-/* =========================================================================
-   ENDLESS CRUSADE HUD & COLLAPSIBLE GOTHIC SHOP DRAWER
-   Gothic Obsidian (#0a0d18) & Burnished Gold (#d4af37 / #facc15)
-   ========================================================================= */
-#endless-hud-root {
-  position: absolute;
-  inset: 0;
-  z-index: 22;
-  pointer-events: none;
-  font-family: 'ArcanePixel', 'Press Start 2P', monospace;
-  color: #f8fafc;
-  user-select: none;
-  -webkit-user-select: none;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-#endless-hud-root *,
-#endless-hud-root *::before,
-#endless-hud-root *::after {
-  box-sizing: border-box;
-}
-
-#endless-hud-root.hidden,
-#app.is-landing-open #endless-hud-root {
-  display: none !important;
-}
-
-#endless-hud-root canvas {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  display: block;
-}
-
-.endless-px-svg {
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-/* Top-Center Status Stack (Status Bar + Boss Controls) */
-.endless-top-stack {
-  position: absolute;
-  top: max(60px, calc(env(safe-area-inset-top) + 56px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: min(880px, calc(100% - 316px));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  pointer-events: none;
-  z-index: 23;
-}
-
-.endless-top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 5px 8px;
-  padding: 4px 9px;
-  max-width: 100%;
-  background: linear-gradient(180deg, rgba(14, 18, 34, 0.94) 0%, rgba(7, 9, 18, 0.97) 100%);
-  border: 2px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 5px;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.28),
-    inset 0 0 12px rgba(212, 175, 55, 0.14),
-    0 5px 16px rgba(0, 0, 0, 0.86);
-  pointer-events: auto;
-}
-
-.endless-stage-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 7px;
-  background: rgba(10, 13, 24, 0.92);
-  border: 1px solid rgba(250, 204, 21, 0.55);
-  border-left: 3px solid #38bdf8;
-  border-radius: 3px;
-  font-size: 0.48rem;
-  letter-spacing: 0.04em;
-  color: #fef08a;
-  white-space: nowrap;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-loop-pill {
-  padding: 1px 4px;
-  background: rgba(192, 132, 252, 0.22);
-  border: 1px solid #c084fc;
-  border-radius: 2px;
-  color: #e9d5ff;
-  font-size: 0.38rem;
-}
-
-.endless-loop-pill.hidden {
-  display: none;
-}
-
-.endless-wave-meter {
-  position: relative;
-  min-width: 112px;
-  height: 18px;
-  background: #070912;
-  border: 1px solid rgba(212, 175, 55, 0.65);
-  border-radius: 3px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-}
-
-.endless-wave-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 20%;
-  background: linear-gradient(90deg, #1d4ed8 0%, #38bdf8 100%);
-  transition: width 0.16s linear;
-}
-
-.endless-wave-meter.is-boss .endless-wave-fill {
-  background: linear-gradient(90deg, #991b1b 0%, #ef4444 55%, #facc15 100%);
-}
-
-.endless-wave-meter.is-boss {
-  border-color: #f87171;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.45);
-}
-
-.endless-wave-meter.is-farm .endless-wave-fill {
-  background: linear-gradient(90deg, #854d0e 0%, #eab308 100%);
-}
-
-.endless-wave-label {
-  position: relative;
-  z-index: 1;
-  font-size: 0.42rem;
-  color: #ffffff;
-  text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000;
-  white-space: nowrap;
-}
-
-.endless-currency-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.endless-currency-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 7px 2px 4px;
-  background: rgba(8, 11, 20, 0.94);
-  border: 1px solid rgba(212, 175, 55, 0.55);
-  border-radius: 3px;
-  font-size: 0.48rem;
-  white-space: nowrap;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-currency-pill.is-gold {
-  color: #fde047;
-  border-color: rgba(250, 204, 21, 0.72);
-}
-
-.endless-currency-pill.is-shard {
-  color: #7dd3fc;
-  border-color: rgba(56, 189, 248, 0.68);
-}
-
-.endless-currency-icon {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.endless-fever-meter {
-  position: relative;
-  width: 84px;
-  height: 16px;
-  background: #090c17;
-  border: 1px solid rgba(251, 146, 60, 0.65);
-  border-radius: 3px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.endless-fever-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 0%;
-  background: linear-gradient(90deg, #b45309 0%, #f59e0b 55%, #fef08a 100%);
-  transition: width 0.08s linear;
-}
-
-.endless-fever-meter.is-active {
-  border-color: #fde047;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.72);
-}
-
-.endless-fever-meter.is-tier2 {
-  border-color: #f43f5e;
-  box-shadow: 0 0 12px rgba(244, 63, 94, 0.78);
-}
-
-.endless-fever-meter.is-tier2 .endless-fever-fill {
-  background: linear-gradient(90deg, #dc2626 0%, #f97316 50%, #fef08a 100%);
-}
-
-.endless-fever-label {
-  position: relative;
-  z-index: 1;
-  font-size: 0.36rem;
-  color: #fffbeb;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-}
-
-/* Boss Control Action Pill */
-.endless-boss-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  pointer-events: auto;
-}
-
-.endless-autoboss-btn {
-  font-family: inherit;
-  font-size: 0.42rem;
-  letter-spacing: 0.03em;
-  padding: 4px 8px;
-  color: #cbd5e1;
-  background: linear-gradient(180deg, rgba(16, 20, 34, 0.94) 0%, rgba(8, 10, 18, 0.96) 100%);
-  border: 1.5px solid #475569;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 0.14s ease, color 0.14s ease, transform 0.08s ease;
-}
-
-.endless-autoboss-btn.is-on {
-  color: #fef08a;
-  border-color: #d4af37;
-  background: linear-gradient(180deg, rgba(45, 34, 12, 0.94) 0%, rgba(19, 14, 6, 0.96) 100%);
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.24);
-}
-
-.endless-autoboss-btn:active,
-.endless-challenge-boss-btn:active,
-.endless-shop-toggle:active,
-.endless-buy-btn:active,
-.endless-comp-btn:active {
-  transform: translateY(1px);
-}
-
-.endless-challenge-boss-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: inherit;
-  font-size: 0.45rem;
-  letter-spacing: 0.04em;
-  padding: 5px 10px;
-  color: #fffbeb;
-  background: linear-gradient(180deg, #b91c1c 0%, #7f1d1d 100%);
-  border: 2px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  text-shadow: 0 1px 0 #000;
-  box-shadow: 0 0 14px rgba(250, 204, 21, 0.55), inset 0 1px 0 rgba(254, 240, 138, 0.4);
-  animation: endlessBossPulse 1.35s ease-in-out infinite;
-}
-
-.endless-challenge-boss-btn.hidden {
-  display: none !important;
-}
-
-@keyframes endlessBossPulse {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(250, 204, 21, 0.45), inset 0 1px 0 rgba(254, 240, 138, 0.35);
-    border-color: #facc15;
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(250, 204, 21, 0.92), inset 0 1px 0 rgba(254, 240, 138, 0.65);
-    border-color: #fef08a;
-  }
-}
-
-/* Floating Shop Toggle Button */
-#endless-shop-toggle {
-  position: absolute;
-  top: max(60px, calc(env(safe-area-inset-top) + 56px));
-  right: max(12px, env(safe-area-inset-right));
-  z-index: 28;
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px 5px 7px;
-  font-family: inherit;
-  font-size: 0.46rem;
-  letter-spacing: 0.04em;
-  color: #fef08a;
-  background: linear-gradient(180deg, #1b172c 0%, #0a0d18 100%);
-  border: 2px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 5px;
-  cursor: pointer;
-  text-shadow: 0 1px 0 #000;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.32),
-    0 5px 16px rgba(0, 0, 0, 0.88);
-  white-space: nowrap;
-}
-
-#endless-shop-toggle.is-open {
-  border-color: #fde047;
-  background: linear-gradient(180deg, #2b2112 0%, #120e08 100%);
-}
-
-.endless-toggle-icon {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-}
-
-.endless-affordable-dot {
-  width: 8px;
-  height: 8px;
-  background: #facc15;
-  border: 1px solid #000;
-  box-shadow: 0 0 8px #facc15;
-  animation: endlessDotPulse 1.1s ease-in-out infinite;
-}
-
-.endless-affordable-dot.hidden {
-  display: none;
-}
-
-@keyframes endlessDotPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.45; transform: scale(0.8); }
-}
-
-/* Collapsible Gothic Shop Drawer */
-.endless-shop-shell {
-  position: absolute;
-  top: max(104px, calc(env(safe-area-inset-top) + 100px));
-  right: max(12px, env(safe-area-inset-right));
-  bottom: max(76px, env(safe-area-inset-bottom));
-  width: 348px;
-  max-width: calc(100vw - 24px);
-  z-index: 30;
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, rgba(13, 17, 30, 0.97) 0%, rgba(7, 9, 17, 0.98) 100%);
-  border: 2px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 6px;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.28),
-    inset 0 0 18px rgba(212, 175, 55, 0.12),
-    0 12px 32px rgba(0, 0, 0, 0.92);
-  overflow: hidden;
-}
-
-.endless-shop-shell.hidden {
-  display: none !important;
-}
-
-.endless-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 9px;
-  background: linear-gradient(180deg, rgba(30, 24, 15, 0.94) 0%, rgba(12, 14, 24, 0.96) 100%);
-  border-bottom: 1.5px solid rgba(212, 175, 55, 0.62);
-  flex-shrink: 0;
-}
-
-.endless-drawer-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.endless-drawer-title {
-  font-size: 0.50rem;
-  color: #fde047;
-  letter-spacing: 0.05em;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-}
-
-.endless-drawer-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  color: #fde047;
-  background: rgba(15, 19, 32, 0.95);
-  border: 1.5px solid rgba(212, 175, 55, 0.65);
-  border-radius: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.endless-drawer-close:hover {
-  background: rgba(127, 29, 29, 0.85);
-  border-color: #f87171;
-  color: #ffffff;
-}
-
-/* Tab Bar (6 Single-Row Tabs: ITEMS | GEAR | ALLIES | ASCEND | TRIALS | STATS) */
-.endless-tab-bar {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: 2px;
-  padding: 5px 4px;
-  background: rgba(6, 8, 15, 0.94);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.endless-tab-btn {
-  position: relative;
-  flex: 0.96 1 0;
-  min-width: 0;
-  min-height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 6px 2px;
-  font-family: inherit;
-  font-size: 0.31rem;
-  letter-spacing: 0.01em;
-  color: #94a3b8;
-  background: rgba(13, 17, 30, 0.9);
-  border: 1.5px solid #334155;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.endless-tab-btn[data-tab-id="gear"] {
-  flex: 0.84 1 0;
-  border-color: rgba(250, 204, 21, 0.45);
-  color: #fde68a;
-}
-
-.endless-tab-btn[data-tab-id="companions"] {
-  flex: 1.08 1 0;
-}
-
-.endless-tab-btn[data-tab-id="ascend"] {
-  flex: 1.08 1 0;
-  border-color: rgba(168, 85, 247, 0.55);
-  color: #d8b4fe;
-}
-
-.endless-tab-btn[data-tab-id="trials"] {
-  flex: 1.08 1 0;
-  border-color: rgba(244, 63, 94, 0.55);
-  color: #fda4af;
-}
-
-.endless-tab-btn[data-tab-id="stats"] {
-  flex: 0.96 1 0;
-}
-
-.endless-tab-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.endless-tab-dot {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 5px;
-  height: 5px;
-  flex-shrink: 0;
-  pointer-events: none;
-  background: #c084fc;
-  border: 1px solid #fef08a;
-  box-shadow: 0 0 8px #c084fc, 0 0 3px #facc15;
-  animation: endlessDotPulse 1.1s ease-in-out infinite;
-}
-
-.endless-tab-dot.is-gear {
-  background: #facc15;
-  border-color: #fef08a;
-  box-shadow: 0 0 8px #facc15, 0 0 3px #34d399;
-}
-
-.endless-tab-dot.is-trials {
-  background: #f43f5e;
-  border-color: #fef08a;
-  box-shadow: 0 0 8px #f43f5e, 0 0 3px #facc15;
-}
-
-.endless-tab-dot.hidden {
-  display: none;
-}
-
-.endless-tab-btn.is-active {
-  color: #fef08a;
-  border-color: #facc15;
-  background: linear-gradient(180deg, rgba(66, 46, 12, 0.92) 0%, rgba(28, 20, 8, 0.96) 100%);
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.3);
-}
-
-.endless-tab-btn[data-tab-id="gear"].is-active {
-  color: #fffbeb;
-  border-color: #fde047;
-  background: linear-gradient(180deg, rgba(92, 54, 10, 0.96) 0%, rgba(36, 22, 6, 0.98) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.38),
-    0 0 8px rgba(250, 204, 21, 0.35);
-}
-
-.endless-tab-btn[data-tab-id="ascend"].is-active {
-  color: #fef08a;
-  border-color: #d8b4fe;
-  background: linear-gradient(180deg, rgba(76, 29, 149, 0.94) 0%, rgba(30, 14, 58, 0.98) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.35),
-    0 0 8px rgba(168, 85, 247, 0.45);
-}
-
-.endless-tab-btn[data-tab-id="trials"].is-active {
-  color: #fffbeb;
-  border-color: #fb7185;
-  background: linear-gradient(180deg, rgba(127, 29, 29, 0.95) 0%, rgba(42, 10, 18, 0.98) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.35),
-    0 0 8px rgba(244, 63, 94, 0.48);
-}
-
-/* Drawer Body & Panels */
-.endless-drawer-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.endless-tab-panel {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.endless-tab-panel.hidden {
-  display: none !important;
-}
-
-/* Bulk Buy Strip */
-.endless-bulk-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 6px 8px;
-  background: rgba(9, 12, 22, 0.92);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
-  flex-shrink: 0;
-}
-
-.endless-bulk-label {
-  font-size: 0.40rem;
-  color: #94a3b8;
-  letter-spacing: 0.04em;
-}
-
-.endless-bulk-group {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.endless-bulk-btn {
-  font-family: inherit;
-  font-size: 0.42rem;
-  padding: 4px 8px;
-  color: #cbd5e1;
-  background: #0c1020;
-  border: 1px solid #475569;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.endless-bulk-btn.is-active {
-  color: #090c14;
-  background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
-  border-color: #fef08a;
-  font-weight: 700;
-}
-
-/* Scroll Containers */
-.endless-scroll-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 6px 7px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: #d4af37 #0a0d18;
-}
-
-/* Relic Rows */
-.endless-relic-row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px;
-  padding: 6px;
-  background: linear-gradient(180deg, rgba(16, 21, 36, 0.94) 0%, rgba(10, 13, 24, 0.96) 100%);
-  border: 1.5px solid rgba(100, 116, 139, 0.45);
-  border-radius: 4px;
-  transition: border-color 0.14s ease, background 0.14s ease;
-}
-
-.endless-relic-row.is-affordable {
-  border-color: rgba(212, 175, 55, 0.78);
-}
-
-.endless-relic-row.is-just-bought {
-  border-color: #fef08a;
-  box-shadow: inset 0 0 12px rgba(250, 204, 21, 0.32);
-}
-
-.endless-relic-icon-wrap {
-  width: 36px;
-  height: 36px;
-  padding: 2px;
-  background: #070912;
-  border: 1.5px solid #d4af37;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.endless-relic-icon {
-  width: 30px;
-  height: 30px;
-}
-
-.endless-relic-info {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.endless-relic-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-relic-name {
-  font-size: 0.42rem;
-  color: #f8fafc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-relic-lv {
-  font-size: 0.38rem;
-  color: #fde047;
-  background: rgba(250, 204, 21, 0.14);
-  border: 1px solid rgba(250, 204, 21, 0.45);
-  padding: 1px 4px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.endless-relic-bonus {
-  font-size: 0.36rem;
-  color: #93c5fd;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-relic-sub {
-  font-size: 0.32rem;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-buy-btn {
-  min-width: 78px;
-  padding: 6px 7px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  font-family: inherit;
-  color: #fef08a;
-  background: linear-gradient(180deg, #854d0e 0%, #422006 100%);
-  border: 1.5px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  cursor: pointer;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-buy-btn:disabled {
-  color: #64748b;
-  background: linear-gradient(180deg, #161b2a 0%, #0d101b 100%);
-  border-color: #334155;
-  cursor: not-allowed;
-  opacity: 0.82;
-}
-
-.endless-buy-count {
-  font-size: 0.36rem;
-  color: #bae6fd;
-}
-
-.endless-buy-btn:disabled .endless-buy-count {
-  color: #64748b;
-}
-
-.endless-buy-cost {
-  font-size: 0.42rem;
-  color: #fde047;
-  white-space: nowrap;
-}
-
-.endless-buy-btn:disabled .endless-buy-cost {
-  color: #94a3b8;
-}
-
-/* Companions Tab */
-.endless-party-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
-  background: rgba(9, 12, 22, 0.94);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
-  flex-shrink: 0;
-}
-
-.endless-party-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.endless-party-counter {
-  font-size: 0.44rem;
-  color: #fde047;
-}
-
-.endless-party-hint {
-  font-size: 0.34rem;
-  color: #94a3b8;
-}
-
-.endless-party-notice {
-  font-size: 0.36rem;
-  color: #fca5a5;
-  background: rgba(127, 29, 29, 0.55);
-  border: 1px solid #ef4444;
-  padding: 3px 6px;
-  border-radius: 3px;
-}
-
-.endless-party-notice.hidden {
-  display: none;
-}
-
-.endless-comp-card {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 8px;
-  padding: 7px;
-  background: linear-gradient(180deg, rgba(16, 21, 36, 0.95) 0%, rgba(10, 13, 24, 0.97) 100%);
-  border: 1.5px solid rgba(100, 116, 139, 0.48);
-  border-radius: 4px;
-}
-
-.endless-comp-card.is-deployed {
-  border-color: #34d399;
-  box-shadow: inset 0 0 12px rgba(52, 211, 153, 0.16);
-}
-
-.endless-comp-card.is-unlocked:not(.is-deployed) {
-  border-color: rgba(212, 175, 55, 0.62);
-}
-
-.endless-comp-portrait-wrap {
-  width: 44px;
-  height: 44px;
-  background: #070912;
-  border: 2px solid #d4af37;
-  border-radius: 4px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.endless-comp-portrait {
-  width: 40px;
-  height: 40px;
-}
-
-.endless-comp-body {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.endless-comp-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-}
-
-.endless-comp-name {
-  font-size: 0.44rem;
-  color: #f8fafc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-comp-role {
-  font-size: 0.34rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  border: 1px solid #64748b;
-  background: rgba(15, 23, 42, 0.9);
-  color: #e2e8f0;
-  flex-shrink: 0;
-}
-
-.endless-comp-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  font-size: 0.35rem;
-  color: #93c5fd;
-}
-
-.endless-comp-desc {
-  font-size: 0.32rem;
-  color: #94a3b8;
-  line-height: 1.35;
-}
-
-.endless-comp-actions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 2px;
-}
-
-.endless-comp-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 5px 6px;
-  font-family: inherit;
-  font-size: 0.38rem;
-  color: #fef08a;
-  background: linear-gradient(180deg, #854d0e 0%, #422006 100%);
-  border: 1.5px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-comp-btn:disabled {
-  color: #64748b;
-  background: #111626;
-  border-color: #334155;
-  cursor: not-allowed;
-}
-
-.endless-comp-deploy-btn {
-  flex: 0 0 auto;
-  min-width: 72px;
-  color: #e2e8f0;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border-color: #64748b;
-}
-
-.endless-comp-deploy-btn.is-deployed {
-  color: #d1fae5;
-  background: linear-gradient(180deg, #065f46 0%, #064e3b 100%);
-  border-color: #34d399;
-}
-
-.endless-comp-deploy-btn.hidden {
-  display: none;
-}
-
-.endless-empty-msg {
-  padding: 16px 10px;
-  text-align: center;
-  font-size: 0.40rem;
-  color: #94a3b8;
-}
-
-.endless-empty-msg.hidden {
-  display: none !important;
-}
-
-/* Stats Tab */
-.endless-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.endless-stat-cell {
-  padding: 6px 7px;
-  background: rgba(12, 16, 29, 0.94);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.endless-stat-label {
-  font-size: 0.33rem;
-  color: #94a3b8;
-  letter-spacing: 0.03em;
-}
-
-.endless-stat-val {
-  font-size: 0.46rem;
-  color: #fef08a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-stats-actions {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(212, 175, 55, 0.3);
-  display: flex;
-  gap: 6px;
-}
-
-.endless-action-btn {
-  flex: 1 1 0;
-  padding: 7px 8px;
-  font-family: inherit;
-  font-size: 0.42rem;
-  letter-spacing: 0.03em;
-  color: #fef08a;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border: 1.5px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.endless-action-btn.is-danger {
-  color: #fecaca;
-  border-color: #b91c1c;
-  background: linear-gradient(180deg, #450a0a 0%, #1f0606 100%);
-}
-
-.endless-action-btn.is-danger.is-armed {
-  color: #ffffff;
-  border-color: #f87171;
-  background: linear-gradient(180deg, #b91c1c 0%, #7f1d1d 100%);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.65);
-}
-
-/* =========================================================================
-   WAVE 2: ACTIVE COMPANION MINI-HUD & SYNERGY BADGES
-   ========================================================================= */
-.endless-party-hud {
-  position: absolute;
-  left: max(14px, env(safe-area-inset-left));
-  top: max(98px, calc(env(safe-area-inset-top) + 94px));
-  z-index: 24;
-  width: 184px;
-  max-width: calc(100vw - 28px);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  pointer-events: none;
-}
-
-.endless-party-hud.hidden {
-  display: none !important;
-}
-
-.endless-party-strip {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  pointer-events: none;
-}
-
-.endless-party-card {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  min-width: 0;
-  padding: 4px 6px 4px 4px;
-  font-family: inherit;
-  text-align: left;
-  color: #f8fafc;
-  background: linear-gradient(180deg, rgba(14, 18, 34, 0.94) 0%, rgba(7, 9, 18, 0.97) 100%);
-  border: 1.5px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.24),
-    0 4px 12px rgba(0, 0, 0, 0.85);
-  cursor: pointer;
-  pointer-events: auto;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
-}
-
-.endless-party-card:hover {
-  border-color: #fef08a;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.36),
-    0 0 10px rgba(250, 204, 21, 0.35),
-    0 4px 12px rgba(0, 0, 0, 0.9);
-}
-
-.endless-party-card:active {
-  transform: translateY(1px);
-}
-
-.endless-party-card.hidden {
-  display: none !important;
-}
-
-.endless-party-card.is-casting-ult {
-  border-color: #fef08a;
-  background: linear-gradient(180deg, rgba(58, 40, 10, 0.96) 0%, rgba(20, 14, 6, 0.98) 100%);
-  animation: endlessUltCastPulse 0.42s ease-in-out infinite;
-}
-
-@keyframes endlessUltCastPulse {
-  0%, 100% {
-    border-color: #facc15;
-    box-shadow:
-      inset 0 0 10px rgba(250, 204, 21, 0.45),
-      0 0 12px rgba(250, 204, 21, 0.72);
-  }
-  50% {
-    border-color: #ffffff;
-    box-shadow:
-      inset 0 0 16px rgba(254, 240, 138, 0.78),
-      0 0 20px rgba(254, 240, 138, 0.96);
-  }
-}
-
-.endless-party-port-wrap {
-  position: relative;
-  width: 30px;
-  height: 30px;
-  padding: 1px;
-  background: #060812;
-  border: 1.5px solid #d4af37;
-  border-radius: 3px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.endless-party-portrait {
-  width: 28px;
-  height: 28px;
-  display: block;
-}
-
-.endless-party-meta {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.endless-party-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-party-name {
-  font-size: 0.36rem;
-  color: #f8fafc;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-party-lv {
-  font-size: 0.31rem;
-  color: #fde047;
-  background: rgba(250, 204, 21, 0.14);
-  border: 1px solid rgba(250, 204, 21, 0.45);
-  border-radius: 2px;
-  padding: 1px 3px;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
-.endless-party-ult-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-party-ult-track {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 7px;
-  background: #050712;
-  border: 1px solid rgba(212, 175, 55, 0.55);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.endless-party-ult-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 0%;
-  background: linear-gradient(90deg, #b45309 0%, #facc15 65%, #fef08a 100%);
-  transition: width 0.12s linear;
-}
-
-.endless-party-card.is-casting-ult .endless-party-ult-track {
-  border-color: #fef08a;
-  box-shadow: 0 0 8px rgba(254, 240, 138, 0.85);
-}
-
-.endless-party-card.is-casting-ult .endless-party-ult-fill {
-  width: 100% !important;
-  background: linear-gradient(90deg, #facc15 0%, #ffffff 50%, #facc15 100%);
-}
-
-.endless-party-ult-tag {
-  font-size: 0.27rem;
-  color: #fde047;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-party-card.is-casting-ult .endless-party-ult-tag {
-  color: #ffffff;
-}
-
-/* Active Synergy Badges below/beside Party Strip */
-.endless-synergy-hud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  pointer-events: auto;
-}
-
-.endless-synergy-hud.hidden {
-  display: none !important;
-}
-
-.endless-synergy-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  padding: 2px 5px;
-  font-size: 0.30rem;
-  letter-spacing: 0.03em;
-  color: #fef08a;
-  background: linear-gradient(180deg, rgba(16, 20, 36, 0.94) 0%, rgba(8, 10, 19, 0.96) 100%);
-  border: 1px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.78);
-}
-
-.endless-synergy-badge-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Companions Tab Header Party Synergies Box */
-.endless-party-synergies-box {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(212, 175, 55, 0.22);
-}
-
-.endless-party-syn-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.endless-party-syn-title {
-  font-size: 0.34rem;
-  color: #fde047;
-  letter-spacing: 0.04em;
-}
-
-.endless-party-syn-count {
-  font-size: 0.31rem;
-  color: #94a3b8;
-}
-
-.endless-party-syn-count.is-active {
-  color: #34d399;
-}
-
-.endless-party-syn-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.endless-party-syn-empty {
-  font-size: 0.30rem;
-  color: #64748b;
-  line-height: 1.35;
-}
-
-.endless-party-syn-pill {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 6px;
-  background: rgba(12, 16, 29, 0.94);
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  border-left: 3px solid #facc15;
-  border-radius: 3px;
-}
-
-.endless-party-syn-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.34rem;
-  color: #fef08a;
-  letter-spacing: 0.03em;
-}
-
-.endless-party-syn-desc {
-  font-size: 0.30rem;
-  color: #cbd5e1;
-  line-height: 1.3;
-}
-
-/* =========================================================================
-   WAVE 2: REAL-TIME DPS BREAKDOWN CARD & DRAWER TELEMETRY FOOTER STRIP
-   ========================================================================= */
-.endless-dps-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 7px 8px;
-  background: linear-gradient(180deg, rgba(16, 21, 38, 0.96) 0%, rgba(9, 12, 22, 0.98) 100%);
-  border: 1.5px solid rgba(212, 175, 55, 0.72);
-  outline: 1px solid #000;
-  border-radius: 4px;
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.2);
-}
-
-.endless-dps-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.endless-dps-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.40rem;
-  color: #fde047;
-  letter-spacing: 0.04em;
-}
-
-.endless-dps-fever-pill {
-  font-size: 0.31rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  background: rgba(250, 204, 21, 0.18);
-  border: 1px solid #facc15;
-  color: #fef08a;
-}
-
-.endless-dps-fever-pill.hidden {
-  display: none !important;
-}
-
-.endless-dps-bar-track {
-  display: flex;
-  width: 100%;
-  height: 12px;
-  background: #050712;
-  border: 1px solid rgba(212, 175, 55, 0.65);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.endless-dps-bar-track.is-slim {
-  height: 6px;
-  border-color: rgba(212, 175, 55, 0.48);
-}
-
-.endless-dps-seg {
-  height: 100%;
-  width: 0%;
-  transition: width 0.16s linear;
-}
-
-.endless-dps-seg.is-hero {
-  background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 55%, #0284c7 100%);
-}
-
-.endless-dps-seg.is-tap {
-  background: linear-gradient(180deg, #fef08a 0%, #facc15 55%, #ca8a04 100%);
-}
-
-.endless-dps-seg.is-party {
-  background: linear-gradient(180deg, #e9d5ff 0%, #c084fc 55%, #9333ea 100%);
-}
-
-.endless-dps-legend {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.endless-dps-col {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 5px;
-  background: rgba(7, 9, 18, 0.85);
-  border: 1px solid rgba(71, 85, 105, 0.45);
-  border-radius: 3px;
-  min-width: 0;
-}
-
-.endless-dps-col-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.29rem;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-dps-swatch {
-  width: 7px;
-  height: 7px;
-  border: 1px solid #000;
-  flex-shrink: 0;
-}
-
-.endless-dps-swatch.is-hero {
-  background: #38bdf8;
-}
-
-.endless-dps-swatch.is-tap {
-  background: #facc15;
-}
-
-.endless-dps-swatch.is-party {
-  background: #c084fc;
-}
-
-.endless-dps-col-val {
-  font-size: 0.39rem;
-  color: #f8fafc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-dps-col-pct {
-  font-size: 0.30rem;
-  color: #cbd5e1;
-}
-
-.endless-dps-col.is-hero .endless-dps-col-pct {
-  color: #38bdf8;
-}
-
-.endless-dps-col.is-tap .endless-dps-col-pct {
-  color: #facc15;
-}
-
-.endless-dps-col.is-party .endless-dps-col-pct {
-  color: #c084fc;
-}
-
-.endless-dps-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(212, 175, 55, 0.22);
-  font-size: 0.34rem;
-}
-
-.endless-dps-sum-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.endless-dps-sum-lbl {
-  color: #94a3b8;
-  font-size: 0.30rem;
-}
-
-.endless-dps-sum-val {
-  color: #fef08a;
-  font-size: 0.38rem;
-}
-
-.endless-dps-sum-val.is-gold {
-  color: #facc15;
-}
-
-/* Compact Expandable Live Telemetry Footer Strip in Drawer */
-.endless-drawer-telemetry {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
-  background: linear-gradient(180deg, rgba(12, 15, 27, 0.96) 0%, rgba(7, 9, 17, 0.99) 100%);
-  border-top: 1.5px solid rgba(212, 175, 55, 0.58);
-  flex-shrink: 0;
-}
-
-.endless-telem-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-}
-
-.endless-telem-metrics {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.endless-telem-pair {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-  font-size: 0.34rem;
-}
-
-.endless-telem-key {
-  color: #94a3b8;
-  font-size: 0.29rem;
-}
-
-.endless-telem-val {
-  color: #fef08a;
-}
-
-.endless-telem-val.is-gold {
-  color: #facc15;
-}
-
-.endless-telem-expand-btn {
-  font-family: inherit;
-  font-size: 0.29rem;
-  letter-spacing: 0.03em;
-  padding: 2px 5px;
-  color: #fde047;
-  background: rgba(15, 21, 36, 0.95);
-  border: 1px solid rgba(212, 175, 55, 0.58);
-  border-radius: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.endless-telem-expand-btn:hover {
-  border-color: #fef08a;
-  color: #ffffff;
-}
-
-.endless-telem-details {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding-top: 2px;
-}
-
-.endless-telem-details.hidden {
-  display: none !important;
-}
-
-.endless-telem-chip {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 3px 4px;
-  background: rgba(6, 9, 18, 0.92);
-  border: 1px solid rgba(71, 85, 105, 0.45);
-  border-radius: 3px;
-  font-size: 0.28rem;
-  min-width: 0;
-}
-
-.endless-telem-chip.is-hero {
-  border-left: 2px solid #38bdf8;
-}
-
-.endless-telem-chip.is-tap {
-  border-left: 2px solid #facc15;
-}
-
-.endless-telem-chip.is-party {
-  border-left: 2px solid #c084fc;
-}
-
-.endless-telem-chip-lbl {
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-telem-chip-val {
-  color: #f8fafc;
-  font-size: 0.31rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* =========================================================================
-   WAVE 2: RESPONSIVE BUY-PULSE FEEDBACK & FLOATING MICRO-BADGES
-   ========================================================================= */
-.endless-relic-row.is-buy-pulse,
-.endless-comp-card.is-buy-pulse,
-.endless-artifact-row.is-buy-pulse,
-.endless-gear-slot-card.is-buy-pulse,
-.endless-gear-bag-row.is-buy-pulse,
-.endless-bounty-pill.is-buy-pulse,
-.endless-merchant-card.is-buy-pulse,
-.endless-trial-card.is-buy-pulse {
-  animation: endlessBuyPulse 0.44s ease-out;
-}
-
-.endless-buy-btn.is-buy-pulse,
-.endless-comp-btn.is-buy-pulse,
-.endless-artifact-buy-btn.is-buy-pulse,
-.endless-ascend-btn.is-buy-pulse,
-.endless-gear-hdr-btn.is-buy-pulse,
-.endless-gear-enh-btn.is-buy-pulse,
-.endless-gear-act-btn.is-buy-pulse,
-.endless-merchant-buy-btn.is-buy-pulse,
-.endless-formation-btn.is-buy-pulse,
-.endless-overdrive-btn.is-buy-pulse,
-.endless-trial-enter-btn.is-buy-pulse {
-  animation: endlessBuyBtnPulse 0.38s ease-out;
-}
-
-@keyframes endlessBuyPulse {
-  0% {
-    border-color: #ffffff;
-    box-shadow:
-      0 0 0 1px #fef08a,
-      0 0 16px rgba(250, 204, 21, 0.88),
-      inset 0 0 16px rgba(250, 204, 21, 0.42);
-  }
-  45% {
-    border-color: #fde047;
-    box-shadow:
-      0 0 12px rgba(250, 204, 21, 0.58),
-      inset 0 0 10px rgba(250, 204, 21, 0.22);
-  }
-  100% {
-    border-color: rgba(212, 175, 55, 0.78);
-    box-shadow: none;
-  }
-}
-
-@keyframes endlessBuyBtnPulse {
-  0% {
-    border-color: #ffffff;
-    box-shadow: 0 0 14px rgba(254, 240, 138, 0.95), inset 0 0 8px rgba(255, 255, 255, 0.45);
-    filter: brightness(1.26);
-  }
-  100% {
-    border-color: #facc15;
-    box-shadow: none;
-    filter: brightness(1);
-  }
-}
-
-.endless-fx-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 42;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.endless-micro-badge {
-  position: absolute;
-  left: 0;
-  top: 0;
-  padding: 2px 5px;
-  font-family: 'ArcanePixel', 'Press Start 2P', monospace;
-  font-size: 0.38rem;
-  letter-spacing: 0.04em;
-  color: #090c14;
-  background: linear-gradient(180deg, #fef08a 0%, #facc15 100%);
-  border: 1.5px solid #ffffff;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  white-space: nowrap;
-  pointer-events: none;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.85), 0 2px 6px rgba(0, 0, 0, 0.9);
-  animation: endlessMicroBadgeFloat 0.68s ease-out forwards;
-}
-
-.endless-micro-badge.is-recruit {
-  color: #ffffff;
-  background: linear-gradient(180deg, #a855f7 0%, #6b21a8 100%);
-  border-color: #fef08a;
-  box-shadow: 0 0 12px rgba(192, 132, 252, 0.9), 0 2px 6px rgba(0, 0, 0, 0.9);
-}
-
-@keyframes endlessMicroBadgeFloat {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 4px) scale(0.82);
-  }
-  18% {
-    opacity: 1;
-    transform: translate(-50%, -8px) scale(1.06);
-  }
-  74% {
-    opacity: 1;
-    transform: translate(-50%, -20px) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -30px) scale(0.95);
-  }
-}
-
-/* =========================================================================
-   WAVE 3: ASTRAL ASCENSION TAB & ETERNAL ARTIFACTS
-   ========================================================================= */
-.endless-ascend-card {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 9px 9px 10px;
-  background: linear-gradient(180deg, rgba(34, 18, 62, 0.96) 0%, rgba(11, 10, 26, 0.99) 100%);
-  border: 2px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 5px;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.34),
-    inset 0 0 20px rgba(168, 85, 247, 0.22),
-    0 5px 14px rgba(0, 0, 0, 0.85);
-}
-
-.endless-ascend-card.is-ascend-flash {
-  animation: endlessAscendFlash 0.68s ease-out;
-}
-
-@keyframes endlessAscendFlash {
-  0% {
-    border-color: #ffffff;
-    box-shadow:
-      0 0 0 2px #fef08a,
-      0 0 26px rgba(250, 204, 21, 0.95),
-      inset 0 0 28px rgba(254, 240, 138, 0.65);
-    filter: brightness(1.3);
-  }
-  45% {
-    border-color: #fde047;
-    box-shadow:
-      0 0 18px rgba(192, 132, 252, 0.85),
-      inset 0 0 22px rgba(250, 204, 21, 0.38);
-    filter: brightness(1.1);
-  }
-  100% {
-    border-color: #d4af37;
-    box-shadow:
-      inset 0 1px 0 rgba(254, 240, 138, 0.34),
-      inset 0 0 20px rgba(168, 85, 247, 0.22),
-      0 5px 14px rgba(0, 0, 0, 0.85);
-    filter: brightness(1);
-  }
-}
-
-.endless-ascend-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.endless-ascend-title-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.endless-ascend-crest {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.endless-ascend-title {
-  font-size: 0.45rem;
-  color: #fef08a;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-ascend-count {
-  font-size: 0.33rem;
-  color: #e9d5ff;
-  background: rgba(88, 28, 135, 0.65);
-  border: 1px solid #c084fc;
-  border-radius: 3px;
-  padding: 2px 5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.endless-ascend-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.endless-ascend-plaque {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 6px 7px;
-  background: rgba(8, 10, 22, 0.92);
-  border: 1px solid rgba(192, 132, 252, 0.42);
-  border-radius: 4px;
-  min-width: 0;
-}
-
-.endless-ascend-plaque.is-preview {
-  border-color: rgba(250, 204, 21, 0.52);
-  background: linear-gradient(180deg, rgba(35, 19, 64, 0.88) 0%, rgba(10, 10, 24, 0.94) 100%);
-}
-
-.endless-ascend-plaque-lbl {
-  font-size: 0.29rem;
-  color: #a5b4fc;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-ascend-plaque-val-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-}
-
-.endless-ascend-shard-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.endless-ascend-plaque-val {
-  font-size: 0.42rem;
-  color: #7dd3fc;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-ascend-plaque-val.is-pending {
-  font-size: 0.35rem;
-  color: #fde047;
-}
-
-.endless-ascend-plaque-val.is-locked {
-  color: #64748b;
-}
-
-.endless-ascend-note {
-  font-size: 0.29rem;
-  color: #cbd5e1;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-}
-
-.endless-ascend-btn {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 9px 10px;
-  font-family: inherit;
-  font-size: 0.43rem;
-  letter-spacing: 0.04em;
-  color: #fffbeb;
-  background: linear-gradient(180deg, #7e22ce 0%, #4c1d95 62%, #2e1065 100%);
-  border: 2px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  cursor: pointer;
-  text-shadow: 0 1px 0 #000;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.48),
-    0 0 12px rgba(168, 85, 247, 0.45);
-  transition: transform 0.08s ease, border-color 0.14s ease, box-shadow 0.14s ease;
-}
-
-.endless-ascend-btn:hover:not(:disabled) {
-  border-color: #fef08a;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.65),
-    0 0 16px rgba(192, 132, 252, 0.72);
-}
-
-.endless-ascend-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-ascend-btn:disabled {
-  color: #64748b;
-  background: linear-gradient(180deg, #161b2a 0%, #0c101b 100%);
-  border-color: #334155;
-  box-shadow: none;
-  cursor: not-allowed;
-  opacity: 0.86;
-}
-
-.endless-ascend-btn.is-armed {
-  color: #ffffff;
-  background: linear-gradient(180deg, #b45309 0%, #7e22ce 55%, #581c87 100%);
-  border-color: #fef08a;
-  animation: endlessBossPulse 0.85s ease-in-out infinite;
-}
-
-.endless-ascend-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 2px 2px 0;
-}
-
-.endless-ascend-section-title {
-  font-size: 0.39rem;
-  color: #e9d5ff;
-  letter-spacing: 0.04em;
-}
-
-.endless-ascend-section-sub {
-  font-size: 0.31rem;
-  color: #94a3b8;
-}
-
-.endless-artifact-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.endless-artifact-row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px;
-  padding: 6px;
-  background: linear-gradient(180deg, rgba(20, 16, 39, 0.95) 0%, rgba(10, 11, 24, 0.97) 100%);
-  border: 1.5px solid rgba(100, 116, 139, 0.45);
-  border-radius: 4px;
-  transition: border-color 0.14s ease, background 0.14s ease;
-}
-
-.endless-artifact-row.is-affordable {
-  border-color: rgba(192, 132, 252, 0.85);
-  box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.14);
-}
-
-.endless-artifact-row.is-maxed {
-  border-color: rgba(212, 175, 55, 0.72);
-}
-
-.endless-artifact-icon-wrap {
-  width: 36px;
-  height: 36px;
-  padding: 2px;
-  background: #070914;
-  border: 1.5px solid #c084fc;
-  border-radius: 3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.endless-artifact-icon {
-  width: 30px;
-  height: 30px;
-}
-
-.endless-artifact-info {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.endless-artifact-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-artifact-name {
-  font-size: 0.40rem;
-  color: #f8fafc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-artifact-lv {
-  font-size: 0.34rem;
-  color: #e9d5ff;
-  background: rgba(168, 85, 247, 0.22);
-  border: 1px solid rgba(192, 132, 252, 0.55);
-  padding: 1px 4px;
-  border-radius: 2px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.endless-artifact-row.is-maxed .endless-artifact-lv {
-  color: #fef08a;
-  background: rgba(250, 204, 21, 0.18);
-  border-color: #facc15;
-}
-
-.endless-artifact-effect {
-  font-size: 0.34rem;
-  color: #7dd3fc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-artifact-desc {
-  font-size: 0.30rem;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-artifact-buy-btn {
-  min-width: 82px;
-  padding: 6px 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: inherit;
-  font-size: 0.36rem;
-  letter-spacing: 0.02em;
-  color: #fef08a;
-  background: linear-gradient(180deg, #6d28d9 0%, #3b0764 100%);
-  border: 1.5px solid #d8b4fe;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  text-shadow: 0 1px 0 #000;
-  transition: transform 0.08s ease;
-}
-
-.endless-artifact-buy-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-artifact-buy-btn:disabled {
-  color: #64748b;
-  background: linear-gradient(180deg, #161b2a 0%, #0d101b 100%);
-  border-color: #334155;
-  cursor: not-allowed;
-  opacity: 0.84;
-}
-
-.endless-artifact-buy-btn.is-maxed,
-.endless-artifact-buy-btn.is-maxed:disabled {
-  color: #fef08a;
-  background: linear-gradient(180deg, #422006 0%, #1c1205 100%);
-  border-color: #d4af37;
-  opacity: 1;
-}
-
-/* =========================================================================
-   WAVE 3: WELCOME BACK OFFLINE LOOT MODAL (z-index: 48)
-   ========================================================================= */
-.endless-offline-modal {
-  position: absolute;
-  inset: 0;
-  z-index: 48;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  background: rgba(4, 6, 14, 0.78);
-  pointer-events: auto;
-  overflow: hidden;
-}
-
-.endless-offline-modal.hidden {
-  display: none !important;
-}
-
-.endless-offline-card {
-  width: min(444px, calc(100% - 8px));
-  max-height: calc(100% - 12px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 11px;
-  padding: 15px 16px;
-  background: linear-gradient(180deg, rgba(18, 22, 42, 0.98) 0%, rgba(8, 10, 20, 0.99) 100%);
-  border: 2px solid #d4af37;
-  outline: 2px solid #000;
-  border-radius: 6px;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.36),
-    inset 0 0 24px rgba(212, 175, 55, 0.16),
-    0 14px 40px rgba(0, 0, 0, 0.95);
-  animation: endlessModalPop 0.22s ease-out;
-}
-
-@keyframes endlessModalPop {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.endless-offline-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  text-align: center;
-  padding-bottom: 8px;
-  border-bottom: 1.5px solid rgba(212, 175, 55, 0.45);
-}
-
-.endless-offline-title {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  font-size: 0.62rem;
-  color: #fef08a;
-  letter-spacing: 0.05em;
-  text-shadow: 0 2px 0 #000;
-  line-height: 1.35;
-}
-
-.endless-offline-subtitle {
-  font-size: 0.34rem;
-  color: #cbd5e1;
-  letter-spacing: 0.03em;
-}
-
-.endless-offline-badges {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.endless-offline-away-badge {
-  padding: 4px 8px;
-  font-size: 0.39rem;
-  color: #fef08a;
-  background: rgba(12, 16, 30, 0.96);
-  border: 1.5px solid rgba(212, 175, 55, 0.72);
-  border-radius: 3px;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-offline-cap-badge {
-  padding: 4px 7px;
-  font-size: 0.34rem;
-  color: #e9d5ff;
-  background: rgba(88, 28, 135, 0.72);
-  border: 1.5px solid #c084fc;
-  border-radius: 3px;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-offline-cap-badge.hidden {
-  display: none !important;
-}
-
-.endless-offline-stages-badge {
-  padding: 4px 7px;
-  font-size: 0.33rem;
-  color: #bae6fd;
-  background: rgba(12, 34, 58, 0.78);
-  border: 1px solid rgba(56, 189, 248, 0.55);
-  border-radius: 3px;
-}
-
-.endless-offline-stages-badge.hidden {
-  display: none !important;
-}
-
-.endless-offline-rewards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.endless-offline-plaque {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 6px;
-  padding: 11px 8px;
-  background: linear-gradient(180deg, rgba(14, 18, 34, 0.96) 0%, rgba(7, 9, 18, 0.98) 100%);
-  border: 2px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 5px;
-  min-width: 0;
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.24);
-}
-
-.endless-offline-plaque.is-gold {
-  border-color: #facc15;
-  background: linear-gradient(180deg, rgba(44, 32, 10, 0.92) 0%, rgba(15, 11, 5, 0.98) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.35),
-    0 0 14px rgba(250, 204, 21, 0.22);
-}
-
-.endless-offline-plaque.is-shard {
-  border-color: #c084fc;
-  background: linear-gradient(180deg, rgba(35, 18, 66, 0.92) 0%, rgba(12, 10, 26, 0.98) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(233, 213, 255, 0.3),
-    0 0 14px rgba(168, 85, 247, 0.22);
-}
-
-.endless-offline-plaque.is-empty {
-  opacity: 0.62;
-  border-color: #475569;
-  box-shadow: none;
-}
-
-.endless-offline-plaque-icon {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-
-.endless-offline-plaque-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.endless-offline-plaque-val {
-  font-size: 0.50rem;
-  letter-spacing: 0.03em;
-  text-shadow: 0 1px 0 #000;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-offline-plaque.is-gold .endless-offline-plaque-val {
-  color: #fde047;
-}
-
-.endless-offline-plaque.is-shard .endless-offline-plaque-val {
-  color: #7dd3fc;
-}
-
-.endless-offline-plaque-lbl {
-  font-size: 0.31rem;
-  color: #94a3b8;
-  letter-spacing: 0.04em;
-}
-
-.endless-offline-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.endless-offline-collect-btn,
-.endless-offline-continue-btn {
-  padding: 10px 10px;
-  font-family: inherit;
-  font-size: 0.45rem;
-  letter-spacing: 0.04em;
-  border-radius: 4px;
-  outline: 1px solid #000;
-  cursor: pointer;
-  white-space: nowrap;
-  text-shadow: 0 1px 0 #000;
-  transition: transform 0.08s ease, box-shadow 0.14s ease, border-color 0.14s ease;
-}
-
-.endless-offline-collect-btn {
-  color: #fffbeb;
-  background: linear-gradient(180deg, #b45309 0%, #78350f 65%, #451a03 100%);
-  border: 2px solid #facc15;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.55),
-    0 0 14px rgba(250, 204, 21, 0.45);
-}
-
-.endless-offline-collect-btn:hover {
-  border-color: #fef08a;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.72),
-    0 0 18px rgba(250, 204, 21, 0.75);
-}
-
-.endless-offline-continue-btn {
-  color: #e2e8f0;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border: 1.5px solid #d4af37;
-}
-
-.endless-offline-continue-btn:hover {
-  color: #fef08a;
-  border-color: #fef08a;
-}
-
-.endless-offline-collect-btn:active,
-.endless-offline-continue-btn:active {
-  transform: translateY(1px);
-}
-
-/* =========================================================================
-   RESPONSIVE ERGONOMICS: MOBILE LANDSCAPE (844x390) & PORTRAIT (390x844)
-   ========================================================================= */
-@media (max-height: 500px) {
-  .endless-top-stack {
-    top: max(52px, calc(env(safe-area-inset-top) + 48px));
-    left: max(8px, env(safe-area-inset-left));
-    right: max(140px, calc(env(safe-area-inset-right) + 134px));
-    transform: none;
-    width: auto;
-    max-width: none;
-    align-items: center;
-    gap: 3px;
-  }
-
-  .endless-top-bar {
-    width: max-content;
-    max-width: 100%;
-    padding: 2px 6px;
-    gap: 3px 5px;
-    border-width: 1.5px;
-  }
-
-  .endless-stage-badge {
-    font-size: 0.36rem;
-    padding: 2px 5px;
-    gap: 4px;
-  }
-
-  .endless-loop-pill {
-    font-size: 0.30rem;
-    padding: 1px 3px;
-  }
-
-  .endless-wave-meter {
-    min-width: 82px;
-    height: 15px;
-    padding: 0 5px;
-  }
-
-  .endless-wave-label {
-    font-size: 0.33rem;
-  }
-
-  .endless-currency-group {
-    gap: 4px;
-  }
-
-  .endless-currency-pill {
-    font-size: 0.36rem;
-    padding: 1px 5px 1px 3px;
-    gap: 4px;
-  }
-
-  .endless-currency-icon {
-    width: 13px;
-    height: 13px;
-  }
-
-  .endless-fever-meter {
-    width: 76px;
-    height: 14px;
-  }
-
-  .endless-fever-label {
-    font-size: 0.29rem;
-  }
-
-  .endless-autoboss-btn,
-  .endless-challenge-boss-btn {
-    font-size: 0.35rem;
-    padding: 3px 6px;
-  }
-
-  #endless-shop-toggle {
-    top: max(52px, calc(env(safe-area-inset-top) + 48px));
-    right: max(8px, env(safe-area-inset-right));
-    padding: 3px 8px 3px 5px;
-    font-size: 0.36rem;
-    gap: 5px;
-  }
-
-  .endless-toggle-icon {
-    width: 15px;
-    height: 15px;
-  }
-
-  .endless-shop-shell {
-    top: max(82px, calc(env(safe-area-inset-top) + 78px));
-    right: max(8px, env(safe-area-inset-right));
-    bottom: max(6px, env(safe-area-inset-bottom));
-    width: min(332px, 50vw);
-    z-index: 34;
-  }
-
-  .endless-drawer-header {
-    padding: 5px 8px;
-  }
-
-  .endless-drawer-title {
-    font-size: 0.44rem;
-  }
-
-  .endless-drawer-close {
-    width: 21px;
-    height: 21px;
-  }
-
-  .endless-tab-bar {
-    padding: 4px 5px;
-  }
-
-  .endless-tab-btn {
-    font-size: 0.33rem;
-    padding: 4px 2px;
-  }
-
-  .endless-bulk-bar {
-    padding: 4px 7px;
-  }
-
-  .endless-bulk-btn {
-    padding: 3px 7px;
-    font-size: 0.38rem;
-  }
-
-  .endless-scroll-list {
-    padding: 5px 6px 8px;
-    gap: 5px;
-  }
-
-  .endless-relic-row {
-    grid-template-columns: 32px minmax(0, 1fr) auto;
-    gap: 5px;
-    padding: 5px;
-  }
-
-  .endless-relic-icon-wrap {
-    width: 32px;
-    height: 32px;
-  }
-
-  .endless-relic-icon {
-    width: 26px;
-    height: 26px;
-  }
-
-  .endless-relic-name {
-    font-size: 0.38rem;
-  }
-
-  .endless-relic-lv {
-    font-size: 0.33rem;
-    padding: 1px 3px;
-  }
-
-  .endless-buy-btn {
-    min-width: 68px;
-    padding: 5px 5px;
-  }
-
-  .endless-artifact-row {
-    grid-template-columns: 32px minmax(0, 1fr) auto;
-    gap: 5px;
-    padding: 5px;
-  }
-
-  .endless-artifact-icon-wrap {
-    width: 32px;
-    height: 32px;
-  }
-
-  .endless-artifact-icon {
-    width: 26px;
-    height: 26px;
-  }
-
-  .endless-artifact-buy-btn {
-    min-width: 74px;
-    padding: 5px 5px;
-    font-size: 0.33rem;
-  }
-
-  .endless-ascend-card {
-    padding: 7px 8px;
-    gap: 5px;
-  }
-
-  .endless-ascend-btn {
-    padding: 7px 8px;
-    font-size: 0.39rem;
-  }
-
-  .endless-drawer-telemetry {
-    padding: 4px 7px;
-    gap: 3px;
-  }
-
-  .endless-party-bar {
-    padding: 4px 6px;
-    gap: 2px;
-  }
-
-  .endless-party-synergies-box {
-    gap: 2px;
-    padding-top: 3px;
-  }
-
-  .endless-party-syn-list {
-    max-height: 56px;
-    overflow-y: auto;
-    gap: 2px;
-    scrollbar-width: thin;
-    scrollbar-color: #d4af37 #0a0d18;
-  }
-
-  .endless-party-syn-pill {
-    padding: 2px 5px;
-    gap: 1px;
-  }
-
-  .endless-party-hud {
-    left: max(8px, env(safe-area-inset-left));
-    top: max(104px, calc(env(safe-area-inset-top) + 100px));
-    width: auto;
-    max-width: min(296px, calc(100vw - 16px));
-    gap: 3px;
-  }
-
-  .endless-party-strip {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 4px;
-  }
-
-  .endless-party-card {
-    width: 92px;
-    padding: 3px 4px;
-    gap: 3px;
-  }
-
-  .endless-party-port-wrap {
-    width: 24px;
-    height: 24px;
-  }
-
-  .endless-party-portrait {
-    width: 22px;
-    height: 22px;
-  }
-
-  .endless-party-name {
-    font-size: 0.30rem;
-  }
-
-  .endless-party-lv {
-    font-size: 0.26rem;
-    padding: 1px 2px;
-  }
-
-  .endless-party-ult-track {
-    height: 6px;
-  }
-
-  .endless-party-ult-tag {
-    font-size: 0.24rem;
-  }
-
-  .endless-synergy-badge {
-    font-size: 0.27rem;
-    padding: 2px 4px;
-  }
-
-  .endless-offline-modal {
-    padding: 8px 10px;
-  }
-
-  .endless-offline-card {
-    width: min(432px, calc(100% - 8px));
-    padding: 10px 12px;
-    gap: 7px;
-  }
-
-  .endless-offline-header {
-    gap: 3px;
-    padding-bottom: 6px;
-  }
-
-  .endless-offline-title {
-    font-size: 0.50rem;
-  }
-
-  .endless-offline-subtitle {
-    font-size: 0.30rem;
-  }
-
-  .endless-offline-away-badge {
-    font-size: 0.34rem;
-    padding: 3px 6px;
-  }
-
-  .endless-offline-cap-badge,
-  .endless-offline-stages-badge {
-    font-size: 0.29rem;
-    padding: 3px 5px;
-  }
-
-  .endless-offline-rewards {
-    gap: 7px;
-  }
-
-  .endless-offline-plaque {
-    flex-direction: row;
-    text-align: left;
-    gap: 8px;
-    padding: 7px 9px;
-  }
-
-  .endless-offline-plaque-meta {
-    align-items: flex-start;
-  }
-
-  .endless-offline-plaque-icon {
-    width: 26px;
-    height: 26px;
-  }
-
-  .endless-offline-plaque-val {
-    font-size: 0.42rem;
-  }
-
-  .endless-offline-plaque-lbl {
-    font-size: 0.27rem;
-  }
-
-  .endless-offline-collect-btn,
-  .endless-offline-continue-btn {
-    padding: 7px 8px;
-    font-size: 0.39rem;
-  }
-}
-
-html.is-mobile-landscape .endless-top-stack {
-  top: max(52px, calc(env(safe-area-inset-top) + 48px));
-  left: max(8px, env(safe-area-inset-left));
-  right: max(140px, calc(env(safe-area-inset-right) + 134px));
-  transform: none;
-  width: auto;
-  max-width: none;
-  align-items: center;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-top-bar {
-  width: max-content;
-  max-width: 100%;
-  padding: 2px 6px;
-  gap: 3px 5px;
-  border-width: 1.5px;
-}
-
-html.is-mobile-landscape .endless-stage-badge {
-  font-size: 0.36rem;
-  padding: 2px 5px;
-  gap: 4px;
-}
-
-html.is-mobile-landscape .endless-loop-pill {
-  font-size: 0.30rem;
-  padding: 1px 3px;
-}
-
-html.is-mobile-landscape .endless-wave-meter {
-  min-width: 82px;
-  height: 15px;
-  padding: 0 5px;
-}
-
-html.is-mobile-landscape .endless-wave-label {
-  font-size: 0.33rem;
-}
-
-html.is-mobile-landscape .endless-currency-group {
-  gap: 4px;
-}
-
-html.is-mobile-landscape .endless-currency-pill {
-  font-size: 0.36rem;
-  padding: 1px 5px 1px 3px;
-  gap: 4px;
-}
-
-html.is-mobile-landscape .endless-currency-icon {
-  width: 13px;
-  height: 13px;
-}
-
-html.is-mobile-landscape .endless-fever-meter {
-  width: 76px;
-  height: 14px;
-}
-
-html.is-mobile-landscape .endless-fever-label {
-  font-size: 0.29rem;
-}
-
-html.is-mobile-landscape .endless-autoboss-btn,
-html.is-mobile-landscape .endless-challenge-boss-btn {
-  font-size: 0.35rem;
-  padding: 3px 6px;
-}
-
-html.is-mobile-landscape #endless-shop-toggle {
-  top: max(52px, calc(env(safe-area-inset-top) + 48px));
-  right: max(8px, env(safe-area-inset-right));
-  padding: 3px 8px 3px 5px;
-  font-size: 0.36rem;
-  gap: 5px;
-}
-
-html.is-mobile-landscape .endless-toggle-icon {
-  width: 15px;
-  height: 15px;
-}
-
-html.is-mobile-landscape .endless-shop-shell {
-  top: max(82px, calc(env(safe-area-inset-top) + 78px));
-  right: max(8px, env(safe-area-inset-right));
-  bottom: max(6px, env(safe-area-inset-bottom));
-  width: min(332px, 50vw);
-  z-index: 34;
-}
-
-html.is-mobile-landscape .endless-drawer-header {
-  padding: 5px 8px;
-}
-
-html.is-mobile-landscape .endless-drawer-title {
-  font-size: 0.44rem;
-}
-
-html.is-mobile-landscape .endless-drawer-close {
-  width: 21px;
-  height: 21px;
-}
-
-html.is-mobile-landscape .endless-tab-bar {
-  padding: 4px 5px;
-}
-
-html.is-mobile-landscape .endless-tab-btn {
-  font-size: 0.33rem;
-  padding: 4px 2px;
-}
-
-html.is-mobile-landscape .endless-bulk-bar {
-  padding: 4px 7px;
-}
-
-html.is-mobile-landscape .endless-bulk-btn {
-  padding: 3px 7px;
-  font-size: 0.38rem;
-}
-
-html.is-mobile-landscape .endless-scroll-list {
-  padding: 5px 6px 8px;
-  gap: 5px;
-}
-
-html.is-mobile-landscape .endless-relic-row {
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  gap: 5px;
-  padding: 5px;
-}
-
-html.is-mobile-landscape .endless-relic-icon-wrap {
-  width: 32px;
-  height: 32px;
-}
-
-html.is-mobile-landscape .endless-relic-icon {
-  width: 26px;
-  height: 26px;
-}
-
-html.is-mobile-landscape .endless-relic-name {
-  font-size: 0.38rem;
-}
-
-html.is-mobile-landscape .endless-relic-lv {
-  font-size: 0.33rem;
-  padding: 1px 3px;
-}
-
-html.is-mobile-landscape .endless-buy-btn {
-  min-width: 68px;
-  padding: 5px 5px;
-}
-
-html.is-mobile-landscape .endless-artifact-row {
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  gap: 5px;
-  padding: 5px;
-}
-
-html.is-mobile-landscape .endless-artifact-icon-wrap {
-  width: 32px;
-  height: 32px;
-}
-
-html.is-mobile-landscape .endless-artifact-icon {
-  width: 26px;
-  height: 26px;
-}
-
-html.is-mobile-landscape .endless-artifact-buy-btn {
-  min-width: 74px;
-  padding: 5px 5px;
-  font-size: 0.33rem;
-}
-
-html.is-mobile-landscape .endless-ascend-card {
-  padding: 7px 8px;
-  gap: 5px;
-}
-
-html.is-mobile-landscape .endless-ascend-btn {
-  padding: 7px 8px;
-  font-size: 0.39rem;
-}
-
-html.is-mobile-landscape .endless-drawer-telemetry {
-  padding: 4px 7px;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-party-bar {
-  padding: 4px 6px;
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-party-synergies-box {
-  gap: 2px;
-  padding-top: 3px;
-}
-
-html.is-mobile-landscape .endless-party-syn-list {
-  max-height: 56px;
-  overflow-y: auto;
-  gap: 2px;
-  scrollbar-width: thin;
-  scrollbar-color: #d4af37 #0a0d18;
-}
-
-html.is-mobile-landscape .endless-party-syn-pill {
-  padding: 2px 5px;
-  gap: 1px;
-}
-
-html.is-mobile-landscape .endless-party-hud {
-  left: max(8px, env(safe-area-inset-left));
-  top: max(104px, calc(env(safe-area-inset-top) + 100px));
-  width: auto;
-  max-width: min(296px, calc(100vw - 16px));
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-party-strip {
-  flex-direction: row;
-  flex-wrap: nowrap;
-  gap: 4px;
-}
-
-html.is-mobile-landscape .endless-party-card {
-  width: 92px;
-  padding: 3px 4px;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-party-port-wrap {
-  width: 24px;
-  height: 24px;
-}
-
-html.is-mobile-landscape .endless-party-portrait {
-  width: 22px;
-  height: 22px;
-}
-
-html.is-mobile-landscape .endless-party-name {
-  font-size: 0.30rem;
-}
-
-html.is-mobile-landscape .endless-party-lv {
-  font-size: 0.26rem;
-  padding: 1px 2px;
-}
-
-html.is-mobile-landscape .endless-party-ult-track {
-  height: 6px;
-}
-
-html.is-mobile-landscape .endless-party-ult-tag {
-  font-size: 0.24rem;
-}
-
-html.is-mobile-landscape .endless-synergy-badge {
-  font-size: 0.27rem;
-  padding: 2px 4px;
-}
-
-html.is-mobile-landscape .endless-offline-modal {
-  padding: 8px 10px;
-}
-
-html.is-mobile-landscape .endless-offline-card {
-  width: min(432px, calc(100% - 8px));
-  padding: 10px 12px;
-  gap: 7px;
-}
-
-html.is-mobile-landscape .endless-offline-plaque {
-  flex-direction: row;
-  text-align: left;
-  gap: 8px;
-  padding: 7px 9px;
-}
-
-html.is-mobile-landscape .endless-offline-plaque-meta {
-  align-items: flex-start;
-}
-
-html.is-mobile-landscape .endless-offline-plaque-icon {
-  width: 26px;
-  height: 26px;
-}
-
-html.is-mobile-landscape .endless-offline-plaque-val {
-  font-size: 0.42rem;
-}
-
-html.is-mobile-landscape .endless-offline-collect-btn,
-html.is-mobile-landscape .endless-offline-continue-btn {
-  padding: 7px 8px;
-  font-size: 0.39rem;
-}
-
-@media (max-width: 560px) and (orientation: portrait) {
-  html:not(.is-mobile-landscape) .endless-top-stack {
-    top: max(56px, calc(env(safe-area-inset-top) + 52px));
-    left: 6px;
-    right: 6px;
-    transform: none;
-    width: auto;
-    max-width: none;
-    gap: 4px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-top-bar {
-    width: 100%;
-    padding: 4px 6px;
-    gap: 4px 5px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-stage-badge {
-    font-size: 0.38rem;
-    padding: 2px 5px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-wave-meter {
-    min-width: 92px;
-    height: 16px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-wave-label {
-    font-size: 0.35rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-currency-pill {
-    font-size: 0.39rem;
-    padding: 2px 5px 2px 3px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-currency-icon {
-    width: 15px;
-    height: 15px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-fever-meter {
-    width: 70px;
-    height: 15px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-boss-controls {
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  html:not(.is-mobile-landscape) .endless-autoboss-btn,
-  html:not(.is-mobile-landscape) .endless-challenge-boss-btn {
-    font-size: 0.37rem;
-    padding: 4px 7px;
-  }
-
-  html:not(.is-mobile-landscape) #endless-shop-toggle {
-    top: max(142px, calc(env(safe-area-inset-top) + 138px));
-    right: max(6px, env(safe-area-inset-right));
-    padding: 4px 8px 4px 6px;
-    font-size: 0.39rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-toggle-icon {
-    width: 18px;
-    height: 18px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-hud {
-    left: 6px;
-    right: 6px;
-    top: max(176px, calc(env(safe-area-inset-top) + 172px));
-    width: auto;
-    max-width: none;
-    align-items: stretch;
-    gap: 3px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-strip {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 4px;
-    width: 100%;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-card {
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: 146px;
-    padding: 3px 4px;
-    gap: 4px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-port-wrap {
-    width: 24px;
-    height: 24px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-portrait {
-    width: 22px;
-    height: 22px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-name {
-    font-size: 0.30rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-lv {
-    font-size: 0.26rem;
-    padding: 1px 2px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-ult-track {
-    height: 6px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-ult-tag {
-    font-size: 0.24rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-synergy-hud {
-    gap: 3px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-synergy-badge {
-    font-size: 0.27rem;
-    padding: 2px 4px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-shop-shell {
-    top: auto;
-    left: 6px;
-    right: 6px;
-    bottom: max(8px, env(safe-area-inset-bottom));
-    width: auto;
-    max-width: none;
-    height: min(55vh, 435px);
-    z-index: 36;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-modal {
-    padding: 10px 8px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-card {
-    width: min(362px, calc(100% - 4px));
-    padding: 12px 11px;
-    gap: 9px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-title {
-    font-size: 0.52rem;
-    gap: 5px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-rewards {
-    gap: 7px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-plaque {
-    padding: 9px 6px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-plaque-val {
-    font-size: 0.43rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-actions {
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    gap: 6px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-offline-collect-btn,
-  html:not(.is-mobile-landscape) .endless-offline-continue-btn {
-    padding: 9px 6px;
-    font-size: 0.40rem;
-  }
-}
-
-/* Wave 4: Realm Modifier Pill, Relic Set Synergies Strip, Milestone Tags & Best-Stage Trophies */
-.endless-modifier-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 7px 2px 4px;
-  background: rgba(11, 14, 28, 0.94);
-  border: 1px solid #f43f5e;
-  border-radius: 3px;
-  font-size: 0.39rem;
-  letter-spacing: 0.03em;
-  color: #fda4af;
-  white-space: nowrap;
-  text-shadow: 0 1px 0 #000;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-.endless-modifier-pill.hidden {
-  display: none !important;
-}
-
-.endless-modifier-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.endless-relic-sets-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 5px 6px;
-  background: rgba(7, 10, 20, 0.94);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.28);
-  flex-shrink: 0;
-}
-
-.endless-relic-set-pill {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 4px 5px;
-  background: rgba(14, 18, 32, 0.9);
-  border: 1px solid #334155;
-  border-radius: 3px;
-  min-width: 0;
-  opacity: 0.72;
-  transition: border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
-}
-
-.endless-relic-set-pill.is-active {
-  opacity: 1;
-  background: linear-gradient(180deg, rgba(28, 24, 16, 0.95) 0%, rgba(12, 14, 24, 0.98) 100%);
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.18);
-}
-
-.endless-relic-set-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-relic-set-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.endless-relic-set-name {
-  font-size: 0.31rem;
-  color: #e2e8f0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-relic-set-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 3px;
-}
-
-.endless-relic-set-tier {
-  font-size: 0.31rem;
-  color: #94a3b8;
-  white-space: nowrap;
-}
-
-.endless-relic-set-pill.is-active .endless-relic-set-tier {
-  color: #fde047;
-}
-
-.endless-relic-set-lv {
-  font-size: 0.30rem;
-  color: #64748b;
-  white-space: nowrap;
-}
-
-.endless-relic-milestone {
-  display: inline-block;
-  padding: 1px 4px;
-  margin-left: auto;
-  font-size: 0.31rem;
-  border-radius: 2px;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid #334155;
-  color: #94a3b8;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.endless-relic-milestone.is-reached {
-  background: rgba(120, 53, 15, 0.45);
-  border-color: #facc15;
-  color: #fef08a;
-  box-shadow: 0 0 6px rgba(250, 204, 21, 0.32);
-}
-
-.endless-trophies-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 9px;
-  margin-bottom: 6px;
-  background: linear-gradient(180deg, rgba(22, 18, 36, 0.95) 0%, rgba(10, 12, 22, 0.97) 100%);
-  border: 1.5px solid rgba(212, 175, 55, 0.65);
-  border-radius: 5px;
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.16);
-}
-
-.endless-trophy-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.endless-trophy-title-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.endless-trophy-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-.endless-trophy-title {
-  font-size: 0.41rem;
-  color: #fde047;
-  letter-spacing: 0.04em;
-}
-
-.endless-trophy-bonus {
-  font-size: 0.36rem;
-  padding: 2px 5px;
-  border-radius: 3px;
-  background: rgba(250, 204, 21, 0.14);
-  border: 1px solid rgba(250, 204, 21, 0.55);
-  color: #fef08a;
-  white-space: nowrap;
-}
-
-.endless-trophy-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  font-size: 0.35rem;
-  color: #cbd5e1;
-}
-
-.endless-trophy-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.endless-trophy-badge {
-  font-size: 0.32rem;
-  padding: 2px 5px;
-  border-radius: 3px;
-  background: rgba(15, 20, 34, 0.92);
-  border: 1px solid #334155;
-  color: #64748b;
-  white-space: nowrap;
-}
-
-.endless-trophy-badge.is-unlocked {
-  background: rgba(46, 33, 12, 0.9);
-  color: #fef08a;
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.2);
-}
-
-@media (max-height: 500px) {
-  .endless-modifier-pill {
-    padding: 1px 5px 1px 3px;
-    font-size: 0.33rem;
-    gap: 3px;
-  }
-
-  .endless-modifier-icon {
-    width: 13px;
-    height: 13px;
-  }
-
-  .endless-relic-sets-strip {
-    gap: 3px;
-    padding: 4px 5px;
-  }
-
-  .endless-relic-set-pill {
-    padding: 3px 4px;
-    gap: 2px;
-  }
-
-  .endless-relic-milestone {
-    font-size: 0.28rem;
-    padding: 1px 3px;
-  }
-}
-
-html.is-mobile-landscape .endless-modifier-pill {
-  padding: 1px 5px 1px 3px;
-  font-size: 0.33rem;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-modifier-icon {
-  width: 13px;
-  height: 13px;
-}
-
-html.is-mobile-landscape .endless-relic-sets-strip {
-  gap: 3px;
-  padding: 4px 5px;
-}
-
-html.is-mobile-landscape .endless-relic-set-pill {
-  padding: 3px 4px;
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-relic-milestone {
-  font-size: 0.28rem;
-  padding: 1px 3px;
-}
-
-@media (max-width: 560px) {
-  html:not(.is-mobile-landscape) .endless-modifier-pill {
-    padding: 2px 5px 2px 3px;
-    font-size: 0.35rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-relic-sets-strip {
-    gap: 3px;
-    padding: 4px 5px;
-  }
-}
-
-/* =========================================================================
-   WAVE 7: ENDLESS GEAR FORGE, EQUIPPED SLOTS, MYTHIC SETS & INVENTORY BAG
-   ========================================================================= */
-.endless-gear-header {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 6px 7px;
-  background: linear-gradient(180deg, rgba(16, 19, 34, 0.96) 0%, rgba(8, 10, 19, 0.98) 100%);
-  border-bottom: 1.5px solid rgba(212, 175, 55, 0.42);
-  flex-shrink: 0;
-}
-
-.endless-gear-metrics-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.endless-gear-metric {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 5px;
-  padding: 4px 6px;
-  background: rgba(7, 9, 18, 0.94);
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  border-radius: 3px;
-  min-width: 0;
-}
-
-.endless-gear-metric.is-dust {
-  border-color: rgba(56, 189, 248, 0.58);
-}
-
-.endless-gear-metric.is-power {
-  border-color: rgba(250, 204, 21, 0.58);
-}
-
-.endless-gear-metric-left {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-gear-metric-lbl {
-  font-size: 0.29rem;
-  color: #94a3b8;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-gear-metric-val {
-  font-size: 0.39rem;
-  color: #7dd3fc;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.endless-gear-metric.is-power .endless-gear-metric-val {
-  color: #fde047;
-}
-
-.endless-gear-actions-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.endless-gear-hdr-btn {
-  padding: 5px 6px;
-  font-family: inherit;
-  font-size: 0.34rem;
-  letter-spacing: 0.03em;
-  color: #cbd5e1;
-  background: linear-gradient(180deg, #1b2236 0%, #0d1221 100%);
-  border: 1.5px solid #475569;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-  transition: border-color 0.14s ease, color 0.14s ease, transform 0.08s ease;
-}
-
-.endless-gear-hdr-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-gear-hdr-btn.is-highlight {
-  color: #fffbeb;
-  background: linear-gradient(180deg, #a16207 0%, #5c3208 100%);
-  border-color: #facc15;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.42),
-    0 0 10px rgba(250, 204, 21, 0.38);
-}
-
-.endless-gear-hdr-btn.is-salvage:not(:disabled) {
-  color: #fed7aa;
-  background: linear-gradient(180deg, #431407 0%, #240c06 100%);
-  border-color: #f97316;
-}
-
-.endless-gear-hdr-btn:disabled {
-  color: #64748b;
-  background: linear-gradient(180deg, #141926 0%, #0b0e17 100%);
-  border-color: #2d3748;
-  cursor: not-allowed;
-  opacity: 0.78;
-}
-
-.endless-gear-scroll {
-  gap: 6px;
-}
-
-/* 4 Equipped Slots Grid (2x2 compact cards) */
-.endless-gear-equipped-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.endless-gear-slot-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 5px 6px;
-  min-width: 0;
-  background: linear-gradient(180deg, rgba(17, 22, 38, 0.96) 0%, rgba(9, 12, 22, 0.98) 100%);
-  border: 1.5px solid #475569;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
-}
-
-.endless-gear-slot-card.is-empty {
-  background: linear-gradient(180deg, rgba(11, 14, 25, 0.88) 0%, rgba(7, 9, 16, 0.94) 100%);
-  border-style: dashed;
-  border-color: rgba(71, 85, 105, 0.65);
-  box-shadow: none;
-}
-
-.endless-gear-slot-top {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-gear-slot-icon {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #070912;
-  border: 1px solid #475569;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.endless-gear-slot-card.is-empty .endless-gear-slot-icon {
-  opacity: 0.55;
-}
-
-.endless-gear-slot-badges {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 3px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.endless-gear-rarity-pill {
-  font-size: 0.27rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  background: rgba(7, 10, 20, 0.92);
-  border: 1px solid #64748b;
-  color: #cbd5e1;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-gear-enh-lv {
-  font-size: 0.29rem;
-  color: #fef08a;
-  background: rgba(250, 204, 21, 0.18);
-  border: 1px solid rgba(250, 204, 21, 0.65);
-  border-radius: 2px;
-  padding: 1px 3px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.endless-gear-enh-lv.hidden {
-  display: none;
-}
-
-.endless-gear-slot-name {
-  font-size: 0.33rem;
-  color: #f8fafc;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-gear-slot-card.is-empty .endless-gear-slot-name {
-  color: #64748b;
-  font-size: 0.30rem;
-}
-
-.endless-gear-slot-stats {
-  font-size: 0.28rem;
-  color: #93c5fd;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-height: 11px;
-}
-
-.endless-gear-slot-card.is-empty .endless-gear-slot-stats {
-  color: #475569;
-}
-
-.endless-gear-slot-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  margin-top: auto;
-  padding-top: 2px;
-  border-top: 1px solid rgba(71, 85, 105, 0.28);
-  min-width: 0;
-}
-
-.endless-gear-slot-card.is-empty .endless-gear-slot-foot {
-  display: none;
-}
-
-.endless-gear-set-tag {
-  font-size: 0.25rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  background: rgba(8, 11, 22, 0.94);
-  border: 1px solid #64748b;
-  color: #cbd5e1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.endless-gear-set-tag.is-pwr {
-  border-color: rgba(212, 175, 55, 0.38);
-  color: #fde68a;
-}
-
-.endless-gear-set-tag.hidden {
-  display: none;
-}
-
-.endless-gear-enh-btn {
-  padding: 3px 5px;
-  font-family: inherit;
-  font-size: 0.29rem;
-  letter-spacing: 0.02em;
-  color: #fef08a;
-  background: linear-gradient(180deg, #0369a1 0%, #0c4a6e 100%);
-  border: 1px solid #38bdf8;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-shadow: 0 1px 0 #000;
-  transition: transform 0.08s ease;
-}
-
-.endless-gear-enh-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-gear-enh-btn:disabled {
-  color: #64748b;
-  background: #111626;
-  border-color: #334155;
-  cursor: not-allowed;
-  opacity: 0.82;
-}
-
-.endless-gear-enh-btn.is-maxed,
-.endless-gear-enh-btn.is-maxed:disabled {
-  color: #fef08a;
-  background: linear-gradient(180deg, #422006 0%, #1c1205 100%);
-  border-color: #d4af37;
-  opacity: 1;
-}
-
-/* Mythic Set Passives Strip (3 compact pills) */
-.endless-gear-sets-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.endless-gear-set-pill {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 5px;
-  min-width: 0;
-  background: rgba(11, 14, 26, 0.92);
-  border: 1px solid #334155;
-  border-radius: 3px;
-  opacity: 0.72;
-  transition: border-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
-}
-
-.endless-gear-set-pill.is-active {
-  opacity: 1;
-  background: linear-gradient(180deg, rgba(24, 22, 38, 0.96) 0%, rgba(10, 12, 22, 0.98) 100%);
-}
-
-.endless-gear-set-pill.is-empowered {
-  opacity: 1;
-  background: linear-gradient(180deg, rgba(38, 28, 18, 0.96) 0%, rgba(12, 13, 24, 0.99) 100%);
-}
-
-.endless-gear-set-name {
-  font-size: 0.27rem;
-  color: #cbd5e1;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-gear-set-status {
-  align-self: flex-start;
-  font-size: 0.25rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  background: rgba(7, 9, 18, 0.92);
-  border: 1px solid #334155;
-  color: #94a3b8;
-  white-space: nowrap;
-}
-
-.endless-gear-set-pill.is-active .endless-gear-set-status {
-  color: #fef08a;
-  background: rgba(250, 204, 21, 0.14);
-}
-
-.endless-gear-set-desc {
-  font-size: 0.24rem;
-  color: #94a3b8;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.endless-gear-set-pill.is-active .endless-gear-set-desc {
-  color: #e2e8f0;
-}
-
-/* Inventory Bag Section */
-.endless-gear-bag-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 3px 2px 1px;
-  border-top: 1px solid rgba(212, 175, 55, 0.26);
-  flex-shrink: 0;
-}
-
-.endless-gear-bag-title {
-  font-size: 0.36rem;
-  color: #fde047;
-  letter-spacing: 0.04em;
-}
-
-.endless-gear-bag-hint {
-  font-size: 0.28rem;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-gear-bag-items {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.endless-gear-bag-row {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 6px;
-  padding: 5px 6px;
-  background: linear-gradient(180deg, rgba(16, 20, 35, 0.95) 0%, rgba(9, 12, 22, 0.97) 100%);
-  border: 1.5px solid #475569;
-  border-radius: 4px;
-  min-width: 0;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
-}
-
-.endless-gear-bag-row.is-upgrade {
-  box-shadow: inset 0 0 12px rgba(52, 211, 153, 0.14);
-}
-
-.endless-gear-bag-icon-wrap {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #070912;
-  border: 1.5px solid #64748b;
-  border-radius: 3px;
-  flex-shrink: 0;
-  align-self: flex-start;
-}
-
-.endless-gear-bag-body {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.endless-gear-bag-top {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-gear-bag-name {
-  font-size: 0.35rem;
-  color: #f8fafc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.endless-gear-up-badge {
-  font-size: 0.28rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  color: #052e16;
-  background: linear-gradient(180deg, #6ee7b7 0%, #10b981 100%);
-  border: 1px solid #d1fae5;
-  flex-shrink: 0;
-  white-space: nowrap;
-  font-weight: 700;
-}
-
-.endless-gear-up-badge.hidden {
-  display: none;
-}
-
-.endless-gear-bag-sub {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  flex-wrap: nowrap;
-  overflow: hidden;
-}
-
-.endless-gear-bag-stats {
-  font-size: 0.29rem;
-  color: #93c5fd;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.endless-gear-bag-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 1px;
-}
-
-.endless-gear-act-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 4px 5px;
-  font-family: inherit;
-  font-size: 0.30rem;
-  letter-spacing: 0.02em;
-  color: #f8fafc;
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #64748b;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-  transition: transform 0.08s ease;
-}
-
-.endless-gear-act-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-gear-act-btn.hidden {
-  display: none;
-}
-
-.endless-gear-act-btn.is-equip {
-  color: #fef08a;
-  background: linear-gradient(180deg, #713f12 0%, #3b1f08 100%);
-  border-color: #d4af37;
-}
-
-.endless-gear-act-btn.is-equip.is-upgrade {
-  color: #ecfdf5;
-  background: linear-gradient(180deg, #059669 0%, #065f46 100%);
-  border-color: #6ee7b7;
-}
-
-.endless-gear-act-btn.is-enhance {
-  flex: 0.9 1 0;
-  color: #e0f2fe;
-  background: linear-gradient(180deg, #0369a1 0%, #0c4a6e 100%);
-  border-color: #38bdf8;
-}
-
-.endless-gear-act-btn.is-salvage {
-  color: #fed7aa;
-  background: linear-gradient(180deg, #431407 0%, #240c06 100%);
-  border-color: #ea580c;
-}
-
-/* Wave 7 Responsive Ergonomics: Mobile Landscape (844x390) & Portrait (390x844) */
-@media (max-height: 500px) {
-  .endless-tab-bar {
-    padding: 3px 4px;
-    gap: 2px;
-  }
-
-  .endless-tab-btn {
-    font-size: 0.29rem;
-    padding: 4px 1px;
-    gap: 2px;
-  }
-
-  .endless-tab-dot {
-    width: 5px;
-    height: 5px;
-  }
-
-  .endless-gear-header {
-    padding: 4px 6px;
-    gap: 4px;
-  }
-
-  .endless-gear-metric {
-    padding: 3px 5px;
-  }
-
-  .endless-gear-metric-lbl {
-    font-size: 0.26rem;
-  }
-
-  .endless-gear-metric-val {
-    font-size: 0.34rem;
-  }
-
-  .endless-gear-hdr-btn {
-    padding: 4px 5px;
-    font-size: 0.30rem;
-  }
-
-  .endless-gear-slot-card {
-    padding: 4px 5px;
-    gap: 3px;
-  }
-
-  .endless-gear-slot-name {
-    font-size: 0.30rem;
-  }
-
-  .endless-gear-slot-stats {
-    font-size: 0.26rem;
-  }
-
-  .endless-gear-enh-btn {
-    padding: 2px 4px;
-    font-size: 0.26rem;
-  }
-
-  .endless-gear-set-pill {
-    padding: 3px 4px;
-  }
-
-  .endless-gear-bag-row {
-    grid-template-columns: 26px minmax(0, 1fr);
-    gap: 5px;
-    padding: 4px 5px;
-  }
-
-  .endless-gear-bag-icon-wrap {
-    width: 26px;
-    height: 26px;
-  }
-
-  .endless-gear-act-btn {
-    padding: 3px 4px;
-    font-size: 0.27rem;
-  }
-}
-
-html.is-mobile-landscape .endless-tab-bar {
-  padding: 3px 4px;
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-tab-btn {
-  font-size: 0.29rem;
-  padding: 4px 1px;
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-tab-dot {
-  width: 5px;
-  height: 5px;
-}
-
-html.is-mobile-landscape .endless-gear-header {
-  padding: 4px 6px;
-  gap: 4px;
-}
-
-html.is-mobile-landscape .endless-gear-metric {
-  padding: 3px 5px;
-}
-
-html.is-mobile-landscape .endless-gear-metric-lbl {
-  font-size: 0.26rem;
-}
-
-html.is-mobile-landscape .endless-gear-metric-val {
-  font-size: 0.34rem;
-}
-
-html.is-mobile-landscape .endless-gear-hdr-btn {
-  padding: 4px 5px;
-  font-size: 0.30rem;
-}
-
-html.is-mobile-landscape .endless-gear-slot-card {
-  padding: 4px 5px;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-gear-slot-name {
-  font-size: 0.30rem;
-}
-
-html.is-mobile-landscape .endless-gear-slot-stats {
-  font-size: 0.26rem;
-}
-
-html.is-mobile-landscape .endless-gear-enh-btn {
-  padding: 2px 4px;
-  font-size: 0.26rem;
-}
-
-html.is-mobile-landscape .endless-gear-set-pill {
-  padding: 3px 4px;
-}
-
-html.is-mobile-landscape .endless-gear-bag-row {
-  grid-template-columns: 26px minmax(0, 1fr);
-  gap: 5px;
-  padding: 4px 5px;
-}
-
-html.is-mobile-landscape .endless-gear-bag-icon-wrap {
-  width: 26px;
-  height: 26px;
-}
-
-html.is-mobile-landscape .endless-gear-act-btn {
-  padding: 3px 4px;
-  font-size: 0.27rem;
-}
-
-@media (max-width: 560px) {
-  html:not(.is-mobile-landscape) .endless-tab-bar {
-    padding: 4px 4px;
-    gap: 2px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-tab-btn {
-    font-size: 0.33rem;
-    padding: 5px 2px;
-    gap: 2px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-gear-header {
-    padding: 5px 6px;
-    gap: 4px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-gear-slot-card {
-    padding: 5px 5px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-gear-act-btn {
-    padding: 5px 4px;
-    font-size: 0.30rem;
-  }
-}
-
-/* =========================================================================
-   WAVE 8: UNIFIED EVENTS DOCK (BOUNTY TRACKER, SHRINE/ELIXIR BUFFS, MERCHANT)
-   ========================================================================= */
-.endless-events-dock {
-  position: absolute;
-  top: max(106px, calc(env(safe-area-inset-top) + 102px));
-  right: max(14px, env(safe-area-inset-right));
-  width: 232px;
-  max-width: calc(100vw - 28px);
-  z-index: 25;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  pointer-events: none;
-}
-
-.endless-events-dock.hidden {
-  display: none !important;
-}
-
-#endless-hud-root.is-drawer-open .endless-events-dock {
-  top: max(120px, calc(env(safe-area-inset-top) + 116px));
-  right: max(374px, calc(env(safe-area-inset-right) + 374px));
-}
-
-/* Widget A: Compact Bounty Tracker Pill */
-.endless-bounty-pill {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 5px 7px;
-  font-family: inherit;
-  text-align: left;
-  color: #f8fafc;
-  background: linear-gradient(180deg, rgba(14, 18, 34, 0.94) 0%, rgba(7, 9, 18, 0.97) 100%);
-  border: 1.5px solid rgba(212, 175, 55, 0.72);
-  border-left: 3px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.22),
-    0 4px 12px rgba(0, 0, 0, 0.86);
-  pointer-events: auto;
-  cursor: default;
-  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
-}
-
-.endless-bounty-pill.hidden {
-  display: none !important;
-}
-
-.endless-bounty-pill.is-claimable {
-  cursor: pointer;
-  border-color: #fde047;
-  border-left-color: #fef08a;
-  background: linear-gradient(180deg, rgba(68, 48, 12, 0.96) 0%, rgba(24, 16, 6, 0.98) 100%);
-  animation: endlessBountyClaimPulse 1.2s ease-in-out infinite;
-}
-
-.endless-bounty-pill.is-claimable:hover {
-  border-color: #ffffff;
-  filter: brightness(1.08);
-}
-
-.endless-bounty-pill.is-claimable:active {
-  transform: translateY(1px);
-}
-
-@keyframes endlessBountyClaimPulse {
-  0%, 100% {
-    box-shadow:
-      inset 0 1px 0 rgba(254, 240, 138, 0.45),
-      0 0 10px rgba(250, 204, 21, 0.52),
-      0 4px 12px rgba(0, 0, 0, 0.88);
-  }
-  50% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.62),
-      0 0 18px rgba(250, 204, 21, 0.92),
-      0 4px 14px rgba(0, 0, 0, 0.92);
-  }
-}
-
-.endless-bounty-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 5px;
-  min-width: 0;
-}
-
-.endless-bounty-lead {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.endless-bounty-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.endless-bounty-label {
-  font-size: 0.36rem;
-  letter-spacing: 0.03em;
-  color: #f8fafc;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-bounty-cta {
-  font-size: 0.32rem;
-  letter-spacing: 0.03em;
-  padding: 2px 5px;
-  border-radius: 2px;
-  background: rgba(250, 204, 21, 0.14);
-  border: 1px solid rgba(250, 204, 21, 0.52);
-  color: #fde047;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-bounty-pill.is-claimable .endless-bounty-cta {
-  color: #090c14;
-  background: linear-gradient(180deg, #fef08a 0%, #f59e0b 100%);
-  border-color: #ffffff;
-  text-shadow: none;
-  box-shadow: 0 0 8px rgba(250, 204, 21, 0.85);
-}
-
-.endless-bounty-track {
-  position: relative;
-  width: 100%;
-  height: 4px;
-  background: #050712;
-  border: 1px solid rgba(212, 175, 55, 0.48);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.endless-bounty-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 0%;
-  background: #facc15;
-  transition: width 0.12s linear;
-}
-
-/* Widget B: Active Shrine / Elixir Buff Timer Strip */
-.endless-buff-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  pointer-events: none;
-}
-
-.endless-buff-strip.hidden {
-  display: none !important;
-}
-
-.endless-buff-pill {
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  max-width: 100%;
-  padding: 3px 6px 6px;
-  background: linear-gradient(180deg, rgba(16, 20, 36, 0.94) 0%, rgba(8, 10, 19, 0.97) 100%);
-  border: 1.5px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 3px 10px rgba(0, 0, 0, 0.84);
-  overflow: hidden;
-  pointer-events: auto;
-}
-
-.endless-buff-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-buff-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: #facc15;
-}
-
-.endless-buff-text {
-  font-size: 0.31rem;
-  letter-spacing: 0.03em;
-  color: #fef9c3;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-buff-bar-track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  background: rgba(5, 7, 18, 0.92);
-}
-
-.endless-buff-bar-fill {
-  height: 100%;
-  width: 100%;
-  background: #facc15;
-  transition: width 0.1s linear;
-}
-
-/* Widget C: Wandering Merchant Pop-Offer Card */
-.endless-merchant-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 6px 7px;
-  background: linear-gradient(180deg, rgba(24, 16, 44, 0.96) 0%, rgba(9, 10, 22, 0.98) 100%);
-  border: 1.5px solid #c084fc;
-  border-left: 3px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 5px;
-  box-shadow:
-    inset 0 1px 0 rgba(233, 213, 255, 0.24),
-    0 0 14px rgba(168, 85, 247, 0.36),
-    0 6px 16px rgba(0, 0, 0, 0.9);
-  pointer-events: auto;
-}
-
-.endless-merchant-card.hidden {
-  display: none !important;
-}
-
-.endless-merchant-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  min-width: 0;
-}
-
-.endless-merchant-title-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.endless-merchant-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.endless-merchant-title {
-  font-size: 0.34rem;
-  letter-spacing: 0.03em;
-  color: #fde047;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-merchant-head-right {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.endless-merchant-timer {
-  font-size: 0.29rem;
-  padding: 1px 4px;
-  border-radius: 2px;
-  background: rgba(168, 85, 247, 0.24);
-  border: 1px solid rgba(192, 132, 252, 0.68);
-  color: #e9d5ff;
-  white-space: nowrap;
-}
-
-.endless-merchant-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  color: #fde047;
-  background: rgba(15, 19, 32, 0.95);
-  border: 1px solid rgba(212, 175, 55, 0.62);
-  border-radius: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.endless-merchant-close:hover {
-  background: rgba(127, 29, 29, 0.88);
-  border-color: #f87171;
-  color: #ffffff;
-}
-
-.endless-merchant-sub {
-  font-size: 0.29rem;
-  line-height: 1.25;
-  color: #cbd5e1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-merchant-track {
-  position: relative;
-  width: 100%;
-  height: 3px;
-  background: #050712;
-  border: 1px solid rgba(192, 132, 252, 0.45);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.endless-merchant-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 100%;
-  background: linear-gradient(90deg, #a855f7 0%, #facc15 100%);
-  transition: width 0.1s linear;
-}
-
-.endless-merchant-buy-btn {
-  width: 100%;
-  padding: 5px 6px;
-  font-family: inherit;
-  font-size: 0.34rem;
-  letter-spacing: 0.04em;
-  color: #090c14;
-  background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
-  border: 1.5px solid #ffffff;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  text-shadow: none;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 0 10px rgba(250, 204, 21, 0.42);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: filter 0.12s ease, transform 0.08s ease;
-}
-
-.endless-merchant-buy-btn:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-.endless-merchant-buy-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-merchant-buy-btn:disabled {
-  color: #64748b;
-  background: linear-gradient(180deg, rgba(22, 28, 45, 0.92) 0%, rgba(12, 15, 26, 0.95) 100%);
-  border-color: #334155;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-/* Wave 8 Responsive Ergonomics: Mobile Landscape (844x390) */
-@media (max-height: 500px) {
-  #endless-hud-root .endless-events-dock {
-    top: max(81px, calc(env(safe-area-inset-top) + 77px));
-    right: max(10px, env(safe-area-inset-right));
-    left: auto;
-    width: 184px;
-    gap: 3px;
-  }
-
-  #endless-hud-root.is-drawer-open .endless-events-dock {
-    display: none !important;
-  }
-
-  .endless-bounty-pill {
-    padding: 3px 5px;
-    gap: 3px;
-  }
-
-  .endless-bounty-label {
-    font-size: 0.30rem;
-  }
-
-  .endless-bounty-cta {
-    font-size: 0.27rem;
-    padding: 1px 4px;
-  }
-
-  .endless-bounty-track {
-    height: 3px;
-  }
-
-  .endless-buff-strip {
-    gap: 3px;
-  }
-
-  .endless-buff-pill {
-    padding: 2px 4px 5px;
-  }
-
-  .endless-buff-text {
-    font-size: 0.26rem;
-  }
-
-  .endless-merchant-card {
-    padding: 4px 5px;
-    gap: 3px;
-  }
-
-  .endless-merchant-title {
-    font-size: 0.29rem;
-  }
-
-  .endless-merchant-timer {
-    font-size: 0.25rem;
-    padding: 1px 3px;
-  }
-
-  .endless-merchant-close {
-    width: 16px;
-    height: 16px;
-  }
-
-  .endless-merchant-sub {
-    font-size: 0.25rem;
-  }
-
-  .endless-merchant-buy-btn {
-    padding: 3px 5px;
-    font-size: 0.29rem;
-  }
-}
-
-html.is-mobile-landscape #endless-hud-root .endless-events-dock {
-  top: max(81px, calc(env(safe-area-inset-top) + 77px));
-  right: max(10px, env(safe-area-inset-right));
-  left: auto;
-  width: 184px;
-  gap: 3px;
-}
-
-html.is-mobile-landscape #endless-hud-root.is-drawer-open .endless-events-dock {
-  display: none !important;
-}
-
-html.is-mobile-landscape .endless-bounty-pill {
-  padding: 3px 5px;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-bounty-label {
-  font-size: 0.30rem;
-}
-
-html.is-mobile-landscape .endless-bounty-cta {
-  font-size: 0.27rem;
-  padding: 1px 4px;
-}
-
-html.is-mobile-landscape .endless-bounty-track {
-  height: 3px;
-}
-
-html.is-mobile-landscape .endless-buff-strip {
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-buff-pill {
-  padding: 2px 4px 5px;
-}
-
-html.is-mobile-landscape .endless-buff-text {
-  font-size: 0.26rem;
-}
-
-html.is-mobile-landscape .endless-merchant-card {
-  padding: 4px 5px;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-merchant-title {
-  font-size: 0.29rem;
-}
-
-html.is-mobile-landscape .endless-merchant-timer {
-  font-size: 0.25rem;
-  padding: 1px 3px;
-}
-
-html.is-mobile-landscape .endless-merchant-close {
-  width: 16px;
-  height: 16px;
-}
-
-html.is-mobile-landscape .endless-merchant-sub {
-  font-size: 0.25rem;
-}
-
-html.is-mobile-landscape .endless-merchant-buy-btn {
-  padding: 3px 5px;
-  font-size: 0.29rem;
-}
-
-/* Wave 8 Responsive Ergonomics: Mobile Portrait (390x844) */
-@media (max-width: 560px) {
-  html:not(.is-mobile-landscape) #endless-hud-root .endless-events-dock,
-  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-events-dock {
-    display: flex;
-    top: max(144px, calc(env(safe-area-inset-top) + 140px));
-    left: max(10px, env(safe-area-inset-left));
-    right: auto;
-    width: 214px;
-    max-width: calc(100vw - 156px);
-    gap: 4px;
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root .endless-events-dock.hidden,
-  html:not(.is-mobile-landscape) #endless-hud-root.is-drawer-open .endless-events-dock.hidden {
-    display: none !important;
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party .endless-events-dock,
-  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.is-drawer-open .endless-events-dock {
-    top: max(244px, calc(env(safe-area-inset-top) + 240px));
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.has-active-synergies .endless-events-dock,
-  html:not(.is-mobile-landscape) #endless-hud-root.has-active-party.has-active-synergies.is-drawer-open .endless-events-dock {
-    top: max(264px, calc(env(safe-area-inset-top) + 260px));
-  }
-
-  html:not(.is-mobile-landscape) .endless-bounty-pill {
-    padding: 4px 6px;
-    gap: 3px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-bounty-label {
-    font-size: 0.32rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-bounty-cta {
-    font-size: 0.29rem;
-    padding: 1px 4px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-buff-strip {
-    gap: 3px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-buff-pill {
-    padding: 2px 5px 5px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-buff-text {
-    font-size: 0.28rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-merchant-card {
-    padding: 5px 6px;
-    gap: 3px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-merchant-title {
-    font-size: 0.31rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-merchant-timer {
-    font-size: 0.27rem;
-    padding: 1px 3px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-merchant-close {
-    width: 17px;
-    height: 17px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-merchant-sub {
-    font-size: 0.27rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-merchant-buy-btn {
-    padding: 4px 5px;
-    font-size: 0.31rem;
-  }
-}
-
-/* =========================================================================
-   WAVE 9: COMPANION EVOLUTION, SQUAD FORMATIONS & OVERDRIVE
-   ========================================================================= */
-.endless-formation-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(212, 175, 55, 0.24);
-}
-
-.endless-formation-btns {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.endless-formation-btn {
-  padding: 4px 4px;
-  font-family: inherit;
-  font-size: 0.33rem;
-  letter-spacing: 0.03em;
-  color: #94a3b8;
-  background: linear-gradient(180deg, rgba(14, 19, 34, 0.95) 0%, rgba(7, 10, 19, 0.98) 100%);
-  border: 1px solid rgba(100, 116, 139, 0.55);
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-  transition: border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
-}
-
-.endless-formation-btn:hover:not(.is-active) {
-  color: #e2e8f0;
-  border-color: rgba(212, 175, 55, 0.65);
-}
-
-.endless-formation-btn:active {
-  transform: translateY(1px);
-}
-
-.endless-formation-btn.is-active {
-  color: #ffffff;
-  background: linear-gradient(180deg, rgba(32, 26, 16, 0.96) 0%, rgba(12, 14, 26, 0.98) 100%);
-  border-width: 1.5px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 0 8px rgba(250, 204, 21, 0.32);
-}
-
-.endless-formation-desc {
-  font-size: 0.29rem;
-  color: #cbd5e1;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 1px 2px 0;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-comp-card.is-ex-evolved {
-  border-color: #38bdf8;
-  box-shadow:
-    inset 0 0 14px rgba(56, 189, 248, 0.18),
-    0 0 8px rgba(56, 189, 248, 0.2);
-}
-
-.endless-comp-card.is-deployed.is-ex-evolved {
-  border-color: #34d399;
-  box-shadow:
-    inset 0 0 14px rgba(52, 211, 153, 0.22),
-    0 0 10px rgba(56, 189, 248, 0.28);
-}
-
-.endless-comp-card.is-stage-locked {
-  opacity: 0.84;
-  border-color: rgba(71, 85, 105, 0.55);
-}
-
-.endless-comp-evo-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-}
-
-.endless-comp-stars {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  line-height: 1;
-}
-
-.endless-comp-star {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 8px;
-  height: 8px;
-}
-
-.endless-comp-ex-badge {
-  font-size: 0.29rem;
-  letter-spacing: 0.04em;
-  padding: 1px 5px;
-  border-radius: 2px;
-  border: 1px solid rgba(100, 116, 139, 0.55);
-  background: rgba(15, 23, 42, 0.9);
-  color: #94a3b8;
-  white-space: nowrap;
-  flex-shrink: 0;
-  line-height: 1.15;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-comp-ex-badge.is-evolved {
-  color: #fef08a;
-  background: linear-gradient(180deg, rgba(14, 116, 144, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
-  border-color: #38bdf8;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.36),
-    0 0 8px rgba(56, 189, 248, 0.62);
-  animation: endlessExBadgeGlow 1.8s ease-in-out infinite;
-}
-
-@keyframes endlessExBadgeGlow {
-  0%, 100% {
-    border-color: #38bdf8;
-    box-shadow:
-      inset 0 1px 0 rgba(254, 240, 138, 0.32),
-      0 0 6px rgba(56, 189, 248, 0.5);
-  }
-  50% {
-    border-color: #fde047;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.5),
-      0 0 11px rgba(250, 204, 21, 0.72);
-  }
-}
-
-.endless-comp-actions {
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.endless-comp-btn.is-stage-locked {
-  color: #94a3b8;
-  background: linear-gradient(180deg, rgba(24, 29, 46, 0.95) 0%, rgba(11, 14, 25, 0.98) 100%);
-  border-color: #475569;
-  letter-spacing: 0.03em;
-}
-
-.endless-comp-promote-btn {
-  flex: 1 0 100%;
-  padding: 4px 6px;
-  font-size: 0.35rem;
-  color: #e0f2fe;
-  background: linear-gradient(180deg, #1e3a5f 0%, #0f172a 100%);
-  border-color: #38bdf8;
-}
-
-.endless-comp-promote-btn.is-ex-ready {
-  color: #fffbeb;
-  background: linear-gradient(180deg, #0369a1 0%, #713f12 100%);
-  border-color: #fde047;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.45),
-    0 0 10px rgba(56, 189, 248, 0.55);
-}
-
-.endless-comp-promote-btn.is-max-star,
-.endless-comp-promote-btn.is-max-star:disabled {
-  color: #fde047;
-  background: linear-gradient(180deg, rgba(52, 39, 14, 0.92) 0%, rgba(20, 16, 9, 0.96) 100%);
-  border-color: rgba(212, 175, 55, 0.72);
-  opacity: 0.92;
-  cursor: default;
-}
-
-.endless-comp-promote-btn.hidden {
-  display: none !important;
-}
-
-/* Active Companion Mini-HUD Star/EX Corner Badge & Overdrive Meter */
-.endless-party-card.is-ex-evolved {
-  border-color: #38bdf8;
-  box-shadow:
-    inset 0 1px 0 rgba(125, 211, 252, 0.28),
-    0 0 8px rgba(56, 189, 248, 0.28),
-    0 4px 12px rgba(0, 0, 0, 0.85);
-}
-
-.endless-party-star {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  padding: 1px 2px;
-  font-size: 0.24rem;
-  line-height: 1;
-  letter-spacing: 0.01em;
-  color: #fef08a;
-  background: rgba(7, 9, 18, 0.92);
-  border-top: 1px solid #d4af37;
-  border-left: 1px solid #d4af37;
-  border-top-left-radius: 2px;
-  text-shadow: 0 1px 0 #000;
-  pointer-events: none;
-}
-
-.endless-party-star.is-ex {
-  color: #7dd3fc;
-  border-color: #38bdf8;
-  background: rgba(8, 24, 42, 0.94);
-}
-
-.endless-party-star.hidden {
-  display: none !important;
-}
-
-.endless-party-star-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 6px;
-  height: 6px;
-}
-
-.endless-party-star-ico svg {
-  width: 6px;
-  height: 6px;
-}
-
-.endless-overdrive-btn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 23px;
-  padding: 4px 7px;
-  font-family: inherit;
-  color: #fef08a;
-  background: linear-gradient(180deg, rgba(16, 13, 28, 0.95) 0%, rgba(8, 9, 18, 0.98) 100%);
-  border: 1.5px solid rgba(244, 63, 94, 0.68);
-  outline: 1px solid #000;
-  border-radius: 4px;
-  overflow: hidden;
-  cursor: pointer;
-  pointer-events: auto;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.85);
-  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.08s ease;
-}
-
-.endless-overdrive-btn.hidden {
-  display: none !important;
-}
-
-.endless-overdrive-btn:disabled {
-  cursor: default;
-}
-
-.endless-overdrive-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-overdrive-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 0%;
-  background: linear-gradient(90deg, rgba(159, 18, 57, 0.88) 0%, rgba(225, 29, 72, 0.88) 55%, rgba(245, 158, 11, 0.92) 100%);
-  transition: width 0.12s linear;
-  pointer-events: none;
-}
-
-.endless-overdrive-content {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.endless-overdrive-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.endless-overdrive-label {
-  font-size: 0.34rem;
-  letter-spacing: 0.03em;
-  color: #fffbeb;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000;
-}
-
-.endless-overdrive-btn.is-ready {
-  border-color: #fde047;
-  cursor: pointer;
-  animation: endlessOverdrivePulse 1.05s ease-in-out infinite;
-}
-
-.endless-overdrive-btn.is-ready .endless-overdrive-fill {
-  width: 100% !important;
-  background: linear-gradient(90deg, #be123c 0%, #f43f5e 45%, #facc15 100%);
-}
-
-.endless-overdrive-btn.is-active {
-  border-color: #fef08a;
-  box-shadow:
-    inset 0 0 12px rgba(254, 240, 138, 0.6),
-    0 0 16px rgba(250, 204, 21, 0.9);
-}
-
-.endless-overdrive-btn.is-active .endless-overdrive-fill {
-  background: linear-gradient(90deg, #ca8a04 0%, #facc15 55%, #fef08a 100%);
-}
-
-.endless-overdrive-btn.is-active .endless-overdrive-label {
-  color: #ffffff;
-}
-
-@keyframes endlessOverdrivePulse {
-  0%, 100% {
-    border-color: #f43f5e;
-    box-shadow:
-      inset 0 1px 0 rgba(254, 240, 138, 0.35),
-      0 0 10px rgba(244, 63, 94, 0.65);
-  }
-  50% {
-    border-color: #fef08a;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      0 0 18px rgba(250, 204, 21, 0.95);
-  }
-}
-
-/* Wave 9 Responsive Ergonomics: Mobile Landscape (844x390) */
-@media (max-height: 500px) {
-  .endless-formation-bar {
-    padding-top: 3px;
-    gap: 2px;
-  }
-
-  .endless-formation-btn {
-    padding: 2px 3px;
-    font-size: 0.29rem;
-  }
-
-  .endless-formation-desc {
-    font-size: 0.26rem;
-  }
-
-  .endless-party-syn-list {
-    max-height: 38px;
-  }
-
-  .endless-comp-card {
-    padding: 5px 6px;
-    gap: 6px;
-  }
-
-  .endless-comp-promote-btn {
-    padding: 3px 5px;
-    font-size: 0.32rem;
-  }
-
-  .endless-party-star {
-    font-size: 0.22rem;
-    padding: 0 2px;
-  }
-
-  .endless-party-star-ico {
-    display: none;
-  }
-
-  .endless-overdrive-btn {
-    width: 92px;
-    max-width: 94px;
-    align-self: flex-start;
-    min-height: 18px;
-    padding: 2px 4px;
-  }
-
-  .endless-overdrive-content {
-    gap: 2px;
-  }
-
-  .endless-overdrive-icon svg {
-    width: 8px;
-    height: 8px;
-  }
-
-  .endless-overdrive-label {
-    font-size: 0.24rem;
-    letter-spacing: 0.01em;
-  }
-}
-
-html.is-mobile-landscape .endless-formation-bar {
-  padding-top: 3px;
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-formation-btn {
-  padding: 2px 3px;
-  font-size: 0.29rem;
-}
-
-html.is-mobile-landscape .endless-formation-desc {
-  font-size: 0.26rem;
-}
-
-html.is-mobile-landscape .endless-party-syn-list {
-  max-height: 38px;
-}
-
-html.is-mobile-landscape .endless-comp-card {
-  padding: 5px 6px;
-  gap: 6px;
-}
-
-html.is-mobile-landscape .endless-comp-promote-btn {
-  padding: 3px 5px;
-  font-size: 0.32rem;
-}
-
-html.is-mobile-landscape .endless-party-star {
-  font-size: 0.22rem;
-  padding: 0 2px;
-}
-
-html.is-mobile-landscape .endless-party-star-ico {
-  display: none;
-}
-
-html.is-mobile-landscape .endless-overdrive-btn {
-  width: 92px;
-  max-width: 94px;
-  align-self: flex-start;
-  min-height: 18px;
-  padding: 2px 4px;
-}
-
-html.is-mobile-landscape .endless-overdrive-content {
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-overdrive-icon svg {
-  width: 8px;
-  height: 8px;
-}
-
-html.is-mobile-landscape .endless-overdrive-label {
-  font-size: 0.24rem;
-  letter-spacing: 0.01em;
-}
-
-/* Wave 9 Responsive Ergonomics: Mobile Portrait (390x844) */
-@media (max-width: 560px) {
-  html:not(.is-mobile-landscape) .endless-party-star {
-    font-size: 0.22rem;
-    padding: 0 2px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-party-star-ico {
-    display: none;
-  }
-
-  html:not(.is-mobile-landscape) .endless-overdrive-btn {
-    width: 214px;
-    max-width: 100%;
-    align-self: flex-start;
-    min-height: 20px;
-    padding: 3px 6px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-overdrive-label {
-    font-size: 0.29rem;
-  }
-}
-
-/* =========================================================================
-   WAVE 10: CHALLENGE TRIALS TAB, LIVE COUNTDOWN HUD, REWARD MODAL & 6-TAB POLISH
-   ========================================================================= */
-#endless-hud-root.is-trial-active .endless-boss-controls {
-  display: none !important;
-}
-
-#endless-hud-root.is-trial-active.is-drawer-open .endless-events-dock {
-  top: max(154px, calc(env(safe-area-inset-top) + 150px));
-}
-
-/* Active Trial Live Countdown HUD Strip (centered directly under .endless-top-bar) */
-.endless-trial-hud {
-  display: flex;
-  flex-direction: column;
-  width: min(444px, 100%);
-  max-width: 100%;
-  background: linear-gradient(180deg, rgba(20, 14, 34, 0.96) 0%, rgba(8, 10, 20, 0.98) 100%);
-  border: 1.5px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 5px;
-  overflow: hidden;
-  pointer-events: auto;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.28),
-    0 0 14px rgba(250, 204, 21, 0.28),
-    0 5px 14px rgba(0, 0, 0, 0.88);
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
-}
-
-.endless-trial-hud.hidden {
-  display: none !important;
-}
-
-.endless-trial-hud.is-urgent {
-  border-color: #f43f5e;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 202, 202, 0.36),
-    0 0 16px rgba(244, 63, 94, 0.68),
-    0 5px 14px rgba(0, 0, 0, 0.9);
-  animation: endlessTrialUrgentPulse 0.72s ease-in-out infinite;
-}
-
-@keyframes endlessTrialUrgentPulse {
-  0%, 100% {
-    filter: brightness(1);
-  }
-  50% {
-    filter: brightness(1.16);
-  }
-}
-
-.endless-trial-hud-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 7px;
-  min-width: 0;
-}
-
-.endless-trial-hud-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  background: #070912;
-  border: 1px solid rgba(250, 204, 21, 0.68);
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.endless-trial-hud-meta {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.endless-trial-hud-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-}
-
-.endless-trial-hud-name {
-  font-size: 0.38rem;
-  color: #fef08a;
-  letter-spacing: 0.03em;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.endless-trial-hud-timer {
-  font-size: 0.40rem;
-  color: #ffffff;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1px solid rgba(250, 204, 21, 0.72);
-  border-radius: 3px;
-  padding: 1px 5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-trial-hud.is-urgent .endless-trial-hud-timer {
-  color: #fff1f2;
-  background: rgba(159, 18, 57, 0.9);
-  border-color: #fda4af;
-}
-
-.endless-trial-hud-score {
-  font-size: 0.33rem;
-  color: #e2e8f0;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-trial-exit-btn {
-  padding: 4px 8px;
-  font-family: inherit;
-  font-size: 0.34rem;
-  letter-spacing: 0.04em;
-  color: #fecaca;
-  background: linear-gradient(180deg, #7f1d1d 0%, #450a0a 100%);
-  border: 1.5px solid #f87171;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-shadow: 0 1px 0 #000;
-  transition: filter 0.12s ease, transform 0.08s ease;
-}
-
-.endless-trial-exit-btn:hover {
-  filter: brightness(1.14);
-  color: #ffffff;
-}
-
-.endless-trial-exit-btn:active {
-  transform: translateY(1px);
-}
-
-.endless-trial-hud-track {
-  position: relative;
-  width: 100%;
-  height: 4px;
-  background: #050712;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.endless-trial-hud-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 100%;
-  background: #facc15;
-  transition: width 0.09s linear;
-}
-
-/* TRIALS Tab Panel */
-.endless-trials-header {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 6px 8px;
-  background: linear-gradient(180deg, rgba(28, 15, 34, 0.96) 0%, rgba(9, 11, 21, 0.98) 100%);
-  border-bottom: 1.5px solid rgba(212, 175, 55, 0.42);
-  flex-shrink: 0;
-}
-
-.endless-trials-head-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-}
-
-.endless-trials-title {
-  font-size: 0.44rem;
-  color: #fde047;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-trials-cleared {
-  font-size: 0.33rem;
-  color: #e9d5ff;
-  background: rgba(88, 28, 135, 0.56);
-  border: 1px solid rgba(192, 132, 252, 0.65);
-  border-radius: 3px;
-  padding: 2px 5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.endless-trials-sub {
-  font-size: 0.29rem;
-  color: #94a3b8;
-  letter-spacing: 0.02em;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-trials-list {
-  gap: 7px;
-}
-
-.endless-trial-card {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 7px 8px;
-  background: linear-gradient(180deg, rgba(16, 20, 36, 0.96) 0%, rgba(8, 10, 20, 0.98) 100%);
-  border: 1.5px solid rgba(100, 116, 139, 0.55);
-  border-left: 3px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  min-width: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: border-color 0.14s ease, box-shadow 0.14s ease;
-}
-
-.endless-trial-card.is-ready {
-  border-color: rgba(212, 175, 55, 0.72);
-}
-
-.endless-trial-card.is-running {
-  border-color: #fef08a;
-  box-shadow:
-    inset 0 0 14px rgba(250, 204, 21, 0.22),
-    0 0 10px rgba(250, 204, 21, 0.34);
-}
-
-.endless-trial-card.is-cooldown {
-  opacity: 0.86;
-}
-
-.endless-trial-card-top {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.endless-trial-icon-wrap {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #070912;
-  border: 1.5px solid #d4af37;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-.endless-trial-icon-wrap svg {
-  width: 22px;
-  height: 22px;
-}
-
-.endless-trial-title-block {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.endless-trial-name-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 5px;
-  min-width: 0;
-}
-
-.endless-trial-name {
-  font-size: 0.39rem;
-  color: #f8fafc;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 0 #000;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.endless-trial-dur-pill {
-  font-size: 0.31rem;
-  padding: 1px 5px;
-  border-radius: 2px;
-  background: rgba(15, 23, 42, 0.94);
-  border: 1px solid rgba(212, 175, 55, 0.65);
-  color: #fef08a;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.endless-trial-reward-pill {
-  align-self: flex-start;
-  max-width: 100%;
-  font-size: 0.29rem;
-  letter-spacing: 0.02em;
-  padding: 2px 5px;
-  border-radius: 2px;
-  background: rgba(8, 11, 22, 0.94);
-  border: 1px solid #facc15;
-  color: #fef08a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-trial-desc {
-  font-size: 0.30rem;
-  color: #cbd5e1;
-  line-height: 1.38;
-  word-break: break-word;
-}
-
-.endless-trial-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(71, 85, 105, 0.34);
-  min-width: 0;
-}
-
-.endless-trial-best {
-  font-size: 0.31rem;
-  color: #93c5fd;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.endless-trial-enter-btn {
-  padding: 6px 10px;
-  font-family: inherit;
-  font-size: 0.35rem;
-  letter-spacing: 0.03em;
-  color: #fffbeb;
-  background: linear-gradient(180deg, #92400e 0%, #451a03 100%);
-  border: 1.5px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 3px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-shadow: 0 1px 0 #000;
-  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.35);
-  transition: filter 0.12s ease, transform 0.08s ease;
-}
-
-.endless-trial-enter-btn:hover:not(:disabled) {
-  filter: brightness(1.12);
-}
-
-.endless-trial-enter-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.endless-trial-enter-btn:disabled {
-  color: #64748b;
-  background: linear-gradient(180deg, #161b2a 0%, #0d101b 100%);
-  border-color: #334155;
-  box-shadow: none;
-  cursor: not-allowed;
-  opacity: 0.85;
-}
-
-.endless-trial-enter-btn.is-active-trial,
-.endless-trial-enter-btn.is-active-trial:disabled {
-  color: #fef08a;
-  background: linear-gradient(180deg, rgba(127, 29, 29, 0.92) 0%, rgba(56, 12, 20, 0.96) 100%);
-  border-color: #fb7185;
-  opacity: 1;
-}
-
-/* Trial Reward Summary Modal (z-index: 49, matching Offline Loot Modal gothic style) */
-.endless-trial-modal {
-  position: absolute;
-  inset: 0;
-  z-index: 49;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  background: rgba(4, 6, 14, 0.80);
-  pointer-events: auto;
-  overflow: hidden;
-}
-
-.endless-trial-modal.hidden {
-  display: none !important;
-}
-
-.endless-trial-modal-card {
-  width: min(464px, calc(100% - 8px));
-  max-height: calc(100% - 10px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 14px 15px;
-  background: linear-gradient(180deg, rgba(18, 22, 42, 0.98) 0%, rgba(8, 10, 20, 0.99) 100%);
-  border: 2px solid #d4af37;
-  outline: 2px solid #000;
-  border-radius: 6px;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.36),
-    inset 0 0 24px rgba(212, 175, 55, 0.16),
-    0 14px 40px rgba(0, 0, 0, 0.96);
-  animation: endlessModalPop 0.22s ease-out;
-}
-
-.endless-trial-modal-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  text-align: center;
-  padding-bottom: 8px;
-  border-bottom: 1.5px solid rgba(212, 175, 55, 0.45);
-}
-
-.endless-trial-modal-status {
-  padding: 2px 8px;
-  font-size: 0.35rem;
-  letter-spacing: 0.06em;
-  color: #090c14;
-  background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
-  border: 1px solid #ffffff;
-  outline: 1px solid #000;
-  border-radius: 3px;
-}
-
-.endless-trial-modal-status.is-exited {
-  color: #e2e8f0;
-  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
-  border-color: #94a3b8;
-}
-
-.endless-trial-modal-title-row {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  max-width: 100%;
-}
-
-.endless-trial-modal-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.endless-trial-modal-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.endless-trial-modal-title {
-  font-size: 0.56rem;
-  color: #fef08a;
-  letter-spacing: 0.04em;
-  text-shadow: 0 2px 0 #000;
-  line-height: 1.3;
-}
-
-.endless-trial-modal-perf {
-  padding: 3px 8px;
-  font-size: 0.35rem;
-  color: #bae6fd;
-  background: rgba(12, 18, 34, 0.94);
-  border: 1px solid rgba(56, 189, 248, 0.55);
-  border-radius: 3px;
-  letter-spacing: 0.03em;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.endless-trial-modal-rewards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.endless-trial-reward-plaque {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 4px;
-  padding: 8px 6px;
-  background: linear-gradient(180deg, rgba(14, 18, 34, 0.96) 0%, rgba(7, 9, 18, 0.98) 100%);
-  border: 1.5px solid #d4af37;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  min-width: 0;
-}
-
-.endless-trial-reward-plaque.is-gold {
-  border-color: #facc15;
-  background: linear-gradient(180deg, rgba(44, 32, 10, 0.92) 0%, rgba(15, 11, 5, 0.98) 100%);
-}
-
-.endless-trial-reward-plaque.is-shard {
-  border-color: #c084fc;
-  background: linear-gradient(180deg, rgba(35, 18, 66, 0.92) 0%, rgba(12, 10, 26, 0.98) 100%);
-}
-
-.endless-trial-reward-plaque.is-dust {
-  border-color: #38bdf8;
-  background: linear-gradient(180deg, rgba(12, 36, 56, 0.92) 0%, rgba(7, 13, 24, 0.98) 100%);
-}
-
-.endless-trial-reward-plaque.is-empty {
-  opacity: 0.48;
-  border-color: #334155;
-}
-
-.endless-trial-reward-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.endless-trial-reward-ico canvas {
-  width: 24px;
-  height: 24px;
-}
-
-.endless-trial-reward-ico svg {
-  width: 18px;
-  height: 18px;
-}
-
-.endless-trial-reward-val {
-  font-size: 0.42rem;
-  color: #fef08a;
-  text-shadow: 0 1px 0 #000;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endless-trial-reward-plaque.is-shard .endless-trial-reward-val {
-  color: #e9d5ff;
-}
-
-.endless-trial-reward-plaque.is-dust .endless-trial-reward-val {
-  color: #7dd3fc;
-}
-
-.endless-trial-reward-lbl {
-  font-size: 0.27rem;
-  color: #94a3b8;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
-.endless-trial-modal-gear {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 7px 8px;
-  background: rgba(9, 12, 24, 0.94);
-  border: 1px solid rgba(192, 132, 252, 0.45);
-  border-radius: 4px;
-}
-
-.endless-trial-modal-gear.hidden {
-  display: none !important;
-}
-
-.endless-trial-modal-gear-head {
-  font-size: 0.32rem;
-  color: #e9d5ff;
-  letter-spacing: 0.04em;
-  text-align: center;
-}
-
-.endless-trial-modal-gear-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 5px;
-}
-
-.endless-trial-gear-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  max-width: 100%;
-  padding: 4px 7px;
-  background: rgba(14, 18, 34, 0.96);
-  border: 1.5px solid #c084fc;
-  border-radius: 3px;
-  min-width: 0;
-  text-shadow: 0 1px 0 #000;
-}
-
-.endless-trial-gear-pill-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.endless-trial-gear-pill-rarity {
-  font-size: 0.28rem;
-  letter-spacing: 0.03em;
-  flex-shrink: 0;
-}
-
-.endless-trial-gear-pill-name {
-  font-size: 0.31rem;
-  color: #f8fafc;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.endless-trial-collect-btn {
-  width: 100%;
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 0.46rem;
-  letter-spacing: 0.05em;
-  color: #fffbeb;
-  background: linear-gradient(180deg, #b45309 0%, #78350f 65%, #451a03 100%);
-  border: 2px solid #facc15;
-  outline: 1px solid #000;
-  border-radius: 4px;
-  cursor: pointer;
-  text-shadow: 0 1px 0 #000;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.55),
-    0 0 14px rgba(250, 204, 21, 0.48);
-  transition: transform 0.08s ease, border-color 0.14s ease, box-shadow 0.14s ease;
-}
-
-.endless-trial-collect-btn:hover {
-  border-color: #fef08a;
-  box-shadow:
-    inset 0 1px 0 rgba(254, 240, 138, 0.72),
-    0 0 18px rgba(250, 204, 21, 0.76);
-}
-
-.endless-trial-collect-btn:active {
-  transform: translateY(1px);
-}
-
-/* Wave 10 Responsive Ergonomics: Mobile Landscape (844x390, 332px drawer) */
-@media (max-height: 500px) {
-  .endless-tab-bar {
-    padding: 3px 3px;
-    gap: 2px;
-  }
-
-  .endless-tab-btn {
-    font-size: 0.27rem;
-    letter-spacing: 0;
-    padding: 4px 1px;
-    min-height: 22px;
-  }
-
-  .endless-tab-dot {
-    top: 1px;
-    right: 1px;
-    width: 4px;
-    height: 4px;
-  }
-
-  #endless-hud-root.is-trial-active .endless-party-hud {
-    top: max(112px, calc(env(safe-area-inset-top) + 108px));
-  }
-
-  #endless-hud-root.is-trial-active.is-drawer-open .endless-trial-hud {
-    align-self: flex-start;
-    max-width: calc(100vw - 356px);
-  }
-
-  .endless-trial-hud {
-    width: min(410px, 100%);
-  }
-
-  .endless-trial-hud-row {
-    padding: 2px 6px;
-    gap: 5px;
-  }
-
-  .endless-trial-hud-icon {
-    width: 17px;
-    height: 17px;
-  }
-
-  .endless-trial-hud-icon svg {
-    width: 13px;
-    height: 13px;
-  }
-
-  .endless-trial-hud-meta {
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .endless-trial-hud-head {
-    gap: 4px;
-    flex-shrink: 1;
-  }
-
-  .endless-trial-hud-name {
-    font-size: 0.30rem;
-    max-width: 156px;
-  }
-
-  .endless-trial-hud-timer {
-    font-size: 0.31rem;
-    padding: 1px 4px;
-  }
-
-  .endless-trial-hud-score {
-    font-size: 0.28rem;
-    flex-shrink: 1;
-  }
-
-  .endless-trial-exit-btn {
-    padding: 2px 6px;
-    font-size: 0.28rem;
-  }
-
-  .endless-trial-hud-track {
-    height: 3px;
-  }
-
-  .endless-trials-header {
-    padding: 4px 6px;
-    gap: 2px;
-  }
-
-  .endless-trials-title {
-    font-size: 0.38rem;
-  }
-
-  .endless-trials-cleared {
-    font-size: 0.28rem;
-    padding: 1px 4px;
-  }
-
-  .endless-trials-sub {
-    font-size: 0.25rem;
-  }
-
-  .endless-trials-list {
-    gap: 5px;
-  }
-
-  .endless-trial-card {
-    padding: 5px 6px;
-    gap: 4px;
-  }
-
-  .endless-trial-icon-wrap {
-    width: 28px;
-    height: 28px;
-  }
-
-  .endless-trial-icon-wrap svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .endless-trial-name {
-    font-size: 0.34rem;
-  }
-
-  .endless-trial-dur-pill {
-    font-size: 0.27rem;
-    padding: 1px 4px;
-  }
-
-  .endless-trial-reward-pill {
-    font-size: 0.26rem;
-    padding: 1px 4px;
-  }
-
-  .endless-trial-desc {
-    font-size: 0.27rem;
-    line-height: 1.3;
-  }
-
-  .endless-trial-best {
-    font-size: 0.27rem;
-  }
-
-  .endless-trial-enter-btn {
-    padding: 4px 8px;
-    font-size: 0.30rem;
-  }
-
-  .endless-trial-modal {
-    padding: 6px 10px;
-  }
-
-  .endless-trial-modal-card {
-    width: min(444px, calc(100% - 8px));
-    padding: 8px 10px;
-    gap: 6px;
-  }
-
-  .endless-trial-modal-header {
-    gap: 3px;
-    padding-bottom: 5px;
-  }
-
-  .endless-trial-modal-status {
-    font-size: 0.29rem;
-    padding: 1px 6px;
-  }
-
-  .endless-trial-modal-title {
-    font-size: 0.45rem;
-  }
-
-  .endless-trial-modal-perf {
-    font-size: 0.29rem;
-    padding: 2px 6px;
-  }
-
-  .endless-trial-modal-rewards {
-    gap: 5px;
-  }
-
-  .endless-trial-reward-plaque {
-    flex-direction: row;
-    text-align: left;
-    gap: 6px;
-    padding: 5px 7px;
-  }
-
-  .endless-trial-reward-ico {
-    width: 18px;
-    height: 18px;
-  }
-
-  .endless-trial-reward-ico canvas {
-    width: 18px;
-    height: 18px;
-  }
-
-  .endless-trial-reward-ico svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  .endless-trial-reward-val {
-    font-size: 0.35rem;
-  }
-
-  .endless-trial-reward-lbl {
-    font-size: 0.24rem;
-  }
-
-  .endless-trial-modal-gear {
-    padding: 5px 6px;
-    gap: 3px;
-  }
-
-  .endless-trial-gear-pill {
-    padding: 2px 5px;
-  }
-
-  .endless-trial-collect-btn {
-    padding: 7px 10px;
-    font-size: 0.38rem;
-  }
-}
-
-html.is-mobile-landscape .endless-tab-bar {
-  padding: 3px 3px;
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-tab-btn {
-  font-size: 0.27rem;
-  letter-spacing: 0;
-  padding: 4px 1px;
-  min-height: 22px;
-}
-
-html.is-mobile-landscape .endless-tab-dot {
-  top: 1px;
-  right: 1px;
-  width: 4px;
-  height: 4px;
-}
-
-html.is-mobile-landscape #endless-hud-root.is-trial-active .endless-party-hud {
-  top: max(112px, calc(env(safe-area-inset-top) + 108px));
-}
-
-html.is-mobile-landscape #endless-hud-root.is-trial-active.is-drawer-open .endless-trial-hud {
-  align-self: flex-start;
-  max-width: calc(100vw - 356px);
-}
-
-html.is-mobile-landscape .endless-trial-hud {
-  width: min(410px, 100%);
-}
-
-html.is-mobile-landscape .endless-trial-hud-row {
-  padding: 2px 6px;
-  gap: 5px;
-}
-
-html.is-mobile-landscape .endless-trial-hud-icon {
-  width: 17px;
-  height: 17px;
-}
-
-html.is-mobile-landscape .endless-trial-hud-icon svg {
-  width: 13px;
-  height: 13px;
-}
-
-html.is-mobile-landscape .endless-trial-hud-meta {
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-}
-
-html.is-mobile-landscape .endless-trial-hud-head {
-  gap: 4px;
-  flex-shrink: 1;
-}
-
-html.is-mobile-landscape .endless-trial-hud-name {
-  font-size: 0.30rem;
-  max-width: 156px;
-}
-
-html.is-mobile-landscape .endless-trial-hud-timer {
-  font-size: 0.31rem;
-  padding: 1px 4px;
-}
-
-html.is-mobile-landscape .endless-trial-hud-score {
-  font-size: 0.28rem;
-  flex-shrink: 1;
-}
-
-html.is-mobile-landscape .endless-trial-exit-btn {
-  padding: 2px 6px;
-  font-size: 0.28rem;
-}
-
-html.is-mobile-landscape .endless-trial-hud-track {
-  height: 3px;
-}
-
-html.is-mobile-landscape .endless-trials-header {
-  padding: 4px 6px;
-  gap: 2px;
-}
-
-html.is-mobile-landscape .endless-trials-title {
-  font-size: 0.38rem;
-}
-
-html.is-mobile-landscape .endless-trials-cleared {
-  font-size: 0.28rem;
-  padding: 1px 4px;
-}
-
-html.is-mobile-landscape .endless-trials-sub {
-  font-size: 0.25rem;
-}
-
-html.is-mobile-landscape .endless-trials-list {
-  gap: 5px;
-}
-
-html.is-mobile-landscape .endless-trial-card {
-  padding: 5px 6px;
-  gap: 4px;
-}
-
-html.is-mobile-landscape .endless-trial-icon-wrap {
-  width: 28px;
-  height: 28px;
-}
-
-html.is-mobile-landscape .endless-trial-icon-wrap svg {
-  width: 18px;
-  height: 18px;
-}
-
-html.is-mobile-landscape .endless-trial-name {
-  font-size: 0.34rem;
-}
-
-html.is-mobile-landscape .endless-trial-dur-pill {
-  font-size: 0.27rem;
-  padding: 1px 4px;
-}
-
-html.is-mobile-landscape .endless-trial-reward-pill {
-  font-size: 0.26rem;
-  padding: 1px 4px;
-}
-
-html.is-mobile-landscape .endless-trial-desc {
-  font-size: 0.27rem;
-  line-height: 1.3;
-}
-
-html.is-mobile-landscape .endless-trial-best {
-  font-size: 0.27rem;
-}
-
-html.is-mobile-landscape .endless-trial-enter-btn {
-  padding: 4px 8px;
-  font-size: 0.30rem;
-}
-
-html.is-mobile-landscape .endless-trial-modal {
-  padding: 6px 10px;
-}
-
-html.is-mobile-landscape .endless-trial-modal-card {
-  width: min(444px, calc(100% - 8px));
-  padding: 8px 10px;
-  gap: 6px;
-}
-
-html.is-mobile-landscape .endless-trial-modal-header {
-  gap: 3px;
-  padding-bottom: 5px;
-}
-
-html.is-mobile-landscape .endless-trial-modal-status {
-  font-size: 0.29rem;
-  padding: 1px 6px;
-}
-
-html.is-mobile-landscape .endless-trial-modal-title {
-  font-size: 0.45rem;
-}
-
-html.is-mobile-landscape .endless-trial-modal-perf {
-  font-size: 0.29rem;
-  padding: 2px 6px;
-}
-
-html.is-mobile-landscape .endless-trial-modal-rewards {
-  gap: 5px;
-}
-
-html.is-mobile-landscape .endless-trial-reward-plaque {
-  flex-direction: row;
-  text-align: left;
-  gap: 6px;
-  padding: 5px 7px;
-}
-
-html.is-mobile-landscape .endless-trial-reward-ico {
-  width: 18px;
-  height: 18px;
-}
-
-html.is-mobile-landscape .endless-trial-reward-ico canvas {
-  width: 18px;
-  height: 18px;
-}
-
-html.is-mobile-landscape .endless-trial-reward-ico svg {
-  width: 14px;
-  height: 14px;
-}
-
-html.is-mobile-landscape .endless-trial-reward-val {
-  font-size: 0.35rem;
-}
-
-html.is-mobile-landscape .endless-trial-reward-lbl {
-  font-size: 0.24rem;
-}
-
-html.is-mobile-landscape .endless-trial-modal-gear {
-  padding: 5px 6px;
-  gap: 3px;
-}
-
-html.is-mobile-landscape .endless-trial-gear-pill {
-  padding: 2px 5px;
-}
-
-html.is-mobile-landscape .endless-trial-collect-btn {
-  padding: 7px 10px;
-  font-size: 0.38rem;
-}
-
-/* Wave 10 Responsive Ergonomics: Mobile Portrait (390x844, 378px drawer) */
-@media (max-width: 560px) {
-  html:not(.is-mobile-landscape) .endless-tab-bar {
-    padding: 4px 4px;
-    gap: 2px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-tab-btn {
-    font-size: 0.31rem;
-    letter-spacing: 0.01em;
-    padding: 6px 2px;
-    min-height: 28px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-hud {
-    width: 100%;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-hud-row {
-    padding: 4px 6px;
-    gap: 5px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-hud-name {
-    font-size: 0.34rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-hud-timer {
-    font-size: 0.35rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-hud-score {
-    font-size: 0.30rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-exit-btn {
-    padding: 5px 7px;
-    font-size: 0.32rem;
-    min-height: 24px;
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active #endless-shop-toggle {
-    top: max(162px, calc(env(safe-area-inset-top) + 158px));
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active .endless-party-hud {
-    top: max(195px, calc(env(safe-area-inset-top) + 191px));
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active .endless-events-dock,
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.is-drawer-open .endless-events-dock {
-    top: max(164px, calc(env(safe-area-inset-top) + 160px));
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party .endless-events-dock,
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party.is-drawer-open .endless-events-dock {
-    top: max(258px, calc(env(safe-area-inset-top) + 254px));
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party.has-active-synergies .endless-events-dock,
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party.has-active-synergies.is-drawer-open .endless-events-dock {
-    top: max(274px, calc(env(safe-area-inset-top) + 270px));
-  }
-
-  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.is-drawer-open .endless-shop-shell {
-    height: min(50vh, 412px);
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-enter-btn {
-    padding: 7px 10px;
-    min-height: 28px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-modal {
-    padding: 10px 8px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-modal-card {
-    width: min(366px, calc(100% - 4px));
-    padding: 12px 10px;
-    gap: 8px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-modal-title {
-    font-size: 0.48rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-modal-rewards {
-    gap: 5px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-reward-plaque {
-    padding: 7px 4px;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-reward-val {
-    font-size: 0.37rem;
-  }
-
-  html:not(.is-mobile-landscape) .endless-trial-collect-btn {
-    padding: 10px 8px;
-    min-height: 36px;
-    font-size: 0.42rem;
-  }
-}
-`;
-
-function setTextIfChanged(el, text) {
-  if (!el) return;
-  const next = String(text);
-  if (el.textContent !== next) {
-    el.textContent = next;
-  }
-}
-
-function stopEventLeak(el) {
-  if (!el || typeof el.addEventListener !== 'function') return;
-  const halt = (e) => {
-    e.stopPropagation();
-  };
-  el.addEventListener('pointerdown', halt);
-  el.addEventListener('mousedown', halt);
-  el.addEventListener('touchstart', halt, { passive: true });
-  el.addEventListener('click', halt);
-}
-
-function drawFallbackPixelIcon(canvas, col, accentHex = '#facc15', row = ENDLESS_ICON_ROW) {
-  if (!canvas || typeof canvas.getContext !== 'function') return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const w = canvas.width || 32;
-  const h = canvas.height || 32;
-  const u = Math.max(1, Math.floor(w / 16));
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, w, h);
-
-  const px = (gx, gy, gw, gh, color) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(gx * u, gy * u, gw * u, gh * u);
-  };
-
-  // Dark selout badge frame
-  px(2, 2, 12, 12, '#0d0f1c');
-  px(3, 3, 10, 10, '#181e34');
-
-  if (row === 1 || (row === ENDLESS_ICON_ROW && col === 1)) {
-    // Astral Shard Crystal
-    px(7, 2, 2, 12, '#bae6fd');
-    px(5, 4, 6, 8, '#38bdf8');
-    px(4, 6, 8, 4, '#a855f7');
-    px(6, 5, 4, 5, '#ffffff');
-  } else if (row === 0 || (row === ENDLESS_ICON_ROW && col === 0)) {
-    // Sovereign Gold Coin
-    px(4, 3, 8, 10, '#92400e');
-    px(5, 4, 6, 8, '#facc15');
-    px(6, 5, 4, 6, '#fef08a');
-    px(7, 6, 2, 4, '#d97706');
-  } else if (col === 11) {
-    // Gothic Obsidian-Gold Chest
-    px(2, 5, 12, 8, '#0d0f1c');
-    px(3, 6, 10, 6, '#78350f');
-    px(3, 6, 10, 2, '#facc15');
-    px(6, 7, 4, 3, '#fef08a');
-    px(7, 8, 2, 1, '#0d0f1c');
-  } else {
-    // Crisp Relic Crest Silhouette
-    px(4, 4, 8, 8, accentHex);
-    px(5, 5, 6, 6, '#0d0f1c');
-    px(6, 6, 4, 4, accentHex);
-    px(7, 5, 2, 6, '#ffffff');
-  }
-}
-
-function drawFallbackPortrait(canvas, accentHex = '#facc15') {
-  if (!canvas || typeof canvas.getContext !== 'function') return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const w = canvas.width || 40;
-  const h = canvas.height || 40;
-  const u = Math.max(1, Math.floor(w / 16));
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, w, h);
-
-  const px = (gx, gy, gw, gh, color) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(gx * u, gy * u, gw * u, gh * u);
-  };
-
-  px(0, 0, 16, 16, '#0b0f1e');
-  px(1, 1, 14, 14, '#141b30');
-  // Stylized pixel helm / hood bust
-  px(5, 3, 6, 5, accentHex);
-  px(6, 4, 4, 3, '#f8fafc');
-  px(6, 5, 1, 1, '#0d0f1c');
-  px(9, 5, 1, 1, '#0d0f1c');
-  px(3, 9, 10, 5, accentHex);
-  px(5, 10, 6, 4, '#1e293b');
-}
-
-const PIXEL_MONOGRAM_3X5 = Object.freeze({
-  A: [0b010, 0b101, 0b111, 0b101, 0b101],
-  B: [0b110, 0b101, 0b110, 0b101, 0b110],
-  C: [0b011, 0b100, 0b100, 0b100, 0b011],
-  D: [0b110, 0b101, 0b101, 0b101, 0b110],
-  E: [0b111, 0b100, 0b110, 0b100, 0b111],
-  F: [0b111, 0b100, 0b110, 0b100, 0b100],
-  G: [0b011, 0b100, 0b101, 0b101, 0b011],
-  H: [0b101, 0b101, 0b111, 0b101, 0b101],
-  I: [0b111, 0b010, 0b010, 0b010, 0b111],
-  J: [0b001, 0b001, 0b001, 0b101, 0b010],
-  K: [0b101, 0b101, 0b110, 0b101, 0b101],
-  L: [0b100, 0b100, 0b100, 0b100, 0b111],
-  M: [0b101, 0b111, 0b111, 0b101, 0b101],
-  N: [0b111, 0b101, 0b101, 0b101, 0b101],
-  O: [0b010, 0b101, 0b101, 0b101, 0b010],
-  P: [0b110, 0b101, 0b110, 0b100, 0b100],
-  Q: [0b010, 0b101, 0b101, 0b011, 0b001],
-  R: [0b110, 0b101, 0b110, 0b101, 0b101],
-  S: [0b011, 0b100, 0b010, 0b001, 0b110],
-  T: [0b111, 0b010, 0b010, 0b010, 0b010],
-  U: [0b101, 0b101, 0b101, 0b101, 0b111],
-  V: [0b101, 0b101, 0b101, 0b101, 0b010],
-  W: [0b101, 0b101, 0b111, 0b111, 0b101],
-  X: [0b101, 0b101, 0b010, 0b101, 0b101],
-  Y: [0b101, 0b101, 0b010, 0b010, 0b010],
-  Z: [0b111, 0b001, 0b010, 0b100, 0b111],
-  0: [0b111, 0b101, 0b101, 0b101, 0b111],
-  1: [0b010, 0b110, 0b010, 0b010, 0b111],
-  2: [0b110, 0b001, 0b010, 0b100, 0b111],
-  3: [0b110, 0b001, 0b010, 0b001, 0b110],
-  4: [0b101, 0b101, 0b111, 0b001, 0b001],
-  5: [0b111, 0b100, 0b110, 0b001, 0b110],
-  6: [0b011, 0b100, 0b111, 0b101, 0b111],
-  7: [0b111, 0b001, 0b010, 0b010, 0b010],
-  8: [0b111, 0b101, 0b111, 0b101, 0b111],
-  9: [0b111, 0b101, 0b111, 0b001, 0b110]
-});
-
-function extractMonogramLetters(label) {
-  const cleaned = String(label || 'AL')
-    .toUpperCase()
-    .replace(/[^A-Z0-9\s-]/g, '')
-    .trim();
-  if (!cleaned) return 'AL';
-  const parts = cleaned.split(/[\s-]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`;
-  }
-  return cleaned.slice(0, 2);
-}
-
-function drawMonogramPortrait(canvas, accentHex = '#facc15', label = 'AL') {
-  if (!canvas || typeof canvas.getContext !== 'function') return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const w = canvas.width || 28;
-  const h = canvas.height || 28;
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, w, h);
-
-  // Gothic obsidian framed tile with colored inner accent trim
-  ctx.fillStyle = '#070912';
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = accentHex || '#facc15';
-  ctx.fillRect(1, 1, w - 2, h - 2);
-  ctx.fillStyle = '#12172b';
-  ctx.fillRect(3, 3, w - 6, h - 6);
-  ctx.fillStyle = '#1b223d';
-  ctx.fillRect(4, 4, w - 8, Math.max(2, Math.floor((h - 8) * 0.45)));
-
-  // Crisp 2x pixel-snapped monogram letters
-  const chars = extractMonogramLetters(label);
-  const scale = Math.max(1, Math.floor(w / 14));
-  const charW = 3 * scale;
-  const charH = 5 * scale;
-  const gap = chars.length > 1 ? scale : 0;
-  const totalW = chars.length * charW + (chars.length - 1) * gap;
-  const startX = Math.floor((w - totalW) * 0.5);
-  const startY = Math.floor((h - charH) * 0.5);
-
-  for (let ci = 0; ci < chars.length; ci++) {
-    const ch = chars[ci];
-    const glyph = PIXEL_MONOGRAM_3X5[ch] || PIXEL_MONOGRAM_3X5.A;
-    const ox = startX + ci * (charW + gap);
-    for (let row = 0; row < 5; row++) {
-      const bits = glyph[row];
-      for (let col = 0; col < 3; col++) {
-        if ((bits >> (2 - col)) & 1) {
-          const px = ox + col * scale;
-          const py = startY + row * scale;
-          ctx.fillStyle = '#050712';
-          ctx.fillRect(px + 1, py + 1, scale, scale);
-          ctx.fillStyle = row < 2 ? '#ffffff' : (accentHex || '#fef08a');
-          ctx.fillRect(px, py, scale, scale);
-        }
-      }
-    }
+function setStyleIfChanged(el, prop, value) {
+  if (!el || !el.style) return;
+  if (el.style[prop] !== value) {
+    el.style[prop] = value;
   }
 }
 
@@ -7395,6 +73,7 @@ export class EndlessShopUI {
     this._partySlotRefs = [];
     this._formationBtnRefs = new Map();
     this._relicRowRefs = new Map();
+    this._relicSetPillRefs = new Map();
     this._companionCardRefs = new Map();
     this._artifactRowRefs = new Map();
     this._gearSlotRefs = new Map();
@@ -7408,6 +87,8 @@ export class EndlessShopUI {
     this._statRefs = new Map();
     this._refs = {};
 
+    this._syncCounter = 0;
+    this._modifierIconEntry = null;
     this._resetArmed = false;
     this._resetArmTimer = null;
     this._ascendArmed = false;
@@ -7420,6 +101,7 @@ export class EndlessShopUI {
     this._lastGearInvSig = '';
     this._lastGearSetSig = '';
     this._lastGearEquipSigs = new Map();
+    this._lastTrophySig = '';
     this._lastResolvedAscension = null;
     this._lastBountyCompleted = false;
     this._lastMerchantUid = null;
@@ -8462,9 +1144,15 @@ export class EndlessShopUI {
     dot.className = 'endless-affordable-dot hidden';
     dot.setAttribute('aria-hidden', 'true');
 
+    const eventDot = document.createElement('span');
+    eventDot.className = 'endless-event-alert-dot';
+    eventDot.setAttribute('aria-hidden', 'true');
+    eventDot.title = 'Active Bounty or Wandering Merchant waiting';
+
     toggle.appendChild(icon);
     toggle.appendChild(label);
     toggle.appendChild(dot);
+    toggle.appendChild(eventDot);
 
     toggle.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -8474,6 +1162,7 @@ export class EndlessShopUI {
     this.root.appendChild(toggle);
     this._refs.shopToggle = toggle;
     this._refs.affordableDot = dot;
+    this._refs.eventAlertDot = eventDot;
   }
 
   _buildShopDrawer() {
@@ -8651,6 +1340,14 @@ export class EndlessShopUI {
       btn.appendChild(labelSpan);
       btn._labelSpan = labelSpan;
 
+      if (tabDef.id === 'items') {
+        const dot = document.createElement('span');
+        dot.className = 'endless-tab-dot is-items hidden';
+        dot.setAttribute('aria-hidden', 'true');
+        btn.appendChild(dot);
+        this._refs.itemsTabDot = dot;
+      }
+
       if (tabDef.id === 'gear') {
         const dot = document.createElement('span');
         dot.className = 'endless-tab-dot is-gear hidden';
@@ -8659,9 +1356,17 @@ export class EndlessShopUI {
         this._refs.gearTabDot = dot;
       }
 
+      if (tabDef.id === 'companions') {
+        const dot = document.createElement('span');
+        dot.className = 'endless-tab-dot is-allies hidden';
+        dot.setAttribute('aria-hidden', 'true');
+        btn.appendChild(dot);
+        this._refs.companionsTabDot = dot;
+      }
+
       if (tabDef.id === 'ascend') {
         const dot = document.createElement('span');
-        dot.className = 'endless-tab-dot hidden';
+        dot.className = 'endless-tab-dot is-ascend hidden';
         dot.setAttribute('aria-hidden', 'true');
         btn.appendChild(dot);
         this._refs.ascendTabDot = dot;
@@ -9132,12 +1837,17 @@ export class EndlessShopUI {
     enhLvEl.className = 'endless-gear-enh-lv hidden';
     enhLvEl.textContent = '+0';
 
+    const deltaBadge = document.createElement('span');
+    deltaBadge.className = 'endless-gear-delta-badge hidden';
+    deltaBadge.textContent = '+0';
+
     const upBadge = document.createElement('span');
     upBadge.className = 'endless-gear-up-badge hidden';
     upBadge.textContent = 'UP!';
 
     top.appendChild(nameEl);
     top.appendChild(enhLvEl);
+    top.appendChild(deltaBadge);
     top.appendChild(upBadge);
 
     const sub = document.createElement('div');
@@ -9169,8 +1879,9 @@ export class EndlessShopUI {
 
     const enhBtn = document.createElement('button');
     enhBtn.type = 'button';
-    enhBtn.className = 'endless-gear-act-btn is-enhance hidden';
+    enhBtn.className = 'endless-gear-act-btn is-enhance';
     enhBtn.textContent = '+1';
+    enhBtn.disabled = true;
 
     const salvageBtn = document.createElement('button');
     salvageBtn.type = 'button';
@@ -9185,6 +1896,7 @@ export class EndlessShopUI {
       iconWrap,
       nameEl,
       enhLvEl,
+      deltaBadge,
       upBadge,
       rarityPill,
       setTagEl,
@@ -9223,7 +1935,7 @@ export class EndlessShopUI {
     return rowRef;
   }
 
-  _patchGearBagRow(rowRef, item) {
+  _patchGearBagRow(rowRef, item, equippedMap = null) {
     rowRef.item = item;
     if (rowRef.renderedSlot !== item.slot) {
       rowRef.renderedSlot = item.slot;
@@ -9235,27 +1947,44 @@ export class EndlessShopUI {
     const slotLabel = item.slotMeta?.label || GEAR_SLOT_DEFAULTS[item.slot]?.label || String(item.slot || 'GEAR').toUpperCase();
     const lv = Math.max(0, Math.floor(Number(item.enhanceLevel) || 0));
     const isUpgrade = Boolean(item.isUpgradeOverEquipped);
+    const delta = resolveGearPowerDelta(item, equippedMap);
 
     rowRef.row.classList.toggle('is-upgrade', isUpgrade);
-    rowRef.row.style.borderColor = rarityColor;
-    rowRef.iconWrap.style.borderColor = rarityColor;
+    setStyleIfChanged(rowRef.row, 'borderColor', rarityColor);
+    setStyleIfChanged(rowRef.iconWrap, 'borderColor', rarityColor);
 
     setTextIfChanged(rowRef.nameEl, item.name || `${rarityLabel} ${slotLabel}`);
     rowRef.enhLvEl.classList.toggle('hidden', lv <= 0);
     if (lv > 0) {
       setTextIfChanged(rowRef.enhLvEl, `+${lv}`);
     }
+
+    if (rowRef.deltaBadge) {
+      if (delta > 0) {
+        rowRef.deltaBadge.classList.remove('hidden', 'is-neg');
+        rowRef.deltaBadge.classList.add('is-pos');
+        setTextIfChanged(rowRef.deltaBadge, `+${formatEndlessNumber(delta)}`);
+      } else if (delta < 0) {
+        rowRef.deltaBadge.classList.remove('hidden', 'is-pos');
+        rowRef.deltaBadge.classList.add('is-neg');
+        setTextIfChanged(rowRef.deltaBadge, `-${formatEndlessNumber(Math.abs(delta))}`);
+      } else {
+        rowRef.deltaBadge.classList.add('hidden');
+        rowRef.deltaBadge.classList.remove('is-pos', 'is-neg');
+      }
+    }
+
     rowRef.upBadge.classList.toggle('hidden', !isUpgrade);
 
-    rowRef.rarityPill.style.borderColor = rarityColor;
-    rowRef.rarityPill.style.color = rarityColor;
+    setStyleIfChanged(rowRef.rarityPill, 'borderColor', rarityColor);
+    setStyleIfChanged(rowRef.rarityPill, 'color', rarityColor);
     setTextIfChanged(rowRef.rarityPill, rarityLabel);
 
     if (item.setMeta && item.setMeta.name) {
       const accent = item.setMeta.accentHex || '#facc15';
       rowRef.setTagEl.classList.remove('hidden');
-      rowRef.setTagEl.style.borderColor = accent;
-      rowRef.setTagEl.style.color = accent;
+      setStyleIfChanged(rowRef.setTagEl, 'borderColor', accent);
+      setStyleIfChanged(rowRef.setTagEl, 'color', accent);
       setTextIfChanged(rowRef.setTagEl, item.setMeta.name);
     } else {
       rowRef.setTagEl.classList.add('hidden');
@@ -9268,21 +1997,29 @@ export class EndlessShopUI {
     rowRef.equipBtn.classList.toggle('is-upgrade', isUpgrade);
     setTextIfChanged(rowRef.equipBtn, 'EQUIP');
 
-    const canEnhance = Boolean(item.canEnhance && !item.isMaxEnhanced);
-    rowRef.enhBtn.classList.toggle('hidden', !canEnhance);
-    if (canEnhance) {
+    // Keep Bag +1 enhance button permanently mounted (disabled when unaffordable/maxed)
+    // so SALVAGE never shifts horizontally during rapid clicks.
+    const isMax = Boolean(item.isMaxEnhanced || lv >= 20);
+    const canEnhance = Boolean(!isMax && item.canEnhance);
+    rowRef.enhBtn.classList.remove('hidden');
+    rowRef.enhBtn.classList.toggle('is-maxed', isMax);
+    if (isMax) {
+      setTextIfChanged(rowRef.enhBtn, 'MAX');
+      rowRef.enhBtn.disabled = true;
+    } else {
       const enhCost = Math.max(0, Math.floor(Number(item.enhanceCost) || 0));
       setTextIfChanged(rowRef.enhBtn, `+1 (${formatEndlessNumber(enhCost)}D)`);
-      rowRef.enhBtn.disabled = false;
+      rowRef.enhBtn.disabled = !canEnhance;
     }
 
     const salvageVal = Math.max(0, Math.floor(Number(item.salvageValue) || 0));
     setTextIfChanged(rowRef.salvageBtn, `SALVAGE +${formatEndlessNumber(salvageVal)}`);
 
     const fullStats = formatGearBonuses(bonuses, 0);
+    const deltaTip = delta !== 0 ? ` (${delta > 0 ? '+' : '-'}${formatEndlessNumber(Math.abs(delta))} VS EQUIPPED)` : '';
     const tip =
       `${item.name || slotLabel}${lv > 0 ? ` +${lv}` : ''} [${rarityLabel} ${slotLabel}] ` +
-      `STG ${item.stage || 1} | PWR ${formatEndlessNumber(item.power || 0)}` +
+      `STG ${item.stage || 1} | PWR ${formatEndlessNumber(item.power || 0)}${deltaTip}` +
       (fullStats ? ` | ${fullStats}` : '') +
       (item.setMeta?.name ? ` | SET: ${item.setMeta.name}` : '');
     if (rowRef.row.title !== tip) {
@@ -9599,7 +2336,7 @@ export class EndlessShopUI {
 
     const noteEl = document.createElement('div');
     noteEl.className = 'endless-ascend-note';
-    noteEl.textContent = 'RESETS STAGE, GOLD & ALLIES - KEEPS SHARDS & ETERNAL ARTIFACTS';
+    noteEl.textContent = 'RESETS STAGE, GOLD & ALLIES - KEEPS SHARDS, ARTIFACTS, GEAR, DUST, STARS & TROPHIES';
 
     const ascendBtn = document.createElement('button');
     ascendBtn.type = 'button';
@@ -10095,15 +2832,41 @@ export class EndlessShopUI {
     return timer;
   }
 
-  _triggerBuyFeedback(cardEl, btnEl, badgeText, isRecruit = false) {
+  _captureAnchorRect(el) {
+    if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+    try {
+      const r = el.getBoundingClientRect();
+      if (r && r.width > 0 && r.height > 0) {
+        return { left: r.left, top: r.top, width: r.width, height: r.height };
+      }
+    } catch {
+      // Ignore rect failures in headless/Node contexts
+    }
+    return null;
+  }
+
+  _restartCssClass(el, className) {
+    if (!el || !el.classList) return;
+    if (el.classList.contains(className)) {
+      el.classList.remove(className);
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => {
+          el.classList?.add(className);
+        });
+      } else {
+        el.classList.add(className);
+      }
+    } else {
+      el.classList.add(className);
+    }
+  }
+
+  _triggerBuyFeedback(cardEl, btnEl, badgeText, isRecruit = false, preCapturedRect = null) {
     const targets = [cardEl, btnEl].filter(Boolean);
     for (let i = 0; i < targets.length; i++) {
       const el = targets[i];
       if (!el.classList) continue;
-      el.classList.remove('is-buy-pulse');
-      // Force synchronous reflow so consecutive purchases cleanly restart the CSS flare
-      void el.offsetWidth;
-      el.classList.add('is-buy-pulse');
+      this._restartCssClass(el, 'is-buy-pulse');
       if (el._buyPulseTimer) {
         clearTimeout(el._buyPulseTimer);
         this._ephemeralTimers.delete(el._buyPulseTimer);
@@ -10114,29 +2877,37 @@ export class EndlessShopUI {
       }, 460);
     }
 
-    if (badgeText && btnEl && this._hasDom()) {
-      this._spawnFloatingMicroBadge(btnEl, badgeText, isRecruit);
+    if (badgeText && (preCapturedRect || btnEl) && this._hasDom()) {
+      this._spawnFloatingMicroBadge(preCapturedRect || btnEl, badgeText, isRecruit);
     }
   }
 
-  _spawnFloatingMicroBadge(anchorEl, text, isRecruit = false) {
-    if (!this._hasDom() || !anchorEl) return;
+  _spawnFloatingMicroBadge(anchorOrRect, text, isRecruit = false) {
+    if (!this._hasDom() || !anchorOrRect) return;
     const badge = document.createElement('div');
-    badge.className = isRecruit ? 'endless-micro-badge is-recruit' : 'endless-micro-badge';
+    badge.className = isRecruit
+      ? 'endless-micro-badge endless-float-badge is-recruit'
+      : 'endless-micro-badge endless-float-badge';
     badge.textContent = String(text);
 
     const fxLayer = this._refs.fxLayer;
     const rootRect = this.root && typeof this.root.getBoundingClientRect === 'function'
       ? this.root.getBoundingClientRect()
       : null;
-    const btnRect = typeof anchorEl.getBoundingClientRect === 'function'
-      ? anchorEl.getBoundingClientRect()
-      : null;
+    const isPreRect =
+      typeof anchorOrRect === 'object' &&
+      typeof anchorOrRect.getBoundingClientRect !== 'function' &&
+      Number.isFinite(Number(anchorOrRect.width));
+    const btnRect = isPreRect
+      ? anchorOrRect
+      : (typeof anchorOrRect.getBoundingClientRect === 'function'
+          ? anchorOrRect.getBoundingClientRect()
+          : null);
 
     if (fxLayer && rootRect && btnRect && rootRect.width > 0 && btnRect.width > 0) {
       const rawLeft = (btnRect.left - rootRect.left) + btnRect.width * 0.5;
-      const clampedLeft = Math.max(36, Math.min(rootRect.width - 36, rawLeft));
-      const clampedTop = Math.max(10, (btnRect.top - rootRect.top) - 4);
+      const clampedLeft = Math.max(44, Math.min(rootRect.width - 44, rawLeft));
+      const clampedTop = Math.max(8, (btnRect.top - rootRect.top) - 12);
       badge.style.left = `${Math.round(clampedLeft)}px`;
       badge.style.top = `${Math.round(clampedTop)}px`;
       fxLayer.appendChild(badge);
@@ -10144,8 +2915,8 @@ export class EndlessShopUI {
       badge.style.left = '50%';
       badge.style.top = '50%';
       fxLayer.appendChild(badge);
-    } else if (anchorEl.parentNode) {
-      anchorEl.parentNode.appendChild(badge);
+    } else if (!isPreRect && anchorOrRect.parentNode) {
+      anchorOrRect.parentNode.appendChild(badge);
     }
 
     this._scheduleEphemeral(() => {
@@ -10157,34 +2928,38 @@ export class EndlessShopUI {
 
   _handleToggleAutoBoss() {
     this._playSfx('playUiClick');
+    const syncBefore = this._syncCounter;
     if (typeof this.manager?.toggleAutoBoss === 'function') {
       this.manager.toggleAutoBoss();
     } else if (this.manager?.economy) {
       this.manager.economy.autoBoss = !this.manager.economy.autoBoss;
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleChallengeBoss() {
     this._playSfx('playUiConfirm');
+    const syncBefore = this._syncCounter;
     if (typeof this.manager?.challengeBoss === 'function') {
       this.manager.challengeBoss();
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleSetBulkMode(mode) {
     this._playSfx('playUiClick');
+    const syncBefore = this._syncCounter;
     if (typeof this.manager?.setBulkMode === 'function') {
       this.manager.setBulkMode(mode);
     } else if (this.manager?.economy) {
       this.manager.economy.bulkMode = mode;
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleBuyRelic(relicId) {
     const bulkMode = this.manager?.economy?.bulkMode || this._lastSnapshot?.bulkMode || 'x1';
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.buyRelic === 'function') {
       res = this.manager.buyRelic(relicId);
@@ -10222,7 +2997,7 @@ export class EndlessShopUI {
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleCompanionPrimary(companionId) {
@@ -10233,6 +3008,7 @@ export class EndlessShopUI {
       ? (this._lastSnapshot?.companions || this._lastSnapshot?.companionRoster || []).find((c) => c.id === companionId)
       : null;
     const unlocked = Boolean(state?.unlocked ?? snapComp?.unlocked);
+    const syncBefore = this._syncCounter;
 
     let res = null;
     if (unlocked) {
@@ -10282,10 +3058,11 @@ export class EndlessShopUI {
         this._showPartyNotice(`REACH STAGE ${res.unlockStage} TO RECRUIT`);
       }
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleCompanionDeploy(companionId) {
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.toggleCompanionDeploy === 'function') {
       res = this.manager.toggleCompanionDeploy(companionId);
@@ -10312,10 +3089,11 @@ export class EndlessShopUI {
       this._playSfx('playUiBack');
       this._showPartyNotice('PARTY FULL (3/3) - BENCH A COMPANION FIRST');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleCompanionPromote(companionId) {
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.promoteCompanion === 'function') {
       res = this.manager.promoteCompanion(companionId);
@@ -10343,11 +3121,12 @@ export class EndlessShopUI {
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleSetSquadFormation(formationId) {
     if (!formationId) return;
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.setSquadFormation === 'function') {
       res = this.manager.setSquadFormation(formationId);
@@ -10365,10 +3144,11 @@ export class EndlessShopUI {
         this._triggerBuyFeedback(null, btn, null, false);
       }
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleTriggerSquadOverdrive() {
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.triggerSquadOverdrive === 'function') {
       res = this.manager.triggerSquadOverdrive();
@@ -10383,7 +3163,7 @@ export class EndlessShopUI {
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _showPartyNotice(msg) {
@@ -10451,6 +3231,7 @@ export class EndlessShopUI {
 
     this._disarmResetConfirm();
     this._playSfx('playUiBack');
+    const syncBefore = this._syncCounter;
     if (typeof this.manager?.resetEndlessRun === 'function') {
       this.manager.resetEndlessRun();
     } else if (this.manager?.economy) {
@@ -10458,7 +3239,7 @@ export class EndlessShopUI {
       this.manager?.companions?.reset?.();
       this.manager.economy.saveToStorage(this.manager?.companions?.exportSnapshot?.());
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _disarmAscendConfirm() {
@@ -10480,12 +3261,10 @@ export class EndlessShopUI {
     }
   }
 
-  _triggerAscendFlash(shardsGained = 0) {
+  _triggerAscendFlash(shardsGained = 0, preCapturedBtnRect = null) {
     const card = this._refs.ascendCard;
     if (card && card.classList) {
-      card.classList.remove('is-ascend-flash');
-      void card.offsetWidth;
-      card.classList.add('is-ascend-flash');
+      this._restartCssClass(card, 'is-ascend-flash');
       if (card._ascendFlashTimer) {
         clearTimeout(card._ascendFlashTimer);
         this._ephemeralTimers.delete(card._ascendFlashTimer);
@@ -10497,13 +3276,13 @@ export class EndlessShopUI {
     }
     const btn = this._refs.ascendBtn;
     const badgeText = shardsGained > 0 ? `+${formatEndlessNumber(shardsGained)} SHARDS!` : 'ASCENDED!';
-    if (btn) {
-      this._triggerBuyFeedback(null, btn, badgeText, false);
+    if (btn || preCapturedBtnRect) {
+      this._triggerBuyFeedback(null, btn, badgeText, false, preCapturedBtnRect);
     }
   }
 
   _handleAscendClick() {
-    const state = this._resolveState(this._lastSnapshot);
+    const state = this._resolveState(this._lastSnapshot, true);
     const asc = state.ascension;
     if (!asc || !asc.canAscend) {
       this._playSfx('playUiBack');
@@ -10531,7 +3310,9 @@ export class EndlessShopUI {
     }
 
     const previewGained = asc.pendingShards;
+    const preRect = this._captureAnchorRect(this._refs.ascendBtn);
     this._disarmAscendConfirm();
+    const syncBefore = this._syncCounter;
 
     let res = null;
     if (typeof this.manager?.performAscension === 'function') {
@@ -10549,14 +3330,15 @@ export class EndlessShopUI {
     if (ok) {
       this._playSfx('playUiConfirm');
       const gained = Math.max(0, Math.floor(Number(res?.shardsGained ?? previewGained) || 0));
-      this._triggerAscendFlash(gained);
+      this._triggerAscendFlash(gained, preRect);
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleBuyEternalArtifact(artifactId) {
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.buyEternalArtifact === 'function') {
       res = this.manager.buyEternalArtifact(artifactId);
@@ -10577,11 +3359,13 @@ export class EndlessShopUI {
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleEquipGear(uid, rowEl = null, btnEl = null, itemHint = null) {
     if (!uid) return;
+    const preBtnRect = this._captureAnchorRect(btnEl);
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.equipGearItem === 'function') {
       res = this.manager.equipGearItem(uid);
@@ -10601,14 +3385,16 @@ export class EndlessShopUI {
       const slotRef = slotId ? this._gearSlotRefs.get(slotId) : null;
       const anchor = slotRef?.card || (btnEl?.isConnected ? btnEl : this._refs.gearEquipBestBtn);
       const isUp = Boolean(itemHint?.isUpgradeOverEquipped);
-      this._triggerBuyFeedback(slotRef?.card || rowEl, anchor, isUp ? 'UPGRADED!' : 'EQUIPPED!', isUp);
+      const rect = this._captureAnchorRect(slotRef?.card) || preBtnRect;
+      this._triggerBuyFeedback(slotRef?.card || rowEl, anchor, isUp ? 'UPGRADED!' : 'EQUIPPED!', isUp, rect);
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleEquipBestGear() {
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.equipBestGear === 'function') {
       res = this.manager.equipBestGear();
@@ -10633,11 +3419,13 @@ export class EndlessShopUI {
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleEnhanceGear(uid, cardEl = null, btnEl = null, itemHint = null) {
     if (!uid) return;
+    const preBtnRect = this._captureAnchorRect(btnEl);
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.enhanceGearItem === 'function') {
       res = this.manager.enhanceGearItem(uid);
@@ -10659,15 +3447,18 @@ export class EndlessShopUI {
       );
       const isMilestone = nextLv >= 20 || nextLv % 5 === 0;
       const anchor = (btnEl && btnEl.isConnected !== false) ? btnEl : this._refs.gearDustMetric;
-      this._triggerBuyFeedback(cardEl, anchor, `+${nextLv}!`, isMilestone);
+      this._triggerBuyFeedback(cardEl, anchor, `+${nextLv}!`, isMilestone, preBtnRect);
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleSalvageGear(uid, rowEl = null, btnEl = null, itemHint = null) {
     if (!uid) return;
+    // Capture click rect BEFORE salvage removes the bag row from DOM!
+    const preBtnRect = this._captureAnchorRect(btnEl);
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.salvageGearItem === 'function') {
       res = this.manager.salvageGearItem(uid);
@@ -10685,21 +3476,17 @@ export class EndlessShopUI {
       this._playSfx('playUiConfirm');
       const dust = Math.max(0, Math.floor(Number(res?.dustGained ?? itemHint?.salvageValue) || 0));
       const badge = dust > 0 ? `+${formatEndlessNumber(dust)} DUST` : 'SALVAGED!';
-      const hasLiveBtn = Boolean(
-        btnEl &&
-          btnEl.isConnected !== false &&
-          typeof btnEl.getBoundingClientRect === 'function' &&
-          btnEl.getBoundingClientRect().width > 0
-      );
-      const anchor = hasLiveBtn ? btnEl : (this._refs.gearDustMetric || this._refs.gearSalvageLowerBtn);
-      this._triggerBuyFeedback(this._refs.gearDustMetric, anchor, badge, false);
+      const anchor = this._refs.gearDustMetric || this._refs.gearSalvageLowerBtn;
+      this._triggerBuyFeedback(this._refs.gearDustMetric, anchor, badge, false, preBtnRect);
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleSalvageAllLowerGear() {
+    const preBtnRect = this._captureAnchorRect(this._refs.gearSalvageLowerBtn);
+    const syncBefore = this._syncCounter;
     let res = null;
     if (typeof this.manager?.salvageAllLowerGear === 'function') {
       res = this.manager.salvageAllLowerGear();
@@ -10719,15 +3506,18 @@ export class EndlessShopUI {
       const badge = dust > 0
         ? `+${formatEndlessNumber(dust)} DUST (${count})`
         : `SALVAGED ${count}!`;
-      this._triggerBuyFeedback(this._refs.gearDustMetric, btn || this._refs.gearDustMetric, badge, true);
+      this._triggerBuyFeedback(this._refs.gearDustMetric, btn || this._refs.gearDustMetric, badge, true, preBtnRect);
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleCollectOfflineLoot() {
+    // Capture button rect BEFORE manager.claimOfflineLoot() synchronously hides offlineModal!
+    const preBtnRect = this._captureAnchorRect(this._refs.offlineCollectBtn);
     this._playSfx('playUiConfirm');
+    const syncBefore = this._syncCounter;
     let claimed = false;
     if (typeof this.manager?.claimOfflineLoot === 'function') {
       const res = this.manager.claimOfflineLoot();
@@ -10742,14 +3532,15 @@ export class EndlessShopUI {
     if (this._lastSnapshot && typeof this._lastSnapshot === 'object' && !this.manager?.pendingOfflineLoot) {
       this._lastSnapshot = { ...this._lastSnapshot, pendingOfflineLoot: null };
     }
-    if (claimed && this._refs.offlineCollectBtn) {
-      this._spawnFloatingMicroBadge(this._refs.offlineCollectBtn, 'LOOT CLAIMED!', false);
+    if (claimed && (preBtnRect || this._refs.offlineCollectBtn)) {
+      this._spawnFloatingMicroBadge(preBtnRect || this._refs.offlineCollectBtn, 'LOOT CLAIMED!', false);
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleContinueOfflineLoot() {
     this._playSfx('playUiConfirm');
+    const syncBefore = this._syncCounter;
     const hasPending = Boolean(this.manager?.pendingOfflineLoot || this._lastSnapshot?.pendingOfflineLoot);
     if (hasPending && typeof this.manager?.claimOfflineLoot === 'function') {
       this.manager.claimOfflineLoot();
@@ -10764,12 +3555,14 @@ export class EndlessShopUI {
     if (this._lastSnapshot && typeof this._lastSnapshot === 'object' && !this.manager?.pendingOfflineLoot) {
       this._lastSnapshot = { ...this._lastSnapshot, pendingOfflineLoot: null };
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleClaimActiveBounty() {
     if (!this._lastBountyCompleted) return;
     if (typeof this.manager?.claimActiveBounty !== 'function') return;
+    const preRect = this._captureAnchorRect(this._refs.bountyPill);
+    const syncBefore = this._syncCounter;
     const res = this.manager.claimActiveBounty();
     if (res === false || (res && typeof res === 'object' && res.ok === false)) {
       return;
@@ -10779,66 +3572,78 @@ export class EndlessShopUI {
       this._refs.bountyPill,
       this._refs.bountyPill,
       '+REWARD!',
-      false
+      false,
+      preRect
     );
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleBuyMerchantOffer() {
     if (this._refs.merchantBuyBtn?.disabled) return;
     if (typeof this.manager?.buyMerchantOffer !== 'function') return;
+    // Capture rect BEFORE manager.buyMerchantOffer() synchronously hides merchantCard!
+    const preBtnRect = this._captureAnchorRect(this._refs.merchantBuyBtn) || this._captureAnchorRect(this._refs.merchantCard);
+    const offerTypeBefore = this._lastMerchantOfferType || '';
+    const syncBefore = this._syncCounter;
     const res = this.manager.buyMerchantOffer();
     if (res === false || (res && typeof res === 'object' && res.ok === false)) {
       return;
     }
     this._playSfx('playUiConfirm');
-    const offerType = res?.offerType || this._lastMerchantOfferType || '';
+    const offerType = res?.offerType || offerTypeBefore;
     const isElixir = offerType === 'dps_elixir';
     const badgeText = isElixir ? '3X DPS!' : '+GEAR CHEST!';
     this._triggerBuyFeedback(
       this._refs.merchantCard,
       this._refs.merchantBuyBtn,
       badgeText,
-      isElixir
+      isElixir,
+      preBtnRect
     );
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleDismissMerchantOffer() {
     this._playSfx('playUiBack');
+    const syncBefore = this._syncCounter;
     this.manager?.dismissMerchantOffer?.();
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleEnterTrial(trialId, cardEl = null, btnEl = null) {
     if (!trialId) return;
     if (typeof this.manager?.enterTrial !== 'function') return;
+    // Capture click rect BEFORE manager.enterTrial() synchronously closes shopShell!
+    const targetCard = cardEl || this._trialCardRefs.get(trialId)?.card || null;
+    const targetBtn = btnEl || this._trialCardRefs.get(trialId)?.enterBtn || null;
+    const preBtnRect = this._captureAnchorRect(targetBtn) || this._captureAnchorRect(targetCard);
+    const syncBefore = this._syncCounter;
     const res = this.manager.enterTrial(trialId);
     const ok = res !== false && !(res && typeof res === 'object' && res.ok === false);
     if (ok) {
       this._playSfx('playUiConfirm');
-      const targetCard = cardEl || this._trialCardRefs.get(trialId)?.card || null;
-      const targetBtn = btnEl || this._trialCardRefs.get(trialId)?.enterBtn || null;
-      const badgeAnchor = this.drawerOpen && targetBtn ? targetBtn : (this._refs.trialHud || targetBtn);
       this._triggerBuyFeedback(targetCard, targetBtn, null, true);
+      const badgeAnchor = preBtnRect || this._refs.trialHud || targetBtn;
       if (badgeAnchor) {
         this._spawnFloatingMicroBadge(badgeAnchor, 'PORTAL OPEN!', true);
       }
     } else {
       this._playSfx('playUiBack');
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleExitTrial() {
     if (typeof this.manager?.exitTrial !== 'function') return;
     this._playSfx('playUiBack');
+    const syncBefore = this._syncCounter;
     this.manager.exitTrial({ completedFull: false });
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _handleDismissTrialResult() {
     this._playSfx('playUiConfirm');
+    const syncBefore = this._syncCounter;
     if (typeof this.manager?.dismissTrialResult === 'function') {
       this.manager.dismissTrialResult();
     } else if (this._lastSnapshot?.trials && typeof this._lastSnapshot.trials === 'object') {
@@ -10847,7 +3652,7 @@ export class EndlessShopUI {
         trials: { ...this._lastSnapshot.trials, lastResult: null }
       };
     }
-    this._resyncNow();
+    this._resyncIfNeeded(syncBefore);
   }
 
   _resyncNow() {
@@ -10855,6 +3660,38 @@ export class EndlessShopUI {
       ? this.manager.getUiSnapshot()
       : this._lastSnapshot;
     this.sync(snap, false);
+  }
+
+  _resyncIfNeeded(syncBefore) {
+    if (this._syncCounter === syncBefore) {
+      this._resyncNow();
+    }
+  }
+
+  _clearTransientUiState() {
+    this._disarmResetConfirm();
+    this._disarmAscendConfirm();
+    if (this._partyNoticeTimer) {
+      clearTimeout(this._partyNoticeTimer);
+      this._partyNoticeTimer = null;
+    }
+    if (this._refs.partyNotice) {
+      this._refs.partyNotice.classList.add('hidden');
+    }
+    if (this._saveFlashTimer) {
+      clearTimeout(this._saveFlashTimer);
+      this._saveFlashTimer = null;
+    }
+    if (this._refs.saveBtn) {
+      setTextIfChanged(this._refs.saveBtn, 'SAVE RUN');
+    }
+    for (const timer of this._ephemeralTimers) {
+      clearTimeout(timer);
+    }
+    this._ephemeralTimers.clear();
+    if (this._refs.fxLayer) {
+      this._refs.fxLayer.textContent = '';
+    }
   }
 
   _syncTabVisibility() {
@@ -10878,8 +3715,11 @@ export class EndlessShopUI {
     }
     if (!this.visible) {
       this.setDrawerOpen(false);
-      this._disarmResetConfirm();
-      this._disarmAscendConfirm();
+      this._clearTransientUiState();
+      if (this.root) {
+        this.root.classList.remove('has-event-alert');
+      }
+      this._lastSnapshot = null;
     }
   }
 
@@ -10929,7 +3769,7 @@ export class EndlessShopUI {
     }
   }
 
-  _resolveState(snapshot) {
+  _resolveState(snapshot, includeDrawerTabs = true) {
     const snap = snapshot && typeof snapshot === 'object' ? snapshot : null;
     const mgr = this.manager || null;
     const econ = mgr?.economy || null;
@@ -10982,15 +3822,27 @@ export class EndlessShopUI {
       companionDps: 0,
       goldPerSec: 0
     };
-    const stats = snap?.stats || (typeof econ?.getComputedStats === 'function' ? econ.getComputedStats() : null);
+    const stats = includeDrawerTabs
+      ? (snap?.stats || (typeof econ?.getComputedStats === 'function' ? econ.getComputedStats() : null))
+      : (snap?.stats || null);
 
     let relicsView = Array.isArray(snap?.relics) ? snap.relics : null;
-    if (!relicsView) {
+    let itemsActionable = false;
+    if (relicsView) {
+      for (let i = 0; i < relicsView.length; i++) {
+        const item = relicsView[i];
+        if (item && (item.canAfford ?? item.quote?.canAfford)) {
+          itemsActionable = true;
+          break;
+        }
+      }
+    } else if (includeDrawerTabs) {
       relicsView = ENDLESS_RELICS.map((r) => {
         const level = econ ? econ.getRelicLevel(r.id) : 0;
         const quote = econ
           ? econ.getRelicCost(r.id, bulkMode)
           : { count: 1, totalCost: r.baseCost, canAfford: gold >= r.baseCost, nextCost: r.baseCost };
+        if (quote.canAfford) itemsActionable = true;
         return {
           id: r.id,
           level,
@@ -11001,27 +3853,72 @@ export class EndlessShopUI {
           bonusText: r.formatBonus(level)
         };
       });
+    } else {
+      relicsView = [];
+      for (let i = 0; i < ENDLESS_RELICS.length; i++) {
+        const r = ENDLESS_RELICS[i];
+        const canAff = econ
+          ? Boolean(econ.getRelicCost(r.id, bulkMode)?.canAfford)
+          : gold >= r.baseCost;
+        if (canAff) {
+          itemsActionable = true;
+          break;
+        }
+      }
     }
-
-    let companions = Array.isArray(snap?.companions)
-      ? snap.companions
-      : (Array.isArray(snap?.companionRoster) ? snap.companionRoster : null);
-    if (!companions && mgr?.companions && typeof mgr.companions.getRosterView === 'function') {
-      companions = mgr.companions.getRosterView(econ);
-    }
-    if (!companions) companions = [];
-
-    const maxActiveSlots = Math.max(1, Math.floor(Number(snap?.maxActiveSlots ?? 3) || 3));
-    const activeSlotsCount = Number.isFinite(Number(snap?.activeCompanionCount))
-      ? Number(snap.activeCompanionCount)
-      : (Array.isArray(snap?.activeSlots)
-        ? snap.activeSlots.length
-        : companions.filter((c) => c.deployed).length);
 
     let rawHudUnits = Array.isArray(snap?.activeCompanionUnits) ? snap.activeCompanionUnits : null;
     if (!rawHudUnits && mgr?.companions && typeof mgr.companions.getActiveHudUnits === 'function') {
       rawHudUnits = mgr.companions.getActiveHudUnits();
     }
+
+    let companions = Array.isArray(snap?.companions)
+      ? snap.companions
+      : (Array.isArray(snap?.companionRoster) ? snap.companionRoster : null);
+    if (!companions && (includeDrawerTabs || !rawHudUnits) && mgr?.companions && typeof mgr.companions.getRosterView === 'function') {
+      companions = mgr.companions.getRosterView(econ);
+    }
+    if (!companions) companions = [];
+
+    const maxActiveSlots = Math.max(1, Math.floor(Number(snap?.maxActiveSlots ?? mgr?.companions?.maxActiveSlots ?? 3) || 3));
+    const activeSlotsCount = Number.isFinite(Number(snap?.activeCompanionCount))
+      ? Number(snap.activeCompanionCount)
+      : (Array.isArray(snap?.activeSlots)
+        ? snap.activeSlots.length
+        : (Array.isArray(mgr?.companions?.activeSlots) && companions.length === 0
+          ? mgr.companions.activeSlots.length
+          : companions.filter((c) => c.deployed).length));
+
+    let alliesActionable = false;
+    let alliesUpgradeAffordable = false;
+    const hasOpenAllySlot = activeSlotsCount < maxActiveSlots;
+    if (companions.length > 0) {
+      for (let i = 0; i < companions.length; i++) {
+        const c = companions[i];
+        if (!c) continue;
+        const canRecruit = Boolean(!c.unlocked && !c.stageLocked && c.canAffordRecruit);
+        const canPromote = Boolean(c.unlocked && c.promoteQuote?.canPromote && !c.promoteQuote?.isMaxStar);
+        const canDeployIntoOpenSlot = Boolean(hasOpenAllySlot && c.unlocked && !c.deployed);
+        if (canRecruit || canPromote || canDeployIntoOpenSlot) {
+          alliesActionable = true;
+        }
+        if (c.unlocked && c.canAffordUpgrade) {
+          alliesUpgradeAffordable = true;
+        }
+        if (alliesActionable && alliesUpgradeAffordable) break;
+      }
+    } else if (mgr?.companions?.rosterState) {
+      const rs = mgr.companions.rosterState;
+      const activeSet = new Set(Array.isArray(mgr.companions.activeSlots) ? mgr.companions.activeSlots : []);
+      for (const cid of Object.keys(rs)) {
+        const st = rs[cid];
+        if (hasOpenAllySlot && st?.unlocked && !activeSet.has(cid)) {
+          alliesActionable = true;
+          break;
+        }
+      }
+    }
+
     if (!rawHudUnits) {
       rawHudUnits = companions
         .filter((c) => c.deployed)
@@ -11112,6 +4009,49 @@ export class EndlessShopUI {
       ? astralShards
       : (econ && econ.astralShards !== undefined ? astralShards : ascShards);
 
+    let anyArtifactAffordable = false;
+    let normalizedArtifacts = [];
+    if (Array.isArray(rawAsc?.artifacts)) {
+      if (includeDrawerTabs) {
+        normalizedArtifacts = rawAsc.artifacts.map((a, idx) => {
+          const level = Math.max(0, Math.floor(Number(a?.level) || 0));
+          const maxLevel = Math.max(1, Math.floor(Number(a?.maxLevel) || 1));
+          const isMaxed = Boolean(a?.isMaxed ?? (level >= maxLevel));
+          const cost = Math.max(0, Math.floor(Number(a?.cost) || 0));
+          const canAfford = Boolean(
+            !isMaxed && (a?.canAfford !== undefined ? a.canAfford : ascShards >= cost)
+          );
+          if (canAfford) anyArtifactAffordable = true;
+          return {
+            id: String(a?.id || `artifact_${idx}`),
+            name: String(a?.name || a?.id || `ARTIFACT ${idx + 1}`),
+            desc: String(a?.desc || ''),
+            level,
+            maxLevel,
+            cost,
+            isMaxed,
+            canAfford,
+            effectSummary: String(a?.effectSummary || ''),
+            iconCol: a?.iconCol
+          };
+        });
+      } else {
+        for (let i = 0; i < rawAsc.artifacts.length; i++) {
+          const a = rawAsc.artifacts[i];
+          if (!a) continue;
+          const level = Math.max(0, Math.floor(Number(a.level) || 0));
+          const maxLevel = Math.max(1, Math.floor(Number(a.maxLevel) || 1));
+          const isMaxed = Boolean(a.isMaxed ?? (level >= maxLevel));
+          const cost = Math.max(0, Math.floor(Number(a.cost) || 0));
+          const canAfford = Boolean(!isMaxed && (a.canAfford !== undefined ? a.canAfford : ascShards >= cost));
+          if (canAfford) {
+            anyArtifactAffordable = true;
+            break;
+          }
+        }
+      }
+    }
+
     const ascension = {
       canAscend: Boolean(rawAsc?.canAscend),
       unlockStage: Math.max(1, Math.floor(Number(rawAsc?.unlockStage) || 5)),
@@ -11124,29 +4064,7 @@ export class EndlessShopUI {
         Math.floor(Number(rawAsc?.totalAstralShards ?? ascShards) || ascShards)
       ),
       modifiers: rawAsc?.modifiers || null,
-      artifacts: Array.isArray(rawAsc?.artifacts)
-        ? rawAsc.artifacts.map((a, idx) => {
-            const level = Math.max(0, Math.floor(Number(a?.level) || 0));
-            const maxLevel = Math.max(1, Math.floor(Number(a?.maxLevel) || 1));
-            const isMaxed = Boolean(a?.isMaxed ?? (level >= maxLevel));
-            const cost = Math.max(0, Math.floor(Number(a?.cost) || 0));
-            const canAfford = Boolean(
-              !isMaxed && (a?.canAfford !== undefined ? a.canAfford : ascShards >= cost)
-            );
-            return {
-              id: String(a?.id || `artifact_${idx}`),
-              name: String(a?.name || a?.id || `ARTIFACT ${idx + 1}`),
-              desc: String(a?.desc || ''),
-              level,
-              maxLevel,
-              cost,
-              isMaxed,
-              canAfford,
-              effectSummary: String(a?.effectSummary || ''),
-              iconCol: a?.iconCol
-            };
-          })
-        : []
+      artifacts: normalizedArtifacts
     };
 
     const rawOffline = (snap && Object.prototype.hasOwnProperty.call(snap, 'pendingOfflineLoot'))
@@ -11167,31 +4085,36 @@ export class EndlessShopUI {
 
     const dirSnap =
       snap?.bossDirector ||
-      (typeof mgr?.bossDirector?.getDirectorSnapshot === 'function'
+      ((!snap?.realmModifier || includeDrawerTabs) && typeof mgr?.bossDirector?.getDirectorSnapshot === 'function'
         ? mgr.bossDirector.getDirectorSnapshot(stage, bestStage, realmObj)
         : null);
     const realmModifier = snap?.realmModifier || dirSnap?.modifier || null;
-    const bestStageTrophies = snap?.bestStageTrophies || dirSnap?.trophies || null;
-    const relicSets = Array.isArray(snap?.relicSets)
-      ? snap.relicSets
-      : (typeof econ?.getRelicSetSynergies === 'function' ? econ.getRelicSetSynergies() : []);
-    const relicMilestones =
-      snap?.relicMilestones && typeof snap.relicMilestones === 'object'
-        ? snap.relicMilestones
-        : (() => {
-            const map = {};
-            if (typeof econ?.getRelicMilestoneInfo === 'function') {
-              for (let i = 0; i < ENDLESS_RELICS.length; i++) {
-                const rid = ENDLESS_RELICS[i].id;
-                map[rid] = econ.getRelicMilestoneInfo(rid);
+    const bestStageTrophies = includeDrawerTabs ? (snap?.bestStageTrophies || dirSnap?.trophies || null) : null;
+    const relicSets = includeDrawerTabs
+      ? (Array.isArray(snap?.relicSets)
+          ? snap.relicSets
+          : (typeof econ?.getRelicSetSynergies === 'function' ? econ.getRelicSetSynergies() : []))
+      : [];
+    const relicMilestones = includeDrawerTabs
+      ? (snap?.relicMilestones && typeof snap.relicMilestones === 'object'
+          ? snap.relicMilestones
+          : (() => {
+              const map = {};
+              if (typeof econ?.getRelicMilestoneInfo === 'function') {
+                for (let i = 0; i < ENDLESS_RELICS.length; i++) {
+                  const rid = ENDLESS_RELICS[i].id;
+                  map[rid] = econ.getRelicMilestoneInfo(rid);
+                }
               }
-            }
-            return map;
-          })();
+              return map;
+            })())
+      : {};
 
     const gear = (snap && typeof snap.gear === 'object' && snap.gear)
       ? snap.gear
-      : (typeof mgr?.gear?.getGearSnapshot === 'function' ? mgr.gear.getGearSnapshot() : null);
+      : ((includeDrawerTabs || snap?.hasGearAction === undefined) && typeof mgr?.gear?.getGearSnapshot === 'function'
+        ? mgr.gear.getGearSnapshot()
+        : null);
     const forgeDust = Math.max(0, Math.floor(Number(snap?.forgeDust ?? gear?.forgeDust ?? mgr?.gear?.forgeDust ?? 0) || 0));
     const formattedForgeDust = String(
       snap?.formattedForgeDust ?? gear?.formattedForgeDust ?? formatEndlessNumber(forgeDust)
@@ -11299,25 +4222,29 @@ export class EndlessShopUI {
         ? mgr.companionEvo.getEvoSnapshot(econ, mgr?.gear || null, activeSlotsCount)
         : null);
 
-    const evoFormations = (Array.isArray(rawEvo?.formations) && rawEvo.formations.length > 0)
-      ? rawEvo.formations.map((f, idx) => ({
-          id: String(f?.id || `formation_${idx}`),
-          name: String(f?.name || f?.shortLabel || `FORMATION ${idx + 1}`).toUpperCase(),
-          shortLabel: String(f?.shortLabel || f?.name || `F${idx + 1}`).toUpperCase(),
-          accentHex: String(f?.accentHex || '#facc15'),
-          desc: String(f?.desc || '').toUpperCase()
-        }))
-      : DEFAULT_SQUAD_FORMATIONS;
     const evoFormationId = String(rawEvo?.formationId || rawEvo?.formation?.id || 'balanced_phalanx');
-    const activeFormation = (rawEvo?.formation && typeof rawEvo.formation === 'object')
-      ? {
-          id: String(rawEvo.formation.id || evoFormationId),
-          name: String(rawEvo.formation.name || rawEvo.formation.shortLabel || 'BALANCED PHALANX').toUpperCase(),
-          shortLabel: String(rawEvo.formation.shortLabel || rawEvo.formation.name || 'PHALANX').toUpperCase(),
-          accentHex: String(rawEvo.formation.accentHex || '#facc15'),
-          desc: String(rawEvo.formation.desc || '').toUpperCase()
-        }
-      : (evoFormations.find((f) => f.id === evoFormationId) || evoFormations[1] || evoFormations[0]);
+    const evoFormations = includeDrawerTabs
+      ? ((Array.isArray(rawEvo?.formations) && rawEvo.formations.length > 0)
+          ? rawEvo.formations.map((f, idx) => ({
+              id: String(f?.id || `formation_${idx}`),
+              name: String(f?.name || f?.shortLabel || `FORMATION ${idx + 1}`).toUpperCase(),
+              shortLabel: String(f?.shortLabel || f?.name || `F${idx + 1}`).toUpperCase(),
+              accentHex: String(f?.accentHex || '#facc15'),
+              desc: String(f?.desc || '').toUpperCase()
+            }))
+          : DEFAULT_SQUAD_FORMATIONS)
+      : DEFAULT_SQUAD_FORMATIONS;
+    const activeFormation = includeDrawerTabs
+      ? ((rawEvo?.formation && typeof rawEvo.formation === 'object')
+          ? {
+              id: String(rawEvo.formation.id || evoFormationId),
+              name: String(rawEvo.formation.name || rawEvo.formation.shortLabel || 'BALANCED PHALANX').toUpperCase(),
+              shortLabel: String(rawEvo.formation.shortLabel || rawEvo.formation.name || 'PHALANX').toUpperCase(),
+              accentHex: String(rawEvo.formation.accentHex || '#facc15'),
+              desc: String(rawEvo.formation.desc || '').toUpperCase()
+            }
+          : (evoFormations.find((f) => f.id === evoFormationId) || evoFormations[1] || evoFormations[0]))
+      : DEFAULT_SQUAD_FORMATIONS[1];
     const overdriveCharge = Math.max(0, Math.min(100, Number(rawEvo?.overdriveCharge) || 0));
     const overdriveRatio = Number.isFinite(Number(rawEvo?.overdriveRatio))
       ? Math.max(0, Math.min(1, Number(rawEvo.overdriveRatio)))
@@ -11385,29 +4312,44 @@ export class EndlessShopUI {
     const rawTrialList = (Array.isArray(rawTrials?.trials) && rawTrials.trials.length > 0)
       ? rawTrials.trials
       : DEFAULT_TRIAL_DEFS;
-    const trialsList = rawTrialList.map((t, idx) => {
-      const def = DEFAULT_TRIAL_DEFS.find((d) => d.id === t?.id) || DEFAULT_TRIAL_DEFS[idx] || DEFAULT_TRIAL_DEFS[0];
-      const cooldownLeft = Math.max(0, Number(t?.cooldownLeft) || 0);
-      const bestScore = Math.max(0, Number(t?.bestScore) || 0);
-      const canEnter = t?.canEnter !== undefined
-        ? Boolean(t.canEnter)
-        : (!trialsIsActive && cooldownLeft <= 0);
-      return {
-        id: String(t?.id || def.id),
-        name: String(t?.name || def.name).toUpperCase(),
-        shortName: String(t?.shortName || def.shortName).toUpperCase(),
-        durationSec: Math.max(1, Math.round(Number(t?.durationSec ?? def.durationSec) || 30)),
-        cooldownSec: Math.max(0, Math.round(Number(t?.cooldownSec ?? def.cooldownSec) || 30)),
-        accentHex: String(t?.accentHex || def.accentHex || '#facc15'),
-        glowHex: String(t?.glowHex || def.glowHex || '#fef08a'),
-        rewardTag: String(t?.rewardTag || def.rewardTag).toUpperCase(),
-        desc: String(t?.desc || def.desc),
-        cooldownLeft,
-        canEnter,
-        bestScore,
-        formattedBestScore: String(t?.formattedBestScore || formatEndlessNumber(bestScore))
-      };
-    });
+    let anyTrialReady = false;
+    let trialsList = [];
+    if (includeDrawerTabs) {
+      trialsList = rawTrialList.map((t, idx) => {
+        const def = DEFAULT_TRIAL_DEFS.find((d) => d.id === t?.id) || DEFAULT_TRIAL_DEFS[idx] || DEFAULT_TRIAL_DEFS[0];
+        const cooldownLeft = Math.max(0, Number(t?.cooldownLeft) || 0);
+        const bestScore = Math.max(0, Number(t?.bestScore) || 0);
+        const canEnter = t?.canEnter !== undefined
+          ? Boolean(t.canEnter)
+          : (!trialsIsActive && cooldownLeft <= 0);
+        if (canEnter) anyTrialReady = true;
+        return {
+          id: String(t?.id || def.id),
+          name: String(t?.name || def.name).toUpperCase(),
+          shortName: String(t?.shortName || def.shortName).toUpperCase(),
+          durationSec: Math.max(1, Math.round(Number(t?.durationSec ?? def.durationSec) || 30)),
+          cooldownSec: Math.max(0, Math.round(Number(t?.cooldownSec ?? def.cooldownSec) || 30)),
+          accentHex: String(t?.accentHex || def.accentHex || '#facc15'),
+          glowHex: String(t?.glowHex || def.glowHex || '#fef08a'),
+          rewardTag: String(t?.rewardTag || def.rewardTag).toUpperCase(),
+          desc: String(t?.desc || def.desc),
+          cooldownLeft,
+          canEnter,
+          bestScore,
+          formattedBestScore: String(t?.formattedBestScore || formatEndlessNumber(bestScore))
+        };
+      });
+    } else if (!trialsIsActive) {
+      for (let i = 0; i < rawTrialList.length; i++) {
+        const t = rawTrialList[i];
+        const cd = Math.max(0, Number(t?.cooldownLeft) || 0);
+        const canEnter = t?.canEnter !== undefined ? Boolean(t.canEnter) : cd <= 0;
+        if (canEnter) {
+          anyTrialReady = true;
+          break;
+        }
+      }
+    }
 
     let trialsLastResult = null;
     if (rawTrials?.lastResult && typeof rawTrials.lastResult === 'object') {
@@ -11463,6 +4405,16 @@ export class EndlessShopUI {
       totalTrialsCompleted: Math.max(0, Math.floor(Number(rawTrials?.totalTrialsCompleted) || 0))
     };
 
+    const tabFlags = {
+      items: itemsActionable,
+      gear: hasGearAction,
+      allies: alliesActionable,
+      alliesUpgrade: alliesUpgradeAffordable,
+      ascend: Boolean(ascension.canAscend || anyArtifactAffordable),
+      trialsActive: trialsIsActive,
+      trialsReady: Boolean(!trialsIsActive && anyTrialReady)
+    };
+
     return {
       stage,
       bestStage,
@@ -11508,7 +4460,8 @@ export class EndlessShopUI {
       formattedForgeDust,
       hasGearAction,
       events,
-      trials
+      trials,
+      tabFlags
     };
   }
 
@@ -11591,9 +4544,11 @@ export class EndlessShopUI {
       slot.card.classList.remove('hidden');
       slot.card.classList.toggle('is-casting-ult', u.isCastingUlt);
       slot.card.classList.toggle('is-ex-evolved', isExEvolved);
-      slot.portWrap.style.borderColor = u.isCastingUlt
-        ? '#fef08a'
-        : (isExEvolved ? '#38bdf8' : u.color);
+      setStyleIfChanged(
+        slot.portWrap,
+        'borderColor',
+        u.isCastingUlt ? '#fef08a' : (isExEvolved ? '#38bdf8' : u.color)
+      );
 
       this._blitCompanionPortrait(
         slot.portCanvas,
@@ -11616,7 +4571,7 @@ export class EndlessShopUI {
       setTextIfChanged(slot.lvEl, `LV.${u.level}`);
 
       const ultPct = Math.max(0, Math.min(100, Number(u.ultPct) || 0));
-      slot.ultFill.style.width = `${ultPct.toFixed(1)}%`;
+      setStyleIfChanged(slot.ultFill, 'width', `${ultPct.toFixed(1)}%`);
       setTextIfChanged(slot.ultTag, u.isCastingUlt ? 'ULT!' : `${Math.round(ultPct)}%`);
 
       const starTag = isExEvolved ? ` | ${star}-STAR EX` : (star >= 2 ? ` | ${star}-STAR` : '');
@@ -11650,17 +4605,17 @@ export class EndlessShopUI {
       if (odActive) {
         const timer = Math.max(0, Number(evo.overdriveActiveTimer) || 0);
         const remPct = timer > 0 ? Math.max(6, Math.min(100, (timer / 2.4) * 100)) : 100;
-        overdriveFill.style.width = `${remPct.toFixed(1)}%`;
+        setStyleIfChanged(overdriveFill, 'width', `${remPct.toFixed(1)}%`);
         setTextIfChanged(overdriveLabel, 'SURGE ACTIVE!');
         const odTip = 'SQUAD OVERDRIVE SURGE ACTIVE (+35% DMG & +25% HASTE)';
         if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
       } else if (odReady) {
-        overdriveFill.style.width = '100%';
+        setStyleIfChanged(overdriveFill, 'width', '100%');
         setTextIfChanged(overdriveLabel, 'OVERDRIVE!');
         const odTip = 'SQUAD OVERDRIVE READY - CLICK TO UNLEASH SYNCHRONIZED ULTIMATES!';
         if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
       } else {
-        overdriveFill.style.width = `${odPct}%`;
+        setStyleIfChanged(overdriveFill, 'width', `${odPct}%`);
         setTextIfChanged(overdriveLabel, `OVERDRIVE ${odPct}%`);
         const odTip = `SQUAD OVERDRIVE CHARGING (${odPct}%) - ALLY ATTACKS & SKILLS CHARGE THE METER`;
         if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
@@ -11712,22 +4667,22 @@ export class EndlessShopUI {
   }
 
   sync(snapshot = null, forceRebuild = false) {
+    this._syncCounter++;
     if (snapshot !== null && snapshot !== undefined) {
       this._lastSnapshot = snapshot;
     }
     if (!this.mounted || !this._hasDom() || !this.root) return;
     this.root.classList.toggle('is-drawer-open', Boolean(this.drawerOpen));
 
-    const state = this._resolveState(snapshot ?? this._lastSnapshot);
+    const includeDrawer = Boolean(this.drawerOpen || forceRebuild);
+    const state = this._resolveState(snapshot ?? this._lastSnapshot, includeDrawer);
 
     // Ensure icon canvases pick up endless_crusade_vfx.png as soon as it finishes loading
     this._blitAllIcons(Boolean(forceRebuild));
 
     // 1. Top Status Bar (in-place DOM text & bar updates)
     setTextIfChanged(this._refs.stageText, `STAGE ${state.stage} • ${state.realmName}`);
-    if (this._refs.stageBadge) {
-      this._refs.stageBadge.style.borderLeftColor = state.realmAccent;
-    }
+    setStyleIfChanged(this._refs.stageBadge, 'borderLeftColor', state.realmAccent);
     if (this._refs.loopPill) {
       const showLoop = state.ascendedLoop > 1;
       this._refs.loopPill.classList.toggle('hidden', !showLoop);
@@ -11744,8 +4699,8 @@ export class EndlessShopUI {
       if (showMod) {
         const modColor = mod.accentHex || '#f43f5e';
         setTextIfChanged(this._refs.modName, mod.name);
-        this._refs.modPill.style.borderColor = modColor;
-        this._refs.modPill.style.color = modColor;
+        setStyleIfChanged(this._refs.modPill, 'borderColor', modColor);
+        setStyleIfChanged(this._refs.modPill, 'color', modColor);
         const modTip = mod.shortDesc ? `${mod.name}: ${mod.shortDesc}` : mod.name;
         if (this._refs.modPill.title !== modTip) {
           this._refs.modPill.title = modTip;
@@ -11771,14 +4726,14 @@ export class EndlessShopUI {
       this._refs.waveMeter.classList.toggle('is-farm', !state.isBossEncounter && state.bossFarmMode);
       if (state.isBossEncounter) {
         const pct = Math.max(0, Math.min(100, (state.bossTimer / state.bossTimerMax) * 100));
-        this._refs.waveFill.style.width = `${pct.toFixed(1)}%`;
+        setStyleIfChanged(this._refs.waveFill, 'width', `${pct.toFixed(1)}%`);
         setTextIfChanged(this._refs.waveLabel, `BOSS ${state.bossTimer.toFixed(1)}S`);
       } else if (state.bossFarmMode) {
-        this._refs.waveFill.style.width = '100%';
+        setStyleIfChanged(this._refs.waveFill, 'width', '100%');
         setTextIfChanged(this._refs.waveLabel, `FARMING W${state.waveInStage}`);
       } else {
         const pct = Math.max(8, Math.min(100, (state.waveInStage / state.wavesPerStage) * 100));
-        this._refs.waveFill.style.width = `${pct.toFixed(1)}%`;
+        setStyleIfChanged(this._refs.waveFill, 'width', `${pct.toFixed(1)}%`);
         setTextIfChanged(this._refs.waveLabel, `WAVE ${state.waveInStage}/${state.wavesPerStage}`);
       }
     }
@@ -11791,7 +4746,7 @@ export class EndlessShopUI {
       const tier2 = feverActive && (state.feverTier >= 2 || state.tapFeverLevel >= 2);
       this._refs.feverMeter.classList.toggle('is-active', feverActive);
       this._refs.feverMeter.classList.toggle('is-tier2', tier2);
-      this._refs.feverFill.style.width = `${Math.round(state.tapFever)}%`;
+      setStyleIfChanged(this._refs.feverFill, 'width', `${Math.round(state.tapFever)}%`);
       if (tier2) {
         setTextIfChanged(this._refs.feverLabel, `FEVER X3 ${state.tapFeverTimer.toFixed(1)}S`);
       } else if (feverActive) {
@@ -11826,54 +4781,37 @@ export class EndlessShopUI {
     // 2D. Wave 10 Trial Reward Summary Modal (always synced, even when drawer closed)
     this._syncTrialResultModal(state);
 
-    // 3. Check affordability dot on Shop Toggle, GEAR Tab Dot, ASCEND Tab Dot & TRIALS Active Dot
-    const asc = state.ascension;
-    let anyArtifactAffordable = false;
-    if (asc && Array.isArray(asc.artifacts)) {
-      for (let i = 0; i < asc.artifacts.length; i++) {
-        const art = asc.artifacts[i];
-        if (art && !art.isMaxed && art.canAfford) {
-          anyArtifactAffordable = true;
-          break;
-        }
-      }
-    }
-    const ascendNotify = Boolean(asc?.canAscend || anyArtifactAffordable);
-    if (this._refs.ascendTabDot) {
-      this._refs.ascendTabDot.classList.toggle('hidden', !ascendNotify);
-    }
+    // 3. Smart Actionable Notification Pips on ALL 5 Actionable Tabs + Shop Toggle
+    const flags = state.tabFlags || {};
+    const itemsNotify = Boolean(flags.items);
+    const gearNotify = Boolean(flags.gear);
+    const alliesNotify = Boolean(flags.allies);
+    const ascendNotify = Boolean(flags.ascend);
+    const trialsActive = Boolean(flags.trialsActive);
+    const trialsReady = Boolean(flags.trialsReady);
+    const trialsNotify = trialsActive || trialsReady;
 
-    const gearNotify = Boolean(state.hasGearAction);
+    if (this._refs.itemsTabDot) {
+      this._refs.itemsTabDot.classList.toggle('hidden', !itemsNotify);
+    }
     if (this._refs.gearTabDot) {
       this._refs.gearTabDot.classList.toggle('hidden', !gearNotify);
     }
-
+    if (this._refs.companionsTabDot) {
+      this._refs.companionsTabDot.classList.toggle('hidden', !alliesNotify);
+    }
+    if (this._refs.ascendTabDot) {
+      this._refs.ascendTabDot.classList.toggle('hidden', !ascendNotify);
+    }
     if (this._refs.trialsTabDot) {
-      this._refs.trialsTabDot.classList.toggle('hidden', !Boolean(state.trials?.isActive));
+      this._refs.trialsTabDot.classList.toggle('hidden', !trialsNotify);
+      this._refs.trialsTabDot.classList.toggle('is-trials-active', trialsActive);
+      this._refs.trialsTabDot.classList.toggle('is-trials-ready', !trialsActive && trialsReady);
     }
 
-    let anyAffordable = ascendNotify || gearNotify;
-    if (!anyAffordable) {
-      for (let i = 0; i < state.relicsView.length; i++) {
-        const item = state.relicsView[i];
-        if (item.canAfford ?? item.quote?.canAfford) {
-          anyAffordable = true;
-          break;
-        }
-      }
-    }
-    if (!anyAffordable) {
-      for (let i = 0; i < state.companions.length; i++) {
-        const c = state.companions[i];
-        if (
-          (!c.unlocked && !c.stageLocked && c.canAffordRecruit) ||
-          (c.unlocked && (c.canAffordUpgrade || c.promoteQuote?.canPromote))
-        ) {
-          anyAffordable = true;
-          break;
-        }
-      }
-    }
+    const anyAffordable = Boolean(
+      itemsNotify || gearNotify || alliesNotify || flags.alliesUpgrade || ascendNotify
+    );
     if (this._refs.affordableDot) {
       this._refs.affordableDot.classList.toggle('hidden', !anyAffordable);
     }
@@ -11925,6 +4863,11 @@ export class EndlessShopUI {
 
     const hasAny = Boolean(bounty || activeBuffs.length > 0 || merchantOffer);
     dock.classList.toggle('hidden', !hasAny);
+    dock.classList.toggle('has-merchant', Boolean(merchantOffer));
+
+    if (this.root) {
+      this.root.classList.toggle('has-event-alert', Boolean(bounty?.completed || merchantOffer));
+    }
 
     // Widget A: Compact Bounty Tracker Pill
     const bountyPill = this._refs.bountyPill;
@@ -11937,9 +4880,11 @@ export class EndlessShopUI {
         this._lastBountyCompleted = completed;
         bountyPill.classList.toggle('is-claimable', completed);
         bountyPill.setAttribute('aria-disabled', completed ? 'false' : 'true');
-        bountyPill.style.borderLeftColor = completed
-          ? '#fef08a'
-          : (bounty.accentHex || '#facc15');
+        setStyleIfChanged(
+          bountyPill,
+          'borderLeftColor',
+          completed ? '#fef08a' : (bounty.accentHex || '#facc15')
+        );
 
         setTextIfChanged(this._refs.bountyLabel, `${bounty.shortLabel} ${shownProg}/${bounty.target}`);
 
@@ -11960,10 +4905,12 @@ export class EndlessShopUI {
 
         if (this._refs.bountyFill) {
           const pct = Math.max(0, Math.min(100, (Number(bounty.ratio) || 0) * 100));
-          this._refs.bountyFill.style.width = `${pct.toFixed(1)}%`;
-          this._refs.bountyFill.style.backgroundColor = completed
-            ? '#facc15'
-            : (bounty.accentHex || '#facc15');
+          setStyleIfChanged(this._refs.bountyFill, 'width', `${pct.toFixed(1)}%`);
+          setStyleIfChanged(
+            this._refs.bountyFill,
+            'backgroundColor',
+            completed ? '#facc15' : (bounty.accentHex || '#facc15')
+          );
         }
 
         const rw = bounty.rewards || {};
@@ -12040,7 +4987,7 @@ export class EndlessShopUI {
         const secLeft = Math.max(0, Math.ceil(Number(bf.remainingSec) || 0));
         setTextIfChanged(ref.textEl, `${bf.shortLabel} ${secLeft}S`);
         const pct = Math.max(0, Math.min(100, (Number(bf.ratio) || 0) * 100));
-        ref.fillEl.style.width = `${pct.toFixed(1)}%`;
+        setStyleIfChanged(ref.fillEl, 'width', `${pct.toFixed(1)}%`);
 
         const tip = `${bf.name} (${secLeft}S LEFT)`;
         if (ref.pill.title !== tip) {
@@ -12075,7 +5022,7 @@ export class EndlessShopUI {
         const accent = merchantOffer.accentHex || '#c084fc';
         this._lastMerchantUid = merchantOffer.uid;
         this._lastMerchantOfferType = merchantOffer.offerType;
-        merchantCard.style.borderLeftColor = accent;
+        setStyleIfChanged(merchantCard, 'borderLeftColor', accent);
         setTextIfChanged(this._refs.merchantTitle, merchantOffer.title);
         const secLeft = Math.max(0, Math.ceil(Number(merchantOffer.remainingSec) || 0));
         setTextIfChanged(this._refs.merchantTimer, `${secLeft}S`);
@@ -12083,7 +5030,7 @@ export class EndlessShopUI {
 
         if (this._refs.merchantFill) {
           const pct = Math.max(0, Math.min(100, (Number(merchantOffer.ratio) || 0) * 100));
-          this._refs.merchantFill.style.width = `${pct.toFixed(1)}%`;
+          setStyleIfChanged(this._refs.merchantFill, 'width', `${pct.toFixed(1)}%`);
         }
         if (this._refs.merchantBuyBtn) {
           const costTag = formatGoldTag(merchantOffer.formattedCost, merchantOffer.costGold);
@@ -12165,10 +5112,10 @@ export class EndlessShopUI {
     const urgent = remSec <= 5;
 
     hud.classList.toggle('is-urgent', urgent);
-    hud.style.borderColor = urgent ? '#f43f5e' : accent;
+    setStyleIfChanged(hud, 'borderColor', urgent ? '#f43f5e' : accent);
 
     if (this._refs.trialHudIcon) {
-      this._refs.trialHudIcon.style.borderColor = accent;
+      setStyleIfChanged(this._refs.trialHudIcon, 'borderColor', accent);
       if (this._lastTrialHudIconId !== active.id) {
         this._refs.trialHudIcon.innerHTML = getTrialSvg(active.id);
         this._lastTrialHudIconId = active.id;
@@ -12176,15 +5123,13 @@ export class EndlessShopUI {
     }
 
     setTextIfChanged(this._refs.trialHudName, active.name || active.shortName || 'CHALLENGE TRIAL');
-    if (this._refs.trialHudName) {
-      this._refs.trialHudName.style.color = accent;
-    }
+    setStyleIfChanged(this._refs.trialHudName, 'color', accent);
     setTextIfChanged(this._refs.trialHudTimer, `${remSec.toFixed(1)}S`);
     setTextIfChanged(this._refs.trialHudScore, formatTrialHudScore(active));
 
     if (this._refs.trialHudFill) {
-      this._refs.trialHudFill.style.width = `${(ratio * 100).toFixed(1)}%`;
-      this._refs.trialHudFill.style.backgroundColor = urgent ? '#f43f5e' : accent;
+      setStyleIfChanged(this._refs.trialHudFill, 'width', `${(ratio * 100).toFixed(1)}%`);
+      setStyleIfChanged(this._refs.trialHudFill, 'backgroundColor', urgent ? '#f43f5e' : accent);
     }
 
     let tip = `${active.name} (${remSec.toFixed(1)}S LEFT) | ${formatTrialHudScore(active)}`;
@@ -12683,7 +5628,7 @@ export class EndlessShopUI {
     const container = this._refs.gearBagItems;
     if (!container) return;
 
-    const invSig = inventory.map((it) => computeGearItemSignature(it)).join('|');
+    const invSig = inventory.map((it) => computeGearItemSignature(it, equippedMap)).join('|');
     if (!forceRebuild && invSig === this._lastGearInvSig) {
       return;
     }
@@ -12716,7 +5661,7 @@ export class EndlessShopUI {
         rowRef = this._createGearBagRow(it);
         this._gearBagRowRefs.set(uid, rowRef);
       }
-      this._patchGearBagRow(rowRef, it);
+      this._patchGearBagRow(rowRef, it, equippedMap);
       const currentAtIdx = container.children[i] || null;
       if (currentAtIdx !== rowRef.row) {
         container.insertBefore(rowRef.row, currentAtIdx);
@@ -13036,24 +5981,17 @@ export class EndlessShopUI {
   }
 
   unmount() {
-    this._disarmResetConfirm();
-    this._disarmAscendConfirm();
-    if (this._partyNoticeTimer) {
-      clearTimeout(this._partyNoticeTimer);
-      this._partyNoticeTimer = null;
-    }
-    if (this._saveFlashTimer) {
-      clearTimeout(this._saveFlashTimer);
-      this._saveFlashTimer = null;
-    }
-    for (const timer of this._ephemeralTimers) {
-      clearTimeout(timer);
-    }
-    this._ephemeralTimers.clear();
+    this._clearTransientUiState();
     if (this.root) {
       this.root.textContent = '';
       this.root.classList.add('hidden');
-      this.root.classList.remove('is-drawer-open', 'has-active-party', 'has-active-synergies', 'is-trial-active');
+      this.root.classList.remove(
+        'is-drawer-open',
+        'has-active-party',
+        'has-active-synergies',
+        'is-trial-active',
+        'has-event-alert'
+      );
       if (this._createdRoot && this.root.parentNode) {
         this.root.parentNode.removeChild(this.root);
       }
@@ -13061,9 +5999,11 @@ export class EndlessShopUI {
     this.root = null;
     this.mounted = false;
     this._iconCanvases = [];
+    this._modifierIconEntry = null;
     this._partySlotRefs = [];
     this._formationBtnRefs.clear();
     this._relicRowRefs.clear();
+    this._relicSetPillRefs?.clear?.();
     this._companionCardRefs.clear();
     this._artifactRowRefs.clear();
     this._gearSlotRefs.clear();
@@ -13080,6 +6020,7 @@ export class EndlessShopUI {
     this._lastGearInvSig = '';
     this._lastGearSetSig = '';
     this._lastGearEquipSigs.clear();
+    this._lastTrophySig = '';
     this._lastResolvedAscension = null;
     this._lastBountyCompleted = false;
     this._lastMerchantUid = null;
@@ -13092,7 +6033,11 @@ export class EndlessShopUI {
   destroy() {
     this.setVisible(false);
     this.unmount();
-    this._vfxFallbackImg = null;
+    if (this._vfxFallbackImg) {
+      this._vfxFallbackImg.onload = null;
+      this._vfxFallbackImg.onerror = null;
+      this._vfxFallbackImg = null;
+    }
     this._lastSnapshot = null;
     this.manager = null;
   }
