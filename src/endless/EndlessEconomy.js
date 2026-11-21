@@ -6,8 +6,16 @@ export const ENDLESS_SAVE_STORAGE_KEY = 'avs_endless_crusade_v1';
 const MAX_BULK_BUY_CAP = 250;
 const ROLLING_METRIC_WINDOW_SEC = 5.0;
 const FEVER_DURATION_SEC = 7.5;
+const FEVER_TIER2_DURATION_FLOOR_SEC = 9.5;
 const FEVER_TIER2_THRESHOLD_TAPS = 10;
 const FEVER_DECAY_PER_SEC = 6.5;
+const MAX_STAGE_FOR_SCALING = 100000;
+const MAX_STAGE_EXP = 220;
+const MAX_GOLD = 1e15;
+const MAX_DAMAGE = 1e24;
+const MAX_SHARDS = 1e12;
+const MAX_COUNTER = 1e12;
+const MAX_RELIC_LEVEL = 100000;
 
 export const RELIC_MILESTONE_BREAKPOINTS = Object.freeze([
   Object.freeze({ level: 10, mult: 1.5, tag: 'LV.10 X1.5' }),
@@ -385,6 +393,7 @@ export class EndlessEconomy {
     this.autoBoss = true;
     this.tapFever = 0;
     this.tapFeverTimer = 0;
+    this.tapFeverMaxDuration = FEVER_DURATION_SEC;
     this.tapFeverLevel = 0;
     this.dpsMetrics = {
       heroDps: 0,
@@ -406,10 +415,18 @@ export class EndlessEconomy {
     this._goldSamples = [];
   }
 
+  get tapFeverRatio() {
+    if (this.tapFeverTimer > 0) {
+      const denom = Math.max(0.1, Number(this.tapFeverMaxDuration) || FEVER_DURATION_SEC);
+      return Math.max(0, Math.min(1, this.tapFeverTimer / denom));
+    }
+    return Math.max(0, Math.min(1, (Number(this.tapFever) || 0) / 100));
+  }
+
   resetRunState({ keepMeta = true } = {}) {
     const startGold = Math.max(
       0,
-      Math.floor(Number(this._externalModifiers?.startingGold) || 0)
+      Math.min(MAX_GOLD, Math.floor(Number(this._externalModifiers?.startingGold) || 0))
     );
     this.gold = startGold;
     this.totalGoldEarned = startGold;
@@ -421,6 +438,7 @@ export class EndlessEconomy {
     this.relicLevels = makeEmptyRelicMap();
     this.tapFever = 0;
     this.tapFeverTimer = 0;
+    this.tapFeverMaxDuration = FEVER_DURATION_SEC;
     this.tapFeverLevel = 0;
     this._feverTapCount = 0;
     this._clock = 0;
@@ -738,13 +756,22 @@ export class EndlessEconomy {
     if (applyMult) {
       const stats = this.getComputedStats();
       const mult = stats.goldMult * stats.feverGoldMult * (isBoss ? stats.bossGoldMult : 1.0);
-      added = Math.max(1, Math.round(raw * mult));
+      const product = Number.isFinite(mult) && mult > 0 ? raw * mult : raw;
+      added = Number.isFinite(product)
+        ? Math.max(1, Math.min(MAX_GOLD, Math.round(product)))
+        : MAX_GOLD;
     } else {
-      added = Math.max(0, Math.round(raw));
+      added = Math.max(0, Math.min(MAX_GOLD, Math.round(raw)));
     }
-    if (added <= 0) return 0;
-    this.gold += added;
-    this.totalGoldEarned += added;
+    if (!Number.isFinite(added) || added <= 0) return 0;
+    const curGold = Number.isFinite(this.gold) ? Math.max(0, this.gold) : 0;
+    const nextGold = curGold + added;
+    this.gold = Number.isFinite(nextGold) ? Math.min(MAX_GOLD, nextGold) : MAX_GOLD;
+    const curTotal = Number.isFinite(this.totalGoldEarned)
+      ? Math.max(this.gold, this.totalGoldEarned)
+      : this.gold;
+    const nextTotal = curTotal + added;
+    this.totalGoldEarned = Number.isFinite(nextTotal) ? Math.min(MAX_GOLD, nextTotal) : MAX_GOLD;
     this._goldSamples.push({ t: this._clock, v: added });
     this._recomputeRollingMetrics();
     return added;
@@ -753,22 +780,34 @@ export class EndlessEconomy {
   spendGold(amount) {
     const cost = Number(amount);
     if (!Number.isFinite(cost) || cost < 0) return false;
-    if (this.gold < cost) return false;
-    this.gold = Math.max(0, this.gold - cost);
+    const curGold = Number.isFinite(this.gold) ? Math.max(0, Math.min(MAX_GOLD, this.gold)) : 0;
+    if (curGold < cost) return false;
+    this.gold = Math.max(0, curGold - cost);
     return true;
   }
 
   addAstralShards(amount) {
-    const amt = Math.floor(Number(amount) || 0);
+    const raw = Number(amount);
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    const amt = Math.min(MAX_SHARDS, Math.floor(raw));
     if (amt <= 0) return 0;
-    this.astralShards += amt;
-    this.totalAstralShards += amt;
+    const curShards = Number.isFinite(this.astralShards) ? Math.max(0, this.astralShards) : 0;
+    const nextShards = curShards + amt;
+    this.astralShards = Number.isFinite(nextShards) ? Math.min(MAX_SHARDS, nextShards) : MAX_SHARDS;
+    const curTotal = Number.isFinite(this.totalAstralShards)
+      ? Math.max(this.astralShards, this.totalAstralShards)
+      : this.astralShards;
+    const nextTotal = curTotal + amt;
+    this.totalAstralShards = Number.isFinite(nextTotal)
+      ? Math.min(MAX_SHARDS, nextTotal)
+      : MAX_SHARDS;
     return amt;
   }
 
   computeMonsterGoldReward(stage, { isElite = false, isWarden = false, isColossalBoss = false } = {}) {
-    const s = Math.max(1, Math.floor(Number(stage) || 1));
-    const base = 7 * Math.pow(1.25, s - 1);
+    const s = Math.max(1, Math.min(MAX_STAGE_FOR_SCALING, Math.floor(Number(stage) || 1)));
+    const exp = Math.min(MAX_STAGE_EXP, Math.max(0, s - 1));
+    const base = 7 * Math.pow(1.25, exp);
     let mult = 1.0;
     if (isColossalBoss) {
       mult = 14.0;
@@ -777,56 +816,107 @@ export class EndlessEconomy {
     } else if (isElite) {
       mult = 2.2;
     }
-    return Math.max(1, Math.round(base * mult));
+    const raw = Math.round(base * mult);
+    if (!Number.isFinite(raw)) return MAX_GOLD;
+    return Math.max(1, Math.min(MAX_GOLD, raw));
   }
 
-  computeTapSmiteHit(stage, { isBoss = false, rng = Math.random } = {}) {
-    const s = Math.max(1, Math.floor(Number(stage) || 1));
+  registerTapSmite(feverBonusSec = undefined, { rng = Math.random } = {}) {
     const rand = typeof rng === 'function' ? rng : Math.random;
-    this.totalTaps += 1;
+    const rawBonus =
+      feverBonusSec !== undefined && feverBonusSec !== null
+        ? Number(feverBonusSec)
+        : this._extBonus('feverDurationBonusSec', 0);
+    const bonus = Number.isFinite(rawBonus) && rawBonus > 0 ? Math.min(60, rawBonus) : 0;
+
+    const curTaps = Number.isFinite(this.totalTaps) ? Math.max(0, this.totalTaps) : 0;
+    this.totalTaps = Math.min(MAX_COUNTER, curTaps + 1);
 
     let feverTriggered = false;
     if (this.tapFeverTimer <= 0) {
-      const feverGain = 7 + Math.floor(Math.max(0, Math.min(0.999999, rand())) * 4);
-      this.tapFever = Math.min(100, this.tapFever + feverGain);
+      const r = Number(rand());
+      const safeR = Number.isFinite(r) ? Math.max(0, Math.min(0.999999, r)) : 0;
+      const feverGain = 7 + Math.floor(safeR * 4);
+      const curFever = Number.isFinite(this.tapFever) ? Math.max(0, this.tapFever) : 0;
+      this.tapFever = Math.min(100, curFever + feverGain);
       if (this.tapFever >= 100) {
+        const maxDur = FEVER_DURATION_SEC + bonus;
         this.tapFever = 100;
-        this.tapFeverTimer = FEVER_DURATION_SEC;
+        this.tapFeverTimer = maxDur;
+        this.tapFeverMaxDuration = maxDur;
         this.tapFeverLevel = 1;
         this._feverTapCount = 0;
         feverTriggered = true;
       }
     } else {
       this._feverTapCount += 1;
-      this.tapFever = 100;
       if (this.tapFeverLevel === 1 && this._feverTapCount >= FEVER_TIER2_THRESHOLD_TAPS) {
         this.tapFeverLevel = 2;
-        this.tapFeverTimer = Math.min(9.5, this.tapFeverTimer + 2.5);
+        const tier2Floor = FEVER_TIER2_DURATION_FLOOR_SEC + bonus;
+        this.tapFeverTimer = Math.max(
+          this.tapFeverTimer,
+          Math.min(tier2Floor, this.tapFeverTimer + 2.5)
+        );
+        this.tapFeverMaxDuration = Math.max(
+          Number(this.tapFeverMaxDuration) || FEVER_DURATION_SEC,
+          this.tapFeverTimer
+        );
         feverTriggered = true;
       }
+      const denom = Math.max(0.1, Number(this.tapFeverMaxDuration) || FEVER_DURATION_SEC);
+      this.tapFever = Math.max(0, Math.min(100, (this.tapFeverTimer / denom) * 100));
     }
 
+    const feverActive = this.tapFeverTimer > 0;
+    return {
+      feverActive,
+      feverTier: this.tapFeverLevel,
+      feverTriggered,
+      tapFever: this.tapFever,
+      tapFeverTimer: this.tapFeverTimer,
+      tapFeverMaxDuration: this.tapFeverMaxDuration,
+      tapFeverRatio: this.tapFeverRatio
+    };
+  }
+
+  computeTapSmiteHit(stage, { isBoss = false, rng = Math.random, feverBonusSec = undefined } = {}) {
+    const s = Math.max(1, Math.min(MAX_STAGE_FOR_SCALING, Math.floor(Number(stage) || 1)));
+    const exp = Math.min(MAX_STAGE_EXP, Math.max(0, s - 1));
+    const rand = typeof rng === 'function' ? rng : Math.random;
+
+    const feverState = this.registerTapSmite(feverBonusSec, { rng: rand });
+    const feverTriggered = feverState.feverTriggered;
+
     const stats = this.getComputedStats();
-    const stageScale = Math.pow(1.16, s - 1);
+    const stageScale = Math.pow(1.16, exp);
     let rawDmg = stats.tapBaseDmg * stats.tapDmgMult * stageScale * stats.feverDmgMult;
     if (isBoss) {
       rawDmg *= stats.bossDmgMult;
     }
 
-    const isCrit = rand() < stats.critChance;
+    const critRoll = Number(rand());
+    const isCrit = (Number.isFinite(critRoll) ? critRoll : 1) < stats.critChance;
     if (isCrit) {
       rawDmg *= stats.critMult;
     }
 
-    const damage = Math.max(1, Math.round(rawDmg));
+    const damage = Number.isFinite(rawDmg)
+      ? Math.max(1, Math.min(MAX_DAMAGE, Math.round(rawDmg)))
+      : MAX_DAMAGE;
     this.recordDamageSample('tap', damage);
 
     const feverActive = this.tapFeverTimer > 0;
     let goldBonus = 0;
     if (feverTriggered) {
-      goldBonus = Math.max(2, Math.round(this.computeMonsterGoldReward(s) * (this.tapFeverLevel >= 2 ? 0.8 : 0.45)));
+      const rawBonus = Math.round(
+        this.computeMonsterGoldReward(s) * (this.tapFeverLevel >= 2 ? 0.8 : 0.45)
+      );
+      goldBonus = Number.isFinite(rawBonus) ? Math.max(2, Math.min(MAX_GOLD, rawBonus)) : MAX_GOLD;
     } else if (feverActive) {
-      goldBonus = Math.max(1, Math.round(this.computeMonsterGoldReward(s) * (this.tapFeverLevel >= 2 ? 0.32 : 0.16)));
+      const rawBonus = Math.round(
+        this.computeMonsterGoldReward(s) * (this.tapFeverLevel >= 2 ? 0.32 : 0.16)
+      );
+      goldBonus = Number.isFinite(rawBonus) ? Math.max(1, Math.min(MAX_GOLD, rawBonus)) : MAX_GOLD;
     }
 
     return {
@@ -881,13 +971,18 @@ export class EndlessEconomy {
     this._clock += delta;
 
     if (this.tapFeverTimer > 0) {
+      if (this.tapFeverTimer > (Number(this.tapFeverMaxDuration) || FEVER_DURATION_SEC)) {
+        this.tapFeverMaxDuration = this.tapFeverTimer;
+      }
       this.tapFeverTimer = Math.max(0, this.tapFeverTimer - delta);
       if (this.tapFeverTimer <= 0) {
         this.tapFever = 0;
         this.tapFeverLevel = 0;
+        this.tapFeverMaxDuration = FEVER_DURATION_SEC;
         this._feverTapCount = 0;
       } else {
-        this.tapFever = Math.max(0, Math.min(100, (this.tapFeverTimer / FEVER_DURATION_SEC) * 100));
+        const denom = Math.max(0.1, Number(this.tapFeverMaxDuration) || FEVER_DURATION_SEC);
+        this.tapFever = Math.max(0, Math.min(100, (this.tapFeverTimer / denom) * 100));
       }
     } else if (this.tapFever > 0) {
       this.tapFever = Math.max(0, this.tapFever - delta * FEVER_DECAY_PER_SEC);
@@ -898,25 +993,42 @@ export class EndlessEconomy {
 
   exportSaveSnapshot(companionSnapshot = null, metaSnapshot = null) {
     const savedAt = Date.now();
+    const clampVal = (v, min, max, fallback = min) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.max(min, Math.min(max, Math.floor(n)));
+    };
     const relics = makeEmptyRelicMap();
     for (let i = 0; i < ENDLESS_RELICS.length; i++) {
       const id = ENDLESS_RELICS[i].id;
-      relics[id] = this.getRelicLevel(id);
+      relics[id] = clampVal(this.getRelicLevel(id), 0, MAX_RELIC_LEVEL, 0);
     }
+    const safeGold = clampVal(this.gold, 0, MAX_GOLD, 0);
+    const safeTotalGold = Math.max(safeGold, clampVal(this.totalGoldEarned, 0, MAX_GOLD, safeGold));
+    const safeShards = clampVal(this.astralShards, 0, MAX_SHARDS, 0);
+    const safeTotalShards = Math.max(
+      safeShards,
+      clampVal(this.totalAstralShards, 0, MAX_SHARDS, safeShards)
+    );
+    const safeStage = clampVal(this.stage, 1, MAX_STAGE_FOR_SCALING, 1);
+    const safeBestStage = Math.max(
+      safeStage,
+      clampVal(this.bestStage, 1, MAX_STAGE_FOR_SCALING, safeStage)
+    );
     return {
       version: 1,
       savedAt,
       activeHeroId: this.activeHeroId || null,
-      gold: Math.max(0, Math.floor(this.gold)),
-      totalGoldEarned: Math.max(0, Math.floor(this.totalGoldEarned)),
-      astralShards: Math.max(0, Math.floor(this.astralShards)),
-      totalAstralShards: Math.max(0, Math.floor(this.totalAstralShards)),
-      stage: Math.max(1, Math.floor(this.stage)),
-      bestStage: Math.max(1, Math.floor(Math.max(this.bestStage, this.stage))),
-      waveInStage: Math.max(1, Math.floor(this.waveInStage)),
-      totalKills: Math.max(0, Math.floor(this.totalKills)),
-      bossesSlain: Math.max(0, Math.floor(this.bossesSlain)),
-      totalTaps: Math.max(0, Math.floor(this.totalTaps)),
+      gold: safeGold,
+      totalGoldEarned: safeTotalGold,
+      astralShards: safeShards,
+      totalAstralShards: safeTotalShards,
+      stage: safeStage,
+      bestStage: safeBestStage,
+      waveInStage: clampVal(this.waveInStage, 1, 100, 1),
+      totalKills: clampVal(this.totalKills, 0, MAX_COUNTER, 0),
+      bossesSlain: clampVal(this.bossesSlain, 0, MAX_COUNTER, 0),
+      totalTaps: clampVal(this.totalTaps, 0, MAX_COUNTER, 0),
       bulkMode: this.bulkMode === 'x10' || this.bulkMode === 'MAX' ? this.bulkMode : 'x1',
       autoBoss: Boolean(this.autoBoss),
       relicLevels: relics,
@@ -927,35 +1039,41 @@ export class EndlessEconomy {
 
   importSaveSnapshot(data) {
     if (!data || typeof data !== 'object') return false;
-    const safeNonNeg = (v, fallback = 0) => {
+    const safeClamped = (v, min, max, fallback = min) => {
       const n = Number(v);
-      return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
-    };
-    const safeStage = (v, fallback = 1) => {
-      const n = Number(v);
-      return Number.isFinite(n) && n >= 1 ? Math.floor(n) : fallback;
+      if (!Number.isFinite(n) || n < min) return fallback;
+      return Math.min(max, Math.floor(n));
     };
 
-    this.gold = safeNonNeg(data.gold, 0);
-    this.totalGoldEarned = Math.max(this.gold, safeNonNeg(data.totalGoldEarned, this.gold));
-    this.astralShards = safeNonNeg(data.astralShards, 0);
-    this.totalAstralShards = Math.max(this.astralShards, safeNonNeg(data.totalAstralShards, this.astralShards));
-    this.stage = safeStage(data.stage, 1);
-    this.bestStage = Math.max(this.stage, safeStage(data.bestStage, this.stage));
-    this.waveInStage = safeStage(data.waveInStage, 1);
-    this.totalKills = safeNonNeg(data.totalKills, 0);
-    this.bossesSlain = safeNonNeg(data.bossesSlain, 0);
-    this.totalTaps = safeNonNeg(data.totalTaps, 0);
+    this.gold = safeClamped(data.gold, 0, MAX_GOLD, 0);
+    this.totalGoldEarned = Math.max(
+      this.gold,
+      safeClamped(data.totalGoldEarned, 0, MAX_GOLD, this.gold)
+    );
+    this.astralShards = safeClamped(data.astralShards, 0, MAX_SHARDS, 0);
+    this.totalAstralShards = Math.max(
+      this.astralShards,
+      safeClamped(data.totalAstralShards, 0, MAX_SHARDS, this.astralShards)
+    );
+    this.stage = safeClamped(data.stage, 1, MAX_STAGE_FOR_SCALING, 1);
+    this.bestStage = Math.max(
+      this.stage,
+      safeClamped(data.bestStage, 1, MAX_STAGE_FOR_SCALING, this.stage)
+    );
+    this.waveInStage = safeClamped(data.waveInStage, 1, 100, 1);
+    this.totalKills = safeClamped(data.totalKills, 0, MAX_COUNTER, 0);
+    this.bossesSlain = safeClamped(data.bossesSlain, 0, MAX_COUNTER, 0);
+    this.totalTaps = safeClamped(data.totalTaps, 0, MAX_COUNTER, 0);
     this.bulkMode = data.bulkMode === 'x10' || data.bulkMode === 'MAX' ? data.bulkMode : 'x1';
     this.autoBoss = data.autoBoss !== undefined ? Boolean(data.autoBoss) : true;
     this.activeHeroId = typeof data.activeHeroId === 'string' && data.activeHeroId ? data.activeHeroId : null;
-    this.lastSavedAt = safeNonNeg(data.savedAt, 0);
+    this.lastSavedAt = safeClamped(data.savedAt, 0, Number.MAX_SAFE_INTEGER, 0);
 
     const nextRelics = makeEmptyRelicMap();
     if (data.relicLevels && typeof data.relicLevels === 'object') {
       for (let i = 0; i < ENDLESS_RELICS.length; i++) {
         const id = ENDLESS_RELICS[i].id;
-        nextRelics[id] = safeNonNeg(data.relicLevels[id], 0);
+        nextRelics[id] = safeClamped(data.relicLevels[id], 0, MAX_RELIC_LEVEL, 0);
       }
     }
     this.relicLevels = nextRelics;
@@ -963,6 +1081,7 @@ export class EndlessEconomy {
     // Reset transient combat fever / rolling buffers on load
     this.tapFever = 0;
     this.tapFeverTimer = 0;
+    this.tapFeverMaxDuration = FEVER_DURATION_SEC;
     this.tapFeverLevel = 0;
     this._feverTapCount = 0;
     this._clock = 0;

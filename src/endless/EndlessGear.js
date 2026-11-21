@@ -110,21 +110,24 @@ export const MYTHIC_SET_PASSIVES = Object.freeze([
     name: 'STORMCALLER',
     accentHex: '#38bdf8',
     shortDesc: 'TAP CHAIN-LIGHTNING (+3 JUMPS, 1.35X DMG)',
-    fullDesc: 'Taps arc extra Chain-Lightning bolts to 3 foes even outside Fever.'
+    fullDesc: 'Taps arc extra Chain-Lightning bolts to 3 foes even outside Fever.',
+    empoweredDesc: 'EMPOWERED 4PC: +4 JUMPS, 1.65X CHAIN DMG'
   }),
   Object.freeze({
     id: 'blood_reaver',
     name: 'BLOOD-REAVER',
     accentHex: '#f43f5e',
     shortDesc: 'KILL NOVA + 8% LIFESTEAL ON SLAY',
-    fullDesc: 'Slaying foes unleashes a crimson shockwave (45% AoE) and heals 8% max HP.'
+    fullDesc: 'Slaying foes unleashes a crimson shockwave (45% AoE) and heals 8% max HP.',
+    empoweredDesc: 'EMPOWERED 4PC: 65% KILL NOVA + 12% LIFESTEAL'
   }),
   Object.freeze({
     id: 'titan_slayer',
     name: 'TITAN-SLAYER',
     accentHex: '#facc15',
     shortDesc: 'BOSS EXECUTE <15% HP (+30% BOSS DMG)',
-    fullDesc: 'Executes bosses below 15% HP instantly and grants +30% Boss Damage.'
+    fullDesc: 'Executes bosses below 15% HP instantly and grants +30% Boss Damage.',
+    empoweredDesc: 'EMPOWERED 4PC: BOSS EXECUTE <20% HP (+50% BOSS DMG)'
   })
 ]);
 
@@ -891,13 +894,25 @@ export class EndlessGear {
     };
   }
 
+  getSlotPowerDelta(item) {
+    if (!item || typeof item !== 'object') return 0;
+    const itemPower = Number.isFinite(Number(item.power))
+      ? Math.round(Number(item.power))
+      : this.computeItemPower(item);
+    const eq = typeof item.slot === 'string' ? this.equipped[item.slot] : null;
+    const equippedPower = eq && Number.isFinite(Number(eq.power))
+      ? Math.round(Number(eq.power))
+      : 0;
+    return itemPower - equippedPower;
+  }
+
   _partitionLowerInventory() {
     const sorted = this.inventory.slice().sort(compareItemsDesc);
     const keptForEmptySlot = {
-      weapon: false,
-      armor: false,
-      amulet: false,
-      ring: false
+      weapon: null,
+      armor: null,
+      amulet: null,
+      ring: null
     };
     const kept = [];
     const salvageable = [];
@@ -905,18 +920,35 @@ export class EndlessGear {
     for (let i = 0; i < sorted.length; i++) {
       const item = sorted[i];
       if (!item) continue;
+      const itemTier = GEAR_RARITY_BY_ID[item.rarity]?.tier ?? 0;
+      const isProtectedRarity =
+        item.rarity === 'sovereign' || item.rarity === 'mythic' || itemTier >= 3;
       const eq = this.equipped[item.slot];
       if (eq) {
-        if (item.power <= eq.power) {
-          salvageable.push(item);
-        } else {
+        const eqTier = GEAR_RARITY_BY_ID[eq.rarity]?.tier ?? 0;
+        const isHigherRarity = itemTier > eqTier;
+        const eqStrictlyOutclassesHighRarity = eqTier >= itemTier && eq.power > item.power;
+        const shouldKeep =
+          item.power > eq.power ||
+          isHigherRarity ||
+          (isProtectedRarity && !eqStrictlyOutclassesHighRarity);
+        if (shouldKeep) {
           kept.push(item);
+        } else {
+          salvageable.push(item);
         }
       } else if (!keptForEmptySlot[item.slot]) {
-        keptForEmptySlot[item.slot] = true;
+        keptForEmptySlot[item.slot] = item;
         kept.push(item);
       } else {
-        salvageable.push(item);
+        const ref = keptForEmptySlot[item.slot];
+        const refTier = GEAR_RARITY_BY_ID[ref.rarity]?.tier ?? 0;
+        const isHigherRarity = itemTier > refTier;
+        if (isHigherRarity || isProtectedRarity) {
+          kept.push(item);
+        } else {
+          salvageable.push(item);
+        }
       }
     }
 
@@ -972,8 +1004,15 @@ export class EndlessGear {
         accentHex: def.accentHex,
         shortDesc: def.shortDesc,
         fullDesc: def.fullDesc,
+        empoweredDesc: def.empoweredDesc || def.shortDesc,
         pieces,
         requiredPieces: MYTHIC_SET_REQUIRED_PIECES,
+        empoweredPieces: MYTHIC_SET_EMPOWERED_PIECES,
+        tierLabel: empowered
+          ? '4PC EMPOWERED'
+          : active
+            ? '2PC ACTIVE'
+            : `${pieces}/${MYTHIC_SET_REQUIRED_PIECES}PC`,
         active,
         empowered
       });
@@ -987,6 +1026,17 @@ export class EndlessGear {
     for (let i = 0; i < sets.length; i++) {
       if (sets[i].id === setId) {
         return Boolean(sets[i].active);
+      }
+    }
+    return false;
+  }
+
+  hasEmpoweredMythicPassive(setId) {
+    if (typeof setId !== 'string' || !MYTHIC_SET_BY_ID[setId]) return false;
+    const sets = this.getActiveMythicSets();
+    for (let i = 0; i < sets.length; i++) {
+      if (sets[i].id === setId) {
+        return Boolean(sets[i].empowered);
       }
     }
     return false;
@@ -1076,7 +1126,11 @@ export class EndlessGear {
     const slotMeta = GEAR_SLOT_META[item.slot] || GEAR_SLOT_META.weapon;
     const setMeta = item.setId && MYTHIC_SET_BY_ID[item.setId] ? MYTHIC_SET_BY_ID[item.setId] : null;
     const salvageValue = this.getSalvageValue(item);
-    const eqForSlot = this.equipped[item.slot];
+    const eqForSlot = this.equipped[item.slot] || null;
+    const equippedPower = eqForSlot && Number.isFinite(Number(eqForSlot.power))
+      ? Math.round(Number(eqForSlot.power))
+      : 0;
+    const powerDelta = isEquipped ? 0 : this.getSlotPowerDelta(item);
     const isUpgradeOverEquipped = isEquipped
       ? false
       : (!eqForSlot || item.power > eqForSlot.power);
@@ -1085,11 +1139,14 @@ export class EndlessGear {
       uid: item.uid,
       slot: item.slot,
       rarity: item.rarity,
+      rarityOrder: rarityMeta.tier,
       name: item.name,
       stage: item.stage,
       enhanceLevel,
       setId: item.setId || null,
       power: item.power,
+      equippedPower,
+      powerDelta,
       bonuses: { ...item.bonuses },
       effectiveBonuses,
       enhanceCost,
@@ -1134,6 +1191,10 @@ export class EndlessGear {
 
     const { salvageable } = this._partitionLowerInventory();
     const activeSets = this.getActiveMythicSets();
+    let empoweredSetCount = 0;
+    for (let i = 0; i < activeSets.length; i++) {
+      if (activeSets[i].empowered) empoweredSetCount += 1;
+    }
 
     return {
       forgeDust: this.forgeDust,
@@ -1144,6 +1205,7 @@ export class EndlessGear {
       inventoryCount: inventorySnap.length,
       maxInventory: GEAR_MAX_INVENTORY,
       activeSets,
+      empoweredSetCount,
       hasUpgradeAvailable,
       hasSalvageableLower: salvageable.length > 0,
       canEnhanceEquipped,
@@ -1151,6 +1213,10 @@ export class EndlessGear {
       totalSalvaged: this.totalSalvaged,
       totalEnhanced: this.totalEnhanced
     };
+  }
+
+  getSnapshot() {
+    return this.getGearSnapshot();
   }
 
   exportSnapshot() {

@@ -223,6 +223,14 @@ export class EndlessEvents {
     this.ensureActiveBounty(stage, economy);
   }
 
+  resetRunEvents(stage = 1, economy = null) {
+    const s = clampInt(stage, 1, MAX_STAGE_FOR_SCALING, 1);
+    this.activeBuffs = [];
+    this.activeMerchantOffer = null;
+    this.activeBounty = null;
+    return this.ensureActiveBounty(s, economy);
+  }
+
   _nextUid(prefix, tag) {
     this._uidSeq += 1;
     return `${prefix}_${this._uidSeq}_${tag}`;
@@ -259,10 +267,10 @@ export class EndlessEvents {
       Math.floor(Math.max(0, this.completedBounties) / ENDLESS_BOUNTY_TEMPLATES.length)
     );
 
-    const bossGoldRaw = typeof economy?.computeStageBossGoldReward === 'function'
-      ? Number(economy.computeStageBossGoldReward(s))
+    const bossGoldRaw = typeof economy?.computeMonsterGoldReward === 'function'
+      ? Number(economy.computeMonsterGoldReward(s, { isWarden: true }))
       : NaN;
-    const fallbackGold = Math.round(90 * Math.pow(1.22, Math.min(160, s - 1)));
+    const fallbackGold = Math.round(53 * Math.pow(1.25, Math.min(160, s - 1)));
     const baseGold = Number.isFinite(bossGoldRaw) && bossGoldRaw > 0
       ? Math.round(bossGoldRaw)
       : (Number.isFinite(fallbackGold) && fallbackGold > 0 ? fallbackGold : MAX_REWARD_GOLD);

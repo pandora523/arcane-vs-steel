@@ -351,7 +351,11 @@ export class EndlessTrials {
     };
   }
 
-  completeTrial(economy, gear = null, { completedFull = true } = {}) {
+  completeTrial(
+    economy,
+    gear = null,
+    { completedFull = true, earlyExit = false, completed = undefined } = {}
+  ) {
     const trial = this.activeTrial;
     if (!trial) {
       return { ok: false, result: null, savedMainState: null };
@@ -359,9 +363,12 @@ export class EndlessTrials {
 
     const def = trial.def || ENDLESS_TRIAL_BY_ID[trial.id] || ENDLESS_TRIAL_DEFS[0];
     const stage = clampStage(trial.startedAtStage);
-    const isFull = Boolean(completedFull);
+    const isFull = earlyExit
+      ? false
+      : (completed !== undefined ? Boolean(completed) : Boolean(completedFull));
     const savedMainState = trial.savedMainState;
 
+    const elapsedSec = clampFloat(trial.elapsedSec, 0, trial.durationSec, 0);
     const kills = clampInt(trial.kills, 0, MAX_COUNTER, 0);
     const goblinsSlain = clampInt(trial.goblinsSlain, 0, MAX_COUNTER, 0);
     const chestsCracked = clampInt(trial.chestsCracked, 0, MAX_COUNTER, 0);
@@ -371,126 +378,139 @@ export class EndlessTrials {
     );
     const tierReached = clampInt(trial.currentTier, 0, MAX_TRIAL_TIER, 0);
 
-    let goldAwarded = Math.min(
-      MAX_GOLD_VALUE,
-      Math.round(Math.max(0, Number(trial.goldEarned) || 0))
-    );
+    const hasProgress =
+      elapsedSec >= 5 ||
+      kills > 0 ||
+      goblinsSlain > 0 ||
+      chestsCracked > 0 ||
+      damageDealt > 0;
+    const aborted = (!isFull || elapsedSec < 5) && !hasProgress;
+
+    const prevBest = Math.round(Number(this.bestScores[trial.id]) || 0);
+    let isNewBest = false;
+
+    let goldAwarded = aborted
+      ? 0
+      : Math.min(MAX_GOLD_VALUE, Math.round(Math.max(0, Number(trial.goldEarned) || 0)));
     let shardsAwarded = 0;
     let dustAwarded = 0;
     const gearAwarded = [];
 
-    if (trial.id === 'gold_vault') {
-      const bonusGold = computeGoldVaultBonus(stage, goblinsSlain, chestsCracked, isFull, economy);
-      let bonusCredited = 0;
-      if (economy && typeof economy.addGold === 'function') {
-        const added = Number(economy.addGold(bonusGold));
-        bonusCredited = Number.isFinite(added) && added > 0
-          ? Math.min(MAX_GOLD_VALUE, Math.round(added))
-          : 0;
-      } else if (economy && typeof economy === 'object') {
-        bonusCredited = bonusGold;
-        const prevGold = Number.isFinite(Number(economy.gold)) ? Number(economy.gold) : 0;
-        economy.gold = Math.min(MAX_GOLD_VALUE, Math.max(0, prevGold + bonusGold));
-        if (economy.totalGoldEarned !== undefined) {
-          const prevTotal = Number.isFinite(Number(economy.totalGoldEarned))
-            ? Number(economy.totalGoldEarned)
-            : prevGold;
-          economy.totalGoldEarned = Math.min(
-            MAX_GOLD_VALUE,
-            Math.max(economy.gold, prevTotal + bonusGold)
-          );
-        }
-      } else {
-        bonusCredited = bonusGold;
-      }
-      goldAwarded = Math.min(MAX_GOLD_VALUE, goldAwarded + bonusCredited);
-      this.bestScores.gold_vault = Math.max(
-        Math.round(Number(this.bestScores.gold_vault) || 0),
-        goldAwarded
-      );
-    } else if (trial.id === 'malphas_gauntlet') {
-      shardsAwarded = Math.max(isFull ? 2 : 1, tierReached * 3);
-      dustAwarded = Math.max(isFull ? 15 : 8, tierReached * 28);
-
-      if (economy && typeof economy === 'object' && shardsAwarded > 0) {
-        if (typeof economy.addAstralShards === 'function') {
-          economy.addAstralShards(shardsAwarded);
-        } else {
-          const prevShards = Math.max(0, Math.floor(Number(economy.astralShards) || 0));
-          const prevTotal = Math.max(
-            prevShards,
-            Math.floor(Number(economy.totalAstralShards) || 0)
-          );
-          economy.astralShards = prevShards + shardsAwarded;
-          economy.totalAstralShards = prevTotal + shardsAwarded;
-        }
-      }
-
-      if (gear && typeof gear === 'object' && dustAwarded > 0) {
-        const prevDust = Math.max(0, Math.floor(Number(gear.forgeDust) || 0));
-        gear.forgeDust = clampInt(prevDust + dustAwarded, 0, MAX_FORGE_DUST, prevDust);
-      }
-
-      this.bestScores.malphas_gauntlet = Math.max(
-        Math.round(Number(this.bestScores.malphas_gauntlet) || 0),
-        damageDealt
-      );
-    } else if (trial.id === 'abyssal_horde') {
-      const dropRarities = buildHordeDropRarities(kills, isFull);
-      if (gear && typeof gear.rollDrop === 'function') {
-        for (let i = 0; i < dropRarities.length; i++) {
-          const forcedRarity = dropRarities[i];
-          const rolled = gear.rollDrop({
-            stage,
-            source: 'chest',
-            forcedRarity
-          });
-          if (!rolled) continue;
-          let collectedItem = rolled;
-          if (typeof gear.collectDrop === 'function') {
-            const collectRes = gear.collectDrop(rolled, { autoEquipEmpty: true });
-            if (collectRes && collectRes.item) {
-              collectedItem = collectRes.item;
-            }
+    if (!aborted) {
+      if (trial.id === 'gold_vault') {
+        const bonusGold = computeGoldVaultBonus(stage, goblinsSlain, chestsCracked, isFull, economy);
+        let bonusCredited = 0;
+        if (economy && typeof economy.addGold === 'function') {
+          const added = Number(economy.addGold(bonusGold));
+          bonusCredited = Number.isFinite(added) && added > 0
+            ? Math.min(MAX_GOLD_VALUE, Math.round(added))
+            : 0;
+        } else if (economy && typeof economy === 'object') {
+          bonusCredited = bonusGold;
+          const prevGold = Number.isFinite(Number(economy.gold)) ? Number(economy.gold) : 0;
+          economy.gold = Math.min(MAX_GOLD_VALUE, Math.max(0, prevGold + bonusGold));
+          if (economy.totalGoldEarned !== undefined) {
+            const prevTotal = Number.isFinite(Number(economy.totalGoldEarned))
+              ? Number(economy.totalGoldEarned)
+              : prevGold;
+            economy.totalGoldEarned = Math.min(
+              MAX_GOLD_VALUE,
+              Math.max(economy.gold, prevTotal + bonusGold)
+            );
           }
-          const rarityKey = typeof collectedItem.rarity === 'string' && GEAR_RARITY_BY_ID[collectedItem.rarity]
-            ? collectedItem.rarity
-            : forcedRarity;
-          gearAwarded.push({
-            uid: typeof collectedItem.uid === 'string' ? collectedItem.uid : '',
-            name: typeof collectedItem.name === 'string' && collectedItem.name
-              ? collectedItem.name
-              : 'TRIAL RELIC',
-            rarity: rarityKey,
-            slot: typeof collectedItem.slot === 'string' && collectedItem.slot
-              ? collectedItem.slot
-              : 'weapon',
-            rarityMeta: GEAR_RARITY_BY_ID[rarityKey] || GEAR_RARITY_BY_ID.heroic
-          });
+        } else {
+          bonusCredited = bonusGold;
+        }
+        goldAwarded = Math.min(MAX_GOLD_VALUE, goldAwarded + bonusCredited);
+        if (goldAwarded > prevBest) {
+          this.bestScores.gold_vault = goldAwarded;
+          isNewBest = true;
+        }
+      } else if (trial.id === 'malphas_gauntlet') {
+        shardsAwarded = Math.max(isFull ? 2 : 1, tierReached * 3);
+        dustAwarded = Math.max(isFull ? 15 : 8, tierReached * 28);
+
+        if (economy && typeof economy === 'object' && shardsAwarded > 0) {
+          if (typeof economy.addAstralShards === 'function') {
+            economy.addAstralShards(shardsAwarded);
+          } else {
+            const prevShards = Math.max(0, Math.floor(Number(economy.astralShards) || 0));
+            const prevTotal = Math.max(
+              prevShards,
+              Math.floor(Number(economy.totalAstralShards) || 0)
+            );
+            economy.astralShards = prevShards + shardsAwarded;
+            economy.totalAstralShards = prevTotal + shardsAwarded;
+          }
+        }
+
+        if (gear && typeof gear === 'object' && dustAwarded > 0) {
+          const prevDust = Math.max(0, Math.floor(Number(gear.forgeDust) || 0));
+          gear.forgeDust = clampInt(prevDust + dustAwarded, 0, MAX_FORGE_DUST, prevDust);
+        }
+
+        if (damageDealt > prevBest) {
+          this.bestScores.malphas_gauntlet = damageDealt;
+          isNewBest = true;
+        }
+      } else if (trial.id === 'abyssal_horde') {
+        const dropRarities = buildHordeDropRarities(kills, isFull);
+        if (gear && typeof gear.rollDrop === 'function') {
+          for (let i = 0; i < dropRarities.length; i++) {
+            const forcedRarity = dropRarities[i];
+            const rolled = gear.rollDrop({
+              stage,
+              source: 'chest',
+              forcedRarity
+            });
+            if (!rolled) continue;
+            let collectedItem = rolled;
+            if (typeof gear.collectDrop === 'function') {
+              const collectRes = gear.collectDrop(rolled, { autoEquipEmpty: true });
+              if (collectRes && collectRes.item) {
+                collectedItem = collectRes.item;
+              }
+            }
+            const rarityKey = typeof collectedItem.rarity === 'string' && GEAR_RARITY_BY_ID[collectedItem.rarity]
+              ? collectedItem.rarity
+              : forcedRarity;
+            gearAwarded.push({
+              uid: typeof collectedItem.uid === 'string' ? collectedItem.uid : '',
+              name: typeof collectedItem.name === 'string' && collectedItem.name
+                ? collectedItem.name
+                : 'TRIAL RELIC',
+              rarity: rarityKey,
+              slot: typeof collectedItem.slot === 'string' && collectedItem.slot
+                ? collectedItem.slot
+                : 'weapon',
+              rarityMeta: GEAR_RARITY_BY_ID[rarityKey] || GEAR_RARITY_BY_ID.heroic
+            });
+          }
+        }
+
+        dustAwarded = clampInt(12 + kills * 2, 12, MAX_FORGE_DUST, 12);
+        if (gear && typeof gear === 'object' && dustAwarded > 0) {
+          const prevDust = Math.max(0, Math.floor(Number(gear.forgeDust) || 0));
+          gear.forgeDust = clampInt(prevDust + dustAwarded, 0, MAX_FORGE_DUST, prevDust);
+        }
+
+        if (kills > prevBest) {
+          this.bestScores.abyssal_horde = kills;
+          isNewBest = true;
         }
       }
 
-      dustAwarded = clampInt(12 + kills * 2, 12, MAX_FORGE_DUST, 12);
-      if (gear && typeof gear === 'object' && dustAwarded > 0) {
-        const prevDust = Math.max(0, Math.floor(Number(gear.forgeDust) || 0));
-        gear.forgeDust = clampInt(prevDust + dustAwarded, 0, MAX_FORGE_DUST, prevDust);
-      }
-
-      this.bestScores.abyssal_horde = Math.max(
-        Math.round(Number(this.bestScores.abyssal_horde) || 0),
-        kills
+      this.totalTrialsCompleted = clampInt(
+        this.totalTrialsCompleted + 1,
+        0,
+        MAX_COUNTER,
+        this.totalTrialsCompleted + 1
       );
     }
 
     this.cooldowns[trial.id] = def.cooldownSec;
-    this.totalTrialsCompleted = clampInt(
-      this.totalTrialsCompleted + 1,
-      0,
-      MAX_COUNTER,
-      this.totalTrialsCompleted + 1
-    );
 
-    const durationUsedSec = roundTo(clampFloat(trial.elapsedSec, 0, trial.durationSec, 0), 2);
+    const durationUsedSec = roundTo(elapsedSec, 2);
     const formattedDamage = formatEndlessNumber(damageDealt);
     const formattedGold = formatEndlessNumber(goldAwarded);
 
@@ -512,7 +532,9 @@ export class EndlessTrials {
       shardsAwarded,
       dustAwarded,
       gearAwarded,
-      completedFull: isFull
+      completedFull: isFull && !aborted,
+      aborted,
+      isNewBest
     };
 
     this.activeTrial = null;
@@ -624,18 +646,24 @@ export class EndlessTrials {
   }
 
   exportSnapshot() {
+    const now = Date.now();
     const bestScores = makeEmptyTrialMap();
+    const cooldownEndsAt = makeEmptyTrialMap();
     for (let i = 0; i < ENDLESS_TRIAL_DEFS.length; i++) {
-      const id = ENDLESS_TRIAL_DEFS[i].id;
+      const def = ENDLESS_TRIAL_DEFS[i];
+      const id = def.id;
       const raw = Number(this.bestScores[id]);
       bestScores[id] = Number.isFinite(raw) && raw > 0
         ? Math.min(MAX_SCORE_VALUE, Math.round(raw))
         : 0;
+      const remSec = clampFloat(this.cooldowns[id], 0, def.cooldownSec, 0);
+      cooldownEndsAt[id] = remSec > 0 ? Math.round(now + remSec * 1000) : 0;
     }
 
     return {
       version: 1,
       bestScores,
+      cooldownEndsAt,
       totalTrialsCompleted: clampInt(this.totalTrialsCompleted, 0, MAX_COUNTER, 0),
       uidSeq: clampInt(this._uidSeq, 0, MAX_COUNTER, 0)
     };
@@ -644,6 +672,7 @@ export class EndlessTrials {
   importSnapshot(data) {
     if (!data || typeof data !== 'object') return false;
 
+    const now = Date.now();
     const nextBest = makeEmptyTrialMap();
     if (data.bestScores && typeof data.bestScores === 'object') {
       for (let i = 0; i < ENDLESS_TRIAL_DEFS.length; i++) {
@@ -655,6 +684,19 @@ export class EndlessTrials {
       }
     }
 
+    const restoredCooldowns = makeEmptyTrialMap();
+    if (data.cooldownEndsAt && typeof data.cooldownEndsAt === 'object') {
+      for (let i = 0; i < ENDLESS_TRIAL_DEFS.length; i++) {
+        const def = ENDLESS_TRIAL_DEFS[i];
+        const id = def.id;
+        const endsAt = Number(data.cooldownEndsAt[id]);
+        if (Number.isFinite(endsAt) && endsAt > now) {
+          const remSec = Math.max(0, (endsAt - now) / 1000);
+          restoredCooldowns[id] = roundTo(Math.min(def.cooldownSec, remSec), 2);
+        }
+      }
+    }
+
     this.bestScores = nextBest;
     this.totalTrialsCompleted = clampInt(data.totalTrialsCompleted, 0, MAX_COUNTER, 0);
     this._uidSeq = clampInt(data.uidSeq, 0, MAX_COUNTER, 0);
@@ -662,7 +704,7 @@ export class EndlessTrials {
     // Never restore an active trial across page reloads
     this.activeTrial = null;
     this.lastResult = null;
-    this.cooldowns = makeEmptyTrialMap();
+    this.cooldowns = restoredCooldowns;
 
     return true;
   }
