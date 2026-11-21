@@ -4,7 +4,8 @@
 import { formatEndlessNumber } from './EndlessEconomy.js?v=30fps202';
 
 export const COMPANION_MAX_STARS = 5;
-export const COMPANION_EX_UNLOCK_STAR = 3;
+export const COMPANION_EX_UNLOCK_STAR = 1;
+export const COMPANION_AURA_UNLOCK_STAR = 3;
 export const OVERDRIVE_MAX_CHARGE = 100;
 
 const DEFAULT_FORMATION_ID = 'balanced_phalanx';
@@ -13,62 +14,115 @@ const OVERDRIVE_SURGE_DMG_MULT = 1.35;
 const OVERDRIVE_SURGE_HASTE_MULT = 1.25;
 const MAX_COUNTER = 1e9;
 
+export const COMPANION_AURA_TIERS = Object.freeze([
+  Object.freeze({
+    tier: 0,
+    id: 'base_ex',
+    label: 'EX',
+    shortLabel: 'EX',
+    title: 'NEXT-GEN EX',
+    ultVfxMult: 1.0
+  }),
+  Object.freeze({
+    tier: 1,
+    id: 'sovereign_aura',
+    label: '3-STAR SOVEREIGN AURA',
+    shortLabel: 'SOVEREIGN',
+    title: 'SOVEREIGN AURA',
+    ultVfxMult: 1.25
+  }),
+  Object.freeze({
+    tier: 2,
+    id: 'ascended_halo',
+    label: '4-STAR ASCENDED HALO',
+    shortLabel: 'ASCENDED',
+    title: 'ASCENDED HALO',
+    ultVfxMult: 1.50
+  }),
+  Object.freeze({
+    tier: 3,
+    id: 'mythic_crown',
+    label: '5-STAR MYTHIC CROWN',
+    shortLabel: 'MYTHIC',
+    title: 'MYTHIC CROWN',
+    ultVfxMult: 1.85
+  })
+]);
+
+export function getAuraTier(star) {
+  const s = clampInt(star, 1, COMPANION_MAX_STARS, 1);
+  if (s >= 5) return COMPANION_AURA_TIERS[3];
+  if (s === 4) return COMPANION_AURA_TIERS[2];
+  if (s === 3) return COMPANION_AURA_TIERS[1];
+  return COMPANION_AURA_TIERS[0];
+}
+
 export const COMPANION_STAR_TIERS = Object.freeze([
   Object.freeze({
     star: 1,
-    title: 'INITIATE',
+    title: 'NEXT-GEN EX',
     dpsMult: 1.0,
     ultMult: 1.0,
     promoteShards: 0,
     promoteDust: 0,
-    isExEvolved: false
+    isExForm: true,
+    isExEvolved: true,
+    auraTier: 0
   }),
   Object.freeze({
     star: 2,
-    title: 'VETERAN',
+    title: 'VETERAN EX',
     dpsMult: 1.45,
     ultMult: 1.25,
     promoteShards: 3,
     promoteDust: 20,
-    isExEvolved: false
+    isExForm: true,
+    isExEvolved: true,
+    auraTier: 0
   }),
   Object.freeze({
     star: 3,
-    title: 'EX ASCENDED',
+    title: 'SOVEREIGN AURA',
     dpsMult: 2.25,
     ultMult: 1.65,
     promoteShards: 8,
     promoteDust: 60,
-    isExEvolved: true
+    isExForm: true,
+    isExEvolved: true,
+    auraTier: 1
   }),
   Object.freeze({
     star: 4,
-    title: 'SOVEREIGN EX',
+    title: 'ASCENDED HALO',
     dpsMult: 3.5,
     ultMult: 2.2,
     promoteShards: 18,
     promoteDust: 140,
-    isExEvolved: true
+    isExForm: true,
+    isExEvolved: true,
+    auraTier: 2
   }),
   Object.freeze({
     star: 5,
-    title: 'MYTHIC EX',
+    title: 'MYTHIC CROWN',
     dpsMult: 5.5,
     ultMult: 3.0,
     promoteShards: 36,
     promoteDust: 300,
-    isExEvolved: true
+    isExForm: true,
+    isExEvolved: true,
+    auraTier: 3
   })
 ]);
 
 export const COMPANION_BASE_TO_EX_KEY = Object.freeze({
-  aethelgard: Object.freeze({ baseHeroKey: 'warrior', exHeroKey: 'warrior_ex', isNativeEx: false }),
-  seraphina: Object.freeze({ baseHeroKey: 'priestess', exHeroKey: 'priestess_ex', isNativeEx: false }),
-  ignis_sol: Object.freeze({ baseHeroKey: 'mage', exHeroKey: 'mage_ex', isNativeEx: false }),
-  sylvanis: Object.freeze({ baseHeroKey: 'archer', exHeroKey: 'archer_ex', isNativeEx: false }),
-  freyja: Object.freeze({ baseHeroKey: 'valkyrie', exHeroKey: 'valkyrie_ex', isNativeEx: false }),
-  kaze_maru: Object.freeze({ baseHeroKey: 'ronin', exHeroKey: 'ronin_ex', isNativeEx: false }),
-  chronos: Object.freeze({ baseHeroKey: 'chronomancer', exHeroKey: 'chronomancer_ex', isNativeEx: false }),
+  aethelgard: Object.freeze({ baseHeroKey: 'warrior_ex', exHeroKey: 'warrior_ex', isNativeEx: true }),
+  seraphina: Object.freeze({ baseHeroKey: 'priestess_ex', exHeroKey: 'priestess_ex', isNativeEx: true }),
+  ignis_sol: Object.freeze({ baseHeroKey: 'mage_ex', exHeroKey: 'mage_ex', isNativeEx: true }),
+  sylvanis: Object.freeze({ baseHeroKey: 'archer_ex', exHeroKey: 'archer_ex', isNativeEx: true }),
+  freyja: Object.freeze({ baseHeroKey: 'valkyrie_ex', exHeroKey: 'valkyrie_ex', isNativeEx: true }),
+  kaze_maru: Object.freeze({ baseHeroKey: 'ronin_ex', exHeroKey: 'ronin_ex', isNativeEx: true }),
+  chronos: Object.freeze({ baseHeroKey: 'chronomancer_ex', exHeroKey: 'chronomancer_ex', isNativeEx: true }),
   raijin_ex: Object.freeze({ baseHeroKey: 'brawler_ex', exHeroKey: 'brawler_ex', isNativeEx: true }),
   nyx_ex: Object.freeze({ baseHeroKey: 'nyx_ex', exHeroKey: 'nyx_ex', isNativeEx: true }),
   reaper_ex: Object.freeze({ baseHeroKey: 'reaper_ex', exHeroKey: 'reaper_ex', isNativeEx: true }),
@@ -257,6 +311,8 @@ const COMPANION_ID_ALIASES = Object.freeze({
   'kaze-maru': 'kaze_maru',
   raijin: 'raijin_ex',
   'raijin-ex': 'raijin_ex',
+  brawler: 'raijin_ex',
+  brawler_ex: 'raijin_ex',
   nyx: 'nyx_ex',
   'nyx-ex': 'nyx_ex',
   reaper: 'reaper_ex',
@@ -372,6 +428,14 @@ function deductDust(gear, cost) {
   return false;
 }
 
+function formatPromoteCta(nextStar, isMaxStar) {
+  if (isMaxStar || !nextStar) return `MAX ${COMPANION_MAX_STARS}-STAR`;
+  if (nextStar === 2) return 'PROMOTE 2-STAR';
+  if (nextStar === 3) return 'ASCEND 3-STAR';
+  if (nextStar === 4) return 'ASCEND 4-STAR';
+  return 'ASCEND 5-STAR';
+}
+
 export class EndlessCompanionEvo {
   constructor() {
     this.starsById = makeDefaultStarsMap();
@@ -400,17 +464,23 @@ export class EndlessCompanionEvo {
     return clampInt(raw, 1, COMPANION_MAX_STARS, 1);
   }
 
-  isExEvolved(id) {
-    return this.getStar(id) >= COMPANION_EX_UNLOCK_STAR;
+  getAuraTier(starOrId) {
+    if (typeof starOrId === 'string') {
+      return getAuraTier(this.getStar(starOrId));
+    }
+    return getAuraTier(starOrId);
   }
 
-  isExSprite(id) {
-    const normId = normalizeCompanionId(id);
-    const mapping = normId && Object.prototype.hasOwnProperty.call(COMPANION_BASE_TO_EX_KEY, normId)
-      ? COMPANION_BASE_TO_EX_KEY[normId]
-      : null;
-    if (mapping && mapping.isNativeEx) return true;
-    return this.getStar(normId) >= COMPANION_EX_UNLOCK_STAR;
+  isExForm(_id) {
+    return true;
+  }
+
+  isExEvolved(_id) {
+    return true;
+  }
+
+  isExSprite(_id) {
+    return true;
   }
 
   getSpriteHeroKey(id, fallbackKey = '') {
@@ -419,9 +489,7 @@ export class EndlessCompanionEvo {
       ? COMPANION_BASE_TO_EX_KEY[normId]
       : null;
     if (mapping) {
-      return mapping.isNativeEx || this.getStar(normId) >= COMPANION_EX_UNLOCK_STAR
-        ? mapping.exHeroKey
-        : mapping.baseHeroKey;
+      return mapping.exHeroKey;
     }
     if (typeof fallbackKey === 'string' && fallbackKey.trim()) {
       return fallbackKey.trim();
@@ -436,14 +504,20 @@ export class EndlessCompanionEvo {
     const isMaxStar = star >= COMPANION_MAX_STARS;
     const nextStar = isMaxStar ? null : star + 1;
     const nextTier = isMaxStar ? null : COMPANION_STAR_TIERS[nextStar - 1];
+    const auraTier = getAuraTier(star);
+    const nextAuraTier = isMaxStar ? null : getAuraTier(nextStar);
 
     return {
       star,
       title: tier.title,
       dpsMult: tier.dpsMult,
       ultMult: tier.ultMult,
-      isExEvolved: tier.isExEvolved,
-      isExSprite: this.isExSprite(normId),
+      isExForm: true,
+      isExEvolved: true,
+      isExSprite: true,
+      auraTier,
+      nextAuraTier,
+      ultVfxMult: auraTier.ultVfxMult,
       nextStar,
       promoteShards: nextTier ? nextTier.promoteShards : 0,
       promoteDust: nextTier ? nextTier.promoteDust : 0,
@@ -457,6 +531,8 @@ export class EndlessCompanionEvo {
     const isMaxStar = star >= COMPANION_MAX_STARS;
     const nextStar = isMaxStar ? null : star + 1;
     const nextTier = isMaxStar ? null : COMPANION_STAR_TIERS[nextStar - 1];
+    const auraTier = getAuraTier(star);
+    const nextAuraTier = isMaxStar ? null : getAuraTier(nextStar);
 
     const shardsCost = nextTier ? nextTier.promoteShards : 0;
     const dustCost = nextTier ? nextTier.promoteDust : 0;
@@ -484,20 +560,15 @@ export class EndlessCompanionEvo {
         : `${formatEndlessNumber(shardsCost)} SHARDS`;
     }
 
-    const mapping = normId && Object.prototype.hasOwnProperty.call(COMPANION_BASE_TO_EX_KEY, normId)
-      ? COMPANION_BASE_TO_EX_KEY[normId]
-      : null;
-    const unlocksExForm =
-      !isMaxStar &&
-      !(mapping && mapping.isNativeEx) &&
-      star < COMPANION_EX_UNLOCK_STAR &&
-      nextStar >= COMPANION_EX_UNLOCK_STAR;
+    const promoteCta = formatPromoteCta(nextStar, isMaxStar);
+    const unlocksAuraTier = !isMaxStar && nextStar >= COMPANION_AURA_UNLOCK_STAR ? nextStar : 0;
 
     return {
       id: normId,
       star,
       nextStar,
       isMaxStar,
+      isExForm: true,
       shardsCost,
       dustCost,
       canAffordShards,
@@ -505,19 +576,28 @@ export class EndlessCompanionEvo {
       canPromote,
       payMode,
       formattedCost,
-      unlocksExForm
+      promoteCta,
+      auraTier,
+      nextAuraTier,
+      unlocksAuraTier,
+      unlocksExForm: false
     };
   }
 
   promoteCompanion(id, economy, gear = null) {
     const normId = normalizeCompanionId(id);
     if (!normId) {
+      const baseAura = getAuraTier(1);
       return {
         ok: false,
         id: '',
         prevStar: 1,
         star: 1,
+        isExForm: true,
         unlockedEx: false,
+        unlockedAuraTier: 0,
+        auraTier: baseAura,
+        auraTierName: baseAura.label,
         payMode: 'shards',
         cost: 0,
         dpsMult: COMPANION_STAR_TIERS[0].dpsMult,
@@ -529,6 +609,7 @@ export class EndlessCompanionEvo {
     const quote = this.getPromoteQuote(normId, economy, gear);
     const prevStar = quote.star;
     const currentTier = COMPANION_STAR_TIERS[prevStar - 1] || COMPANION_STAR_TIERS[0];
+    const currentAura = getAuraTier(prevStar);
 
     if (quote.isMaxStar || !quote.canPromote) {
       return {
@@ -536,7 +617,11 @@ export class EndlessCompanionEvo {
         id: normId,
         prevStar,
         star: prevStar,
+        isExForm: true,
         unlockedEx: false,
+        unlockedAuraTier: 0,
+        auraTier: currentAura,
+        auraTierName: currentAura.label,
         payMode: quote.payMode,
         cost: quote.payMode === 'dust' ? quote.dustCost : quote.shardsCost,
         dpsMult: currentTier.dpsMult,
@@ -565,7 +650,11 @@ export class EndlessCompanionEvo {
         id: normId,
         prevStar,
         star: prevStar,
+        isExForm: true,
         unlockedEx: false,
+        unlockedAuraTier: 0,
+        auraTier: currentAura,
+        auraTierName: currentAura.label,
         payMode,
         cost,
         dpsMult: currentTier.dpsMult,
@@ -579,13 +668,9 @@ export class EndlessCompanionEvo {
     this.totalPromotions = clampInt(this.totalPromotions + 1, 0, MAX_COUNTER, this.totalPromotions + 1);
 
     const nextTier = COMPANION_STAR_TIERS[nextStar - 1] || COMPANION_STAR_TIERS[COMPANION_STAR_TIERS.length - 1];
-    const mapping = normId && Object.prototype.hasOwnProperty.call(COMPANION_BASE_TO_EX_KEY, normId)
-      ? COMPANION_BASE_TO_EX_KEY[normId]
-      : null;
-    const unlockedEx =
-      !(mapping && mapping.isNativeEx) &&
-      prevStar < COMPANION_EX_UNLOCK_STAR &&
-      nextStar >= COMPANION_EX_UNLOCK_STAR;
+    const auraTier = getAuraTier(nextStar);
+    const unlockedAuraTier = nextStar >= COMPANION_AURA_UNLOCK_STAR ? nextStar : 0;
+    const auraTierName = auraTier.label;
     const heroKey = this.getSpriteHeroKey(normId);
 
     return {
@@ -593,7 +678,11 @@ export class EndlessCompanionEvo {
       id: normId,
       prevStar,
       star: nextStar,
-      unlockedEx,
+      isExForm: true,
+      unlockedEx: false,
+      unlockedAuraTier,
+      auraTier,
+      auraTierName,
       payMode,
       cost,
       dpsMult: nextTier.dpsMult,
@@ -735,6 +824,7 @@ export class EndlessCompanionEvo {
       formationId: formation.id,
       formation,
       formations: SQUAD_FORMATIONS,
+      auraTiers: COMPANION_AURA_TIERS,
       overdriveCharge: charge,
       overdriveRatio: ratio,
       overdriveReady,
