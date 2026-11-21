@@ -2218,6 +2218,7 @@ export class EndlessManager {
 
     if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
       document.getElementById('hud-right')?.classList?.remove?.('hidden');
+      document.getElementById('app')?.classList?.remove?.('is-endless-ai-on');
     }
 
     const renderer = this.game?.renderer;
@@ -6699,6 +6700,9 @@ export class EndlessManager {
         player._manualWalkActive = false;
       }
     }
+    if (this.autoPlay) {
+      this.clearHeldInputs();
+    }
     this.syncControlDeckUI();
     if (playSound && this.game?.audio) {
       this.game.audio.play('clock_gear', player ? player.x : 600);
@@ -10275,6 +10279,7 @@ export class EndlessManager {
     const preserveAdvDeck = Boolean(!this.active && this.game?.isAdventureMode?.());
     if (refs.appEl) {
       refs.appEl.classList?.toggle('is-endless-active', visible);
+      refs.appEl.classList?.toggle('is-endless-ai-on', Boolean(visible && this.autoPlay));
       if (!preserveAdvDeck) {
         refs.appEl.classList?.toggle('is-adventure-active', visible);
       }

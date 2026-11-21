@@ -10124,3 +10124,187 @@ html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-rai
     transition: transform 0.16s ease-out;
   }
 }
+
+/* =========================================================================
+   ENDLESS CRUSADE AI-ON COMPACT AUTO PILL (#app.is-endless-active.is-endless-ai-on)
+   Hide combat joystick, 5 skill orbs & lock pill while AUTO AI is ON in Endless ONLY,
+   tucking only a single clickable AUTO pill cleanly at bottom-right across all viewports.
+   Adventure Mode & VS Mode are 100% untouched.
+   ========================================================================= */
+#app.is-endless-active.is-endless-ai-on #adv-joystick-zone,
+#app.is-endless-active.is-endless-ai-on #adv-skill-cluster .adv-orb-btn,
+#app.is-endless-active.is-endless-ai-on #adv-skill-cluster #adv-btn-lock {
+  display: none !important;
+}
+
+#app.is-endless-active.is-endless-ai-on #adv-skill-cluster {
+  left: auto;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: auto;
+  height: auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  transform: none;
+  transform-origin: bottom right;
+  background: transparent;
+  border: none;
+  outline: none;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+#app.is-endless-active.is-endless-ai-on #adv-skill-cluster #adv-btn-auto {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  margin: 0;
+  width: auto;
+  min-width: 70px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+/* Desktop (1280x800+): override bottom-center hotbar frame & pin compact AUTO [P] pill to bottom-right */
+@media (min-width: 901px) and (min-height: 541px) {
+  html:not(.is-mobile-device) #app.is-endless-active.is-endless-ai-on #adv-skill-cluster {
+    left: auto;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+    height: auto;
+    padding: 0;
+    gap: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  html:not(.is-mobile-device) #app.is-endless-active.is-endless-ai-on #adv-skill-cluster #adv-btn-auto {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    min-width: 72px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 999px;
+    pointer-events: auto;
+  }
+}
+
+/* Mobile Landscape (844x390 native & CSS-rotated): compact bottom-right pill cleanly beneath open drawer */
+@media (max-height: 540px) {
+  #app.is-endless-active.is-endless-ai-on #adv-skill-cluster {
+    left: auto;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+    height: auto;
+    padding: 0;
+    gap: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  #app.is-endless-active.is-endless-ai-on #adv-skill-cluster #adv-btn-auto {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    min-width: 64px;
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 0.28rem;
+    pointer-events: auto;
+  }
+}
+
+html.is-mobile-landscape #app.is-endless-active.is-endless-ai-on #adv-skill-cluster {
+  left: auto;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  transform: none;
+  width: auto;
+  height: auto;
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  border-radius: 0;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+html.is-mobile-landscape #app.is-endless-active.is-endless-ai-on #adv-skill-cluster #adv-btn-auto {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: auto;
+  min-width: 64px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 0.28rem;
+  pointer-events: auto;
+}
+
+/* Mobile Portrait (390x844 & portrait phones <= 540px): tuck compact AUTO pill cleanly at bottom-right */
+@media (max-width: 540px) and (orientation: portrait) {
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-ai-on #adv-skill-cluster {
+    left: auto;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+    height: auto;
+    padding: 0;
+    gap: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    border-radius: 0;
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-ai-on #adv-skill-cluster #adv-btn-auto {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    min-width: 70px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    pointer-events: auto;
+  }
+}
