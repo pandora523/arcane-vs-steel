@@ -11,6 +11,7 @@ import { EndlessBossDirector } from './EndlessBossDirector.js?v=30fps200';
 import { EndlessGear, GEAR_RARITY_BY_ID, GEAR_SLOT_META } from './EndlessGear.js?v=30fps200';
 import { EndlessEvents, ENDLESS_SHRINE_TYPES, ENDLESS_SHRINE_BY_ID } from './EndlessEvents.js?v=30fps200';
 import { EndlessCompanionEvo } from './EndlessCompanionEvo.js?v=30fps200';
+import { EndlessTrials, ENDLESS_TRIAL_DEFS, ENDLESS_TRIAL_BY_ID } from './EndlessTrials.js?v=30fps200';
 
 export const ENDLESS_REALMS = [
   {
@@ -166,6 +167,12 @@ const WORLD_SHRINE_MAX_AGE = 34;
 const WANDERING_MERCHANT_MAX_AGE = 32;
 const WORLD_EVENT_PROXIMITY_RADIUS = 96;
 const WORLD_EVENT_TAP_RADIUS = 88;
+
+const TRIAL_GOLD_VAULT_REFILL_SEC = 2.4;
+const TRIAL_ABYSSAL_HORDE_REFILL_SEC = 2.0;
+const TRIAL_ABYSSAL_HORDE_MIN_LIVING = 7;
+const TRIAL_ABYSSAL_HORDE_TARGET_LIVING = 8;
+const TRIAL_MALPHAS_MAX_HP = 1e11;
 
 const ENDLESS_MONSTER_BASE_HP = {
   templar: 320,
@@ -733,6 +740,10 @@ export class EndlessManager {
     this.bossDirector = new EndlessBossDirector();
     this.gear = new EndlessGear();
     this.events = new EndlessEvents();
+    this.trials = new EndlessTrials();
+    this._trialSpawnTimer = 0;
+    this._trialBossPrevHp = 0;
+    this._trialHordeWaveIdx = 0;
     this._activeDirectorSnap = null;
     this._activeDirectorMods = null;
     this.pendingOfflineLoot = null;
@@ -888,7 +899,7 @@ export class EndlessManager {
     } else if (!this.autoPlay && (code === 'Tab' || code === 'KeyR')) {
       this.toggleTargetLock(true);
       e.preventDefault?.();
-    } else if (code === 'KeyB' && this.bossFarmMode && !this.isBossEncounter) {
+    } else if (code === 'KeyB' && this.bossFarmMode && !this.isBossEncounter && !this.trials?.isActive?.()) {
       this.challengeBoss();
       e.preventDefault?.();
     } else if (code === 'KeyT') {
@@ -1009,10 +1020,13 @@ export class EndlessManager {
     while (this.coins.length >= COINS_MAX_COUNT) {
       const oldest = this.coins.shift();
       if (oldest && oldest.kind === 'gold' && Number.isFinite(oldest.rawGold) && oldest.rawGold > 0) {
-        this.economy.addGold(safeBoundedInt(oldest.rawGold, 1, ENDLESS_MAX_STAT), {
+        const added = this.economy.addGold(safeBoundedInt(oldest.rawGold, 1, ENDLESS_MAX_STAT), {
           isBoss: Boolean(oldest.isBoss),
           applyMult: Boolean(oldest.applyMult)
         });
+        if (added > 0 && this.trials?.isActive?.()) {
+          this.trials.recordTrialGold(added);
+        }
       }
     }
   }
@@ -1622,6 +1636,13 @@ export class EndlessManager {
     this._tempestBoltTimer = 0;
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
+    this._trialSpawnTimer = 0;
+    this._trialBossPrevHp = 0;
+    this._trialHordeWaveIdx = 0;
+    if (this.trials) {
+      this.trials.activeTrial = null;
+      this.trials.lastResult = null;
+    }
     this.companions?.clearTransientFX?.();
 
     this._coinStreak = 0;
@@ -1702,6 +1723,15 @@ export class EndlessManager {
           this.events.reset(this.stage);
         }
       }
+      if (this.trials) {
+        if (loadedSnap?.meta?.trials && typeof this.trials.importSnapshot === 'function') {
+          this.trials.importSnapshot(loadedSnap.meta.trials);
+        } else if (typeof this.trials.reset === 'function') {
+          this.trials.reset();
+        }
+        this.trials.activeTrial = null;
+        this.trials.lastResult = null;
+      }
       if (this.ascension) {
         if (loadedSnap?.meta?.ascension && typeof this.ascension.importSnapshot === 'function') {
           this.ascension.importSnapshot(loadedSnap.meta.ascension);
@@ -1726,6 +1756,9 @@ export class EndlessManager {
       }
       if (this.companionEvo && typeof this.companionEvo.reset === 'function') {
         this.companionEvo.reset();
+      }
+      if (this.trials && typeof this.trials.reset === 'function') {
+        this.trials.reset();
       }
       if (this.ascension || this.gear || this.events || this.companionEvo) {
         this._syncExternalModifiers(null, { preserveBase: true });
@@ -1883,6 +1916,18 @@ export class EndlessManager {
     if (this.lootBeams.length > 0) {
       this._collectAllLootBeamsSilent();
     }
+    // If exiting mid-Trial, restore exact paused main-stage state & clear activeTrial BEFORE saving/exiting
+    if (this.trials?.isActive?.()) {
+      const savedMain = this.trials.activeTrial?.savedMainState || null;
+      this.trials.activeTrial = null;
+      this.trials.lastResult = null;
+      this._trialSpawnTimer = 0;
+      this._trialBossPrevHp = 0;
+      this._trialHordeWaveIdx = 0;
+      this.treasureGoblins = [];
+      this.treasureChests = [];
+      this._restoreSavedMainState(savedMain, { respawnWave: false, restoreRenderer: false });
+    }
     if (save && this.treasureChests.length > 0) {
       for (const ch of this.treasureChests) {
         if (!ch || ch.opened) continue;
@@ -1959,6 +2004,13 @@ export class EndlessManager {
     this.events?.dismissMerchantOffer?.();
     this.pendingOfflineLoot = null;
     this._heroGoblinHitCd = 0;
+    this._trialSpawnTimer = 0;
+    this._trialBossPrevHp = 0;
+    this._trialHordeWaveIdx = 0;
+    if (this.trials) {
+      this.trials.activeTrial = null;
+      this.trials.lastResult = null;
+    }
     this.companions?.clearTransientFX?.();
 
     this._clearSynergyFromEconomy();
@@ -1999,20 +2051,36 @@ export class EndlessManager {
   saveNow() {
     if (!this.economy || typeof this.economy.saveToStorage !== 'function') return null;
     if (this.game?.simMode || this.game?.urlAutoPlay) return null;
-    this.economy.stage = this.stage;
-    this.economy.bestStage = Math.max(this.economy.bestStage || 1, this.bestStage);
-    this.economy.waveInStage = this.waveInStage;
+    const savedMain = this.trials?.isActive?.() ? this.trials.activeTrial?.savedMainState : null;
+    const saveStage =
+      savedMain && Number.isFinite(savedMain.stage)
+        ? Math.max(1, Math.floor(savedMain.stage))
+        : this.stage;
+    const saveBestStage = Math.max(
+      this.economy.bestStage || 1,
+      this.bestStage,
+      savedMain && Number.isFinite(savedMain.bestStage) ? Math.floor(savedMain.bestStage) : 1
+    );
+    const saveWave =
+      savedMain && Number.isFinite(savedMain.waveInStage)
+        ? Math.max(1, Math.min(this.wavesPerStage, Math.floor(savedMain.waveInStage)))
+        : this.waveInStage;
+    const saveBossFarm = savedMain ? Boolean(savedMain.bossFarmMode) : this.bossFarmMode;
+    this.economy.stage = saveStage;
+    this.economy.bestStage = saveBestStage;
+    this.economy.waveInStage = saveWave;
     const compSnap = this.companions?.exportSnapshot?.() || null;
     const metaSnap = {
       autoPlay: this.autoPlay,
-      bossFarmMode: this.bossFarmMode,
-      stage: this.stage,
-      bestStage: this.bestStage,
-      waveInStage: this.waveInStage,
+      bossFarmMode: saveBossFarm,
+      stage: saveStage,
+      bestStage: saveBestStage,
+      waveInStage: saveWave,
       ascension: this.ascension?.exportSnapshot?.() || null,
       gear: this.gear?.exportSnapshot?.() || null,
       events: this.events?.exportSnapshot?.() || null,
-      companionEvo: this.companionEvo?.exportSnapshot?.() || null
+      companionEvo: this.companionEvo?.exportSnapshot?.() || null,
+      trials: this.trials?.exportSnapshot?.() || null
     };
     return this.economy.saveToStorage(compSnap, metaSnap);
   }
@@ -2022,6 +2090,10 @@ export class EndlessManager {
     this.gear?.reset?.();
     this.events?.reset?.(1);
     this.companionEvo?.reset?.();
+    this.trials?.reset?.();
+    this._trialSpawnTimer = 0;
+    this._trialBossPrevHp = 0;
+    this._trialHordeWaveIdx = 0;
     if (this.ascension || this.gear || this.events || this.companionEvo) {
       this._syncExternalModifiers(null, { preserveBase: true });
     }
@@ -2125,9 +2197,40 @@ export class EndlessManager {
     if (!this.ascension || typeof this.ascension.performAscension !== 'function') {
       return { ok: false, reason: 'no_ascension' };
     }
-    this.economy.stage = this.stage;
-    this.economy.bestStage = Math.max(this.economy.bestStage || 1, this.bestStage);
-    this.economy.waveInStage = this.waveInStage;
+    const savedMain = this.trials?.isActive?.() ? this.trials.activeTrial?.savedMainState : null;
+    const effStage =
+      savedMain && Number.isFinite(savedMain.stage)
+        ? Math.max(1, Math.floor(savedMain.stage))
+        : this.stage;
+    const effBest = Math.max(
+      this.economy.bestStage || 1,
+      this.bestStage,
+      savedMain && Number.isFinite(savedMain.bestStage) ? Math.floor(savedMain.bestStage) : 1
+    );
+    const effWave =
+      savedMain && Number.isFinite(savedMain.waveInStage)
+        ? Math.max(1, Math.min(this.wavesPerStage, Math.floor(savedMain.waveInStage)))
+        : this.waveInStage;
+
+    this.economy.stage = effStage;
+    this.economy.bestStage = effBest;
+    this.economy.waveInStage = effWave;
+
+    if (typeof this.ascension.canAscend === 'function' && !this.ascension.canAscend(effStage)) {
+      return this.ascension.performAscension(this.economy, this.companions) || { ok: false };
+    }
+
+    // Cancel any active Trial cleanly first while preserving bestScores & totalTrialsCompleted across Ascension
+    if (this.trials?.isActive?.()) {
+      this.trials.activeTrial = null;
+      this.trials.lastResult = null;
+      this._trialSpawnTimer = 0;
+      this._trialBossPrevHp = 0;
+      this._trialHordeWaveIdx = 0;
+      this.stage = effStage;
+      this.bestStage = effBest;
+      this.waveInStage = effWave;
+    }
 
     const res = this.ascension.performAscension(this.economy, this.companions);
     if (!res?.ok) {
@@ -2177,6 +2280,13 @@ export class EndlessManager {
     this.events?.dismissMerchantOffer?.();
     this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
     this._heroGoblinHitCd = 0;
+    this._trialSpawnTimer = 0;
+    this._trialBossPrevHp = 0;
+    this._trialHordeWaveIdx = 0;
+    if (this.trials) {
+      this.trials.activeTrial = null;
+      this.trials.lastResult = null;
+    }
     this.companions?.clearTransientFX?.();
     if (this.companionEvo) {
       this.companionEvo.overdriveCharge = 0;
@@ -2336,6 +2446,535 @@ export class EndlessManager {
     this.pendingOfflineLoot = null;
     this.shopUI?.sync?.(this.getUiSnapshot(), true);
     return true;
+  }
+
+  // =========================================================================
+  // WAVE 10: REPLAYABLE CHALLENGE TRIAL PORTALS
+  // =========================================================================
+
+  _clearEnemyProjectiles() {
+    const projs = this.game?.vfx?.projectiles;
+    if (!Array.isArray(projs) || projs.length === 0) return;
+    const player = this.game?.leftFighter;
+    for (let i = 0; i < projs.length; i++) {
+      const p = projs[i];
+      if (!p) continue;
+      if (p.owner && p.owner !== player && !p.owner.isEndlessCompanion) {
+        p.dead = true;
+      }
+    }
+  }
+
+  _repositionCompanionsNearHero(player) {
+    if (!player) return;
+    this.companions?.syncEntitiesWithWorld?.(player);
+    this._lastCompanionSyncSig = this._computeCompanionSyncSig();
+    const ents = this.companions?.entities;
+    if (!Array.isArray(ents) || ents.length === 0) return;
+    const px = Number.isFinite(player.x) ? player.x : this.corridorOriginX;
+    const pGy = Number.isFinite(player.groundY) ? player.groundY : this.depthMidY;
+    for (let i = 0; i < ents.length; i++) {
+      const ent = ents[i];
+      if (!ent) continue;
+      if (!Number.isFinite(ent.x) || Math.abs(ent.x - px) > 420) {
+        const offset = (i + 1) * 58;
+        ent.x = Math.max(this.lockMinX + 24, Math.min(this.lockMaxX - 24, px - offset));
+        ent.groundY = Math.max(this.depthMinY + 24, Math.min(this.depthMaxY - 24, pGy + (i - 1) * 28));
+        ent.y = ent.groundY;
+      }
+    }
+  }
+
+  _restoreSavedMainState(savedMain, { respawnWave = true, restoreRenderer = true } = {}) {
+    if (savedMain && typeof savedMain === 'object') {
+      if (Number.isFinite(savedMain.stage)) {
+        this.stage = Math.max(1, Math.floor(savedMain.stage));
+      }
+      if (Number.isFinite(savedMain.bestStage)) {
+        this.bestStage = Math.max(this.stage, this.bestStage, Math.floor(savedMain.bestStage));
+      }
+      if (Number.isFinite(savedMain.waveInStage)) {
+        this.waveInStage = Math.max(1, Math.min(this.wavesPerStage, Math.floor(savedMain.waveInStage)));
+      }
+      this.bossFarmMode = Boolean(savedMain.bossFarmMode);
+      if (Number.isFinite(savedMain.bossTimerMax) && savedMain.bossTimerMax > 0) {
+        this.bossTimerMax = savedMain.bossTimerMax;
+      }
+      if (Number.isFinite(savedMain.corridorOriginX)) {
+        this.corridorOriginX = savedMain.corridorOriginX;
+      }
+      if (Number.isFinite(savedMain.corridorMinX)) {
+        this.corridorMinX = savedMain.corridorMinX;
+      }
+      if (Number.isFinite(savedMain.corridorMaxX)) {
+        this.corridorMaxX = savedMain.corridorMaxX;
+      }
+      if (Number.isFinite(savedMain.lockMinX)) {
+        this.lockMinX = savedMain.lockMinX;
+      }
+      if (Number.isFinite(savedMain.lockMaxX)) {
+        this.lockMaxX = savedMain.lockMaxX;
+      }
+      if (Number.isFinite(savedMain.zoneIndex)) {
+        this.zoneIndex = savedMain.zoneIndex;
+      }
+    }
+
+    this.isBossEncounter = false;
+    this.bossEntity = null;
+    this.bossTimer = 0;
+    this._bossPortalActive = false;
+    this._waveAdvancePending = false;
+    this._waveAdvanceElapsed = 0;
+    this._waveSpawnDelay = 0;
+    this.lockActive = true;
+
+    const realm = this.getCurrentRealm();
+    if (!savedMain || !Number.isFinite(savedMain.zoneIndex)) {
+      this.zoneIndex = realm.realmIndex;
+    }
+
+    this.economy.stage = this.stage;
+    this.economy.bestStage = Math.max(this.economy.bestStage || 1, this.bestStage);
+    this.economy.waveInStage = this.waveInStage;
+
+    this._syncExternalModifiers(undefined, { preserveBase: true });
+
+    const player = this.game?.leftFighter;
+    if (player) {
+      this.progression.syncMaxHpWithEconomy(player);
+      player.isDead = false;
+      player.hurtTimer = 0;
+      player.stunTimer = 0;
+      player.isRooted = false;
+      player._grabbedByBoss = false;
+      player._grabbedByBossTimer = 0;
+      player.vx = 0;
+      player.vy = 0;
+      if (savedMain && Number.isFinite(savedMain.playerX)) {
+        player.x = Math.max(this.lockMinX, Math.min(this.lockMaxX, savedMain.playerX));
+      }
+      if (savedMain && Number.isFinite(savedMain.playerGroundY)) {
+        const gy = Math.max(this.depthMinY, Math.min(this.depthMaxY, savedMain.playerGroundY));
+        player.groundY = gy;
+        player.y = gy;
+      }
+      const savedHp = savedMain && Number.isFinite(savedMain.playerHp) ? savedMain.playerHp : player.maxHp;
+      player.hp = Math.min(player.maxHp, Math.max(1, savedHp));
+      if (typeof player.setState === 'function') {
+        player.setState('IDLE');
+      }
+      this._repositionCompanionsNearHero(player);
+    }
+
+    if (restoreRenderer && this.game?.renderer) {
+      const renderer = this.game.renderer;
+      renderer.worldWidth = this.getWorldWidth();
+      if (!renderer.permanentStageOverride) {
+        renderer.stageId = realm.stageId;
+      }
+      renderer.adventureCamMinX = Math.max(0, this.lockMinX - 60);
+      renderer.adventureCamMaxX = this.lockMaxX + 180;
+      renderer.camX = Math.round(
+        Math.max(
+          renderer.adventureCamMinX,
+          Math.min(renderer.adventureCamMaxX, (player?.x ?? this.corridorOriginX) + 180)
+        )
+      );
+    }
+
+    if (respawnWave && this.active) {
+      this._spawnWaveMonsters();
+      if (savedMain && typeof savedMain === 'object') {
+        if (Number.isFinite(savedMain.corridorMinX)) this.corridorMinX = savedMain.corridorMinX;
+        if (Number.isFinite(savedMain.corridorMaxX)) this.corridorMaxX = savedMain.corridorMaxX;
+        if (Number.isFinite(savedMain.lockMinX)) this.lockMinX = savedMain.lockMinX;
+        if (Number.isFinite(savedMain.lockMaxX)) this.lockMaxX = savedMain.lockMaxX;
+      }
+    }
+  }
+
+  _getNearestLivingGoblin(player) {
+    if (!this.treasureGoblins.length) return null;
+    let best = null;
+    let bestDist = Infinity;
+    const px = Number.isFinite(player?.x) ? player.x : this.corridorOriginX;
+    const pGy = Number.isFinite(player?.groundY) ? player.groundY : this.depthMidY;
+    for (let i = 0; i < this.treasureGoblins.length; i++) {
+      const g = this.treasureGoblins[i];
+      if (!g || g.isDead) continue;
+      const d = Math.hypot(g.x - px, (g.groundY - pGy) * 1.4);
+      if (d < bestDist) {
+        bestDist = d;
+        best = g;
+      }
+    }
+    return best;
+  }
+
+  _spawnTrialHordePack(targetCount = TRIAL_ABYSSAL_HORDE_MIN_LIVING) {
+    const currentLiving = this.getLivingMonsters().length;
+    const needed = Math.max(0, Math.min(10, targetCount - currentLiving));
+    if (needed <= 0) return 0;
+
+    const curRealm = this.getCurrentRealm();
+    const nextIdx = (curRealm.realmIndex + 1) % ENDLESS_REALMS.length;
+    const nextRealm = ENDLESS_REALMS[nextIdx] || curRealm;
+    this._prewarmRealmAssets(nextIdx);
+
+    const kindPool = [
+      ...(Array.isArray(curRealm.monsters) ? curRealm.monsters : ['templar']),
+      ...(Array.isArray(nextRealm.monsters) ? nextRealm.monsters : ['ghoul'])
+    ];
+    const lanes = [476, 518, 561, 604, 646];
+    const minX = (this.lockMinX || this.corridorMinX || 60) + 100;
+    const maxX = Math.max(minX + 200, (this.lockMaxX || this.corridorMaxX || 1480) - 100);
+    const span = Math.max(180, maxX - minX);
+    const playerX = Number.isFinite(this.game?.leftFighter?.x)
+      ? this.game.leftFighter.x
+      : (minX + maxX) * 0.5;
+
+    for (let i = 0; i < needed; i++) {
+      this._trialHordeWaveIdx = (this._trialHordeWaveIdx || 0) + 1;
+      const kind = kindPool[(this._trialHordeWaveIdx + i) % kindPool.length] || 'templar';
+      const frac = needed > 1 ? i / (needed - 1) : 0.5;
+      let sx = Math.round(minX + frac * span + (Math.random() * 64 - 32));
+      if (Math.abs(sx - playerX) < 110) {
+        sx = sx >= playerX ? playerX + 125 : playerX - 125;
+      }
+      sx = Math.max(minX, Math.min(maxX, Math.round(sx)));
+      const gy = lanes[(this._trialHordeWaveIdx + i) % lanes.length];
+      const isElite = this._trialHordeWaveIdx % 4 === 0;
+      this._spawnEndlessMonster(kind, sx, { groundY: gy, isElite });
+    }
+    return needed;
+  }
+
+  enterTrial(trialId, opts = {}) {
+    if (!this.active) {
+      return { ok: false, reason: 'inactive' };
+    }
+    if (!this.trials || typeof this.trials.startTrial !== 'function') {
+      return { ok: false, reason: 'no_trials' };
+    }
+    if (this.trials.isActive?.()) {
+      return { ok: false, reason: 'already_active' };
+    }
+    const trialDef =
+      ENDLESS_TRIAL_BY_ID?.[trialId] ||
+      (Array.isArray(ENDLESS_TRIAL_DEFS) ? ENDLESS_TRIAL_DEFS.find((d) => d?.id === trialId) : null) ||
+      null;
+    if (!trialDef) {
+      return { ok: false, reason: 'invalid_trial' };
+    }
+    const ignoreCooldown = Boolean(opts?.ignoreCooldown);
+    if (!ignoreCooldown && typeof this.trials.canEnter === 'function') {
+      const check = this.trials.canEnter(trialId);
+      if (check && !check.ok) {
+        return check;
+      }
+    }
+
+    // Auto-collect ground loot beams & coins silently BEFORE entering so zero main-stage loot is lost
+    if (this.lootBeams.length > 0) {
+      this._collectAllLootBeamsSilent();
+    }
+    if (this.coins.length > 0) {
+      this._scoopAllCoinsInstant();
+    }
+
+    const player = this.game?.leftFighter || null;
+    const savedMainState = {
+      stage: this.stage,
+      bestStage: this.bestStage,
+      waveInStage: this.waveInStage,
+      isBossEncounter: this.isBossEncounter,
+      bossFarmMode: this.bossFarmMode,
+      bossTimer: this.bossTimer,
+      bossTimerMax: this.bossTimerMax,
+      corridorOriginX: this.corridorOriginX,
+      corridorMinX: this.corridorMinX,
+      corridorMaxX: this.corridorMaxX,
+      lockMinX: this.lockMinX,
+      lockMaxX: this.lockMaxX,
+      zoneIndex: this.zoneIndex,
+      playerHp: player?.hp,
+      playerMaxHp: player?.maxHp,
+      playerX: player?.x,
+      playerGroundY: player?.groundY
+    };
+
+    const startRes = this.trials.startTrial(trialId, savedMainState, {
+      stage: this.stage,
+      ignoreCooldown
+    });
+    if (!startRes?.ok) {
+      return startRes || { ok: false, reason: 'start_failed' };
+    }
+    const trial = startRes.trial || this.trials.activeTrial;
+
+    // Despawn current stage entities cleanly without altering this.stage / this.waveInStage
+    this._despawnAllMonsters();
+    this._clearEnemyProjectiles();
+    this.isBossEncounter = false;
+    this.bossEntity = null;
+    this.bossTimer = 0;
+    this.bossWarningTimer = 0;
+    this.bossSpawnPending = false;
+    this._bossPortalActive = false;
+    this._waveAdvancePending = false;
+    this._waveAdvanceElapsed = 0;
+    this._waveSpawnDelay = 0;
+    this.manualTargetLock = false;
+    this.lockedMonster = null;
+    this.treasureGoblins = [];
+    this.treasureChests = [];
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this.coins = [];
+    this.portals = [];
+    this.events?.dismissMerchantOffer?.();
+
+    this.lockActive = true;
+    this._syncCorridorBounds({ lockToCorridor: true, syncCamera: true });
+
+    // Position hero cleanly in Trial arena at full HP & close shop drawer
+    if (player) {
+      this.progression.syncMaxHpWithEconomy(player);
+      player.hp = player.maxHp;
+      player.isDead = false;
+      player.hurtTimer = 0;
+      player.stunTimer = 0;
+      player.isRooted = false;
+      player._grabbedByBoss = false;
+      player._grabbedByBossTimer = 0;
+      player.vx = 0;
+      player.vy = 0;
+      const arenaHeroX =
+        trialId === 'malphas_gauntlet'
+          ? Math.max(this.lockMinX + 120, Math.round(this.lockMinX + 260))
+          : Math.round((this.lockMinX + this.lockMaxX) * 0.5 - 120);
+      player.x = Math.max(this.lockMinX + 40, Math.min(this.lockMaxX - 240, arenaHeroX));
+      player.groundY = this.depthMidY;
+      player.y = this.depthMidY;
+      player.facing = 1;
+      if (typeof player.setState === 'function') {
+        player.setState('IDLE');
+      }
+      this._repositionCompanionsNearHero(player);
+    }
+
+    this.shopUI?.setDrawerOpen?.(false);
+    this._trialSpawnTimer = 0;
+    this._trialBossPrevHp = 0;
+    this._trialHordeWaveIdx = 0;
+
+    // Spawn the Trial's encounter
+    const durSec = Math.round(trial?.durationSec || trialDef.durationSec || 30);
+    let bannerSub = `${durSec}S CHALLENGE ACTIVE!`;
+
+    if (trialId === 'gold_vault') {
+      const midX = Math.round((this.lockMinX + this.lockMaxX) * 0.5);
+      this.spawnTreasureGoblin(Math.round(this.lockMinX + 220));
+      this.spawnTreasureGoblin(Math.round(this.lockMaxX - 220));
+      this.spawnStageTreasureChest(midX + 110, this.depthMidY, this.stage);
+      bannerSub = `${durSec}S • SMITE GOBLINS & CHESTS FOR JACKPOT GOLD!`;
+    } else if (trialId === 'malphas_gauntlet') {
+      PixelForge.ensureHeroLoaded?.('archfiend');
+      const bossX = Math.round(this.lockMaxX - 180);
+      this._bossPortalX = bossX;
+      this._bossPortalActive = true;
+      this.isBossEncounter = true;
+      this.bossTimerMax = trial?.durationSec || trialDef.durationSec || 45;
+      this.bossTimer = this.bossTimerMax;
+      const bossDmgMult = safeBoundedFloat(
+        0.52 * Math.pow(1.12, Math.min(300, Math.max(0, this.stage - 1))),
+        0.1,
+        ENDLESS_MAX_DMG_SCALE,
+        0.52
+      );
+      const boss = this._spawnEndlessMonster('archfiend', bossX, {
+        groundY: this.depthMidY,
+        name: 'BEHEMOTH MALPHAS',
+        maxHp: TRIAL_MALPHAS_MAX_HP,
+        dmgScale: bossDmgMult,
+        bossDmgMult,
+        skipPortal: true,
+        isEndlessStageBoss: true
+      });
+      if (boss) {
+        boss.maxHp = TRIAL_MALPHAS_MAX_HP;
+        boss.hp = TRIAL_MALPHAS_MAX_HP;
+        boss.isTrialBoss = true;
+        this.bossEntity = boss;
+        this._trialBossPrevHp = boss.maxHp;
+      }
+      if (!this.game?.isLandingOpen && !this.game?.simMode) {
+        this.game?.audio?.playBgm?.('bgm_boss_malphas');
+      }
+      bannerSub = `${durSec}S PURE DPS CHECK • SHARDS & MYTHIC DUST!`;
+    } else if (trialId === 'abyssal_horde') {
+      this._spawnTrialHordePack(TRIAL_ABYSSAL_HORDE_MIN_LIVING);
+      bannerSub = `${durSec}S SWARM SURVIVAL • GUARANTEED HEROIC+ GEAR!`;
+    }
+
+    this.totalWaveLabel = `TRIAL • ${trialDef.shortName || trialDef.name}`;
+    this.showBanner(`${trialDef.name}!`, bannerSub, trialDef.accentHex || '#facc15', 2.6);
+
+    const sfxX = player?.x ?? this.corridorOriginX;
+    if (!this.game?.isLandingOpen) {
+      this.game?.audio?.play?.('eclipse_charge', sfxX);
+      this.game?.audio?.play?.('thunder_slam', sfxX);
+    }
+    this.game?.renderer?.triggerShake?.(8, 0.30);
+
+    this.syncStageBadge();
+    this.syncRightHUD();
+    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    return { ok: true, trial };
+  }
+
+  exitTrial({ completedFull = false } = {}) {
+    if (!this.trials?.isActive?.()) {
+      return { ok: false, reason: 'no_active_trial' };
+    }
+
+    const wasMalphas = this.trials.activeTrial?.id === 'malphas_gauntlet';
+
+    // Auto-collect remaining trial coins & loot beams BEFORE finalizing rewards
+    if (this.coins.length > 0) {
+      this._scoopAllCoinsInstant();
+    }
+    if (this.lootBeams.length > 0) {
+      this._collectAllLootBeamsSilent();
+    }
+
+    // Despawn Trial monsters/boss/goblins/chests cleanly
+    this._despawnAllMonsters();
+    this._clearEnemyProjectiles();
+    this.treasureGoblins = [];
+    this.treasureChests = [];
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this.portals = [];
+    this.isBossEncounter = false;
+    this.bossEntity = null;
+    this.bossTimer = 0;
+    this._bossPortalActive = false;
+    this._waveAdvancePending = false;
+    this._waveAdvanceElapsed = 0;
+    this._waveSpawnDelay = 0;
+    this.manualTargetLock = false;
+    this.lockedMonster = null;
+    this._trialSpawnTimer = 0;
+    this._trialBossPrevHp = 0;
+    this._trialHordeWaveIdx = 0;
+
+    const done = this.trials.completeTrial(this.economy, this.gear, {
+      completedFull: Boolean(completedFull)
+    });
+    const savedMain = done?.savedMainState || null;
+
+    this._restoreSavedMainState(savedMain, {
+      respawnWave: true,
+      restoreRenderer: true
+    });
+
+    if ((wasMalphas || savedMain?.isBossEncounter) && !this.game?.isLandingOpen && !this.game?.simMode) {
+      this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
+    }
+
+    this.saveNow();
+    const player = this.game?.leftFighter;
+    this.game?.audio?.play?.('victory_fanfare', player?.x ?? this.corridorOriginX);
+    this.syncStageBadge();
+    this.syncRightHUD();
+    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    return done;
+  }
+
+  dismissTrialResult() {
+    this.trials?.dismissResult?.();
+    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    return true;
+  }
+
+  _updateActiveTrial(dt, _player) {
+    const active = this.trials?.activeTrial;
+    if (!active) return;
+
+    if (active.id === 'gold_vault') {
+      this._trialSpawnTimer += dt;
+      if (this._trialSpawnTimer >= TRIAL_GOLD_VAULT_REFILL_SEC) {
+        this._trialSpawnTimer = 0;
+        const minX = Math.max(84, (this.lockMinX || this.corridorMinX || 60) + 96);
+        const maxX = Math.max(minX + 180, (this.lockMaxX || this.corridorMaxX || 1480) - 96);
+        const span = Math.max(120, maxX - minX);
+        let guard = 0;
+        while (this.treasureGoblins.length < 2 && guard < 4) {
+          guard++;
+          const gx = Math.round(minX + Math.random() * span);
+          this.spawnTreasureGoblin(gx);
+        }
+        guard = 0;
+        while (this.treasureChests.length < 2 && guard < 4) {
+          guard++;
+          const cx = Math.round(minX + 80 + Math.random() * Math.max(80, span - 160));
+          const lanePool = [492, 561, 622];
+          const cy = lanePool[(this._encounterSeq + guard) % lanePool.length];
+          this.spawnStageTreasureChest(cx, cy, this.stage);
+        }
+      }
+      return;
+    }
+
+    if (active.id === 'malphas_gauntlet') {
+      const boss = this.bossEntity;
+      if (boss) {
+        const curHp = Number.isFinite(boss.hp) ? Math.max(0, boss.hp) : 0;
+        const prevHp = Number.isFinite(this._trialBossPrevHp) ? this._trialBossPrevHp : boss.maxHp;
+        const delta = prevHp - curHp;
+        if (delta > 0) {
+          const dmgRes = this.trials.recordTrialBossDamage(delta, this.stage);
+          if (dmgRes?.tierUp) {
+            const bx = (Number.isFinite(boss.anchorX) ? boss.anchorX : boss.x) - 105;
+            const bGy = boss.anchorGroundY || boss.groundY || this.depthMidY;
+            this.spawnFloatingCallout(
+              bx,
+              bGy - 190,
+              `TIER ${dmgRes.tierReached}!`,
+              '#f43f5e',
+              2,
+              1.35,
+              { kind: 'fever', topColor: '#fef08a' }
+            );
+            this.game?.audio?.play?.('holy_hit', bx);
+            this.game?.renderer?.triggerShake?.(6, 0.22);
+          }
+        }
+        if (boss.isDead || curHp < boss.maxHp * 0.5) {
+          boss.isDead = false;
+          boss._endlessDeathHandled = false;
+          boss.hp = boss.maxHp;
+        }
+        this._trialBossPrevHp = boss.hp;
+      }
+      return;
+    }
+
+    if (active.id === 'abyssal_horde') {
+      this._trialSpawnTimer += dt;
+      const livingCount = this.getLivingMonsters().length;
+      if (
+        this._trialSpawnTimer >= TRIAL_ABYSSAL_HORDE_REFILL_SEC ||
+        (livingCount === 0 && this._trialSpawnTimer >= 0.35)
+      ) {
+        this._trialSpawnTimer = 0;
+        if (livingCount < TRIAL_ABYSSAL_HORDE_MIN_LIVING) {
+          this._spawnTrialHordePack(TRIAL_ABYSSAL_HORDE_TARGET_LIVING);
+        }
+      }
+    }
   }
 
   // =========================================================================
@@ -3072,7 +3711,7 @@ export class EndlessManager {
   }
 
   challengeBoss() {
-    if (!this.active || this.isBossEncounter) return false;
+    if (!this.active || this.isBossEncounter || this.trials?.isActive?.()) return false;
     for (let i = 0; i < this.coins.length; i++) {
       if (this.coins[i]) this.coins[i].magnetForced = true;
     }
@@ -3322,7 +3961,7 @@ export class EndlessManager {
 
   handlePlayerZeroHp(player) {
     if (!this.active) return;
-    if (this.isBossEncounter) {
+    if (this.isBossEncounter && !this.trials?.isActive?.()) {
       this._handleBossRetreat('hp');
     } else {
       this._revivePlayerPhoenix(player || this.game?.leftFighter, true);
@@ -3335,6 +3974,7 @@ export class EndlessManager {
 
   onBossPhaseShift(boss, phase) {
     if (!this.active || !boss) return;
+    if (this.trials?.activeTrial?.id === 'malphas_gauntlet') return;
     const anchorX = boss.anchorX || this.getBossAnchorX();
     if (phase === 2) {
       this._spawnEndlessMonster('fiend', Math.max(this.lockMinX + 120, anchorX - 620), { groundY: 486 });
@@ -3351,10 +3991,35 @@ export class EndlessManager {
 
   onMonsterDeath(deadMonster) {
     if (!this.active || !deadMonster || deadMonster._endlessDeathHandled) return;
+    if (
+      this.trials?.activeTrial?.id === 'malphas_gauntlet' &&
+      (deadMonster === this.bossEntity || deadMonster.isTrialBoss)
+    ) {
+      const prevHp = Number.isFinite(this._trialBossPrevHp) ? this._trialBossPrevHp : deadMonster.maxHp;
+      if (prevHp > 0) {
+        const dmgRes = this.trials.recordTrialBossDamage(prevHp, this.stage);
+        if (dmgRes?.tierUp) {
+          const bx = (Number.isFinite(deadMonster.anchorX) ? deadMonster.anchorX : deadMonster.x) - 105;
+          const bGy = deadMonster.anchorGroundY || deadMonster.groundY || this.depthMidY;
+          this.spawnFloatingCallout(bx, bGy - 190, `TIER ${dmgRes.tierReached}!`, '#f43f5e', 2, 1.35, {
+            kind: 'fever',
+            topColor: '#fef08a'
+          });
+        }
+      }
+      deadMonster.isDead = false;
+      deadMonster._endlessDeathHandled = false;
+      deadMonster.hp = deadMonster.maxHp;
+      this._trialBossPrevHp = deadMonster.hp;
+      return;
+    }
     deadMonster._endlessDeathHandled = true;
     this.monstersKilled++;
     this.economy.totalKills = (this.economy.totalKills || 0) + 1;
     this._recordBounty('kills', 1);
+    if (this.trials?.isActive?.()) {
+      this.trials.recordTrialKill({ isGoblin: false, isChest: false });
+    }
     this.score += deadMonster.scoreValue || 250;
 
     if (
@@ -3488,12 +4153,17 @@ export class EndlessManager {
 
   _scoopAllCoinsInstant() {
     let totalAdded = 0;
+    const inTrial = Boolean(this.trials?.isActive?.());
     for (const c of this.coins) {
       if (c && c.kind === 'gold' && Number.isFinite(c.rawGold) && c.rawGold > 0) {
-        totalAdded += this.economy.addGold(safeBoundedInt(c.rawGold, 1, ENDLESS_MAX_STAT), {
+        const added = this.economy.addGold(safeBoundedInt(c.rawGold, 1, ENDLESS_MAX_STAT), {
           isBoss: c.isBoss,
           applyMult: c.applyMult
         });
+        totalAdded += added;
+        if (inTrial && added > 0) {
+          this.trials.recordTrialGold(added);
+        }
       }
     }
     this.coins = [];
@@ -3513,10 +4183,13 @@ export class EndlessManager {
       const c = this.coins[i];
       if (!c || !Number.isFinite(c.age) || !Number.isFinite(c.x) || !Number.isFinite(c.groundY)) {
         if (c && c.kind === 'gold' && Number.isFinite(c.rawGold) && c.rawGold > 0) {
-          this.economy.addGold(safeBoundedInt(c.rawGold, 1, ENDLESS_MAX_STAT), {
+          const gained = this.economy.addGold(safeBoundedInt(c.rawGold, 1, ENDLESS_MAX_STAT), {
             isBoss: Boolean(c.isBoss),
             applyMult: Boolean(c.applyMult)
           });
+          if (gained > 0 && this.trials?.isActive?.()) {
+            this.trials.recordTrialGold(gained);
+          }
         }
         this.coins.splice(i, 1);
         continue;
@@ -3564,6 +4237,9 @@ export class EndlessManager {
             isBoss: c.isBoss,
             applyMult: c.applyMult
           });
+          if (gained > 0 && this.trials?.isActive?.()) {
+            this.trials.recordTrialGold(gained);
+          }
           this._recordBounty('coins', 1);
           if (gained > 0 && (c.isBoss || this.floatingCallouts.length < 22 || Math.random() < 0.55)) {
             this.spawnFloatingCallout(
@@ -3790,7 +4466,7 @@ export class EndlessManager {
       kind: 'gold',
       topColor: '#ffffff'
     });
-    if (this.bannerTimer <= 0) {
+    if (this.bannerTimer <= 0 && !this.trials?.isActive?.()) {
       this.showBanner(
         'GILDED TREASURE GOBLIN!',
         'TAP TO SMITE FOR DOUBLE COIN SPRAYS & SHARDS!',
@@ -3884,13 +4560,18 @@ export class EndlessManager {
     this.monstersKilled++;
     this.economy.totalKills = (this.economy.totalKills || 0) + 1;
     this._recordBounty('kills', 1);
+    if (this.trials?.isActive?.()) {
+      this.trials.recordTrialKill({ isGoblin: true, isChest: false });
+    }
 
-    this.showBanner(
-      `GILDED GOBLIN SLAIN! +${shards} SHARD${shards === 1 ? '' : 'S'}`,
-      `+${formatEndlessNumber(jackpotGold)} BASE GOLD LOOT EXPLOSION!`,
-      '#facc15',
-      2.7
-    );
+    if (!this.trials?.isActive?.()) {
+      this.showBanner(
+        `GILDED GOBLIN SLAIN! +${shards} SHARD${shards === 1 ? '' : 'S'}`,
+        `+${formatEndlessNumber(jackpotGold)} BASE GOLD LOOT EXPLOSION!`,
+        '#facc15',
+        2.7
+      );
+    }
     this.spawnFloatingCallout(
       goblin.x,
       goblin.groundY - 134,
@@ -4150,6 +4831,9 @@ export class EndlessManager {
       this._spawnAstralShardVisuals(chest.x, chest.groundY, bonusShards);
     }
     this.spawnGearLootBeam(chest.x, chest.groundY, 'chest', { stage: stg });
+    if (this.trials?.isActive?.()) {
+      this.trials.recordTrialKill({ isGoblin: false, isChest: true });
+    }
 
     this.spawnFloatingCallout(
       chest.x,
@@ -4522,6 +5206,7 @@ export class EndlessManager {
 
   _tryTitanSlayerExecute(boss = this.bossEntity) {
     if (!this.active || !this.isBossEncounter || !boss || boss !== this.bossEntity) return false;
+    if (this.trials?.activeTrial?.id === 'malphas_gauntlet') return false;
     if (boss.isDead || boss._endlessDeathHandled || !Number.isFinite(boss.hp) || boss.hp <= 0) {
       return false;
     }
@@ -6172,9 +6857,11 @@ export class EndlessManager {
       this._lastCompanionSyncSig = compSig;
     }
 
-    // 1. Tick Wave 8 Events & Wave 9 Companion Evo, apply Party Synergy + Event + Formation modifiers cleanly
+    // 1. Tick Wave 8 Events, Wave 9 Companion Evo & Wave 10 Trials, apply Party Synergy + Event + Formation modifiers cleanly
     const evTick = this.events?.update?.(effDt) || null;
     const evoTick = this.companionEvo?.update?.(effDt) || null;
+    const tTick = this.trials?.update?.(effDt) || { expired: false, remainingSec: 0 };
+    const inTrial = Boolean(this.trials?.isActive?.());
     const synMods = this.companions?.getPartySynergyModifiers?.() || null;
     this._applyPartySynergyToEconomy(synMods);
     if (evTick?.buffsChanged || evoTick?.overdriveEnded) {
@@ -6214,7 +6901,14 @@ export class EndlessManager {
     this._lastFeverTier = curFeverTier;
 
     // 2. Boss Encounter Countdown, Titan-Slayer Execute & Zero-Punishment Boss Fail
-    if (this.isBossEncounter) {
+    if (inTrial) {
+      if (this.trials.activeTrial?.id === 'malphas_gauntlet') {
+        this.bossTimer = Math.max(0, Number(tTick?.remainingSec) || 0);
+      }
+      if (player.isDead || player.hp <= 0) {
+        this._revivePlayerPhoenix(player, true);
+      }
+    } else if (this.isBossEncounter) {
       if (this.bossEntity) {
         this._tryTitanSlayerExecute(this.bossEntity);
       }
@@ -6248,49 +6942,51 @@ export class EndlessManager {
       }
     }
 
-    // 4. Wave Clear, Forward Corridor March & Boss Trigger
+    // 4. Wave Clear, Forward Corridor March & Boss Trigger (suppressed while inside a Trial Portal)
     const livingMonsters = this.getLivingMonsters();
-    if (this._waveSpawnDelay > 0) {
-      this._waveSpawnDelay = Math.max(0, this._waveSpawnDelay - effDt);
-      if (this._waveSpawnDelay <= 0 && livingMonsters.length === 0 && !this.isBossEncounter) {
-        this._spawnWaveMonsters();
-      }
-    } else if (this._waveAdvancePending) {
-      this._waveAdvanceElapsed += effDt;
-      const reachedTarget = player.x >= this._waveAdvanceTargetX - 64;
-      const timedOut = this._waveAdvanceElapsed >= (this.autoPlay ? 1.15 : 1.55);
-      if (reachedTarget || timedOut) {
-        this._waveAdvancePending = false;
-        this._waveAdvanceElapsed = 0;
-        this.lockMinX = this.corridorMinX;
-        this.lockMaxX = this.corridorMaxX;
-        this.lockActive = true;
-        if (player.x < this.lockMinX + 40) player.x = this.lockMinX + 60;
-        if (g.renderer) {
-          g.renderer.worldWidth = this.getWorldWidth();
-          g.renderer.adventureCamMinX = Math.max(0, this.lockMinX - 60);
-          g.renderer.adventureCamMaxX = this.lockMaxX + 180;
-        }
-        if (this._pendingSpawnKind === 'boss') {
-          this.startBossEncounter();
-        } else {
+    if (!inTrial) {
+      if (this._waveSpawnDelay > 0) {
+        this._waveSpawnDelay = Math.max(0, this._waveSpawnDelay - effDt);
+        if (this._waveSpawnDelay <= 0 && livingMonsters.length === 0 && !this.isBossEncounter) {
           this._spawnWaveMonsters();
         }
-      }
-    } else if (!this.isBossEncounter && this.lockActive && livingMonsters.length === 0) {
-      if (this.bossFarmMode) {
-        this._farmWaveCount++;
-        this._advanceCorridorForNextWave('wave');
-      } else if (this.waveInStage < this.wavesPerStage) {
-        this.waveInStage++;
-        this.economy.waveInStage = this.waveInStage;
-        this._advanceCorridorForNextWave('wave');
-      } else if (this.economy.autoBoss) {
-        this._advanceCorridorForNextWave('boss');
-      } else {
-        this.bossFarmMode = true;
-        this._farmWaveCount++;
-        this._advanceCorridorForNextWave('wave');
+      } else if (this._waveAdvancePending) {
+        this._waveAdvanceElapsed += effDt;
+        const reachedTarget = player.x >= this._waveAdvanceTargetX - 64;
+        const timedOut = this._waveAdvanceElapsed >= (this.autoPlay ? 1.15 : 1.55);
+        if (reachedTarget || timedOut) {
+          this._waveAdvancePending = false;
+          this._waveAdvanceElapsed = 0;
+          this.lockMinX = this.corridorMinX;
+          this.lockMaxX = this.corridorMaxX;
+          this.lockActive = true;
+          if (player.x < this.lockMinX + 40) player.x = this.lockMinX + 60;
+          if (g.renderer) {
+            g.renderer.worldWidth = this.getWorldWidth();
+            g.renderer.adventureCamMinX = Math.max(0, this.lockMinX - 60);
+            g.renderer.adventureCamMaxX = this.lockMaxX + 180;
+          }
+          if (this._pendingSpawnKind === 'boss') {
+            this.startBossEncounter();
+          } else {
+            this._spawnWaveMonsters();
+          }
+        }
+      } else if (!this.isBossEncounter && this.lockActive && livingMonsters.length === 0) {
+        if (this.bossFarmMode) {
+          this._farmWaveCount++;
+          this._advanceCorridorForNextWave('wave');
+        } else if (this.waveInStage < this.wavesPerStage) {
+          this.waveInStage++;
+          this.economy.waveInStage = this.waveInStage;
+          this._advanceCorridorForNextWave('wave');
+        } else if (this.economy.autoBoss) {
+          this._advanceCorridorForNextWave('boss');
+        } else {
+          this.bossFarmMode = true;
+          this._farmWaveCount++;
+          this._advanceCorridorForNextWave('wave');
+        }
       }
     }
 
@@ -6311,7 +7007,9 @@ export class EndlessManager {
       }
     };
     syncCastGrace(false);
-    const nearestMonster = this.getNearestLivingMonster(player);
+    const nearestMonster =
+      this.getNearestLivingMonster(player) ||
+      (this.trials?.activeTrial?.id === 'gold_vault' ? this._getNearestLivingGoblin(player) : null);
     this._processPlayerStep(effDt, player, nearestMonster);
     syncCastGrace(true);
 
@@ -6346,12 +7044,12 @@ export class EndlessManager {
     this.companions.update(effDt, player, companionTargets, this.economy, entityGame);
 
     // 7a. Wave 7 Titan-Slayer Boss Execute check after hero/monster/companion damage
-    if (this.isBossEncounter && this.bossEntity) {
+    if (!inTrial && this.isBossEncounter && this.bossEntity) {
       this._tryTitanSlayerExecute(this.bossEntity);
     }
 
     // 7b. Wave 3 Gilded Goblin + Wave 8 Organic Shrine & Wandering Merchant timers (active non-boss waves)
-    if (!this.isBossEncounter && !this._waveAdvancePending && livingMonsters.length > 0) {
+    if (!inTrial && !this.isBossEncounter && !this._waveAdvancePending && livingMonsters.length > 0) {
       this._goblinSpawnTimer -= effDt;
       if (this._goblinSpawnTimer <= 0) {
         this._goblinSpawnTimer =
@@ -6460,6 +7158,16 @@ export class EndlessManager {
       fc.vx = (fc.vx || 0) * decelX;
       fc.vy *= decelY;
       if (fc.age >= fc.maxLife) this.floatingCallouts.splice(i, 1);
+    }
+
+    // 8b. Wave 10 Active Trial encounter tick & clean auto-completion on expiry
+    if (inTrial && this.trials?.isActive?.()) {
+      this._updateActiveTrial(effDt, player);
+      if (tTick?.expired) {
+        this.exitTrial({ completedFull: true });
+        this.syncControlDeckUI();
+        return;
+      }
     }
 
     // 9. Auto-save every 10s + throttled UI sync (~10Hz)
@@ -8096,7 +8804,8 @@ export class EndlessManager {
     const isShort = h <= 500;
     const hasParty = (this.companions?.activeSlots?.length || 0) > 0;
     const drawerOpen = Boolean(this.shopUI?.isDrawerOpen?.());
-    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}:${drawerOpen ? 1 : 0}`;
+    const trialActive = Boolean(this.trials?.isActive?.());
+    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}:${drawerOpen ? 1 : 0}:${trialActive ? 1 : 0}`;
     const nowSec =
       typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() * 0.001
@@ -8130,6 +8839,14 @@ export class EndlessManager {
           const r = topEl.getBoundingClientRect();
           if (r.height > 0) {
             domTopBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
+          }
+        }
+
+        const trialEl = document.querySelector('.endless-trial-hud');
+        if (trialEl && !trialEl.classList?.contains?.('hidden')) {
+          const r = trialEl.getBoundingClientRect();
+          if (r.height > 0) {
+            domTopBottom = Math.max(domTopBottom, Math.ceil((r.bottom - rootRect.top) * scaleY));
           }
         }
 
@@ -8624,8 +9341,11 @@ export class EndlessManager {
   syncStageBadge() {
     const badge = this.game?.hudEls?.stageBadge;
     if (!badge) return;
+    const activeTrial = this.trials?.activeTrial || null;
     const realm = this.getCurrentRealm();
-    const nextText = `STAGE ${this.stage} • ${realm.name}`;
+    const nextText = activeTrial
+      ? `TRIAL • ${activeTrial.def?.shortName || activeTrial.def?.name || 'PORTAL'}`
+      : `STAGE ${this.stage} • ${realm.name}`;
     if (badge.textContent !== nextText) {
       badge.textContent = nextText;
     }
@@ -8638,18 +9358,21 @@ export class EndlessManager {
     const leftCol = g.leftFighter?.primaryColor || '#fb923c';
     PixelForge.setHUDPortraits?.(leftHeroId, leftCol, 'archfiend', '#ef4444');
 
+    const activeTrial = this.trials?.activeTrial || null;
     if (g.hudEls?.crestVs) {
-      const nextCrest = this.isBossEncounter ? 'BOSS' : `S${this.stage}`;
+      const nextCrest = activeTrial ? 'TRIAL' : this.isBossEncounter ? 'BOSS' : `S${this.stage}`;
       if (g.hudEls.crestVs.textContent !== nextCrest) {
         g.hudEls.crestVs.textContent = nextCrest;
       }
     }
     if (g.hudEls?.modeBadge) {
-      const nextBadge = this.isBossEncounter
-        ? `STAGE ${this.stage} • BOSS ${Math.max(0, this.bossTimer).toFixed(1)}S`
-        : this.bossFarmMode
-          ? `STAGE ${this.stage} • FARMING • ${formatEndlessNumber(this.economy.gold)}G`
-          : `STAGE ${this.stage} • WAVE ${this.waveInStage}/${this.wavesPerStage}`;
+      const nextBadge = activeTrial
+        ? `TRIAL • ${activeTrial.def?.shortName || 'PORTAL'} • ${Math.max(0, activeTrial.remainingSec || 0).toFixed(1)}S`
+        : this.isBossEncounter
+          ? `STAGE ${this.stage} • BOSS ${Math.max(0, this.bossTimer).toFixed(1)}S`
+          : this.bossFarmMode
+            ? `STAGE ${this.stage} • FARMING • ${formatEndlessNumber(this.economy.gold)}G`
+            : `STAGE ${this.stage} • WAVE ${this.waveInStage}/${this.wavesPerStage}`;
       if (g.hudEls.modeBadge.textContent !== nextBadge) {
         g.hudEls.modeBadge.textContent = nextBadge;
       }
@@ -8830,7 +9553,7 @@ export class EndlessManager {
       accentHex: realm.accentHex,
       isBossEncounter: this.isBossEncounter,
       bossFarmMode: this.bossFarmMode,
-      canChallengeBoss: Boolean(this.bossFarmMode && !this.isBossEncounter),
+      canChallengeBoss: Boolean(this.bossFarmMode && !this.isBossEncounter && !this.trials?.isActive?.()),
       bossTimer: this.bossTimer,
       bossTimerMax: this.bossTimerMax,
       bossName: boss ? boss.name : '',
@@ -8891,7 +9614,8 @@ export class EndlessManager {
       realmModifier: directorSnap?.modifier || null,
       bestStageTrophies: directorSnap?.trophies || null,
       relicSets,
-      relicMilestones
+      relicMilestones,
+      trials: this.trials?.getTrialsSnapshot?.(this.stage) || null
     };
   }
 }
