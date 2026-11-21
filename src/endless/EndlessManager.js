@@ -3382,21 +3382,55 @@ export class EndlessManager {
       const ent = this.companions?.entities?.find?.((e) => e.companionId === normId) || null;
       const fxX = ent?.x ?? player?.x ?? this.corridorOriginX;
       const fxY = ent?.groundY ?? player?.groundY ?? this.depthMidY;
-      if (res.unlockedEx) {
-        ent?.triggerAuraRing?.('buff', 1.65);
-        ent?.triggerCallout?.('EX ASCENDED!', '#38bdf8', 1.5, true);
-        this.spawnFloatingCallout(fxX, fxY - 155, 'EX EVOLVED!', '#38bdf8', 2, 1.45, { kind: 'shard' });
+      const star = Math.max(1, Math.floor(Number(res.star) || 1));
+      const unlockedAuraTier = Number.isFinite(res.unlockedAuraTier)
+        ? res.unlockedAuraTier
+        : star >= 3
+          ? star
+          : 0;
+      if (unlockedAuraTier >= 3) {
+        const defaultAuraLabel =
+          unlockedAuraTier >= 5
+            ? '5-STAR MYTHIC CROWN'
+            : unlockedAuraTier >= 4
+              ? '4-STAR ASCENDED HALO'
+              : '3-STAR SOVEREIGN AURA';
+        const rawAuraName = String(
+          res.auraTierName || res.auraTier?.label || defaultAuraLabel
+        )
+          .trim()
+          .toUpperCase();
+        const auraTierName = rawAuraName.includes('-STAR')
+          ? rawAuraName
+          : `${unlockedAuraTier}-STAR ${rawAuraName}`;
+        const rawAuraShort = String(
+          res.auraTier?.title || auraTierName.replace(/^\d+-STAR\s+/, '')
+        )
+          .trim()
+          .toUpperCase();
+        const auraCallout = rawAuraShort.endsWith('!') ? rawAuraShort : `${rawAuraShort}!`;
+        const auraColor =
+          unlockedAuraTier >= 5 ? '#facc15' : unlockedAuraTier >= 4 ? '#c084fc' : '#38bdf8';
+        const compName = String(
+          ent?.name ||
+            this.companions?.getRosterView?.(this.economy)?.find?.((c) => c.id === normId)?.name ||
+            String(normId).replace(/_/g, ' ')
+        ).toUpperCase();
+        const ringScale = unlockedAuraTier >= 5 ? 1.95 : unlockedAuraTier >= 4 ? 1.8 : 1.65;
+        ent?.triggerAuraRing?.('buff', ringScale);
+        ent?.triggerCallout?.(auraCallout, auraColor, 1.5, true);
+        this.spawnFloatingCallout(fxX, fxY - 155, auraTierName, auraColor, 2, 1.45, { kind: 'shard' });
         this.showBanner(
-          `${ent?.name || normId.toUpperCase()} EX EVOLVED!`,
-          `${res.star}-STAR SOVEREIGN FORM UNLOCKED!`,
-          '#38bdf8',
-          2.2
+          `${compName} ASCENDED!`,
+          `${auraTierName} UNLOCKED!`,
+          auraColor,
+          2.3
         );
         this.game?.audio?.play?.('victory_fanfare', fxX);
       } else {
         ent?.triggerAuraRing?.('buff', 1.15);
-        ent?.triggerCallout?.(`${res.star}-STAR!`, '#facc15', 1.15, false);
-        this.spawnFloatingCallout(fxX, fxY - 140, `+1 STAR (${res.star}-STAR)`, '#facc15', 1, 1.15, { kind: 'shard' });
+        ent?.triggerCallout?.(`${star}-STAR!`, '#facc15', 1.15, false);
+        this.spawnFloatingCallout(fxX, fxY - 140, `+1 STAR (${star}-STAR)`, '#facc15', 1, 1.15, { kind: 'shard' });
         this.game?.audio?.play?.('holy_hit', fxX);
       }
       this.saveNow();
@@ -9287,15 +9321,132 @@ export class EndlessManager {
     return lo > 0 ? `${raw.slice(0, lo).trimEnd()}${ellipsis}` : '';
   }
 
+  _compactBannerText(text, isSub = false) {
+    let str = String(text || '').trim().toUpperCase();
+    if (!str) return '';
+    if (!isSub) {
+      str = str
+        .replace(/^STAGE\s+(\d+)\s+COLOSSAL\s+BOSS:\s*/, 'S$1 BOSS: ')
+        .replace(/^STAGE\s+(\d+)\s+COLOSSAL\s+BOSS$/, 'S$1 COLOSSAL BOSS')
+        .replace(/^STAGE\s+(\d+)\s+WARDEN:\s*/, 'S$1 BOSS: ')
+        .replace(/^STAGE\s+(\d+)\s+BOSS:\s*/, 'S$1 BOSS: ')
+        .replace(/^STAGE\s+(\d+)\s*•\s*/, 'S$1 • ');
+    } else {
+      str = str
+        .replace(/\bUPGRADE\s*&\s*CLICK\s+CHALLENGE\s+BOSS!?/g, 'UPGRADE & CHALLENGE BOSS!')
+        .replace(/\bFARM\s*&\s*CLICK\s+CHALLENGE\s+BOSS!?/g, 'FARM & CHALLENGE BOSS!')
+        .replace(/\bASTRAL\s+SHARDS\b/g, 'SHARDS')
+        .replace(/\bASTRAL\s+SHARD\b/g, 'SHARD')
+        .replace(/\bBASE\s+GOLD\s+LOOT\s+EXPLOSION!?/g, 'GOLD JACKPOT!');
+    }
+    return str;
+  }
+
+  _fitPixelWords(text, pixelSize, maxPx) {
+    const raw = String(text || '').trim().toUpperCase();
+    if (!raw || maxPx <= 0) return '';
+    if (PixelFont.measureWidth(raw, pixelSize) <= maxPx) return raw;
+    const words = raw.split(/\s+/).filter(Boolean);
+    if (words.length <= 1) return this._fitPixelText(raw, pixelSize, maxPx);
+    let acc = '';
+    for (let i = 0; i < words.length; i++) {
+      const next = acc ? `${acc} ${words[i]}` : words[i];
+      if (PixelFont.measureWidth(next, pixelSize) <= maxPx) {
+        acc = next;
+      } else {
+        break;
+      }
+    }
+    return acc || this._fitPixelText(raw, pixelSize, maxPx);
+  }
+
+  _wrapPixelLines(text, pixelSize, maxPx, maxLines = 2) {
+    const raw = String(text || '').trim().toUpperCase();
+    if (!raw || maxPx <= 0) return [];
+    if (PixelFont.measureWidth(raw, pixelSize) <= maxPx) return [raw];
+    if (maxLines <= 1) {
+      const fitted = this._fitPixelWords(raw, pixelSize, maxPx);
+      return fitted ? [fitted] : [];
+    }
+
+    const bestBalancedSplit = (parts, sep) => {
+      let bestPair = null;
+      let bestMaxW = Infinity;
+      for (let i = 1; i < parts.length; i++) {
+        const a = parts.slice(0, i).join(sep);
+        const b = parts.slice(i).join(sep);
+        const wa = PixelFont.measureWidth(a, pixelSize);
+        const wb = PixelFont.measureWidth(b, pixelSize);
+        if (wa <= maxPx && wb <= maxPx && Math.max(wa, wb) < bestMaxW) {
+          bestMaxW = Math.max(wa, wb);
+          bestPair = [a, b];
+        }
+      }
+      return bestPair;
+    };
+
+    // Prefer clean 2-line split at bullet separators (` • `) when both halves fit
+    if (raw.includes(' • ')) {
+      const bulletPair = bestBalancedSplit(
+        raw.split(' • ').map((s) => s.trim()).filter(Boolean),
+        ' • '
+      );
+      if (bulletPair) return bulletPair;
+    }
+
+    // Prefer clean 2-line split after colon (`S10 BOSS:` / `BLOOD-ECLIPSE MALPHAS`) when both fit
+    const colonIdx = raw.indexOf(': ');
+    if (colonIdx > 0 && colonIdx < raw.length - 2) {
+      const head = raw.slice(0, colonIdx + 1).trim();
+      const tail = raw.slice(colonIdx + 2).trim();
+      if (
+        head &&
+        tail &&
+        PixelFont.measureWidth(head, pixelSize) <= maxPx &&
+        PixelFont.measureWidth(tail, pixelSize) <= maxPx
+      ) {
+        return [head, tail];
+      }
+    }
+
+    // Balanced 2-line word wrap on spaces
+    const words = raw.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      const wordPair = bestBalancedSplit(words, ' ');
+      if (wordPair) return wordPair;
+
+      // Greedy pack line 1 on whole words, then cleanly fit line 2 on whole words
+      let line1 = '';
+      let splitIdx = 0;
+      for (let i = 0; i < words.length; i++) {
+        const cand = line1 ? `${line1} ${words[i]}` : words[i];
+        if (PixelFont.measureWidth(cand, pixelSize) <= maxPx) {
+          line1 = cand;
+          splitIdx = i + 1;
+        } else {
+          break;
+        }
+      }
+      if (line1 && splitIdx < words.length) {
+        const line2 = this._fitPixelWords(words.slice(splitIdx).join(' '), pixelSize, maxPx);
+        return line2 ? [line1, line2] : [line1];
+      }
+    }
+
+    const fallback = this._fitPixelWords(raw, pixelSize, maxPx);
+    return fallback ? [fallback] : [];
+  }
+
   _getHudClearance(w, h, hudBot, isNarrowLandscape, isCompactPortrait, renderer = null) {
     const isShort = h <= 500;
     const hasParty = (this.companions?.activeSlots?.length || 0) > 0;
     const drawerOpen = Boolean(this.shopUI?.isDrawerOpen?.());
     const trialActive = Boolean(this.trials?.isActive?.());
     const bossActive = Boolean(this.isBossEncounter || (this.bossEntity && !this.bossEntity.isDead));
+    const bossFarm = Boolean(this.bossFarmMode);
     const eventsBuffCount = this.events?.activeBuffs?.length || 0;
     const hasMerchant = Boolean(this.events?.activeMerchantOffer);
-    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}:${drawerOpen ? 1 : 0}:${trialActive ? 1 : 0}:${bossActive ? 1 : 0}:${eventsBuffCount}:${hasMerchant ? 1 : 0}`;
+    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}:${drawerOpen ? 1 : 0}:${trialActive ? 1 : 0}:${bossActive ? 1 : 0}:${bossFarm ? 1 : 0}:${eventsBuffCount}:${hasMerchant ? 1 : 0}`;
     const nowSec =
       typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() * 0.001
@@ -9304,88 +9455,136 @@ export class EndlessManager {
       this._hudClearanceCache &&
       this._hudClearanceCache.key === cacheKey &&
       this._hudClearanceCachedAt >= 0 &&
-      nowSec - this._hudClearanceCachedAt < 0.25
+      nowSec - this._hudClearanceCachedAt < 0.15
     ) {
       return this._hudClearanceCache;
     }
 
+    let hasLiveDom = false;
     let domTopBottom = 0;
-    let domPartyRight = 0;
-    let domPartyBottom = 0;
     let domShopBottom = 0;
     let domDrawerLeft = 0;
     let domDrawerTop = 0;
-    let domEventsLeft = 0;
-    let domEventsBottom = 0;
+    let partyRect = null;
+    const floatRects = [];
 
     try {
       if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
         const rootEl = renderer?.canvas || document.getElementById?.('app') || null;
-        const rootRect = rootEl && typeof rootEl.getBoundingClientRect === 'function'
-          ? rootEl.getBoundingClientRect()
-          : { left: 0, top: 0, width: w, height: h };
+        const rawRootRect =
+          rootEl && typeof rootEl.getBoundingClientRect === 'function'
+            ? rootEl.getBoundingClientRect()
+            : null;
+        const rootRect =
+          rawRootRect && rawRootRect.width > 0 && rawRootRect.height > 0
+            ? rawRootRect
+            : { left: 0, top: 0, width: w, height: h };
+        hasLiveDom = Boolean(rawRootRect && rawRootRect.width > 0 && rawRootRect.height > 0);
         const scaleX = rootRect.width > 0 ? w / rootRect.width : 1;
         const scaleY = rootRect.height > 0 ? h / rootRect.height : 1;
 
-        const topEl = document.querySelector('.endless-top-stack');
-        if (topEl && !topEl.classList?.contains?.('hidden')) {
-          const r = topEl.getBoundingClientRect();
-          if (r.height > 0) {
-            domTopBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
-          }
-        }
-
-        const trialEl = document.querySelector('.endless-trial-hud');
-        if (trialEl && !trialEl.classList?.contains?.('hidden')) {
-          const r = trialEl.getBoundingClientRect();
-          if (r.height > 0) {
-            domTopBottom = Math.max(domTopBottom, Math.ceil((r.bottom - rootRect.top) * scaleY));
-          }
-        }
-
-        const bossHudEl = document.getElementById?.('adv-boss-raid-hud');
-        if (bossHudEl && !bossHudEl.classList?.contains?.('hidden')) {
-          const r = bossHudEl.getBoundingClientRect();
-          if (r.width > 4 && r.height > 4) {
-            domTopBottom = Math.max(domTopBottom, Math.ceil((r.bottom - rootRect.top) * scaleY));
-          }
-        }
-
-        const partyEl = document.querySelector('.endless-party-hud');
-        if (partyEl && !partyEl.classList?.contains?.('hidden')) {
-          const r = partyEl.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            domPartyRight = Math.ceil((r.right - rootRect.left) * scaleX);
-            domPartyBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
-          }
-        }
-
-        const shopBtn = document.getElementById?.('endless-shop-toggle');
-        if (shopBtn && !shopBtn.classList?.contains?.('hidden')) {
-          const r = shopBtn.getBoundingClientRect();
-          if (r.height > 0) {
-            domShopBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
-          }
-        }
-
-        const eventsEl = document.querySelector('.endless-events-dock');
-        if (eventsEl && !eventsEl.classList?.contains?.('hidden')) {
-          const r = eventsEl.getBoundingClientRect();
-          if (r.width > 4 && r.height > 4) {
-            domEventsLeft = Math.floor((r.left - rootRect.left) * scaleX);
-            domEventsBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
-          }
-        }
-
-        const drawerEl = document.querySelector('.endless-shop-shell');
-        if (drawerEl && !drawerEl.classList?.contains?.('hidden')) {
-          const r = drawerEl.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            if (isCompactPortrait) {
-              domDrawerTop = Math.floor((r.top - rootRect.top) * scaleY);
-            } else {
-              domDrawerLeft = Math.floor((r.left - rootRect.left) * scaleX);
+        const measureRect = (el) => {
+          if (!el || el.classList?.contains?.('hidden')) return null;
+          if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+            const cs = window.getComputedStyle(el);
+            if (
+              cs &&
+              (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) <= 0.02)
+            ) {
+              return null;
             }
+          }
+          if (typeof el.getBoundingClientRect !== 'function') return null;
+          const r = el.getBoundingClientRect();
+          if (!r || r.width <= 2 || r.height <= 2) return null;
+          const rect = {
+            left: (r.left - rootRect.left) * scaleX,
+            right: (r.right - rootRect.left) * scaleX,
+            top: (r.top - rootRect.top) * scaleY,
+            bottom: (r.bottom - rootRect.top) * scaleY,
+            width: r.width * scaleX,
+            height: r.height * scaleY
+          };
+          if (rect.bottom <= 0 || rect.top >= h || rect.right <= 0 || rect.left >= w) return null;
+          return rect;
+        };
+
+        const pushFloatRect = (rect) => {
+          if (!rect) return;
+          if (rect.width >= w * 0.96 && rect.height >= h * 0.68) return;
+          for (let i = 0; i < floatRects.length; i++) {
+            const ex = floatRects[i];
+            if (
+              Math.abs(ex.left - rect.left) <= 2 &&
+              Math.abs(ex.right - rect.right) <= 2 &&
+              Math.abs(ex.top - rect.top) <= 2 &&
+              Math.abs(ex.bottom - rect.bottom) <= 2
+            ) {
+              return;
+            }
+          }
+          floatRects.push(rect);
+        };
+
+        const topRect = measureRect(document.querySelector('.endless-top-stack'));
+        if (topRect) domTopBottom = Math.max(domTopBottom, Math.ceil(topRect.bottom));
+
+        const trialRect = measureRect(document.querySelector('.endless-trial-hud'));
+        if (trialRect) domTopBottom = Math.max(domTopBottom, Math.ceil(trialRect.bottom));
+
+        const bossHudEl =
+          document.querySelector('#adv-boss-raid-hud') || document.getElementById?.('adv-boss-raid-hud');
+        const bossRect = measureRect(bossHudEl);
+        if (bossRect) domTopBottom = Math.max(domTopBottom, Math.ceil(bossRect.bottom));
+
+        const shopBtn =
+          document.querySelector('#endless-shop-toggle') ||
+          document.getElementById?.('endless-shop-toggle');
+        const shopRect = measureRect(shopBtn);
+        if (shopRect) domShopBottom = Math.ceil(shopRect.bottom);
+
+        partyRect = measureRect(document.querySelector('.endless-party-hud'));
+
+        const drawerRect = measureRect(document.querySelector('.endless-shop-shell'));
+        if (drawerRect) {
+          if (isCompactPortrait) {
+            domDrawerTop = Math.floor(drawerRect.top);
+          } else {
+            domDrawerLeft = Math.floor(drawerRect.left);
+          }
+        }
+
+        const hudRoot =
+          document.querySelector('#endless-hud-root') || document.getElementById?.('endless-hud-root');
+        if (hudRoot && hudRoot.children && hudRoot.children.length > 0) {
+          for (let i = 0; i < hudRoot.children.length; i++) {
+            const ch = hudRoot.children[i];
+            if (!ch || ch.id === 'endless-shop-toggle') continue;
+            const cl = ch.classList;
+            if (
+              cl?.contains?.('endless-top-stack') ||
+              cl?.contains?.('endless-party-hud') ||
+              cl?.contains?.('endless-shop-shell') ||
+              cl?.contains?.('endless-fx-layer') ||
+              cl?.contains?.('endless-offline-modal') ||
+              cl?.contains?.('endless-trial-result-modal') ||
+              ch.getAttribute?.('role') === 'dialog' ||
+              ch.getAttribute?.('aria-modal') === 'true'
+            ) {
+              continue;
+            }
+            pushFloatRect(measureRect(ch));
+          }
+        } else {
+          pushFloatRect(measureRect(document.querySelector('.endless-events-dock')));
+        }
+
+        if (typeof document.querySelectorAll === 'function') {
+          const popEls = document.querySelectorAll(
+            '#endless-hud-root [class*="popcard"], #endless-hud-root [class*="pop-card"], #endless-hud-root [class*="popover"], #endless-hud-root .endless-merchant-card'
+          );
+          for (let i = 0; i < popEls.length; i++) {
+            pushFloatRect(measureRect(popEls[i]));
           }
         }
       }
@@ -9396,66 +9595,128 @@ export class EndlessManager {
     let topClearY;
     let safeLeft;
     let safeRight;
+    let maxBottomY = h - (isNarrowLandscape ? 46 : 84);
 
-    if (isNarrowLandscape) {
-      const clampedHudBot = isShort ? Math.min(hudBot, 64) : Math.min(hudBot, 84);
-      const fallbackTop = isShort
-        ? Math.max(116, Math.round(clampedHudBot + 56))
-        : Math.max(138, Math.round(clampedHudBot + 62));
-      topClearY = domTopBottom > 24 ? Math.max(clampedHudBot + 6, domTopBottom + 6) : fallbackTop;
-      safeRight = domDrawerLeft > 260 ? Math.min(w - 12, domDrawerLeft - 8) : Math.max(240, w - 12);
-      const partyFloor = hasParty && w >= 560 ? 220 : 12;
-      const measuredParty = domPartyRight > 0 ? domPartyRight + 8 : 0;
-      safeLeft = Math.min(Math.max(12, safeRight - 160), Math.max(partyFloor, measuredParty));
-      if (domEventsBottom > topClearY && domEventsLeft > 0) {
-        if (domEventsLeft - safeLeft >= 180) {
-          safeRight = Math.min(safeRight, domEventsLeft - 8);
+    const trimLaneAroundRects = (yTop, bandH, baseLeft, baseRight, rects, marginX) => {
+      let l = baseLeft;
+      let r = baseRight;
+      for (let i = 0; i < rects.length; i++) {
+        const ob = rects[i];
+        if (!ob || ob.bottom <= yTop + 1 || ob.top >= yTop + bandH) continue;
+        const midX = (ob.left + ob.right) * 0.5;
+        if (midX < w * 0.5) {
+          l = Math.max(l, Math.ceil(ob.right) + marginX);
         } else {
-          topClearY = Math.max(topClearY, domEventsBottom + 6);
+          r = Math.min(r, Math.floor(ob.left) - marginX);
         }
       }
+      return { left: l, right: r, width: r - l };
+    };
+
+    if (isNarrowLandscape) {
+      const clampedHudBot = isShort ? Math.min(hudBot, 58) : Math.min(hudBot, 80);
+      const fallbackTop = isShort
+        ? Math.max(96, Math.round(clampedHudBot + 42))
+        : Math.max(120, Math.round(clampedHudBot + 48));
+      topClearY = domTopBottom > 20 ? Math.max(clampedHudBot + 4, domTopBottom + 6) : fallbackTop;
+      safeLeft = 10;
+      safeRight =
+        domDrawerLeft > 240 ? Math.min(w - 10, domDrawerLeft - 8) : Math.max(240, w - 10);
+
+      const allSideRects = partyRect ? [partyRect, ...floatRects] : floatRects;
+      if (allSideRects.length > 0) {
+        const bandH = 44;
+        const beside = trimLaneAroundRects(topClearY, bandH, safeLeft, safeRight, allSideRects, 8);
+        const minComfortW = Math.min(340, Math.max(220, safeRight - safeLeft - 16));
+        if (beside.width >= minComfortW) {
+          safeLeft = beside.left;
+          safeRight = beside.right;
+        } else {
+          // Drop cleanly below thin upper mobile strips (Party Strip / Events Icon-Strip) to reclaim full arena span
+          let dropY = topClearY;
+          for (let pass = 0; pass < 2; pass++) {
+            for (let i = 0; i < allSideRects.length; i++) {
+              const ob = allSideRects[i];
+              if (!ob || ob.bottom <= dropY + 1 || ob.top >= dropY + bandH) continue;
+              if (ob.height <= 64 && ob.bottom <= Math.round(h * 0.52)) {
+                dropY = Math.max(dropY, Math.ceil(ob.bottom) + 6);
+              }
+            }
+          }
+          const below = trimLaneAroundRects(dropY, bandH, safeLeft, safeRight, allSideRects, 8);
+          if (dropY + 34 <= maxBottomY && below.width > beside.width + 36) {
+            topClearY = dropY;
+            safeLeft = below.left;
+            safeRight = below.right;
+          } else {
+            safeLeft = Math.min(Math.max(10, safeRight - 160), beside.left);
+            safeRight = Math.max(safeLeft + 160, beside.right);
+          }
+        }
+      } else if (!hasLiveDom && hasParty && !drawerOpen && w >= 560) {
+        safeLeft = Math.min(Math.max(10, safeRight - 220), 196);
+      }
     } else if (isCompactPortrait) {
+      if (domDrawerTop > 120) {
+        maxBottomY = Math.min(h - 76, domDrawerTop - 6);
+      }
       const fallbackTop = hasParty
-        ? Math.max(248, Math.round(hudBot + 108))
-        : Math.max(194, Math.round(hudBot + 88));
-      const measuredMax = Math.max(
+        ? Math.max(216, Math.round(hudBot + 90))
+        : Math.max(176, Math.round(hudBot + 72));
+      let measuredTop = Math.max(
         domTopBottom > 0 ? domTopBottom + 6 : 0,
-        domShopBottom > 0 ? domShopBottom + 6 : 0,
-        domPartyBottom > 0 ? domPartyBottom + 6 : 0,
-        domEventsBottom > 0 ? domEventsBottom + 8 : 0
+        domShopBottom > 0 ? domShopBottom + 6 : 0
       );
-      topClearY = measuredMax > 24 ? Math.max(hudBot + 6, measuredMax) : fallbackTop;
       safeLeft = 10;
       safeRight = Math.max(180, w - 10);
-      if (domDrawerTop > 120 && topClearY + 34 > domDrawerTop - 4) {
-        const altTop = Math.max(
-          hudBot + 6,
-          domTopBottom > 0 ? domTopBottom + 6 : 0,
-          domPartyBottom > 0 ? domPartyBottom + 6 : 0
-        );
-        if (domEventsLeft - safeLeft >= 164 && altTop + 34 <= domDrawerTop - 4) {
-          topClearY = altTop;
-          safeRight = Math.min(safeRight, domEventsLeft - 6);
-        } else {
-          topClearY = Math.max(hudBot + 6, Math.min(topClearY, domDrawerTop - 38));
+
+      const upperRects = partyRect ? [partyRect, ...floatRects] : floatRects;
+      for (let i = 0; i < upperRects.length; i++) {
+        const ob = upperRects[i];
+        if (!ob || ob.top >= maxBottomY - 16) continue;
+        if (ob.bottom + 6 + 34 <= maxBottomY) {
+          measuredTop = Math.max(measuredTop, Math.ceil(ob.bottom) + 6);
+        } else if (ob.left > w * 0.45 && ob.left - 6 - safeLeft >= 170) {
+          safeRight = Math.min(safeRight, Math.floor(ob.left) - 6);
+        } else if (ob.right < w * 0.55 && safeRight - (ob.right + 6) >= 170) {
+          safeLeft = Math.max(safeLeft, Math.ceil(ob.right) + 6);
         }
+      }
+
+      topClearY = measuredTop > 20 ? Math.max(hudBot + 4, measuredTop) : fallbackTop;
+      if (topClearY + 34 > maxBottomY) {
+        topClearY = Math.max(hudBot + 4, maxBottomY - 36);
       }
     } else {
       const fallbackTop = Math.max(146, Math.round(hudBot + 66));
       topClearY = domTopBottom > 24 ? Math.max(hudBot + 8, domTopBottom + 8) : fallbackTop;
-      safeRight = domDrawerLeft > 360 ? Math.min(w - 20, domDrawerLeft - 12) : Math.max(360, w - 20);
-      const measuredParty = domPartyRight > 0 ? domPartyRight + 10 : 0;
-      safeLeft = Math.min(Math.max(20, safeRight - 260), Math.max(hasParty ? 208 : 20, measuredParty));
-      if (domEventsBottom > topClearY && domEventsLeft > 0) {
-        if (domEventsLeft - safeLeft >= 248) {
-          safeRight = Math.min(safeRight, domEventsLeft - 12);
+      safeLeft = 20;
+      safeRight =
+        domDrawerLeft > 360 ? Math.min(w - 20, domDrawerLeft - 12) : Math.max(360, w - 20);
+      if (partyRect && partyRect.bottom > topClearY && partyRect.top < topClearY + 56) {
+        safeLeft = Math.min(Math.max(20, safeRight - 260), Math.max(20, Math.ceil(partyRect.right) + 10));
+      } else if (!hasLiveDom && hasParty) {
+        safeLeft = Math.min(Math.max(20, safeRight - 260), 208);
+      }
+      for (let i = 0; i < floatRects.length; i++) {
+        const ob = floatRects[i];
+        if (!ob || ob.bottom <= topClearY + 1 || ob.top >= topClearY + 56) continue;
+        if ((ob.left + ob.right) * 0.5 >= w * 0.5 && ob.left - 12 - safeLeft >= 248) {
+          safeRight = Math.min(safeRight, Math.floor(ob.left) - 12);
+        } else if ((ob.left + ob.right) * 0.5 < w * 0.5 && safeRight - (ob.right + 12) >= 248) {
+          safeLeft = Math.max(safeLeft, Math.ceil(ob.right) + 12);
         } else {
-          topClearY = Math.max(topClearY, domEventsBottom + 8);
+          topClearY = Math.max(topClearY, Math.ceil(ob.bottom) + 8);
         }
       }
     }
 
-    const result = { key: cacheKey, topClearY, safeLeft, safeRight };
+    if (safeRight < safeLeft + 140) {
+      safeLeft = isCompactPortrait || isNarrowLandscape ? 10 : 20;
+      safeRight = Math.max(safeLeft + 140, w - safeLeft);
+    }
+
+    const result = { key: cacheKey, topClearY, safeLeft, safeRight, maxBottomY };
     this._hudClearanceCache = result;
     this._hudClearanceCachedAt = nowSec;
     return result;
@@ -9634,47 +9895,84 @@ export class EndlessManager {
     }
 
     // 3. Stage Clear / Boss Retreat / Gold Fever PixelFont Banner Ribbon
-    //    Compact & HUD-aware on mobile landscape (w <= 920 / isMobileLandscape) so it
-    //    NEVER overlaps the top status bar or the left-side Active Companion Mini-HUD (x <= 325).
+    //    HUD-aware across Desktop, Mobile Landscape & Portrait with adaptive scale,
+    //    concise boss prefix fallback, and clean word-wrap so banners never clip mid-word.
     let activeBannerBottomY = 0;
+    const clearanceMaxBotY =
+      clearance && Number.isFinite(clearance.maxBottomY)
+        ? clearance.maxBottomY
+        : h - (isNarrowLandscape ? 46 : 84);
     if (hasBanner && clearance) {
       const fade = this.bannerTimer < 0.35 ? this.bannerTimer / 0.35 : 1;
       const availLaneW = Math.max(140, clearance.safeRight - clearance.safeLeft);
-      const padX = isNarrowLandscape ? 22 : isCompactPortrait ? 20 : 40;
+      const padX = isNarrowLandscape ? 20 : isCompactPortrait ? 18 : 40;
       const maxBanW = isNarrowLandscape
-        ? Math.min(availLaneW, 336)
+        ? Math.min(availLaneW, Math.min(w - 20, 560))
         : isCompactPortrait
           ? Math.min(availLaneW, w - 20)
-          : Math.min(availLaneW, Math.min(w - 420, 760));
+          : Math.min(availLaneW, Math.min(w - 340, 760));
+      const maxTextPx = Math.max(96, maxBanW - padX);
       const mainSz =
-        !isCompactUi && PixelFont.measureWidth(this.bannerText, 2) + padX <= maxBanW ? 2 : 1;
-      const maxTextPx = Math.max(96, maxBanW - padX + 4);
-      const fittedMain = this._fitPixelText(this.bannerText, mainSz, maxTextPx);
-      const fittedSub = this.bannerSubText
-        ? this._fitPixelText(this.bannerSubText, 1, maxTextPx)
-        : '';
-      const mainW = PixelFont.measureWidth(fittedMain, mainSz);
-      const subW = fittedSub ? PixelFont.measureWidth(fittedSub, 1) : 0;
+        !isCompactUi && PixelFont.measureWidth(this.bannerText, 2) <= maxTextPx ? 2 : 1;
+
+      const rawTitle = this.bannerText;
+      const titleSource =
+        mainSz === 1 && PixelFont.measureWidth(rawTitle, 1) > maxTextPx
+          ? this._compactBannerText(rawTitle, false) || rawTitle
+          : rawTitle;
+      const titleLines = this._wrapPixelLines(
+        titleSource,
+        mainSz,
+        maxTextPx,
+        mainSz === 2 ? 1 : 2
+      );
+
+      let subLines = [];
+      if (this.bannerSubText) {
+        const rawSub = this.bannerSubText;
+        const subSource =
+          PixelFont.measureWidth(rawSub, 1) > maxTextPx
+            ? this._compactBannerText(rawSub, true) || rawSub
+            : rawSub;
+        subLines = this._wrapPixelLines(subSource, 1, maxTextPx, 2);
+      }
+
+      let maxContentW = 0;
+      for (let i = 0; i < titleLines.length; i++) {
+        maxContentW = Math.max(maxContentW, PixelFont.measureWidth(titleLines[i], mainSz));
+      }
+      for (let i = 0; i < subLines.length; i++) {
+        maxContentW = Math.max(maxContentW, PixelFont.measureWidth(subLines[i], 1));
+      }
+
       const minBanW = isNarrowLandscape ? 168 : isCompactPortrait ? 184 : 240;
-      const banW = Math.min(maxBanW, Math.max(minBanW, Math.max(mainW, subW) + padX));
-      const banH = fittedSub
-        ? mainSz === 2
-          ? 46
-          : isNarrowLandscape
-            ? 30
-            : 34
-        : mainSz === 2
-          ? 32
-          : isNarrowLandscape
-            ? 20
-            : 24;
-      const idealBanX = Math.round((w - banW) * 0.5);
+      const banW = Math.min(maxBanW, Math.max(minBanW, maxContentW + padX));
+
+      const titleLineH = mainSz === 2 ? 18 : 9;
+      const subLineH = 9;
+      const lineGap = 3;
+      const topPad = mainSz === 2 ? 7 : isNarrowLandscape ? 5 : 6;
+      const botPad = topPad;
+      const sectionGap = subLines.length > 0 ? (mainSz === 2 ? 5 : 4) : 0;
+      const titleBlockH =
+        titleLines.length > 0
+          ? titleLines.length * titleLineH + (titleLines.length - 1) * lineGap
+          : 0;
+      const subBlockH =
+        subLines.length > 0 ? subLines.length * subLineH + (subLines.length - 1) * lineGap : 0;
+      const banH = Math.max(
+        mainSz === 2 ? 32 : isNarrowLandscape ? 20 : 24,
+        topPad + titleBlockH + sectionGap + subBlockH + botPad
+      );
+
+      const laneCx = (clearance.safeLeft + clearance.safeRight) * 0.5;
+      const idealBanX = Math.round(laneCx - banW * 0.5);
       const banX = Math.max(
         clearance.safeLeft,
         Math.min(clearance.safeRight - banW, idealBanX)
       );
       const banY = Math.min(
-        Math.max(44, h - banH - (isNarrowLandscape ? 48 : 84)),
+        Math.max(44, clearanceMaxBotY - banH),
         Math.round(clearance.topClearY)
       );
       const banCx = Math.round(banX + banW * 0.5);
@@ -9694,43 +9992,40 @@ export class EndlessManager {
       ctx.fillRect(banX, banY + banH - 3, 3, 3);
       ctx.fillRect(banX + banW - 3, banY + banH - 3, 3, 3);
 
-      if (fittedSub) {
+      let cursorY = banY + topPad;
+      for (let i = 0; i < titleLines.length; i++) {
         PixelFont.drawCentered(
           ctx,
-          fittedMain,
+          titleLines[i],
           banCx,
-          banY + (mainSz === 2 ? 15 : isNarrowLandscape ? 10 : 12),
+          Math.round(cursorY + titleLineH * 0.5),
           mainSz,
           this.bannerColor || '#facc15',
           '#ffffff',
           true
         );
-        PixelFont.drawCentered(
-          ctx,
-          fittedSub,
-          banCx,
-          banY + banH - (isNarrowLandscape ? 8 : 10),
-          1,
-          '#e2e8f0',
-          '#ffffff',
-          true
-        );
-      } else {
-        PixelFont.drawCentered(
-          ctx,
-          fittedMain,
-          banCx,
-          banY + Math.floor(banH * 0.5),
-          mainSz,
-          this.bannerColor || '#facc15',
-          '#ffffff',
-          true
-        );
+        cursorY += titleLineH + (i < titleLines.length - 1 ? lineGap : 0);
+      }
+      if (subLines.length > 0) {
+        cursorY += sectionGap;
+        for (let i = 0; i < subLines.length; i++) {
+          PixelFont.drawCentered(
+            ctx,
+            subLines[i],
+            banCx,
+            Math.round(cursorY + subLineH * 0.5),
+            1,
+            '#e2e8f0',
+            '#ffffff',
+            true
+          );
+          cursorY += subLineH + (i < subLines.length - 1 ? lineGap : 0);
+        }
       }
       ctx.globalAlpha = 1;
     }
 
-    // 4. Compact Upper-Mid FEVER 2X GOLD! / OVERDRIVE 3X GOLD! Stamp (never collides with Top Bar or Party HUD)
+    // 4. Compact Upper-Mid FEVER 2X GOLD! / OVERDRIVE 3X GOLD! Stamp (never collides with Top Bar, Party HUD, Banner, or Drawer)
     if (feverTier >= 1 && clearance) {
       const isOverdrive = feverTier >= 2;
       const stampText = isOverdrive ? 'OVERDRIVE 3X GOLD!' : 'FEVER 2X GOLD!';
@@ -9741,81 +10036,84 @@ export class EndlessManager {
         Math.max(isNarrowLandscape ? 118 : 132, textW + (isNarrowLandscape ? 20 : 26))
       );
       const stampH = isNarrowLandscape ? 20 : 22;
-      const idealStampX = Math.round((w - stampW) * 0.5);
-      const stampX = Math.max(
-        clearance.safeLeft,
-        Math.min(clearance.safeRight - stampW, idealStampX)
-      );
-      const stampCx = Math.round(stampX + stampW * 0.5);
       const baseStampY = Math.round(clearance.topClearY);
-      const stampY = Math.min(
-        Math.max(44, h - stampH - (isNarrowLandscape ? 42 : 84)),
-        activeBannerBottomY > 0 ? activeBannerBottomY + 5 : baseStampY
-      );
-      const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
-      const maxFeverDur =
-        Number.isFinite(this.economy?.tapFeverMaxDuration) && this.economy.tapFeverMaxDuration > 0
-          ? this.economy.tapFeverMaxDuration
-          : (isOverdrive ? 9.5 : 7.5) + feverBonusSec;
-      const timerRatio = Math.max(0, Math.min(1, feverTimer / Math.max(1, maxFeverDur)));
-      const fadeOut = feverTimer < 0.4 ? Math.max(0.2, feverTimer / 0.4) : 1;
-      const popFrac = this._feverStampPopTimer > 0 ? this._feverStampPopTimer / 0.28 : 0;
-      const stampScale = popFrac > 0 ? 1 + 0.16 * Math.sin(popFrac * Math.PI) : 1;
+      const desiredStampY = activeBannerBottomY > 0 ? activeBannerBottomY + 5 : baseStampY;
+      const canPlaceStamp =
+        activeBannerBottomY <= 0 || desiredStampY + stampH <= clearanceMaxBotY;
+      if (canPlaceStamp) {
+        const laneCx = (clearance.safeLeft + clearance.safeRight) * 0.5;
+        const idealStampX = Math.round(laneCx - stampW * 0.5);
+        const stampX = Math.max(
+          clearance.safeLeft,
+          Math.min(clearance.safeRight - stampW, idealStampX)
+        );
+        const stampCx = Math.round(stampX + stampW * 0.5);
+        const stampY = Math.min(Math.max(44, clearanceMaxBotY - stampH), desiredStampY);
+        const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
+        const maxFeverDur =
+          Number.isFinite(this.economy?.tapFeverMaxDuration) && this.economy.tapFeverMaxDuration > 0
+            ? this.economy.tapFeverMaxDuration
+            : (isOverdrive ? 9.5 : 7.5) + feverBonusSec;
+        const timerRatio = Math.max(0, Math.min(1, feverTimer / Math.max(1, maxFeverDur)));
+        const fadeOut = feverTimer < 0.4 ? Math.max(0.2, feverTimer / 0.4) : 1;
+        const popFrac = this._feverStampPopTimer > 0 ? this._feverStampPopTimer / 0.28 : 0;
+        const stampScale = popFrac > 0 ? 1 + 0.16 * Math.sin(popFrac * Math.PI) : 1;
 
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = fadeOut;
-      if (
-        stampScale > 1.005 &&
-        typeof ctx.translate === 'function' &&
-        typeof ctx.scale === 'function'
-      ) {
-        ctx.translate(stampCx, stampY + Math.floor(stampH * 0.5));
-        ctx.scale(stampScale, stampScale);
-        ctx.translate(-stampCx, -(stampY + Math.floor(stampH * 0.5)));
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = fadeOut;
+        if (
+          stampScale > 1.005 &&
+          typeof ctx.translate === 'function' &&
+          typeof ctx.scale === 'function'
+        ) {
+          ctx.translate(stampCx, stampY + Math.floor(stampH * 0.5));
+          ctx.scale(stampScale, stampScale);
+          ctx.translate(-stampCx, -(stampY + Math.floor(stampH * 0.5)));
+        }
+
+        // Crisp dark #050712 2px pixel outline frame
+        ctx.fillStyle = '#050712';
+        ctx.fillRect(stampX - 2, stampY - 2, stampW + 4, stampH + 4);
+        ctx.fillStyle = isOverdrive ? 'rgba(9, 14, 28, 0.94)' : 'rgba(14, 12, 22, 0.92)';
+        ctx.fillRect(stampX, stampY, stampW, stampH);
+
+        // Burnished gold / blazing gold-cyan border trim & corner studs
+        ctx.fillStyle = isOverdrive ? '#38bdf8' : '#facc15';
+        ctx.fillRect(stampX, stampY, stampW, 2);
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(stampX, stampY + stampH - 2, stampW, 2);
+        ctx.fillRect(stampX, stampY, 2, stampH);
+        ctx.fillRect(stampX + stampW - 2, stampY, 2, stampH);
+
+        ctx.fillStyle = isOverdrive ? '#bae6fd' : '#fef9c3';
+        ctx.fillRect(stampX, stampY, 3, 3);
+        ctx.fillRect(stampX + stampW - 3, stampY, 3, 3);
+        ctx.fillRect(stampX, stampY + stampH - 3, 3, 3);
+        ctx.fillRect(stampX + stampW - 3, stampY + stampH - 3, 3, 3);
+
+        // Animated fever remaining fuel bar tucked neatly along bottom edge
+        const barW = Math.max(4, Math.round((stampW - 8) * timerRatio));
+        ctx.fillStyle = '#050712';
+        ctx.fillRect(stampX + 4, stampY + stampH - 5, stampW - 8, 3);
+        ctx.fillStyle = isOverdrive ? '#38bdf8' : '#facc15';
+        ctx.fillRect(stampX + 4, stampY + stampH - 5, barW, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(stampX + 4, stampY + stampH - 5, barW, 1);
+
+        // Crisp outlined stamp label
+        PixelFont.drawCentered(
+          ctx,
+          stampText,
+          stampCx,
+          stampY + (isNarrowLandscape ? 8 : 9),
+          1,
+          isOverdrive ? '#67e8f9' : '#fde047',
+          '#ffffff',
+          true
+        );
+        ctx.restore();
       }
-
-      // Crisp dark #050712 2px pixel outline frame
-      ctx.fillStyle = '#050712';
-      ctx.fillRect(stampX - 2, stampY - 2, stampW + 4, stampH + 4);
-      ctx.fillStyle = isOverdrive ? 'rgba(9, 14, 28, 0.94)' : 'rgba(14, 12, 22, 0.92)';
-      ctx.fillRect(stampX, stampY, stampW, stampH);
-
-      // Burnished gold / blazing gold-cyan border trim & corner studs
-      ctx.fillStyle = isOverdrive ? '#38bdf8' : '#facc15';
-      ctx.fillRect(stampX, stampY, stampW, 2);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(stampX, stampY + stampH - 2, stampW, 2);
-      ctx.fillRect(stampX, stampY, 2, stampH);
-      ctx.fillRect(stampX + stampW - 2, stampY, 2, stampH);
-
-      ctx.fillStyle = isOverdrive ? '#bae6fd' : '#fef9c3';
-      ctx.fillRect(stampX, stampY, 3, 3);
-      ctx.fillRect(stampX + stampW - 3, stampY, 3, 3);
-      ctx.fillRect(stampX, stampY + stampH - 3, 3, 3);
-      ctx.fillRect(stampX + stampW - 3, stampY + stampH - 3, 3, 3);
-
-      // Animated fever remaining fuel bar tucked neatly along bottom edge
-      const barW = Math.max(4, Math.round((stampW - 8) * timerRatio));
-      ctx.fillStyle = '#050712';
-      ctx.fillRect(stampX + 4, stampY + stampH - 5, stampW - 8, 3);
-      ctx.fillStyle = isOverdrive ? '#38bdf8' : '#facc15';
-      ctx.fillRect(stampX + 4, stampY + stampH - 5, barW, 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(stampX + 4, stampY + stampH - 5, barW, 1);
-
-      // Crisp outlined stamp label
-      PixelFont.drawCentered(
-        ctx,
-        stampText,
-        stampCx,
-        stampY + (isNarrowLandscape ? 8 : 9),
-        1,
-        isOverdrive ? '#67e8f9' : '#fde047',
-        '#ffffff',
-        true
-      );
-      ctx.restore();
     }
 
     ctx.restore();
@@ -10164,6 +10462,7 @@ export class EndlessManager {
         Number.isFinite(this.economy.astralShards) ? this.economy.astralShards : 0
       ),
       autoBoss: Boolean(this.economy.autoBoss),
+      autoBossEnabled: Boolean(this.economy.autoBoss),
       autoPlay: Boolean(this.autoPlay),
       bulkMode: this.economy.bulkMode || 'x1',
       tapFever: this.economy.tapFever || 0,
