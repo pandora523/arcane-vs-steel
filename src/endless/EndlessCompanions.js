@@ -2,8 +2,10 @@ import { PixelForge } from '../engine/PixelForge.js?v=30fps202';
 import { PixelFont } from '../engine/PixelFont.js?v=30fps202';
 import {
   COMPANION_BASE_TO_EX_KEY,
+  COMPANION_AURA_TIERS,
   ELITE_EX_COMPANION_DEFS,
-  COMPANION_MAX_STARS
+  COMPANION_MAX_STARS,
+  getAuraTier
 } from './EndlessCompanionEvo.js?v=30fps202';
 
 export const ENDLESS_MAX_ACTIVE_SLOTS = 3;
@@ -479,10 +481,196 @@ function drawSteppedLightningArc(ctx, x0, y0, x1, y1, color, coreColor, seed = 1
   drawPass(coreColor || '#ffffff', 2);
 }
 
+function drawPixelFourPointStar(ctx, cx, cy, armLen, outerColor, coreColor = '#ffffff') {
+  const ix = Math.round(cx);
+  const iy = Math.round(cy);
+  const arm = Math.max(3, Math.round(armLen));
+  // 1px dark selout behind the 4-point star
+  ctx.fillStyle = '#0d0f1c';
+  ctx.fillRect(ix - arm - 1, iy - 2, (arm + 1) * 2, 4);
+  ctx.fillRect(ix - 2, iy - arm - 1, 4, (arm + 1) * 2);
+  ctx.fillRect(ix - 3, iy - 3, 6, 6);
+  // Colored pixel arms
+  ctx.fillStyle = outerColor || '#fef08a';
+  ctx.fillRect(ix - arm, iy - 1, arm * 2, 2);
+  ctx.fillRect(ix - 1, iy - arm, 2, arm * 2);
+  ctx.fillRect(ix - 2, iy - 2, 4, 4);
+  // Incandescent pixel core
+  ctx.fillStyle = coreColor || '#ffffff';
+  ctx.fillRect(ix - 1, iy - 1, 2, 2);
+}
+
+function drawFloorRuneTicks(ctx, cx, cy, rx, ry, outerColor, coreColor, phase = 0, count = 4) {
+  const ix = Math.round(cx);
+  const iy = Math.round(cy);
+  const n = Math.max(4, Math.floor(count));
+  for (let i = 0; i < n; i++) {
+    const ang = phase + (i * Math.PI * 2) / n;
+    const tx = Math.round(ix + Math.cos(ang) * rx);
+    const ty = Math.round(iy + Math.sin(ang) * ry);
+    ctx.fillStyle = '#0d0f1c';
+    ctx.fillRect(tx - 2, ty - 2, 4, 4);
+    ctx.fillStyle = i % 2 === 0 ? outerColor : coreColor;
+    ctx.fillRect(tx - 1, ty - 1, 2, 2);
+  }
+}
+
+function drawSteppedDiamondHalo(ctx, cx, cy, rx, ry, outerHex, midHex, coreHex, alpha = 0.78, phase = 0) {
+  const ix = Math.round(cx);
+  const iy = Math.round(cy);
+  const rX = Math.max(16, Math.round(rx));
+  const rY = Math.max(16, Math.round(ry));
+  const step = 3;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = clampNum(alpha, 0, 1);
+
+  for (let dy = -rY; dy <= rY; dy += step) {
+    const t = Math.abs(dy) / rY;
+    const halfW = Math.max(step, Math.round(((1 - t) * rX) / step) * step);
+    const y = iy + dy;
+    const isApex = Math.abs(dy) >= rY - step;
+
+    // Dark selout pass
+    ctx.fillStyle = '#0d0f1c';
+    if (isApex) {
+      ctx.fillRect(ix - halfW - 1, y - 1, halfW * 2 + 2, step + 2);
+    } else {
+      ctx.fillRect(ix - halfW - 1, y - 1, step + 3, step + 2);
+      ctx.fillRect(ix + halfW - step - 2, y - 1, step + 3, step + 2);
+    }
+
+    // Primary stepped halo diamond rim
+    ctx.fillStyle = outerHex || '#facc15';
+    if (isApex) {
+      ctx.fillRect(ix - halfW, y, halfW * 2, step);
+    } else {
+      ctx.fillRect(ix - halfW, y, step + 1, step);
+      ctx.fillRect(ix + halfW - step - 1, y, step + 1, step);
+    }
+
+    // Inner bright filigree step
+    const innerHalfW = Math.max(step, halfW - step - 1);
+    if (!isApex && innerHalfW > step) {
+      ctx.fillStyle = midHex || '#fef08a';
+      ctx.fillRect(ix - innerHalfW, y, 2, step);
+      ctx.fillRect(ix + innerHalfW - 2, y, 2, step);
+    }
+  }
+
+  // 4 cardinal diamond crown jewels along the stepped halo crest
+  const twinkle = 0.75 + 0.25 * Math.sin(phase * 4.5);
+  ctx.globalAlpha = clampNum(alpha * twinkle, 0, 1);
+  const nodes = [
+    [ix, iy - rY],
+    [ix + rX, iy],
+    [ix, iy + rY],
+    [ix - rX, iy]
+  ];
+  for (let n = 0; n < nodes.length; n++) {
+    const nx = nodes[n][0];
+    const ny = nodes[n][1];
+    ctx.fillStyle = '#0d0f1c';
+    ctx.fillRect(nx - 3, ny - 3, 6, 6);
+    ctx.fillStyle = n === 0 ? coreHex || '#ffffff' : outerHex || '#facc15';
+    ctx.fillRect(nx - 2, ny - 2, 4, 4);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(nx - 1, ny - 1, 2, 2);
+  }
+
+  ctx.restore();
+}
+
+function drawRisingAuraFilaments(ctx, cx, groundY, outerHex, coreHex, time, slotIndex, count = 4, heightSpan = 132) {
+  const ix = Math.round(cx);
+  const gy = Math.round(groundY);
+  const n = Math.max(2, Math.floor(count));
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  for (let i = 0; i < n; i++) {
+    const cycle = (time * (0.72 + (i % 3) * 0.14) + i * (1 / n) + slotIndex * 0.23) % 1;
+    const side = i % 2 === 0 ? -1 : 1;
+    const laneOffset = 18 + ((i * 11) % 24);
+    const fx = ix + side * laneOffset;
+    const fy = gy - 14 - Math.round(cycle * heightSpan);
+    const segH = 10 + (i % 3) * 4;
+    const fade = cycle < 0.18 ? cycle / 0.18 : clampNum(1 - (cycle - 0.18) / 0.82, 0, 1);
+    if (fade <= 0.05) continue;
+
+    ctx.globalAlpha = clampNum(0.76 * fade, 0, 0.82);
+    ctx.fillStyle = '#0d0f1c';
+    ctx.fillRect(fx - 2, fy - segH - 1, 4, segH + 2);
+    ctx.fillStyle = i % 2 === 0 ? outerHex || '#facc15' : coreHex || '#fef08a';
+    ctx.fillRect(fx - 1, fy - segH, 2, segH);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(fx - 1, fy - segH, 2, 3);
+  }
+  ctx.restore();
+}
+
+function drawFloatingMythicCrown(ctx, cx, cy, primaryHex, time, slotIndex) {
+  const bob = Math.round(Math.sin(time * 4.2 + slotIndex * 1.3) * 2);
+  const ix = Math.round(cx);
+  const iy = Math.round(cy + bob);
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
+  // Crisp 1px dark selout behind the 22x12 miniature sovereign pixel crown
+  ctx.fillStyle = '#0d0f1c';
+  ctx.fillRect(ix - 11, iy - 1, 22, 6);
+  ctx.fillRect(ix - 11, iy - 7, 5, 7);
+  ctx.fillRect(ix + 6, iy - 7, 5, 7);
+  ctx.fillRect(ix - 3, iy - 10, 6, 10);
+  ctx.fillRect(ix - 7, iy - 4, 14, 5);
+
+  // Crown base band (deep gold shadow -> royal gold -> upper specular rim)
+  ctx.fillStyle = '#b45309';
+  ctx.fillRect(ix - 10, iy + 2, 20, 2);
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(ix - 10, iy, 20, 2);
+  ctx.fillStyle = '#fef08a';
+  ctx.fillRect(ix - 9, iy - 1, 18, 1);
+
+  // Three sovereign crown spires (left, tall center, right)
+  ctx.fillStyle = '#facc15';
+  ctx.fillRect(ix - 10, iy - 6, 3, 6);
+  ctx.fillRect(ix + 7, iy - 6, 3, 6);
+  ctx.fillRect(ix - 2, iy - 9, 4, 9);
+  ctx.fillRect(ix - 6, iy - 3, 12, 3);
+
+  // Specular gold-white tips on all 3 spires
+  ctx.fillStyle = '#fef9c3';
+  ctx.fillRect(ix - 10, iy - 6, 2, 2);
+  ctx.fillRect(ix + 8, iy - 6, 2, 2);
+  ctx.fillRect(ix - 1, iy - 9, 2, 3);
+
+  // Center crimson sovereign ruby + twin flanking arcane gems
+  ctx.fillStyle = '#f43f5e';
+  ctx.fillRect(ix - 1, iy - 2, 2, 3);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(ix - 1, iy - 2, 1, 1);
+
+  ctx.fillStyle = primaryHex || '#38bdf8';
+  ctx.fillRect(ix - 7, iy, 2, 2);
+  ctx.fillRect(ix + 5, iy, 2, 2);
+
+  // Subtle orbiting twin 4-point pixel glints flanking the Mythic Crown
+  const glintA = 0.55 + 0.45 * Math.sin(time * 5.6 + slotIndex);
+  ctx.globalAlpha = clampNum(glintA, 0.25, 1);
+  drawPixelFourPointStar(ctx, ix - 16, iy - 4, 3, '#fef08a', '#ffffff');
+  ctx.globalAlpha = clampNum(1.25 - glintA, 0.25, 1);
+  drawPixelFourPointStar(ctx, ix + 16, iy - 5, 3, '#f43f5e', '#ffffff');
+
+  ctx.restore();
+}
+
 export class EndlessCompanionEntity {
   constructor(
     cfg,
-    { x = 260, groundY = 558, facing = 1, level = 1, slotIndex = 0, heroKey = null, star = 1, isExEvolved = false } = {}
+    { x = 260, groundY = 558, facing = 1, level = 1, slotIndex = 0, heroKey = null, star = 1, isExEvolved = true } = {}
   ) {
     this.cfg = cfg;
     this.isEndlessCompanion = true;
@@ -490,17 +678,20 @@ export class EndlessCompanionEntity {
     this.isDead = false;
     this.isBenched = false;
     this.team = 1;
-    this.heroId = heroKey || cfg.heroKey;
-    const baseMapping =
+    const exMapping =
       cfg?.id && Object.prototype.hasOwnProperty.call(COMPANION_BASE_TO_EX_KEY, cfg.id)
         ? COMPANION_BASE_TO_EX_KEY[cfg.id]
         : null;
-    this.baseHeroId = baseMapping?.baseHeroKey || cfg.heroKey;
+    const resolvedExKey = heroKey || exMapping?.exHeroKey || cfg.heroKey;
+    this.heroId = resolvedExKey;
+    this.baseHeroId = exMapping?.exHeroKey || cfg.heroKey;
     this._lastReadyHeroId = null;
     this._squad = null;
-    this.isEx = Boolean(this.heroId && this.heroId.endsWith('_ex'));
+    this.isEx = true;
+    this.isExForm = true;
     this.star = clampNum(Math.floor(Number(star) || 1), 1, COMPANION_MAX_STARS || 5);
-    this.isExEvolved = Boolean(isExEvolved || this.star >= 3);
+    this.auraTier = getAuraTier(this.star);
+    this.isExEvolved = Boolean(isExEvolved !== false);
     this.companionId = cfg.id;
     this.name = cfg.name;
     this.shortName = cfg.shortName || cfg.name;
@@ -679,120 +870,216 @@ export class EndlessCompanionEntity {
     ctx.fillRect(Math.round(halfW * 0.45), -h + head + 4, 8, Math.round(h * 0.42));
   }
 
+  _drawBehindAura(ctx, drawX, drawY, auraTime) {
+    if (!ctx || typeof ctx.fillRect !== 'function') return;
+    const starCount = clampNum(Math.floor(Number(this.star) || 1), 1, COMPANION_MAX_STARS || 5);
+    const tier = getAuraTier(starCount).tier;
+    if (tier < 2) return;
+
+    const slot = Number.isFinite(this.slotIndex) ? this.slotIndex : 0;
+    const pulse = 0.94 + 0.06 * Math.sin(auraTime * 4.4 + slot * 1.1);
+
+    if (tier >= 3) {
+      // 5-STAR MYTHIC CROWN: rising gilded filaments + radiant gilded-crimson behind-shoulder diamond halo
+      drawRisingAuraFilaments(
+        ctx,
+        drawX,
+        drawY,
+        '#facc15',
+        this.primaryColor || '#f43f5e',
+        auraTime,
+        slot,
+        6,
+        152
+      );
+      drawSteppedDiamondHalo(
+        ctx,
+        drawX,
+        drawY - 114,
+        Math.round(40 * pulse),
+        Math.round(35 * pulse),
+        '#facc15',
+        '#f43f5e',
+        '#ffffff',
+        0.84,
+        auraTime + slot * 0.7
+      );
+    } else {
+      // 4-STAR ASCENDED HALO: rising vertical pixel filaments + crisp behind-shoulder stepped diamond halo crest
+      drawRisingAuraFilaments(
+        ctx,
+        drawX,
+        drawY,
+        this.primaryColor || '#38bdf8',
+        '#fef08a',
+        auraTime,
+        slot,
+        4,
+        134
+      );
+      drawSteppedDiamondHalo(
+        ctx,
+        drawX,
+        drawY - 112,
+        Math.round(33 * pulse),
+        Math.round(29 * pulse),
+        '#facc15',
+        this.primaryColor || '#38bdf8',
+        '#fef9c3',
+        0.74,
+        auraTime + slot * 0.7
+      );
+    }
+  }
+
+  _drawForegroundAura(ctx, drawX, drawY, auraTime) {
+    if (!ctx || typeof ctx.fillRect !== 'function') return;
+    const starCount = clampNum(Math.floor(Number(this.star) || 1), 1, COMPANION_MAX_STARS || 5);
+    const tier = getAuraTier(starCount).tier;
+    if (tier < 3) return;
+
+    const slot = Number.isFinite(this.slotIndex) ? this.slotIndex : 0;
+    // 5-STAR MYTHIC CROWN: crisp floating miniature pixel Mythic Crown above the ally's crest
+    drawFloatingMythicCrown(ctx, drawX, drawY - 164, this.primaryColor, auraTime, slot);
+  }
+
   _drawRoleOverheadUI(ctx) {
     if (!ctx || typeof ctx.fillRect !== 'function') return;
     const layout = this._squad?.getOverheadLayoutFor?.(this) || null;
     const cx = Math.round(this.x);
-    const headY = Math.round(this.y - 164);
+    const starCount = clampNum(Math.floor(Number(this.star) || 1), 1, COMPANION_MAX_STARS || 5);
+    const auraTier = getAuraTier(starCount);
+    const headY = Math.round(this.y - (starCount >= 5 ? 182 : 166));
+    const castingUlt = Boolean(this.isCastingUlt || this.ultFlashTimer > 0);
+    const suppressNameplate = Boolean(layout?.suppressNameplate);
+    const suppressMicroBar = Boolean(layout?.suppressMicroBar);
 
-    const roleLabel = this.isExEvolved
-      ? `EX ${this.role} LV.${this.level}`
-      : `${this.role} LV.${this.level}`;
+    const roleLabel = `${this.role} LV.${this.level}`;
     const textW = PixelFont.measureWidth(roleLabel, 1, 1);
-    const pillW = Math.max(46, textW + 10);
-    const pillH = 13;
+    const pillW = Math.max(44, textW + 8);
+    const pillH = 12;
     const pillX = Math.round(cx - pillW * 0.5);
     const pillY = Number.isFinite(layout?.pillY) ? layout.pillY : headY - pillH;
-    const castingUlt = Boolean(this.isCastingUlt || this.ultFlashTimer > 0);
-    const starCount = clampNum(Math.floor(Number(this.star) || 1), 1, COMPANION_MAX_STARS || 5);
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // Compact obsidian nameplate with companion role accent rim (flares gold during Ult Assist or Sovereign EX)
-    ctx.fillStyle = castingUlt
-      ? 'rgba(28, 20, 6, 0.92)'
-      : this.isExEvolved
-        ? 'rgba(12, 16, 30, 0.90)'
-        : 'rgba(7, 10, 20, 0.84)';
-    ctx.fillRect(pillX, pillY, pillW, pillH);
-    ctx.fillStyle = castingUlt ? '#facc15' : this.isExEvolved ? '#f59e0b' : '#05070e';
-    ctx.fillRect(pillX - 1, pillY, 1, pillH);
-    ctx.fillRect(pillX + pillW, pillY, 1, pillH);
-    ctx.fillRect(pillX, pillY + pillH, pillW, 1);
-    ctx.fillStyle = castingUlt ? '#fef08a' : this.isExEvolved ? '#facc15' : this.primaryColor || '#38bdf8';
-    ctx.fillRect(pillX, pillY - 1, pillW, 2);
+    if (!suppressNameplate) {
+      // Minimal obsidian nameplate with escalating Sovereign / Ascended / Mythic rim accent
+      const isHighAura = auraTier.tier >= 1;
+      const isMythic = auraTier.tier >= 3;
+      ctx.fillStyle = castingUlt
+        ? 'rgba(28, 20, 6, 0.92)'
+        : isMythic
+          ? 'rgba(22, 12, 24, 0.90)'
+          : isHighAura
+            ? 'rgba(12, 16, 30, 0.88)'
+            : 'rgba(7, 10, 20, 0.82)';
+      ctx.fillRect(pillX, pillY, pillW, pillH);
+      ctx.fillStyle = castingUlt ? '#facc15' : isMythic ? '#f43f5e' : isHighAura ? '#f59e0b' : '#05070e';
+      ctx.fillRect(pillX - 1, pillY, 1, pillH);
+      ctx.fillRect(pillX + pillW, pillY, 1, pillH);
+      ctx.fillRect(pillX, pillY + pillH, pillW, 1);
+      ctx.fillStyle = castingUlt ? '#fef08a' : isHighAura ? '#facc15' : this.primaryColor || '#38bdf8';
+      ctx.fillRect(pillX, pillY - 1, pillW, 2);
 
-    // Crisp pixel star pips centered above nameplate for Star 2+ companions (fillRect only)
-    if (starCount >= 2) {
-      const pipSpan = starCount * 5 - 2;
-      const pipStartX = Math.round(cx - pipSpan * 0.5);
-      const pipY = pillY - 5;
-      for (let s = 0; s < starCount; s++) {
-        const px = pipStartX + s * 5;
-        ctx.fillStyle = '#05070e';
-        ctx.fillRect(px - 1, pipY - 1, 5, 5);
-        ctx.fillStyle = starCount >= 5 ? '#f43f5e' : starCount >= 3 ? '#facc15' : '#fde047';
-        ctx.fillRect(px, pipY, 3, 3);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px + 1, pipY, 1, 1);
+      // Crisp pixel star pips centered above nameplate for Star 2..4 (Star 5 displays the Mythic Crown)
+      if (starCount >= 2 && starCount < 5) {
+        const pipSpan = starCount * 5 - 2;
+        const pipStartX = Math.round(cx - pipSpan * 0.5);
+        const pipY = pillY - 5;
+        for (let s = 0; s < starCount; s++) {
+          const px = pipStartX + s * 5;
+          ctx.fillStyle = '#05070e';
+          ctx.fillRect(px - 1, pipY - 1, 5, 5);
+          ctx.fillStyle = starCount >= 4 ? '#facc15' : starCount >= 3 ? '#fbbf24' : '#fde047';
+          ctx.fillRect(px, pipY, 3, 3);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(px + 1, pipY, 1, 1);
+        }
       }
+
+      PixelFont.drawCentered(
+        ctx,
+        roleLabel,
+        cx,
+        pillY + 6,
+        1,
+        castingUlt ? '#fef08a' : '#f8fafc',
+        castingUlt ? '#facc15' : this.primaryColor,
+        true
+      );
+
+      // Compact skill readiness bar & golden Ult charge strip directly beneath minimal tag
+      const barW = 34;
+      const barH = 2;
+      const barX = Math.round(cx - barW * 0.5);
+      const barY = pillY + pillH + 2;
+      const cdMax = Math.max(0.5, this.skillMaxCooldown || 6);
+      const skillRatio =
+        this.state === 'SKILL' ? 1 : clampNum(1 - this.skillCooldown / cdMax, 0, 1);
+      const fillW = Math.round(barW * skillRatio);
+      const isSkillReady = skillRatio >= 0.98 || this.state === 'SKILL';
+
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+      ctx.fillStyle = '#141a2b';
+      ctx.fillRect(barX, barY, barW, barH);
+      if (fillW > 0) {
+        ctx.fillStyle = isSkillReady ? '#facc15' : '#34d399';
+        ctx.fillRect(barX, barY, fillW, barH);
+      }
+
+      const ultY = barY + barH + 2;
+      const ultBarH = 2;
+      const ultRatio = castingUlt
+        ? clampNum(this.ultFlashTimer / ULT_FLASH_DURATION, 0, 1)
+        : clampNum((Number(this.ultCharge) || 0) / 100, 0, 1);
+      const ultFillW = Math.round(barW * ultRatio);
+
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(barX - 1, ultY - 1, barW + 2, ultBarH + 2);
+      ctx.fillStyle = '#171522';
+      ctx.fillRect(barX, ultY, barW, ultBarH);
+      if (ultFillW > 0) {
+        ctx.fillStyle = castingUlt ? '#fef08a' : '#f59e0b';
+        ctx.fillRect(barX, ultY, ultFillW, ultBarH);
+      }
+
+      if (isSkillReady) {
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(barX + barW + 2, barY, 2, 2);
+      }
+      if (this.ultCharge >= 100 || castingUlt) {
+        ctx.fillStyle = castingUlt ? '#fef08a' : '#38bdf8';
+        ctx.fillRect(barX - 4, ultY, 2, 2);
+      }
+    } else if (!suppressMicroBar) {
+      // Whisper-thin micro Ult readiness hairline when static ROLE LV.X box is suppressed for clustered allies
+      const microW = 24;
+      const microH = 2;
+      const microX = Math.round(cx - microW * 0.5);
+      const microY = headY - 4;
+      const ultRatio = castingUlt
+        ? clampNum(this.ultFlashTimer / ULT_FLASH_DURATION, 0, 1)
+        : clampNum((Number(this.ultCharge) || 0) / 100, 0, 1);
+      const ultFillW = Math.round(microW * ultRatio);
+
+      ctx.globalAlpha = 0.78;
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(microX - 1, microY - 1, microW + 2, microH + 2);
+      ctx.fillStyle = '#141a2b';
+      ctx.fillRect(microX, microY, microW, microH);
+      if (ultFillW > 0) {
+        ctx.fillStyle = castingUlt ? '#fef08a' : this.primaryColor || '#f59e0b';
+        ctx.fillRect(microX, microY, ultFillW, microH);
+      }
+      ctx.globalAlpha = 1;
     }
 
-    PixelFont.drawCentered(
-      ctx,
-      roleLabel,
-      cx,
-      pillY + 7,
-      1,
-      castingUlt ? '#fef08a' : '#f8fafc',
-      castingUlt ? '#facc15' : this.primaryColor,
-      true
-    );
-
-    // Subtle green-to-gold skill readiness bar & golden Ult charge bar directly beneath nameplate
-    const barW = 38;
-    const barH = 3;
-    const barX = Math.round(cx - barW * 0.5);
-    const barY = pillY + pillH + 2;
-    const cdMax = Math.max(0.5, this.skillMaxCooldown || 6);
-    const skillRatio =
-      this.state === 'SKILL' ? 1 : clampNum(1 - this.skillCooldown / cdMax, 0, 1);
-    const fillW = Math.round(barW * skillRatio);
-    const isSkillReady = skillRatio >= 0.98 || this.state === 'SKILL';
-
-    ctx.fillStyle = '#05070e';
-    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-    ctx.fillStyle = '#141a2b';
-    ctx.fillRect(barX, barY, barW, barH);
-    if (fillW > 0) {
-      ctx.fillStyle = isSkillReady ? '#facc15' : '#34d399';
-      ctx.fillRect(barX, barY, fillW, barH);
-      ctx.fillStyle = isSkillReady ? '#fef9c3' : '#a7f3d0';
-      ctx.fillRect(barX, barY, fillW, 1);
-    }
-
-    // Compact golden Ult Assist charge strip right below the skill bar
-    const ultY = barY + barH + 2;
-    const ultBarH = 3;
-    const ultRatio = castingUlt
-      ? clampNum(this.ultFlashTimer / ULT_FLASH_DURATION, 0, 1)
-      : clampNum((Number(this.ultCharge) || 0) / 100, 0, 1);
-    const ultFillW = Math.round(barW * ultRatio);
-
-    ctx.fillStyle = '#05070e';
-    ctx.fillRect(barX - 1, ultY - 1, barW + 2, ultBarH + 2);
-    ctx.fillStyle = '#171522';
-    ctx.fillRect(barX, ultY, barW, ultBarH);
-    if (ultFillW > 0) {
-      ctx.fillStyle = castingUlt ? '#fef08a' : '#f59e0b';
-      ctx.fillRect(barX, ultY, ultFillW, ultBarH);
-      ctx.fillStyle = castingUlt ? '#ffffff' : '#fde047';
-      ctx.fillRect(barX, ultY, ultFillW, 1);
-    }
-
-    // Gold pip on right edge when skill ready, bright cyan-gold pip on left when Ult full/casting
-    if (isSkillReady) {
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(barX + barW + 2, barY, 3, 3);
-    }
-    if (this.ultCharge >= 100 || castingUlt) {
-      ctx.fillStyle = castingUlt ? '#fef08a' : '#38bdf8';
-      ctx.fillRect(barX - 5, ultY, 3, 3);
-    }
-
-    // Crisp ability or bold gilded Ultimate Assist callout flash (staggered & de-overlapped)
+    // Crisp ability or bold gilded Ultimate / OVERDRIVE! callout flash (staggered & de-overlapped)
     if (this.calloutTimer > 0 && this.calloutText && !layout?.suppressCallout) {
+      const calloutCx = Number.isFinite(layout?.calloutX) ? layout.calloutX : cx;
       if (this.calloutIsUlt) {
         const fade = clampNum(this.calloutTimer / 0.32, 0, 1);
         const lift = Math.round((1.55 - Math.min(1.55, this.calloutTimer)) * 22);
@@ -800,10 +1087,10 @@ export class EndlessCompanionEntity {
         const cW = PixelFont.measureWidth(this.calloutText, ultScale, 1);
         const plaqueW = Math.max(76, cW + 16);
         const plaqueH = 16;
-        const px = Math.round(cx - plaqueW * 0.5);
+        const px = Math.round(calloutCx - plaqueW * 0.5);
         const py = Number.isFinite(layout?.calloutY)
           ? layout.calloutY
-          : pillY - 26 - lift - (this.slotIndex || 0) * 3;
+          : headY - 26 - lift - (this.slotIndex || 0) * 3;
 
         ctx.globalAlpha = fade;
         ctx.fillStyle = '#050712';
@@ -819,7 +1106,7 @@ export class EndlessCompanionEntity {
         PixelFont.drawCentered(
           ctx,
           this.calloutText,
-          cx,
+          calloutCx,
           py + 8,
           ultScale,
           '#fef9c3',
@@ -831,12 +1118,12 @@ export class EndlessCompanionEntity {
         const lift = Math.round((1.15 - Math.min(1.15, this.calloutTimer)) * 16);
         const textCenterY = Number.isFinite(layout?.calloutY)
           ? layout.calloutY + 6
-          : pillY - 11 - lift - (this.slotIndex || 0) * 3;
+          : headY - 12 - lift - (this.slotIndex || 0) * 3;
         ctx.globalAlpha = fade;
         PixelFont.drawCentered(
           ctx,
           this.calloutText,
-          cx,
+          calloutCx,
           textCenterY,
           1,
           '#fef9c3',
@@ -861,52 +1148,54 @@ export class EndlessCompanionEntity {
 
     if (hasSheet) {
       this._lastReadyHeroId = this.heroId;
-    } else if (assets) {
-      // Hold already-loaded base/previous sprite sheet while newly evolved *_ex_sheet.png downloads (zero silhouette flash)
-      const fallbackKeys = [
-        this._lastReadyHeroId,
-        this.baseHeroId,
-        COMPANION_BASE_TO_EX_KEY[this.companionId]?.baseHeroKey
-      ];
-      for (let f = 0; f < fallbackKeys.length; f++) {
-        const fbKey = fallbackKeys[f];
-        if (!fbKey || fbKey === this.heroId) continue;
-        const fbSet = assets[fbKey] || null;
-        const fbSheet = fbSet?.sheet || null;
-        if (isSheetReady(fbSheet)) {
-          charSet = fbSet;
-          sheet = fbSheet;
-          hasSheet = true;
-          break;
-        }
+    } else if (assets && this._lastReadyHeroId && this._lastReadyHeroId !== this.heroId) {
+      const fbSet = assets[this._lastReadyHeroId] || null;
+      const fbSheet = fbSet?.sheet || null;
+      if (isSheetReady(fbSheet)) {
+        charSet = fbSet;
+        sheet = fbSheet;
+        hasSheet = true;
       }
     }
 
     const drawX = Math.round(this.x);
-    const drawY = Math.round((Number.isFinite(this.y) ? this.y : this.groundY) + 3);
+    const drawY = Math.round((Number.isFinite(this.y) ? this.y : this.groundY) + 4);
     const scale = COMPANION_DRAW_SCALE;
+    const auraTime = Number.isFinite(this._squad?._time) ? this._squad._time : (this.animFrame || 0) / 12;
+    const auraTier = getAuraTier(this.star);
+    const ultVfxMult = clampNum(Number(auraTier?.ultVfxMult) || 1.0, 1.0, 2.2);
     const castingUlt = !isReflection && Boolean(this.isCastingUlt || this.ultFlashTimer > 0);
+
+    if (!isReflection) {
+      this._drawBehindAura(ctx, drawX, drawY, auraTime);
+    }
 
     if (castingUlt && typeof ctx.fillRect === 'function') {
       const u = clampNum(this.ultFlashTimer / ULT_FLASH_DURATION, 0, 1);
       const colAccent = this.cfg?.ultColor || this.primaryColor || '#facc15';
       const colSub = this.cfg?.ultSubColor || '#fef08a';
+      const flareScale = 1 + (ultVfxMult - 1) * 0.55;
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.globalAlpha = clampNum(0.28 + u * 0.55, 0, 0.85);
-      const colW = Math.max(14, Math.round(34 * u + 12));
-      const colH = Math.round(176 + (1 - u) * 34);
+      const colW = Math.max(14, Math.round((34 * u + 12) * flareScale));
+      const colH = Math.round((176 + (1 - u) * 34) * (1 + (ultVfxMult - 1) * 0.25));
       ctx.fillStyle = colAccent;
       ctx.fillRect(drawX - colW, drawY - colH, colW * 2, colH);
       const coreW = Math.max(6, Math.round(colW * 0.45));
       ctx.fillStyle = colSub;
       ctx.fillRect(drawX - coreW, drawY - colH + 6, coreW * 2, colH - 6);
-      // Rising crisp pixel spark diamonds flanking the caster
+      // Rising crisp pixel spark diamonds / 4-point stars flanking the caster (scaled by auraTier.ultVfxMult)
+      const sparkRad = Math.max(4, Math.round(4 * flareScale));
       for (let k = -1; k <= 1; k += 2) {
-        const sparkX = drawX + k * Math.round(28 + (1 - u) * 18);
+        const sparkX = drawX + k * Math.round((28 + (1 - u) * 18) * flareScale);
         const sparkY = drawY - Math.round(32 + ((1 - u) * 130 + (k > 0 ? 44 : 0)) % 148);
-        drawPixelDiamond(ctx, sparkX, sparkY, 6, '#0d0f1c');
-        drawPixelDiamond(ctx, sparkX, sparkY, 4, '#fef08a');
+        if (auraTier.tier >= 3) {
+          drawPixelFourPointStar(ctx, sparkX, sparkY, sparkRad + 2, '#facc15', '#ffffff');
+        } else {
+          drawPixelDiamond(ctx, sparkX, sparkY, sparkRad + 2, '#0d0f1c');
+          drawPixelDiamond(ctx, sparkX, sparkY, sparkRad, '#fef08a');
+        }
       }
       ctx.restore();
     }
@@ -924,12 +1213,7 @@ export class EndlessCompanionEntity {
       let anchorX = charSet?.anchorX ?? 112;
       let anchorY = charSet?.anchorY ?? 230;
 
-      if (natW === 6240 && natH === 2080) {
-        cellW = 208;
-        cellH = 208;
-        anchorX = 104;
-        anchorY = 198;
-      } else if (
+      if (
         natW > 0 &&
         natH > 0 &&
         (natW % cellW !== 0 || natH % cellH !== 0) &&
@@ -954,9 +1238,8 @@ export class EndlessCompanionEntity {
 
       const drawW = Math.round(cellW * scale);
       const drawH = Math.round(cellH * scale);
-      const footRatio = cellH > 0 ? anchorY / cellH : 230 / 240;
       const baseX = Math.round(-anchorX * scale);
-      const baseY = Math.round(-drawH * footRatio);
+      const baseY = Math.round(-anchorY * scale);
 
       if (!isReflection && this.state === 'DASH') {
         const prevAlpha = ctx.globalAlpha;
@@ -973,6 +1256,7 @@ export class EndlessCompanionEntity {
     ctx.restore();
 
     if (!isReflection) {
+      this._drawForegroundAura(ctx, drawX, drawY, auraTime);
       this._drawRoleOverheadUI(ctx);
     }
   }
@@ -990,6 +1274,7 @@ export class EndlessCompanions {
     this._time = 0;
     this._formationShiftTimer = 0;
     this._lastSkillSfxTime = -1;
+    this._activeUltVfxMult = 1.0;
     this.reset();
   }
 
@@ -1016,15 +1301,18 @@ export class EndlessCompanions {
       const info = evo.getStarMultipliers(id);
       if (info && typeof info === 'object') return info;
     }
-    const cfg = ROSTER_BY_ID[id];
-    const isNativeEx = Boolean(cfg && (cfg.isEliteEx || cfg.id === 'raijin_ex'));
+    const auraTier = getAuraTier(1);
     return {
       star: 1,
-      title: 'INITIATE',
+      title: 'NEXT-GEN EX',
       dpsMult: 1.0,
       ultMult: 1.0,
-      isExEvolved: false,
-      isExSprite: isNativeEx,
+      isExForm: true,
+      isExEvolved: true,
+      isExSprite: true,
+      auraTier,
+      nextAuraTier: getAuraTier(2),
+      ultVfxMult: auraTier.ultVfxMult,
       nextStar: 2,
       promoteShards: 3,
       promoteDust: 20,
@@ -1066,34 +1354,82 @@ export class EndlessCompanions {
       if (!e) continue;
       const cx = Math.round(Number.isFinite(e.x) ? e.x : 0);
       const ey = Number.isFinite(e.y) ? e.y : Number.isFinite(e.groundY) ? e.groundY : 558;
-      const headY = Math.round(ey - 164);
-      const roleLabel = e.isExEvolved
-        ? `EX ${e.role} LV.${e.level}`
-        : `${e.role} LV.${e.level}`;
-      const textW = PixelFont.measureWidth(roleLabel, 1, 1);
-      const pillW = Math.max(46, textW + 10);
-      const pillH = 13;
       const starCount = clampNum(Math.floor(Number(e.star) || 1), 1, COMPANION_MAX_STARS || 5);
+      const headY = Math.round(ey - (starCount >= 5 ? 182 : 166));
+      const roleLabel = `${e.role} LV.${e.level}`;
+      const textW = PixelFont.measureWidth(roleLabel, 1, 1);
+      const pillW = Math.max(44, textW + 8);
+      const pillH = 12;
       items.push({
         entity: e,
         slotIndex: Number.isFinite(e.slotIndex) ? e.slotIndex : i,
         cx,
+        headY,
         pillW,
         pillH,
         pillY: headY - pillH,
-        topPad: starCount >= 2 ? 7 : 2,
-        botPad: 11,
+        topPad: starCount >= 2 && starCount < 5 ? 6 : 2,
+        botPad: 9,
+        calloutX: cx,
         calloutY: null,
         calloutW: 0,
         calloutH: 0,
-        suppressCallout: false
+        suppressCallout: false,
+        suppressNameplate: false,
+        suppressMicroBar: false,
+        isClustered: false
       });
     }
     if (items.length === 0) return null;
 
-    // 1. De-overlap role nameplate clusters bottom-up so clustered foreground/background tags never collide
+    // 1. Suppress redundant static ROLE LV.X boxes whenever allies are clustered within 110px horizontally
+    //    OR whenever an OVERDRIVE! / nearby skill callout is active so stacked allies never crowd the left battlefield.
+    const anyOverdriveCallout = items.some(
+      (it) => it.entity.calloutTimer > 0 && it.entity.calloutText === 'OVERDRIVE!'
+    );
+    let minSquadX = items[0].cx;
+    let maxSquadX = items[0].cx;
+    let minSquadHeadY = items[0].headY;
+    for (let i = 0; i < items.length; i++) {
+      const cur = items[i];
+      if (cur.cx < minSquadX) minSquadX = cur.cx;
+      if (cur.cx > maxSquadX) maxSquadX = cur.cx;
+      if (cur.headY < minSquadHeadY) minSquadHeadY = cur.headY;
+
+      let clustered = false;
+      let nearbyCallout = anyOverdriveCallout || (cur.entity.calloutTimer > 0 && Boolean(cur.entity.calloutText));
+      let overlappingMicro = false;
+      for (let j = 0; j < items.length; j++) {
+        if (i === j) continue;
+        const other = items[j];
+        const dx = Math.abs(cur.cx - other.cx);
+        if (dx <= 110) {
+          clustered = true;
+        }
+        if (
+          !nearbyCallout &&
+          other.entity.calloutTimer > 0 &&
+          Boolean(other.entity.calloutText) &&
+          dx <= 130
+        ) {
+          nearbyCallout = true;
+        }
+        if (dx <= 30 && Math.abs(cur.headY - other.headY) <= 14 && other.slotIndex < cur.slotIndex) {
+          overlappingMicro = true;
+        }
+      }
+      cur.isClustered = clustered;
+      cur.suppressNameplate = clustered || nearbyCallout;
+      cur.suppressMicroBar =
+        anyOverdriveCallout ||
+        (cur.entity.calloutTimer > 0 && Boolean(cur.entity.calloutText)) ||
+        overlappingMicro;
+    }
+
+    // 2. De-overlap only visible (non-suppressed) minimal nameplates bottom-up
     const bottomUp = items
       .map((_, idx) => idx)
+      .filter((idx) => !items[idx].suppressNameplate)
       .sort((a, b) => items[b].pillY - items[a].pillY || items[b].slotIndex - items[a].slotIndex);
     const placedPills = [];
     for (let k = 0; k < bottomUp.length; k++) {
@@ -1120,47 +1456,70 @@ export class EndlessCompanions {
       placedPills.push(cur);
     }
 
-    // 2. Suppress duplicate simultaneous labels across clustered allies & de-overlap callouts vs nameplates/callouts
+    // 3. Deduplicate OVERDRIVE! (render once cleanly centered above the squad) and de-overlap active callouts
     const calloutOrder = items
       .map((_, idx) => idx)
       .filter((idx) => items[idx].entity.calloutTimer > 0 && Boolean(items[idx].entity.calloutText))
       .sort((a, b) => {
         const ea = items[a].entity;
         const eb = items[b].entity;
+        const aOd = ea.calloutText === 'OVERDRIVE!' ? 1 : 0;
+        const bOd = eb.calloutText === 'OVERDRIVE!' ? 1 : 0;
+        if (bOd !== aOd) return bOd - aOd;
         if (Boolean(eb.calloutIsUlt) !== Boolean(ea.calloutIsUlt)) {
           return eb.calloutIsUlt ? 1 : -1;
         }
-        return items[a].pillY - items[b].pillY || items[a].slotIndex - items[b].slotIndex;
+        return items[a].headY - items[b].headY || items[a].slotIndex - items[b].slotIndex;
       });
 
+    const squadMidX = Math.round((minSquadX + maxSquadX) * 0.5);
     const placedCallouts = [];
+    let placedOverdrive = false;
     for (let k = 0; k < calloutOrder.length; k++) {
       const cur = items[calloutOrder[k]];
       const e = cur.entity;
-      let duplicate = false;
-      for (let p = 0; p < placedCallouts.length; p++) {
-        const prev = placedCallouts[p];
-        if (prev.entity.calloutText === e.calloutText && Math.abs(cur.cx - prev.cx) <= 280) {
-          duplicate = true;
-          break;
+      const isOverdrive = e.calloutText === 'OVERDRIVE!';
+
+      if (isOverdrive) {
+        if (placedOverdrive) {
+          cur.suppressCallout = true;
+          continue;
         }
-      }
-      if (duplicate) {
-        cur.suppressCallout = true;
-        continue;
+        placedOverdrive = true;
+      } else {
+        let duplicate = false;
+        for (let p = 0; p < placedCallouts.length; p++) {
+          const prev = placedCallouts[p];
+          if (prev.entity.calloutText === e.calloutText && Math.abs(cur.cx - prev.cx) <= 280) {
+            duplicate = true;
+            break;
+          }
+        }
+        if (duplicate) {
+          cur.suppressCallout = true;
+          continue;
+        }
       }
 
       const cW = PixelFont.measureWidth(e.calloutText, 1, 1);
-      if (e.calloutIsUlt) {
+      if (isOverdrive) {
+        const lift = Math.round((1.4 - Math.min(1.4, e.calloutTimer)) * 18);
+        cur.calloutX = squadMidX;
+        cur.calloutW = Math.max(82, cW + 18) + 4;
+        cur.calloutH = 20;
+        cur.calloutY = Math.max(66, minSquadHeadY - 26 - lift);
+      } else if (e.calloutIsUlt) {
         const lift = Math.round((1.55 - Math.min(1.55, e.calloutTimer)) * 22);
+        cur.calloutX = cur.cx;
         cur.calloutW = Math.max(76, cW + 16) + 4;
         cur.calloutH = 20;
-        cur.calloutY = cur.pillY - cur.topPad - 22 - lift - cur.slotIndex * 3;
+        cur.calloutY = cur.headY - 24 - lift - cur.slotIndex * 3;
       } else {
         const lift = Math.round((1.15 - Math.min(1.15, e.calloutTimer)) * 16);
+        cur.calloutX = cur.cx;
         cur.calloutW = Math.max(44, cW + 8);
         cur.calloutH = 12;
-        cur.calloutY = cur.pillY - cur.topPad - 12 - lift - cur.slotIndex * 3;
+        cur.calloutY = cur.headY - 14 - lift - cur.slotIndex * 3;
       }
 
       let guard = 0;
@@ -1168,10 +1527,10 @@ export class EndlessCompanions {
       while (shifted && guard < 6) {
         shifted = false;
         guard++;
-        // Avoid colliding with ANY ally's role nameplate + bars
-        for (let j = 0; j < items.length; j++) {
-          const tag = items[j];
-          if (Math.abs(cur.cx - tag.cx) >= (cur.calloutW + tag.pillW) * 0.5 + 8) continue;
+        // Avoid colliding with any visible (non-suppressed) ally nameplate
+        for (let j = 0; j < placedPills.length; j++) {
+          const tag = placedPills[j];
+          if (Math.abs(cur.calloutX - tag.cx) >= (cur.calloutW + tag.pillW) * 0.5 + 8) continue;
           const tagTop = tag.pillY - tag.topPad;
           const tagBot = tag.pillY + tag.pillH + tag.botPad;
           if (cur.calloutY + cur.calloutH > tagTop - 4 && cur.calloutY < tagBot + 4) {
@@ -1182,7 +1541,7 @@ export class EndlessCompanions {
         // Avoid colliding with already-placed sibling callouts
         for (let p = 0; p < placedCallouts.length; p++) {
           const prev = placedCallouts[p];
-          if (Math.abs(cur.cx - prev.cx) >= (cur.calloutW + prev.calloutW) * 0.5 + 8) continue;
+          if (Math.abs(cur.calloutX - prev.calloutX) >= (cur.calloutW + prev.calloutW) * 0.5 + 8) continue;
           const prevTop = prev.calloutY;
           const prevBot = prev.calloutY + prev.calloutH;
           if (cur.calloutY + cur.calloutH > prevTop - 4 && cur.calloutY < prevBot + 4) {
@@ -1199,8 +1558,12 @@ export class EndlessCompanions {
       if (items[i].entity === entity) {
         return {
           pillY: items[i].pillY,
+          calloutX: items[i].calloutX,
           calloutY: items[i].calloutY,
-          suppressCallout: items[i].suppressCallout
+          suppressCallout: items[i].suppressCallout,
+          suppressNameplate: items[i].suppressNameplate,
+          suppressMicroBar: items[i].suppressMicroBar,
+          isClustered: items[i].isClustered
         };
       }
     }
@@ -1420,6 +1783,7 @@ export class EndlessCompanions {
           : clampNum(1 - (Number(ent.skillCooldown) || 0) / cdMax, 0, 1)
         : 0;
 
+      const auraTier = starInfo.auraTier || getAuraTier(starInfo.star);
       units.push({
         id: cfg.id,
         heroKey: cfg.heroKey,
@@ -1430,7 +1794,11 @@ export class EndlessCompanions {
         color: cfg.accentHex,
         level,
         star: starInfo.star,
-        isExEvolved: Boolean(starInfo.isExEvolved),
+        isExForm: true,
+        isExEvolved: true,
+        isExSprite: true,
+        auraTier,
+        ultVfxMult: auraTier.ultVfxMult,
         ultCharge: Math.round(rawUlt * 10) / 10,
         ultPct: clampNum(ultPct, 0, 100),
         isCastingUlt,
@@ -1538,6 +1906,13 @@ export class EndlessCompanions {
         evo && typeof evo.getPromoteQuote === 'function'
           ? evo.getPromoteQuote(cfg.id, eco, gear) || null
           : null;
+      const auraTier = starInfo.auraTier || getAuraTier(starInfo.star);
+      const nextAuraTier =
+        starInfo.nextAuraTier !== undefined
+          ? starInfo.nextAuraTier
+          : starInfo.star >= COMPANION_MAX_STARS
+            ? null
+            : getAuraTier(starInfo.star + 1);
       return {
         id: cfg.id,
         heroKey: cfg.heroKey,
@@ -1558,9 +1933,13 @@ export class EndlessCompanions {
         isEliteEx: Boolean(cfg.isEliteEx),
         star: starInfo.star,
         maxStars: COMPANION_MAX_STARS || 5,
-        starTitle: starInfo.title || 'INITIATE',
-        isExEvolved: Boolean(starInfo.isExEvolved),
-        isExSprite: Boolean(starInfo.isExSprite),
+        starTitle: starInfo.title || 'NEXT-GEN EX',
+        isExForm: true,
+        isExEvolved: true,
+        isExSprite: true,
+        auraTier,
+        nextAuraTier,
+        ultVfxMult: auraTier.ultVfxMult,
         starDpsMult: safeBoundedFloat(starInfo.dpsMult, 0.5, 100, 1.0),
         promoteQuote,
         recruitCost,
@@ -1722,15 +2101,20 @@ export class EndlessCompanions {
       const activeHeroKey = this._resolveActiveHeroKey(cfg);
       let ent = existingById.get(id);
       if (ent) {
+        const prevStar = ent.star || 1;
         ent._squad = this;
         ent.level = level;
         ent.slotIndex = i;
         ent.star = starInfo.star;
-        ent.isExEvolved = Boolean(starInfo.isExEvolved);
+        ent.auraTier = starInfo.auraTier || getAuraTier(starInfo.star);
+        ent.isExForm = true;
+        ent.isExEvolved = true;
         if (activeHeroKey && ent.heroId !== activeHeroKey) {
           ent.heroId = activeHeroKey;
-          ent.isEx = Boolean(activeHeroKey.endsWith('_ex'));
+          ent.isEx = true;
           safeEnsureHeroLoaded(activeHeroKey);
+          ent.triggerAuraRing('buff', 1.45);
+        } else if (starInfo.star > prevStar && starInfo.star >= 3) {
           ent.triggerAuraRing('buff', 1.45);
         }
         if (bounds && Number.isFinite(bounds.minX) && Number.isFinite(bounds.maxX)) {
@@ -1760,8 +2144,9 @@ export class EndlessCompanions {
           slotIndex: i,
           heroKey: activeHeroKey,
           star: starInfo.star,
-          isExEvolved: Boolean(starInfo.isExEvolved)
+          isExEvolved: true
         });
+        ent.auraTier = starInfo.auraTier || getAuraTier(starInfo.star);
         ent._squad = this;
         ent.triggerAuraRing('summon', 1.35);
         safeEnsureHeroLoaded(activeHeroKey);
@@ -1869,16 +2254,39 @@ export class EndlessCompanions {
     });
   }
 
-  _spawnUltEffect(effect) {
+  _spawnUltEffect(effect, multOverride = null) {
     if (!effect) return;
     while (this._ultEffects.length >= ULT_EFFECTS_MAX_COUNT) {
       this._ultEffects.shift();
     }
-    this._ultEffects.push({
+    const vfxMult = clampNum(
+      multOverride !== null && multOverride !== undefined && Number.isFinite(Number(multOverride))
+        ? Number(multOverride)
+        : Number(this._activeUltVfxMult) || 1.0,
+      1.0,
+      2.2
+    );
+    const sizeGrow = 1 + (vfxMult - 1) * 0.58;
+    const ageGrow = 1 + (vfxMult - 1) * 0.22;
+    const next = {
       age: 0,
-      maxAge: clampNum(Number(effect.maxAge) || 0.72, 0.25, 4.0),
-      ...effect
-    });
+      ...effect,
+      ultVfxMult: vfxMult
+    };
+    next.maxAge = clampNum((Number(effect.maxAge) || 0.72) * ageGrow, 0.25, 4.0);
+    if (Number.isFinite(Number(effect.scale))) {
+      next.scale = Math.round(Number(effect.scale) * sizeGrow * 100) / 100;
+    }
+    if (Number.isFinite(Number(effect.width))) {
+      next.width = Math.round(Number(effect.width) * sizeGrow);
+    }
+    if (Number.isFinite(Number(effect.thickness))) {
+      next.thickness = Math.round(Number(effect.thickness) * sizeGrow);
+    }
+    if (Number.isFinite(Number(effect.span))) {
+      next.span = Math.round(Number(effect.span) * sizeGrow);
+    }
+    this._ultEffects.push(next);
   }
 
   _applyCompanionDamage(entity, target, rawDmg, isCrit, knockX, economy, game, opts = {}) {
@@ -2360,8 +2768,12 @@ export class EndlessCompanions {
       ENDLESS_COMPANION_MAX_STAT
     );
     let totalDealt = 0;
+    const auraTier = getAuraTier(entity.star);
+    const ultVfxMult = clampNum(Number(auraTier?.ultVfxMult) || 1.0, 1.0, 2.2);
+    this._activeUltVfxMult = ultVfxMult;
 
-    // Signature gold/role starburst flare on caster
+    try {
+    // Signature gold/role starburst flare on caster (scaled by auraTier.ultVfxMult)
     this._spawnUltEffect({
       kind: 'atlas_burst',
       row: 4,
@@ -2372,6 +2784,19 @@ export class EndlessCompanions {
       subColor: ultSubColor,
       maxAge: 0.72
     });
+    if (auraTier.tier >= 2) {
+      // 4-STAR ASCENDED HALO / 5-STAR MYTHIC CROWN bonus radiant sovereign detonation on primary impact
+      this._spawnUltEffect({
+        kind: 'atlas_burst',
+        row: 4,
+        x: tx,
+        y: ty - 76,
+        scale: auraTier.tier >= 3 ? 1.55 : 1.3,
+        color: '#facc15',
+        subColor: auraTier.tier >= 3 ? '#f43f5e' : '#ffffff',
+        maxAge: 0.74
+      });
+    }
 
     if (role === 'TANK') {
       // Aethelgard: AEGIS CATACLYSM! — fortress shield + massive sky-cathedral bastion shatter across lane
@@ -2954,6 +3379,9 @@ export class EndlessCompanions {
       }
     }
     return totalDealt;
+    } finally {
+      this._activeUltVfxMult = 1.0;
+    }
   }
 
   triggerSquadOverdrive(player = null, aliveMonsters = null, economy = null, game = null) {
@@ -3070,26 +3498,33 @@ export class EndlessCompanions {
       const beamEndX = Number.isFinite(leadTarget?.x)
         ? leadTarget.x + ent.facing * 120
         : ent.x + ent.facing * 620;
-      this._spawnUltEffect({
-        kind: 'lane_beam',
-        x0: ent.x,
-        x1: beamEndX,
-        y: ent.groundY - 72,
-        thickness: 24,
-        color: ent.primaryColor || '#facc15',
-        subColor: '#fef08a',
-        maxAge: 0.78
-      });
-      this._spawnUltEffect({
-        kind: 'atlas_burst',
-        row: 4,
-        x: ent.x,
-        y: ent.groundY - 72,
-        scale: 1.45,
-        color: '#facc15',
-        subColor: '#ffffff',
-        maxAge: 0.72
-      });
+      const entUltVfxMult = clampNum(Number(getAuraTier(ent.star)?.ultVfxMult) || 1.0, 1.0, 2.2);
+      this._spawnUltEffect(
+        {
+          kind: 'lane_beam',
+          x0: ent.x,
+          x1: beamEndX,
+          y: ent.groundY - 72,
+          thickness: 24,
+          color: ent.primaryColor || '#facc15',
+          subColor: '#fef08a',
+          maxAge: 0.78
+        },
+        entUltVfxMult
+      );
+      this._spawnUltEffect(
+        {
+          kind: 'atlas_burst',
+          row: 4,
+          x: ent.x,
+          y: ent.groundY - 72,
+          scale: 1.45,
+          color: '#facc15',
+          subColor: '#ffffff',
+          maxAge: 0.72
+        },
+        entUltVfxMult
+      );
     }
 
     const leadEnt =
@@ -3360,15 +3795,20 @@ export class EndlessCompanions {
         ent.level = Math.max(1, Math.floor(Number(st.level) || 1));
       }
 
-      // Dynamic Star & EX Sprite hot-swap synchronization
+      // Dynamic Star & Sovereign EX Aura Tier synchronization (all 12 allies use EX sprites from 1-STAR)
       const starInfo = this._getStarInfo(ent.companionId);
+      const prevStar = ent.star || 1;
       ent.star = starInfo.star;
-      ent.isExEvolved = Boolean(starInfo.isExEvolved);
+      ent.auraTier = starInfo.auraTier || getAuraTier(starInfo.star);
+      ent.isExForm = true;
+      ent.isExEvolved = true;
       const activeKey = this._resolveActiveHeroKey(ent.cfg);
       if (activeKey && ent.heroId !== activeKey) {
         ent.heroId = activeKey;
-        ent.isEx = Boolean(activeKey.endsWith('_ex'));
+        ent.isEx = true;
         safeEnsureHeroLoaded(activeKey);
+        ent.triggerAuraRing('buff', 1.45);
+      } else if (starInfo.star > prevStar && starInfo.star >= 3) {
         ent.triggerAuraRing('buff', 1.45);
       }
 
@@ -3693,29 +4133,93 @@ export class EndlessCompanions {
     ctx.imageSmoothingEnabled = false;
 
     for (const ent of this.entities) {
-      // Sovereign EX stepped pixel ground aura under Star 3+ deployed companions (fillRect only)
-      if ((ent.star >= 3 || ent.isExEvolved) && typeof ctx.fillRect === 'function') {
-        const pulse = 0.94 + 0.08 * Math.sin(this._time * 5.2 + ent.slotIndex * 1.1);
-        const outerHex =
-          ent.star >= 5 ? '#f43f5e' : ent.star >= 4 ? '#facc15' : ent.primaryColor || '#38bdf8';
-        const innerHex = ent.star >= 5 ? '#fef08a' : ent.star >= 4 ? '#ffffff' : '#fef08a';
-        const rx = Math.round(52 * pulse);
-        const ry = Math.round(17 * pulse);
-        const cy = ent.groundY + 2;
-        drawSteppedPixelAuraRing(ctx, ent.x, cy, rx, ry, outerHex, innerHex, 0.56);
-        const phase = this._time * 1.45 + ent.slotIndex * 0.9;
-        for (let k = 0; k < 4; k++) {
-          const ang = phase + (k * Math.PI) / 2;
-          const ox = Math.round(ent.x + Math.cos(ang) * rx);
-          const oy = Math.round(cy + Math.sin(ang) * ry);
-          drawPixelDiamond(ctx, ox, oy, 4, '#0d0f1c');
-          drawPixelDiamond(ctx, ox, oy, 2, innerHex);
+      // Escalating 100% pixel-pure Sovereign EX floor rune seals for 3-STAR / 4-STAR / 5-STAR allies (fillRect only)
+      const entAura = getAuraTier(ent.star);
+      if (entAura.tier >= 1 && typeof ctx.fillRect === 'function') {
+        const slot = Number.isFinite(ent.slotIndex) ? ent.slotIndex : 0;
+        const pulse = 0.95 + 0.06 * Math.sin(this._time * 4.8 + slot * 1.1);
+        const cy = Math.round(ent.groundY + 2);
+        const cx = Math.round(ent.x);
+        const phase = this._time * 1.4 + slot * 0.9;
+        const primaryHex = ent.primaryColor || '#38bdf8';
+
+        if (entAura.tier === 1) {
+          // 3-STAR SOVEREIGN AURA: stepped isometric pixel floor rune seal + orbiting 2x2 accent mana motes
+          const rx = Math.round(48 * pulse);
+          const ry = Math.round(16 * pulse);
+          drawSteppedPixelAuraRing(ctx, cx, cy, rx, ry, primaryHex, '#fef08a', 0.56);
+          drawFloorRuneTicks(ctx, cx, cy, rx - 4, ry - 2, primaryHex, '#fef08a', 0, 4);
+          for (let k = 0; k < 4; k++) {
+            const ang = phase + (k * Math.PI) / 2;
+            const ox = Math.round(cx + Math.cos(ang) * (rx + 2));
+            const oy = Math.round(cy + Math.sin(ang) * (ry + 1));
+            ctx.fillStyle = '#0d0f1c';
+            ctx.fillRect(ox - 2, oy - 2, 4, 4);
+            ctx.fillStyle = k % 2 === 0 ? primaryHex : '#fef08a';
+            ctx.fillRect(ox - 1, oy - 1, 2, 2);
+          }
+        } else if (entAura.tier === 2) {
+          // 4-STAR ASCENDED HALO: double concentric stepped floor rune seal + orbiting mana motes
+          const outerRx = Math.round(56 * pulse);
+          const outerRy = Math.round(19 * pulse);
+          const innerRx = Math.round(35 * pulse);
+          const innerRy = Math.round(12 * pulse);
+          drawSteppedPixelAuraRing(ctx, cx, cy, outerRx, outerRy, '#facc15', '#fef08a', 0.62);
+          drawSteppedPixelAuraRing(ctx, cx, cy, innerRx, innerRy, primaryHex, '#ffffff', 0.54);
+          drawFloorRuneTicks(ctx, cx, cy, outerRx - 3, outerRy - 1, '#facc15', primaryHex, Math.PI * 0.25, 4);
+          for (let k = 0; k < 6; k++) {
+            const ang = phase * 1.15 + (k * Math.PI * 2) / 6;
+            const ox = Math.round(cx + Math.cos(ang) * (outerRx + 2));
+            const oy = Math.round(cy + Math.sin(ang) * (outerRy + 1));
+            ctx.fillStyle = '#0d0f1c';
+            ctx.fillRect(ox - 2, oy - 2, 4, 4);
+            ctx.fillStyle = k % 2 === 0 ? '#facc15' : primaryHex;
+            ctx.fillRect(ox - 1, oy - 1, 2, 2);
+          }
+        } else {
+          // 5-STAR MYTHIC CROWN: radiant gilded sovereign floor seal + orbiting 4-point pixel stars
+          const outerRx = Math.round(62 * pulse);
+          const outerRy = Math.round(21 * pulse);
+          const innerRx = Math.round(40 * pulse);
+          const innerRy = Math.round(13 * pulse);
+
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.14;
+          ctx.fillStyle = '#facc15';
+          ctx.fillRect(cx - innerRx, cy - Math.round(innerRy * 0.55), innerRx * 2, Math.max(4, Math.round(innerRy * 1.1)));
+          ctx.restore();
+
+          drawSteppedPixelAuraRing(ctx, cx, cy, outerRx, outerRy, '#facc15', '#fef08a', 0.72);
+          drawSteppedPixelAuraRing(ctx, cx, cy, innerRx, innerRy, '#f43f5e', '#fef9c3', 0.64);
+          // Cardinal sovereign rune cross bars on the floor seal
+          ctx.fillStyle = '#facc15';
+          ctx.fillRect(cx - outerRx - 4, cy - 1, 8, 2);
+          ctx.fillRect(cx + outerRx - 4, cy - 1, 8, 2);
+          ctx.fillRect(cx - 1, cy - outerRy - 3, 2, 6);
+          ctx.fillRect(cx - 1, cy + outerRy - 3, 2, 6);
+          drawFloorRuneTicks(ctx, cx, cy, outerRx - 3, outerRy - 1, '#f43f5e', '#fef08a', Math.PI * 0.25, 4);
+
+          for (let k = 0; k < 6; k++) {
+            const ang = phase * 1.28 + (k * Math.PI * 2) / 6;
+            const ox = Math.round(cx + Math.cos(ang) * (outerRx + 4));
+            const oy = Math.round(cy + Math.sin(ang) * (outerRy + 2));
+            drawPixelFourPointStar(
+              ctx,
+              ox,
+              oy,
+              k % 2 === 0 ? 4 : 3,
+              k % 2 === 0 ? '#fef08a' : '#f43f5e',
+              '#ffffff'
+            );
+          }
         }
       }
 
       if (ent.isCastingUlt || ent.ultFlashTimer > 0) {
         const u = clampNum((ent.ultFlashTimer || 0) / ULT_FLASH_DURATION, 0, 1);
-        const burstScale = 1.24 + (1 - u) * 0.24;
+        const ultAuraGrow = 1 + ((Number(entAura?.ultVfxMult) || 1.0) - 1) * 0.32;
+        const burstScale = (1.24 + (1 - u) * 0.24) * ultAuraGrow;
         this._drawAuraRingInstance(
           ctx,
           vfxImg,
