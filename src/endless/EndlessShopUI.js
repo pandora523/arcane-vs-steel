@@ -5,6 +5,7 @@
 import { PixelForge } from '../engine/PixelForge.js?v=30fps202';
 import { ENDLESS_RELICS, ENDLESS_RELIC_SETS, formatEndlessNumber } from './EndlessEconomy.js?v=30fps202';
 import { ENDLESS_SHOP_CSS } from './EndlessShopStyles.js?v=30fps202';
+import { EndlessMobileHud } from './EndlessMobileHud.js?v=30fps202';
 import {
   ENDLESS_VFX_SHEET_URL,
   ENDLESS_ICON_ROW,
@@ -40,6 +41,8 @@ import {
   formatAwayTime,
   formatGoldTag,
   resolveArtifactIconSpec,
+  resolveCompanionAuraMeta,
+  resolvePromoteCta,
   setTextIfChanged,
   stopEventLeak,
   drawFallbackPixelIcon,
@@ -110,6 +113,7 @@ export class EndlessShopUI {
     this._lastTrialResultSig = '';
     this._telemExpanded = false;
     this._lastSnapshot = null;
+    this._mobileHud = null;
 
     // Built-in 6-tab registry: ITEMS | GEAR | ALLIES | ASCEND | TRIALS | STATS
     this.tabs = [
@@ -357,7 +361,11 @@ export class EndlessShopUI {
     this._buildTopStatusBar();
     this._buildActivePartyHud();
     this._buildEventsDock();
-    this._buildShopToggle();
+    this._mobileHud = new EndlessMobileHud({
+      onClaimBounty: (anchorEl) => this._handleClaimActiveBounty(anchorEl),
+      onBuyMerchant: (btnEl, cardEl) => this._handleBuyMerchantOffer(btnEl, cardEl),
+      onUiClick: () => this._playSfx('playUiClick')
+    }).mount(this.root);
     this._buildShopDrawer();
     this._buildFxLayer();
     this._buildOfflineLootModal();
@@ -459,11 +467,17 @@ export class EndlessShopUI {
     modPill.appendChild(modIcon);
     modPill.appendChild(modName);
 
+    const topBreak = document.createElement('span');
+    topBreak.className = 'endless-top-break';
+    topBreak.setAttribute('aria-hidden', 'true');
+
     bar.appendChild(stageBadge);
     bar.appendChild(modPill);
     bar.appendChild(waveMeter);
+    bar.appendChild(topBreak);
     bar.appendChild(currencyGroup);
     bar.appendChild(feverMeter);
+    this._buildShopToggle(bar);
 
     // Boss Control Action Pill
     const bossControls = document.createElement('div');
@@ -510,6 +524,7 @@ export class EndlessShopUI {
     this._refs.feverMeter = feverMeter;
     this._refs.feverFill = feverFill;
     this._refs.feverLabel = feverLabel;
+    this._refs.bossControls = bossControls;
     this._refs.autoBossBtn = autoBossBtn;
     this._refs.challengeBtn = challengeBtn;
   }
@@ -682,6 +697,26 @@ export class EndlessShopUI {
     synHud.setAttribute('aria-label', 'Active Party Synergies');
     stopEventLeak(synHud);
 
+    const synChip = document.createElement('button');
+    synChip.type = 'button';
+    synChip.className = 'endless-party-syn-chip hidden';
+    synChip.setAttribute('aria-label', 'Active Party Synergies');
+    stopEventLeak(synChip);
+    const synChipIco = document.createElement('span');
+    synChipIco.className = 'endless-party-syn-chip-ico';
+    synChipIco.innerHTML = SYNERGY_DIAMOND_SVG;
+    const synChipTxt = document.createElement('span');
+    synChipTxt.className = 'endless-party-syn-chip-txt';
+    synChipTxt.textContent = '0 SYN';
+    synChip.appendChild(synChipIco);
+    synChip.appendChild(synChipTxt);
+    synChip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._playSfx('playUiClick');
+      this.setActiveTab('companions');
+      this.setDrawerOpen(true);
+    });
+
     const overdriveBtn = document.createElement('button');
     overdriveBtn.type = 'button';
     overdriveBtn.className = 'endless-overdrive-btn hidden';
@@ -703,8 +738,13 @@ export class EndlessShopUI {
     overdriveLabel.className = 'endless-overdrive-label';
     overdriveLabel.textContent = 'OVERDRIVE 0%';
 
+    const overdriveLabelShort = document.createElement('span');
+    overdriveLabelShort.className = 'endless-overdrive-label-short';
+    overdriveLabelShort.textContent = 'OD 0%';
+
     overdriveContent.appendChild(overdriveIcon);
     overdriveContent.appendChild(overdriveLabel);
+    overdriveContent.appendChild(overdriveLabelShort);
     overdriveBtn.appendChild(overdriveFill);
     overdriveBtn.appendChild(overdriveContent);
 
@@ -715,15 +755,19 @@ export class EndlessShopUI {
 
     partyHud.appendChild(strip);
     partyHud.appendChild(synHud);
+    partyHud.appendChild(synChip);
     partyHud.appendChild(overdriveBtn);
     this.root.appendChild(partyHud);
 
     this._refs.partyHud = partyHud;
     this._refs.partyStrip = strip;
     this._refs.synergyHud = synHud;
+    this._refs.partySynChip = synChip;
+    this._refs.partySynChipTxt = synChipTxt;
     this._refs.overdriveBtn = overdriveBtn;
     this._refs.overdriveFill = overdriveFill;
     this._refs.overdriveLabel = overdriveLabel;
+    this._refs.overdriveLabelShort = overdriveLabelShort;
   }
 
   _buildEventsDock() {
@@ -1129,7 +1173,7 @@ export class EndlessShopUI {
     this._refs.trialModalCollectBtn = collectBtn;
   }
 
-  _buildShopToggle() {
+  _buildShopToggle(parentEl = null) {
     const toggle = document.createElement('button');
     toggle.id = 'endless-shop-toggle';
     toggle.type = 'button';
@@ -1138,8 +1182,12 @@ export class EndlessShopUI {
     stopEventLeak(toggle);
 
     const icon = this._makeIconCanvas(32, 11, '#facc15', 'endless-toggle-icon');
-    const label = document.createElement('span');
-    label.textContent = 'CRUSADE SHOP';
+    const labelFull = document.createElement('span');
+    labelFull.className = 'endless-toggle-label-full';
+    labelFull.textContent = 'CRUSADE SHOP';
+    const labelShort = document.createElement('span');
+    labelShort.className = 'endless-toggle-label-short';
+    labelShort.textContent = 'SHOP';
     const dot = document.createElement('span');
     dot.className = 'endless-affordable-dot hidden';
     dot.setAttribute('aria-hidden', 'true');
@@ -1150,7 +1198,8 @@ export class EndlessShopUI {
     eventDot.title = 'Active Bounty or Wandering Merchant waiting';
 
     toggle.appendChild(icon);
-    toggle.appendChild(label);
+    toggle.appendChild(labelFull);
+    toggle.appendChild(labelShort);
     toggle.appendChild(dot);
     toggle.appendChild(eventDot);
 
@@ -1159,7 +1208,7 @@ export class EndlessShopUI {
       this.toggleDrawer();
     });
 
-    this.root.appendChild(toggle);
+    (parentEl || this.root).appendChild(toggle);
     this._refs.shopToggle = toggle;
     this._refs.affordableDot = dot;
     this._refs.eventAlertDot = eventDot;
@@ -1184,6 +1233,19 @@ export class EndlessShopUI {
     titleWrap.appendChild(titleIcon);
     titleWrap.appendChild(title);
 
+    const headerActions = document.createElement('div');
+    headerActions.className = 'endless-drawer-header-actions';
+
+    const drawerAutoBossBtn = document.createElement('button');
+    drawerAutoBossBtn.type = 'button';
+    drawerAutoBossBtn.className = 'endless-autoboss-btn endless-drawer-autoboss-btn is-on';
+    drawerAutoBossBtn.textContent = 'AUTO-BOSS: ON';
+    drawerAutoBossBtn.title = 'Toggle automatic Stage Boss challenge';
+    drawerAutoBossBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleToggleAutoBoss();
+    });
+
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'endless-drawer-close';
@@ -1194,8 +1256,12 @@ export class EndlessShopUI {
       this.setDrawerOpen(false);
     });
 
+    headerActions.appendChild(drawerAutoBossBtn);
+    headerActions.appendChild(closeBtn);
+
     header.appendChild(titleWrap);
-    header.appendChild(closeBtn);
+    header.appendChild(headerActions);
+    this._refs.drawerAutoBossBtn = drawerAutoBossBtn;
 
     // Tab Bar
     const tabBar = document.createElement('div');
@@ -2182,13 +2248,24 @@ export class EndlessShopUI {
       starEls.push(starEl);
     }
 
+    const badgesWrap = document.createElement('div');
+    badgesWrap.className = 'endless-comp-badges';
+
     const exBadge = document.createElement('span');
-    exBadge.className = 'endless-comp-ex-badge';
-    exBadge.textContent = 'EX @3';
-    exBadge.title = 'Promote to 3-Star to unlock EX Evolution';
+    exBadge.className = 'endless-comp-ex-badge is-evolved';
+    exBadge.textContent = 'EX';
+    exBadge.title = 'NEXT-GEN EX COMPANION (1-STAR+)';
+
+    const auraBadge = document.createElement('span');
+    auraBadge.className = 'endless-comp-aura-badge hidden';
+    auraBadge.textContent = 'SOVEREIGN';
+    auraBadge.title = '3-STAR SOVEREIGN AURA';
+
+    badgesWrap.appendChild(exBadge);
+    badgesWrap.appendChild(auraBadge);
 
     evoRow.appendChild(starsWrap);
-    evoRow.appendChild(exBadge);
+    evoRow.appendChild(badgesWrap);
 
     const meta = document.createElement('div');
     meta.className = 'endless-comp-meta';
@@ -2260,6 +2337,7 @@ export class EndlessShopUI {
       roleEl,
       starEls,
       exBadge,
+      auraBadge,
       lvEl,
       dpsEl,
       primaryBtn,
@@ -3115,9 +3193,16 @@ export class EndlessShopUI {
     if (res?.ok) {
       this._playSfx('playUiConfirm');
       const ref = this._companionCardRefs.get(companionId);
-      const unlockedEx = Boolean(res.unlockedEx);
-      const badgeText = unlockedEx ? 'EX EVOLVED!' : '+1 STAR!';
-      this._triggerBuyFeedback(ref?.card, ref?.promoteBtn, badgeText, unlockedEx);
+      const newStar = Math.max(1, Math.min(5, Math.floor(Number(res.star) || 1)));
+      const unlockedAuraTier = Math.max(
+        0,
+        Math.floor(Number(res.unlockedAuraTier) || (newStar >= 3 ? newStar : 0))
+      );
+      const auraMeta = resolveCompanionAuraMeta(newStar, res.auraTier || null);
+      const badgeText = unlockedAuraTier >= 3
+        ? `${auraMeta.shortLabel} AURA!`
+        : `${newStar}-STAR!`;
+      this._triggerBuyFeedback(ref?.card, ref?.promoteBtn, badgeText, unlockedAuraTier >= 3);
     } else {
       this._playSfx('playUiBack');
     }
@@ -3558,10 +3643,11 @@ export class EndlessShopUI {
     this._resyncIfNeeded(syncBefore);
   }
 
-  _handleClaimActiveBounty() {
+  _handleClaimActiveBounty(anchorEl = null) {
     if (!this._lastBountyCompleted) return;
     if (typeof this.manager?.claimActiveBounty !== 'function') return;
-    const preRect = this._captureAnchorRect(this._refs.bountyPill);
+    const targetAnchor = anchorEl || this._refs.bountyPill;
+    const preRect = this._captureAnchorRect(targetAnchor);
     const syncBefore = this._syncCounter;
     const res = this.manager.claimActiveBounty();
     if (res === false || (res && typeof res === 'object' && res.ok === false)) {
@@ -3569,8 +3655,8 @@ export class EndlessShopUI {
     }
     this._playSfx('playUiConfirm');
     this._triggerBuyFeedback(
-      this._refs.bountyPill,
-      this._refs.bountyPill,
+      targetAnchor,
+      targetAnchor,
       '+REWARD!',
       false,
       preRect
@@ -3578,11 +3664,13 @@ export class EndlessShopUI {
     this._resyncIfNeeded(syncBefore);
   }
 
-  _handleBuyMerchantOffer() {
-    if (this._refs.merchantBuyBtn?.disabled) return;
+  _handleBuyMerchantOffer(btnEl = null, cardEl = null) {
+    const targetBtn = btnEl || this._refs.merchantBuyBtn;
+    const targetCard = cardEl || this._refs.merchantCard;
+    if (targetBtn?.disabled) return;
     if (typeof this.manager?.buyMerchantOffer !== 'function') return;
     // Capture rect BEFORE manager.buyMerchantOffer() synchronously hides merchantCard!
-    const preBtnRect = this._captureAnchorRect(this._refs.merchantBuyBtn) || this._captureAnchorRect(this._refs.merchantCard);
+    const preBtnRect = this._captureAnchorRect(targetBtn) || this._captureAnchorRect(targetCard);
     const offerTypeBefore = this._lastMerchantOfferType || '';
     const syncBefore = this._syncCounter;
     const res = this.manager.buyMerchantOffer();
@@ -3594,8 +3682,8 @@ export class EndlessShopUI {
     const isElixir = offerType === 'dps_elixir';
     const badgeText = isElixir ? '3X DPS!' : '+GEAR CHEST!';
     this._triggerBuyFeedback(
-      this._refs.merchantCard,
-      this._refs.merchantBuyBtn,
+      targetCard,
+      targetBtn,
       badgeText,
       isElixir,
       preBtnRect
@@ -3715,6 +3803,7 @@ export class EndlessShopUI {
     }
     if (!this.visible) {
       this.setDrawerOpen(false);
+      this._mobileHud?.closePopCard();
       this._clearTransientUiState();
       if (this.root) {
         this.root.classList.remove('has-event-alert');
@@ -3725,6 +3814,9 @@ export class EndlessShopUI {
 
   setDrawerOpen(open) {
     this.drawerOpen = Boolean(open);
+    if (this.drawerOpen) {
+      this._mobileHud?.closePopCard();
+    }
     if (this.root) {
       this.root.classList.toggle('is-drawer-open', Boolean(this.drawerOpen));
     }
@@ -3805,7 +3897,9 @@ export class EndlessShopUI {
     const astralShards = Number(snap?.astralShards ?? econ?.astralShards ?? 0) || 0;
     const autoBoss = snap?.autoBoss !== undefined
       ? Boolean(snap.autoBoss)
-      : (econ?.autoBoss !== undefined ? Boolean(econ.autoBoss) : true);
+      : (snap?.autoBossEnabled !== undefined
+        ? Boolean(snap.autoBossEnabled)
+        : (econ?.autoBoss !== undefined ? Boolean(econ.autoBoss) : true));
     const bulkMode = snap?.bulkMode ?? econ?.bulkMode ?? 'x1';
 
     const tapFever = Math.max(0, Math.min(100, Number(snap?.tapFever ?? econ?.tapFever ?? 0) || 0));
@@ -3933,7 +4027,8 @@ export class EndlessShopUI {
           color: c.accentHex || c.color || '#facc15',
           level: c.level || 1,
           star: c.star || 1,
-          isExEvolved: Boolean(c.isExEvolved),
+          auraTier: c.auraTier || c.promoteQuote?.auraTier || null,
+          isExEvolved: true,
           ultCharge: 0,
           ultPct: 0,
           isCastingUlt: false,
@@ -3964,7 +4059,8 @@ export class EndlessShopUI {
         color: String(u?.color || u?.accentHex || '#facc15'),
         level: Math.max(1, Math.floor(Number(u?.level) || 1)),
         star,
-        isExEvolved: Boolean(u?.isExEvolved ?? (star >= 3)),
+        auraTier: u?.auraTier || null,
+        isExEvolved: true,
         ultCharge: Math.max(0, Math.min(100, Number(u?.ultCharge ?? ultPct) || 0)),
         ultPct,
         isCastingUlt: Boolean(u?.isCastingUlt),
@@ -4526,6 +4622,9 @@ export class EndlessShopUI {
       if (this._refs.overdriveBtn) {
         this._refs.overdriveBtn.classList.add('hidden');
       }
+      if (this._refs.partySynChip) {
+        this._refs.partySynChip.classList.add('hidden');
+      }
       return;
     }
 
@@ -4534,21 +4633,24 @@ export class EndlessShopUI {
       const u = units[i];
       if (!u) {
         slot.card.classList.add('hidden');
-        slot.card.classList.remove('is-casting-ult', 'is-ex-evolved');
+        slot.card.classList.remove('is-casting-ult', 'is-ex-evolved', 'is-aura-3', 'is-aura-4', 'is-aura-5');
         continue;
       }
 
       const star = Math.max(1, Math.min(5, Math.floor(Number(u.star) || 1)));
-      const isExEvolved = Boolean(u.isExEvolved);
+      const auraMeta = resolveCompanionAuraMeta(star, u.auraTier || null);
+      const hasAura = star >= 3;
 
       slot.card.classList.remove('hidden');
       slot.card.classList.toggle('is-casting-ult', u.isCastingUlt);
-      slot.card.classList.toggle('is-ex-evolved', isExEvolved);
-      setStyleIfChanged(
-        slot.portWrap,
-        'borderColor',
-        u.isCastingUlt ? '#fef08a' : (isExEvolved ? '#38bdf8' : u.color)
-      );
+      slot.card.classList.toggle('is-ex-evolved', hasAura);
+      slot.card.classList.toggle('is-aura-3', star === 3);
+      slot.card.classList.toggle('is-aura-4', star === 4);
+      slot.card.classList.toggle('is-aura-5', star >= 5);
+      const portBorder = u.isCastingUlt
+        ? '#fef08a'
+        : (star >= 5 ? '#f43f5e' : (star === 4 ? '#c084fc' : (star === 3 ? '#38bdf8' : u.color)));
+      setStyleIfChanged(slot.portWrap, 'borderColor', portBorder);
 
       this._blitCompanionPortrait(
         slot.portCanvas,
@@ -4558,13 +4660,12 @@ export class EndlessShopUI {
       );
 
       if (slot.starBadge && slot.starTxt) {
-        const showStar = star >= 2 || isExEvolved;
-        slot.starBadge.classList.toggle('hidden', !showStar);
-        if (showStar) {
-          slot.starBadge.classList.toggle('is-ex', isExEvolved);
-          const badgeTxt = isExEvolved ? (star > 3 ? `EX${star}` : 'EX') : `S${star}`;
-          setTextIfChanged(slot.starTxt, badgeTxt);
-        }
+        slot.starBadge.classList.remove('hidden');
+        slot.starBadge.classList.toggle('is-ex', hasAura);
+        slot.starBadge.classList.toggle('is-aura-3', star === 3);
+        slot.starBadge.classList.toggle('is-aura-4', star === 4);
+        slot.starBadge.classList.toggle('is-aura-5', star >= 5);
+        setTextIfChanged(slot.starTxt, String(star));
       }
 
       setTextIfChanged(slot.nameEl, u.shortName || u.name);
@@ -4574,7 +4675,7 @@ export class EndlessShopUI {
       setStyleIfChanged(slot.ultFill, 'width', `${ultPct.toFixed(1)}%`);
       setTextIfChanged(slot.ultTag, u.isCastingUlt ? 'ULT!' : `${Math.round(ultPct)}%`);
 
-      const starTag = isExEvolved ? ` | ${star}-STAR EX` : (star >= 2 ? ` | ${star}-STAR` : '');
+      const starTag = hasAura ? ` | ${star}-STAR ${auraMeta.title}` : ` | ${star}-STAR EX`;
       const tip =
         `${u.name} (${u.role}) LV.${u.level}${starTag} | DPS ${formatEndlessNumber(u.dpsEstimate)} | ULT ${Math.round(ultPct)}%` +
         (u.lastCallout ? ` | ${u.lastCallout}` : '') +
@@ -4584,10 +4685,24 @@ export class EndlessShopUI {
       }
     }
 
-    // Wave 9: Squad Overdrive Charge Meter & Activation Button
+    // Wave 12: Compact Mobile Synergy Chip (inline in single-row Mobile Party Strip)
+    if (this._refs.partySynChip && this._refs.partySynChipTxt) {
+      const hasSyn = synergies.length > 0;
+      this._refs.partySynChip.classList.toggle('hidden', !hasSyn);
+      if (hasSyn) {
+        setTextIfChanged(this._refs.partySynChipTxt, `${synergies.length} SYN`);
+        const synTip = synergies.map((s) => (s.desc ? `${s.name}: ${s.desc}` : s.name)).join(' | ');
+        if (this._refs.partySynChip.title !== synTip) {
+          this._refs.partySynChip.title = synTip;
+        }
+      }
+    }
+
+    // Wave 9/12: Squad Overdrive Charge Meter & Activation Button
     const overdriveBtn = this._refs.overdriveBtn;
     const overdriveFill = this._refs.overdriveFill;
     const overdriveLabel = this._refs.overdriveLabel;
+    const overdriveLabelShort = this._refs.overdriveLabelShort;
     if (overdriveBtn && overdriveFill && overdriveLabel) {
       const evo = state.companionEvo || {};
       const odRatio = Number.isFinite(Number(evo.overdriveRatio))
@@ -4607,16 +4722,19 @@ export class EndlessShopUI {
         const remPct = timer > 0 ? Math.max(6, Math.min(100, (timer / 2.4) * 100)) : 100;
         setStyleIfChanged(overdriveFill, 'width', `${remPct.toFixed(1)}%`);
         setTextIfChanged(overdriveLabel, 'SURGE ACTIVE!');
+        setTextIfChanged(overdriveLabelShort, 'SURGE!');
         const odTip = 'SQUAD OVERDRIVE SURGE ACTIVE (+35% DMG & +25% HASTE)';
         if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
       } else if (odReady) {
         setStyleIfChanged(overdriveFill, 'width', '100%');
         setTextIfChanged(overdriveLabel, 'OVERDRIVE!');
+        setTextIfChanged(overdriveLabelShort, 'READY!');
         const odTip = 'SQUAD OVERDRIVE READY - CLICK TO UNLEASH SYNCHRONIZED ULTIMATES!';
         if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
       } else {
         setStyleIfChanged(overdriveFill, 'width', `${odPct}%`);
         setTextIfChanged(overdriveLabel, `OVERDRIVE ${odPct}%`);
+        setTextIfChanged(overdriveLabelShort, `OD ${odPct}%`);
         const odTip = `SQUAD OVERDRIVE CHARGING (${odPct}%) - ALLY ATTACKS & SKILLS CHARGE THE METER`;
         if (overdriveBtn.title !== odTip) overdriveBtn.title = odTip;
       }
@@ -4756,21 +4874,33 @@ export class EndlessShopUI {
       }
     }
 
-    // 2. Boss Control Action Pill
+    // 2. Boss Control Action Pill (Desktop Top-Stack + Armory Header Toggle)
+    const autoBossLabel = state.autoBoss ? 'AUTO-BOSS: ON' : 'AUTO-BOSS: OFF';
     if (this._refs.autoBossBtn) {
       this._refs.autoBossBtn.classList.toggle('is-on', state.autoBoss);
-      setTextIfChanged(this._refs.autoBossBtn, state.autoBoss ? 'AUTO-BOSS: ON' : 'AUTO-BOSS: OFF');
+      setTextIfChanged(this._refs.autoBossBtn, autoBossLabel);
     }
+    if (this._refs.drawerAutoBossBtn) {
+      this._refs.drawerAutoBossBtn.classList.toggle('is-on', state.autoBoss);
+      setTextIfChanged(this._refs.drawerAutoBossBtn, autoBossLabel);
+    }
+    const showChallenge = state.bossFarmMode && !state.isBossEncounter;
     if (this._refs.challengeBtn) {
-      const showChallenge = state.bossFarmMode && !state.isBossEncounter;
       this._refs.challengeBtn.classList.toggle('hidden', !showChallenge);
+    }
+    if (this._refs.bossControls) {
+      this._refs.bossControls.classList.toggle('has-challenge', showChallenge);
+    }
+    if (this.root) {
+      this.root.classList.toggle('has-challenge-boss', showChallenge);
     }
 
     // 2B. Live Active Companion Mini-HUD & Synergy Badges (always synced, even when drawer closed)
     this._syncActivePartyHud(state);
 
-    // 2B2. Wave 8 Unified Events Dock (Bounty Tracker, Active Buffs, Wandering Merchant)
+    // 2B2. Wave 8 Desktop Events Dock + Wave 12 Mobile Compact Strip & Pop-Cards
     this._syncEventsDock(state);
+    this._mobileHud?.sync(state, this.drawerOpen);
 
     // 2B3. Wave 10 Active Trial Live Countdown HUD Strip (always synced, even when drawer closed)
     this._syncTrialHud(state);
@@ -5747,6 +5877,7 @@ export class EndlessShopUI {
             const pill = document.createElement('div');
             pill.className = 'endless-party-syn-pill';
             pill.style.borderLeftColor = s.color;
+            pill.title = s.desc ? `${s.name}: ${s.desc}` : s.name;
 
             const nameRow = document.createElement('div');
             nameRow.className = 'endless-party-syn-name';
@@ -5784,20 +5915,26 @@ export class EndlessShopUI {
       const lv = Math.max(0, Math.floor(Number(comp.level) || 0));
       const star = Math.max(1, Math.min(5, Math.floor(Number(comp.star) || 1)));
       const maxStars = Math.max(1, Math.floor(Number(comp.maxStars) || 5));
-      const isExEvolved = Boolean(comp.isExEvolved ?? (star >= 3));
-      const unlockStage = Math.max(1, Math.floor(Number(comp.unlockStage) || 1));
-      const stageLocked = Boolean(!unlocked && comp.stageLocked);
       const promoteQuote = (comp.promoteQuote && typeof comp.promoteQuote === 'object')
         ? comp.promoteQuote
         : null;
+      const auraMeta = resolveCompanionAuraMeta(star, comp.auraTier || promoteQuote?.auraTier || null);
+      const hasAura = star >= 3;
+      const unlockStage = Math.max(1, Math.floor(Number(comp.unlockStage) || 1));
+      const stageLocked = Boolean(!unlocked && comp.stageLocked);
 
       ref.card.classList.toggle('is-unlocked', unlocked);
       ref.card.classList.toggle('is-deployed', deployed);
-      ref.card.classList.toggle('is-ex-evolved', isExEvolved);
+      ref.card.classList.toggle('is-ex-evolved', hasAura);
+      ref.card.classList.toggle('is-aura-3', star === 3);
+      ref.card.classList.toggle('is-aura-4', star === 4);
+      ref.card.classList.toggle('is-aura-5', star >= 5);
       ref.card.classList.toggle('is-stage-locked', stageLocked);
 
       if (ref.portWrap) {
-        ref.portWrap.style.borderColor = isExEvolved ? '#38bdf8' : (comp.accentHex || '#d4af37');
+        ref.portWrap.style.borderColor = star >= 5
+          ? '#f43f5e'
+          : (star === 4 ? '#c084fc' : (star === 3 ? '#38bdf8' : (comp.accentHex || '#d4af37')));
       }
 
       this._blitCompanionPortrait(
@@ -5819,13 +5956,24 @@ export class EndlessShopUI {
         }
       }
 
+      // All 12 companions display glowing EX badge from 1-STAR; Star 3..5 add escalating Aura Tier badge
       if (ref.exBadge) {
-        ref.exBadge.classList.toggle('is-evolved', isExEvolved);
-        setTextIfChanged(ref.exBadge, isExEvolved ? 'EX' : 'EX @3');
-        const exTip = isExEvolved
-          ? `${comp.starTitle || 'EX ASCENDED'} (${star}/${maxStars} STARS)`
-          : 'PROMOTE TO 3-STAR TO EVOLVE INTO EX FORM';
+        ref.exBadge.classList.add('is-evolved');
+        setTextIfChanged(ref.exBadge, 'EX');
+        const exTip = `NEXT-GEN EX (${star}/${maxStars} STARS)`;
         if (ref.exBadge.title !== exTip) ref.exBadge.title = exTip;
+      }
+
+      if (ref.auraBadge) {
+        ref.auraBadge.classList.toggle('hidden', !hasAura);
+        ref.auraBadge.classList.toggle('is-tier-3', star === 3);
+        ref.auraBadge.classList.toggle('is-tier-4', star === 4);
+        ref.auraBadge.classList.toggle('is-tier-5', star >= 5);
+        if (hasAura) {
+          setTextIfChanged(ref.auraBadge, auraMeta.shortLabel);
+          const auraTip = `${auraMeta.label} (${star}/${maxStars} STARS)`;
+          if (ref.auraBadge.title !== auraTip) ref.auraBadge.title = auraTip;
+        }
       }
 
       setTextIfChanged(
@@ -5863,25 +6011,26 @@ export class EndlessShopUI {
           if (promoteQuote) {
             ref.promoteBtn.classList.remove('hidden');
             const isMax = Boolean(promoteQuote.isMaxStar);
-            const unlocksEx = Boolean(!isMax && promoteQuote.unlocksExForm);
+            const nextStar = Math.max(star + 1, Math.min(maxStars, Math.floor(Number(promoteQuote.nextStar) || (star + 1))));
+            const unlocksAura = Boolean(!isMax && (Number(promoteQuote.unlocksAuraTier) >= 3 || nextStar >= 3));
             const canPromote = Boolean(!isMax && promoteQuote.canPromote);
             ref.promoteBtn.classList.toggle('is-max-star', isMax);
-            ref.promoteBtn.classList.toggle('is-ex-ready', unlocksEx);
+            ref.promoteBtn.classList.toggle('is-ex-ready', unlocksAura);
             ref.promoteBtn.disabled = isMax || !canPromote;
 
             if (isMax) {
               setTextIfChanged(ref.promoteBtn, `MAX ${maxStars}-STAR`);
-              ref.promoteBtn.title = `${comp.name || comp.id} REACHED MAXIMUM ${maxStars}-STAR RANK`;
+              ref.promoteBtn.title = `${comp.name || comp.id} REACHED MAXIMUM ${maxStars}-STAR MYTHIC CROWN`;
             } else {
               const isDust = promoteQuote.payMode === 'dust';
               const costText = isDust
                 ? `${formatEndlessNumber(promoteQuote.dustCost || 0)} DUST`
                 : `${formatEndlessNumber(promoteQuote.shardsCost || 0)} SHARDS`;
-              const btnLabel = unlocksEx
-                ? `EVOLVE EX! (${costText})`
-                : `PROMOTE (${costText})`;
-              setTextIfChanged(ref.promoteBtn, btnLabel);
-              const altTip = `PROMOTE TO ${promoteQuote.nextStar || (star + 1)}-STAR (${formatEndlessNumber(promoteQuote.shardsCost || 0)} SHARDS OR ${formatEndlessNumber(promoteQuote.dustCost || 0)} FORGE DUST)`;
+              const cta = resolvePromoteCta(nextStar, promoteQuote);
+              setTextIfChanged(ref.promoteBtn, `${cta} (${costText})`);
+              const nextAura = resolveCompanionAuraMeta(nextStar, promoteQuote.nextAuraTier || null);
+              const auraSuffix = unlocksAura ? ` - UNLOCKS ${nextAura.label}` : '';
+              const altTip = `${cta}${auraSuffix} (${formatEndlessNumber(promoteQuote.shardsCost || 0)} SHARDS OR ${formatEndlessNumber(promoteQuote.dustCost || 0)} FORGE DUST)`;
               if (ref.promoteBtn.title !== altTip) ref.promoteBtn.title = altTip;
             }
           } else {
@@ -5982,6 +6131,8 @@ export class EndlessShopUI {
 
   unmount() {
     this._clearTransientUiState();
+    this._mobileHud?.unmount();
+    this._mobileHud = null;
     if (this.root) {
       this.root.textContent = '';
       this.root.classList.add('hidden');
@@ -5990,7 +6141,9 @@ export class EndlessShopUI {
         'has-active-party',
         'has-active-synergies',
         'is-trial-active',
-        'has-event-alert'
+        'has-event-alert',
+        'has-challenge-boss',
+        'has-mobile-popcard'
       );
       if (this._createdRoot && this.root.parentNode) {
         this.root.parentNode.removeChild(this.root);
