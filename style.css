@@ -9855,19 +9855,20 @@ html.is-mobile-landscape .hud-rival-badge {
 /* =========================================================================
    ENDLESS CRUSADE COLOSSAL BOSS RAID HUD (#app.is-endless-active #adv-boss-raid-hud)
    Zero-Overlap 3-Viewport Geometry (Adventure Mode Boss HUD 100% Untouched)
-   - Desktop 1280x800: Compact top-right (y <= 56px, >= 6px gap above top: 62px bar)
-   - Mobile Landscape 844x390: Ultra-compact top-right (y <= 46px, >= 6px gap above top: 52px)
-   - Mobile Portrait 390x844: Centered below measured .endless-top-stack / toggle, z-index: 24
+   - Desktop 1280x800: Compact top-right (y <= 58px, >= 4px gap above top: 62px bar)
+   - Mobile Landscape 844x390: Ultra-compact top-right (y = 2..48px, >= 4px gap above top: 52px)
+   - Mobile Portrait 390x844: Centered below unified slim top bar, extra-compact in Split-Screen Armory
    ========================================================================= */
 #app.is-endless-active #adv-boss-raid-hud {
   top: max(4px, env(safe-area-inset-top));
   right: max(16px, env(safe-area-inset-right));
-  width: clamp(220px, 31vw, 372px);
-  padding: 4px 8px;
+  width: clamp(228px, 31vw, 372px);
+  padding: 3px 8px;
   gap: 6px;
-  max-height: 52px;
+  min-height: 46px;
+  max-height: 54px;
   z-index: 24;
-  overflow: hidden;
+  overflow: visible;
 }
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-portrait-frame {
@@ -9882,44 +9883,51 @@ html.is-mobile-landscape .hud-rival-badge {
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-head,
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-foot {
-  line-height: 1.05;
+  line-height: 1.1;
 }
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-name {
-  font-size: clamp(0.35rem, 0.9vw, 0.45rem);
+  font-size: clamp(0.38rem, 0.9vw, 0.46rem);
+  line-height: 1.1;
+  text-shadow: 0 1px 0 #000;
 }
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-hp {
-  font-size: clamp(0.29rem, 0.78vw, 0.37rem);
+  font-size: clamp(0.34rem, 0.78vw, 0.42rem);
+  line-height: 1.1;
 }
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-track {
-  height: 9px;
+  height: 8px;
 }
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-stagger-track {
-  height: 4px;
+  height: 3px;
 }
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-tag {
-  font-size: 0.21rem;
+  font-size: 0.24rem;
+  line-height: 1.05;
   padding: 0 3px;
 }
 
 #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-phase {
-  font-size: 0.25rem;
+  font-size: 0.32rem;
+  line-height: 1.1;
 }
 
-@media (max-height: 560px) and (min-width: 561px) {
+@media (max-height: 500px) {
   #app.is-endless-active #adv-boss-raid-hud {
     top: max(2px, env(safe-area-inset-top));
-    right: max(10px, env(safe-area-inset-right));
+    right: max(8px, env(safe-area-inset-right));
     left: auto;
     transform: none;
-    width: clamp(195px, 35vw, 316px);
+    width: clamp(208px, 37vw, 326px);
     padding: 3px 6px;
     gap: 5px;
-    max-height: 44px;
+    min-height: 42px;
+    max-height: 48px;
+    overflow: visible;
     z-index: 24;
   }
   #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-portrait-frame {
@@ -9928,16 +9936,23 @@ html.is-mobile-landscape .hud-rival-badge {
     border-width: 1.5px;
   }
   #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-body {
-    gap: 1px;
+    gap: 2px;
+  }
+  #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-head,
+  #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-foot {
+    line-height: 1.1;
   }
   #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-name {
-    font-size: 0.30rem;
+    font-size: 0.42rem;
+    line-height: 1.1;
+    text-shadow: 0 1px 0 #000;
   }
   #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-hp {
-    font-size: 0.26rem;
+    font-size: 0.42rem;
+    line-height: 1.1;
   }
   #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-track {
-    height: 8px;
+    height: 7px;
   }
   #app.is-endless-active #adv-boss-raid-hud .adv-boss-stagger-track {
     height: 3px;
@@ -9946,19 +9961,22 @@ html.is-mobile-landscape .hud-rival-badge {
     display: none;
   }
   #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-phase {
-    font-size: 0.22rem;
+    font-size: 0.32rem;
+    line-height: 1.1;
   }
 }
 
 html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud {
   top: max(2px, env(safe-area-inset-top));
-  right: max(10px, env(safe-area-inset-right));
+  right: max(8px, env(safe-area-inset-right));
   left: auto;
   transform: none;
-  width: clamp(195px, 35vw, 316px);
+  width: clamp(208px, 37vw, 326px);
   padding: 3px 6px;
   gap: 5px;
-  max-height: 44px;
+  min-height: 42px;
+  max-height: 48px;
+  overflow: visible;
   z-index: 24;
 }
 
@@ -9969,19 +9987,27 @@ html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-rai
 }
 
 html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-body {
-  gap: 1px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-head,
+html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-foot {
+  line-height: 1.1;
 }
 
 html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-name {
-  font-size: 0.30rem;
+  font-size: 0.42rem;
+  line-height: 1.1;
+  text-shadow: 0 1px 0 #000;
 }
 
 html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-hp {
-  font-size: 0.26rem;
+  font-size: 0.42rem;
+  line-height: 1.1;
 }
 
 html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-track {
-  height: 8px;
+  height: 7px;
 }
 
 html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-stagger-track {
@@ -9993,7 +10019,8 @@ html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-rai
 }
 
 html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-phase {
-  font-size: 0.22rem;
+  font-size: 0.32rem;
+  line-height: 1.1;
 }
 
 @media (max-width: 600px) and (orientation: portrait) {
@@ -10001,8 +10028,9 @@ html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-rai
     left: 50%;
     right: auto;
     transform: translateX(-50%);
-    top: var(--adv-boss-portrait-top, calc(max(4px, env(safe-area-inset-top)) + 174px));
+    top: var(--adv-boss-portrait-top, calc(max(4px, env(safe-area-inset-top)) + 102px));
     width: min(calc(100vw - 12px), 392px);
+    min-height: 0;
     max-height: none;
     overflow: visible;
     padding: 4px 8px;
@@ -10014,18 +10042,78 @@ html.is-mobile-landscape #app.is-endless-active #adv-boss-raid-hud .adv-boss-rai
     height: 34px;
     border-width: 1.5px;
   }
+  html:not(.is-mobile-landscape) #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-body {
+    gap: 2px;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-name {
+    font-size: 0.42rem;
+    line-height: 1.12;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-hp {
+    font-size: 0.36rem;
+    line-height: 1.12;
+  }
   html:not(.is-mobile-landscape) #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-track {
-    height: 10px;
+    height: 9px;
   }
   html:not(.is-mobile-landscape) #app.is-endless-active #adv-boss-raid-hud .adv-boss-stagger-track {
     height: 4px;
   }
   html:not(.is-mobile-landscape) #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-tag {
     display: inline-block;
-    font-size: 0.21rem;
+    font-size: 0.22rem;
+    line-height: 1.05;
     padding: 1px 3px;
   }
   html:not(.is-mobile-landscape) #app.is-endless-active #adv-boss-raid-hud .adv-boss-raid-phase {
-    font-size: 0.25rem;
+    font-size: 0.28rem;
+    line-height: 1.12;
+  }
+
+  /* Portrait Split-Screen Armory Mode: keep boss plaque compact below slim top bar so middle combat stays unobstructed */
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud {
+    top: var(--adv-boss-portrait-top, calc(max(4px, env(safe-area-inset-top)) + 102px));
+    padding: 3px 6px;
+    gap: 5px;
+    max-height: 46px;
+    min-height: 0;
+    overflow: visible;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-raid-portrait-frame,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-portrait-frame {
+    width: 28px;
+    height: 28px;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-raid-body,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-body {
+    gap: 2px;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-raid-name,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-name {
+    font-size: 0.38rem;
+    line-height: 1.1;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-raid-hp,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-hp {
+    font-size: 0.34rem;
+    line-height: 1.1;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-raid-track,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-track {
+    height: 7px;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-stagger-track,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-stagger-track {
+    height: 3px;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-raid-tag,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-tag {
+    display: none;
+  }
+  html:not(.is-mobile-landscape) #app.is-endless-active.is-endless-drawer-open #adv-boss-raid-hud .adv-boss-raid-phase,
+  html:not(.is-mobile-landscape) #app.is-endless-active:has(#endless-hud-root.is-drawer-open) #adv-boss-raid-hud .adv-boss-raid-phase {
+    font-size: 0.28rem;
+    line-height: 1.1;
   }
 }

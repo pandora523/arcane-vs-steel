@@ -2491,6 +2491,9 @@ export class Game {
       Boolean(this.isEndlessMode() && !this.isLandingOpen)
     );
     this.appEl?.classList?.remove('is-endless-boss-hud-visible');
+    this.appEl?.classList?.remove('is-endless-drawer-open');
+    this._wasBossHudVisible = false;
+    this._lastBossMeasureSig = '';
     if (this.appEl?.style?.setProperty) {
       this._lastEndlessBossHudH = '0px';
       this.appEl.style.setProperty('--endless-boss-hud-h', '0px');
@@ -2682,6 +2685,11 @@ export class Game {
     } else {
       this.appEl?.classList?.remove('is-endless-active');
       this.appEl?.classList?.remove('is-endless-boss-hud-visible');
+      this.appEl?.classList?.remove('is-endless-drawer-open');
+      if (this.appEl?.style?.setProperty) {
+        this._lastEndlessBossHudH = '0px';
+        this.appEl.style.setProperty('--endless-boss-hud-h', '0px');
+      }
       this.adventure?.syncControlDeckUI?.();
     }
     this.syncPauseMenuUI();
@@ -7296,6 +7304,7 @@ export class Game {
       this.appEl.classList.remove('is-adventure-active');
       this.appEl.classList.remove('is-endless-active');
       this.appEl.classList.remove('is-endless-boss-hud-visible');
+      this.appEl.classList.remove('is-endless-drawer-open');
       if (this.appEl.style?.setProperty) {
         this._lastEndlessBossHudH = '0px';
         this.appEl.style.setProperty('--endless-boss-hud-h', '0px');
@@ -9611,8 +9620,16 @@ export class Game {
     );
 
     els.root.classList?.toggle('hidden', !showBossHud);
+    const endlessHudRoot =
+      isEndless && typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('endless-hud-root')
+        : null;
+    const isEndlessDrawerOpen = Boolean(
+      isEndless && !this.isLandingOpen && endlessHudRoot?.classList?.contains?.('is-drawer-open')
+    );
     const endlessBossVisible = Boolean(isEndless && showBossHud);
     if (this.appEl) {
+      this.appEl.classList?.toggle('is-endless-drawer-open', isEndlessDrawerOpen);
       this.appEl.classList?.toggle('is-endless-boss-hud-visible', endlessBossVisible);
       if (!endlessBossVisible && this.appEl.style?.setProperty) {
         if (this._lastEndlessBossHudH !== '0px') {
@@ -9694,18 +9711,13 @@ export class Game {
     els.root.classList?.toggle('is-phase-2', !isWarningOnly && phaseNum === 2);
     els.root.classList?.toggle('is-phase-3', !isWarningOnly && phaseNum >= 3);
 
-    // Keep Mobile Portrait Boss Plaque cleanly below top HUD / Endless Top Stack with 0 overlap
+    // Keep Mobile Portrait Boss Plaque cleanly below unified slim Endless Top Bar with 0 overlap
     if (isEndless) {
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      const hudRoot =
-        typeof document !== 'undefined' && typeof document.getElementById === 'function'
-          ? document.getElementById('endless-hud-root')
-          : null;
-      const measureSig = `${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : ''}|${Boolean(
-        hudRoot?.classList?.contains?.('is-trial-active')
-      )}|${Boolean(hudRoot?.classList?.contains?.('is-drawer-open'))}|${Boolean(
-        document?.documentElement?.classList?.contains?.('is-mobile-landscape')
-      )}`;
+      const hudRoot = endlessHudRoot;
+      const measureSig = `${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : ''}|${String(
+        hudRoot?.className || ''
+      )}|${Boolean(document?.documentElement?.classList?.contains?.('is-mobile-landscape'))}`;
       const needsMeasure =
         !this._wasBossHudVisible ||
         this._lastBossMeasureSig !== measureSig ||
@@ -9725,28 +9737,44 @@ export class Game {
         const appTop = appRect && Number.isFinite(appRect.top) ? appRect.top : 0;
 
         let endlessTopBottom = 0;
-        const topStackEl =
-          typeof document !== 'undefined' && typeof document.querySelector === 'function'
-            ? document.querySelector('#endless-hud-root .endless-top-stack') ||
-              document.querySelector('.endless-top-stack')
-            : null;
-        const shopToggleEl =
-          typeof document !== 'undefined' && typeof document.getElementById === 'function'
-            ? document.querySelector('#endless-shop-toggle')
-            : null;
-        for (const el of [topStackEl, shopToggleEl]) {
-          if (el && typeof el.getBoundingClientRect === 'function') {
-            const r = el.getBoundingClientRect();
-            if (r && r.width > 0 && r.height > 0 && Number.isFinite(r.bottom)) {
-              endlessTopBottom = Math.max(endlessTopBottom, r.bottom - appTop);
-            }
+        const canQuery = typeof document !== 'undefined' && typeof document.querySelector === 'function';
+        const topStackEl = canQuery
+          ? document.querySelector('#endless-hud-root .endless-top-stack') ||
+            document.querySelector('.endless-top-stack')
+          : null;
+        const shopToggleEl = canQuery ? document.querySelector('#endless-shop-toggle') : null;
+        const isElVisible = (el) => {
+          if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+          if (el.classList?.contains?.('hidden')) return false;
+          if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+            const cs = window.getComputedStyle(el);
+            if (cs && (cs.display === 'none' || cs.visibility === 'hidden')) return false;
+          }
+          return true;
+        };
+        const topStackVisible = isElVisible(topStackEl);
+        const measureEls = [];
+        if (topStackVisible) measureEls.push(topStackEl);
+        const toggleInsideTopStack = Boolean(
+          topStackVisible &&
+            shopToggleEl &&
+            typeof topStackEl.contains === 'function' &&
+            topStackEl.contains(shopToggleEl)
+        );
+        if (!toggleInsideTopStack && isElVisible(shopToggleEl)) {
+          measureEls.push(shopToggleEl);
+        }
+        for (const el of measureEls) {
+          const r = el.getBoundingClientRect();
+          if (r && r.width > 0 && r.height > 0 && Number.isFinite(r.bottom)) {
+            endlessTopBottom = Math.max(endlessTopBottom, r.bottom - appTop);
           }
         }
         if (els.root.style?.setProperty) {
           const portraitTopPx =
-            endlessTopBottom > 40
-              ? `${Math.ceil(endlessTopBottom + 6)}px`
-              : `${Math.round((this.renderer?.getHudBottomY?.() || 56) + 118)}px`;
+            endlessTopBottom > 32
+              ? `${Math.ceil(endlessTopBottom + 4)}px`
+              : `${Math.round((this.renderer?.getHudBottomY?.() || 56) + 46)}px`;
           if (this._lastBossPortraitTopStr !== portraitTopPx) {
             this._lastBossPortraitTopStr = portraitTopPx;
             els.root.style.setProperty('--adv-boss-portrait-top', portraitTopPx);
@@ -9763,7 +9791,7 @@ export class Game {
               ? bossHudRect.width
               : bossHudRect.height
             : 0;
-          const nextBossHudH = bossLogicalH > 4 ? `${Math.ceil(bossLogicalH + 6)}px` : '58px';
+          const nextBossHudH = bossLogicalH > 4 ? `${Math.ceil(bossLogicalH + 4)}px` : '50px';
           if (this._lastEndlessBossHudH !== nextBossHudH) {
             this._lastEndlessBossHudH = nextBossHudH;
             this.appEl.style.setProperty('--endless-boss-hud-h', nextBossHudH);
@@ -9830,6 +9858,16 @@ export class Game {
     const activeSideMgr = this.getActiveSideScrollManager?.() || this.adventure;
     this.appEl?.classList?.toggle('is-adventure-active', Boolean(isAdv && !this.isLandingOpen));
     this.appEl?.classList?.toggle('is-endless-active', Boolean(isEndless && !this.isLandingOpen));
+    if (this.appEl?.classList?.toggle) {
+      const endlessDrawerOpen = Boolean(
+        isEndless &&
+          !this.isLandingOpen &&
+          typeof document !== 'undefined' &&
+          typeof document.getElementById === 'function' &&
+          document.getElementById('endless-hud-root')?.classList?.contains?.('is-drawer-open')
+      );
+      this.appEl.classList.toggle('is-endless-drawer-open', endlessDrawerOpen);
+    }
     const advProg = isAdv ? activeSideMgr?.progression : null;
     const advStats = advProg ? advProg.getComputedStats() : null;
     if (!isAdv) {
