@@ -897,7 +897,13 @@ export class AdventureManager {
       if (!pauseLockBtn._advLockBound && typeof pauseLockBtn.addEventListener === 'function') {
         pauseLockBtn._advLockBound = true;
         pauseLockBtn.addEventListener('click', () => {
-          pauseLockBtn._advOwner?.toggleTargetLock(true);
+          const owner = pauseLockBtn._advOwner;
+          if (owner?.game?.isEndlessMode?.()) {
+            owner.game.endless?.toggleTargetLock?.(true);
+            owner.game.syncPauseMenuUI?.();
+          } else {
+            owner?.toggleTargetLock(true);
+          }
         });
       }
     }
@@ -1064,6 +1070,7 @@ export class AdventureManager {
   }
 
   onKeyUp(e) {
+    if (!this.active) return;
     const code = e.code;
     if (code === 'ArrowLeft' || code === 'KeyA') {
       this.heldLeft = false;

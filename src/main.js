@@ -1170,6 +1170,13 @@ export class Game {
     PixelForge.initAssets();
     this.adventure = new AdventureManager(this);
     this.endless = new EndlessManager(this);
+    this._endlessResetConfirmUntil = 0;
+    this._endlessResetConfirmTimer = null;
+    this._lastEndlessBossHudH = '0px';
+    this._lastBossPortraitTopStr = '';
+    this._lastBossMeasureAt = 0;
+    this._lastBossMeasureSig = '';
+    this._wasBossHudVisible = false;
 
     this.userSlowMo = false;
     this.autoTourney = true;
@@ -2186,9 +2193,39 @@ export class Game {
     }
   }
 
+  _clearEndlessResetConfirm() {
+    if (this._endlessResetConfirmTimer) {
+      clearTimeout(this._endlessResetConfirmTimer);
+      this._endlessResetConfirmTimer = null;
+    }
+    this._endlessResetConfirmUntil = 0;
+  }
+
+  _syncAdvRestartButtonUI(isEndless = Boolean(this.isEndlessMode?.())) {
+    const btn =
+      this.advBtnRestart ||
+      (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('adv-btn-restart')
+        : null);
+    if (!btn) return;
+    if (isEndless) {
+      const armed = Boolean(this._endlessResetConfirmUntil && Date.now() < this._endlessResetConfirmUntil);
+      btn.textContent = armed ? 'CONFIRM RESET RUN?' : 'RESET RUN';
+      btn.title = armed
+        ? 'Click again within 4s to confirm resetting your Endless Crusade run'
+        : 'Reset Endless Crusade Run (Click twice to confirm)';
+      btn.classList?.toggle('is-confirm-danger', armed);
+    } else {
+      btn.textContent = 'RETRY';
+      btn.title = 'Restart Campaign';
+      btn.classList?.remove('is-confirm-danger');
+    }
+  }
+
   syncPauseMenuUI() {
     const isAdv = Boolean(this.isAdventureMode?.());
     const isEndless = Boolean(this.isEndlessMode?.());
+    const isSideScroll = Boolean(isAdv || isEndless);
     const isP1 = this.isVsManualP1Active();
     const isArcade = this.isArcadeLadderActive();
     const isTraining = this.isP1TrainingMode();
@@ -2232,15 +2269,90 @@ export class Game {
     if (isTraining) {
       this.syncTrainingLabUI?.();
     }
-    this.pauseVsSection?.classList.toggle('hidden', isAdv);
-    this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
+    this.pauseVsSection?.classList.toggle('hidden', isSideScroll);
+    this.pauseAdvSection?.classList.toggle('hidden', !isSideScroll);
+    this.pauseAdvSection?.setAttribute?.(
+      'aria-label',
+      isEndless ? 'Endless Crusade Controls' : 'Adventure Campaign Controls'
+    );
+    const pauseAdvLabel =
+      this.pauseAdvSectionLabel ||
+      (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('pause-adv-section-label')
+        : null);
+    if (pauseAdvLabel) {
+      pauseAdvLabel.textContent = isEndless
+        ? 'ENDLESS CRUSADE • RUN & AUTO-BATTLE DECK'
+        : 'SOLO ADVENTURE CAMPAIGN & RPG DECK';
+    }
+    const pauseAdvRelics =
+      this.pauseAdvRelics ||
+      (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('pause-adv-relics')
+        : null);
+    if (pauseAdvRelics) {
+      pauseAdvRelics.classList?.toggle('hidden', isEndless);
+    }
+    const advSkillTreeBtn =
+      typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('adv-btn-skilltree')
+        : null;
+    if (advSkillTreeBtn) {
+      advSkillTreeBtn.classList?.toggle('hidden', isEndless);
+    }
+    const advMenuBtn =
+      typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('adv-btn-menu')
+        : null;
+    if (advMenuBtn) {
+      advMenuBtn.title = isEndless ? 'Open Endless Hero Select' : 'Open Adventure Hero Select';
+    }
+    const pauseAdvHint =
+      this.pauseAdvHint ||
+      (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+        ? document.getElementById('pause-adv-hint')
+        : null);
+    if (pauseAdvHint) {
+      const nextHintHtml = isEndless
+        ? 'SHORTCUTS: <strong>[T]</strong> ARMORY • <strong>[P]</strong> AUTO-AI • <strong>[R/TAB]</strong> TARGET LOCK • <strong>[O]</strong> OVERDRIVE • <strong>[WASD]</strong> MOVE • <strong>[J/K/L/U/I]</strong> ACTIONS'
+        : 'SHORTCUTS: <strong>[T]</strong> SKILL TREE • <strong>[P]</strong> AUTO-AI • <strong>[R/TAB]</strong> TARGET LOCK • <strong>[WASD]</strong> MOVE • <strong>[J/K/L/U/I]</strong> ACTIONS';
+      if (pauseAdvHint.innerHTML !== nextHintHtml) {
+        pauseAdvHint.innerHTML = nextHintHtml;
+      }
+    }
     if (isAdv) {
       this.adventure?.renderActiveRelicsInspector?.();
+    }
+    if (isEndless && typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      const autoOn = Boolean(this.endless?.autoPlay);
+      const autoBtn = document.getElementById('adv-btn-autoplay');
+      const autoLbl = document.getElementById('adv-autoplay-label');
+      if (autoBtn) {
+        autoBtn.setAttribute?.('aria-pressed', String(autoOn));
+        autoBtn.classList?.toggle('is-autoplay-on', autoOn);
+      }
+      if (autoLbl) {
+        autoLbl.textContent = autoOn ? 'AI: ON' : 'AI: OFF';
+      }
+      const lockOn = Boolean(this.endless?.manualTargetLock ?? this.endless?.autoLockEnabled);
+      const pauseLockBtn = document.getElementById('adv-btn-pause-lock');
+      const pauseLockLbl = document.getElementById('adv-pause-lock-label');
+      if (pauseLockBtn) {
+        pauseLockBtn.setAttribute?.('aria-pressed', String(lockOn));
+        pauseLockBtn.classList?.toggle('is-lock-on', lockOn);
+      }
+      if (pauseLockLbl) {
+        pauseLockLbl.textContent = lockOn ? 'LOCK: ON' : 'LOCK: OFF';
+      }
     }
     this.syncMobileFullZoomUI?.();
     this.syncCrtUI?.();
     this.syncAudioMixerUI?.();
     const showPause = Boolean(this.isPaused && !this.isLandingOpen);
+    if (!showPause || !isEndless) {
+      this._clearEndlessResetConfirm?.();
+    }
+    this._syncAdvRestartButtonUI?.(isEndless);
     this.pauseModal?.classList.toggle('hidden', !showPause);
     this.btnGamePause?.setAttribute('aria-expanded', String(showPause));
     this.appEl?.classList.toggle('is-game-paused', showPause);
@@ -2369,6 +2481,7 @@ export class Game {
     if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'CHANGE HERO';
     if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
+    this._clearEndlessResetConfirm?.();
     this.appEl?.classList?.toggle(
       'is-adventure-active',
       Boolean(this.isSideScrollMode() && !this.isLandingOpen)
@@ -2377,6 +2490,11 @@ export class Game {
       'is-endless-active',
       Boolean(this.isEndlessMode() && !this.isLandingOpen)
     );
+    this.appEl?.classList?.remove('is-endless-boss-hud-visible');
+    if (this.appEl?.style?.setProperty) {
+      this._lastEndlessBossHudH = '0px';
+      this.appEl.style.setProperty('--endless-boss-hud-h', '0px');
+    }
     this.syncVsControlUI?.();
     this.syncTrainingLabUI?.();
     this.updateAdventureBossHUD?.();
@@ -2559,8 +2677,13 @@ export class Game {
     if (!this.isLandingOpen) {
       this.resetMatch();
     }
-    this.adventure?.syncControlDeckUI();
-    this.endless?.syncControlDeckUI?.();
+    if (this.isEndlessMode()) {
+      this.endless?.syncControlDeckUI?.();
+    } else {
+      this.appEl?.classList?.remove('is-endless-active');
+      this.appEl?.classList?.remove('is-endless-boss-hud-visible');
+      this.adventure?.syncControlDeckUI?.();
+    }
     this.syncPauseMenuUI();
   }
 
@@ -3853,6 +3976,10 @@ export class Game {
     ].filter(Boolean);
     this.pauseVsSection = document.getElementById('pause-vs-section');
     this.pauseAdvSection = document.getElementById('pause-adv-section');
+    this.pauseAdvSectionLabel = document.getElementById('pause-adv-section-label');
+    this.pauseAdvHint = document.getElementById('pause-adv-hint');
+    this.pauseAdvRelics = document.getElementById('pause-adv-relics');
+    this.advBtnRestart = document.getElementById('adv-btn-restart');
     this.btnVsPauseLandscape = document.getElementById('btn-vs-pause-landscape');
 
     this.btnVoice = document.getElementById('btn-voice');
@@ -4026,6 +4153,7 @@ export class Game {
         !this.isPaused &&
         !this.isMatchOver &&
         !this.isVsManualP1Active() &&
+        !this.isEndlessMode() &&
         !(this.victoryOverlay && !this.victoryOverlay.classList.contains('hidden')) &&
         !(this.isAdventureMode() && (this.adventure?.isSkillTreeOpen || this.adventure?.isRelicDraftOpen))
       ) {
@@ -4058,10 +4186,28 @@ export class Game {
         return;
       }
       if (this.victoryOverlay && !this.victoryOverlay.classList.contains('hidden')) return;
-      if (this.isEndlessMode() && this.endless?.shopUI?.isDrawerOpen?.()) {
-        e.preventDefault();
-        this.endless.shopUI.setDrawerOpen(false);
-        return;
+      if (this.isEndlessMode()) {
+        const hasBlockingModal = Boolean(
+          this.endless?.isBlockingModalOpen?.() ||
+            this.endless?.trialResult ||
+            this.endless?.offlineLootModal
+        );
+        if (hasBlockingModal) {
+          e.preventDefault();
+          if (typeof this.endless?.dismissActiveModal === 'function') {
+            this.endless.dismissActiveModal();
+          } else if (this.endless?.trialResult) {
+            this.endless.dismissTrialResult?.();
+          } else if (this.endless?.offlineLootModal) {
+            this.endless.claimOfflineLoot?.() ?? this.endless.dismissOfflineLoot?.();
+          }
+          return;
+        }
+        if (this.endless?.shopUI?.isDrawerOpen?.()) {
+          e.preventDefault();
+          this.endless.shopUI.setDrawerOpen(false);
+          return;
+        }
       }
       if (this.isAdventureMode() && this.adventure?.isSkillTreeOpen) {
         e.preventDefault();
@@ -4092,8 +4238,15 @@ export class Game {
           const rect = this.canvas.getBoundingClientRect();
           if (rect.width > 0 && rect.height > 0 && this.renderer) {
             const r = this.renderer;
-            const sx = ((e.clientX - rect.left) / rect.width) * r.width;
-            const sy = ((e.clientY - rect.top) / rect.height) * r.height;
+            const isCssRotated = Boolean(
+              document.documentElement?.classList?.contains?.('is-css-rotated-landscape')
+            );
+            const sx = isCssRotated
+              ? ((e.clientY - rect.top) / rect.height) * r.width
+              : ((e.clientX - rect.left) / rect.width) * r.width;
+            const sy = isCssRotated
+              ? ((rect.right - e.clientX) / rect.width) * r.height
+              : ((e.clientY - rect.top) / rect.height) * r.height;
             const safeZoom = Math.max(0.35, r.camZoom || 1);
             const screenAnchorY = Math.round(
               r.height * (r.isMobileLandscape ? 0.63 : r.isMobilePortrait ? 0.54 : r.isMobile ? 0.58 : 0.68)
@@ -5658,11 +5811,26 @@ export class Game {
     const advBtnRestart = document.getElementById('adv-btn-restart');
     if (advBtnRestart) {
       advBtnRestart.addEventListener('click', () => {
-        this.setPaused(false, false);
         if (this.isEndlessMode()) {
-          this.endless?.resetEndlessRun?.();
+          const now = Date.now();
+          if (this._endlessResetConfirmUntil && now < this._endlessResetConfirmUntil) {
+            this._clearEndlessResetConfirm();
+            this._syncAdvRestartButtonUI(true);
+            this.setPaused(false, false);
+            this.endless?.resetEndlessRun?.();
+            return;
+          }
+          this._clearEndlessResetConfirm();
+          this._endlessResetConfirmUntil = now + 4000;
+          this._syncAdvRestartButtonUI(true);
+          this.audio?.play?.('clock_gear', 600);
+          this._endlessResetConfirmTimer = setTimeout(() => {
+            this._clearEndlessResetConfirm();
+            this._syncAdvRestartButtonUI(Boolean(this.isEndlessMode?.()));
+          }, 4000);
           return;
         }
+        this.setPaused(false, false);
         this.resetMatch();
       });
     }
@@ -7094,8 +7262,11 @@ export class Game {
     } else {
       this.audio?.ensureCombatWavFiles?.();
     }
-    this.adventure?.syncControlDeckUI();
-    this.endless?.syncControlDeckUI?.();
+    if (this.isEndlessMode()) {
+      this.endless?.syncControlDeckUI?.();
+    } else {
+      this.adventure?.syncControlDeckUI?.();
+    }
     this.syncVsControlUI?.();
     this.syncPauseMenuUI?.();
     if (playSound) {
@@ -7124,10 +7295,18 @@ export class Game {
       this.appEl.classList.add('is-landing-open');
       this.appEl.classList.remove('is-adventure-active');
       this.appEl.classList.remove('is-endless-active');
+      this.appEl.classList.remove('is-endless-boss-hud-visible');
+      if (this.appEl.style?.setProperty) {
+        this._lastEndlessBossHudH = '0px';
+        this.appEl.style.setProperty('--endless-boss-hud-h', '0px');
+      }
     }
     this.updateAdventureBossHUD?.();
-    this.adventure?.syncControlDeckUI();
-    this.endless?.syncControlDeckUI?.();
+    if (this.isEndlessMode()) {
+      this.endless?.syncControlDeckUI?.();
+    } else {
+      this.adventure?.syncControlDeckUI?.();
+    }
     this.clearVsManualInputs?.();
     this.dismissVsKeyHintBar?.(true);
     this.syncVsControlUI?.();
@@ -9421,6 +9600,7 @@ export class Game {
         : null);
     if (!els || !els.root) return;
 
+    const isEndless = Boolean(this.isEndlessMode?.());
     const adv = this.getActiveSideScrollManager?.() || this.adventure;
     const boss = adv?.bossEntity || null;
     const warningActive = Boolean(adv && (adv.bossWarningTimer || 0) > 0);
@@ -9430,7 +9610,19 @@ export class Game {
     );
 
     els.root.classList?.toggle('hidden', !showBossHud);
+    const endlessBossVisible = Boolean(isEndless && showBossHud);
+    if (this.appEl) {
+      this.appEl.classList?.toggle('is-endless-boss-hud-visible', endlessBossVisible);
+      if (!endlessBossVisible && this.appEl.style?.setProperty) {
+        if (this._lastEndlessBossHudH !== '0px') {
+          this._lastEndlessBossHudH = '0px';
+          this.appEl.style.setProperty('--endless-boss-hud-h', '0px');
+        }
+      }
+    }
     if (!showBossHud) {
+      this._wasBossHudVisible = false;
+      this._lastBossMeasureSig = '';
       return;
     }
 
@@ -9501,8 +9693,84 @@ export class Game {
     els.root.classList?.toggle('is-phase-2', !isWarningOnly && phaseNum === 2);
     els.root.classList?.toggle('is-phase-3', !isWarningOnly && phaseNum >= 3);
 
-    // Keep Mobile Portrait Boss Plaque cleanly below Zone/Spirit/XP strip with 0 HUD overlap
-    if (els.root.style?.setProperty) {
+    // Keep Mobile Portrait Boss Plaque cleanly below top HUD / Endless Top Stack with 0 overlap
+    if (isEndless) {
+      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const hudRoot =
+        typeof document !== 'undefined' && typeof document.getElementById === 'function'
+          ? document.getElementById('endless-hud-root')
+          : null;
+      const measureSig = `${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : ''}|${Boolean(
+        hudRoot?.classList?.contains?.('is-trial-active')
+      )}|${Boolean(hudRoot?.classList?.contains?.('is-drawer-open'))}|${Boolean(
+        document?.documentElement?.classList?.contains?.('is-mobile-landscape')
+      )}`;
+      const needsMeasure =
+        !this._wasBossHudVisible ||
+        this._lastBossMeasureSig !== measureSig ||
+        nowMs - (this._lastBossMeasureAt || 0) >= 240;
+      if (needsMeasure) {
+        this._wasBossHudVisible = true;
+        this._lastBossMeasureSig = measureSig;
+        this._lastBossMeasureAt = nowMs;
+        const isCssRotated = Boolean(
+          typeof document !== 'undefined' &&
+            document.documentElement?.classList?.contains?.('is-css-rotated-landscape')
+        );
+        const appRect =
+          typeof this.appEl?.getBoundingClientRect === 'function'
+            ? this.appEl.getBoundingClientRect()
+            : null;
+        const appTop = appRect && Number.isFinite(appRect.top) ? appRect.top : 0;
+
+        let endlessTopBottom = 0;
+        const topStackEl =
+          typeof document !== 'undefined' && typeof document.querySelector === 'function'
+            ? document.querySelector('#endless-hud-root .endless-top-stack') ||
+              document.querySelector('.endless-top-stack')
+            : null;
+        const shopToggleEl =
+          typeof document !== 'undefined' && typeof document.getElementById === 'function'
+            ? document.getElementById('endless-shop-toggle')
+            : null;
+        for (const el of [topStackEl, shopToggleEl]) {
+          if (el && typeof el.getBoundingClientRect === 'function') {
+            const r = el.getBoundingClientRect();
+            if (r && r.width > 0 && r.height > 0 && Number.isFinite(r.bottom)) {
+              endlessTopBottom = Math.max(endlessTopBottom, r.bottom - appTop);
+            }
+          }
+        }
+        if (els.root.style?.setProperty) {
+          const portraitTopPx =
+            endlessTopBottom > 40
+              ? `${Math.ceil(endlessTopBottom + 6)}px`
+              : `${Math.round((this.renderer?.getHudBottomY?.() || 56) + 118)}px`;
+          if (this._lastBossPortraitTopStr !== portraitTopPx) {
+            this._lastBossPortraitTopStr = portraitTopPx;
+            els.root.style.setProperty('--adv-boss-portrait-top', portraitTopPx);
+          }
+        }
+
+        if (this.appEl?.style?.setProperty) {
+          const bossHudRect =
+            typeof els.root.getBoundingClientRect === 'function'
+              ? els.root.getBoundingClientRect()
+              : null;
+          const bossLogicalH = bossHudRect
+            ? isCssRotated
+              ? bossHudRect.width
+              : bossHudRect.height
+            : 0;
+          const nextBossHudH = bossLogicalH > 4 ? `${Math.ceil(bossLogicalH + 6)}px` : '58px';
+          if (this._lastEndlessBossHudH !== nextBossHudH) {
+            this._lastEndlessBossHudH = nextBossHudH;
+            this.appEl.style.setProperty('--endless-boss-hud-h', nextBossHudH);
+          }
+        }
+      }
+    } else if (els.root.style?.setProperty) {
+      this._wasBossHudVisible = true;
       const stripRect = adv?._hudStripRect;
       const portraitTop =
         stripRect && Number.isFinite(stripRect.y) && Number.isFinite(stripRect.h)
@@ -9511,7 +9779,11 @@ export class Game {
             ? Math.round(this.renderer.getHudBottomY() + 42)
             : null;
       if (portraitTop && portraitTop > 40) {
-        els.root.style.setProperty('--adv-boss-portrait-top', `${portraitTop}px`);
+        const nextPortraitTopStr = `${portraitTop}px`;
+        if (this._lastBossPortraitTopStr !== nextPortraitTopStr) {
+          this._lastBossPortraitTopStr = nextPortraitTopStr;
+          els.root.style.setProperty('--adv-boss-portrait-top', nextPortraitTopStr);
+        }
       }
     }
 
