@@ -273,6 +273,194 @@ const DEFAULT_SQUAD_FORMATIONS = Object.freeze([
   })
 ]);
 
+const TRIAL_VAULT_SVG =
+  '<svg class="endless-px-svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="4" y="1" width="2" height="2" fill="#fef08a"/>' +
+  '<rect x="7" y="0" width="3" height="3" fill="#facc15"/>' +
+  '<rect x="8" y="1" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="10" y="1" width="2" height="2" fill="#fde047"/>' +
+  '<rect x="2" y="3" width="12" height="2" fill="#d97706"/>' +
+  '<rect x="1" y="4" width="14" height="3" fill="#92400e"/>' +
+  '<rect x="2" y="4" width="12" height="1" fill="#facc15"/>' +
+  '<rect x="3" y="5" width="10" height="2" fill="#78350f"/>' +
+  '<rect x="1" y="7" width="14" height="7" fill="#78350f"/>' +
+  '<rect x="2" y="7" width="12" height="1" fill="#fef08a"/>' +
+  '<rect x="4" y="8" width="8" height="5" fill="#451a03"/>' +
+  '<rect x="2" y="4" width="2" height="9" fill="#facc15"/>' +
+  '<rect x="12" y="4" width="2" height="9" fill="#eab308"/>' +
+  '<rect x="6" y="6" width="4" height="5" fill="#facc15"/>' +
+  '<rect x="7" y="7" width="2" height="3" fill="#f43f5e"/>' +
+  '<rect x="7" y="7" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="1" y="13" width="14" height="2" fill="#b45309"/>' +
+  '<rect x="2" y="13" width="12" height="1" fill="#facc15"/>' +
+  '</svg>';
+
+const TRIAL_MALPHAS_SVG =
+  '<svg class="endless-px-svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="1" y="1" width="2" height="3" fill="#e2e8f0"/>' +
+  '<rect x="2" y="3" width="2" height="3" fill="#94a3b8"/>' +
+  '<rect x="13" y="1" width="2" height="3" fill="#e2e8f0"/>' +
+  '<rect x="12" y="3" width="2" height="3" fill="#94a3b8"/>' +
+  '<rect x="6" y="1" width="1" height="2" fill="#facc15"/>' +
+  '<rect x="9" y="1" width="1" height="2" fill="#facc15"/>' +
+  '<rect x="7" y="2" width="2" height="2" fill="#f43f5e"/>' +
+  '<rect x="4" y="4" width="8" height="2" fill="#be123c"/>' +
+  '<rect x="3" y="5" width="10" height="5" fill="#9f1239"/>' +
+  '<rect x="4" y="5" width="8" height="4" fill="#e11d48"/>' +
+  '<rect x="4" y="6" width="8" height="1" fill="#4c0519"/>' +
+  '<rect x="4" y="7" width="3" height="2" fill="#facc15"/>' +
+  '<rect x="5" y="7" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="9" y="7" width="3" height="2" fill="#facc15"/>' +
+  '<rect x="10" y="7" width="1" height="1" fill="#ffffff"/>' +
+  '<rect x="4" y="10" width="8" height="3" fill="#881337"/>' +
+  '<rect x="5" y="10" width="6" height="2" fill="#4c0519"/>' +
+  '<rect x="5" y="11" width="1" height="3" fill="#f8fafc"/>' +
+  '<rect x="7" y="11" width="2" height="2" fill="#fda4af"/>' +
+  '<rect x="10" y="11" width="1" height="3" fill="#f8fafc"/>' +
+  '<rect x="5" y="14" width="6" height="1" fill="#be123c"/>' +
+  '</svg>';
+
+const TRIAL_HORDE_SVG =
+  '<svg class="endless-px-svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' +
+  '<rect x="5" y="1" width="6" height="2" fill="#c084fc"/>' +
+  '<rect x="3" y="2" width="10" height="2" fill="#9333ea"/>' +
+  '<rect x="2" y="4" width="12" height="8" fill="#7e22ce"/>' +
+  '<rect x="3" y="12" width="10" height="2" fill="#9333ea"/>' +
+  '<rect x="5" y="13" width="6" height="2" fill="#c084fc"/>' +
+  '<rect x="4" y="4" width="8" height="8" fill="#1e1b4b"/>' +
+  '<rect x="5" y="3" width="6" height="10" fill="#3b0764"/>' +
+  '<rect x="5" y="5" width="6" height="6" fill="#0f172a"/>' +
+  '<rect x="3" y="3" width="2" height="2" fill="#e9d5ff"/>' +
+  '<rect x="11" y="3" width="2" height="2" fill="#e9d5ff"/>' +
+  '<rect x="5" y="5" width="2" height="2" fill="#38bdf8"/>' +
+  '<rect x="9" y="5" width="2" height="2" fill="#38bdf8"/>' +
+  '<rect x="6" y="6" width="4" height="4" fill="#c084fc"/>' +
+  '<rect x="7" y="7" width="2" height="2" fill="#ffffff"/>' +
+  '<rect x="5" y="9" width="2" height="2" fill="#38bdf8"/>' +
+  '<rect x="9" y="9" width="2" height="2" fill="#38bdf8"/>' +
+  '<rect x="3" y="11" width="2" height="2" fill="#e9d5ff"/>' +
+  '<rect x="11" y="11" width="2" height="2" fill="#e9d5ff"/>' +
+  '<rect x="1" y="6" width="1" height="2" fill="#facc15"/>' +
+  '<rect x="14" y="8" width="1" height="2" fill="#38bdf8"/>' +
+  '</svg>';
+
+const TRIAL_SVG_MAP = Object.freeze({
+  gold_vault: TRIAL_VAULT_SVG,
+  malphas_gauntlet: TRIAL_MALPHAS_SVG,
+  abyssal_horde: TRIAL_HORDE_SVG
+});
+
+const DEFAULT_TRIAL_DEFS = Object.freeze([
+  Object.freeze({
+    id: 'gold_vault',
+    name: 'GILDED VAULT SPRINT',
+    shortName: 'GOLD VAULT',
+    durationSec: 30,
+    cooldownSec: 30,
+    accentHex: '#facc15',
+    glowHex: '#fef08a',
+    rewardTag: 'MASSIVE GOLD JACKPOT',
+    desc: '30S non-stop Treasure Goblins and Gold Chests for huge Gold jackpots.'
+  }),
+  Object.freeze({
+    id: 'malphas_gauntlet',
+    name: 'COLOSSAL MALPHAS GAUNTLET',
+    shortName: 'MALPHAS RUSH',
+    durationSec: 45,
+    cooldownSec: 30,
+    accentHex: '#f43f5e',
+    glowHex: '#fda4af',
+    rewardTag: 'ASTRAL SHARDS + MYTHIC DUST',
+    desc: '45S pure DPS check vs Behemoth Malphas paying Shards and Forge Dust per damage tier.'
+  }),
+  Object.freeze({
+    id: 'abyssal_horde',
+    name: 'ABYSSAL HORDE SURVIVAL',
+    shortName: 'HORDE SURVIVAL',
+    durationSec: 45,
+    cooldownSec: 30,
+    accentHex: '#c084fc',
+    glowHex: '#e9d5ff',
+    rewardTag: 'GUARANTEED HEROIC+ GEAR',
+    desc: '45S dense monster swarm awarding guaranteed Heroic, Sovereign or Mythic Gear.'
+  })
+]);
+
+const TRIAL_RARITY_COLORS = Object.freeze({
+  common: '#94a3b8',
+  arcane: '#38bdf8',
+  heroic: '#c084fc',
+  sovereign: '#facc15',
+  mythic: '#f43f5e'
+});
+
+function getTrialSvg(trialId) {
+  return TRIAL_SVG_MAP[trialId] || TRIAL_VAULT_SVG;
+}
+
+function formatTrialBestScore(trial) {
+  const score = Math.max(0, Number(trial?.bestScore) || 0);
+  if (score <= 0) return 'BEST: --';
+  const rawFmt = trial?.formattedBestScore
+    ? String(trial.formattedBestScore).trim().toUpperCase()
+    : formatEndlessNumber(score).toUpperCase();
+  if (trial?.id === 'gold_vault') {
+    const tag = rawFmt.endsWith('G') ? rawFmt : `${rawFmt}G`;
+    return `BEST: ${tag}`;
+  }
+  if (trial?.id === 'malphas_gauntlet') {
+    return `BEST: ${rawFmt} DMG`;
+  }
+  if (trial?.id === 'abyssal_horde') {
+    return `BEST: ${rawFmt} KILLS`;
+  }
+  return `BEST: ${rawFmt}`;
+}
+
+function formatTrialHudScore(active) {
+  if (!active || typeof active !== 'object') return '';
+  if (active.id === 'gold_vault') {
+    const goldStr = String(active.formattedGoldEarned || formatEndlessNumber(active.goldEarned || 0)).toUpperCase();
+    const gobs = Math.max(0, Math.floor(Number(active.goblinsSlain) || 0));
+    const chests = Math.max(0, Math.floor(Number(active.chestsCracked) || 0));
+    if (chests > 0) {
+      return `GOLD +${goldStr} | GOB ${gobs} | CHEST ${chests}`;
+    }
+    return `GOLD +${goldStr} | GOBLINS ${gobs}`;
+  }
+  if (active.id === 'malphas_gauntlet') {
+    const dmgStr = String(active.formattedDamageDealt || formatEndlessNumber(active.damageDealt || 0)).toUpperCase();
+    const tier = Math.max(0, Math.floor(Number(active.currentTier) || 0));
+    return `DMG ${dmgStr} | TIER ${tier}`;
+  }
+  const kills = Math.max(0, Math.floor(Number(active.kills) || 0));
+  if (active.id === 'abyssal_horde') {
+    const tierTag = kills >= 28 ? 'MYTHIC' : kills >= 12 ? 'SOVEREIGN' : 'HEROIC';
+    return `KILLS ${kills} | ${tierTag}`;
+  }
+  return `KILLS ${kills}`;
+}
+
+function formatTrialResultPerf(res) {
+  if (!res || typeof res !== 'object') return '';
+  const usedSec = Math.max(0, Number(res.durationUsedSec) || 0);
+  const durTag = `${usedSec.toFixed(1)}S`;
+  if (res.trialId === 'gold_vault') {
+    const gobs = Math.max(0, Math.floor(Number(res.goblinsSlain) || 0));
+    const chests = Math.max(0, Math.floor(Number(res.chestsCracked) || 0));
+    return `GOBLINS ${gobs} | CHESTS ${chests} | ${durTag}`;
+  }
+  if (res.trialId === 'malphas_gauntlet') {
+    const dmgStr = String(
+      res.formattedDamageDealt || res.formattedDamage || formatEndlessNumber(res.damageDealt || 0)
+    ).toUpperCase();
+    const tier = Math.max(0, Math.floor(Number(res.tierReached) || 0));
+    return `DMG ${dmgStr} | TIER ${tier} | ${durTag}`;
+  }
+  const kills = Math.max(0, Math.floor(Number(res.kills) || 0));
+  return `MONSTERS SLAIN ${kills} | ${durTag}`;
+}
+
 const GEAR_SLOT_ORDER = Object.freeze(['weapon', 'armor', 'amulet', 'ring']);
 
 const GEAR_SLOT_DEFAULTS = Object.freeze({
@@ -871,13 +1059,13 @@ const ENDLESS_SHOP_CSS = `
   color: #ffffff;
 }
 
-/* Tab Bar */
+/* Tab Bar (6 Single-Row Tabs: ITEMS | GEAR | ALLIES | ASCEND | TRIALS | STATS) */
 .endless-tab-bar {
   display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
   gap: 2px;
-  padding: 5px 5px;
+  padding: 5px 4px;
   background: rgba(6, 8, 15, 0.94);
   border-bottom: 1px solid rgba(212, 175, 55, 0.35);
   flex-shrink: 0;
@@ -885,15 +1073,17 @@ const ENDLESS_SHOP_CSS = `
 }
 
 .endless-tab-btn {
-  flex: 0.92 1 0;
+  position: relative;
+  flex: 0.96 1 0;
   min-width: 0;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 2px;
   padding: 6px 2px;
   font-family: inherit;
-  font-size: 0.34rem;
+  font-size: 0.31rem;
   letter-spacing: 0.01em;
   color: #94a3b8;
   background: rgba(13, 17, 30, 0.9);
@@ -905,19 +1095,29 @@ const ENDLESS_SHOP_CSS = `
 }
 
 .endless-tab-btn[data-tab-id="gear"] {
-  flex: 0.96 1 0;
+  flex: 0.84 1 0;
   border-color: rgba(250, 204, 21, 0.45);
   color: #fde68a;
 }
 
 .endless-tab-btn[data-tab-id="companions"] {
-  flex: 1.56 1 0;
+  flex: 1.08 1 0;
 }
 
 .endless-tab-btn[data-tab-id="ascend"] {
-  flex: 1.12 1 0;
+  flex: 1.08 1 0;
   border-color: rgba(168, 85, 247, 0.55);
   color: #d8b4fe;
+}
+
+.endless-tab-btn[data-tab-id="trials"] {
+  flex: 1.08 1 0;
+  border-color: rgba(244, 63, 94, 0.55);
+  color: #fda4af;
+}
+
+.endless-tab-btn[data-tab-id="stats"] {
+  flex: 0.96 1 0;
 }
 
 .endless-tab-label {
@@ -927,9 +1127,13 @@ const ENDLESS_SHOP_CSS = `
 }
 
 .endless-tab-dot {
-  width: 6px;
-  height: 6px;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
   flex-shrink: 0;
+  pointer-events: none;
   background: #c084fc;
   border: 1px solid #fef08a;
   box-shadow: 0 0 8px #c084fc, 0 0 3px #facc15;
@@ -940,6 +1144,12 @@ const ENDLESS_SHOP_CSS = `
   background: #facc15;
   border-color: #fef08a;
   box-shadow: 0 0 8px #facc15, 0 0 3px #34d399;
+}
+
+.endless-tab-dot.is-trials {
+  background: #f43f5e;
+  border-color: #fef08a;
+  box-shadow: 0 0 8px #f43f5e, 0 0 3px #facc15;
 }
 
 .endless-tab-dot.hidden {
@@ -969,6 +1179,15 @@ const ENDLESS_SHOP_CSS = `
   box-shadow:
     inset 0 1px 0 rgba(254, 240, 138, 0.35),
     0 0 8px rgba(168, 85, 247, 0.45);
+}
+
+.endless-tab-btn[data-tab-id="trials"].is-active {
+  color: #fffbeb;
+  border-color: #fb7185;
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.95) 0%, rgba(42, 10, 18, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.35),
+    0 0 8px rgba(244, 63, 94, 0.48);
 }
 
 /* Drawer Body & Panels */
@@ -2037,7 +2256,8 @@ const ENDLESS_SHOP_CSS = `
 .endless-gear-slot-card.is-buy-pulse,
 .endless-gear-bag-row.is-buy-pulse,
 .endless-bounty-pill.is-buy-pulse,
-.endless-merchant-card.is-buy-pulse {
+.endless-merchant-card.is-buy-pulse,
+.endless-trial-card.is-buy-pulse {
   animation: endlessBuyPulse 0.44s ease-out;
 }
 
@@ -2050,7 +2270,8 @@ const ENDLESS_SHOP_CSS = `
 .endless-gear-act-btn.is-buy-pulse,
 .endless-merchant-buy-btn.is-buy-pulse,
 .endless-formation-btn.is-buy-pulse,
-.endless-overdrive-btn.is-buy-pulse {
+.endless-overdrive-btn.is-buy-pulse,
+.endless-trial-enter-btn.is-buy-pulse {
   animation: endlessBuyBtnPulse 0.38s ease-out;
 }
 
@@ -5721,6 +5942,1249 @@ html.is-mobile-landscape .endless-overdrive-label {
     font-size: 0.29rem;
   }
 }
+
+/* =========================================================================
+   WAVE 10: CHALLENGE TRIALS TAB, LIVE COUNTDOWN HUD, REWARD MODAL & 6-TAB POLISH
+   ========================================================================= */
+#endless-hud-root.is-trial-active .endless-boss-controls {
+  display: none !important;
+}
+
+#endless-hud-root.is-trial-active.is-drawer-open .endless-events-dock {
+  top: max(154px, calc(env(safe-area-inset-top) + 150px));
+}
+
+/* Active Trial Live Countdown HUD Strip (centered directly under .endless-top-bar) */
+.endless-trial-hud {
+  display: flex;
+  flex-direction: column;
+  width: min(444px, 100%);
+  max-width: 100%;
+  background: linear-gradient(180deg, rgba(20, 14, 34, 0.96) 0%, rgba(8, 10, 20, 0.98) 100%);
+  border: 1.5px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 5px;
+  overflow: hidden;
+  pointer-events: auto;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.28),
+    0 0 14px rgba(250, 204, 21, 0.28),
+    0 5px 14px rgba(0, 0, 0, 0.88);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.endless-trial-hud.hidden {
+  display: none !important;
+}
+
+.endless-trial-hud.is-urgent {
+  border-color: #f43f5e;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 202, 202, 0.36),
+    0 0 16px rgba(244, 63, 94, 0.68),
+    0 5px 14px rgba(0, 0, 0, 0.9);
+  animation: endlessTrialUrgentPulse 0.72s ease-in-out infinite;
+}
+
+@keyframes endlessTrialUrgentPulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.16);
+  }
+}
+
+.endless-trial-hud-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 7px;
+  min-width: 0;
+}
+
+.endless-trial-hud-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: #070912;
+  border: 1px solid rgba(250, 204, 21, 0.68);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.endless-trial-hud-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.endless-trial-hud-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.endless-trial-hud-name {
+  font-size: 0.38rem;
+  color: #fef08a;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.endless-trial-hud-timer {
+  font-size: 0.40rem;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(250, 204, 21, 0.72);
+  border-radius: 3px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-trial-hud.is-urgent .endless-trial-hud-timer {
+  color: #fff1f2;
+  background: rgba(159, 18, 57, 0.9);
+  border-color: #fda4af;
+}
+
+.endless-trial-hud-score {
+  font-size: 0.33rem;
+  color: #e2e8f0;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-trial-exit-btn {
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 0.34rem;
+  letter-spacing: 0.04em;
+  color: #fecaca;
+  background: linear-gradient(180deg, #7f1d1d 0%, #450a0a 100%);
+  border: 1.5px solid #f87171;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+  transition: filter 0.12s ease, transform 0.08s ease;
+}
+
+.endless-trial-exit-btn:hover {
+  filter: brightness(1.14);
+  color: #ffffff;
+}
+
+.endless-trial-exit-btn:active {
+  transform: translateY(1px);
+}
+
+.endless-trial-hud-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: #050712;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.endless-trial-hud-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  background: #facc15;
+  transition: width 0.09s linear;
+}
+
+/* TRIALS Tab Panel */
+.endless-trials-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, rgba(28, 15, 34, 0.96) 0%, rgba(9, 11, 21, 0.98) 100%);
+  border-bottom: 1.5px solid rgba(212, 175, 55, 0.42);
+  flex-shrink: 0;
+}
+
+.endless-trials-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.endless-trials-title {
+  font-size: 0.44rem;
+  color: #fde047;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-trials-cleared {
+  font-size: 0.33rem;
+  color: #e9d5ff;
+  background: rgba(88, 28, 135, 0.56);
+  border: 1px solid rgba(192, 132, 252, 0.65);
+  border-radius: 3px;
+  padding: 2px 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.endless-trials-sub {
+  font-size: 0.29rem;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-trials-list {
+  gap: 7px;
+}
+
+.endless-trial-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px;
+  background: linear-gradient(180deg, rgba(16, 20, 36, 0.96) 0%, rgba(8, 10, 20, 0.98) 100%);
+  border: 1.5px solid rgba(100, 116, 139, 0.55);
+  border-left: 3px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  min-width: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.endless-trial-card.is-ready {
+  border-color: rgba(212, 175, 55, 0.72);
+}
+
+.endless-trial-card.is-running {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 0 14px rgba(250, 204, 21, 0.22),
+    0 0 10px rgba(250, 204, 21, 0.34);
+}
+
+.endless-trial-card.is-cooldown {
+  opacity: 0.86;
+}
+
+.endless-trial-card-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.endless-trial-icon-wrap {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #070912;
+  border: 1.5px solid #d4af37;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.endless-trial-icon-wrap svg {
+  width: 22px;
+  height: 22px;
+}
+
+.endless-trial-title-block {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.endless-trial-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  min-width: 0;
+}
+
+.endless-trial-name {
+  font-size: 0.39rem;
+  color: #f8fafc;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.endless-trial-dur-pill {
+  font-size: 0.31rem;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(212, 175, 55, 0.65);
+  color: #fef08a;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.endless-trial-reward-pill {
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: 0.29rem;
+  letter-spacing: 0.02em;
+  padding: 2px 5px;
+  border-radius: 2px;
+  background: rgba(8, 11, 22, 0.94);
+  border: 1px solid #facc15;
+  color: #fef08a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-trial-desc {
+  font-size: 0.30rem;
+  color: #cbd5e1;
+  line-height: 1.38;
+  word-break: break-word;
+}
+
+.endless-trial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(71, 85, 105, 0.34);
+  min-width: 0;
+}
+
+.endless-trial-best {
+  font-size: 0.31rem;
+  color: #93c5fd;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.endless-trial-enter-btn {
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 0.35rem;
+  letter-spacing: 0.03em;
+  color: #fffbeb;
+  background: linear-gradient(180deg, #92400e 0%, #451a03 100%);
+  border: 1.5px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  text-shadow: 0 1px 0 #000;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.35);
+  transition: filter 0.12s ease, transform 0.08s ease;
+}
+
+.endless-trial-enter-btn:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.endless-trial-enter-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.endless-trial-enter-btn:disabled {
+  color: #64748b;
+  background: linear-gradient(180deg, #161b2a 0%, #0d101b 100%);
+  border-color: #334155;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.endless-trial-enter-btn.is-active-trial,
+.endless-trial-enter-btn.is-active-trial:disabled {
+  color: #fef08a;
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.92) 0%, rgba(56, 12, 20, 0.96) 100%);
+  border-color: #fb7185;
+  opacity: 1;
+}
+
+/* Trial Reward Summary Modal (z-index: 49, matching Offline Loot Modal gothic style) */
+.endless-trial-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(4, 6, 14, 0.80);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.endless-trial-modal.hidden {
+  display: none !important;
+}
+
+.endless-trial-modal-card {
+  width: min(464px, calc(100% - 8px));
+  max-height: calc(100% - 10px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px 15px;
+  background: linear-gradient(180deg, rgba(18, 22, 42, 0.98) 0%, rgba(8, 10, 20, 0.99) 100%);
+  border: 2px solid #d4af37;
+  outline: 2px solid #000;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.36),
+    inset 0 0 24px rgba(212, 175, 55, 0.16),
+    0 14px 40px rgba(0, 0, 0, 0.96);
+  animation: endlessModalPop 0.22s ease-out;
+}
+
+.endless-trial-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid rgba(212, 175, 55, 0.45);
+}
+
+.endless-trial-modal-status {
+  padding: 2px 8px;
+  font-size: 0.35rem;
+  letter-spacing: 0.06em;
+  color: #090c14;
+  background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
+  border: 1px solid #ffffff;
+  outline: 1px solid #000;
+  border-radius: 3px;
+}
+
+.endless-trial-modal-status.is-exited {
+  color: #e2e8f0;
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border-color: #94a3b8;
+}
+
+.endless-trial-modal-title-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  max-width: 100%;
+}
+
+.endless-trial-modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-trial-modal-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.endless-trial-modal-title {
+  font-size: 0.56rem;
+  color: #fef08a;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 0 #000;
+  line-height: 1.3;
+}
+
+.endless-trial-modal-perf {
+  padding: 3px 8px;
+  font-size: 0.35rem;
+  color: #bae6fd;
+  background: rgba(12, 18, 34, 0.94);
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  border-radius: 3px;
+  letter-spacing: 0.03em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endless-trial-modal-rewards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.endless-trial-reward-plaque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: linear-gradient(180deg, rgba(14, 18, 34, 0.96) 0%, rgba(7, 9, 18, 0.98) 100%);
+  border: 1.5px solid #d4af37;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.endless-trial-reward-plaque.is-gold {
+  border-color: #facc15;
+  background: linear-gradient(180deg, rgba(44, 32, 10, 0.92) 0%, rgba(15, 11, 5, 0.98) 100%);
+}
+
+.endless-trial-reward-plaque.is-shard {
+  border-color: #c084fc;
+  background: linear-gradient(180deg, rgba(35, 18, 66, 0.92) 0%, rgba(12, 10, 26, 0.98) 100%);
+}
+
+.endless-trial-reward-plaque.is-dust {
+  border-color: #38bdf8;
+  background: linear-gradient(180deg, rgba(12, 36, 56, 0.92) 0%, rgba(7, 13, 24, 0.98) 100%);
+}
+
+.endless-trial-reward-plaque.is-empty {
+  opacity: 0.48;
+  border-color: #334155;
+}
+
+.endless-trial-reward-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.endless-trial-reward-ico canvas {
+  width: 24px;
+  height: 24px;
+}
+
+.endless-trial-reward-ico svg {
+  width: 18px;
+  height: 18px;
+}
+
+.endless-trial-reward-val {
+  font-size: 0.42rem;
+  color: #fef08a;
+  text-shadow: 0 1px 0 #000;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.endless-trial-reward-plaque.is-shard .endless-trial-reward-val {
+  color: #e9d5ff;
+}
+
+.endless-trial-reward-plaque.is-dust .endless-trial-reward-val {
+  color: #7dd3fc;
+}
+
+.endless-trial-reward-lbl {
+  font-size: 0.27rem;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.endless-trial-modal-gear {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px;
+  background: rgba(9, 12, 24, 0.94);
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  border-radius: 4px;
+}
+
+.endless-trial-modal-gear.hidden {
+  display: none !important;
+}
+
+.endless-trial-modal-gear-head {
+  font-size: 0.32rem;
+  color: #e9d5ff;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.endless-trial-modal-gear-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+
+.endless-trial-gear-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 4px 7px;
+  background: rgba(14, 18, 34, 0.96);
+  border: 1.5px solid #c084fc;
+  border-radius: 3px;
+  min-width: 0;
+  text-shadow: 0 1px 0 #000;
+}
+
+.endless-trial-gear-pill-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.endless-trial-gear-pill-rarity {
+  font-size: 0.28rem;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.endless-trial-gear-pill-name {
+  font-size: 0.31rem;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.endless-trial-collect-btn {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.46rem;
+  letter-spacing: 0.05em;
+  color: #fffbeb;
+  background: linear-gradient(180deg, #b45309 0%, #78350f 65%, #451a03 100%);
+  border: 2px solid #facc15;
+  outline: 1px solid #000;
+  border-radius: 4px;
+  cursor: pointer;
+  text-shadow: 0 1px 0 #000;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.55),
+    0 0 14px rgba(250, 204, 21, 0.48);
+  transition: transform 0.08s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.endless-trial-collect-btn:hover {
+  border-color: #fef08a;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.72),
+    0 0 18px rgba(250, 204, 21, 0.76);
+}
+
+.endless-trial-collect-btn:active {
+  transform: translateY(1px);
+}
+
+/* Wave 10 Responsive Ergonomics: Mobile Landscape (844x390, 332px drawer) */
+@media (max-height: 500px) {
+  .endless-tab-bar {
+    padding: 3px 3px;
+    gap: 2px;
+  }
+
+  .endless-tab-btn {
+    font-size: 0.27rem;
+    letter-spacing: 0;
+    padding: 4px 1px;
+    min-height: 22px;
+  }
+
+  .endless-tab-dot {
+    top: 1px;
+    right: 1px;
+    width: 4px;
+    height: 4px;
+  }
+
+  #endless-hud-root.is-trial-active .endless-party-hud {
+    top: max(112px, calc(env(safe-area-inset-top) + 108px));
+  }
+
+  #endless-hud-root.is-trial-active.is-drawer-open .endless-trial-hud {
+    align-self: flex-start;
+    max-width: calc(100vw - 356px);
+  }
+
+  .endless-trial-hud {
+    width: min(410px, 100%);
+  }
+
+  .endless-trial-hud-row {
+    padding: 2px 6px;
+    gap: 5px;
+  }
+
+  .endless-trial-hud-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  .endless-trial-hud-icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .endless-trial-hud-meta {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .endless-trial-hud-head {
+    gap: 4px;
+    flex-shrink: 1;
+  }
+
+  .endless-trial-hud-name {
+    font-size: 0.30rem;
+    max-width: 156px;
+  }
+
+  .endless-trial-hud-timer {
+    font-size: 0.31rem;
+    padding: 1px 4px;
+  }
+
+  .endless-trial-hud-score {
+    font-size: 0.28rem;
+    flex-shrink: 1;
+  }
+
+  .endless-trial-exit-btn {
+    padding: 2px 6px;
+    font-size: 0.28rem;
+  }
+
+  .endless-trial-hud-track {
+    height: 3px;
+  }
+
+  .endless-trials-header {
+    padding: 4px 6px;
+    gap: 2px;
+  }
+
+  .endless-trials-title {
+    font-size: 0.38rem;
+  }
+
+  .endless-trials-cleared {
+    font-size: 0.28rem;
+    padding: 1px 4px;
+  }
+
+  .endless-trials-sub {
+    font-size: 0.25rem;
+  }
+
+  .endless-trials-list {
+    gap: 5px;
+  }
+
+  .endless-trial-card {
+    padding: 5px 6px;
+    gap: 4px;
+  }
+
+  .endless-trial-icon-wrap {
+    width: 28px;
+    height: 28px;
+  }
+
+  .endless-trial-icon-wrap svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .endless-trial-name {
+    font-size: 0.34rem;
+  }
+
+  .endless-trial-dur-pill {
+    font-size: 0.27rem;
+    padding: 1px 4px;
+  }
+
+  .endless-trial-reward-pill {
+    font-size: 0.26rem;
+    padding: 1px 4px;
+  }
+
+  .endless-trial-desc {
+    font-size: 0.27rem;
+    line-height: 1.3;
+  }
+
+  .endless-trial-best {
+    font-size: 0.27rem;
+  }
+
+  .endless-trial-enter-btn {
+    padding: 4px 8px;
+    font-size: 0.30rem;
+  }
+
+  .endless-trial-modal {
+    padding: 6px 10px;
+  }
+
+  .endless-trial-modal-card {
+    width: min(444px, calc(100% - 8px));
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .endless-trial-modal-header {
+    gap: 3px;
+    padding-bottom: 5px;
+  }
+
+  .endless-trial-modal-status {
+    font-size: 0.29rem;
+    padding: 1px 6px;
+  }
+
+  .endless-trial-modal-title {
+    font-size: 0.45rem;
+  }
+
+  .endless-trial-modal-perf {
+    font-size: 0.29rem;
+    padding: 2px 6px;
+  }
+
+  .endless-trial-modal-rewards {
+    gap: 5px;
+  }
+
+  .endless-trial-reward-plaque {
+    flex-direction: row;
+    text-align: left;
+    gap: 6px;
+    padding: 5px 7px;
+  }
+
+  .endless-trial-reward-ico {
+    width: 18px;
+    height: 18px;
+  }
+
+  .endless-trial-reward-ico canvas {
+    width: 18px;
+    height: 18px;
+  }
+
+  .endless-trial-reward-ico svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .endless-trial-reward-val {
+    font-size: 0.35rem;
+  }
+
+  .endless-trial-reward-lbl {
+    font-size: 0.24rem;
+  }
+
+  .endless-trial-modal-gear {
+    padding: 5px 6px;
+    gap: 3px;
+  }
+
+  .endless-trial-gear-pill {
+    padding: 2px 5px;
+  }
+
+  .endless-trial-collect-btn {
+    padding: 7px 10px;
+    font-size: 0.38rem;
+  }
+}
+
+html.is-mobile-landscape .endless-tab-bar {
+  padding: 3px 3px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-tab-btn {
+  font-size: 0.27rem;
+  letter-spacing: 0;
+  padding: 4px 1px;
+  min-height: 22px;
+}
+
+html.is-mobile-landscape .endless-tab-dot {
+  top: 1px;
+  right: 1px;
+  width: 4px;
+  height: 4px;
+}
+
+html.is-mobile-landscape #endless-hud-root.is-trial-active .endless-party-hud {
+  top: max(112px, calc(env(safe-area-inset-top) + 108px));
+}
+
+html.is-mobile-landscape #endless-hud-root.is-trial-active.is-drawer-open .endless-trial-hud {
+  align-self: flex-start;
+  max-width: calc(100vw - 356px);
+}
+
+html.is-mobile-landscape .endless-trial-hud {
+  width: min(410px, 100%);
+}
+
+html.is-mobile-landscape .endless-trial-hud-row {
+  padding: 2px 6px;
+  gap: 5px;
+}
+
+html.is-mobile-landscape .endless-trial-hud-icon {
+  width: 17px;
+  height: 17px;
+}
+
+html.is-mobile-landscape .endless-trial-hud-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+html.is-mobile-landscape .endless-trial-hud-meta {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+html.is-mobile-landscape .endless-trial-hud-head {
+  gap: 4px;
+  flex-shrink: 1;
+}
+
+html.is-mobile-landscape .endless-trial-hud-name {
+  font-size: 0.30rem;
+  max-width: 156px;
+}
+
+html.is-mobile-landscape .endless-trial-hud-timer {
+  font-size: 0.31rem;
+  padding: 1px 4px;
+}
+
+html.is-mobile-landscape .endless-trial-hud-score {
+  font-size: 0.28rem;
+  flex-shrink: 1;
+}
+
+html.is-mobile-landscape .endless-trial-exit-btn {
+  padding: 2px 6px;
+  font-size: 0.28rem;
+}
+
+html.is-mobile-landscape .endless-trial-hud-track {
+  height: 3px;
+}
+
+html.is-mobile-landscape .endless-trials-header {
+  padding: 4px 6px;
+  gap: 2px;
+}
+
+html.is-mobile-landscape .endless-trials-title {
+  font-size: 0.38rem;
+}
+
+html.is-mobile-landscape .endless-trials-cleared {
+  font-size: 0.28rem;
+  padding: 1px 4px;
+}
+
+html.is-mobile-landscape .endless-trials-sub {
+  font-size: 0.25rem;
+}
+
+html.is-mobile-landscape .endless-trials-list {
+  gap: 5px;
+}
+
+html.is-mobile-landscape .endless-trial-card {
+  padding: 5px 6px;
+  gap: 4px;
+}
+
+html.is-mobile-landscape .endless-trial-icon-wrap {
+  width: 28px;
+  height: 28px;
+}
+
+html.is-mobile-landscape .endless-trial-icon-wrap svg {
+  width: 18px;
+  height: 18px;
+}
+
+html.is-mobile-landscape .endless-trial-name {
+  font-size: 0.34rem;
+}
+
+html.is-mobile-landscape .endless-trial-dur-pill {
+  font-size: 0.27rem;
+  padding: 1px 4px;
+}
+
+html.is-mobile-landscape .endless-trial-reward-pill {
+  font-size: 0.26rem;
+  padding: 1px 4px;
+}
+
+html.is-mobile-landscape .endless-trial-desc {
+  font-size: 0.27rem;
+  line-height: 1.3;
+}
+
+html.is-mobile-landscape .endless-trial-best {
+  font-size: 0.27rem;
+}
+
+html.is-mobile-landscape .endless-trial-enter-btn {
+  padding: 4px 8px;
+  font-size: 0.30rem;
+}
+
+html.is-mobile-landscape .endless-trial-modal {
+  padding: 6px 10px;
+}
+
+html.is-mobile-landscape .endless-trial-modal-card {
+  width: min(444px, calc(100% - 8px));
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+html.is-mobile-landscape .endless-trial-modal-header {
+  gap: 3px;
+  padding-bottom: 5px;
+}
+
+html.is-mobile-landscape .endless-trial-modal-status {
+  font-size: 0.29rem;
+  padding: 1px 6px;
+}
+
+html.is-mobile-landscape .endless-trial-modal-title {
+  font-size: 0.45rem;
+}
+
+html.is-mobile-landscape .endless-trial-modal-perf {
+  font-size: 0.29rem;
+  padding: 2px 6px;
+}
+
+html.is-mobile-landscape .endless-trial-modal-rewards {
+  gap: 5px;
+}
+
+html.is-mobile-landscape .endless-trial-reward-plaque {
+  flex-direction: row;
+  text-align: left;
+  gap: 6px;
+  padding: 5px 7px;
+}
+
+html.is-mobile-landscape .endless-trial-reward-ico {
+  width: 18px;
+  height: 18px;
+}
+
+html.is-mobile-landscape .endless-trial-reward-ico canvas {
+  width: 18px;
+  height: 18px;
+}
+
+html.is-mobile-landscape .endless-trial-reward-ico svg {
+  width: 14px;
+  height: 14px;
+}
+
+html.is-mobile-landscape .endless-trial-reward-val {
+  font-size: 0.35rem;
+}
+
+html.is-mobile-landscape .endless-trial-reward-lbl {
+  font-size: 0.24rem;
+}
+
+html.is-mobile-landscape .endless-trial-modal-gear {
+  padding: 5px 6px;
+  gap: 3px;
+}
+
+html.is-mobile-landscape .endless-trial-gear-pill {
+  padding: 2px 5px;
+}
+
+html.is-mobile-landscape .endless-trial-collect-btn {
+  padding: 7px 10px;
+  font-size: 0.38rem;
+}
+
+/* Wave 10 Responsive Ergonomics: Mobile Portrait (390x844, 378px drawer) */
+@media (max-width: 560px) {
+  html:not(.is-mobile-landscape) .endless-tab-bar {
+    padding: 4px 4px;
+    gap: 2px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-tab-btn {
+    font-size: 0.31rem;
+    letter-spacing: 0.01em;
+    padding: 6px 2px;
+    min-height: 28px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-hud {
+    width: 100%;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-hud-row {
+    padding: 4px 6px;
+    gap: 5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-hud-name {
+    font-size: 0.34rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-hud-timer {
+    font-size: 0.35rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-hud-score {
+    font-size: 0.30rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-exit-btn {
+    padding: 5px 7px;
+    font-size: 0.32rem;
+    min-height: 24px;
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active #endless-shop-toggle {
+    top: max(162px, calc(env(safe-area-inset-top) + 158px));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active .endless-party-hud {
+    top: max(195px, calc(env(safe-area-inset-top) + 191px));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.is-drawer-open .endless-events-dock {
+    top: max(164px, calc(env(safe-area-inset-top) + 160px));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party.is-drawer-open .endless-events-dock {
+    top: max(258px, calc(env(safe-area-inset-top) + 254px));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party.has-active-synergies .endless-events-dock,
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.has-active-party.has-active-synergies.is-drawer-open .endless-events-dock {
+    top: max(274px, calc(env(safe-area-inset-top) + 270px));
+  }
+
+  html:not(.is-mobile-landscape) #endless-hud-root.is-trial-active.is-drawer-open .endless-shop-shell {
+    height: min(50vh, 412px);
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-enter-btn {
+    padding: 7px 10px;
+    min-height: 28px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-modal {
+    padding: 10px 8px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-modal-card {
+    width: min(366px, calc(100% - 4px));
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-modal-title {
+    font-size: 0.48rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-modal-rewards {
+    gap: 5px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-reward-plaque {
+    padding: 7px 4px;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-reward-val {
+    font-size: 0.37rem;
+  }
+
+  html:not(.is-mobile-landscape) .endless-trial-collect-btn {
+    padding: 10px 8px;
+    min-height: 36px;
+    font-size: 0.42rem;
+  }
+}
 `;
 
 function setTextIfChanged(el, text) {
@@ -5937,6 +7401,7 @@ export class EndlessShopUI {
     this._gearSetPillRefs = new Map();
     this._gearBagRowRefs = new Map();
     this._buffPillRefs = new Map();
+    this._trialCardRefs = new Map();
     this._tabBtnRefs = new Map();
     this._tabPanelRefs = new Map();
     this._bulkBtnRefs = new Map();
@@ -5959,15 +7424,18 @@ export class EndlessShopUI {
     this._lastBountyCompleted = false;
     this._lastMerchantUid = null;
     this._lastMerchantOfferType = '';
+    this._lastTrialHudIconId = '';
+    this._lastTrialResultSig = '';
     this._telemExpanded = false;
     this._lastSnapshot = null;
 
-    // Built-in 5-tab registry: ITEMS | GEAR | COMPANIONS | ASCEND | STATS
+    // Built-in 6-tab registry: ITEMS | GEAR | ALLIES | ASCEND | TRIALS | STATS
     this.tabs = [
       { id: 'items', label: 'ITEMS', builtIn: true },
       { id: 'gear', label: 'GEAR', builtIn: true },
-      { id: 'companions', label: 'COMPANIONS', builtIn: true },
+      { id: 'companions', label: 'ALLIES', builtIn: true },
       { id: 'ascend', label: 'ASCEND', builtIn: true },
+      { id: 'trials', label: 'TRIALS', builtIn: true },
       { id: 'stats', label: 'STATS', builtIn: true }
     ];
   }
@@ -6185,6 +7653,7 @@ export class EndlessShopUI {
     this._gearSetPillRefs.clear();
     this._gearBagRowRefs.clear();
     this._buffPillRefs.clear();
+    this._trialCardRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
@@ -6198,6 +7667,8 @@ export class EndlessShopUI {
     this._lastBountyCompleted = false;
     this._lastMerchantUid = null;
     this._lastMerchantOfferType = '';
+    this._lastTrialHudIconId = '';
+    this._lastTrialResultSig = '';
     this._modifierIconEntry = null;
     this._refs = {};
 
@@ -6208,6 +7679,7 @@ export class EndlessShopUI {
     this._buildShopDrawer();
     this._buildFxLayer();
     this._buildOfflineLootModal();
+    this._buildTrialResultModal();
 
     this.setVisible(this.visible);
     this.setDrawerOpen(this.drawerOpen);
@@ -6339,6 +7811,7 @@ export class EndlessShopUI {
 
     stack.appendChild(bar);
     stack.appendChild(bossControls);
+    this._buildTrialHud(stack);
     this.root.appendChild(stack);
 
     this._refs.stageBadge = stageBadge;
@@ -6357,6 +7830,78 @@ export class EndlessShopUI {
     this._refs.feverLabel = feverLabel;
     this._refs.autoBossBtn = autoBossBtn;
     this._refs.challengeBtn = challengeBtn;
+  }
+
+  _buildTrialHud(parentStack) {
+    const hud = document.createElement('div');
+    hud.className = 'endless-trial-hud hidden';
+    hud.setAttribute('role', 'status');
+    hud.setAttribute('aria-live', 'polite');
+    hud.setAttribute('aria-label', 'Active Challenge Trial HUD');
+    stopEventLeak(hud);
+
+    const row = document.createElement('div');
+    row.className = 'endless-trial-hud-row';
+
+    const iconEl = document.createElement('span');
+    iconEl.className = 'endless-trial-hud-icon';
+    iconEl.innerHTML = TRIAL_VAULT_SVG;
+
+    const meta = document.createElement('div');
+    meta.className = 'endless-trial-hud-meta';
+
+    const head = document.createElement('div');
+    head.className = 'endless-trial-hud-head';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'endless-trial-hud-name';
+    nameEl.textContent = 'GILDED VAULT SPRINT';
+
+    const timerEl = document.createElement('span');
+    timerEl.className = 'endless-trial-hud-timer';
+    timerEl.textContent = '30.0S';
+
+    head.appendChild(nameEl);
+    head.appendChild(timerEl);
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'endless-trial-hud-score';
+    scoreEl.textContent = 'GOLD +0 | GOBLINS 0';
+
+    meta.appendChild(head);
+    meta.appendChild(scoreEl);
+
+    const exitBtn = document.createElement('button');
+    exitBtn.type = 'button';
+    exitBtn.className = 'endless-trial-exit-btn';
+    exitBtn.textContent = 'EXIT';
+    exitBtn.title = 'Exit Trial early and collect current rewards';
+    exitBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleExitTrial();
+    });
+
+    row.appendChild(iconEl);
+    row.appendChild(meta);
+    row.appendChild(exitBtn);
+
+    const track = document.createElement('div');
+    track.className = 'endless-trial-hud-track';
+    const fillEl = document.createElement('div');
+    fillEl.className = 'endless-trial-hud-fill';
+    track.appendChild(fillEl);
+
+    hud.appendChild(row);
+    hud.appendChild(track);
+    (parentStack || this.root).appendChild(hud);
+
+    this._refs.trialHud = hud;
+    this._refs.trialHudIcon = iconEl;
+    this._refs.trialHudName = nameEl;
+    this._refs.trialHudTimer = timerEl;
+    this._refs.trialHudScore = scoreEl;
+    this._refs.trialHudExitBtn = exitBtn;
+    this._refs.trialHudFill = fillEl;
   }
 
   _buildActivePartyHud() {
@@ -6777,6 +8322,131 @@ export class EndlessShopUI {
     this._refs.offlineContinueBtn = continueBtn;
   }
 
+  _buildTrialResultModal() {
+    const modal = document.createElement('div');
+    modal.className = 'endless-trial-modal hidden';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Challenge Trial Reward Summary');
+    stopEventLeak(modal);
+
+    const card = document.createElement('div');
+    card.className = 'endless-trial-modal-card';
+    stopEventLeak(card);
+
+    const header = document.createElement('div');
+    header.className = 'endless-trial-modal-header';
+
+    const statusBadge = document.createElement('div');
+    statusBadge.className = 'endless-trial-modal-status';
+    statusBadge.textContent = 'TRIAL COMPLETE!';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'endless-trial-modal-title-row';
+
+    const iconEl = document.createElement('span');
+    iconEl.className = 'endless-trial-modal-icon';
+    iconEl.innerHTML = TRIAL_VAULT_SVG;
+
+    const titleEl = document.createElement('span');
+    titleEl.className = 'endless-trial-modal-title';
+    titleEl.textContent = 'GILDED VAULT SPRINT';
+
+    titleRow.appendChild(iconEl);
+    titleRow.appendChild(titleEl);
+
+    const perfEl = document.createElement('div');
+    perfEl.className = 'endless-trial-modal-perf';
+    perfEl.textContent = 'GOBLINS 0 | CHESTS 0 | 30.0S';
+
+    header.appendChild(statusBadge);
+    header.appendChild(titleRow);
+    header.appendChild(perfEl);
+
+    // 3-Column Rewards Grid (+GOLD, +SHARDS, +FORGE DUST)
+    const rewards = document.createElement('div');
+    rewards.className = 'endless-trial-modal-rewards';
+
+    const makeRewardPlaque = (cls, lbl, iconNode) => {
+      const plaque = document.createElement('div');
+      plaque.className = `endless-trial-reward-plaque ${cls}`;
+      const icoWrap = document.createElement('div');
+      icoWrap.className = 'endless-trial-reward-ico';
+      if (typeof iconNode === 'string') {
+        icoWrap.innerHTML = iconNode;
+      } else if (iconNode) {
+        icoWrap.appendChild(iconNode);
+      }
+      const meta = document.createElement('div');
+      meta.className = 'endless-trial-reward-meta';
+      const valEl = document.createElement('div');
+      valEl.className = 'endless-trial-reward-val';
+      valEl.textContent = '+0';
+      const lblEl = document.createElement('div');
+      lblEl.className = 'endless-trial-reward-lbl';
+      lblEl.textContent = lbl;
+      meta.appendChild(valEl);
+      meta.appendChild(lblEl);
+      plaque.appendChild(icoWrap);
+      plaque.appendChild(meta);
+      rewards.appendChild(plaque);
+      return { plaque, valEl };
+    };
+
+    const goldIcon = this._makeIconCanvas(24, 0, '#facc15', '', ENDLESS_ICON_ROW);
+    const shardIcon = this._makeIconCanvas(24, 1, '#38bdf8', '', ENDLESS_ICON_ROW);
+    const goldRef = makeRewardPlaque('is-gold', 'GOLD', goldIcon);
+    const shardRef = makeRewardPlaque('is-shard', 'SHARDS', shardIcon);
+    const dustRef = makeRewardPlaque('is-dust', 'FORGE DUST', FORGE_DUST_SVG);
+
+    // Gear Drops Container
+    const gearBox = document.createElement('div');
+    gearBox.className = 'endless-trial-modal-gear hidden';
+
+    const gearHead = document.createElement('div');
+    gearHead.className = 'endless-trial-modal-gear-head';
+    gearHead.textContent = 'GEAR AWARDED';
+
+    const gearList = document.createElement('div');
+    gearList.className = 'endless-trial-modal-gear-list';
+
+    gearBox.appendChild(gearHead);
+    gearBox.appendChild(gearList);
+
+    // Collect & Resume CTA
+    const collectBtn = document.createElement('button');
+    collectBtn.type = 'button';
+    collectBtn.className = 'endless-trial-collect-btn';
+    collectBtn.textContent = 'COLLECT & RESUME';
+    collectBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleDismissTrialResult();
+    });
+
+    card.appendChild(header);
+    card.appendChild(rewards);
+    card.appendChild(gearBox);
+    card.appendChild(collectBtn);
+    modal.appendChild(card);
+    this.root.appendChild(modal);
+
+    this._refs.trialModal = modal;
+    this._refs.trialModalCard = card;
+    this._refs.trialModalStatus = statusBadge;
+    this._refs.trialModalIcon = iconEl;
+    this._refs.trialModalTitle = titleEl;
+    this._refs.trialModalPerf = perfEl;
+    this._refs.trialModalGoldPlaque = goldRef.plaque;
+    this._refs.trialModalGoldVal = goldRef.valEl;
+    this._refs.trialModalShardPlaque = shardRef.plaque;
+    this._refs.trialModalShardVal = shardRef.valEl;
+    this._refs.trialModalDustPlaque = dustRef.plaque;
+    this._refs.trialModalDustVal = dustRef.valEl;
+    this._refs.trialModalGearBox = gearBox;
+    this._refs.trialModalGearList = gearList;
+    this._refs.trialModalCollectBtn = collectBtn;
+  }
+
   _buildShopToggle() {
     const toggle = document.createElement('button');
     toggle.id = 'endless-shop-toggle';
@@ -6997,6 +8667,14 @@ export class EndlessShopUI {
         this._refs.ascendTabDot = dot;
       }
 
+      if (tabDef.id === 'trials') {
+        const dot = document.createElement('span');
+        dot.className = 'endless-tab-dot is-trials hidden';
+        dot.setAttribute('aria-hidden', 'true');
+        btn.appendChild(dot);
+        this._refs.trialsTabDot = dot;
+      }
+
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         this.setActiveTab(tabDef.id);
@@ -7023,6 +8701,8 @@ export class EndlessShopUI {
         this._buildCompanionsPanel(panel);
       } else if (tabDef.id === 'ascend') {
         this._buildAscendPanel(panel);
+      } else if (tabDef.id === 'trials') {
+        this._buildTrialsPanel(panel);
       } else if (tabDef.id === 'stats') {
         this._buildStatsPanel(panel);
       } else if (typeof tabDef.renderContent === 'function') {
@@ -8051,6 +9731,142 @@ export class EndlessShopUI {
     return ref;
   }
 
+  _buildTrialsPanel(panel) {
+    const header = document.createElement('div');
+    header.className = 'endless-trials-header';
+
+    const headRow = document.createElement('div');
+    headRow.className = 'endless-trials-head-row';
+
+    const title = document.createElement('span');
+    title.className = 'endless-trials-title';
+    title.textContent = 'TRIAL PORTALS';
+
+    const clearedPill = document.createElement('span');
+    clearedPill.className = 'endless-trials-cleared';
+    clearedPill.textContent = 'CLEARED: 0';
+
+    headRow.appendChild(title);
+    headRow.appendChild(clearedPill);
+
+    const sub = document.createElement('div');
+    sub.className = 'endless-trials-sub';
+    sub.textContent = 'PAUSES MAIN STAGE SAFELY | ZERO STAGE LOSS';
+
+    header.appendChild(headRow);
+    header.appendChild(sub);
+
+    const list = document.createElement('div');
+    list.className = 'endless-scroll-list endless-trials-list';
+
+    panel.appendChild(header);
+    panel.appendChild(list);
+
+    this._refs.trialsHeader = header;
+    this._refs.trialsCleared = clearedPill;
+    this._refs.trialsList = list;
+
+    for (let i = 0; i < DEFAULT_TRIAL_DEFS.length; i++) {
+      this._ensureTrialCard(DEFAULT_TRIAL_DEFS[i]);
+    }
+  }
+
+  _ensureTrialCard(trial) {
+    const id = String(trial?.id || 'gold_vault');
+    const existing = this._trialCardRefs.get(id);
+    if (existing) return existing;
+
+    const accent = String(trial?.accentHex || '#facc15');
+    const card = document.createElement('div');
+    card.className = 'endless-trial-card';
+    card.dataset.trialId = id;
+    card.style.borderLeftColor = accent;
+
+    const top = document.createElement('div');
+    top.className = 'endless-trial-card-top';
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'endless-trial-icon-wrap';
+    iconWrap.style.borderColor = accent;
+    iconWrap.innerHTML = getTrialSvg(id);
+
+    const titleBlock = document.createElement('div');
+    titleBlock.className = 'endless-trial-title-block';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'endless-trial-name-row';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'endless-trial-name';
+    nameEl.textContent = String(trial?.name || id).toUpperCase();
+
+    const durPill = document.createElement('span');
+    durPill.className = 'endless-trial-dur-pill';
+    durPill.textContent = `${Math.max(1, Math.round(Number(trial?.durationSec) || 30))}S`;
+
+    nameRow.appendChild(nameEl);
+    nameRow.appendChild(durPill);
+
+    const rewardPill = document.createElement('span');
+    rewardPill.className = 'endless-trial-reward-pill';
+    rewardPill.style.borderColor = accent;
+    rewardPill.style.color = accent;
+    rewardPill.textContent = String(trial?.rewardTag || 'TRIAL REWARD').toUpperCase();
+
+    titleBlock.appendChild(nameRow);
+    titleBlock.appendChild(rewardPill);
+
+    top.appendChild(iconWrap);
+    top.appendChild(titleBlock);
+
+    const descEl = document.createElement('div');
+    descEl.className = 'endless-trial-desc';
+    descEl.textContent = String(trial?.desc || '');
+
+    const footer = document.createElement('div');
+    footer.className = 'endless-trial-footer';
+
+    const bestEl = document.createElement('span');
+    bestEl.className = 'endless-trial-best';
+    bestEl.textContent = 'BEST: --';
+
+    const enterBtn = document.createElement('button');
+    enterBtn.type = 'button';
+    enterBtn.className = 'endless-trial-enter-btn';
+    enterBtn.dataset.trialId = id;
+    enterBtn.textContent = 'ENTER TRIAL';
+    enterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._handleEnterTrial(id, card, enterBtn);
+    });
+
+    footer.appendChild(bestEl);
+    footer.appendChild(enterBtn);
+
+    card.appendChild(top);
+    card.appendChild(descEl);
+    card.appendChild(footer);
+
+    if (this._refs.trialsList) {
+      this._refs.trialsList.appendChild(card);
+    }
+
+    const ref = {
+      id,
+      card,
+      iconWrap,
+      nameEl,
+      durPill,
+      rewardPill,
+      descEl,
+      bestEl,
+      enterBtn,
+      lastAccent: accent
+    };
+    this._trialCardRefs.set(id, ref);
+    return ref;
+  }
+
   _buildStatsPanel(panel) {
     const scroll = document.createElement('div');
     scroll.className = 'endless-scroll-list';
@@ -8994,6 +10810,46 @@ export class EndlessShopUI {
     this._resyncNow();
   }
 
+  _handleEnterTrial(trialId, cardEl = null, btnEl = null) {
+    if (!trialId) return;
+    if (typeof this.manager?.enterTrial !== 'function') return;
+    const res = this.manager.enterTrial(trialId);
+    const ok = res !== false && !(res && typeof res === 'object' && res.ok === false);
+    if (ok) {
+      this._playSfx('playUiConfirm');
+      const targetCard = cardEl || this._trialCardRefs.get(trialId)?.card || null;
+      const targetBtn = btnEl || this._trialCardRefs.get(trialId)?.enterBtn || null;
+      const badgeAnchor = this.drawerOpen && targetBtn ? targetBtn : (this._refs.trialHud || targetBtn);
+      this._triggerBuyFeedback(targetCard, targetBtn, null, true);
+      if (badgeAnchor) {
+        this._spawnFloatingMicroBadge(badgeAnchor, 'PORTAL OPEN!', true);
+      }
+    } else {
+      this._playSfx('playUiBack');
+    }
+    this._resyncNow();
+  }
+
+  _handleExitTrial() {
+    if (typeof this.manager?.exitTrial !== 'function') return;
+    this._playSfx('playUiBack');
+    this.manager.exitTrial({ completedFull: false });
+    this._resyncNow();
+  }
+
+  _handleDismissTrialResult() {
+    this._playSfx('playUiConfirm');
+    if (typeof this.manager?.dismissTrialResult === 'function') {
+      this.manager.dismissTrialResult();
+    } else if (this._lastSnapshot?.trials && typeof this._lastSnapshot.trials === 'object') {
+      this._lastSnapshot = {
+        ...this._lastSnapshot,
+        trials: { ...this._lastSnapshot.trials, lastResult: null }
+      };
+    }
+    this._resyncNow();
+  }
+
   _resyncNow() {
     const snap = typeof this.manager?.getUiSnapshot === 'function'
       ? this.manager.getUiSnapshot()
@@ -9487,6 +11343,126 @@ export class EndlessShopUI {
       starsById: (rawEvo?.starsById && typeof rawEvo.starsById === 'object') ? rawEvo.starsById : {}
     };
 
+    const rawTrials = (snap && typeof snap.trials === 'object' && snap.trials)
+      ? snap.trials
+      : (typeof mgr?.trials?.getTrialsSnapshot === 'function'
+        ? mgr.trials.getTrialsSnapshot(stage)
+        : null);
+
+    let trialsActiveTrial = null;
+    if (rawTrials?.activeTrial && typeof rawTrials.activeTrial === 'object') {
+      const at = rawTrials.activeTrial;
+      const durationSec = Math.max(0.1, Number(at.durationSec) || 30);
+      const remainingSec = Math.max(0, Number(at.remainingSec) || 0);
+      const ratio = Number.isFinite(Number(at.ratio))
+        ? Math.max(0, Math.min(1, Number(at.ratio)))
+        : Math.max(0, Math.min(1, remainingSec / durationSec));
+      const goldEarned = Math.max(0, Number(at.goldEarned) || 0);
+      const damageDealt = Math.max(0, Number(at.damageDealt) || 0);
+      const nextTierThreshold = Math.max(0, Number(at.nextTierThreshold) || 0);
+      trialsActiveTrial = {
+        id: String(at.id || 'gold_vault'),
+        name: String(at.name || at.shortName || 'CHALLENGE TRIAL').toUpperCase(),
+        shortName: String(at.shortName || at.name || 'TRIAL').toUpperCase(),
+        accentHex: String(at.accentHex || '#facc15'),
+        remainingSec,
+        durationSec,
+        ratio,
+        kills: Math.max(0, Math.floor(Number(at.kills) || 0)),
+        goblinsSlain: Math.max(0, Math.floor(Number(at.goblinsSlain) || 0)),
+        chestsCracked: Math.max(0, Math.floor(Number(at.chestsCracked) || 0)),
+        goldEarned,
+        formattedGoldEarned: String(at.formattedGoldEarned || formatEndlessNumber(goldEarned)),
+        damageDealt,
+        formattedDamageDealt: String(at.formattedDamageDealt || formatEndlessNumber(damageDealt)),
+        currentTier: Math.max(0, Math.floor(Number(at.currentTier) || 0)),
+        nextTierThreshold,
+        formattedNextTier: String(at.formattedNextTier || formatEndlessNumber(nextTierThreshold))
+      };
+    }
+    const trialsIsActive = Boolean(rawTrials?.isActive && trialsActiveTrial);
+
+    const rawTrialList = (Array.isArray(rawTrials?.trials) && rawTrials.trials.length > 0)
+      ? rawTrials.trials
+      : DEFAULT_TRIAL_DEFS;
+    const trialsList = rawTrialList.map((t, idx) => {
+      const def = DEFAULT_TRIAL_DEFS.find((d) => d.id === t?.id) || DEFAULT_TRIAL_DEFS[idx] || DEFAULT_TRIAL_DEFS[0];
+      const cooldownLeft = Math.max(0, Number(t?.cooldownLeft) || 0);
+      const bestScore = Math.max(0, Number(t?.bestScore) || 0);
+      const canEnter = t?.canEnter !== undefined
+        ? Boolean(t.canEnter)
+        : (!trialsIsActive && cooldownLeft <= 0);
+      return {
+        id: String(t?.id || def.id),
+        name: String(t?.name || def.name).toUpperCase(),
+        shortName: String(t?.shortName || def.shortName).toUpperCase(),
+        durationSec: Math.max(1, Math.round(Number(t?.durationSec ?? def.durationSec) || 30)),
+        cooldownSec: Math.max(0, Math.round(Number(t?.cooldownSec ?? def.cooldownSec) || 30)),
+        accentHex: String(t?.accentHex || def.accentHex || '#facc15'),
+        glowHex: String(t?.glowHex || def.glowHex || '#fef08a'),
+        rewardTag: String(t?.rewardTag || def.rewardTag).toUpperCase(),
+        desc: String(t?.desc || def.desc),
+        cooldownLeft,
+        canEnter,
+        bestScore,
+        formattedBestScore: String(t?.formattedBestScore || formatEndlessNumber(bestScore))
+      };
+    });
+
+    let trialsLastResult = null;
+    if (rawTrials?.lastResult && typeof rawTrials.lastResult === 'object') {
+      const lr = rawTrials.lastResult;
+      const goldAwarded = Math.max(0, Number(lr.goldAwarded) || 0);
+      const damageDealt = Math.max(0, Number(lr.damageDealt) || 0);
+      const fmtDmg = String(
+        lr.formattedDamageDealt || lr.formattedDamage || formatEndlessNumber(damageDealt)
+      );
+      const gearAwarded = Array.isArray(lr.gearAwarded)
+        ? lr.gearAwarded
+            .filter((g) => g && typeof g === 'object')
+            .map((g, gi) => {
+              const rarity = String(g.rarity || 'heroic').toLowerCase();
+              const color = g.rarityMeta?.color || TRIAL_RARITY_COLORS[rarity] || '#c084fc';
+              const label = String(g.rarityMeta?.label || rarity).toUpperCase();
+              return {
+                uid: String(g.uid || `trial_gear_${gi}`),
+                name: String(g.name || 'RELIC GEAR').toUpperCase(),
+                rarity,
+                slot: String(g.slot || 'weapon').toLowerCase(),
+                rarityMeta: { label, color }
+              };
+            })
+        : [];
+      trialsLastResult = {
+        uid: String(lr.uid || `${lr.trialId || 'trial'}_${lr.durationUsedSec || 0}`),
+        trialId: String(lr.trialId || 'gold_vault'),
+        trialName: String(lr.trialName || 'CHALLENGE TRIAL').toUpperCase(),
+        accentHex: String(lr.accentHex || '#facc15'),
+        durationUsedSec: Math.max(0, Number(lr.durationUsedSec) || 0),
+        kills: Math.max(0, Math.floor(Number(lr.kills) || 0)),
+        goblinsSlain: Math.max(0, Math.floor(Number(lr.goblinsSlain) || 0)),
+        chestsCracked: Math.max(0, Math.floor(Number(lr.chestsCracked) || 0)),
+        damageDealt,
+        formattedDamageDealt: fmtDmg,
+        formattedDamage: fmtDmg,
+        tierReached: Math.max(0, Math.floor(Number(lr.tierReached) || 0)),
+        goldAwarded,
+        formattedGold: String(lr.formattedGold || formatEndlessNumber(goldAwarded)),
+        shardsAwarded: Math.max(0, Math.floor(Number(lr.shardsAwarded) || 0)),
+        dustAwarded: Math.max(0, Math.floor(Number(lr.dustAwarded) || 0)),
+        gearAwarded,
+        completedFull: Boolean(lr.completedFull)
+      };
+    }
+
+    const trials = {
+      isActive: trialsIsActive,
+      activeTrial: trialsActiveTrial,
+      trials: trialsList,
+      lastResult: trialsLastResult,
+      totalTrialsCompleted: Math.max(0, Math.floor(Number(rawTrials?.totalTrialsCompleted) || 0))
+    };
+
     return {
       stage,
       bestStage,
@@ -9531,7 +11507,8 @@ export class EndlessShopUI {
       forgeDust,
       formattedForgeDust,
       hasGearAction,
-      events
+      events,
+      trials
     };
   }
 
@@ -9840,10 +11817,16 @@ export class EndlessShopUI {
     // 2B2. Wave 8 Unified Events Dock (Bounty Tracker, Active Buffs, Wandering Merchant)
     this._syncEventsDock(state);
 
+    // 2B3. Wave 10 Active Trial Live Countdown HUD Strip (always synced, even when drawer closed)
+    this._syncTrialHud(state);
+
     // 2C. Welcome Back Offline Loot Modal (always synced, even when drawer closed)
     this._syncOfflineLootModal(state);
 
-    // 3. Check affordability dot on Shop Toggle, GEAR Tab Dot & ASCEND Tab Notification Dot
+    // 2D. Wave 10 Trial Reward Summary Modal (always synced, even when drawer closed)
+    this._syncTrialResultModal(state);
+
+    // 3. Check affordability dot on Shop Toggle, GEAR Tab Dot, ASCEND Tab Dot & TRIALS Active Dot
     const asc = state.ascension;
     let anyArtifactAffordable = false;
     if (asc && Array.isArray(asc.artifacts)) {
@@ -9863,6 +11846,10 @@ export class EndlessShopUI {
     const gearNotify = Boolean(state.hasGearAction);
     if (this._refs.gearTabDot) {
       this._refs.gearTabDot.classList.toggle('hidden', !gearNotify);
+    }
+
+    if (this._refs.trialsTabDot) {
+      this._refs.trialsTabDot.classList.toggle('hidden', !Boolean(state.trials?.isActive));
     }
 
     let anyAffordable = ascendNotify || gearNotify;
@@ -9909,6 +11896,9 @@ export class EndlessShopUI {
     }
     if (this.activeTab === 'ascend' || forceRebuild) {
       this._syncAscendTab(state);
+    }
+    if (this.activeTab === 'trials' || forceRebuild) {
+      this._syncTrialsPanel(state);
     }
     if (this.activeTab === 'stats' || forceRebuild) {
       this._syncStatsTab(state, dpsBreakdown);
@@ -10147,6 +12137,231 @@ export class EndlessShopUI {
     setTextIfChanged(this._refs.offlineShardVal, `+${formatEndlessNumber(loot.astralShards)} SHARDS`);
     if (this._refs.offlineShardPlaque) {
       this._refs.offlineShardPlaque.classList.toggle('is-empty', loot.astralShards <= 0);
+    }
+  }
+
+  _syncTrialHud(state) {
+    const hud = this._refs.trialHud;
+    if (!hud) return;
+    const trials = state?.trials || null;
+    const active = trials?.isActive && trials?.activeTrial ? trials.activeTrial : null;
+    const show = Boolean(active);
+
+    hud.classList.toggle('hidden', !show);
+    if (this.root) {
+      this.root.classList.toggle('is-trial-active', show);
+    }
+    if (!show) {
+      hud.classList.remove('is-urgent');
+      return;
+    }
+
+    const accent = active.accentHex || '#facc15';
+    const remSec = Math.max(0, Number(active.remainingSec) || 0);
+    const durSec = Math.max(0.1, Number(active.durationSec) || 30);
+    const ratio = Number.isFinite(Number(active.ratio))
+      ? Math.max(0, Math.min(1, Number(active.ratio)))
+      : Math.max(0, Math.min(1, remSec / durSec));
+    const urgent = remSec <= 5;
+
+    hud.classList.toggle('is-urgent', urgent);
+    hud.style.borderColor = urgent ? '#f43f5e' : accent;
+
+    if (this._refs.trialHudIcon) {
+      this._refs.trialHudIcon.style.borderColor = accent;
+      if (this._lastTrialHudIconId !== active.id) {
+        this._refs.trialHudIcon.innerHTML = getTrialSvg(active.id);
+        this._lastTrialHudIconId = active.id;
+      }
+    }
+
+    setTextIfChanged(this._refs.trialHudName, active.name || active.shortName || 'CHALLENGE TRIAL');
+    if (this._refs.trialHudName) {
+      this._refs.trialHudName.style.color = accent;
+    }
+    setTextIfChanged(this._refs.trialHudTimer, `${remSec.toFixed(1)}S`);
+    setTextIfChanged(this._refs.trialHudScore, formatTrialHudScore(active));
+
+    if (this._refs.trialHudFill) {
+      this._refs.trialHudFill.style.width = `${(ratio * 100).toFixed(1)}%`;
+      this._refs.trialHudFill.style.backgroundColor = urgent ? '#f43f5e' : accent;
+    }
+
+    let tip = `${active.name} (${remSec.toFixed(1)}S LEFT) | ${formatTrialHudScore(active)}`;
+    if (active.id === 'malphas_gauntlet' && active.formattedNextTier && active.currentTier < 12) {
+      tip += ` | NEXT TIER AT ${active.formattedNextTier}`;
+    }
+    if (hud.title !== tip) {
+      hud.title = tip;
+    }
+  }
+
+  _syncTrialResultModal(state) {
+    const modal = this._refs.trialModal;
+    if (!modal) return;
+    const res = state?.trials?.lastResult || null;
+    const show = Boolean(res);
+    modal.classList.toggle('hidden', !show);
+    if (!show) {
+      this._lastTrialResultSig = '';
+      return;
+    }
+
+    const gearList = Array.isArray(res.gearAwarded) ? res.gearAwarded : [];
+    const sig = [
+      res.uid || '',
+      res.trialId || '',
+      res.completedFull ? 1 : 0,
+      res.goldAwarded || 0,
+      res.shardsAwarded || 0,
+      res.dustAwarded || 0,
+      res.kills || 0,
+      res.damageDealt || 0,
+      res.tierReached || 0,
+      gearList.map((g) => `${g.uid || ''}:${g.rarity || ''}:${g.name || ''}`).join(',')
+    ].join('|');
+    if (sig === this._lastTrialResultSig) return;
+    this._lastTrialResultSig = sig;
+
+    const accent = res.accentHex || '#facc15';
+    if (this._refs.trialModalCard) {
+      this._refs.trialModalCard.style.borderColor = accent;
+    }
+    if (this._refs.trialModalStatus) {
+      const done = Boolean(res.completedFull);
+      this._refs.trialModalStatus.classList.toggle('is-exited', !done);
+      setTextIfChanged(this._refs.trialModalStatus, done ? 'TRIAL COMPLETE!' : 'TRIAL EXITED');
+    }
+    if (this._refs.trialModalIcon) {
+      this._refs.trialModalIcon.innerHTML = getTrialSvg(res.trialId);
+    }
+    if (this._refs.trialModalTitle) {
+      setTextIfChanged(this._refs.trialModalTitle, res.trialName || 'CHALLENGE TRIAL');
+      this._refs.trialModalTitle.style.color = accent;
+    }
+    setTextIfChanged(this._refs.trialModalPerf, formatTrialResultPerf(res));
+
+    const goldAmt = Math.max(0, Number(res.goldAwarded) || 0);
+    const goldStr = String(res.formattedGold || formatEndlessNumber(goldAmt)).toUpperCase();
+    setTextIfChanged(this._refs.trialModalGoldVal, `+${goldStr}`);
+    if (this._refs.trialModalGoldPlaque) {
+      this._refs.trialModalGoldPlaque.classList.toggle('is-empty', goldAmt <= 0);
+    }
+
+    const shardsAmt = Math.max(0, Math.floor(Number(res.shardsAwarded) || 0));
+    setTextIfChanged(this._refs.trialModalShardVal, `+${formatEndlessNumber(shardsAmt)}`);
+    if (this._refs.trialModalShardPlaque) {
+      this._refs.trialModalShardPlaque.classList.toggle('is-empty', shardsAmt <= 0);
+    }
+
+    const dustAmt = Math.max(0, Math.floor(Number(res.dustAwarded) || 0));
+    setTextIfChanged(this._refs.trialModalDustVal, `+${formatEndlessNumber(dustAmt)}`);
+    if (this._refs.trialModalDustPlaque) {
+      this._refs.trialModalDustPlaque.classList.toggle('is-empty', dustAmt <= 0);
+    }
+
+    const gearBox = this._refs.trialModalGearBox;
+    const gearContainer = this._refs.trialModalGearList;
+    if (gearBox && gearContainer) {
+      const hasGear = gearList.length > 0;
+      gearBox.classList.toggle('hidden', !hasGear);
+      gearContainer.textContent = '';
+      if (hasGear) {
+        for (let i = 0; i < gearList.length; i++) {
+          const g = gearList[i];
+          const rarity = String(g.rarity || 'heroic').toLowerCase();
+          const color = g.rarityMeta?.color || TRIAL_RARITY_COLORS[rarity] || '#c084fc';
+          const label = String(g.rarityMeta?.label || rarity).toUpperCase();
+
+          const pill = document.createElement('div');
+          pill.className = 'endless-trial-gear-pill';
+          pill.style.borderColor = color;
+
+          const ico = document.createElement('span');
+          ico.className = 'endless-trial-gear-pill-ico';
+          ico.innerHTML = getGearSlotSvg(g.slot);
+
+          const rar = document.createElement('span');
+          rar.className = 'endless-trial-gear-pill-rarity';
+          rar.style.color = color;
+          rar.textContent = label;
+
+          const nm = document.createElement('span');
+          nm.className = 'endless-trial-gear-pill-name';
+          nm.textContent = String(g.name || 'RELIC GEAR').toUpperCase();
+
+          pill.appendChild(ico);
+          pill.appendChild(rar);
+          pill.appendChild(nm);
+          gearContainer.appendChild(pill);
+        }
+      }
+    }
+  }
+
+  _syncTrialsPanel(snapOrState) {
+    if (!this._refs.trialsHeader) return;
+    const raw = (snapOrState && typeof snapOrState.trials === 'object' && snapOrState.trials)
+      ? snapOrState.trials
+      : null;
+
+    const isActive = Boolean(raw?.isActive);
+    const activeId = isActive ? String(raw?.activeTrial?.id || '') : '';
+    const totalCleared = Math.max(0, Math.floor(Number(raw?.totalTrialsCompleted) || 0));
+    setTextIfChanged(this._refs.trialsCleared, `CLEARED: ${formatEndlessNumber(totalCleared)}`);
+
+    const list = (Array.isArray(raw?.trials) && raw.trials.length > 0)
+      ? raw.trials
+      : DEFAULT_TRIAL_DEFS.map((d) => ({
+          ...d,
+          cooldownLeft: 0,
+          canEnter: !isActive,
+          bestScore: 0,
+          formattedBestScore: '0'
+        }));
+
+    for (let i = 0; i < list.length; i++) {
+      const t = list[i];
+      const ref = this._ensureTrialCard(t);
+      const accent = String(t.accentHex || '#facc15');
+      const durSec = Math.max(1, Math.round(Number(t.durationSec) || 30));
+      const cdLeft = Math.max(0, Number(t.cooldownLeft) || 0);
+      const isThisActive = isActive && activeId === t.id;
+      const canEnter = Boolean(!isActive && (t.canEnter !== undefined ? t.canEnter : cdLeft <= 0));
+
+      if (ref.lastAccent !== accent) {
+        ref.card.style.borderLeftColor = accent;
+        ref.iconWrap.style.borderColor = accent;
+        ref.rewardPill.style.borderColor = accent;
+        ref.rewardPill.style.color = accent;
+        ref.lastAccent = accent;
+      }
+
+      ref.card.classList.toggle('is-ready', canEnter);
+      ref.card.classList.toggle('is-running', isThisActive);
+      ref.card.classList.toggle('is-cooldown', !isActive && cdLeft > 0);
+
+      setTextIfChanged(ref.nameEl, String(t.name || t.id).toUpperCase());
+      setTextIfChanged(ref.durPill, `${durSec}S`);
+      setTextIfChanged(ref.rewardPill, String(t.rewardTag || 'TRIAL REWARD').toUpperCase());
+      setTextIfChanged(ref.descEl, String(t.desc || ''));
+      setTextIfChanged(ref.bestEl, formatTrialBestScore(t));
+
+      ref.enterBtn.classList.toggle('is-active-trial', isThisActive);
+      if (isActive) {
+        setTextIfChanged(ref.enterBtn, 'IN TRIAL');
+        ref.enterBtn.disabled = true;
+        ref.enterBtn.style.borderColor = isThisActive ? accent : '';
+      } else if (cdLeft > 0 || !canEnter) {
+        const secs = Math.max(1, Math.ceil(cdLeft));
+        setTextIfChanged(ref.enterBtn, `COOLDOWN ${secs}S`);
+        ref.enterBtn.disabled = true;
+        ref.enterBtn.style.borderColor = '';
+      } else {
+        setTextIfChanged(ref.enterBtn, 'ENTER TRIAL');
+        ref.enterBtn.disabled = false;
+        ref.enterBtn.style.borderColor = accent;
+      }
     }
   }
 
@@ -10838,7 +13053,7 @@ export class EndlessShopUI {
     if (this.root) {
       this.root.textContent = '';
       this.root.classList.add('hidden');
-      this.root.classList.remove('is-drawer-open', 'has-active-party', 'has-active-synergies');
+      this.root.classList.remove('is-drawer-open', 'has-active-party', 'has-active-synergies', 'is-trial-active');
       if (this._createdRoot && this.root.parentNode) {
         this.root.parentNode.removeChild(this.root);
       }
@@ -10855,6 +13070,7 @@ export class EndlessShopUI {
     this._gearSetPillRefs.clear();
     this._gearBagRowRefs.clear();
     this._buffPillRefs.clear();
+    this._trialCardRefs.clear();
     this._tabBtnRefs.clear();
     this._tabPanelRefs.clear();
     this._bulkBtnRefs.clear();
@@ -10868,6 +13084,8 @@ export class EndlessShopUI {
     this._lastBountyCompleted = false;
     this._lastMerchantUid = null;
     this._lastMerchantOfferType = '';
+    this._lastTrialHudIconId = '';
+    this._lastTrialResultSig = '';
     this._refs = {};
   }
 
