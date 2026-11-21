@@ -741,6 +741,7 @@ export class AdventureSkillSets {
    * projectile, stand, companion, funnel, or shader strike damages a monster in Adventure Mode!
    */
   onDirectMonsterHit(attacker, primaryMonster, rawAmount, isCrit, knockX = 0, knockY = 0) {
+    if (attacker && (attacker.isTapSmite || attacker.isGearNova || attacker.isEndlessCompanion)) return;
     if (
       !this.adventure?.active ||
       !attacker ||

@@ -112,13 +112,13 @@ function safeBoundedFloat(val, minVal = 0, maxVal = ENDLESS_MAX_STAT, fallback =
   return n;
 }
 
-const SYNERGY_EXT_KEYS = Object.freeze([
-  'globalDpsMult',
-  'goldMult',
-  'tapMult',
-  'companionMult',
-  'critChanceBonus',
-  'critDmgMult'
+const ENDLESS_DRAWER_TAB_KEYS = Object.freeze([
+  'items',
+  'gear',
+  'companions',
+  'ascend',
+  'trials',
+  'stats'
 ]);
 
 const COMBINED_EXT_KEYS = Object.freeze([
@@ -270,6 +270,10 @@ class EndlessProgressionAdapter {
       Number.isFinite(evoMods?.maxHpMult) && evoMods.maxHpMult > 0 ? evoMods.maxHpMult : 1;
     const evoHpRegen =
       Number.isFinite(evoMods?.hpRegenBonus) && evoMods.hpRegenBonus > 0 ? evoMods.hpRegenBonus : 0;
+    const synHpRegen =
+      Number.isFinite(synMods?.hpRegenBonus) && synMods.hpRegenBonus > 0
+        ? Math.min(0.25, synMods.hpRegenBonus)
+        : 0;
     const hasteMult = safeBoundedFloat(
       (Number.isFinite(ecoStats.hasteMult) && ecoStats.hasteMult > 0 ? ecoStats.hasteMult : 1) *
         (1 + (Number.isFinite(partyBuffs.hasteBonus) ? partyBuffs.hasteBonus : 0)) *
@@ -288,7 +292,7 @@ class EndlessProgressionAdapter {
     );
     const baseRegenPct =
       Number.isFinite(ecoStats.hpRegenPct) && ecoStats.hpRegenPct > 0 ? ecoStats.hpRegenPct : 0;
-    const hpRegenPct = safeBoundedFloat(baseRegenPct + evoHpRegen, 0, 0.5, 0);
+    const hpRegenPct = safeBoundedFloat(baseRegenPct + evoHpRegen + synHpRegen, 0, 0.5, 0);
     return {
       ...ecoStats,
       maxHp,
@@ -428,6 +432,9 @@ class EndlessProgressionAdapter {
   }
 
   resolveOutgoingCastTier(amount, attacker, castSource = null) {
+    if (attacker && (attacker.isTapSmite || attacker.isGearNova || attacker.isEndlessCompanion)) {
+      return 'auto';
+    }
     const explicit = castSource || attacker?._advActiveCastSource || null;
     if (explicit === 'true_ult') return 'true_ult';
     if (explicit === 'ult') return 'ult';
@@ -814,6 +821,14 @@ export class EndlessManager {
     this._bossPortalActive = false;
     this._autoSaveAccum = 0;
     this._uiSyncAccum = 0;
+    this._hudSyncAccum = 0;
+    this._extModsDirty = true;
+    this._extModsSyncAccum = 0;
+    this._pendingSaveDelay = -1;
+    this._deckDomRefs = null;
+    this._deckOrbCdCache = {};
+    this._lastPortraitKey = '';
+    this._lastPortraitCol = '';
     this._lastCompanionSyncSig = '';
     this._clock = 0;
     this._hudClearanceCache = null;
@@ -849,8 +864,37 @@ export class EndlessManager {
     this.syncJoystickKnobUI();
   }
 
+  isBlockingModalOpen() {
+    return Boolean(
+      this.pendingOfflineLoot ||
+        this.offlineLootModal ||
+        this.trials?.lastResult ||
+        this.trialResult
+    );
+  }
+
+  dismissActiveModal() {
+    if (this.trials?.lastResult || this.trialResult) {
+      this.trialResult = null;
+      return this.dismissTrialResult();
+    }
+    if (this.pendingOfflineLoot || this.offlineLootModal) {
+      this.offlineLootModal = null;
+      return this.claimOfflineLoot();
+    }
+    return false;
+  }
+
   onKeyDown(e) {
-    if (!this.active || this.game?.isLandingOpen || this.game?.isMatchOver || this.game?.isPaused) return;
+    if (
+      !this.active ||
+      this.game?.isLandingOpen ||
+      this.game?.isMatchOver ||
+      this.game?.isPaused ||
+      this.isBlockingModalOpen()
+    ) {
+      return;
+    }
     const tag = e.target?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -893,22 +937,49 @@ export class EndlessManager {
     } else if (code === 'KeyI' || code === 'KeyE') {
       this.triggerAction('ultimate');
       e.preventDefault?.();
+    } else if (code === 'KeyO') {
+      if (!e.repeat) {
+        this.triggerSquadOverdrive();
+      }
+      e.preventDefault?.();
     } else if (code === 'KeyP') {
-      this.toggleAutoPlay(true);
+      if (!e.repeat) {
+        this.toggleAutoPlay(true);
+      }
       e.preventDefault?.();
     } else if (!this.autoPlay && (code === 'Tab' || code === 'KeyR')) {
-      this.toggleTargetLock(true);
+      if (!e.repeat) {
+        this.toggleTargetLock(true);
+      }
       e.preventDefault?.();
     } else if (code === 'KeyB' && this.bossFarmMode && !this.isBossEncounter && !this.trials?.isActive?.()) {
-      this.challengeBoss();
+      if (!e.repeat) {
+        this.challengeBoss();
+      }
       e.preventDefault?.();
     } else if (code === 'KeyT') {
-      this.shopUI?.toggleDrawer?.();
+      if (!e.repeat) {
+        this.shopUI?.toggleDrawer?.();
+      }
       e.preventDefault?.();
+    } else if (
+      !e.repeat &&
+      this.shopUI?.isDrawerOpen?.() &&
+      code &&
+      code.length === 6 &&
+      code.startsWith('Digit')
+    ) {
+      const tabIdx = code.charCodeAt(5) - 49;
+      const tabId = ENDLESS_DRAWER_TAB_KEYS[tabIdx];
+      if (tabId && typeof this.shopUI.setActiveTab === 'function') {
+        this.shopUI.setActiveTab(tabId);
+        e.preventDefault?.();
+      }
     }
   }
 
   onKeyUp(e) {
+    if (!this.active) return;
     const code = e.code;
     if (code === 'ArrowLeft' || code === 'KeyA') {
       this.keys.left = false;
@@ -1122,9 +1193,23 @@ export class EndlessManager {
   spawnFloatingCallout(x, y, text, color = '#facc15', scale = 1, maxLife = 0.95, opts = {}) {
     if (!text) return;
     const safeX = Number.isFinite(x) ? Math.round(x) : Math.round(this.corridorOriginX || 240);
-    const safeY = Number.isFinite(y) ? Math.round(y) : Math.round(this.depthMidY - 100);
+    let safeY = Number.isFinite(y) ? Math.round(y) : Math.round(this.depthMidY - 100);
     while (this.floatingCallouts.length >= FLOATING_CALLOUT_MAX_COUNT) {
       this.floatingCallouts.shift();
+    }
+    const minGapY = scale >= 2 ? 26 : 18;
+    for (let pass = 0; pass < 4; pass++) {
+      let shifted = false;
+      for (let i = 0; i < this.floatingCallouts.length; i++) {
+        const fc = this.floatingCallouts[i];
+        if (!fc || (fc.age || 0) > 0.35) continue;
+        if (Math.abs((fc.x || 0) - safeX) <= 84 && Math.abs((fc.y || 0) - safeY) < minGapY) {
+          safeY -= minGapY;
+          shifted = true;
+          break;
+        }
+      }
+      if (!shifted) break;
     }
     const label = String(text).toUpperCase();
     let kind = opts?.kind || null;
@@ -1189,6 +1274,10 @@ export class EndlessManager {
     return this.ascension;
   }
 
+  _markExternalModifiersDirty() {
+    this._extModsDirty = true;
+  }
+
   _clearSynergyFromEconomy() {
     if (this._lastWrittenSynergyExt && this.economy?.setExternalModifiers) {
       const cur = this.economy._externalModifiers || {};
@@ -1207,6 +1296,8 @@ export class EndlessManager {
     }
     this._activeSynergyMods = null;
     this._lastWrittenSynergyExt = null;
+    this._extModsDirty = false;
+    this._extModsSyncAccum = 0;
   }
 
   _syncExternalModifiers(synModsOverride = undefined, { preserveBase = false } = {}) {
@@ -1240,6 +1331,8 @@ export class EndlessManager {
 
     if (!this.economy || typeof this.economy.setExternalModifiers !== 'function') {
       this._activeSynergyMods = synMods || null;
+      this._extModsDirty = false;
+      this._extModsSyncAccum = 0;
       return synMods || null;
     }
 
@@ -1254,6 +1347,8 @@ export class EndlessManager {
         this._clearSynergyFromEconomy();
       } else {
         this._activeSynergyMods = null;
+        this._extModsDirty = false;
+        this._extModsSyncAccum = 0;
       }
       return null;
     }
@@ -1593,12 +1688,156 @@ export class EndlessManager {
     }
     this._lastWrittenSynergyExt = written;
     this._activeSynergyMods = hasSyn ? synMods : null;
+    this._extModsDirty = false;
+    this._extModsSyncAccum = 0;
     this.economy.setExternalModifiers(merged);
     return synMods;
   }
 
   _applyPartySynergyToEconomy(synMods) {
     return this._syncExternalModifiers(synMods);
+  }
+
+  _autoOpenUnopenedChests({ creditGold = true } = {}) {
+    if (!Array.isArray(this.treasureChests) || this.treasureChests.length === 0) {
+      return 0;
+    }
+    let openedCount = 0;
+    const inTrial = Boolean(this.trials?.isActive?.());
+    for (let i = 0; i < this.treasureChests.length; i++) {
+      const ch = this.treasureChests[i];
+      if (!ch || ch.opened) continue;
+      ch.opened = true;
+      ch.isDead = true;
+      ch.tapsLeft = 0;
+      ch.hp = 0;
+      openedCount++;
+
+      const stg = Math.max(1, Math.floor(Number(ch.stage || this.stage) || 1));
+      if (creditGold) {
+        const stageGold = safeBoundedInt(
+          this.economy.computeMonsterGoldReward(stg),
+          1,
+          ENDLESS_MAX_STAT
+        );
+        const chestGold = safeBoundedInt(stageGold * 10, 16, ENDLESS_MAX_STAT);
+        const added = this.economy.addGold(chestGold, { isBoss: true, applyMult: true });
+        if (inTrial && added > 0) {
+          this.trials.recordTrialGold(added);
+        }
+      }
+      if (stg % 5 === 0) {
+        this.economy.addAstralShards(2);
+      }
+      if (
+        this.gear &&
+        typeof this.gear.rollDrop === 'function' &&
+        typeof this.gear.collectDrop === 'function'
+      ) {
+        const canDrop =
+          typeof this.gear.shouldDropFromSource !== 'function' ||
+          this.gear.shouldDropFromSource('chest', stg);
+        if (canDrop) {
+          const item = this.gear.rollDrop({ stage: stg, source: 'chest' });
+          if (item) {
+            this.gear.collectDrop(item, { autoEquipEmpty: true });
+          }
+        }
+      }
+    }
+    this.treasureChests = [];
+    if (openedCount > 0) {
+      this._markExternalModifiersDirty();
+    }
+    return openedCount;
+  }
+
+  _clearTransientWorldState({
+    clearTrials = true,
+    resetSpawnTimers = true,
+    clearOfflineLoot = false,
+    resetPlayerState = true,
+    resetStreaks = true,
+    playerOverride = null
+  } = {}) {
+    this._clearEnemyProjectiles();
+    this.coins = [];
+    this.tapSmites = [];
+    this.feverBursts = [];
+    this.feverChains = [];
+    this.wave4Bursts = [];
+    this.portals = [];
+    this.monsterPlumes = [];
+    this.floatingCallouts = [];
+    this.treasureGoblins = [];
+    this.treasureChests = [];
+    this.lootBeams = [];
+    this._gearNovaFx = [];
+    this._inBloodReaverNova = false;
+    this.worldShrines = [];
+    this.wanderingMerchants = [];
+    this._tempestBoltTimer = 0;
+    this._heroGoblinHitCd = 0;
+    this._phoenixInvulnTimer = 0;
+    this.events?.dismissMerchantOffer?.();
+    this.companions?.clearTransientFX?.();
+
+    if (resetSpawnTimers) {
+      this._shrineSpawnTimer = 26;
+      this._merchantSpawnTimer = 50;
+      this._goblinSpawnTimer =
+        GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
+    }
+
+    if (clearTrials) {
+      this._trialSpawnTimer = 0;
+      this._trialBossPrevHp = 0;
+      this._trialHordeWaveIdx = 0;
+      if (this.trials) {
+        this.trials.activeTrial = null;
+        this.trials.lastResult = null;
+      }
+      this.trialResult = null;
+    }
+
+    if (clearOfflineLoot) {
+      this.pendingOfflineLoot = null;
+      this.offlineLootModal = null;
+    }
+
+    if (resetStreaks) {
+      this._coinStreak = 0;
+      this._coinStreakTimer = 0;
+      this._lastCoinChimeMs = -1000;
+      this._lastFeverTier = 0;
+      this._feverStampPopTimer = 0;
+    }
+
+    if (resetPlayerState) {
+      const player = playerOverride || this.game?.leftFighter;
+      if (player) {
+        if (player._advPureDodge || player.state === 'DODGE') {
+          this.finishHeroAdventureDodge(player, false);
+        }
+        player.isInvulnerable = false;
+        player.stunTimer = 0;
+        player.isRooted = false;
+        player.hurtTimer = 0;
+        player._grabbedByBoss = false;
+        player._grabbedByBossTimer = 0;
+        player.vx = 0;
+        player.vy = 0;
+      }
+    }
+  }
+
+  _scheduleSave(delayMs = 2000) {
+    if (!this.economy || typeof this.economy.saveToStorage !== 'function') return;
+    if (this.game?.simMode || this.game?.urlAutoPlay) return;
+    const sec = Math.max(0.1, (Number(delayMs) || 2000) * 0.001);
+    if (this._pendingSaveDelay < 0 || sec < this._pendingSaveDelay) {
+      this._pendingSaveDelay = sec;
+    }
   }
 
   // =========================================================================
@@ -1614,45 +1853,24 @@ export class EndlessManager {
     this.lockedMonster = null;
     this.clearHeldInputs();
 
-    this.coins = [];
-    this.tapSmites = [];
-    this.feverBursts = [];
-    this.feverChains = [];
-    this.wave4Bursts = [];
-    this.portals = [];
-    this.monsterPlumes = [];
-    this.floatingCallouts = [];
+    this._clearTransientWorldState({
+      clearTrials: true,
+      resetSpawnTimers: true,
+      clearOfflineLoot: true,
+      resetPlayerState: true,
+      resetStreaks: true,
+      playerOverride: playerFighter
+    });
 
-    this.pendingOfflineLoot = null;
-    this.treasureGoblins = [];
-    this.treasureChests = [];
-    this.lootBeams = [];
-    this._gearNovaFx = [];
-    this._inBloodReaverNova = false;
-    this.worldShrines = [];
-    this.wanderingMerchants = [];
-    this._shrineSpawnTimer = 26;
-    this._merchantSpawnTimer = 50;
-    this._tempestBoltTimer = 0;
-    this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
-    this._heroGoblinHitCd = 0;
-    this._trialSpawnTimer = 0;
-    this._trialBossPrevHp = 0;
-    this._trialHordeWaveIdx = 0;
-    if (this.trials) {
-      this.trials.activeTrial = null;
-      this.trials.lastResult = null;
-    }
-    this.companions?.clearTransientFX?.();
-
-    this._coinStreak = 0;
-    this._coinStreakTimer = 0;
-    this._lastCoinChimeMs = -1000;
-    this._lastFeverTier = 0;
-    this._feverStampPopTimer = 0;
     this._activeSynergyMods = null;
     this._baseExternalModifiers = {};
     this._lastWrittenSynergyExt = null;
+    this._extModsDirty = true;
+    this._extModsSyncAccum = 0;
+    this._pendingSaveDelay = -1;
+    this._hudSyncAccum = 0;
+    this._lastPortraitKey = '';
+    this._lastPortraitCol = '';
     this.bannerTimer = 0;
     this.bannerText = '';
     this.bannerSubText = '';
@@ -1667,7 +1885,6 @@ export class EndlessManager {
     this._waveAdvanceElapsed = 0;
     this._waveSpawnDelay = 0;
     this._farmWaveCount = 0;
-    this._phoenixInvulnTimer = 0;
     this._autoSaveAccum = 0;
     this._uiSyncAccum = 0;
     this._clock = 0;
@@ -1739,9 +1956,22 @@ export class EndlessManager {
         const loadedSyn = this.companions?.getPartySynergyModifiers?.() || null;
         this._syncExternalModifiers(loadedSyn, { preserveBase: true });
         if (loadedSnap?.savedAt && typeof this.ascension.computeOfflineLoot === 'function') {
+          const statsGoldMult = Number(this.economy?.getComputedStats?.()?.goldMult) || 1;
+          const evGoldMult = Number(this.events?.getEventModifiers?.()?.goldMult) || 1;
+          const permanentGoldMult = safeBoundedFloat(
+            evGoldMult > 0 ? statsGoldMult / evGoldMult : statsGoldMult,
+            0.1,
+            ENDLESS_MAX_MULT,
+            1.0
+          );
           this.pendingOfflineLoot =
-            this.ascension.computeOfflineLoot(loadedSnap.savedAt, Date.now(), this.stage, this.economy) ||
-            null;
+            this.ascension.computeOfflineLoot(
+              loadedSnap.savedAt,
+              Date.now(),
+              this.stage,
+              this.economy,
+              { permanentGoldMult }
+            ) || null;
         }
       } else if (this.gear || this.events || this.companionEvo) {
         const loadedSyn = this.companions?.getPartySynergyModifiers?.() || null;
@@ -1929,21 +2159,7 @@ export class EndlessManager {
       this._restoreSavedMainState(savedMain, { respawnWave: false, restoreRenderer: false });
     }
     if (save && this.treasureChests.length > 0) {
-      for (const ch of this.treasureChests) {
-        if (!ch || ch.opened) continue;
-        ch.opened = true;
-        const stageGold = safeBoundedInt(
-          this.economy.computeMonsterGoldReward(ch.stage || this.stage),
-          1,
-          ENDLESS_MAX_STAT
-        );
-        const chestGold = safeBoundedInt(stageGold * 10, 16, ENDLESS_MAX_STAT);
-        this.economy.addGold(chestGold, { isBoss: true, applyMult: true });
-        if ((ch.stage || 1) % 5 === 0) {
-          this.economy.addAstralShards(2);
-        }
-      }
-      this.treasureChests = [];
+      this._autoOpenUnopenedChests({ creditGold: true });
     }
     if (save && this.active) {
       this.saveNow();
@@ -1951,7 +2167,7 @@ export class EndlessManager {
 
     const player = this.game?.leftFighter;
     if (player) {
-      if (player._advPureDodge) {
+      if (player._advPureDodge || player.state === 'DODGE') {
         this.finishHeroAdventureDodge(player, false);
       }
       player._advDodgeFrameOverride = null;
@@ -1985,40 +2201,16 @@ export class EndlessManager {
     this._bossPortalActive = false;
     this._waveAdvancePending = false;
     this.lockActive = false;
-    this.coins = [];
-    this.tapSmites = [];
-    this.feverBursts = [];
-    this.feverChains = [];
-    this.wave4Bursts = [];
-    this.portals = [];
-    this.monsterPlumes = [];
-    this.floatingCallouts = [];
-    this.treasureGoblins = [];
-    this.treasureChests = [];
-    this.lootBeams = [];
-    this._gearNovaFx = [];
-    this._inBloodReaverNova = false;
-    this.worldShrines = [];
-    this.wanderingMerchants = [];
-    this._tempestBoltTimer = 0;
-    this.events?.dismissMerchantOffer?.();
-    this.pendingOfflineLoot = null;
-    this._heroGoblinHitCd = 0;
-    this._trialSpawnTimer = 0;
-    this._trialBossPrevHp = 0;
-    this._trialHordeWaveIdx = 0;
-    if (this.trials) {
-      this.trials.activeTrial = null;
-      this.trials.lastResult = null;
-    }
-    this.companions?.clearTransientFX?.();
+    this._pendingSaveDelay = -1;
+    this._clearTransientWorldState({
+      clearTrials: true,
+      resetSpawnTimers: false,
+      clearOfflineLoot: true,
+      resetPlayerState: false,
+      resetStreaks: true
+    });
 
     this._clearSynergyFromEconomy();
-    this._coinStreak = 0;
-    this._coinStreakTimer = 0;
-    this._lastCoinChimeMs = -1000;
-    this._lastFeverTier = 0;
-    this._feverStampPopTimer = 0;
     this._baseExternalModifiers = {};
     this.clearHeldInputs();
 
@@ -2049,6 +2241,7 @@ export class EndlessManager {
   }
 
   saveNow() {
+    this._pendingSaveDelay = -1;
     if (!this.economy || typeof this.economy.saveToStorage !== 'function') return null;
     if (this.game?.simMode || this.game?.urlAutoPlay) return null;
     const savedMain = this.trials?.isActive?.() ? this.trials.activeTrial?.savedMainState : null;
@@ -2110,33 +2303,14 @@ export class EndlessManager {
     this._bossPortalActive = false;
     this._waveAdvancePending = false;
     this._farmWaveCount = 0;
-    this.coins = [];
-    this.tapSmites = [];
-    this.feverBursts = [];
-    this.feverChains = [];
-    this.wave4Bursts = [];
-    this.portals = [];
-    this.monsterPlumes = [];
-    this.floatingCallouts = [];
-    this.treasureGoblins = [];
-    this.treasureChests = [];
-    this.lootBeams = [];
-    this._gearNovaFx = [];
-    this._inBloodReaverNova = false;
-    this.worldShrines = [];
-    this.wanderingMerchants = [];
-    this._shrineSpawnTimer = 26;
-    this._merchantSpawnTimer = 50;
-    this._tempestBoltTimer = 0;
-    this.pendingOfflineLoot = null;
-    this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
-    this._heroGoblinHitCd = 0;
+    this._clearTransientWorldState({
+      clearTrials: true,
+      resetSpawnTimers: true,
+      clearOfflineLoot: true,
+      resetPlayerState: true,
+      resetStreaks: true
+    });
 
-    this._coinStreak = 0;
-    this._coinStreakTimer = 0;
-    this._lastCoinChimeMs = -1000;
-    this._lastFeverTier = 0;
-    this._feverStampPopTimer = 0;
     this._activeSynergyMods = null;
     this._baseExternalModifiers = {};
     this._lastWrittenSynergyExt = null;
@@ -2180,12 +2354,16 @@ export class EndlessManager {
       this.game.renderer.camX = this.corridorOriginX + 240;
     }
 
+    if (!this.game?.isLandingOpen && !this.game?.simMode) {
+      this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
+    }
+
     this._spawnWaveMonsters();
     this.showBanner('CRUSADE RESET', 'STAGE 1 • ECLIPSE SANCTUM', '#38bdf8', 2.2);
     this.saveNow();
     this.syncStageBadge();
     this.syncRightHUD();
-    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return true;
   }
 
@@ -2197,7 +2375,8 @@ export class EndlessManager {
     if (!this.ascension || typeof this.ascension.performAscension !== 'function') {
       return { ok: false, reason: 'no_ascension' };
     }
-    const savedMain = this.trials?.isActive?.() ? this.trials.activeTrial?.savedMainState : null;
+    const wasInTrial = Boolean(this.trials?.isActive?.());
+    const savedMain = wasInTrial ? this.trials.activeTrial?.savedMainState : null;
     const effStage =
       savedMain && Number.isFinite(savedMain.stage)
         ? Math.max(1, Math.floor(savedMain.stage))
@@ -2221,7 +2400,7 @@ export class EndlessManager {
     }
 
     // Cancel any active Trial cleanly first while preserving bestScores & totalTrialsCompleted across Ascension
-    if (this.trials?.isActive?.()) {
+    if (wasInTrial) {
       this.trials.activeTrial = null;
       this.trials.lastResult = null;
       this._trialSpawnTimer = 0;
@@ -2237,12 +2416,15 @@ export class EndlessManager {
       return res || { ok: false };
     }
 
-    // Auto-collect any uncollected world loot beams before clearing; Gear stays permanent across Ascension!
+    // Auto-collect any uncollected world loot beams & unopened main-stage milestone chests
+    // BEFORE clearing so permanent Stage 5n Astral Shards & Gear are never lost!
     if (this.lootBeams.length > 0) {
       this._collectAllLootBeamsSilent();
     }
+    if (!wasInTrial && this.treasureChests.length > 0) {
+      this._autoOpenUnopenedChests({ creditGold: false });
+    }
 
-    const wasColossal = Boolean(this.bossEntity?.isColossalBoss);
     this._despawnAllMonsters();
     this.stage = 1;
     this.bestStage = Math.max(1, this.bestStage, this.economy.bestStage || 1);
@@ -2259,45 +2441,30 @@ export class EndlessManager {
     this.manualTargetLock = false;
     this.lockedMonster = null;
 
-    this.coins = [];
-    this.tapSmites = [];
-    this.feverBursts = [];
-    this.feverChains = [];
-    this.wave4Bursts = [];
-    this.portals = [];
-    this.monsterPlumes = [];
-    this.floatingCallouts = [];
-    this.treasureGoblins = [];
-    this.treasureChests = [];
-    this.lootBeams = [];
-    this._gearNovaFx = [];
-    this._inBloodReaverNova = false;
-    this.worldShrines = [];
-    this.wanderingMerchants = [];
-    this._shrineSpawnTimer = 26;
-    this._merchantSpawnTimer = 50;
-    this._tempestBoltTimer = 0;
-    this.events?.dismissMerchantOffer?.();
-    this._goblinSpawnTimer = GOBLIN_SPAWN_MIN_SEC + Math.random() * (GOBLIN_SPAWN_MAX_SEC - GOBLIN_SPAWN_MIN_SEC);
-    this._heroGoblinHitCd = 0;
-    this._trialSpawnTimer = 0;
-    this._trialBossPrevHp = 0;
-    this._trialHordeWaveIdx = 0;
-    if (this.trials) {
-      this.trials.activeTrial = null;
-      this.trials.lastResult = null;
-    }
-    this.companions?.clearTransientFX?.();
+    this._clearTransientWorldState({
+      clearTrials: true,
+      resetSpawnTimers: true,
+      clearOfflineLoot: false,
+      resetPlayerState: true,
+      resetStreaks: true
+    });
     if (this.companionEvo) {
       this.companionEvo.overdriveCharge = 0;
       this.companionEvo.overdriveActiveTimer = 0;
     }
 
-    this._coinStreak = 0;
-    this._coinStreakTimer = 0;
-    this._lastCoinChimeMs = -1000;
-    this._lastFeverTier = 0;
-    this._feverStampPopTimer = 0;
+    // Reset transient run events (Stage 10+ Shrine buffs & Stage 10 Bounty) cleanly onto Stage 1
+    if (this.events) {
+      if (typeof this.events.resetRunEvents === 'function') {
+        this.events.resetRunEvents(1, this.economy);
+      } else {
+        this.events.activeBuffs = [];
+        this.events.activeMerchantOffer = null;
+        this.events.activeBounty = null;
+        this.events.ensureActiveBounty?.(1, this.economy);
+      }
+    }
+
     this._activeSynergyMods = null;
     this._lastWrittenSynergyExt = null;
     this._syncExternalModifiers(null, { preserveBase: true });
@@ -2345,7 +2512,7 @@ export class EndlessManager {
       this.game.renderer.triggerShake?.(10, 0.34);
     }
 
-    if (wasColossal && !this.game?.isLandingOpen && !this.game?.simMode) {
+    if (!this.game?.isLandingOpen && !this.game?.simMode) {
       this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
     }
 
@@ -2376,7 +2543,7 @@ export class EndlessManager {
     this.saveNow();
     this.syncStageBadge();
     this.syncRightHUD();
-    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return res;
   }
 
@@ -2438,13 +2605,15 @@ export class EndlessManager {
     this.game?.audio?.play?.('victory_fanfare', px);
     this.saveNow();
     this.syncRightHUD();
-    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return { ok: true, gold: goldAmt, astralShards: shardAmt };
   }
 
   dismissOfflineLoot() {
     this.pendingOfflineLoot = null;
-    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    this.offlineLootModal = null;
+    this.saveNow();
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return true;
   }
 
@@ -2584,12 +2753,44 @@ export class EndlessManager {
     }
 
     if (respawnWave && this.active) {
-      this._spawnWaveMonsters();
-      if (savedMain && typeof savedMain === 'object') {
-        if (Number.isFinite(savedMain.corridorMinX)) this.corridorMinX = savedMain.corridorMinX;
-        if (Number.isFinite(savedMain.corridorMaxX)) this.corridorMaxX = savedMain.corridorMaxX;
-        if (Number.isFinite(savedMain.lockMinX)) this.lockMinX = savedMain.lockMinX;
-        if (Number.isFinite(savedMain.lockMaxX)) this.lockMaxX = savedMain.lockMaxX;
+      const restoreBoss = Boolean(savedMain?.isBossEncounter);
+      if (restoreBoss) {
+        this.startBossEncounter();
+        if (Number.isFinite(savedMain.bossTimerMax) && savedMain.bossTimerMax > 0) {
+          this.bossTimerMax = savedMain.bossTimerMax;
+        }
+        if (Number.isFinite(savedMain.bossTimer) && savedMain.bossTimer > 0) {
+          this.bossTimer = Math.min(this.bossTimerMax, Math.max(1, savedMain.bossTimer));
+        }
+        if (savedMain && typeof savedMain === 'object') {
+          if (Number.isFinite(savedMain.corridorMinX)) this.corridorMinX = savedMain.corridorMinX;
+          if (Number.isFinite(savedMain.corridorMaxX)) this.corridorMaxX = savedMain.corridorMaxX;
+          if (Number.isFinite(savedMain.lockMinX)) this.lockMinX = savedMain.lockMinX;
+          if (Number.isFinite(savedMain.lockMaxX)) this.lockMaxX = savedMain.lockMaxX;
+        }
+        if (player) {
+          const bBounds = this.getActiveStageBounds();
+          if (Number.isFinite(savedMain.playerX)) {
+            player.x = Math.max(bBounds.minX, Math.min(bBounds.maxX, savedMain.playerX));
+          }
+          if (Number.isFinite(savedMain.playerGroundY)) {
+            const gy = Math.max(this.depthMinY, Math.min(this.depthMaxY, savedMain.playerGroundY));
+            player.groundY = gy;
+            player.y = gy;
+          }
+          if (Number.isFinite(savedMain.playerHp)) {
+            player.hp = Math.min(player.maxHp, Math.max(1, savedMain.playerHp));
+          }
+          this._repositionCompanionsNearHero(player);
+        }
+      } else {
+        this._spawnWaveMonsters();
+        if (savedMain && typeof savedMain === 'object') {
+          if (Number.isFinite(savedMain.corridorMinX)) this.corridorMinX = savedMain.corridorMinX;
+          if (Number.isFinite(savedMain.corridorMaxX)) this.corridorMaxX = savedMain.corridorMaxX;
+          if (Number.isFinite(savedMain.lockMinX)) this.lockMinX = savedMain.lockMinX;
+          if (Number.isFinite(savedMain.lockMaxX)) this.lockMaxX = savedMain.lockMaxX;
+        }
       }
     }
   }
@@ -2607,6 +2808,24 @@ export class EndlessManager {
       if (d < bestDist) {
         bestDist = d;
         best = g;
+      }
+    }
+    return best;
+  }
+
+  _getNearestUnopenedChest(player) {
+    if (!this.treasureChests.length) return null;
+    let best = null;
+    let bestDist = Infinity;
+    const px = Number.isFinite(player?.x) ? player.x : this.corridorOriginX;
+    const pGy = Number.isFinite(player?.groundY) ? player.groundY : this.depthMidY;
+    for (let i = 0; i < this.treasureChests.length; i++) {
+      const ch = this.treasureChests[i];
+      if (!ch || ch.opened || ch.isDead) continue;
+      const d = Math.hypot(ch.x - px, (ch.groundY - pGy) * 1.4);
+      if (d < bestDist) {
+        bestDist = d;
+        best = ch;
       }
     }
     return best;
@@ -2675,9 +2894,12 @@ export class EndlessManager {
       }
     }
 
-    // Auto-collect ground loot beams & coins silently BEFORE entering so zero main-stage loot is lost
+    // Auto-collect ground loot beams, unopened milestone chests & coins silently BEFORE entering so zero main-stage loot/shards/gear is lost
     if (this.lootBeams.length > 0) {
       this._collectAllLootBeamsSilent();
+    }
+    if (this.treasureChests.length > 0) {
+      this._autoOpenUnopenedChests({ creditGold: true });
     }
     if (this.coins.length > 0) {
       this._scoopAllCoinsInstant();
@@ -2689,6 +2911,7 @@ export class EndlessManager {
       bestStage: this.bestStage,
       waveInStage: this.waveInStage,
       isBossEncounter: this.isBossEncounter,
+      wasColossalBoss: Boolean(this.bossEntity?.isColossalBoss),
       bossFarmMode: this.bossFarmMode,
       bossTimer: this.bossTimer,
       bossTimerMax: this.bossTimerMax,
@@ -2713,9 +2936,8 @@ export class EndlessManager {
     }
     const trial = startRes.trial || this.trials.activeTrial;
 
-    // Despawn current stage entities cleanly without altering this.stage / this.waveInStage
+    // Despawn current stage entities & transient world FX cleanly without altering this.stage / this.waveInStage
     this._despawnAllMonsters();
-    this._clearEnemyProjectiles();
     this.isBossEncounter = false;
     this.bossEntity = null;
     this.bossTimer = 0;
@@ -2727,13 +2949,13 @@ export class EndlessManager {
     this._waveSpawnDelay = 0;
     this.manualTargetLock = false;
     this.lockedMonster = null;
-    this.treasureGoblins = [];
-    this.treasureChests = [];
-    this.worldShrines = [];
-    this.wanderingMerchants = [];
-    this.coins = [];
-    this.portals = [];
-    this.events?.dismissMerchantOffer?.();
+    this._clearTransientWorldState({
+      clearTrials: false,
+      resetSpawnTimers: false,
+      clearOfflineLoot: false,
+      resetPlayerState: true,
+      resetStreaks: false
+    });
 
     this.lockActive = true;
     this._syncCorridorBounds({ lockToCorridor: true, syncCamera: true });
@@ -2778,13 +3000,17 @@ export class EndlessManager {
       this.spawnTreasureGoblin(Math.round(this.lockMinX + 220));
       this.spawnTreasureGoblin(Math.round(this.lockMaxX - 220));
       this.spawnStageTreasureChest(midX + 110, this.depthMidY, this.stage);
+      if (!this.game?.isLandingOpen && !this.game?.simMode) {
+        this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
+      }
       bannerSub = `${durSec}S • SMITE GOBLINS & CHESTS FOR JACKPOT GOLD!`;
     } else if (trialId === 'malphas_gauntlet') {
       PixelForge.ensureHeroLoaded?.('archfiend');
       const bossX = Math.round(this.lockMaxX - 180);
       this._bossPortalX = bossX;
       this._bossPortalActive = true;
-      this.isBossEncounter = true;
+      // Keep isBossEncounter = false during Trials so Top Boss Raid HUD never collides with Active Trial HUD!
+      this.isBossEncounter = false;
       this.bossTimerMax = trial?.durationSec || trialDef.durationSec || 45;
       this.bossTimer = this.bossTimerMax;
       const bossDmgMult = safeBoundedFloat(
@@ -2799,6 +3025,7 @@ export class EndlessManager {
         maxHp: TRIAL_MALPHAS_MAX_HP,
         dmgScale: bossDmgMult,
         bossDmgMult,
+        soulTitheBaseCd: 9999,
         skipPortal: true,
         isEndlessStageBoss: true
       });
@@ -2806,6 +3033,21 @@ export class EndlessManager {
         boss.maxHp = TRIAL_MALPHAS_MAX_HP;
         boss.hp = TRIAL_MALPHAS_MAX_HP;
         boss.isTrialBoss = true;
+        // Suppress ABYSSAL SIEGE GRAB & HELLPIT SOUL-TITHE on the 45s pure DPS dummy boss!
+        boss.soulTitheBaseCd = 9999;
+        boss.soulTitheCooldown = 9999;
+        boss.soulTitheWindupTimer = 0;
+        boss.triggerUnavoidableSoulTithe = () => 0;
+        const origNeutralAI =
+          typeof boss.runMonsterNeutralAI === 'function' ? boss.runMonsterNeutralAI.bind(boss) : null;
+        if (origNeutralAI) {
+          boss.runMonsterNeutralAI = (aiDt, aiEnemy, aiGame) => {
+            if ((boss.skillCooldown || 0) <= 0 && boss.skillVariant === 1) {
+              boss.skillVariant = 2;
+            }
+            return origNeutralAI(aiDt, aiEnemy, aiGame);
+          };
+        }
         this.bossEntity = boss;
         this._trialBossPrevHp = boss.maxHp;
       }
@@ -2815,6 +3057,9 @@ export class EndlessManager {
       bannerSub = `${durSec}S PURE DPS CHECK • SHARDS & MYTHIC DUST!`;
     } else if (trialId === 'abyssal_horde') {
       this._spawnTrialHordePack(TRIAL_ABYSSAL_HORDE_MIN_LIVING);
+      if (!this.game?.isLandingOpen && !this.game?.simMode) {
+        this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
+      }
       bannerSub = `${durSec}S SWARM SURVIVAL • GUARANTEED HEROIC+ GEAR!`;
     }
 
@@ -2830,7 +3075,7 @@ export class EndlessManager {
 
     this.syncStageBadge();
     this.syncRightHUD();
-    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return { ok: true, trial };
   }
 
@@ -2841,6 +3086,17 @@ export class EndlessManager {
 
     const wasMalphas = this.trials.activeTrial?.id === 'malphas_gauntlet';
 
+    // Flush current frame's malphas_gauntlet boss damage delta BEFORE despawning monsters!
+    if (wasMalphas && this.bossEntity) {
+      const curHp = Number.isFinite(this.bossEntity.hp) ? Math.max(0, this.bossEntity.hp) : 0;
+      const prevHp = Number.isFinite(this._trialBossPrevHp) ? this._trialBossPrevHp : this.bossEntity.maxHp;
+      const delta = prevHp - curHp;
+      if (delta > 0) {
+        this.trials.recordTrialBossDamage(delta, this.stage);
+      }
+      this._trialBossPrevHp = curHp;
+    }
+
     // Auto-collect remaining trial coins & loot beams BEFORE finalizing rewards
     if (this.coins.length > 0) {
       this._scoopAllCoinsInstant();
@@ -2849,14 +3105,8 @@ export class EndlessManager {
       this._collectAllLootBeamsSilent();
     }
 
-    // Despawn Trial monsters/boss/goblins/chests cleanly
+    // Despawn Trial monsters/boss/goblins/chests & transient FX cleanly
     this._despawnAllMonsters();
-    this._clearEnemyProjectiles();
-    this.treasureGoblins = [];
-    this.treasureChests = [];
-    this.worldShrines = [];
-    this.wanderingMerchants = [];
-    this.portals = [];
     this.isBossEncounter = false;
     this.bossEntity = null;
     this.bossTimer = 0;
@@ -2869,6 +3119,13 @@ export class EndlessManager {
     this._trialSpawnTimer = 0;
     this._trialBossPrevHp = 0;
     this._trialHordeWaveIdx = 0;
+    this._clearTransientWorldState({
+      clearTrials: false,
+      resetSpawnTimers: false,
+      clearOfflineLoot: false,
+      resetPlayerState: true,
+      resetStreaks: false
+    });
 
     const done = this.trials.completeTrial(this.economy, this.gear, {
       completedFull: Boolean(completedFull)
@@ -2880,8 +3137,12 @@ export class EndlessManager {
       restoreRenderer: true
     });
 
-    if ((wasMalphas || savedMain?.isBossEncounter) && !this.game?.isLandingOpen && !this.game?.simMode) {
-      this.game?.audio?.playBgm?.('bgm_adventure_pilgrimage');
+    if (!this.game?.isLandingOpen && !this.game?.simMode) {
+      const nextBgm =
+        this.isBossEncounter && this.bossEntity?.isColossalBoss
+          ? 'bgm_boss_malphas'
+          : 'bgm_adventure_pilgrimage';
+      this.game?.audio?.playBgm?.(nextBgm);
     }
 
     this.saveNow();
@@ -2889,13 +3150,14 @@ export class EndlessManager {
     this.game?.audio?.play?.('victory_fanfare', player?.x ?? this.corridorOriginX);
     this.syncStageBadge();
     this.syncRightHUD();
-    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return done;
   }
 
   dismissTrialResult() {
+    this.trialResult = null;
     this.trials?.dismissResult?.();
-    this.shopUI?.sync?.(this.getUiSnapshot(), true);
+    this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return true;
   }
 
@@ -2931,6 +3193,12 @@ export class EndlessManager {
     if (active.id === 'malphas_gauntlet') {
       const boss = this.bossEntity;
       if (boss) {
+        // Keep DPS dummy boss free of stun-lock grab & soul-tithe attrition
+        boss.soulTitheCooldown = 9999;
+        boss.soulTitheWindupTimer = 0;
+        if (boss.grabbedTarget || boss.bossAction === 'claw_grab') {
+          boss.releaseGrabbedTarget?.();
+        }
         const curHp = Number.isFinite(boss.hp) ? Math.max(0, boss.hp) : 0;
         const prevHp = Number.isFinite(this._trialBossPrevHp) ? this._trialBossPrevHp : boss.maxHp;
         const delta = prevHp - curHp;
@@ -3030,7 +3298,11 @@ export class EndlessManager {
           );
         }
       }
-      this.game?.audio?.play?.('holy_hit', player?.x || 600);
+      this._markExternalModifiersDirty();
+      const hitMilestoneOrSet = Boolean(
+        res.milestoneReached || (Array.isArray(res.setsUpgraded) && res.setsUpgraded.length > 0)
+      );
+      this.game?.audio?.play?.(hitMilestoneOrSet ? 'victory_fanfare' : 'holy_hit', player?.x || 600);
       this.saveNow();
       this.shopUI?.sync?.(this.getUiSnapshot(), false);
     }
@@ -3056,7 +3328,7 @@ export class EndlessManager {
       if (player) this.progression.syncMaxHpWithEconomy(player);
       this.game?.audio?.play?.('holy_hit', player?.x || 600);
       this.saveNow();
-      this.shopUI?.sync?.(this.getUiSnapshot(), true);
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
     }
     return res || { ok: false };
   }
@@ -3067,6 +3339,7 @@ export class EndlessManager {
       const player = this.game?.leftFighter;
       if (player) this.companions.syncEntitiesWithWorld(player);
       this._lastCompanionSyncSig = this._computeCompanionSyncSig();
+      this._markExternalModifiersDirty();
       this.game?.audio?.play?.('clock_gear', player?.x || 600);
       this.saveNow();
       this.shopUI?.sync?.(this.getUiSnapshot(), false);
@@ -3085,7 +3358,7 @@ export class EndlessManager {
       if (player) this.progression.syncMaxHpWithEconomy(player);
       this.game?.audio?.play?.('clock_gear', player?.x || 600);
       this.saveNow();
-      this.shopUI?.sync?.(this.getUiSnapshot(), true);
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
     }
     return res || { ok: false };
   }
@@ -3095,6 +3368,10 @@ export class EndlessManager {
       return { ok: false, reason: 'no_companion_evo' };
     }
     const normId = this.companions?.normalizeId?.(id) || id;
+    const rosterEntry = this.companions?.rosterState?.[normId];
+    if (!rosterEntry || !rosterEntry.unlocked) {
+      return { ok: false, reason: 'not_unlocked' };
+    }
     const res = this.companionEvo.promoteCompanion(normId, this.economy, this.gear);
     if (res?.ok) {
       const player = this.game?.leftFighter;
@@ -3123,7 +3400,7 @@ export class EndlessManager {
         this.game?.audio?.play?.('holy_hit', fxX);
       }
       this.saveNow();
-      this.shopUI?.sync?.(this.getUiSnapshot(), true);
+      this.shopUI?.sync?.(this.getUiSnapshot(), false);
     }
     return res || { ok: false };
   }
@@ -3987,6 +4264,7 @@ export class EndlessManager {
     const sx = monster.isColossalBoss ? (monster.anchorX || monster.x) - 110 : monster.x;
     const sy = (monster.groundY || monster.y || 561) - 140;
     this.spawnFloatingCallout(sx, sy, 'GUARD BREAK! 1.55X', '#facc15', 2, 1.1);
+    this.game?.audio?.play?.('parry_clang', sx);
   }
 
   onMonsterDeath(deadMonster) {
@@ -4593,7 +4871,7 @@ export class EndlessManager {
       });
     }
 
-    this.saveNow();
+    this._scheduleSave(2000);
     this.syncRightHUD();
     this.shopUI?.sync?.(this.getUiSnapshot(), false);
   }
@@ -4646,6 +4924,7 @@ export class EndlessManager {
         this.spawnFloatingCallout(g.x, g.groundY - 96, 'GOBLIN ESCAPED!', '#fb923c', 1, 1.05, {
           kind: 'callout'
         });
+        this.game?.audio?.play?.('blink', g.x);
         if (this.game?.vfx) {
           this.game.vfx.spawnBurst(g.x, g.groundY - 38, 12, '#c084fc', 165, { upBias: 95, size: 4 });
         }
@@ -4749,18 +5028,36 @@ export class EndlessManager {
     );
     const stg = Math.max(1, Math.floor(Number(stageNum ?? this.stage) || 1));
 
+    const manager = this;
     const chest = {
       id: `chest_${++this._encounterSeq}`,
+      isTreasureChest: true,
+      isMonster: false,
+      isBoss: false,
+      isColossalBoss: false,
+      isDead: false,
       x: cx,
+      y: cy,
       groundY: cy,
       stage: stg,
+      hp: CHEST_TAPS_REQUIRED,
+      maxHp: CHEST_TAPS_REQUIRED,
       tapsLeft: CHEST_TAPS_REQUIRED,
       maxTaps: CHEST_TAPS_REQUIRED,
       autoCrackTimer: CHEST_AUTO_CRACK_SEC,
       maxAutoCrackTimer: CHEST_AUTO_CRACK_SEC,
       shakeTimer: 0.22,
       age: 0,
-      opened: false
+      opened: false,
+      _aiHitCd: 0,
+      takeDamage(_amount, _attacker = null) {
+        if (chest.opened || chest.isDead || (chest._aiHitCd || 0) > 0) return 0;
+        chest._aiHitCd = 0.42;
+        manager._crackTreasureChest(chest, false);
+        chest.hp = Math.max(0, chest.tapsLeft || 0);
+        if (chest.opened) chest.isDead = true;
+        return 1;
+      }
     };
     this.treasureChests.push(chest);
 
@@ -4768,6 +5065,7 @@ export class EndlessManager {
       this.game.vfx.spawnShockwave(cx, cy - 12, 110, '#facc15', 0.28, true);
       this.game.vfx.spawnBurst(cx, cy - 32, 12, '#fef08a', 170, { upBias: 120, size: 4 });
     }
+    this.game?.audio?.play?.('clang', cx);
     this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return chest;
   }
@@ -4775,6 +5073,7 @@ export class EndlessManager {
   _crackTreasureChest(chest, isManualTap = true) {
     if (!chest || chest.opened) return { opened: false, tapsLeft: 0 };
     chest.tapsLeft = Math.max(0, (chest.tapsLeft || 1) - 1);
+    chest.hp = chest.tapsLeft;
     chest.shakeTimer = 0.24;
 
     if (this.game?.vfx) {
@@ -4805,7 +5104,9 @@ export class EndlessManager {
   _openTreasureChest(chest) {
     if (!chest || chest.opened) return false;
     chest.opened = true;
+    chest.isDead = true;
     chest.tapsLeft = 0;
+    chest.hp = 0;
 
     const idx = this.treasureChests.indexOf(chest);
     if (idx !== -1) {
@@ -4867,13 +5168,13 @@ export class EndlessManager {
       });
     }
 
-    this.saveNow();
+    this._scheduleSave(2000);
     this.syncRightHUD();
     this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return true;
   }
 
-  _updateTreasureChests(dt) {
+  _updateTreasureChests(dt, player = null) {
     if (!this.treasureChests.length) return;
     const minActiveX = (this.lockMinX || this.corridorMinX || 60) - 180;
     for (let i = this.treasureChests.length - 1; i >= 0; i--) {
@@ -4884,6 +5185,7 @@ export class EndlessManager {
       }
       ch.age += dt;
       ch.shakeTimer = Math.max(0, ch.shakeTimer - dt);
+      ch._aiHitCd = Math.max(0, (ch._aiHitCd || 0) - dt);
       const prevTimer = ch.autoCrackTimer;
       ch.autoCrackTimer = Math.max(0, ch.autoCrackTimer - dt);
 
@@ -4896,6 +5198,60 @@ export class EndlessManager {
       }
       if (ch.autoCrackTimer <= 0 || ch.x < minActiveX) {
         this._openTreasureChest(ch);
+      }
+    }
+
+    // In Gold Vault Trial, allow Hero swings & projectiles to crack Treasure Chests directly!
+    if (
+      this.trials?.activeTrial?.id !== 'gold_vault' ||
+      !this.treasureChests.length ||
+      !player ||
+      player.isDead
+    ) {
+      return;
+    }
+
+    const isHeroSwing =
+      (player.state === 'AUTO_ATTACK' && player.didActionFrame) ||
+      player.state === 'SKILL' ||
+      player.state === 'ULTIMATE' ||
+      player.state === 'TRUE_ULTIMATE';
+    if (isHeroSwing) {
+      const baseReach = Math.max(210, player.getEffectiveAttackRange?.() || player.attackRange || 190);
+      const isCast = player.state !== 'AUTO_ATTACK';
+      const reachX = isCast ? Math.max(420, baseReach + 160) : baseReach + 72;
+      const reachZ = isCast ? 190 : 128;
+      const pGy = player.groundY || player.y || this.depthMidY;
+      for (let i = this.treasureChests.length - 1; i >= 0; i--) {
+        const ch = this.treasureChests[i];
+        if (!ch || ch.opened || ch.isDead) continue;
+        if (Math.abs(ch.x - player.x) <= reachX && Math.abs(ch.groundY - pGy) <= reachZ) {
+          ch.takeDamage(1, player);
+        }
+      }
+    }
+
+    const projs = this.game?.vfx?.projectiles;
+    if (Array.isArray(projs) && projs.length > 0 && this.treasureChests.length > 0) {
+      for (let pi = 0; pi < projs.length; pi++) {
+        const p = projs[pi];
+        if (!p || p.dead || p.owner !== player) continue;
+        const pRad = (p.radius || 16) + 34;
+        for (let ci = this.treasureChests.length - 1; ci >= 0; ci--) {
+          const ch = this.treasureChests[ci];
+          if (!ch || ch.opened || ch.isDead) continue;
+          if (p._hitChests && p._hitChests.has(ch.id)) continue;
+          const pGy = Number.isFinite(p.groundY) ? p.groundY : p.y;
+          if (Math.abs(p.x - ch.x) <= pRad && Math.abs(pGy - ch.groundY) <= 84) {
+            if (!p._hitChests) p._hitChests = new Set();
+            p._hitChests.add(ch.id);
+            ch.takeDamage(1, player);
+            if (!p.pierce) {
+              p.dead = true;
+              break;
+            }
+          }
+        }
       }
     }
   }
@@ -4976,6 +5332,10 @@ export class EndlessManager {
       this.game?.renderer?.triggerShake?.(6, 0.22);
     } else if (item.rarity === 'sovereign') {
       this.game?.audio?.play?.('holy_hit', bx);
+    } else if (item.rarity === 'heroic') {
+      this.game?.audio?.play?.('holy_smite', bx);
+    } else {
+      this.game?.audio?.play?.('reflect', bx);
     }
     return beam;
   }
@@ -5192,6 +5552,7 @@ export class EndlessManager {
           topColor: '#fda4af'
         });
       }
+      this.game?.audio?.play?.('soul_drain', ox);
       if (this.game?.vfx) {
         this.game.vfx.spawnBurst(ox, oy - 44, br.empowered ? 14 : 9, '#f43f5e', 210, {
           upBias: 95,
@@ -5303,6 +5664,7 @@ export class EndlessManager {
       kind: 'shard',
       topColor: def.glowHex || '#ffffff'
     });
+    this.game?.audio?.play?.('holy_heal', sx);
     this.shopUI?.sync?.(this.getUiSnapshot(), false);
     return shrine;
   }
@@ -5601,8 +5963,268 @@ export class EndlessManager {
     }
   }
 
+  _computeTapSmiteWithPrism(isBoss = false) {
+    const feverBonusSec = Math.max(
+      0,
+      Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0
+    );
+    const prevFeverTimer = Number(this.economy?.tapFeverTimer) || 0;
+    const smite = this.economy.computeTapSmiteHit(this.stage, { isBoss, feverBonusSec }) || {
+      damage: 12,
+      isCrit: false,
+      feverActive: false,
+      feverTier: 0,
+      feverTriggered: false,
+      goldBonus: 0
+    };
+    // Safe fallback only when EndlessEconomy has not yet adopted tapFeverMaxDuration internally
+    if (
+      smite.feverTriggered &&
+      feverBonusSec > 0 &&
+      this.economy &&
+      !Number.isFinite(this.economy.tapFeverMaxDuration)
+    ) {
+      if ((smite.feverTier || 0) >= 2) {
+        const tier2Cap = 9.5 + feverBonusSec;
+        this.economy.tapFeverTimer = Math.max(
+          prevFeverTimer,
+          Math.min(tier2Cap, prevFeverTimer + 2.5)
+        );
+      } else {
+        this.economy.tapFeverTimer = Math.max(this.economy.tapFeverTimer || 0, 7.5 + feverBonusSec);
+      }
+    }
+    return smite;
+  }
+
+  _registerChestTapSmite() {
+    const feverBonusSec = Math.max(
+      0,
+      Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0
+    );
+    let res = {
+      feverActive: (this.economy?.tapFeverTimer || 0) > 0,
+      feverTier: this.economy?.tapFeverLevel || 0,
+      feverTriggered: false
+    };
+    if (typeof this.economy?.registerTapSmite === 'function') {
+      const reg = this.economy.registerTapSmite(feverBonusSec);
+      if (reg && typeof reg === 'object') {
+        res = {
+          feverActive: Boolean(reg.feverActive ?? (this.economy.tapFeverTimer || 0) > 0),
+          feverTier: Number(reg.feverTier ?? this.economy.tapFeverLevel) || 0,
+          feverTriggered: Boolean(reg.feverTriggered)
+        };
+      }
+    } else if (this.economy) {
+      this.economy.totalTaps = (this.economy.totalTaps || 0) + 1;
+      if ((this.economy.tapFeverTimer || 0) <= 0) {
+        const gain = 7 + Math.floor(Math.random() * 4);
+        this.economy.tapFever = Math.min(100, (this.economy.tapFever || 0) + gain);
+        if (this.economy.tapFever >= 100) {
+          this.economy.tapFever = 100;
+          this.economy.tapFeverTimer = 7.5 + feverBonusSec;
+          this.economy.tapFeverLevel = 1;
+          this.economy._feverTapCount = 0;
+          res = { feverActive: true, feverTier: 1, feverTriggered: true };
+        }
+      } else {
+        this.economy._feverTapCount = (this.economy._feverTapCount || 0) + 1;
+        this.economy.tapFever = 100;
+        if (this.economy.tapFeverLevel === 1 && this.economy._feverTapCount >= 10) {
+          this.economy.tapFeverLevel = 2;
+          const cap = 9.5 + feverBonusSec;
+          this.economy.tapFeverTimer = Math.max(
+            this.economy.tapFeverTimer,
+            Math.min(cap, this.economy.tapFeverTimer + 2.5)
+          );
+          res = { feverActive: true, feverTier: 2, feverTriggered: true };
+        } else {
+          res = {
+            feverActive: true,
+            feverTier: this.economy.tapFeverLevel || 1,
+            feverTriggered: false
+          };
+        }
+      }
+    }
+    this._recordBounty('taps', 1);
+    return res;
+  }
+
+  _handleTapFeverTriggered(smite, fxX, fxGy) {
+    this._recordBounty('fevers', 1);
+    this._pushFeverBurst({
+      x: fxX,
+      groundY: fxGy - 36,
+      age: 0,
+      maxLife: 0.56,
+      scale: 1.95
+    });
+    this._feverStampPopTimer = 0.28;
+    const tier = Math.max(1, smite?.feverTier || this.economy?.tapFeverLevel || 1);
+    this._lastFeverTier = tier;
+    const tierLabel = tier >= 2 ? 'OVERDRIVE 3X GOLD!' : 'FEVER 2X GOLD!';
+    const tierSub =
+      tier >= 2 ? '3X GOLD & CHAIN LIGHTNING SURGE!' : '2X GOLD & CHAIN LIGHTNING!';
+    this.showBanner(tierLabel, tierSub, tier >= 2 ? '#38bdf8' : '#facc15', 2.0);
+    this.spawnFloatingCallout(
+      fxX,
+      fxGy - 156,
+      tierLabel,
+      tier >= 2 ? '#38bdf8' : '#facc15',
+      2,
+      1.25,
+      { kind: 'fever', topColor: '#fef9c3' }
+    );
+    this.game?.renderer?.triggerShake?.(9, 0.24);
+    this.game?.audio?.play?.('thunder_slam', fxX);
+  }
+
+  _applyTapSmiteChainLightning(primaryTarget, tx, tGy, dmg) {
+    const feverActive = (this.economy?.tapFeverTimer || 0) > 0;
+    const feverTier = feverActive ? ((this.economy?.tapFeverLevel || 0) >= 2 ? 2 : 1) : 0;
+    const dirMods =
+      this._activeDirectorMods ||
+      this.bossDirector?.getDirectorSnapshot?.(this.stage, this.bestStage, this.getCurrentRealm())?.combinedModifiers ||
+      null;
+    const gearMods = this.gear?.getGearModifiers?.() || null;
+    const stormSet = gearMods?.activeSets?.stormcaller || null;
+    const stormActive = Boolean(stormSet?.active);
+    const stormJumps = stormActive ? Math.max(1, Math.floor(Number(stormSet.extraJumps) || 3)) : 0;
+    const stormDmgMult =
+      stormActive && Number.isFinite(stormSet.dmgMult) && stormSet.dmgMult > 0
+        ? stormSet.dmgMult
+        : 1.0;
+
+    const alwaysChain = Boolean(dirMods?.alwaysTapChain);
+    const extraChainTargets = Math.max(0, Math.floor(Number(dirMods?.extraChainTargets) || 0));
+    const effectiveChainTier = feverTier >= 1 ? feverTier : alwaysChain || stormActive ? 2 : 0;
+    if (!((feverActive && feverTier >= 1) || alwaysChain || stormActive)) {
+      return 0;
+    }
+
+    const candidates = [];
+    const postLiving = this.getLivingMonsters();
+    const chainRange = stormActive ? Math.max(FEVER_CHAIN_MAX_RANGE, 480) : FEVER_CHAIN_MAX_RANGE;
+    for (let i = 0; i < postLiving.length; i++) {
+      const m = postLiving[i];
+      if (!m || m === primaryTarget || m.isDead) continue;
+      const mx = m.isColossalBoss ? (m.anchorX || m.x) - 105 : m.x;
+      const mGy = m.isColossalBoss
+        ? m.anchorGroundY || this.depthMidY
+        : m.groundY || m.y || this.depthMidY;
+      const dist = Math.hypot(mx - tx, mGy - tGy);
+      if (dist <= chainRange) {
+        candidates.push({ target: m, isGoblin: false, mx, mGy, dist });
+      }
+    }
+    for (let i = 0; i < this.treasureGoblins.length; i++) {
+      const g = this.treasureGoblins[i];
+      if (!g || g === primaryTarget || g.isDead) continue;
+      const dist = Math.hypot(g.x - tx, g.groundY - tGy);
+      if (dist <= chainRange) {
+        candidates.push({ target: g, isGoblin: true, mx: g.x, mGy: g.groundY, dist });
+      }
+    }
+    candidates.sort((a, b) => a.dist - b.dist);
+
+    const baseTargets =
+      (feverActive && feverTier >= 1) || alwaysChain
+        ? FEVER_CHAIN_MAX_TARGETS + extraChainTargets
+        : 0;
+    const maxChainTargets = stormActive
+      ? Math.max(stormJumps, baseTargets + (stormSet.empowered ? 2 : 1))
+      : baseTargets;
+    const chainCount = Math.min(maxChainTargets, candidates.length);
+    const chainDmg = safeBoundedInt(
+      dmg * FEVER_CHAIN_SPLASH_RATIO * stormDmgMult,
+      1,
+      ENDLESS_MAX_STAT
+    );
+
+    let chainedHits = 0;
+    for (let ci = 0; ci < chainCount; ci++) {
+      const entry = candidates[ci];
+      const cm = entry.target;
+      if (!cm || cm.isDead) continue;
+      const chainAttacker = {
+        isTapSmite: true,
+        isMonster: false,
+        team: 1,
+        x: entry.mx,
+        y: entry.mGy,
+        groundY: entry.mGy,
+        facing: entry.mx >= tx ? 1 : -1,
+        heroId: 'tap_smite',
+        gainMana() {},
+        gainFinisher() {}
+      };
+      if (entry.isGoblin) {
+        this._damageTreasureGoblin(cm, chainDmg, chainAttacker, false, {
+          isTap: true,
+          doubleGoldSpray: false
+        });
+      } else {
+        const cKnockDir = cm.isColossalBoss ? 0 : entry.mx >= tx ? 1 : -1;
+        cm.takeDamage(chainDmg, chainAttacker, false, cKnockDir * 24, 0);
+        if ((cm.isDead || cm.hp <= 0) && !cm._endlessDeathHandled) {
+          cm.isDead = true;
+          this.onMonsterDeath(cm);
+        } else if (cm === this.bossEntity) {
+          this._tryTitanSlayerExecute(cm);
+        }
+      }
+      this.economy.recordDamageSample('tap', chainDmg);
+      chainedHits++;
+
+      while (this.feverChains.length >= FEVER_CHAIN_MAX_COUNT) {
+        this.feverChains.shift();
+      }
+      const boltPts = this._buildPixelChainPoints(
+        tx,
+        tGy - 62,
+        entry.mx,
+        entry.mGy - 62,
+        effectiveChainTier
+      );
+      this.feverChains.push({
+        x1: Math.round(tx),
+        y1: Math.round(tGy - 62),
+        x2: Math.round(entry.mx),
+        y2: Math.round(entry.mGy - 62),
+        tier: effectiveChainTier,
+        age: 0,
+        maxLife: FEVER_CHAIN_LIFE,
+        main: boltPts.main,
+        branch: boltPts.branch
+      });
+
+      this.spawnFloatingCallout(
+        entry.mx + (Math.random() * 18 - 9),
+        entry.mGy - 104,
+        formatEndlessNumber(chainDmg),
+        effectiveChainTier >= 2 ? '#67e8f9' : '#fde047',
+        1,
+        0.74,
+        { kind: 'damage', topColor: '#ffffff' }
+      );
+      if (this.game?.vfx) {
+        this.game.vfx.spawnBurst(
+          entry.mx,
+          entry.mGy - 56,
+          6,
+          effectiveChainTier >= 2 ? '#38bdf8' : '#facc15',
+          155,
+          { upBias: 95, size: 4 }
+        );
+      }
+    }
+    return chainedHits;
+  }
+
   handleCanvasTap(worldX, worldY, _screenX = 0, _screenY = 0) {
-    if (!this.active || this.game?.isPaused || this.game?.isLandingOpen) {
+    if (!this.active || this.game?.isPaused || this.game?.isLandingOpen || this.isBlockingModalOpen()) {
       return { hit: false };
     }
 
@@ -5713,22 +6335,8 @@ export class EndlessManager {
         }
       }
       if (bestGoblin) {
-        const smite = this.economy.computeTapSmiteHit(this.stage, { isBoss: false }) || {
-          damage: 12,
-          isCrit: false,
-          feverActive: false,
-          feverTier: 0,
-          feverTriggered: false,
-          goldBonus: 0
-        };
+        const smite = this._computeTapSmiteWithPrism(false);
         this._recordBounty('taps', 1);
-        if (smite.feverTriggered) {
-          this._recordBounty('fevers', 1);
-          const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
-          if (feverBonusSec > 0 && this.economy.tapFeverTimer > 0) {
-            this.economy.tapFeverTimer += feverBonusSec;
-          }
-        }
         const dmg = safeBoundedInt(smite.damage, 1, ENDLESS_MAX_STAT, 10);
         const gx = bestGoblin.x;
         const gGy = bestGoblin.groundY;
@@ -5748,6 +6356,7 @@ export class EndlessManager {
           isTap: true,
           doubleGoldSpray: true
         });
+        const chainedHits = this._applyTapSmiteChainLightning(bestGoblin, gx, gGy, dmg);
 
         this._pushTapSmite({
           x: gx,
@@ -5768,20 +6377,9 @@ export class EndlessManager {
           });
         }
         if (smite.feverTriggered) {
-          this._pushFeverBurst({
-            x: gx,
-            groundY: gGy - 36,
-            age: 0,
-            maxLife: 0.56,
-            scale: 1.95
-          });
-          this._feverStampPopTimer = 0.28;
-          this._lastFeverTier = Math.max(1, smite.feverTier || 1);
-          const tierLabel = smite.feverTier >= 2 ? 'OVERDRIVE 3X GOLD!' : 'FEVER 2X GOLD!';
-          const tierSub = smite.feverTier >= 2 ? '3X GOLD & CHAIN LIGHTNING SURGE!' : '2X GOLD & CHAIN LIGHTNING!';
-          this.showBanner(tierLabel, tierSub, smite.feverTier >= 2 ? '#38bdf8' : '#facc15', 2.0);
-          this.game?.audio?.play?.('thunder_slam', gx);
+          this._handleTapFeverTriggered(smite, gx, gGy);
         } else {
+          this.game?.renderer?.triggerShake?.(smite.isCrit ? 6 : 3.5, 0.14);
           this.game?.audio?.play?.(smite.isCrit ? 'raijin_slash' : 'holy_bolt', gx);
         }
         if ((smite.goldBonus || 0) > 0) {
@@ -5811,7 +6409,7 @@ export class EndlessManager {
           isCrit: Boolean(smite.isCrit),
           feverActive: Boolean(smite.feverActive),
           feverTriggered: Boolean(smite.feverTriggered),
-          chainedHits: 0,
+          chainedHits,
           lootCollected,
           scooped
         };
@@ -5834,6 +6432,7 @@ export class EndlessManager {
         }
       }
       if (bestChest) {
+        const chestTap = this._registerChestTapSmite();
         const crackRes = this._crackTreasureChest(bestChest, true);
         this._pushTapSmite({
           x: bestChest.x,
@@ -5843,12 +6442,19 @@ export class EndlessManager {
           maxLife: 0.30,
           scale: 1.18
         });
+        if (chestTap.feverTriggered) {
+          this._handleTapFeverTriggered(chestTap, bestChest.x, bestChest.groundY);
+        } else {
+          this.game?.renderer?.triggerShake?.(3.5, 0.12);
+        }
         return {
           hit: true,
           hitKind: 'chest',
           chest: bestChest,
           chestOpened: Boolean(crackRes.opened),
           tapsLeft: crackRes.tapsLeft,
+          feverActive: Boolean(chestTap.feverActive),
+          feverTriggered: Boolean(chestTap.feverTriggered),
           lootCollected,
           scooped
         };
@@ -5908,14 +6514,7 @@ export class EndlessManager {
     const isBoss = Boolean(
       target.isBoss || target.isMiniBoss || target.isEndlessStageBoss || target === this.bossEntity
     );
-    const smite = this.economy.computeTapSmiteHit(this.stage, { isBoss }) || {
-      damage: 12,
-      isCrit: false,
-      feverActive: false,
-      feverTier: 0,
-      feverTriggered: false,
-      goldBonus: 0
-    };
+    const smite = this._computeTapSmiteWithPrism(isBoss);
     this._recordBounty('taps', 1);
     const dmg = safeBoundedInt(smite.damage, 1, ENDLESS_MAX_STAT, 10);
     const tx = target.isColossalBoss ? (target.anchorX || target.x) - 105 : target.x;
@@ -5936,7 +6535,6 @@ export class EndlessManager {
 
     const knockDir = target.isColossalBoss ? 0 : target.x >= (this.game?.leftFighter?.x || 0) ? 1 : -1;
     target.takeDamage(dmg, tapAttacker, Boolean(smite.isCrit), knockDir * 42, 0);
-    this.economy.recordDamageSample('tap', dmg);
     if ((target.isDead || target.hp <= 0) && !target._endlessDeathHandled) {
       target.isDead = true;
       this.onMonsterDeath(target);
@@ -5945,120 +6543,7 @@ export class EndlessManager {
     }
 
     // Tap-Fever Overdrive, Tempest Surge & Mythic Stormcaller Chain Lightning
-    const feverActive = (this.economy?.tapFeverTimer || 0) > 0;
-    const feverTier = feverActive ? ((this.economy?.tapFeverLevel || 0) >= 2 ? 2 : 1) : 0;
-    const dirMods =
-      this._activeDirectorMods ||
-      this.bossDirector?.getDirectorSnapshot?.(this.stage, this.bestStage, this.getCurrentRealm())?.combinedModifiers ||
-      null;
-    const gearMods = this.gear?.getGearModifiers?.() || null;
-    const stormSet = gearMods?.activeSets?.stormcaller || null;
-    const stormActive = Boolean(stormSet?.active);
-    const stormJumps = stormActive ? Math.max(1, Math.floor(Number(stormSet.extraJumps) || 3)) : 0;
-    const stormDmgMult =
-      stormActive && Number.isFinite(stormSet.dmgMult) && stormSet.dmgMult > 0
-        ? stormSet.dmgMult
-        : 1.0;
-
-    const alwaysChain = Boolean(dirMods?.alwaysTapChain);
-    const extraChainTargets = Math.max(0, Math.floor(Number(dirMods?.extraChainTargets) || 0));
-    const effectiveChainTier = feverTier >= 1 ? feverTier : alwaysChain || stormActive ? 2 : 0;
-    let chainedHits = 0;
-    if ((feverActive && feverTier >= 1) || alwaysChain || stormActive) {
-      const candidates = [];
-      const postLiving = this.getLivingMonsters();
-      const chainRange = stormActive ? Math.max(FEVER_CHAIN_MAX_RANGE, 480) : FEVER_CHAIN_MAX_RANGE;
-      for (let i = 0; i < postLiving.length; i++) {
-        const m = postLiving[i];
-        if (!m || m === target || m.isDead) continue;
-        const mx = m.isColossalBoss ? (m.anchorX || m.x) - 105 : m.x;
-        const mGy = m.isColossalBoss
-          ? m.anchorGroundY || this.depthMidY
-          : m.groundY || m.y || this.depthMidY;
-        const dist = Math.hypot(mx - tx, mGy - tGy);
-        if (dist <= chainRange) {
-          candidates.push({ monster: m, mx, mGy, dist });
-        }
-      }
-      candidates.sort((a, b) => a.dist - b.dist);
-
-      const baseTargets =
-        (feverActive && feverTier >= 1) || alwaysChain
-          ? FEVER_CHAIN_MAX_TARGETS + extraChainTargets
-          : 0;
-      const maxChainTargets = stormActive
-        ? Math.max(stormJumps, baseTargets + (stormSet.empowered ? 2 : 1))
-        : baseTargets;
-      const chainCount = Math.min(maxChainTargets, candidates.length);
-      const chainDmg = safeBoundedInt(
-        dmg * FEVER_CHAIN_SPLASH_RATIO * stormDmgMult,
-        1,
-        ENDLESS_MAX_STAT
-      );
-      for (let ci = 0; ci < chainCount; ci++) {
-        const entry = candidates[ci];
-        const cm = entry.monster;
-        if (!cm || cm.isDead) continue;
-        const chainAttacker = {
-          isTapSmite: true,
-          isMonster: false,
-          team: 1,
-          x: entry.mx,
-          y: entry.mGy,
-          groundY: entry.mGy,
-          facing: entry.mx >= tx ? 1 : -1,
-          heroId: 'tap_smite',
-          gainMana() {},
-          gainFinisher() {}
-        };
-        const cKnockDir = cm.isColossalBoss ? 0 : entry.mx >= tx ? 1 : -1;
-        cm.takeDamage(chainDmg, chainAttacker, false, cKnockDir * 24, 0);
-        this.economy.recordDamageSample('tap', chainDmg);
-        chainedHits++;
-        if ((cm.isDead || cm.hp <= 0) && !cm._endlessDeathHandled) {
-          cm.isDead = true;
-          this.onMonsterDeath(cm);
-        } else if (cm === this.bossEntity) {
-          this._tryTitanSlayerExecute(cm);
-        }
-
-        while (this.feverChains.length >= FEVER_CHAIN_MAX_COUNT) {
-          this.feverChains.shift();
-        }
-        const boltPts = this._buildPixelChainPoints(tx, tGy - 62, entry.mx, entry.mGy - 62, effectiveChainTier);
-        this.feverChains.push({
-          x1: Math.round(tx),
-          y1: Math.round(tGy - 62),
-          x2: Math.round(entry.mx),
-          y2: Math.round(entry.mGy - 62),
-          tier: effectiveChainTier,
-          age: 0,
-          maxLife: FEVER_CHAIN_LIFE,
-          main: boltPts.main,
-          branch: boltPts.branch
-        });
-
-        this.spawnFloatingCallout(
-          entry.mx + (Math.random() * 18 - 9),
-          entry.mGy - 104,
-          formatEndlessNumber(chainDmg),
-          effectiveChainTier >= 2 ? '#67e8f9' : '#fde047',
-          1,
-          0.74,
-          { kind: 'damage', topColor: '#ffffff' }
-        );
-        if (this.game?.vfx) {
-          this.game.vfx.spawnBurst(
-            entry.mx,
-            entry.mGy - 56,
-            6,
-            effectiveChainTier >= 2 ? '#38bdf8' : '#facc15',
-            155,
-            { upBias: 95, size: 4 }
-          );
-        }
-      }
-    }
+    const chainedHits = this._applyTapSmiteChainLightning(target, tx, tGy, dmg);
 
     // Spawn TAP_SMITE_SKYBOLT (Row 2)
     this._pushTapSmite({
@@ -6084,34 +6569,7 @@ export class EndlessManager {
 
     // Spawn GOLD_FEVER_BURST (Row 4) when Tap-Fever Overdrive triggers!
     if (smite.feverTriggered) {
-      this._recordBounty('fevers', 1);
-      const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
-      if (feverBonusSec > 0 && this.economy && this.economy.tapFeverTimer > 0) {
-        this.economy.tapFeverTimer += feverBonusSec;
-      }
-      this._pushFeverBurst({
-        x: tx,
-        groundY: tGy - 36,
-        age: 0,
-        maxLife: 0.56,
-        scale: 1.95
-      });
-      this._feverStampPopTimer = 0.28;
-      this._lastFeverTier = Math.max(1, feverTier);
-      const tierLabel = smite.feverTier >= 2 ? 'OVERDRIVE 3X GOLD!' : 'FEVER 2X GOLD!';
-      const tierSub = smite.feverTier >= 2 ? '3X GOLD & CHAIN LIGHTNING SURGE!' : '2X GOLD & CHAIN LIGHTNING!';
-      this.showBanner(tierLabel, tierSub, smite.feverTier >= 2 ? '#38bdf8' : '#facc15', 2.0);
-      this.spawnFloatingCallout(
-        tx,
-        tGy - 156,
-        tierLabel,
-        smite.feverTier >= 2 ? '#38bdf8' : '#facc15',
-        2,
-        1.25,
-        { kind: 'fever', topColor: '#fef9c3' }
-      );
-      this.game?.renderer?.triggerShake?.(9, 0.24);
-      this.game?.audio?.play?.('thunder_slam', tx);
+      this._handleTapFeverTriggered(smite, tx, tGy);
     } else {
       this.game?.audio?.play?.(smite.isCrit ? 'raijin_slash' : 'holy_bolt', tx);
     }
@@ -6825,6 +7283,19 @@ export class EndlessManager {
     if (!player) return;
 
     const effDt = Math.min(0.05, Math.max(0, Number.isFinite(dt) ? dt : 0));
+
+    // Pause main-stage combat ticks, monster AI/attacks, Boss timer, Trial timer & Shrine/Fever decay
+    // while Offline Loot or Trial Reward modal is open (visual render continues cleanly!)
+    if (this.isBlockingModalOpen()) {
+      this._syncCorridorBounds({ lockToCorridor: false, syncCamera: true });
+      this._uiSyncAccum += effDt;
+      if (this._uiSyncAccum >= 0.15) {
+        this._uiSyncAccum = 0;
+        this.shopUI?.sync?.(this.getUiSnapshot(), false);
+      }
+      return;
+    }
+
     this._clock = Number.isFinite(this._clock) ? this._clock + effDt : effDt;
     this.goBlinkTimer += effDt;
     this._syncCorridorBounds({ lockToCorridor: false, syncCamera: true });
@@ -6852,42 +7323,35 @@ export class EndlessManager {
 
     // Keep companions synced if user recruited/deployed/upgraded directly via ShopUI
     const compSig = this._computeCompanionSyncSig();
-    if (compSig !== this._lastCompanionSyncSig) {
+    const compSigChanged = compSig !== this._lastCompanionSyncSig;
+    if (compSigChanged) {
       this.companions.syncEntitiesWithWorld(player);
       this._lastCompanionSyncSig = compSig;
+      this._extModsDirty = true;
     }
 
-    // 1. Tick Wave 8 Events, Wave 9 Companion Evo & Wave 10 Trials, apply Party Synergy + Event + Formation modifiers cleanly
+    // 1. Tick Wave 8 Events, Wave 9 Companion Evo & Wave 10 Trials; dirty-flagged external modifier sync (<=4Hz fallback)
     const evTick = this.events?.update?.(effDt) || null;
     const evoTick = this.companionEvo?.update?.(effDt) || null;
     const tTick = this.trials?.update?.(effDt) || { expired: false, remainingSec: 0 };
     const inTrial = Boolean(this.trials?.isActive?.());
-    const synMods = this.companions?.getPartySynergyModifiers?.() || null;
-    this._applyPartySynergyToEconomy(synMods);
-    if (evTick?.buffsChanged || evoTick?.overdriveEnded) {
-      this._syncExternalModifiers(synMods, { preserveBase: true });
-      this.progression.syncMaxHpWithEconomy(player);
-      this.shopUI?.sync?.(this.getUiSnapshot(), false);
-    } else if (evTick?.offerExpired) {
+    this._extModsSyncAccum += effDt;
+    const modsChanged = Boolean(evTick?.buffsChanged || evoTick?.overdriveEnded);
+    if (this._extModsDirty || modsChanged || this._extModsSyncAccum >= 0.25) {
+      const synMods = this.companions?.getPartySynergyModifiers?.() || null;
+      this._syncExternalModifiers(synMods, { preserveBase: modsChanged });
+      if (modsChanged) {
+        this.progression.syncMaxHpWithEconomy(player);
+        this.shopUI?.sync?.(this.getUiSnapshot(), false);
+      }
+    }
+    if (!modsChanged && evTick?.offerExpired) {
       this.shopUI?.sync?.(this.getUiSnapshot(), false);
     }
 
     this.economy.update(effDt);
     this.progression.update(effDt, player);
     this.skillSets.update(effDt, player);
-
-    // Apply Party Synergy HP Regen bonus safely to player HP
-    if (
-      synMods &&
-      Number.isFinite(synMods.hpRegenBonus) &&
-      synMods.hpRegenBonus > 0 &&
-      !player.isDead &&
-      player.maxHp > 0 &&
-      player.hp < player.maxHp
-    ) {
-      const safeRegenRate = Math.min(0.25, synMods.hpRegenBonus);
-      player.hp = Math.min(player.maxHp, player.hp + player.maxHp * safeRegenRate * effDt);
-    }
 
     const curFeverTier =
       (this.economy?.tapFeverTimer || 0) > 0
@@ -7009,7 +7473,9 @@ export class EndlessManager {
     syncCastGrace(false);
     const nearestMonster =
       this.getNearestLivingMonster(player) ||
-      (this.trials?.activeTrial?.id === 'gold_vault' ? this._getNearestLivingGoblin(player) : null);
+      (this.trials?.activeTrial?.id === 'gold_vault'
+        ? this._getNearestLivingGoblin(player) || this._getNearestUnopenedChest(player)
+        : null);
     this._processPlayerStep(effDt, player, nearestMonster);
     syncCastGrace(true);
 
@@ -7036,11 +7502,20 @@ export class EndlessManager {
       }
     }
 
-    // 7. Update Autonomous HD-2D Companions (include living Treasure Goblins as valid targets!)
-    const companionTargets =
-      this.treasureGoblins.length > 0
-        ? [...this.getLivingMonsters(), ...this.treasureGoblins.filter((tg) => tg && !tg.isDead)]
-        : this.getLivingMonsters();
+    // 7. Update Autonomous HD-2D Companions (include Treasure Goblins, plus Chests in Gold Vault!)
+    let companionTargets = this.getLivingMonsters();
+    if (this.treasureGoblins.length > 0) {
+      companionTargets = [
+        ...companionTargets,
+        ...this.treasureGoblins.filter((tg) => tg && !tg.isDead)
+      ];
+    }
+    if (this.trials?.activeTrial?.id === 'gold_vault' && this.treasureChests.length > 0) {
+      companionTargets = [
+        ...companionTargets,
+        ...this.treasureChests.filter((ch) => ch && !ch.opened && !ch.isDead)
+      ];
+    }
     this.companions.update(effDt, player, companionTargets, this.economy, entityGame);
 
     // 7a. Wave 7 Titan-Slayer Boss Execute check after hero/monster/companion damage
@@ -7085,7 +7560,7 @@ export class EndlessManager {
 
     // 8. Update Goblins, Milestone Chests, Loot Beams, World Shrines & Merchants, Tempest Auto-Lightning, Gear Nova FX, Magnetic Coins, Tap-Smites, Fever Bursts, Fever Chains, Portals, Plumes & Floating Callouts
     this._updateTreasureGoblins(effDt, player);
-    this._updateTreasureChests(effDt);
+    this._updateTreasureChests(effDt, player);
     this._updateLootBeams(effDt, player);
     this._updateWorldEvents(effDt, player);
     this._updateGearNovaFx(effDt);
@@ -7170,7 +7645,15 @@ export class EndlessManager {
       }
     }
 
-    // 9. Auto-save every 10s + throttled UI sync (~10Hz)
+    // 9. Debounced rapid-event save + periodic 10s auto-save + throttled UI (~10Hz) & HUD (~15Hz) sync
+    if (this._pendingSaveDelay >= 0) {
+      this._pendingSaveDelay -= effDt;
+      if (this._pendingSaveDelay <= 0) {
+        this._pendingSaveDelay = -1;
+        this._autoSaveAccum = 0;
+        this.saveNow();
+      }
+    }
     this._autoSaveAccum += effDt;
     if (this._autoSaveAccum >= 10.0) {
       this._autoSaveAccum = 0;
@@ -7183,9 +7666,13 @@ export class EndlessManager {
       this.shopUI?.sync?.(this.getUiSnapshot(), false);
     }
 
-    this.syncStageBadge();
-    this.syncRightHUD();
-    this.syncControlDeckUI();
+    this._hudSyncAccum += effDt;
+    if (this._hudSyncAccum >= 0.066) {
+      this._hudSyncAccum = 0;
+      this.syncStageBadge();
+      this.syncRightHUD();
+      this.syncControlDeckUI();
+    }
   }
 
   // =========================================================================
@@ -7282,7 +7769,7 @@ export class EndlessManager {
     }
 
     // 2. Boss Gate Portal Floor Aura (`endless_crusade_vfx.png` Row 6)
-    if (this.isBossEncounter && this._bossPortalActive) {
+    if ((this.isBossEncounter || this.trials?.activeTrial?.id === 'malphas_gauntlet') && this._bossPortalActive) {
       const bx = Math.round(this._bossPortalX || this.lockMaxX - 180);
       const bGy = this.depthMidY;
       const pulse = 0.72 + 0.22 * Math.sin(t * 5.2);
@@ -7410,7 +7897,7 @@ export class EndlessManager {
     }
 
     // 2. Boss Gate Portal Arch behind active Boss (`endless_crusade_vfx.png` Row 6, 12f loop)
-    if (this.isBossEncounter && this._bossPortalActive) {
+    if ((this.isBossEncounter || this.trials?.activeTrial?.id === 'malphas_gauntlet') && this._bossPortalActive) {
       const vfxImg = PixelForge.assets?.endlessVfx;
       const bx = Math.round(this._bossPortalX || this.lockMaxX - 180);
       const bGy = this.depthMidY;
@@ -8805,7 +9292,10 @@ export class EndlessManager {
     const hasParty = (this.companions?.activeSlots?.length || 0) > 0;
     const drawerOpen = Boolean(this.shopUI?.isDrawerOpen?.());
     const trialActive = Boolean(this.trials?.isActive?.());
-    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}:${drawerOpen ? 1 : 0}:${trialActive ? 1 : 0}`;
+    const bossActive = Boolean(this.isBossEncounter || (this.bossEntity && !this.bossEntity.isDead));
+    const eventsBuffCount = this.events?.activeBuffs?.length || 0;
+    const hasMerchant = Boolean(this.events?.activeMerchantOffer);
+    const cacheKey = `${w}x${h}:${isNarrowLandscape ? 1 : 0}:${isCompactPortrait ? 1 : 0}:${hasParty ? 1 : 0}:${drawerOpen ? 1 : 0}:${trialActive ? 1 : 0}:${bossActive ? 1 : 0}:${eventsBuffCount}:${hasMerchant ? 1 : 0}`;
     const nowSec =
       typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() * 0.001
@@ -8824,6 +9314,9 @@ export class EndlessManager {
     let domPartyBottom = 0;
     let domShopBottom = 0;
     let domDrawerLeft = 0;
+    let domDrawerTop = 0;
+    let domEventsLeft = 0;
+    let domEventsBottom = 0;
 
     try {
       if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
@@ -8850,6 +9343,14 @@ export class EndlessManager {
           }
         }
 
+        const bossHudEl = document.getElementById?.('adv-boss-raid-hud');
+        if (bossHudEl && !bossHudEl.classList?.contains?.('hidden')) {
+          const r = bossHudEl.getBoundingClientRect();
+          if (r.width > 4 && r.height > 4) {
+            domTopBottom = Math.max(domTopBottom, Math.ceil((r.bottom - rootRect.top) * scaleY));
+          }
+        }
+
         const partyEl = document.querySelector('.endless-party-hud');
         if (partyEl && !partyEl.classList?.contains?.('hidden')) {
           const r = partyEl.getBoundingClientRect();
@@ -8867,11 +9368,24 @@ export class EndlessManager {
           }
         }
 
+        const eventsEl = document.querySelector('.endless-events-dock');
+        if (eventsEl && !eventsEl.classList?.contains?.('hidden')) {
+          const r = eventsEl.getBoundingClientRect();
+          if (r.width > 4 && r.height > 4) {
+            domEventsLeft = Math.floor((r.left - rootRect.left) * scaleX);
+            domEventsBottom = Math.ceil((r.bottom - rootRect.top) * scaleY);
+          }
+        }
+
         const drawerEl = document.querySelector('.endless-shop-shell');
-        if (drawerEl && !drawerEl.classList?.contains?.('hidden') && !isCompactPortrait) {
+        if (drawerEl && !drawerEl.classList?.contains?.('hidden')) {
           const r = drawerEl.getBoundingClientRect();
           if (r.width > 0 && r.height > 0) {
-            domDrawerLeft = Math.floor((r.left - rootRect.left) * scaleX);
+            if (isCompactPortrait) {
+              domDrawerTop = Math.floor((r.top - rootRect.top) * scaleY);
+            } else {
+              domDrawerLeft = Math.floor((r.left - rootRect.left) * scaleX);
+            }
           }
         }
       }
@@ -8890,9 +9404,16 @@ export class EndlessManager {
         : Math.max(138, Math.round(clampedHudBot + 62));
       topClearY = domTopBottom > 24 ? Math.max(clampedHudBot + 6, domTopBottom + 6) : fallbackTop;
       safeRight = domDrawerLeft > 260 ? Math.min(w - 12, domDrawerLeft - 8) : Math.max(240, w - 12);
-      const partyFloor = w >= 560 ? 330 : 12;
+      const partyFloor = hasParty && w >= 560 ? 220 : 12;
       const measuredParty = domPartyRight > 0 ? domPartyRight + 8 : 0;
       safeLeft = Math.min(Math.max(12, safeRight - 160), Math.max(partyFloor, measuredParty));
+      if (domEventsBottom > topClearY && domEventsLeft > 0) {
+        if (domEventsLeft - safeLeft >= 180) {
+          safeRight = Math.min(safeRight, domEventsLeft - 8);
+        } else {
+          topClearY = Math.max(topClearY, domEventsBottom + 6);
+        }
+      }
     } else if (isCompactPortrait) {
       const fallbackTop = hasParty
         ? Math.max(248, Math.round(hudBot + 108))
@@ -8900,17 +9421,38 @@ export class EndlessManager {
       const measuredMax = Math.max(
         domTopBottom > 0 ? domTopBottom + 6 : 0,
         domShopBottom > 0 ? domShopBottom + 6 : 0,
-        domPartyBottom > 0 ? domPartyBottom + 6 : 0
+        domPartyBottom > 0 ? domPartyBottom + 6 : 0,
+        domEventsBottom > 0 ? domEventsBottom + 8 : 0
       );
       topClearY = measuredMax > 24 ? Math.max(hudBot + 6, measuredMax) : fallbackTop;
       safeLeft = 10;
       safeRight = Math.max(180, w - 10);
+      if (domDrawerTop > 120 && topClearY + 34 > domDrawerTop - 4) {
+        const altTop = Math.max(
+          hudBot + 6,
+          domTopBottom > 0 ? domTopBottom + 6 : 0,
+          domPartyBottom > 0 ? domPartyBottom + 6 : 0
+        );
+        if (domEventsLeft - safeLeft >= 164 && altTop + 34 <= domDrawerTop - 4) {
+          topClearY = altTop;
+          safeRight = Math.min(safeRight, domEventsLeft - 6);
+        } else {
+          topClearY = Math.max(hudBot + 6, Math.min(topClearY, domDrawerTop - 38));
+        }
+      }
     } else {
       const fallbackTop = Math.max(146, Math.round(hudBot + 66));
       topClearY = domTopBottom > 24 ? Math.max(hudBot + 8, domTopBottom + 8) : fallbackTop;
       safeRight = domDrawerLeft > 360 ? Math.min(w - 20, domDrawerLeft - 12) : Math.max(360, w - 20);
       const measuredParty = domPartyRight > 0 ? domPartyRight + 10 : 0;
-      safeLeft = Math.min(Math.max(20, safeRight - 260), Math.max(208, measuredParty));
+      safeLeft = Math.min(Math.max(20, safeRight - 260), Math.max(hasParty ? 208 : 20, measuredParty));
+      if (domEventsBottom > topClearY && domEventsLeft > 0) {
+        if (domEventsLeft - safeLeft >= 248) {
+          safeRight = Math.min(safeRight, domEventsLeft - 12);
+        } else {
+          topClearY = Math.max(topClearY, domEventsBottom + 8);
+        }
+      }
     }
 
     const result = { key: cacheKey, topClearY, safeLeft, safeRight };
@@ -9211,7 +9753,10 @@ export class EndlessManager {
         activeBannerBottomY > 0 ? activeBannerBottomY + 5 : baseStampY
       );
       const feverBonusSec = Number(this.economy?._externalModifiers?.feverDurationBonusSec) || 0;
-      const maxFeverDur = (isOverdrive ? 9.5 : 7.5) + feverBonusSec;
+      const maxFeverDur =
+        Number.isFinite(this.economy?.tapFeverMaxDuration) && this.economy.tapFeverMaxDuration > 0
+          ? this.economy.tapFeverMaxDuration
+          : (isOverdrive ? 9.5 : 7.5) + feverBonusSec;
       const timerRatio = Math.max(0, Math.min(1, feverTimer / Math.max(1, maxFeverDur)));
       const fadeOut = feverTimer < 0.4 ? Math.max(0.2, feverTimer / 0.4) : 1;
       const popFrac = this._feverStampPopTimer > 0 ? this._feverStampPopTimer / 0.28 : 0;
@@ -9280,10 +9825,48 @@ export class EndlessManager {
   // HUD, CONTROL DECK & SHOP SNAPSHOT SYNC
   // =========================================================================
 
+  _getDeckDomRefs() {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') {
+      return null;
+    }
+    const cached = this._deckDomRefs;
+    if (
+      cached &&
+      (!cached.appEl || cached.appEl.isConnected !== false) &&
+      (!cached.deck || cached.deck.isConnected !== false)
+    ) {
+      return cached;
+    }
+    const slots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate'];
+    const orbs = {};
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      orbs[slot] = {
+        btn: document.getElementById(`adv-btn-${slot}`),
+        sweep: document.getElementById(`adv-cd-sweep-${slot}`),
+        txt: document.getElementById(`adv-cd-text-${slot}`)
+      };
+    }
+    const refs = {
+      appEl: document.getElementById('app'),
+      deck: document.getElementById('adventure-controls'),
+      pauseSpBadge: document.getElementById('pause-sp-badge'),
+      autoBtn: document.getElementById('adv-btn-autoplay'),
+      autoLbl: document.getElementById('adv-autoplay-label'),
+      skillAutoBtn: document.getElementById('adv-btn-auto'),
+      lockBtn: document.getElementById('adv-btn-lock'),
+      joyBase: document.getElementById('adv-joystick-base'),
+      joyKnob: document.getElementById('adv-joystick-knob'),
+      orbs
+    };
+    this._deckDomRefs = refs;
+    return refs;
+  }
+
   syncJoystickKnobUI() {
-    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
-    const base = document.getElementById('adv-joystick-base');
-    const knob = document.getElementById('adv-joystick-knob');
+    const refs = this._getDeckDomRefs();
+    const base = refs?.joyBase;
+    const knob = refs?.joyKnob;
     if (!base || !knob) return;
 
     let vx = 0;
@@ -9302,7 +9885,10 @@ export class EndlessManager {
     }
 
     if (knob.style) {
-      knob.style.transform = `translate3d(${Math.round(vx * maxPx)}px, ${Math.round(vy * maxPx)}px, 0px)`;
+      const nextTransform = `translate3d(${Math.round(vx * maxPx)}px, ${Math.round(vy * maxPx)}px, 0px)`;
+      if (knob.style.transform !== nextTransform) {
+        knob.style.transform = nextTransform;
+      }
     }
     base.classList?.toggle('is-active', Math.hypot(vx, vy) > 0.08);
   }
@@ -9356,7 +9942,11 @@ export class EndlessManager {
     if (!g) return;
     const leftHeroId = g.leftFighter?.heroId || g.slot1Hero || 'mage_ex';
     const leftCol = g.leftFighter?.primaryColor || '#fb923c';
-    PixelForge.setHUDPortraits?.(leftHeroId, leftCol, 'archfiend', '#ef4444');
+    if (this._lastPortraitKey !== leftHeroId || this._lastPortraitCol !== leftCol) {
+      this._lastPortraitKey = leftHeroId;
+      this._lastPortraitCol = leftCol;
+      PixelForge.setHUDPortraits?.(leftHeroId, leftCol, 'archfiend', '#ef4444');
+    }
 
     const activeTrial = this.trials?.activeTrial || null;
     if (g.hudEls?.crestVs) {
@@ -9381,40 +9971,42 @@ export class EndlessManager {
   }
 
   syncControlDeckUI() {
-    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const refs = this._getDeckDomRefs();
+    if (!refs) return;
     const visible = Boolean(this.active && !this.game?.isLandingOpen && !this.game?.isMatchOver);
-    const appEl = document.getElementById('app');
-    if (appEl) {
-      appEl.classList?.toggle('is-adventure-active', visible);
-      appEl.classList?.toggle('is-endless-active', visible);
+    const preserveAdvDeck = Boolean(!this.active && this.game?.isAdventureMode?.());
+    if (refs.appEl) {
+      refs.appEl.classList?.toggle('is-endless-active', visible);
+      if (!preserveAdvDeck) {
+        refs.appEl.classList?.toggle('is-adventure-active', visible);
+      }
     }
-    const deck = document.getElementById('adventure-controls');
-    if (deck) {
-      deck.classList?.toggle('hidden', !visible);
+    if (refs.deck && !preserveAdvDeck) {
+      refs.deck.classList?.toggle('hidden', !visible);
     }
-    const pauseSpBadge = document.getElementById('pause-sp-badge');
-    if (pauseSpBadge && visible) {
-      pauseSpBadge.classList?.add('hidden');
+    if (!visible) return;
+
+    if (refs.pauseSpBadge) {
+      refs.pauseSpBadge.classList?.add('hidden');
     }
 
-    const autoBtn = document.getElementById('adv-btn-autoplay');
-    const autoLbl = document.getElementById('adv-autoplay-label');
-    if (autoBtn) {
-      autoBtn.setAttribute?.('aria-pressed', String(this.autoPlay));
-      autoBtn.classList?.toggle('is-autoplay-on', this.autoPlay);
+    if (refs.autoBtn) {
+      refs.autoBtn.setAttribute?.('aria-pressed', String(this.autoPlay));
+      refs.autoBtn.classList?.toggle('is-autoplay-on', this.autoPlay);
     }
-    if (autoLbl) autoLbl.textContent = this.autoPlay ? 'AI: ON' : 'AI: OFF';
-
-    const skillAutoBtn = document.getElementById('adv-btn-auto');
-    if (skillAutoBtn) {
-      skillAutoBtn.setAttribute?.('aria-pressed', String(this.autoPlay));
-      skillAutoBtn.classList?.toggle('is-autoplay-on', this.autoPlay);
+    const nextAutoLbl = this.autoPlay ? 'AI: ON' : 'AI: OFF';
+    if (refs.autoLbl && refs.autoLbl.textContent !== nextAutoLbl) {
+      refs.autoLbl.textContent = nextAutoLbl;
     }
 
-    const lockBtn = document.getElementById('adv-btn-lock');
-    if (lockBtn) {
-      lockBtn.setAttribute?.('aria-pressed', String(Boolean(this.manualTargetLock)));
-      lockBtn.classList?.toggle('is-lock-on', Boolean(this.manualTargetLock));
+    if (refs.skillAutoBtn) {
+      refs.skillAutoBtn.setAttribute?.('aria-pressed', String(this.autoPlay));
+      refs.skillAutoBtn.classList?.toggle('is-autoplay-on', this.autoPlay);
+    }
+
+    if (refs.lockBtn) {
+      refs.lockBtn.setAttribute?.('aria-pressed', String(Boolean(this.manualTargetLock)));
+      refs.lockBtn.classList?.toggle('is-lock-on', Boolean(this.manualTargetLock));
     }
 
     this.syncJoystickKnobUI();
@@ -9433,9 +10025,9 @@ export class EndlessManager {
     }
 
     const updateOrbSlot = (slot, mode, sweepRatio, labelText, hidden = false) => {
-      const btn = document.getElementById(`adv-btn-${slot}`);
-      const sweep = document.getElementById(`adv-cd-sweep-${slot}`);
-      const txt = document.getElementById(`adv-cd-text-${slot}`);
+      const orb = refs.orbs?.[slot];
+      if (!orb) return;
+      const { btn, sweep, txt } = orb;
       if (btn) {
         btn.classList?.toggle('hidden', Boolean(hidden));
         btn.classList?.toggle('is-ready', mode === 'ready');
@@ -9445,7 +10037,11 @@ export class EndlessManager {
       }
       if (sweep?.style?.setProperty) {
         const deg = Math.max(0, Math.min(360, (sweepRatio || 0) * 360));
-        sweep.style.setProperty('--cd-deg', `${deg.toFixed(1)}deg`);
+        const degStr = `${deg.toFixed(1)}deg`;
+        if (this._deckOrbCdCache[slot] !== degStr) {
+          this._deckOrbCdCache[slot] = degStr;
+          sweep.style.setProperty('--cd-deg', degStr);
+        }
       }
       if (txt && txt.textContent !== labelText) {
         txt.textContent = labelText;
